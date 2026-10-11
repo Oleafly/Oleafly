@@ -1423,6 +1423,14 @@
         "heading": "zotero.org-account",
         "description": "Gebruik je account als Zotero niet open is op deze computer. Groepsbibliotheken komen ook mee."
       }
+    },
+    "overleaf": {
+      "description": "Haal projecten over uit je Overleaf-account of van de Overleaf-server van je universiteit. Oleafly bewaart de aanmelding versleuteld op deze computer.",
+      "signedInAs": "Aangemeld als {{email}} op {{server}}",
+      "signedIn": "Aangemeld op {{server}}",
+      "signedOut": "Niet aangemeld. Oleafly vraagt je om je aan te melden wanneer je projecten importeert.",
+      "signOut": "Afmelden",
+      "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf."
     }
   },
   "language": {

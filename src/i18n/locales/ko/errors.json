@@ -186,5 +186,18 @@
     "failed": "Typst가 문서를 내보내지 못했습니다.",
     "unsupported": "이 Typst 버전으로는 이 설정으로 내보낼 수 없습니다.",
     "invalid_ppi": "1에서 {{max}} PPI 사이의 해상도를 고르세요."
+  },
+  "overleaf": {
+    "signed_out": "먼저 Overleaf에 로그인하세요.",
+    "session_expired": "Overleaf 로그인이 만료되었습니다. 계속하려면 다시 로그인하세요.",
+    "sign_in_cancelled": "Overleaf 로그인이 끝나기 전에 창이 닫혔습니다.",
+    "sign_in_failed": "Oleafly가 Overleaf 로그인을 확인하지 못했습니다. 다시 로그인해 보세요.",
+    "invalid_server": "\"{{server}}\"은(는) Oleafly가 사용할 수 있는 서버 주소가 아닙니다.",
+    "unreachable": "Oleafly가 {{server}}에 연결하지 못했습니다.",
+    "unrecognized": "Overleaf 프로젝트 페이지가 Oleafly가 예상한 모습과 다릅니다. Overleaf에서 프로젝트를 .zip으로 내려받은 뒤 대신 그 파일을 가져오세요.",
+    "project_unavailable": "이 프로젝트를 내려받지 못했습니다. 더 이상 접근 권한이 없을 수 있습니다.",
+    "not_an_archive": "Overleaf가 프로젝트 압축 파일이 아닌 다른 것을 보냈습니다.",
+    "too_large": "이 프로젝트는 가져오기 한도인 2 GB보다 큽니다.",
+    "rate_limited": "Overleaf가 Oleafly에 속도를 줄여 달라고 요청했습니다. 1분 기다린 뒤 다시 시도하세요."
   }
 }

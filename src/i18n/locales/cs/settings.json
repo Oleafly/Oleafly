@@ -1455,6 +1455,14 @@
         "heading": "Účet zotero.org",
         "description": "Účet použijte, když v tomto počítači neběží Zotero. Načtou se i skupinové knihovny."
       }
+    },
+    "overleaf": {
+      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity. Oleafly uchovává přihlášení v tomto počítači zašifrované.",
+      "signedInAs": "Přihlášeno jako {{email}} na {{server}}",
+      "signedIn": "Přihlášeno na {{server}}",
+      "signedOut": "Nepřihlášeno. Oleafly vás požádá o přihlášení při importu projektů.",
+      "signOut": "Odhlásit se",
+      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu."
     }
   },
   "language": {

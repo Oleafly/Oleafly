@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ChevronLeft, ExternalLink, Github, Lock } from "lucide-react";
@@ -34,6 +34,13 @@ import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
+import { useFilesStore } from "@/store/files";
+
+const OverleafImportView = lazy(() =>
+  import("@/components/library/overleaf/OverleafImportView").then((module) => ({
+    default: module.OverleafImportView,
+  })),
+);
 
 const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   project: CHOICE_ART.importArchive,
@@ -52,7 +59,7 @@ export function ProjectImportDialog({
   open: boolean;
   onClose: () => void;
   onImported?: () => void;
-  initialView?: "sources" | "arxiv";
+  initialView?: "sources" | "arxiv" | "overleaf";
 }>) {
   const { t } = useTranslation(["library"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
@@ -79,7 +86,7 @@ export function ProjectImportDialog({
   };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
-  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
+  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv" | "overleaf">(
     initialView,
   );
   const [pendingPath, setPendingPath] = useState<string | null>(null);
@@ -321,7 +328,7 @@ export function ProjectImportDialog({
           "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
           // The source cards use the chooser's width so the two dialogs line
           // up; the single-purpose steps keep their narrower layout.
-          view === "sources" ? "max-w-3xl" : "max-w-xl",
+          view === "sources" ? "max-w-3xl" : view === "overleaf" ? "h-[min(48rem,calc(100dvh-2rem))] max-w-5xl" : "max-w-xl",
         )}
       >
         <DialogHeader className="shrink-0">
@@ -340,6 +347,8 @@ export function ProjectImportDialog({
             ) : null}
             {view === "github"
               ? t(($) => $.library.import.githubTitle)
+              : view === "overleaf"
+                ? t(($) => $.library.import.overleaf.title)
               : view === "arxiv"
                 ? t(($) => $.library.import.arxivTitle)
                 : view === "target"
@@ -349,6 +358,8 @@ export function ProjectImportDialog({
           <DialogDescription>
             {view === "github"
               ? t(($) => $.library.import.githubDescription)
+              : view === "overleaf"
+                ? t(($) => $.library.import.overleaf.description)
               : view === "arxiv"
                 ? t(($) => $.library.import.arxivDescription)
                 : view === "target"
@@ -359,8 +370,28 @@ export function ProjectImportDialog({
 
         {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
         {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
-        <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
-          {view === "target" ? (
+        <div
+          className={cn(
+            "-mx-6 -mb-6 min-h-0 px-6 pb-6",
+            view === "overleaf" ? "flex flex-1 flex-col overflow-hidden" : "overflow-y-auto",
+          )}
+        >
+          {view === "overleaf" ? (
+            <Suspense
+              fallback={
+                <output className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Spinner />
+                </output>
+              }
+            >
+              <OverleafImportView
+                onOpenProject={(projectId) => {
+                  onClose();
+                  void useFilesStore.getState().openProject(projectId);
+                }}
+              />
+            </Suspense>
+          ) : view === "target" ? (
             <div className="grid gap-2">
               <p className="select-text break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
               {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
@@ -469,6 +500,15 @@ export function ProjectImportDialog({
                     compact
                     disabled={busy}
                     onClick={() => setView("github")}
+                  />
+                  <ChoiceCard
+                    image={CHOICE_ART.importOverleaf}
+                    title={"Overleaf"}
+                    description={t(($) => $.library.import.overleaf.cardDescription)}
+                    testId="project-import-overleaf"
+                    compact
+                    disabled={busy}
+                    onClick={() => setView("overleaf")}
                   />
                 </div>
               </section>

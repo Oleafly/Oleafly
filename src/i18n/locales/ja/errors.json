@@ -186,5 +186,18 @@
     "failed": "Typst は文書を書き出せませんでした。",
     "unsupported": "この Typst のバージョンでは、この設定で書き出せません。",
     "invalid_ppi": "1 から {{max}} PPI までの解像度を選んでください。"
+  },
+  "overleaf": {
+    "signed_out": "先に Overleaf にサインインしてください。",
+    "session_expired": "Overleaf のサインインの有効期限が切れました。続けるには、もう一度サインインしてください。",
+    "sign_in_cancelled": "Overleaf のサインインが完了する前に閉じられました。",
+    "sign_in_failed": "Oleafly は Overleaf のサインインを確認できませんでした。もう一度サインインしてください。",
+    "invalid_server": "「{{server}}」は Oleafly で使えるサーバーアドレスではありません。",
+    "unreachable": "Oleafly は {{server}} に接続できませんでした。",
+    "unrecognized": "Overleaf のプロジェクトページが Oleafly の想定と異なります。Overleaf からプロジェクトを .zip でダウンロードし、代わりにそのファイルを読み込んでください。",
+    "project_unavailable": "このプロジェクトをダウンロードできませんでした。アクセス権がなくなった可能性があります。",
+    "not_an_archive": "Overleaf から届いたのはプロジェクトのアーカイブではありませんでした。",
+    "too_large": "このプロジェクトは読み込みの上限である 2 GB を超えています。",
+    "rate_limited": "Overleaf から Oleafly にペースを落とすよう求められました。1 分待ってから、もう一度お試しください。"
   }
 }

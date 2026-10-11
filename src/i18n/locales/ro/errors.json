@@ -186,5 +186,18 @@
     "failed": "Typst nu a putut exporta documentul.",
     "unsupported": "Această versiune Typst nu poate exporta cu aceste setări.",
     "invalid_ppi": "Alege o rezoluție între 1 și {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Autentifică-te mai întâi în Overleaf.",
+    "session_expired": "Autentificarea în Overleaf a expirat. Autentifică-te din nou ca să continui.",
+    "sign_in_cancelled": "Fereastra de autentificare Overleaf a fost închisă înainte de final.",
+    "sign_in_failed": "Oleafly nu a putut confirma autentificarea ta în Overleaf. Încearcă să te autentifici din nou.",
+    "invalid_server": "„{{server}}” nu este o adresă de server pe care Oleafly o poate folosi.",
+    "unreachable": "Oleafly nu a putut accesa {{server}}.",
+    "unrecognized": "Pagina de proiecte Overleaf arată altfel decât se așteaptă Oleafly. Descarcă proiectul ca .zip din Overleaf și importă acel fișier.",
+    "project_unavailable": "Acest proiect nu a putut fi descărcat. Este posibil să nu mai ai acces la el.",
+    "not_an_archive": "Overleaf a trimis altceva decât o arhivă de proiect.",
+    "too_large": "Acest proiect depășește limita de import de 2 GB.",
+    "rate_limited": "Overleaf i-a cerut lui Oleafly să încetinească. Așteaptă un minut și încearcă din nou."
   }
 }

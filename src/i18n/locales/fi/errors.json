@@ -186,5 +186,18 @@
     "failed": "Typst ei voinut viedä dokumenttia.",
     "unsupported": "Tämä Typst-versio ei voi viedä näillä asetuksilla.",
     "invalid_ppi": "Tarkkuuden on oltava vähintään 1 ja enintään {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Kirjaudu ensin Overleafiin.",
+    "session_expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen jatkaaksesi.",
+    "sign_in_cancelled": "Overleaf-kirjautuminen suljettiin ennen kuin se valmistui.",
+    "sign_in_failed": "Oleafly ei voinut vahvistaa Overleaf-kirjautumistasi. Yritä kirjautua uudelleen.",
+    "invalid_server": "”{{server}}” ei ole palvelinosoite, jota Oleafly voi käyttää.",
+    "unreachable": "Oleafly ei saanut yhteyttä kohteeseen {{server}}.",
+    "unrecognized": "Overleafin projektisivu näyttää erilaiselta kuin Oleafly odottaa. Lataa projekti Overleafista .zip-tiedostona ja tuo se tiedosto sen sijaan.",
+    "project_unavailable": "Tätä projektia ei voitu ladata. Sinulla ei ehkä ole enää pääsyä siihen.",
+    "not_an_archive": "Overleaf lähetti jotain muuta kuin projektiarkiston.",
+    "too_large": "Tämä projekti ylittää 2 GB:n tuontirajan.",
+    "rate_limited": "Overleaf pyysi Oleaflya hidastamaan. Odota minuutti ja yritä uudelleen."
   }
 }

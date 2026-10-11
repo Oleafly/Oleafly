@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project downloads it and starts a new project from it. A link never
   downloads anything by itself. Only `oleafly://template/<pack>/<template>`
   links are accepted, and the rest are ignored.
+- Import projects straight from your online LaTeX account. Import a project
+  has a new card for it: sign in once in the window that opens, and it closes
+  by itself when you're in. Your projects then appear as books or a list, with
+  search and a filter for yours and shared ones. Pick one or many and they
+  come over with their files, compiler and main file, ready to compile here
+  with nothing left linked to the website. A university's own server works
+  too. The sign-in is kept encrypted on your computer, and Settings >
+  Integrations shows it and signs you out. The assistant can list and import
+  these projects for you as well.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its

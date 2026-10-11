@@ -1423,6 +1423,14 @@
         "heading": "zotero.org-tili",
         "description": "Käytä tiliäsi, kun Zotero ei ole auki tällä koneella. Myös ryhmäkirjastot tulevat mukaan."
       }
+    },
+    "overleaf": {
+      "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta. Oleafly säilyttää kirjautumisen salattuna tällä koneella.",
+      "signedInAs": "Kirjautunut palvelimelle {{server}} käyttäjänä {{email}}",
+      "signedIn": "Kirjautunut palvelimelle {{server}}",
+      "signedOut": "Et ole kirjautunut. Oleafly pyytää kirjautumaan, kun tuot projekteja.",
+      "signOut": "Kirjaudu ulos",
+      "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista."
     }
   },
   "language": {

@@ -1423,6 +1423,14 @@
         "heading": "zotero.org account",
         "description": "Use your account when Zotero isn't open on this computer. Group libraries come along too."
       }
+    },
+    "overleaf": {
+      "description": "Bring projects over from your Overleaf account or your university's Overleaf server. Oleafly keeps the sign-in encrypted on this computer.",
+      "signedInAs": "Signed in as {{email}} on {{server}}",
+      "signedIn": "Signed in on {{server}}",
+      "signedOut": "Not signed in. Oleafly asks you to sign in when you import projects.",
+      "signOut": "Sign out",
+      "signOutFailed": "Oleafly could not sign out of Overleaf."
     }
   },
   "language": {

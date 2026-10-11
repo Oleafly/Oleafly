@@ -1407,6 +1407,14 @@
         "heading": "zotero.org アカウント",
         "description": "このコンピュータで Zotero を開いていないときは、アカウントを使います。グループのライブラリも対象になります。"
       }
+    },
+    "overleaf": {
+      "description": "Overleaf アカウントや大学の Overleaf サーバーからプロジェクトを取り込みます。Oleafly はサインイン情報をこのコンピュータに暗号化して保存します。",
+      "signedInAs": "{{server}} に {{email}} でサインイン中",
+      "signedIn": "{{server}} にサインイン中",
+      "signedOut": "サインインしていません。プロジェクトを読み込むときに Oleafly がサインインを求めます。",
+      "signOut": "サインアウト",
+      "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。"
     }
   },
   "language": {

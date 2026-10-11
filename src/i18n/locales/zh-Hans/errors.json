@@ -186,5 +186,18 @@
     "failed": "Typst 无法导出该文档。",
     "unsupported": "此 Typst 版本无法使用这些设置导出。",
     "invalid_ppi": "请选择 1 到 {{max}} PPI 之间的分辨率。"
+  },
+  "overleaf": {
+    "signed_out": "请先登录 Overleaf。",
+    "session_expired": "你的 Overleaf 登录已过期。请重新登录以继续。",
+    "sign_in_cancelled": "Overleaf 登录窗口在完成前被关闭了。",
+    "sign_in_failed": "Oleafly 无法确认你的 Overleaf 登录。请重新登录。",
+    "invalid_server": "“{{server}}”不是 Oleafly 可以使用的服务器地址。",
+    "unreachable": "Oleafly 无法连接到 {{server}}。",
+    "unrecognized": "Overleaf 的项目页面与 Oleafly 预期的不同。请从 Overleaf 将项目下载为 .zip，然后改为导入该文件。",
+    "project_unavailable": "无法下载此项目。你可能已无权访问它。",
+    "not_an_archive": "Overleaf 发送的内容不是项目压缩包。",
+    "too_large": "此项目超过了 2 GB 的导入上限。",
+    "rate_limited": "Overleaf 要求 Oleafly 放慢速度。请等待一分钟后重试。"
   }
 }

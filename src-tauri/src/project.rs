@@ -5370,6 +5370,43 @@ pub(crate) fn import_project_zip_bytes_with(
     result
 }
 
+pub(crate) fn import_project_archive_with(
+    name: String,
+    archive: &Path,
+    finalize: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<String, String> {
+    import_overleaf_project_blocking_with(
+        Some(name),
+        &archive.to_string_lossy(),
+        |_| None,
+        finalize,
+    )
+}
+
+pub(crate) fn apply_imported_settings(
+    project_id: &str,
+    main_doc: Option<&str>,
+    flavor: Option<&str>,
+    origin: serde_json::Value,
+) -> Result<(), String> {
+    let dir = paths::projects_root()?.join(project_id);
+    let mut meta =
+        read_import_meta(&dir).ok_or_else(|| "the imported project has no metadata".to_string())?;
+    if let Some(main) = main_doc.map(str::trim).filter(|main| !main.is_empty()) {
+        if dir.join(main).is_file() && engine_for_untrusted_project(main).is_ok() {
+            meta.main_doc = main.to_string();
+        }
+    }
+    if meta.main_doc.to_ascii_lowercase().ends_with(".tex")
+        && crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, &meta.main_doc).is_ok()
+    {
+        meta.engine = crate::config::LATEXMK_ENGINE.to_string();
+        meta.tex_flavor = validate_tex_flavor(&meta.engine, flavor).ok().flatten();
+    }
+    meta.extra.insert("importedFrom".to_string(), origin);
+    write_meta_at(&dir.join("project.json"), &meta)
+}
+
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
     let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
     serde_json::from_str::<ProjectMeta>(&raw).ok()

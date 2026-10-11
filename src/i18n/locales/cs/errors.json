@@ -186,5 +186,18 @@
     "failed": "Typst nedokázal dokument exportovat.",
     "unsupported": "Tato verze Typst neumí exportovat s tímto nastavením.",
     "invalid_ppi": "Vyberte rozlišení od 1 do {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Nejdřív se přihlaste k Overleafu.",
+    "session_expired": "Vaše přihlášení k Overleafu vypršelo. Přihlaste se znovu a pokračujte.",
+    "sign_in_cancelled": "Přihlašovací okno Overleafu bylo zavřeno před dokončením.",
+    "sign_in_failed": "Oleafly nemohl ověřit vaše přihlášení k Overleafu. Zkuste se přihlásit znovu.",
+    "invalid_server": "„{{server}}“ není adresa serveru, kterou může Oleafly použít.",
+    "unreachable": "Oleafly se nemohl spojit se serverem {{server}}.",
+    "unrecognized": "Stránka projektu v Overleafu vypadá jinak, než Oleafly očekává. Stáhněte projekt z Overleafu jako .zip a importujte místo toho tento soubor.",
+    "project_unavailable": "Tento projekt se nepodařilo stáhnout. Možná k němu už nemáte přístup.",
+    "not_an_archive": "Overleaf poslal něco jiného než archiv projektu.",
+    "too_large": "Tento projekt překračuje limit importu 2 GB.",
+    "rate_limited": "Overleaf požádal Oleafly o zpomalení. Počkejte minutu a zkuste to znovu."
   }
 }

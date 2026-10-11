@@ -1407,6 +1407,14 @@
         "heading": "zotero.org 帳號",
         "description": "當這台電腦上沒有開啟 Zotero 時，就使用你的帳號。群組文獻庫也會一併納入。"
       }
+    },
+    "overleaf": {
+      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案。Oleafly 會在這台電腦上加密保存登入資訊。",
+      "signedInAs": "已在 {{server}} 上以 {{email}} 的身分登入",
+      "signedIn": "已在 {{server}} 上登入",
+      "signedOut": "尚未登入。匯入專案時，Oleafly 會請你登入。",
+      "signOut": "登出",
+      "signOutFailed": "Oleafly 無法登出 Overleaf。"
     }
   },
   "language": {

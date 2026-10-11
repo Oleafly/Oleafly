@@ -1423,6 +1423,14 @@
         "heading": "zotero.org hesabı",
         "description": "Zotero bu bilgisayarda açık değilken hesabınızı kullanın. Grup kitaplıkları da dahil edilir."
       }
+    },
+    "overleaf": {
+      "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın. Oleafly oturum bilgisini bu bilgisayarda şifreli olarak saklar.",
+      "signedInAs": "{{server}} üzerinde {{email}} olarak oturum açıldı",
+      "signedIn": "{{server}} üzerinde oturum açıldı",
+      "signedOut": "Oturum açılmadı. Proje içe aktardığınızda Oleafly oturum açmanızı ister.",
+      "signOut": "Oturumu kapat",
+      "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı."
     }
   },
   "language": {

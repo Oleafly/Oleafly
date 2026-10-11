@@ -1439,6 +1439,14 @@
         "heading": "Contul zotero.org",
         "description": "Folosește contul când Zotero nu este deschis pe acest computer. Sunt incluse și bibliotecile de grup."
       }
+    },
+    "overleaf": {
+      "description": "Adu proiecte din contul tău Overleaf sau de pe serverul Overleaf al universității tale. Oleafly păstrează autentificarea criptată pe acest computer.",
+      "signedInAs": "Autentificat ca {{email}} pe {{server}}",
+      "signedIn": "Autentificat pe {{server}}",
+      "signedOut": "Nu ești autentificat. Oleafly îți cere să te autentifici când imporți proiecte.",
+      "signOut": "Deconectează-te",
+      "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf."
     }
   },
   "language": {

@@ -71,6 +71,7 @@ mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
+mod overleaf;
 mod pandoc_citations;
 mod paths;
 mod proc;
@@ -795,6 +796,11 @@ pub fn run() {
             project::set_default_latex_engine,
             project::project_tex_status,
             project::import_overleaf_project,
+            overleaf::overleaf_status,
+            overleaf::overleaf_sign_in,
+            overleaf::overleaf_sign_out,
+            overleaf::overleaf_list_projects,
+            overleaf::overleaf_import_projects,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,

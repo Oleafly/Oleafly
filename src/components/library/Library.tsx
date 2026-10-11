@@ -4,8 +4,6 @@ import {
   BookmarkX,
   Clock3,
   FolderInput,
-  LayoutGrid,
-  List,
   SearchX,
   SlidersHorizontal,
   X,
@@ -57,6 +55,7 @@ import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
+import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
   DEFAULT_BOOK_COLOR,
@@ -612,36 +611,11 @@ export function Library() {
   const renderLayoutSwitcher = () => (
     <div data-tauri-drag-region className="flex min-w-max items-center">
       {projects.length > 0 ? (
-        <fieldset
-          aria-label={t(($) => $.library.home.layoutGroup)}
-          className={cn(
-            HOME_CHROME_SURFACE,
-            "flex items-center rounded-xl p-1",
-            (isWindows || isLinux) && "mr-3",
-          )}
-        >
-          {([
-            { mode: "list", label: t(($) => $.library.home.listView), icon: List },
-            { mode: "grid", label: t(($) => $.library.home.gridView), icon: LayoutGrid },
-          ] as const).map(({ mode, label, icon: Icon }) => (
-            <Tooltip key={mode} label={label} side="bottom">
-              <button
-                type="button"
-                onClick={() => setProjectLayout(mode)}
-                aria-label={label}
-                aria-pressed={projectLayout === mode}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:bg-accent/60 focus-visible:text-foreground",
-                  projectLayout === mode
-                    ? "bg-accent text-foreground"
-                    : "hover:text-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-4" />
-              </button>
-            </Tooltip>
-          ))}
-        </fieldset>
+        <LayoutToggle
+          value={projectLayout}
+          onChange={setProjectLayout}
+          className={cn(HOME_CHROME_SURFACE, (isWindows || isLinux) && "mr-3")}
+        />
       ) : null}
       <WindowControls />
     </div>

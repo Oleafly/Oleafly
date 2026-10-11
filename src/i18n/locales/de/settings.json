@@ -1423,6 +1423,14 @@
         "heading": "Konto bei zotero.org",
         "description": "Nutzen Sie Ihr Konto, wenn Zotero auf diesem Computer nicht geöffnet ist. Gruppenbibliotheken sind ebenfalls dabei."
       }
+    },
+    "overleaf": {
+      "description": "Übernehmen Sie Projekte aus Ihrem Overleaf-Konto oder vom Overleaf-Server Ihrer Hochschule. Oleafly speichert die Anmeldung verschlüsselt auf diesem Computer.",
+      "signedInAs": "Angemeldet als {{email}} auf {{server}}",
+      "signedIn": "Angemeldet auf {{server}}",
+      "signedOut": "Nicht angemeldet. Oleafly fragt nach der Anmeldung, wenn Sie Projekte importieren.",
+      "signOut": "Abmelden",
+      "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden."
     }
   },
   "language": {

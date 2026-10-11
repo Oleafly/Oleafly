@@ -1439,6 +1439,14 @@
         "heading": "Account zotero.org",
         "description": "Usa il tuo account quando Zotero non è aperto su questo computer. Sono incluse anche le librerie di gruppo."
       }
+    },
+    "overleaf": {
+      "description": "Importa progetti dal tuo account Overleaf o dal server Overleaf della tua università. Oleafly conserva l'accesso cifrato su questo computer.",
+      "signedInAs": "Accesso effettuato come {{email}} su {{server}}",
+      "signedIn": "Accesso effettuato su {{server}}",
+      "signedOut": "Accesso non effettuato. Oleafly ti chiede di accedere quando importi progetti.",
+      "signOut": "Esci",
+      "signOutFailed": "Oleafly non è riuscito a uscire da Overleaf."
     }
   },
   "language": {

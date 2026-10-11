@@ -186,5 +186,18 @@
     "failed": "Typst no pudo exportar el documento.",
     "unsupported": "Esta versión de Typst no puede exportar con estos ajustes.",
     "invalid_ppi": "Elige una resolución de 1 a {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Primero inicia sesión en Overleaf.",
+    "session_expired": "Tu sesión de Overleaf caducó. Vuelve a iniciar sesión para continuar.",
+    "sign_in_cancelled": "El inicio de sesión en Overleaf se cerró antes de terminar.",
+    "sign_in_failed": "Oleafly no pudo confirmar tu sesión de Overleaf. Vuelve a iniciar sesión.",
+    "invalid_server": "“{{server}}” no es una dirección de servidor que Oleafly pueda usar.",
+    "unreachable": "Oleafly no pudo conectar con {{server}}.",
+    "unrecognized": "La página de proyectos de Overleaf no tiene el aspecto que Oleafly espera. Descarga el proyecto como .zip desde Overleaf e importa ese archivo.",
+    "project_unavailable": "No se pudo descargar este proyecto. Puede que ya no tengas acceso a él.",
+    "not_an_archive": "Overleaf envió algo distinto de un archivo comprimido de proyecto.",
+    "too_large": "Este proyecto supera el límite de importación de 2 GB.",
+    "rate_limited": "Overleaf pidió a Oleafly que fuera más despacio. Espera un minuto y vuelve a intentarlo."
   }
 }

@@ -1439,6 +1439,14 @@
         "heading": "Compte zotero.org",
         "description": "Utilisez votre compte quand Zotero n'est pas ouvert sur cet ordinateur. Les bibliothèques de groupe sont aussi incluses."
       }
+    },
+    "overleaf": {
+      "description": "Importez des projets depuis votre compte Overleaf ou le serveur Overleaf de votre université. Oleafly conserve la connexion chiffrée sur cet ordinateur.",
+      "signedInAs": "Connecté en tant que {{email}} sur {{server}}",
+      "signedIn": "Connecté sur {{server}}",
+      "signedOut": "Non connecté. Oleafly vous demande de vous connecter quand vous importez des projets.",
+      "signOut": "Se déconnecter",
+      "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf."
     }
   },
   "language": {

@@ -1423,6 +1423,14 @@
         "heading": "zotero.org-konto",
         "description": "Bruk kontoen din når Zotero ikke er åpent på denne maskinen. Gruppebiblioteker blir også med."
       }
+    },
+    "overleaf": {
+      "description": "Hent prosjekter fra Overleaf-kontoen din eller fra Overleaf-serveren til universitetet ditt. Oleafly lagrer innloggingen kryptert på denne datamaskinen.",
+      "signedInAs": "Logget inn som {{email}} på {{server}}",
+      "signedIn": "Logget inn på {{server}}",
+      "signedOut": "Ikke logget inn. Oleafly ber deg logge inn når du importerer prosjekter.",
+      "signOut": "Logg ut",
+      "signOutFailed": "Oleafly kunne ikke logge ut av Overleaf."
     }
   },
   "language": {

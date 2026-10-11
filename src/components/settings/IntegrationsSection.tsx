@@ -8,9 +8,11 @@ import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
 import { ZoteroSection } from "@/components/settings/ZoteroSection";
 import { CitationSearchIntegrationSection } from "@/components/settings/CitationSearchIntegrationSection";
 import { McpSection } from "@/components/settings/McpSection";
+import { OverleafSection } from "@/components/settings/OverleafSection";
 import {
   AlphaXivBrandIcon,
   GitHubBrandIcon,
+  OverleafBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
 import { useSettingsStore } from "@/store/settings";
@@ -29,6 +31,9 @@ export function IntegrationsSection() {
   useEffect(() => {
     if (scrollTarget === "github") {
       setTab("github");
+      setScrollTarget(null);
+    } else if (scrollTarget === "overleaf") {
+      setTab("overleaf");
       setScrollTarget(null);
     } else if (scrollTarget === "zotero") {
       setTab("zotero");
@@ -55,6 +60,10 @@ export function IntegrationsSection() {
       <TabsList scrollable>
         <TabsTrigger value="github" data-testid="integrations-tab-github">
           <GitHubBrandIcon className="mr-1.5 size-3.5" /> {"GitHub"}
+        </TabsTrigger>
+        <TabsTrigger value="overleaf" data-testid="integrations-tab-overleaf">
+          <OverleafBrandIcon className="mr-1.5 size-3.5 text-[#47A141]" />
+          {"Overleaf"}
         </TabsTrigger>
         <TabsTrigger
           value="alphaxiv"
@@ -84,6 +93,9 @@ export function IntegrationsSection() {
       </TabsList>
       <TabsContent value="github">
         <GitHubSection />
+      </TabsContent>
+      <TabsContent value="overleaf">
+        <OverleafSection />
       </TabsContent>
       <TabsContent value="alphaxiv">
         <AlphaXivSection />

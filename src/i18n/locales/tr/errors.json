@@ -186,5 +186,18 @@
     "failed": "Typst belgeyi dışa aktaramadı.",
     "unsupported": "Bu Typst sürümü bu ayarlarla dışa aktaramaz.",
     "invalid_ppi": "1 ile {{max}} PPI arasında bir çözünürlük seçin."
+  },
+  "overleaf": {
+    "signed_out": "Önce Overleaf'te oturum açın.",
+    "session_expired": "Overleaf oturumunuzun süresi doldu. Devam etmek için yeniden oturum açın.",
+    "sign_in_cancelled": "Overleaf oturum açma penceresi işlem bitmeden kapatıldı.",
+    "sign_in_failed": "Oleafly Overleaf oturumunuzu doğrulayamadı. Yeniden oturum açmayı deneyin.",
+    "invalid_server": "“{{server}}” Oleafly'nin kullanabileceği bir sunucu adresi değil.",
+    "unreachable": "Oleafly {{server}} adresine ulaşamadı.",
+    "unrecognized": "Overleaf'in proje sayfası Oleafly'nin beklediğinden farklı görünüyor. Projeyi Overleaf'ten .zip olarak indirin ve bunun yerine o dosyayı içe aktarın.",
+    "project_unavailable": "Bu proje indirilemedi. Artık bu projeye erişiminiz olmayabilir.",
+    "not_an_archive": "Overleaf proje arşivi dışında bir şey gönderdi.",
+    "too_large": "Bu proje 2 GB içe aktarma sınırından büyük.",
+    "rate_limited": "Overleaf, Oleafly'den yavaşlamasını istedi. Bir dakika bekleyip yeniden deneyin."
   }
 }

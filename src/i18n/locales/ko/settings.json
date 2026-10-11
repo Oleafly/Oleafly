@@ -1407,6 +1407,14 @@
         "heading": "zotero.org 계정",
         "description": "이 컴퓨터에서 Zotero가 열려 있지 않을 때 계정을 사용합니다. 그룹 라이브러리도 함께 포함됩니다."
       }
+    },
+    "overleaf": {
+      "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져옵니다. Oleafly는 로그인 정보를 이 컴퓨터에 암호화해 보관합니다.",
+      "signedInAs": "{{server}}에 {{email}}(으)로 로그인됨",
+      "signedIn": "{{server}}에 로그인됨",
+      "signedOut": "로그인되어 있지 않습니다. 프로젝트를 가져올 때 Oleafly가 로그인을 요청합니다.",
+      "signOut": "로그아웃",
+      "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다."
     }
   },
   "language": {

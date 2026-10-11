@@ -319,7 +319,9 @@
       "closeAgent": "Luk en hjælpeagent.",
       "runCommand": "Kør en shell-kommando i projektmappen med en grænse på to minutter.",
       "computerUse": "Åbn en webside i assistentens browservindue.",
-      "toggleTheme": "Skift mellem lyst og mørkt tema."
+      "toggleTheme": "Skift mellem lyst og mørkt tema.",
+      "listOverleafProjects": "Vis dine Overleaf-projekter, og log ind først, hvis det er nødvendigt.",
+      "importOverleafProjects": "Importer Overleaf-projekter til dit bibliotek med deres kompilator og hovedfil."
     },
     "disableAll": "Slå alle fra",
     "emptyContext": "Der er ingen værktøjer tilgængelige i denne sammenhæng.",

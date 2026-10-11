@@ -186,5 +186,18 @@
     "failed": "Typst 無法匯出這份文件。",
     "unsupported": "這個 Typst 版本無法以這些設定匯出。",
     "invalid_ppi": "請選擇 1 到 {{max}} PPI 之間的解析度。"
+  },
+  "overleaf": {
+    "signed_out": "請先登入 Overleaf。",
+    "session_expired": "你的 Overleaf 登入已過期。請重新登入以繼續。",
+    "sign_in_cancelled": "Overleaf 登入視窗在完成前就被關閉了。",
+    "sign_in_failed": "Oleafly 無法確認你的 Overleaf 登入。請再登入一次。",
+    "invalid_server": "「{{server}}」不是 Oleafly 可以使用的伺服器位址。",
+    "unreachable": "Oleafly 無法連線到 {{server}}。",
+    "unrecognized": "Overleaf 的專案頁面和 Oleafly 預期的不同。請從 Overleaf 將專案下載為 .zip，然後改為匯入該檔案。",
+    "project_unavailable": "無法下載這個專案。你可能已經沒有存取權。",
+    "not_an_archive": "Overleaf 傳來的內容不是專案壓縮檔。",
+    "too_large": "這個專案超過 2 GB 的匯入上限。",
+    "rate_limited": "Overleaf 要求 Oleafly 放慢速度。請等一分鐘後再試一次。"
   }
 }
