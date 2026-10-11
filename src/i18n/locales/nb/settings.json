@@ -1082,11 +1082,56 @@
       "fontRemoveFailed": "Kunne ikke fjerne skriften.",
       "packDownloadFailed": "Kunne ikke laste ned malpakken.",
       "packsDownloadFailed": "Kunne ikke laste ned malpakkene.",
-      "packRemoveFailed": "Kunne ikke fjerne malpakken."
+      "packRemoveFailed": "Kunne ikke fjerne malpakken.",
+      "templateDownloadFailed": "Kunne ikke laste ned malen.",
+      "packsRefreshFailed": "Kunne ikke se etter nye pakker."
     },
     "typstFonts": {
       "heading": "Skrifter for Typst",
       "tooltip": "Gratis skrifter som mange Typst-maler ber om. Når de er lastet ned, kan alle Typst-prosjekter bruke dem, unntatt et prosjekt som slår av systemskrifter."
+    },
+    "packs": {
+      "browse": "Bla gjennom",
+      "back": "Tilbake til pakkene",
+      "count_one": "{{count}} mal",
+      "count_other": "{{count}} maler",
+      "installedCount": "{{installed}} av {{total}} installert",
+      "downloadPack": "Last ned pakke",
+      "refresh": "Se etter nye pakker",
+      "searchPacks": "Søk i pakker",
+      "searchTemplates": "Søk i maler",
+      "noPacks": "Ingen pakker passer",
+      "noTemplates": "Ingen maler passer",
+      "loading": "Laster inn maler",
+      "loadFailed": "Kunne ikke laste inn denne pakken.",
+      "retry": "Prøv igjen",
+      "installed": "Installert",
+      "engineFilter": "Motor",
+      "kindFilter": "Type",
+      "languageFilter": "Språk",
+      "allEngines": "Alle motorer",
+      "allKinds": "Alle typer",
+      "allLanguages": "Alle språk",
+      "groups": {
+        "curated": "Utvalgte",
+        "community": "Fellesskap",
+        "typst": "Typst",
+        "university": "Universiteter"
+      },
+      "preview": {
+        "image": "Første side av {{name}}",
+        "previous": "Forrige mal",
+        "next": "Neste mal",
+        "engine": "Motor",
+        "license": "Lisens",
+        "kind": "Type",
+        "languages": "Språk",
+        "country": "Land",
+        "institution": "Institusjon",
+        "originalSource": "Opprinnelig kilde",
+        "getTemplate": "Hent denne malen",
+        "useTemplate": "Bruk denne malen"
+      }
     }
   },
   "engine": {

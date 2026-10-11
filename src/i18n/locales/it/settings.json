@@ -1087,11 +1087,57 @@
       "fontRemoveFailed": "Impossibile rimuovere il font.",
       "packDownloadFailed": "Impossibile scaricare il pacchetto di modelli.",
       "packsDownloadFailed": "Impossibile scaricare i pacchetti di modelli.",
-      "packRemoveFailed": "Impossibile rimuovere il pacchetto di modelli."
+      "packRemoveFailed": "Impossibile rimuovere il pacchetto di modelli.",
+      "templateDownloadFailed": "Impossibile scaricare il modello.",
+      "packsRefreshFailed": "Impossibile cercare nuovi pacchetti."
     },
     "typstFonts": {
       "heading": "Font per Typst",
       "tooltip": "Font gratuiti richiesti da molti modelli Typst. Una volta scaricati, ogni progetto Typst può usarli, tranne un progetto che disattiva i font di sistema."
+    },
+    "packs": {
+      "browse": "Sfoglia",
+      "back": "Torna ai pacchetti",
+      "count_one": "{{count}} modello",
+      "count_many": "{{count}} modelli",
+      "count_other": "{{count}} modelli",
+      "installedCount": "{{installed}} di {{total}} installati",
+      "downloadPack": "Scarica pacchetto",
+      "refresh": "Cerca nuovi pacchetti",
+      "searchPacks": "Cerca pacchetti",
+      "searchTemplates": "Cerca modelli",
+      "noPacks": "Nessun pacchetto corrisponde",
+      "noTemplates": "Nessun modello corrisponde",
+      "loading": "Caricamento dei modelli",
+      "loadFailed": "Impossibile caricare questo pacchetto.",
+      "retry": "Riprova",
+      "installed": "Installato",
+      "engineFilter": "Motore",
+      "kindFilter": "Tipo",
+      "languageFilter": "Lingua",
+      "allEngines": "Tutti i motori",
+      "allKinds": "Tutti i tipi",
+      "allLanguages": "Tutte le lingue",
+      "groups": {
+        "curated": "Selezionati",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Università"
+      },
+      "preview": {
+        "image": "Prima pagina di {{name}}",
+        "previous": "Modello precedente",
+        "next": "Modello successivo",
+        "engine": "Motore",
+        "license": "Licenza",
+        "kind": "Tipo",
+        "languages": "Lingue",
+        "country": "Paese",
+        "institution": "Istituzione",
+        "originalSource": "Fonte originale",
+        "getTemplate": "Ottieni questo modello",
+        "useTemplate": "Usa questo modello"
+      }
     }
   },
   "engine": {

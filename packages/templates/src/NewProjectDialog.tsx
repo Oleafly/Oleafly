@@ -1,4 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -139,31 +150,81 @@ export function wrappedModalFocus(
   return null;
 }
 
-// Cache preview data URIs so switching steps or categories doesn't refetch.
+export const PREVIEW_CACHE_LIMIT = 200;
 const previewCache = new Map<string, string | null>();
+
+export function rememberPreview(id: string, uri: string | null): void {
+  previewCache.delete(id);
+  previewCache.set(id, uri);
+  while (previewCache.size > PREVIEW_CACHE_LIMIT) {
+    const oldest = previewCache.keys().next().value;
+    if (oldest === undefined) break;
+    previewCache.delete(oldest);
+  }
+}
+
+export function cachedPreview(id: string): string | null | undefined {
+  if (!previewCache.has(id)) return undefined;
+  const uri = previewCache.get(id) ?? null;
+  rememberPreview(id, uri);
+  return uri;
+}
+
+export function previewCacheSize(): number {
+  return previewCache.size;
+}
+
+export function clearPreviewCache(): void {
+  previewCache.clear();
+}
+
 function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null {
-  const [uri, setUri] = useState<string | null>(() => previewCache.get(t.id) ?? null);
+  const [uri, setUri] = useState<string | null>(() => (t.has_preview ? cachedPreview(t.id) ?? null : null));
   useEffect(() => {
     if (!t.has_preview) return;
-    if (previewCache.has(t.id)) {
-      setUri(previewCache.get(t.id) ?? null);
+    const cached = cachedPreview(t.id);
+    if (cached !== undefined) {
+      setUri(cached);
       return;
     }
     let alive = true;
     void host
       .loadPreview(t.id)
       .then((u) => {
-        previewCache.set(t.id, u);
+        rememberPreview(t.id, u);
         if (alive) setUri(u);
       })
       .catch(() => {
-        previewCache.set(t.id, null);
+        rememberPreview(t.id, null);
       });
     return () => {
       alive = false;
     };
   }, [t.id, t.has_preview, host]);
   return uri;
+}
+
+const WIDE_GRID_QUERY = "(min-width: 40rem)";
+const GRID_OVERSCAN_ROWS = 2;
+const GRID_UNMEASURED_ROWS = 4;
+
+function wideGridList(): MediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
+  return window.matchMedia(WIDE_GRID_QUERY);
+}
+
+function subscribeGridColumns(listener: () => void): () => void {
+  const list = wideGridList();
+  list?.addEventListener?.("change", listener);
+  return () => list?.removeEventListener?.("change", listener);
+}
+
+function gridColumnCount(): number {
+  return wideGridList()?.matches ? 4 : 3;
+}
+
+function useGridColumns(): number {
+  return useSyncExternalStore(subscribeGridColumns, gridColumnCount, () => 3);
 }
 
 interface TemplateFilters {
@@ -226,6 +287,8 @@ function Preview({
       <img
         src={uri}
         alt={t("dialog.previewAlt", { name: template.name })}
+        loading="lazy"
+        decoding="async"
         className={cn(
           "h-full w-full bg-white",
           isFigure ? "object-contain p-3" : "object-cover object-top",
@@ -290,6 +353,103 @@ function AtsBadge({
   return null;
 }
 
+const TemplateCard = memo(function TemplateCard({
+  entry,
+  host,
+  t,
+  onChoose,
+}: Readonly<{
+  entry: TemplateInfo;
+  host: TemplatesHost;
+  t: TemplatesTranslator;
+  onChoose: (template: TemplateInfo) => void;
+}>) {
+  return (
+    <button
+      type="button"
+      data-row-window-item=""
+      data-tour="project-template-card"
+      data-testid={`template-card-${entry.id}`}
+      onClick={() => onChoose(entry)}
+      title={entry.description}
+      className="group flex flex-col pb-5 text-left"
+    >
+      <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
+        <Preview template={entry} host={host} t={t} />
+        {(entry.category || "") === "AI Generated" && (
+          <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.5625rem] font-semibold text-white shadow-md">
+            <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
+          </span>
+        )}
+        {!entry.assets_ready && (
+          <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[0.5625rem] font-medium text-white backdrop-blur-sm">
+            <Download className="size-2.5" /> {t("dialog.setupBadge")}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 px-0.5">
+        <span className="truncate text-xs font-medium leading-tight text-foreground">
+          {entry.name}
+        </span>
+        {entry.ats_profile === "friendly" && (
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-emerald-500"
+            title={t("dialog.atsFriendly")}
+          />
+        )}
+      </div>
+      <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
+        <span className="text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
+          {compilerLabel(entry, t)}
+        </span>
+        {!entry.assets_ready && (
+          <span className="text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
+            {t("dialog.needsSetup")}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+});
+
+function TemplateGrid({
+  templates,
+  scrollRef,
+  host,
+  kit,
+  onChoose,
+}: Readonly<{
+  templates: readonly TemplateInfo[];
+  scrollRef: RefObject<HTMLElement | null>;
+  host: TemplatesHost;
+  kit: TemplatesKit;
+  onChoose: (template: TemplateInfo) => void;
+}>) {
+  const { useRowWindow, t } = kit;
+  const listRef = useRef<HTMLDivElement>(null);
+  const columns = useGridColumns();
+  const rows = useRowWindow({
+    count: Math.ceil(templates.length / columns),
+    listRef,
+    scrollRef,
+    overscan: GRID_OVERSCAN_ROWS,
+    unmeasuredCount: GRID_UNMEASURED_ROWS,
+  });
+  const first = rows.start * columns;
+  return (
+    <div
+      ref={listRef}
+      data-testid="template-grid"
+      className="grid grid-cols-3 gap-x-4 sm:grid-cols-4"
+      style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}
+    >
+      {templates.slice(first, rows.end * columns).map((entry) => (
+        <TemplateCard key={entry.id} entry={entry} host={host} t={t} onChoose={onChoose} />
+      ))}
+    </div>
+  );
+}
+
 export function NewProjectDialog({
   open,
   templates,
@@ -307,6 +467,7 @@ export function NewProjectDialog({
   pickColor,
   allowEnterSubmit = true,
   allowClose = true,
+  initialTemplateId = null,
 }: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
@@ -326,6 +487,7 @@ export function NewProjectDialog({
   pickColor?: () => string;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
+  initialTemplateId?: string | null;
 }>) {
   const { Button, Input, Tooltip, Select, t } = kit;
   const [step, setStep] = useState<1 | 2>(1);
@@ -406,6 +568,21 @@ export function NewProjectDialog({
     }
   }, [open]);
 
+  const consumedInitialRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      consumedInitialRef.current = null;
+      return;
+    }
+    if (!initialTemplateId || consumedInitialRef.current === initialTemplateId) return;
+    const match = templates.find((candidate) => candidate.id === initialTemplateId);
+    if (!match) return;
+    consumedInitialRef.current = initialTemplateId;
+    setSelectedId(match.id);
+    setColor(swatchFor(match.default_color));
+    setStep(2);
+  }, [open, initialTemplateId, templates, swatchFor]);
+
   useEffect(() => {
     if (!open) return;
     openerRef.current = document.activeElement as HTMLElement | null;
@@ -477,16 +654,19 @@ export function NewProjectDialog({
     [templates, selectedId],
   );
 
+  const choose = useCallback(
+    (template: TemplateInfo) => {
+      setSelectedId(template.id);
+      setColor(swatchFor(template.default_color));
+      setStep(2);
+    },
+    [swatchFor],
+  );
+
   if (!open) {
     createChordRef.current.enabled = false;
     return null;
   }
-
-  const choose = (t: TemplateInfo) => {
-    setSelectedId(t.id);
-    setColor(swatchFor(t.default_color));
-    setStep(2);
-  };
 
   const submit = async () => {
     if (!selected || setup.active) return;
@@ -645,54 +825,13 @@ export function NewProjectDialog({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
-              {filtered.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  data-tour="project-template-card"
-                  data-testid={`template-card-${entry.id}`}
-                  onClick={() => choose(entry)}
-                  title={entry.description}
-                  className="group flex flex-col text-left"
-                >
-                  <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
-                    <Preview template={entry} host={host} t={t} />
-                    {(entry.category || "") === "AI Generated" && (
-                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.5625rem] font-semibold text-white shadow-md">
-                        <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
-                      </span>
-                    )}
-                    {!entry.assets_ready && (
-                      <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[0.5625rem] font-medium text-white backdrop-blur-sm">
-                        <Download className="size-2.5" /> {t("dialog.setupBadge")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5 px-0.5">
-                    <span className="truncate text-xs font-medium leading-tight text-foreground">
-                      {entry.name}
-                    </span>
-                    {entry.ats_profile === "friendly" && (
-                      <span
-                        className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-                        title={t("dialog.atsFriendly")}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
-                    <span className="text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
-                      {compilerLabel(entry, t)}
-                    </span>
-                    {!entry.assets_ready && (
-                      <span className="text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
-                        {t("dialog.needsSetup")}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <TemplateGrid
+              templates={filtered}
+              scrollRef={gridRef}
+              host={host}
+              kit={kit}
+              onChoose={choose}
+            />
           )}
         </div>
       </div>

@@ -1092,11 +1092,58 @@
       "fontRemoveFailed": "Не удалось удалить шрифт.",
       "packDownloadFailed": "Не удалось скачать набор шаблонов.",
       "packsDownloadFailed": "Не удалось скачать наборы шаблонов.",
-      "packRemoveFailed": "Не удалось удалить набор шаблонов."
+      "packRemoveFailed": "Не удалось удалить набор шаблонов.",
+      "templateDownloadFailed": "Не удалось скачать шаблон.",
+      "packsRefreshFailed": "Не удалось проверить новые наборы."
     },
     "typstFonts": {
       "heading": "Шрифты для Typst",
       "tooltip": "Бесплатные шрифты, которые нужны многим шаблонам Typst. После скачивания их может использовать любой проект Typst, кроме проекта, в котором отключены системные шрифты."
+    },
+    "packs": {
+      "browse": "Обзор",
+      "back": "К наборам",
+      "count_one": "{{count}} шаблон",
+      "count_few": "{{count}} шаблона",
+      "count_many": "{{count}} шаблонов",
+      "count_other": "{{count}} шаблона",
+      "installedCount": "Установлено {{installed}} из {{total}}",
+      "downloadPack": "Скачать набор",
+      "refresh": "Проверить новые наборы",
+      "searchPacks": "Поиск наборов",
+      "searchTemplates": "Поиск шаблонов",
+      "noPacks": "Подходящих наборов нет",
+      "noTemplates": "Подходящих шаблонов нет",
+      "loading": "Загрузка шаблонов",
+      "loadFailed": "Не удалось загрузить этот набор.",
+      "retry": "Повторить",
+      "installed": "Установлен",
+      "engineFilter": "Движок",
+      "kindFilter": "Тип",
+      "languageFilter": "Язык",
+      "allEngines": "Все движки",
+      "allKinds": "Все типы",
+      "allLanguages": "Все языки",
+      "groups": {
+        "curated": "Подборка",
+        "community": "Сообщество",
+        "typst": "Typst",
+        "university": "Университеты"
+      },
+      "preview": {
+        "image": "Первая страница шаблона {{name}}",
+        "previous": "Предыдущий шаблон",
+        "next": "Следующий шаблон",
+        "engine": "Движок",
+        "license": "Лицензия",
+        "kind": "Тип",
+        "languages": "Языки",
+        "country": "Страна",
+        "institution": "Учреждение",
+        "originalSource": "Исходный источник",
+        "getTemplate": "Получить шаблон",
+        "useTemplate": "Использовать шаблон"
+      }
     }
   },
   "engine": {

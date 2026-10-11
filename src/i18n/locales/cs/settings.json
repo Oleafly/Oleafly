@@ -1092,11 +1092,58 @@
       "fontRemoveFailed": "Písmo se nepodařilo odebrat.",
       "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
       "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
-      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat."
+      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat.",
+      "templateDownloadFailed": "Šablonu se nepodařilo stáhnout.",
+      "packsRefreshFailed": "Nové balíčky se nepodařilo zkontrolovat."
     },
     "typstFonts": {
       "heading": "Písma pro Typst",
       "tooltip": "Bezplatná písma, která vyžaduje mnoho šablon Typst. Po stažení je může použít každý projekt Typst, kromě projektu, který vypíná systémová písma."
+    },
+    "packs": {
+      "browse": "Procházet",
+      "back": "Zpět na balíčky",
+      "count_one": "{{count}} šablona",
+      "count_few": "{{count}} šablony",
+      "count_many": "{{count}} šablony",
+      "count_other": "{{count}} šablon",
+      "installedCount": "Nainstalováno {{installed}} z {{total}}",
+      "downloadPack": "Stáhnout balíček",
+      "refresh": "Zkontrolovat nové balíčky",
+      "searchPacks": "Hledat balíčky",
+      "searchTemplates": "Hledat šablony",
+      "noPacks": "Žádné balíčky neodpovídají",
+      "noTemplates": "Žádné šablony neodpovídají",
+      "loading": "Načítání šablon",
+      "loadFailed": "Tento balíček se nepodařilo načíst.",
+      "retry": "Zkusit znovu",
+      "installed": "Nainstalováno",
+      "engineFilter": "Engine",
+      "kindFilter": "Druh",
+      "languageFilter": "Jazyk",
+      "allEngines": "Všechny enginy",
+      "allKinds": "Všechny druhy",
+      "allLanguages": "Všechny jazyky",
+      "groups": {
+        "curated": "Vybrané",
+        "community": "Komunita",
+        "typst": "Typst",
+        "university": "Univerzity"
+      },
+      "preview": {
+        "image": "První strana šablony {{name}}",
+        "previous": "Předchozí šablona",
+        "next": "Další šablona",
+        "engine": "Engine",
+        "license": "Licence",
+        "kind": "Druh",
+        "languages": "Jazyky",
+        "country": "Země",
+        "institution": "Instituce",
+        "originalSource": "Původní zdroj",
+        "getTemplate": "Získat šablonu",
+        "useTemplate": "Použít šablonu"
+      }
     }
   },
   "engine": {

@@ -1082,11 +1082,56 @@
       "fontRemoveFailed": "Yazı tipi kaldırılamadı.",
       "packDownloadFailed": "Şablon paketi indirilemedi.",
       "packsDownloadFailed": "Şablon paketleri indirilemedi.",
-      "packRemoveFailed": "Şablon paketi kaldırılamadı."
+      "packRemoveFailed": "Şablon paketi kaldırılamadı.",
+      "templateDownloadFailed": "Şablon indirilemedi.",
+      "packsRefreshFailed": "Yeni paketler denetlenemedi."
     },
     "typstFonts": {
       "heading": "Typst için yazı tipleri",
       "tooltip": "Birçok Typst şablonunun istediği ücretsiz yazı tipleri. İndirildikten sonra sistem yazı tiplerini kapatan bir proje dışında her Typst projesi bunları kullanabilir."
+    },
+    "packs": {
+      "browse": "Göz at",
+      "back": "Paketlere dön",
+      "count_one": "{{count}} şablon",
+      "count_other": "{{count}} şablon",
+      "installedCount": "{{total}} şablondan {{installed}} tanesi yüklü",
+      "downloadPack": "Paketi indir",
+      "refresh": "Yeni paketleri denetle",
+      "searchPacks": "Paketlerde ara",
+      "searchTemplates": "Şablonlarda ara",
+      "noPacks": "Eşleşen paket yok",
+      "noTemplates": "Eşleşen şablon yok",
+      "loading": "Şablonlar yükleniyor",
+      "loadFailed": "Bu paket yüklenemedi.",
+      "retry": "Yeniden dene",
+      "installed": "Yüklü",
+      "engineFilter": "Motor",
+      "kindFilter": "Tür",
+      "languageFilter": "Dil",
+      "allEngines": "Tüm motorlar",
+      "allKinds": "Tüm türler",
+      "allLanguages": "Tüm diller",
+      "groups": {
+        "curated": "Seçkin",
+        "community": "Topluluk",
+        "typst": "Typst",
+        "university": "Üniversiteler"
+      },
+      "preview": {
+        "image": "{{name}} ilk sayfası",
+        "previous": "Önceki şablon",
+        "next": "Sonraki şablon",
+        "engine": "Motor",
+        "license": "Lisans",
+        "kind": "Tür",
+        "languages": "Diller",
+        "country": "Ülke",
+        "institution": "Kurum",
+        "originalSource": "Özgün kaynak",
+        "getTemplate": "Bu şablonu al",
+        "useTemplate": "Bu şablonu kullan"
+      }
     }
   },
   "engine": {

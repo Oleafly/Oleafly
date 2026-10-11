@@ -1092,11 +1092,58 @@
       "fontRemoveFailed": "Nie udało się usunąć kroju pisma.",
       "packDownloadFailed": "Nie udało się pobrać pakietu szablonów.",
       "packsDownloadFailed": "Nie udało się pobrać pakietów szablonów.",
-      "packRemoveFailed": "Nie udało się usunąć pakietu szablonów."
+      "packRemoveFailed": "Nie udało się usunąć pakietu szablonów.",
+      "templateDownloadFailed": "Nie udało się pobrać szablonu.",
+      "packsRefreshFailed": "Nie udało się sprawdzić nowych pakietów."
     },
     "typstFonts": {
       "heading": "Czcionki dla Typst",
       "tooltip": "Bezpłatne czcionki, których wymaga wiele szablonów Typst. Po pobraniu może z nich korzystać każdy projekt Typst, poza projektem, który wyłącza czcionki systemowe."
+    },
+    "packs": {
+      "browse": "Przeglądaj",
+      "back": "Wróć do pakietów",
+      "count_one": "{{count}} szablon",
+      "count_few": "{{count}} szablony",
+      "count_many": "{{count}} szablonów",
+      "count_other": "{{count}} szablonu",
+      "installedCount": "Zainstalowano {{installed}} z {{total}}",
+      "downloadPack": "Pobierz pakiet",
+      "refresh": "Sprawdź nowe pakiety",
+      "searchPacks": "Szukaj pakietów",
+      "searchTemplates": "Szukaj szablonów",
+      "noPacks": "Brak pasujących pakietów",
+      "noTemplates": "Brak pasujących szablonów",
+      "loading": "Wczytywanie szablonów",
+      "loadFailed": "Nie udało się wczytać tego pakietu.",
+      "retry": "Spróbuj ponownie",
+      "installed": "Zainstalowany",
+      "engineFilter": "Silnik",
+      "kindFilter": "Rodzaj",
+      "languageFilter": "Język",
+      "allEngines": "Wszystkie silniki",
+      "allKinds": "Wszystkie rodzaje",
+      "allLanguages": "Wszystkie języki",
+      "groups": {
+        "curated": "Wybrane",
+        "community": "Społeczność",
+        "typst": "Typst",
+        "university": "Uczelnie"
+      },
+      "preview": {
+        "image": "Pierwsza strona szablonu {{name}}",
+        "previous": "Poprzedni szablon",
+        "next": "Następny szablon",
+        "engine": "Silnik",
+        "license": "Licencja",
+        "kind": "Rodzaj",
+        "languages": "Języki",
+        "country": "Kraj",
+        "institution": "Instytucja",
+        "originalSource": "Oryginalne źródło",
+        "getTemplate": "Pobierz ten szablon",
+        "useTemplate": "Użyj tego szablonu"
+      }
     }
   },
   "engine": {

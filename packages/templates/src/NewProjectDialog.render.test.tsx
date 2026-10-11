@@ -3,13 +3,28 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NewProjectDialog } from "./NewProjectDialog";
+import {
+  NewProjectDialog,
+  PREVIEW_CACHE_LIMIT,
+  cachedPreview,
+  clearPreviewCache,
+  previewCacheSize,
+  rememberPreview,
+} from "./NewProjectDialog";
 import { modalCoordinator } from "./modal-coordinator";
-import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
+import type { TemplateInfo, TemplatesHost, TemplatesKit, TemplatesRowWindowHook } from "./types";
 import type { TemplatesMessageKey } from "./messages";
 
 const t = (key: TemplatesMessageKey, params?: Record<string, unknown>) =>
   params ? `${key} ${Object.values(params).join(" ")}` : key;
+
+const rowWindow = { rows: Number.POSITIVE_INFINITY, counts: [] as number[] };
+
+const useTestRowWindow: TemplatesRowWindowHook = ({ count }) => {
+  rowWindow.counts.push(count);
+  const end = Math.min(count, rowWindow.rows);
+  return { start: 0, end, paddingTop: 0, paddingBottom: (count - end) * 100 };
+};
 
 const kit: TemplatesKit = {
   Input: (props: ComponentPropsWithRef<"input">) => <input {...props} />,
@@ -46,6 +61,7 @@ const kit: TemplatesKit = {
       ))}
     </select>
   ),
+  useRowWindow: useTestRowWindow,
   t,
 };
 
@@ -665,9 +681,130 @@ describe("NewProjectDialog template requests and metadata", () => {
   });
 });
 
+describe("NewProjectDialog windowed gallery", () => {
+  afterEach(() => {
+    cleanup();
+    rowWindow.rows = Number.POSITIVE_INFINITY;
+    rowWindow.counts = [];
+  });
+
+  it("mounts only the rows the window covers and pads the rest", () => {
+    const many = Array.from({ length: 600 }, (_, index) =>
+      template({ id: `pack-${index}`, name: `Pack template ${index}`, has_preview: true }),
+    );
+    rowWindow.rows = 4;
+    const host = makeHost();
+    open({ templates: many }, host);
+
+    const cards = screen.getAllByTestId(/^template-card-/);
+    expect(cards).toHaveLength(12);
+    expect(rowWindow.counts.at(-1)).toBe(200);
+    expect(screen.getByTestId("template-grid").style.paddingBottom).toBe("19600px");
+    expect(host.loadPreview).toHaveBeenCalledTimes(12);
+    expect(screen.queryByTestId("template-card-pack-12")).not.toBeInTheDocument();
+  });
+
+  it("lays the gallery out in four columns on a wide window", () => {
+    const listeners: Array<() => void> = [];
+    const media = {
+      matches: true,
+      addEventListener: vi.fn((_type: string, listener: () => void) => listeners.push(listener)),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => media),
+    );
+    try {
+      const many = Array.from({ length: 40 }, (_, index) => template({ id: `w-${index}`, name: `Wide ${index}` }));
+      rowWindow.rows = 2;
+      const { view } = open({ templates: many });
+      expect(rowWindow.counts.at(-1)).toBe(10);
+      expect(screen.getAllByTestId(/^template-card-/)).toHaveLength(8);
+      view.unmount();
+      expect(media.removeEventListener).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("windows the filtered list, not the whole catalog", () => {
+    const many = Array.from({ length: 90 }, (_, index) =>
+      template({ id: `t-${index}`, name: index % 2 ? `Odd ${index}` : `Even ${index}` }),
+    );
+    rowWindow.rows = 2;
+    open({ templates: many });
+
+    fireEvent.change(screen.getByPlaceholderText("dialog.searchPlaceholder"), {
+      target: { value: "odd" },
+    });
+
+    expect(rowWindow.counts.at(-1)).toBe(15);
+    expect(screen.getAllByTestId(/^template-card-/).map((card) => card.textContent)).toEqual(
+      expect.arrayContaining([expect.stringContaining("Odd 1")]),
+    );
+    expect(screen.queryByText("Even 0")).not.toBeInTheDocument();
+  });
+
+  it("opens straight on the details step for a template the app asks for", async () => {
+    const { view } = open({ templates: [], initialTemplateId: "ats-resume" });
+    expect(screen.getByText("dialog.chooseTemplate")).toBeInTheDocument();
+
+    view.rerender(
+      <NewProjectDialog
+        open
+        templates={TEMPLATES}
+        onClose={() => {}}
+        onCreate={() => {}}
+        host={makeHost()}
+        kit={kit}
+        colorOptions={COLORS}
+        defaultColor="#334155"
+        initialTemplateId="ats-resume"
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("dialog.nameProject")).toBeInTheDocument());
+    expect(screen.getByPlaceholderText("nameHint.atsResume")).toBeInTheDocument();
+  });
+});
+
+describe("NewProjectDialog preview cache", () => {
+  afterEach(() => {
+    clearPreviewCache();
+  });
+
+  it("keeps at most the newest previews and refreshes one when it is read", () => {
+    clearPreviewCache();
+    for (let index = 0; index < PREVIEW_CACHE_LIMIT; index += 1) {
+      rememberPreview(`cached-${index}`, `data:${index}`);
+    }
+    expect(cachedPreview("cached-0")).toBe("data:0");
+
+    rememberPreview("newest", null);
+    rememberPreview("newer", "data:new");
+
+    expect(previewCacheSize()).toBe(PREVIEW_CACHE_LIMIT);
+    expect(cachedPreview("cached-0")).toBe("data:0");
+    expect(cachedPreview("cached-1")).toBeUndefined();
+    expect(cachedPreview("cached-2")).toBeUndefined();
+    expect(cachedPreview("newest")).toBeNull();
+  });
+});
+
 describe("NewProjectDialog previews", () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it("loads card thumbnails lazily", async () => {
+    const host = makeHost({ loadPreview: vi.fn(async () => "data:image/png;base64,EE") });
+    open({ templates: [template({ id: "lazy-cover", name: "Lazy", has_preview: true })] }, host);
+
+    const image = await screen.findByAltText("dialog.previewAlt Lazy");
+
+    expect(image).toHaveAttribute("loading", "lazy");
+    expect(image).toHaveAttribute("decoding", "async");
   });
 
   it("reuses a loaded thumbnail on the details step instead of fetching it again", async () => {

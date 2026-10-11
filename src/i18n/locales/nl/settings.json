@@ -1082,11 +1082,56 @@
       "fontRemoveFailed": "Kon het lettertype niet verwijderen.",
       "packDownloadFailed": "Kon het sjabloonpakket niet downloaden.",
       "packsDownloadFailed": "Kon de sjabloonpakketten niet downloaden.",
-      "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen."
+      "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen.",
+      "templateDownloadFailed": "Kon het sjabloon niet downloaden.",
+      "packsRefreshFailed": "Kon niet zoeken naar nieuwe pakketten."
     },
     "typstFonts": {
       "heading": "Lettertypen voor Typst",
       "tooltip": "Gratis lettertypen waar veel Typst-sjablonen om vragen. Na het downloaden kan elk Typst-project ze gebruiken, behalve een project dat systeemlettertypen uitzet."
+    },
+    "packs": {
+      "browse": "Bekijken",
+      "back": "Terug naar pakketten",
+      "count_one": "{{count}} sjabloon",
+      "count_other": "{{count}} sjablonen",
+      "installedCount": "{{installed}} van {{total}} geïnstalleerd",
+      "downloadPack": "Pakket downloaden",
+      "refresh": "Zoeken naar nieuwe pakketten",
+      "searchPacks": "Pakketten zoeken",
+      "searchTemplates": "Sjablonen zoeken",
+      "noPacks": "Geen pakketten gevonden",
+      "noTemplates": "Geen sjablonen gevonden",
+      "loading": "Sjablonen laden",
+      "loadFailed": "Kon dit pakket niet laden.",
+      "retry": "Opnieuw proberen",
+      "installed": "Geïnstalleerd",
+      "engineFilter": "Engine",
+      "kindFilter": "Soort",
+      "languageFilter": "Taal",
+      "allEngines": "Alle engines",
+      "allKinds": "Alle soorten",
+      "allLanguages": "Alle talen",
+      "groups": {
+        "curated": "Geselecteerd",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Universiteiten"
+      },
+      "preview": {
+        "image": "Eerste pagina van {{name}}",
+        "previous": "Vorig sjabloon",
+        "next": "Volgend sjabloon",
+        "engine": "Engine",
+        "license": "Licentie",
+        "kind": "Soort",
+        "languages": "Talen",
+        "country": "Land",
+        "institution": "Instelling",
+        "originalSource": "Oorspronkelijke bron",
+        "getTemplate": "Dit sjabloon ophalen",
+        "useTemplate": "Dit sjabloon gebruiken"
+      }
     }
   },
   "engine": {

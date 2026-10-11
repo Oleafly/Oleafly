@@ -1087,11 +1087,57 @@
       "fontRemoveFailed": "Impossible de supprimer la police.",
       "packDownloadFailed": "Impossible de télécharger le pack de modèles.",
       "packsDownloadFailed": "Impossible de télécharger les packs de modèles.",
-      "packRemoveFailed": "Impossible de supprimer le pack de modèles."
+      "packRemoveFailed": "Impossible de supprimer le pack de modèles.",
+      "templateDownloadFailed": "Impossible de télécharger le modèle.",
+      "packsRefreshFailed": "Impossible de rechercher de nouveaux packs."
     },
     "typstFonts": {
       "heading": "Polices pour Typst",
       "tooltip": "Des polices gratuites demandées par de nombreux modèles Typst. Une fois téléchargées, tous les projets Typst peuvent les utiliser, sauf un projet qui désactive les polices système."
+    },
+    "packs": {
+      "browse": "Parcourir",
+      "back": "Retour aux packs",
+      "count_one": "{{count}} modèle",
+      "count_many": "{{count}} modèles",
+      "count_other": "{{count}} modèles",
+      "installedCount": "{{installed}} sur {{total}} installés",
+      "downloadPack": "Télécharger le pack",
+      "refresh": "Rechercher de nouveaux packs",
+      "searchPacks": "Rechercher un pack",
+      "searchTemplates": "Rechercher un modèle",
+      "noPacks": "Aucun pack ne correspond",
+      "noTemplates": "Aucun modèle ne correspond",
+      "loading": "Chargement des modèles",
+      "loadFailed": "Impossible de charger ce pack.",
+      "retry": "Réessayer",
+      "installed": "Installé",
+      "engineFilter": "Moteur",
+      "kindFilter": "Type",
+      "languageFilter": "Langue",
+      "allEngines": "Tous les moteurs",
+      "allKinds": "Tous les types",
+      "allLanguages": "Toutes les langues",
+      "groups": {
+        "curated": "Sélection",
+        "community": "Communauté",
+        "typst": "Typst",
+        "university": "Universités"
+      },
+      "preview": {
+        "image": "Première page de {{name}}",
+        "previous": "Modèle précédent",
+        "next": "Modèle suivant",
+        "engine": "Moteur",
+        "license": "Licence",
+        "kind": "Type",
+        "languages": "Langues",
+        "country": "Pays",
+        "institution": "Établissement",
+        "originalSource": "Source d'origine",
+        "getTemplate": "Obtenir ce modèle",
+        "useTemplate": "Utiliser ce modèle"
+      }
     }
   },
   "engine": {

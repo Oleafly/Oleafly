@@ -40,11 +40,13 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
     onClose,
     onCreate,
     onTemplatesChanged,
+    initialTemplateId,
   }: {
     open: boolean;
     busy?: boolean;
     allowClose?: boolean;
     allowEnterSubmit?: boolean;
+    initialTemplateId?: string | null;
     onClose: () => void;
     onCreate: (name: string, templateId: string, color: string) => void;
     onTemplatesChanged?: () => void;
@@ -55,6 +57,7 @@ vi.mock("@/components/library/NewProjectDialog", () => ({
         data-busy={String(Boolean(busy))}
         data-allow-close={String(allowClose)}
         data-allow-enter={String(allowEnterSubmit)}
+        data-initial-template={initialTemplateId ?? ""}
       >
         <button
           type="button"
@@ -89,6 +92,7 @@ import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { openTemplateInNewProject, resetTemplatePacks, useTemplatePacksStore } from "@/store/template-packs";
 
 const createFromTemplate = vi.fn(async () => "proj-1");
 
@@ -103,6 +107,7 @@ beforeEach(() => {
   useFilesStore.setState({ createFromTemplate, projectId: null });
   useSettingsStore.setState({ newProjectOpen: true });
   useTourStore.setState({ activeTourId: null });
+  resetTemplatePacks();
 });
 
 describe("GlobalNewProject", () => {
@@ -179,6 +184,34 @@ describe("GlobalNewProject", () => {
     expect(dialog).toHaveAttribute("data-allow-enter", "false");
     dialog.querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')?.click();
     expect(useSettingsStore.getState().newProjectOpen).toBe(true);
+  });
+
+  it("opens a template installed from a pack with a fresh template list", async () => {
+    useSettingsStore.setState({ newProjectOpen: false });
+    render(<GlobalNewProject />);
+    expect(listTemplates).not.toHaveBeenCalled();
+
+    act(() => {
+      openTemplateInNewProject("tpl-1");
+    });
+    const dialog = screen.getByTestId("new-project-dialog");
+    expect(dialog).toHaveAttribute("data-initial-template", "tpl-1");
+    await waitFor(() => expect(listTemplates).toHaveBeenCalledTimes(2));
+
+    act(() => {
+      screen.getByTestId("dialog-close").click();
+    });
+    expect(useTemplatePacksStore.getState().requestedTemplateId).toBeNull();
+  });
+
+  it("logs a failed template reload for a requested template", async () => {
+    useSettingsStore.setState({ newProjectOpen: false });
+    listTemplates.mockRejectedValue(new Error("no catalog"));
+    render(<GlobalNewProject />);
+    act(() => {
+      openTemplateInNewProject("tpl-2");
+    });
+    await waitFor(() => expect(logError).toHaveBeenCalledTimes(2));
   });
 
   it("reloads templates on request", async () => {

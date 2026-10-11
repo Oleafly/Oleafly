@@ -574,15 +574,51 @@ export interface DictionaryBytes {
     aff: Uint8Array;
     dic: Uint8Array;
 }
+export type PackGroup = "curated" | "community" | "typst" | "university";
 export interface PackInfo {
     id: string;
     label: string;
     description: string;
     category: string;
+    group: PackGroup;
     approx_bytes: number;
     count: number;
     license_summary: string;
+    covers: string[];
     installed: boolean;
+    installed_count: number;
+    version: 1 | 2;
+}
+export interface PackTemplateLicense {
+    spdx: string | null;
+    label: string;
+}
+export interface PackTemplateCredit {
+    url: string;
+    author: string | null;
+}
+export interface PackTemplateInfo {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    engine: string;
+    license: PackTemplateLicense;
+    credit: PackTemplateCredit | null;
+    thumb_url: string | null;
+    preview_url: string | null;
+    kind: string | null;
+    languages: string[];
+    country: string | null;
+    institution: string | null;
+    bytes: number;
+    file_count: number;
+    installed: boolean;
+}
+export interface PackIndexInfo {
+    pack_id: string;
+    version: 1 | 2;
+    templates: PackTemplateInfo[];
 }
 export interface GitCommit {
     oid: string;
@@ -1070,8 +1106,10 @@ export interface BackendPort {
   templatePrerequisites: (templateId: string) => Promise<Prerequisite[]>;
   ensureTemplateAssets: (templateId: string) => Promise<void>;
   listTemplatePacks: () => Promise<PackInfo[]>;
-  refreshPackCatalog: () => Promise<void>;
+  refreshPackCatalog: (force?: boolean) => Promise<boolean>;
+  packIndex: (packId: string, force?: boolean) => Promise<PackIndexInfo>;
   installTemplatePack: (id: string) => Promise<void>;
+  installPackTemplate: (packId: string, templateId: string) => Promise<void>;
   removeTemplatePack: (id: string) => Promise<void>;
   readDeadlines: () => Promise<string>;
   refreshDeadlines: () => Promise<void>;
