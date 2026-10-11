@@ -207,6 +207,10 @@ describe("NewProjectDialog", () => {
     expect(screen.getByTestId("template-card-poster")).toBeInTheDocument();
     expect(screen.queryByTestId("template-card-blank")).not.toBeInTheDocument();
 
+    fireEvent.change(search, { target: { value: "ai-flow" } });
+    expect(screen.getByTestId("template-card-ai-flow")).toBeInTheDocument();
+    expect(screen.queryByTestId("template-card-poster")).not.toBeInTheDocument();
+
     fireEvent.change(search, { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("dialog.engineLabel"), {
       target: { value: "typst" },

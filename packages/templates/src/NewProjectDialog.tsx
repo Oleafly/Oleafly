@@ -242,7 +242,7 @@ function matchesTemplateFilters(t: TemplateInfo, filters: TemplateFilters): bool
   if (filters.engine !== "all" && t.document_engine !== filters.engine) return false;
   if (
     filters.q &&
-    !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
+    !`${t.id} ${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
   ) {
     return false;
   }
@@ -747,6 +747,7 @@ export function NewProjectDialog({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchRef}
+              data-testid="template-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("dialog.searchPlaceholder")}

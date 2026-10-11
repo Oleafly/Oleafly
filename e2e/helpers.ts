@@ -532,6 +532,7 @@ export async function createProjectFromTemplate(
   name: string,
 ) {
   await openGallery(page);
+  await page.fill('[data-testid="template-search"]', templateId);
   await page.click(`[data-testid="template-card-${templateId}"]`);
   await expect(page.locator("#new-project-name")).toBeVisible({ timeout: 20_000 });
   await page.fill("#new-project-name", name);
