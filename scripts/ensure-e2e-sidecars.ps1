@@ -58,5 +58,5 @@ if ($typstRelease.Count -ne 1) { throw "bundled Typst $typstVersion is missing f
 $typstTarget = $typstRelease[0].targets.$hostTriple
 if (-not $typstTarget) { throw "the toolchain catalog has no Typst $typstVersion build for $hostTriple" }
 Install-Sidecar "typst" $typstVersion $typstTarget.asset $typstTarget.archiveSha256 $typstTarget.archiveMember $typstTarget.githubUrl
-Install-Sidecar "tectonic" "0.16.9" "tectonic-0.16.9-x86_64-pc-windows-msvc.zip" "131a24604785a9600989a3d91225f597df52ac06f00aeffe86fd529f99ee5cdd" "tectonic.exe" "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.16.9/tectonic-0.16.9-x86_64-pc-windows-msvc.zip"
+Install-Sidecar "tectonic" "0.17.0" "tectonic-0.17.0-x86_64-pc-windows-msvc.zip" "f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f" "tectonic.exe" "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip"
 Install-Sidecar "pandoc" "3.9.0.2" "pandoc-3.9.0.2-windows-x86_64.zip" "c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a" "pandoc-3.9.0.2\pandoc.exe" "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"

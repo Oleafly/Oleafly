@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   named "Thesis 2024/25" was enough. BibTeX stopped with "I couldn't open
   database file" and every citation stayed undefined. It now finds the `.bib`
   and `.bst` files, and so does the `oleaflyc` command line tool.
+- The built-in engine no longer crashes on documents that use
+  `fontawesome5`, a common package in CVs and slides, or anything else that
+  asks XeTeX for a glyph name. Tectonic 0.16.9 freed memory it did not own
+  there, and the process was killed partway through the compile. The
+  built-in engine is now Tectonic 0.17.0, which fixes it and still compiles
+  offline from the files earlier versions downloaded. If any compiler
+  crashes again, the compile log now ends with a line that says so,
+  instead of stopping mid-line with no reason.
 
 ## [0.4.6] - 2026-10-09
 

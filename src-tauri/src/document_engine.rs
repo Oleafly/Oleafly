@@ -3127,8 +3127,8 @@ async fn run_supervised_process_with_environment(
         event.clone(),
         emitted.clone(),
     ));
-    let code = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(Ok(status)) => status.code(),
+    let status = match tokio::time::timeout(timeout, child.wait()).await {
+        Ok(Ok(status)) => status,
         Ok(Err(error)) => {
             terminate_process_tree(child_pid).await;
             let _ = child.start_kill();
@@ -3170,7 +3170,44 @@ async fn run_supervised_process_with_environment(
         );
         return Ok((log, Some(-1)));
     }
-    Ok((log, code))
+    if let Some(note) = compiler_crash_note(&status) {
+        if let Some(app) = app {
+            let emit_len = claim_emit_budget(&emitted, note.len());
+            if emit_len > 0 {
+                let text = String::from_utf8_lossy(&note.as_bytes()[..emit_len]);
+                let _ = app.emit(&event, text.as_ref());
+            }
+        }
+        append_bounded(&mut log, note.as_bytes());
+    }
+    Ok((log, status.code()))
+}
+
+#[cfg(unix)]
+fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
+    use std::os::unix::process::ExitStatusExt;
+    let name = match status.signal()? {
+        libc::SIGABRT => "SIGABRT",
+        libc::SIGSEGV => "SIGSEGV",
+        libc::SIGBUS => "SIGBUS",
+        libc::SIGILL => "SIGILL",
+        libc::SIGFPE => "SIGFPE",
+        libc::SIGTRAP => "SIGTRAP",
+        _ => return None,
+    };
+    Some(format!(
+        "\nerror: the compiler crashed ({name}) before it finished, so this log ends early"
+    ))
+}
+
+#[cfg(windows)]
+fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
+    let code = status.code()? as u32;
+    (code & 0xF000_0000 == 0xC000_0000).then(|| {
+        format!(
+            "\nerror: the compiler crashed (exception 0x{code:08X}) before it finished, so this log ends early"
+        )
+    })
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -4290,6 +4327,42 @@ mod tests {
             counter.load(std::sync::atomic::Ordering::Relaxed),
             MAX_EMITTED_LOG_BYTES
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_crashed_compiler_says_so_and_a_killed_one_does_not() {
+        async fn run(root: &Path, script: &str) -> (String, Option<i32>) {
+            let args = vec!["-c".to_string(), script.to_string()];
+            run_supervised_process(
+                Path::new("/bin/sh"),
+                &args,
+                root,
+                None,
+                std::time::Duration::from_secs(10),
+                None,
+            )
+            .await
+            .unwrap()
+        }
+        let root = tempfile::tempdir().unwrap();
+        let run = |script: &'static str| run(root.path(), script);
+        let (log, code) = run("printf 'Running TeX ...'; kill -ABRT $$").await;
+        assert_eq!(code, None);
+        assert!(log.starts_with("Running TeX ..."), "{log}");
+        assert!(
+            log.contains("error: the compiler crashed (SIGABRT) before it finished"),
+            "{log}"
+        );
+        let (log, code) = run("kill -SEGV $$").await;
+        assert_eq!(code, None);
+        assert!(log.contains("crashed (SIGSEGV)"), "{log}");
+        let (log, code) = run("kill -KILL $$").await;
+        assert_eq!(code, None);
+        assert!(!log.contains("crashed"), "{log}");
+        let (log, code) = run("printf 'error'; exit 1").await;
+        assert_eq!(code, Some(1));
+        assert!(!log.contains("crashed"), "{log}");
     }
 
     #[cfg(unix)]
