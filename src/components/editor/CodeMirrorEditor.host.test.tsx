@@ -309,6 +309,11 @@ describe("the editor host", () => {
     expect(useSettingsStore.getState().editorMathPreview).toBe(true);
   });
 
+  it("has no document session for any file yet", () => {
+    const { host } = mountProps();
+    expect(host.documentSession?.("main.tex")).toBeNull();
+  });
+
   it("adds language extensions only to source files", () => {
     const { extraExtensionsForPath } = mountProps();
     expect(extraExtensionsForPath(null)).toEqual([]);

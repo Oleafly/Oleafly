@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import {
+  Annotation,
   EditorState,
   Compartment,
   EditorSelection,
@@ -94,8 +95,11 @@ import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { emacsModeExtension } from "./emacs-mode";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
+import { changesToUtf16Edits, remoteChange } from "./collaboration";
+import type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
+export type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
 
 export type EditorKeymapMode = "default" | "vim" | "emacs";
 
@@ -109,6 +113,7 @@ export interface EditorHost {
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
+  documentSession?(path: string): DocumentSession | null;
   saveActive?(): void;
   isEditLocked?(): boolean;
   useEditLocked?(): boolean;
@@ -247,9 +252,10 @@ function capturePathViewState(view: EditorView, doc: string): PathViewState {
   };
 }
 
-function editedPathViewState(
+function pathViewStateAfter(
   saved: PathViewState,
   changes: readonly BackgroundDocumentChange[],
+  annotations: readonly Annotation<unknown>[],
 ): PathViewState {
   const state = EditorState.create({
     doc: saved.doc,
@@ -261,7 +267,7 @@ function editedPathViewState(
   });
   const transaction = state.update({
     changes: [...changes],
-    annotations: isolateHistory.of("full"),
+    annotations: [...annotations],
   });
   return {
     doc: transaction.state.doc.toString(),
@@ -269,6 +275,17 @@ function editedPathViewState(
     history: transaction.state.field(historyField, false),
     scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
   };
+}
+
+function editedPathViewState(
+  saved: PathViewState,
+  changes: readonly BackgroundDocumentChange[],
+): PathViewState {
+  return pathViewStateAfter(saved, changes, [isolateHistory.of("full")]);
+}
+
+function remotePathViewState(saved: PathViewState, edits: readonly Utf16Edit[]): PathViewState {
+  return pathViewStateAfter(saved, edits, [remoteChange.of(true), Transaction.addToHistory.of(false)]);
 }
 
 const MAX_SAVED_PATH_STATES = 20;
@@ -301,6 +318,97 @@ function takeSavedPathState(
   };
 }
 
+const documentLoad = Annotation.define<boolean>();
+
+class EditorSessions {
+  private readonly states: Map<string, PathViewState>;
+  private readonly background = new Map<string, () => void>();
+  private current: DocumentSession | null = null;
+  private currentVersion = 0;
+  private stopCurrent: (() => void) | null = null;
+
+  constructor(states: Map<string, PathViewState>) {
+    this.states = states;
+  }
+
+  get active(): DocumentSession | null {
+    return this.current;
+  }
+
+  get readOnly(): boolean {
+    return this.current?.readOnly === true;
+  }
+
+  bind(session: DocumentSession, apply: (change: RemoteChange) => void): void {
+    this.currentVersion = session.version();
+    if (this.current === session) return;
+    this.current = session;
+    this.stopCurrent = session.subscribe((change) => {
+      this.currentVersion = change.version;
+      apply(change);
+    });
+  }
+
+  sendLocal(transactions: readonly Transaction[]): boolean {
+    const session = this.current;
+    if (!session) return false;
+    for (const transaction of transactions) {
+      if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
+        continue;
+      }
+      session.applyLocal(changesToUtf16Edits(transaction.changes), this.currentVersion);
+      this.currentVersion = session.version();
+    }
+    return true;
+  }
+
+  release(backgroundPath: string | null): void {
+    const session = this.current;
+    this.stopCurrent?.();
+    this.stopCurrent = null;
+    this.current = null;
+    if (session && backgroundPath) this.keepInBackground(backgroundPath, session);
+  }
+
+  takeBackground(path: string): void {
+    this.background.get(path)?.();
+    this.background.delete(path);
+  }
+
+  hasBackground(path: string): boolean {
+    return this.background.has(path);
+  }
+
+  prune(): void {
+    for (const path of [...this.background.keys()]) {
+      if (!this.states.has(path)) this.takeBackground(path);
+    }
+  }
+
+  releaseAll(): void {
+    this.release(null);
+    for (const path of [...this.background.keys()]) this.takeBackground(path);
+  }
+
+  private keepInBackground(path: string, session: DocumentSession): void {
+    this.background.set(
+      path,
+      session.subscribe((change) => {
+        const saved = this.states.get(path);
+        if (saved) this.states.set(path, remotePathViewState(saved, change.edits));
+      }),
+    );
+  }
+}
+
+function applyRemoteChange(view: EditorView, change: RemoteChange): void {
+  view.dispatch({
+    changes: change.edits,
+    annotations: [remoteChange.of(true), Transaction.addToHistory.of(false)],
+    filter: false,
+  });
+}
+
 function dispatchDocumentSync(
   view: EditorView,
   current: string,
@@ -319,6 +427,7 @@ function dispatchDocumentSync(
       changes: { from: 0, to: view.state.doc.length, insert: next },
       selection,
       effects,
+      annotations: documentLoad.of(true),
     });
     return;
   }
@@ -326,7 +435,7 @@ function dispatchDocumentSync(
     filter: false,
     changes: minimalReplacement(current, next),
     effects,
-    annotations: Transaction.addToHistory.of(false),
+    annotations: [Transaction.addToHistory.of(false), documentLoad.of(true)],
   });
 }
 
@@ -699,6 +808,7 @@ export function CodeMirrorEditor({
   const pathStatesRef = useRef(new Map<string, PathViewState>());
   const suppressSyncRef = useRef(false);
   const synchronizeRef = useRef<() => void>(() => {});
+  const sessionsRef = useRef(new EditorSessions(pathStatesRef.current));
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
@@ -803,7 +913,8 @@ export function CodeMirrorEditor({
   useLayoutEffect(() => {
     if (!hostRef.current) return;
     const initialPath = host.getActivePath();
-    const initialContent = initialPath ? host.getContent(initialPath) : "";
+    const initialSession = initialPath ? (host.documentSession?.(initialPath) ?? null) : null;
+    const initialContent = initialSession?.text() ?? (initialPath ? host.getContent(initialPath) : "");
     const vimCompartment = new Compartment();
     vimCompartmentRef.current = vimCompartment;
     const spellCompartment = new Compartment();
@@ -892,9 +1003,9 @@ export function CodeMirrorEditor({
             mathPreview,
           ),
         ),
-        editability.of(editabilityExtensions(host.isEditLocked?.() ?? false)),
+        editability.of(editabilityExtensions((host.isEditLocked?.() ?? false) || initialSession?.readOnly === true)),
         EditorState.transactionFilter.of((transaction) =>
-          transaction.docChanged && host.isEditLocked?.() ? [] : transaction),
+          transaction.docChanged && (host.isEditLocked?.() || sessionsRef.current.readOnly) ? [] : transaction),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([...completionKeymap]),
@@ -914,7 +1025,7 @@ export function CodeMirrorEditor({
             : []
         ),
         EditorView.updateListener.of((vu) => {
-          if (vu.docChanged && !suppressSyncRef.current) {
+          if (vu.docChanged && !sessionsRef.current.sendLocal(vu.transactions) && !suppressSyncRef.current) {
             const path = host.getActivePath();
             if (path) host.setContent(path, vu.state.doc.toString());
           }
@@ -929,6 +1040,7 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    if (initialSession) sessionsRef.current.bind(initialSession, (change) => applyRemoteChange(view, change));
     applyVisualModeWhenLoaded(
       initialVisual,
       () => viewRef.current === view,
@@ -948,7 +1060,7 @@ export function CodeMirrorEditor({
     if (host.saveActive) registerHostSave(view, host.saveActive);
     const unregisterBackgroundEditor = registerBackgroundDocumentEditor((path, base, changes) => {
       const saved = pathStatesRef.current.get(path);
-      if (saved?.doc !== base || prevPathRef.current === path) return false;
+      if (saved?.doc !== base || prevPathRef.current === path || sessionsRef.current.hasBackground(path)) return false;
       pathStatesRef.current.set(path, editedPathViewState(saved, changes));
       return true;
     });
@@ -957,13 +1069,16 @@ export function CodeMirrorEditor({
     setEditorDocumentPath(initialPath);
     const unregisterMutationOwner = host.registerMutationOwner?.({
       setLocked: (locked) => view.dispatch({
-        effects: editability.reconfigure(editabilityExtensions(locked || (host.isEditLocked?.() ?? false))),
+        effects: editability.reconfigure(
+          editabilityExtensions(locked || (host.isEditLocked?.() ?? false) || sessionsRef.current.readOnly),
+        ),
       }),
       reconcile: () => synchronizeRef.current(),
     });
     view.focus();
 
     return () => {
+      sessionsRef.current.releaseAll();
       unregisterBackgroundEditor();
       unregisterMutationOwner?.();
       cancelSourceProofreading(prevPathRef.current ?? undefined);
@@ -1007,6 +1122,7 @@ export function CodeMirrorEditor({
       // `main.tex`).
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       pathStatesRef.current.clear();
+      sessionsRef.current.releaseAll();
       suppressSyncRef.current = true;
       clearEditorDocument(
         view,
@@ -1027,7 +1143,8 @@ export function CodeMirrorEditor({
       });
       return;
     }
-    const activeContent = host.getContent(activePath);
+    const session = host.documentSession?.(activePath) ?? null;
+    const activeContent = session ? session.text() : host.getContent(activePath);
     const pathChanged = prevPathRef.current !== activePath;
     const leavingPath = pathChanged ? prevPathRef.current : null;
     if (leavingPath) cancelSourceProofreading(leavingPath);
@@ -1039,6 +1156,12 @@ export function CodeMirrorEditor({
         leavingPath,
         capturePathViewState(view, current),
       );
+    }
+    const sessions = sessionsRef.current;
+    if (pathChanged || sessions.active !== session) {
+      sessions.release(leavingPath);
+      sessions.takeBackground(activePath);
+      sessions.prune();
     }
     const { restorable, selection } = takeSavedPathState(
       pathStatesRef.current,
@@ -1108,7 +1231,7 @@ export function CodeMirrorEditor({
     if (editabilityCompartmentRef.current) {
       effects.push(
         editabilityCompartmentRef.current.reconfigure(
-          editabilityExtensions(host.isEditLocked?.() ?? false),
+          editabilityExtensions((host.isEditLocked?.() ?? false) || session?.readOnly === true),
         ),
       );
     }
@@ -1116,6 +1239,7 @@ export function CodeMirrorEditor({
     if (pathChanged) {
       restorePathHistory(view, historyCompartmentRef.current!, restorable);
     }
+    if (session) sessions.bind(session, (change) => applyRemoteChange(view, change));
     prevPathRef.current = activePath;
     setEditorDocumentPath(activePath);
     queueMicrotask(() => {
@@ -1130,7 +1254,7 @@ export function CodeMirrorEditor({
     const view = viewRef.current;
     const compartment = editabilityCompartmentRef.current;
     if (!view || !compartment) return;
-    const locked = hostEditLocked || (host.isEditLocked?.() ?? false);
+    const locked = hostEditLocked || (host.isEditLocked?.() ?? false) || sessionsRef.current.readOnly;
     if (view.state.readOnly === locked) return;
     view.dispatch({ effects: compartment.reconfigure(editabilityExtensions(locked)) });
   }, [host, hostEditLocked]);

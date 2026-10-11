@@ -257,6 +257,7 @@ const HOST: EditorHost = {
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
+  documentSession: () => null,
   saveActive: saveActiveFromKeymap,
   isEditLocked: () =>
     isEditorMutationLocked(useFilesStore.getState().projectId) || activeFileReadOnly(),
