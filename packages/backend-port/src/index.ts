@@ -14,13 +14,14 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
     "agent-stream",
     "chats",
     "checkpoints",
+    "collab",
     "compile",
     "git",
     "initial-state",
@@ -940,6 +941,178 @@ export interface SynctexHit {
     column: number;
 }
 
+export type CollabServerRole = "admin" | "maintainer" | "member" | "guest";
+export type CollabProviderKind = "github" | "oidc" | "email_link" | "unknown";
+export interface CollabProvider {
+    id: string;
+    kind: CollabProviderKind;
+    label: string;
+}
+export type CollabEncryptionSupport = "none" | "allowed" | "required" | "unknown";
+export interface CollabCapabilities {
+    server_id: string;
+    name: string;
+    icon_url: string | null;
+    version: string;
+    protocol: { min: number; max: number };
+    needs_setup: boolean;
+    providers: CollabProvider[];
+    features: {
+        email: boolean;
+        guests: boolean;
+        link_sharing: boolean;
+        access_logs: boolean;
+        comments: boolean;
+        encryption: CollabEncryptionSupport;
+    };
+    limits: {
+        max_project_mb: number;
+        max_file_mb: number;
+        max_members_per_project: number;
+    };
+}
+export interface CollabAccount {
+    account_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    server_role: CollabServerRole;
+    emails: string[];
+    logins: string[];
+}
+export interface CollabServer {
+    server_id: string;
+    url: string;
+    name: string;
+    icon_url: string | null;
+    account: CollabAccount | null;
+    added_at: number;
+    signed_in: boolean;
+}
+export interface CollabDevice {
+    device_id: string;
+    name: string;
+    platform: string;
+    created_at: number;
+    last_seen_at: number | null;
+    current: boolean;
+}
+export type CollabMemberStatus = "active" | "suspended" | "removed";
+export interface CollabMember {
+    account: CollabAccount;
+    status: CollabMemberStatus;
+    created_at: number;
+}
+export interface CollabMemberPatch {
+    role?: CollabServerRole | null;
+    status?: CollabMemberStatus | null;
+}
+export type CollabAllowlistMatcher =
+    | { kind: "email"; email: string }
+    | { kind: "provider_login"; provider: string; login: string };
+export interface CollabAllowlistEntry {
+    id: string;
+    matcher: CollabAllowlistMatcher;
+    role: CollabServerRole;
+    created_at: number;
+    bound_account: string | null;
+}
+export interface CollabNewAllowlistEntry {
+    matcher: CollabAllowlistMatcher;
+    role: CollabServerRole;
+}
+export interface CollabDomainRule {
+    id: string;
+    domain: string;
+    role: CollabServerRole;
+    created_at: number;
+}
+export interface CollabNewDomainRule {
+    domain: string;
+    role: CollabServerRole;
+}
+export interface CollabRuntimeSettings {
+    guests_enabled: boolean;
+    guest_approval_required: boolean;
+    directory_visible: boolean;
+    directory_shows_email: boolean;
+    link_sharing_allowed: boolean;
+    access_logs_allowed: boolean;
+    email_notifications: boolean;
+    comments_allowed: boolean;
+}
+export type CollabRuntimeSettingsPatch = {
+    [K in keyof CollabRuntimeSettings]?: boolean | null;
+};
+export type CollabSecurityEventKind =
+    | "setup_completed"
+    | "sign_in"
+    | "sign_in_refused"
+    | "device_added"
+    | "device_signed_out"
+    | "refresh_reuse_detected"
+    | "member_added"
+    | "member_removed"
+    | "member_suspended"
+    | "member_reactivated"
+    | "role_changed"
+    | "allowlist_added"
+    | "allowlist_removed"
+    | "domain_rule_added"
+    | "domain_rule_removed"
+    | "settings_changed"
+    | "unknown";
+export interface CollabSecurityEvent {
+    id: number;
+    at: number;
+    actor: string | null;
+    kind: CollabSecurityEventKind;
+    target: string | null;
+    ip: string | null;
+    detail: unknown;
+}
+export interface CollabPage<T> {
+    items: T[];
+    next_cursor: string | null;
+}
+export type CollabCheckId =
+    | "reachable"
+    | "https"
+    | "protocol"
+    | "websocket"
+    | "sign_in_providers"
+    | "email"
+    | "clock";
+export type CollabCheckStatus = "pass" | "fail" | "info" | "skipped";
+export interface CollabConnectionCheck {
+    id: CollabCheckId;
+    status: CollabCheckStatus;
+    detail: string | null;
+}
+export type CollabErrorCode =
+    | "unreachable"
+    | "not_https"
+    | "client_too_old"
+    | "server_too_old"
+    | "not_admitted"
+    | "sign_in_cancelled"
+    | "sign_in_timed_out"
+    | "unauthorized"
+    | "forbidden"
+    | "not_found"
+    | "conflict"
+    | "rate_limited"
+    | "setup_code_invalid"
+    | "server"
+    | "internal"
+    | "server_changed";
+export interface CollabCommandError {
+    code: CollabErrorCode;
+    message: string;
+}
+export interface CollabServerChanged {
+    serverId: string;
+}
+
 /**
  * The structured destination-collision failure surfaced by rename and
  * create. Implementations throw their own Error subclass carrying these
@@ -1208,6 +1381,29 @@ export interface BackendPort {
   ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
+  collabServersList: () => Promise<CollabServer[]>;
+  collabServerProbe: (url: string) => Promise<CollabCapabilities>;
+  collabServerSignIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
+  collabServerSignInCancel: () => Promise<void>;
+  collabServerSignOut: (serverId: string) => Promise<void>;
+  collabServerRemove: (serverId: string) => Promise<void>;
+  collabServerDevices: (serverId: string) => Promise<CollabDevice[]>;
+  collabServerSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
+  collabServerTest: (url: string) => Promise<CollabConnectionCheck[]>;
+  collabAdminMembers: (serverId: string) => Promise<CollabMember[]>;
+  collabAdminMemberDevices: (serverId: string, accountId: string) => Promise<CollabDevice[]>;
+  collabAdminPatchMember: (serverId: string, accountId: string, patch: CollabMemberPatch) => Promise<CollabMember>;
+  collabAdminRemoveMember: (serverId: string, accountId: string) => Promise<void>;
+  collabAdminSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
+  collabAdminAllowlist: (serverId: string) => Promise<CollabAllowlistEntry[]>;
+  collabAdminAddAllowlist: (serverId: string, entry: CollabNewAllowlistEntry) => Promise<CollabAllowlistEntry>;
+  collabAdminRemoveAllowlist: (serverId: string, entryId: string) => Promise<void>;
+  collabAdminDomainRules: (serverId: string) => Promise<CollabDomainRule[]>;
+  collabAdminAddDomainRule: (serverId: string, rule: CollabNewDomainRule) => Promise<CollabDomainRule>;
+  collabAdminRemoveDomainRule: (serverId: string, ruleId: string) => Promise<void>;
+  collabAdminSettings: (serverId: string) => Promise<CollabRuntimeSettings>;
+  collabAdminPatchSettings: (serverId: string, patch: CollabRuntimeSettingsPatch) => Promise<CollabRuntimeSettings>;
+  collabAdminSecurityLog: (serverId: string, cursor?: string) => Promise<CollabPage<CollabSecurityEvent>>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;

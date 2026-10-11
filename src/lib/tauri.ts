@@ -54,6 +54,23 @@ import type {
   CheckpointStoreInspection,
   CheckpointStoreStats,
   CheckpointSummary,
+  CollabAllowlistEntry,
+  CollabCapabilities,
+  CollabCommandError,
+  CollabConnectionCheck,
+  CollabDevice,
+  CollabDomainRule,
+  CollabErrorCode,
+  CollabMember,
+  CollabMemberPatch,
+  CollabNewAllowlistEntry,
+  CollabNewDomainRule,
+  CollabPage,
+  CollabRuntimeSettings,
+  CollabRuntimeSettingsPatch,
+  CollabSecurityEvent,
+  CollabServer,
+  CollabServerChanged,
   CompileResult,
   ComponentInfo,
   CopyFileResult,
@@ -1594,6 +1611,91 @@ export const discordCommunityStats = () =>
   invoke<DiscordCommunityStats>("discord_community_stats");
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
+
+export const COLLAB_SERVER_CHANGED_EVENT = "collab-server-changed";
+
+const COLLAB_ERROR_CODES = new Set<string>([
+  "unreachable",
+  "not_https",
+  "client_too_old",
+  "server_too_old",
+  "not_admitted",
+  "sign_in_cancelled",
+  "sign_in_timed_out",
+  "unauthorized",
+  "forbidden",
+  "not_found",
+  "conflict",
+  "rate_limited",
+  "setup_code_invalid",
+  "server",
+  "internal",
+  "server_changed",
+] satisfies CollabErrorCode[]);
+
+export function isCollabCommandError(value: unknown): value is CollabCommandError {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as { code?: unknown; message?: unknown };
+  return (
+    typeof candidate.code === "string" &&
+    COLLAB_ERROR_CODES.has(candidate.code) &&
+    typeof candidate.message === "string"
+  );
+}
+
+export function onCollabServerChanged(
+  handler: (payload: CollabServerChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<CollabServerChanged>(COLLAB_SERVER_CHANGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export const collabServersList = () => invoke<CollabServer[]>("collab_servers_list");
+export const collabServerProbe = (url: string) =>
+  invoke<CollabCapabilities>("collab_server_probe", { url });
+export const collabServerSignIn = (url: string, providerId: string, setupCode?: string) =>
+  invoke<CollabServer>("collab_server_sign_in", { url, providerId, setupCode: setupCode ?? null });
+export const collabServerSignInCancel = () => invoke<void>("collab_server_sign_in_cancel");
+export const collabServerSignOut = (serverId: string) =>
+  invoke<void>("collab_server_sign_out", { serverId });
+export const collabServerRemove = (serverId: string) =>
+  invoke<void>("collab_server_remove", { serverId });
+export const collabServerDevices = (serverId: string) =>
+  invoke<CollabDevice[]>("collab_server_devices", { serverId });
+export const collabServerSignOutDevice = (serverId: string, deviceId: string) =>
+  invoke<void>("collab_server_sign_out_device", { serverId, deviceId });
+export const collabServerTest = (url: string) =>
+  invoke<CollabConnectionCheck[]>("collab_server_test", { url });
+export const collabAdminMembers = (serverId: string) =>
+  invoke<CollabMember[]>("collab_admin_members", { serverId });
+export const collabAdminMemberDevices = (serverId: string, accountId: string) =>
+  invoke<CollabDevice[]>("collab_admin_member_devices", { serverId, accountId });
+export const collabAdminPatchMember = (serverId: string, accountId: string, patch: CollabMemberPatch) =>
+  invoke<CollabMember>("collab_admin_patch_member", { serverId, accountId, patch });
+export const collabAdminRemoveMember = (serverId: string, accountId: string) =>
+  invoke<void>("collab_admin_remove_member", { serverId, accountId });
+export const collabAdminSignOutDevice = (serverId: string, deviceId: string) =>
+  invoke<void>("collab_admin_sign_out_device", { serverId, deviceId });
+export const collabAdminAllowlist = (serverId: string) =>
+  invoke<CollabAllowlistEntry[]>("collab_admin_allowlist", { serverId });
+export const collabAdminAddAllowlist = (serverId: string, entry: CollabNewAllowlistEntry) =>
+  invoke<CollabAllowlistEntry>("collab_admin_add_allowlist", { serverId, entry });
+export const collabAdminRemoveAllowlist = (serverId: string, entryId: string) =>
+  invoke<void>("collab_admin_remove_allowlist", { serverId, entryId });
+export const collabAdminDomainRules = (serverId: string) =>
+  invoke<CollabDomainRule[]>("collab_admin_domain_rules", { serverId });
+export const collabAdminAddDomainRule = (serverId: string, rule: CollabNewDomainRule) =>
+  invoke<CollabDomainRule>("collab_admin_add_domain_rule", { serverId, rule });
+export const collabAdminRemoveDomainRule = (serverId: string, ruleId: string) =>
+  invoke<void>("collab_admin_remove_domain_rule", { serverId, ruleId });
+export const collabAdminSettings = (serverId: string) =>
+  invoke<CollabRuntimeSettings>("collab_admin_settings", { serverId });
+export const collabAdminPatchSettings = (serverId: string, patch: CollabRuntimeSettingsPatch) =>
+  invoke<CollabRuntimeSettings>("collab_admin_patch_settings", { serverId, patch });
+export const collabAdminSecurityLog = (serverId: string, cursor?: string) =>
+  invoke<CollabPage<CollabSecurityEvent>>("collab_admin_security_log", {
+    serverId,
+    cursor: cursor ?? null,
+  });
 
 export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
   invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });

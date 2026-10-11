@@ -1,4 +1,5 @@
 use oleafly_collab_protocol::capabilities::VersionMismatch;
+use oleafly_collab_protocol::ids::ServerId;
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum CollabError {
@@ -32,6 +33,10 @@ pub enum CollabError {
     NotAdmitted,
     #[error("the session is no longer authorized")]
     Unauthorized,
+    #[error(
+        "the server at this address is now a different server: expected {expected}, found {found}"
+    )]
+    ServerChanged { expected: ServerId, found: ServerId },
 }
 
 #[cfg(test)]
@@ -70,5 +75,17 @@ mod tests {
         assert_ne!(error, CollabError::Corrupt("file-ids.json".to_string()));
         let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(CollabError::Unauthorized);
         assert_eq!(boxed.to_string(), "the session is no longer authorized");
+    }
+
+    #[test]
+    fn a_changed_server_names_both_ids() {
+        let expected = ServerId::new_v7();
+        let found = ServerId::new_v7();
+        let error = CollabError::ServerChanged { expected, found };
+        assert_eq!(
+            error.to_string(),
+            format!("the server at this address is now a different server: expected {expected}, found {found}")
+        );
+        assert_ne!(error, CollabError::Unauthorized);
     }
 }

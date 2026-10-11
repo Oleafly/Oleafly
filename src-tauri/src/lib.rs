@@ -458,6 +458,7 @@ pub fn run() {
         .manage(mcp::client::McpClientState::default())
         .manage(native_drop::NativeDropState::default())
         .manage(zotero::commands::ZoteroState::default())
+        .manage(collab::state::CollabState::for_app())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -678,6 +679,29 @@ pub fn run() {
             github::gh_create_repo,
             github::gh_public_repo_stats,
             github::gh_import_repo,
+            collab::commands::collab_servers_list,
+            collab::commands::collab_server_probe,
+            collab::commands::collab_server_sign_in,
+            collab::commands::collab_server_sign_in_cancel,
+            collab::commands::collab_server_sign_out,
+            collab::commands::collab_server_remove,
+            collab::commands::collab_server_devices,
+            collab::commands::collab_server_sign_out_device,
+            collab::commands::collab_server_test,
+            collab::commands::collab_admin_members,
+            collab::commands::collab_admin_member_devices,
+            collab::commands::collab_admin_patch_member,
+            collab::commands::collab_admin_remove_member,
+            collab::commands::collab_admin_sign_out_device,
+            collab::commands::collab_admin_allowlist,
+            collab::commands::collab_admin_add_allowlist,
+            collab::commands::collab_admin_remove_allowlist,
+            collab::commands::collab_admin_domain_rules,
+            collab::commands::collab_admin_add_domain_rule,
+            collab::commands::collab_admin_remove_domain_rule,
+            collab::commands::collab_admin_settings,
+            collab::commands::collab_admin_patch_settings,
+            collab::commands::collab_admin_security_log,
             community::discord_community_stats,
             release_notes::release_notes_page,
             ollama::ollama_list_models,
