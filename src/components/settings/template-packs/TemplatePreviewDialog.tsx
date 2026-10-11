@@ -67,6 +67,33 @@ function Detail({ label, children }: Readonly<{ label: string; children: ReactNo
   );
 }
 
+function TemplateDetails({ template }: Readonly<{ template: PackTemplateInfo }>) {
+  const { t } = useTranslation(["settings"]);
+  const locale = currentLocale();
+  const languages = template.languages.map((code) => displayName(code, "language", locale));
+  const engine = engineLabel(template.engine);
+  return (
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
+      {engine ? <Detail label={t(($) => $.settings.downloads.packs.preview.engine)}>{engine}</Detail> : null}
+      <Detail label={t(($) => $.settings.downloads.packs.preview.license)}>{template.license.label}</Detail>
+      {template.kind ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.kind)}>{capitalized(template.kind)}</Detail>
+      ) : null}
+      {languages.length > 0 ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.languages)}>{formatList(languages)}</Detail>
+      ) : null}
+      {template.country ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.country)}>
+          {displayName(template.country, "region", locale)}
+        </Detail>
+      ) : null}
+      {template.institution ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.institution)}>{template.institution}</Detail>
+      ) : null}
+    </dl>
+  );
+}
+
 function stepDirection(event: KeyboardEvent, anchor: HTMLElement | null): "previous" | "next" | null {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return null;
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
@@ -176,9 +203,6 @@ export function TemplatePreviewDialog({
 
   const templateBusy = busy === templateBusyKey(pack.id, template.id);
   const packBusy = busy === packBusyKey(pack.id);
-  const locale = currentLocale();
-  const languages = template.languages.map((code) => displayName(code, "language", locale));
-  const engine = engineLabel(template.engine);
 
   return (
     <ModalShell
@@ -251,24 +275,7 @@ export function TemplatePreviewDialog({
           <p className="select-text text-xs leading-relaxed text-muted-foreground">{template.description}</p>
         ) : null}
 
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
-          {engine ? <Detail label={t(($) => $.settings.downloads.packs.preview.engine)}>{engine}</Detail> : null}
-          <Detail label={t(($) => $.settings.downloads.packs.preview.license)}>{template.license.label}</Detail>
-          {template.kind ? (
-            <Detail label={t(($) => $.settings.downloads.packs.preview.kind)}>{capitalized(template.kind)}</Detail>
-          ) : null}
-          {languages.length > 0 ? (
-            <Detail label={t(($) => $.settings.downloads.packs.preview.languages)}>{formatList(languages)}</Detail>
-          ) : null}
-          {template.country ? (
-            <Detail label={t(($) => $.settings.downloads.packs.preview.country)}>
-              {displayName(template.country, "region", locale)}
-            </Detail>
-          ) : null}
-          {template.institution ? (
-            <Detail label={t(($) => $.settings.downloads.packs.preview.institution)}>{template.institution}</Detail>
-          ) : null}
-        </dl>
+        <TemplateDetails template={template} />
 
         {template.credit ? (
           <button
