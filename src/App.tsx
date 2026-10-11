@@ -129,6 +129,7 @@ import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
 import { OpenFolderStopDialog, useOpenFolderIntake } from "@/components/layout/OpenFolderGuards";
+import { useTemplateLinkIntake } from "@/features/template-link-intake";
 import { QuickActionOffer } from "@/components/layout/QuickActionOffer";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
@@ -481,6 +482,7 @@ function AppContent() {
   useEffect(() => registerBrowserCuaSurface(), []);
 
   useOpenFolderIntake();
+  useTemplateLinkIntake();
 
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);

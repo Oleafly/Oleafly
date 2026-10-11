@@ -1130,7 +1130,8 @@
         "institution": "Institution",
         "originalSource": "Oprindelig kilde",
         "getTemplate": "Hent skabelonen",
-        "useTemplate": "Brug skabelonen"
+        "useTemplate": "Brug skabelonen",
+        "getAndCreate": "Hent og opret projekt"
       }
     }
   },

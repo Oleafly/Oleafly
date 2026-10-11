@@ -1124,7 +1124,8 @@
         "institution": "기관",
         "originalSource": "원본 출처",
         "getTemplate": "이 템플릿 받기",
-        "useTemplate": "이 템플릿 사용"
+        "useTemplate": "이 템플릿 사용",
+        "getAndCreate": "받고 프로젝트 만들기"
       }
     }
   },

@@ -1142,7 +1142,8 @@
         "institution": "Учреждение",
         "originalSource": "Исходный источник",
         "getTemplate": "Получить шаблон",
-        "useTemplate": "Использовать шаблон"
+        "useTemplate": "Использовать шаблон",
+        "getAndCreate": "Получить и создать проект"
       }
     }
   },

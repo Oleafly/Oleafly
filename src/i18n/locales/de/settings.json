@@ -1130,7 +1130,8 @@
         "institution": "Einrichtung",
         "originalSource": "Originalquelle",
         "getTemplate": "Diese Vorlage holen",
-        "useTemplate": "Diese Vorlage verwenden"
+        "useTemplate": "Diese Vorlage verwenden",
+        "getAndCreate": "Holen und Projekt erstellen"
       }
     }
   },

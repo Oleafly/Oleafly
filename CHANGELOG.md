@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with hundreds of templates opens and scrolls quickly. When templates in a
   pack ship the same font or other large file, it downloads once and they
   share it.
+- Open in Oleafly links. The Open in Oleafly button on oleafly.com/templates
+  opens that template in the app, whether Oleafly is running or not: you land
+  on its preview in Settings > Downloads > Templates, and Get and create
+  project downloads it and starts a new project from it. A link never
+  downloads anything by itself. Only `oleafly://template/<pack>/<template>`
+  links are accepted, and the rest are ignored.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its

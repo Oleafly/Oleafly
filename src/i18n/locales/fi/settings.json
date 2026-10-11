@@ -1130,7 +1130,8 @@
         "institution": "Oppilaitos",
         "originalSource": "Alkuperäinen lähde",
         "getTemplate": "Hae mallipohja",
-        "useTemplate": "Käytä mallipohjaa"
+        "useTemplate": "Käytä mallipohjaa",
+        "getAndCreate": "Hae ja luo projekti"
       }
     }
   },

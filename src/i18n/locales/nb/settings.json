@@ -1130,7 +1130,8 @@
         "institution": "Institusjon",
         "originalSource": "Opprinnelig kilde",
         "getTemplate": "Hent denne malen",
-        "useTemplate": "Bruk denne malen"
+        "useTemplate": "Bruk denne malen",
+        "getAndCreate": "Hent og opprett prosjekt"
       }
     }
   },

@@ -1124,7 +1124,8 @@
         "institution": "機関",
         "originalSource": "元のソース",
         "getTemplate": "このテンプレートを入手",
-        "useTemplate": "このテンプレートを使う"
+        "useTemplate": "このテンプレートを使う",
+        "getAndCreate": "入手してプロジェクトを作成"
       }
     }
   },

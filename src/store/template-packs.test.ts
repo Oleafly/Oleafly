@@ -31,6 +31,7 @@ import {
   ALL_CURATED,
   busyInPack,
   ensurePackIndex,
+  ensurePackListed,
   installCuratedPacks,
   installPack,
   installTemplate,
@@ -198,6 +199,38 @@ describe("template packs store", () => {
     expect(after.templates.map((t) => t.id)).toEqual(["b", "a"]);
     expect(after.templates[0]).toBe(before.templates[1]);
     expect(after.search[0]).toContain("beta");
+  });
+
+  it("runs a forced index load after one already in flight instead of sharing it", async () => {
+    const first = ensurePackIndex("letters");
+    const forced = ensurePackIndex("letters", { force: true });
+    expect(forced).not.toBe(first);
+    await forced;
+    expect(mocks.packIndex.mock.calls).toEqual([
+      ["letters", false],
+      ["letters", true],
+    ]);
+  });
+
+  it("finds a listed pack without refreshing and refreshes the catalog once for an unlisted one", async () => {
+    expect(await ensurePackListed("letters")).toBe(true);
+    expect(mocks.listTemplatePacks).toHaveBeenCalledOnce();
+    expect(mocks.refreshPackCatalog).not.toHaveBeenCalled();
+
+    expect(await ensurePackListed("gone")).toBe(false);
+    expect(mocks.refreshPackCatalog).toHaveBeenCalledOnce();
+    expect(mocks.refreshPackCatalog).toHaveBeenCalledWith(true);
+    expect(mocks.listTemplatePacks).toHaveBeenCalledOnce();
+
+    mocks.refreshPackCatalog.mockResolvedValueOnce(true);
+    mocks.listTemplatePacks.mockResolvedValueOnce([pack(), pack({ id: "fresh" })]);
+    expect(await ensurePackListed("fresh")).toBe(true);
+    expect(mocks.listTemplatePacks).toHaveBeenCalledTimes(2);
+
+    mocks.refreshPackCatalog.mockRejectedValueOnce(new Error("offline"));
+    expect(await ensurePackListed("still-gone")).toBe(false);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("refresh template pack catalog", expect.any(Error));
   });
 
   it("marks a failed index load and keeps an older index when a reload fails", async () => {

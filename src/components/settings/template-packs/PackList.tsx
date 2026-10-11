@@ -122,14 +122,19 @@ const PackCard = memo(function PackCard({
 export function PackList({
   onOpenPack,
   headingRef,
-}: Readonly<{ onOpenPack: (packId: string) => void; headingRef?: RefObject<HTMLHeadingElement | null> }>) {
+  initialQuery = "",
+}: Readonly<{
+  onOpenPack: (packId: string) => void;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  initialQuery?: string;
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const packs = useTemplatePacksStore((s) => s.packs);
   const loaded = useTemplatePacksStore((s) => s.loaded);
   const busy = useTemplatePacksStore((s) => s.busy);
   const progress = useTemplatePacksStore((s) => s.progress);
   const refreshing = useTemplatePacksStore((s) => s.refreshing);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const sections = useMemo(() => groupPacks(packs, query), [packs, query]);
   const curated = useMemo(() => packs.filter((pack) => pack.group === "curated"), [packs]);
   const allCuratedInstalled = curated.length > 0 && curated.every((pack) => pack.installed);

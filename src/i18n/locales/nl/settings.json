@@ -1130,7 +1130,8 @@
         "institution": "Instelling",
         "originalSource": "Oorspronkelijke bron",
         "getTemplate": "Dit sjabloon ophalen",
-        "useTemplate": "Dit sjabloon gebruiken"
+        "useTemplate": "Dit sjabloon gebruiken",
+        "getAndCreate": "Ophalen en project aanmaken"
       }
     }
   },

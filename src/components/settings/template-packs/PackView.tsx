@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import {
   busyInPack,
   ensurePackIndex,
+  ensurePackListed,
   installPack,
   packBusyKey,
   removePack,
@@ -180,6 +181,18 @@ function FilterSelect({
   );
 }
 
+function PackLoading() {
+  const { t } = useTranslation(["settings"]);
+  return (
+    <p className="flex items-center gap-2 px-1 py-6 text-sm text-muted-foreground" data-testid="pack-loading">
+      <Spinner size="sm" />
+      {t(($) => $.settings.downloads.packs.loading)}
+    </p>
+  );
+}
+
+type LinkCheck = "first" | "reloading" | "final";
+
 function PackHeader({ pack, onBack }: Readonly<{ pack: PackInfo; onBack: () => void }>) {
   const { t } = useTranslation(["common", "settings"]);
   const busy = useTemplatePacksStore((s) => s.busy);
@@ -256,7 +269,17 @@ function PackHeader({ pack, onBack }: Readonly<{ pack: PackInfo; onBack: () => v
   );
 }
 
-export function PackView({ packId, onBack }: Readonly<{ packId: string; onBack: () => void }>) {
+export function PackView({
+  packId,
+  link = null,
+  onBack,
+  onMissing,
+}: Readonly<{
+  packId: string;
+  link?: Readonly<{ templateId: string; serial: number }> | null;
+  onBack: () => void;
+  onMissing?: (packId: string) => void;
+}>) {
   const { t } = useTranslation(["settings"]);
   const pack = useTemplatePacksStore((s) => s.packs.find((candidate) => candidate.id === packId));
   const entry = useTemplatePacksStore((s) => s.indexes[packId]);
@@ -266,12 +289,45 @@ export function PackView({ packId, onBack }: Readonly<{ packId: string; onBack: 
   const [kind, setKind] = useState("");
   const [language, setLanguage] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [awaitedId, setAwaitedId] = useState(link?.templateId ?? null);
+  const [linkCheck, setLinkCheck] = useState<LinkCheck>("first");
+  const [linkedId, setLinkedId] = useState<string | null>(null);
+  const linkSerial = link?.serial ?? null;
 
   useEffect(() => {
+    if (linkSerial !== null) return;
     void ensurePackIndex(packId);
-  }, [packId]);
+  }, [packId, linkSerial]);
+
+  useEffect(() => {
+    if (linkSerial === null) return;
+    let active = true;
+    void ensurePackListed(packId).then((listed) => {
+      if (!active) return;
+      if (listed) void ensurePackIndex(packId);
+      else onMissing?.(packId);
+    });
+    return () => {
+      active = false;
+    };
+  }, [packId, linkSerial, onMissing]);
 
   const ready = entry?.status === "ready" ? entry : null;
+
+  useEffect(() => {
+    if (awaitedId === null || !ready || linkCheck === "reloading") return;
+    if (ready.templates.some((template) => template.id === awaitedId)) {
+      setPreviewId(awaitedId);
+      setLinkedId(awaitedId);
+      setAwaitedId(null);
+    } else if (linkCheck === "first") {
+      setLinkCheck("reloading");
+      void ensurePackIndex(packId, { force: true }).then(() => setLinkCheck("final"));
+    } else {
+      setQuery(awaitedId);
+      setAwaitedId(null);
+    }
+  }, [awaitedId, ready, linkCheck, packId]);
   const templates = ready?.templates ?? EMPTY;
   const facets = useMemo(() => templateFacets(templates), [templates]);
   const filtered = useMemo(
@@ -295,9 +351,12 @@ export function PackView({ packId, onBack }: Readonly<{ packId: string; onBack: 
     () => facets.kinds.map((value) => ({ value, label: capitalized(value) })),
     [facets.kinds],
   );
-  const closePreview = useCallback(() => setPreviewId(null), []);
+  const closePreview = useCallback(() => {
+    setPreviewId(null);
+    setLinkedId(null);
+  }, []);
 
-  if (!pack) return null;
+  if (!pack) return link ? <PackLoading /> : null;
 
   return (
     <div className="flex flex-col gap-4" data-testid={`pack-view-${pack.id}`}>
@@ -347,12 +406,7 @@ export function PackView({ packId, onBack }: Readonly<{ packId: string; onBack: 
         )}
       </div>
 
-      {entry?.status === "loading" || entry === undefined ? (
-        <p className="flex items-center gap-2 px-1 py-6 text-sm text-muted-foreground" data-testid="pack-loading">
-          <Spinner size="sm" />
-          {t(($) => $.settings.downloads.packs.loading)}
-        </p>
-      ) : null}
+      {entry?.status === "loading" || entry === undefined ? <PackLoading /> : null}
       {entry?.status === "error" ? (
         <div className="flex items-center gap-3 rounded-lg border px-3 py-3 text-sm text-muted-foreground" data-testid="pack-load-failed">
           <span className="flex-1">{t(($) => $.settings.downloads.packs.loadFailed)}</span>
@@ -378,6 +432,7 @@ export function PackView({ packId, onBack }: Readonly<{ packId: string; onBack: 
           templates={filtered}
           allTemplates={ready.templates}
           templateId={previewId}
+          linked={previewId === linkedId}
           onNavigate={setPreviewId}
           onClose={closePreview}
         />

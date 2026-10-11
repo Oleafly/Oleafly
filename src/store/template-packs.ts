@@ -110,6 +110,18 @@ export function refreshPackCatalogInBackground(force = false): Promise<void> {
   return run;
 }
 
+export async function ensurePackListed(packId: string): Promise<boolean> {
+  const listed = () => state().packs.some((pack) => pack.id === packId);
+  if (!state().loaded) await loadPacks();
+  if (listed()) return true;
+  try {
+    if (await refreshPackCatalog(true)) await loadPacks();
+  } catch (error) {
+    void logError("refresh template pack catalog", error);
+  }
+  return listed();
+}
+
 function setIndex(packId: string, entry: PackIndexEntry): void {
   useTemplatePacksStore.setState((current) => ({
     indexes: { ...current.indexes, [packId]: entry },
@@ -153,6 +165,7 @@ export function ensurePackIndex(
   const wanted = options.reload || options.force;
   if (!wanted && current?.status === "ready") return Promise.resolve();
   const inflight = indexLoads.get(packId);
+  if (inflight && options.force) return inflight.then(() => ensurePackIndex(packId, options));
   if (inflight) return inflight;
   if (current?.status !== "ready") setIndex(packId, { status: "loading" });
   const run = packIndex(packId, options.force ?? false)

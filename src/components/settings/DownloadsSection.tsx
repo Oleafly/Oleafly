@@ -33,6 +33,7 @@ import { isTypstFontPackId, type TypstFontPackId } from "@/lib/typst-font-packs"
 import { useFilesStore } from "@/store/files";
 import { useFontPacksStore } from "@/store/font-packs";
 import { loadPacks, refreshPackCatalogInBackground } from "@/store/template-packs";
+import { takeTemplateLink, useTemplateLinkStore, type PendingTemplateLink } from "@/store/template-link";
 
 function afterTypstPackChange(id: string) {
   if (!isTypstFontPackId(id)) return;
@@ -75,7 +76,31 @@ export function DownloadsSection() {
     "fonts",
   );
   const [openPackId, setOpenPackId] = useState<string | null>(null);
-  const closePack = useCallback(() => setOpenPackId(null), []);
+  const [link, setLink] = useState<PendingTemplateLink | null>(null);
+  const [packSearch, setPackSearch] = useState<{ text: string; serial: number } | null>(null);
+  const openPack = useCallback((packId: string) => {
+    setLink(null);
+    setPackSearch(null);
+    setOpenPackId(packId);
+  }, []);
+  const closePack = useCallback(() => {
+    setLink(null);
+    setOpenPackId(null);
+  }, []);
+  const missingPack = useCallback((packId: string) => {
+    setLink(null);
+    setOpenPackId(null);
+    setPackSearch((current) => ({ text: packId, serial: (current?.serial ?? 0) + 1 }));
+  }, []);
+  const pendingLink = useTemplateLinkStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingLink) return;
+    const taken = takeTemplateLink();
+    if (!taken) return;
+    setTab("templates");
+    setLink(taken);
+    setOpenPackId(taken.packId);
+  }, [pendingLink]);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
   const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
@@ -316,10 +341,21 @@ export function DownloadsSection() {
 
       <TabsContent value="templates" className="flex flex-col gap-5">
       {openPackId !== null ? (
-        <PackView packId={openPackId} onBack={closePack} />
+        <PackView
+          key={link ? `${openPackId}:${link.serial}` : openPackId}
+          packId={openPackId}
+          link={link?.packId === openPackId ? link : null}
+          onBack={closePack}
+          onMissing={missingPack}
+        />
       ) : (
       <>
-      <PackList onOpenPack={setOpenPackId} headingRef={templatesHeadingRef} />
+      <PackList
+        key={packSearch?.serial ?? 0}
+        initialQuery={packSearch?.text}
+        onOpenPack={openPack}
+        headingRef={templatesHeadingRef}
+      />
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <button

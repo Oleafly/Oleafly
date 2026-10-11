@@ -1142,7 +1142,8 @@
         "institution": "Instituce",
         "originalSource": "Původní zdroj",
         "getTemplate": "Získat šablonu",
-        "useTemplate": "Použít šablonu"
+        "useTemplate": "Použít šablonu",
+        "getAndCreate": "Získat a vytvořit projekt"
       }
     }
   },

@@ -1136,7 +1136,8 @@
         "institution": "Établissement",
         "originalSource": "Source d'origine",
         "getTemplate": "Obtenir ce modèle",
-        "useTemplate": "Utiliser ce modèle"
+        "useTemplate": "Utiliser ce modèle",
+        "getAndCreate": "Obtenir et créer le projet"
       }
     }
   },

@@ -1142,7 +1142,8 @@
         "institution": "Заклад",
         "originalSource": "Першоджерело",
         "getTemplate": "Отримати шаблон",
-        "useTemplate": "Використати шаблон"
+        "useTemplate": "Використати шаблон",
+        "getAndCreate": "Отримати й створити проєкт"
       }
     }
   },

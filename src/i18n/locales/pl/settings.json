@@ -1142,7 +1142,8 @@
         "institution": "Instytucja",
         "originalSource": "Oryginalne źródło",
         "getTemplate": "Pobierz ten szablon",
-        "useTemplate": "Użyj tego szablonu"
+        "useTemplate": "Użyj tego szablonu",
+        "getAndCreate": "Pobierz i utwórz projekt"
       }
     }
   },

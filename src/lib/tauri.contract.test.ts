@@ -70,6 +70,7 @@ describe("IPC command contract", () => {
     ["installTemplatePack", () => tauri.installTemplatePack("open-letter"), "install_template_pack", { id: "open-letter" }],
     ["installPackTemplate", () => tauri.installPackTemplate("open-letter", "tpl"), "install_pack_template", { packId: "open-letter", templateId: "tpl" }],
     ["removeTemplatePack", () => tauri.removeTemplatePack("open-letter"), "remove_template_pack", { id: "open-letter" }],
+    ["templateLinkReady", () => tauri.templateLinkReady(), "template_link_ready", undefined],
     ["createProjectFromTemplate", () => tauri.createProjectFromTemplate("N", "t", "#fff"), "create_project_from_template", { name: "N", templateId: "t", color: "#fff" }],
     ["downloadAllFonts", () => tauri.downloadAllFonts(), "download_all_fonts", undefined],
     ["readDeadlines", () => tauri.readDeadlines(), "read_deadlines", undefined],

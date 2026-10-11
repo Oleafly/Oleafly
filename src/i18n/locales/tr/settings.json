@@ -1130,7 +1130,8 @@
         "institution": "Kurum",
         "originalSource": "Özgün kaynak",
         "getTemplate": "Bu şablonu al",
-        "useTemplate": "Bu şablonu kullan"
+        "useTemplate": "Bu şablonu kullan",
+        "getAndCreate": "Al ve proje oluştur"
       }
     }
   },

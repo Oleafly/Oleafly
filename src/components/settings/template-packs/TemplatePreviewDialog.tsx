@@ -79,11 +79,64 @@ function stepDirection(event: KeyboardEvent, anchor: HTMLElement | null): "previ
   return event.key === "ArrowLeft" ? "previous" : "next";
 }
 
+function PrimaryAction({
+  packId,
+  template,
+  linked,
+}: Readonly<{ packId: string; template: PackTemplateInfo; linked: boolean }>) {
+  const { t } = useTranslation(["settings"]);
+  const busy = useTemplatePacksStore((s) => s.busy);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  if (template.installed) {
+    return (
+      <button
+        type="button"
+        data-testid="template-preview-use"
+        data-modal-initial-focus
+        onClick={() => openTemplateInNewProject(template.id)}
+        className={PRIMARY_BUTTON}
+      >
+        {t(($) => $.settings.downloads.packs.preview.useTemplate)}
+        <ArrowRight className="size-3.5" />
+      </button>
+    );
+  }
+
+  const get = () => {
+    void installTemplate(packId, template.id).then((installed) => {
+      if (linked && installed && mounted.current) openTemplateInNewProject(template.id);
+    });
+  };
+  return (
+    <button
+      type="button"
+      data-testid={linked ? "template-preview-get-and-create" : "template-preview-get"}
+      data-modal-initial-focus
+      onClick={get}
+      disabled={busy !== null}
+      className={PRIMARY_BUTTON}
+    >
+      {busy === templateBusyKey(packId, template.id) ? <Spinner size="sm" /> : <Download className="size-3.5" />}
+      {linked
+        ? t(($) => $.settings.downloads.packs.preview.getAndCreate)
+        : t(($) => $.settings.downloads.packs.preview.getTemplate)}
+    </button>
+  );
+}
+
 export function TemplatePreviewDialog({
   pack,
   templates,
   allTemplates,
   templateId,
+  linked = false,
   onNavigate,
   onClose,
 }: Readonly<{
@@ -91,6 +144,7 @@ export function TemplatePreviewDialog({
   templates: readonly PackTemplateInfo[];
   allTemplates: readonly PackTemplateInfo[];
   templateId: string;
+  linked?: boolean;
   onNavigate: (templateId: string) => void;
   onClose: () => void;
 }>) {
@@ -249,30 +303,7 @@ export function TemplatePreviewDialog({
                 {t(($) => $.settings.downloads.packs.downloadPack)}
               </button>
             )}
-            {template.installed ? (
-              <button
-                type="button"
-                data-testid="template-preview-use"
-                data-modal-initial-focus
-                onClick={() => openTemplateInNewProject(template.id)}
-                className={PRIMARY_BUTTON}
-              >
-                {t(($) => $.settings.downloads.packs.preview.useTemplate)}
-                <ArrowRight className="size-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                data-testid="template-preview-get"
-                data-modal-initial-focus
-                onClick={() => void installTemplate(pack.id, template.id)}
-                disabled={busy !== null}
-                className={PRIMARY_BUTTON}
-              >
-                {templateBusy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-                {t(($) => $.settings.downloads.packs.preview.getTemplate)}
-              </button>
-            )}
+            <PrimaryAction key={template.id} packId={pack.id} template={template} linked={linked} />
           </div>
         </div>
       </div>

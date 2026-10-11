@@ -47,6 +47,7 @@ import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { useSettingsStore } from "@/store/settings";
 import { resetTemplatePacks } from "@/store/template-packs";
 import { clearTemplateRequest, useTemplateRequestStore } from "@/store/template-request";
+import { openTemplateLink, useTemplateLinkStore } from "@/store/template-link";
 
 const copy = enSettings.downloads;
 const BASE = "https://raw.githubusercontent.com/Oleafly/template-packs/main";
@@ -484,6 +485,178 @@ describe("template preview", () => {
     const closes = within(dialog).getAllByRole("button", { name: enCommon.actions.close });
     await user.click(closes[closes.length - 1]);
     await waitFor(() => expect(screen.queryByTestId("template-preview")).not.toBeInTheDocument());
+  });
+});
+
+function deferred() {
+  let resolve: () => void = () => {};
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+describe("opened from an oleafly link", () => {
+  beforeEach(() => {
+    useTemplateLinkStore.setState({ pending: null, serial: 0 });
+  });
+
+  function follow(packId: string, templateId: string) {
+    act(() => openTemplateLink({ packId, templateId }));
+  }
+
+  it("opens the pack on the template and downloads nothing until the button is clicked", async () => {
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+
+    const dialog = await screen.findByTestId("template-preview");
+    expect(screen.getByTestId("downloads-tab-templates")).toHaveAttribute("data-state", "active");
+    expect(screen.getByTestId("pack-view-open-letter")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Template 1" })).toBeInTheDocument();
+    const primary = within(dialog).getByTestId("template-preview-get-and-create");
+    expect(primary).toHaveTextContent(copy.packs.preview.getAndCreate);
+    expect(within(dialog).queryByTestId("template-preview-get")).not.toBeInTheDocument();
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, newProjectOpen: false });
+    expect(mocks.installPackTemplate).not.toHaveBeenCalled();
+    expect(mocks.installTemplatePack).not.toHaveBeenCalled();
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBeNull();
+  });
+
+  it("gets the template with its progress and only then opens New Project with it", async () => {
+    const download = deferred();
+    mocks.installPackTemplate.mockReturnValue(download.promise);
+    const user = userEvent.setup();
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+
+    await user.click(within(dialog).getByTestId("template-preview-get-and-create"));
+    expect(mocks.installPackTemplate).toHaveBeenCalledWith("open-letter", "tpl-1");
+    expect(within(dialog).getByTestId("template-preview-get-and-create")).toBeDisabled();
+    expect(useSettingsStore.getState().newProjectOpen).toBe(false);
+
+    mocks.packIndex.mockResolvedValue(
+      index(3, { templates: [template(0), template(1, { installed: true }), template(2)] }),
+    );
+    await act(async () => download.resolve());
+    await waitFor(() =>
+      expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: false, newProjectOpen: true }),
+    );
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBe("tpl-1");
+    expect(mocks.installTemplatePack).not.toHaveBeenCalled();
+  });
+
+  it("offers Use this template when the linked template is already installed", async () => {
+    mocks.packIndex.mockResolvedValue(
+      index(3, { templates: [template(0), template(1, { installed: true }), template(2)] }),
+    );
+    const user = userEvent.setup();
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+    expect(within(dialog).queryByTestId("template-preview-get-and-create")).not.toBeInTheDocument();
+    await user.click(within(dialog).getByTestId("template-preview-use"));
+    expect(mocks.installPackTemplate).not.toHaveBeenCalled();
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBe("tpl-1");
+  });
+
+  it("takes a link that arrived before Settings opened", async () => {
+    follow("open-letter", "tpl-2");
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("downloads");
+    render(<DownloadsSection />);
+    const dialog = await screen.findByTestId("template-preview");
+    expect(within(dialog).getByRole("heading", { name: "Template 2" })).toBeInTheDocument();
+    expect(useTemplateLinkStore.getState().pending).toBeNull();
+  });
+
+  it("keeps the combined action on the linked template only", async () => {
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+    fireEvent.keyDown(document.body, { key: "ArrowRight" });
+    expect(within(dialog).getByRole("heading", { name: "Template 2" })).toBeInTheDocument();
+    expect(within(dialog).getByTestId("template-preview-get")).toHaveTextContent(copy.packs.preview.getTemplate);
+    fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+    expect(within(dialog).getByTestId("template-preview-get-and-create")).toBeInTheDocument();
+  });
+
+  it("creates no project when the dialog closes before the download finishes", async () => {
+    const download = deferred();
+    mocks.installPackTemplate.mockReturnValue(download.promise);
+    const user = userEvent.setup();
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+    await user.click(within(dialog).getByTestId("template-preview-get-and-create"));
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("template-preview")).not.toBeInTheDocument());
+    await act(async () => download.resolve());
+    await waitFor(() => expect(mocks.listTemplatePacks.mock.calls.length).toBeGreaterThan(1));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, newProjectOpen: false });
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBeNull();
+  });
+
+  it("reports a failed download once and creates no project", async () => {
+    mocks.installPackTemplate.mockRejectedValueOnce(new Error("offline"));
+    const user = userEvent.setup();
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+    await user.click(within(dialog).getByTestId("template-preview-get-and-create"));
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
+    expect(within(dialog).getByTestId("template-preview-get-and-create")).toBeEnabled();
+    expect(useSettingsStore.getState().newProjectOpen).toBe(false);
+  });
+
+  it("reloads a stale index once for a template it does not list yet", async () => {
+    mocks.packIndex
+      .mockResolvedValueOnce(index(3))
+      .mockResolvedValueOnce(index(3, { templates: [template(0), template(7)] }));
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-7");
+    const dialog = await screen.findByTestId("template-preview");
+    expect(within(dialog).getByRole("heading", { name: "Template 7" })).toBeInTheDocument();
+    expect(mocks.packIndex.mock.calls).toEqual([
+      ["open-letter", false],
+      ["open-letter", true],
+    ]);
+  });
+
+  it("searches the pack for a template that is not in it and shows no match once", async () => {
+    render(<DownloadsSection />);
+    follow("open-letter", "tpl-99");
+    expect(await screen.findByText(copy.packs.noTemplates)).toBeInTheDocument();
+    expect(screen.getByTestId("pack-templates-search")).toHaveValue("tpl-99");
+    expect(screen.queryByTestId("template-preview")).not.toBeInTheDocument();
+    expect(mocks.packIndex).toHaveBeenCalledTimes(2);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.installPackTemplate).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the catalog once for an unknown pack and then shows the packs searched for it", async () => {
+    render(<DownloadsSection />);
+    follow("retired-pack", "tpl-1");
+    expect(await screen.findByText(copy.packs.noPacks)).toBeInTheDocument();
+    expect(screen.getByTestId("packs-search")).toHaveValue("retired-pack");
+    expect(mocks.refreshPackCatalog).toHaveBeenCalledWith(true);
+    expect(mocks.packIndex).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("template-preview")).not.toBeInTheDocument();
+  });
+
+  it("opens a pack the refreshed catalog has just added", async () => {
+    mocks.refreshPackCatalog.mockImplementation(async (force?: boolean) => {
+      if (!force) return false;
+      mocks.listTemplatePacks.mockResolvedValue([pack(), pack({ id: "fresh-pack", label: "Fresh pack" })]);
+      return true;
+    });
+    mocks.packIndex.mockResolvedValue({ ...index(2), pack_id: "fresh-pack" });
+    render(<DownloadsSection />);
+    follow("fresh-pack", "tpl-1");
+    const dialog = await screen.findByTestId("template-preview");
+    expect(within(dialog).getByRole("heading", { name: "Template 1" })).toBeInTheDocument();
+    expect(screen.getByTestId("pack-title")).toHaveTextContent("Fresh pack");
+    expect(mocks.packIndex).toHaveBeenCalledWith("fresh-pack", false);
   });
 });
 

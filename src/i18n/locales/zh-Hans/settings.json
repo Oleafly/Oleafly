@@ -1124,7 +1124,8 @@
         "institution": "机构",
         "originalSource": "原始来源",
         "getTemplate": "获取此模板",
-        "useTemplate": "使用此模板"
+        "useTemplate": "使用此模板",
+        "getAndCreate": "获取并创建项目"
       }
     }
   },

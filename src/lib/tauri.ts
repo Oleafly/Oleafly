@@ -927,6 +927,15 @@ export const installPackTemplate = (packId: string, templateId: string) =>
 export const removeTemplatePack = (id: string) =>
   invoke<void>("remove_template_pack", { id });
 
+export const TEMPLATE_LINK_EVENT = "template-link";
+
+export interface TemplateLink {
+  packId: string;
+  templateId: string;
+}
+
+export const templateLinkReady = () => invoke<TemplateLink | null>("template_link_ready");
+
 export interface SkillCatalogOrigin {
   repo: string;
   commit: string;

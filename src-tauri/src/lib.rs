@@ -38,6 +38,7 @@ mod connectors;
 mod conversion;
 mod cua_policy;
 mod deadlines;
+mod deep_link;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
@@ -299,6 +300,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     crate::open_request::start(app.handle());
+    crate::deep_link::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
@@ -361,10 +363,14 @@ pub fn run() {
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
     }
+    if deep_link::enabled_for_this_launch() {
+        builder = builder.plugin(tauri_plugin_deep_link::init());
+    }
     builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
+            deep_link::on_page_load(webview, payload);
         })
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
@@ -456,6 +462,7 @@ pub fn run() {
         .manage(mcp::client::McpClientState::default())
         .manage(native_drop::NativeDropState::default())
         .manage(zotero::commands::ZoteroState::default())
+        .manage(deep_link::LinkInbox::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -576,6 +583,7 @@ pub fn run() {
             open_request::open_folder_request,
             open_request::pick_open_folder,
             open_request::debug_inject_open_request,
+            deep_link::template_link_ready,
             system_integration::system_integration_status,
             system_integration::system_integration_set,
             system_integration::claim_quick_action_offer,

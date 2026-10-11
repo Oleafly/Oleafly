@@ -1130,7 +1130,8 @@
         "institution": "Institution",
         "originalSource": "Original source",
         "getTemplate": "Get this template",
-        "useTemplate": "Use this template"
+        "useTemplate": "Use this template",
+        "getAndCreate": "Get and create project"
       }
     }
   },

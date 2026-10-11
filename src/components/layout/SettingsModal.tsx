@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -76,6 +76,7 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
+import { useTemplateLinkStore } from "@/store/template-link";
 import {
   appVersion,
   libraryRoot,
@@ -372,6 +373,14 @@ export function SettingsModal() {
     setSection(next);
     libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
+
+  const templateLinkSerial = useTemplateLinkStore((s) => s.serial);
+  const seenTemplateLink = useRef(templateLinkSerial);
+  useEffect(() => {
+    if (templateLinkSerial === seenTemplateLink.current) return;
+    seenTemplateLink.current = templateLinkSerial;
+    setSection("downloads");
+  }, [templateLinkSerial]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;

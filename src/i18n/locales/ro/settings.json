@@ -1136,7 +1136,8 @@
         "institution": "Instituție",
         "originalSource": "Sursa originală",
         "getTemplate": "Obține acest șablon",
-        "useTemplate": "Folosește acest șablon"
+        "useTemplate": "Folosește acest șablon",
+        "getAndCreate": "Obține și creează proiectul"
       }
     }
   },

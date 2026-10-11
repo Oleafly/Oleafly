@@ -1130,7 +1130,8 @@
         "institution": "Lärosäte",
         "originalSource": "Ursprunglig källa",
         "getTemplate": "Hämta mallen",
-        "useTemplate": "Använd mallen"
+        "useTemplate": "Använd mallen",
+        "getAndCreate": "Hämta och skapa projekt"
       }
     }
   },
