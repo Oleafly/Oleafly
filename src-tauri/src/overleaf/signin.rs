@@ -77,7 +77,19 @@ async fn capture<R: Runtime>(
         .map_err(|error| error.to_string())
         .and_then(|url| {
             window
-                .cookies_for_url(url)
+                .cookies()
+                .map(|all| {
+                    all.into_iter()
+                        .filter(|cookie| {
+                            session::cookie_applies(
+                                cookie.domain(),
+                                cookie.path(),
+                                cookie.secure().unwrap_or(false),
+                                &url,
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
                 .map_err(|error| error.to_string())
         });
     let outcome = match cookies {

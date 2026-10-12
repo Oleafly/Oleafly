@@ -247,3 +247,35 @@ pub(crate) fn forget_git_token(base: &str) -> Result<(), String> {
     }
     Ok(())
 }
+
+pub(crate) fn cookie_applies(
+    domain: Option<&str>,
+    path: Option<&str>,
+    secure: bool,
+    url: &tauri::Url,
+) -> bool {
+    let Some(host) = url.host_str().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let ip_host = url.domain().is_none();
+    let domain_ok = match domain.map(|value| value.trim_start_matches('.').to_ascii_lowercase()) {
+        None => true,
+        Some(value) if value.is_empty() => true,
+        Some(value) => host == value || (!ip_host && host.ends_with(&format!(".{value}"))),
+    };
+    let path_ok = match path.filter(|value| !value.is_empty() && *value != "/") {
+        None => true,
+        Some(value) => {
+            let request = url.path();
+            request == value
+                || request.starts_with(&format!("{}/", value.trim_end_matches('/')))
+                || request.starts_with(value) && value.ends_with('/')
+        }
+    };
+    let loopback = host == "localhost"
+        || host
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|address| address.is_loopback());
+    let secure_ok = !secure || url.scheme() == "https" || loopback;
+    domain_ok && path_ok && secure_ok
+}

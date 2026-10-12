@@ -782,3 +782,84 @@ fn sessions_persist_per_server_and_refresh_their_cookie() {
     assert!(session::load("https://two.example").unwrap().is_some());
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }
+
+#[test]
+fn cookies_match_their_host_domain_path_and_scheme() {
+    let url = |text: &str| tauri::Url::parse(text).unwrap();
+    let site = url("https://www.overleaf.com");
+    assert!(session::cookie_applies(
+        Some(".overleaf.com"),
+        Some("/"),
+        true,
+        &site
+    ));
+    assert!(session::cookie_applies(
+        Some("overleaf.com"),
+        None,
+        true,
+        &site
+    ));
+    assert!(session::cookie_applies(
+        Some("www.overleaf.com"),
+        Some("/"),
+        true,
+        &site
+    ));
+    assert!(session::cookie_applies(None, None, false, &site));
+    assert!(!session::cookie_applies(
+        Some(".google.com"),
+        Some("/"),
+        true,
+        &site
+    ));
+    assert!(!session::cookie_applies(
+        Some("evil-overleaf.com"),
+        Some("/"),
+        false,
+        &site
+    ));
+    assert!(!session::cookie_applies(
+        Some(".overleaf.com"),
+        Some("/"),
+        true,
+        &url("http://www.overleaf.com")
+    ));
+    let local = url("http://127.0.0.1:41234");
+    assert!(session::cookie_applies(
+        Some("127.0.0.1"),
+        Some("/"),
+        false,
+        &local
+    ));
+    assert!(session::cookie_applies(
+        Some("127.0.0.1"),
+        Some("/"),
+        true,
+        &local
+    ));
+    assert!(!session::cookie_applies(
+        Some("0.0.1"),
+        Some("/"),
+        false,
+        &local
+    ));
+    let nested = url("https://latex.uni.edu/sharelatex");
+    assert!(session::cookie_applies(
+        Some("latex.uni.edu"),
+        Some("/sharelatex"),
+        true,
+        &nested
+    ));
+    assert!(session::cookie_applies(
+        Some("latex.uni.edu"),
+        Some("/sharelatex/"),
+        true,
+        &url("https://latex.uni.edu/sharelatex/project")
+    ));
+    assert!(!session::cookie_applies(
+        Some("latex.uni.edu"),
+        Some("/other"),
+        true,
+        &nested
+    ));
+}
