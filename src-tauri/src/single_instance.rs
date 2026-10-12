@@ -42,6 +42,7 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     cwd: String,
 ) {
     reveal_main_window(app);
+    crate::collab::links::arrive(app, crate::collab::links::links_in(args.iter().cloned()));
     crate::open_request::arrive(
         app,
         args.into_iter().map(OsString::from).collect(),

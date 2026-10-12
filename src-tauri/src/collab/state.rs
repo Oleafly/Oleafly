@@ -11,7 +11,7 @@ use super::secrets_adapter::AppSecrets;
 
 pub struct CollabKeys {
     pub key: Arc<DeviceKey>,
-    pub sessions: SessionManager,
+    pub sessions: Arc<SessionManager>,
 }
 
 pub struct CollabState {
@@ -63,7 +63,7 @@ impl CollabState {
         Ok(result)
     }
 
-    fn paths(&self) -> Result<&CollabPaths, CollabError> {
+    pub(crate) fn paths(&self) -> Result<&CollabPaths, CollabError> {
         self.paths
             .as_ref()
             .map_err(|error| CollabError::Io(format!("collaboration folder: {error}")))
@@ -100,7 +100,10 @@ impl CollabState {
         .map_err(|error| CollabError::Io(error.to_string()))??;
         let key = Arc::new(key);
         Ok(Arc::new(CollabKeys {
-            sessions: SessionManager::new(Arc::clone(&self.secrets), Arc::clone(&key)),
+            sessions: Arc::new(SessionManager::new(
+                Arc::clone(&self.secrets),
+                Arc::clone(&key),
+            )),
             key,
         }))
     }

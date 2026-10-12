@@ -666,6 +666,7 @@ pub struct ProjectInfo {
     pub recovery_pending: bool,
     pub location: crate::project_availability::ProjectLocationInfo,
     pub last_opened_at: f64,
+    pub shared: Option<crate::collab::share::ProjectSharing>,
 }
 
 pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
@@ -2242,6 +2243,9 @@ pub(crate) fn write_project_bytes(
             crate::folder_watch::note_own_write(target);
         }
         crate::agent_turns::note_app_write(project_id, path);
+        if crate::collab::registry::is_shared(project_id) {
+            crate::collab::live::app_wrote(project_id, path);
+        }
         return Ok(true);
     }
     let backups = location.private_state_dir().join("save-backups");
@@ -4528,6 +4532,7 @@ fn recovery_pending_project_info(
         recovery_pending: true,
         location,
         last_opened_at: 0.0,
+        shared: None,
         id: project_id,
     }
 }
@@ -4680,6 +4685,7 @@ fn linked_project_info(
         recovery_pending: false,
         location,
         last_opened_at: record.last_opened_at as f64 / 1000.0,
+        shared: None,
     })
 }
 
@@ -4797,6 +4803,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             recovery_pending: false,
             location: crate::project_availability::ProjectLocationInfo::Library,
             last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
+            shared: crate::collab::share::sharing_of(&id),
             id,
             updated_at,
         });
@@ -8105,6 +8112,7 @@ async fn recycle_project_synchronized(
     )?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
+    let recycled_id = project_id.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let ((), _) = admission.run_with_change_status(|| {
             with_project_metadata_lock_held(&project_id, || {
@@ -8127,7 +8135,9 @@ async fn recycle_project_synchronized(
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+    crate::collab::share::forget_local(&recycled_id).await;
+    Ok(())
 }
 
 #[cfg(test)]

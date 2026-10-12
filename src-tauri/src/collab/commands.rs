@@ -23,7 +23,7 @@ use super::state::CollabState;
 pub const SERVER_CHANGED_EVENT: &str = "collab-server-changed";
 const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(300);
 
-type ApiCall<'a, T> = Pin<Box<dyn Future<Output = Result<T, CollabError>> + Send + 'a>>;
+pub(crate) type ApiCall<'a, T> = Pin<Box<dyn Future<Output = Result<T, CollabError>> + Send + 'a>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CollabCommandError {
@@ -70,6 +70,8 @@ fn api_code(status: u16, code: &str) -> &'static str {
         ("not_admitted", _) => "not_admitted",
         ("setup_code_invalid", _) => "setup_code_invalid",
         ("device_in_use", _) => "device_in_use",
+        ("server_unknown", _) => "server_unknown",
+        ("too_large", _) | (_, 413) => "too_large",
         ("rate_limited", _) | (_, 429) => "rate_limited",
         (_, 401) => "unauthorized",
         (_, 403) => "forbidden",
@@ -144,7 +146,7 @@ impl CollabHost for AppHost {
     }
 }
 
-fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
@@ -159,7 +161,7 @@ fn unknown_server() -> CollabError {
     }
 }
 
-fn known(state: &CollabState, server: ServerId) -> Result<ServerEntry, CollabError> {
+pub(crate) fn known(state: &CollabState, server: ServerId) -> Result<ServerEntry, CollabError> {
     state
         .registry()?
         .get(server)
@@ -179,7 +181,7 @@ fn to_dto(state: &CollabState, entry: &ServerEntry) -> Result<CollabServer, Coll
     })
 }
 
-fn client_for(entry: &ServerEntry) -> Result<ServerClient, CollabError> {
+pub(crate) fn client_for(entry: &ServerEntry) -> Result<ServerClient, CollabError> {
     ServerClient::new(ServerUrl::parse(&entry.url)?)
 }
 
@@ -224,7 +226,10 @@ fn store_account(
     Ok(())
 }
 
-async fn verify_pin(client: &ServerClient, expected: ServerId) -> Result<(), CollabError> {
+pub(crate) async fn verify_pin(
+    client: &ServerClient,
+    expected: ServerId,
+) -> Result<(), CollabError> {
     let manifest = client.capabilities().await?;
     check_pin(Some(expected), manifest.server_id)
 }
@@ -273,7 +278,7 @@ async fn settle_revocation(
     error
 }
 
-async fn authed<T, F>(
+pub(crate) async fn authed<T, F>(
     state: &CollabState,
     host: &dyn CollabHost,
     server: ServerId,
@@ -311,7 +316,10 @@ where
     }
 }
 
-fn parse_id<T: std::str::FromStr>(text: &str, kind: &str) -> Result<T, CollabCommandError> {
+pub(crate) fn parse_id<T: std::str::FromStr>(
+    text: &str,
+    kind: &str,
+) -> Result<T, CollabCommandError> {
     text.parse::<T>().map_err(|_| CollabCommandError {
         code: "not_found",
         message: format!("unknown {kind} {text}"),

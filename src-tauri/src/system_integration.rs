@@ -413,6 +413,10 @@ pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::RunEve
         return;
     }
     if let tauri::RunEvent::Opened { urls } = event {
+        crate::collab::links::arrive(
+            app,
+            crate::collab::links::links_in(urls.iter().map(|url| url.to_string())),
+        );
         let entries = opened_entries(urls);
         if !entries.is_empty() {
             crate::open_request::arrive_targets(

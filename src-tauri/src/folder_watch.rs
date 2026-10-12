@@ -1,6 +1,7 @@
 use crate::collab::guard::{MassChangeGuard, SyncPauseHost};
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
+use oleafly_collab::MassChangeVerdict;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -62,7 +63,7 @@ struct Fingerprint {
 
 struct OwnWrite {
     path: PathBuf,
-    fingerprint: Fingerprint,
+    fingerprint: Option<Fingerprint>,
     at: Instant,
 }
 
@@ -96,6 +97,14 @@ pub(crate) fn note_own_write(path: &Path) {
     let Some(fingerprint) = fingerprint(path) else {
         return;
     };
+    remember_own_change(path, Some(fingerprint));
+}
+
+pub(crate) fn note_own_removal(path: &Path) {
+    remember_own_change(path, None);
+}
+
+fn remember_own_change(path: &Path, fingerprint: Option<Fingerprint>) {
     let now = Instant::now();
     let mut writes = own_writes();
     writes.retain(|write| now.duration_since(write.at) < OWN_WRITE_WINDOW && write.path != path);
@@ -116,7 +125,10 @@ pub(crate) fn is_own_write(path: &Path) -> bool {
     writes
         .iter()
         .find(|write| write.path == path)
-        .is_some_and(|write| fingerprint(path) == Some(write.fingerprint))
+        .is_some_and(|write| {
+            fingerprint(path) == write.fingerprint
+                && !(write.fingerprint.is_none() && path.exists())
+        })
 }
 
 fn is_structural(kind: &EventKind) -> bool {
@@ -425,6 +437,13 @@ pub(crate) fn start(
     .ok_or_else(|| "a newer watch request replaced this one".to_string())
 }
 
+pub(crate) fn is_watching(project_id: &str) -> bool {
+    hub()
+        .active
+        .as_ref()
+        .is_some_and(|active| active.project_id == project_id)
+}
+
 pub(crate) fn stop(project_id: &str, token: Option<u64>) -> bool {
     let removed = {
         let mut hub = hub();
@@ -508,7 +527,9 @@ fn watch_project_as(
     let sink: ChangeSink = Arc::new(move |change: FolderChange| {
         crate::linked_registry::note_changed(&change.project_id);
         if let Some(guard) = &change_guard {
-            let _ = guard.inspect(&change);
+            if !matches!(guard.inspect(&change), MassChangeVerdict::Pause { .. }) {
+                crate::collab::live::folder_changed(&change);
+            }
         }
         sink(change);
     });

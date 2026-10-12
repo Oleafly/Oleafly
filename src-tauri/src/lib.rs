@@ -300,6 +300,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
+    crate::collab::links::remember(crate::collab::links::links_in(std::env::args().skip(1)));
     crate::open_request::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
@@ -417,7 +418,15 @@ pub fn run() {
     // builds (real-webview Playwright control; see e2e/README.md).
     #[cfg(feature = "e2e-testing")]
     {
-        builder = builder.plugin(tauri_plugin_playwright::init());
+        let socket = std::env::var("TAURI_PLAYWRIGHT_SOCKET")
+            .ok()
+            .filter(|path| !path.is_empty());
+        builder = builder.plugin(match socket {
+            Some(path) => tauri_plugin_playwright::init_with_config(
+                tauri_plugin_playwright::PluginConfig::default().socket_path(path),
+            ),
+            None => tauri_plugin_playwright::init(),
+        });
         // Packaged suites cannot reload through the Vite dev server the way
         // the dev fixture seeds localStorage, so seed it before any app code
         // runs instead. The env var holds a JSON object of key -> string
@@ -703,6 +712,29 @@ pub fn run() {
             collab::commands::collab_admin_settings,
             collab::commands::collab_admin_patch_settings,
             collab::commands::collab_admin_security_log,
+            collab::share::collab_share_info,
+            collab::share::collab_share_check,
+            collab::share::collab_share_project,
+            collab::share::collab_project_summary,
+            collab::share::collab_members_list,
+            collab::share::collab_member_set,
+            collab::share::collab_member_remove,
+            collab::share::collab_people_search,
+            collab::share::collab_link_sharing_set,
+            collab::share::collab_stop_sharing,
+            collab::share::collab_leave_project,
+            collab::share::collab_shared_with_me,
+            collab::share::collab_join_project,
+            collab::share::collab_open_link,
+            collab::live::collab_live_start,
+            collab::live::collab_live_stop,
+            collab::live::collab_live_flush,
+            collab::live::collab_doc_open,
+            collab::live::collab_doc_change,
+            collab::live::collab_doc_close,
+            collab::live::collab_presence_set,
+            collab::live::collab_sync_resume,
+            collab::links::collab_pending_links,
             community::discord_community_stats,
             release_notes::release_notes_page,
             ollama::ollama_list_models,

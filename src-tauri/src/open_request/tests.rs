@@ -139,13 +139,22 @@ fn file_urls_are_decoded_only_where_the_platform_sends_them() {
     );
 }
 
+#[test]
+fn app_links_are_left_for_the_collaboration_intake() {
+    assert!(parse_argv(
+        &argv(&["oleafly://open?server=https%3A%2F%2Funi.edu&project=x"]),
+        None,
+        MAC
+    )
+    .is_empty());
+}
+
 #[cfg(unix)]
 #[test]
 fn urls_that_are_not_plain_local_folders_are_refused() {
     let cwd = Path::new("/home/me");
     for url in [
         "https://example.com/thesis",
-        "oleafly://open?path=/srv/x",
         "file://server/share/thesis",
         "file:///srv/thesis?x=1",
         "file:///srv/thesis#frag",
