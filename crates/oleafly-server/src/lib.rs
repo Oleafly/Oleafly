@@ -6,6 +6,7 @@ pub mod db;
 pub mod error;
 pub mod healthcheck;
 pub mod members;
+pub mod rate_limit;
 pub mod routes;
 pub mod security_log;
 pub mod settings;
@@ -38,6 +39,10 @@ pub fn build_router(state: AppState) -> Router {
     }
     router
         .fallback(routes::not_found)
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            rate_limit::limit_sign_in,
+        ))
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .with_state(state)
 }

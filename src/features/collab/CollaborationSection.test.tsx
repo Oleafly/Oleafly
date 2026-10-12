@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   collabServerSignOutDevice: vi.fn(),
   collabServerTest: vi.fn(),
   collabAdminMembers: vi.fn(),
+  collabServerRefresh: vi.fn(),
 }));
 
 const events = vi.hoisted(() => ({ useTauriEvent: vi.fn() }));
@@ -43,6 +44,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {} });
   mocks.collabServerDevices.mockResolvedValue([]);
+  mocks.collabServerRefresh.mockImplementation(async (serverId: string) =>
+    useCollabStore.getState().servers.find((entry) => entry.server_id === serverId),
+  );
 });
 
 describe("CollaborationSection", () => {
@@ -122,5 +126,13 @@ describe("CollaborationSection", () => {
     expect(screen.queryByTestId("collaboration-section")).toBeNull();
     await user.click(screen.getByRole("button", { name: enCollab.admin.back }));
     expect(await screen.findByTestId("collaboration-section")).toBeInTheDocument();
+  });
+
+  it("checks each signed-in server's current role when it opens", async () => {
+    mocks.collabServersList.mockResolvedValue([server({ account: account({ server_role: "member" }) })]);
+    mocks.collabServerRefresh.mockResolvedValue(server({ account: account({ server_role: "maintainer" }) }));
+    render(<CollaborationSection />);
+    expect(await screen.findByRole("button", { name: copy.server.manage })).toBeInTheDocument();
+    expect(mocks.collabServerRefresh).toHaveBeenCalledTimes(1);
   });
 });

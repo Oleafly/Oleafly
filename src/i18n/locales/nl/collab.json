@@ -148,7 +148,9 @@
     "setup_code_invalid": "Die installatiecode klopt niet. Zoek de juiste code in het logboek van de server.",
     "server": "De server liep tegen een probleem aan. Probeer het later opnieuw, of vraag het aan de beheerder.",
     "internal": "Er ging iets mis in Oleafly. Probeer het opnieuw.",
-    "server_changed": "Dit adres hoort nu bij een andere server, dus Oleafly heeft er niets naartoe gestuurd. Vertrouw je de nieuwe server, haal deze dan weg en voeg hem opnieuw toe."
+    "server_changed": "Dit adres hoort nu bij een andere server, dus Oleafly heeft er niets naartoe gestuurd. Vertrouw je de nieuwe server, haal deze dan weg en voeg hem opnieuw toe.",
+    "duplicate_server": "Deze server staat al in je lijst onder een ander adres. Is hij verhuisd, haal dan eerst de oude vermelding weg en voeg hem daarna opnieuw toe.",
+    "device_in_use": "Iemand anders heeft zich al vanaf dit gebruikersaccount op de computer aangemeld bij deze server. Iedereen heeft een eigen gebruikersaccount op de computer nodig om zich aan te melden."
   },
   "roles": {
     "admin": "Beheerder",

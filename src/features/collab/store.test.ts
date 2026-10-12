@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollabServer } from "@/lib/tauri";
-import { collabError, deferred, server, SERVER_ID, signedOutServer } from "./tests/fixtures";
+import { account, collabError, deferred, server, SERVER_ID, signedOutServer } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabServersList: vi.fn(),
   collabServerSignIn: vi.fn(),
   collabServerSignOut: vi.fn(),
   collabServerRemove: vi.fn(),
+  collabServerRefresh: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -99,5 +100,19 @@ describe("collab store", () => {
     await expect(useCollabStore.getState().remove(SERVER_ID)).resolves.toBeNull();
     expect(mocks.collabServerRemove).toHaveBeenLastCalledWith(SERVER_ID);
     expect(useCollabStore.getState().servers).toEqual([]);
+  });
+
+  it("asks each signed-in server for the current role and keeps the answer", async () => {
+    const offline = signedOutServer({ server_id: "0192a0b0-0000-7000-8000-0000000000b2" });
+    useCollabStore.setState({ servers: [server(), offline], status: "ready" });
+    mocks.collabServerRefresh.mockResolvedValueOnce(server({ account: account({ server_role: "maintainer" }) }));
+    await useCollabStore.getState().refreshAccounts();
+    expect(mocks.collabServerRefresh).toHaveBeenCalledTimes(1);
+    expect(mocks.collabServerRefresh).toHaveBeenCalledWith(SERVER_ID);
+    expect(useCollabStore.getState().servers[0]?.account?.server_role).toBe("maintainer");
+    mocks.collabServerRefresh.mockRejectedValueOnce(collabError("unreachable"));
+    await useCollabStore.getState().refreshAccounts();
+    expect(useCollabStore.getState().servers[0]?.account?.server_role).toBe("maintainer");
+    expect(useCollabStore.getState().servers).toHaveLength(2);
   });
 });

@@ -148,7 +148,9 @@
     "setup_code_invalid": "Tento kód pro nastavení nesouhlasí. Správný kód najdete v logu serveru.",
     "server": "Server narazil na problém. Zkuste to později, nebo požádejte jeho administrátora.",
     "internal": "V Oleafly se něco pokazilo. Zkuste to znovu.",
-    "server_changed": "Tato adresa teď patří jinému serveru, takže mu Oleafly nic neposlal. Pokud novému serveru důvěřujete, odeberte tento server a přidejte ho znovu."
+    "server_changed": "Tato adresa teď patří jinému serveru, takže mu Oleafly nic neposlal. Pokud novému serveru důvěřujete, odeberte tento server a přidejte ho znovu.",
+    "duplicate_server": "Tento server už máte v seznamu pod jinou adresou. Pokud se přesunul, nejdřív odeberte starou položku a potom ho přidejte znovu.",
+    "device_in_use": "Z tohoto uživatelského účtu v počítači se k tomuto serveru už přihlásil někdo jiný. Každý, kdo se chce přihlásit, potřebuje v počítači vlastní uživatelský účet."
   },
   "roles": {
     "admin": "Administrátor",

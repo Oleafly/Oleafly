@@ -20,6 +20,8 @@ const ERROR_CODES = [
   "server",
   "internal",
   "server_changed",
+  "duplicate_server",
+  "device_in_use",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];

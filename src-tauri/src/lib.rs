@@ -688,6 +688,7 @@ pub fn run() {
             collab::commands::collab_server_devices,
             collab::commands::collab_server_sign_out_device,
             collab::commands::collab_server_test,
+            collab::commands::collab_server_refresh,
             collab::commands::collab_admin_members,
             collab::commands::collab_admin_member_devices,
             collab::commands::collab_admin_patch_member,

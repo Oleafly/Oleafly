@@ -148,7 +148,9 @@
     "setup_code_invalid": "Käyttöönottokoodi ei täsmää. Tarkista oikea koodi palvelimen lokista.",
     "server": "Palvelimella ilmeni ongelma. Yritä myöhemmin uudelleen tai kysy sen ylläpitäjältä.",
     "internal": "Oleaflyssä tapahtui virhe. Yritä uudelleen.",
-    "server_changed": "Tämä osoite kuuluu nyt toiselle palvelimelle, joten Oleafly ei lähettänyt sille mitään. Jos luotat uuteen palvelimeen, poista tämä palvelin ja lisää se uudelleen."
+    "server_changed": "Tämä osoite kuuluu nyt toiselle palvelimelle, joten Oleafly ei lähettänyt sille mitään. Jos luotat uuteen palvelimeen, poista tämä palvelin ja lisää se uudelleen.",
+    "duplicate_server": "Tämä palvelin on jo listallasi eri osoitteella. Jos se on siirtynyt, poista ensin vanha merkintä ja lisää se sitten uudelleen.",
+    "device_in_use": "Joku muu on jo kirjautunut tälle palvelimelle tämän koneen käyttäjätililtä. Jokainen tarvitsee koneelle oman käyttäjätilin voidakseen kirjautua sisään."
   },
   "roles": {
     "admin": "Ylläpitäjä",

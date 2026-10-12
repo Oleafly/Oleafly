@@ -19,12 +19,13 @@ export function CollaborationSection() {
   const status = useCollabStore((state) => state.status);
   const loadError = useCollabStore((state) => state.loadError);
   const load = useCollabStore((state) => state.load);
+  const refreshAccounts = useCollabStore((state) => state.refreshAccounts);
   const [adding, setAdding] = useState<{ url: string | null } | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load().then(refreshAccounts);
+  }, [load, refreshAccounts]);
 
   useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => {
     void load();

@@ -9,6 +9,7 @@ use oleafly_collab_protocol::admin::{
     SecurityEventKind,
 };
 use oleafly_collab_protocol::auth::DeviceSummary;
+use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use oleafly_collab_protocol::roles::{ServerAction, ServerRole};
 use rusqlite::Connection;
@@ -339,15 +340,17 @@ async fn add_allowlist(
         auth.require(ServerAction::ManageStaff)?;
     }
     if let AllowlistMatcher::ProviderLogin { provider, .. } = &entry.matcher {
-        if !state
-            .providers
-            .infos()
-            .iter()
-            .any(|info| info.id == *provider)
-        {
+        let infos = state.providers.infos();
+        let Some(info) = infos.iter().find(|info| info.id == *provider) else {
             return Err(ServerError::BadRequest(format!(
                 "This server has no sign-in provider called {provider}."
             )));
+        };
+        if !matches!(info.kind, ProviderKind::Github) {
+            return Err(ServerError::BadRequest(
+                "Sign-in names work only with GitHub. Add this person by email address instead."
+                    .to_string(),
+            ));
         }
     }
     let now = state.clock.now_ms();

@@ -25,7 +25,9 @@
   },
   "errors": {
     "not_admitted": "Shown when the server's admin has not allowed this person to sign in. Keep it short and calm.",
-    "server_changed": "Shown when the saved server address now belongs to a different server. Oleafly refused to talk to it. Keep the advice to remove and re-add only if trusted."
+    "server_changed": "Shown when the saved server address now belongs to a different server. Oleafly refused to talk to it. Keep the advice to remove and re-add only if trusted.",
+    "duplicate_server": "Shown when an address the person adds answers as a server that is already in their list under a different address.",
+    "device_in_use": "\"Computer account\" means the person's user account on the operating system, not their account on the server. Oleafly's device key belongs to that operating-system account, so two people sharing it cannot both sign in."
   },
   "roles": {
     "admin": "Server role with full control of the server",

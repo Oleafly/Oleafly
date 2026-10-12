@@ -416,3 +416,123 @@ async fn a_removed_member_added_again_gets_the_same_account() {
         matches!(decide(&app, &grace, None).await, Admission::Linked { account_id } if account_id == first.account_id)
     );
 }
+
+async fn admin_status(
+    app: &TestApp,
+    token: &str,
+    path: &str,
+    body: Value,
+) -> axum::http::StatusCode {
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri(path)
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("request");
+    app.router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("response")
+        .status()
+}
+
+#[tokio::test]
+async fn a_domain_rule_does_not_bring_back_a_removed_member() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let rule = NewDomainRule {
+        domain: "uni.edu".to_owned(),
+        role: ServerRole::Member,
+    };
+    admin_call(
+        &app,
+        &admin.access_token,
+        Method::POST,
+        "/api/v1/admin/domains",
+        serde_json::to_value(rule).expect("rule json"),
+    )
+    .await;
+    let mallory = github("6006", "mallory", &["mallory@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &mallory, None).await else {
+        panic!("mallory was refused");
+    };
+    assert_eq!(first.via, Via::Domain);
+    remove(&app, &admin.access_token, first.account_id).await;
+    assert!(matches!(
+        decide(&app, &mallory, None).await,
+        Admission::NotAdmitted
+    ));
+    let newcomer = github("6007", "nadia", &["nadia@uni.edu"]);
+    assert!(matches!(
+        decide(&app, &newcomer, None).await,
+        Admission::Domain { existing: None, .. }
+    ));
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::Email {
+            email: "mallory@uni.edu".to_owned(),
+        },
+    )
+    .await;
+    let Applied::Admitted(again) = admit(&app, &mallory, None).await else {
+        panic!("mallory was refused after being added again");
+    };
+    assert_eq!(again.account_id, first.account_id);
+    assert_eq!(again.via, Via::Allowlist);
+}
+
+#[tokio::test]
+async fn name_entries_are_refused_for_openid_connect_providers() {
+    let mut config = test_config();
+    config.providers.push(ProviderConfig::Github {
+        id: "github".to_owned(),
+        label: "GitHub".to_owned(),
+        client_id: "client".to_owned(),
+        client_secret: "secret".to_owned(),
+        web_url: Url::parse("https://github.com").expect("web url"),
+        api_url: Url::parse("https://api.github.com").expect("api url"),
+    });
+    config.providers.push(ProviderConfig::Oidc {
+        id: "uni".to_owned(),
+        label: "University login".to_owned(),
+        issuer: "https://sso.uni.example".to_owned(),
+        client_id: "client-1".to_owned(),
+        client_secret: "secret-1".to_owned(),
+        trust_email: false,
+    });
+    let app = test_app_with(config).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let entry = |provider: &str| {
+        serde_json::to_value(NewAllowlistEntry {
+            matcher: AllowlistMatcher::ProviderLogin {
+                provider: provider.to_owned(),
+                login: "alice".to_owned(),
+            },
+            role: ServerRole::Member,
+        })
+        .expect("entry json")
+    };
+    assert_eq!(
+        admin_status(
+            &app,
+            &admin.access_token,
+            "/api/v1/admin/allowlist",
+            entry("uni")
+        )
+        .await,
+        axum::http::StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        admin_status(
+            &app,
+            &admin.access_token,
+            "/api/v1/admin/allowlist",
+            entry("github")
+        )
+        .await,
+        axum::http::StatusCode::CREATED
+    );
+}

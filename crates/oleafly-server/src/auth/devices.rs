@@ -6,8 +6,6 @@ use rusqlite::{params, Connection, OptionalExtension};
 use crate::auth::{db_error, parse_account, parse_device};
 use crate::error::ServerError;
 
-const DEVICE_IN_USE: &str = "This device is signed in to another account on this server.";
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Registered {
     pub device_id: DeviceId,
@@ -47,7 +45,7 @@ pub fn register(
     match existing {
         Some((id, owner, revoked_at)) => {
             if parse_account(&owner)? != account {
-                return Err(ServerError::Conflict(DEVICE_IN_USE.to_owned()));
+                return Err(ServerError::DeviceInUse);
             }
             conn.execute(
                 "UPDATE devices SET name = ?2, platform = ?3, last_seen_at = ?4, revoked_at = NULL \
@@ -215,7 +213,7 @@ mod tests {
                     live,
                     reactivated,
                     row,
-                    matches!(other, Err(ServerError::Conflict(_))),
+                    matches!(other, Err(ServerError::DeviceInUse)),
                 ))
             })
             .await

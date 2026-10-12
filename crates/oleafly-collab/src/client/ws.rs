@@ -5,7 +5,7 @@ use futures_util::{SinkExt, StreamExt};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
 use rustls::pki_types::CertificateDer;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::{Error as WsError, Message};
@@ -27,13 +27,25 @@ pub struct SocketConnection {
 
 pub async fn connect_socket(
     url: &ServerUrl,
+    server_id: ServerId,
     access_token: &str,
     device_id: DeviceId,
     key: &DeviceKey,
 ) -> Result<SocketConnection, CollabError> {
     let mut socket = open_socket(url).await?;
-    let (nonce, server_id) = match next_frame(&mut socket).await? {
-        ServerFrame::Challenge { nonce, server_id } => (nonce, server_id),
+    let nonce = match next_frame(&mut socket).await? {
+        ServerFrame::Challenge {
+            nonce,
+            server_id: found,
+        } if found == server_id => nonce,
+        ServerFrame::Challenge {
+            server_id: found, ..
+        } => {
+            return Err(CollabError::ServerChanged {
+                expected: server_id,
+                found,
+            })
+        }
         other => return Err(frame_error(other)),
     };
     let message = challenge_message(ChallengePurpose::Socket, server_id, &nonce);
@@ -248,6 +260,7 @@ mod tests {
         let signed = signed_in_admin().await;
         let mut socket = connect_socket(
             &signed.url,
+            signed.manifest.server_id,
             &signed.tokens.access_token,
             signed.tokens.device_id,
             &signed.key,
@@ -266,6 +279,7 @@ mod tests {
         let signed = signed_in_admin().await;
         let result = connect_socket(
             &signed.url,
+            signed.manifest.server_id,
             "not-a-token",
             signed.tokens.device_id,
             &signed.key,
@@ -279,11 +293,31 @@ mod tests {
         let signed = signed_in_admin().await;
         let result = connect_socket(
             &signed.url,
+            signed.manifest.server_id,
             &signed.tokens.access_token,
             signed.tokens.device_id,
             &device_key(),
         )
         .await;
         assert!(matches!(result, Err(CollabError::Unauthorized)));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_challenge_from_another_server_gets_no_token() {
+        let signed = signed_in_admin().await;
+        let expected = oleafly_collab_protocol::ids::ServerId::new_v7();
+        let result = connect_socket(
+            &signed.url,
+            expected,
+            &signed.tokens.access_token,
+            signed.tokens.device_id,
+            &signed.key,
+        )
+        .await;
+        assert!(matches!(
+            result,
+            Err(CollabError::ServerChanged { expected: e, found: f })
+                if e == expected && f == signed.manifest.server_id
+        ));
     }
 }

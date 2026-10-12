@@ -102,15 +102,17 @@ pub fn decide(
             });
         }
     }
-    for email in &identity.verified_emails {
-        let Some(domain) = email_domain(email) else {
-            continue;
-        };
-        if let Some(rule) = members::find_domain_rule(conn, &domain)? {
-            return Ok(Admission::Domain {
-                role: rule.role,
-                existing: removed,
-            });
+    if removed.is_none() {
+        for email in &identity.verified_emails {
+            let Some(domain) = email_domain(email) else {
+                continue;
+            };
+            if let Some(rule) = members::find_domain_rule(conn, &domain)? {
+                return Ok(Admission::Domain {
+                    role: rule.role,
+                    existing: None,
+                });
+            }
         }
     }
     if let Some(admission) = guest_invitation(conn, identity)? {

@@ -39,7 +39,7 @@ export function AllowlistTab({
   const [formError, setFormError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
-  const loginProviders = providers.filter((item) => item.kind === "github" || item.kind === "oidc");
+  const loginProviders = providers.filter((item) => item.kind === "github");
   const provider = providerId ?? loginProviders[0]?.id ?? null;
 
   useEffect(() => {

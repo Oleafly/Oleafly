@@ -12,6 +12,7 @@ use crate::config::{normalize_setup_code, ServerConfig};
 use crate::db::{self, Db};
 use crate::error::ServerError;
 use crate::members;
+use crate::rate_limit::{RateLimiter, SIGN_IN_BURST, SIGN_IN_PER_MINUTE};
 use crate::security_log;
 use crate::sockets::SocketRegistry;
 use crate::tokens;
@@ -37,6 +38,7 @@ pub struct AppState {
     pub http: reqwest::Client,
     pub providers: Arc<ProviderRegistry>,
     pub sockets: Arc<SocketRegistry>,
+    pub rate_limiter: Arc<RateLimiter>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -92,6 +94,7 @@ impl AppState {
             http,
             providers,
             sockets: Arc::new(SocketRegistry::new()),
+            rate_limiter: Arc::new(RateLimiter::new(SIGN_IN_BURST, SIGN_IN_PER_MINUTE)),
         })
     }
 

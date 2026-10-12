@@ -1631,6 +1631,8 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "server",
   "internal",
   "server_changed",
+  "duplicate_server",
+  "device_in_use",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -1665,6 +1667,8 @@ export const collabServerSignOutDevice = (serverId: string, deviceId: string) =>
   invoke<void>("collab_server_sign_out_device", { serverId, deviceId });
 export const collabServerTest = (url: string) =>
   invoke<CollabConnectionCheck[]>("collab_server_test", { url });
+export const collabServerRefresh = (serverId: string) =>
+  invoke<CollabServer>("collab_server_refresh", { serverId });
 export const collabAdminMembers = (serverId: string) =>
   invoke<CollabMember[]>("collab_admin_members", { serverId });
 export const collabAdminMemberDevices = (serverId: string, accountId: string) =>

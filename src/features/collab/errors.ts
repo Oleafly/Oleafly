@@ -18,6 +18,8 @@ export const COLLAB_ERROR_CODES = [
   "server",
   "internal",
   "server_changed",
+  "duplicate_server",
+  "device_in_use",
 ] as const satisfies readonly CollabErrorCode[];
 
 type UnlistedCode = Exclude<CollabErrorCode, (typeof COLLAB_ERROR_CODES)[number]>;

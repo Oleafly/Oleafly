@@ -18,7 +18,7 @@ The server keeps everything in one folder, set by `OLEAFLY_DATA_DIR`:
 - **Devices.** Each computer that signed in: its name, operating system, public key, and when it was last seen. Sign-in tokens are stored only as hashes.
 - **The security log.** Sign-ins, refused sign-ins, devices added and signed out, members and roles changed, and settings changed, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
 - **Server settings** that admins change in Oleafly.
-- **Shared projects.** Every file and the full history of changes. When an owner stops sharing a project, the server keeps it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then deletes it.
+- **Shared projects**, once project sharing arrives in a later version. Every file and the full history of changes. When an owner stops sharing a project, the server will keep it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then delete it.
 
 **Projects are not encrypted on the server.** Anyone who can read the data folder, the machine's disk or your backups can read every project stored there. That includes whoever runs the machine and the company that hosts it. Inside Oleafly the rules are stricter: no server role, admin included, can open a project unless the project's owner added them. If you need to keep a project away from the people who run a server, run your own server for it.
 
@@ -64,7 +64,7 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. | `200` |
 | `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
-| `OLEAFLY_BEHIND_PROXY` | Trust the client address and scheme that a proxy in front of the server passes on. Read [Behind a university proxy](#behind-a-university-proxy). The Compose and Coolify files turn it on. | `false` |
+| `OLEAFLY_BEHIND_PROXY` | Trust the client address that a proxy in front of the server passes on. Read [Behind a university proxy](#behind-a-university-proxy). The Compose and Coolify files turn it on. | `false` |
 | `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. | `info` |
 | `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries. | `365` |
 | `OLEAFLY_ARCHIVE_DAYS` | How many days to keep a project after its owner stops sharing it. | `30` |
@@ -243,13 +243,13 @@ If your university already runs the web server in front, read the next section i
 When your university's web server handles HTTPS and forwards requests to Oleafly Server:
 
 - Run the server where only the proxy can reach it. On the same machine, use `OLEAFLY_BIND=127.0.0.1:8080`.
-- Set `OLEAFLY_BEHIND_PROXY=true`. The server then takes the client's address from `X-Forwarded-For` and the scheme from `X-Forwarded-Proto`. Turn it on only when every request comes through the proxy. Otherwise anyone can put a fake address in the security log.
+- Set `OLEAFLY_BEHIND_PROXY=true`. The server then takes the client's address from `X-Forwarded-For`. Turn it on only when every request comes through the proxy. Otherwise anyone can put a fake address in the security log.
 - If the server lives under a path, include the path in `OLEAFLY_PUBLIC_URL`, for example `https://www.cs.example.edu/oleafly`, and in the callback addresses you register with sign-in providers. The server answers both with and without that path, so your proxy can pass it on or strip it, whichever suits its configuration.
 
 The proxy has to:
 
 - pass WebSocket upgrades through,
-- set `X-Forwarded-For` to the client's address and `X-Forwarded-Proto` to `https`,
+- set `X-Forwarded-For` to the client's address,
 - let WebSocket connections stay open for a long time, at least an hour,
 - accept requests as large as `OLEAFLY_MAX_PROJECT_MB`.
 
@@ -373,6 +373,10 @@ If you set `OLEAFLY_SETUP_CODE`, the server never prints your code. The log only
 
 Then add people under **Manage server**. Once you've added them, they can add the server in Oleafly.
 
+You can add a person by email address, by GitHub user name, or let everyone with a verified address at your domain in. User names work only for GitHub, because other providers let people choose or change theirs. Someone you remove stays out, even when a domain rule covers their address. To let them back in, add them again by email address or user name.
+
+The server limits how often one address can start a sign-in or open a live connection, so a flood of requests can't fill its database. People signing in normally never reach the limit.
+
 ## Email
 
 Email is optional, and everything else works without it. Without email you send people the server's address yourself, and Oleafly lists the projects that have been shared with each person.
@@ -463,7 +467,7 @@ Oleafly checks the server's version every time it connects. If the app and the s
 
 ## Roles and permissions
 
-Each person has one server role, given by the server's admins and maintainers. In each project they were added to, they also have a project role, given by that project's owner. A cell says whether that role on its own allows the action. No server role opens a project by itself: project access comes only from the project's owner.
+Each person has one server role, given by the server's admins and maintainers. In each project they were added to, they also have a project role, given by that project's owner. This version runs the server roles. Sharing projects comes in a later version, so the project columns, and the rows about projects, the member list and project access logs, describe how that will work. A cell says whether that role on its own allows the action. No server role opens a project by itself: project access comes only from the project's owner.
 
 | Action | Admin | Maintainer | Member | Guest | Owner | Editor | Viewer |
 | --- | --- | --- | --- | --- | --- | --- | --- |

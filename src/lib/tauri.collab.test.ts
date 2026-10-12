@@ -60,6 +60,7 @@ describe("collaboration IPC contract", () => {
       { serverId: SERVER, deviceId: DEVICE },
     ],
     ["collabServerTest", () => tauri.collabServerTest("https://uni.edu"), "collab_server_test", { url: "https://uni.edu" }],
+    ["collabServerRefresh", () => tauri.collabServerRefresh(SERVER), "collab_server_refresh", { serverId: SERVER }],
     ["collabAdminMembers", () => tauri.collabAdminMembers(SERVER), "collab_admin_members", { serverId: SERVER }],
     [
       "collabAdminMemberDevices",
@@ -167,7 +168,7 @@ describe("collaboration command drift", () => {
   const camel = (name: string) => name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
   it("registers every collaboration command once", () => {
-    expect(registered).toHaveLength(23);
+    expect(registered).toHaveLength(24);
     expect(new Set(registered).size).toBe(registered.length);
   });
 

@@ -148,7 +148,9 @@
     "setup_code_invalid": "That setup code doesn't match. Check the server's log for the right code.",
     "server": "The server ran into a problem. Try again later, or ask its admin.",
     "internal": "Something went wrong in Oleafly. Try again.",
-    "server_changed": "This address now belongs to a different server, so Oleafly didn't send it anything. If you trust the new server, remove this one and add it again."
+    "server_changed": "This address now belongs to a different server, so Oleafly didn't send it anything. If you trust the new server, remove this one and add it again.",
+    "duplicate_server": "This server is already in your list under another address. If it moved, remove the old entry first, then add it again.",
+    "device_in_use": "Someone else already signed in to this server from this computer account. Each person needs their own account on the computer to sign in."
   },
   "roles": {
     "admin": "Admin",

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  collabServerRefresh,
   collabServerRemove,
   collabServerSignIn,
   collabServerSignOut,
@@ -21,6 +22,7 @@ interface CollabStore {
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   signOut: (serverId: string) => Promise<CollabErrorCode | null>;
   remove: (serverId: string) => Promise<CollabErrorCode | null>;
+  refreshAccounts: () => Promise<void>;
 }
 
 let loadRequest = 0;
@@ -94,5 +96,12 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
       set((state) => ({ pending: withoutKey(state.pending, serverId) }));
       return collabErrorCode(error);
     }
+  },
+  refreshAccounts: async () => {
+    const signedIn = get().servers.filter((entry) => entry.signed_in);
+    const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));
+    const fresh = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+    if (fresh.length === 0) return;
+    set((state) => ({ servers: fresh.reduce(upsert, state.servers) }));
   },
 }));

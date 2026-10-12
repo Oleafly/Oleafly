@@ -148,7 +148,9 @@
     "setup_code_invalid": "Konfigurationskoden stämmer inte. Leta upp rätt kod i serverns logg.",
     "server": "Servern stötte på ett problem. Försök igen senare, eller fråga dess administratör.",
     "internal": "Något gick fel i Oleafly. Försök igen.",
-    "server_changed": "Den här adressen tillhör nu en annan server, så Oleafly skickade ingenting till den. Om du litar på den nya servern tar du bort den här och lägger till den igen."
+    "server_changed": "Den här adressen tillhör nu en annan server, så Oleafly skickade ingenting till den. Om du litar på den nya servern tar du bort den här och lägger till den igen.",
+    "duplicate_server": "Den här servern finns redan i din lista under en annan adress. Om den har flyttat tar du först bort den gamla posten och lägger sedan till den igen.",
+    "device_in_use": "Någon annan har redan loggat in på den här servern från det här användarkontot på datorn. Varje person behöver ett eget användarkonto på datorn för att logga in."
   },
   "roles": {
     "admin": "Administratör",

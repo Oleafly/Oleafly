@@ -148,7 +148,9 @@
     "setup_code_invalid": "Codul de configurare nu se potrivește. Caută codul corect în jurnalul serverului.",
     "server": "Serverul a întâmpinat o problemă. Încearcă din nou mai târziu sau întreabă-l pe administratorul lui.",
     "internal": "Ceva nu a mers bine în Oleafly. Încearcă din nou.",
-    "server_changed": "Această adresă aparține acum altui server, așa că Oleafly nu i-a trimis nimic. Dacă ai încredere în noul server, elimină-l pe acesta și adaugă-l din nou."
+    "server_changed": "Această adresă aparține acum altui server, așa că Oleafly nu i-a trimis nimic. Dacă ai încredere în noul server, elimină-l pe acesta și adaugă-l din nou.",
+    "duplicate_server": "Acest server este deja în lista ta cu altă adresă. Dacă s-a mutat, elimină mai întâi intrarea veche, apoi adaugă-l din nou.",
+    "device_in_use": "Altcineva s-a autentificat deja pe acest server din acest cont de utilizator al computerului. Fiecare persoană are nevoie de propriul cont de utilizator pe computer ca să se autentifice."
   },
   "roles": {
     "admin": "Administrator",

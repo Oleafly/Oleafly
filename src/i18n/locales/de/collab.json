@@ -148,7 +148,9 @@
     "setup_code_invalid": "Dieser Einrichtungscode passt nicht. Den richtigen Code finden Sie im Protokoll des Servers.",
     "server": "Auf dem Server ist ein Problem aufgetreten. Versuchen Sie es später erneut oder wenden Sie sich an den Admin des Servers.",
     "internal": "In Oleafly ist etwas schiefgelaufen. Versuchen Sie es erneut.",
-    "server_changed": "Diese Adresse gehört jetzt zu einem anderen Server, daher hat Oleafly ihm nichts gesendet. Wenn Sie dem neuen Server vertrauen, entfernen Sie diesen Eintrag und fügen Sie ihn erneut hinzu."
+    "server_changed": "Diese Adresse gehört jetzt zu einem anderen Server, daher hat Oleafly ihm nichts gesendet. Wenn Sie dem neuen Server vertrauen, entfernen Sie diesen Eintrag und fügen Sie ihn erneut hinzu.",
+    "duplicate_server": "Dieser Server steht bereits unter einer anderen Adresse in Ihrer Liste. Wenn er umgezogen ist, entfernen Sie zuerst den alten Eintrag und fügen Sie ihn dann erneut hinzu.",
+    "device_in_use": "Von diesem Benutzerkonto auf dem Computer hat sich bereits eine andere Person bei diesem Server angemeldet. Jede Person braucht ein eigenes Benutzerkonto auf dem Computer, um sich anzumelden."
   },
   "roles": {
     "admin": "Admin",

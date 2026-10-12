@@ -37,6 +37,8 @@ pub enum CollabError {
         "the server at this address is now a different server: expected {expected}, found {found}"
     )]
     ServerChanged { expected: ServerId, found: ServerId },
+    #[error("this server is already in the list at {url}")]
+    DuplicateServer { url: String },
 }
 
 #[cfg(test)]

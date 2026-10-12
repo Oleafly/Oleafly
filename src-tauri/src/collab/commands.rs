@@ -54,6 +54,7 @@ impl From<CollabError> for CollabCommandError {
             CollabError::ServerChanged { expected, found } => {
                 ("server_changed", format!("{expected} {found}"))
             }
+            CollabError::DuplicateServer { url } => ("duplicate_server", url),
             CollabError::Io(message)
             | CollabError::Corrupt(message)
             | CollabError::Secret(message)
@@ -68,6 +69,7 @@ fn api_code(status: u16, code: &str) -> &'static str {
     match (code, status) {
         ("not_admitted", _) => "not_admitted",
         ("setup_code_invalid", _) => "setup_code_invalid",
+        ("device_in_use", _) => "device_in_use",
         ("rate_limited", _) | (_, 429) => "rate_limited",
         (_, 401) => "unauthorized",
         (_, 403) => "forbidden",
@@ -197,6 +199,31 @@ fn check_pin(expected: Option<ServerId>, found: ServerId) -> Result<(), CollabEr
     }
 }
 
+fn check_unique(state: &CollabState, url: &ServerUrl, found: ServerId) -> Result<(), CollabError> {
+    match state.registry()?.get(found) {
+        Some(entry) if entry.url != url.as_str() => Err(CollabError::DuplicateServer {
+            url: entry.url.clone(),
+        }),
+        _ => Ok(()),
+    }
+}
+
+fn store_account(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    account: AccountSummary,
+) -> Result<(), CollabError> {
+    state.update_registry(|registry| {
+        if let Some(mut entry) = registry.get(server).cloned() {
+            entry.account = Some(account);
+            registry.upsert(entry);
+        }
+    })?;
+    host.server_changed(server);
+    Ok(())
+}
+
 async fn verify_pin(client: &ServerClient, expected: ServerId) -> Result<(), CollabError> {
     let manifest = client.capabilities().await?;
     check_pin(Some(expected), manifest.server_id)
@@ -271,6 +298,13 @@ where
         }
         other => other,
     };
+    if matches!(result, Err(CollabError::Api { status: 403, .. })) {
+        if let Ok(access) = keys.sessions.access_token(server, &client).await {
+            if let Ok(account) = client.me(&access).await {
+                let _ = store_account(state, host, server, account);
+            }
+        }
+    }
     match result {
         Err(error) => Err(settle_revocation(state, host, server, error).await),
         ok => ok,
@@ -300,6 +334,7 @@ pub async fn probe_server(
     let url = ServerUrl::parse(url)?;
     let manifest = ServerClient::new(url.clone())?.capabilities().await?;
     check_pin(pinned_id(state, &url)?, manifest.server_id)?;
+    check_unique(state, &url, manifest.server_id)?;
     negotiate(
         ProtocolRange {
             min: PROTOCOL_VERSION,
@@ -324,9 +359,9 @@ pub async fn sign_in_server(
 ) -> Result<CollabServer, CollabError> {
     let url = ServerUrl::parse(url)?;
     let pinned = pinned_id(state, &url)?;
-    if let Some(expected) = pinned {
-        verify_pin(&ServerClient::new(url.clone())?, expected).await?;
-    }
+    let advertised = ServerClient::new(url.clone())?.capabilities().await?;
+    check_pin(pinned, advertised.server_id)?;
+    check_unique(state, &url, advertised.server_id)?;
     let keys = state.keys().await?;
     let cancel = state.begin_sign_in();
     let request = SignInRequest {
@@ -343,6 +378,7 @@ pub async fn sign_in_server(
     };
     let server = manifest.server_id;
     check_pin(pinned, server)?;
+    check_unique(state, &url, server)?;
     let account = ServerClient::new(url.clone())?
         .me(&tokens.access_token)
         .await?;
@@ -387,6 +423,19 @@ pub async fn remove_server(
     state.update_registry(|registry| registry.remove(server))?;
     host.server_changed(server);
     Ok(())
+}
+
+pub async fn refresh_account(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+) -> Result<CollabServer, CollabError> {
+    let account = authed(state, host, server, |client, access| {
+        Box::pin(client.me(access))
+    })
+    .await?;
+    store_account(state, host, server, account)?;
+    to_dto(state, &known(state, server)?)
 }
 
 pub async fn server_devices(
@@ -704,6 +753,18 @@ pub async fn collab_server_test(
     url: String,
 ) -> Result<Vec<ConnectionCheck>, CollabCommandError> {
     test_server(state.inner(), &url)
+        .await
+        .map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_server_refresh(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CollabState>,
+    server_id: String,
+) -> Result<CollabServer, CollabCommandError> {
+    let server = parse_id(&server_id, "server")?;
+    refresh_account(state.inner(), &AppHost::new(app), server)
         .await
         .map_err(CollabCommandError::from)
 }
@@ -1151,6 +1212,13 @@ mod tests {
                 },
                 "server_changed",
             ),
+            (
+                CollabError::DuplicateServer {
+                    url: "https://collab.uni.edu".to_string(),
+                },
+                "duplicate_server",
+            ),
+            (api(409, "device_in_use"), "device_in_use"),
         ];
         for (error, expected) in cases {
             assert_eq!(CollabCommandError::from(error).code, expected);
@@ -1401,6 +1469,91 @@ mod tests {
             .expect("remove");
         assert!(!relay.saw_a_bearer_token());
         assert!(list_servers(&state).expect("list").is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_second_address_claiming_a_known_server_is_refused() {
+        let (_github, server) = github_server().await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = signed_in(&state, &host, &server).await;
+        let relay = Relay::start(&server).await;
+        let duplicate = |result: &Result<(), CollabError>| matches!(result, Err(CollabError::DuplicateServer { url }) if *url == added.url);
+        assert!(duplicate(
+            &probe_server(&state, &relay.url).await.map(|_| ())
+        ));
+        let late = TestHost::following();
+        assert!(duplicate(
+            &sign_in_server(&state, &late, &relay.url, "github".to_string(), None, LONG)
+                .await
+                .map(|_| ())
+        ));
+        assert!(late.opened().is_none());
+        assert!(!relay.saw_a_bearer_token());
+        let listed = list_servers(&state).expect("list");
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].url, added.url);
+        assert!(listed[0].signed_in);
+        assert!(server_devices(&state, &host, added.server_id).await.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_role_change_on_the_server_reaches_the_saved_account() {
+        use oleafly_collab_protocol::roles::ServerRole;
+        let (_github, server) = github_server().await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = signed_in(&state, &host, &server).await;
+        let account = added
+            .account
+            .as_ref()
+            .expect("account")
+            .account_id
+            .to_string();
+        let set_role = |role: &'static str| {
+            let id = account.clone();
+            server.state().db.call(move |conn| {
+                conn.execute(
+                    "UPDATE accounts SET server_role = ?2 WHERE id = ?1",
+                    [id.as_str(), role],
+                )?;
+                Ok(())
+            })
+        };
+        let role_of = |listed: &[CollabServer]| {
+            listed[0]
+                .account
+                .as_ref()
+                .map(|account| account.server_role)
+        };
+        set_role("maintainer").await.expect("promote");
+        let before = host.changed().len();
+        let refreshed = refresh_account(&state, &host, added.server_id)
+            .await
+            .expect("refresh");
+        assert!(matches!(
+            refreshed
+                .account
+                .as_ref()
+                .map(|account| account.server_role),
+            Some(ServerRole::Maintainer)
+        ));
+        assert!(host.changed().len() > before);
+        assert!(matches!(
+            role_of(&list_servers(&state).expect("list")),
+            Some(ServerRole::Maintainer)
+        ));
+        set_role("member").await.expect("demote");
+        assert!(matches!(
+            admin_members(&state, &host, added.server_id).await,
+            Err(CollabError::Api { status: 403, .. })
+        ));
+        assert!(matches!(
+            role_of(&list_servers(&state).expect("list")),
+            Some(ServerRole::Member)
+        ));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

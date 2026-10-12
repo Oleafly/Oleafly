@@ -148,7 +148,9 @@
     "setup_code_invalid": "Bu kurulum kodu eşleşmiyor. Doğru kod için sunucunun günlüğüne bakın.",
     "server": "Sunucuda bir sorun oluştu. Daha sonra yeniden deneyin veya sunucunun yöneticisine danışın.",
     "internal": "Oleafly'de bir şeyler ters gitti. Yeniden deneyin.",
-    "server_changed": "Bu adres artık başka bir sunucuya ait, bu yüzden Oleafly ona hiçbir şey göndermedi. Yeni sunucuya güveniyorsanız bunu kaldırıp yeniden ekleyin."
+    "server_changed": "Bu adres artık başka bir sunucuya ait, bu yüzden Oleafly ona hiçbir şey göndermedi. Yeni sunucuya güveniyorsanız bunu kaldırıp yeniden ekleyin.",
+    "duplicate_server": "Bu sunucu listenizde zaten başka bir adresle bulunuyor. Taşındıysa önce eski kaydı kaldırın, ardından yeniden ekleyin.",
+    "device_in_use": "Başka biri bilgisayardaki bu kullanıcı hesabından bu sunucuda zaten oturum açmış. Oturum açabilmek için herkesin bilgisayarda kendi kullanıcı hesabı olmalıdır."
   },
   "roles": {
     "admin": "Yönetici",

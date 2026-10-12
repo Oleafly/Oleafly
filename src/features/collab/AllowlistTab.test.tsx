@@ -27,6 +27,7 @@ const roles = enCollab.roles;
 const providers = capabilities({
   providers: [
     { id: "github", kind: "github", label: "GitHub" },
+    { id: "ghe", kind: "github", label: "GitHub Enterprise" },
     { id: "uni", kind: "oidc", label: "University login" },
     { id: "future", kind: "unknown", label: "Future login" },
   ],
@@ -82,10 +83,10 @@ describe("AllowlistTab", () => {
     expect(screen.getByRole("textbox", { name: copy.match.email })).toHaveValue("");
   });
 
-  it("adds a sign-in name on the chosen sign-in option, and skips options it does not know", async () => {
+  it("adds a sign-in name on a GitHub sign-in option and never offers OpenID Connect ones", async () => {
     mocks.collabAdminAllowlist.mockResolvedValue([]);
     mocks.collabAdminAddAllowlist.mockResolvedValue(
-      allowlistEntry({ id: "allow-10", matcher: { kind: "provider_login", provider: "uni", login: "achen" } }),
+      allowlistEntry({ id: "allow-10", matcher: { kind: "provider_login", provider: "ghe", login: "achen" } }),
     );
     const user = userEvent.setup();
     render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
@@ -93,15 +94,16 @@ describe("AllowlistTab", () => {
     await chooseOption(user, copy.matchLabel, copy.match.login);
     await user.click(screen.getByRole("combobox", { name: copy.providerLabel }));
     expect(screen.queryByRole("option", { name: "Future login" })).toBeNull();
-    await user.click(await screen.findByRole("option", { name: "University login" }));
+    expect(screen.queryByRole("option", { name: "University login" })).toBeNull();
+    await user.click(await screen.findByRole("option", { name: "GitHub Enterprise" }));
     await user.type(screen.getByRole("textbox", { name: copy.match.login }), "achen");
     await user.click(screen.getByRole("button", { name: copy.add }));
     expect(mocks.collabAdminAddAllowlist).toHaveBeenCalledWith(SERVER_ID, {
-      matcher: { kind: "provider_login", provider: "uni", login: "achen" },
+      matcher: { kind: "provider_login", provider: "ghe", login: "achen" },
       role: "member",
     });
     expect(
-      await screen.findByText(fill(copy.loginEntry, { login: "achen", provider: "University login" })),
+      await screen.findByText(fill(copy.loginEntry, { login: "achen", provider: "GitHub Enterprise" })),
     ).toBeInTheDocument();
   });
 

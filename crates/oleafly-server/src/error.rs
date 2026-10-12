@@ -12,6 +12,7 @@ pub enum ServerError {
     Forbidden,
     NotFound,
     Conflict(String),
+    DeviceInUse,
     RateLimited,
     Auth(AuthErrorCode),
     Internal(String),
@@ -24,7 +25,7 @@ impl ServerError {
             ServerError::Unauthorized => StatusCode::UNAUTHORIZED,
             ServerError::Forbidden => StatusCode::FORBIDDEN,
             ServerError::NotFound => StatusCode::NOT_FOUND,
-            ServerError::Conflict(_) => StatusCode::CONFLICT,
+            ServerError::Conflict(_) | ServerError::DeviceInUse => StatusCode::CONFLICT,
             ServerError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             ServerError::Auth(code) => auth_status(code),
             ServerError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -38,6 +39,7 @@ impl ServerError {
             ServerError::Forbidden => "forbidden",
             ServerError::NotFound => "not_found",
             ServerError::Conflict(_) => "conflict",
+            ServerError::DeviceInUse => "device_in_use",
             ServerError::RateLimited => "rate_limited",
             ServerError::Auth(code) => auth_code_name(code),
             ServerError::Internal(_) => "internal",
@@ -50,6 +52,9 @@ impl ServerError {
             ServerError::Unauthorized => "Sign in to this server again.".to_string(),
             ServerError::Forbidden => "Your role on this server doesn't allow that.".to_string(),
             ServerError::NotFound => "Not found.".to_string(),
+            ServerError::DeviceInUse => {
+                "This device is signed in to another account on this server.".to_string()
+            }
             ServerError::RateLimited => "Too many requests. Try again in a minute.".to_string(),
             ServerError::Auth(code) => auth_message(code).to_string(),
             ServerError::Internal(_) => {
@@ -146,6 +151,14 @@ impl IntoResponse for ServerError {
 mod tests {
     use super::*;
     use serde_json::Value;
+
+    #[test]
+    fn a_device_linked_to_another_account_has_its_own_code() {
+        let error = ServerError::DeviceInUse;
+        assert_eq!(error.status(), StatusCode::CONFLICT);
+        assert_eq!(error.code(), "device_in_use");
+        assert!(error.public_message().contains("another account"));
+    }
 
     const AUTH_CODES: [AuthErrorCode; 11] = [
         AuthErrorCode::NotAdmitted,

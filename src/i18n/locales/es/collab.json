@@ -148,7 +148,9 @@
     "setup_code_invalid": "Ese código de configuración no coincide. Busca el código correcto en el registro del servidor.",
     "server": "El servidor tuvo un problema. Vuelve a intentarlo más tarde o pregunta a su administrador.",
     "internal": "Algo falló en Oleafly. Vuelve a intentarlo.",
-    "server_changed": "Esta dirección ahora pertenece a otro servidor, así que Oleafly no le envió nada. Si confías en el nuevo servidor, quita este y vuelve a añadirlo."
+    "server_changed": "Esta dirección ahora pertenece a otro servidor, así que Oleafly no le envió nada. Si confías en el nuevo servidor, quita este y vuelve a añadirlo.",
+    "duplicate_server": "Este servidor ya está en tu lista con otra dirección. Si cambió de dirección, quita primero la entrada antigua y luego vuelve a añadirlo.",
+    "device_in_use": "Otra persona ya inició sesión en este servidor desde esta cuenta de usuario del equipo. Cada persona necesita su propia cuenta de usuario en el equipo para iniciar sesión."
   },
   "roles": {
     "admin": "Administrador",

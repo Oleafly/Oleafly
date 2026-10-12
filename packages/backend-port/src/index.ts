@@ -1104,7 +1104,9 @@ export type CollabErrorCode =
     | "setup_code_invalid"
     | "server"
     | "internal"
-    | "server_changed";
+    | "server_changed"
+    | "duplicate_server"
+    | "device_in_use";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
@@ -1390,6 +1392,7 @@ export interface BackendPort {
   collabServerDevices: (serverId: string) => Promise<CollabDevice[]>;
   collabServerSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
   collabServerTest: (url: string) => Promise<CollabConnectionCheck[]>;
+  collabServerRefresh: (serverId: string) => Promise<CollabServer>;
   collabAdminMembers: (serverId: string) => Promise<CollabMember[]>;
   collabAdminMemberDevices: (serverId: string, accountId: string) => Promise<CollabDevice[]>;
   collabAdminPatchMember: (serverId: string, accountId: string, patch: CollabMemberPatch) => Promise<CollabMember>;

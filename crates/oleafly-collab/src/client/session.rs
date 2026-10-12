@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, RefreshRequest, SessionTokens,
@@ -9,6 +10,8 @@ use super::{now_ms, ServerClient};
 use crate::{CollabError, DeviceKey, SecretPort};
 
 const REFRESH_MARGIN_MS: i64 = 60_000;
+const REFRESH_ATTEMPTS: usize = 3;
+const REFRESH_RETRY_DELAY: Duration = Duration::from_millis(300);
 
 pub fn session_account(server: ServerId) -> String {
     format!("collab_session:{server}")
@@ -75,25 +78,41 @@ impl SessionManager {
         if !force && tokens.access_expires_at - now_ms() >= REFRESH_MARGIN_MS {
             return Ok(tokens.access_token);
         }
+        let mut attempt = 1;
+        loop {
+            match self.refresh_once(server, client, &tokens).await {
+                Ok(fresh) => {
+                    self.store(server, &fresh)?;
+                    return Ok(fresh.access_token);
+                }
+                Err(error) if is_revocation(&error) => {
+                    self.clear(server)?;
+                    return Err(CollabError::Unauthorized);
+                }
+                Err(CollabError::Network(_)) if attempt < REFRESH_ATTEMPTS => {
+                    attempt += 1;
+                    tokio::time::sleep(REFRESH_RETRY_DELAY).await;
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
+    async fn refresh_once(
+        &self,
+        server: ServerId,
+        client: &ServerClient,
+        tokens: &SessionTokens,
+    ) -> Result<SessionTokens, CollabError> {
         let challenge = client.challenge().await?;
         let message = challenge_message(ChallengePurpose::Refresh, server, &challenge.nonce);
         let request = RefreshRequest {
-            refresh_token: tokens.refresh_token,
+            refresh_token: tokens.refresh_token.clone(),
             device_id: tokens.device_id,
             signature: self.key.sign_b64(&message),
             nonce: challenge.nonce,
         };
-        match client.refresh(&request).await {
-            Ok(fresh) => {
-                self.store(server, &fresh)?;
-                Ok(fresh.access_token)
-            }
-            Err(error) if is_revocation(&error) => {
-                self.clear(server)?;
-                Err(CollabError::Unauthorized)
-            }
-            Err(error) => Err(error),
-        }
+        client.refresh(&request).await
     }
 }
 
@@ -227,5 +246,128 @@ mod tests {
             .get(&session_account(server))
             .expect("read")
             .is_none());
+    }
+
+    struct LossyRelay {
+        url: crate::ServerUrl,
+        drop_next_refresh: Arc<std::sync::atomic::AtomicBool>,
+        refreshes: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl LossyRelay {
+        async fn start(upstream: &crate::ServerUrl) -> LossyRelay {
+            use std::sync::atomic::Ordering;
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let target = upstream.endpoint("/");
+            let address = format!(
+                "{}:{}",
+                target.host_str().expect("host"),
+                target.port_or_known_default().expect("port")
+            );
+            let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+                .await
+                .expect("bind");
+            let port = listener.local_addr().expect("address").port();
+            let drop_next_refresh = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let refreshes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let (dropping, counting) = (drop_next_refresh.clone(), refreshes.clone());
+            tokio::spawn(async move {
+                while let Ok((mut client, _)) = listener.accept().await {
+                    let (address, dropping, counting) =
+                        (address.clone(), dropping.clone(), counting.clone());
+                    tokio::spawn(async move {
+                        let mut request = Vec::new();
+                        let mut buffer = [0u8; 8192];
+                        let header_end = loop {
+                            if let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                                break end + 4;
+                            }
+                            match client.read(&mut buffer).await {
+                                Ok(0) | Err(_) => return,
+                                Ok(count) => request.extend_from_slice(&buffer[..count]),
+                            }
+                        };
+                        let head = String::from_utf8_lossy(&request[..header_end]).to_string();
+                        let length = head
+                            .lines()
+                            .find_map(|line| {
+                                let (name, value) = line.split_once(':')?;
+                                name.trim()
+                                    .eq_ignore_ascii_case("content-length")
+                                    .then(|| value.trim().parse::<usize>().ok())?
+                            })
+                            .unwrap_or(0);
+                        while request.len() < header_end + length {
+                            match client.read(&mut buffer).await {
+                                Ok(0) | Err(_) => return,
+                                Ok(count) => request.extend_from_slice(&buffer[..count]),
+                            }
+                        }
+                        let mut lines: Vec<&str> = head
+                            .trim_end_matches("\r\n")
+                            .split("\r\n")
+                            .filter(|line| !line.to_ascii_lowercase().starts_with("connection:"))
+                            .collect();
+                        lines.push("Connection: close");
+                        let mut forwarded = lines.join("\r\n").into_bytes();
+                        forwarded.extend_from_slice(b"\r\n\r\n");
+                        forwarded.extend_from_slice(&request[header_end..]);
+                        let Ok(mut server) = tokio::net::TcpStream::connect(address).await else {
+                            return;
+                        };
+                        if server.write_all(&forwarded).await.is_err() {
+                            return;
+                        }
+                        let mut response = Vec::new();
+                        if server.read_to_end(&mut response).await.is_err() {
+                            return;
+                        }
+                        let is_refresh = head.starts_with("POST ")
+                            && head
+                                .lines()
+                                .next()
+                                .is_some_and(|line| line.contains("/auth/refresh "));
+                        if is_refresh {
+                            counting.fetch_add(1, Ordering::SeqCst);
+                            if dropping.swap(false, Ordering::SeqCst) {
+                                return;
+                            }
+                        }
+                        let _ = client.write_all(&response).await;
+                        let _ = client.shutdown().await;
+                    });
+                }
+            });
+            LossyRelay {
+                url: crate::ServerUrl::parse(&format!("http://127.0.0.1:{port}"))
+                    .expect("relay url"),
+                drop_next_refresh,
+                refreshes,
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_refresh_reply_lost_in_transit_is_retried_and_keeps_the_session() {
+        use std::sync::atomic::Ordering;
+        let signed = signed_in_admin().await;
+        let relay = LossyRelay::start(&signed.url).await;
+        relay.drop_next_refresh.store(true, Ordering::SeqCst);
+        let client = ServerClient::new(relay.url.clone()).expect("client");
+        let secrets = Arc::new(MemorySecrets::default());
+        let manager = SessionManager::new(secrets, signed.key.clone());
+        let server = signed.manifest.server_id;
+        manager
+            .store(server, &expiring(&signed.tokens, 0))
+            .expect("store");
+        let access = manager
+            .access_token(server, &client)
+            .await
+            .expect("the session survives a lost refresh reply");
+        assert_ne!(access, signed.tokens.access_token);
+        assert!(relay.refreshes.load(Ordering::SeqCst) >= 2);
+        let stored = manager.tokens(server).expect("read").expect("stored");
+        assert_ne!(stored.refresh_token, signed.tokens.refresh_token);
+        client.me(&access).await.expect("still signed in");
     }
 }
