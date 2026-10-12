@@ -72,7 +72,7 @@ export function PrepExport() {
       toast.error(readOnly);
       return;
     }
-    useFilesStore.getState().setContent(activePath, result.output);
+    useFilesStore.getState().setContent(activePath, result.output, { bumpVersion: true });
     setApplied(true);
     void usePreflightStore.getState().run();
   };

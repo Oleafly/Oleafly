@@ -21,6 +21,7 @@ vi.mock("@/features/latex-engine", () => ({
 }));
 vi.mock("@/lib/toast", () => ({ toast: { error: mocks.toastError } }));
 
+import { editorText, renderStoreEditor, typeAtEnd } from "@/components/editor/test-editor-host";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useEngineStore } from "@/store/engine";
 import { useFilesStore } from "@/store/files";
@@ -83,6 +84,20 @@ describe("accessible export preparation", () => {
     expect(useFilesStore.getState().files["main.tex"].content).toContain("\\DocumentMetadata");
     expect(screen.getByRole("button", { name: copy.applied })).toBeDisabled();
     expect(runPreflight).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the applied source in the open editor and keeps it after the next keystroke", async () => {
+    openLatex({ "main.tex": article });
+    renderStoreEditor();
+    await act(async () => {});
+    render(<PrepExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: copy.prepare }));
+    fireEvent.click(screen.getByRole("button", { name: copy.apply }));
+
+    expect(editorText()).toBe(useFilesStore.getState().files["main.tex"].content);
+    act(() => typeAtEnd("\n"));
+    expect(useFilesStore.getState().files["main.tex"].content).toContain("\\DocumentMetadata");
   });
 
   it("copies the prepared source", async () => {
