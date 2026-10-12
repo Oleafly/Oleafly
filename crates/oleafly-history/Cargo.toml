@@ -14,13 +14,13 @@ fastcdc = "5"
 fs4 = "1.1"
 libc = "0.2"
 rand = "0.8"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 same-file = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 unicode-normalization = "0.1"
-zstd = "0.13"
+zstd = "0.14"
 
 [dev-dependencies]
 tempfile = { workspace = true }
