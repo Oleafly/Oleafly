@@ -1359,7 +1359,6 @@
     "captionAria": "Tablo başlığı",
     "preview": "Önizleme",
     "output": "LaTeX çıktısı",
-    "copiedSource": "LaTeX kaynağı kopyalandı",
     "booktabsHint": "Ön bölümünüzde <code>\\usepackage{booktabs}</code> gerekir."
   },
   "review": {

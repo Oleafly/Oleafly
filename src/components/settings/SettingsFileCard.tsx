@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { ChevronRight, Download, Upload } from "lucide-react";
-import { CopyTextButton, highlightSnippet } from "@/components/settings/snippet";
+import { ChevronRight, Download, Upload, X } from "lucide-react";
+import { highlightSnippet } from "@/components/settings/snippet";
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { CodeBlock } from "@/components/ui/code-block";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { textToBase64 } from "@/lib/base64";
@@ -28,7 +29,7 @@ import type { SettingIssue } from "@/lib/settings-file/values";
 import { useTheme, type ThemePreference } from "@/lib/theme";
 import { THEME_CUSTOMIZATION_CHANGED_EVENT } from "@/lib/theme-customization";
 import { pickSettingsFile } from "@/lib/settings-file/native";
-import { appVersion, writeBytesFile } from "@/lib/tauri";
+import { writeBytesFile } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -46,24 +47,12 @@ interface PendingImport {
 
 interface ImportProblem {
   name: string;
-  reason: "notJson" | "notSettings" | "newerVersion" | "invalid";
+  reason: "notJson" | "notSettings" | "invalid";
   problems: SettingsFileProblem[];
 }
 
-let versionRequest: Promise<string> | null = null;
-
-function appVersionOnce(): Promise<string> {
-  versionRequest ??= appVersion().catch(() => "");
-  return versionRequest;
-}
-
-async function settingsJson(
-  config: ConfigPreferences | null,
-  theme: ThemePreference,
-  exportedAt: string,
-): Promise<string> {
-  const app = await appVersionOnce();
-  return serializeSettingsDocument(buildSettingsDocument(readLocalSnapshot(config, theme), { app, exportedAt }));
+function settingsJson(config: ConfigPreferences | null, theme: ThemePreference): string {
+  return serializeSettingsDocument(buildSettingsDocument(readLocalSnapshot(config, theme)));
 }
 
 function quoted(values: readonly (string | number)[]): string {
@@ -118,7 +107,6 @@ function issueText(t: Translate, issue: SettingIssue): string {
 function reasonText(t: Translate, reason: ImportProblem["reason"]): string {
   if (reason === "notJson") return t(($) => $.settingsFile.error.notJson);
   if (reason === "notSettings") return t(($) => $.settingsFile.error.notSettings);
-  if (reason === "newerVersion") return t(($) => $.settingsFile.error.newerVersion);
   return t(($) => $.settingsFile.error.invalid);
 }
 
@@ -129,11 +117,22 @@ function ProblemNotice({
   const { t } = useTranslation(["settingsFile", "common", "settings"]);
   const hidden = problem.problems.length - SHOWN_PROBLEMS;
   return (
-    <div role="alert" data-testid="settings-file-problem" className="space-y-2 border-t bg-destructive/5 p-3 text-xs">
+    <div role="alert" data-testid="settings-file-problem" className="relative space-y-2 border-t bg-destructive/5 p-3 pr-11 text-xs">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={t(($) => $.common.actions.close)}
+        data-testid="settings-file-problem-close"
+        className="absolute right-2 top-2 size-7"
+        onClick={onDismiss}
+      >
+        <X aria-hidden className="size-3.5" />
+      </Button>
       <p className="font-medium text-destructive">{t(($) => $.settingsFile.error.title, { name: problem.name })}</p>
       <p className="text-muted-foreground">{reasonText(t, problem.reason)}</p>
       {problem.problems.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="list-disc space-y-1 pl-4 marker:text-muted-foreground">
           {problem.problems.slice(0, SHOWN_PROBLEMS).map(({ path, issue }) => (
             <li key={path} className="break-words">
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.6875rem] text-foreground">{path}</code>{" "}
@@ -145,9 +144,6 @@ function ProblemNotice({
           )}
         </ul>
       )}
-      <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
-        {t(($) => $.settingsFile.error.dismiss)}
-      </Button>
     </div>
   );
 }
@@ -162,18 +158,15 @@ function SettingsJsonView() {
     let cancelled = false;
     let frame = 0;
     let config: ConfigPreferences | null = null;
-    const exportedAt = new Date().toISOString();
     const render = () => {
       frame = 0;
-      void settingsJson(config, preference, exportedAt).then(
-        (next) => {
-          if (!cancelled) setJson(next);
-        },
-        (error: unknown) => {
-          void logError("show settings json", error);
-          if (!cancelled) setFailed(true);
-        },
-      );
+      if (cancelled) return;
+      try {
+        setJson(settingsJson(config, preference));
+      } catch (error) {
+        void logError("show settings json", error);
+        setFailed(true);
+      }
     };
     const schedule = () => {
       if (!cancelled && frame === 0) frame = window.requestAnimationFrame(render);
@@ -209,17 +202,10 @@ function SettingsJsonView() {
   }
   return (
     <div id="settings-file-json" className="space-y-2 border-t p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{t(($) => $.settingsFile.view.summary)}</p>
-        <CopyTextButton text={json} testId="settings-file-copy" />
-      </div>
-      <pre
-        data-select-all-scope
-        data-testid="settings-file-json"
-        className="max-h-96 overflow-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[0.6875rem] leading-relaxed"
-      >
+      <p className="text-xs text-muted-foreground">{t(($) => $.settingsFile.view.summary)}</p>
+      <CodeBlock code={json} data-testid="settings-file-json" preClassName="max-h-96 p-2.5 pr-10">
         <code>{highlighted}</code>
-      </pre>
+      </CodeBlock>
     </div>
   );
 }
@@ -252,7 +238,7 @@ export default function SettingsFileCard() {
         filters: [{ name: t(($) => $.settingsFile.dialog.filterName), extensions: ["json"] }],
       });
       if (!destination) return;
-      const json = await settingsJson(await readConfigPreferences(), theme.preference, new Date().toISOString());
+      const json = settingsJson(await readConfigPreferences(), theme.preference);
       await writeBytesFile(destination, textToBase64(json));
       toast.success(t(($) => $.settingsFile.toast.exported, { name: basename(destination) || destination }));
     } catch (error) {
@@ -322,7 +308,7 @@ export default function SettingsFileCard() {
     <section
       aria-labelledby="settings-file-title"
       data-testid="settings-file"
-      className="mt-4 overflow-hidden rounded-lg border bg-card"
+      className="select-none overflow-hidden rounded-lg border bg-card"
     >
       <div className="flex flex-wrap items-center gap-3 p-3">
         <div className="min-w-0 flex-1">

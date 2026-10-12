@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Den samme reference i APA ligger bag Cite this repository på GitHub",
-    "copyBibtex": "Kopier BibTeX",
     "description": "Oleafly er gratis og open source, og det bliver ved med at være det, når folk ved, at det findes. Har det hjulpet en artikel på vej, fortæller én post i din litteraturliste den næste forsker, hvor værktøjet kommer fra. Kopier den, indsæt den i din .bib-fil, og citer nøglen <citeKey>oleafly</citeKey>.",
     "title": "Citer Oleafly i din artikel"
   },
@@ -1428,7 +1427,6 @@
       "description": "Hent projekter fra din Overleaf-konto eller fra dit universitets Overleaf-server, og hold dem synkroniseret. Oleafly gemmer login og Git-token krypteret på denne computer.",
       "signedInAs": "Logget ind som {{email}} på {{server}}",
       "signedIn": "Logget ind på {{server}}",
-      "signedOut": "Ikke logget ind. Oleafly beder dig logge ind, når du importerer projekter.",
       "signOut": "Log ud",
       "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
       "gitTitle": "Git-token til synkronisering",

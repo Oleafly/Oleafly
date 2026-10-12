@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "The same reference in APA is behind Cite this repository on GitHub",
-    "copyBibtex": "Copy BibTeX",
     "description": "Oleafly is free and open source, and it stays that way when people know it exists. If it helped a paper along, one entry in your bibliography tells the next researcher where the tool came from. Copy it, paste it into your .bib file, and cite the key <citeKey>oleafly</citeKey>.",
     "title": "Cite Oleafly in your paper"
   },
@@ -1428,7 +1427,6 @@
       "description": "Bring projects over from your Overleaf account or your university's Overleaf server, and keep them in sync. Oleafly keeps the sign-in and the Git token encrypted on this computer.",
       "signedInAs": "Signed in as {{email}} on {{server}}",
       "signedIn": "Signed in on {{server}}",
-      "signedOut": "Not signed in. Oleafly asks you to sign in when you import projects.",
       "signOut": "Sign out",
       "signOutFailed": "Oleafly could not sign out of Overleaf.",
       "gitTitle": "Git token for sync",

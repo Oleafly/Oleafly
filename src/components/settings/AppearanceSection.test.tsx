@@ -657,6 +657,15 @@ describe("Appearance settings tabs", () => {
     );
     expect(useSettingsStore.getState().openInTree).toBe(true);
 
+    const hiddenFiles = screen.getByTestId("hidden-files-toggle");
+    expect(hiddenFiles).toHaveAttribute("aria-expanded", "false");
+    expect(hiddenFiles).toHaveTextContent(appearance.files.hidden.title);
+    expect(screen.queryByText("*.aux")).not.toBeInTheDocument();
+    expect(screen.getByText(appearance.zen.fullScreen.label).compareDocumentPosition(hiddenFiles)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    await user.click(hiddenFiles);
+    expect(hiddenFiles).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("*.aux")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(appearance.files.hidden.inputAriaLabel), {
       target: { value: "*.generated.tex" },

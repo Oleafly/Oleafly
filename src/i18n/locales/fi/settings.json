@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Sama viite APA-muodossa on GitHubissa kohdan Cite this repository takana",
-    "copyBibtex": "Kopioi BibTeX",
     "description": "Oleafly on maksuton ja avointa lähdekoodia, ja se pysyy sellaisena, kun ihmiset tietävät siitä. Jos se auttoi artikkelia eteenpäin, yksi merkintä lähdeluettelossasi kertoo seuraavalle tutkijalle, mistä työkalu on peräisin. Kopioi se, liitä se .bib-tiedostoosi ja viittaa avaimella <citeKey>oleafly</citeKey>.",
     "title": "Viittaa Oleaflyyn artikkelissasi"
   },
@@ -1428,7 +1427,6 @@
       "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta ja pidä ne synkronoituina. Oleafly säilyttää kirjautumisen ja Git-tokenin salattuina tällä koneella.",
       "signedInAs": "Kirjautunut palvelimelle {{server}} käyttäjänä {{email}}",
       "signedIn": "Kirjautunut palvelimelle {{server}}",
-      "signedOut": "Et ole kirjautunut. Oleafly pyytää kirjautumaan, kun tuot projekteja.",
       "signOut": "Kirjaudu ulos",
       "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
       "gitTitle": "Git-tokeni synkronointia varten",

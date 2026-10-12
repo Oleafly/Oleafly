@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "Aceeași referință în stil APA se află în spatele opțiunii Cite this repository de pe GitHub",
-    "copyBibtex": "Copiază BibTeX",
     "description": "Oleafly este gratuit și open source și rămâne așa atât timp cât lumea știe că există. Dacă ți-a ajutat o lucrare, o singură intrare în bibliografia ta îi spune următorului cercetător de unde vine instrumentul. Copiaz-o, lipește-o în fișierul tău .bib și citează cheia <citeKey>oleafly</citeKey>.",
     "title": "Citează Oleafly în lucrarea ta"
   },
@@ -1444,7 +1443,6 @@
       "description": "Adu proiecte din contul tău Overleaf sau de pe serverul Overleaf al universității tale și păstrează-le sincronizate. Oleafly păstrează autentificarea și tokenul Git criptate pe acest computer.",
       "signedInAs": "Autentificat ca {{email}} pe {{server}}",
       "signedIn": "Autentificat pe {{server}}",
-      "signedOut": "Nu ești autentificat. Oleafly îți cere să te autentifici când imporți proiecte.",
       "signOut": "Deconectează-te",
       "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
       "gitTitle": "Token Git pentru sincronizare",

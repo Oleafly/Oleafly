@@ -1,8 +1,8 @@
 {
-  "title": "Einstellungsdatei",
+  "title": "Anwendungseinstellungen",
   "description": "Speichern Sie Ihre Einstellungen in einer JSON-Datei, oder laden Sie eine Datei, die jemand mit Ihnen geteilt hat. API-Schlüssel, Konten, Integrationen und Agenten sind nie enthalten.",
-  "export": "Einstellungen exportieren",
-  "import": "Einstellungen importieren",
+  "export": "Exportieren",
+  "import": "Importieren",
   "view": {
     "label": "Einstellungs-JSON anzeigen",
     "summary": "Schreibgeschützte Vorschau der Datei, die beim Exportieren gespeichert wird.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly-Einstellungen"
   },
   "toast": {
-    "exported": "Einstellungen in {{name}} gespeichert.",
+    "exported": "{{name}} auf die Festplatte exportiert",
     "exportFailed": "Die Einstellungsdatei konnte nicht gespeichert werden.",
     "readFailed": "Diese Datei konnte nicht geöffnet werden.",
     "imported": "Einstellungen importiert.",
@@ -32,10 +32,8 @@
     "title": "{{name}} wurde nicht importiert",
     "notJson": "Die Datei ist kein gültiges JSON.",
     "notSettings": "Dies ist keine Oleafly-Einstellungsdatei.",
-    "newerVersion": "Diese Datei stammt aus einer neueren Version von Oleafly. Aktualisieren Sie Oleafly und importieren Sie die Datei dann erneut.",
-    "invalid": "Einige Werte sind nicht erlaubt, daher wurde nichts geändert:",
-    "more": "+{{count}} weitere",
-    "dismiss": "Schließen"
+    "invalid": "Die Einstellungskonfiguration, die Sie importieren wollten, ist ungültig. Beheben Sie bitte diese Fehler und importieren Sie sie erneut:",
+    "more": "+{{count}} weitere"
   },
   "valueErrors": {
     "boolean": "muss true oder false sein",

@@ -1234,14 +1234,14 @@ export function SettingsModal() {
           )}
         </div>
         <SystemIntegrationSection shellCommandRow={<ShellCommandRow />} />
+        <Suspense fallback={null}>
+          <SettingsFileCard />
+        </Suspense>
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}
           changed={generalChanged}
         />
-        <Suspense fallback={null}>
-          <SettingsFileCard />
-        </Suspense>
       </div>
     )
   );

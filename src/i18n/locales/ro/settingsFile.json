@@ -1,8 +1,8 @@
 {
-  "title": "Fișier de setări",
+  "title": "Setările aplicației",
   "description": "Salvează setările într-un fișier JSON sau încarcă un fișier pe care ți l-a trimis cineva. Cheile API, conturile, integrările și agenții nu sunt incluse niciodată.",
-  "export": "Exportă setările",
-  "import": "Importă setări",
+  "export": "Exportă",
+  "import": "Importă",
   "view": {
     "label": "Vezi JSON-ul setărilor",
     "summary": "Previzualizare doar pentru citire a fișierului salvat de export.",
@@ -14,7 +14,7 @@
     "filterName": "Setări Oleafly"
   },
   "toast": {
-    "exported": "Setările au fost salvate în {{name}}.",
+    "exported": "{{name}} a fost exportat pe disc",
     "exportFailed": "Fișierul de setări nu a putut fi salvat.",
     "readFailed": "Fișierul nu a putut fi deschis.",
     "imported": "Setările au fost importate.",
@@ -32,10 +32,8 @@
     "title": "{{name}} nu a fost importat",
     "notJson": "Fișierul nu este JSON valid.",
     "notSettings": "Acesta nu este un fișier de setări Oleafly.",
-    "newerVersion": "Acest fișier a fost creat de o versiune mai nouă de Oleafly. Actualizează Oleafly, apoi importă din nou fișierul.",
-    "invalid": "Unele valori nu sunt permise, așa că nu s-a schimbat nimic:",
-    "more": "+{{count}} în plus",
-    "dismiss": "Închide"
+    "invalid": "Configurația setărilor pe care ai încercat să o imporți nu este validă. Corectează aceste erori și încearcă din nou importul:",
+    "more": "+{{count}} în plus"
   },
   "valueErrors": {
     "boolean": "trebuie să fie true sau false",

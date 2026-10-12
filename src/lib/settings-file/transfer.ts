@@ -29,9 +29,7 @@ import {
 } from "./schema";
 import { isRecord, type SettingIssue } from "./values";
 
-export const SETTINGS_FILE_VERSION = 1;
 export const SETTINGS_FILE_NAME = "oleafly-settings.json";
-const HEADER = "oleafly";
 const PDF_CAPTURE_KEY = "oleafly:ai_pdf_capture";
 const AI_CONFIG_CHANGED_EVENT = "oleafly:ai-config-changed";
 const BYTE_ORDER_MARK = 0xfeff;
@@ -131,18 +129,8 @@ function setPath(root: Record<string, unknown>, path: string, value: unknown): v
   node[parts[parts.length - 1]] = value;
 }
 
-export interface SettingsFileHeader {
-  app: string;
-  exportedAt: string;
-}
-
-export function buildSettingsDocument(
-  snapshot: SettingsSnapshot,
-  header: SettingsFileHeader,
-): Record<string, unknown> {
-  const root: Record<string, unknown> = {
-    [HEADER]: { file: "settings", version: SETTINGS_FILE_VERSION, app: header.app, exportedAt: header.exportedAt },
-  };
+export function buildSettingsDocument(snapshot: SettingsSnapshot): Record<string, unknown> {
+  const root: Record<string, unknown> = {};
   for (const setting of SETTINGS_FIELDS) {
     const value = setting.read(snapshot);
     if (value === undefined) continue;
@@ -162,7 +150,7 @@ export interface SettingsFileProblem {
 
 export type SettingsFileRead =
   | { ok: true; plan: SettingsPlan; changed: string[]; ignored: string[] }
-  | { ok: false; reason: "notJson" | "notSettings" | "newerVersion" }
+  | { ok: false; reason: "notJson" | "notSettings" }
   | { ok: false; reason: "invalid"; problems: SettingsFileProblem[] };
 
 interface Collected {
@@ -183,7 +171,6 @@ function walk(
   ignored: string[],
 ): void {
   for (const [key, raw] of Object.entries(node)) {
-    if (!prefix && key === HEADER) continue;
     const path = prefix ? `${prefix}.${key}` : key;
     const setting = FIELD_BY_PATH.get(path);
     if (setting) {
@@ -199,13 +186,6 @@ function walk(
   }
 }
 
-function headerProblem(root: Record<string, unknown>): "notSettings" | "newerVersion" | null {
-  const header = root[HEADER];
-  if (!isRecord(header) || header.file !== "settings") return "notSettings";
-  const version = header.version;
-  if (typeof version !== "number" || !Number.isInteger(version) || version < 1) return "notSettings";
-  return version > SETTINGS_FILE_VERSION ? "newerVersion" : null;
-}
 
 function emptyPlan(): SettingsPlan {
   return { preferences: {}, shortcuts: {}, editorKeys: {}, compile: {}, config: {} };
@@ -218,9 +198,9 @@ export function readSettingsFile(text: string, snapshot: SettingsSnapshot): Sett
   } catch {
     return { ok: false, reason: "notJson" };
   }
-  if (!isRecord(root)) return { ok: false, reason: "notSettings" };
-  const header = headerProblem(root);
-  if (header) return { ok: false, reason: header };
+  if (!isRecord(root) || !Object.keys(root).some((key) => GROUP_PATHS.has(key))) {
+    return { ok: false, reason: "notSettings" };
+  }
   const found: Collected[] = [];
   const problems: SettingsFileProblem[] = [];
   const ignored: string[] = [];

@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Aynı kaynağın APA biçimi GitHub'daki Cite this repository bölümünde",
-    "copyBibtex": "BibTeX'i kopyala",
     "description": "Oleafly ücretsiz ve açık kaynaklıdır ve insanlar varlığından haberdar oldukça öyle kalır. Bir makalenize yardımı dokunduysa kaynakçanızdaki tek bir kayıt, bir sonraki araştırmacıya bu aracın nereden geldiğini anlatır. Kopyalayın, .bib dosyanıza yapıştırın ve <citeKey>oleafly</citeKey> anahtarıyla atıf verin.",
     "title": "Makalenizde Oleafly'ye atıf verin"
   },
@@ -1428,7 +1427,6 @@
       "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın ve bunları eşitlenmiş tutun. Oleafly oturum bilgisini ve Git belirtecini bu bilgisayarda şifreli olarak saklar.",
       "signedInAs": "{{server}} üzerinde {{email}} olarak oturum açıldı",
       "signedIn": "{{server}} üzerinde oturum açıldı",
-      "signedOut": "Oturum açılmadı. Proje içe aktardığınızda Oleafly oturum açmanızı ister.",
       "signOut": "Oturumu kapat",
       "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
       "gitTitle": "Eşitleme için Git belirteci",

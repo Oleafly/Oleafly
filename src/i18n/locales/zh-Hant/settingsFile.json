@@ -1,8 +1,8 @@
 {
-  "title": "設定檔",
+  "title": "應用程式設定",
   "description": "將設定儲存為 JSON 檔案，或載入別人分享給你的檔案。API 金鑰、帳號、整合和代理程式一律不會包含在內。",
-  "export": "匯出設定",
-  "import": "匯入設定",
+  "export": "匯出",
+  "import": "匯入",
   "view": {
     "label": "檢視設定 JSON",
     "summary": "匯出時所儲存檔案的唯讀預覽。",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly 設定"
   },
   "toast": {
-    "exported": "設定已儲存到 {{name}}。",
+    "exported": "已將 {{name}} 匯出到磁碟",
     "exportFailed": "無法儲存設定檔。",
     "readFailed": "無法開啟該檔案。",
     "imported": "設定已匯入。",
@@ -32,10 +32,8 @@
     "title": "未匯入 {{name}}",
     "notJson": "該檔案不是有效的 JSON。",
     "notSettings": "這不是 Oleafly 設定檔。",
-    "newerVersion": "此檔案由較新版本的 Oleafly 建立。請更新 Oleafly 後重新匯入。",
-    "invalid": "部分值不被允許，因此未做任何變更：",
-    "more": "還有 {{count}} 項",
-    "dismiss": "關閉"
+    "invalid": "你嘗試匯入的設定組態無效。請修正以下錯誤，然後重新匯入：",
+    "more": "還有 {{count}} 項"
   },
   "valueErrors": {
     "boolean": "必須是 true 或 false",

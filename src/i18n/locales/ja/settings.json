@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "同じ文献の APA 形式は、GitHub の「Cite this repository」から確認できます",
-    "copyBibtex": "BibTeX をコピー",
     "description": "Oleafly は無料でオープンソースです。それを続けられるのは、存在が知られているからです。論文づくりの役に立ったなら、参考文献の 1 項目が、次の研究者にこのツールの出どころを伝えてくれます。コピーして .bib ファイルに貼り付け、キー <citeKey>oleafly</citeKey> で引用してください。",
     "title": "論文で Oleafly を引用する"
   },
@@ -1412,7 +1411,6 @@
       "description": "Overleaf アカウントや大学の Overleaf サーバーからプロジェクトを取り込み、同期した状態に保ちます。Oleafly はサインイン情報と Git トークンをこのコンピュータに暗号化して保存します。",
       "signedInAs": "{{server}} に {{email}} でサインイン中",
       "signedIn": "{{server}} にサインイン中",
-      "signedOut": "サインインしていません。プロジェクトを読み込むときに Oleafly がサインインを求めます。",
       "signOut": "サインアウト",
       "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。",
       "gitTitle": "同期用の Git トークン",

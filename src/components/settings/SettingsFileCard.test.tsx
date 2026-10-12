@@ -52,7 +52,7 @@ const config = {
 } as unknown as AppConfig;
 
 function settingsFile(body: Record<string, unknown>) {
-  return { name: "class.json", text: JSON.stringify({ oleafly: { file: "settings", version: 1 }, ...body }) };
+  return { name: "class.json", text: JSON.stringify(body) };
 }
 
 beforeAll(async () => {
@@ -82,12 +82,14 @@ describe("SettingsFileCard", () => {
     const [destination, base64] = mocks.writeBytesFile.mock.calls[0] as unknown as [string, string];
     expect(destination).toBe("/Users/me/Desktop/oleafly-settings.json");
     const text = new TextDecoder().decode(base64ToBytes(base64));
-    expect(JSON.parse(text)).toMatchObject({
-      oleafly: { file: "settings", version: 1, app: "0.4.6" },
+    const exported = JSON.parse(text) as Record<string, unknown>;
+    expect(Object.keys(exported)[0]).toBe("general");
+    expect(exported).not.toHaveProperty("oleafly");
+    expect(exported).toMatchObject({
       appearance: { app: { fontSize: 16 }, editor: { fontSize: 13 }, terminal: { fontSize: 14 } },
     });
-    expect(text).toContain('\n  "general": {\n');
-    expect(mocks.toast.success).toHaveBeenCalledWith("Settings saved to oleafly-settings.json.");
+    expect(text.startsWith('{\n  "general": {\n')).toBe(true);
+    expect(mocks.toast.success).toHaveBeenCalledWith("Exported oleafly-settings.json to disk");
   });
 
   it("does nothing when the save dialog is cancelled", async () => {
@@ -115,10 +117,14 @@ describe("SettingsFileCard", () => {
     await userEvent.click(screen.getByTestId("settings-file-import"));
     const problem = await screen.findByTestId("settings-file-problem");
     expect(problem).toHaveTextContent("class.json wasn't imported");
+    expect(problem).toHaveTextContent(
+      "The settings config you tried to import is invalid, please fix these errors and try importing again:",
+    );
+    expect(within(problem).getAllByRole("listitem")).toHaveLength(2);
     expect(problem).toHaveTextContent("appearance.app.fontSize must be one of: 13, 14, 15, 16, 17, 18, 20");
     expect(problem).toHaveTextContent("appearance.editor.lineWrap must be true or false");
     expect(useSettingsStore.getState().appFontSize).toBe(16);
-    await userEvent.click(within(problem).getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(within(problem).getByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("settings-file-problem")).not.toBeInTheDocument();
   });
 

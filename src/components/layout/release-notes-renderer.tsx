@@ -1,10 +1,9 @@
 import { Children, isValidElement, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { openableReleaseLink, PRIMARY_TEXT } from "@/components/layout/ReleaseNotes";
-import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { CodeBlock } from "@/components/ui/code-block";
 import { cn } from "@/lib/utils";
 
 function textOf(children: ReactNode): string {
@@ -17,25 +16,15 @@ function textOf(children: ReactNode): string {
     .join("");
 }
 
-function CodeBlock({ children }: Readonly<{ children: ReactNode }>) {
-  const { t } = useTranslation(["common"]);
-  const { copied, copy } = useCopyStatus();
-  const label = copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy);
+function ReleaseCodeBlock({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="group relative mb-2">
-      <pre data-select-all-scope className="overflow-x-auto rounded-lg border bg-muted/50 p-3 pr-10 text-xs leading-relaxed [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
-        {children}
-      </pre>
-      <button
-        type="button"
-        onClick={() => void copy(textOf(children).replace(/\n$/, ""))}
-        aria-label={label}
-        title={label}
-        className="absolute right-1.5 top-1.5 rounded-md border bg-popover p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-      >
-        {copied ? <Check aria-hidden="true" className={cn("size-3.5", PRIMARY_TEXT)} /> : <Copy aria-hidden="true" className="size-3.5" />}
-      </button>
-    </div>
+    <CodeBlock
+      code={textOf(children).replace(/\n$/, "")}
+      className="mb-2"
+      preClassName="rounded-lg bg-muted/50 font-sans text-xs [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0"
+    >
+      {children}
+    </CodeBlock>
   );
 }
 
@@ -85,7 +74,7 @@ function releaseNoteComponents(onOpenLink: (url: string) => void): Components {
         {children}
       </code>
     ),
-    pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+    pre: ({ children }) => <ReleaseCodeBlock>{children}</ReleaseCodeBlock>,
     blockquote: ({ children }) => (
       <blockquote className="mb-2 rounded-r-md border-l-2 border-primary/40 bg-muted/40 px-3 py-1.5 text-muted-foreground [&>p]:mb-0">
         {children}

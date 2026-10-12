@@ -1,8 +1,8 @@
 {
-  "title": "Soubor nastavení",
+  "title": "Nastavení aplikace",
   "description": "Uložte nastavení do souboru JSON, nebo načtěte soubor, který s vámi někdo sdílel. Klíče API, účty, integrace a agenti se do něj nikdy nezahrnují.",
-  "export": "Exportovat nastavení",
-  "import": "Importovat nastavení",
+  "export": "Exportovat",
+  "import": "Importovat",
   "view": {
     "label": "Zobrazit JSON nastavení",
     "summary": "Náhled souboru, který uloží export (jen pro čtení).",
@@ -14,7 +14,7 @@
     "filterName": "Nastavení Oleafly"
   },
   "toast": {
-    "exported": "Nastavení bylo uloženo do souboru {{name}}.",
+    "exported": "Soubor {{name}} byl exportován na disk",
     "exportFailed": "Soubor nastavení se nepodařilo uložit.",
     "readFailed": "Tento soubor se nepodařilo otevřít.",
     "imported": "Nastavení bylo importováno.",
@@ -32,10 +32,8 @@
     "title": "Soubor {{name}} nebyl importován",
     "notJson": "Soubor není platný JSON.",
     "notSettings": "Toto není soubor nastavení Oleafly.",
-    "newerVersion": "Tento soubor vytvořila novější verze Oleafly. Aktualizujte Oleafly a pak soubor importujte znovu.",
-    "invalid": "Některé hodnoty nejsou povolené, proto se nic nezměnilo:",
-    "more": "a další ({{count}})",
-    "dismiss": "Zavřít"
+    "invalid": "Konfigurace nastavení, kterou jste se pokusili importovat, je neplatná. Opravte prosím tyto chyby a zkuste import znovu:",
+    "more": "a další ({{count}})"
   },
   "valueErrors": {
     "boolean": "musí být true nebo false",

@@ -1,8 +1,8 @@
 {
-  "title": "Innstillingsfil",
+  "title": "Programinnstillinger",
   "description": "Lagre innstillingene dine i en JSON-fil, eller last inn en fil som noen har delt med deg. API-nøkler, kontoer, integrasjoner og agenter blir aldri tatt med.",
-  "export": "Eksporter innstillinger",
-  "import": "Importer innstillinger",
+  "export": "Eksporter",
+  "import": "Importer",
   "view": {
     "label": "Vis JSON for innstillingene",
     "summary": "Skrivebeskyttet forhåndsvisning av filen som eksporten lagrer.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly-innstillinger"
   },
   "toast": {
-    "exported": "Innstillingene er lagret i {{name}}.",
+    "exported": "{{name}} er eksportert til disken",
     "exportFailed": "Kunne ikke lagre innstillingsfilen.",
     "readFailed": "Kunne ikke åpne filen.",
     "imported": "Innstillingene er importert.",
@@ -32,10 +32,8 @@
     "title": "{{name}} ble ikke importert",
     "notJson": "Filen er ikke gyldig JSON.",
     "notSettings": "Dette er ikke en innstillingsfil fra Oleafly.",
-    "newerVersion": "Filen ble laget av en nyere versjon av Oleafly. Oppdater Oleafly, og importer deretter filen på nytt.",
-    "invalid": "Noen verdier er ikke tillatt, så ingenting ble endret:",
-    "more": "+{{count}} til",
-    "dismiss": "Lukk"
+    "invalid": "Innstillingskonfigurasjonen du prøvde å importere, er ugyldig. Rett disse feilene, og prøv å importere på nytt:",
+    "more": "+{{count}} til"
   },
   "valueErrors": {
     "boolean": "må være true eller false",

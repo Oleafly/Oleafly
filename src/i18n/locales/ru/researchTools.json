@@ -1381,7 +1381,6 @@
     "captionAria": "Подпись таблицы",
     "preview": "Просмотр",
     "output": "Результат LaTeX",
-    "copiedSource": "Исходник LaTeX скопирован",
     "booktabsHint": "Требуется <code>\\usepackage{booktabs}</code> в преамбуле."
   },
   "review": {

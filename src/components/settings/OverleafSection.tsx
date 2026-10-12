@@ -74,9 +74,7 @@ export function OverleafSection() {
             ? t(($) => $.settings.integrations.overleaf.signedInAs, { email: status.email, server: host })
             : t(($) => $.settings.integrations.overleaf.signedIn, { server: host })}
         </IntegrationConnected>
-      ) : (
-        <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.signedOut)}</p>
-      )}
+      ) : null}
       {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError> : null}
       <GitTokenField server={status?.server ?? server} />
     </IntegrationCard>

@@ -1,8 +1,8 @@
 {
-  "title": "Asetustiedosto",
+  "title": "Sovelluksen asetukset",
   "description": "Tallenna asetuksesi JSON-tiedostoon tai lataa tiedosto, jonka joku on jakanut kanssasi. API-avaimet, tilit, integraatiot ja agentit eivät koskaan tule mukaan.",
-  "export": "Vie asetukset",
-  "import": "Tuo asetukset",
+  "export": "Vie",
+  "import": "Tuo",
   "view": {
     "label": "Näytä asetusten JSON",
     "summary": "Vain luku -esikatselu tiedostosta, jonka vienti tallentaa.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly-asetukset"
   },
   "toast": {
-    "exported": "Asetukset tallennettiin tiedostoon {{name}}.",
+    "exported": "{{name}} vietiin levylle",
     "exportFailed": "Asetustiedostoa ei voitu tallentaa.",
     "readFailed": "Tiedostoa ei voitu avata.",
     "imported": "Asetukset tuotiin.",
@@ -32,10 +32,8 @@
     "title": "Tiedostoa {{name}} ei tuotu",
     "notJson": "Tiedosto ei ole kelvollista JSONia.",
     "notSettings": "Tämä ei ole Oleafly-asetustiedosto.",
-    "newerVersion": "Tiedosto on tehty Oleaflyn uudemmalla versiolla. Päivitä Oleafly ja tuo tiedosto sitten uudelleen.",
-    "invalid": "Joitakin arvoja ei sallita, joten mitään ei muutettu:",
-    "more": "+{{count}} lisää",
-    "dismiss": "Sulje"
+    "invalid": "Asetusmääritys, jota yritit tuoda, on virheellinen. Korjaa nämä virheet ja yritä tuontia uudelleen:",
+    "more": "+{{count}} lisää"
   },
   "valueErrors": {
     "boolean": "saa olla vain true tai false",

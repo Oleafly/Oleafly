@@ -1,8 +1,8 @@
 {
-  "title": "Arquivo de configurações",
+  "title": "Configurações do aplicativo",
   "description": "Salve suas configurações em um arquivo JSON ou carregue um que alguém compartilhou com você. Chaves de API, contas, integrações e agentes nunca são incluídos.",
-  "export": "Exportar configurações",
-  "import": "Importar configurações",
+  "export": "Exportar",
+  "import": "Importar",
   "view": {
     "label": "Ver o JSON das configurações",
     "summary": "Prévia somente leitura do arquivo que a exportação salva.",
@@ -14,7 +14,7 @@
     "filterName": "Configurações do Oleafly"
   },
   "toast": {
-    "exported": "Configurações salvas em {{name}}.",
+    "exported": "{{name}} exportado para o disco",
     "exportFailed": "Não foi possível salvar o arquivo de configurações.",
     "readFailed": "Não foi possível abrir esse arquivo.",
     "imported": "Configurações importadas.",
@@ -32,10 +32,8 @@
     "title": "{{name}} não foi importado",
     "notJson": "O arquivo não é um JSON válido.",
     "notSettings": "Este não é um arquivo de configurações do Oleafly.",
-    "newerVersion": "Este arquivo foi criado por uma versão mais recente do Oleafly. Atualize o Oleafly e importe o arquivo de novo.",
-    "invalid": "Alguns valores não são permitidos, então nada foi alterado:",
-    "more": "e mais {{count}}",
-    "dismiss": "Fechar"
+    "invalid": "As configurações que você tentou importar são inválidas. Corrija estes erros e tente importar de novo:",
+    "more": "e mais {{count}}"
   },
   "valueErrors": {
     "boolean": "precisa ser true ou false",

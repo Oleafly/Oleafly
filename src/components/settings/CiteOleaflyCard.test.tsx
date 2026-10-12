@@ -22,7 +22,7 @@ describe("CiteOleaflyCard", () => {
       enSettings.cite.description.replace(/<\/?citeKey>/g, ""),
     );
     expect(screen.getByTestId("cite-oleafly-bibtex").textContent).toBe(oleaflyBibtex("0.4.0"));
-    fireEvent.click(screen.getByRole("button", { name: enSettings.cite.copyBibtex }));
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.copy }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(oleaflyBibtex("0.4.0")));
     expect(
       await screen.findByRole("button", { name: enCommon.actions.copied }),

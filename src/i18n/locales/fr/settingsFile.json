@@ -1,8 +1,8 @@
 {
-  "title": "Fichier de paramètres",
+  "title": "Paramètres de l'application",
   "description": "Enregistrez vos paramètres dans un fichier JSON, ou chargez un fichier que quelqu'un vous a transmis. Les clés API, les comptes, les intégrations et les agents ne sont jamais inclus.",
-  "export": "Exporter les paramètres",
-  "import": "Importer des paramètres",
+  "export": "Exporter",
+  "import": "Importer",
   "view": {
     "label": "Voir le JSON des paramètres",
     "summary": "Aperçu en lecture seule du fichier enregistré par l'export.",
@@ -14,7 +14,7 @@
     "filterName": "Paramètres Oleafly"
   },
   "toast": {
-    "exported": "Paramètres enregistrés dans {{name}}.",
+    "exported": "{{name}} exporté sur le disque",
     "exportFailed": "Impossible d'enregistrer le fichier de paramètres.",
     "readFailed": "Impossible d'ouvrir ce fichier.",
     "imported": "Paramètres importés.",
@@ -32,10 +32,8 @@
     "title": "{{name}} n'a pas été importé",
     "notJson": "Le fichier n'est pas du JSON valide.",
     "notSettings": "Ce n'est pas un fichier de paramètres Oleafly.",
-    "newerVersion": "Ce fichier vient d'une version plus récente d'Oleafly. Mettez Oleafly à jour, puis importez-le à nouveau.",
-    "invalid": "Certaines valeurs ne sont pas autorisées, rien n'a donc été modifié :",
-    "more": "+{{count}} de plus",
-    "dismiss": "Fermer"
+    "invalid": "La configuration des paramètres que vous avez essayé d'importer n'est pas valide. Corrigez ces erreurs, puis réessayez l'importation :",
+    "more": "+{{count}} de plus"
   },
   "valueErrors": {
     "boolean": "doit être true ou false",

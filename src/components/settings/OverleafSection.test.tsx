@@ -44,9 +44,8 @@ describe("OverleafSection", () => {
       "Signed in as ada@uni.edu on www.overleaf.com",
     );
     fireEvent.click(screen.getByTestId("overleaf-settings-sign-out"));
-    expect(
-      await screen.findByText("Not signed in. Oleafly asks you to sign in when you import projects."),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId("overleaf-connected")).not.toBeInTheDocument());
+    expect(screen.queryByText(/Not signed in/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

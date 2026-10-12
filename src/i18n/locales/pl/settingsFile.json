@@ -1,8 +1,8 @@
 {
-  "title": "Plik ustawień",
+  "title": "Ustawienia aplikacji",
   "description": "Zapisz ustawienia w pliku JSON albo wczytaj plik, który ktoś ci udostępnił. Klucze API, konta, integracje i agenci nigdy nie są w nim zapisywani.",
-  "export": "Eksportuj ustawienia",
-  "import": "Importuj ustawienia",
+  "export": "Eksportuj",
+  "import": "Importuj",
   "view": {
     "label": "Pokaż JSON ustawień",
     "summary": "Podgląd tylko do odczytu pliku, który zapisuje eksport.",
@@ -14,7 +14,7 @@
     "filterName": "Ustawienia Oleafly"
   },
   "toast": {
-    "exported": "Zapisano ustawienia w pliku {{name}}.",
+    "exported": "Wyeksportowano {{name}} na dysk",
     "exportFailed": "Nie udało się zapisać pliku ustawień.",
     "readFailed": "Nie udało się otworzyć tego pliku.",
     "imported": "Zaimportowano ustawienia.",
@@ -32,10 +32,8 @@
     "title": "Nie zaimportowano pliku {{name}}",
     "notJson": "Plik nie jest prawidłowym plikiem JSON.",
     "notSettings": "To nie jest plik ustawień Oleafly.",
-    "newerVersion": "Ten plik utworzyła nowsza wersja Oleafly. Zaktualizuj Oleafly, a potem zaimportuj plik ponownie.",
-    "invalid": "Niektóre wartości są niedozwolone, więc nic nie zostało zmienione:",
-    "more": "+{{count}} więcej",
-    "dismiss": "Zamknij"
+    "invalid": "Konfiguracja ustawień, którą próbujesz zaimportować, jest nieprawidłowa. Popraw te błędy i spróbuj zaimportować ją ponownie:",
+    "more": "+{{count}} więcej"
   },
   "valueErrors": {
     "boolean": "musi mieć wartość true lub false",

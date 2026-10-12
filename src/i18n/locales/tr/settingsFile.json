@@ -1,8 +1,8 @@
 {
-  "title": "Ayar dosyası",
+  "title": "Uygulama ayarları",
   "description": "Ayarlarınızı bir JSON dosyasına kaydedin veya birinin sizinle paylaştığı bir dosyayı yükleyin. API anahtarları, hesaplar, tümleştirmeler ve ajanlar hiçbir zaman dahil edilmez.",
-  "export": "Ayarları dışa aktar",
-  "import": "Ayarları içe aktar",
+  "export": "Dışa aktar",
+  "import": "İçe aktar",
   "view": {
     "label": "Ayarların JSON'unu görüntüle",
     "summary": "Dışa aktarmanın kaydettiği dosyanın salt okunur önizlemesi.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly ayarları"
   },
   "toast": {
-    "exported": "Ayarlar {{name}} dosyasına kaydedildi.",
+    "exported": "{{name}} diske aktarıldı",
     "exportFailed": "Ayar dosyası kaydedilemedi.",
     "readFailed": "Bu dosya açılamadı.",
     "imported": "Ayarlar içe aktarıldı.",
@@ -32,10 +32,8 @@
     "title": "{{name}} içe aktarılmadı",
     "notJson": "Dosya geçerli JSON değil.",
     "notSettings": "Bu bir Oleafly ayar dosyası değil.",
-    "newerVersion": "Bu dosya Oleafly'nin daha yeni bir sürümüyle oluşturulmuş. Oleafly'yi güncelleyin, ardından dosyayı yeniden içe aktarın.",
-    "invalid": "Bazı değerlere izin verilmiyor, bu yüzden hiçbir şey değiştirilmedi:",
-    "more": "+{{count}} tane daha",
-    "dismiss": "Kapat"
+    "invalid": "İçe aktarmaya çalıştığınız ayar yapılandırması geçersiz. Lütfen bu hataları düzeltip yeniden içe aktarmayı deneyin:",
+    "more": "+{{count}} tane daha"
   },
   "valueErrors": {
     "boolean": "true veya false olmalıdır",

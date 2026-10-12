@@ -63,7 +63,7 @@ describe("settings search index", () => {
   it("finds the settings file card in General by its words, not its error messages", () => {
     expect(matchSettingsSections(index, SECTIONS, "export settings")).toEqual(["general"]);
     expect(matchSettingsSections(index, SECTIONS, "settings json")).toContain("general");
-    expect(rowLabels(index, "general")).toContain("Settings file");
+    expect(rowLabels(index, "general")).toContain("Application Settings");
     expect(matchSettingsSections(index, SECTIONS, "whole number steps")).toEqual([]);
   });
 

@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "La misma referencia en APA está detrás de Cite this repository en GitHub",
-    "copyBibtex": "Copiar el BibTeX",
     "description": "Oleafly es gratuito y de código abierto, y sigue así mientras la gente sepa que existe. Si te ayudó con un artículo, una entrada en tu bibliografía le dice a quien venga después de dónde salió la herramienta. Cópiala, pégala en tu archivo .bib y cita la clave <citeKey>oleafly</citeKey>.",
     "title": "Cita Oleafly en tu artículo"
   },
@@ -1444,7 +1443,6 @@
       "description": "Trae proyectos de tu cuenta de Overleaf o del servidor Overleaf de tu universidad y mantenlos sincronizados. Oleafly guarda la sesión y el token de Git cifrados en este equipo.",
       "signedInAs": "Sesión iniciada como {{email}} en {{server}}",
       "signedIn": "Sesión iniciada en {{server}}",
-      "signedOut": "No has iniciado sesión. Oleafly te pedirá que inicies sesión cuando importes proyectos.",
       "signOut": "Cerrar sesión",
       "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf.",
       "gitTitle": "Token de Git para sincronizar",

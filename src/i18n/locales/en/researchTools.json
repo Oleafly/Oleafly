@@ -1359,7 +1359,6 @@
     "captionAria": "Table caption",
     "preview": "Preview",
     "output": "LaTeX output",
-    "copiedSource": "Copied LaTeX source",
     "booktabsHint": "Requires <code>\\usepackage{booktabs}</code> in your preamble."
   },
   "review": {

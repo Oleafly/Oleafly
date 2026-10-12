@@ -1,8 +1,8 @@
 {
-  "title": "设置文件",
+  "title": "应用程序设置",
   "description": "将设置保存为 JSON 文件，或载入别人分享给你的文件。API 密钥、账户、集成和代理永远不会包含在内。",
-  "export": "导出设置",
-  "import": "导入设置",
+  "export": "导出",
+  "import": "导入",
   "view": {
     "label": "查看设置 JSON",
     "summary": "导出时所保存文件的只读预览。",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly 设置"
   },
   "toast": {
-    "exported": "设置已保存到 {{name}}。",
+    "exported": "已将 {{name}} 导出到磁盘",
     "exportFailed": "无法保存设置文件。",
     "readFailed": "无法打开该文件。",
     "imported": "设置已导入。",
@@ -32,10 +32,8 @@
     "title": "未导入 {{name}}",
     "notJson": "该文件不是有效的 JSON。",
     "notSettings": "这不是 Oleafly 设置文件。",
-    "newerVersion": "此文件由更新版本的 Oleafly 创建。请更新 Oleafly 后重新导入。",
-    "invalid": "部分值不被允许，因此未做任何更改：",
-    "more": "另有 {{count}} 项",
-    "dismiss": "关闭"
+    "invalid": "你尝试导入的设置配置无效。请修复以下错误，然后重新导入：",
+    "more": "另有 {{count}} 项"
   },
   "valueErrors": {
     "boolean": "必须为 true 或 false",

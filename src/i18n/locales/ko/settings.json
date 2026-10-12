@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "같은 참고문헌의 APA 형식은 GitHub의 Cite this repository에 있습니다",
-    "copyBibtex": "BibTeX 복사",
     "description": "Oleafly는 무료 오픈소스이고, 사람들이 존재를 알아야 그 상태를 이어 갈 수 있습니다. 논문에 도움이 되었다면 참고문헌 한 줄이 다음 연구자에게 이 도구의 출처를 알려 줍니다. 항목을 복사해 .bib 파일에 붙여 넣고 <citeKey>oleafly</citeKey> 키로 인용하세요.",
     "title": "논문에서 Oleafly 인용하기"
   },
@@ -1412,7 +1411,6 @@
       "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져오고 계속 동기화합니다. Oleafly는 로그인 정보와 Git 토큰을 이 컴퓨터에 암호화해 보관합니다.",
       "signedInAs": "{{server}}에 {{email}}(으)로 로그인됨",
       "signedIn": "{{server}}에 로그인됨",
-      "signedOut": "로그인되어 있지 않습니다. 프로젝트를 가져올 때 Oleafly가 로그인을 요청합니다.",
       "signOut": "로그아웃",
       "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
       "gitTitle": "동기화용 Git 토큰",

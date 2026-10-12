@@ -52,6 +52,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
+import { CodeBlock } from "@/components/ui/code-block";
 
 const example = JSON.stringify(
   {
@@ -163,9 +164,10 @@ function RegistryResult({
         )}
       </div>
       {shown && entry.definition && (
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[0.6875rem]">
-          {JSON.stringify(entry.definition.distribution, null, 2)}
-        </pre>
+        <CodeBlock
+          code={JSON.stringify(entry.definition.distribution, null, 2)}
+          preClassName="max-h-40 whitespace-pre-wrap break-all border-0 bg-muted/50 p-2 pr-10"
+        />
       )}
     </article>
   );

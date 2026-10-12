@@ -1,8 +1,8 @@
 {
-  "title": "설정 파일",
+  "title": "애플리케이션 설정",
   "description": "설정을 JSON 파일로 저장하거나 다른 사람이 공유한 파일을 불러올 수 있습니다. API 키, 계정, 연동, 에이전트는 포함되지 않습니다.",
-  "export": "설정 내보내기",
-  "import": "설정 가져오기",
+  "export": "내보내기",
+  "import": "가져오기",
   "view": {
     "label": "설정 JSON 보기",
     "summary": "내보내기로 저장되는 파일의 읽기 전용 미리 보기입니다.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly 설정"
   },
   "toast": {
-    "exported": "설정을 {{name}}에 저장했습니다.",
+    "exported": "{{name}} 파일을 디스크로 내보냈습니다",
     "exportFailed": "설정 파일을 저장하지 못했습니다.",
     "readFailed": "해당 파일을 열지 못했습니다.",
     "imported": "설정을 가져왔습니다.",
@@ -32,10 +32,8 @@
     "title": "{{name}} 파일을 가져오지 못했습니다",
     "notJson": "파일이 올바른 JSON이 아닙니다.",
     "notSettings": "Oleafly 설정 파일이 아닙니다.",
-    "newerVersion": "더 새로운 버전의 Oleafly에서 만든 파일입니다. Oleafly를 업데이트한 다음 다시 가져오세요.",
-    "invalid": "허용되지 않는 값이 있어 아무것도 변경하지 않았습니다:",
-    "more": "외 {{count}}개",
-    "dismiss": "닫기"
+    "invalid": "가져오려는 설정 구성이 올바르지 않습니다. 다음 오류를 수정한 후 다시 가져오세요:",
+    "more": "외 {{count}}개"
   },
   "valueErrors": {
     "boolean": "값은 true 또는 false여야 합니다",

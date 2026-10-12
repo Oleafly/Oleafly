@@ -1,8 +1,8 @@
 {
-  "title": "Archivo de ajustes",
+  "title": "Ajustes de la aplicación",
   "description": "Guarda tus ajustes en un archivo JSON o carga uno que alguien haya compartido contigo. Las claves de API, las cuentas, las integraciones y los agentes nunca se incluyen.",
-  "export": "Exportar ajustes",
-  "import": "Importar ajustes",
+  "export": "Exportar",
+  "import": "Importar",
   "view": {
     "label": "Ver el JSON de los ajustes",
     "summary": "Vista previa de solo lectura del archivo que se guarda al exportar.",
@@ -14,7 +14,7 @@
     "filterName": "Ajustes de Oleafly"
   },
   "toast": {
-    "exported": "Ajustes guardados en {{name}}.",
+    "exported": "{{name}} exportado al disco",
     "exportFailed": "No se pudo guardar el archivo de ajustes.",
     "readFailed": "No se pudo abrir ese archivo.",
     "imported": "Ajustes importados.",
@@ -32,10 +32,8 @@
     "title": "No se importó {{name}}",
     "notJson": "El archivo no es JSON válido.",
     "notSettings": "Este no es un archivo de ajustes de Oleafly.",
-    "newerVersion": "Este archivo lo creó una versión más reciente de Oleafly. Actualiza Oleafly y vuelve a importarlo.",
-    "invalid": "Algunos valores no están permitidos, así que no se cambió nada:",
-    "more": "+{{count}} más",
-    "dismiss": "Cerrar"
+    "invalid": "La configuración de ajustes que intentaste importar no es válida. Corrige estos errores y vuelve a importarla:",
+    "more": "+{{count}} más"
   },
   "valueErrors": {
     "boolean": "debe ser true o false",

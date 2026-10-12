@@ -45,7 +45,6 @@ const initial = {
   compile: useCompileStore.getState(),
 };
 
-const HEADER = { app: "0.4.6", exportedAt: "2026-10-12T17:00:00.000Z" };
 const THEME = { preference: "system" as const, setPreference: vi.fn() };
 
 function baseConfig(overrides: Partial<AppConfig> = {}): AppConfig {
@@ -86,7 +85,7 @@ function configPreferences(config: AppConfig): ConfigPreferences {
 }
 
 function fileWith(body: Record<string, unknown>): string {
-  return JSON.stringify({ oleafly: { file: "settings", version: 1 }, ...body });
+  return JSON.stringify(body);
 }
 
 function snapshot() {
@@ -124,9 +123,8 @@ describe("toggle values", () => {
 
 describe("settings document", () => {
   it("nests every setting under its settings section and never carries secrets", () => {
-    const document = buildSettingsDocument(snapshot(), HEADER);
+    const document = buildSettingsDocument(snapshot());
     expect(Object.keys(document)).toEqual([
-      "oleafly",
       "general",
       "appearance",
       "dictionary",
@@ -149,7 +147,7 @@ describe("settings document", () => {
   });
 
   it("writes a file that imports back with nothing to change", () => {
-    const text = serializeSettingsDocument(buildSettingsDocument(snapshot(), HEADER));
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
     const read = readSettingsFile(text, snapshot());
     expect(read).toMatchObject({ ok: true, changed: [], ignored: [] });
   });
@@ -159,7 +157,7 @@ describe("settings document", () => {
     useSettingsStore.getState().setHarperEnabledRules(["SpellCheck", "LongSentences"]);
     useShortcutStore.getState().setBinding("commandPalette", { key: " ", mod: true, shift: true });
     useEditorKeymapStore.getState().setKey("titleCase", "Mod-Alt-t");
-    const text = serializeSettingsDocument(buildSettingsDocument(snapshot(), HEADER));
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
     expect(JSON.parse(text)).toMatchObject({
       appearance: { editor: { fontSize: 13.5 } },
       dictionary: { enabledGrammarRules: ["LongSentences", "SpellCheck"] },
@@ -189,7 +187,7 @@ describe("settings document", () => {
   });
 
   it("covers every field in the export", () => {
-    const text = serializeSettingsDocument(buildSettingsDocument(snapshot(), HEADER));
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
     const read = readSettingsFile(text, snapshot());
     if (!read.ok) throw new Error(read.reason);
     const exported = new Set<string>();
@@ -205,7 +203,7 @@ describe("settings document", () => {
   });
 
   it("leaves AI and checkpoint settings out when the config can't be read", () => {
-    const document = buildSettingsDocument(readLocalSnapshot(null, "system"), HEADER);
+    const document = buildSettingsDocument(readLocalSnapshot(null, "system"));
     expect(document.ai).toBeUndefined();
     expect(document.data).toBeUndefined();
   });
@@ -224,18 +222,12 @@ describe("reading a settings file", () => {
     expect(readSettingsFile("{", snapshot())).toEqual({ ok: false, reason: "notJson" });
     expect(readSettingsFile("[]", snapshot())).toEqual({ ok: false, reason: "notSettings" });
     expect(readSettingsFile("{}", snapshot())).toEqual({ ok: false, reason: "notSettings" });
-    expect(readSettingsFile('{"oleafly":{"file":"theme","version":1}}', snapshot())).toEqual({
+    expect(readSettingsFile('"general"', snapshot())).toEqual({ ok: false, reason: "notSettings" });
+    expect(readSettingsFile('{"name":"thesis","version":2}', snapshot())).toEqual({
       ok: false,
       reason: "notSettings",
     });
-    expect(readSettingsFile('{"oleafly":{"file":"settings","version":"1"}}', snapshot())).toEqual({
-      ok: false,
-      reason: "notSettings",
-    });
-    expect(readSettingsFile('{"oleafly":{"file":"settings","version":2}}', snapshot())).toEqual({
-      ok: false,
-      reason: "newerVersion",
-    });
+    expect(readSettingsFile('{"general":{}}', snapshot())).toMatchObject({ ok: true, changed: [] });
   });
 
   it("lists every value outside its schema and applies nothing", () => {

@@ -11,6 +11,26 @@ const CLASS_STRING = /"[^"\n]*"|`[^`]*`/g;
 const SPINNER_HOME = "src/components/ui/spinner.tsx";
 const SETTINGS_ROW_HOME = "src/components/settings/SettingsRow.tsx";
 const KIT_DIR = "src/components/ui/";
+const CODE_BLOCK_HOME = "src/components/ui/code-block.tsx";
+const COPYABLE_BLOCK_HOME = "src/components/ui/copyable-block.tsx";
+const CODE_BLOCK_IMPORT = /from "(?:@\/components\/ui|\.)\/(?:code|copyable)-block"/;
+const PLAIN_TEXT_BLOCKS: Record<string, string> = {
+  "src/components/ErrorBoundary.tsx": "a crash report's stack trace",
+  "src/components/research/LinkedFoldersSection.tsx": "a linked file's text preview",
+  "src/components/research/TaskOutputsSection.tsx": "a task output's text preview",
+  "src/components/research/tasks/TaskDetailDialog.tsx": "a task's log output",
+  "src/components/research/workspace/ResearchRootsPanel.tsx": "a research file's text preview",
+  "src/components/ui/mermaid-diagram.tsx": "the failed diagram's source, already inside the chat's CopyableBlock",
+  "src/components/settings/TexPackagesSection.tsx": "a package search error message",
+  "src/components/settings/ai/AgentProgramField.tsx": "a program check's diagnostic output",
+  "src/components/layout/UpdateDialog.tsx": "an update error message",
+  "src/components/typst-upgrade/TypstUpgradeDialog.tsx": "a failed build's log",
+  "src/components/ai/ToolConfirm.tsx": "a command or file waiting for approval inside the approval card",
+  "src/components/ai/activity/ResearchToolCard.tsx": "a tool result preview",
+  "src/components/editor/compile-log-details.tsx": "compile log output",
+  "src/components/editor/LogPane.tsx": "compile log output",
+  "src/components/preflight/ReaderViewDialog.tsx": "a reader view of the document's text",
+};
 const PILL_ALLOWLIST: Record<string, string> = {
   "src/components/ai/chat-parts.tsx":
     "the plan approval pill uses the violet plan tone the rest of the chat uses for plan mode",
@@ -111,6 +131,26 @@ describe("design system guards", () => {
     expect(isSettingsRowCluster('"p-3 bg-card border rounded-lg justify-between items-center flex gap-2"')).toBe(true);
     expect(isSettingsRowCluster('"rounded-lg border bg-card p-3"')).toBe(false);
     expect(isSettingsRowCluster('"flex items-center justify-between rounded-lg border bg-background p-3"')).toBe(false);
+  });
+
+  it("shows code only through CodeBlock, which brings the hover copy button", () => {
+    const offenders = files
+      .filter((path) => path !== CODE_BLOCK_HOME && path !== COPYABLE_BLOCK_HOME && !Object.hasOwn(PLAIN_TEXT_BLOCKS, path))
+      .flatMap((path) => {
+        const text = read(path);
+        if (CODE_BLOCK_IMPORT.test(text)) return [];
+        return [...text.matchAll(/<pre\b/g)].map((match) => `${path}:${lineOf(text, match.index)}`);
+      });
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps the plain text block allowlist current", () => {
+    const stale = Object.keys(PLAIN_TEXT_BLOCKS).filter(
+      (path) => !files.includes(path) || !/<pre\b/.test(read(path)),
+    );
+    expect(stale).toEqual([]);
+    expect(files).toContain(CODE_BLOCK_HOME);
+    expect(files).toContain(COPYABLE_BLOCK_HOME);
   });
 
   it("builds settings rows only through SettingsRow", () => {

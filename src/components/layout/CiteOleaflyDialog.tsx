@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +12,10 @@ import {
 import { appVersion } from "@/lib/tauri";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useSettingsStore } from "@/store/settings";
+
+const CiteOleaflyCard = lazy(() =>
+  import("@/components/settings/CiteOleaflyCard").then((module) => ({ default: module.CiteOleaflyCard })),
+);
 
 export function CiteOleaflyDialog() {
   const { t } = useTranslation(["common", "shell"]);
@@ -31,7 +34,9 @@ export function CiteOleaflyDialog() {
           <DialogTitle>{t(($) => $.shell.citeOleafly.title)}</DialogTitle>
           <DialogDescription>{t(($) => $.shell.citeOleafly.description)}</DialogDescription>
         </DialogHeader>
-        <CiteOleaflyCard version={version} />
+        <Suspense fallback={null}>
+          <CiteOleaflyCard version={version} />
+        </Suspense>
         <DialogFooter>
           <Button
             type="button"

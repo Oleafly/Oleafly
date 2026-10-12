@@ -1,8 +1,8 @@
 {
-  "title": "Instellingenbestand",
+  "title": "Applicatie-instellingen",
   "description": "Sla je instellingen op in een JSON-bestand, of laad een bestand dat iemand met je heeft gedeeld. API-sleutels, accounts, integraties en agents worden nooit meegenomen.",
-  "export": "Instellingen exporteren",
-  "import": "Instellingen importeren",
+  "export": "Exporteren",
+  "import": "Importeren",
   "view": {
     "label": "Instellingen-JSON bekijken",
     "summary": "Voorbeeld (alleen-lezen) van het bestand dat bij exporteren wordt opgeslagen.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly-instellingen"
   },
   "toast": {
-    "exported": "Instellingen opgeslagen in {{name}}.",
+    "exported": "{{name}} geëxporteerd naar schijf",
     "exportFailed": "Kon het instellingenbestand niet opslaan.",
     "readFailed": "Kon dat bestand niet openen.",
     "imported": "Instellingen geïmporteerd.",
@@ -32,10 +32,8 @@
     "title": "{{name}} is niet geïmporteerd",
     "notJson": "Het bestand is geen geldige JSON.",
     "notSettings": "Dit is geen instellingenbestand van Oleafly.",
-    "newerVersion": "Dit bestand is gemaakt met een nieuwere versie van Oleafly. Werk Oleafly bij en importeer het bestand daarna opnieuw.",
-    "invalid": "Sommige waarden zijn niet toegestaan, dus er is niets gewijzigd:",
-    "more": "+{{count}} meer",
-    "dismiss": "Sluiten"
+    "invalid": "De instellingenconfiguratie die je probeerde te importeren is ongeldig. Los deze fouten op en probeer het opnieuw:",
+    "more": "+{{count}} meer"
   },
   "valueErrors": {
     "boolean": "moet true of false zijn",

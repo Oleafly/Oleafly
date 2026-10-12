@@ -1,8 +1,8 @@
 {
-  "title": "設定ファイル",
+  "title": "アプリケーション設定",
   "description": "設定を JSON ファイルに保存したり、共有された設定ファイルを読み込んだりできます。API キー、アカウント、連携、エージェントは含まれません。",
-  "export": "設定を書き出す",
-  "import": "設定を読み込む",
+  "export": "書き出す",
+  "import": "読み込む",
   "view": {
     "label": "設定の JSON を表示",
     "summary": "書き出しで保存されるファイルの読み取り専用プレビューです。",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly の設定"
   },
   "toast": {
-    "exported": "設定を {{name}} に保存しました。",
+    "exported": "{{name}} をディスクに書き出しました",
     "exportFailed": "設定ファイルを保存できませんでした。",
     "readFailed": "そのファイルを開けませんでした。",
     "imported": "設定を読み込みました。",
@@ -32,10 +32,8 @@
     "title": "{{name}} は読み込まれませんでした",
     "notJson": "ファイルが正しい JSON ではありません。",
     "notSettings": "これは Oleafly の設定ファイルではありません。",
-    "newerVersion": "このファイルは新しいバージョンの Oleafly で作成されています。Oleafly をアップデートしてから、もう一度読み込んでください。",
-    "invalid": "許可されていない値があるため、何も変更していません:",
-    "more": "ほか {{count}} 件",
-    "dismiss": "閉じる"
+    "invalid": "読み込もうとした設定の構成が正しくありません。次のエラーを修正してから、もう一度読み込んでください:",
+    "more": "ほか {{count}} 件"
   },
   "valueErrors": {
     "boolean": "は true または false である必要があります",

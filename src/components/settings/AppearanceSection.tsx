@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Plus, RotateCcw } from "lucide-react";
+import { Check, ChevronRight, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
@@ -1477,6 +1477,7 @@ function FileManagementTab() {
     (state) => state.removeHiddenFilePattern,
   );
   const [pattern, setPattern] = useState("");
+  const [hiddenFilesOpen, setHiddenFilesOpen] = useState(false);
 
   const submitPattern = (event: FormEvent) => {
     event.preventDefault();
@@ -1547,15 +1548,37 @@ function FileManagementTab() {
         onChange={setOpenInTree}
       />
 
-      <section className="rounded-lg border bg-card p-4" aria-labelledby="hidden-files-heading">
-        <h3 id="hidden-files-heading" className="text-sm font-medium">
-          {t(($) => $.settings.appearance.files.hidden.title)}
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.files.hidden.description)}
-        </p>
+      <ZenModeSettings />
 
-        <form onSubmit={submitPattern} className="mt-4 flex gap-2">
+      <section className="overflow-hidden rounded-lg border bg-card" aria-labelledby="hidden-files-heading">
+        <button
+          type="button"
+          aria-expanded={hiddenFilesOpen}
+          aria-controls={hiddenFilesOpen ? "hidden-files-panel" : undefined}
+          data-testid="hidden-files-toggle"
+          onClick={() => setHiddenFilesOpen((open) => !open)}
+          className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/40 focus-visible:bg-accent/60"
+        >
+          <span className="min-w-0 flex-1">
+            <span id="hidden-files-heading" className="block text-sm font-medium">
+              {t(($) => $.settings.appearance.files.hidden.title)}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {t(($) => $.settings.appearance.files.hidden.description)}
+            </span>
+          </span>
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+              hiddenFilesOpen && "rotate-90",
+            )}
+          />
+        </button>
+
+        {hiddenFilesOpen && (
+        <div id="hidden-files-panel" className="border-t p-4">
+        <form onSubmit={submitPattern} className="flex gap-2">
           <Input
             value={pattern}
             onChange={(event) => setPattern(event.target.value)}
@@ -1599,8 +1622,9 @@ function FileManagementTab() {
             </div>
           ))}
         </div>
+        </div>
+        )}
       </section>
-      <ZenModeSettings />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { CopyTextButton, highlightSnippet, type SnippetLang } from "@/components/settings/snippet";
+import { CodeBlock } from "@/components/ui/code-block";
 import {
   getConfig,
   mcpConnectionInfo,
@@ -87,13 +88,10 @@ function Snippet({
   const highlighted = useMemo(() => highlightSnippet(body, lang), [body, lang]);
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-foreground">{title}</p>
-        <CopyTextButton text={copyText} />
-      </div>
-      <pre data-select-all-scope className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-all">
+      <p className="text-xs font-medium text-foreground">{title}</p>
+      <CodeBlock code={copyText} preClassName="p-2.5 pr-10 whitespace-pre-wrap break-all">
         <code>{highlighted}</code>
-      </pre>
+      </CodeBlock>
     </div>
   );
 }

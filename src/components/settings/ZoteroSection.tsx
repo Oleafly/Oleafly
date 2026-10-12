@@ -266,7 +266,7 @@ function AccountPanel({ t }: Readonly<{ t: Translate }>) {
             aria-label={t(($) => $.settings.integrations.zotero.apiKeyLabel)}
             aria-invalid={showConnectError || undefined}
             aria-describedby={showConnectError ? errorId : undefined}
-            className="max-w-xs"
+            className="min-w-0 flex-1"
           />
           <Button type="submit" size="sm" disabled={loading || !apiKey.trim()}>
             {loading && <Spinner />}

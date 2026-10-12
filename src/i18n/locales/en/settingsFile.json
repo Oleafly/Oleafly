@@ -1,8 +1,8 @@
 {
-  "title": "Settings file",
+  "title": "Application Settings",
   "description": "Save your settings to a JSON file, or load one someone shared with you. API keys, accounts, integrations and agents are never included.",
-  "export": "Export settings",
-  "import": "Import settings",
+  "export": "Export",
+  "import": "Import",
   "view": {
     "label": "View settings JSON",
     "summary": "Read-only preview of the file that Export saves.",
@@ -14,7 +14,7 @@
     "filterName": "Oleafly settings"
   },
   "toast": {
-    "exported": "Settings saved to {{name}}.",
+    "exported": "Exported {{name}} to disk",
     "exportFailed": "Couldn't save the settings file.",
     "readFailed": "Couldn't open that file.",
     "imported": "Settings imported.",
@@ -32,10 +32,8 @@
     "title": "{{name}} wasn't imported",
     "notJson": "The file isn't valid JSON.",
     "notSettings": "This isn't an Oleafly settings file.",
-    "newerVersion": "A newer version of Oleafly made this file. Update Oleafly, then import it again.",
-    "invalid": "Some values aren't allowed, so nothing was changed:",
-    "more": "+{{count}} more",
-    "dismiss": "Dismiss"
+    "invalid": "The settings config you tried to import is invalid, please fix these errors and try importing again:",
+    "more": "+{{count}} more"
   },
   "valueErrors": {
     "boolean": "must be true or false",
