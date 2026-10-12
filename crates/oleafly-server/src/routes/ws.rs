@@ -225,6 +225,13 @@ struct Session<'a> {
     public_key: Vec<u8>,
 }
 
+fn subscribe_refusal(error: &ServerError) -> FrameErrorCode {
+    match error {
+        ServerError::NotFound | ServerError::Forbidden => FrameErrorCode::NotFound,
+        _ => FrameErrorCode::Internal,
+    }
+}
+
 fn frame_error(code: FrameErrorCode, message: &str) -> ServerFrame {
     ServerFrame::Error {
         code,
@@ -352,15 +359,17 @@ impl Session<'_> {
                 Ok((role, row.head_seq, oldest, snapshot))
             })
             .await;
-        let Ok((role, head, oldest, snapshot)) = checked else {
-            return send(
-                socket,
-                &frame_error(
-                    FrameErrorCode::NotFound,
-                    "You don't have access to this project.",
-                ),
-            )
-            .await;
+        let (role, head, oldest, snapshot) = match checked {
+            Ok(found) => found,
+            Err(error) => {
+                let code = subscribe_refusal(&error);
+                let message = if code == FrameErrorCode::NotFound {
+                    "You don't have access to this project."
+                } else {
+                    "The server could not open this project. Try again."
+                };
+                return send(socket, &frame_error(code, message)).await;
+            }
         };
         let missing_from_log = since < head && oldest.is_none_or(|oldest| oldest > since + 1);
         if missing_from_log && snapshot.is_some_and(|seq| seq > since) {
@@ -382,6 +391,22 @@ impl Session<'_> {
                 control: ticket.signal.clone(),
             },
         );
+        let still = self
+            .state
+            .db
+            .call(move |conn| projects::role_of(conn, project, account))
+            .await;
+        if !matches!(still, Ok(Some(_))) {
+            self.state.rooms.leave(project, ticket.id);
+            return send(
+                socket,
+                &frame_error(
+                    FrameErrorCode::NotFound,
+                    "You don't have access to this project.",
+                ),
+            )
+            .await;
+        }
         if !send(
             socket,
             &ServerFrame::Subscribed {
@@ -485,6 +510,8 @@ impl Session<'_> {
         };
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
+        let rooms = std::sync::Arc::clone(&self.state.rooms);
+        let connection = ticket.id;
         let appended = self
             .state
             .db
@@ -497,7 +524,20 @@ impl Session<'_> {
                 {
                     return Err(ServerError::Forbidden);
                 }
-                projects::append_update(conn, project, batch, device, account, &stored, now)
+                let appended =
+                    projects::append_update(conn, project, batch, device, account, &stored, now)?;
+                if !appended.duplicate {
+                    rooms.broadcast(
+                        project,
+                        Some(connection),
+                        &ServerFrame::Update {
+                            project_id: project,
+                            seq: appended.seq,
+                            envelope,
+                        },
+                    );
+                }
+                Ok(appended)
             })
             .await;
         match appended {
@@ -507,21 +547,7 @@ impl Session<'_> {
                     batch_id: batch,
                     seq: appended.seq,
                 };
-                if !send(socket, &ack).await {
-                    return false;
-                }
-                if !appended.duplicate {
-                    self.state.rooms.broadcast(
-                        project,
-                        Some(ticket.id),
-                        &ServerFrame::Update {
-                            project_id: project,
-                            seq: appended.seq,
-                            envelope,
-                        },
-                    );
-                }
-                true
+                send(socket, &ack).await
             }
             Err(ServerError::Forbidden | ServerError::NotFound) => {
                 send(
@@ -578,5 +604,22 @@ impl Session<'_> {
             },
         );
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_missing_project_or_grant_reads_as_not_found() {
+        assert_eq!(
+            subscribe_refusal(&ServerError::NotFound),
+            FrameErrorCode::NotFound
+        );
+        assert_eq!(
+            subscribe_refusal(&ServerError::Internal("disk".to_owned())),
+            FrameErrorCode::Internal
+        );
     }
 }

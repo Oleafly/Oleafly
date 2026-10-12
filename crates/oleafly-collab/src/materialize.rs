@@ -19,13 +19,26 @@ const WINDOWS_RESERVED: [&str; 22] = [
     "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
 ];
 
+pub fn short_alias(name: &str) -> bool {
+    let Some(at) = name.rfind('~') else {
+        return false;
+    };
+    let rest = &name[at + 1..];
+    let digits = rest.chars().take_while(char::is_ascii_digit).count();
+    digits > 0 && (rest.len() == digits || rest[digits..].starts_with('.'))
+}
+
 pub fn safe_name(name: &str, id: &str) -> String {
     let stem = name
         .split('.')
         .next()
         .unwrap_or_default()
         .to_ascii_lowercase();
+    let lowered = name.to_lowercase();
     let unsafe_name = name.is_empty()
+        || lowered == ".git"
+        || lowered == ".oleafly"
+        || short_alias(name)
         || name == "."
         || name == ".."
         || name.len() > 255
@@ -252,7 +265,18 @@ mod tests {
 
     #[test]
     fn unsafe_and_reserved_names_never_reach_the_disk() {
-        for bad in ["..", "a/b", "c:\\x", "", "CON.txt", "name."] {
+        for bad in [
+            "..",
+            "a/b",
+            "c:\\x",
+            "",
+            "CON.txt",
+            "name.",
+            ".GIT",
+            ".Oleafly",
+            "GIT~1",
+            "draft~2.tex",
+        ] {
             assert!(
                 safe_name(bad, "0123456789").starts_with("unnamed-"),
                 "{bad}"
@@ -268,7 +292,7 @@ mod tests {
             ),
         ];
         let placed = layout(&nodes);
-        assert_eq!(placed["x1"].path, ".oleafly (x1)");
+        assert_eq!(placed["x1"].path, "unnamed-x1");
         assert_eq!(placed["x2"].path, "orphan.tex");
     }
 

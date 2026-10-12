@@ -25,7 +25,8 @@ use tokio::sync::oneshot;
 
 use super::commands::CollabCommandError;
 use super::disk::{
-    as_text, excluded_name, safe_target, scan_folder, sha256_hex, write_file, DiskState,
+    as_text, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex, write_file,
+    DiskState,
 };
 use super::state::CollabState;
 use crate::folder_watch::FolderChange;
@@ -165,9 +166,11 @@ pub struct Active {
     quiet_merge: AtomicBool,
     waiting: AtomicBool,
     last_status: Mutex<LiveStatus>,
+    bases: Mutex<HashMap<String, String>>,
 }
 
 static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
+static LIFECYCLE: LazyLock<tokio::sync::Mutex<()>> = LazyLock::new(|| tokio::sync::Mutex::new(()));
 static FRESH_JOINS: LazyLock<Mutex<BTreeSet<String>>> =
     LazyLock::new(|| Mutex::new(BTreeSet::new()));
 
@@ -292,7 +295,12 @@ fn read_local_changes(
             continue;
         };
         let known = placed.get(&path);
-        match std::fs::symlink_metadata(&target) {
+        let present = if exists_exact(root, &path) {
+            std::fs::symlink_metadata(&target)
+        } else {
+            Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+        };
+        match present {
             Ok(metadata) if metadata.is_file() => {
                 let bytes = std::fs::read(&target).map_err(io)?;
                 let hash = sha256_hex(&bytes);
@@ -348,9 +356,61 @@ fn ensure_dir(
     Ok(Some(id))
 }
 
+fn writable(root: &Path, disk: &DiskState, path: &str) -> bool {
+    let Some(target) = safe_target(root, path) else {
+        return false;
+    };
+    match std::fs::read(&target) {
+        Err(_) => true,
+        Ok(bytes) => disk
+            .hashes
+            .get(path)
+            .is_some_and(|known| *known == sha256_hex(&bytes)),
+    }
+}
+
+fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> HashMap<String, String> {
+    let mut bases = HashMap::new();
+    for (id, placed) in disk
+        .layout
+        .iter()
+        .filter(|(_, placed)| placed.kind == NodeKind::Text)
+    {
+        let Some(known) = disk.hashes.get(&placed.path) else {
+            continue;
+        };
+        let on_disk = safe_target(root, &placed.path)
+            .and_then(|target| std::fs::read(target).ok())
+            .filter(|bytes| sha256_hex(bytes) == *known)
+            .and_then(|bytes| as_text(&bytes));
+        let text = on_disk.or_else(|| {
+            live.doc()
+                .text(id)
+                .ok()
+                .filter(|text| sha256_hex(text.as_bytes()) == *known)
+        });
+        if let Some(text) = text {
+            bases.insert(placed.path.clone(), text);
+        }
+    }
+    bases
+}
+
+fn merged_onto(base: &str, disk: &str, current: &str) -> Option<TextOperation> {
+    if base == current {
+        return None;
+    }
+    let from_disk = TextOperation::between(base, disk);
+    let from_doc = TextOperation::between(base, current);
+    TextOperation::transform(&from_disk, &from_doc)
+        .ok()
+        .map(|(after_doc, _)| after_doc)
+}
+
 fn apply_local_import(
     live: &mut LiveProject,
     disk: &mut DiskState,
+    bases: &mut HashMap<String, String>,
     import: LocalImport,
     root: &Path,
 ) -> Result<bool, CollabError> {
@@ -371,7 +431,14 @@ fn apply_local_import(
         }
         match placed.get(&path).cloned() {
             Some((id, NodeKind::Text, _)) => {
-                changed |= live.local_text(&id, &text)?;
+                let current = live.doc().text(&id)?;
+                let merged = bases
+                    .get(&path)
+                    .and_then(|base| merged_onto(base, &text, &current));
+                changed |= match merged {
+                    Some(operation) => live.local_operation(&id, &operation)?,
+                    None => live.local_text(&id, &text)?,
+                };
             }
             Some((id, _, _)) => {
                 live.doc_mut().trash(&id)?;
@@ -398,6 +465,7 @@ fn apply_local_import(
                 changed = true;
             }
         }
+        bases.insert(path.clone(), text.clone());
         disk.hashes.insert(path, hash);
     }
     for (path, hash, _) in import.blobs {
@@ -444,26 +512,31 @@ fn apply_local_import(
     Ok(changed)
 }
 
-async fn upload_blobs(
-    link: &LiveLink,
-    blobs: &[(String, String, Vec<u8>)],
-) -> Result<(), CollabError> {
+async fn upload_blobs(link: &LiveLink, blobs: &[(String, String, Vec<u8>)]) -> BTreeSet<String> {
+    let mut failed = BTreeSet::new();
     if blobs.is_empty() {
-        return Ok(());
+        return failed;
     }
-    let access = link
+    let Ok(access) = link
         .sessions
         .access_token(link.server_id, &link.client)
-        .await?;
+        .await
+    else {
+        return blobs.iter().map(|(_, hash, _)| hash.clone()).collect();
+    };
     let mut sent = BTreeSet::new();
     for (_, hash, bytes) in blobs {
-        if sent.insert(hash.clone()) {
-            link.client
+        if sent.insert(hash.clone())
+            && link
+                .client
                 .put_blob(&access, link.project, hash, bytes.clone())
-                .await?;
+                .await
+                .is_err()
+        {
+            failed.insert(hash.clone());
         }
     }
-    Ok(())
+    failed
 }
 
 impl Active {
@@ -500,7 +573,7 @@ impl Active {
 
     async fn import_paths(&self, only: Option<Vec<String>>) -> Result<(), CollabError> {
         let snapshot = guard(&self.disk).clone();
-        let import = {
+        let mut import = {
             let live = lock(&self.live);
             read_local_changes(&self.root, &snapshot, &live, only.as_deref())?
         };
@@ -510,11 +583,13 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        upload_blobs(&self.link, &import.blobs).await?;
+        let failed = upload_blobs(&self.link, &import.blobs).await;
+        import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         let changed = {
             let mut disk = guard(&self.disk);
             let mut live = lock(&self.live);
-            apply_local_import(&mut live, &mut disk, import, &self.root)?
+            let mut bases = guard(&self.bases);
+            apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?
         };
         if changed {
             self.handle.flush();
@@ -524,15 +599,15 @@ impl Active {
         Ok(())
     }
 
-    async fn write_out(&self) -> Result<(), CollabError> {
+    async fn write_out(&self) -> Result<Vec<String>, CollabError> {
+        let previous = guard(&self.disk).layout.clone();
         let (work, next, texts) = {
             let mut live = lock(&self.live);
             let work = live.take_disk_work();
             if work.is_empty() {
-                return Ok(());
+                return Ok(Vec::new());
             }
             let next = materialize::layout(&live.doc().nodes()?);
-            let previous = guard(&self.disk).layout.clone();
             let mut ids: BTreeSet<String> = work.texts.clone();
             for (id, placed) in &next {
                 let moved_or_new = previous
@@ -551,8 +626,8 @@ impl Active {
             live.save(&self.document_dir)?;
             (work, next, texts)
         };
-        let previous = guard(&self.disk).layout.clone();
         let plan = materialize::plan(&previous, &next);
+        let mut conflicts: Vec<String> = Vec::new();
         let mut changed: BTreeSet<String> = BTreeSet::new();
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
@@ -561,10 +636,16 @@ impl Active {
         let mut blobs = Vec::new();
         {
             let mut disk = guard(&self.disk);
+            let mut bases = guard(&self.bases);
             for (from, to) in &plan.moved {
-                super::disk::move_path(&self.root, from, to);
+                if !super::disk::move_path(&self.root, from, to) {
+                    continue;
+                }
                 if let Some(hash) = disk.hashes.remove(from) {
                     disk.hashes.insert(to.clone(), hash);
+                }
+                if let Some(base) = bases.remove(from) {
+                    bases.insert(to.clone(), base);
                 }
                 changed.insert(from.clone());
                 changed.insert(to.clone());
@@ -576,11 +657,16 @@ impl Active {
                 }
             }
             for (path, text) in &texts {
+                if !writable(&self.root, &disk, path) {
+                    conflicts.push(path.clone());
+                    continue;
+                }
                 if write_file(&self.root, path, text.as_bytes()).map_err(CollabError::Io)? {
                     changed.insert(path.clone());
                 }
                 disk.hashes
                     .insert(path.clone(), sha256_hex(text.as_bytes()));
+                bases.insert(path.clone(), text.clone());
             }
             for id in &plan.written {
                 if let Some(placed) = next.get(id).filter(|placed| placed.kind == NodeKind::Blob) {
@@ -590,15 +676,22 @@ impl Active {
                             .is_some_and(|bytes| sha256_hex(&bytes) == *hash);
                         if on_disk {
                             disk.hashes.insert(placed.path.clone(), hash.clone());
-                        } else {
+                        } else if writable(&self.root, &disk, &placed.path) {
                             blobs.push((placed.path.clone(), hash.clone()));
+                        } else {
+                            conflicts.push(placed.path.clone());
                         }
                     }
                 }
             }
             for path in &plan.removed {
+                if !writable(&self.root, &disk, path) {
+                    conflicts.push(path.clone());
+                    continue;
+                }
                 super::disk::remove_path(&self.root, path);
                 disk.hashes.remove(path);
+                bases.remove(path);
                 changed.insert(path.clone());
             }
             disk.layout = next;
@@ -648,7 +741,7 @@ impl Active {
                 structural,
             });
         }
-        Ok(())
+        Ok(conflicts)
     }
 
     fn detach(&self, paths: &oleafly_collab::CollabPaths) {
@@ -673,7 +766,11 @@ async fn writer_loop(active: Weak<Active>, mut signals: UnboundedReceiver<Writer
         let Some(active) = active.upgrade() else {
             return;
         };
-        let _ = active.write_out().await;
+        if let Ok(conflicts) = active.write_out().await {
+            if !conflicts.is_empty() {
+                let _ = active.import_paths(Some(conflicts)).await;
+            }
+        }
         for done in waiters {
             let _ = done.send(());
         }
@@ -774,6 +871,7 @@ pub async fn start(
     host: Arc<dyn LiveHost>,
     project_id: &str,
 ) -> Result<LiveInfo, CollabError> {
+    let _lifecycle = LIFECYCLE.lock().await;
     if let Some(active) = active_for(project_id) {
         let role = lock(&active.live).role();
         active.emit_status(guard(&active.last_status).clone());
@@ -818,10 +916,12 @@ pub async fn start(
         .map_err(io)??
     };
     let (mut live, mut disk) = loaded;
-    let import = read_local_changes(&root, &disk, &live, None)?;
+    let mut bases = initial_bases(&root, &disk, &live);
+    let mut import = read_local_changes(&root, &disk, &live, None)?;
     if !import.is_empty() && live.can_edit() {
-        upload_blobs(&link, &import.blobs).await?;
-        apply_local_import(&mut live, &mut disk, import, &root)?;
+        let failed = upload_blobs(&link, &import.blobs).await;
+        import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
+        apply_local_import(&mut live, &mut disk, &mut bases, import, &root)?;
     }
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
@@ -843,6 +943,7 @@ pub async fn start(
         quiet_merge: AtomicBool::new(fresh),
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
+        bases: Mutex::new(bases),
     });
     lock(&shared).mark_all_dirty()?;
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
@@ -872,6 +973,7 @@ async fn stop_any() {
 }
 
 pub async fn stop(project_id: &str) {
+    let _lifecycle = LIFECYCLE.lock().await;
     let previous = {
         let mut slot = guard(&ACTIVE);
         if slot
@@ -1127,7 +1229,9 @@ mod tests {
         std::fs::write(root.join("project.json"), "{}").unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         assert_eq!(import.blobs.len(), 1);
-        assert!(apply_local_import(&mut live, &mut disk, import, root).unwrap());
+        assert!(
+            apply_local_import(&mut live, &mut disk, &mut HashMap::new(), import, root).unwrap()
+        );
         assert_eq!(live.doc().text(&main).unwrap(), "abcd");
         assert_eq!(
             paths_of(&live),
@@ -1146,8 +1250,49 @@ mod tests {
         let removed =
             read_local_changes(root, &disk, &live, Some(&["new.tex".to_owned()])).unwrap();
         assert_eq!(removed.removed, vec!["new.tex".to_owned()]);
-        apply_local_import(&mut live, &mut disk, removed, root).unwrap();
+        apply_local_import(&mut live, &mut disk, &mut HashMap::new(), removed, root).unwrap();
         assert!(!paths_of(&live).contains(&"new.tex".to_owned()));
+    }
+
+    #[test]
+    fn a_disk_edit_is_merged_onto_newer_remote_text_instead_of_reverting_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, main) = project(root);
+        let mut bases = HashMap::new();
+        bases.insert("main.tex".to_owned(), "abc".to_owned());
+        live.local_text(&main, "abcX").unwrap();
+        std::fs::write(root.join("main.tex"), "Zabc").unwrap();
+        let import = read_local_changes(root, &disk, &live, None).unwrap();
+        apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
+        assert_eq!(live.doc().text(&main).unwrap(), "ZabcX");
+        assert_eq!(bases.get("main.tex").map(String::as_str), Some("Zabc"));
+    }
+
+    #[test]
+    fn a_rename_that_only_changes_case_keeps_one_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, _main) = project(root);
+        let mut bases = HashMap::new();
+        std::fs::rename(root.join("main.tex"), root.join("tmp.tex")).unwrap();
+        std::fs::rename(root.join("tmp.tex"), root.join("Main.tex")).unwrap();
+        let import = read_local_changes(root, &disk, &live, None).unwrap();
+        apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
+        assert_eq!(paths_of(&live), vec!["Main.tex"]);
+    }
+
+    #[test]
+    fn only_a_file_left_as_last_written_may_be_overwritten() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (_live, disk, _main) = project(root);
+        assert!(writable(root, &disk, "main.tex"));
+        assert!(writable(root, &disk, "new.tex"));
+        std::fs::write(root.join("main.tex"), "changed here").unwrap();
+        assert!(!writable(root, &disk, "main.tex"));
+        std::fs::write(root.join("new.tex"), "made here").unwrap();
+        assert!(!writable(root, &disk, "new.tex"));
     }
 
     #[test]
@@ -1183,7 +1328,7 @@ mod tests {
         std::fs::write(root.join("main.tex"), "first").unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         std::fs::write(root.join("main.tex"), "second").unwrap();
-        apply_local_import(&mut live, &mut disk, import, root).unwrap();
+        apply_local_import(&mut live, &mut disk, &mut HashMap::new(), import, root).unwrap();
         assert_eq!(live.doc().text(&main).unwrap(), "abc");
     }
 }

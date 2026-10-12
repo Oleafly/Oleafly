@@ -308,6 +308,7 @@ async fn subscribe(
                 } => return Ok(Err(EndReason::Removed)),
                 ServerFrame::ProjectArchived { .. } => return Ok(Err(EndReason::Archived)),
                 ServerFrame::SessionRevoked => return Ok(Err(EndReason::SignedOut)),
+                ServerFrame::Error { message, .. } => return Err(CollabError::Network(message)),
                 _ => {}
             }
         }

@@ -537,6 +537,9 @@ pub fn restrict_compile_meta(
     project_id: &str,
     mut meta: ProjectMeta,
 ) -> Result<ProjectMeta, String> {
+    if crate::collab::registry::is_shared(project_id) {
+        meta.allow_shell_escape = false;
+    }
     if project_trust(project_id)?.is_trusted() {
         return Ok(meta);
     }
@@ -1241,6 +1244,26 @@ pub(crate) mod testing {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_shared_project_never_compiles_with_shell_escape() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("shared-escape", &[("main.tex", "x")]);
+        let mut meta: crate::project::ProjectMeta = serde_json::from_str("{}").unwrap();
+        meta.allow_shell_escape = true;
+        assert!(
+            restrict_compile_meta("shared-escape", meta.clone())
+                .unwrap()
+                .allow_shell_escape
+        );
+        let _shared = crate::collab::testing::share("shared-escape");
+        assert!(
+            !restrict_compile_meta("shared-escape", meta)
+                .unwrap()
+                .allow_shell_escape
+        );
+    }
+
     use super::*;
     use crate::known_folders::broad_folder_among;
 

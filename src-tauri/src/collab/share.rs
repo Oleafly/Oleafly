@@ -346,6 +346,12 @@ pub async fn share_project(
     };
     save_binding(paths, project_id, &binding)?;
     super::registry::invalidate(project_id);
+    if meta.allow_shell_escape {
+        let mut off = meta;
+        off.allow_shell_escape = false;
+        let _ = crate::project::write_meta(project_id, &off);
+    }
+    let _ = crate::project::revoke_shell_escape_trust(project_id);
     Ok(info_from(&state.registry()?, project_id, &binding))
 }
 

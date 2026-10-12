@@ -52,6 +52,32 @@ impl TextOperation {
         TextOperation::default()
     }
 
+    pub fn between(old: &str, new: &str) -> TextOperation {
+        let prefix: usize = old
+            .chars()
+            .zip(new.chars())
+            .take_while(|(a, b)| a == b)
+            .map(|(a, _)| a.len_utf8())
+            .sum();
+        let (old_rest, new_rest) = (&old[prefix..], &new[prefix..]);
+        let suffix: usize = old_rest
+            .chars()
+            .rev()
+            .zip(new_rest.chars().rev())
+            .take_while(|(a, b)| a == b)
+            .map(|(a, _)| a.len_utf8())
+            .sum();
+        let removed = &old_rest[..old_rest.len() - suffix];
+        let added = &new_rest[..new_rest.len() - suffix];
+        let mut operation = TextOperation::new();
+        operation
+            .retain(utf16_len(&old[..prefix]))
+            .delete(utf16_len(removed))
+            .insert(added)
+            .retain(utf16_len(&old_rest[old_rest.len() - suffix..]));
+        operation
+    }
+
     pub fn components(&self) -> &[Component] {
         &self.ops
     }
@@ -526,6 +552,21 @@ mod tests {
                 c.apply(&after_a).unwrap()
             );
         }
+    }
+
+    #[test]
+    fn the_change_between_two_texts_applies_and_merges_with_another() {
+        let base = "one two three";
+        let disk = "one 2 three";
+        let doc = "one two three four";
+        let from_disk = TextOperation::between(base, disk);
+        assert_eq!(from_disk.apply(base).unwrap(), disk);
+        let from_doc = TextOperation::between(base, doc);
+        let (disk_after_doc, _) = TextOperation::transform(&from_disk, &from_doc).unwrap();
+        assert_eq!(disk_after_doc.apply(doc).unwrap(), "one 2 three four");
+        assert!(TextOperation::between("same", "same").is_noop());
+        let emoji = TextOperation::between("a😀b", "a😀😀b");
+        assert_eq!(emoji.apply("a😀b").unwrap(), "a😀😀b");
     }
 
     #[test]

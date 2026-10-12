@@ -59,6 +59,7 @@ pub struct LiveProject {
     role: ProjectRole,
     received: u64,
     catch_up: Option<std::collections::BTreeMap<String, u32>>,
+    seen: BTreeSet<u64>,
 }
 
 impl LiveProject {
@@ -74,6 +75,7 @@ impl LiveProject {
             role,
             received: 0,
             catch_up: None,
+            seen: BTreeSet::new(),
         }
     }
 
@@ -223,13 +225,22 @@ impl LiveProject {
         Ok(())
     }
 
+    fn mark_seen(&mut self, seq: u64) {
+        if seq > self.last_seq {
+            self.seen.insert(seq);
+        }
+        while self.seen.remove(&(self.last_seq + 1)) {
+            self.last_seq += 1;
+        }
+    }
+
     pub fn import_update(&mut self, seq: u64, payload: &[u8]) -> Result<bool, CollabError> {
-        if seq <= self.last_seq {
+        if seq <= self.last_seq || self.seen.contains(&seq) {
             return Ok(false);
         }
         let imported = self.doc.import(payload)?;
         advance(&mut self.confirmed, &imported.arrived);
-        self.last_seq = seq;
+        self.mark_seen(seq);
         self.received += 1;
         self.route(imported.changes)?;
         Ok(true)
@@ -239,6 +250,8 @@ impl LiveProject {
         let imported = self.doc.import(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
         self.last_seq = self.last_seq.max(seq);
+        self.seen.retain(|known| *known > seq);
+        self.mark_seen(seq);
         self.route(imported.changes)
     }
 
@@ -259,6 +272,31 @@ impl LiveProject {
         let changed = !changes.is_empty();
         self.route(changes)?;
         Ok(changed)
+    }
+
+    pub fn local_operation(
+        &mut self,
+        id: &str,
+        operation: &TextOperation,
+    ) -> Result<bool, CollabError> {
+        if operation.is_noop() {
+            return Ok(false);
+        }
+        self.doc.apply_operation(id, operation)?;
+        self.disk.texts.insert(id.to_owned());
+        let Some(open) = self.open.get_mut(id) else {
+            return Ok(true);
+        };
+        if open.channel.remote(operation.clone()).is_err() {
+            self.reset_file(id)?;
+            return Ok(true);
+        }
+        (open.sink)(DocMessage::Remote {
+            rev: open.channel.rev(),
+            op: operation.clone(),
+            length: open.channel.length(),
+        });
+        Ok(true)
     }
 
     pub fn next_outgoing(&mut self) -> Result<Option<Outgoing>, CollabError> {
@@ -291,9 +329,7 @@ impl LiveProject {
             if let Some(outgoing) = self.outgoing.take() {
                 self.confirmed.merge(&outgoing.version);
             }
-            if seq == self.last_seq + 1 {
-                self.last_seq = seq;
-            }
+            self.mark_seen(seq);
         }
     }
 
@@ -414,6 +450,34 @@ mod tests {
     }
 
     #[test]
+    fn updates_that_arrive_out_of_order_are_all_applied() {
+        let (mut bob, mut alice, main) = pair();
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 1);
+        bob.local_text(&main, "abcde").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        assert!(alice.import_update(2, &second.payload).unwrap());
+        assert_eq!(alice.last_seq(), 0);
+        assert!(alice.import_update(1, &first.payload).unwrap());
+        assert_eq!(alice.last_seq(), 2);
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcde");
+        assert!(!alice.import_update(2, &second.payload).unwrap());
+    }
+
+    #[test]
+    fn an_own_acknowledgement_fills_the_gap_between_others_updates() {
+        let (mut bob, mut alice, main) = pair();
+        alice.local_text(&main, "abcX").unwrap();
+        let mine = alice.next_outgoing().unwrap().unwrap();
+        bob.local_text(&main, "Yabc").unwrap();
+        let theirs = bob.next_outgoing().unwrap().unwrap();
+        assert!(alice.import_update(2, &theirs.payload).unwrap());
+        alice.acknowledged(mine.batch, 1);
+        assert_eq!(alice.last_seq(), 2);
+    }
+
+    #[test]
     fn an_unacknowledged_change_is_sent_again_after_a_reconnect() {
         let (mut bob, _alice, main) = pair();
         let (sink, _seen) = recorder();
@@ -475,6 +539,26 @@ mod tests {
         assert_eq!(counts.get(&main), Some(&2));
         assert!(alice.end_catch_up().is_empty());
         assert_eq!(bob.pending_changes(), 1);
+    }
+
+    #[test]
+    fn a_local_operation_reaches_the_open_editor_and_the_outbox() {
+        let (mut bob, _alice, main) = pair();
+        let (sink, seen) = recorder();
+        bob.open_file(&main, sink).unwrap();
+        assert!(bob.local_operation(&main, &insert(1, "Z", 3)).unwrap());
+        assert_eq!(bob.doc().text(&main).unwrap(), "aZbc");
+        assert_eq!(
+            seen.lock().unwrap()[0],
+            DocMessage::Remote {
+                rev: 1,
+                op: insert(1, "Z", 3),
+                length: 4
+            }
+        );
+        assert!(!bob
+            .local_operation(&main, &TextOperation::between("aZbc", "aZbc"))
+            .unwrap());
     }
 
     #[test]

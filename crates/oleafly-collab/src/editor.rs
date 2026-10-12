@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ot::{utf16_len, OtError, TextOperation};
 
-pub const HISTORY_LIMIT: usize = 500;
+pub const HISTORY_LIMIT: usize = 5_000;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]

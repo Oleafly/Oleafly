@@ -7,6 +7,7 @@ use ring::digest::{digest, SHA256};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_SCAN_DEPTH: usize = 32;
+pub const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
 const ALWAYS_EXCLUDED: [&str; 3] = [".oleafly", ".git", ".DS_Store"];
 const ROOT_EXCLUDED: [&str; 1] = ["project.json"];
 
@@ -40,7 +41,7 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
 }
 
 pub fn as_text(bytes: &[u8]) -> Option<String> {
-    if bytes.contains(&0) {
+    if bytes.len() > MAX_TEXT_BYTES || bytes.contains(&0) {
         return None;
     }
     std::str::from_utf8(bytes)
@@ -110,15 +111,28 @@ pub struct Scan {
     pub excluded: Vec<String>,
 }
 
-pub fn excluded_name(relative: &str) -> bool {
-    let mut parts = relative.split('/');
-    let first = parts.next().unwrap_or_default();
-    if ROOT_EXCLUDED.contains(&first) && !relative.contains('/') {
+fn app_folder(segment: &str) -> bool {
+    let lowered = segment.to_lowercase();
+    if ALWAYS_EXCLUDED
+        .iter()
+        .any(|name| name.to_lowercase() == lowered)
+    {
         return true;
     }
-    relative
-        .split('/')
-        .any(|part| ALWAYS_EXCLUDED.contains(&part))
+    let upper = segment.to_uppercase();
+    (upper.starts_with("GIT~") || upper.starts_with("OLEAFL~"))
+        && oleafly_collab::materialize::short_alias(segment)
+}
+
+pub fn excluded_name(relative: &str) -> bool {
+    if !relative.contains('/')
+        && ROOT_EXCLUDED
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case(relative))
+    {
+        return true;
+    }
+    relative.split('/').any(app_folder)
 }
 
 pub fn scan_folder(root: &Path) -> Result<Scan, String> {
@@ -225,6 +239,9 @@ pub fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<bool, Str
     }
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        if inside_app_folder(root, parent) {
+            return Err(format!("refused to write {relative}"));
+        }
     }
     crate::sandbox::atomic_write(&target, bytes)?;
     crate::folder_watch::note_own_write(&target);
@@ -248,20 +265,83 @@ pub fn remove_path(root: &Path, relative: &str) {
     }
 }
 
-pub fn move_path(root: &Path, from: &str, to: &str) {
-    let (Some(source), Some(target)) = (safe_target(root, from), safe_target(root, to)) else {
-        return;
+fn inside_app_folder(root: &Path, folder: &Path) -> bool {
+    let Ok(folder) = folder.canonicalize() else {
+        return true;
     };
-    if !source.exists() || target.exists() {
-        return;
+    [".git", ".oleafly"].iter().any(|name| {
+        root.join(name)
+            .canonicalize()
+            .is_ok_and(|protected| folder.starts_with(protected))
+    })
+}
+
+pub fn exists_exact(root: &Path, relative: &str) -> bool {
+    let mut folder = root.to_path_buf();
+    for part in relative.split('/') {
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            return false;
+        };
+        let found = entries
+            .filter_map(Result::ok)
+            .any(|entry| entry.file_name().to_str() == Some(part));
+        if !found {
+            return false;
+        }
+        folder.push(part);
+    }
+    true
+}
+
+fn same_entry(first: &Path, second: &Path) -> bool {
+    match (
+        std::fs::symlink_metadata(first),
+        std::fs::symlink_metadata(second),
+    ) {
+        (Ok(a), Ok(b)) => {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                a.dev() == b.dev() && a.ino() == b.ino()
+            }
+            #[cfg(not(unix))]
+            {
+                a.len() == b.len() && a.modified().ok() == b.modified().ok()
+            }
+        }
+        _ => false,
+    }
+}
+
+pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
+    let (Some(source), Some(target)) = (safe_target(root, from), safe_target(root, to)) else {
+        return false;
+    };
+    if !exists_exact(root, from) {
+        return false;
+    }
+    let case_only = from.to_lowercase() == to.to_lowercase() && same_entry(&source, &target);
+    if target.exists() && !case_only {
+        return false;
     }
     if let Some(parent) = target.parent() {
         let _ = std::fs::create_dir_all(parent);
+        if inside_app_folder(root, parent) {
+            return false;
+        }
     }
-    if std::fs::rename(&source, &target).is_ok() {
+    let moved = if case_only {
+        let parking =
+            source.with_file_name(format!(".oleafly-rename-{}", sha256_hex(to.as_bytes())));
+        std::fs::rename(&source, &parking).is_ok() && std::fs::rename(&parking, &target).is_ok()
+    } else {
+        std::fs::rename(&source, &target).is_ok()
+    };
+    if moved {
         crate::folder_watch::note_own_removal(&source);
         crate::folder_watch::note_own_write(&target);
     }
+    moved
 }
 
 #[cfg(test)]
@@ -359,6 +439,43 @@ mod tests {
         assert!(!root.join("b/thesis.tex").exists());
         remove_path(root, "b");
         assert!(!root.join("b").exists());
+    }
+
+    #[test]
+    fn app_folders_are_refused_in_any_case_and_short_name_form() {
+        for path in [
+            "sub/.GIT/config",
+            ".Oleafly/build/x",
+            "GIT~1/config",
+            "a/oleafl~2/x",
+        ] {
+            assert!(excluded_name(path), "{path}");
+        }
+        assert!(!excluded_name("chapters/intro.tex"));
+    }
+
+    #[test]
+    fn a_rename_that_only_changes_case_moves_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(root, "Main.tex", "x");
+        assert!(move_path(root, "Main.tex", "main.tex"));
+        let names: Vec<String> = std::fs::read_dir(root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["main.tex".to_owned()]);
+        assert!(exists_exact(root, "main.tex"));
+        assert!(!exists_exact(root, "Main.tex"));
+        write(root, "other.tex", "y");
+        assert!(!move_path(root, "main.tex", "other.tex"));
+    }
+
+    #[test]
+    fn very_large_text_is_kept_as_a_file_not_text() {
+        let big = vec![b'a'; MAX_TEXT_BYTES + 1];
+        assert_eq!(as_text(&big), None);
+        assert!(as_text(&big[..1024]).is_some());
     }
 
     #[test]
