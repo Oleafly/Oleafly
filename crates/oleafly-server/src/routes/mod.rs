@@ -130,13 +130,17 @@ impl FromRequestParts<AppState> for ClientIp {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        Ok(ClientIp(client_ip(parts, state.config.behind_proxy)))
+        Ok(ClientIp(client_ip(
+            parts,
+            state.config.behind_proxy,
+            state.config.proxy_hops,
+        )))
     }
 }
 
-fn client_ip(parts: &Parts, behind_proxy: bool) -> Option<String> {
+fn client_ip(parts: &Parts, behind_proxy: bool, proxy_hops: u8) -> Option<String> {
     if behind_proxy {
-        let mut forwarded: Vec<IpAddr> = parts
+        let forwarded: Vec<IpAddr> = parts
             .headers
             .get_all("x-forwarded-for")
             .iter()
@@ -144,7 +148,8 @@ fn client_ip(parts: &Parts, behind_proxy: bool) -> Option<String> {
             .flat_map(|value| value.split(','))
             .filter_map(|item| item.trim().parse::<IpAddr>().ok())
             .collect();
-        if let Some(address) = forwarded.pop() {
+        let skip = usize::from(proxy_hops.max(1)) - 1;
+        if let Some(address) = forwarded.iter().rev().nth(skip).or(forwarded.first()) {
             return Some(address.to_string());
         }
     }

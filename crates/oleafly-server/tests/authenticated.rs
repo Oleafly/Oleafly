@@ -245,6 +245,31 @@ async fn client_ip_comes_from_a_trusted_proxy_or_the_socket() {
 }
 
 #[tokio::test]
+async fn client_ip_looks_past_every_proxy_in_front_of_the_server() {
+    let app = test_app_with(support::config_with(&[
+        ("OLEAFLY_BEHIND_PROXY", "true"),
+        ("OLEAFLY_PROXY_HOPS", "2"),
+    ]))
+    .await;
+    for (forwarded, expected) in [
+        ("152.44.135.141, 10.0.1.1", "152.44.135.141"),
+        ("203.0.113.9, 152.44.135.141, 10.0.1.1", "152.44.135.141"),
+        ("2001:db8::7, 10.0.1.1", "2001:db8::7"),
+        ("198.51.100.4", "198.51.100.4"),
+    ] {
+        let mut request = support::build_request(Method::GET, "/ip", None, None);
+        request
+            .headers_mut()
+            .insert("x-forwarded-for", HeaderValue::from_static(forwarded));
+        request
+            .extensions_mut()
+            .insert(ConnectInfo(SocketAddr::from(([10, 0, 15, 2], 40_000))));
+        let reply = support::send_request(&ip_probe(app.state.clone()), request).await;
+        assert_eq!(reply.body["ip"], json!(expected), "forwarded: {forwarded}");
+    }
+}
+
+#[tokio::test]
 async fn seeding_an_admin_ends_setup() {
     let app = test_app().await;
     let before = app

@@ -74,6 +74,7 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
 | `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half the container's memory limit, or `1024` without a limit |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
+| `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. Set it to `2` when Cloudflare sits in front of your own proxy, such as Coolify's. It needs `OLEAFLY_BEHIND_PROXY=true`. | `1` |
 | `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. Libraries the server uses only log warnings unless you pick `debug` or `trace`. | `info` |
 | `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries, project access log entries and answered or expired guest invitations. | `365` |
 | `OLEAFLY_ARCHIVE_DAYS` | How many days to keep a project after its owner stops sharing it. | `30` |
@@ -200,6 +201,8 @@ Before you start, point your domain's DNS record, such as `collab.example.org`, 
 9. In Oleafly, open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
 
 If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
+
+If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_PROXY_HOPS` to `2`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit.
 
 The Coolify file has room for GitHub and one OpenID Connect provider named `UNIVERSITY`. Set `OLEAFLY_OIDC_UNIVERSITY_LABEL` to the text people should see, such as `GitLab`. Its callback address ends in `/auth/callback/university`. For more providers, deploy from a fork with your own copy of the file.
 
@@ -389,7 +392,9 @@ With `OLEAFLY_BEHIND_PROXY=true`, the server reads the `X-Forwarded-For` header 
 
 Turn it on only when every request comes through your proxy. If people can also reach the server directly, anyone can send a made-up `X-Forwarded-For`, put any address in the security log and get around the sign-in limit.
 
-With two proxies in a row, for example Cloudflare's proxy in front of your own, the last address is the outer proxy's, and the security log fills up with Cloudflare's addresses. Set up the inner proxy to trust the outer one and pass on the visitor's address, or use [Cloudflare Tunnel](#without-a-public-address), which connects to the server directly.
+With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. Set `OLEAFLY_PROXY_HOPS=2` and the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one.
+
+To check the number, sign in from your own computer and open **Security log** in the admin console. The newest entry should show your public address, the one a site such as `ifconfig.me` reports. If it shows a private or Cloudflare address instead, raise `OLEAFLY_PROXY_HOPS` by one.
 
 ### Caddy
 
@@ -502,7 +507,7 @@ If the machine has no public address, for example a computer in your lab behind 
 
 On a machine without Docker, install `cloudflared` from [Cloudflare's package repository](https://pkg.cloudflare.com/), run `sudo cloudflared service install` followed by the token, and set **Service URL** to `http://127.0.0.1:8080`.
 
-Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. On its Free and Pro plans it refuses requests larger than 100 MB, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
+Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
 
 When you update the server later, name the service so Caddy stays off: `docker compose up -d --build oleafly-server`.
 

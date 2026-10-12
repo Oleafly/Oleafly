@@ -11,6 +11,7 @@ pub const DEFAULT_DATA_DIR: &str = "/data";
 pub const DEFAULT_SERVER_NAME: &str = "Oleafly Server";
 pub const DEFAULT_POLL_HOLD_SECONDS: u64 = 25;
 pub const MAX_POLL_HOLD_SECONDS: u64 = 40;
+pub const MAX_PROXY_HOPS: u8 = 8;
 pub const MIN_SETUP_CODE_CHARS: usize = 12;
 const RESERVED_PREFIXES: [&str; 7] = [".well-known", "api", "auth", "healthz", "p", "readyz", "ws"];
 const OIDC_PREFIX: &str = "OLEAFLY_OIDC_";
@@ -99,6 +100,7 @@ pub struct ServerConfig {
     pub blob_store: BlobStoreConfig,
     pub limits: Limits,
     pub behind_proxy: bool,
+    pub proxy_hops: u8,
     pub log_level: String,
     pub security_log_days: u32,
     pub archive_days: u32,
@@ -220,6 +222,19 @@ impl ServerConfig {
             ));
         }
         let behind_proxy = source.flag("OLEAFLY_BEHIND_PROXY", false)?;
+        let proxy_hops = source.number("OLEAFLY_PROXY_HOPS", 1u8)?;
+        if proxy_hops > MAX_PROXY_HOPS {
+            return Err(ConfigError::new(
+                "OLEAFLY_PROXY_HOPS",
+                format!("OLEAFLY_PROXY_HOPS can be at most {MAX_PROXY_HOPS}, not {proxy_hops}."),
+            ));
+        }
+        if source.is_set("OLEAFLY_PROXY_HOPS") && !behind_proxy {
+            return Err(ConfigError::new(
+                "OLEAFLY_PROXY_HOPS",
+                "OLEAFLY_PROXY_HOPS only applies when OLEAFLY_BEHIND_PROXY is true.",
+            ));
+        }
         let log_level = match source.get("OLEAFLY_LOG_LEVEL") {
             Some(raw) => {
                 let level = raw.to_ascii_lowercase();
@@ -261,6 +276,7 @@ impl ServerConfig {
             blob_store,
             limits,
             behind_proxy,
+            proxy_hops,
             log_level,
             security_log_days,
             archive_days,
@@ -883,6 +899,7 @@ impl fmt::Debug for ServerConfig {
                 &self.limits.max_members_per_project,
             )
             .field("behind_proxy", &self.behind_proxy)
+            .field("proxy_hops", &self.proxy_hops)
             .field("log_level", &self.log_level)
             .field("security_log_days", &self.security_log_days)
             .field("archive_days", &self.archive_days)
@@ -1371,6 +1388,7 @@ mod tests {
             ("OLEAFLY_SERVER_NAME", ""),
             ("OLEAFLY_SETUP_CODE", ""),
             ("OLEAFLY_BEHIND_PROXY", ""),
+            ("OLEAFLY_PROXY_HOPS", ""),
             ("OLEAFLY_MAX_PROJECT_MB", ""),
             ("OLEAFLY_LOG_LEVEL", ""),
             ("OLEAFLY_BLOB_STORE", ""),
@@ -1388,6 +1406,7 @@ mod tests {
         assert_eq!(config.server_name, "Oleafly Server");
         assert_eq!(config.bind, "0.0.0.0:8080".parse::<SocketAddr>().unwrap());
         assert!(!config.behind_proxy);
+        assert_eq!(config.proxy_hops, 1);
         assert_eq!(config.limits.max_project_mb, 200);
         assert_eq!(config.log_level, "info");
         assert_eq!(config.blob_store, BlobStoreConfig::Filesystem);
@@ -1426,6 +1445,32 @@ mod tests {
             !load(&[BASE, ("OLEAFLY_BEHIND_PROXY", "False")])
                 .unwrap()
                 .behind_proxy
+        );
+        assert_eq!(
+            load(&[
+                BASE,
+                ("OLEAFLY_BEHIND_PROXY", "true"),
+                ("OLEAFLY_PROXY_HOPS", "2")
+            ])
+            .unwrap()
+            .proxy_hops,
+            2
+        );
+        for hops in ["0", "9", "two"] {
+            assert_eq!(
+                load_err(&[
+                    BASE,
+                    ("OLEAFLY_BEHIND_PROXY", "true"),
+                    ("OLEAFLY_PROXY_HOPS", hops)
+                ])
+                .variable,
+                "OLEAFLY_PROXY_HOPS",
+                "OLEAFLY_PROXY_HOPS={hops}"
+            );
+        }
+        assert_eq!(
+            load_err(&[BASE, ("OLEAFLY_PROXY_HOPS", "2")]).variable,
+            "OLEAFLY_PROXY_HOPS"
         );
         assert_eq!(config.log_level, "debug");
         assert_eq!((config.security_log_days, config.archive_days), (90, 7));
