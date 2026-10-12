@@ -71,6 +71,7 @@ mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
+mod overleaf;
 mod pandoc_citations;
 mod paths;
 mod proc;
@@ -100,6 +101,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod settings_file;
 mod shell_command;
 mod single_instance;
 mod skills;
@@ -718,6 +720,7 @@ pub fn run() {
             project::read_file_base64,
             project::read_picked_file_base64,
             project::pick_table_import_file,
+            settings_file::pick_settings_file,
             project::register_picked_file_for_e2e,
             project::append_app_log,
             project::read_app_log,
@@ -795,6 +798,20 @@ pub fn run() {
             project::set_default_latex_engine,
             project::project_tex_status,
             project::import_overleaf_project,
+            overleaf::overleaf_status,
+            overleaf::overleaf_sign_in,
+            overleaf::overleaf_sign_out,
+            overleaf::overleaf_list_projects,
+            overleaf::overleaf_import_projects,
+            overleaf::overleaf_sync_status,
+            overleaf::overleaf_sync_link,
+            overleaf::overleaf_sync_now,
+            overleaf::overleaf_sync_check,
+            overleaf::overleaf_sync_unlink,
+            overleaf::overleaf_sync_set_auto,
+            overleaf::overleaf_git_token_status,
+            overleaf::overleaf_git_token_set,
+            overleaf::overleaf_git_token_clear,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,

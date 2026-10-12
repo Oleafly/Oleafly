@@ -28,7 +28,9 @@ type CatalogGlob = Record<string, () => Promise<Catalog>>;
 
 function lazyCatalogGlob(): CatalogGlob {
   try {
-    return import.meta.glob<Catalog>(["./locales/*/*.json", "!./locales/en/*.json"], { import: "default" });
+    return import.meta.glob<Catalog>(["./locales/*/*.json", "!./locales/en/*.json", "!./locales/*/settingsFile.json"], {
+      import: "default",
+    });
   } catch {
     return {};
   }

@@ -1,0 +1,57 @@
+{
+  "title": "Applicatie-instellingen",
+  "description": "Sla je instellingen op in een JSON-bestand, of laad een bestand dat iemand met je heeft gedeeld. API-sleutels, accounts, integraties en agents worden nooit meegenomen.",
+  "export": "Exporteren",
+  "import": "Importeren",
+  "view": {
+    "label": "Instellingen-JSON bekijken",
+    "summary": "Voorbeeld (alleen-lezen) van het bestand dat bij exporteren wordt opgeslagen.",
+    "loading": "Je instellingen worden gelezen",
+    "failed": "Kon je instellingen niet lezen."
+  },
+  "dialog": {
+    "pickTitle": "Instellingen importeren",
+    "filterName": "Oleafly-instellingen"
+  },
+  "toast": {
+    "exported": "{{name}} geëxporteerd naar schijf",
+    "exportFailed": "Kon het instellingenbestand niet opslaan.",
+    "readFailed": "Kon dat bestand niet openen.",
+    "imported": "Instellingen geïmporteerd.",
+    "unchanged": "Je instellingen komen al overeen met {{name}}.",
+    "applyFailed": "Sommige instellingen konden niet worden opgeslagen. Probeer het importeren opnieuw."
+  },
+  "confirm": {
+    "title": "Je instellingen vervangen?",
+    "description": "De instellingen uit {{name}} vervangen die van jou. Wat niet in het bestand staat, blijft zoals het is.",
+    "changes": "Instellingen die veranderen: {{count}}",
+    "ignored": "Niet herkend, dus deze worden overgeslagen:",
+    "action": "Importeren"
+  },
+  "error": {
+    "title": "{{name}} is niet geïmporteerd",
+    "notJson": "Het bestand is geen geldige JSON.",
+    "notSettings": "Dit is geen instellingenbestand van Oleafly.",
+    "invalid": "De instellingenconfiguratie die je probeerde te importeren is ongeldig. Los deze fouten op en probeer het opnieuw:",
+    "more": "+{{count}} meer"
+  },
+  "valueErrors": {
+    "boolean": "moet true of false zijn",
+    "oneOf": "moet een van deze waarden zijn: {{values}}",
+    "range": "moet een getal van {{min}} tot en met {{max}} zijn",
+    "wholeRange": "moet een geheel getal van {{min}} tot en met {{max}} zijn",
+    "wholeRangeStep": "moet een geheel getal van {{min}} tot en met {{max}} zijn, in stappen van {{step}}",
+    "hexColor": "moet een kleur zijn zoals #2563eb",
+    "hexColorOrEmpty": "moet een kleur zijn zoals #2563eb, of \"\" om de kleur van het thema te gebruiken",
+    "text": "moet tekst zijn van maximaal {{max}} tekens",
+    "webAddress": "moet een webadres zijn dat begint met http:// of https://",
+    "list": "moet een lijst zijn met maximaal {{max}} items",
+    "listItem": "is geen toegestaan item",
+    "duplicate": "staat er twee keer in",
+    "object": "moet een groep instellingen tussen accolades zijn",
+    "unknownKey": "is geen instelling die Oleafly kent",
+    "dictionaryLocale": "moet een woordenboekcode zijn zoals en_US",
+    "shortcut": "moet een sneltoets zijn zoals Mod-Shift-k, of \"default\"",
+    "editorKey": "moet een toets zijn zoals Mod-d, \"\" voor geen, of \"default\""
+  }
+}

@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "同一筆參考文獻的 APA 格式，放在 GitHub 的 Cite this repository 裡",
-    "copyBibtex": "複製 BibTeX",
     "description": "Oleafly 是免費且開放原始碼的，而它能一直如此，靠的是有人知道它的存在。如果它幫上了一篇論文，參考文獻裡的一則條目就能讓下一位研究者知道這個工具從何而來。複製它，貼進你的 .bib 檔案，並引用 <citeKey>oleafly</citeKey> 這個鍵。",
     "title": "在論文中引用 Oleafly"
   },
@@ -1407,6 +1406,22 @@
         "heading": "zotero.org 帳號",
         "description": "當這台電腦上沒有開啟 Zotero 時，就使用你的帳號。群組文獻庫也會一併納入。"
       }
+    },
+    "overleaf": {
+      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案，並保持同步。Oleafly 會在這台電腦上加密保存登入資訊和 Git 權杖。",
+      "signedInAs": "已在 {{server}} 上以 {{email}} 的身分登入",
+      "signedIn": "已在 {{server}} 上登入",
+      "signOut": "登出",
+      "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "gitTitle": "用於同步的 Git 權杖",
+      "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
+      "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
+      "gitOpenSettings": "開啟 Overleaf 帳號設定",
+      "gitPlanNote": "使用 Git 整合需要專案擁有者訂閱 Overleaf 付費方案或學校方案。",
+      "gitLabel": "Overleaf Git 權杖",
+      "gitSave": "儲存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
     }
   },
   "language": {

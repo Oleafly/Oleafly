@@ -319,7 +319,9 @@
       "closeAgent": "Schließt einen Hilfsagenten.",
       "runCommand": "Führt einen shell-Befehl im Projektordner aus, mit einem Limit von zwei Minuten.",
       "computerUse": "Öffnet eine Webseite im Browserfenster des Assistenten.",
-      "toggleTheme": "Wechselt zwischen hellem und dunklem Modus."
+      "toggleTheme": "Wechselt zwischen hellem und dunklem Modus.",
+      "listOverleafProjects": "Listet Ihre Overleaf-Projekte auf und meldet sich bei Bedarf zuerst an.",
+      "importOverleafProjects": "Importiert Overleaf-Projekte mit Compiler und Hauptdatei in Ihre Bibliothek."
     },
     "disableAll": "Alle deaktivieren",
     "emptyContext": "In diesem Zusammenhang sind keine Werkzeuge verfügbar.",

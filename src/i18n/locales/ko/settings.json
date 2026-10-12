@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "같은 참고문헌의 APA 형식은 GitHub의 Cite this repository에 있습니다",
-    "copyBibtex": "BibTeX 복사",
     "description": "Oleafly는 무료 오픈소스이고, 사람들이 존재를 알아야 그 상태를 이어 갈 수 있습니다. 논문에 도움이 되었다면 참고문헌 한 줄이 다음 연구자에게 이 도구의 출처를 알려 줍니다. 항목을 복사해 .bib 파일에 붙여 넣고 <citeKey>oleafly</citeKey> 키로 인용하세요.",
     "title": "논문에서 Oleafly 인용하기"
   },
@@ -1407,6 +1406,22 @@
         "heading": "zotero.org 계정",
         "description": "이 컴퓨터에서 Zotero가 열려 있지 않을 때 계정을 사용합니다. 그룹 라이브러리도 함께 포함됩니다."
       }
+    },
+    "overleaf": {
+      "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져오고 계속 동기화합니다. Oleafly는 로그인 정보와 Git 토큰을 이 컴퓨터에 암호화해 보관합니다.",
+      "signedInAs": "{{server}}에 {{email}}(으)로 로그인됨",
+      "signedIn": "{{server}}에 로그인됨",
+      "signOut": "로그아웃",
+      "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
+      "gitTitle": "동기화용 Git 토큰",
+      "gitSaved": "Git 토큰이 저장되어 있습니다. 연결한 프로젝트는 Overleaf와 동기화된 상태로 유지됩니다.",
+      "gitMissing": "아직 Git 토큰이 없습니다. 프로젝트를 동기화하려면 Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만드세요.",
+      "gitOpenSettings": "Overleaf 계정 설정 열기",
+      "gitPlanNote": "Git 연동을 쓰려면 프로젝트 소유자에게 Overleaf 유료 요금제나 대학 요금제가 필요합니다.",
+      "gitLabel": "Overleaf Git 토큰",
+      "gitSave": "저장",
+      "gitRemove": "제거",
+      "gitFailed": "Oleafly가 Git 토큰을 저장하지 못했습니다. 토큰 전체를 붙여 넣었는지 확인하세요."
     }
   },
   "language": {

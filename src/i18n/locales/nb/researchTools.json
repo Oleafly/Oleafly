@@ -1359,7 +1359,6 @@
     "captionAria": "Tabelltekst",
     "preview": "Forhåndsvisning",
     "output": "LaTeX-resultat",
-    "copiedSource": "Kopierte LaTeX-kildekoden",
     "booktabsHint": "Krever <code>\\usepackage{booktabs}</code> i innledningen din."
   },
   "review": {

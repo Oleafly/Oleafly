@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Dezelfde referentie in APA staat achter Cite this repository op GitHub",
-    "copyBibtex": "BibTeX kopiëren",
     "description": "Oleafly is gratis en opensource, en dat blijft zo zolang mensen weten dat het bestaat. Heeft het je artikel geholpen, dan wijst één item in je bibliografie de volgende onderzoeker de weg naar deze tool. Kopieer het, plak het in je .bib-bestand en citeer de sleutel <citeKey>oleafly</citeKey>.",
     "title": "Oleafly citeren in je artikel"
   },
@@ -1423,6 +1422,22 @@
         "heading": "zotero.org-account",
         "description": "Gebruik je account als Zotero niet open is op deze computer. Groepsbibliotheken komen ook mee."
       }
+    },
+    "overleaf": {
+      "description": "Haal projecten over uit je Overleaf-account of van de Overleaf-server van je universiteit en houd ze gesynchroniseerd. Oleafly bewaart de aanmelding en het Git-token versleuteld op deze computer.",
+      "signedInAs": "Aangemeld als {{email}} op {{server}}",
+      "signedIn": "Aangemeld op {{server}}",
+      "signOut": "Afmelden",
+      "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "gitTitle": "Git-token voor synchronisatie",
+      "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
+      "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
+      "gitOpenSettings": "Overleaf-accountinstellingen openen",
+      "gitPlanNote": "Voor Git-integratie heeft de eigenaar van het project een betaald Overleaf-abonnement of een universiteitsabonnement nodig.",
+      "gitLabel": "Git-token van Overleaf",
+      "gitSave": "Opslaan",
+      "gitRemove": "Weghalen",
+      "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt."
     }
   },
   "language": {

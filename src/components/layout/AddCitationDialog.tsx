@@ -27,6 +27,7 @@ import { hitByline, hitTitle, libraryLabel, truncated } from "@/lib/zotero/forma
 import { zoteroSearchable } from "@/lib/zotero/hint";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
 import type { ZoteroHit } from "@oleafly/backend-port";
+import { CodeBlock } from "@/components/ui/code-block";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
 
@@ -305,9 +306,10 @@ export function AddCitationDialog() {
             <p className="mb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.shell.addCitation.entry)}
             </p>
-            <pre data-select-all-scope className="max-h-52 select-text overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[0.6875rem] leading-relaxed">
-              {bibtex}
-            </pre>
+            <CodeBlock
+              code={bibtex}
+              preClassName="max-h-52 border-sidebar-border bg-background p-2.5 pr-10"
+            />
             {bibliographies.length > 1 && bibliography && (
               <div className="mt-3">
                 <div className="flex items-center gap-2">

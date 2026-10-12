@@ -1,6 +1,6 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { type ComponentType, type SVGProps, useEffect, useRef, useState } from "react";
+import { type ComponentType, lazy, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -72,6 +72,12 @@ import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { FileTypeIcon, fileTypeIconKind } from "@/components/icons/FileTypeIcon";
+
+const OverleafSyncButton = lazy(() =>
+  import("@/components/layout/overleaf-sync/OverleafSyncButton").then((module) => ({
+    default: module.OverleafSyncButton,
+  })),
+);
 
 type DocFormat = DocumentExportFormat;
 
@@ -637,6 +643,11 @@ export function TopToolbar() {
         <div data-toolbar-item="compile" className="flex w-max shrink-0 items-center gap-1">
           <CompileControls iconOnly={toolbarLayout.iconOnly} />
         </div>
+        {projectId ? (
+          <Suspense fallback={null}>
+            <OverleafSyncButton />
+          </Suspense>
+        ) : null}
         {engineError && <Tooltip label={engineErrorMessage(engineError)}>
           <span data-toolbar-item="engine-error" className="flex size-7 shrink-0 items-center justify-center text-destructive">
             <AlertTriangle className="size-4" /><span className="sr-only">{engineErrorMessage(engineError)}</span>

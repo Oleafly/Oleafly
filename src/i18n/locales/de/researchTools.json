@@ -1359,7 +1359,6 @@
     "captionAria": "Tabellenbeschriftung",
     "preview": "Vorschau",
     "output": "LaTeX-Ausgabe",
-    "copiedSource": "LaTeX-Quelltext kopiert",
     "booktabsHint": "Braucht <code>\\usepackage{booktabs}</code> in Ihrer Präambel."
   },
   "review": {

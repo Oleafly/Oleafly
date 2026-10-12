@@ -137,7 +137,8 @@
       "document": "document",
       "image": "image",
       "diagram": "diagram",
-      "external": "external"
+      "external": "external",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF preview: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Couldn't fork the project."
     },
     "deleteDialog": {
-      "title": "Move “{{name}}” to the Recycle Bin?",
+      "title": "Move “<name>{{name}}</name>” to the Recycle Bin?",
       "fallbackName": "project",
       "description": "The project will leave your library but remain available in Data Storage until you restore or permanently delete it.",
       "confirm": "Move to Recycle Bin",
       "moved": "Moved \"{{name}}\" to the Recycle Bin.",
       "failed": "Couldn't delete \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Delete {{count}} selected project",
+      "button_other": "Delete {{count}} selected projects",
+      "title_one": "Move {{count}} project to the Recycle Bin?",
+      "title_other": "Move {{count}} projects to the Recycle Bin?",
+      "description": "They will leave your library but remain available in Data Storage until you restore or permanently delete them.",
+      "folderNote": "Folders opened in place only leave Oleafly. Their files stay where they are.",
+      "done_one": "Removed {{count}} project from your library.",
+      "done_other": "Removed {{count}} projects from your library.",
+      "failed_one": "Couldn't delete {{count}} project.",
+      "failed_other": "Couldn't delete {{count}} projects."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "Connect GitHub in Settings",
       "repositoriesFailed": "Could not load repositories.",
       "repositoriesRetry": "Could not load repositories. Try again"
+    },
+    "overleaf": {
+      "cardDescription": "Pick projects from your Overleaf account",
+      "title": "Import from Overleaf",
+      "description": "Choose the projects to bring over. Each one keeps its files, compiler and main file.",
+      "checking": "Checking your Overleaf sign-in",
+      "loading": "Loading your Overleaf projects",
+      "loadFailed": "Oleafly could not load your Overleaf projects.",
+      "signInPrompt": "Sign in to Overleaf to see your projects. A sign-in window opens and closes by itself once you're in.",
+      "signingIn": "Finish signing in to Overleaf in the window that opened.",
+      "passkeyHint": "If your passkey doesn't work in the sign-in window, pick another option there, like your password or a prompt on your phone.",
+      "expired": "Your Overleaf sign-in expired. Sign in again to see your projects.",
+      "signIn": "Sign in to Overleaf",
+      "signInWindowTitle": "Sign in to Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Overleaf server address",
+      "useDifferentServer": "Use a different server",
+      "useDefaultServer": "Use overleaf.com",
+      "saveServer": "Use this server",
+      "signedInAs": "Signed in as {{email}}",
+      "signedIn": "Signed in to Overleaf",
+      "signOut": "Sign out",
+      "searchLabel": "Search Overleaf projects",
+      "searchPlaceholder_one": "Search {{count}} project",
+      "searchPlaceholder_other": "Search {{count}} projects",
+      "filterLabel": "Show projects",
+      "filter": {
+        "all": "All",
+        "owned": "Yours",
+        "shared": "Shared with you"
+      },
+      "empty": "There are no projects in this Overleaf account yet.",
+      "noMatches": "No projects match your search.",
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection",
+      "selectProject": "Select {{name}}",
+      "selected_one": "{{count}} project selected",
+      "selected_other": "{{count}} projects selected",
+      "import_one": "Import {{count}} project",
+      "import_other": "Import {{count}} projects",
+      "imported": "Imported",
+      "open": "Open",
+      "ownedByYou": "Yours",
+      "owner": "Owned by {{name}}",
+      "archived": "Archived",
+      "notCarried": "Comments, tracked changes, chat and history stay on Overleaf.",
+      "importingProjects": "Importing your projects",
+      "done": "Done",
+      "doneSummary_one": "Imported {{count}} project.",
+      "doneSummary_other": "Imported {{count}} projects.",
+      "failedSummary_one": "{{count}} project could not be imported.",
+      "failedSummary_other": "{{count}} projects could not be imported.",
+      "progress": {
+        "queued": "Waiting",
+        "downloading": "Downloading {{percent}}%",
+        "downloadingUnknown": "Downloading",
+        "importing": "Setting up"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Remove from Oleafly"
     },
     "remove": {
-      "title": "Remove “{{name}}” from Oleafly?",
+      "title": "Remove “<name>{{name}}</name>” from Oleafly?",
       "description": "Your files stay where they are. Oleafly deletes its build files for this folder and resets its trust, approvals and linked folders. Open the folder again within 30 days to get its chats and history back. You'll need to set up the rest again.",
       "confirm": "Remove from Oleafly",
       "done": "Removed “{{name}}” from Oleafly. Its files are still in the folder.",

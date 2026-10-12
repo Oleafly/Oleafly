@@ -326,7 +326,9 @@
       "closeAgent": "Cierra un agente auxiliar.",
       "runCommand": "Ejecuta un comando de shell en la carpeta del proyecto, con un límite de dos minutos.",
       "computerUse": "Abre una página web en la ventana del navegador del asistente.",
-      "toggleTheme": "Cambia entre el modo claro y el oscuro."
+      "toggleTheme": "Cambia entre el modo claro y el oscuro.",
+      "listOverleafProjects": "Enumera tus proyectos de Overleaf e inicia sesión primero si hace falta.",
+      "importOverleafProjects": "Importa proyectos de Overleaf a tu biblioteca, con su compilador y su archivo principal."
     },
     "disableAll": "Desactivar todas",
     "emptyContext": "No hay herramientas disponibles en este contexto.",

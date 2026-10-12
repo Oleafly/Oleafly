@@ -24,6 +24,12 @@ export {
 } from "./connectors";
 export { createResearchTools, type ResearchToolsHost } from "./research-tools";
 export {
+  createOverleafTools,
+  type OverleafToolOutcome,
+  type OverleafToolProject,
+  type OverleafToolsHost,
+} from "./overleaf-tools";
+export {
   DEFAULT_APPROVAL_MODE,
   PLAN_MODE_TOOL_ERROR,
   decideToolApproval,

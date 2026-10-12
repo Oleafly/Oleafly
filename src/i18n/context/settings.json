@@ -266,7 +266,6 @@
   },
   "cite": {
     "apa": "Link text. Cite this repository is the name of a GitHub feature, keep it recognizable.",
-    "copyBibtex": "Button that copies the BibTeX entry to the clipboard.",
     "description": "Keep the file extension .bib and the citation key oleafly inside the tags verbatim."
   },
   "downloads": {

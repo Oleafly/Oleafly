@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "La même référence en APA se trouve derrière Cite this repository sur GitHub",
-    "copyBibtex": "Copier le BibTeX",
     "description": "Oleafly est gratuit et open source, et il le restera tant que les gens sauront qu'il existe. S'il a aidé un article, une entrée dans votre bibliographie indique au chercheur suivant d'où vient l'outil. Copiez-la, collez-la dans votre fichier .bib et citez la clé <citeKey>oleafly</citeKey>.",
     "title": "Citer Oleafly dans votre article"
   },
@@ -1439,6 +1438,22 @@
         "heading": "Compte zotero.org",
         "description": "Utilisez votre compte quand Zotero n'est pas ouvert sur cet ordinateur. Les bibliothèques de groupe sont aussi incluses."
       }
+    },
+    "overleaf": {
+      "description": "Importez des projets depuis votre compte Overleaf ou le serveur Overleaf de votre université, et gardez-les synchronisés. Oleafly conserve la connexion et le jeton Git chiffrés sur cet ordinateur.",
+      "signedInAs": "Connecté en tant que {{email}} sur {{server}}",
+      "signedIn": "Connecté sur {{server}}",
+      "signOut": "Se déconnecter",
+      "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf.",
+      "gitTitle": "Jeton Git pour la synchronisation",
+      "gitSaved": "Un jeton Git est enregistré. Les projets que vous liez restent synchronisés avec Overleaf.",
+      "gitMissing": "Aucun jeton Git pour l'instant. Créez-en un dans la section Intégration Git des paramètres de votre compte Overleaf pour synchroniser des projets.",
+      "gitOpenSettings": "Ouvrir les paramètres du compte Overleaf",
+      "gitPlanNote": "L'intégration Git nécessite un abonnement Overleaf payant ou universitaire pour le propriétaire du projet.",
+      "gitLabel": "Jeton Git Overleaf",
+      "gitSave": "Enregistrer",
+      "gitRemove": "Retirer",
+      "gitFailed": "Oleafly n'a pas pu enregistrer le jeton Git. Vérifiez que vous avez collé le jeton en entier."
     }
   },
   "language": {

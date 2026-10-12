@@ -1381,7 +1381,6 @@
     "captionAria": "Podpis tabeli",
     "preview": "Podgląd",
     "output": "Wynik LaTeX",
-    "copiedSource": "Skopiowano kod LaTeX",
     "booktabsHint": "Wymaga <code>\\usepackage{booktabs}</code> w preambule."
   },
   "review": {

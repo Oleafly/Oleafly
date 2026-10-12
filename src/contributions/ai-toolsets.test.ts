@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   createOleafly: vi.fn((_opts?: unknown) => ({ project: true })),
   createFigure: vi.fn((_opts?: unknown) => ({ figure: true })),
   createResearch: vi.fn((_opts?: unknown) => ({ research: true })),
+  createOverleaf: vi.fn((_opts?: unknown) => ({ overleaf: true })),
 }));
 
 vi.mock("@oleafly/registry", () => ({
@@ -20,6 +21,10 @@ vi.mock("@/lib/ai-tools", () => ({
 
 vi.mock("@/lib/research-tools", () => ({
   createResearchAiTools: (opts: unknown) => mocks.createResearch(opts),
+}));
+
+vi.mock("@/lib/overleaf-ai-tools", () => ({
+  createOverleafAiTools: (opts: unknown) => mocks.createOverleaf(opts),
 }));
 
 import { registerAiToolsets } from "./ai-toolsets";
@@ -41,17 +46,19 @@ beforeEach(() => {
   mocks.createOleafly.mockClear();
   mocks.createFigure.mockClear();
   mocks.createResearch.mockClear();
+  mocks.createOverleaf.mockClear();
 });
 
 describe("AI toolset contributions", () => {
-  it("registers the project, figure and research toolsets once", () => {
+  it("registers the project, figure, research and online import toolsets once", () => {
     expect(contributions.map(({ id, mode, source }) => ({ id, mode, kind: source.kind }))).toEqual([
       { id: "project-tools", mode: "chat", kind: "project" },
       { id: "figure-tools", mode: "chat", kind: "figure" },
       { id: "research-tools", mode: "chat", kind: "project" },
+      { id: "overleaf-tools", mode: "chat", kind: "project" },
     ]);
     registerAiToolsets();
-    expect(mocks.register).toHaveBeenCalledTimes(3);
+    expect(mocks.register).toHaveBeenCalledTimes(4);
   });
 
   it("builds project tools with the chat options", () => {
@@ -70,5 +77,11 @@ describe("AI toolset contributions", () => {
     const confirm = vi.fn();
     contribution("research-tools").create({ confirm });
     expect(mocks.createResearch).toHaveBeenCalledWith({ confirm });
+  });
+
+  it("threads the ChatCore confirmation gate into the online import tools", () => {
+    const confirm = vi.fn();
+    expect(contribution("overleaf-tools").create({ confirm })).toEqual({ overleaf: true });
+    expect(mocks.createOverleaf).toHaveBeenCalledWith({ confirm });
   });
 });

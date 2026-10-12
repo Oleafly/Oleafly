@@ -137,7 +137,8 @@
       "document": "document",
       "image": "afbeelding",
       "diagram": "diagram",
-      "external": "extern"
+      "external": "extern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-voorbeeld: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Het forken van het project is niet gelukt."
     },
     "deleteDialog": {
-      "title": "“{{name}}” naar de Prullenbak verplaatsen?",
+      "title": "“<name>{{name}}</name>” naar de Prullenbak verplaatsen?",
       "fallbackName": "project",
       "description": "Het project verdwijnt uit je bibliotheek maar blijft beschikbaar bij Gegevensopslag totdat je het terugzet of definitief verwijdert.",
       "confirm": "Naar de Prullenbak verplaatsen",
       "moved": "\"{{name}}\" naar de Prullenbak verplaatst.",
       "failed": "Kon \"{{name}}\" niet verwijderen."
+    },
+    "bulkDelete": {
+      "button_one": "{{count}} geselecteerd project verwijderen",
+      "button_other": "{{count}} geselecteerde projecten verwijderen",
+      "title_one": "{{count}} project naar de Prullenbak verplaatsen?",
+      "title_other": "{{count}} projecten naar de Prullenbak verplaatsen?",
+      "description": "Ze verdwijnen uit je bibliotheek maar blijven beschikbaar bij Gegevensopslag totdat je ze terugzet of definitief verwijdert.",
+      "folderNote": "Mappen die ter plekke zijn geopend, verdwijnen alleen uit Oleafly. Hun bestanden blijven waar ze zijn.",
+      "done_one": "{{count}} project uit je bibliotheek verwijderd.",
+      "done_other": "{{count}} projecten uit je bibliotheek verwijderd.",
+      "failed_one": "Kan {{count}} project niet verwijderen.",
+      "failed_other": "Kan {{count}} projecten niet verwijderen."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "GitHub verbinden bij Instellingen",
       "repositoriesFailed": "Kon de repository's niet laden.",
       "repositoriesRetry": "Kon de repository's niet laden. Probeer het opnieuw"
+    },
+    "overleaf": {
+      "cardDescription": "Kies projecten uit je Overleaf-account",
+      "title": "Importeren vanaf Overleaf",
+      "description": "Kies de projecten die je wilt overzetten. Elk project behoudt zijn bestanden, compiler en hoofdbestand.",
+      "checking": "Je Overleaf-aanmelding controleren",
+      "loading": "Je Overleaf-projecten laden",
+      "loadFailed": "Oleafly kon je Overleaf-projecten niet laden.",
+      "signInPrompt": "Meld je aan bij Overleaf om je projecten te zien. Er opent een aanmeldvenster dat vanzelf sluit zodra je bent aangemeld.",
+      "signingIn": "Rond het aanmelden bij Overleaf af in het venster dat is geopend.",
+      "passkeyHint": "Werkt je passkey niet in het aanmeldvenster, kies daar dan een andere optie, zoals je wachtwoord of een melding op je telefoon.",
+      "expired": "Je Overleaf-aanmelding is verlopen. Meld je opnieuw aan om je projecten te zien.",
+      "signIn": "Aanmelden bij Overleaf",
+      "signInWindowTitle": "Aanmelden bij Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Adres van de Overleaf-server",
+      "useDifferentServer": "Een andere server gebruiken",
+      "useDefaultServer": "overleaf.com gebruiken",
+      "saveServer": "Deze server gebruiken",
+      "signedInAs": "Aangemeld als {{email}}",
+      "signedIn": "Aangemeld bij Overleaf",
+      "signOut": "Afmelden",
+      "searchLabel": "Overleaf-projecten zoeken",
+      "searchPlaceholder_one": "Zoek in {{count}} project",
+      "searchPlaceholder_other": "Zoek in {{count}} projecten",
+      "filterLabel": "Projecten tonen",
+      "filter": {
+        "all": "Alle",
+        "owned": "Van jou",
+        "shared": "Gedeeld met jou"
+      },
+      "empty": "Er staan nog geen projecten in dit Overleaf-account.",
+      "noMatches": "Geen projecten gevonden voor je zoekopdracht.",
+      "selectAll": "Alles selecteren",
+      "clearSelection": "Selectie wissen",
+      "selectProject": "{{name}} selecteren",
+      "selected_one": "{{count}} project geselecteerd",
+      "selected_other": "{{count}} projecten geselecteerd",
+      "import_one": "{{count}} project importeren",
+      "import_other": "{{count}} projecten importeren",
+      "imported": "Geïmporteerd",
+      "open": "Openen",
+      "ownedByYou": "Van jou",
+      "owner": "Eigendom van {{name}}",
+      "archived": "Gearchiveerd",
+      "notCarried": "Opmerkingen, bijgehouden wijzigingen, chat en geschiedenis blijven in Overleaf.",
+      "importingProjects": "Je projecten worden geïmporteerd",
+      "done": "Klaar",
+      "doneSummary_one": "{{count}} project geïmporteerd.",
+      "doneSummary_other": "{{count}} projecten geïmporteerd.",
+      "failedSummary_one": "{{count}} project kon niet worden geïmporteerd.",
+      "failedSummary_other": "{{count}} projecten konden niet worden geïmporteerd.",
+      "progress": {
+        "queued": "Wachten",
+        "downloading": "Downloaden {{percent}}%",
+        "downloadingUnknown": "Downloaden",
+        "importing": "Instellen"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Uit Oleafly verwijderen"
     },
     "remove": {
-      "title": "“{{name}}” uit Oleafly verwijderen?",
+      "title": "“<name>{{name}}</name>” uit Oleafly verwijderen?",
       "description": "Je bestanden blijven waar ze zijn. Oleafly verwijdert zijn buildbestanden voor deze map en reset het vertrouwen, de goedkeuringen en de gekoppelde mappen. Open de map binnen 30 dagen opnieuw om de chats en geschiedenis terug te krijgen. De rest moet je opnieuw instellen.",
       "confirm": "Uit Oleafly verwijderen",
       "done": "“{{name}}” is uit Oleafly verwijderd. De bestanden staan nog in de map.",

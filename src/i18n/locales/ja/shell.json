@@ -1370,5 +1370,53 @@
     "compiling": "コンパイル中",
     "hideLog": "コンパイルログを隠す",
     "showLog": "コンパイルログを表示"
+  },
+  "overleafSync": {
+    "button": "Overleaf 同期",
+    "title": "Overleaf と同期",
+    "cancel": "キャンセル",
+    "more_other": "ほか {{count}} 件のファイル",
+    "status": {
+      "notLinked": "まだ Overleaf と同期していません。",
+      "linking": "Overleaf とリンクしています",
+      "syncing": "Overleaf と同期しています",
+      "needsToken": "同期するには Overleaf の Git トークンを追加してください。",
+      "never": "まだ同期していません。",
+      "justNow": "たった今",
+      "synced": "最終同期: {{time}}。",
+      "conflicts_other": "{{count}} 件のファイルが両方で変更されています。残す版を選んでください。"
+    },
+    "actions": {
+      "keepInSync": "Overleaf と同期し続ける",
+      "syncNow": "今すぐ同期",
+      "auto": "自動で同期",
+      "resolve": "版を選ぶ",
+      "unlink": "同期を停止",
+      "addToken": "Git トークンを追加",
+      "changeToken": "Git トークンを変更"
+    },
+    "token": {
+      "title": "Overleaf の Git トークンを追加",
+      "description": "Oleafly は Overleaf の Git 連携を使って同期します。Overleaf のアカウント設定の「Git 連携」でトークンを作成し、ここに貼り付けてください。トークンはこのコンピュータに暗号化して保存されます。",
+      "openSettings": "Overleaf のアカウント設定を開く",
+      "label": "Git トークン",
+      "note": "Git 連携を使うには、プロジェクトのオーナーが Overleaf の有料プランか大学のプランに加入している必要があります。",
+      "save": "保存して同期"
+    },
+    "choice": {
+      "title": "どちらの版を優先しますか？",
+      "description": "これらのファイルは、ここと Overleaf で内容が異なります。片方にしかないファイルは両方に残るため、何も削除されません。",
+      "mine": "自分の版を使う",
+      "theirs": "Overleaf の版を使う"
+    },
+    "conflicts": {
+      "title": "版を選ぶ",
+      "description": "これらのファイルは、前回の同期以降にここと Overleaf の両方で変更されました。ファイルごとに残す版を選んでください。適用するまで何も変わりません。",
+      "mine": "自分の版",
+      "theirs": "Overleaf の版",
+      "allMine": "すべて自分の版にする",
+      "allTheirs": "すべて Overleaf の版にする",
+      "apply": "適用して同期"
+    }
   }
 }

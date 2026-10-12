@@ -132,7 +132,7 @@ function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
   return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
 }
 
-function isValidBinding(value: unknown): value is ShortcutBinding {
+export function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
   return (

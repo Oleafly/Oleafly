@@ -137,7 +137,8 @@
       "document": "dokument",
       "image": "bilde",
       "diagram": "diagram",
-      "external": "ekstern"
+      "external": "ekstern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-forhåndsvisning: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Kunne ikke forgrene prosjektet."
     },
     "deleteDialog": {
-      "title": "Flytte «{{name}}» til papirkurven?",
+      "title": "Flytte «<name>{{name}}</name>» til papirkurven?",
       "fallbackName": "prosjektet",
       "description": "Prosjektet forsvinner fra biblioteket ditt, men blir liggende i Datalagring til du gjenoppretter det eller sletter det for godt.",
       "confirm": "Flytt til papirkurven",
       "moved": "Flyttet \"{{name}}\" til papirkurven.",
       "failed": "Kunne ikke slette \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Slett {{count}} valgt prosjekt",
+      "button_other": "Slett {{count}} valgte prosjekter",
+      "title_one": "Flytte {{count}} prosjekt til papirkurven?",
+      "title_other": "Flytte {{count}} prosjekter til papirkurven?",
+      "description": "De forsvinner fra biblioteket ditt, men blir liggende i Datalagring til du gjenoppretter dem eller sletter dem for godt.",
+      "folderNote": "Mapper som er åpnet der de ligger, forsvinner bare fra Oleafly. Filene blir der de er.",
+      "done_one": "Fjernet {{count}} prosjekt fra biblioteket.",
+      "done_other": "Fjernet {{count}} prosjekter fra biblioteket.",
+      "failed_one": "Kunne ikke slette {{count}} prosjekt.",
+      "failed_other": "Kunne ikke slette {{count}} prosjekter."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "Koble til GitHub i Innstillinger",
       "repositoriesFailed": "Kunne ikke laste repositoriene.",
       "repositoriesRetry": "Kunne ikke laste repositoriene. Prøv igjen"
+    },
+    "overleaf": {
+      "cardDescription": "Velg prosjekter fra Overleaf-kontoen din",
+      "title": "Importer fra Overleaf",
+      "description": "Velg prosjektene du vil hente over. Hvert prosjekt beholder filene, kompilatoren og hovedfilen sin.",
+      "checking": "Sjekker Overleaf-innloggingen din",
+      "loading": "Laster Overleaf-prosjektene dine",
+      "loadFailed": "Oleafly kunne ikke laste Overleaf-prosjektene dine.",
+      "signInPrompt": "Logg inn på Overleaf for å se prosjektene dine. Et innloggingsvindu åpnes og lukkes av seg selv når du er logget inn.",
+      "signingIn": "Fullfør innloggingen på Overleaf i vinduet som ble åpnet.",
+      "passkeyHint": "Hvis passnøkkelen din ikke fungerer i innloggingsvinduet, velger du et annet alternativ der, for eksempel passordet ditt eller en forespørsel på telefonen.",
+      "expired": "Overleaf-innloggingen din er utløpt. Logg inn på nytt for å se prosjektene dine.",
+      "signIn": "Logg inn på Overleaf",
+      "signInWindowTitle": "Logg inn på Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Adressen til Overleaf-serveren",
+      "useDifferentServer": "Bruk en annen server",
+      "useDefaultServer": "Bruk overleaf.com",
+      "saveServer": "Bruk denne serveren",
+      "signedInAs": "Logget inn som {{email}}",
+      "signedIn": "Logget inn på Overleaf",
+      "signOut": "Logg ut",
+      "searchLabel": "Søk i Overleaf-prosjekter",
+      "searchPlaceholder_one": "Søk i {{count}} prosjekt",
+      "searchPlaceholder_other": "Søk i {{count}} prosjekter",
+      "filterLabel": "Vis prosjekter",
+      "filter": {
+        "all": "Alle",
+        "owned": "Dine",
+        "shared": "Delt med deg"
+      },
+      "empty": "Det er ingen prosjekter på denne Overleaf-kontoen ennå.",
+      "noMatches": "Ingen prosjekter samsvarer med søket.",
+      "selectAll": "Merk alle",
+      "clearSelection": "Fjern merking",
+      "selectProject": "Merk {{name}}",
+      "selected_one": "{{count}} prosjekt merket",
+      "selected_other": "{{count}} prosjekter merket",
+      "import_one": "Importer {{count}} prosjekt",
+      "import_other": "Importer {{count}} prosjekter",
+      "imported": "Importert",
+      "open": "Åpne",
+      "ownedByYou": "Ditt",
+      "owner": "Eies av {{name}}",
+      "archived": "Arkivert",
+      "notCarried": "Kommentarer, sporede endringer, chat og historikk blir værende på Overleaf.",
+      "importingProjects": "Importerer prosjektene dine",
+      "done": "Ferdig",
+      "doneSummary_one": "Importerte {{count}} prosjekt.",
+      "doneSummary_other": "Importerte {{count}} prosjekter.",
+      "failedSummary_one": "{{count}} prosjekt kunne ikke importeres.",
+      "failedSummary_other": "{{count}} prosjekter kunne ikke importeres.",
+      "progress": {
+        "queued": "Venter",
+        "downloading": "Laster ned {{percent}} %",
+        "downloadingUnknown": "Laster ned",
+        "importing": "Klargjør"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Fjern fra Oleafly"
     },
     "remove": {
-      "title": "Vil du fjerne «{{name}}» fra Oleafly?",
+      "title": "Vil du fjerne «<name>{{name}}</name>» fra Oleafly?",
       "description": "Filene dine blir der de er. Oleafly sletter byggefilene sine for mappen og tilbakestiller tillit, godkjenninger og lenkede mapper. Åpne mappen igjen innen 30 dager for å få tilbake chattene og historikken. Resten må du sette opp på nytt.",
       "confirm": "Fjern fra Oleafly",
       "done": "«{{name}}» er fjernet fra Oleafly. Filene ligger fortsatt i mappen.",

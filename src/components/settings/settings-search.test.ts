@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import enSettingsFile from "@/i18n/locales/en/settingsFile.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import {
   bestSettingsHit,
@@ -19,7 +20,12 @@ import {
   type SettingsSearchIndex,
 } from "./settings-search";
 
-const BUNDLES: Record<string, unknown> = { core: enCore, settings: enSettings, shell: enShell };
+const BUNDLES: Record<string, unknown> = {
+  core: enCore,
+  settings: enSettings,
+  settingsFile: enSettingsFile,
+  shell: enShell,
+};
 
 function lookup(path: CatalogPath): unknown {
   const [namespace, ...keys] = path;
@@ -52,6 +58,13 @@ describe("settings search index", () => {
   it("finds a setting by its row label", () => {
     expect(matchSettingsSections(index, SECTIONS, "font size")).toEqual(["appearance"]);
     expect(matchSettingsSections(index, SECTIONS, "zotero")).toEqual(["integrations"]);
+  });
+
+  it("finds the settings file card in General by its words, not its error messages", () => {
+    expect(matchSettingsSections(index, SECTIONS, "export settings")).toEqual(["general"]);
+    expect(matchSettingsSections(index, SECTIONS, "settings json")).toContain("general");
+    expect(rowLabels(index, "general")).toContain("Application Settings");
+    expect(matchSettingsSections(index, SECTIONS, "whole number steps")).toEqual([]);
   });
 
   it("matches the section title and every word of the query", () => {

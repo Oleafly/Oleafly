@@ -84,6 +84,8 @@ export const AI_TOOLS: AiToolInfo[] = [
   { name: "set_main_doc", group: "Build and PDF", desc: () => i18n.t(($) => $.ai.tools.catalog.setMainDoc) },
   { name: "literature_search", group: "Research", desc: () => i18n.t(($) => $.ai.tools.catalog.literatureSearch) },
   { name: "verify_citation", group: "Research", desc: () => i18n.t(($) => $.ai.tools.catalog.verifyCitation) },
+  { name: "list_overleaf_projects", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.listOverleafProjects) },
+  { name: "import_overleaf_projects", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.importOverleafProjects) },
   {
     name: "project_library_search",
     group: "Research",

@@ -30,3 +30,9 @@ export function projectDateTime(timestamp: number) {
   if (Number.isNaN(date.getTime())) return i18n.t(($) => $.core.project.dateUnavailable);
   return formatDateTime(date, { dateStyle: "medium", timeStyle: "short" });
 }
+
+export function shortProjectName(name: string, limit = 32): string {
+  const characters = Array.from(name);
+  if (characters.length <= limit) return name;
+  return `${characters.slice(0, limit - 1).join("").trimEnd()}…`;
+}

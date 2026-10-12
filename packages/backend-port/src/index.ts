@@ -435,6 +435,7 @@ export interface ProjectInfo {
     recovery_pending: boolean;
     location?: ProjectLocationInfo;
     last_opened_at?: number;
+    imported_from?: string | null;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;

@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "同一文献的 APA 格式可在 GitHub 的“Cite this repository”中找到。",
-    "copyBibtex": "复制 BibTeX",
     "description": "Oleafly 免费开源，而让更多人知道它的存在，它才能一直这样。如果它曾为你的论文出过力，在参考文献中加上一条记录，就能告诉下一位研究者这个工具来自哪里。复制它，粘贴到你的 .bib 文件中，并以 <citeKey>oleafly</citeKey> 为引用键进行引用。",
     "title": "在论文中引用 Oleafly"
   },
@@ -1407,6 +1406,22 @@
         "heading": "zotero.org 账户",
         "description": "本机上没有打开 Zotero 时，使用你的账户。群组文库也会一并包含。"
       }
+    },
+    "overleaf": {
+      "description": "从你的 Overleaf 账户或你所在大学的 Overleaf 服务器导入项目，并保持同步。Oleafly 会在这台电脑上加密保存登录信息和 Git 令牌。",
+      "signedInAs": "已在 {{server}} 上以 {{email}} 的身份登录",
+      "signedIn": "已在 {{server}} 上登录",
+      "signOut": "退出登录",
+      "signOutFailed": "Oleafly 无法退出 Overleaf 登录。",
+      "gitTitle": "用于同步的 Git 令牌",
+      "gitSaved": "已保存 Git 令牌。你关联的项目会与 Overleaf 保持同步。",
+      "gitMissing": "尚无 Git 令牌。请在 Overleaf 账户设置的“Git 集成”中创建一个，以便同步项目。",
+      "gitOpenSettings": "打开 Overleaf 账户设置",
+      "gitPlanNote": "使用 Git 集成需要项目所有者订阅 Overleaf 付费方案或大学方案。",
+      "gitLabel": "Overleaf Git 令牌",
+      "gitSave": "保存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。"
     }
   },
   "language": {

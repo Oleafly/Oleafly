@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Den samme reference i APA ligger bag Cite this repository på GitHub",
-    "copyBibtex": "Kopier BibTeX",
     "description": "Oleafly er gratis og open source, og det bliver ved med at være det, når folk ved, at det findes. Har det hjulpet en artikel på vej, fortæller én post i din litteraturliste den næste forsker, hvor værktøjet kommer fra. Kopier den, indsæt den i din .bib-fil, og citer nøglen <citeKey>oleafly</citeKey>.",
     "title": "Citer Oleafly i din artikel"
   },
@@ -1423,6 +1422,22 @@
         "heading": "zotero.org-konto",
         "description": "Brug din konto, når Zotero ikke er åben på denne computer. Gruppebiblioteker kommer også med."
       }
+    },
+    "overleaf": {
+      "description": "Hent projekter fra din Overleaf-konto eller fra dit universitets Overleaf-server, og hold dem synkroniseret. Oleafly gemmer login og Git-token krypteret på denne computer.",
+      "signedInAs": "Logget ind som {{email}} på {{server}}",
+      "signedIn": "Logget ind på {{server}}",
+      "signOut": "Log ud",
+      "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
+      "gitTitle": "Git-token til synkronisering",
+      "gitSaved": "Et Git-token er gemt. Projekter, du kobler til, holdes synkroniseret med Overleaf.",
+      "gitMissing": "Intet Git-token endnu. Opret et under Git-integration i dine kontoindstillinger på Overleaf for at synkronisere projekter.",
+      "gitOpenSettings": "Åbn kontoindstillinger på Overleaf",
+      "gitPlanNote": "Git-integration kræver, at projektets ejer har et betalt abonnement eller et universitetsabonnement hos Overleaf.",
+      "gitLabel": "Git-token fra Overleaf",
+      "gitSave": "Gem",
+      "gitRemove": "Fjern",
+      "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
     }
   },
   "language": {

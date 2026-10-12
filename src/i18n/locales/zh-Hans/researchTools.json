@@ -1348,7 +1348,6 @@
     "captionAria": "表格题注",
     "preview": "预览",
     "output": "LaTeX 输出",
-    "copiedSource": "已复制 LaTeX 源码",
     "booktabsHint": "需要在导言区添加 <code>\\usepackage{booktabs}</code>。"
   },
   "review": {

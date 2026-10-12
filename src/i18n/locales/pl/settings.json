@@ -1005,7 +1005,6 @@
   },
   "cite": {
     "apa": "To samo odwołanie w stylu APA znajdziesz pod Cite this repository w GitHub",
-    "copyBibtex": "Kopiuj BibTeX",
     "description": "Oleafly jest darmowy i otwartoźródłowy, a taki pozostanie, dopóki ludzie o nim wiedzą. Jeśli pomógł przy artykule, jeden wpis w bibliografii pokaże następnemu badaczowi, skąd wzięło się to narzędzie. Skopiuj go, wklej do pliku .bib i cytuj klucz <citeKey>oleafly</citeKey>.",
     "title": "Zacytuj Oleafly w swoim artykule"
   },
@@ -1455,6 +1454,22 @@
         "heading": "Konto zotero.org",
         "description": "Używaj konta, gdy Zotero nie jest otwarty na tym komputerze. Biblioteki grup też zostaną uwzględnione."
       }
+    },
+    "overleaf": {
+      "description": "Przenoś projekty ze swojego konta Overleaf lub z serwera Overleaf swojej uczelni i synchronizuj je na bieżąco. Oleafly przechowuje dane logowania i token Git zaszyfrowane na tym komputerze.",
+      "signedInAs": "Zalogowano jako {{email}} na {{server}}",
+      "signedIn": "Zalogowano na {{server}}",
+      "signOut": "Wyloguj się",
+      "signOutFailed": "Oleafly nie mógł wylogować się z Overleaf.",
+      "gitTitle": "Token Git do synchronizacji",
+      "gitSaved": "Token Git jest zapisany. Połączone projekty pozostają zsynchronizowane z Overleaf.",
+      "gitMissing": "Nie ma jeszcze tokenu Git. Aby synchronizować projekty, utwórz go w sekcji Integracja z Git w ustawieniach konta Overleaf.",
+      "gitOpenSettings": "Otwórz ustawienia konta Overleaf",
+      "gitPlanNote": "Integracja z Git wymaga, aby właściciel projektu miał płatny lub uczelniany plan Overleaf.",
+      "gitLabel": "Token Git z Overleaf",
+      "gitSave": "Zapisz",
+      "gitRemove": "Usuń",
+      "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token."
     }
   },
   "language": {

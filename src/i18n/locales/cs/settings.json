@@ -1005,7 +1005,6 @@
   },
   "cite": {
     "apa": "Tutéž referenci ve stylu APA najdete pod Cite this repository na GitHubu",
-    "copyBibtex": "Kopírovat BibTeX",
     "description": "Oleafly je zdarma a s otevřeným zdrojovým kódem a takový zůstane, když se o něm bude vědět. Pokud vám pomohl s článkem, jediný záznam ve vaší bibliografii poví dalšímu badateli, odkud ten nástroj je. Zkopírujte jej, vložte do svého souboru .bib a citujte klíč <citeKey>oleafly</citeKey>.",
     "title": "Citujte Oleafly ve svém článku"
   },
@@ -1455,6 +1454,22 @@
         "heading": "Účet zotero.org",
         "description": "Účet použijte, když v tomto počítači neběží Zotero. Načtou se i skupinové knihovny."
       }
+    },
+    "overleaf": {
+      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity a udržujte je synchronizované. Oleafly uchovává přihlášení i token Git v tomto počítači zašifrované.",
+      "signedInAs": "Přihlášeno jako {{email}} na {{server}}",
+      "signedIn": "Přihlášeno na {{server}}",
+      "signOut": "Odhlásit se",
+      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "gitTitle": "Token Git pro synchronizaci",
+      "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
+      "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
+      "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
+      "gitPlanNote": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
+      "gitLabel": "Token Git z Overleafu",
+      "gitSave": "Uložit",
+      "gitRemove": "Odebrat",
+      "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token."
     }
   },
   "language": {

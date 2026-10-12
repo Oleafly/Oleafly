@@ -138,7 +138,8 @@
       "document": "document",
       "image": "imagine",
       "diagram": "diagramă",
-      "external": "extern"
+      "external": "extern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Previzualizare PDF: {{name}}",
@@ -182,12 +183,28 @@
       "failed": "Proiectul nu a putut fi bifurcat."
     },
     "deleteDialog": {
-      "title": "Muți „{{name}}” în Coșul de reciclare?",
+      "title": "Muți „<name>{{name}}</name>” în Coșul de reciclare?",
       "fallbackName": "proiect",
       "description": "Proiectul iese din biblioteca ta, dar rămâne disponibil în Stocarea datelor până când îl restabilești sau îl ștergi definitiv.",
       "confirm": "Mută în Coșul de reciclare",
       "moved": "„{{name}}” a fost mutat în Coșul de reciclare.",
       "failed": "„{{name}}” nu a putut fi șters."
+    },
+    "bulkDelete": {
+      "button_one": "Șterge {{count}} proiect selectat",
+      "button_few": "Șterge {{count}} proiecte selectate",
+      "button_other": "Șterge {{count}} de proiecte selectate",
+      "title_one": "Muți {{count}} proiect în Coșul de reciclare?",
+      "title_few": "Muți {{count}} proiecte în Coșul de reciclare?",
+      "title_other": "Muți {{count}} de proiecte în Coșul de reciclare?",
+      "description": "Proiectele ies din biblioteca ta, dar rămân disponibile în Stocarea datelor până când le restabilești sau le ștergi definitiv.",
+      "folderNote": "Folderele deschise pe loc doar ies din Oleafly. Fișierele lor rămân unde sunt.",
+      "done_one": "Am scos {{count}} proiect din bibliotecă.",
+      "done_few": "Am scos {{count}} proiecte din bibliotecă.",
+      "done_other": "Am scos {{count}} de proiecte din bibliotecă.",
+      "failed_one": "Nu am putut șterge {{count}} proiect.",
+      "failed_few": "Nu am putut șterge {{count}} proiecte.",
+      "failed_other": "Nu am putut șterge {{count}} de proiecte."
     }
   },
   "newProject": {
@@ -294,6 +311,69 @@
       "connect": "Conectează GitHub în Setări",
       "repositoriesFailed": "Depozitele nu au putut fi încărcate.",
       "repositoriesRetry": "Depozitele nu au putut fi încărcate. Încearcă din nou"
+    },
+    "overleaf": {
+      "cardDescription": "Alege proiecte din contul tău Overleaf",
+      "title": "Importă din Overleaf",
+      "description": "Alege proiectele pe care vrei să le aduci. Fiecare își păstrează fișierele, compilatorul și fișierul principal.",
+      "checking": "Se verifică autentificarea în Overleaf",
+      "loading": "Se încarcă proiectele tale din Overleaf",
+      "loadFailed": "Oleafly nu a putut încărca proiectele tale din Overleaf.",
+      "signInPrompt": "Autentifică-te în Overleaf ca să îți vezi proiectele. Se deschide o fereastră de autentificare care se închide singură după ce te-ai conectat.",
+      "signingIn": "Termină autentificarea în Overleaf în fereastra care s-a deschis.",
+      "passkeyHint": "Dacă cheia de acces nu funcționează în fereastra de autentificare, alege acolo altă opțiune, cum ar fi parola sau o confirmare pe telefon.",
+      "expired": "Autentificarea în Overleaf a expirat. Autentifică-te din nou ca să îți vezi proiectele.",
+      "signIn": "Autentifică-te în Overleaf",
+      "signInWindowTitle": "Autentifică-te în Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Adresa serverului Overleaf",
+      "useDifferentServer": "Folosește alt server",
+      "useDefaultServer": "Folosește overleaf.com",
+      "saveServer": "Folosește acest server",
+      "signedInAs": "Autentificat ca {{email}}",
+      "signedIn": "Autentificat în Overleaf",
+      "signOut": "Deconectează-te",
+      "searchLabel": "Caută proiecte Overleaf",
+      "searchPlaceholder_one": "Caută în {{count}} proiect",
+      "searchPlaceholder_few": "Caută în {{count}} proiecte",
+      "searchPlaceholder_other": "Caută în {{count}} de proiecte",
+      "filterLabel": "Afișează proiectele",
+      "filter": {
+        "all": "Toate",
+        "owned": "Ale tale",
+        "shared": "Partajate cu tine"
+      },
+      "empty": "Nu există încă proiecte în acest cont Overleaf.",
+      "noMatches": "Niciun proiect nu se potrivește căutării.",
+      "selectAll": "Selectează tot",
+      "clearSelection": "Golește selecția",
+      "selectProject": "Selectează {{name}}",
+      "selected_one": "{{count}} proiect selectat",
+      "selected_few": "{{count}} proiecte selectate",
+      "selected_other": "{{count}} de proiecte selectate",
+      "import_one": "Importă {{count}} proiect",
+      "import_few": "Importă {{count}} proiecte",
+      "import_other": "Importă {{count}} de proiecte",
+      "imported": "Importat",
+      "open": "Deschide",
+      "ownedByYou": "Al tău",
+      "owner": "Proprietar: {{name}}",
+      "archived": "Arhivat",
+      "notCarried": "Comentariile, modificările urmărite, chatul și istoricul rămân în Overleaf.",
+      "importingProjects": "Se importă proiectele",
+      "done": "Gata",
+      "doneSummary_one": "S-a importat {{count}} proiect.",
+      "doneSummary_few": "S-au importat {{count}} proiecte.",
+      "doneSummary_other": "S-au importat {{count}} de proiecte.",
+      "failedSummary_one": "{{count}} proiect nu a putut fi importat.",
+      "failedSummary_few": "{{count}} proiecte nu au putut fi importate.",
+      "failedSummary_other": "{{count}} de proiecte nu au putut fi importate.",
+      "progress": {
+        "queued": "În așteptare",
+        "downloading": "Se descarcă {{percent}}%",
+        "downloadingUnknown": "Se descarcă",
+        "importing": "Se pregătește"
+      }
     }
   },
   "pdfImport": {
@@ -549,7 +629,7 @@
       "remove": "Elimină din Oleafly"
     },
     "remove": {
-      "title": "Elimini „{{name}}” din Oleafly?",
+      "title": "Elimini „<name>{{name}}</name>” din Oleafly?",
       "description": "Fișierele tale rămân unde sunt. Oleafly șterge fișierele de compilare făcute pentru acest folder și îi resetează încrederea, aprobările și folderele asociate. Deschide folderul din nou în 30 de zile ca să-i recuperezi conversațiile și istoricul. Restul va trebui configurat din nou.",
       "confirm": "Elimină din Oleafly",
       "done": "„{{name}}” a fost eliminat din Oleafly. Fișierele sunt tot în folder.",

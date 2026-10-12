@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Sama viite APA-muodossa on GitHubissa kohdan Cite this repository takana",
-    "copyBibtex": "Kopioi BibTeX",
     "description": "Oleafly on maksuton ja avointa lähdekoodia, ja se pysyy sellaisena, kun ihmiset tietävät siitä. Jos se auttoi artikkelia eteenpäin, yksi merkintä lähdeluettelossasi kertoo seuraavalle tutkijalle, mistä työkalu on peräisin. Kopioi se, liitä se .bib-tiedostoosi ja viittaa avaimella <citeKey>oleafly</citeKey>.",
     "title": "Viittaa Oleaflyyn artikkelissasi"
   },
@@ -1423,6 +1422,22 @@
         "heading": "zotero.org-tili",
         "description": "Käytä tiliäsi, kun Zotero ei ole auki tällä koneella. Myös ryhmäkirjastot tulevat mukaan."
       }
+    },
+    "overleaf": {
+      "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta ja pidä ne synkronoituina. Oleafly säilyttää kirjautumisen ja Git-tokenin salattuina tällä koneella.",
+      "signedInAs": "Kirjautunut palvelimelle {{server}} käyttäjänä {{email}}",
+      "signedIn": "Kirjautunut palvelimelle {{server}}",
+      "signOut": "Kirjaudu ulos",
+      "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "gitTitle": "Git-tokeni synkronointia varten",
+      "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
+      "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
+      "gitOpenSettings": "Avaa Overleafin tiliasetukset",
+      "gitPlanNote": "Git-integraatio vaatii, että projektin omistajalla on maksullinen tai yliopiston Overleaf-tilaus.",
+      "gitLabel": "Overleafin Git-tokeni",
+      "gitSave": "Tallenna",
+      "gitRemove": "Poista",
+      "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
     }
   },
   "language": {
