@@ -1,8 +1,13 @@
 pub mod binding;
 pub mod device_key;
+pub mod doc;
+pub mod editor;
 pub mod error;
 pub mod file_ids;
+pub mod live;
 pub mod mass_change;
+pub mod materialize;
+pub mod ot;
 pub mod paths;
 pub mod secret_port;
 
@@ -17,6 +22,7 @@ pub mod client;
 
 pub use client::ServerUrl;
 pub mod servers;
+pub mod sync;
 
 pub use client::ServerClient;
 pub use client::{connect_socket, SocketConnection};

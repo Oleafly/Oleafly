@@ -34,6 +34,11 @@ pub fn kind_to_str(kind: &SecurityEventKind) -> &'static str {
         SecurityEventKind::DomainRuleAdded => "domain_rule_added",
         SecurityEventKind::DomainRuleRemoved => "domain_rule_removed",
         SecurityEventKind::SettingsChanged => "settings_changed",
+        SecurityEventKind::ProjectShared => "project_shared",
+        SecurityEventKind::ProjectAccessGranted => "project_access_granted",
+        SecurityEventKind::ProjectAccessChanged => "project_access_changed",
+        SecurityEventKind::ProjectAccessRemoved => "project_access_removed",
+        SecurityEventKind::ProjectArchived => "project_archived",
         SecurityEventKind::Unknown => "unknown",
     }
 }
@@ -56,6 +61,11 @@ pub fn kind_from_str(text: &str) -> Option<SecurityEventKind> {
         "domain_rule_added" => Some(SecurityEventKind::DomainRuleAdded),
         "domain_rule_removed" => Some(SecurityEventKind::DomainRuleRemoved),
         "settings_changed" => Some(SecurityEventKind::SettingsChanged),
+        "project_shared" => Some(SecurityEventKind::ProjectShared),
+        "project_access_granted" => Some(SecurityEventKind::ProjectAccessGranted),
+        "project_access_changed" => Some(SecurityEventKind::ProjectAccessChanged),
+        "project_access_removed" => Some(SecurityEventKind::ProjectAccessRemoved),
+        "project_archived" => Some(SecurityEventKind::ProjectArchived),
         _ => None,
     }
 }
@@ -157,7 +167,7 @@ mod tests {
     use crate::db::Db;
     use serde_json::json;
 
-    const ALL_KINDS: [SecurityEventKind; 16] = [
+    const ALL_KINDS: [SecurityEventKind; 21] = [
         SecurityEventKind::SetupCompleted,
         SecurityEventKind::SignIn,
         SecurityEventKind::SignInRefused,
@@ -174,6 +184,11 @@ mod tests {
         SecurityEventKind::DomainRuleAdded,
         SecurityEventKind::DomainRuleRemoved,
         SecurityEventKind::SettingsChanged,
+        SecurityEventKind::ProjectShared,
+        SecurityEventKind::ProjectAccessGranted,
+        SecurityEventKind::ProjectAccessChanged,
+        SecurityEventKind::ProjectAccessRemoved,
+        SecurityEventKind::ProjectArchived,
     ];
 
     fn event(target: &str) -> NewSecurityEvent {
@@ -216,13 +231,18 @@ mod tests {
                 "domain_rule_added",
                 "domain_rule_removed",
                 "settings_changed",
+                "project_shared",
+                "project_access_granted",
+                "project_access_changed",
+                "project_access_removed",
+                "project_archived",
             ]
         );
         for name in &names {
             let kind = kind_from_str(name).expect("a known kind");
             assert_eq!(kind_to_str(&kind), *name);
         }
-        assert!(kind_from_str("project_shared").is_none());
+        assert!(kind_from_str("kind_from_a_later_server").is_none());
         assert_eq!(kind_to_str(&SecurityEventKind::Unknown), "unknown");
     }
 
@@ -232,7 +252,7 @@ mod tests {
             .unwrap()
             .call(|conn| {
                 conn.execute(
-                    "INSERT INTO security_log (at, actor, kind, target, ip, detail) VALUES (1, NULL, 'project_shared', NULL, NULL, '{}')",
+                    "INSERT INTO security_log (at, actor, kind, target, ip, detail) VALUES (1, NULL, 'kind_from_a_later_server', NULL, NULL, '{}')",
                     [],
                 )?;
                 let listed = page(conn, None, 10)?;

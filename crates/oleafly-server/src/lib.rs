@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod blobs;
 pub mod cli;
 pub mod clock;
 pub mod config;
@@ -6,7 +7,9 @@ pub mod db;
 pub mod error;
 pub mod healthcheck;
 pub mod members;
+pub mod projects;
 pub mod rate_limit;
+pub mod rooms;
 pub mod routes;
 pub mod security_log;
 pub mod settings;

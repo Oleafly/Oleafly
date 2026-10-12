@@ -11,7 +11,6 @@ pub const REFRESH_TOKEN_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
 pub const AUTH_CODE_TTL_MS: i64 = 120 * 1000;
 pub const NONCE_TTL_MS: i64 = 120 * 1000;
 pub const PENDING_AUTH_TTL_MS: i64 = 10 * 60 * 1000;
-pub const REFRESH_GRACE_MS: i64 = 60 * 1000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AccessContext {

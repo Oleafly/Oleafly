@@ -1,4 +1,7 @@
-use crate::ids::{AccountId, DeviceId, ServerId};
+use crate::envelope::Envelope;
+use crate::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
+use crate::projects::PresenceState;
+use crate::roles::ProjectRole;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -14,6 +17,21 @@ pub enum ClientFrame {
     },
     Ping {
         id: u64,
+    },
+    Subscribe {
+        project_id: SharedProjectId,
+        since_seq: u64,
+    },
+    Unsubscribe {
+        project_id: SharedProjectId,
+    },
+    Update {
+        project_id: SharedProjectId,
+        envelope: Envelope,
+    },
+    Presence {
+        project_id: SharedProjectId,
+        state: PresenceState,
     },
 }
 
@@ -35,6 +53,32 @@ impl fmt::Debug for ClientFrame {
                 .field("signature", signature)
                 .finish(),
             ClientFrame::Ping { id } => formatter.debug_struct("Ping").field("id", id).finish(),
+            ClientFrame::Subscribe {
+                project_id,
+                since_seq,
+            } => formatter
+                .debug_struct("Subscribe")
+                .field("project_id", project_id)
+                .field("since_seq", since_seq)
+                .finish(),
+            ClientFrame::Unsubscribe { project_id } => formatter
+                .debug_struct("Unsubscribe")
+                .field("project_id", project_id)
+                .finish(),
+            ClientFrame::Update {
+                project_id,
+                envelope,
+            } => formatter
+                .debug_struct("Update")
+                .field("project_id", project_id)
+                .field("batch_id", &envelope.batch_id)
+                .field("payload", &format!("{} bytes", envelope.payload.len()))
+                .finish(),
+            ClientFrame::Presence { project_id, state } => formatter
+                .debug_struct("Presence")
+                .field("project_id", project_id)
+                .field("state", state)
+                .finish(),
         }
     }
 }
@@ -58,6 +102,41 @@ pub enum ServerFrame {
         message: String,
     },
     SessionRevoked,
+    Subscribed {
+        project_id: SharedProjectId,
+        role: ProjectRole,
+        head_seq: u64,
+    },
+    Update {
+        project_id: SharedProjectId,
+        seq: u64,
+        envelope: Envelope,
+    },
+    Ack {
+        project_id: SharedProjectId,
+        batch_id: crate::ids::BatchId,
+        seq: u64,
+    },
+    SnapshotRequired {
+        project_id: SharedProjectId,
+    },
+    Presence {
+        project_id: SharedProjectId,
+        device_id: DeviceId,
+        account_id: AccountId,
+        state: PresenceState,
+    },
+    PresenceLeft {
+        project_id: SharedProjectId,
+        device_id: DeviceId,
+    },
+    AccessChanged {
+        project_id: SharedProjectId,
+        role: Option<ProjectRole>,
+    },
+    ProjectArchived {
+        project_id: SharedProjectId,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -68,6 +147,9 @@ pub enum FrameErrorCode {
     RateLimited,
     BadFrame,
     Internal,
+    Forbidden,
+    NotFound,
+    TooLarge,
     #[serde(other)]
     Unknown,
 }
@@ -229,5 +311,148 @@ mod tests {
             format!("{:?}", ClientFrame::Ping { id: 3 }),
             "Ping { id: 3 }"
         );
+    }
+
+    fn envelope() -> crate::envelope::Envelope {
+        crate::envelope::Envelope {
+            v: 1,
+            project_id: PROJECT.parse().unwrap(),
+            batch_id: BATCH.parse().unwrap(),
+            device_id: DEVICE.parse().unwrap(),
+            mode: crate::envelope::EnvelopeMode::Plain,
+            key_epoch: None,
+            payload: vec![1, 2, 3],
+            signature: vec![4, 5],
+        }
+    }
+
+    const PROJECT: &str = "01920000-0000-7000-8000-0000000000aa";
+    const BATCH: &str = "01920000-0000-7000-8000-0000000000bb";
+
+    #[test]
+    fn room_frames_match_their_wire_json() {
+        let envelope_json = serde_json::to_value(envelope()).unwrap();
+        assert_client_wire(
+            ClientFrame::Subscribe {
+                project_id: PROJECT.parse().unwrap(),
+                since_seq: 7,
+            },
+            json!({ "type": "subscribe", "project_id": PROJECT, "since_seq": 7 }),
+        );
+        assert_client_wire(
+            ClientFrame::Unsubscribe {
+                project_id: PROJECT.parse().unwrap(),
+            },
+            json!({ "type": "unsubscribe", "project_id": PROJECT }),
+        );
+        assert_client_wire(
+            ClientFrame::Update {
+                project_id: PROJECT.parse().unwrap(),
+                envelope: envelope(),
+            },
+            json!({ "type": "update", "project_id": PROJECT, "envelope": envelope_json.clone() }),
+        );
+        assert_client_wire(
+            ClientFrame::Presence {
+                project_id: PROJECT.parse().unwrap(),
+                state: crate::projects::PresenceState {
+                    file_id: Some("f1".to_string()),
+                    cursor: Some(2),
+                    anchor: None,
+                },
+            },
+            json!({
+                "type": "presence",
+                "project_id": PROJECT,
+                "state": { "file_id": "f1", "cursor": 2, "anchor": null }
+            }),
+        );
+        assert_server_wire(
+            ServerFrame::Subscribed {
+                project_id: PROJECT.parse().unwrap(),
+                role: crate::roles::ProjectRole::Editor,
+                head_seq: 9,
+            },
+            json!({ "type": "subscribed", "project_id": PROJECT, "role": "editor", "head_seq": 9 }),
+        );
+        assert_server_wire(
+            ServerFrame::Update {
+                project_id: PROJECT.parse().unwrap(),
+                seq: 10,
+                envelope: envelope(),
+            },
+            json!({ "type": "update", "project_id": PROJECT, "seq": 10, "envelope": envelope_json }),
+        );
+        assert_server_wire(
+            ServerFrame::Ack {
+                project_id: PROJECT.parse().unwrap(),
+                batch_id: BATCH.parse().unwrap(),
+                seq: 10,
+            },
+            json!({ "type": "ack", "project_id": PROJECT, "batch_id": BATCH, "seq": 10 }),
+        );
+        assert_server_wire(
+            ServerFrame::SnapshotRequired {
+                project_id: PROJECT.parse().unwrap(),
+            },
+            json!({ "type": "snapshot_required", "project_id": PROJECT }),
+        );
+        assert_server_wire(
+            ServerFrame::Presence {
+                project_id: PROJECT.parse().unwrap(),
+                device_id: DEVICE.parse().unwrap(),
+                account_id: ACCOUNT.parse().unwrap(),
+                state: crate::projects::PresenceState::default(),
+            },
+            json!({
+                "type": "presence",
+                "project_id": PROJECT,
+                "device_id": DEVICE,
+                "account_id": ACCOUNT,
+                "state": { "file_id": null, "cursor": null, "anchor": null }
+            }),
+        );
+        assert_server_wire(
+            ServerFrame::PresenceLeft {
+                project_id: PROJECT.parse().unwrap(),
+                device_id: DEVICE.parse().unwrap(),
+            },
+            json!({ "type": "presence_left", "project_id": PROJECT, "device_id": DEVICE }),
+        );
+        assert_server_wire(
+            ServerFrame::AccessChanged {
+                project_id: PROJECT.parse().unwrap(),
+                role: None,
+            },
+            json!({ "type": "access_changed", "project_id": PROJECT, "role": null }),
+        );
+        assert_server_wire(
+            ServerFrame::ProjectArchived {
+                project_id: PROJECT.parse().unwrap(),
+            },
+            json!({ "type": "project_archived", "project_id": PROJECT }),
+        );
+    }
+
+    #[test]
+    fn an_update_frame_does_not_print_its_payload() {
+        let frame = ClientFrame::Update {
+            project_id: PROJECT.parse().unwrap(),
+            envelope: envelope(),
+        };
+        let printed = format!("{frame:?}");
+        assert!(printed.contains("Update"));
+        assert!(printed.contains("3 bytes"));
+    }
+
+    #[test]
+    fn newer_frame_errors_still_parse() {
+        for (code, wire) in [
+            (FrameErrorCode::Forbidden, "forbidden"),
+            (FrameErrorCode::NotFound, "not_found"),
+            (FrameErrorCode::TooLarge, "too_large"),
+        ] {
+            assert_eq!(serde_json::to_value(code).unwrap(), json!(wire));
+        }
     }
 }

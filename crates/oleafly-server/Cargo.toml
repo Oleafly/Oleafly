@@ -33,3 +33,7 @@ tempfile = { workspace = true }
 tokio = { version = "1", features = ["test-util"] }
 tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect"] }
 tower = { version = "0.5", features = ["util"] }
+
+[[example]]
+name = "dev_stack"
+required-features = ["test-support"]

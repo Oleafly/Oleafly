@@ -13,6 +13,7 @@ use crate::db::{self, Db};
 use crate::error::ServerError;
 use crate::members;
 use crate::rate_limit::{RateLimiter, SIGN_IN_BURST, SIGN_IN_PER_MINUTE};
+use crate::rooms::Rooms;
 use crate::security_log;
 use crate::sockets::SocketRegistry;
 use crate::tokens;
@@ -39,12 +40,14 @@ pub struct AppState {
     pub providers: Arc<ProviderRegistry>,
     pub sockets: Arc<SocketRegistry>,
     pub rate_limiter: Arc<RateLimiter>,
+    pub rooms: Arc<Rooms>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MaintenanceReport {
     pub security_events: usize,
     pub expired_rows: usize,
+    pub expired_projects: usize,
 }
 
 impl AppState {
@@ -95,6 +98,7 @@ impl AppState {
             providers,
             sockets: Arc::new(SocketRegistry::new()),
             rate_limiter: Arc::new(RateLimiter::new(SIGN_IN_BURST, SIGN_IN_PER_MINUTE)),
+            rooms: Arc::new(Rooms::new()),
         })
     }
 
@@ -123,7 +127,8 @@ impl AppState {
     pub async fn run_maintenance(&self) -> Result<MaintenanceReport, ServerError> {
         let now = self.clock.now_ms();
         let cutoff = now - i64::from(self.config.security_log_days) * DAY_MS;
-        self.db
+        let (security_events, expired_rows) = self
+            .db
             .call(move |conn| {
                 let security_events = security_log::prune(conn, cutoff)?;
                 let mut expired_rows = 0;
@@ -133,12 +138,41 @@ impl AppState {
                         [now],
                     )?;
                 }
-                Ok(MaintenanceReport {
-                    security_events,
-                    expired_rows,
-                })
+                Ok((security_events, expired_rows))
             })
-            .await
+            .await?;
+        let expired_projects = self.expire_projects(now).await?;
+        Ok(MaintenanceReport {
+            security_events,
+            expired_rows,
+            expired_projects,
+        })
+    }
+
+    async fn expire_projects(&self, now: i64) -> Result<usize, ServerError> {
+        let pending_before = now - DAY_MS;
+        let archived_before = now - i64::from(self.config.archive_days) * DAY_MS;
+        let expired = self
+            .db
+            .call(move |conn| {
+                let ids = crate::projects::expired_projects(conn, pending_before, archived_before)?;
+                let mut deleted = Vec::with_capacity(ids.len());
+                for id in ids {
+                    deleted.push(crate::projects::delete_project(conn, id)?);
+                }
+                Ok(deleted)
+            })
+            .await?;
+        let store = crate::blobs::BlobStore::new(&self.config.data_dir);
+        for deleted in &expired {
+            for file in &deleted.snapshot_files {
+                let _ = std::fs::remove_file(self.config.data_dir.join(file));
+            }
+            for hash in &deleted.orphan_blobs {
+                store.remove(hash)?;
+            }
+        }
+        Ok(expired.len())
     }
 }
 

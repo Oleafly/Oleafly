@@ -93,6 +93,10 @@ impl SocketConnection {
         }
     }
 
+    pub(crate) fn into_socket(self) -> Socket {
+        self.socket
+    }
+
     pub async fn close(mut self) {
         let _ = self.socket.close(None).await;
     }
@@ -160,7 +164,10 @@ fn root_store(native: rustls_native_certs::CertificateResult) -> rustls::RootCer
     roots
 }
 
-async fn send_frame(socket: &mut Socket, frame: &ClientFrame) -> Result<(), CollabError> {
+pub(crate) async fn send_frame(
+    socket: &mut Socket,
+    frame: &ClientFrame,
+) -> Result<(), CollabError> {
     let text =
         serde_json::to_string(frame).map_err(|error| CollabError::Network(error.to_string()))?;
     socket.send(Message::text(text)).await.map_err(ws_error)
@@ -175,7 +182,7 @@ async fn next_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
     }
 }
 
-async fn read_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
+pub(crate) async fn read_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
     while let Some(message) = socket.next().await {
         match message.map_err(ws_error)? {
             Message::Text(text) => {
@@ -191,7 +198,7 @@ async fn read_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
     ))
 }
 
-fn frame_error(frame: ServerFrame) -> CollabError {
+pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
     match frame {
         ServerFrame::SessionRevoked
         | ServerFrame::Error {
@@ -203,6 +210,9 @@ fn frame_error(frame: ServerFrame) -> CollabError {
                 FrameErrorCode::ProtocolMismatch => (426, "protocol_mismatch"),
                 FrameErrorCode::RateLimited => (429, "rate_limited"),
                 FrameErrorCode::BadFrame => (400, "bad_frame"),
+                FrameErrorCode::Forbidden => (403, "forbidden"),
+                FrameErrorCode::NotFound => (404, "not_found"),
+                FrameErrorCode::TooLarge => (413, "too_large"),
                 FrameErrorCode::Internal
                 | FrameErrorCode::Unauthorized
                 | FrameErrorCode::Unknown => (500, "internal"),
@@ -213,9 +223,7 @@ fn frame_error(frame: ServerFrame) -> CollabError {
                 message,
             }
         }
-        ServerFrame::Challenge { .. } | ServerFrame::Welcome { .. } | ServerFrame::Pong { .. } => {
-            CollabError::Network("the server sent an unexpected frame".to_string())
-        }
+        _ => CollabError::Network("the server sent an unexpected frame".to_string()),
     }
 }
 

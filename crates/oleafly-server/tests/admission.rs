@@ -536,3 +536,29 @@ async fn name_entries_are_refused_for_openid_connect_providers() {
         axum::http::StatusCode::CREATED
     );
 }
+
+#[tokio::test]
+async fn a_valid_setup_code_makes_the_first_admin_even_when_a_rule_also_matches() {
+    let app = app_with_github().await;
+    app.state
+        .db
+        .call(|conn| {
+            let rule = NewDomainRule {
+                domain: "lab.test".to_owned(),
+                role: ServerRole::Member,
+            };
+            members::add_domain_rule(conn, &rule, None, 0)?;
+            Ok(())
+        })
+        .await
+        .expect("seed a domain rule");
+    let bob = github("9009", "bob", &["bob@lab.test"]);
+    assert!(matches!(
+        decide(&app, &bob, Some(setup_code_hash(TEST_SETUP_CODE))).await,
+        Admission::Setup { existing: None }
+    ));
+    assert!(matches!(
+        decide(&app, &bob, Some(setup_code_hash("WRONG-CODE"))).await,
+        Admission::Domain { .. }
+    ));
+}

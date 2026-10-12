@@ -81,6 +81,11 @@ pub fn decide(
             },
             None => None,
         };
+    if let Some(hash) = setup_code_hash {
+        if setup::matches(conn, hash)? {
+            return Ok(Admission::Setup { existing: removed });
+        }
+    }
     let by_login = match identity.login.as_deref() {
         Some(login) => members::find_allowlist_by_login(conn, &identity.provider_id, login)?,
         None => None,
@@ -119,7 +124,6 @@ pub fn decide(
         return Ok(admission);
     }
     match setup_code_hash {
-        Some(hash) if setup::matches(conn, hash)? => Ok(Admission::Setup { existing: removed }),
         Some(_) => Ok(Admission::SetupCodeInvalid),
         None => Ok(Admission::NotAdmitted),
     }

@@ -8,18 +8,29 @@ use axum::Router;
 use oleafly_collab_protocol::admin::MemberStatus;
 use oleafly_collab_protocol::auth::ChallengePurpose;
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
+use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
+use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
-use tokio::sync::mpsc::UnboundedReceiver;
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
+use oleafly_collab_protocol::projects::{
+    project_role_allows, PresenceState, ProjectAction, ProjectStatus,
+};
+use tokio::sync::mpsc::{self, Sender};
 
 use crate::auth::devices;
+use crate::error::ServerError;
 use crate::members;
-use crate::sockets::SocketControl;
+use crate::projects;
+use crate::rooms::RoomMember;
+use crate::sockets::{SocketControl, SocketTicket};
 use crate::state::AppState;
 use crate::tokens::{random_token, resolve_access_token};
 
 pub const HELLO_TIMEOUT: Duration = Duration::from_secs(10);
-pub const MAX_FRAME_BYTES: usize = 64 * 1024;
+pub const MAX_FRAME_BYTES: usize = 12 * 1024 * 1024;
+pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
+pub const OUTBOUND_CAPACITY: usize = 512;
+const MAX_PRESENCE_FILE_ID: usize = 256;
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/ws", get(upgrade))
@@ -135,13 +146,19 @@ async fn run(state: AppState, mut socket: WebSocket) {
         None
     };
     match account {
-        Some(account_id) => {
+        Some((account_id, public_key)) => {
             let welcome = ServerFrame::Welcome {
                 protocol: PROTOCOL_VERSION,
                 account_id,
             };
             if send(&mut socket, &welcome).await {
-                serve_session(&mut socket, &mut ticket.control).await;
+                let session = Session {
+                    state: &state,
+                    device: device_id,
+                    account: account_id,
+                    public_key,
+                };
+                session.serve(&mut socket, &mut ticket).await;
             }
         }
         None => {
@@ -162,7 +179,7 @@ async fn authorize(
     access_token: String,
     nonce: String,
     signature: String,
-) -> Option<AccountId> {
+) -> Option<(AccountId, Vec<u8>)> {
     let now = state.clock.now_ms();
     let server_id = state.server_id;
     let checked = state
@@ -193,38 +210,373 @@ async fn authorize(
                 return Ok(None);
             }
             devices::touch(conn, device_id, now)?;
-            Ok(Some(context.account_id))
+            let key = b64url_decode(&device.public_key)
+                .map_err(|_| ServerError::Internal("a device key does not decode".to_string()))?;
+            Ok(Some((context.account_id, key)))
         })
         .await;
     checked.ok().flatten()
 }
 
-async fn serve_session(socket: &mut WebSocket, control: &mut UnboundedReceiver<SocketControl>) {
-    loop {
-        tokio::select! {
-            signal = control.recv() => {
-                if matches!(signal, Some(SocketControl::Revoked)) && send(socket, &ServerFrame::SessionRevoked).await {
-                    close(socket, "Session revoked.").await;
-                }
-                return;
-            }
-            incoming = next_incoming(socket) => match incoming {
-                Incoming::Frame(ClientFrame::Ping { id }) => {
-                    if !send(socket, &ServerFrame::Pong { id }).await {
-                        return;
+struct Session<'a> {
+    state: &'a AppState,
+    device: DeviceId,
+    account: AccountId,
+    public_key: Vec<u8>,
+}
+
+fn frame_error(code: FrameErrorCode, message: &str) -> ServerFrame {
+    ServerFrame::Error {
+        code,
+        message: message.to_owned(),
+    }
+}
+
+impl Session<'_> {
+    async fn serve(&self, socket: &mut WebSocket, ticket: &mut SocketTicket) {
+        let (frames, mut outbound) = mpsc::channel::<ServerFrame>(OUTBOUND_CAPACITY);
+        loop {
+            tokio::select! {
+                signal = ticket.control.recv() => {
+                    match signal {
+                        Some(SocketControl::Revoked) => {
+                            if send(socket, &ServerFrame::SessionRevoked).await {
+                                close(socket, "Session revoked.").await;
+                            }
+                        }
+                        Some(SocketControl::Overloaded) => {
+                            close(socket, "This connection fell behind. Reconnect.").await;
+                        }
+                        None => {}
                     }
+                    break;
                 }
-                Incoming::Frame(ClientFrame::Hello { .. }) | Incoming::Malformed => {
-                    let frame = ServerFrame::Error {
-                        code: FrameErrorCode::BadFrame,
-                        message: "Unexpected frame.".to_owned(),
-                    };
+                Some(frame) = outbound.recv() => {
                     if !send(socket, &frame).await {
-                        return;
+                        break;
                     }
                 }
-                Incoming::Closed => return,
-            },
+                incoming = next_incoming(socket) => {
+                    let keep_going = match incoming {
+                        Incoming::Frame(frame) => self.handle(socket, ticket, &frames, frame).await,
+                        Incoming::Malformed => {
+                            send(socket, &frame_error(FrameErrorCode::BadFrame, "Unexpected frame.")).await
+                        }
+                        Incoming::Closed => false,
+                    };
+                    if !keep_going {
+                        break;
+                    }
+                }
+            }
         }
+        for (project, _) in self.state.rooms.leave_all(ticket.id) {
+            self.state.rooms.broadcast(
+                project,
+                None,
+                &ServerFrame::PresenceLeft {
+                    project_id: project,
+                    device_id: self.device,
+                },
+            );
+        }
+    }
+
+    async fn handle(
+        &self,
+        socket: &mut WebSocket,
+        ticket: &SocketTicket,
+        frames: &Sender<ServerFrame>,
+        frame: ClientFrame,
+    ) -> bool {
+        match frame {
+            ClientFrame::Ping { id } => send(socket, &ServerFrame::Pong { id }).await,
+            ClientFrame::Subscribe {
+                project_id,
+                since_seq,
+            } => {
+                self.subscribe(socket, ticket, frames, project_id, since_seq)
+                    .await
+            }
+            ClientFrame::Unsubscribe { project_id } => {
+                if self.state.rooms.leave(project_id, ticket.id).is_some() {
+                    self.state.rooms.broadcast(
+                        project_id,
+                        None,
+                        &ServerFrame::PresenceLeft {
+                            project_id,
+                            device_id: self.device,
+                        },
+                    );
+                }
+                true
+            }
+            ClientFrame::Update {
+                project_id,
+                envelope,
+            } => self.update(socket, ticket, project_id, envelope).await,
+            ClientFrame::Presence { project_id, state } => {
+                self.presence(socket, ticket, project_id, state).await
+            }
+            ClientFrame::Hello { .. } => {
+                send(
+                    socket,
+                    &frame_error(FrameErrorCode::BadFrame, "Unexpected frame."),
+                )
+                .await
+            }
+        }
+    }
+
+    async fn subscribe(
+        &self,
+        socket: &mut WebSocket,
+        ticket: &SocketTicket,
+        frames: &Sender<ServerFrame>,
+        project: SharedProjectId,
+        since: u64,
+    ) -> bool {
+        let account = self.account;
+        let checked = self
+            .state
+            .db
+            .call(move |conn| {
+                let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
+                let role =
+                    projects::role_of(conn, project, account)?.ok_or(ServerError::NotFound)?;
+                if row.status != ProjectStatus::Active {
+                    return Err(ServerError::NotFound);
+                }
+                let oldest = projects::oldest_kept_update(conn, project)?;
+                let snapshot = projects::latest_snapshot(conn, project)?.map(|found| found.seq);
+                Ok((role, row.head_seq, oldest, snapshot))
+            })
+            .await;
+        let Ok((role, head, oldest, snapshot)) = checked else {
+            return send(
+                socket,
+                &frame_error(
+                    FrameErrorCode::NotFound,
+                    "You don't have access to this project.",
+                ),
+            )
+            .await;
+        };
+        let missing_from_log = since < head && oldest.is_none_or(|oldest| oldest > since + 1);
+        if missing_from_log && snapshot.is_some_and(|seq| seq > since) {
+            return send(
+                socket,
+                &ServerFrame::SnapshotRequired {
+                    project_id: project,
+                },
+            )
+            .await;
+        }
+        self.state.rooms.join(
+            project,
+            RoomMember {
+                connection: ticket.id,
+                device: self.device,
+                account: self.account,
+                frames: frames.clone(),
+                control: ticket.signal.clone(),
+            },
+        );
+        if !send(
+            socket,
+            &ServerFrame::Subscribed {
+                project_id: project,
+                role,
+                head_seq: head,
+            },
+        )
+        .await
+        {
+            return false;
+        }
+        let mut cursor = since;
+        loop {
+            let page = self
+                .state
+                .db
+                .call(move |conn| projects::updates_since(conn, project, cursor))
+                .await;
+            let Ok(page) = page else {
+                return false;
+            };
+            let full = page.len() >= projects::BACKLOG_LIMIT;
+            for stored in page {
+                cursor = stored.seq;
+                let Ok(envelope) = serde_json::from_slice::<Envelope>(&stored.envelope) else {
+                    continue;
+                };
+                let frame = ServerFrame::Update {
+                    project_id: project,
+                    seq: stored.seq,
+                    envelope,
+                };
+                if !send(socket, &frame).await {
+                    return false;
+                }
+            }
+            if !full || cursor >= head {
+                return true;
+            }
+        }
+    }
+
+    fn envelope_problem(
+        &self,
+        project: SharedProjectId,
+        envelope: &Envelope,
+    ) -> Option<ServerFrame> {
+        if envelope.project_id != project
+            || envelope.device_id != self.device
+            || envelope.v != 1
+            || envelope.mode != EnvelopeMode::Plain
+            || envelope.key_epoch.is_some()
+        {
+            return Some(frame_error(
+                FrameErrorCode::BadFrame,
+                "This update is not valid.",
+            ));
+        }
+        if envelope.payload.len() > MAX_UPDATE_BYTES {
+            return Some(frame_error(
+                FrameErrorCode::TooLarge,
+                "This change is too large to send.",
+            ));
+        }
+        if !verify_ed25519(
+            &self.public_key,
+            &envelope.signing_bytes(),
+            &envelope.signature,
+        ) {
+            return Some(frame_error(
+                FrameErrorCode::Unauthorized,
+                "This update is not signed by this device.",
+            ));
+        }
+        None
+    }
+
+    async fn update(
+        &self,
+        socket: &mut WebSocket,
+        ticket: &SocketTicket,
+        project: SharedProjectId,
+        envelope: Envelope,
+    ) -> bool {
+        if !self.state.rooms.is_member(project, ticket.id) {
+            return send(
+                socket,
+                &frame_error(
+                    FrameErrorCode::Forbidden,
+                    "Open the project before changing it.",
+                ),
+            )
+            .await;
+        }
+        if let Some(problem) = self.envelope_problem(project, &envelope) {
+            return send(socket, &problem).await;
+        }
+        let Ok(stored) = serde_json::to_vec(&envelope) else {
+            return false;
+        };
+        let (account, device, batch) = (self.account, self.device, envelope.batch_id);
+        let now = self.state.clock.now_ms();
+        let appended = self
+            .state
+            .db
+            .call(move |conn| {
+                let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
+                let role =
+                    projects::role_of(conn, project, account)?.ok_or(ServerError::NotFound)?;
+                if row.status != ProjectStatus::Active
+                    || !project_role_allows(role, ProjectAction::Edit)
+                {
+                    return Err(ServerError::Forbidden);
+                }
+                projects::append_update(conn, project, batch, device, account, &stored, now)
+            })
+            .await;
+        match appended {
+            Ok(appended) => {
+                let ack = ServerFrame::Ack {
+                    project_id: project,
+                    batch_id: batch,
+                    seq: appended.seq,
+                };
+                if !send(socket, &ack).await {
+                    return false;
+                }
+                if !appended.duplicate {
+                    self.state.rooms.broadcast(
+                        project,
+                        Some(ticket.id),
+                        &ServerFrame::Update {
+                            project_id: project,
+                            seq: appended.seq,
+                            envelope,
+                        },
+                    );
+                }
+                true
+            }
+            Err(ServerError::Forbidden | ServerError::NotFound) => {
+                send(
+                    socket,
+                    &frame_error(FrameErrorCode::Forbidden, "You can't edit this project."),
+                )
+                .await
+            }
+            Err(_) => {
+                send(
+                    socket,
+                    &frame_error(
+                        FrameErrorCode::Internal,
+                        "The server could not store this change.",
+                    ),
+                )
+                .await
+            }
+        }
+    }
+
+    async fn presence(
+        &self,
+        socket: &mut WebSocket,
+        ticket: &SocketTicket,
+        project: SharedProjectId,
+        state: PresenceState,
+    ) -> bool {
+        if !self.state.rooms.is_member(project, ticket.id) {
+            return true;
+        }
+        if state
+            .file_id
+            .as_ref()
+            .is_some_and(|file| file.len() > MAX_PRESENCE_FILE_ID)
+        {
+            return send(
+                socket,
+                &frame_error(
+                    FrameErrorCode::BadFrame,
+                    "This presence update is not valid.",
+                ),
+            )
+            .await;
+        }
+        self.state.rooms.broadcast(
+            project,
+            Some(ticket.id),
+            &ServerFrame::Presence {
+                project_id: project,
+                device_id: self.device,
+                account_id: self.account,
+                state,
+            },
+        );
+        true
     }
 }

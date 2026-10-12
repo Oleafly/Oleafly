@@ -96,7 +96,7 @@ async fn manifest_reports_name_providers_features_and_limits() {
 }
 
 #[tokio::test]
-async fn phase_one_advertises_no_optional_feature_even_when_configured_and_allowed() {
+async fn only_link_sharing_is_advertised_among_the_optional_features() {
     let config = support::config_with(&[
         ("OLEAFLY_SMTP_URL", "smtps://mailer:pw@smtp.example.edu:465"),
         ("OLEAFLY_MAIL_FROM", "lab@example.edu"),
@@ -124,7 +124,7 @@ async fn phase_one_advertises_no_optional_feature_even_when_configured_and_allow
         serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
     assert!(!manifest.features.email);
     assert!(!manifest.features.guests);
-    assert!(!manifest.features.link_sharing);
+    assert!(manifest.features.link_sharing);
     assert!(!manifest.features.access_logs);
     assert!(!manifest.features.comments);
     assert!(matches!(

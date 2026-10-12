@@ -10,7 +10,6 @@ use crate::error::ServerError;
 use crate::tokens::{hash_token, issue_access_token, random_token};
 
 pub const REFRESH_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
-pub const GRACE_MS: i64 = 60_000;
 
 #[derive(Debug)]
 pub enum RefreshOutcome {
@@ -126,14 +125,19 @@ pub fn rotate(
             .map_err(db_error)?;
             Ok(RefreshOutcome::Rotated(tokens))
         }
-        Some(rotated_at) => {
-            let in_grace = now - rotated_at <= GRACE_MS;
-            if in_grace && successor_unused(conn, stored.replaced_by.as_deref())? {
+        Some(_) => {
+            if successor_unused(conn, stored.replaced_by.as_deref(), now)? {
                 let replay = stored
                     .grace_reply
                     .as_deref()
                     .and_then(|blob| open_reply(presented, blob));
-                if let Some(tokens) = replay {
+                if let Some(mut tokens) = replay {
+                    if tokens.access_expires_at <= now {
+                        let (access_token, access_expires_at) =
+                            issue_access_token(conn, account, device, now)?;
+                        tokens.access_token = access_token;
+                        tokens.access_expires_at = access_expires_at;
+                    }
                     return Ok(RefreshOutcome::Replayed(tokens));
                 }
             }
@@ -144,19 +148,29 @@ pub fn rotate(
     }
 }
 
-fn successor_unused(conn: &Connection, successor: Option<&str>) -> Result<bool, ServerError> {
+fn successor_unused(
+    conn: &Connection,
+    successor: Option<&str>,
+    now: i64,
+) -> Result<bool, ServerError> {
     let Some(successor) = successor else {
         return Ok(false);
     };
     let state = conn
         .query_row(
-            "SELECT rotated_at, revoked_at FROM refresh_tokens WHERE token_hash = ?1",
+            "SELECT rotated_at, revoked_at, expires_at FROM refresh_tokens WHERE token_hash = ?1",
             params![successor],
-            |row| Ok((row.get::<_, Option<i64>>(0)?, row.get::<_, Option<i64>>(1)?)),
+            |row| {
+                Ok((
+                    row.get::<_, Option<i64>>(0)?,
+                    row.get::<_, Option<i64>>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            },
         )
         .optional()
         .map_err(db_error)?;
-    Ok(matches!(state, Some((None, None))))
+    Ok(matches!(state, Some((None, None, expires_at)) if expires_at > now))
 }
 
 pub fn revoke_family(conn: &Connection, family_id: &str, now: i64) -> Result<(), ServerError> {
@@ -238,9 +252,46 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn rotation_replays_inside_the_grace_window_and_flags_reuse_after_it() {
+    async fn rotation_replays_while_the_successor_is_unused_and_flags_reuse_after_it() {
         let app = test_app().await;
+        let later = 2_000 + 30 * 24 * 60 * 60 * 1000;
         let (rotated, replayed, reused) = app
+            .state
+            .db
+            .call(move |conn| {
+                let account =
+                    members::create_account(conn, "Carol", None, ServerRole::Member, 1_000)?;
+                let device =
+                    devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
+                let first = issue_session(conn, account, device, 1_000)?;
+                let rotated = rotate(conn, &first.refresh_token, device, 2_000)?;
+                let replayed = rotate(conn, &first.refresh_token, device, later)?;
+                let RefreshOutcome::Rotated(ref pair) = rotated else {
+                    panic!("expected a rotation, got {rotated:?}");
+                };
+                rotate(conn, &pair.refresh_token, device, later + 1)?;
+                let reused = rotate(conn, &first.refresh_token, device, later + 2)?;
+                Ok((rotated, replayed, reused))
+            })
+            .await
+            .expect("db");
+        let RefreshOutcome::Rotated(new_pair) = rotated else {
+            panic!("expected a rotation");
+        };
+        match replayed {
+            RefreshOutcome::Replayed(pair) => {
+                assert_eq!(pair.refresh_token, new_pair.refresh_token);
+                assert!(pair.access_expires_at > later);
+            }
+            other => panic!("expected a replay, got {other:?}"),
+        }
+        assert!(matches!(reused, RefreshOutcome::Reused { .. }));
+    }
+
+    #[tokio::test]
+    async fn an_expired_successor_is_not_replayed() {
+        let app = test_app().await;
+        let replayed = app
             .state
             .db
             .call(|conn| {
@@ -249,19 +300,12 @@ mod tests {
                 let device =
                     devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
                 let first = issue_session(conn, account, device, 1_000)?;
-                let rotated = rotate(conn, &first.refresh_token, device, 2_000)?;
-                let replayed = rotate(conn, &first.refresh_token, device, 2_000 + GRACE_MS)?;
-                let reused = rotate(conn, &first.refresh_token, device, 2_001 + GRACE_MS)?;
-                Ok((rotated, replayed, reused))
+                rotate(conn, &first.refresh_token, device, 2_000)?;
+                rotate(conn, &first.refresh_token, device, 2_000 + REFRESH_TTL_MS)
             })
             .await
             .expect("db");
-        let new_pair = match rotated {
-            RefreshOutcome::Rotated(pair) => pair,
-            other => panic!("expected a rotation, got {other:?}"),
-        };
-        assert!(matches!(replayed, RefreshOutcome::Replayed(ref pair) if *pair == new_pair));
-        assert!(matches!(reused, RefreshOutcome::Reused { .. }));
+        assert!(matches!(replayed, RefreshOutcome::Reused { .. }));
     }
 
     #[tokio::test]

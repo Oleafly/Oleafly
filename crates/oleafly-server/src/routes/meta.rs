@@ -16,7 +16,6 @@ use crate::state::AppState;
 
 const EMAIL_IMPLEMENTED: bool = false;
 const GUESTS_IMPLEMENTED: bool = false;
-const LINK_SHARING_IMPLEMENTED: bool = false;
 const ACCESS_LOGS_IMPLEMENTED: bool = false;
 const COMMENTS_IMPLEMENTED: bool = false;
 
@@ -47,7 +46,7 @@ async fn manifest(State(state): State<AppState>) -> Result<Response, ServerError
         features: Features {
             email: EMAIL_IMPLEMENTED && config.smtp_url.is_some() && config.mail_from.is_some(),
             guests: GUESTS_IMPLEMENTED && runtime.guests_enabled,
-            link_sharing: LINK_SHARING_IMPLEMENTED && runtime.link_sharing_allowed,
+            link_sharing: runtime.link_sharing_allowed,
             access_logs: ACCESS_LOGS_IMPLEMENTED && runtime.access_logs_allowed,
             comments: COMMENTS_IMPLEMENTED && runtime.comments_allowed,
             encryption: EncryptionSupport::None,

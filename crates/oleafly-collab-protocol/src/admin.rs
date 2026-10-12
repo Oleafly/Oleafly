@@ -151,6 +151,11 @@ pub enum SecurityEventKind {
     DomainRuleAdded,
     DomainRuleRemoved,
     SettingsChanged,
+    ProjectShared,
+    ProjectAccessGranted,
+    ProjectAccessChanged,
+    ProjectAccessRemoved,
+    ProjectArchived,
     #[serde(other)]
     Unknown,
 }
@@ -406,6 +411,20 @@ mod tests {
             (SecurityEventKind::DomainRuleAdded, "domain_rule_added"),
             (SecurityEventKind::DomainRuleRemoved, "domain_rule_removed"),
             (SecurityEventKind::SettingsChanged, "settings_changed"),
+            (SecurityEventKind::ProjectShared, "project_shared"),
+            (
+                SecurityEventKind::ProjectAccessGranted,
+                "project_access_granted",
+            ),
+            (
+                SecurityEventKind::ProjectAccessChanged,
+                "project_access_changed",
+            ),
+            (
+                SecurityEventKind::ProjectAccessRemoved,
+                "project_access_removed",
+            ),
+            (SecurityEventKind::ProjectArchived, "project_archived"),
             (SecurityEventKind::Unknown, "unknown"),
         ];
         for (kind, name) in kinds {
@@ -416,7 +435,7 @@ mod tests {
             );
         }
         assert_eq!(
-            serde_json::from_value::<SecurityEventKind>(json!("project_shared")).unwrap(),
+            serde_json::from_value::<SecurityEventKind>(json!("kind_from_a_later_server")).unwrap(),
             SecurityEventKind::Unknown
         );
         let event: SecurityEvent = serde_json::from_value(json!({

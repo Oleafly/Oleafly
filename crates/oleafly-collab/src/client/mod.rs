@@ -4,7 +4,7 @@ mod loopback;
 mod session;
 mod sign_in;
 #[cfg(test)]
-mod test_util;
+pub(crate) mod test_util;
 mod url;
 mod ws;
 
@@ -19,6 +19,7 @@ pub use self::http::ServerClient;
 pub use self::session::{session_account, SessionManager};
 pub use self::sign_in::{sign_in, SignInRequest};
 pub use self::url::ServerUrl;
+pub(crate) use self::ws::Socket;
 pub use self::ws::{connect_socket, SocketConnection};
 
 pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);

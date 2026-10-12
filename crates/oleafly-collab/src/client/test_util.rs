@@ -177,3 +177,94 @@ pub(crate) async fn signed_in_admin() -> SignedIn {
         tokens,
     }
 }
+
+pub(crate) struct Person {
+    pub(crate) key: Arc<DeviceKey>,
+    pub(crate) tokens: SessionTokens,
+    pub(crate) sessions: Arc<crate::SessionManager>,
+}
+
+pub(crate) struct Pair {
+    pub(crate) _providers: (MockGithub, MockGithub),
+    pub(crate) _server: TestServer,
+    pub(crate) url: ServerUrl,
+    pub(crate) server_id: ServerId,
+    pub(crate) bob: Person,
+    pub(crate) alice: Person,
+}
+
+fn github_provider(id: &str, github: &MockGithub) -> ProviderConfig {
+    ProviderConfig::Github {
+        id: id.to_string(),
+        label: "GitHub".to_string(),
+        client_id: "oleafly-test".to_string(),
+        client_secret: "oleafly-test-secret".to_string(),
+        web_url: github.web_url(),
+        api_url: github.api_url(),
+    }
+}
+
+async fn person(
+    server: &TestServer,
+    provider: &str,
+    setup_code: Option<String>,
+) -> (Person, ServerId) {
+    let key = Arc::new(device_key());
+    let mut request = sign_in_request(server, setup_code);
+    request.provider_id = provider.to_string();
+    let (manifest, tokens) = sign_in(request, &key, &follow_browser, LONG)
+        .await
+        .expect("sign in");
+    let sessions = Arc::new(crate::SessionManager::new(
+        Arc::new(MemorySecrets::default()),
+        Arc::clone(&key),
+    ));
+    sessions
+        .store(manifest.server_id, &tokens)
+        .expect("store session");
+    (
+        Person {
+            key,
+            tokens,
+            sessions,
+        },
+        manifest.server_id,
+    )
+}
+
+pub(crate) async fn two_people() -> Pair {
+    let bob_github = MockGithub::start(vec![github_user(1, "bob")]).await;
+    let alice_github = MockGithub::start(vec![github_user(2, "alice")]).await;
+    let mut config = test_config();
+    config
+        .providers
+        .push(github_provider("github", &bob_github));
+    config
+        .providers
+        .push(github_provider("github2", &alice_github));
+    let server = TestServer::start(config).await;
+    let (bob, server_id) = person(&server, "github", Some(server.setup_code())).await;
+    let client = super::ServerClient::new(server_url(&server)).expect("client");
+    client
+        .admin_add_allowlist(
+            &bob.tokens.access_token,
+            &oleafly_collab_protocol::admin::NewAllowlistEntry {
+                matcher: oleafly_collab_protocol::admin::AllowlistMatcher::ProviderLogin {
+                    provider: "github2".to_string(),
+                    login: "alice".to_string(),
+                },
+                role: ServerRole::Member,
+            },
+        )
+        .await
+        .expect("allowlist alice");
+    let (alice, _) = person(&server, "github2", None).await;
+    Pair {
+        _providers: (bob_github, alice_github),
+        url: server_url(&server),
+        _server: server,
+        server_id,
+        bob,
+        alice,
+    }
+}

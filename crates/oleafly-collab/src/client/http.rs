@@ -10,7 +10,11 @@ use oleafly_collab_protocol::auth::{
     SessionTokens, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
+use oleafly_collab_protocol::projects::{
+    MemberGrant, NewProject, PersonSummary, ProjectMember, ProjectPatch, ProjectRole,
+    ProjectSummary,
+};
 use reqwest::header::LOCATION;
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
@@ -19,6 +23,8 @@ use super::{ServerUrl, CONNECT_TIMEOUT};
 use crate::CollabError;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+const TRANSFER_TIMEOUT: Duration = Duration::from_secs(600);
+pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
 const USER_AGENT: &str = concat!("oleafly-collab/", env!("CARGO_PKG_VERSION"));
 
 pub struct ServerClient {
@@ -283,6 +289,239 @@ impl ServerClient {
         json(self.http.get(url).bearer_auth(access)).await
     }
 
+    fn project_url(&self, project: SharedProjectId, rest: &[&str]) -> Url {
+        let mut url = self.url.endpoint("api/v1/projects");
+        if let Ok(mut segments) = url.path_segments_mut() {
+            segments.push(&project.to_string());
+            for segment in rest {
+                segments.push(segment);
+            }
+        }
+        url
+    }
+
+    pub async fn create_project(
+        &self,
+        access: &str,
+        title: &str,
+    ) -> Result<ProjectSummary, CollabError> {
+        let body = NewProject {
+            title: title.to_owned(),
+        };
+        json(
+            self.http
+                .post(self.url.endpoint("api/v1/projects"))
+                .bearer_auth(access)
+                .json(&body),
+        )
+        .await
+    }
+
+    pub async fn projects(&self, access: &str) -> Result<Vec<ProjectSummary>, CollabError> {
+        json(
+            self.http
+                .get(self.url.endpoint("api/v1/projects"))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn project(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<ProjectSummary, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &[]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn patch_project(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        patch: &ProjectPatch,
+    ) -> Result<ProjectSummary, CollabError> {
+        json(
+            self.http
+                .patch(self.project_url(project, &[]))
+                .bearer_auth(access)
+                .json(patch),
+        )
+        .await
+    }
+
+    pub async fn commit_project(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<ProjectSummary, CollabError> {
+        json(
+            self.http
+                .post(self.project_url(project, &["commit"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn archive_project(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<(), CollabError> {
+        empty(
+            self.http
+                .post(self.project_url(project, &["archive"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn join_project(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<ProjectSummary, CollabError> {
+        json(
+            self.http
+                .post(self.project_url(project, &["join"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn put_blob(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        hash: &str,
+        bytes: Vec<u8>,
+    ) -> Result<(), CollabError> {
+        empty(
+            self.http
+                .put(self.project_url(project, &["blobs", hash]))
+                .bearer_auth(access)
+                .timeout(TRANSFER_TIMEOUT)
+                .body(bytes),
+        )
+        .await
+    }
+
+    pub async fn get_blob(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<Vec<u8>, CollabError> {
+        bytes(
+            self.http
+                .get(self.project_url(project, &["blobs", hash]))
+                .bearer_auth(access)
+                .timeout(TRANSFER_TIMEOUT),
+        )
+        .await
+        .map(|(_, body)| body)
+    }
+
+    pub async fn put_snapshot(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        seq: u64,
+        snapshot: Vec<u8>,
+    ) -> Result<(), CollabError> {
+        let mut url = self.project_url(project, &["snapshot"]);
+        url.query_pairs_mut().append_pair("seq", &seq.to_string());
+        empty(
+            self.http
+                .put(url)
+                .bearer_auth(access)
+                .timeout(TRANSFER_TIMEOUT)
+                .body(snapshot),
+        )
+        .await
+    }
+
+    pub async fn get_snapshot(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<(u64, Vec<u8>), CollabError> {
+        let (headers, body) = bytes(
+            self.http
+                .get(self.project_url(project, &["snapshot"]))
+                .bearer_auth(access)
+                .timeout(TRANSFER_TIMEOUT),
+        )
+        .await?;
+        let seq = headers
+            .get(SNAPSHOT_SEQ_HEADER)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok())
+            .ok_or_else(|| CollabError::Api {
+                status: 200,
+                code: "invalid_response".to_string(),
+                message: "the snapshot has no sequence number".to_string(),
+            })?;
+        Ok((seq, body))
+    }
+
+    pub async fn members(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<Vec<ProjectMember>, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &["members"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn grant_member(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        account: AccountId,
+        role: ProjectRole,
+    ) -> Result<ProjectMember, CollabError> {
+        json(
+            self.http
+                .put(self.project_url(project, &["members", &account.to_string()]))
+                .bearer_auth(access)
+                .json(&MemberGrant { role }),
+        )
+        .await
+    }
+
+    pub async fn remove_member(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        account: AccountId,
+    ) -> Result<(), CollabError> {
+        empty(
+            self.http
+                .delete(self.project_url(project, &["members", &account.to_string()]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn directory(
+        &self,
+        access: &str,
+        query: &str,
+    ) -> Result<Vec<PersonSummary>, CollabError> {
+        let mut url = self.url.endpoint("api/v1/directory");
+        url.query_pairs_mut().append_pair("q", query);
+        json(self.http.get(url).bearer_auth(access)).await
+    }
+
     fn item(&self, collection: &str, id: &str) -> Url {
         let mut url = self.url.endpoint(collection);
         if let Ok(mut segments) = url.path_segments_mut() {
@@ -319,6 +558,15 @@ async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabE
         code: "invalid_response".to_string(),
         message: error.to_string(),
     })
+}
+
+async fn bytes(
+    request: RequestBuilder,
+) -> Result<(reqwest::header::HeaderMap, Vec<u8>), CollabError> {
+    let response = check_status(request.send().await.map_err(network_error)?).await?;
+    let headers = response.headers().clone();
+    let body = response.bytes().await.map_err(network_error)?;
+    Ok((headers, body.to_vec()))
 }
 
 async fn empty(request: RequestBuilder) -> Result<(), CollabError> {

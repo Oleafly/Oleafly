@@ -1,7 +1,9 @@
 pub mod admin;
 pub mod auth;
 pub mod devices;
+pub mod landing;
 pub mod meta;
+pub mod projects;
 pub mod ws;
 
 use std::convert::Infallible;
@@ -29,6 +31,8 @@ pub fn api_routes() -> Router<AppState> {
         .merge(auth::router())
         .merge(devices::router())
         .merge(ws::router())
+        .merge(projects::router())
+        .merge(landing::router())
 }
 
 pub async fn not_found() -> ServerError {

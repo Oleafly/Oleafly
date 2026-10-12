@@ -8,12 +8,14 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SocketControl {
     Revoked,
+    Overloaded,
 }
 
 pub struct SocketTicket {
     pub id: u64,
     pub device: DeviceId,
     pub control: UnboundedReceiver<SocketControl>,
+    pub signal: UnboundedSender<SocketControl>,
 }
 
 type Senders = Vec<(u64, UnboundedSender<SocketControl>)>;
@@ -32,11 +34,15 @@ impl SocketRegistry {
     pub fn register(&self, device: DeviceId) -> SocketTicket {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (sender, control) = mpsc::unbounded_channel();
-        self.lock().entry(device).or_default().push((id, sender));
+        self.lock()
+            .entry(device)
+            .or_default()
+            .push((id, sender.clone()));
         SocketTicket {
             id,
             device,
             control,
+            signal: sender,
         }
     }
 
@@ -83,7 +89,7 @@ mod tests {
         assert_eq!(registry.revoke(device), 2);
         assert_eq!(first.control.recv().await, Some(SocketControl::Revoked));
         assert_eq!(second.control.recv().await, Some(SocketControl::Revoked));
-        assert_eq!(first.control.recv().await, None);
+        assert!(first.control.try_recv().is_err());
         assert_eq!(registry.count(device), 0);
         assert_eq!(registry.count(other), 1);
         assert!(unrelated.control.try_recv().is_err());

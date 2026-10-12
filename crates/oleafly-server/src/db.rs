@@ -8,10 +8,13 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 1] = [include_str!("../migrations/0001_core.sql")];
+const MIGRATIONS: [&str; 2] = [
+    include_str!("../migrations/0001_core.sql"),
+    include_str!("../migrations/0002_projects.sql"),
+];
 
 #[derive(Clone)]
 pub struct Db {
@@ -137,7 +140,7 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 14] = [
+    const TABLES: [&str; 19] = [
         "access_tokens",
         "account_emails",
         "accounts",
@@ -148,13 +151,18 @@ mod tests {
         "identities",
         "nonces",
         "pending_auth",
+        "project_blobs",
+        "project_grants",
+        "project_snapshots",
+        "project_updates",
+        "projects",
         "refresh_tokens",
         "security_log",
         "server_meta",
         "settings",
     ];
 
-    const INDEXES: [&str; 14] = [
+    const INDEXES: [&str; 17] = [
         "access_tokens_device",
         "access_tokens_expires",
         "account_emails_email",
@@ -165,6 +173,9 @@ mod tests {
         "identities_account",
         "nonces_expires",
         "pending_auth_expires",
+        "project_blobs_hash",
+        "project_grants_account",
+        "projects_status",
         "refresh_tokens_device",
         "refresh_tokens_expires",
         "refresh_tokens_family",
@@ -200,7 +211,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_new_database_has_every_phase_one_table_and_index() {
+    async fn a_new_database_has_every_table_and_index() {
         let db = Db::open_in_memory().unwrap();
         db.call(|conn| {
             assert_eq!(version(conn), SCHEMA_VERSION);

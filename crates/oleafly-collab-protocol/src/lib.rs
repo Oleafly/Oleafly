@@ -5,4 +5,5 @@ pub mod crypto;
 pub mod envelope;
 pub mod frames;
 pub mod ids;
+pub mod projects;
 pub mod roles;

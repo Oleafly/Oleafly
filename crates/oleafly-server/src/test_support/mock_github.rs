@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use axum::extract::{Form, Query, State};
@@ -36,6 +37,8 @@ struct Grant {
 
 struct GithubState {
     users: Vec<MockGithubUser>,
+    rotate: bool,
+    next: AtomicUsize,
     grants: Mutex<HashMap<String, Grant>>,
     tokens: Mutex<HashMap<String, usize>>,
 }
@@ -52,8 +55,18 @@ impl GithubState {
 
 impl MockGithub {
     pub async fn start(users: Vec<MockGithubUser>) -> MockGithub {
+        MockGithub::launch("127.0.0.1:0", users, false).await
+    }
+
+    pub async fn start_rotating_on(address: &str, users: Vec<MockGithubUser>) -> MockGithub {
+        MockGithub::launch(address, users, true).await
+    }
+
+    async fn launch(address: &str, users: Vec<MockGithubUser>, rotate: bool) -> MockGithub {
         let state = Arc::new(GithubState {
             users,
+            rotate,
+            next: AtomicUsize::new(0),
             grants: Mutex::new(HashMap::new()),
             tokens: Mutex::new(HashMap::new()),
         });
@@ -63,7 +76,7 @@ impl MockGithub {
             .route("/api/v3/user", get(user))
             .route("/api/v3/user/emails", get(emails))
             .with_state(state);
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        let listener = tokio::net::TcpListener::bind(address)
             .await
             .expect("bind the mock GitHub");
         let addr = listener.local_addr().expect("mock GitHub address");
@@ -156,7 +169,11 @@ async fn authorize(
         state.grants().insert(
             code.clone(),
             Grant {
-                user: 0,
+                user: if state.rotate {
+                    state.next.fetch_add(1, Ordering::SeqCst) % state.users.len()
+                } else {
+                    0
+                },
                 challenge,
                 redirect_uri,
             },

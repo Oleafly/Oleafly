@@ -259,18 +259,18 @@ async fn a_refresh_rotates_both_tokens() {
 }
 
 #[tokio::test]
-async fn a_retried_refresh_within_sixty_seconds_gets_the_same_pair() {
+async fn a_retried_refresh_gets_the_same_pair_while_the_new_one_is_unused() {
     let (server, _github) = server().await;
     let device = TestDevice::generate();
     let first = session(&server, &device).await;
     let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
         .expect("rotate");
-    server.clock().advance(59_000);
+    server.clock().advance(3 * 24 * 60 * 60 * 1000);
     let retried = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
-        .expect("retry within the grace window");
-    assert_eq!(retried, rotated);
+        .expect("a laptop that slept mid-refresh retries");
+    assert_eq!(retried.refresh_token, rotated.refresh_token);
     assert!(access_is_live(&server, &retried.access_token).await);
     let next = refresh_session(&server, &device, first.device_id, &rotated.refresh_token)
         .await
@@ -279,38 +279,25 @@ async fn a_retried_refresh_within_sixty_seconds_gets_the_same_pair() {
 }
 
 #[tokio::test]
-async fn a_refresh_reused_after_sixty_seconds_signs_the_device_out() {
+async fn an_old_refresh_used_after_the_new_one_signs_the_device_out() {
     let (server, _github) = server().await;
     let device = TestDevice::generate();
     let first = session(&server, &device).await;
     let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
         .expect("rotate");
-    server.clock().advance(60_001);
-    let reused = refresh_session(&server, &device, first.device_id, &first.refresh_token).await;
-    assert_eq!(reused.err().as_deref(), Some("refresh_reused"));
-    let after = refresh_session(&server, &device, first.device_id, &rotated.refresh_token).await;
-    assert_eq!(after.err().as_deref(), Some("revoked"));
-    assert!(!access_is_live(&server, &rotated.access_token).await);
-    let kinds = security_event_kinds(&server).await;
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, SecurityEventKind::RefreshReuseDetected)));
-}
-
-#[tokio::test]
-async fn replaying_an_old_token_after_the_new_one_was_used_is_reuse() {
-    let (server, _github) = server().await;
-    let device = TestDevice::generate();
-    let first = session(&server, &device).await;
-    let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
-        .await
-        .expect("rotate");
-    refresh_session(&server, &device, first.device_id, &rotated.refresh_token)
+    let next = refresh_session(&server, &device, first.device_id, &rotated.refresh_token)
         .await
         .expect("rotate again");
     let replay = refresh_session(&server, &device, first.device_id, &first.refresh_token).await;
     assert_eq!(replay.err().as_deref(), Some("refresh_reused"));
+    let after = refresh_session(&server, &device, first.device_id, &next.refresh_token).await;
+    assert_eq!(after.err().as_deref(), Some("revoked"));
+    assert!(!access_is_live(&server, &next.access_token).await);
+    let kinds = security_event_kinds(&server).await;
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::RefreshReuseDetected)));
 }
 
 #[tokio::test]
