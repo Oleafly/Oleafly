@@ -86,7 +86,7 @@ pub fn render(
     cookie: Option<HeaderValue>,
 ) -> Response {
     let page = format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"no-referrer\"><title>{}</title><style>{PAGE_STYLE}{FORM_STYLE}</style></head><body>{body}</body></html>",
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"same-origin\"><title>{}</title><style>{PAGE_STYLE}{FORM_STYLE}</style></head><body>{body}</body></html>",
         escape(title)
     );
     let mut response = (status, page).into_response();
@@ -98,7 +98,7 @@ pub fn render(
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     headers.insert(
         header::REFERRER_POLICY,
-        HeaderValue::from_static("no-referrer"),
+        HeaderValue::from_static("same-origin"),
     );
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(
@@ -160,7 +160,6 @@ mod tests {
         let headers = response.headers();
         assert_eq!(headers[header::CACHE_CONTROL], "no-store");
         assert_eq!(headers[header::X_FRAME_OPTIONS], "DENY");
-        assert_eq!(headers[header::REFERRER_POLICY], "no-referrer");
         assert!(headers[header::CONTENT_SECURITY_POLICY]
             .to_str()
             .unwrap()
@@ -171,5 +170,17 @@ mod tests {
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("<h1>Expired</h1>"));
         assert!(text.contains(PAGE_STYLE));
+    }
+
+    #[tokio::test]
+    async fn pages_let_their_own_forms_name_the_server_but_tell_no_one_else() {
+        let response = message(StatusCode::OK, "Sign in", "Enter the code.");
+        assert_eq!(response.headers()[header::REFERRER_POLICY], "same-origin");
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("<meta name=\"referrer\" content=\"same-origin\">"));
+        assert!(!text.contains("no-referrer"));
     }
 }
