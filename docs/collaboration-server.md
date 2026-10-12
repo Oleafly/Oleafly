@@ -649,6 +649,8 @@ Set both lines or neither. Write special characters in the user name and passwor
 
 `smtps://` uses TLS from the start, on port 465 unless you name another port. `smtp://` uses port 587 unless you name another, then switches to TLS with STARTTLS. If the mail server doesn't offer STARTTLS, the server won't send. A mail relay on the same machine is the one exception: `smtp://localhost`, `smtp://127.0.0.1` and `smtp://[::1]` send without TLS. The server checks the mail server's certificate against the system's trusted certificates.
 
+A relay on the same private network can skip TLS too, when you ask for it. Add `?tls=none`, as in `smtp://mailpit:1025?tls=none`. That suits a relay container in the same Compose project, or a mail catcher such as [Mailpit](https://mailpit.axllent.org) on a test server. The address can't hold a user name or password then, because they would cross the network unencrypted. Use it only when nobody else can reach that network.
+
 ### What the server sends
 
 There are five kinds of email, each as plain text with a simple HTML version. Email to someone who already has an account goes only to their verified addresses, and GitHub's noreply addresses are always skipped.

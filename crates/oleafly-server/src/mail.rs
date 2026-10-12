@@ -76,14 +76,33 @@ impl SmtpSettings {
             Some(Host::Ipv6(address)) => (address.to_string(), address.is_loopback()),
             None => return Err(invalid()),
         };
+        let without_tls = match url.query_pairs().find(|(key, _)| key == "tls") {
+            None => false,
+            Some((_, value)) if value == "none" => true,
+            Some(_) => {
+                return Err(
+                    "OLEAFLY_SMTP_URL only understands tls=none, for a mail relay on the same private network."
+                        .to_string(),
+                )
+            }
+        };
         let (security, default_port) = match url.scheme() {
+            "smtps" if without_tls => {
+                return Err("tls=none works only with smtp:// addresses, not smtps://.".to_string())
+            }
             "smtps" => (Security::Tls, 465),
-            "smtp" if loopback => (Security::Plain, 587),
+            "smtp" if loopback || without_tls => (Security::Plain, 587),
             "smtp" => (Security::StartTls, 587),
             _ => return Err(invalid()),
         };
         let username = Some(percent_decode(url.username())).filter(|name| !name.is_empty());
         let password = url.password().map(percent_decode);
+        if without_tls && (username.is_some() || password.is_some()) {
+            return Err(
+                "With tls=none, OLEAFLY_SMTP_URL can't hold a user name or password, because they would cross the network unencrypted."
+                    .to_string(),
+            );
+        }
         Ok(SmtpSettings {
             host,
             port: url.port().unwrap_or(default_port),
@@ -784,6 +803,25 @@ mod tests {
         );
         for bad in ["https://smtp.uni.edu", "smtp://", "not a url"] {
             assert!(SmtpSettings::parse(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_relay_on_the_same_private_network_can_skip_tls_when_asked() {
+        let relay = SmtpSettings::parse("smtp://mailpit:1025?tls=none").unwrap();
+        assert_eq!(relay.host, "mailpit");
+        assert_eq!((relay.port, relay.security), (1025, Security::Plain));
+        assert_eq!(
+            SmtpSettings::parse("smtp://mailpit:1025").unwrap().security,
+            Security::StartTls
+        );
+        for refused in [
+            "smtps://mailpit:1025?tls=none",
+            "smtp://mailpit?tls=maybe",
+            "smtp://lab:secret@mailpit:1025?tls=none",
+            "smtp://lab@mailpit:1025?tls=none",
+        ] {
+            assert!(SmtpSettings::parse(refused).is_err(), "{refused}");
         }
     }
 
