@@ -1466,6 +1466,8 @@
       "gitTitle": "Token Git pro synchronizaci",
       "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
       "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
+      "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
+      "gitPlanNote": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
       "gitLabel": "Token Git z Overleafu",
       "gitSave": "Uložit",
       "gitRemove": "Odebrat",

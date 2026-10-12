@@ -1434,6 +1434,8 @@
       "gitTitle": "Git-token för synkning",
       "gitSaved": "En Git-token är sparad. Projekt som du länkar hålls synkade med Overleaf.",
       "gitMissing": "Ingen Git-token än. Skapa en under Git-integration i dina kontoinställningar på Overleaf för att synka projekt.",
+      "gitOpenSettings": "Öppna kontoinställningarna på Overleaf",
+      "gitPlanNote": "Git-integration kräver att projektets ägare har ett betalt abonnemang eller ett universitetsabonnemang hos Overleaf.",
       "gitLabel": "Git-token från Overleaf",
       "gitSave": "Spara",
       "gitRemove": "Ta bort",

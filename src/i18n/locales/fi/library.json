@@ -137,7 +137,8 @@
       "document": "dokumentti",
       "image": "kuva",
       "diagram": "kaavio",
-      "external": "ulkoinen"
+      "external": "ulkoinen",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-esikatselu: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Projektin haaroittaminen ei onnistunut."
     },
     "deleteDialog": {
-      "title": "Siirretäänkö ”{{name}}” roskakoriin?",
+      "title": "Siirretäänkö ”<name>{{name}}</name>” roskakoriin?",
       "fallbackName": "projekti",
       "description": "Projekti poistuu kirjastosta mutta säilyy Tietojen tallennus -osiossa, kunnes se palautetaan tai poistetaan pysyvästi.",
       "confirm": "Siirrä roskakoriin",
       "moved": "\"{{name}}\" siirrettiin roskakoriin.",
       "failed": "Kohdetta \"{{name}}\" ei voitu poistaa."
+    },
+    "bulkDelete": {
+      "button_one": "Poista {{count}} valittu projekti",
+      "button_other": "Poista {{count}} valittua projektia",
+      "title_one": "Siirretäänkö {{count}} projekti roskakoriin?",
+      "title_other": "Siirretäänkö {{count}} projektia roskakoriin?",
+      "description": "Projektit poistuvat kirjastosta mutta säilyvät Tietojen tallennus -osiossa, kunnes ne palautetaan tai poistetaan pysyvästi.",
+      "folderNote": "Paikallaan avatut kansiot poistuvat vain Oleaflysta. Niiden tiedostot pysyvät paikoillaan.",
+      "done_one": "{{count}} projekti poistettiin kirjastosta.",
+      "done_other": "{{count}} projektia poistettiin kirjastosta.",
+      "failed_one": "{{count}} projektin poistaminen epäonnistui.",
+      "failed_other": "{{count}} projektin poistaminen epäonnistui."
     }
   },
   "newProject": {
@@ -303,6 +316,7 @@
       "loadFailed": "Oleafly ei voinut ladata Overleaf-projektejasi.",
       "signInPrompt": "Kirjaudu Overleafiin nähdäksesi projektisi. Kirjautumisikkuna avautuu ja sulkeutuu itsestään, kun olet kirjautunut.",
       "signingIn": "Viimeistele Overleaf-kirjautuminen avautuneessa ikkunassa.",
+      "passkeyHint": "Jos pääsyavaimesi ei toimi kirjautumisikkunassa, valitse siellä toinen tapa, kuten salasana tai vahvistus puhelimessa.",
       "expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen nähdäksesi projektisi.",
       "signIn": "Kirjaudu Overleafiin",
       "signInWindowTitle": "Kirjaudu Overleafiin",
@@ -326,6 +340,7 @@
       "empty": "Tällä Overleaf-tilillä ei ole vielä projekteja.",
       "noMatches": "Hakuasi vastaavia projekteja ei löytynyt.",
       "selectAll": "Valitse kaikki",
+      "clearSelection": "Tyhjennä valinta",
       "selectProject": "Valitse {{name}}",
       "selected_one": "{{count}} projekti valittu",
       "selected_other": "{{count}} projektia valittu",
@@ -336,8 +351,9 @@
       "ownedByYou": "Oma",
       "owner": "Omistaja: {{name}}",
       "archived": "Arkistoitu",
-      "copyNote": "Jo kirjastossasi olevat projektit tuodaan uutena kopiona.",
       "notCarried": "Kommentit, seuratut muutokset, keskustelu ja historia jäävät Overleafiin.",
+      "importingProjects": "Tuodaan projektejasi",
+      "done": "Valmis",
       "doneSummary_one": "Tuotiin {{count}} projekti.",
       "doneSummary_other": "Tuotiin {{count}} projektia.",
       "failedSummary_one": "{{count}} projektia ei voitu tuoda.",
@@ -592,7 +608,7 @@
       "remove": "Poista Oleaflystä"
     },
     "remove": {
-      "title": "Poistetaanko ”{{name}}” Oleaflystä?",
+      "title": "Poistetaanko ”<name>{{name}}</name>” Oleaflystä?",
       "description": "Tiedostosi pysyvät paikoillaan. Oleafly poistaa tämän kansion käännöstiedostot ja nollaa sen luottamuksen, hyväksynnät ja linkitetyt kansiot. Avaa kansio uudelleen 30 päivän kuluessa, niin saat sen keskustelut ja historian takaisin. Muut asetukset pitää tehdä uudelleen.",
       "confirm": "Poista Oleaflystä",
       "done": "”{{name}}” poistettiin Oleaflystä. Sen tiedostot ovat yhä kansiossa.",

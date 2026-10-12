@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by itself when you're in. Your projects then appear as books or a list, with
   search and a filter for yours and shared ones. Pick one or many and they
   come over with their files, compiler and main file, ready to compile here.
+  Import moves your picks into their own view that shows each project's
+  progress, and Done closes it. Projects you already imported can't be
+  picked again.
   A university's own server works too. The sign-in is kept encrypted on your
   computer, and Settings > Integrations shows it and signs you out. The
   assistant can list and import these projects for you as well.
@@ -40,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   When the same lines changed on both sides, nothing changes until you pick
   which version to keep for each file. Linking never deletes a file, and
   Oleafly's own project files are never uploaded.
+- Select several projects in the library at once. Command-click (Ctrl-click
+  on Windows and Linux) selects a project instead of opening it, and dragging
+  across empty space selects every project the box touches. A trash button
+  next to Import then moves the selection to the Recycle Bin once you
+  confirm. Folders you opened in place only leave Oleafly, and their files
+  stay where they are. Esc or a click on empty space clears the selection.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its

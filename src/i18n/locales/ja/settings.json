@@ -1418,6 +1418,8 @@
       "gitTitle": "同期用の Git トークン",
       "gitSaved": "Git トークンが保存されています。リンクしたプロジェクトは Overleaf と同期されます。",
       "gitMissing": "Git トークンはまだありません。プロジェクトを同期するには、Overleaf のアカウント設定の「Git 連携」でトークンを作成してください。",
+      "gitOpenSettings": "Overleaf のアカウント設定を開く",
+      "gitPlanNote": "Git 連携を使うには、プロジェクトのオーナーが Overleaf の有料プランか大学のプランに加入している必要があります。",
       "gitLabel": "Overleaf の Git トークン",
       "gitSave": "保存",
       "gitRemove": "削除",

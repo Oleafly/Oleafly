@@ -136,7 +136,8 @@
       "document": "文書",
       "image": "画像",
       "diagram": "ダイアグラム",
-      "external": "外部"
+      "external": "外部",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF プレビュー: {{name}}",
@@ -180,12 +181,20 @@
       "failed": "プロジェクトをフォークできませんでした。"
     },
     "deleteDialog": {
-      "title": "「{{name}}」をごみ箱に移動しますか？",
+      "title": "「<name>{{name}}</name>」をごみ箱に移動しますか？",
       "fallbackName": "プロジェクト",
       "description": "このプロジェクトはライブラリから消えますが、復元するか完全に削除するまではデータの保存領域に残ります。",
       "confirm": "ごみ箱に移動",
       "moved": "「{{name}}」をごみ箱に移動しました。",
       "failed": "「{{name}}」を削除できませんでした。"
+    },
+    "bulkDelete": {
+      "button_other": "選択した {{count}} 件のプロジェクトを削除",
+      "title_other": "{{count}} 件のプロジェクトをごみ箱に移動しますか？",
+      "description": "これらのプロジェクトはライブラリから消えますが、復元するか完全に削除するまではデータの保存領域に残ります。",
+      "folderNote": "その場で開いたフォルダは Oleafly から外れるだけです。ファイルはそのままの場所に残ります。",
+      "done_other": "{{count}} 件のプロジェクトをライブラリから外しました。",
+      "failed_other": "{{count}} 件のプロジェクトを削除できませんでした。"
     }
   },
   "newProject": {
@@ -302,6 +311,7 @@
       "loadFailed": "Oleafly は Overleaf のプロジェクトを読み込めませんでした。",
       "signInPrompt": "プロジェクトを表示するには Overleaf にサインインしてください。サインイン用のウィンドウが開き、サインインが済むと自動で閉じます。",
       "signingIn": "開いたウィンドウで Overleaf へのサインインを完了してください。",
+      "passkeyHint": "サインイン用のウィンドウでパスキーが使えない場合は、パスワードやスマートフォンでの確認など、別の方法を選んでください。",
       "expired": "Overleaf のサインインの有効期限が切れました。プロジェクトを表示するには、もう一度サインインしてください。",
       "signIn": "Overleaf にサインイン",
       "signInWindowTitle": "Overleaf にサインイン",
@@ -324,6 +334,7 @@
       "empty": "この Overleaf アカウントにはまだプロジェクトがありません。",
       "noMatches": "検索に一致するプロジェクトはありません。",
       "selectAll": "すべて選択",
+      "clearSelection": "選択を解除",
       "selectProject": "{{name}} を選択",
       "selected_other": "{{count}} 件のプロジェクトを選択中",
       "import_other": "{{count}} 件のプロジェクトを読み込む",
@@ -332,8 +343,9 @@
       "ownedByYou": "自分のもの",
       "owner": "所有者: {{name}}",
       "archived": "アーカイブ済み",
-      "copyNote": "ライブラリにすでにあるプロジェクトは、新しいコピーとして読み込まれます。",
       "notCarried": "コメント、変更履歴の追跡、チャット、履歴は Overleaf に残ります。",
+      "importingProjects": "プロジェクトを読み込んでいます",
+      "done": "完了",
       "doneSummary_other": "{{count}} 件のプロジェクトを読み込みました。",
       "failedSummary_other": "{{count}} 件のプロジェクトを読み込めませんでした。",
       "progress": {
@@ -575,7 +587,7 @@
       "remove": "Oleafly から削除"
     },
     "remove": {
-      "title": "「{{name}}」を Oleafly から削除しますか？",
+      "title": "「<name>{{name}}</name>」を Oleafly から削除しますか？",
       "description": "ファイルはそのままの場所に残ります。Oleafly はこのフォルダ用に作ったビルドファイルを削除し、信頼、承認、リンクしたフォルダをリセットします。30 日以内にフォルダをもう一度開くと、チャットと履歴が戻ります。それ以外はもう一度設定する必要があります。",
       "confirm": "Oleafly から削除",
       "done": "「{{name}}」を Oleafly から削除しました。ファイルはフォルダに残っています。",

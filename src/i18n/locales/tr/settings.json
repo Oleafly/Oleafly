@@ -1434,6 +1434,8 @@
       "gitTitle": "Eşitleme için Git belirteci",
       "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
       "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
+      "gitOpenSettings": "Overleaf hesap ayarlarını aç",
+      "gitPlanNote": "Git entegrasyonu için projenin sahibinin ücretli ya da üniversite Overleaf planına sahip olması gerekir.",
       "gitLabel": "Overleaf Git belirteci",
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",

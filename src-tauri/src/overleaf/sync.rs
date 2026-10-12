@@ -15,6 +15,7 @@ const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
 const MAX_LISTED: usize = 200;
 const IGNORED_NAMES: [&str; 5] = ["__macosx", ".ds_store", "thumbs.db", "desktop.ini", ".git"];
+const MIRROR_ATTRIBUTES: &str = "* -text -filter -ident\n";
 
 static RUNNING: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
@@ -183,13 +184,26 @@ pub(crate) fn rev(repo: &Path, name: &str) -> Option<String> {
 }
 
 pub(crate) fn ensure_repo(repo: &Path) -> Result<(), String> {
-    if repo.join(".git").is_dir() {
-        return Ok(());
+    if !repo.join(".git").is_dir() {
+        std::fs::create_dir_all(repo)
+            .map_err(|error| format!("could not create the sync copy: {error}"))?;
+        git_ok(repo, &["init", "--quiet"])?;
     }
-    std::fs::create_dir_all(repo)
-        .map_err(|error| format!("could not create the sync copy: {error}"))?;
-    git_ok(repo, &["init", "--quiet"])?;
+    let attributes = repo.join(".git").join("info").join("attributes");
+    if std::fs::read_to_string(&attributes).ok().as_deref() != Some(MIRROR_ATTRIBUTES) {
+        if let Some(parent) = attributes.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        std::fs::write(&attributes, MIRROR_ATTRIBUTES).map_err(|error| error.to_string())?;
+    }
     Ok(())
+}
+
+pub(crate) fn clear_stale_lock(repo: &Path) {
+    let lock = repo.join(".git").join("index.lock");
+    if lock.is_file() {
+        let _ = std::fs::remove_file(lock);
+    }
 }
 
 pub(crate) fn classify_remote_failure(text: &str) -> String {
@@ -239,9 +253,20 @@ pub(crate) fn classify_remote_failure(text: &str) -> String {
 }
 
 fn first_line(text: &str) -> String {
-    text.lines()
+    let lines: Vec<&str> = text
+        .lines()
         .map(str::trim)
-        .find(|line| !line.is_empty())
+        .filter(|line| !line.is_empty())
+        .collect();
+    let reported = lines.iter().find(|line| {
+        let lower = line.to_ascii_lowercase();
+        ["fatal:", "error:", "remote: error", "!"]
+            .iter()
+            .any(|marker| lower.starts_with(marker))
+    });
+    reported
+        .or(lines.last())
+        .copied()
         .unwrap_or_default()
         .chars()
         .take(300)
@@ -258,7 +283,7 @@ pub(crate) fn fetch(repo: &Path, url: &str, token: &str) -> Result<String, Strin
         token,
         &[
             "fetch",
-            "--quiet",
+            "--progress",
             "--no-tags",
             "--no-recurse-submodules",
             url,
@@ -291,7 +316,7 @@ pub(crate) fn push(
         repo,
         &origin,
         token,
-        &["push", "--quiet", "--porcelain", url, &refspec],
+        &["push", "--progress", "--porcelain", url, &refspec],
     )?;
     if output.status.success() {
         return Ok(PushResult::Pushed);
@@ -316,7 +341,7 @@ pub(crate) fn set_base(repo: &Path, commit: &str) -> Result<(), String> {
 }
 
 pub(crate) fn excluded(rel: &str) -> bool {
-    if rel == "project.json" {
+    if rel.eq_ignore_ascii_case("project.json") {
         return true;
     }
     let mut parts = rel.split('/');
@@ -466,9 +491,6 @@ fn copy_into(source: &Path, destination: &Path) -> Result<bool, String> {
 
 fn stage_project(project: &Path, repo: &Path, remove_missing: bool) -> Result<bool, String> {
     let files = project_files(project)?;
-    for (rel, source) in &files {
-        copy_into(source, &repo.join(rel))?;
-    }
     if remove_missing {
         for rel in tracked_files(repo)? {
             if !excluded(&rel) && !files.contains_key(&rel) {
@@ -478,6 +500,9 @@ fn stage_project(project: &Path, repo: &Path, remove_missing: bool) -> Result<bo
                 }
             }
         }
+    }
+    for (rel, source) in &files {
+        copy_into(source, &repo.join(rel))?;
     }
     git_ok(repo, &["add", "--all", "--force", "--", "."])?;
     let staged = git(repo, &["diff", "--cached", "--quiet"])?;
@@ -528,6 +553,20 @@ fn write_back(
 ) -> Result<(Vec<String>, Vec<String>), String> {
     let mut wrote = Vec::new();
     let mut deleted = Vec::new();
+    for rel in removed {
+        if excluded(rel) || !safe_relative(rel) {
+            continue;
+        }
+        let destination = project.join(rel);
+        match std::fs::symlink_metadata(&destination) {
+            Ok(metadata) if metadata.is_file() => {
+                std::fs::remove_file(&destination).map_err(|error| error.to_string())?;
+                prune_empty_parents(project, &destination);
+                deleted.push(rel.clone());
+            }
+            _ => {}
+        }
+    }
     for rel in written {
         if excluded(rel) || !safe_relative(rel) {
             continue;
@@ -552,20 +591,6 @@ fn write_back(
         }
         crate::sandbox::atomic_write(&destination, &bytes)?;
         wrote.push(rel.clone());
-    }
-    for rel in removed {
-        if excluded(rel) || !safe_relative(rel) {
-            continue;
-        }
-        let destination = project.join(rel);
-        match std::fs::symlink_metadata(&destination) {
-            Ok(metadata) if metadata.is_file() => {
-                std::fs::remove_file(&destination).map_err(|error| error.to_string())?;
-                prune_empty_parents(project, &destination);
-                deleted.push(rel.clone());
-            }
-            _ => {}
-        }
     }
     Ok((wrote, deleted))
 }
@@ -608,6 +633,19 @@ fn resolve(repo: &Path, path: &str, side: Side) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+pub(crate) fn commit_local(
+    project: &Path,
+    repo: &Path,
+    base: &str,
+) -> Result<Option<String>, String> {
+    reset_to(repo, base)?;
+    if stage_project(project, repo, true)? {
+        commit(repo, "Changes from Oleafly").map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 pub(crate) fn integrate(
@@ -675,7 +713,7 @@ pub(crate) fn integrate(
             let _ = git(repo, &["merge", "--abort"]);
             reset_to(repo, base)?;
             return Ok(Integration::Conflicts(
-                conflicts.into_iter().take(MAX_LISTED).collect(),
+                unresolved.into_iter().take(MAX_LISTED).collect(),
             ));
         }
         for path in &conflicts {

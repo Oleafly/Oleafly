@@ -136,7 +136,8 @@
       "document": "文件",
       "image": "圖片",
       "diagram": "圖表",
-      "external": "外部"
+      "external": "外部",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF 預覽：{{name}}",
@@ -180,12 +181,20 @@
       "failed": "無法為專案建立分支。"
     },
     "deleteDialog": {
-      "title": "要將「{{name}}」移至資源回收筒嗎？",
+      "title": "要將「<name>{{name}}</name>」移至資源回收筒嗎？",
       "fallbackName": "專案",
       "description": "專案會離開你的專案庫，但在你還原或永久刪除前，都還保留在「資料儲存」中。",
       "confirm": "移至資源回收筒",
       "moved": "已將「{{name}}」移至資源回收筒。",
       "failed": "無法刪除「{{name}}」。"
+    },
+    "bulkDelete": {
+      "button_other": "刪除選取的 {{count}} 個專案",
+      "title_other": "要將 {{count}} 個專案移至資源回收筒嗎？",
+      "description": "這些專案會離開你的專案庫，但在你還原或永久刪除前，都還保留在「資料儲存」中。",
+      "folderNote": "就地開啟的資料夾只會離開 Oleafly，檔案會留在原處。",
+      "done_other": "已從專案庫移除 {{count}} 個專案。",
+      "failed_other": "有 {{count}} 個專案無法刪除。"
     }
   },
   "newProject": {
@@ -302,6 +311,7 @@
       "loadFailed": "Oleafly 無法載入你的 Overleaf 專案。",
       "signInPrompt": "登入 Overleaf 即可查看你的專案。系統會開啟登入視窗，登入完成後會自動關閉。",
       "signingIn": "請在開啟的視窗中完成 Overleaf 登入。",
+      "passkeyHint": "如果密碼金鑰在登入視窗中無法使用，請在該頁面選擇其他方式，例如密碼或手機上的確認提示。",
       "expired": "你的 Overleaf 登入已過期。請重新登入以查看你的專案。",
       "signIn": "登入 Overleaf",
       "signInWindowTitle": "登入 Overleaf",
@@ -324,6 +334,7 @@
       "empty": "這個 Overleaf 帳號中還沒有專案。",
       "noMatches": "沒有符合搜尋條件的專案。",
       "selectAll": "全選",
+      "clearSelection": "清除選取",
       "selectProject": "選取 {{name}}",
       "selected_other": "已選取 {{count}} 個專案",
       "import_other": "匯入 {{count}} 個專案",
@@ -332,8 +343,9 @@
       "ownedByYou": "我的",
       "owner": "擁有者：{{name}}",
       "archived": "已封存",
-      "copyNote": "已在專案庫中的專案會以新副本匯入。",
       "notCarried": "留言、追蹤修訂、聊天和歷史記錄會保留在 Overleaf 上。",
+      "importingProjects": "正在匯入專案",
+      "done": "完成",
       "doneSummary_other": "已匯入 {{count}} 個專案。",
       "failedSummary_other": "有 {{count}} 個專案無法匯入。",
       "progress": {
@@ -575,7 +587,7 @@
       "remove": "從 Oleafly 移除"
     },
     "remove": {
-      "title": "要從 Oleafly 移除「{{name}}」嗎？",
+      "title": "要從 Oleafly 移除「<name>{{name}}</name>」嗎？",
       "description": "你的檔案會留在原處。Oleafly 會刪除它為這個資料夾產生的建置檔案，並重設它的信任、核准與已連結資料夾。在 30 天內再次開啟這個資料夾，就能找回它的聊天與歷史記錄。其餘項目需要重新設定。",
       "confirm": "從 Oleafly 移除",
       "done": "已從 Oleafly 移除「{{name}}」。檔案仍在資料夾中。",

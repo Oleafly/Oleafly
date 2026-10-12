@@ -21,6 +21,8 @@ vi.mock("@/lib/overleaf-sync", async (importOriginal) => ({
   ...git,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
+const shell = vi.hoisted(() => ({ open: vi.fn(async () => undefined) }));
+vi.mock("@tauri-apps/plugin-shell", () => shell);
 
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { OverleafSection } from "./OverleafSection";
@@ -75,5 +77,15 @@ describe("OverleafSection", () => {
     fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "olp_other" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Oleafly could not save the Git token. Check that you pasted the whole token.")).toBeInTheDocument();
+  });
+
+  it("links to the Overleaf page that makes Git tokens and names the plan it needs", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    render(<OverleafSection />);
+    const link = await screen.findByTestId("overleaf-git-token-page");
+    expect(link).toHaveTextContent("Open Overleaf account settings");
+    expect(screen.getByText("Git integration needs a paid or university Overleaf plan for the project's owner.")).toBeInTheDocument();
+    fireEvent.click(link);
+    expect(shell.open).toHaveBeenCalledWith("https://www.overleaf.com/user/settings");
   });
 });

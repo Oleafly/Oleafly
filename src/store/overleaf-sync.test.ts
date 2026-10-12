@@ -4,6 +4,7 @@ const api = vi.hoisted(() => ({
   overleafSyncStatus: vi.fn(),
   overleafSyncLink: vi.fn(),
   overleafSyncNow: vi.fn(),
+  overleafSyncCheck: vi.fn(),
   overleafSyncUnlink: vi.fn(),
   overleafSyncSetAuto: vi.fn(),
   overleafGitTokenSet: vi.fn(),
@@ -64,10 +65,12 @@ beforeEach(() => {
     status: status(),
     phase: "idle",
     conflicts: [],
+    resolutions: {},
     choice: [],
     error: null,
     lastReport: null,
   });
+  api.overleafSyncCheck.mockResolvedValue(report("needs-merge", { state: null }));
 });
 
 describe("overleaf sync store", () => {
@@ -90,7 +93,7 @@ describe("overleaf sync store", () => {
     expect(files.lease).toHaveBeenCalled();
     expect(api.overleafSyncLink).toHaveBeenCalledWith("p1", 7, SERVER, "ov1", null);
     expect(files.state.applyProjectStateChanged).toHaveBeenCalledWith(projectState);
-    expect(api.overleafSyncNow).toHaveBeenCalledWith("p1", 7, null);
+    expect(api.overleafSyncNow).toHaveBeenCalledWith("p1", 7, null, true);
     expect(useOverleafSyncStore.getState().phase).toBe("idle");
   });
 
@@ -116,7 +119,7 @@ describe("overleaf sync store", () => {
     expect(useOverleafSyncStore.getState().conflicts).toEqual(["a.tex", "b.tex"]);
     api.overleafSyncNow.mockResolvedValueOnce(report("synced"));
     await useOverleafSyncStore.getState().sync({ "a.tex": "local", "b.tex": "remote" });
-    expect(api.overleafSyncNow).toHaveBeenLastCalledWith("p1", 7, { "a.tex": "local", "b.tex": "remote" });
+    expect(api.overleafSyncNow).toHaveBeenLastCalledWith("p1", 7, { "a.tex": "local", "b.tex": "remote" }, false);
     expect(useOverleafSyncStore.getState().conflicts).toEqual([]);
   });
 
@@ -171,5 +174,53 @@ describe("overleaf sync store", () => {
     api.overleafSyncUnlink.mockRejectedValueOnce(new Error("locked"));
     await useOverleafSyncStore.getState().unlink();
     expect(useOverleafSyncStore.getState().error).toEqual(new Error("locked"));
+  });
+
+  it("finishes a quiet sync without the editor lease", async () => {
+    useOverleafSyncStore.setState({ status: status({ linked: true, remoteId: "ov1" }) });
+    api.overleafSyncStatus.mockResolvedValue(status({ linked: true, remoteId: "ov1" }));
+    api.overleafSyncCheck.mockResolvedValueOnce(report("synced", { pushed: true, state: null }));
+    const result = await useOverleafSyncStore.getState().sync(null, "auto");
+    expect(result?.outcome).toBe("synced");
+    expect(api.overleafSyncNow).not.toHaveBeenCalled();
+    expect(files.lease).not.toHaveBeenCalled();
+    expect(useOverleafSyncStore.getState()).toMatchObject({ phase: "idle", lastReport: { outcome: "synced" } });
+  });
+
+  it("carries earlier picks into the next round of clashes", async () => {
+    useOverleafSyncStore.setState({ status: status({ linked: true, remoteId: "ov1" }) });
+    api.overleafSyncStatus.mockResolvedValue(status({ linked: true, remoteId: "ov1" }));
+    api.overleafSyncNow.mockResolvedValueOnce(report("conflicts", { files: ["b.tex"] }));
+    await useOverleafSyncStore.getState().sync({ "a.tex": "local" });
+    expect(useOverleafSyncStore.getState()).toMatchObject({ conflicts: ["b.tex"], resolutions: { "a.tex": "local" } });
+    api.overleafSyncNow.mockResolvedValueOnce(report("conflicts", { files: ["b.tex"] }));
+    await useOverleafSyncStore.getState().sync(null, "auto");
+    expect(useOverleafSyncStore.getState().resolutions).toEqual({ "a.tex": "local" });
+    api.overleafSyncNow.mockResolvedValueOnce(report("synced"));
+    await useOverleafSyncStore.getState().sync({ "b.tex": "remote" });
+    expect(api.overleafSyncNow).toHaveBeenLastCalledWith("p1", 7, { "a.tex": "local", "b.tex": "remote" }, false);
+    expect(useOverleafSyncStore.getState()).toMatchObject({ conflicts: [], resolutions: {} });
+  });
+
+  it("leaves another project's state alone when it finishes after a switch", async () => {
+    useOverleafSyncStore.setState({ status: status({ linked: true, remoteId: "ov1" }) });
+    let finish: (value: unknown) => void = () => {};
+    api.overleafSyncCheck.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const running = useOverleafSyncStore.getState().sync();
+    api.overleafSyncStatus.mockResolvedValue(status({ linked: true, remoteId: "ov2" }));
+    await useOverleafSyncStore.getState().refresh("p2");
+    finish(report("conflicts", { files: ["a.tex"], state: null }));
+    await running;
+    expect(useOverleafSyncStore.getState()).toMatchObject({ projectId: "p2", conflicts: [], lastReport: null });
+    expect(api.overleafSyncStatus).not.toHaveBeenCalledWith("p1");
+
+    let fail: (reason: unknown) => void = () => {};
+    useOverleafSyncStore.setState({ projectId: "p1", status: status() });
+    api.overleafSyncLink.mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
+    const linking = useOverleafSyncStore.getState().link();
+    await useOverleafSyncStore.getState().refresh("p3");
+    fail(new Error("late"));
+    await linking;
+    expect(useOverleafSyncStore.getState()).toMatchObject({ projectId: "p3", error: null });
   });
 });

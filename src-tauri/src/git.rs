@@ -1469,7 +1469,22 @@ fn mirror_settings() -> Vec<String> {
     .collect()
 }
 
+const GIT_TRACE_ENV: [&str; 9] = [
+    "GIT_TRACE",
+    "GIT_TRACE2",
+    "GIT_TRACE2_EVENT",
+    "GIT_TRACE2_PERF",
+    "GIT_TRACE_CURL",
+    "GIT_TRACE_PACKET",
+    "GIT_TRACE_PERFORMANCE",
+    "GIT_TRACE_SETUP",
+    "GIT_CURL_VERBOSE",
+];
+
 fn mirror_command_env(command: &mut Command) {
+    for variable in GIT_TRACE_ENV {
+        command.env_remove(variable);
+    }
     command
         .env("GIT_TERMINAL_PROMPT", "0")
         .env_remove("GIT_ASKPASS")

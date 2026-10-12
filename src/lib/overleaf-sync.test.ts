@@ -7,6 +7,7 @@ import {
   overleafGitTokenClear,
   overleafGitTokenSet,
   overleafGitTokenStatus,
+  overleafSyncCheck,
   overleafSyncLink,
   overleafSyncNow,
   overleafSyncSetAuto,
@@ -26,6 +27,8 @@ describe("overleaf sync bridge", () => {
     await overleafSyncLink("p1", 4, " https://latex.uni.edu ", "abc", "remote");
     await overleafSyncLink("p1", 5, null, "abc", null);
     await overleafSyncNow("p1", 6, { "main.tex": "local" });
+    await overleafSyncNow("p1", 7, null, true);
+    await overleafSyncCheck("p1");
     await overleafSyncUnlink("p1");
     await overleafSyncSetAuto("p1", false);
     await overleafGitTokenStatus("");
@@ -35,7 +38,9 @@ describe("overleaf sync bridge", () => {
       ["overleaf_sync_status", { projectId: "p1" }],
       ["overleaf_sync_link", { projectId: "p1", expectedGeneration: 4, server: "https://latex.uni.edu", remoteId: "abc", prefer: "remote" }],
       ["overleaf_sync_link", { projectId: "p1", expectedGeneration: 5, server: null, remoteId: "abc", prefer: null }],
-      ["overleaf_sync_now", { projectId: "p1", expectedGeneration: 6, resolutions: { "main.tex": "local" } }],
+      ["overleaf_sync_now", { projectId: "p1", expectedGeneration: 6, resolutions: { "main.tex": "local" }, fetched: false }],
+      ["overleaf_sync_now", { projectId: "p1", expectedGeneration: 7, resolutions: null, fetched: true }],
+      ["overleaf_sync_check", { projectId: "p1" }],
       ["overleaf_sync_unlink", { projectId: "p1" }],
       ["overleaf_sync_set_auto", { projectId: "p1", auto: false }],
       ["overleaf_git_token_status", { server: null }],

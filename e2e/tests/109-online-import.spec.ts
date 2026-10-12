@@ -45,14 +45,14 @@ test("signs in to an Overleaf server, lists its projects and imports them with t
   await tauriPage.click('[data-testid="overleaf-select-all"]');
   await expect(tauriPage.locator('[data-testid="overleaf-import-selected"]')).toContainText("Import 2 projects");
   await tauriPage.click('[data-testid="overleaf-import-selected"]');
+  await expect(tauriPage.locator('[data-testid="overleaf-import-run"]')).toBeVisible({ timeout: 20_000 });
   for (const id of ["e2e-thesis", "e2e-paper"]) {
     await expect(tauriPage.locator(`[data-testid="overleaf-status-${id}"]`)).toContainText("Imported", {
       timeout: 90_000,
     });
   }
-  await expect(tauriPage.locator('[data-testid="overleaf-selection-summary"]')).toContainText(
-    "Imported 2 projects.",
-  );
+  await expect(tauriPage.locator('[data-testid="overleaf-run-summary"]')).toContainText("Imported 2 projects.");
+  await expect(tauriPage.locator('[data-testid="overleaf-import-done"]')).toBeEnabled();
 
   await tauriPage.click('[data-testid="overleaf-status-e2e-thesis"] button');
   await waitLong(tauriPage, `!!document.querySelector('[data-tour="project-editor"] .cm-content')`, 45_000);

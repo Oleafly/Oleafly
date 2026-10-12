@@ -1418,6 +1418,8 @@
       "gitTitle": "동기화용 Git 토큰",
       "gitSaved": "Git 토큰이 저장되어 있습니다. 연결한 프로젝트는 Overleaf와 동기화된 상태로 유지됩니다.",
       "gitMissing": "아직 Git 토큰이 없습니다. 프로젝트를 동기화하려면 Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만드세요.",
+      "gitOpenSettings": "Overleaf 계정 설정 열기",
+      "gitPlanNote": "Git 연동을 쓰려면 프로젝트 소유자에게 Overleaf 유료 요금제나 대학 요금제가 필요합니다.",
       "gitLabel": "Overleaf Git 토큰",
       "gitSave": "저장",
       "gitRemove": "제거",

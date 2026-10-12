@@ -136,7 +136,8 @@
       "document": "文档",
       "image": "图片",
       "diagram": "图表",
-      "external": "外部"
+      "external": "外部",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF 预览：{{name}}",
@@ -180,12 +181,20 @@
       "failed": "无法复刻项目。"
     },
     "deleteDialog": {
-      "title": "将“{{name}}”移入回收站？",
+      "title": "将“<name>{{name}}</name>”移入回收站？",
       "fallbackName": "项目",
       "description": "该项目会从你的库中移出，但仍保留在数据存储中，直到你恢复或永久删除它。",
       "confirm": "移入回收站",
       "moved": "已将“{{name}}”移入回收站。",
       "failed": "无法删除“{{name}}”。"
+    },
+    "bulkDelete": {
+      "button_other": "删除选中的 {{count}} 个项目",
+      "title_other": "将 {{count}} 个项目移入回收站？",
+      "description": "这些项目会从你的库中移出，但仍保留在数据存储中，直到你恢复或永久删除它们。",
+      "folderNote": "就地打开的文件夹只会从 Oleafly 中移除，其文件保留在原处。",
+      "done_other": "已从库中移除 {{count}} 个项目。",
+      "failed_other": "有 {{count}} 个项目无法删除。"
     }
   },
   "newProject": {
@@ -302,6 +311,7 @@
       "loadFailed": "Oleafly 无法加载你的 Overleaf 项目。",
       "signInPrompt": "登录 Overleaf 即可查看你的项目。系统会打开一个登录窗口，登录完成后它会自动关闭。",
       "signingIn": "请在打开的窗口中完成 Overleaf 登录。",
+      "passkeyHint": "如果通行密钥在登录窗口中无法使用，请在该页面选择其他方式，例如密码或手机上的确认提示。",
       "expired": "你的 Overleaf 登录已过期。请重新登录以查看你的项目。",
       "signIn": "登录 Overleaf",
       "signInWindowTitle": "登录 Overleaf",
@@ -324,6 +334,7 @@
       "empty": "此 Overleaf 账户中还没有项目。",
       "noMatches": "没有与搜索匹配的项目。",
       "selectAll": "全选",
+      "clearSelection": "清除选择",
       "selectProject": "选择 {{name}}",
       "selected_other": "已选择 {{count}} 个项目",
       "import_other": "导入 {{count}} 个项目",
@@ -332,8 +343,9 @@
       "ownedByYou": "我的",
       "owner": "所有者：{{name}}",
       "archived": "已归档",
-      "copyNote": "已在你的库中的项目会作为新副本导入。",
       "notCarried": "评论、修订、聊天和历史记录会保留在 Overleaf 上。",
+      "importingProjects": "正在导入项目",
+      "done": "完成",
       "doneSummary_other": "已导入 {{count}} 个项目。",
       "failedSummary_other": "有 {{count}} 个项目无法导入。",
       "progress": {
@@ -575,7 +587,7 @@
       "remove": "从 Oleafly 中移除"
     },
     "remove": {
-      "title": "要从 Oleafly 中移除“{{name}}”吗？",
+      "title": "要从 Oleafly 中移除“<name>{{name}}</name>”吗？",
       "description": "你的文件保留在原处。Oleafly 会删除它为此文件夹生成的构建文件，并重置它的信任、批准和已链接文件夹。在 30 天内再次打开此文件夹，即可找回它的聊天和历史记录。其余设置需要重新配置。",
       "confirm": "从 Oleafly 中移除",
       "done": "已从 Oleafly 中移除“{{name}}”。文件仍在文件夹中。",

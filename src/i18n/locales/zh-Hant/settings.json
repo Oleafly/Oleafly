@@ -1418,6 +1418,8 @@
       "gitTitle": "用於同步的 Git 權杖",
       "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
       "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
+      "gitOpenSettings": "開啟 Overleaf 帳號設定",
+      "gitPlanNote": "使用 Git 整合需要專案擁有者訂閱 Overleaf 付費方案或學校方案。",
       "gitLabel": "Overleaf Git 權杖",
       "gitSave": "儲存",
       "gitRemove": "移除",

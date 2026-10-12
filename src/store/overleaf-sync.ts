@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { isOverleafError } from "@/lib/overleaf";
 import {
   overleafGitTokenSet,
+  overleafSyncCheck,
   overleafSyncLink,
   overleafSyncNow,
   overleafSyncSetAuto,
@@ -21,6 +22,7 @@ interface OverleafSyncState {
   status: OverleafSyncStatus | null;
   phase: OverleafSyncPhase;
   conflicts: string[];
+  resolutions: Record<string, SyncSide>;
   choice: string[];
   error: unknown;
   lastReport: OverleafSyncReport | null;
@@ -49,6 +51,17 @@ async function runMutation(
   });
 }
 
+async function checkThenMerge(
+  projectId: string,
+  resolutions: Record<string, SyncSide> | null,
+): Promise<OverleafSyncReport> {
+  if (!resolutions) {
+    const checked = await overleafSyncCheck(projectId);
+    if (checked.outcome !== "needs-merge") return checked;
+  }
+  return runMutation(projectId, (generation) => overleafSyncNow(projectId, generation, resolutions, !resolutions));
+}
+
 function quiet(error: unknown): boolean {
   return error instanceof ProjectChangedError || isOverleafError(error, "sync_busy");
 }
@@ -58,13 +71,14 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
   status: null,
   phase: "idle",
   conflicts: [],
+  resolutions: {},
   choice: [],
   error: null,
   lastReport: null,
 
   async refresh(projectId) {
     if (get().projectId !== projectId) {
-      set({ projectId, status: null, conflicts: [], choice: [], error: null, lastReport: null, phase: "idle" });
+      set({ projectId, status: null, conflicts: [], resolutions: {}, choice: [], error: null, lastReport: null, phase: "idle" });
     }
     try {
       const status = await overleafSyncStatus(projectId);
@@ -96,12 +110,14 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
       const report = await runMutation(projectId, (generation) =>
         overleafSyncLink(projectId, generation, status.importedFrom?.server ?? status.server, remoteId, prefer),
       );
+      if (get().projectId !== projectId) return report;
       set({ choice: report.outcome === "needs-choice" ? report.files : [], lastReport: report });
       set({ phase: "idle" });
       await get().refresh(projectId);
       if (report.outcome === "linked") await get().sync(null, "manual");
       return report;
     } catch (error) {
+      if (get().projectId !== projectId) return null;
       if (!quiet(error)) {
         void logError("overleaf sync link", error);
         set({ error });
@@ -115,13 +131,22 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
     const { projectId, status, phase } = get();
     if (!projectId || !status?.linked || phase !== "idle") return null;
     set({ phase: "syncing", error: mode === "manual" ? null : get().error });
+    const chosen = resolutions ? { ...get().resolutions, ...resolutions } : null;
     try {
-      const report = await runMutation(projectId, (generation) => overleafSyncNow(projectId, generation, resolutions));
-      set({ conflicts: report.outcome === "conflicts" ? report.files : [], lastReport: report, error: null });
+      const report = await checkThenMerge(projectId, chosen);
+      if (get().projectId !== projectId) return report;
+      const clashing = report.outcome === "conflicts";
+      set({
+        conflicts: clashing ? report.files : [],
+        resolutions: clashing ? (chosen ?? get().resolutions) : {},
+        lastReport: report,
+        error: null,
+      });
       set({ phase: "idle" });
       await get().refresh(projectId);
       return report;
     } catch (error) {
+      if (get().projectId !== projectId) return null;
       set({ phase: "idle" });
       if (!quiet(error)) {
         void logError("overleaf sync", error);
@@ -145,7 +170,7 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
     const projectId = get().projectId;
     if (!projectId || get().phase !== "idle") return;
     try {
-      set({ status: await overleafSyncUnlink(projectId), conflicts: [], choice: [], error: null, lastReport: null });
+      set({ status: await overleafSyncUnlink(projectId), conflicts: [], resolutions: {}, choice: [], error: null, lastReport: null });
     } catch (error) {
       set({ error });
     }

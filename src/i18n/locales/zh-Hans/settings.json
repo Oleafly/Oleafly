@@ -1418,6 +1418,8 @@
       "gitTitle": "用于同步的 Git 令牌",
       "gitSaved": "已保存 Git 令牌。你关联的项目会与 Overleaf 保持同步。",
       "gitMissing": "尚无 Git 令牌。请在 Overleaf 账户设置的“Git 集成”中创建一个，以便同步项目。",
+      "gitOpenSettings": "打开 Overleaf 账户设置",
+      "gitPlanNote": "使用 Git 集成需要项目所有者订阅 Overleaf 付费方案或大学方案。",
       "gitLabel": "Overleaf Git 令牌",
       "gitSave": "保存",
       "gitRemove": "移除",

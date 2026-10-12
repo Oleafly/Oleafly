@@ -1434,6 +1434,8 @@
       "gitTitle": "Git-tokeni synkronointia varten",
       "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
       "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
+      "gitOpenSettings": "Avaa Overleafin tiliasetukset",
+      "gitPlanNote": "Git-integraatio vaatii, että projektin omistajalla on maksullinen tai yliopiston Overleaf-tilaus.",
       "gitLabel": "Overleafin Git-tokeni",
       "gitSave": "Tallenna",
       "gitRemove": "Poista",

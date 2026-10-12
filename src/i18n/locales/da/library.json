@@ -137,7 +137,8 @@
       "document": "dokument",
       "image": "billede",
       "diagram": "diagram",
-      "external": "ekstern"
+      "external": "ekstern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-forhåndsvisning: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Kunne ikke forgrene projektet."
     },
     "deleteDialog": {
-      "title": "Vil du flytte »{{name}}« til papirkurven?",
+      "title": "Vil du flytte »<name>{{name}}</name>« til papirkurven?",
       "fallbackName": "projektet",
       "description": "Projektet forsvinder fra dit bibliotek, men findes stadig under Datalagring, indtil du gendanner det eller sletter det permanent.",
       "confirm": "Flyt til papirkurven",
       "moved": "Flyttede \"{{name}}\" til papirkurven.",
       "failed": "Kunne ikke slette \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Slet {{count}} valgt projekt",
+      "button_other": "Slet {{count}} valgte projekter",
+      "title_one": "Vil du flytte {{count}} projekt til papirkurven?",
+      "title_other": "Vil du flytte {{count}} projekter til papirkurven?",
+      "description": "De forsvinder fra dit bibliotek, men findes stadig under Datalagring, indtil du gendanner dem eller sletter dem permanent.",
+      "folderNote": "Mapper, der er åbnet på stedet, forsvinder kun fra Oleafly. Deres filer bliver, hvor de er.",
+      "done_one": "Fjernede {{count}} projekt fra dit bibliotek.",
+      "done_other": "Fjernede {{count}} projekter fra dit bibliotek.",
+      "failed_one": "{{count}} projekt kunne ikke slettes.",
+      "failed_other": "{{count}} projekter kunne ikke slettes."
     }
   },
   "newProject": {
@@ -303,6 +316,7 @@
       "loadFailed": "Oleafly kunne ikke indlæse dine Overleaf-projekter.",
       "signInPrompt": "Log ind på Overleaf for at se dine projekter. Et loginvindue åbner og lukker af sig selv, når du er logget ind.",
       "signingIn": "Gør dit login på Overleaf færdigt i det vindue, der blev åbnet.",
+      "passkeyHint": "Hvis din adgangsnøgle ikke virker i login-vinduet, så vælg en anden mulighed dér, fx din adgangskode eller en anmodning på din telefon.",
       "expired": "Dit Overleaf-login er udløbet. Log ind igen for at se dine projekter.",
       "signIn": "Log ind på Overleaf",
       "signInWindowTitle": "Log ind på Overleaf",
@@ -326,6 +340,7 @@
       "empty": "Der er endnu ingen projekter på denne Overleaf-konto.",
       "noMatches": "Ingen projekter matcher din søgning.",
       "selectAll": "Vælg alle",
+      "clearSelection": "Ryd markering",
       "selectProject": "Vælg {{name}}",
       "selected_one": "{{count}} projekt valgt",
       "selected_other": "{{count}} projekter valgt",
@@ -336,8 +351,9 @@
       "ownedByYou": "Dit",
       "owner": "Ejes af {{name}}",
       "archived": "Arkiveret",
-      "copyNote": "Projekter, der allerede er i dit bibliotek, kommer ind som en ny kopi.",
       "notCarried": "Kommentarer, sporede ændringer, chat og historik bliver på Overleaf.",
+      "importingProjects": "Importerer dine projekter",
+      "done": "Færdig",
       "doneSummary_one": "Importerede {{count}} projekt.",
       "doneSummary_other": "Importerede {{count}} projekter.",
       "failedSummary_one": "{{count}} projekt kunne ikke importeres.",
@@ -592,7 +608,7 @@
       "remove": "Fjern fra Oleafly"
     },
     "remove": {
-      "title": "Vil du fjerne »{{name}}« fra Oleafly?",
+      "title": "Vil du fjerne »<name>{{name}}</name>« fra Oleafly?",
       "description": "Dine filer bliver, hvor de er. Oleafly sletter sine byggefiler for mappen og nulstiller dens tillid, godkendelser og tilknyttede mapper. Åbn mappen igen inden for 30 dage for at få dens chats og historik tilbage. Resten skal du sætte op igen.",
       "confirm": "Fjern fra Oleafly",
       "done": "»{{name}}« er fjernet fra Oleafly. Filerne ligger stadig i mappen.",

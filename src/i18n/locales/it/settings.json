@@ -1450,6 +1450,8 @@
       "gitTitle": "Token Git per la sincronizzazione",
       "gitSaved": "Un token Git è salvato. I progetti che colleghi restano sincronizzati con Overleaf.",
       "gitMissing": "Nessun token Git per ora. Creane uno nella sezione Integrazione Git delle impostazioni del tuo account Overleaf per sincronizzare i progetti.",
+      "gitOpenSettings": "Apri le impostazioni dell'account Overleaf",
+      "gitPlanNote": "L'integrazione Git richiede un piano Overleaf a pagamento o universitario per il proprietario del progetto.",
       "gitLabel": "Token Git di Overleaf",
       "gitSave": "Salva",
       "gitRemove": "Rimuovi",

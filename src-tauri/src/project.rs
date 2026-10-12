@@ -666,6 +666,17 @@ pub struct ProjectInfo {
     pub recovery_pending: bool,
     pub location: crate::project_availability::ProjectLocationInfo,
     pub last_opened_at: f64,
+    pub imported_from: Option<String>,
+}
+
+fn imported_service(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
+    let service = extra.get("importedFrom")?.get("service")?.as_str()?;
+    let known = !service.is_empty()
+        && service.len() <= 32
+        && service
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-');
+    known.then(|| service.to_string())
 }
 
 pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
@@ -1472,6 +1483,42 @@ fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
 }
 
 #[cfg(test)]
+mod imported_service_tests {
+    use super::imported_service;
+    use std::collections::HashMap;
+
+    fn extra(value: serde_json::Value) -> HashMap<String, serde_json::Value> {
+        HashMap::from([("importedFrom".to_string(), value)])
+    }
+
+    #[test]
+    fn names_the_service_a_project_was_imported_from() {
+        let origin = serde_json::json!({ "service": "overleaf", "server": "https://www.overleaf.com", "projectId": "abc" });
+        assert_eq!(
+            imported_service(&extra(origin)).as_deref(),
+            Some("overleaf")
+        );
+        assert_eq!(imported_service(&HashMap::new()), None);
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": 3 }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "" }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "Over leaf" }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "x".repeat(33) }))),
+            None
+        );
+    }
+}
+
+#[cfg(test)]
 mod bounded_read_tests {
     use super::read_utf8_limited;
 
@@ -1749,6 +1796,17 @@ fn with_project_metadata<T>(
 ) -> Result<T, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
     with_project_metadata_lock_held(project_id, operation)
+}
+
+pub(crate) fn read_project_worktree<T>(
+    project_id: &str,
+    operation: impl FnOnce(&Path) -> Result<T, String>,
+) -> Result<T, String> {
+    paths::validate_project_id(project_id)?;
+    with_project_metadata(project_id, || {
+        let root = paths::project_dir(project_id)?;
+        operation(&root)
+    })
 }
 
 /// Metadata serialization for a caller whose `MutationAdmission` already owns
@@ -4525,6 +4583,7 @@ fn recovery_pending_project_info(
         recovery_pending: true,
         location,
         last_opened_at: 0.0,
+        imported_from: None,
         id: project_id,
     }
 }
@@ -4677,6 +4736,7 @@ fn linked_project_info(
         recovery_pending: false,
         location,
         last_opened_at: record.last_opened_at as f64 / 1000.0,
+        imported_from: meta.as_ref().and_then(|meta| imported_service(&meta.extra)),
     })
 }
 
@@ -4769,6 +4829,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 .flatten()
                 .is_some_and(|path| path.is_file());
         let exports = project_export_infos(&meta.exports);
+        let imported_from = imported_service(&meta.extra);
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -4794,6 +4855,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             recovery_pending: false,
             location: crate::project_availability::ProjectLocationInfo::Library,
             last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
+            imported_from,
             id,
             updated_at,
         });

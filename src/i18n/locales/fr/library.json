@@ -138,7 +138,8 @@
       "document": "document",
       "image": "image",
       "diagram": "diagramme",
-      "external": "externe"
+      "external": "externe",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Aperçu PDF : {{name}}",
@@ -182,12 +183,28 @@
       "failed": "Impossible de dupliquer le projet."
     },
     "deleteDialog": {
-      "title": "Déplacer « {{name}} » vers la corbeille ?",
+      "title": "Déplacer « <name>{{name}}</name> » vers la corbeille ?",
       "fallbackName": "projet",
       "description": "Le projet quittera votre bibliothèque mais restera disponible dans Stockage des données jusqu'à ce que vous le restauriez ou le supprimiez définitivement.",
       "confirm": "Déplacer vers la corbeille",
       "moved": "\"{{name}}\" déplacé vers la corbeille.",
       "failed": "Impossible de supprimer \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Supprimer {{count}} projet sélectionné",
+      "button_many": "Supprimer {{count}} projets sélectionnés",
+      "button_other": "Supprimer {{count}} projets sélectionnés",
+      "title_one": "Déplacer {{count}} projet vers la corbeille ?",
+      "title_many": "Déplacer {{count}} projets vers la corbeille ?",
+      "title_other": "Déplacer {{count}} projets vers la corbeille ?",
+      "description": "Ils quitteront votre bibliothèque mais resteront disponibles dans Stockage des données jusqu'à ce que vous les restauriez ou les supprimiez définitivement.",
+      "folderNote": "Les dossiers ouverts sur place quittent seulement Oleafly. Leurs fichiers restent où ils sont.",
+      "done_one": "{{count}} projet retiré de votre bibliothèque.",
+      "done_many": "{{count}} projets retirés de votre bibliothèque.",
+      "done_other": "{{count}} projets retirés de votre bibliothèque.",
+      "failed_one": "Impossible de supprimer {{count}} projet.",
+      "failed_many": "Impossible de supprimer {{count}} projets.",
+      "failed_other": "Impossible de supprimer {{count}} projets."
     }
   },
   "newProject": {
@@ -304,6 +321,7 @@
       "loadFailed": "Oleafly n'a pas pu charger vos projets Overleaf.",
       "signInPrompt": "Connectez-vous à Overleaf pour voir vos projets. Une fenêtre de connexion s'ouvre, puis se ferme d'elle-même une fois la connexion établie.",
       "signingIn": "Terminez la connexion à Overleaf dans la fenêtre qui s'est ouverte.",
+      "passkeyHint": "Si votre clé d'accès ne fonctionne pas dans la fenêtre de connexion, choisissez une autre option, comme votre mot de passe ou une invite sur votre téléphone.",
       "expired": "Votre connexion à Overleaf a expiré. Reconnectez-vous pour voir vos projets.",
       "signIn": "Se connecter à Overleaf",
       "signInWindowTitle": "Se connecter à Overleaf",
@@ -328,6 +346,7 @@
       "empty": "Ce compte Overleaf ne contient encore aucun projet.",
       "noMatches": "Aucun projet ne correspond à votre recherche.",
       "selectAll": "Tout sélectionner",
+      "clearSelection": "Effacer la sélection",
       "selectProject": "Sélectionner {{name}}",
       "selected_one": "{{count}} projet sélectionné",
       "selected_many": "{{count}} projets sélectionnés",
@@ -340,8 +359,9 @@
       "ownedByYou": "À vous",
       "owner": "Appartient à {{name}}",
       "archived": "Archivé",
-      "copyNote": "Les projets déjà présents dans votre bibliothèque sont importés comme nouvelle copie.",
       "notCarried": "Les commentaires, les modifications suivies, le chat et l'historique restent sur Overleaf.",
+      "importingProjects": "Importation de vos projets",
+      "done": "Terminé",
       "doneSummary_one": "{{count}} projet importé.",
       "doneSummary_many": "{{count}} projets importés.",
       "doneSummary_other": "{{count}} projets importés.",
@@ -609,7 +629,7 @@
       "remove": "Retirer d'Oleafly"
     },
     "remove": {
-      "title": "Retirer « {{name}} » d'Oleafly ?",
+      "title": "Retirer « <name>{{name}}</name> » d'Oleafly ?",
       "description": "Vos fichiers restent où ils sont. Oleafly supprime ses fichiers de compilation pour ce dossier et réinitialise sa confiance, ses autorisations et ses dossiers liés. Rouvrez le dossier dans les 30 jours pour retrouver ses discussions et son historique. Le reste sera à reconfigurer.",
       "confirm": "Retirer d'Oleafly",
       "done": "« {{name}} » a été retiré d'Oleafly. Ses fichiers sont toujours dans le dossier.",

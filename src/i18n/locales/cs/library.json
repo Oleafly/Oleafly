@@ -139,7 +139,8 @@
       "document": "dokument",
       "image": "obrázek",
       "diagram": "diagram",
-      "external": "externí"
+      "external": "externí",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Náhled PDF: {{name}}",
@@ -183,12 +184,32 @@
       "failed": "Projekt se nepodařilo rozvětvit."
     },
     "deleteDialog": {
-      "title": "Přesunout „{{name}}“ do koše?",
+      "title": "Přesunout „<name>{{name}}</name>“ do koše?",
       "fallbackName": "projekt",
       "description": "Projekt zmizí z vaší knihovny, ale zůstane v Úložišti dat, dokud jej neobnovíte nebo trvale nesmažete.",
       "confirm": "Přesunout do koše",
       "moved": "Projekt „{{name}}“ byl přesunut do koše.",
       "failed": "Projekt „{{name}}“ se nepodařilo smazat."
+    },
+    "bulkDelete": {
+      "button_one": "Smazat {{count}} vybraný projekt",
+      "button_few": "Smazat {{count}} vybrané projekty",
+      "button_many": "Smazat {{count}} vybraného projektu",
+      "button_other": "Smazat {{count}} vybraných projektů",
+      "title_one": "Přesunout {{count}} projekt do koše?",
+      "title_few": "Přesunout {{count}} projekty do koše?",
+      "title_many": "Přesunout {{count}} projektu do koše?",
+      "title_other": "Přesunout {{count}} projektů do koše?",
+      "description": "Projekty zmizí z vaší knihovny, ale zůstanou v Úložišti dat, dokud je neobnovíte nebo trvale nesmažete.",
+      "folderNote": "Složky otevřené na místě jen opustí Oleafly. Jejich soubory zůstanou, kde jsou.",
+      "done_one": "Z knihovny byl odebrán {{count}} projekt.",
+      "done_few": "Z knihovny byly odebrány {{count}} projekty.",
+      "done_many": "Z knihovny bylo odebráno {{count}} projektu.",
+      "done_other": "Z knihovny bylo odebráno {{count}} projektů.",
+      "failed_one": "{{count}} projekt se nepodařilo smazat.",
+      "failed_few": "{{count}} projekty se nepodařilo smazat.",
+      "failed_many": "{{count}} projektu se nepodařilo smazat.",
+      "failed_other": "{{count}} projektů se nepodařilo smazat."
     }
   },
   "newProject": {
@@ -305,6 +326,7 @@
       "loadFailed": "Oleafly nemohl načíst vaše projekty z Overleafu.",
       "signInPrompt": "Přihlaste se k Overleafu, abyste viděli své projekty. Otevře se přihlašovací okno, které se po přihlášení samo zavře.",
       "signingIn": "Dokončete přihlášení k Overleafu v okně, které se otevřelo.",
+      "passkeyHint": "Pokud v přihlašovacím okně nefunguje váš přístupový klíč, zvolte tam jinou možnost, například heslo nebo výzvu v telefonu.",
       "expired": "Vaše přihlášení k Overleafu vypršelo. Přihlaste se znovu, abyste viděli své projekty.",
       "signIn": "Přihlásit se k Overleafu",
       "signInWindowTitle": "Přihlásit se k Overleafu",
@@ -330,6 +352,7 @@
       "empty": "V tomto účtu Overleaf zatím nejsou žádné projekty.",
       "noMatches": "Hledání neodpovídá žádný projekt.",
       "selectAll": "Vybrat vše",
+      "clearSelection": "Zrušit výběr",
       "selectProject": "Vybrat {{name}}",
       "selected_one": "Vybrán {{count}} projekt",
       "selected_few": "Vybrány {{count}} projekty",
@@ -344,8 +367,9 @@
       "ownedByYou": "Váš",
       "owner": "Vlastník: {{name}}",
       "archived": "Archivováno",
-      "copyNote": "Projekty, které už máte v knihovně, se přidají jako nová kopie.",
       "notCarried": "Komentáře, sledované změny, chat a historie zůstanou v Overleafu.",
+      "importingProjects": "Probíhá import projektů",
+      "done": "Hotovo",
       "doneSummary_one": "Importován {{count}} projekt.",
       "doneSummary_few": "Importovány {{count}} projekty.",
       "doneSummary_many": "Importováno {{count}} projektu.",
@@ -626,7 +650,7 @@
       "remove": "Odebrat z Oleafly"
     },
     "remove": {
-      "title": "Odebrat „{{name}}“ z Oleafly?",
+      "title": "Odebrat „<name>{{name}}</name>“ z Oleafly?",
       "description": "Vaše soubory zůstanou, kde jsou. Oleafly smaže své soubory sestavení pro tuto složku a zruší její důvěru, schválení a propojené složky. Když složku do 30 dnů znovu otevřete, získáte zpět její chaty a historii. Zbytek bude potřeba nastavit znovu.",
       "confirm": "Odebrat z Oleafly",
       "done": "Složka „{{name}}“ byla odebrána z Oleafly. Soubory zůstaly ve složce.",

@@ -1450,6 +1450,8 @@
       "gitTitle": "Jeton Git pour la synchronisation",
       "gitSaved": "Un jeton Git est enregistré. Les projets que vous liez restent synchronisés avec Overleaf.",
       "gitMissing": "Aucun jeton Git pour l'instant. Créez-en un dans la section Intégration Git des paramètres de votre compte Overleaf pour synchroniser des projets.",
+      "gitOpenSettings": "Ouvrir les paramètres du compte Overleaf",
+      "gitPlanNote": "L'intégration Git nécessite un abonnement Overleaf payant ou universitaire pour le propriétaire du projet.",
       "gitLabel": "Jeton Git Overleaf",
       "gitSave": "Enregistrer",
       "gitRemove": "Retirer",

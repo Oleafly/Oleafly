@@ -51,6 +51,7 @@ beforeEach(() => {
     selected: [],
     progress: {},
     importing: false,
+    run: null,
   });
 });
 
@@ -126,6 +127,7 @@ describe("overleaf import store", () => {
   });
 
   it("toggles and sets selections without duplicates", () => {
+    useOverleafImportStore.setState({ projects: ["a", "b", "c", "d"].map((id) => project(id)) });
     const store = useOverleafImportStore.getState();
     store.toggle("a");
     store.toggle("b");
@@ -133,6 +135,27 @@ describe("overleaf import store", () => {
     expect(useOverleafImportStore.getState().selected).toEqual(["b"]);
     store.setSelected(["c", "c", "d"]);
     expect(useOverleafImportStore.getState().selected).toEqual(["c", "d"]);
+  });
+
+  it("never selects a project that is already in the library", () => {
+    useOverleafImportStore.setState({ projects: [project("a"), { ...project("b"), importedAs: "local-b" }] });
+    const store = useOverleafImportStore.getState();
+    store.toggle("b");
+    expect(useOverleafImportStore.getState().selected).toEqual([]);
+    store.setSelected(["a", "b"]);
+    expect(useOverleafImportStore.getState().selected).toEqual(["a"]);
+  });
+
+  it("starts a run in list order and finishes it only once importing stops", () => {
+    useOverleafImportStore.setState({ projects: [project("a"), project("b"), project("c")], selected: ["c", "a"] });
+    expect(useOverleafImportStore.getState().startRun()).toEqual(["a", "c"]);
+    expect(useOverleafImportStore.getState().run).toEqual(["a", "c"]);
+    useOverleafImportStore.setState({ importing: true });
+    useOverleafImportStore.getState().finishRun();
+    expect(useOverleafImportStore.getState().run).toEqual(["a", "c"]);
+    useOverleafImportStore.setState({ importing: false, progress: { a: { phase: "done", projectId: "local-a" } } });
+    useOverleafImportStore.getState().finishRun();
+    expect(useOverleafImportStore.getState()).toMatchObject({ run: null, selected: [], progress: {} });
   });
 
   it("remembers a custom server and forgets the default", () => {

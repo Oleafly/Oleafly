@@ -132,6 +132,27 @@ impl World {
         run(&clone, &["push", "--quiet", "origin", "HEAD:master"]);
     }
 
+    fn coauthor_git(&self, commands: &[&[&str]]) {
+        let clone = self
+            ._temp
+            .path()
+            .join(format!("clone-{}", CLONES.fetch_add(1, Ordering::SeqCst)));
+        run(
+            self._temp.path(),
+            &[
+                "clone",
+                "--quiet",
+                self.bare().to_str().unwrap(),
+                clone.to_str().unwrap(),
+            ],
+        );
+        for command in commands {
+            run(&clone, command);
+        }
+        run(&clone, &["commit", "--quiet", "-m", "Co-author rename"]);
+        run(&clone, &["push", "--quiet", "origin", "HEAD:master"]);
+    }
+
     fn remote_file(&self, path: &str) -> Option<String> {
         let mut command = Command::new(crate::git::git_program());
         crate::git::clear_inherited_git_env(&mut command);
@@ -175,6 +196,7 @@ impl World {
                         && sync::push(&self.repo, &self.url(), TOKEN, merged).unwrap()
                             == PushResult::Rejected
                     {
+                        sync::set_base(&self.repo, &remote).unwrap();
                         continue;
                     }
                     sync::set_base(&self.repo, merged).unwrap();
@@ -560,5 +582,210 @@ fn sync_links_round_trip_and_unlink_removes_the_copy() {
         super::session::git_token("https://www.overleaf.com").unwrap(),
         None
     );
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
+#[test]
+fn a_case_only_rename_online_keeps_the_file_here_and_online() {
+    let world = World::new(&[("main.tex", b"Main\n"), ("Plot.tex", b"Plot\n")]);
+    world.link(None);
+    world.coauthor_git(&[&["mv", "-f", "Plot.tex", "plot.tex"]]);
+    world.sync();
+    assert_eq!(world.local("plot.tex").as_deref(), Some("Plot\n"));
+    world.sync();
+    assert_eq!(world.remote_file("plot.tex").as_deref(), Some("Plot\n"));
+}
+
+#[test]
+fn a_case_only_rename_here_never_deletes_the_file_online() {
+    let world = World::new(&[("main.tex", b"Main\n"), ("Plot.tex", b"Plot\n")]);
+    world.link(None);
+    let moved = world.project.join("moved.tmp");
+    std::fs::rename(world.project.join("Plot.tex"), &moved).unwrap();
+    std::fs::rename(&moved, world.project.join("plot.tex")).unwrap();
+    world.sync();
+    let online = world
+        .remote_file("plot.tex")
+        .or_else(|| world.remote_file("Plot.tex"));
+    assert_eq!(online.as_deref(), Some("Plot\n"));
+}
+
+#[test]
+fn a_file_that_became_a_folder_online_arrives() {
+    let world = World::new(&[("main.tex", b"Main\n"), ("chapter", b"Old\n")]);
+    world.link(None);
+    world.coauthor(&[("chapter", None), ("chapter/one.tex", Some("One\n"))]);
+    world.sync();
+    assert_eq!(world.local("chapter/one.tex").as_deref(), Some("One\n"));
+}
+
+#[test]
+fn a_retry_merges_from_what_it_already_pulled() {
+    let world = seeded();
+    world.link(None);
+    world.write("main.tex", "Mine\n");
+    world.coauthor(&[("notes.tex", Some("First\n"))]);
+    let base = sync::rev(&world.repo, sync::BASE_REF).unwrap();
+    let first_remote = sync::fetch(&world.repo, &world.url(), TOKEN).unwrap();
+    let Integration::Merged { merged, .. } = sync::integrate(
+        &world.project,
+        &world.repo,
+        &base,
+        &first_remote,
+        &BTreeMap::new(),
+    )
+    .unwrap() else {
+        panic!("expected a merge");
+    };
+    assert_eq!(world.local("notes.tex").as_deref(), Some("First\n"));
+    world.coauthor(&[("notes.tex", Some("Second\n"))]);
+    assert_eq!(
+        sync::push(&world.repo, &world.url(), TOKEN, &merged).unwrap(),
+        PushResult::Rejected
+    );
+    let second_remote = sync::fetch(&world.repo, &world.url(), TOKEN).unwrap();
+    let retried = sync::integrate(
+        &world.project,
+        &world.repo,
+        &first_remote,
+        &second_remote,
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert!(matches!(retried, Integration::Merged { .. }), "{retried:?}");
+    assert_eq!(world.local("notes.tex").as_deref(), Some("Second\n"));
+    assert_eq!(world.local("main.tex").as_deref(), Some("Mine\n"));
+}
+
+#[test]
+fn clashes_list_the_files_still_waiting_for_a_choice() {
+    let world = seeded();
+    world.link(None);
+    world.coauthor(&[
+        ("notes.tex", Some("Theirs\n")),
+        ("refs.bib", Some("@book{t}\n")),
+    ]);
+    world.write("notes.tex", "Mine\n");
+    world.write("refs.bib", "@book{m}\n");
+    let one = BTreeMap::from([("notes.tex".to_string(), Side::Local)]);
+    assert_eq!(
+        world.sync_with(&one),
+        Integration::Conflicts(vec!["refs.bib".to_string()])
+    );
+}
+
+#[test]
+fn a_local_commit_is_made_only_when_something_changed() {
+    let world = seeded();
+    world.link(None);
+    let base = sync::rev(&world.repo, sync::BASE_REF).unwrap();
+    assert_eq!(
+        sync::commit_local(&world.project, &world.repo, &base).unwrap(),
+        None
+    );
+    world.write("notes.tex", "Changed\n");
+    let commit = sync::commit_local(&world.project, &world.repo, &base)
+        .unwrap()
+        .unwrap();
+    assert_ne!(commit, base);
+    assert_eq!(sync::rev(&world.repo, sync::BASE_REF).unwrap(), base);
+}
+
+#[test]
+fn the_sync_copy_keeps_bytes_and_recovers_from_a_stale_lock() {
+    let world = seeded();
+    world.link(None);
+    let attributes = world.repo.join(".git").join("info").join("attributes");
+    assert_eq!(
+        std::fs::read_to_string(&attributes).unwrap(),
+        "* -text -filter -ident\n"
+    );
+    let lock = world.repo.join(".git").join("index.lock");
+    std::fs::write(&lock, "").unwrap();
+    sync::clear_stale_lock(&world.repo);
+    assert!(!lock.exists());
+    sync::clear_stale_lock(&world.repo);
+    assert!(sync::excluded("Project.json"));
+    assert!(sync::excluded("PROJECT.JSON"));
+    assert!(!sync::excluded("chapters/project.json"));
+}
+
+#[test]
+fn remote_failures_name_the_line_git_reported() {
+    let text = "remote: Counting objects: 100% (3/3), done.\nfatal: unable to write the pack\n";
+    assert!(sync::classify_remote_failure(text).contains("unable to write the pack"));
+}
+
+#[test]
+fn the_check_pushes_local_edits_and_hands_remote_changes_to_the_merge() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let world = seeded();
+    let project_id = crate::project::create_blank_project("Synced".into()).unwrap();
+    let root = crate::paths::project_dir(&project_id).unwrap();
+    let mut meta = crate::project::read_meta(&project_id).unwrap();
+    meta.extra.insert(
+        "importedFrom".to_string(),
+        serde_json::json!({ "service": "overleaf", "server": world.server, "projectId": PROJECT }),
+    );
+    crate::project::write_meta(&project_id, &meta).unwrap();
+    super::session::save_git_token(&world.server, TOKEN).unwrap();
+    let repo = sync::repo_dir(&project_id).unwrap();
+    let remote = sync::fetch(&repo, &world.url(), TOKEN).unwrap();
+    assert!(matches!(
+        sync::link_local(&root, &repo, &remote, Some(Side::Local)).unwrap(),
+        LinkOutcome::Linked { .. }
+    ));
+    sync::write_link(
+        &project_id,
+        &sync::SyncLink {
+            server: world.server.clone(),
+            remote_id: PROJECT.to_string(),
+            linked_at: 0,
+            auto: true,
+            last_sync_at: None,
+        },
+    )
+    .unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let check = |id: &str| runtime.block_on(super::overleaf_sync_check(id.to_string()));
+
+    let first = check(&project_id).unwrap();
+    assert_eq!(first.outcome, "synced");
+    assert!(first.pushed);
+    assert_eq!(check(&project_id).unwrap().outcome, "up-to-date");
+    std::fs::write(root.join("notes.tex"), "Edited here\n").unwrap();
+    let pushed = check(&project_id).unwrap();
+    assert_eq!((pushed.outcome.as_str(), pushed.pushed), ("synced", true));
+    assert_eq!(
+        world.remote_file("notes.tex").as_deref(),
+        Some("Edited here\n")
+    );
+    assert!(sync::read_link(&project_id)
+        .unwrap()
+        .unwrap()
+        .last_sync_at
+        .is_some());
+
+    world.coauthor(&[("refs.bib", Some("@book{late}\n"))]);
+    assert_eq!(check(&project_id).unwrap().outcome, "needs-merge");
+    assert!(super::sync_status(&project_id).unwrap().linked);
+
+    meta.extra.insert(
+        "importedFrom".to_string(),
+        serde_json::json!({ "service": "overleaf", "server": world.server, "projectId": "someoneelse" }),
+    );
+    crate::project::write_meta(&project_id, &meta).unwrap();
+    assert!(!super::sync_status(&project_id).unwrap().linked);
+    let error = check(&project_id).err().unwrap();
+    assert!(error.contains("overleaf.sync_not_linked"), "{error}");
+
+    super::forget_sync_copy(&project_id).unwrap();
+    assert!(!repo.exists());
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }

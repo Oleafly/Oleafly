@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { overleafGitTokenClear, overleafGitTokenSet, overleafGitTokenStatus } from "@/lib/overleaf-sync";
+import {
+  overleafGitTokenClear,
+  overleafGitTokenSet,
+  overleafGitTokenStatus,
+  overleafTokenPage,
+} from "@/lib/overleaf-sync";
 import { logError } from "@/lib/log";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -118,6 +125,17 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
           ? t(($) => $.settings.integrations.overleaf.gitSaved)
           : t(($) => $.settings.integrations.overleaf.gitMissing)}
       </p>
+      <button
+        type="button"
+        data-testid="overleaf-git-token-page"
+        onClick={() => {
+          openExternal(overleafTokenPage(server)).catch((error) => void logError("open overleaf settings", error));
+        }}
+        className="-ml-1 inline-flex w-fit items-center gap-1 rounded px-1 text-xs font-medium text-primary hover:bg-accent focus-visible:bg-accent"
+      >
+        {t(($) => $.settings.integrations.overleaf.gitOpenSettings)}
+        <ExternalLink aria-hidden className="size-3" />
+      </button>
       <form
         className="flex gap-2"
         onSubmit={(event) => {
@@ -151,6 +169,7 @@ function GitTokenField({ server }: Readonly<{ server: string }>) {
           </Button>
         ) : null}
       </form>
+      <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.gitPlanNote)}</p>
       {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.gitFailed)}</IntegrationError> : null}
     </div>
   );

@@ -507,6 +507,10 @@ describe("Library project dialogs", () => {
     fireEvent.click(
       await screen.findByRole("menuitem", { name: enLibrary.projects.delete }),
     );
+    const heading = await screen.findByRole("heading", {
+      name: enLibrary.projects.deleteDialog.title.replace("<name>{{name}}</name>", PAPER.name),
+    });
+    expect(within(heading).getByText(PAPER.name)).toHaveAttribute("title", PAPER.name);
     fireEvent.click(
       await screen.findByRole("button", {
         name: enLibrary.projects.deleteDialog.confirm,

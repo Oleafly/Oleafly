@@ -1434,6 +1434,8 @@
       "gitTitle": "Git token for sync",
       "gitSaved": "A Git token is saved. Projects you link stay in sync with Overleaf.",
       "gitMissing": "No Git token yet. Create one under Git integration in your Overleaf account settings to sync projects.",
+      "gitOpenSettings": "Open Overleaf account settings",
+      "gitPlanNote": "Git integration needs a paid or university Overleaf plan for the project's owner.",
       "gitLabel": "Overleaf Git token",
       "gitSave": "Save",
       "gitRemove": "Remove",

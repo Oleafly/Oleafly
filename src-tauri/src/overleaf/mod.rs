@@ -165,8 +165,24 @@ fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     })
 }
 
+pub(crate) fn forget_sync_copy(project_id: &str) -> Result<(), String> {
+    sync::remove_link(project_id)
+}
+
+fn current_link(project_id: &str) -> Result<Option<sync::SyncLink>, String> {
+    let Some(link) = sync::read_link(project_id)? else {
+        return Ok(None);
+    };
+    let owned = imported_from(project_id).is_some_and(|origin| origin.project_id == link.remote_id);
+    Ok(owned.then_some(link))
+}
+
+fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
+    current_link(project_id)?.ok_or_else(|| AppError::new("overleaf.sync_not_linked").into())
+}
+
 fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
-    let link = sync::read_link(project_id)?;
+    let link = current_link(project_id)?;
     let imported = imported_from(project_id);
     let server = link
         .as_ref()
@@ -234,8 +250,7 @@ pub async fn overleaf_git_token_clear(server: Option<String>) -> Result<(), Stri
 #[tauri::command]
 pub async fn overleaf_sync_set_auto(project_id: String, auto: bool) -> Result<SyncStatus, String> {
     blocking(move || {
-        let mut link = sync::read_link(&project_id)?
-            .ok_or_else(|| String::from(AppError::new("overleaf.sync_not_linked")))?;
+        let mut link = linked(&project_id)?;
         link.auto = auto;
         sync::write_link(&project_id, &link)?;
         sync_status(&project_id)
@@ -267,7 +282,15 @@ pub async fn overleaf_sync_link<R: Runtime>(
     let _guard = sync::claim(&project_id)?;
     let url = sync::remote_url(&base, &remote_id)?;
     let token = required_token(&base)?;
-    let existing = sync::read_link(&project_id)?;
+    let stale_id = project_id.clone();
+    let existing = blocking(move || {
+        let current = current_link(&stale_id)?;
+        if current.is_none() && sync::read_link(&stale_id)?.is_some() {
+            sync::remove_link(&stale_id)?;
+        }
+        Ok(current)
+    })
+    .await?;
     if existing
         .as_ref()
         .is_some_and(|link| link.server != base || link.remote_id != remote_id)
@@ -275,6 +298,7 @@ pub async fn overleaf_sync_link<R: Runtime>(
         return Err(AppError::new("overleaf.sync_already_linked").into());
     }
     let repo = sync::repo_dir(&project_id)?;
+    sync::clear_stale_lock(&repo);
     let fetch_repo = repo.clone();
     let remote = blocking(move || sync::fetch(&fetch_repo, &url, &token)).await?;
     let mutation = crate::project::mutate_project_worktree(
@@ -319,6 +343,103 @@ pub async fn overleaf_sync_link<R: Runtime>(
     })
 }
 
+struct SyncTarget {
+    link: sync::SyncLink,
+    url: String,
+    token: String,
+    repo: std::path::PathBuf,
+    base: String,
+}
+
+async fn sync_target(project_id: &str) -> Result<SyncTarget, String> {
+    let link_id = project_id.to_string();
+    let link = blocking(move || linked(&link_id)).await?;
+    let url = sync::remote_url(&link.server, &link.remote_id)?;
+    let token = required_token(&link.server)?;
+    let repo = sync::repo_dir(project_id)?;
+    let base_repo = repo.clone();
+    let base = blocking(move || {
+        sync::clear_stale_lock(&base_repo);
+        sync::ensure_repo(&base_repo)?;
+        sync::rev(&base_repo, sync::BASE_REF)
+            .ok_or_else(|| String::from(AppError::new("overleaf.sync_needs_relink")))
+    })
+    .await?;
+    Ok(SyncTarget {
+        link,
+        url,
+        token,
+        repo,
+        base,
+    })
+}
+
+async fn fetch_remote(target: &SyncTarget) -> Result<String, String> {
+    let repo = target.repo.clone();
+    let url = target.url.clone();
+    let token = target.token.clone();
+    blocking(move || sync::fetch(&repo, &url, &token)).await
+}
+
+async fn push_commit(target: &SyncTarget, commit: &str) -> Result<sync::PushResult, String> {
+    let repo = target.repo.clone();
+    let url = target.url.clone();
+    let token = target.token.clone();
+    let commit = commit.to_string();
+    blocking(move || sync::push(&repo, &url, &token, &commit)).await
+}
+
+async fn record_sync(project_id: &str, mut link: sync::SyncLink) -> Result<(), String> {
+    link.last_sync_at = Some(sync::now_seconds());
+    let save_id = project_id.to_string();
+    blocking(move || sync::write_link(&save_id, &link)).await
+}
+
+fn quiet_report(outcome: &str, pushed: bool) -> SyncReport {
+    SyncReport {
+        outcome: outcome.to_string(),
+        files: Vec::new(),
+        pulled: 0,
+        pushed,
+        state: None,
+    }
+}
+
+#[tauri::command]
+pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, String> {
+    let _guard = sync::claim(&project_id)?;
+    let target = sync_target(&project_id).await?;
+    let remote = fetch_remote(&target).await?;
+    if remote != target.base {
+        return Ok(quiet_report("needs-merge", false));
+    }
+    let read_id = project_id.clone();
+    let read_repo = target.repo.clone();
+    let read_base = target.base.clone();
+    let local = blocking(move || {
+        crate::project::read_project_worktree(&read_id, |root| {
+            sync::commit_local(root, &read_repo, &read_base)
+        })
+    })
+    .await?;
+    let pushed = match local {
+        None => false,
+        Some(commit) => {
+            if push_commit(&target, &commit).await? == sync::PushResult::Rejected {
+                return Ok(quiet_report("needs-merge", false));
+            }
+            let base_repo = target.repo.clone();
+            blocking(move || sync::set_base(&base_repo, &commit)).await?;
+            true
+        }
+    };
+    record_sync(&project_id, target.link).await?;
+    Ok(quiet_report(
+        if pushed { "synced" } else { "up-to-date" },
+        pushed,
+    ))
+}
+
 #[tauri::command]
 pub async fn overleaf_sync_now<R: Runtime>(
     app: AppHandle<R>,
@@ -326,42 +447,40 @@ pub async fn overleaf_sync_now<R: Runtime>(
     project_id: String,
     expected_generation: Option<u64>,
     resolutions: Option<BTreeMap<String, Side>>,
+    fetched: Option<bool>,
 ) -> Result<SyncReport, String> {
     let _guard = sync::claim(&project_id)?;
-    let link_id = project_id.clone();
-    let mut link = blocking(move || sync::read_link(&link_id))
-        .await?
-        .ok_or_else(|| String::from(AppError::new("overleaf.sync_not_linked")))?;
-    let url = sync::remote_url(&link.server, &link.remote_id)?;
-    let token = required_token(&link.server)?;
-    let repo = sync::repo_dir(&project_id)?;
-    let base_repo = repo.clone();
-    let base = blocking(move || {
-        sync::ensure_repo(&base_repo)?;
-        sync::rev(&base_repo, sync::BASE_REF)
-            .ok_or_else(|| String::from(AppError::new("overleaf.sync_needs_relink")))
-    })
-    .await?;
+    let target = sync_target(&project_id).await?;
     let resolutions = resolutions.unwrap_or_default();
+    let mut work_base = target.base.clone();
+    let mut reuse_fetch = fetched.unwrap_or(false);
     let mut generation = expected_generation;
     let mut pulled = 0;
     let mut changed = false;
     let mut project = None;
     let mut finished: Option<(String, Vec<String>, bool)> = None;
     for _ in 0..3 {
-        let fetch_repo = repo.clone();
-        let fetch_url = url.clone();
-        let fetch_token = token.clone();
-        let remote = blocking(move || sync::fetch(&fetch_repo, &fetch_url, &fetch_token)).await?;
-        let work_repo = repo.clone();
-        let work_base = base.clone();
+        let known = if reuse_fetch {
+            let known_repo = target.repo.clone();
+            blocking(move || Ok(sync::rev(&known_repo, sync::REMOTE_REF))).await?
+        } else {
+            None
+        };
+        reuse_fetch = false;
+        let remote = match known {
+            Some(remote) => remote,
+            None => fetch_remote(&target).await?,
+        };
+        let work_repo = target.repo.clone();
+        let merge_base = work_base.clone();
         let work_resolutions = resolutions.clone();
         let mutation = crate::project::mutate_project_worktree(
             &state,
             project_id.clone(),
             generation,
             move |root| {
-                let integration = sync::integrate(root, &work_repo, &work_base, &remote, &work_resolutions)?;
+                let integration =
+                    sync::integrate(root, &work_repo, &merge_base, &remote, &work_resolutions)?;
                 let touched = matches!(
                     &integration,
                     sync::Integration::Merged { written, removed, .. } if !written.is_empty() || !removed.is_empty()
@@ -392,20 +511,22 @@ pub async fn overleaf_sync_now<R: Runtime>(
                     changed = true;
                     pulled += written.len() + removed.len();
                 }
-                let push_repo = repo.clone();
-                let push_url = url.clone();
-                let push_token = token.clone();
-                let target = merged.clone();
                 let pushes = push && merged != remote;
                 let result = if pushes {
-                    blocking(move || sync::push(&push_repo, &push_url, &push_token, &target))
-                        .await?
+                    push_commit(&target, &merged).await?
                 } else {
                     sync::PushResult::Pushed
                 };
+                let agreed = if result == sync::PushResult::Pushed {
+                    merged
+                } else {
+                    remote
+                };
+                let base_repo = target.repo.clone();
+                let next_base = agreed.clone();
+                blocking(move || sync::set_base(&base_repo, &next_base)).await?;
+                work_base = agreed;
                 if result == sync::PushResult::Pushed {
-                    let base_repo = repo.clone();
-                    blocking(move || sync::set_base(&base_repo, &merged)).await?;
                     finished = Some(("synced".to_string(), Vec::new(), pushes));
                     break;
                 }
@@ -418,9 +539,7 @@ pub async fn overleaf_sync_now<R: Runtime>(
     let (outcome, files, pushed) =
         finished.ok_or_else(|| String::from(AppError::new("overleaf.sync_kept_changing")))?;
     if outcome != "conflicts" {
-        link.last_sync_at = Some(sync::now_seconds());
-        let save_id = project_id.clone();
-        blocking(move || sync::write_link(&save_id, &link)).await?;
+        record_sync(&project_id, target.link).await?;
     }
     Ok(SyncReport {
         outcome,

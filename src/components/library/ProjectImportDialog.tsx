@@ -342,12 +342,13 @@ export function ProjectImportDialog({
       return (
             <Suspense
               fallback={
-                <output className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+                <output className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                   <Spinner />
                 </output>
               }
             >
               <OverleafImportView
+                onDone={onClose}
                 onOpenProject={(projectId) => {
                   onClose();
                   void useFilesStore.getState().openProject(projectId);

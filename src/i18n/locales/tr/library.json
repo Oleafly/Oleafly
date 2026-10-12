@@ -137,7 +137,8 @@
       "document": "belge",
       "image": "görsel",
       "diagram": "diyagram",
-      "external": "harici"
+      "external": "harici",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF önizlemesi: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Proje çatallanamadı."
     },
     "deleteDialog": {
-      "title": "“{{name}}” Geri Dönüşüm Kutusu'na taşınsın mı?",
+      "title": "“<name>{{name}}</name>” Geri Dönüşüm Kutusu'na taşınsın mı?",
       "fallbackName": "proje",
       "description": "Proje kitaplığınızdan çıkar, ancak siz geri yükleyene veya kalıcı olarak silene kadar Veri depolama bölümünde kalır.",
       "confirm": "Geri Dönüşüm Kutusu'na taşı",
       "moved": "\"{{name}}\" Geri Dönüşüm Kutusu'na taşındı.",
       "failed": "\"{{name}}\" silinemedi."
+    },
+    "bulkDelete": {
+      "button_one": "Seçili {{count}} projeyi sil",
+      "button_other": "Seçili {{count}} projeyi sil",
+      "title_one": "{{count}} proje Geri Dönüşüm Kutusu'na taşınsın mı?",
+      "title_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşınsın mı?",
+      "description": "Projeler kitaplığınızdan çıkar, ancak siz geri yükleyene veya kalıcı olarak silene kadar Veri depolama bölümünde kalır.",
+      "folderNote": "Yerinde açılan klasörler yalnızca Oleafly'dan çıkar. Dosyaları olduğu yerde kalır.",
+      "done_one": "{{count}} proje kitaplığınızdan kaldırıldı.",
+      "done_other": "{{count}} proje kitaplığınızdan kaldırıldı.",
+      "failed_one": "{{count}} proje silinemedi.",
+      "failed_other": "{{count}} proje silinemedi."
     }
   },
   "newProject": {
@@ -303,6 +316,7 @@
       "loadFailed": "Oleafly Overleaf projelerinizi yükleyemedi.",
       "signInPrompt": "Projelerinizi görmek için Overleaf'te oturum açın. Bir oturum açma penceresi açılır ve giriş yaptığınızda kendiliğinden kapanır.",
       "signingIn": "Açılan pencerede Overleaf oturum açma işlemini tamamlayın.",
+      "passkeyHint": "Geçiş anahtarınız oturum açma penceresinde çalışmazsa orada şifreniz veya telefonunuzdaki bir onay gibi başka bir seçenek belirleyin.",
       "expired": "Overleaf oturumunuzun süresi doldu. Projelerinizi görmek için yeniden oturum açın.",
       "signIn": "Overleaf'te oturum aç",
       "signInWindowTitle": "Overleaf'te oturum aç",
@@ -326,6 +340,7 @@
       "empty": "Bu Overleaf hesabında henüz proje yok.",
       "noMatches": "Aramanızla eşleşen proje yok.",
       "selectAll": "Tümünü seç",
+      "clearSelection": "Seçimi temizle",
       "selectProject": "{{name}} projesini seç",
       "selected_one": "{{count}} proje seçildi",
       "selected_other": "{{count}} proje seçildi",
@@ -336,8 +351,9 @@
       "ownedByYou": "Size ait",
       "owner": "Sahibi: {{name}}",
       "archived": "Arşivlendi",
-      "copyNote": "Kitaplığınızda zaten olan projeler yeni bir kopya olarak eklenir.",
       "notCarried": "Yorumlar, izlenen değişiklikler, sohbet ve geçmiş Overleaf'te kalır.",
+      "importingProjects": "Projeleriniz içe aktarılıyor",
+      "done": "Bitti",
       "doneSummary_one": "{{count}} proje içe aktarıldı.",
       "doneSummary_other": "{{count}} proje içe aktarıldı.",
       "failedSummary_one": "{{count}} proje içe aktarılamadı.",
@@ -592,7 +608,7 @@
       "remove": "Oleafly'den kaldır"
     },
     "remove": {
-      "title": "“{{name}}” Oleafly'den kaldırılsın mı?",
+      "title": "“<name>{{name}}</name>” Oleafly'den kaldırılsın mı?",
       "description": "Dosyalarınız olduğu yerde kalır. Oleafly bu klasör için oluşturduğu derleme dosyalarını siler ve klasörün güvenini, onaylarını ve bağlı klasörlerini sıfırlar. Sohbetlerini ve geçmişini geri almak için klasörü 30 gün içinde yeniden açın. Geri kalanını yeniden ayarlamanız gerekir.",
       "confirm": "Oleafly'den kaldır",
       "done": "“{{name}}” Oleafly'den kaldırıldı. Dosyaları hâlâ klasörde.",

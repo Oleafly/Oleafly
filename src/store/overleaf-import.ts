@@ -34,6 +34,7 @@ interface OverleafImportState {
   selected: string[];
   progress: Record<string, OverleafRowProgress>;
   importing: boolean;
+  run: string[] | null;
   setServer(server: string): void;
   refreshStatus(): Promise<void>;
   open(): Promise<void>;
@@ -43,6 +44,8 @@ interface OverleafImportState {
   toggle(id: string): void;
   setSelected(ids: readonly string[]): void;
   importSelected(ids?: readonly string[]): Promise<OverleafImportOutcome[]>;
+  startRun(): string[];
+  finishRun(): void;
 }
 
 function readServer(): string {
@@ -60,6 +63,11 @@ function writeServer(server: string): void {
   } catch {
     return;
   }
+}
+
+function selectable(projects: readonly OverleafProject[], ids: Iterable<string>): string[] {
+  const allowed = new Set(projects.filter((project) => !project.importedAs).map((project) => project.id));
+  return [...new Set(ids)].filter((id) => allowed.has(id));
 }
 
 function progressFor(event: OverleafImportEvent): OverleafRowProgress {
@@ -84,11 +92,12 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   selected: [],
   progress: {},
   importing: false,
+  run: null,
 
   setServer(server) {
     const next = server.trim() || DEFAULT_OVERLEAF_SERVER;
     writeServer(next);
-    set({ server: next, status: null, projects: [], selected: [], progress: {}, phase: "idle", error: null });
+    set({ server: next, status: null, projects: [], selected: [], progress: {}, run: null, phase: "idle", error: null });
   },
 
   async refreshStatus() {
@@ -121,11 +130,10 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     set({ phase: "loading", error: null });
     try {
       const listed = await overleafListProjects(get().server);
-      const known = new Set(listed.projects.map((project) => project.id));
       set({
         status: listed.status,
         projects: listed.projects,
-        selected: get().selected.filter((id) => known.has(id)),
+        selected: selectable(listed.projects, get().selected),
         phase: "ready",
       });
     } catch (error) {
@@ -164,7 +172,7 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
   async signOut() {
     try {
       const status = await overleafSignOut(get().server);
-      set({ status, projects: [], selected: [], progress: {}, phase: "signed-out", error: null });
+      set({ status, projects: [], selected: [], progress: {}, run: null, phase: "signed-out", error: null });
     } catch (error) {
       void logError("overleaf sign out", error);
       set({ error });
@@ -173,11 +181,30 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
 
   toggle(id) {
     const selected = get().selected;
-    set({ selected: selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id] });
+    if (selected.includes(id)) {
+      set({ selected: selected.filter((item) => item !== id) });
+      return;
+    }
+    if (selectable(get().projects, [id]).length === 0) return;
+    set({ selected: [...selected, id] });
   },
 
   setSelected(ids) {
-    set({ selected: [...new Set(ids)] });
+    set({ selected: selectable(get().projects, ids) });
+  },
+
+  startRun() {
+    const chosen = new Set(get().selected);
+    const run = get()
+      .projects.filter((project) => chosen.has(project.id))
+      .map((project) => project.id);
+    set({ run });
+    return run;
+  },
+
+  finishRun() {
+    if (get().importing) return;
+    set({ run: null, selected: [], progress: {} });
   },
 
   async importSelected(ids) {

@@ -804,6 +804,7 @@ pub fn run() {
             overleaf::overleaf_sync_status,
             overleaf::overleaf_sync_link,
             overleaf::overleaf_sync_now,
+            overleaf::overleaf_sync_check,
             overleaf::overleaf_sync_unlink,
             overleaf::overleaf_sync_set_auto,
             overleaf::overleaf_git_token_status,

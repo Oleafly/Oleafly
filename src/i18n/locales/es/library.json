@@ -138,7 +138,8 @@
       "document": "documento",
       "image": "imagen",
       "diagram": "diagrama",
-      "external": "externo"
+      "external": "externo",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Vista previa del PDF: {{name}}",
@@ -182,12 +183,28 @@
       "failed": "No se pudo duplicar el proyecto."
     },
     "deleteDialog": {
-      "title": "¿Mover “{{name}}” a la papelera?",
+      "title": "¿Mover “<name>{{name}}</name>” a la papelera?",
       "fallbackName": "proyecto",
       "description": "El proyecto saldrá de tu biblioteca, pero seguirá disponible en Almacenamiento de datos hasta que lo restaures o lo elimines definitivamente.",
       "confirm": "Mover a la papelera",
       "moved": "Se movió \"{{name}}\" a la papelera.",
       "failed": "No se pudo eliminar \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Eliminar {{count}} proyecto seleccionado",
+      "button_many": "Eliminar {{count}} proyectos seleccionados",
+      "button_other": "Eliminar {{count}} proyectos seleccionados",
+      "title_one": "¿Mover {{count}} proyecto a la papelera?",
+      "title_many": "¿Mover {{count}} proyectos a la papelera?",
+      "title_other": "¿Mover {{count}} proyectos a la papelera?",
+      "description": "Saldrán de tu biblioteca, pero seguirán disponibles en Almacenamiento de datos hasta que los restaures o los elimines definitivamente.",
+      "folderNote": "Las carpetas abiertas en su sitio solo salen de Oleafly. Sus archivos se quedan donde están.",
+      "done_one": "Se quitó {{count}} proyecto de tu biblioteca.",
+      "done_many": "Se quitaron {{count}} proyectos de tu biblioteca.",
+      "done_other": "Se quitaron {{count}} proyectos de tu biblioteca.",
+      "failed_one": "No se pudo eliminar {{count}} proyecto.",
+      "failed_many": "No se pudieron eliminar {{count}} proyectos.",
+      "failed_other": "No se pudieron eliminar {{count}} proyectos."
     }
   },
   "newProject": {
@@ -304,6 +321,7 @@
       "loadFailed": "Oleafly no pudo cargar tus proyectos de Overleaf.",
       "signInPrompt": "Inicia sesión en Overleaf para ver tus proyectos. Se abre una ventana de inicio de sesión que se cierra sola cuando entras.",
       "signingIn": "Termina de iniciar sesión en Overleaf en la ventana que se abrió.",
+      "passkeyHint": "Si tu llave de acceso no funciona en la ventana de inicio de sesión, elige allí otra opción, como tu contraseña o un aviso en tu teléfono.",
       "expired": "Tu sesión de Overleaf caducó. Vuelve a iniciar sesión para ver tus proyectos.",
       "signIn": "Iniciar sesión en Overleaf",
       "signInWindowTitle": "Iniciar sesión en Overleaf",
@@ -328,6 +346,7 @@
       "empty": "Todavía no hay proyectos en esta cuenta de Overleaf.",
       "noMatches": "Ningún proyecto coincide con tu búsqueda.",
       "selectAll": "Seleccionar todo",
+      "clearSelection": "Borrar selección",
       "selectProject": "Seleccionar {{name}}",
       "selected_one": "{{count}} proyecto seleccionado",
       "selected_many": "{{count}} proyectos seleccionados",
@@ -340,8 +359,9 @@
       "ownedByYou": "Tuyo",
       "owner": "Propiedad de {{name}}",
       "archived": "Archivado",
-      "copyNote": "Los proyectos que ya están en tu biblioteca se añaden como una copia nueva.",
       "notCarried": "Los comentarios, el control de cambios, el chat y el historial se quedan en Overleaf.",
+      "importingProjects": "Importando tus proyectos",
+      "done": "Listo",
       "doneSummary_one": "Se importó {{count}} proyecto.",
       "doneSummary_many": "Se importaron {{count}} proyectos.",
       "doneSummary_other": "Se importaron {{count}} proyectos.",
@@ -609,7 +629,7 @@
       "remove": "Quitar de Oleafly"
     },
     "remove": {
-      "title": "¿Quitar “{{name}}” de Oleafly?",
+      "title": "¿Quitar “<name>{{name}}</name>” de Oleafly?",
       "description": "Tus archivos se quedan donde están. Oleafly borra sus archivos de compilación de esta carpeta y restablece su confianza, sus aprobaciones y sus carpetas enlazadas. Vuelve a abrir la carpeta en un plazo de 30 días para recuperar sus chats y su historial. Lo demás tendrás que configurarlo de nuevo.",
       "confirm": "Quitar de Oleafly",
       "done": "Se quitó “{{name}}” de Oleafly. Sus archivos siguen en la carpeta.",

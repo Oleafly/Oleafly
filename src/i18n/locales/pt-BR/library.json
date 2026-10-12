@@ -138,7 +138,8 @@
       "document": "documento",
       "image": "imagem",
       "diagram": "diagrama",
-      "external": "externo"
+      "external": "externo",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Visualização do PDF: {{name}}",
@@ -182,12 +183,28 @@
       "failed": "Não foi possível bifurcar o projeto."
     },
     "deleteDialog": {
-      "title": "Mover “{{name}}” para a Lixeira?",
+      "title": "Mover “<name>{{name}}</name>” para a Lixeira?",
       "fallbackName": "projeto",
       "description": "O projeto sai da sua biblioteca, mas continua disponível em Armazenamento de dados até você restaurá-lo ou excluí-lo em definitivo.",
       "confirm": "Mover para a Lixeira",
       "moved": "\"{{name}}\" movido para a Lixeira.",
       "failed": "Não foi possível excluir \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Excluir {{count}} projeto selecionado",
+      "button_many": "Excluir {{count}} projetos selecionados",
+      "button_other": "Excluir {{count}} projetos selecionados",
+      "title_one": "Mover {{count}} projeto para a Lixeira?",
+      "title_many": "Mover {{count}} projetos para a Lixeira?",
+      "title_other": "Mover {{count}} projetos para a Lixeira?",
+      "description": "Eles saem da sua biblioteca, mas continuam disponíveis em Armazenamento de dados até você restaurá-los ou excluí-los em definitivo.",
+      "folderNote": "Pastas abertas no lugar só saem do Oleafly. Os arquivos delas continuam onde estão.",
+      "done_one": "{{count}} projeto removido da sua biblioteca.",
+      "done_many": "{{count}} projetos removidos da sua biblioteca.",
+      "done_other": "{{count}} projetos removidos da sua biblioteca.",
+      "failed_one": "Não foi possível excluir {{count}} projeto.",
+      "failed_many": "Não foi possível excluir {{count}} projetos.",
+      "failed_other": "Não foi possível excluir {{count}} projetos."
     }
   },
   "newProject": {
@@ -304,6 +321,7 @@
       "loadFailed": "O Oleafly não conseguiu carregar seus projetos do Overleaf.",
       "signInPrompt": "Faça login no Overleaf para ver seus projetos. Uma janela de login abre e fecha sozinha assim que você entrar.",
       "signingIn": "Termine o login no Overleaf na janela que abriu.",
+      "passkeyHint": "Se a sua chave de acesso não funcionar na janela de login, escolha outra opção ali, como a sua senha ou uma confirmação no celular.",
       "expired": "Seu login no Overleaf expirou. Faça login de novo para ver seus projetos.",
       "signIn": "Fazer login no Overleaf",
       "signInWindowTitle": "Fazer login no Overleaf",
@@ -328,6 +346,7 @@
       "empty": "Ainda não há projetos nesta conta do Overleaf.",
       "noMatches": "Nenhum projeto corresponde à sua busca.",
       "selectAll": "Selecionar tudo",
+      "clearSelection": "Limpar seleção",
       "selectProject": "Selecionar {{name}}",
       "selected_one": "{{count}} projeto selecionado",
       "selected_many": "{{count}} projetos selecionados",
@@ -340,8 +359,9 @@
       "ownedByYou": "Seu",
       "owner": "Pertence a {{name}}",
       "archived": "Arquivado",
-      "copyNote": "Projetos que já estão na sua biblioteca entram como uma nova cópia.",
       "notCarried": "Comentários, alterações controladas, chat e histórico ficam no Overleaf.",
+      "importingProjects": "Importando seus projetos",
+      "done": "Concluir",
       "doneSummary_one": "{{count}} projeto importado.",
       "doneSummary_many": "{{count}} projetos importados.",
       "doneSummary_other": "{{count}} projetos importados.",
@@ -609,7 +629,7 @@
       "remove": "Remover do Oleafly"
     },
     "remove": {
-      "title": "Remover “{{name}}” do Oleafly?",
+      "title": "Remover “<name>{{name}}</name>” do Oleafly?",
       "description": "Seus arquivos continuam onde estão. O Oleafly apaga os arquivos de compilação que criou para esta pasta e redefine a confiança, as aprovações e as pastas vinculadas dela. Abra a pasta de novo em até 30 dias para recuperar as conversas e o histórico. O resto você vai precisar configurar de novo.",
       "confirm": "Remover do Oleafly",
       "done": "“{{name}}” foi removido do Oleafly. Os arquivos continuam na pasta.",

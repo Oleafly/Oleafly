@@ -14,7 +14,7 @@ export interface OverleafSyncStatus {
 }
 
 export interface OverleafSyncReport {
-  outcome: "linked" | "needs-choice" | "up-to-date" | "synced" | "conflicts";
+  outcome: "linked" | "needs-choice" | "up-to-date" | "synced" | "conflicts" | "needs-merge";
   files: string[];
   pulled: number;
   pushed: boolean;
@@ -43,12 +43,17 @@ export function overleafSyncLink(
   });
 }
 
+export function overleafSyncCheck(projectId: string): Promise<OverleafSyncReport> {
+  return invoke<OverleafSyncReport>("overleaf_sync_check", { projectId });
+}
+
 export function overleafSyncNow(
   projectId: string,
   expectedGeneration: number,
   resolutions: Record<string, SyncSide> | null,
+  fetched = false,
 ): Promise<OverleafSyncReport> {
-  return invoke<OverleafSyncReport>("overleaf_sync_now", { projectId, expectedGeneration, resolutions });
+  return invoke<OverleafSyncReport>("overleaf_sync_now", { projectId, expectedGeneration, resolutions, fetched });
 }
 
 export function overleafSyncUnlink(projectId: string): Promise<OverleafSyncStatus> {

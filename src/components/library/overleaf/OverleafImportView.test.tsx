@@ -56,6 +56,7 @@ function resetStore() {
     selected: [],
     progress: {},
     importing: false,
+    run: null,
   });
 }
 
@@ -73,10 +74,13 @@ describe("OverleafImportView", () => {
   it("asks to sign in, opens the sign-in window and then lists projects", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     api.overleafSignIn.mockResolvedValue(signedIn);
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
 
     const panel = await screen.findByTestId("overleaf-sign-in-panel");
     expect(panel).toHaveTextContent("Server: www.overleaf.com");
+    expect(screen.getByTestId("overleaf-passkey-hint")).toHaveTextContent(
+      "If your passkey doesn't work in the sign-in window, pick another option there",
+    );
     fireEvent.click(screen.getByTestId("overleaf-sign-in"));
 
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
@@ -86,7 +90,7 @@ describe("OverleafImportView", () => {
 
   it("switches to another server and back to overleaf.com", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-sign-in-panel");
 
     fireEvent.click(screen.getByTestId("overleaf-change-server"));
@@ -103,20 +107,20 @@ describe("OverleafImportView", () => {
 
   it("shows why sign-in is needed again and any sign-in failure", async () => {
     api.overleafListProjects.mockRejectedValueOnce('@oleafly/error:{"code":"overleaf.session_expired","params":{}}');
-    const { unmount } = render(<OverleafImportView onOpenProject={vi.fn()} />);
+    const { unmount } = render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     expect(await screen.findByText("Your Overleaf sign-in expired. Sign in again to see your projects.")).toBeInTheDocument();
     unmount();
 
     resetStore();
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     api.overleafSignIn.mockRejectedValue('@oleafly/error:{"code":"overleaf.sign_in_failed","params":{}}');
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     fireEvent.click(await screen.findByTestId("overleaf-sign-in"));
     expect(await screen.findByRole("alert")).toHaveTextContent("could not confirm your Overleaf sign-in");
   });
 
   it("searches, filters and selects what is visible", async () => {
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-import-view");
     expect(screen.getByPlaceholderText("Search 3 projects")).toBeInTheDocument();
     expect(within(screen.getByTestId("overleaf-project-b2")).getByText("Archived")).toBeInTheDocument();
@@ -131,8 +135,10 @@ describe("OverleafImportView", () => {
     fireEvent.change(screen.getByTestId("overleaf-search"), { target: { value: "thesis" } });
     expect(screen.getByTestId("overleaf-project-a1")).toBeInTheDocument();
     expect(screen.queryByTestId("overleaf-project-c3")).not.toBeInTheDocument();
+    expect(screen.getByTestId("overleaf-select-all")).toHaveTextContent("Select all");
     fireEvent.click(screen.getByTestId("overleaf-select-all"));
     expect(useOverleafImportStore.getState().selected).toEqual(["a1"]);
+    expect(screen.getByTestId("overleaf-select-all")).toHaveTextContent("Clear selection");
     fireEvent.click(screen.getByTestId("overleaf-select-all"));
     expect(useOverleafImportStore.getState().selected).toEqual([]);
 
@@ -140,12 +146,13 @@ describe("OverleafImportView", () => {
     expect(screen.getByText("No projects match your search.")).toBeInTheDocument();
   });
 
-  it("imports the selection with progress, then offers to open each project", async () => {
+  it("moves the selection into an import view with progress, then closes on Done", async () => {
     const onOpenProject = vi.fn();
+    const onDone = vi.fn();
     let finish: (value: unknown) => void = () => {};
     api.overleafImportProjects.mockImplementation((_server: string, _ids: string[], onEvent: (event: unknown) => void) => {
       onEvent({ phase: "downloading", remoteId: "a1", received: 50, total: 100 });
-      onEvent({ phase: "importing", remoteId: "c3" });
+      onEvent({ phase: "importing", remoteId: "b2" });
       return new Promise((resolve) => {
         finish = (value) => {
           onEvent({ phase: "done", remoteId: "a1", projectId: "local-a1", mainDoc: null, compiler: null });
@@ -153,46 +160,68 @@ describe("OverleafImportView", () => {
         };
       });
     });
-    render(<OverleafImportView onOpenProject={onOpenProject} />);
+    render(<OverleafImportView onOpenProject={onOpenProject} onDone={onDone} />);
     await screen.findByTestId("overleaf-import-view");
 
+    expect(screen.getByRole("button", { name: "Select Old notes" })).toBeDisabled();
     fireEvent.click(screen.getByText("Thesis"));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Old notes" }));
+    const shared = screen.getByRole("button", { name: "Select Shared paper" });
+    fireEvent.click(shared);
+    expect(shared).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("overleaf-selection-summary")).toHaveTextContent("2 projects selected");
-    expect(screen.getByText("Projects already in your library come in as a new copy.")).toBeInTheDocument();
+    expect(screen.getByText("Comments, tracked changes, chat and history stay on Overleaf.")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("overleaf-import-selected"));
 
+    expect(await screen.findByTestId("overleaf-import-run")).toBeInTheDocument();
+    expect(screen.queryByTestId("overleaf-project-c3")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("overleaf-import-selected")).not.toBeInTheDocument();
+    expect(screen.getByTestId("overleaf-run-summary")).toHaveTextContent("Importing your projects");
+    expect(screen.getByTestId("overleaf-import-done")).toBeDisabled();
     expect(await screen.findByText("Downloading 50%")).toBeInTheDocument();
     expect(screen.getByText("Setting up")).toBeInTheDocument();
     await act(async () => {
       finish([
         { remoteId: "a1", projectId: "local-a1", error: null },
-        { remoteId: "c3", projectId: null, error: '@oleafly/error:{"code":"overleaf.project_unavailable","params":{}}' },
+        { remoteId: "b2", projectId: null, error: '@oleafly/error:{"code":"overleaf.project_unavailable","params":{}}' },
       ]);
     });
 
     await waitFor(() => expect(files.refreshProjects).toHaveBeenCalledOnce());
-    expect(screen.getByTestId("overleaf-selection-summary")).toHaveTextContent(
+    expect(screen.getByTestId("overleaf-run-summary")).toHaveTextContent(
       "Imported 1 project. 1 project could not be imported.",
     );
     const imported = screen.getByTestId("overleaf-status-a1");
     fireEvent.click(within(imported).getByRole("button", { name: "Open" }));
     expect(onOpenProject).toHaveBeenCalledWith("local-a1");
 
-    api.overleafImportProjects.mockResolvedValue([{ remoteId: "c3", projectId: "local-c3b", error: null }]);
-    const failed = screen.getByTestId("overleaf-status-c3");
+    api.overleafImportProjects.mockResolvedValue([{ remoteId: "b2", projectId: "local-b2", error: null }]);
+    const failed = screen.getByTestId("overleaf-status-b2");
     expect(failed).toHaveTextContent("You may no longer have access to it.");
     fireEvent.click(within(failed).getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(api.overleafImportProjects).toHaveBeenLastCalledWith(SERVER, ["c3"], expect.any(Function)));
+    await waitFor(() => expect(api.overleafImportProjects).toHaveBeenLastCalledWith(SERVER, ["b2"], expect.any(Function)));
+    await waitFor(() => expect(screen.getByTestId("overleaf-import-done")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("overleaf-import-done"));
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(useOverleafImportStore.getState().run).toBeNull();
+    expect(useOverleafImportStore.getState().selected).toEqual([]);
   });
 
   it("shows projects as books in the grid layout", async () => {
     useSettingsStore.getState().setHomeProjectLayout("grid");
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-import-view");
     const book = screen.getByTestId("overleaf-project-a1");
-    fireEvent.click(within(book).getByRole("checkbox", { name: "Select Thesis" }));
+    expect(within(book).queryByRole("checkbox")).not.toBeInTheDocument();
+    const select = within(book).getByRole("button", { name: "Select Thesis" });
+    expect(book.querySelector('[data-slot="check-badge"]')).toBeNull();
+    fireEvent.click(select);
     expect(useOverleafImportStore.getState().selected).toEqual(["a1"]);
+    expect(select).toHaveAttribute("aria-pressed", "true");
+    expect(select.querySelector('[data-slot="check-badge"]')).not.toBeNull();
+    fireEvent.click(select);
+    expect(useOverleafImportStore.getState().selected).toEqual([]);
+    expect(book.querySelector('[data-slot="check-badge"]')).toBeNull();
+    fireEvent.click(select);
     expect(within(screen.getByTestId("overleaf-project-c3")).getByText("Imported")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "List view" }));
     expect(useSettingsStore.getState().homeProjectLayout).toBe("list");
@@ -201,7 +230,7 @@ describe("OverleafImportView", () => {
   it("explains an empty account and signs out", async () => {
     api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [] });
     api.overleafSignOut.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     expect(await screen.findByText("There are no projects in this Overleaf account yet.")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("overleaf-sign-out"));
     expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
@@ -209,7 +238,7 @@ describe("OverleafImportView", () => {
 
   it("offers a retry when the list cannot load", async () => {
     api.overleafListProjects.mockRejectedValueOnce(new Error("socket hang up"));
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Oleafly could not load your Overleaf projects.");
     expect(screen.getByText(/socket hang up/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -218,7 +247,7 @@ describe("OverleafImportView", () => {
 
   it("names a page it cannot read and suggests the zip instead", async () => {
     api.overleafListProjects.mockRejectedValueOnce('@oleafly/error:{"code":"overleaf.unrecognized","params":{}}');
-    render(<OverleafImportView onOpenProject={vi.fn()} />);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Download the project as a .zip");
   });
 });
