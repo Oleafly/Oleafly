@@ -481,6 +481,7 @@
     "openInAgent": "Continuă în asistentul AI, cu toate instrumentele de proiect",
     "generateFailed": "Modificarea nu a putut fi generată. {{message}}",
     "dismiss": "Închide",
+    "withdrawn": "Altcineva a editat acest text, așa că sugestia nu mai poate fi aplicată.",
     "setUpProvider": "Configurează un furnizor AI",
     "setUpProviderHint": "Adaugă o cheie API (sau Ollama local) ca să folosești modificările AI din text.",
     "openAiSettings": "Deschide Setări → AI"

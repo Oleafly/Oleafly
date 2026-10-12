@@ -481,6 +481,7 @@
     "openInAgent": "Continua nell'assistente AI con tutti gli strumenti del progetto",
     "generateFailed": "Non è stato possibile generare la modifica. {{message}}",
     "dismiss": "Ignora",
+    "withdrawn": "Qualcun altro ha modificato questo testo, quindi il suggerimento non si può più applicare.",
     "setUpProvider": "Configura un provider AI",
     "setUpProviderHint": "Aggiungi una chiave API (o Ollama in locale) per usare le modifiche AI in linea.",
     "openAiSettings": "Apri Impostazioni → AI"

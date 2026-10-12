@@ -11,6 +11,15 @@
         "description": "Spørg den person, der driver din gruppes server, om adressen, og tilføj den så her."
       }
     },
+    "presence": {
+      "label": "Hvad andre ser",
+      "description": "Vælg, hvad personer i dine delte projekter ser, mens du arbejder. Indstil det separat på hver computer.",
+      "options": {
+        "cursor": "Vis min markør",
+        "file": "Vis kun, hvilken fil jeg er i",
+        "hidden": "Skjul mig"
+      }
+    },
     "server": {
       "signedIn": "Logget ind",
       "signedOut": "Logget ud",
@@ -435,6 +444,21 @@
     "archived": "Ejeren er holdt op med at dele dette projekt. Din kopi bliver her som et almindeligt projekt.",
     "signedOut": "Du er logget ud af {{server}}, så dette projekt synkroniseres ikke. Dine ændringer bliver på denne computer.",
     "signIn": "Log ind",
-    "repeated": "Antal gange i træk: {{number}}"
+    "repeated": "Antal gange i træk: {{number}}",
+    "newDevice": "{{name}} loggede ind på en ny enhed",
+    "review": "Gennemse"
+  },
+  "mergeReview": {
+    "title": "Ændringer flettet ind, mens du var væk",
+    "description": "Det, andre ændrede, mens du var offline. Denne visning kan kun læses.",
+    "people": "Efter person",
+    "person": "{{name}}: {{number}}",
+    "files": "Efter fil",
+    "loading": "Indlæser ændringer",
+    "failed": "Ændringerne kunne ikke indlæses. Prøv igen senere.",
+    "noText": "Ingen tekst blev ændret, så der er intet at sammenligne.",
+    "newFile": "Ny fil",
+    "removedFile": "Fjernet",
+    "diffLabel": "Ændringer i {{path}}"
   }
 }

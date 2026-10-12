@@ -474,6 +474,7 @@
     "openInAgent": "Verdergaan in de AI-assistent met alle projecttools",
     "generateFailed": "Kon de bewerking niet genereren. {{message}}",
     "dismiss": "Sluiten",
+    "withdrawn": "Iemand anders heeft deze tekst bewerkt, dus deze suggestie kan niet meer worden toegepast.",
     "setUpProvider": "Een AI-provider instellen",
     "setUpProviderHint": "Voeg een API-sleutel toe (of het lokale Ollama) om AI-bewerkingen in de tekst te gebruiken.",
     "openAiSettings": "Instellingen → AI openen"

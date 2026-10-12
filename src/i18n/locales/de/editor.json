@@ -474,6 +474,7 @@
     "openInAgent": "Im KI-Assistenten mit allen Projektwerkzeugen fortfahren",
     "generateFailed": "Die Änderung konnte nicht erzeugt werden. {{message}}",
     "dismiss": "Schließen",
+    "withdrawn": "Jemand anderes hat diesen Text bearbeitet, daher kann der Vorschlag nicht übernommen werden.",
     "setUpProvider": "Einen KI-Anbieter einrichten",
     "setUpProviderHint": "Fügen Sie einen API-Schlüssel hinzu (oder nutzen Sie lokales Ollama), um Änderungen mit KI im Text zu verwenden.",
     "openAiSettings": "Einstellungen → KI öffnen"

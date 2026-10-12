@@ -232,6 +232,10 @@ async fn person(
     )
 }
 
+pub(crate) async fn another_alice_device(pair: &Pair) -> Person {
+    person(&pair._server, "github2", None).await.0
+}
+
 pub(crate) async fn two_people() -> Pair {
     let bob_github = MockGithub::start(vec![github_user(1, "bob")]).await;
     let alice_github = MockGithub::start(vec![github_user(2, "alice")]).await;

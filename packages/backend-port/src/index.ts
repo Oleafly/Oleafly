@@ -1177,6 +1177,18 @@ export interface CollabLiveStatus {
 export interface CollabLiveMerged {
     projectId: string;
     files: { path: string; changes: number }[];
+    authors: { accountId: string; files: { path: string; changes: number }[] }[];
+    review: { before: string; after: string };
+}
+export interface CollabLiveNewDevice {
+    projectId: string;
+    accountId: string;
+    deviceId: string;
+}
+export interface CollabMergeReviewFile {
+    path: string;
+    before: string | null;
+    after: string | null;
 }
 export interface CollabShareCheck {
     server_name: string;
@@ -1539,6 +1551,8 @@ export interface BackendPort {
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
   collabDocClose: (projectId: string, fileId: string) => Promise<void>;
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
+  collabPresenceLeave: (projectId: string) => Promise<void>;
+  collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;

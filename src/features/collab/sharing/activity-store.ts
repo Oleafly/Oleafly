@@ -10,12 +10,24 @@ export type NewActivity =
   | { kind: "joined" | "left"; at: number; accountId: string; name: string }
   | { kind: "offline"; at: number; pending: number }
   | { kind: "online"; at: number }
-  | { kind: "merged"; at: number; files: { path: string; changes: number }[] }
+  | {
+      kind: "merged";
+      at: number;
+      files: MergedFileCount[];
+      authors?: { accountId: string; files: MergedFileCount[] }[];
+      review?: { before: string; after: string };
+    }
+  | { kind: "newDevice"; at: number; accountId: string; name: string }
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed" | "archived"; at: number }
   | { kind: "signedOut"; at: number; server: string };
 
 export type ActivityEntry = NewActivity & { id: string; count: number };
+
+export interface MergedFileCount {
+  path: string;
+  changes: number;
+}
 
 interface ActivityState {
   projectId: string | null;

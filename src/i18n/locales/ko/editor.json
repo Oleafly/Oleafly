@@ -467,6 +467,7 @@
     "openInAgent": "프로젝트 도구를 모두 쓸 수 있는 AI 어시스턴트에서 이어가기",
     "generateFailed": "편집안을 만들지 못했습니다. {{message}}",
     "dismiss": "닫기",
+    "withdrawn": "다른 사람이 이 텍스트를 편집해서 이 제안을 적용할 수 없습니다.",
     "setUpProvider": "AI 제공자 설정",
     "setUpProviderHint": "인라인 AI 편집을 쓰려면 API 키를 추가하거나 로컬 Ollama를 연결하세요.",
     "openAiSettings": "설정 → AI 열기"

@@ -206,10 +206,20 @@ impl ProjectDoc {
         let doc = LoroDoc::new();
         doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
         doc.import(bytes).map_err(doc_error)?;
+        let loaded = ProjectDoc::wrap(doc)?;
+        if loaded.trash.is_none() {
+            return Err(CollabError::Corrupt(
+                "the shared project has no trash folder".to_owned(),
+            ));
+        }
+        Ok(loaded)
+    }
+
+    fn wrap(doc: LoroDoc) -> Result<ProjectDoc, CollabError> {
         let tree = doc.get_tree(TREE);
         tree.enable_fractional_index(0);
         let (recorded, events) = recorder(&doc);
-        let mut loaded = ProjectDoc {
+        let mut wrapped = ProjectDoc {
             doc,
             tree,
             ids: HashMap::new(),
@@ -217,13 +227,18 @@ impl ProjectDoc {
             recorded,
             _events: events,
         };
-        loaded.reindex()?;
-        if loaded.trash.is_none() {
+        wrapped.reindex()?;
+        Ok(wrapped)
+    }
+
+    pub fn at_version(&self, version: &VersionVector) -> Result<ProjectDoc, CollabError> {
+        if !self.doc.oplog_vv().includes_vv(version) {
             return Err(CollabError::Corrupt(
-                "the shared project has no trash folder".to_owned(),
+                "the shared project never had this version".to_owned(),
             ));
         }
-        Ok(loaded)
+        let frontiers = self.doc.vv_to_frontiers(version);
+        ProjectDoc::wrap(self.doc.fork_at(&frontiers).map_err(doc_error)?)
     }
 
     fn reindex(&mut self) -> Result<(), CollabError> {

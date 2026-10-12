@@ -5,8 +5,10 @@ use oleafly_collab_protocol::projects::{
     PersonSummary, ProjectMember, ProjectRole, ProjectStatus, ProjectSummary,
 };
 use oleafly_server::blobs::sha256_hex;
-use oleafly_server::test_support::security_event_kinds;
-use people::{call, create_project, grant, put_bytes, read, share_project, stage};
+use oleafly_server::config::BlobStoreConfig;
+use oleafly_server::test_support::{security_event_kinds, test_config, MockS3, MockS3Fault};
+use oleafly_server::tokens::random_token;
+use people::{call, create_project, grant, put_bytes, read, share_project, stage, stage_with};
 use reqwest::{Method, StatusCode};
 use serde_json::json;
 
@@ -389,4 +391,79 @@ async fn unshared_drafts_are_removed_after_a_day() {
         .expect("project row")
         .expect("the shared project stays");
     assert_eq!(kept.status, ProjectStatus::Active);
+}
+
+#[tokio::test]
+async fn a_server_with_a_bucket_keeps_files_there_and_reports_outages() {
+    let bucket = MockS3::start().await;
+    let mut config = test_config();
+    config.blob_store = BlobStoreConfig::S3(Box::new(bucket.config("oleafly")));
+    let stage = stage_with(config).await;
+    let (server, bob) = (&stage.server, &stage.bob);
+    let project = share_project(server, bob, "Thesis").await.project_id;
+    let figure = format!("figure {}", random_token()).into_bytes();
+    let hash = sha256_hex(&figure);
+    let path = format!("/api/v1/projects/{project}/blobs/{hash}");
+    assert_eq!(
+        put_bytes(server, &path, bob.token(), figure.clone())
+            .await
+            .status(),
+        StatusCode::NO_CONTENT
+    );
+    let key = format!("oleafly/{}/{hash}", &hash[..2]);
+    assert_eq!(bucket.object(&key), Some(figure.clone()));
+    assert!(!server
+        .state()
+        .config
+        .data_dir
+        .join("blobs")
+        .join(&hash[..2])
+        .join(&hash)
+        .exists());
+    let fetched = call(server, Method::GET, &path, bob.token(), None).await;
+    assert_eq!(fetched.status(), StatusCode::OK);
+    assert_eq!(fetched.bytes().await.expect("bytes").to_vec(), figure);
+    bucket.set_fault(Some(MockS3Fault::AccessDenied));
+    let refused = call(server, Method::GET, &path, bob.token(), None).await;
+    assert_eq!(refused.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let late = format!("late {}", random_token()).into_bytes();
+    let late_hash = sha256_hex(&late);
+    let late_path = format!("/api/v1/projects/{project}/blobs/{late_hash}");
+    assert_eq!(
+        put_bytes(server, &late_path, bob.token(), late.clone())
+            .await
+            .status(),
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    bucket.set_fault(None);
+    assert_eq!(
+        call(server, Method::GET, &late_path, bob.token(), None)
+            .await
+            .status(),
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(bucket.keys(), vec![key]);
+    assert_eq!(bucket.rejections(), Vec::<String>::new());
+}
+
+#[tokio::test]
+async fn expired_drafts_lose_their_files_from_the_bucket() {
+    let bucket = MockS3::start().await;
+    let mut config = test_config();
+    config.blob_store = BlobStoreConfig::S3(Box::new(bucket.config("")));
+    let stage = stage_with(config).await;
+    let (server, bob) = (&stage.server, &stage.bob);
+    let draft = create_project(server, bob, "Abandoned").await.project_id;
+    let figure = format!("draft figure {}", random_token()).into_bytes();
+    let hash = sha256_hex(&figure);
+    let path = format!("/api/v1/projects/{draft}/blobs/{hash}");
+    assert_eq!(
+        put_bytes(server, &path, bob.token(), figure).await.status(),
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(bucket.keys(), vec![format!("{}/{hash}", &hash[..2])]);
+    server.clock().advance(2 * 24 * 60 * 60 * 1000);
+    let report = server.state().run_maintenance().await.expect("maintenance");
+    assert_eq!(report.expired_projects, 1);
+    assert!(bucket.keys().is_empty());
 }

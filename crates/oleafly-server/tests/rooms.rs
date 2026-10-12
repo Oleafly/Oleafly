@@ -62,6 +62,7 @@ async fn an_update_is_acknowledged_and_reaches_the_others() {
         Some(ServerFrame::Update {
             project_id: project,
             seq: 1,
+            account_id: Some(stage.bob.tokens.account_id),
             envelope: change
         })
     );
@@ -92,6 +93,7 @@ async fn a_late_subscriber_catches_up_from_the_backlog() {
         Some(ServerFrame::Update {
             project_id: project,
             seq: 2,
+            account_id: Some(stage.bob.tokens.account_id),
             envelope: second
         })
     );
@@ -318,6 +320,56 @@ async fn closing_a_connection_tells_the_room() {
             device_id: stage.alice.tokens.device_id
         })
     );
+}
+
+#[tokio::test]
+async fn hiding_tells_the_room_the_person_left_and_keeps_them_subscribed() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut bob, project, 0).await;
+    subscribe(&mut alice, project, 0).await;
+    send_frame(
+        &mut alice,
+        &ClientFrame::Presence {
+            project_id: project,
+            state: PresenceState {
+                file_id: Some("main".to_owned()),
+                cursor: Some(1),
+                anchor: None,
+            },
+        },
+    )
+    .await;
+    assert!(matches!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::Presence { .. })
+    ));
+    send_frame(
+        &mut alice,
+        &ClientFrame::PresenceLeave {
+            project_id: project,
+        },
+    )
+    .await;
+    assert_eq!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::PresenceLeft {
+            project_id: project,
+            device_id: stage.alice.tokens.device_id
+        })
+    );
+    send_frame(&mut alice, &ClientFrame::Ping { id: 7 }).await;
+    assert_eq!(
+        next_frame(&mut alice).await,
+        Some(ServerFrame::Pong { id: 7 })
+    );
+    send_update(&mut bob, &envelope(&stage.bob, project, b"still here")).await;
+    assert!(matches!(
+        next_frame(&mut alice).await,
+        Some(ServerFrame::Update { seq: 1, .. })
+    ));
 }
 
 #[tokio::test]

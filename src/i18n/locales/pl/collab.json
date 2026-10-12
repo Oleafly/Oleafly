@@ -11,6 +11,15 @@
         "description": "Poproś osobę, która prowadzi serwer Twojej grupy, o jego adres, a potem dodaj go tutaj."
       }
     },
+    "presence": {
+      "label": "Co widzą inni",
+      "description": "Wybierz, co osoby w Twoich udostępnionych projektach widzą podczas Twojej pracy. Ustawia się to osobno na każdym komputerze.",
+      "options": {
+        "cursor": "Pokazuj mój kursor",
+        "file": "Pokazuj tylko, w którym pliku jestem",
+        "hidden": "Ukryj mnie"
+      }
+    },
     "server": {
       "signedIn": "Zalogowano",
       "signedOut": "Wylogowano",
@@ -435,6 +444,21 @@
     "archived": "Właściciel przestał udostępniać ten projekt. Twoja kopia zostaje tutaj jako zwykły projekt.",
     "signedOut": "Wylogowano Cię z serwera {{server}}, więc ten projekt się nie synchronizuje. Twoje zmiany zostają na tym komputerze.",
     "signIn": "Zaloguj się",
-    "repeated": "Razy z rzędu: {{number}}"
+    "repeated": "Razy z rzędu: {{number}}",
+    "newDevice": "Użytkownik {{name}} zalogował się na nowym urządzeniu",
+    "review": "Przejrzyj"
+  },
+  "mergeReview": {
+    "title": "Zmiany scalone podczas Twojej nieobecności",
+    "description": "Co inni zmienili, gdy nie było Cię online. Ten widok jest tylko do odczytu.",
+    "people": "Według osoby",
+    "person": "{{name}}: {{number}}",
+    "files": "Według pliku",
+    "loading": "Wczytywanie zmian",
+    "failed": "Nie udało się wczytać zmian. Spróbuj ponownie później.",
+    "noText": "Żaden tekst się nie zmienił, więc nie ma czego porównywać.",
+    "newFile": "Nowy plik",
+    "removedFile": "Usunięty",
+    "diffLabel": "Zmiany w {{path}}"
   }
 }

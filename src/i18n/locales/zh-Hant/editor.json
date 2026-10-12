@@ -467,6 +467,7 @@
     "openInAgent": "在 AI 助理中繼續，並使用完整的專案工具",
     "generateFailed": "無法產生這項修改。{{message}}",
     "dismiss": "關閉",
+    "withdrawn": "其他人編輯了這段文字，因此這項建議無法套用。",
     "setUpProvider": "設定 AI 供應商",
     "setUpProviderHint": "加入 API 金鑰（或本機 Ollama）即可使用行內 AI 編輯。",
     "openAiSettings": "開啟設定 → AI"

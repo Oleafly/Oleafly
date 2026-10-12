@@ -11,6 +11,15 @@
         "description": "Chiedi l'indirizzo a chi gestisce il server del tuo gruppo, poi aggiungilo qui."
       }
     },
+    "presence": {
+      "label": "Cosa vedono gli altri",
+      "description": "Scegli cosa vedono le persone dei tuoi progetti condivisi mentre lavori. Si imposta separatamente su ogni computer.",
+      "options": {
+        "cursor": "Mostra il mio cursore",
+        "file": "Mostra solo in quale file sono",
+        "hidden": "Nascondimi"
+      }
+    },
     "server": {
       "signedIn": "Accesso eseguito",
       "signedOut": "Accesso non eseguito",
@@ -435,6 +444,21 @@
     "archived": "Il proprietario ha interrotto la condivisione di questo progetto. La tua copia resta qui come un normale progetto.",
     "signedOut": "Non hai eseguito l'accesso a {{server}}, quindi questo progetto non si sincronizza. Le tue modifiche restano su questo computer.",
     "signIn": "Accedi",
-    "repeated": "Volte di fila: {{number}}"
+    "repeated": "Volte di fila: {{number}}",
+    "newDevice": "{{name}} ha eseguito l'accesso da un nuovo dispositivo",
+    "review": "Rivedi"
+  },
+  "mergeReview": {
+    "title": "Modifiche unite mentre eri via",
+    "description": "Cosa hanno cambiato gli altri mentre eri offline. Questa vista è di sola lettura.",
+    "people": "Per persona",
+    "person": "{{name}}: {{number}}",
+    "files": "Per file",
+    "loading": "Caricamento delle modifiche",
+    "failed": "Impossibile caricare le modifiche. Riprova più tardi.",
+    "noText": "Nessun testo è cambiato, quindi non c'è nulla da confrontare.",
+    "newFile": "Nuovo file",
+    "removedFile": "Rimosso",
+    "diffLabel": "Modifiche in {{path}}"
   }
 }

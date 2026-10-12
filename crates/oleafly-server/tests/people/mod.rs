@@ -10,6 +10,7 @@ use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
 use oleafly_collab_protocol::ids::{BatchId, SharedProjectId};
 use oleafly_collab_protocol::projects::{MemberGrant, NewProject, ProjectRole, ProjectSummary};
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_server::config::ServerConfig;
 use oleafly_server::test_support::{
     allowlist, github_provider, sign_in, test_config, MockGithub, MockGithubUser, TestDevice,
     TestServer,
@@ -51,9 +52,12 @@ fn github_user(id: u64, login: &str, name: &str) -> MockGithubUser {
 }
 
 pub async fn stage() -> Stage {
+    stage_with(test_config()).await
+}
+
+pub async fn stage_with(mut config: ServerConfig) -> Stage {
     let bob_github = MockGithub::start(vec![github_user(8, "bob", "Bob Smith")]).await;
     let alice_github = MockGithub::start(vec![github_user(9, "alice", "Alice Chen")]).await;
-    let mut config = test_config();
     config
         .providers
         .push(github_provider("github", &bob_github));

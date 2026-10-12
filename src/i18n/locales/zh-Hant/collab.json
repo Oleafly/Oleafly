@@ -11,6 +11,15 @@
         "description": "請向負責你團隊伺服器的人索取位址，然後在這裡新增。"
       }
     },
+    "presence": {
+      "label": "其他人能看到什麼",
+      "description": "選擇你在分享的專案中工作時，其他人能看到的內容。每台電腦需要分別設定。",
+      "options": {
+        "cursor": "顯示我的游標",
+        "file": "只顯示我所在的檔案",
+        "hidden": "隱藏我"
+      }
+    },
     "server": {
       "signedIn": "已登入",
       "signedOut": "已登出",
@@ -435,6 +444,21 @@
     "archived": "擁有者已停止分享這個專案。你的副本會以一般專案的形式留在這裡。",
     "signedOut": "你已登出 {{server}}，因此這個專案沒有同步。你的變更會留在這台電腦上。",
     "signIn": "登入",
-    "repeated": "連續次數：{{number}}"
+    "repeated": "連續次數：{{number}}",
+    "newDevice": "{{name}} 在新裝置上登入了",
+    "review": "檢視"
+  },
+  "mergeReview": {
+    "title": "你離開期間合併的變更",
+    "description": "你離線時其他人所做的變更。此檢視為唯讀。",
+    "people": "依人員",
+    "person": "{{name}}: {{number}}",
+    "files": "依檔案",
+    "loading": "正在載入變更",
+    "failed": "無法載入變更。請稍後再試。",
+    "noText": "沒有文字變更，因此沒有可比較的內容。",
+    "newFile": "新檔案",
+    "removedFile": "已移除",
+    "diffLabel": "{{path}} 中的變更"
   }
 }

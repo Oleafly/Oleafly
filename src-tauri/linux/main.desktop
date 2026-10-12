@@ -3,7 +3,7 @@ Categories=Office;Publishing;WordProcessor;
 {{#if comment}}
 Comment={{comment}}
 {{/if}}
-Exec=/usr/bin/{{exec}} %F
+Exec=/usr/bin/{{exec}} %U
 StartupWMClass={{exec}}
 Icon={{icon}}
 Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
@@ -11,5 +11,5 @@ Name={{name}}
 Terminal=false
 Type=Application
 {{#if mime_type}}
-MimeType={{mime_type}}
+MimeType={{mime_type}};
 {{/if}}

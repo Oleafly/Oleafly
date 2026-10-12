@@ -33,6 +33,9 @@ pub enum ClientFrame {
         project_id: SharedProjectId,
         state: PresenceState,
     },
+    PresenceLeave {
+        project_id: SharedProjectId,
+    },
 }
 
 impl fmt::Debug for ClientFrame {
@@ -79,6 +82,10 @@ impl fmt::Debug for ClientFrame {
                 .field("project_id", project_id)
                 .field("state", state)
                 .finish(),
+            ClientFrame::PresenceLeave { project_id } => formatter
+                .debug_struct("PresenceLeave")
+                .field("project_id", project_id)
+                .finish(),
         }
     }
 }
@@ -110,6 +117,8 @@ pub enum ServerFrame {
     Update {
         project_id: SharedProjectId,
         seq: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        account_id: Option<AccountId>,
         envelope: Envelope,
     },
     Ack {
@@ -367,6 +376,12 @@ mod tests {
                 "state": { "file_id": "f1", "cursor": 2, "anchor": null }
             }),
         );
+        assert_client_wire(
+            ClientFrame::PresenceLeave {
+                project_id: PROJECT.parse().unwrap(),
+            },
+            json!({ "type": "presence_leave", "project_id": PROJECT }),
+        );
         assert_server_wire(
             ServerFrame::Subscribed {
                 project_id: PROJECT.parse().unwrap(),
@@ -379,9 +394,31 @@ mod tests {
             ServerFrame::Update {
                 project_id: PROJECT.parse().unwrap(),
                 seq: 10,
+                account_id: Some(ACCOUNT.parse().unwrap()),
                 envelope: envelope(),
             },
-            json!({ "type": "update", "project_id": PROJECT, "seq": 10, "envelope": envelope_json }),
+            json!({
+                "type": "update",
+                "project_id": PROJECT,
+                "seq": 10,
+                "account_id": ACCOUNT,
+                "envelope": envelope_json.clone()
+            }),
+        );
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({
+                "type": "update",
+                "project_id": PROJECT,
+                "seq": 10,
+                "envelope": envelope_json
+            }))
+            .unwrap(),
+            ServerFrame::Update {
+                project_id: PROJECT.parse().unwrap(),
+                seq: 10,
+                account_id: None,
+                envelope: envelope(),
+            }
         );
         assert_server_wire(
             ServerFrame::Ack {

@@ -4,6 +4,7 @@ pub mod guard;
 pub mod links;
 pub mod live;
 pub mod registry;
+pub mod review;
 pub mod secrets_adapter;
 pub mod share;
 pub mod state;

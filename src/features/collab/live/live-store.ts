@@ -1,5 +1,4 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
-import { avatarHue } from "@/components/ui/avatar";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import {
@@ -8,12 +7,14 @@ import {
   collabMembersList,
   collabShareInfo,
   onCollabLiveMerged,
+  onCollabLiveNewDevice,
   onCollabLiveRole,
   onCollabLiveStatus,
   onCollabPresence,
   onCollabPresenceLeft,
   type CollabLiveEndReason,
   type CollabLiveMerged,
+  type CollabLiveNewDevice,
   type CollabLiveRole,
   type CollabLiveState,
   type CollabLiveStatus,
@@ -25,6 +26,7 @@ import {
   type CollabShareInfo,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { peerHue } from "./peer-hue";
 
 export interface LivePeer {
   deviceId: string;
@@ -70,6 +72,7 @@ export interface CollabLiveStoreState {
   peers: Record<string, LivePeer>;
   members: CollabProjectMember[];
   merged: CollabLiveMerged | null;
+  newDevice: CollabLiveNewDevice | null;
   ended: CollabLiveEndReason | null;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
@@ -106,6 +109,7 @@ function emptyLive(projectId: string | null): LiveData {
     peers: {},
     members: [],
     merged: null,
+    newDevice: null,
     ended: null,
   };
 }
@@ -279,6 +283,11 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState({ merged: payload });
   };
 
+  const onNewDevice = (payload: CollabLiveNewDevice) => {
+    if (payload.projectId !== current()) return;
+    store.setState({ newDevice: payload });
+  };
+
   const onPresence = (payload: CollabPresence) => {
     if (payload.projectId !== current() || payload.deviceId === live?.deviceId) return;
     store.setState((state) => ({
@@ -292,7 +301,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
           cursor: payload.cursor,
           anchor: payload.anchor,
           seenAt: Date.now(),
-          hue: avatarHue(payload.accountId),
+          hue: peerHue(payload.accountId, state.share?.account_id ?? null),
         },
       },
     }));
@@ -319,6 +328,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabLiveStatus(onStatus),
     onCollabLiveRole(onRole),
     onCollabLiveMerged(onMerged),
+    onCollabLiveNewDevice(onNewDevice),
     onCollabPresence(onPresence),
     onCollabPresenceLeft(onLeft),
   ].map((pending) =>

@@ -11,6 +11,15 @@
         "description": "Cere-i adresa persoanei care administrează serverul grupului tău, apoi adaug-o aici."
       }
     },
+    "presence": {
+      "label": "Ce văd ceilalți",
+      "description": "Alege ce văd persoanele din proiectele tale partajate cât timp lucrezi. Se setează separat pe fiecare computer.",
+      "options": {
+        "cursor": "Arată cursorul meu",
+        "file": "Arată doar fișierul în care sunt",
+        "hidden": "Ascunde-mă"
+      }
+    },
     "server": {
       "signedIn": "Autentificat",
       "signedOut": "Deconectat",
@@ -435,6 +444,21 @@
     "archived": "Proprietarul a oprit partajarea acestui proiect. Copia ta rămâne aici ca proiect obișnuit.",
     "signedOut": "Ești deconectat de la {{server}}, așa că acest proiect nu se sincronizează. Modificările tale rămân pe acest computer.",
     "signIn": "Autentifică-te",
-    "repeated": "Număr de ori la rând: {{number}}"
+    "repeated": "Număr de ori la rând: {{number}}",
+    "newDevice": "{{name}} s-a conectat pe un dispozitiv nou",
+    "review": "Examinează"
+  },
+  "mergeReview": {
+    "title": "Modificări îmbinate cât ai lipsit",
+    "description": "Ce au schimbat alții cât ai fost offline. Această vizualizare este doar pentru citire.",
+    "people": "După persoană",
+    "person": "{{name}}: {{number}}",
+    "files": "După fișier",
+    "loading": "Se încarcă modificările",
+    "failed": "Modificările nu au putut fi încărcate. Încearcă din nou mai târziu.",
+    "noText": "Niciun text nu s-a schimbat, deci nu este nimic de comparat.",
+    "newFile": "Fișier nou",
+    "removedFile": "Eliminat",
+    "diffLabel": "Modificări în {{path}}"
   }
 }

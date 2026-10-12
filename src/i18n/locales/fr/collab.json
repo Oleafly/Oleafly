@@ -11,6 +11,15 @@
         "description": "Demandez son adresse à la personne qui gère le serveur de votre groupe, puis ajoutez-le ici."
       }
     },
+    "presence": {
+      "label": "Ce que voient les autres",
+      "description": "Choisissez ce que les personnes de vos projets partagés voient pendant que vous travaillez. Réglez-le séparément sur chaque ordinateur.",
+      "options": {
+        "cursor": "Afficher mon curseur",
+        "file": "Afficher seulement le fichier où je suis",
+        "hidden": "Me masquer"
+      }
+    },
     "server": {
       "signedIn": "Connecté",
       "signedOut": "Déconnecté",
@@ -435,6 +444,21 @@
     "archived": "Le propriétaire a arrêté de partager ce projet. Votre copie reste ici comme un projet ordinaire.",
     "signedOut": "Vous êtes déconnecté de {{server}}, ce projet ne se synchronise donc pas. Vos modifications restent sur cet ordinateur.",
     "signIn": "Se connecter",
-    "repeated": "Nombre de fois d'affilée : {{number}}"
+    "repeated": "Nombre de fois d'affilée : {{number}}",
+    "newDevice": "Nouvelle connexion de {{name}} depuis un autre appareil",
+    "review": "Examiner"
+  },
+  "mergeReview": {
+    "title": "Modifications fusionnées pendant votre absence",
+    "description": "Ce que les autres ont modifié pendant que vous étiez hors ligne. Cette vue est en lecture seule.",
+    "people": "Par personne",
+    "person": "{{name}} : {{number}}",
+    "files": "Par fichier",
+    "loading": "Chargement des modifications",
+    "failed": "Impossible de charger les modifications. Réessayez plus tard.",
+    "noText": "Aucun texte n'a changé, il n'y a donc rien à comparer.",
+    "newFile": "Nouveau fichier",
+    "removedFile": "Supprimé",
+    "diffLabel": "Modifications dans {{path}}"
   }
 }

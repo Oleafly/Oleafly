@@ -1,10 +1,11 @@
 [Desktop Entry]
 Categories=Office;Publishing;WordProcessor;
 Comment=Write, compile and review research papers in LaTeX, Typst and Markdown
-Exec=oleafly-desktop %F
+Exec=oleafly-desktop %U
 StartupWMClass=oleafly-desktop
 Icon=oleafly-desktop
 Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
 Name=Oleafly
 Terminal=false
 Type=Application
+MimeType=x-scheme-handler/oleafly;

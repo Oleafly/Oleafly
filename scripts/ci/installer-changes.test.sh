@@ -63,6 +63,7 @@ for path in \
   src-tauri/src/system_integration/explorer_menu.rs \
   src-tauri/tauri.conf.json \
   src-tauri/tauri.e2e.conf.json \
+  src-tauri/tauri.windows.conf.json \
   scripts/windows-installer-check.ps1 \
   scripts/ci/installer-changes.sh \
   scripts/ci/unpack-windows-e2e-app.sh \

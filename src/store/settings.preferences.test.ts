@@ -78,6 +78,17 @@ describe("on/off preferences", () => {
     expect(useSettingsStore.getState().spellcheck).toBe(initial);
   });
 
+  it("shows this person's cursor to collaborators until they choose less, per device", async () => {
+    const fresh = await reload({});
+    expect(fresh.collabPresence).toBe("cursor");
+    fresh.setCollabPresence("file");
+    expect(localStorage.getItem("oleafly.collab.presence")).toBe("file");
+    expect((await reload({})).collabPresence).toBe("file");
+    const hidden = await reload({ "oleafly.collab.presence": "hidden" });
+    expect(hidden.collabPresence).toBe("hidden");
+    expect((await reload({ "oleafly.collab.presence": "everything" })).collabPresence).toBe("cursor");
+  });
+
   it("keeps live collaboration off on a new install", async () => {
     const fresh = await reload({});
     expect(fresh.liveCollaboration).toBe(false);

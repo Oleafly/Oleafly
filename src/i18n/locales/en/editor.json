@@ -474,6 +474,7 @@
     "openInAgent": "Continue in the AI assistant with full project tools",
     "generateFailed": "Couldn't generate the edit. {{message}}",
     "dismiss": "Dismiss",
+    "withdrawn": "Someone else edited this text, so this suggestion can't be applied.",
     "setUpProvider": "Set up an AI provider",
     "setUpProviderHint": "Add an API key (or local Ollama) to use inline AI edits.",
     "openAiSettings": "Open Settings → AI"

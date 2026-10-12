@@ -6,15 +6,28 @@ import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import { avatarHue } from "@/components/ui/avatar";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { resetSidebarViewState } from "@/store/sidebar-view-state";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
+import { peerHue } from "../live/peer-hue";
 import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
-const spies = vi.hoisted(() => ({ relativeTime: vi.fn(), person: vi.fn() }));
+const spies = vi.hoisted(() => ({ relativeTime: vi.fn(), person: vi.fn(), review: vi.fn() }));
+
+vi.mock("./MergeReviewDialog", () => ({
+  MergeReviewDialog: (props: { projectId: string; entry: unknown; onClose: () => void }) => {
+    spies.review(props);
+    return (
+      <div data-testid="merge-review">
+        <button type="button" data-testid="merge-review-done" onClick={props.onClose} />
+      </div>
+    );
+  },
+}));
 
 vi.mock("@/lib/intl", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/intl")>();
@@ -75,6 +88,7 @@ beforeEach(() => {
     peers: { bob: peer("bob", BOB_ID, "main.tex"), mine: peer("mine", ALICE_ID, "intro.tex") },
     members: [projectMember(BOB, "owner"), projectMember(person(), "editor"), projectMember(CAROL, "viewer")],
     merged: null,
+    newDevice: null,
     ended: null,
   });
   feed([]);
@@ -112,6 +126,17 @@ describe("CollabPane", () => {
     expect(rows[2]).toHaveTextContent(enCollab.projectRoles.viewer);
     expect(rows[2]).toHaveTextContent(pane.away);
     expect(people).not.toHaveTextContent(CAROL_ID);
+  });
+
+  it("paints each person in the colour their caret uses, away from your own", () => {
+    render(<CollabPane />);
+    const people = screen.getByRole("list", { name: pane.people });
+    const rows = within(people).getAllByRole("listitem");
+    const bob = rows[1].querySelector('[data-slot="avatar"]');
+    expect(peerHue(BOB_ID, ALICE_ID)).not.toBe(avatarHue(BOB_ID));
+    expect(bob).toHaveStyle({ backgroundColor: `hsl(${peerHue(BOB_ID, ALICE_ID)} 55% 45%)` });
+    const you = rows[0].querySelector('[data-slot="avatar"]');
+    expect(you).toHaveStyle({ backgroundColor: `hsl(${avatarHue(ALICE_ID)} 55% 45%)` });
   });
 
   it("shows the activity newest first with relative times and folded counts", () => {
@@ -154,6 +179,38 @@ describe("CollabPane", () => {
     expect(screen.getByText(fill(activity.mergedFile, { path: "refs.bib", number: "20" }))).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: activity.signIn }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
+  });
+
+  it("says quietly who signed in on a new device", () => {
+    feed([{ kind: "newDevice", at: NOW, accountId: BOB_ID, name: "Bob Smith", count: 1 }]);
+    render(<CollabPane />);
+    expect(screen.getByText(fill(activity.newDevice, { name: "Bob Smith" }))).toBeInTheDocument();
+  });
+
+  it("offers a read-only review of a merge that recorded its versions", async () => {
+    const review = { before: "before-mark", after: "after-mark" };
+    feed([
+      {
+        kind: "merged",
+        at: NOW,
+        files: [{ path: "main.tex", changes: 2 }],
+        authors: [{ accountId: BOB_ID, files: [{ path: "main.tex", changes: 2 }] }],
+        review,
+        count: 1,
+      },
+      { kind: "merged", at: NOW - 1000, files: [{ path: "old.tex", changes: 1 }], count: 1 },
+    ]);
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const offered = screen.getAllByRole("button", { name: activity.review });
+    expect(offered).toHaveLength(1);
+    await user.click(offered[0]);
+    expect(screen.getByTestId("merge-review")).toBeInTheDocument();
+    expect(spies.review).toHaveBeenLastCalledWith(
+      expect.objectContaining({ projectId: "grant", entry: expect.objectContaining({ review }) }),
+    );
+    await user.click(screen.getByTestId("merge-review-done"));
+    expect(screen.queryByTestId("merge-review")).toBeNull();
   });
 
   it("says when nothing has happened yet", () => {

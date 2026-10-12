@@ -295,6 +295,17 @@ describe("CollabToolbarItem", () => {
     expect(avatars[1].parentElement).toHaveClass("-ml-1");
   });
 
+  it("paints each avatar in the same colour as that person's caret", () => {
+    liveShared({ state: "online" }, 0, {
+      alice: { ...peer("alice", ALICE_ID, "intro.tex"), hue: 210 },
+      carol: { ...peer("carol", CAROL_ID, null), hue: 15 },
+    });
+    const { container } = render(<CollabToolbarItem />);
+    const avatars = container.querySelectorAll('[data-slot="avatar"]');
+    expect(avatars[0]).toHaveStyle({ backgroundColor: "hsl(210 55% 45%)" });
+    expect(avatars[1]).toHaveStyle({ backgroundColor: "hsl(15 55% 45%)" });
+  });
+
   it("adds no toolbar item while nobody else is here", () => {
     liveShared({ state: "online" }, 0, { mine: peer("mine", BOB_ID, "main.tex") });
     const { container } = render(<CollabToolbarItem />);

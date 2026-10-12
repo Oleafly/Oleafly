@@ -75,6 +75,8 @@ import type {
   CollabDocOpened,
   CollabLiveInfo,
   CollabLiveMerged,
+  CollabLiveNewDevice,
+  CollabMergeReviewFile,
   CollabShareCheck,
   CollabLiveRole,
   CollabLiveStatus,
@@ -1726,6 +1728,7 @@ export const COLLAB_LIVE_ROLE_EVENT = "collab-live-role";
 export const COLLAB_PRESENCE_EVENT = "collab-presence";
 export const COLLAB_PRESENCE_LEFT_EVENT = "collab-presence-left";
 export const COLLAB_LIVE_MERGED_EVENT = "collab-live-merged";
+export const COLLAB_LIVE_NEW_DEVICE_EVENT = "collab-live-new-device";
 export const COLLAB_OPEN_LINK_EVENT = "collab-open-link";
 
 export const collabShareInfo = (projectId: string) =>
@@ -1792,6 +1795,9 @@ export const collabPresenceSet = (
   cursor: number | null,
   anchor: number | null,
 ) => invoke<void>("collab_presence_set", { projectId, path, cursor, anchor });
+export const collabPresenceLeave = (projectId: string) => invoke<void>("collab_presence_leave", { projectId });
+export const collabMergeReview = (projectId: string, before: string, after: string) =>
+  invoke<CollabMergeReviewFile[]>("collab_merge_review", { projectId, before, after });
 
 export function onCollabShareProgress(
   handler: (payload: CollabShareProgress) => void,
@@ -1805,6 +1811,10 @@ export function onCollabLiveStatus(handler: (payload: CollabLiveStatus) => void)
 
 export function onCollabLiveMerged(handler: (payload: CollabLiveMerged) => void): Promise<UnlistenFn> {
   return listen<CollabLiveMerged>(COLLAB_LIVE_MERGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabLiveNewDevice(handler: (payload: CollabLiveNewDevice) => void): Promise<UnlistenFn> {
+  return listen<CollabLiveNewDevice>(COLLAB_LIVE_NEW_DEVICE_EVENT, ({ payload }) => handler(payload));
 }
 
 export function onCollabLiveRole(handler: (payload: CollabLiveRole) => void): Promise<UnlistenFn> {

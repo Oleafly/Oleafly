@@ -325,6 +325,19 @@ impl Session<'_> {
             ClientFrame::Presence { project_id, state } => {
                 self.presence(socket, ticket, project_id, state).await
             }
+            ClientFrame::PresenceLeave { project_id } => {
+                if self.state.rooms.is_member(project_id, ticket.id) {
+                    self.state.rooms.broadcast(
+                        project_id,
+                        Some(ticket.id),
+                        &ServerFrame::PresenceLeft {
+                            project_id,
+                            device_id: self.device,
+                        },
+                    );
+                }
+                true
+            }
             ClientFrame::Hello { .. } => {
                 send(
                     socket,
@@ -438,6 +451,7 @@ impl Session<'_> {
                 let frame = ServerFrame::Update {
                     project_id: project,
                     seq: stored.seq,
+                    account_id: Some(stored.account),
                     envelope,
                 };
                 if !send(socket, &frame).await {
@@ -533,6 +547,7 @@ impl Session<'_> {
                         &ServerFrame::Update {
                             project_id: project,
                             seq: appended.seq,
+                            account_id: Some(account),
                             envelope,
                         },
                     );

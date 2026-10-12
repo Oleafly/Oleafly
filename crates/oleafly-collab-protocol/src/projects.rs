@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{AccountId, SharedProjectId};
+use crate::ids::{AccountId, DeviceId, SharedProjectId};
 pub use crate::roles::ProjectRole;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -40,6 +40,14 @@ pub struct ProjectMember {
     pub person: PersonSummary,
     pub role: ProjectRole,
     pub granted_at: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectDevice {
+    pub device_id: DeviceId,
+    pub account_id: AccountId,
+    pub public_key: String,
+    pub added_at: i64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -198,6 +206,20 @@ mod tests {
                 role: ProjectRole::Viewer,
             },
             json!({ "role": "viewer" }),
+        );
+        round_trip(
+            ProjectDevice {
+                device_id: "01920000-0000-7000-8000-000000000003".parse().unwrap(),
+                account_id: ACCOUNT.parse().unwrap(),
+                public_key: "AQID".to_string(),
+                added_at: 7,
+            },
+            json!({
+                "device_id": "01920000-0000-7000-8000-000000000003",
+                "account_id": ACCOUNT,
+                "public_key": "AQID",
+                "added_at": 7
+            }),
         );
         round_trip(
             PresenceState {

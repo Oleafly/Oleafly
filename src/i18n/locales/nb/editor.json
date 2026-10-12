@@ -474,6 +474,7 @@
     "openInAgent": "Fortsett i AI-assistenten med alle prosjektverktøyene",
     "generateFailed": "Kunne ikke lage endringen. {{message}}",
     "dismiss": "Lukk",
+    "withdrawn": "Noen andre har redigert denne teksten, så forslaget kan ikke lenger brukes.",
     "setUpProvider": "Sett opp en AI-leverandør",
     "setUpProviderHint": "Legg inn en API-nøkkel (eller lokal Ollama) for å bruke AI-endringer i linjen.",
     "openAiSettings": "Åpne Innstillinger → AI"

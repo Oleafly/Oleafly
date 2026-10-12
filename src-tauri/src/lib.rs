@@ -300,7 +300,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
-    crate::collab::links::remember(crate::collab::links::links_in(std::env::args().skip(1)));
+    crate::collab::links::remember(crate::collab::links::links_in(std::env::args_os().skip(1)));
     crate::open_request::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
@@ -733,7 +733,9 @@ pub fn run() {
             collab::live::collab_doc_change,
             collab::live::collab_doc_close,
             collab::live::collab_presence_set,
+            collab::live::collab_presence_leave,
             collab::live::collab_sync_resume,
+            collab::review::collab_merge_review,
             collab::links::collab_pending_links,
             community::discord_community_stats,
             release_notes::release_notes_page,

@@ -23,6 +23,7 @@ beforeEach(() => {
     peers: {},
     members: [projectMember(BOB, "owner"), projectMember(person(), "editor")],
     merged: null,
+    newDevice: null,
     ended: null,
   });
 });
@@ -31,7 +32,14 @@ describe("CollabActivityKeeper", () => {
   it("turns sharing events into pane activity and a rail dot instead of editor banners", () => {
     const { container, unmount } = render(<CollabActivityKeeper />);
     act(() =>
-      useCollabLiveStore.setState({ merged: { projectId: "grant", files: [{ path: "main.tex", changes: 2 }] } }),
+      useCollabLiveStore.setState({
+        merged: {
+          projectId: "grant",
+          files: [{ path: "main.tex", changes: 2 }],
+          authors: [],
+          review: { before: "before", after: "after" },
+        },
+      }),
     );
     act(() =>
       useCollabLiveStore.setState({

@@ -1,7 +1,8 @@
 use oleafly_collab_protocol::admin::MemberStatus;
 use oleafly_collab_protocol::ids::{AccountId, BatchId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
-    PersonSummary, ProjectMember, ProjectPatch, ProjectRole, ProjectStatus, ProjectSummary,
+    PersonSummary, ProjectDevice, ProjectMember, ProjectPatch, ProjectRole, ProjectStatus,
+    ProjectSummary,
 };
 use rusqlite::{params, Connection, OptionalExtension};
 
@@ -27,6 +28,7 @@ pub struct ProjectRow {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StoredUpdate {
     pub seq: u64,
+    pub account: AccountId,
     pub envelope: Vec<u8>,
 }
 
@@ -429,7 +431,7 @@ pub fn updates_since(
     since: u64,
 ) -> Result<Vec<StoredUpdate>, ServerError> {
     let mut statement = conn.prepare(
-        "SELECT seq, envelope FROM project_updates WHERE project_id = ?1 AND seq > ?2 ORDER BY seq LIMIT ?3",
+        "SELECT seq, account_id, envelope FROM project_updates WHERE project_id = ?1 AND seq > ?2 ORDER BY seq LIMIT ?3",
     )?;
     let rows = statement
         .query_map(
@@ -439,14 +441,56 @@ pub fn updates_since(
                 i64::try_from(BACKLOG_LIMIT).unwrap_or(i64::MAX)
             ],
             |row| {
-                Ok(StoredUpdate {
-                    seq: seq_from(row.get::<_, i64>(0)?),
-                    envelope: row.get::<_, Vec<u8>>(1)?,
-                })
+                Ok((
+                    seq_from(row.get::<_, i64>(0)?),
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Vec<u8>>(2)?,
+                ))
             },
         )?
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(rows)
+    rows.into_iter()
+        .map(|(seq, account, envelope)| {
+            Ok(StoredUpdate {
+                seq,
+                account: parse_id(&account)?,
+                envelope,
+            })
+        })
+        .collect()
+}
+
+pub fn devices(
+    conn: &Connection,
+    project: SharedProjectId,
+) -> Result<Vec<ProjectDevice>, ServerError> {
+    let mut statement = conn.prepare(
+        "SELECT d.id, d.account_id, d.public_key, d.created_at FROM devices d \
+         WHERE (d.revoked_at IS NULL AND d.account_id IN \
+                (SELECT account_id FROM project_grants WHERE project_id = ?1)) \
+            OR d.id IN (SELECT device_id FROM project_updates WHERE project_id = ?1) \
+         ORDER BY d.created_at, d.id",
+    )?;
+    let rows = statement
+        .query_map([project.to_string()], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    rows.into_iter()
+        .map(|(device, account, public_key, added_at)| {
+            Ok(ProjectDevice {
+                device_id: parse_id(&device)?,
+                account_id: parse_id(&account)?,
+                public_key,
+                added_at,
+            })
+        })
+        .collect()
 }
 
 pub fn oldest_kept_update(

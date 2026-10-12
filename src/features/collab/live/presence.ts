@@ -1,3 +1,5 @@
+import type { CollabPresence } from "@/store/settings";
+
 export interface Presence {
   path: string | null;
   cursor: number | null;
@@ -15,9 +17,16 @@ export interface PresencePublisher {
 const sameAs = (a: Presence | null, b: Presence) =>
   a !== null && a.path === b.path && a.cursor === b.cursor && a.anchor === b.anchor;
 
+export function visiblePresence(presence: Presence, visibility: CollabPresence): Presence | null {
+  if (visibility === "hidden") return null;
+  if (visibility === "file") return { path: presence.path, cursor: null, anchor: null };
+  return presence;
+}
+
 export function createPresencePublisher(
-  read: () => Presence,
+  read: () => Presence | null,
   send: (presence: Presence) => void,
+  leave: () => void,
 ): PresencePublisher {
   let lastAt = Number.NEGATIVE_INFINITY;
   let lastSent: Presence | null = null;
@@ -32,6 +41,12 @@ export function createPresencePublisher(
     if (disposed) return;
     lastAt = Date.now();
     const presence = read();
+    if (presence === null) {
+      if (lastSent === null) return;
+      lastSent = null;
+      leave();
+      return;
+    }
     if (sameAs(lastSent, presence)) return;
     lastSent = presence;
     send(presence);

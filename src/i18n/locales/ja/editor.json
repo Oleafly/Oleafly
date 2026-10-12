@@ -467,6 +467,7 @@
     "openInAgent": "プロジェクトのツールをすべて使える AI アシスタントで続ける",
     "generateFailed": "編集を生成できませんでした。{{message}}",
     "dismiss": "閉じる",
+    "withdrawn": "他の人がこのテキストを編集したため、この提案は適用できません。",
     "setUpProvider": "AI プロバイダを設定する",
     "setUpProviderHint": "インラインの AI 編集を使うには、API キー（またはローカルの Ollama）を追加してください。",
     "openAiSettings": "設定 → AI を開く"

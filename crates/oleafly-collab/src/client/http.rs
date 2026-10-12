@@ -12,8 +12,8 @@ use oleafly_collab_protocol::auth::{
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
-    MemberGrant, NewProject, PersonSummary, ProjectMember, ProjectPatch, ProjectRole,
-    ProjectSummary,
+    MemberGrant, NewProject, PersonSummary, ProjectDevice, ProjectMember, ProjectPatch,
+    ProjectRole, ProjectSummary,
 };
 use reqwest::header::LOCATION;
 use reqwest::{RequestBuilder, Response, StatusCode};
@@ -477,6 +477,19 @@ impl ServerClient {
         json(
             self.http
                 .get(self.project_url(project, &["members"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn project_devices(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<Vec<ProjectDevice>, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &["devices"]))
                 .bearer_auth(access),
         )
         .await

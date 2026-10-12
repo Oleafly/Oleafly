@@ -60,7 +60,10 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_OIDC_<NAME>_LABEL` | The text on its sign-in button, such as `University login`. | `<NAME>` |
 | `OLEAFLY_OIDC_<NAME>_TRUST_EMAIL` | Treat every email address from this provider as verified. Read [Email addresses](#email-addresses) first. | `false` |
 | `OLEAFLY_SMTP_URL`, `OLEAFLY_MAIL_FROM` | Email. Read [Email](#email). | Off |
-| `OLEAFLY_BLOB_STORE` | Where files are stored. Leave it as `fs`, which keeps them in `OLEAFLY_DATA_DIR`. | `fs` |
+| `OLEAFLY_BLOB_STORE` | Where files such as figures and PDFs are stored. `fs` keeps them in `OLEAFLY_DATA_DIR`. An address such as `s3://lab-bucket` or `s3://lab-bucket/oleafly` keeps them in a bucket. Read [Files in a bucket](#files-in-a-bucket). | `fs` |
+| `OLEAFLY_S3_ENDPOINT` | The address of an S3-compatible store other than Amazon S3, such as MinIO or Cloudflare R2. Leave it empty for Amazon S3. | Amazon S3 |
+| `OLEAFLY_S3_REGION` | The bucket's region. | `us-east-1` |
+| `OLEAFLY_S3_ACCESS_KEY_ID`, `OLEAFLY_S3_SECRET_ACCESS_KEY` | The key the server uses for the bucket. Required with an `s3://` address. | None |
 | `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. | `200` |
 | `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
@@ -73,7 +76,28 @@ In the Compose `.env` file, put a value in single quotes if it contains `$` or `
 
 ### Keeping secrets in files
 
-Five settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL` and `OLEAFLY_BLOB_STORE`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
+Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
+
+### Files in a bucket
+
+By default the server keeps files in `OLEAFLY_DATA_DIR`. It can keep them in Amazon S3 instead, or in another store with an S3-compatible API, such as MinIO or Cloudflare R2. The database and project snapshots stay in `OLEAFLY_DATA_DIR` either way, so the server still needs its data folder.
+
+1. Create a bucket and block public access to it.
+2. Create a key that can read, write and delete objects in that bucket and nothing else. On Amazon S3 that means `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::lab-bucket/*`, or on `arn:aws:s3:::lab-bucket/oleafly/*` if you use a folder.
+3. Set the variables, for example in `.env`:
+
+   ```sh
+   OLEAFLY_BLOB_STORE=s3://lab-bucket/oleafly
+   OLEAFLY_S3_REGION=eu-west-1
+   OLEAFLY_S3_ACCESS_KEY_ID=your-access-key-id
+   OLEAFLY_S3_SECRET_ACCESS_KEY=your-secret-access-key
+   ```
+
+For a store other than Amazon S3, also set `OLEAFLY_S3_ENDPOINT` to its address, such as `https://minio.example.org:9000` or `https://<account-id>.r2.cloudflarestorage.com`, and set `OLEAFLY_S3_REGION` to the region it expects (`auto` for R2). The server then puts the bucket name in the path of each request rather than in the host name. Plain `http://` works too, but use it only when the store sits on the same private network as the server.
+
+The part after the bucket name is an optional folder. Each file is named after its SHA-256 hash and sits under the first two characters of that hash, so a file whose hash starts with `3f9a` is stored as `oleafly/3f/3f9a...`. When the server reads a file back, it checks the bytes against the hash and refuses a file that doesn't match.
+
+If a setting is missing or malformed, the server doesn't start and says which one. If the bucket refuses a request or doesn't answer in time, that upload or download fails, and the server log shows what the bucket said, such as `403 Forbidden (AccessDenied)`.
 
 ## Docker Compose
 
@@ -394,7 +418,7 @@ This version checks these settings when it starts, but it doesn't send email yet
 
 ## Backups
 
-Everything the server keeps is in its data folder. Back it up regularly and keep the copies private, since they hold every project.
+Everything the server keeps is in its data folder. Back it up regularly and keep the copies private, since they hold every project. If you keep files in a bucket, back up the bucket too, or turn on versioning for it.
 
 With Docker Compose, the server stops for a few seconds while you copy the volume. Oleafly reconnects by itself.
 

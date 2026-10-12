@@ -11,6 +11,15 @@
         "description": "Pyydä palvelimen osoite henkilöltä, joka ylläpitää ryhmäsi palvelinta, ja lisää se sitten tähän."
       }
     },
+    "presence": {
+      "label": "Mitä muut näkevät",
+      "description": "Valitse, mitä jaettujen projektiesi muut osallistujat näkevät, kun työskentelet. Asetus tehdään erikseen jokaisella koneella.",
+      "options": {
+        "cursor": "Näytä kohdistimeni",
+        "file": "Näytä vain, missä tiedostossa olen",
+        "hidden": "Piilota minut"
+      }
+    },
     "server": {
       "signedIn": "Kirjautunut",
       "signedOut": "Ei kirjautunut",
@@ -435,6 +444,21 @@
     "archived": "Omistaja lopetti tämän projektin jakamisen. Kopiosi jää tänne tavallisena projektina.",
     "signedOut": "Olet kirjautunut ulos palvelimelta {{server}}, joten tämä projekti ei synkronoidu. Muutoksesi pysyvät tällä koneella.",
     "signIn": "Kirjaudu sisään",
-    "repeated": "Kertoja peräkkäin: {{number}}"
+    "repeated": "Kertoja peräkkäin: {{number}}",
+    "newDevice": "{{name}} kirjautui uudella laitteella",
+    "review": "Tarkastele"
+  },
+  "mergeReview": {
+    "title": "Poissaolosi aikana yhdistetyt muutokset",
+    "description": "Mitä muut muuttivat, kun olit offline-tilassa. Tätä näkymää voi vain lukea.",
+    "people": "Henkilöittäin",
+    "person": "{{name}}: {{number}}",
+    "files": "Tiedostoittain",
+    "loading": "Ladataan muutoksia",
+    "failed": "Muutoksia ei voitu ladata. Yritä myöhemmin uudelleen.",
+    "noText": "Mikään teksti ei muuttunut, joten vertailtavaa ei ole.",
+    "newFile": "Uusi tiedosto",
+    "removedFile": "Poistettu",
+    "diffLabel": "Muutokset tiedostossa {{path}}"
   }
 }

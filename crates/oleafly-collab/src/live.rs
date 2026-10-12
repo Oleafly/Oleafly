@@ -1,13 +1,18 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
 use loro::VersionVector;
-use oleafly_collab_protocol::ids::BatchId;
-use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, ProjectRole};
+use oleafly_collab_protocol::ids::{AccountId, BatchId};
+use oleafly_collab_protocol::projects::{
+    project_role_allows, ProjectAction, ProjectDevice, ProjectRole,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::doc::{advance, decode_version, delta_to_operation, DocChanges, ProjectDoc};
+use crate::devices::{DeviceRegistry, NewDevice};
+use crate::doc::{
+    advance, decode_version, delta_to_operation, encode_version, DocChanges, ProjectDoc,
+};
 use crate::editor::{ChannelError, DocMessage, EditorChannel};
 use crate::ot::TextOperation;
 use crate::{write_atomic, CollabError};
@@ -17,6 +22,7 @@ pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 const DOC_FILE: &str = "doc.bin";
 const STATE_FILE: &str = "sync.json";
 const LOG_FILE: &str = "doc.log";
+const DEVICES_FILE: &str = "devices.json";
 const LOG_LIMIT: usize = 500;
 
 struct OpenFile {
@@ -44,6 +50,20 @@ impl DiskWork {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MergeReport {
+    pub before: Vec<u8>,
+    pub after: Vec<u8>,
+    pub files: BTreeMap<String, u32>,
+    pub authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
+}
+
+struct CatchUp {
+    before: VersionVector,
+    files: BTreeMap<String, u32>,
+    authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct StoredState {
     last_seq: u64,
@@ -60,10 +80,12 @@ pub struct LiveProject {
     disk: DiskWork,
     role: ProjectRole,
     received: u64,
-    catch_up: Option<std::collections::BTreeMap<String, u32>>,
+    catch_up: Option<CatchUp>,
     seen: BTreeSet<u64>,
     persisted: Option<VersionVector>,
     log_records: usize,
+    devices: DeviceRegistry,
+    devices_dirty: bool,
 }
 
 fn read_log(path: &Path) -> Vec<Vec<u8>> {
@@ -117,6 +139,8 @@ impl LiveProject {
             seen: BTreeSet::new(),
             persisted: None,
             log_records: 0,
+            devices: DeviceRegistry::default(),
+            devices_dirty: false,
         }
     }
 
@@ -139,6 +163,7 @@ impl LiveProject {
         live.confirmed = decode_version(&state.confirmed)?;
         live.persisted = Some(live.doc.version());
         live.log_records = records.len();
+        live.devices = DeviceRegistry::load(&dir.join(DEVICES_FILE));
         Ok(live)
     }
 
@@ -169,7 +194,12 @@ impl LiveProject {
         };
         let json =
             serde_json::to_vec(&state).map_err(|error| CollabError::Corrupt(error.to_string()))?;
-        write_atomic(&dir.join(STATE_FILE), &json)
+        write_atomic(&dir.join(STATE_FILE), &json)?;
+        if self.devices_dirty {
+            self.devices.save(&dir.join(DEVICES_FILE))?;
+            self.devices_dirty = false;
+        }
+        Ok(())
     }
 
     pub fn exists(dir: &Path) -> bool {
@@ -203,6 +233,19 @@ impl LiveProject {
 
     pub fn received(&self) -> u64 {
         self.received
+    }
+
+    pub fn devices(&self) -> &DeviceRegistry {
+        &self.devices
+    }
+
+    pub fn pin_devices(&mut self, listed: Vec<ProjectDevice>) -> Vec<NewDevice> {
+        let before = self.devices.clone();
+        let announced = self.devices.pin(listed);
+        if self.devices != before {
+            self.devices_dirty = true;
+        }
+        announced
     }
 
     pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<(u64, String), CollabError> {
@@ -260,14 +303,22 @@ impl LiveProject {
         Ok(())
     }
 
-    fn route(&mut self, changes: DocChanges) -> Result<(), CollabError> {
+    fn route(&mut self, changes: DocChanges, author: Option<AccountId>) -> Result<(), CollabError> {
         if changes.tree {
             self.disk.tree = true;
         }
         for (id, deltas) in changes.texts {
             self.disk.texts.insert(id.clone());
-            if let Some(counts) = self.catch_up.as_mut() {
-                *counts.entry(id.clone()).or_default() += 1;
+            if let Some(catch_up) = self.catch_up.as_mut() {
+                *catch_up.files.entry(id.clone()).or_default() += 1;
+                if let Some(author) = author {
+                    *catch_up
+                        .authors
+                        .entry(author)
+                        .or_default()
+                        .entry(id.clone())
+                        .or_default() += 1;
+                }
             }
             let Some(open) = self.open.get_mut(&id) else {
                 continue;
@@ -302,6 +353,15 @@ impl LiveProject {
     }
 
     pub fn import_update(&mut self, seq: u64, payload: &[u8]) -> Result<bool, CollabError> {
+        self.import_update_from(seq, payload, None)
+    }
+
+    pub fn import_update_from(
+        &mut self,
+        seq: u64,
+        payload: &[u8],
+        author: Option<AccountId>,
+    ) -> Result<bool, CollabError> {
         if seq <= self.last_seq || self.seen.contains(&seq) {
             return Ok(false);
         }
@@ -309,8 +369,12 @@ impl LiveProject {
         advance(&mut self.confirmed, &imported.arrived);
         self.mark_seen(seq);
         self.received += 1;
-        self.route(imported.changes)?;
+        self.route(imported.changes, author)?;
         Ok(true)
+    }
+
+    pub fn skip_update(&mut self, seq: u64) {
+        self.mark_seen(seq);
     }
 
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
@@ -319,15 +383,28 @@ impl LiveProject {
         self.last_seq = self.last_seq.max(seq);
         self.seen.retain(|known| *known > seq);
         self.mark_seen(seq);
-        self.route(imported.changes)
+        self.route(imported.changes, None)
     }
 
     pub fn begin_catch_up(&mut self) {
-        self.catch_up = Some(std::collections::BTreeMap::new());
+        self.catch_up = Some(CatchUp {
+            before: self.doc.version(),
+            files: BTreeMap::new(),
+            authors: BTreeMap::new(),
+        });
     }
 
-    pub fn end_catch_up(&mut self) -> std::collections::BTreeMap<String, u32> {
-        self.catch_up.take().unwrap_or_default()
+    pub fn end_catch_up(&mut self) -> Option<MergeReport> {
+        let catch_up = self.catch_up.take()?;
+        if catch_up.files.is_empty() {
+            return None;
+        }
+        Some(MergeReport {
+            before: encode_version(&catch_up.before),
+            after: encode_version(&self.doc.version()),
+            files: catch_up.files,
+            authors: catch_up.authors,
+        })
     }
 
     pub fn pending_changes(&self) -> u64 {
@@ -337,7 +414,7 @@ impl LiveProject {
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
         let changes = self.doc.set_text(id, content)?;
         let changed = !changes.is_empty();
-        self.route(changes)?;
+        self.route(changes, None)?;
         Ok(changed)
     }
 
@@ -456,6 +533,7 @@ mod tests {
 
     use super::*;
     use crate::doc::NodeKind;
+    use oleafly_collab_protocol::ids::AccountId;
 
     fn recorder() -> (DocSink, Arc<Mutex<Vec<DocMessage>>>) {
         let seen = Arc::new(Mutex::new(Vec::new()));
@@ -592,20 +670,87 @@ mod tests {
     }
 
     #[test]
-    fn changes_that_arrive_while_catching_up_are_counted_per_file() {
+    fn changes_that_arrive_while_catching_up_are_counted_per_file_and_author() {
+        let (mut bob, mut alice, main) = pair();
+        let bob_account = AccountId::new_v7();
+        let carol_account = AccountId::new_v7();
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 1);
+        bob.local_text(&main, "abcde").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        let before = alice.doc().version();
+        alice.begin_catch_up();
+        alice
+            .import_update_from(1, &first.payload, Some(bob_account))
+            .unwrap();
+        alice
+            .import_update_from(2, &second.payload, Some(carol_account))
+            .unwrap();
+        let report = alice.end_catch_up().expect("something merged");
+        assert_eq!(report.files.get(&main), Some(&2));
+        assert_eq!(
+            report
+                .authors
+                .get(&bob_account)
+                .and_then(|files| files.get(&main)),
+            Some(&1)
+        );
+        assert_eq!(
+            report
+                .authors
+                .get(&carol_account)
+                .and_then(|files| files.get(&main)),
+            Some(&1)
+        );
+        assert_eq!(crate::doc::decode_version(&report.before).unwrap(), before);
+        assert_eq!(
+            crate::doc::decode_version(&report.after).unwrap(),
+            alice.doc().version()
+        );
+        assert!(alice.end_catch_up().is_none());
+        assert_eq!(bob.pending_changes(), 1);
+    }
+
+    #[test]
+    fn a_catch_up_that_brings_nothing_reports_nothing() {
+        let (_bob, mut alice, _main) = pair();
+        alice.begin_catch_up();
+        assert!(alice.end_catch_up().is_none());
+    }
+
+    #[test]
+    fn a_refused_update_is_skipped_so_later_ones_still_move_the_cursor() {
         let (mut bob, mut alice, main) = pair();
         bob.local_text(&main, "abcd").unwrap();
         let first = bob.next_outgoing().unwrap().unwrap();
         bob.acknowledged(first.batch, 1);
         bob.local_text(&main, "abcde").unwrap();
         let second = bob.next_outgoing().unwrap().unwrap();
-        alice.begin_catch_up();
-        alice.import_update(1, &first.payload).unwrap();
-        alice.import_update(2, &second.payload).unwrap();
-        let counts = alice.end_catch_up();
-        assert_eq!(counts.get(&main), Some(&2));
-        assert!(alice.end_catch_up().is_empty());
-        assert_eq!(bob.pending_changes(), 1);
+        alice.skip_update(1);
+        assert_eq!(alice.last_seq(), 1);
+        assert!(alice.import_update(2, &second.payload).unwrap());
+        assert_eq!(alice.last_seq(), 2);
+        assert!(!alice.import_update(1, &first.payload).unwrap());
+    }
+
+    #[test]
+    fn pinned_devices_are_kept_beside_the_document() {
+        let (mut bob, _alice, _main) = pair();
+        let laptop = oleafly_collab_protocol::ids::DeviceId::new_v7();
+        let alice = AccountId::new_v7();
+        assert!(bob.devices().is_empty());
+        bob.pin_devices(vec![oleafly_collab_protocol::projects::ProjectDevice {
+            device_id: laptop,
+            account_id: alice,
+            public_key: "AQID".to_owned(),
+            added_at: 1,
+        }]);
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        assert!(dir.path().join(DEVICES_FILE).is_file());
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(loaded.devices().account_of(laptop), Some(alice));
     }
 
     #[test]

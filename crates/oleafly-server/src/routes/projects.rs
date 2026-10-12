@@ -9,14 +9,14 @@ use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
-    project_role_allows, MemberGrant, NewProject, PersonSummary, ProjectAction, ProjectMember,
-    ProjectPatch, ProjectRole, ProjectStatus, ProjectSummary,
+    project_role_allows, MemberGrant, NewProject, PersonSummary, ProjectAction, ProjectDevice,
+    ProjectMember, ProjectPatch, ProjectRole, ProjectStatus, ProjectSummary,
 };
 use oleafly_collab_protocol::roles::{ServerAction, ServerRole};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::blobs::{valid_hash, write_atomically, BlobStore};
+use crate::blobs::{valid_hash, write_atomically};
 use crate::error::ServerError;
 use crate::projects::{self, ProjectRow};
 use crate::routes::{json_body, path_id, Authenticated, ClientIp};
@@ -48,6 +48,7 @@ pub fn router() -> Router<AppState> {
                 .route_layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES)),
         )
         .route("/api/v1/projects/{project}/members", get(list_members))
+        .route("/api/v1/projects/{project}/devices", get(list_devices))
         .route(
             "/api/v1/projects/{project}/members/{account}",
             put(grant_member).delete(remove_member),
@@ -420,12 +421,8 @@ async fn put_blob(
             Ok(())
         })
         .await?;
-    let store = BlobStore::new(&state.config.data_dir);
     let size = body.len() as u64;
-    let stored_hash = hash.clone();
-    tokio::task::spawn_blocking(move || store.put(&stored_hash, &body))
-        .await
-        .map_err(|error| ServerError::Internal(format!("the upload task failed: {error}")))??;
+    state.blobs.put(&hash, body).await?;
     state
         .db
         .call(move |conn| projects::add_blob(conn, project, &hash, size))
@@ -452,11 +449,7 @@ async fn get_blob(
             }
         })
         .await?;
-    let store = BlobStore::new(&state.config.data_dir);
-    let bytes = tokio::task::spawn_blocking(move || store.get(&hash))
-        .await
-        .map_err(|error| ServerError::Internal(format!("the download task failed: {error}")))??
-        .ok_or(ServerError::NotFound)?;
+    let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
     Ok((
         [(
             header::CONTENT_TYPE,
@@ -584,6 +577,23 @@ async fn list_members(
             let (_, role) = access(conn, project, account)?;
             let emails = role == ProjectRole::Owner || sees_emails(conn, server_role)?;
             projects::members(conn, project, emails)
+        })
+        .await?;
+    Ok(Json(listed))
+}
+
+async fn list_devices(
+    State(state): State<AppState>,
+    auth: Authenticated,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Json<Vec<ProjectDevice>>, ServerError> {
+    let project: SharedProjectId = path_id(path)?;
+    let account = auth.account_id;
+    let listed = state
+        .db
+        .call(move |conn| {
+            access(conn, project, account)?;
+            projects::devices(conn, project)
         })
         .await?;
     Ok(Json(listed))

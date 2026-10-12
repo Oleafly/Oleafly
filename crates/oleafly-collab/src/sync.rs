@@ -1,8 +1,10 @@
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
+use oleafly_collab_protocol::crypto::verify_ed25519;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
@@ -13,7 +15,8 @@ use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::{connect_socket, ServerClient, Socket};
-use crate::live::{LiveProject, Outgoing};
+use crate::devices::Verdict;
+use crate::live::{LiveProject, MergeReport, Outgoing};
 use crate::{CollabError, DeviceKey, SessionManager};
 
 const PING_EVERY: Duration = Duration::from_secs(20);
@@ -67,14 +70,23 @@ pub enum LiveEvent {
     PresenceLeft {
         device_id: DeviceId,
     },
-    Merged(Vec<(String, u32)>),
+    Merged(MergeReport),
     Acknowledged,
+    NewDevice {
+        account_id: AccountId,
+        device_id: DeviceId,
+    },
+    Untrusted {
+        device_id: DeviceId,
+        seq: u64,
+    },
 }
 
 #[derive(Debug)]
 enum LiveCommand {
     Flush,
     Presence(PresenceState),
+    LeavePresence,
     Stop,
 }
 
@@ -90,6 +102,10 @@ impl LiveHandle {
 
     pub fn presence(&self, state: PresenceState) {
         let _ = self.commands.send(LiveCommand::Presence(state));
+    }
+
+    pub fn leave_presence(&self) {
+        let _ = self.commands.send(LiveCommand::LeavePresence);
     }
 
     pub fn stop(&self) {
@@ -170,7 +186,7 @@ async fn run(
                         let _ = events.send(LiveEvent::Status(LiveStatus::Ended { reason: EndReason::Stopped }));
                         return;
                     }
-                    Some(LiveCommand::Flush | LiveCommand::Presence(_)) => {}
+                    Some(LiveCommand::Flush | LiveCommand::Presence(_) | LiveCommand::LeavePresence) => {}
                 },
             }
         }
@@ -386,10 +402,73 @@ async fn serve(
     exit
 }
 
+enum Trust {
+    Signed(Option<AccountId>),
+    Refused,
+    Unreachable,
+}
+
+async fn trust(
+    link: &LiveLink,
+    project: &SharedLive,
+    events: &UnboundedSender<LiveEvent>,
+    refreshed: &mut BTreeSet<DeviceId>,
+    envelope: &Envelope,
+    claimed: Option<AccountId>,
+) -> Trust {
+    if envelope.project_id != link.project {
+        return Trust::Refused;
+    }
+    if envelope.device_id == link.device_id {
+        let own = verify_ed25519(
+            &link.key.public_key(),
+            &envelope.signing_bytes(),
+            &envelope.signature,
+        );
+        return if own {
+            Trust::Signed(claimed)
+        } else {
+            Trust::Refused
+        };
+    }
+    let verdict = lock(project).devices().verify(envelope, claimed);
+    match verdict {
+        Verdict::Signed(account) => return Trust::Signed(Some(account)),
+        Verdict::Forged => return Trust::Refused,
+        Verdict::Unknown if !refreshed.insert(envelope.device_id) => return Trust::Refused,
+        Verdict::Unknown => {}
+    }
+    let listed = match link
+        .sessions
+        .access_token(link.server_id, &link.client)
+        .await
+    {
+        Ok(access) => link.client.project_devices(&access, link.project).await,
+        Err(error) => Err(error),
+    };
+    let Ok(listed) = listed else {
+        return Trust::Unreachable;
+    };
+    let (announced, verdict) = {
+        let mut live = lock(project);
+        let announced = live.pin_devices(listed);
+        (announced, live.devices().verify(envelope, claimed))
+    };
+    for device in announced {
+        let _ = events.send(LiveEvent::NewDevice {
+            account_id: device.account_id,
+            device_id: device.device_id,
+        });
+    }
+    match verdict {
+        Verdict::Signed(account) => Trust::Signed(Some(account)),
+        Verdict::Unknown | Verdict::Forged => Trust::Refused,
+    }
+}
+
 fn report_merged(project: &SharedLive, events: &UnboundedSender<LiveEvent>) {
-    let counts = lock(project).end_catch_up();
-    if !counts.is_empty() {
-        let _ = events.send(LiveEvent::Merged(counts.into_iter().collect()));
+    if let Some(report) = lock(project).end_catch_up() {
+        let _ = events.send(LiveEvent::Merged(report));
     }
 }
 
@@ -412,21 +491,31 @@ async fn online(
     let mut ping_id = 0u64;
     let mut last_heard = tokio::time::Instant::now();
     let mut since_snapshot = 0u64;
+    let mut refreshed = BTreeSet::new();
     loop {
         tokio::select! {
             frame = wire.next() => {
                 let Ok(frame) = frame else { return retry };
                 last_heard = tokio::time::Instant::now();
                 match frame {
-                    ServerFrame::Update { seq, envelope, .. } => {
-                        let imported = lock(project).import_update(seq, &envelope.payload);
-                        match imported {
-                            Ok(true) => {
-                                let _ = events.send(LiveEvent::Changed);
-                                since_snapshot += 1;
+                    ServerFrame::Update { seq, account_id, envelope, .. } => {
+                        match trust(link, project, events, &mut refreshed, &envelope, account_id).await {
+                            Trust::Signed(author) => {
+                                let imported = lock(project).import_update_from(seq, &envelope.payload, author);
+                                match imported {
+                                    Ok(true) => {
+                                        let _ = events.send(LiveEvent::Changed);
+                                        since_snapshot += 1;
+                                    }
+                                    Ok(false) => {}
+                                    Err(_) => return retry,
+                                }
                             }
-                            Ok(false) => {}
-                            Err(_) => return retry,
+                            Trust::Refused => {
+                                lock(project).skip_update(seq);
+                                let _ = events.send(LiveEvent::Untrusted { device_id: envelope.device_id, seq });
+                            }
+                            Trust::Unreachable => return retry,
                         }
                         if catching_up.is_some_and(|head| seq >= head) {
                             catching_up = None;
@@ -477,6 +566,12 @@ async fn online(
                         return retry;
                     }
                 }
+                Some(LiveCommand::LeavePresence) => {
+                    let frame = ClientFrame::PresenceLeave { project_id: link.project };
+                    if wire.send(&frame).await.is_err() {
+                        return retry;
+                    }
+                }
                 Some(LiveCommand::Stop) | None => {
                     if lock(project).can_edit() && since_snapshot > 0 {
                         upload_snapshot(link, project);
@@ -515,7 +610,9 @@ mod tests {
     fn reconnecting_never_waits_more_than_five_seconds() {
         assert_eq!(BACKOFF_MS.iter().max(), Some(&5_000));
     }
-    use crate::client::test_util::{two_people, Pair, Person};
+    use crate::client::test_util::{
+        another_alice_device, canned, http_response, two_people, Pair, Person,
+    };
     use crate::doc::{NodeKind, ProjectDoc};
     use crate::editor::DocMessage;
     use crate::live::DocSink;
@@ -699,6 +796,46 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn hiding_tells_the_others_this_device_left_after_its_last_presence() {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut bob, LiveStatus::Online).await;
+        until_status(&mut alice, LiveStatus::Online).await;
+        let handle = alice.handle.as_ref().unwrap();
+        handle.presence(PresenceState {
+            file_id: Some(main.clone()),
+            cursor: Some(1),
+            anchor: None,
+        });
+        handle.leave_presence();
+        let device = pair.alice.tokens.device_id;
+        tokio::time::timeout(WAIT, async {
+            let mut placed = false;
+            while let Some(event) = bob.events.recv().await {
+                match event {
+                    LiveEvent::Presence {
+                        device_id, state, ..
+                    } if device_id == device => {
+                        placed = state.cursor == Some(1);
+                    }
+                    LiveEvent::PresenceLeft { device_id } if device_id == device => {
+                        assert!(placed, "the leave arrived after the last presence");
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .expect("the leave arrived");
+        assert!(!alice.handle.as_ref().unwrap().is_finished());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn an_acknowledged_change_is_reported_so_waiting_counts_can_update() {
         let pair = two_people().await;
         let (project, main, bob_live, _alice_live) = shared(&pair).await;
@@ -826,5 +963,344 @@ mod tests {
         until_status(&mut alice, LiveStatus::Online).await;
         assert_eq!(text(&alice, &main), "abcxyz");
         assert_eq!(lock(&alice.live).last_seq(), 3);
+    }
+
+    async fn until_text(side: &Side, main: &str, wanted: &str) {
+        tokio::time::timeout(WAIT, async {
+            while text(side, main) != wanted {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("the text never became {wanted:?}"));
+    }
+
+    async fn until_event(side: &mut Side, wanted: impl Fn(&LiveEvent) -> bool) -> LiveEvent {
+        tokio::time::timeout(WAIT, async {
+            while let Some(event) = side.events.recv().await {
+                if wanted(&event) {
+                    return event;
+                }
+            }
+            panic!("the events ended");
+        })
+        .await
+        .expect("the event arrived")
+    }
+
+    fn signed_envelope(person: &Person, project: SharedProjectId, payload: Vec<u8>) -> Envelope {
+        let mut envelope = Envelope {
+            v: 1,
+            project_id: project,
+            batch_id: oleafly_collab_protocol::ids::BatchId::new_v7(),
+            device_id: person.tokens.device_id,
+            mode: EnvelopeMode::Plain,
+            key_epoch: None,
+            payload,
+            signature: Vec::new(),
+        };
+        envelope.signature = person.key.sign(&envelope.signing_bytes()).to_vec();
+        envelope
+    }
+
+    async fn store_on_server(pair: &Pair, person: &Person, envelope: Envelope) {
+        let project = envelope.project_id;
+        store_in_project(pair, person, project, envelope).await;
+    }
+
+    async fn store_in_project(
+        pair: &Pair,
+        person: &Person,
+        project: SharedProjectId,
+        envelope: Envelope,
+    ) {
+        let (device, account) = (person.tokens.device_id, person.tokens.account_id);
+        pair._server
+            .state()
+            .db
+            .call(move |conn| {
+                let stored = serde_json::to_vec(&envelope).unwrap();
+                oleafly_server::projects::append_update(
+                    conn,
+                    project,
+                    envelope.batch_id,
+                    device,
+                    account,
+                    &stored,
+                    1,
+                )
+            })
+            .await
+            .expect("stored");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_device_seen_first_is_checked_after_one_refresh_and_a_later_one_is_announced() {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut bob, LiveStatus::Online).await;
+        until_status(&mut alice, LiveStatus::Online).await;
+        assert!(lock(&bob.live).devices().is_empty());
+        lock(&alice.live)
+            .editor_change(&main, 0, insert(0, "!", 3))
+            .unwrap();
+        alice.handle.as_ref().unwrap().flush();
+        assert_eq!(
+            next_message(&mut bob).await,
+            DocMessage::Remote {
+                rev: 1,
+                op: insert(0, "!", 3),
+                length: 4
+            }
+        );
+        assert_eq!(
+            lock(&bob.live)
+                .devices()
+                .account_of(pair.alice.tokens.device_id),
+            Some(pair.alice.tokens.account_id)
+        );
+        while let Ok(event) = bob.events.try_recv() {
+            assert!(!matches!(event, LiveEvent::NewDevice { .. }), "{event:?}");
+        }
+        let second = another_alice_device(&pair).await;
+        let client = ServerClient::new(pair.url.clone()).unwrap();
+        let (seq, snapshot) = client
+            .get_snapshot(&second.tokens.access_token, project)
+            .await
+            .unwrap();
+        let mut tablet = side(
+            LiveProject::new(
+                ProjectDoc::load(&snapshot).unwrap(),
+                seq,
+                ProjectRole::Editor,
+            ),
+            &main,
+        );
+        start(&mut tablet, link(&pair, &second, project));
+        until_text(&tablet, &main, "!abc").await;
+        assert!(matches!(
+            next_message(&mut tablet).await,
+            DocMessage::Remote { rev: 1, .. }
+        ));
+        lock(&tablet.live)
+            .editor_change(&main, 1, insert(4, "?", 4))
+            .unwrap();
+        tablet.handle.as_ref().unwrap().flush();
+        let announced = until_event(&mut bob, |event| {
+            matches!(event, LiveEvent::NewDevice { .. })
+        })
+        .await;
+        assert_eq!(
+            announced,
+            LiveEvent::NewDevice {
+                account_id: pair.alice.tokens.account_id,
+                device_id: second.tokens.device_id,
+            }
+        );
+        until_text(&bob, &main, "!abc?").await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_badly_signed_update_is_refused_and_syncing_goes_on() {
+        let pair = two_people().await;
+        let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+        let client = ServerClient::new(pair.url.clone()).unwrap();
+        let (_, snapshot) = client
+            .get_snapshot(&pair.alice.tokens.access_token, project)
+            .await
+            .unwrap();
+        let mut forger =
+            LiveProject::new(ProjectDoc::load(&snapshot).unwrap(), 0, ProjectRole::Editor);
+        forger.local_text(&main, "EVILabc").unwrap();
+        let forged = forger.next_outgoing().unwrap().unwrap().payload;
+        alice_live.local_text(&main, "abcX").unwrap();
+        let honest = alice_live.next_outgoing().unwrap().unwrap().payload;
+        let mut tampered = signed_envelope(&pair.alice, project, honest.clone());
+        tampered.payload = forged;
+        store_on_server(&pair, &pair.alice, tampered).await;
+        store_on_server(
+            &pair,
+            &pair.alice,
+            signed_envelope(&pair.alice, project, honest),
+        )
+        .await;
+        let mut bob = side(bob_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        let refused = until_event(&mut bob, |event| {
+            matches!(event, LiveEvent::Untrusted { .. })
+        })
+        .await;
+        assert_eq!(
+            refused,
+            LiveEvent::Untrusted {
+                device_id: pair.alice.tokens.device_id,
+                seq: 1,
+            }
+        );
+        until_text(&bob, &main, "abcX").await;
+        assert_eq!(lock(&bob.live).last_seq(), 2);
+        lock(&bob.live)
+            .editor_change(&main, 1, insert(4, "!", 4))
+            .unwrap();
+        bob.handle.as_ref().unwrap().flush();
+        until_event(&mut bob, |event| *event == LiveEvent::Acknowledged).await;
+        assert_eq!(text(&bob, &main), "abcX!");
+        assert!(!bob.handle.as_ref().unwrap().is_finished());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_device_list_the_server_cannot_give_never_drops_an_update() {
+        let pair = two_people().await;
+        let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+        alice_live.local_text(&main, "abcX").unwrap();
+        let payload = alice_live.next_outgoing().unwrap().unwrap().payload;
+        let envelope = signed_envelope(&pair.alice, project, payload);
+        let bob = side(bob_live, &main);
+        for status in [
+            "404 Not Found",
+            "403 Forbidden",
+            "400 Bad Request",
+            "200 OK",
+        ] {
+            let body = if status.starts_with("200") {
+                "not json"
+            } else {
+                r#"{"code":"not_found","message":"Not found."}"#
+            };
+            let answer = canned(http_response(
+                status,
+                &[("content-type", "application/json")],
+                body,
+            ))
+            .await;
+            let mut older = link(&pair, &pair.bob, project);
+            older.client = Arc::new(ServerClient::new(answer).unwrap());
+            let verdict = trust(
+                &older,
+                &bob.live,
+                &bob.events_tx,
+                &mut BTreeSet::new(),
+                &envelope,
+                Some(pair.alice.tokens.account_id),
+            )
+            .await;
+            assert!(
+                matches!(verdict, Trust::Unreachable),
+                "{status} must retry, not refuse"
+            );
+        }
+        assert_eq!(lock(&bob.live).last_seq(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_update_signed_for_another_project_is_refused() {
+        let pair = two_people().await;
+        let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+        alice_live.local_text(&main, "abcX").unwrap();
+        let payload = alice_live.next_outgoing().unwrap().unwrap().payload;
+        let elsewhere = signed_envelope(&pair.alice, SharedProjectId::new_v7(), payload.clone());
+        store_in_project(&pair, &pair.alice, project, elsewhere).await;
+        store_on_server(
+            &pair,
+            &pair.alice,
+            signed_envelope(&pair.alice, project, payload),
+        )
+        .await;
+        let mut bob = side(bob_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        let refused = until_event(&mut bob, |event| {
+            matches!(event, LiveEvent::Untrusted { .. })
+        })
+        .await;
+        assert_eq!(
+            refused,
+            LiveEvent::Untrusted {
+                device_id: pair.alice.tokens.device_id,
+                seq: 1,
+            }
+        );
+        until_text(&bob, &main, "abcX").await;
+        assert_eq!(lock(&bob.live).last_seq(), 2);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn catching_up_after_time_away_reports_who_changed_which_file_and_how() {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut alice, LiveStatus::Online).await;
+        lock(&alice.live)
+            .editor_change(&main, 0, insert(0, "!", 3))
+            .unwrap();
+        alice.handle.as_ref().unwrap().flush();
+        assert!(matches!(
+            next_message(&mut alice).await,
+            DocMessage::Ack { .. }
+        ));
+        until_text(&bob, &main, "!abc").await;
+        tokio::time::timeout(WAIT, async {
+            while lock(&alice.live).has_unsent() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("acknowledged");
+        alice.handle.take().unwrap().stopped().await;
+        assert!(matches!(
+            next_message(&mut bob).await,
+            DocMessage::Remote { .. }
+        ));
+        for (rev, letter) in ["d", "e"].into_iter().enumerate() {
+            let length = 4 + rev;
+            lock(&bob.live)
+                .editor_change(&main, 1 + rev as u64, insert(length, letter, length))
+                .unwrap();
+            bob.handle.as_ref().unwrap().flush();
+            assert!(matches!(
+                next_message(&mut bob).await,
+                DocMessage::Ack { .. }
+            ));
+            tokio::time::timeout(WAIT, async {
+                while lock(&bob.live).has_unsent() {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .expect("acknowledged");
+        }
+        start(&mut alice, link(&pair, &pair.alice, project));
+        let LiveEvent::Merged(report) =
+            until_event(&mut alice, |event| matches!(event, LiveEvent::Merged(_))).await
+        else {
+            unreachable!()
+        };
+        assert_eq!(report.files.get(&main), Some(&2));
+        assert_eq!(
+            report
+                .authors
+                .get(&pair.bob.tokens.account_id)
+                .and_then(|files| files.get(&main)),
+            Some(&2)
+        );
+        assert_eq!(report.authors.len(), 1);
+        let reviewed =
+            crate::review::changed_files(lock(&alice.live).doc(), &report.before, &report.after)
+                .unwrap();
+        assert_eq!(
+            reviewed,
+            vec![crate::review::ReviewedFile {
+                id: main.clone(),
+                path: "main.tex".to_owned(),
+                before: Some("!abc".to_owned()),
+                after: Some("!abcde".to_owned()),
+            }]
+        );
     }
 }

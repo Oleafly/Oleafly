@@ -11,6 +11,15 @@
         "description": "Požádejte člověka, který provozuje server vaší skupiny, o jeho adresu a pak ji přidejte sem."
       }
     },
+    "presence": {
+      "label": "Co vidí ostatní",
+      "description": "Vyberte, co lidé ve vašich sdílených projektech uvidí, když pracujete. Nastavuje se zvlášť na každém počítači.",
+      "options": {
+        "cursor": "Zobrazit můj kurzor",
+        "file": "Zobrazit jen soubor, ve kterém jsem",
+        "hidden": "Skrýt mě"
+      }
+    },
     "server": {
       "signedIn": "Přihlášeno",
       "signedOut": "Odhlášeno",
@@ -435,6 +444,21 @@
     "archived": "Vlastník přestal tento projekt sdílet. Vaše kopie tu zůstane jako běžný projekt.",
     "signedOut": "Jste odhlášeni ze serveru {{server}}, takže se tento projekt nesynchronizuje. Vaše změny zůstanou v tomto počítači.",
     "signIn": "Přihlásit se",
-    "repeated": "Kolikrát za sebou: {{number}}"
+    "repeated": "Kolikrát za sebou: {{number}}",
+    "newDevice": "Uživatel {{name}} se přihlásil na novém zařízení",
+    "review": "Zkontrolovat"
+  },
+  "mergeReview": {
+    "title": "Změny sloučené během vaší nepřítomnosti",
+    "description": "Co ostatní změnili, když jste byli offline. Toto zobrazení slouží jen ke čtení.",
+    "people": "Podle osoby",
+    "person": "{{name}}: {{number}}",
+    "files": "Podle souboru",
+    "loading": "Načítání změn",
+    "failed": "Změny se nepodařilo načíst. Zkuste to později.",
+    "noText": "Žádný text se nezměnil, není co porovnávat.",
+    "newFile": "Nový soubor",
+    "removedFile": "Odstraněno",
+    "diffLabel": "Změny v {{path}}"
   }
 }

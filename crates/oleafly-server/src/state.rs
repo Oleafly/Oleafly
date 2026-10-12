@@ -7,6 +7,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use rusqlite::{params, Connection};
 
 use crate::auth::ProviderRegistry;
+use crate::blobs::BlobStore;
 use crate::clock::Clock;
 use crate::config::{normalize_setup_code, ServerConfig};
 use crate::db::{self, Db};
@@ -41,6 +42,7 @@ pub struct AppState {
     pub sockets: Arc<SocketRegistry>,
     pub rate_limiter: Arc<RateLimiter>,
     pub rooms: Arc<Rooms>,
+    pub blobs: BlobStore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -76,6 +78,7 @@ impl AppState {
                 ServerError::Internal(format!("could not build the HTTP client: {error}"))
             })?;
         let providers = Arc::new(ProviderRegistry::from_config(&config, http.clone()));
+        let blobs = BlobStore::from_config(&config)?;
         let preset = config.setup_code.clone();
         let (server_id, setup_line) = database
             .call(move |conn| {
@@ -99,6 +102,7 @@ impl AppState {
             sockets: Arc::new(SocketRegistry::new()),
             rate_limiter: Arc::new(RateLimiter::new(SIGN_IN_BURST, SIGN_IN_PER_MINUTE)),
             rooms: Arc::new(Rooms::new()),
+            blobs,
         })
     }
 
@@ -163,13 +167,12 @@ impl AppState {
                 Ok(deleted)
             })
             .await?;
-        let store = crate::blobs::BlobStore::new(&self.config.data_dir);
         for deleted in &expired {
             for file in &deleted.snapshot_files {
                 let _ = std::fs::remove_file(self.config.data_dir.join(file));
             }
             for hash in &deleted.orphan_blobs {
-                store.remove(hash)?;
+                self.blobs.remove(hash).await?;
             }
         }
         Ok(expired.len())

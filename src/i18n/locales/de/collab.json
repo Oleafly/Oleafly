@@ -11,6 +11,15 @@
         "description": "Fragen Sie die Person, die den Server Ihrer Gruppe betreibt, nach seiner Adresse und fügen Sie ihn dann hier hinzu."
       }
     },
+    "presence": {
+      "label": "Was andere sehen",
+      "description": "Wählen Sie, was Personen in Ihren geteilten Projekten sehen, während Sie arbeiten. Die Einstellung gilt für jeden Computer einzeln.",
+      "options": {
+        "cursor": "Meinen Cursor zeigen",
+        "file": "Nur zeigen, in welcher Datei ich bin",
+        "hidden": "Mich verbergen"
+      }
+    },
     "server": {
       "signedIn": "Angemeldet",
       "signedOut": "Abgemeldet",
@@ -435,6 +444,21 @@
     "archived": "Die Person, der dieses Projekt gehört, teilt es nicht mehr. Ihre Kopie bleibt hier als normales Projekt erhalten.",
     "signedOut": "Sie sind von {{server}} abgemeldet, daher wird dieses Projekt nicht abgeglichen. Ihre Änderungen bleiben auf diesem Computer.",
     "signIn": "Anmelden",
-    "repeated": "Anzahl in Folge: {{number}}"
+    "repeated": "Anzahl in Folge: {{number}}",
+    "newDevice": "{{name}} hat sich auf einem neuen Gerät angemeldet",
+    "review": "Ansehen"
+  },
+  "mergeReview": {
+    "title": "Während Ihrer Abwesenheit zusammengeführte Änderungen",
+    "description": "Was andere geändert haben, während Sie offline waren. Diese Ansicht ist schreibgeschützt.",
+    "people": "Nach Person",
+    "person": "{{name}}: {{number}}",
+    "files": "Nach Datei",
+    "loading": "Änderungen werden geladen",
+    "failed": "Die Änderungen konnten nicht geladen werden. Versuchen Sie es später erneut.",
+    "noText": "Es wurde kein Text geändert, daher gibt es nichts zu vergleichen.",
+    "newFile": "Neue Datei",
+    "removedFile": "Entfernt",
+    "diffLabel": "Änderungen in {{path}}"
   }
 }

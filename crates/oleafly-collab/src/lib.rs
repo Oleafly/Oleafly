@@ -1,5 +1,6 @@
 pub mod binding;
 pub mod device_key;
+pub mod devices;
 pub mod doc;
 pub mod editor;
 pub mod error;
@@ -9,6 +10,7 @@ pub mod mass_change;
 pub mod materialize;
 pub mod ot;
 pub mod paths;
+pub mod review;
 pub mod secret_port;
 
 pub use binding::{load_binding, remove_binding, save_binding, ShareBinding};

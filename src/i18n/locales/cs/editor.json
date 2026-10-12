@@ -488,6 +488,7 @@
     "openInAgent": "Pokračovat v asistentovi AI s plnými nástroji projektu",
     "generateFailed": "Úpravu se nepodařilo vytvořit. {{message}}",
     "dismiss": "Zavřít",
+    "withdrawn": "Tento text mezitím upravil někdo jiný, takže návrh už nejde použít.",
     "setUpProvider": "Nastavit poskytovatele AI",
     "setUpProviderHint": "Přidejte klíč API (nebo místní Ollama) a můžete používat úpravy AI přímo v textu.",
     "openAiSettings": "Otevřít Nastavení → AI"

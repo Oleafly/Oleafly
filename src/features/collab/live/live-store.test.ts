@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CollabLiveMerged,
+  CollabLiveNewDevice,
   CollabLiveRole,
   CollabLiveStatus,
   CollabPresence,
@@ -9,6 +10,7 @@ import type {
   CollabShareInfo,
 } from "@/lib/tauri";
 import { avatarHue } from "@/components/ui/avatar";
+import { OWN_HUE_BAND, peerHue } from "./peer-hue";
 
 type Handler<T> = (payload: T) => void;
 
@@ -49,6 +51,7 @@ vi.mock("@/lib/tauri", () => ({
   onCollabLiveStatus: listener("status"),
   onCollabLiveRole: listener("role"),
   onCollabLiveMerged: listener("merged"),
+  onCollabLiveNewDevice: listener("newDevice"),
   onCollabPresence: listener("presence"),
   onCollabPresenceLeft: listener("left"),
 }));
@@ -144,6 +147,7 @@ describe("collab live store", () => {
       peers: {},
       members: [],
       merged: null,
+      newDevice: null,
       ended: null,
     });
   });
@@ -274,12 +278,28 @@ describe("collab live store", () => {
     emit<CollabLiveRole>("role", { projectId: OTHER, role: "owner" });
     emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
     expect(useCollabLiveStore.getState().role).toBe("viewer");
-    const merged: CollabLiveMerged = { projectId: PROJECT, files: [{ path: "main.tex", changes: 3 }] };
-    emit<CollabLiveMerged>("merged", { projectId: OTHER, files: [] });
+    const merged: CollabLiveMerged = {
+      projectId: PROJECT,
+      files: [{ path: "main.tex", changes: 3 }],
+      authors: [{ accountId: BOB, files: [{ path: "main.tex", changes: 3 }] }],
+      review: { before: "b", after: "a" },
+    };
+    emit<CollabLiveMerged>("merged", { ...merged, projectId: OTHER, files: [] });
     emit<CollabLiveMerged>("merged", merged);
     expect(useCollabLiveStore.getState().merged).toEqual(merged);
     useCollabLiveStore.getState().dismissMerged();
     expect(useCollabLiveStore.getState().merged).toBeNull();
+  });
+
+  it("records a sign-in on a new device for the open project only", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveNewDevice>("newDevice", { projectId: OTHER, accountId: BOB, deviceId: "tablet" });
+    expect(useCollabLiveStore.getState().newDevice).toBeNull();
+    const signedIn: CollabLiveNewDevice = { projectId: PROJECT, accountId: BOB, deviceId: "tablet" };
+    emit<CollabLiveNewDevice>("newDevice", signedIn);
+    expect(useCollabLiveStore.getState().newDevice).toEqual(signedIn);
   });
 
   it("reloads the member list when this person's role changes", async () => {
@@ -321,10 +341,23 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 2,
-      hue: avatarHue(BOB),
+      hue: peerHue(BOB, ALICE),
     });
     emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "device-bob" });
     expect(useCollabLiveStore.getState().peers).toEqual({});
+  });
+
+  it("keeps a peer's colour out of the band around this person's own colour", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(Math.abs(avatarHue(BOB) - avatarHue(ALICE))).toBeLessThan(OWN_HUE_BAND);
+    emit("presence", { projectId: PROJECT, deviceId: "device-bob", accountId: BOB, path: "main.tex", cursor: 1, anchor: 1 });
+    const hue = useCollabLiveStore.getState().peers["device-bob"]?.hue;
+    expect(hue).toBe(peerHue(BOB, ALICE));
+    expect(hue).not.toBe(avatarHue(BOB));
+    emit("presence", { projectId: PROJECT, deviceId: "device-bob", accountId: BOB, path: "main.tex", cursor: 9, anchor: 9 });
+    expect(useCollabLiveStore.getState().peers["device-bob"]?.hue).toBe(hue);
   });
 
   it("forgets a peer after thirty seconds without an update", async () => {
@@ -376,7 +409,7 @@ describe("collab live store", () => {
     };
     emit("presence", bob);
     const places = peerPlaces(useCollabLiveStore.getState().peers);
-    expect(places["device-bob"]).toMatchObject({ accountId: BOB, path: "main.tex", hue: avatarHue(BOB) });
+    expect(places["device-bob"]).toMatchObject({ accountId: BOB, path: "main.tex", hue: peerHue(BOB, ALICE) });
     emit("presence", { ...bob, cursor: 90, anchor: 80 });
     emit("presence", { ...bob, cursor: 91, anchor: 91 });
     expect(peerPlaces(useCollabLiveStore.getState().peers)).toBe(places);
@@ -453,7 +486,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(5);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(6);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });

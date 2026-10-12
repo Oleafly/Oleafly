@@ -9,6 +9,7 @@ export interface AvatarPerson {
   id: string;
   name: string;
   imageUrl?: string | null;
+  hue?: number;
 }
 
 const BOX: Record<AvatarSize, string> = { xs: "size-4", sm: "size-5", base: "size-7", md: "size-8" };
@@ -105,7 +106,7 @@ export function Avatar({
         PAD[size],
         className,
       )}
-      style={{ backgroundColor: `hsl(${avatarHue(person.id)} 55% 45%)` }}
+      style={{ backgroundColor: `hsl(${person.hue ?? avatarHue(person.id)} 55% 45%)` }}
     >
       {initials(person.name, LETTERS[size])}
     </span>

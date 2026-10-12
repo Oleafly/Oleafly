@@ -488,6 +488,7 @@
     "openInAgent": "Kontynuuj w asystencie AI z pełnym zestawem narzędzi projektu",
     "generateFailed": "Nie udało się wygenerować zmiany. {{message}}",
     "dismiss": "Zamknij",
+    "withdrawn": "Ktoś inny edytował ten tekst, więc tej sugestii nie można już zastosować.",
     "setUpProvider": "Skonfiguruj dostawcę AI",
     "setUpProviderHint": "Dodaj klucz API (albo lokalny Ollama), aby korzystać z edycji AI w wierszu.",
     "openAiSettings": "Otwórz Ustawienia → AI"

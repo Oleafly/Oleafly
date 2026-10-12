@@ -11,6 +11,15 @@
         "description": "Be den som driver din grupps server om dess adress och lägg sedan till den här."
       }
     },
+    "presence": {
+      "label": "Vad andra ser",
+      "description": "Välj vad personer i dina delade projekt ser medan du arbetar. Ställ in det separat på varje dator.",
+      "options": {
+        "cursor": "Visa min markör",
+        "file": "Visa bara vilken fil jag är i",
+        "hidden": "Dölj mig"
+      }
+    },
     "server": {
       "signedIn": "Inloggad",
       "signedOut": "Utloggad",
@@ -435,6 +444,21 @@
     "archived": "Ägaren har slutat dela det här projektet. Din kopia ligger kvar här som ett vanligt projekt.",
     "signedOut": "Du är utloggad från {{server}}, så det här projektet synkas inte. Dina ändringar stannar på den här datorn.",
     "signIn": "Logga in",
-    "repeated": "Antal gånger i rad: {{number}}"
+    "repeated": "Antal gånger i rad: {{number}}",
+    "newDevice": "{{name}} loggade in på en ny enhet",
+    "review": "Granska"
+  },
+  "mergeReview": {
+    "title": "Ändringar sammanfogade medan du var borta",
+    "description": "Det andra ändrade medan du var offline. Den här vyn är skrivskyddad.",
+    "people": "Per person",
+    "person": "{{name}}: {{number}}",
+    "files": "Per fil",
+    "loading": "Läser in ändringar",
+    "failed": "Det gick inte att läsa in ändringarna. Försök igen senare.",
+    "noText": "Ingen text ändrades, så det finns inget att jämföra.",
+    "newFile": "Ny fil",
+    "removedFile": "Borttagen",
+    "diffLabel": "Ändringar i {{path}}"
   }
 }

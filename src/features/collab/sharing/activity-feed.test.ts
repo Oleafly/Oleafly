@@ -32,6 +32,7 @@ function joined(role: "owner" | "editor" | "viewer" = "editor") {
     peers: {},
     members: [projectMember(BOB, "owner"), projectMember(person(), "editor")],
     merged: null,
+    newDevice: null,
     ended: null,
   });
 }
@@ -50,6 +51,7 @@ beforeEach(() => {
     peers: {},
     members: [],
     merged: null,
+    newDevice: null,
     ended: null,
   });
 });
@@ -114,7 +116,12 @@ describe("startCollabActivity", () => {
     joined();
     stop = startCollabActivity();
     expect(useCollabRail.getState()).toEqual({ visible: true, unread: true });
-    const merged = { projectId: "grant", files: [{ path: "main.tex", changes: 4 }] };
+    const merged = {
+      projectId: "grant",
+      files: [{ path: "main.tex", changes: 4 }],
+      authors: [{ accountId: BOB_ID, files: [{ path: "main.tex", changes: 4 }] }],
+      review: { before: "b", after: "a" },
+    };
     useCollabLiveStore.setState({ merged });
     useCollabLiveStore.setState({ role: "viewer" });
     useCollabLiveStore.setState({
@@ -125,8 +132,28 @@ describe("startCollabActivity", () => {
       role: null,
     });
     expect(kinds()).toEqual(["removed", "role", "merged", "welcome"]);
-    expect(useCollabActivity.getState().entries[2]).toMatchObject({ files: merged.files });
+    expect(useCollabActivity.getState().entries[2]).toMatchObject({
+      files: merged.files,
+      authors: merged.authors,
+      review: merged.review,
+    });
     expect(useCollabRail.getState().visible).toBe(true);
+  });
+
+  it("notes quietly, with a rail dot, when someone signs in on a new device", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabActivity.getState().markRead();
+    useCollabLiveStore.setState({ newDevice: { projectId: "grant", accountId: BOB_ID, deviceId: "tablet" } });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({
+      kind: "newDevice",
+      accountId: BOB_ID,
+      name: "Bob Smith",
+    });
+    expect(useCollabRail.getState().unread).toBe(true);
+    useCollabLiveStore.setState({ newDevice: { projectId: "grant", accountId: CAROL_ID, deviceId: "phone" } });
+    expect(kinds().slice(0, 2)).toEqual(["newDevice", "newDevice"]);
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ accountId: CAROL_ID, name: "" });
   });
 
   it("names the server when this person is signed out", () => {

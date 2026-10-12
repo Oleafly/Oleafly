@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
+import { useSettingsStore } from "@/store/settings";
 import { account, capabilities, collabError, server, signedOutServer } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -134,5 +135,26 @@ describe("CollaborationSection", () => {
     render(<CollaborationSection />);
     expect(await screen.findByRole("button", { name: copy.server.manage })).toBeInTheDocument();
     expect(mocks.collabServerRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets this person choose what others see of them on this computer", async () => {
+    mocks.collabServersList.mockResolvedValue([]);
+    useSettingsStore.setState({ collabPresence: "cursor" });
+    const presence = copy.presence;
+    const user = userEvent.setup();
+    render(<CollaborationSection />);
+    const row = screen.getByTestId("settings-row-collab-presence");
+    expect(within(row).getByText(presence.description)).toBeInTheDocument();
+    const group = within(row).getByRole("radiogroup", { name: presence.label });
+    const choice = (name: string) => within(group).getByRole("radio", { name });
+    expect(within(group).getAllByRole("radio")).toHaveLength(3);
+    expect(choice(presence.options.cursor)).toBeChecked();
+    await user.click(choice(presence.options.hidden));
+    expect(useSettingsStore.getState().collabPresence).toBe("hidden");
+    expect(choice(presence.options.hidden)).toBeChecked();
+    expect(choice(presence.options.cursor)).not.toBeChecked();
+    await user.click(screen.getByText(presence.options.file));
+    expect(useSettingsStore.getState().collabPresence).toBe("file");
+    expect(choice(presence.options.file)).toBeChecked();
   });
 });

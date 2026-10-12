@@ -136,3 +136,25 @@ export function DiffErrorBar({
     </AiChrome>
   );
 }
+
+export function DiffWithdrawnBar({ onDismiss }: Readonly<{ onDismiss: () => void }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  return (
+    <AiChrome
+      borderVariant="primary"
+      className="w-full"
+      contentClassName="ai-surface-elevated flex items-center gap-2 p-2 text-popover-foreground"
+    >
+      <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+        {t(($) => $.editor.inlineAi.withdrawn)}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+      >
+        {t(($) => $.editor.inlineAi.dismiss)}
+      </button>
+    </AiChrome>
+  );
+}

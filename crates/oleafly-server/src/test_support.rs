@@ -112,6 +112,12 @@ pub use mock_github::{authorization_code, github_provider, MockGithub, MockGithu
 mod mock_oidc;
 
 pub use mock_oidc::{oidc_provider, MockOidc, MockOidcUser, TestSigner};
+mod mock_s3;
+
+pub use mock_s3::{
+    MockS3, MockS3Fault, MOCK_S3_ACCESS_KEY_ID, MOCK_S3_BUCKET, MOCK_S3_REGION,
+    MOCK_S3_SECRET_ACCESS_KEY,
+};
 mod server;
 
 pub use server::{

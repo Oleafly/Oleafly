@@ -4,6 +4,15 @@
       "signOut": "Button that ends this computer's session on the collaboration server. It does not quit the app.",
       "remove": "Button that removes the server from this computer's list. Nothing is deleted on the server."
     },
+    "presence": {
+      "label": "Name of the setting that decides what other people in a shared project see of this person while they work",
+      "description": "Explains the setting is stored on this computer only, so each computer the person uses has its own choice",
+      "options": {
+        "cursor": "Default choice. Others see this person's text cursor and selection inside the file",
+        "file": "Others see which file this person has open, but not where the cursor is",
+        "hidden": "Others do not see this person at all while they work. Short, like a menu choice"
+      }
+    },
     "devices": {
       "current": "Badge on the row for the computer the person is using right now"
     },
@@ -91,6 +100,14 @@
   },
   "activity": {
     "mergedFile": "One file and the number of changes merged into it.",
-    "repeated": "Shown under an entry that happened several times in a row, such as the connection dropping and coming back. The count comes after the colon so no plural form is needed."
+    "repeated": "Shown under an entry that happened several times in a row, such as the connection dropping and coming back. The count comes after the colon so no plural form is needed.",
+    "newDevice": "Quiet entry in a shared project's activity list when a collaborator, or this person, starts using another computer with the same account. {{name}} is the person's display name.",
+    "review": "Button on a merged changes entry. It opens a read-only window showing who changed which file while this person was offline."
+  },
+  "mergeReview": {
+    "title": "Title of the read-only window listing changes from others that arrived while this person was offline",
+    "person": "One person and the number of their changes that were merged. The count comes after the colon so no plural form is needed.",
+    "removedFile": "Small tag next to a file that someone else removed while this person was offline",
+    "diffLabel": "Accessible name of the scrollable before and after comparison for one file"
   }
 }

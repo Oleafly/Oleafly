@@ -481,6 +481,7 @@
     "openInAgent": "Continuer dans l'assistant IA avec tous les outils du projet",
     "generateFailed": "Impossible de générer la modification. {{message}}",
     "dismiss": "Fermer",
+    "withdrawn": "Quelqu'un d'autre a modifié ce texte, la suggestion ne peut donc plus être appliquée.",
     "setUpProvider": "Configurer un fournisseur d'IA",
     "setUpProviderHint": "Ajoutez une clé API (ou un Ollama local) pour utiliser les modifications IA en ligne.",
     "openAiSettings": "Ouvrir Paramètres → IA"

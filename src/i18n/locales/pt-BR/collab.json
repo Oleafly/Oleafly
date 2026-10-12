@@ -11,6 +11,15 @@
         "description": "Peça o endereço à pessoa que mantém o servidor do seu grupo e depois adicione o servidor aqui."
       }
     },
+    "presence": {
+      "label": "O que os outros veem",
+      "description": "Escolha o que as pessoas dos seus projetos compartilhados veem enquanto você trabalha. Configure separadamente em cada computador.",
+      "options": {
+        "cursor": "Mostrar meu cursor",
+        "file": "Mostrar só o arquivo em que estou",
+        "hidden": "Me ocultar"
+      }
+    },
     "server": {
       "signedIn": "Conectado",
       "signedOut": "Desconectado",
@@ -435,6 +444,21 @@
     "archived": "O proprietário parou de compartilhar este projeto. A sua cópia continua aqui como um projeto comum.",
     "signedOut": "Você está desconectado de {{server}}, então este projeto não está sincronizando. As suas alterações ficam neste computador.",
     "signIn": "Fazer login",
-    "repeated": "Vezes seguidas: {{number}}"
+    "repeated": "Vezes seguidas: {{number}}",
+    "newDevice": "{{name}} entrou em um novo dispositivo",
+    "review": "Revisar"
+  },
+  "mergeReview": {
+    "title": "Alterações mescladas enquanto você estava fora",
+    "description": "O que outras pessoas alteraram enquanto você estava offline. Esta visualização é somente leitura.",
+    "people": "Por pessoa",
+    "person": "{{name}}: {{number}}",
+    "files": "Por arquivo",
+    "loading": "Carregando alterações",
+    "failed": "Não foi possível carregar as alterações. Tente novamente mais tarde.",
+    "noText": "Nenhum texto mudou, então não há nada para comparar.",
+    "newFile": "Arquivo novo",
+    "removedFile": "Removido",
+    "diffLabel": "Alterações em {{path}}"
   }
 }

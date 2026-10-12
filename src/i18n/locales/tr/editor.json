@@ -474,6 +474,7 @@
     "openInAgent": "Tüm proje araçlarıyla yapay zeka asistanında sürdür",
     "generateFailed": "Düzenleme üretilemedi. {{message}}",
     "dismiss": "Kapat",
+    "withdrawn": "Bu metni başka biri düzenledi, bu yüzden öneri artık uygulanamaz.",
     "setUpProvider": "Bir yapay zeka sağlayıcısı kur",
     "setUpProviderHint": "Satır içi yapay zeka düzenlemelerini kullanmak için bir API anahtarı (veya yerel Ollama) ekleyin.",
     "openAiSettings": "Ayarlar → Yapay zeka bölümünü aç"

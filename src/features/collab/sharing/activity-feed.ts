@@ -31,9 +31,12 @@ function presentAccounts(state: CollabLiveStoreState): Map<string, LivePeer> {
   return accounts;
 }
 
+function memberName(accountId: string, members: readonly CollabProjectMember[]): string {
+  return members.find((entry) => entry.person.account_id === accountId)?.person.display_name ?? "";
+}
+
 function nameOf(peer: LivePeer, members: readonly CollabProjectMember[]): string {
-  const member = members.find((entry) => entry.person.account_id === peer.accountId);
-  return member?.person.display_name ?? peer.person?.display_name ?? "";
+  return memberName(peer.accountId, members) || (peer.person?.display_name ?? "");
 }
 
 function welcome(state: CollabLiveStoreState, at: number): NewActivity | null {
@@ -72,7 +75,14 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
     memory.offline = false;
     found.push({ kind: "online", at });
   }
-  if (state.merged && state.merged !== previous.merged) found.push({ kind: "merged", at, files: state.merged.files });
+  if (state.merged && state.merged !== previous.merged) {
+    const { files, authors, review } = state.merged;
+    found.push({ kind: "merged", at, files, authors, review });
+  }
+  if (state.newDevice && state.newDevice !== previous.newDevice) {
+    const { accountId } = state.newDevice;
+    found.push({ kind: "newDevice", at, accountId, name: memberName(accountId, state.members) });
+  }
   if (previous.share && previous.role && state.role && previous.role !== state.role) {
     found.push({ kind: "role", at, role: state.role });
   }

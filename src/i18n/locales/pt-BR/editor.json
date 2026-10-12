@@ -481,6 +481,7 @@
     "openInAgent": "Continuar no assistente de IA com todas as ferramentas do projeto",
     "generateFailed": "Não foi possível gerar a edição. {{message}}",
     "dismiss": "Dispensar",
+    "withdrawn": "Outra pessoa editou este texto, então a sugestão não pode mais ser aplicada.",
     "setUpProvider": "Configurar um provedor de IA",
     "setUpProviderHint": "Adicione uma chave de API (ou o Ollama local) para usar as edições de IA em linha.",
     "openAiSettings": "Abrir Configurações → IA"

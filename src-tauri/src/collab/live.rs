@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::{DocSink, LiveProject, MergeReport};
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::ot::TextOperation;
 use oleafly_collab::sync::{
@@ -35,6 +35,7 @@ pub const LIVE_ROLE_EVENT: &str = "collab-live-role";
 pub const LIVE_MERGED_EVENT: &str = "collab-live-merged";
 pub const PRESENCE_EVENT: &str = "collab-presence";
 pub const PRESENCE_LEFT_EVENT: &str = "collab-presence-left";
+pub const LIVE_NEW_DEVICE_EVENT: &str = "collab-live-new-device";
 const WRITE_DEBOUNCE: Duration = Duration::from_millis(120);
 const BLOB_RETRY: Duration = Duration::from_secs(3);
 
@@ -53,10 +54,23 @@ pub struct RolePayload {
     pub role: ProjectRole,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MergedFile {
     pub path: String,
     pub changes: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MergedAuthor {
+    pub account_id: AccountId,
+    pub files: Vec<MergedFile>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct MergeMarks {
+    pub before: String,
+    pub after: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -64,6 +78,16 @@ pub struct MergedFile {
 pub struct MergedPayload {
     pub project_id: String,
     pub files: Vec<MergedFile>,
+    pub authors: Vec<MergedAuthor>,
+    pub review: MergeMarks,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewDevicePayload {
+    pub project_id: String,
+    pub account_id: AccountId,
+    pub device_id: DeviceId,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -105,6 +129,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn presence(&self, payload: PresencePayload);
     fn presence_left(&self, payload: PresenceLeftPayload);
     fn folder_changed(&self, change: FolderChange);
+    fn new_device(&self, payload: NewDevicePayload);
 }
 
 pub struct AppLiveHost {
@@ -142,6 +167,10 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(crate::folder_watch::FOLDER_CHANGED_EVENT, change);
+    }
+
+    fn new_device(&self, payload: NewDevicePayload) {
+        let _ = self.app.emit(LIVE_NEW_DEVICE_EVENT, payload);
     }
 }
 
@@ -961,6 +990,46 @@ async fn writer_loop(active: Weak<Active>, mut signals: UnboundedReceiver<Writer
     }
 }
 
+fn placed_files(
+    layout: &Layout,
+    counts: std::collections::BTreeMap<String, u32>,
+) -> Vec<MergedFile> {
+    counts
+        .into_iter()
+        .filter_map(|(id, changes)| {
+            layout.get(&id).map(|placed| MergedFile {
+                path: placed.path.clone(),
+                changes,
+            })
+        })
+        .collect()
+}
+
+fn merged_payload(project_id: &str, layout: &Layout, report: MergeReport) -> Option<MergedPayload> {
+    let files = placed_files(layout, report.files);
+    if files.is_empty() {
+        return None;
+    }
+    let authors = report
+        .authors
+        .into_iter()
+        .map(|(account_id, counts)| MergedAuthor {
+            account_id,
+            files: placed_files(layout, counts),
+        })
+        .filter(|author| !author.files.is_empty())
+        .collect();
+    Some(MergedPayload {
+        project_id: project_id.to_owned(),
+        files,
+        authors,
+        review: MergeMarks {
+            before: oleafly_collab::review::encode_mark(&report.before),
+            after: oleafly_collab::review::encode_mark(&report.after),
+        },
+    })
+}
+
 async fn pump(
     active: Weak<Active>,
     mut events: UnboundedReceiver<LiveEvent>,
@@ -1024,27 +1093,29 @@ async fn pump(
                     device_id,
                 })
             }
-            LiveEvent::Merged(counts) => {
+            LiveEvent::Merged(report) => {
                 if active.quiet_merge.swap(false, Ordering::SeqCst) {
                     continue;
                 }
                 let layout =
                     materialize::layout(&lock(&active.live).doc().nodes().unwrap_or_default());
-                let files: Vec<MergedFile> = counts
-                    .into_iter()
-                    .filter_map(|(id, changes)| {
-                        layout.get(&id).map(|placed| MergedFile {
-                            path: placed.path.clone(),
-                            changes,
-                        })
-                    })
-                    .collect();
-                if !files.is_empty() {
-                    active.host.merged(MergedPayload {
-                        project_id: active.project_id.clone(),
-                        files,
-                    });
+                if let Some(payload) = merged_payload(&active.project_id, &layout, report) {
+                    active.host.merged(payload);
                 }
+            }
+            LiveEvent::NewDevice {
+                account_id,
+                device_id,
+            } => active.host.new_device(NewDevicePayload {
+                project_id: active.project_id.clone(),
+                account_id,
+                device_id,
+            }),
+            LiveEvent::Untrusted { device_id, seq } => {
+                let _ = crate::project::append_app_log(format!(
+                    "Live collaboration skipped change {seq} in project {}: device {device_id} did not sign it with a key this app knows",
+                    active.project_id
+                ));
             }
         }
     }
@@ -1223,6 +1294,10 @@ pub fn doc_change(
     Ok(())
 }
 
+pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError>> {
+    active_for(project_id).map(|active| lock(&active.live).doc().snapshot())
+}
+
 pub fn doc_close(project_id: &str, file_id: &str) {
     if let Some(active) = active_for(project_id) {
         lock(&active.live).close_file(file_id);
@@ -1241,6 +1316,12 @@ pub fn presence_set(
             cursor,
             anchor,
         });
+    }
+}
+
+pub fn presence_leave(project_id: &str) {
+    if let Some(active) = active_for(project_id) {
+        active.handle.leave_presence();
     }
 }
 
@@ -1371,6 +1452,12 @@ pub async fn collab_presence_set(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn collab_presence_leave(project_id: String) -> Result<(), CollabCommandError> {
+    presence_leave(&project_id);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1490,6 +1577,7 @@ mod tests {
         fn presence(&self, _: PresencePayload) {}
         fn presence_left(&self, _: PresenceLeftPayload) {}
         fn folder_changed(&self, _: FolderChange) {}
+        fn new_device(&self, _: NewDevicePayload) {}
     }
 
     #[test]
@@ -1784,5 +1872,130 @@ mod tests {
         )
         .unwrap();
         assert_eq!(live.doc().text(&main).unwrap(), "abc");
+    }
+
+    #[derive(Default)]
+    struct RecordingHost {
+        new_devices: Mutex<Vec<NewDevicePayload>>,
+        merged: Mutex<Vec<MergedPayload>>,
+    }
+
+    impl LiveHost for RecordingHost {
+        fn status(&self, _: StatusPayload) {}
+        fn role(&self, _: RolePayload) {}
+        fn merged(&self, payload: MergedPayload) {
+            guard(&self.merged).push(payload);
+        }
+        fn presence(&self, _: PresencePayload) {}
+        fn presence_left(&self, _: PresenceLeftPayload) {}
+        fn folder_changed(&self, _: FolderChange) {}
+        fn new_device(&self, payload: NewDevicePayload) {
+            guard(&self.new_devices).push(payload);
+        }
+    }
+
+    #[test]
+    fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let state = CollabState::new(
+                oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let keys = state.keys().await.unwrap();
+            let link = LiveLink {
+                client: Arc::new(
+                    ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+                ),
+                server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                device_id: DeviceId::new_v7(),
+                key: Arc::clone(&keys.key),
+                sessions: Arc::clone(&keys.sessions),
+            };
+            let root = dir.path().join("project");
+            std::fs::create_dir_all(&root).unwrap();
+            let (live, disk, main) = project(&root);
+            let shared: SharedLive = Arc::new(Mutex::new(live));
+            let (unused, _unused) = mpsc::unbounded_channel();
+            let (writer, _writer) = mpsc::unbounded_channel();
+            let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+            let host = Arc::new(RecordingHost::default());
+            let active = Arc::new(Active {
+                project_id: "reviewed".to_owned(),
+                root,
+                document_dir: dir.path().join("document"),
+                disk_file: dir.path().join("disk.json"),
+                live: shared,
+                handle,
+                link,
+                disk: Mutex::new(disk),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                account_id: AccountId::new_v7(),
+                quiet_merge: AtomicBool::new(false),
+                waiting: AtomicBool::new(false),
+                last_status: Mutex::new(LiveStatus::Connecting),
+                bases: Mutex::new(WrittenTexts::default()),
+            });
+            let (events, receiver) = mpsc::unbounded_channel();
+            let pumping = tokio::spawn(pump(
+                Arc::downgrade(&active),
+                receiver,
+                state.paths().unwrap().clone(),
+            ));
+            let (alice, tablet) = (AccountId::new_v7(), DeviceId::new_v7());
+            events
+                .send(LiveEvent::NewDevice {
+                    account_id: alice,
+                    device_id: tablet,
+                })
+                .unwrap();
+            let counts = std::collections::BTreeMap::from([(main.clone(), 2)]);
+            events
+                .send(LiveEvent::Merged(MergeReport {
+                    before: vec![1, 2],
+                    after: vec![3],
+                    files: counts.clone(),
+                    authors: std::collections::BTreeMap::from([(alice, counts)]),
+                }))
+                .unwrap();
+            drop(events);
+            pumping.await.unwrap();
+            active.handle.stop();
+            assert_eq!(
+                *guard(&host.new_devices),
+                vec![NewDevicePayload {
+                    project_id: "reviewed".to_owned(),
+                    account_id: alice,
+                    device_id: tablet,
+                }]
+            );
+            let merged = guard(&host.merged).clone();
+            assert_eq!(merged.len(), 1);
+            let main_file = MergedFile {
+                path: "main.tex".to_owned(),
+                changes: 2,
+            };
+            assert_eq!(merged[0].files, vec![main_file.clone()]);
+            assert_eq!(
+                merged[0].authors,
+                vec![MergedAuthor {
+                    account_id: alice,
+                    files: vec![main_file],
+                }]
+            );
+            assert_eq!(
+                merged[0].review,
+                MergeMarks {
+                    before: oleafly_collab::review::encode_mark(&[1, 2]),
+                    after: oleafly_collab::review::encode_mark(&[3]),
+                }
+            );
+        });
     }
 }

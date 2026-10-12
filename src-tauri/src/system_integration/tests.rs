@@ -97,6 +97,10 @@ fn the_app_run_builds_hears_open_events_before_any_window_exists() {
 #[cfg(target_os = "macos")]
 #[test]
 fn open_events_without_a_local_folder_leave_the_intake_empty() {
+    let _queue = crate::collab::links::QUEUE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::collab::links::take();
     let app = app_built_like_run();
     on_run_event(app.handle(), &tauri::RunEvent::Ready);
     on_run_event(app.handle(), &tauri::RunEvent::Opened { urls: Vec::new() });
@@ -110,6 +114,7 @@ fn open_events_without_a_local_folder_leave_the_intake_empty() {
         },
     );
     assert!(pending(&app).is_empty());
+    assert_eq!(crate::collab::links::take(), ["oleafly://open?path=/srv/x"]);
 }
 
 #[test]
@@ -973,6 +978,25 @@ fn the_explorer_menu_is_written_repaired_and_removed_under_the_user_key() {
     let _ = root.remove_tree(&prefix);
 }
 
+fn merged_config(target: tauri::utils::platform::Target) -> serde_json::Value {
+    let (merged, _) =
+        tauri::utils::config::parse::read_from(target, Path::new(env!("CARGO_MANIFEST_DIR")))
+            .unwrap();
+    serde_json::from_value::<tauri::utils::config::Config>(merged.clone())
+        .unwrap_or_else(|error| panic!("the {target} config does not parse: {error}"));
+    merged
+}
+
+fn installer_schemes(target: tauri::utils::platform::Target) -> Vec<String> {
+    let desktop = merged_config(target)["plugins"]["deep-link"]["desktop"].clone();
+    if desktop.is_null() {
+        return Vec::new();
+    }
+    serde_json::from_value::<tauri::utils::config::DeepLinkProtocol>(desktop)
+        .unwrap()
+        .schemes
+}
+
 fn desktop_template_rendered(exec: &str) -> String {
     let template = include_str!("../../linux/main.desktop");
     let name = config(include_str!("../../tauri.conf.json"))["productName"]
@@ -984,12 +1008,17 @@ fn desktop_template_rendered(exec: &str) -> String {
         .as_str()
         .unwrap_or(env!("CARGO_PKG_DESCRIPTION"))
         .to_string();
+    let mime_type = installer_schemes(tauri::utils::platform::Target::Linux)
+        .iter()
+        .map(|scheme| format!("x-scheme-handler/{scheme}"))
+        .collect::<Vec<_>>()
+        .join(";");
     let mut out = String::new();
     let mut skipping = false;
     for line in template.lines() {
         match line {
             "{{#if comment}}" => {}
-            "{{#if mime_type}}" => skipping = true,
+            "{{#if mime_type}}" => skipping = mime_type.is_empty(),
             "{{/if}}" => skipping = false,
             _ if skipping => {}
             _ => {
@@ -999,7 +1028,8 @@ fn desktop_template_rendered(exec: &str) -> String {
                         .replace("{{comment}}", &comment)
                         .replace("{{exec}}", exec)
                         .replace("{{icon}}", exec)
-                        .replace("{{name}}", &name),
+                        .replace("{{name}}", &name)
+                        .replace("{{mime_type}}", &mime_type),
                 );
                 out.push('\n');
             }
@@ -1011,7 +1041,7 @@ fn desktop_template_rendered(exec: &str) -> String {
 #[test]
 fn packaged_linux_launchers_run_the_installed_binary_with_every_folder() {
     let template = include_str!("../../linux/main.desktop");
-    assert!(template.contains("\nExec=/usr/bin/{{exec}} %F\n"));
+    assert!(template.contains("\nExec=/usr/bin/{{exec}} %U\n"));
     assert!(!template.contains("inode/directory"));
     let linux = config(include_str!("../../tauri.linux.conf.json"));
     for format in ["deb", "rpm"] {
@@ -1021,7 +1051,7 @@ fn packaged_linux_launchers_run_the_installed_binary_with_every_folder() {
         );
     }
     let rendered = desktop_template_rendered(LINUX_BINARY);
-    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %F\n"));
+    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %U\n"));
     assert!(rendered.contains("\nName=Oleafly\n"));
 }
 
@@ -1033,10 +1063,83 @@ fn the_appimage_launcher_runs_its_own_binary_by_name() {
         "linux/appimage.desktop"
     );
     let expected = desktop_template_rendered(LINUX_BINARY).replace(
-        "\nExec=/usr/bin/oleafly-desktop %F\n",
-        "\nExec=oleafly-desktop %F\n",
+        "\nExec=/usr/bin/oleafly-desktop %U\n",
+        "\nExec=oleafly-desktop %U\n",
     );
     assert_eq!(include_str!("../../linux/appimage.desktop"), expected);
+}
+
+#[test]
+fn every_linux_package_hands_app_links_to_the_app() {
+    use tauri::utils::platform::Target;
+    assert_eq!(
+        installer_schemes(Target::Linux),
+        [crate::collab::links::SCHEME]
+    );
+    let handler = format!(
+        "\nMimeType=x-scheme-handler/{};\n",
+        crate::collab::links::SCHEME
+    );
+    let rendered = desktop_template_rendered(LINUX_BINARY);
+    assert!(rendered.contains(&handler), "{rendered}");
+    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %U\n"));
+    let appimage = include_str!("../../linux/appimage.desktop");
+    assert!(appimage.contains(&handler), "{appimage}");
+    assert!(appimage.contains("\nExec=oleafly-desktop %U\n"));
+    let linux = merged_config(Target::Linux);
+    for format in ["deb", "rpm"] {
+        assert_eq!(
+            linux["bundle"]["linux"][format]["desktopTemplate"], "linux/main.desktop",
+            "{format}"
+        );
+    }
+    assert_eq!(
+        linux["bundle"]["linux"]["appimage"]["files"]["/usr/share/applications/Oleafly.desktop"],
+        "linux/appimage.desktop"
+    );
+}
+
+#[test]
+fn both_windows_installers_register_app_links() {
+    use tauri::utils::platform::Target;
+    assert_eq!(
+        installer_schemes(Target::Windows),
+        [crate::collab::links::SCHEME]
+    );
+    let windows = merged_config(Target::Windows);
+    let nsis = &windows["bundle"]["windows"]["nsis"];
+    assert!(
+        matches!(nsis["installMode"].as_str(), None | Some("currentUser")),
+        "the NSIS installer registers app links for the current user only in currentUser mode"
+    );
+    let targets = &windows["bundle"]["targets"];
+    assert!(
+        targets == "all"
+            || ["nsis", "msi"].iter().all(|format| targets
+                .as_array()
+                .is_some_and(|list| list.contains(&(*format).into()))),
+        "{targets}"
+    );
+}
+
+#[test]
+fn macos_registers_app_links_through_its_info_plist_alone() {
+    use tauri::utils::platform::Target;
+    assert!(installer_schemes(Target::MacOS).is_empty());
+    let plist = plist::Value::from_reader_xml(include_str!("../../Info.plist").as_bytes()).unwrap();
+    let schemes: Vec<&str> = plist
+        .as_dictionary()
+        .and_then(|dict| dict.get("CFBundleURLTypes"))
+        .and_then(plist::Value::as_array)
+        .unwrap()
+        .iter()
+        .filter_map(plist::Value::as_dictionary)
+        .filter_map(|kind| kind.get("CFBundleURLSchemes"))
+        .filter_map(plist::Value::as_array)
+        .flatten()
+        .filter_map(plist::Value::as_string)
+        .collect();
+    assert_eq!(schemes, [crate::collab::links::SCHEME]);
 }
 
 #[test]

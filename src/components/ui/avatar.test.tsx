@@ -44,6 +44,11 @@ describe("Avatar", () => {
     expect(image).toHaveClass("size-8", "rounded-full", "object-cover");
   });
 
+  it("paints the initials with a hue the caller chose for the person", () => {
+    const { container } = render(<Avatar person={{ ...people[0], hue: 17 }} size="sm" />);
+    expect(avatarIn(container)).toHaveStyle({ backgroundColor: "hsl(17 55% 45%)" });
+  });
+
   it("falls back to initials on the person's hue when the picture fails", () => {
     const { container } = render(<Avatar person={people[1]} size="sm" />);
     fireEvent.error(screen.getByRole("presentation"));

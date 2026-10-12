@@ -11,6 +11,15 @@
         "description": "向运行你团队服务器的人索取服务器地址，然后在这里添加。"
       }
     },
+    "presence": {
+      "label": "其他人能看到什么",
+      "description": "选择你在共享项目中工作时，其他人能看到的内容。每台电脑需要分别设置。",
+      "options": {
+        "cursor": "显示我的光标",
+        "file": "只显示我所在的文件",
+        "hidden": "隐藏我"
+      }
+    },
     "server": {
       "signedIn": "已登录",
       "signedOut": "未登录",
@@ -435,6 +444,21 @@
     "archived": "所有者已停止共享此项目。你的副本会作为普通项目保留在这里。",
     "signedOut": "你已退出 {{server}} 的登录，因此此项目没有同步。你的更改会保留在这台电脑上。",
     "signIn": "登录",
-    "repeated": "连续次数：{{number}}"
+    "repeated": "连续次数：{{number}}",
+    "newDevice": "{{name}} 在新设备上登录了",
+    "review": "查看"
+  },
+  "mergeReview": {
+    "title": "你离开期间合并的更改",
+    "description": "你离线时其他人所做的更改。此视图为只读。",
+    "people": "按人员",
+    "person": "{{name}}: {{number}}",
+    "files": "按文件",
+    "loading": "正在加载更改",
+    "failed": "无法加载更改。请稍后重试。",
+    "noText": "没有文本更改，因此没有可比较的内容。",
+    "newFile": "新文件",
+    "removedFile": "已移除",
+    "diffLabel": "{{path}} 中的更改"
   }
 }

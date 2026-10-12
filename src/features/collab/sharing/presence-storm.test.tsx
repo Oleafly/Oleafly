@@ -39,6 +39,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   onCollabLiveStatus: listener("status"),
   onCollabLiveRole: listener("role"),
   onCollabLiveMerged: listener("merged"),
+  onCollabLiveNewDevice: listener("newDevice"),
   onCollabPresence: listener("presence"),
   onCollabPresenceLeft: listener("left"),
 }));

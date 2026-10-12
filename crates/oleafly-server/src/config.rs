@@ -28,6 +28,15 @@ const GITHUB_VARIABLES: [&str; 6] = [
     "OLEAFLY_GITHUB_LABEL",
 ];
 const LOG_LEVELS: [&str; 5] = ["error", "warn", "info", "debug", "trace"];
+const S3_VARIABLES: [&str; 6] = [
+    "OLEAFLY_S3_ENDPOINT",
+    "OLEAFLY_S3_REGION",
+    "OLEAFLY_S3_ACCESS_KEY_ID",
+    "OLEAFLY_S3_ACCESS_KEY_ID_FILE",
+    "OLEAFLY_S3_SECRET_ACCESS_KEY",
+    "OLEAFLY_S3_SECRET_ACCESS_KEY_FILE",
+];
+pub const DEFAULT_S3_REGION: &str = "us-east-1";
 
 #[derive(Clone)]
 pub enum ProviderConfig {
@@ -60,7 +69,17 @@ impl ProviderConfig {
 #[derive(Clone, PartialEq, Eq)]
 pub enum BlobStoreConfig {
     Filesystem,
-    S3 { url: Url },
+    S3(Box<S3Config>),
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct S3Config {
+    pub bucket: String,
+    pub prefix: String,
+    pub endpoint: Option<Url>,
+    pub region: String,
+    pub access_key_id: String,
+    pub secret_access_key: String,
 }
 
 #[derive(Clone)]
@@ -183,7 +202,7 @@ impl ServerConfig {
         let smtp_url = source.secret("OLEAFLY_SMTP_URL")?;
         let mail_from = source.get("OLEAFLY_MAIL_FROM");
         check_email(smtp_url.as_deref(), mail_from.as_deref())?;
-        let blob_store = parse_blob_store(source.secret("OLEAFLY_BLOB_STORE")?)?;
+        let blob_store = parse_blob_store(&source)?;
         let limits = Limits {
             max_project_mb: source.number("OLEAFLY_MAX_PROJECT_MB", 200u64)?,
             max_file_mb: source.number("OLEAFLY_MAX_FILE_MB", 50u64)?,
@@ -604,22 +623,162 @@ fn check_email(smtp_url: Option<&str>, mail_from: Option<&str>) -> Result<(), Co
     }
 }
 
-fn parse_blob_store(raw: Option<String>) -> Result<BlobStoreConfig, ConfigError> {
-    let Some(raw) = raw else {
+fn parse_blob_store(source: &Source<'_>) -> Result<BlobStoreConfig, ConfigError> {
+    let location = match source.secret("OLEAFLY_BLOB_STORE")? {
+        Some(raw) if !raw.eq_ignore_ascii_case("fs") => Some(parse_s3_location(&raw)?),
+        _ => None,
+    };
+    let Some((bucket, prefix)) = location else {
+        if let Some(name) = S3_VARIABLES.iter().find(|name| source.is_set(name)) {
+            return Err(ConfigError::new(
+                *name,
+                format!("{name} is set, but OLEAFLY_BLOB_STORE is not an s3:// address, so the server would ignore it. Set OLEAFLY_BLOB_STORE to your bucket, such as s3://lab-bucket, or remove the OLEAFLY_S3_ settings."),
+            ));
+        }
         return Ok(BlobStoreConfig::Filesystem);
     };
-    if raw.eq_ignore_ascii_case("fs") {
-        return Ok(BlobStoreConfig::Filesystem);
-    }
-    match Url::parse(&raw) {
-        Ok(url) if url.scheme() == "s3" && url.host_str().is_some_and(|host| !host.is_empty()) => {
-            Ok(BlobStoreConfig::S3 { url })
+    let endpoint = match source.get("OLEAFLY_S3_ENDPOINT") {
+        Some(raw) => Some(parse_s3_endpoint(&raw)?),
+        None => None,
+    };
+    let region = match source.get("OLEAFLY_S3_REGION") {
+        Some(raw) => {
+            if raw.len() > 64
+                || !raw.chars().all(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '-' | '_')
+                })
+            {
+                return Err(ConfigError::new(
+                    "OLEAFLY_S3_REGION",
+                    format!("OLEAFLY_S3_REGION must be a region name such as us-east-1 or auto, not {raw}."),
+                ));
+            }
+            raw
         }
-        _ => Err(ConfigError::new(
+        None => DEFAULT_S3_REGION.to_string(),
+    };
+    let access_key_id = source.secret("OLEAFLY_S3_ACCESS_KEY_ID")?;
+    let secret_access_key = source.secret("OLEAFLY_S3_SECRET_ACCESS_KEY")?;
+    let (access_key_id, secret_access_key) = match (access_key_id, secret_access_key) {
+        (Some(id), Some(secret)) => (id, secret),
+        (None, None) => {
+            return Err(ConfigError::new(
+                "OLEAFLY_S3_ACCESS_KEY_ID",
+                "OLEAFLY_BLOB_STORE points to an S3 bucket, but the server has no keys for it. Set OLEAFLY_S3_ACCESS_KEY_ID and OLEAFLY_S3_SECRET_ACCESS_KEY, or their _FILE versions.",
+            ))
+        }
+        (None, Some(_)) => {
+            return Err(ConfigError::new(
+                "OLEAFLY_S3_ACCESS_KEY_ID",
+                "S3 storage is half configured. OLEAFLY_S3_ACCESS_KEY_ID (or OLEAFLY_S3_ACCESS_KEY_ID_FILE) is missing.",
+            ))
+        }
+        (Some(_), None) => {
+            return Err(ConfigError::new(
+                "OLEAFLY_S3_SECRET_ACCESS_KEY",
+                "S3 storage is half configured. OLEAFLY_S3_SECRET_ACCESS_KEY (or OLEAFLY_S3_SECRET_ACCESS_KEY_FILE) is missing.",
+            ))
+        }
+    };
+    Ok(BlobStoreConfig::S3(Box::new(S3Config {
+        bucket,
+        prefix,
+        endpoint,
+        region,
+        access_key_id,
+        secret_access_key,
+    })))
+}
+
+fn parse_s3_location(raw: &str) -> Result<(String, String), ConfigError> {
+    let invalid = || {
+        ConfigError::new(
             "OLEAFLY_BLOB_STORE",
-            "OLEAFLY_BLOB_STORE must be fs or an s3:// address such as s3://lab-bucket.",
-        )),
+            "OLEAFLY_BLOB_STORE must be fs or an s3:// address such as s3://lab-bucket or s3://lab-bucket/oleafly.",
+        )
+    };
+    let url = Url::parse(raw).map_err(|_| invalid())?;
+    if url.scheme() != "s3"
+        || !raw
+            .get(..5)
+            .is_some_and(|start| start.eq_ignore_ascii_case("s3://"))
+        || url.port().is_some()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(invalid());
     }
+    let bucket = url.host_str().unwrap_or_default();
+    if !valid_bucket(bucket) {
+        return Err(ConfigError::new(
+            "OLEAFLY_BLOB_STORE",
+            format!("The bucket in OLEAFLY_BLOB_STORE ({bucket}) must be 3 to 63 lowercase letters, digits, dots and dashes, starting and ending with a letter or digit."),
+        ));
+    }
+    let path = url.path().trim_start_matches('/');
+    let prefix = path.strip_suffix('/').unwrap_or(path);
+    let prefix_ok = prefix.is_empty()
+        || prefix.split('/').all(|segment| {
+            !segment.is_empty()
+                && segment != "."
+                && segment != ".."
+                && segment.chars().all(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.' | '~')
+                })
+        });
+    if !prefix_ok {
+        return Err(ConfigError::new(
+            "OLEAFLY_BLOB_STORE",
+            format!("The folder in OLEAFLY_BLOB_STORE ({}) may only use letters, digits, dashes, underscores, dots and tildes, with one slash between parts.", url.path()),
+        ));
+    }
+    Ok((bucket.to_string(), prefix.to_string()))
+}
+
+fn valid_bucket(bucket: &str) -> bool {
+    let edge_ok = |character: Option<char>| {
+        character
+            .is_some_and(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
+    };
+    (3..=63).contains(&bucket.len())
+        && bucket.chars().all(|character| {
+            character.is_ascii_lowercase()
+                || character.is_ascii_digit()
+                || matches!(character, '.' | '-')
+        })
+        && edge_ok(bucket.chars().next())
+        && edge_ok(bucket.chars().last())
+}
+
+fn parse_s3_endpoint(raw: &str) -> Result<Url, ConfigError> {
+    let name = "OLEAFLY_S3_ENDPOINT";
+    let url = Url::parse(raw).map_err(|_| {
+        ConfigError::new(
+            name,
+            format!("{name} must be the address of an S3-compatible store, such as https://minio.example.edu:9000, not {raw}."),
+        )
+    })?;
+    if !matches!(url.scheme(), "https" | "http") || url.host_str().is_none() {
+        return Err(ConfigError::new(
+            name,
+            format!("{name} must start with https:// or http://, such as https://minio.example.edu:9000."),
+        ));
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(ConfigError::new(
+            name,
+            format!("{name} cannot contain a user name or password. Use OLEAFLY_S3_ACCESS_KEY_ID and OLEAFLY_S3_SECRET_ACCESS_KEY."),
+        ));
+    }
+    if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
+        return Err(ConfigError::new(
+            name,
+            format!("{name} must be only the address of the store, with no path, query string or # part. Put the bucket and folder in OLEAFLY_BLOB_STORE."),
+        ));
+    }
+    Ok(url)
 }
 
 impl fmt::Debug for ProviderConfig {
@@ -665,9 +824,12 @@ impl fmt::Debug for BlobStoreConfig {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BlobStoreConfig::Filesystem => formatter.write_str("Filesystem"),
-            BlobStoreConfig::S3 { url } => formatter
+            BlobStoreConfig::S3(s3) => formatter
                 .debug_struct("S3")
-                .field("bucket", &url.host_str().unwrap_or_default())
+                .field("bucket", &s3.bucket)
+                .field("prefix", &s3.prefix)
+                .field("endpoint", &s3.endpoint.as_ref().map(Url::as_str))
+                .field("region", &s3.region)
                 .finish_non_exhaustive(),
         }
     }
@@ -863,6 +1025,8 @@ mod tests {
                 }
                 Some("/run/secrets/oidc") => Ok("oidc-secret\n\n".to_string()),
                 Some("/run/secrets/blobs") => Ok("s3://lab-bucket\n".to_string()),
+                Some("/run/secrets/s3-id") => Ok("AKIDFROMFILE\n".to_string()),
+                Some("/run/secrets/s3-secret") => Ok("s3-secret-from-file\n".to_string()),
                 _ => Err(std::io::Error::new(std::io::ErrorKind::NotFound, "missing")),
             }
         };
@@ -876,6 +1040,11 @@ mod tests {
                 ("OLEAFLY_SMTP_URL_FILE", "/run/secrets/smtp"),
                 ("OLEAFLY_MAIL_FROM", "Smith Lab <lab@example.edu>"),
                 ("OLEAFLY_BLOB_STORE_FILE", "/run/secrets/blobs"),
+                ("OLEAFLY_S3_ACCESS_KEY_ID_FILE", "/run/secrets/s3-id"),
+                (
+                    "OLEAFLY_S3_SECRET_ACCESS_KEY_FILE",
+                    "/run/secrets/s3-secret",
+                ),
                 (
                     "OLEAFLY_OIDC_UNI_ISSUER",
                     "https://login.uni.edu/realms/main",
@@ -891,9 +1060,14 @@ mod tests {
             config.smtp_url.as_deref(),
             Some("smtps://mailer:pw@smtp.example.edu:465")
         );
-        assert!(
-            matches!(&config.blob_store, BlobStoreConfig::S3 { url } if url.as_str() == "s3://lab-bucket")
-        );
+        match &config.blob_store {
+            BlobStoreConfig::S3(s3) => {
+                assert_eq!(s3.bucket, "lab-bucket");
+                assert_eq!(s3.access_key_id, "AKIDFROMFILE");
+                assert_eq!(s3.secret_access_key, "s3-secret-from-file");
+            }
+            BlobStoreConfig::Filesystem => panic!("expected an S3 blob store"),
+        }
         match &config.providers[..] {
             [ProviderConfig::Github { client_secret, .. }, ProviderConfig::Oidc {
                 client_secret: oidc_secret,
@@ -907,7 +1081,7 @@ mod tests {
     }
 
     #[test]
-    fn only_the_five_secrets_have_file_variants_and_unknown_names_are_ignored() {
+    fn only_secret_settings_have_file_variants_and_unknown_names_are_ignored() {
         let read =
             |_: &Path| -> std::io::Result<String> { Ok("https://other.example.edu".to_string()) };
         let config = load_with(
@@ -1132,6 +1306,10 @@ mod tests {
             ("OLEAFLY_MAX_PROJECT_MB", ""),
             ("OLEAFLY_LOG_LEVEL", ""),
             ("OLEAFLY_BLOB_STORE", ""),
+            ("OLEAFLY_S3_ENDPOINT", ""),
+            ("OLEAFLY_S3_REGION", " "),
+            ("OLEAFLY_S3_ACCESS_KEY_ID", ""),
+            ("OLEAFLY_S3_SECRET_ACCESS_KEY_FILE", ""),
             ("OLEAFLY_OIDC_UNI_ISSUER", ""),
             ("OLEAFLY_OIDC_UNI_CLIENT_SECRET_FILE", ""),
         ])
@@ -1161,6 +1339,8 @@ mod tests {
             ("OLEAFLY_SECURITY_LOG_DAYS", "90"),
             ("OLEAFLY_ARCHIVE_DAYS", "7"),
             ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"),
+            ("OLEAFLY_S3_ACCESS_KEY_ID", "AKID"),
+            ("OLEAFLY_S3_SECRET_ACCESS_KEY", "secret"),
         ])
         .unwrap();
         assert_eq!(config.bind, "127.0.0.1:9000".parse::<SocketAddr>().unwrap());
@@ -1181,9 +1361,7 @@ mod tests {
         );
         assert_eq!(config.log_level, "debug");
         assert_eq!((config.security_log_days, config.archive_days), (90, 7));
-        assert!(
-            matches!(&config.blob_store, BlobStoreConfig::S3 { url } if url.as_str() == "s3://lab-bucket")
-        );
+        assert!(matches!(&config.blob_store, BlobStoreConfig::S3(s3) if s3.bucket == "lab-bucket"));
         assert_eq!(
             load(&[BASE, ("OLEAFLY_BLOB_STORE", "fs")])
                 .unwrap()
@@ -1287,5 +1465,185 @@ mod tests {
             assert!(!text.contains(secret), "{secret} leaked");
         }
         assert!(text.contains("c.example.edu"));
+    }
+
+    const S3_KEYS: [(&str, &str); 2] = [
+        ("OLEAFLY_S3_ACCESS_KEY_ID", "AKIDEXAMPLE"),
+        ("OLEAFLY_S3_SECRET_ACCESS_KEY", "s3-secret-value"),
+    ];
+
+    fn s3_of(config: &ServerConfig) -> &S3Config {
+        match &config.blob_store {
+            BlobStoreConfig::S3(s3) => s3,
+            BlobStoreConfig::Filesystem => panic!("expected an S3 blob store"),
+        }
+    }
+
+    #[test]
+    fn an_s3_blob_store_reads_its_bucket_folder_endpoint_region_and_keys() {
+        let read = |path: &Path| -> std::io::Result<String> {
+            match path.to_str() {
+                Some("/run/secrets/s3") => Ok("secret-from-file\n".to_string()),
+                _ => Err(std::io::Error::new(std::io::ErrorKind::NotFound, "missing")),
+            }
+        };
+        let config = load_with(
+            &[
+                BASE,
+                ("OLEAFLY_BLOB_STORE", "s3://lab-bucket/oleafly/files/"),
+                ("OLEAFLY_S3_ENDPOINT", "https://minio.example.edu:9000/"),
+                ("OLEAFLY_S3_REGION", "eu-central-1"),
+                ("OLEAFLY_S3_ACCESS_KEY_ID", "AKIDEXAMPLE"),
+                ("OLEAFLY_S3_SECRET_ACCESS_KEY_FILE", "/run/secrets/s3"),
+            ],
+            &read,
+        )
+        .unwrap();
+        let s3 = s3_of(&config);
+        assert_eq!(s3.bucket, "lab-bucket");
+        assert_eq!(s3.prefix, "oleafly/files");
+        assert_eq!(
+            s3.endpoint.as_ref().map(Url::as_str),
+            Some("https://minio.example.edu:9000/")
+        );
+        assert_eq!(s3.region, "eu-central-1");
+        assert_eq!(s3.access_key_id, "AKIDEXAMPLE");
+        assert_eq!(s3.secret_access_key, "secret-from-file");
+        let plain = load(&[
+            BASE,
+            ("OLEAFLY_BLOB_STORE", "s3://lab.bucket"),
+            S3_KEYS[0],
+            S3_KEYS[1],
+        ])
+        .unwrap();
+        let s3 = s3_of(&plain);
+        assert_eq!(s3.bucket, "lab.bucket");
+        assert_eq!(s3.prefix, "");
+        assert_eq!(s3.endpoint, None);
+        assert_eq!(s3.region, "us-east-1");
+        let private = load(&[
+            BASE,
+            ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"),
+            ("OLEAFLY_S3_ENDPOINT", "http://minio:9000"),
+            ("OLEAFLY_S3_REGION", "auto"),
+            S3_KEYS[0],
+            S3_KEYS[1],
+        ])
+        .unwrap();
+        assert_eq!(
+            s3_of(&private).endpoint.as_ref().map(Url::as_str),
+            Some("http://minio:9000/")
+        );
+        assert_eq!(s3_of(&private).region, "auto");
+    }
+
+    #[test]
+    fn an_s3_blob_store_without_keys_names_what_is_missing() {
+        let neither = load_err(&[BASE, ("OLEAFLY_BLOB_STORE", "s3://lab-bucket")]);
+        assert_eq!(neither.variable, "OLEAFLY_S3_ACCESS_KEY_ID");
+        assert!(neither.message.contains("OLEAFLY_S3_SECRET_ACCESS_KEY"));
+        assert!(neither.message.contains("_FILE"));
+        let no_secret = load_err(&[BASE, ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"), S3_KEYS[0]]);
+        assert_eq!(no_secret.variable, "OLEAFLY_S3_SECRET_ACCESS_KEY");
+        let no_id = load_err(&[BASE, ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"), S3_KEYS[1]]);
+        assert_eq!(no_id.variable, "OLEAFLY_S3_ACCESS_KEY_ID");
+        let unreadable = load_err(&[
+            BASE,
+            ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"),
+            S3_KEYS[0],
+            ("OLEAFLY_S3_SECRET_ACCESS_KEY_FILE", "/run/secrets/missing"),
+        ]);
+        assert_eq!(unreadable.variable, "OLEAFLY_S3_SECRET_ACCESS_KEY_FILE");
+    }
+
+    #[test]
+    fn s3_settings_without_an_s3_blob_store_are_refused() {
+        for (name, value) in [
+            ("OLEAFLY_S3_ENDPOINT", "https://minio.example.edu"),
+            ("OLEAFLY_S3_REGION", "eu-west-1"),
+            ("OLEAFLY_S3_ACCESS_KEY_ID", "AKIDEXAMPLE"),
+            ("OLEAFLY_S3_SECRET_ACCESS_KEY_FILE", "/run/secrets/s3"),
+        ] {
+            let error = load_err(&[BASE, (name, value)]);
+            assert_eq!(error.variable, name);
+            assert!(error.message.contains("OLEAFLY_BLOB_STORE"), "{name}");
+            let with_fs = load_err(&[BASE, ("OLEAFLY_BLOB_STORE", "fs"), (name, value)]);
+            assert_eq!(with_fs.variable, name);
+        }
+        assert_eq!(
+            load(&[
+                BASE,
+                ("OLEAFLY_S3_ENDPOINT", ""),
+                ("OLEAFLY_S3_REGION", " ")
+            ])
+            .unwrap()
+            .blob_store,
+            BlobStoreConfig::Filesystem
+        );
+    }
+
+    #[test]
+    fn odd_s3_addresses_endpoints_and_regions_are_refused() {
+        for store in [
+            "s3://",
+            "s3:lab-bucket",
+            "s3://ab",
+            "s3://Lab-Bucket",
+            "s3://lab_bucket",
+            "s3://-lab-bucket",
+            "s3://lab-bucket:9000",
+            "s3://key:secret@lab-bucket",
+            "s3://lab-bucket?region=x",
+            "s3://lab-bucket#top",
+            "s3://lab-bucket/a//b",
+            "s3://lab-bucket/a%20b",
+            "gs://lab-bucket",
+        ] {
+            let error = load_err(&[BASE, ("OLEAFLY_BLOB_STORE", store), S3_KEYS[0], S3_KEYS[1]]);
+            assert_eq!(error.variable, "OLEAFLY_BLOB_STORE", "{store}");
+        }
+        for endpoint in [
+            "minio.example.edu:9000",
+            "ftp://minio.example.edu",
+            "https://minio.example.edu/s3",
+            "https://user:pw@minio.example.edu",
+            "https://minio.example.edu/?x=1",
+        ] {
+            let error = load_err(&[
+                BASE,
+                ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"),
+                ("OLEAFLY_S3_ENDPOINT", endpoint),
+                S3_KEYS[0],
+                S3_KEYS[1],
+            ]);
+            assert_eq!(error.variable, "OLEAFLY_S3_ENDPOINT", "{endpoint}");
+        }
+        for region in ["us east 1", "eu/west", "région"] {
+            let error = load_err(&[
+                BASE,
+                ("OLEAFLY_BLOB_STORE", "s3://lab-bucket"),
+                ("OLEAFLY_S3_REGION", region),
+                S3_KEYS[0],
+                S3_KEYS[1],
+            ]);
+            assert_eq!(error.variable, "OLEAFLY_S3_REGION", "{region}");
+        }
+    }
+
+    #[test]
+    fn debug_output_hides_s3_keys() {
+        let config = load(&[
+            BASE,
+            ("OLEAFLY_BLOB_STORE", "s3://lab-bucket/thesis-files"),
+            ("OLEAFLY_S3_ACCESS_KEY_ID", "AKIDHIDDEN"),
+            ("OLEAFLY_S3_SECRET_ACCESS_KEY", "s3-secret-value"),
+        ])
+        .unwrap();
+        let text = format!("{config:?}");
+        assert!(!text.contains("s3-secret-value"));
+        assert!(!text.contains("AKIDHIDDEN"));
+        assert!(text.contains("lab-bucket"));
+        assert!(text.contains("thesis-files"));
+        assert!(text.contains("us-east-1"));
     }
 }

@@ -18,7 +18,7 @@ import { useFilesStore } from "@/store/files";
 import { useTourStore } from "@/store/tours";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
-import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
+import { DiffActionBar, DiffErrorBar, DiffWithdrawnBar } from "./DiffActionBar";
 
 // Rendered inside a CodeMirror block widget below the target line; the widget
 // mounts it when a session opens and unmounts it when it closes.
@@ -63,6 +63,12 @@ export function InlineEditPanel() {
       abortRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (session?.phase !== "withdrawn") return;
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, [session?.phase]);
 
   const reset = () => useInlineEditStore.getState().reset();
   const stop = () => {
@@ -223,6 +229,9 @@ export function InlineEditPanel() {
   );
 
   const renderPanel = () => {
+    if (session.phase === "withdrawn") {
+      return <DiffWithdrawnBar onDismiss={reset} />;
+    }
     if (!providerReady) {
       return (
         <AiChrome

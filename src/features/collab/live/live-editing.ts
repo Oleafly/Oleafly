@@ -2,11 +2,19 @@ import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@
 import { setCollabEditorExtension } from "@/components/editor/cm/collab-slot";
 import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
-import { collabDocChange, collabDocClose, collabDocOpen, collabLiveFlush, collabPresenceSet } from "@/lib/tauri";
+import {
+  collabDocChange,
+  collabDocClose,
+  collabDocOpen,
+  collabLiveFlush,
+  collabPresenceLeave,
+  collabPresenceSet,
+} from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
-import { createPresencePublisher, type Presence } from "./presence";
+import { createPresencePublisher, type Presence, visiblePresence } from "./presence";
 import { type RemoteCursor, type RemoteCursorSource, remoteCursors } from "./remote-cursors";
 
 export function peerCursors(peers: Record<string, LivePeer>, path: string | null): RemoteCursor[] {
@@ -68,6 +76,13 @@ function mirrorText(projectId: string, path: string, text: string): void {
   });
 }
 
+function inOrder(): (call: () => Promise<void>) => void {
+  let last = Promise.resolve();
+  return (call) => {
+    last = last.then(call).catch((error) => logError("collab presence", error));
+  };
+}
+
 function currentPresence(projectId: string): Presence {
   const files = useFilesStore.getState();
   const path = files.projectId === projectId ? files.activePath : null;
@@ -109,14 +124,17 @@ export function startLiveEditing(live: LiveSession): () => void {
     if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: state.role === "viewer" });
   });
 
+  const queue = inOrder();
   const presence = createPresencePublisher(
-    () => currentPresence(projectId),
-    ({ path, cursor, anchor }) => {
-      void collabPresenceSet(projectId, path, cursor, anchor).catch((error) => logError("collab presence", error));
-    },
+    () => visiblePresence(currentPresence(projectId), useSettingsStore.getState().collabPresence),
+    ({ path, cursor, anchor }) => queue(() => collabPresenceSet(projectId, path, cursor, anchor)),
+    () => queue(() => collabPresenceLeave(projectId)),
   );
   const unsubscribeActive = useFilesStore.subscribe((state, previous) => {
     if (state.activePath !== previous.activePath) presence.schedule();
+  });
+  const unsubscribeVisibility = useSettingsStore.subscribe((state, previous) => {
+    if (state.collabPresence !== previous.collabPresence) presence.schedule();
   });
   const releaseCursors = setCollabEditorExtension(remoteCursors(peerCursorSource(() => presence.schedule())));
   presence.schedule();
@@ -125,6 +143,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   return () => {
     presence.dispose();
     unsubscribeActive();
+    unsubscribeVisibility();
     unsubscribeRole();
     releaseCursors();
     uninstallPort();

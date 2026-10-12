@@ -57,5 +57,12 @@
         "dragDropEnabled": false
       }
     ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["oleafly"]
+      }
+    }
   }
 }

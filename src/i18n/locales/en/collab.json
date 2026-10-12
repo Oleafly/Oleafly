@@ -11,6 +11,15 @@
         "description": "Ask the person who runs your group's server for its address, then add it here."
       }
     },
+    "presence": {
+      "label": "What others see",
+      "description": "Choose what people in your shared projects see while you work. Set it separately on each computer.",
+      "options": {
+        "cursor": "Show my cursor",
+        "file": "Show only which file I'm in",
+        "hidden": "Hide me"
+      }
+    },
     "server": {
       "signedIn": "Signed in",
       "signedOut": "Signed out",
@@ -435,6 +444,21 @@
     "archived": "The owner stopped sharing this project. Your copy stays here as an ordinary project.",
     "signedOut": "You're signed out of {{server}}, so this project isn't syncing. Your changes stay on this computer.",
     "signIn": "Sign in",
-    "repeated": "Times in a row: {{number}}"
+    "repeated": "Times in a row: {{number}}",
+    "newDevice": "{{name}} signed in on a new device",
+    "review": "Review"
+  },
+  "mergeReview": {
+    "title": "Changes merged while you were away",
+    "description": "What others changed while you were offline. This view is read-only.",
+    "people": "By person",
+    "person": "{{name}}: {{number}}",
+    "files": "By file",
+    "loading": "Loading changes",
+    "failed": "Couldn't load the changes. Try again later.",
+    "noText": "No text changed, so there's nothing to compare.",
+    "newFile": "New file",
+    "removedFile": "Removed",
+    "diffLabel": "Changes in {{path}}"
   }
 }

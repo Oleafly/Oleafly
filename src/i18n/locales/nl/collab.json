@@ -11,6 +11,15 @@
         "description": "Vraag het adres aan de persoon die de server van je groep beheert en voeg het daarna hier toe."
       }
     },
+    "presence": {
+      "label": "Wat anderen zien",
+      "description": "Kies wat mensen in je gedeelde projecten zien terwijl je werkt. Stel dit apart in op elke computer.",
+      "options": {
+        "cursor": "Mijn cursor tonen",
+        "file": "Alleen tonen in welk bestand ik ben",
+        "hidden": "Mij verbergen"
+      }
+    },
     "server": {
       "signedIn": "Aangemeld",
       "signedOut": "Afgemeld",
@@ -435,6 +444,21 @@
     "archived": "De eigenaar deelt dit project niet meer. Je kopie blijft hier als gewoon project staan.",
     "signedOut": "Je bent afgemeld bij {{server}}, dus dit project synchroniseert niet. Je wijzigingen blijven op deze computer.",
     "signIn": "Aanmelden",
-    "repeated": "Aantal keer achter elkaar: {{number}}"
+    "repeated": "Aantal keer achter elkaar: {{number}}",
+    "newDevice": "{{name}} heeft zich aangemeld op een nieuw apparaat",
+    "review": "Bekijken"
+  },
+  "mergeReview": {
+    "title": "Wijzigingen samengevoegd terwijl je weg was",
+    "description": "Wat anderen hebben gewijzigd terwijl je offline was. Deze weergave is alleen-lezen.",
+    "people": "Per persoon",
+    "person": "{{name}}: {{number}}",
+    "files": "Per bestand",
+    "loading": "Wijzigingen laden",
+    "failed": "De wijzigingen konden niet worden geladen. Probeer het later opnieuw.",
+    "noText": "Er is geen tekst gewijzigd, dus er valt niets te vergelijken.",
+    "newFile": "Nieuw bestand",
+    "removedFile": "Verwijderd",
+    "diffLabel": "Wijzigingen in {{path}}"
   }
 }

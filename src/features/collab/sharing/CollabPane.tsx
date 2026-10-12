@@ -7,6 +7,7 @@ import {
   CloudOff,
   GitMerge,
   LogOut,
+  MonitorSmartphone,
   RadioTower,
   Share2,
   UserCog,
@@ -30,7 +31,9 @@ import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { collabPerson } from "../people";
+import { peerHue } from "../live/peer-hue";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
+import { MergeReviewDialog } from "./MergeReviewDialog";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
 import { syncState } from "./sync-state";
 
@@ -47,6 +50,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   removed: UserX,
   archived: Archive,
   signedOut: LogOut,
+  newDevice: MonitorSmartphone,
 };
 
 const TICK_MS = 60_000;
@@ -94,7 +98,7 @@ const People = memo(function People({
         const self = accountId === selfId;
         return (
           <li key={accountId} className="flex items-center gap-2 rounded-md px-1 py-1">
-            <Avatar person={collabPerson(member.person)} size="sm" />
+            <Avatar person={{ ...collabPerson(member.person), hue: peerHue(accountId, selfId) }} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="flex min-w-0 items-center gap-1.5 text-xs">
                 <span className="truncate font-medium">{member.person.display_name}</span>
@@ -144,12 +148,16 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.archived);
     case "signedOut":
       return t(($) => $.collab.activity.signedOut, { server: entry.server });
+    case "newDevice":
+      return t(($) => $.collab.activity.newDevice, { name: entry.name || unknown });
   }
 }
 
 const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: ActivityEntry; now: number }>) {
   const { t } = useTranslation(["collab"]);
   const [open, setOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const projectId = useCollabActivity((state) => state.projectId);
   const Glyph = ACTIVITY_ICONS[entry.kind];
   return (
     <li className="flex gap-2 rounded-md px-1 py-1.5 text-xs">
@@ -186,6 +194,17 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               {open ? t(($) => $.collab.activity.hideFiles) : t(($) => $.collab.activity.showFiles)}
             </Button>
           ) : null}
+          {entry.kind === "merged" && entry.review && projectId ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={() => setReviewing(true)}
+            >
+              {t(($) => $.collab.activity.review)}
+            </Button>
+          ) : null}
           {entry.kind === "signedOut" ? (
             <Button
               type="button"
@@ -199,6 +218,9 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
           ) : null}
         </div>
       </div>
+      {reviewing && entry.kind === "merged" && projectId ? (
+        <MergeReviewDialog projectId={projectId} entry={entry} onClose={() => setReviewing(false)} />
+      ) : null}
     </li>
   );
 });

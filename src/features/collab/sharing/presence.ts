@@ -30,9 +30,11 @@ export function presentPeople(
   for (const peer of Object.values(peers)) {
     if (peer.accountId === selfId) continue;
     const existing = byAccount.get(peer.accountId);
+    const { person, role } = peerPerson(peer, members, unknownName);
     byAccount.set(peer.accountId, {
       accountId: peer.accountId,
-      ...peerPerson(peer, members, unknownName),
+      person: { ...person, hue: peer.hue },
+      role,
       path: existing?.path ?? peer.path,
     });
   }
