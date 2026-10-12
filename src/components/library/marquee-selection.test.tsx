@@ -129,7 +129,7 @@ describe("marquee selection", () => {
     pointer("pointerMove", scroller, 60, 595);
     flush();
     expect(scroller.scrollTop).toBeGreaterThan(0);
-    expect(frames.length).toBe(1);
+    expect(frames).toHaveLength(1);
     fireEvent.pointerCancel(scroller, { pointerId: 1 });
     expect(document.querySelector('[data-testid="library-marquee"]')).toBeNull();
   });

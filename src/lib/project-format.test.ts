@@ -32,6 +32,6 @@ describe("short project names", () => {
     expect(shortProjectName("x".repeat(32))).toBe("x".repeat(32));
     expect(shortProjectName("PRAJWAL_SOMENDYAPANAHALLI_VENKATESHMURTHY_RESUME")).toBe("PRAJWAL_SOMENDYAPANAHALLI_VENKA…");
     expect(shortProjectName("Notes on the history of mathematics", 10)).toBe("Notes on…");
-    expect(Array.from(shortProjectName("論文".repeat(40))).length).toBe(32);
+    expect(Array.from(shortProjectName("論文".repeat(40)))).toHaveLength(32);
   });
 });

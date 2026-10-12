@@ -116,7 +116,7 @@ export function useMarqueeSelection(scrollRef: RefObject<HTMLElement | null>, en
 
     const onPointerMove = (event: PointerEvent) => {
       const current = drag;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (current?.pointerId !== event.pointerId) return;
       if (event.buttons === 0) {
         drag = null;
         stop(current);
@@ -148,7 +148,7 @@ export function useMarqueeSelection(scrollRef: RefObject<HTMLElement | null>, en
 
     const onLostCapture = (event: PointerEvent) => {
       const current = drag;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (current?.pointerId !== event.pointerId) return;
       drag = null;
       stop(current);
     };
@@ -164,7 +164,7 @@ export function useMarqueeSelection(scrollRef: RefObject<HTMLElement | null>, en
 
     const onPointerEnd = (event: PointerEvent) => {
       const current = drag;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (current?.pointerId !== event.pointerId) return;
       drag = null;
       stop(current);
       if (scroller.hasPointerCapture?.(event.pointerId)) scroller.releasePointerCapture(event.pointerId);

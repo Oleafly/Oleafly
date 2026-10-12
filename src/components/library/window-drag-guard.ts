@@ -6,7 +6,7 @@ const CLICKABLE = 'button, a, input, textarea, select, [role="button"]';
 export function startsWindowDrag(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   const region = target.closest(DRAG_REGION);
-  if (!region || region.getAttribute("data-tauri-drag-region") === "false") return false;
+  if (!(region instanceof HTMLElement) || region.dataset.tauriDragRegion === "false") return false;
   return target.closest(CLICKABLE) === null;
 }
 

@@ -64,17 +64,15 @@ export function BulkDeleteButton({
     const targets = selected;
     setConfirming(false);
     setBusy(true);
+    const results = await Promise.allSettled(targets.map(removeProject));
     const failed: ProjectInfo[] = [];
     let lastError: unknown = null;
-    for (const project of targets) {
-      try {
-        await removeProject(project);
-      } catch (error) {
-        failed.push(project);
-        lastError = error;
-        void logError("bulk delete project", error);
-      }
-    }
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") return;
+      failed.push(targets[index]);
+      lastError = result.reason;
+      void logError("bulk delete project", result.reason);
+    });
     try {
       await refreshProjects();
     } catch (error) {

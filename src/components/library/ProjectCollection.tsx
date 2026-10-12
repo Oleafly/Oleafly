@@ -333,6 +333,49 @@ type CardProps = Readonly<{
   actions: ProjectCardActions;
 }>;
 
+function GridCardMenu({
+  project: p,
+  color,
+  reachable,
+  actions,
+}: Readonly<{ project: ProjectInfo; color: string; reachable: boolean; actions: ProjectCardActions }>) {
+  const { t } = useTranslation(["common", "library"]);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t(($) => $.library.projects.actions, { name: p.name })}
+          onClick={(event) => event.stopPropagation()}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+        >
+          <Info className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <ProjectMenuItems project={p} color={color} reachable={reachable} kit={DROPDOWN_MENU_KIT} actions={actions} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function gridPreviewProps(
+  p: ProjectInfo,
+  folderState: UnavailableFolder | null,
+  hoverPreview: boolean,
+  thumb: string | null | undefined,
+  actions: ProjectCardActions,
+) {
+  if (p.recovery_pending || folderState) {
+    return { onPreviewRequest: undefined, onPreviewCancel: undefined, preview: undefined };
+  }
+  return {
+    onPreviewRequest: () => actions.requestThumbnail(p),
+    onPreviewCancel: () => actions.releaseThumbnail(p),
+    preview: hoverPreview ? thumb : undefined,
+  };
+}
+
 const ProjectGridCard = memo(function ProjectGridCard({
   project: p,
   color,
@@ -367,36 +410,12 @@ const ProjectGridCard = memo(function ProjectGridCard({
             starred={starred}
             onStarToggle={p.recovery_pending ? undefined : () => actions.toggleFavorite(p.id)}
             menu={
-              p.recovery_pending ? null : <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t(($) => $.library.projects.actions, { name: p.name })}
-                    onClick={(event) => event.stopPropagation()}
-                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                  >
-                    <Info className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  <ProjectMenuItems
-                    project={p}
-                    color={color}
-                    reachable={folderState === null}
-                    kit={DROPDOWN_MENU_KIT}
-                    actions={actions}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              p.recovery_pending ? null : (
+                <GridCardMenu project={p} color={color} reachable={folderState === null} actions={actions} />
+              )
             }
             onClick={(event) => openOrSelect(event, p, actions)}
-            onPreviewRequest={
-              p.recovery_pending || folderState ? undefined : () => actions.requestThumbnail(p)
-            }
-            onPreviewCancel={
-              p.recovery_pending || folderState ? undefined : () => actions.releaseThumbnail(p)
-            }
-            preview={!p.recovery_pending && !folderState && hoverPreview ? thumb : undefined}
+            {...gridPreviewProps(p, folderState, hoverPreview, thumb, actions)}
             width={180}
             badge={selected ? SELECTED_BADGE : undefined}
           />
@@ -415,6 +434,29 @@ const ProjectGridCard = memo(function ProjectGridCard({
     </ContextMenu>
   );
 });
+
+function RowThumbnail({
+  color,
+  faded,
+  thumb,
+  selected,
+}: Readonly<{ color: string; faded: boolean; thumb: string | null | undefined; selected: boolean }>) {
+  return (
+    <span className="relative shrink-0">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative block h-12 w-9 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
+          faded && "opacity-60 grayscale",
+        )}
+        style={{ backgroundColor: color }}
+      >
+        {thumb ? <img src={thumb} alt="" draggable={false} className="size-full object-cover object-top" /> : null}
+      </span>
+      {selected ? <CheckBadge className="absolute -right-1.5 -top-1.5 shadow-sm" /> : null}
+    </span>
+  );
+}
 
 type ActiveIdStore = Readonly<{
   get: () => string | null;
@@ -502,26 +544,12 @@ const ProjectListRow = memo(function ProjectListRow({
             onBlur={endPreview}
             className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:bg-accent/60"
           >
-            <span className="relative shrink-0">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "relative block h-12 w-9 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
-                  folderState && "opacity-60 grayscale",
-                )}
-                style={{ backgroundColor: color }}
-              >
-                {hoverPreview && !recoveryPending && previewing && thumb ? (
-                  <img
-                    src={thumb}
-                    alt=""
-                    draggable={false}
-                    className="size-full object-cover object-top"
-                  />
-                ) : null}
-              </span>
-              {selected ? <CheckBadge className="absolute -right-1.5 -top-1.5 shadow-sm" /> : null}
-            </span>
+            <RowThumbnail
+              color={color}
+              faded={folderState !== null}
+              thumb={hoverPreview && !recoveryPending && previewing ? thumb : null}
+              selected={selected}
+            />
             <span className="min-w-0">
               <span className="block truncate text-sm font-medium text-foreground">
                 {p.name}

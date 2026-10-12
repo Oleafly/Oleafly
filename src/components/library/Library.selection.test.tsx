@@ -151,7 +151,7 @@ describe("library multi-select", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: new RegExp(enLibrary.projects.deleteDialog.confirm) }));
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Removed 2 projects from your library."));
     expect(recycleProject.mock.calls.map(([id]) => id).sort()).toEqual(["notes", "paper"]);
-    expect(refreshProjects.mock.calls.length).toBe(refreshesBefore + 1);
+    expect(refreshProjects.mock.calls).toHaveLength(refreshesBefore + 1);
     expect(selectedIds()).toEqual([]);
   });
 
