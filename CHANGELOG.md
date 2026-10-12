@@ -49,6 +49,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   next to Import then moves the selection to the Recycle Bin once you
   confirm. Folders you opened in place only leave Oleafly, and their files
   stay where they are. Esc or a click on empty space clears the selection.
+- Export your settings to a file and import them on another computer, or
+  hand one file to a whole class so everyone's Oleafly looks and works the
+  same. Settings > General ends with a Settings file card. Export saves a
+  readable JSON file laid out like the Settings window, from General through
+  each Appearance tab to Shortcuts, and View settings JSON shows that file,
+  read-only, as you change things. Font sizes, themes, colors, shortcuts,
+  custom words, AI instructions and personas all come along. API keys,
+  accounts, integrations and agents never do. Import checks every value
+  first: a switch has to be true or false (1 and 0, or "on" and "off", work
+  too), a size has to fall in the range the setting allows, and a color has
+  to look like #2563eb. If anything is off, nothing changes and the card
+  lists what to fix. A good file replaces only the settings it lists, all at once.
+  Shortcuts you never changed are saved as "default", so a file made on a
+  Mac works on Windows and Linux.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its

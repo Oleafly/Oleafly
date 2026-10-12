@@ -64,6 +64,7 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
+import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
@@ -292,7 +293,7 @@ function AppAppearanceTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
-              {[13, 14, 15, 16, 17, 18, 20].map((size) => (
+              {APP_FONT_SIZES.map((size) => (
                 <SelectItem key={size} value={String(size)}>
                   {t(($) => $.settings.appearance.fontSizeOption, { size })}
                 </SelectItem>

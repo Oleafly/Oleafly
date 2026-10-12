@@ -1,0 +1,59 @@
+{
+  "title": "Indstillingsfil",
+  "description": "Gem dine indstillinger i en JSON-fil, eller indlæs en fil, som nogen har delt med dig. API-nøgler, konti, integrationer og agenter kommer aldrig med.",
+  "export": "Eksporter indstillinger",
+  "import": "Importer indstillinger",
+  "view": {
+    "label": "Vis indstillingernes JSON",
+    "summary": "Skrivebeskyttet forhåndsvisning af den fil, som eksporten gemmer.",
+    "loading": "Læser dine indstillinger",
+    "failed": "Kunne ikke læse dine indstillinger."
+  },
+  "dialog": {
+    "pickTitle": "Importer indstillinger",
+    "filterName": "Oleafly-indstillinger"
+  },
+  "toast": {
+    "exported": "Indstillingerne er gemt i {{name}}.",
+    "exportFailed": "Kunne ikke gemme indstillingsfilen.",
+    "readFailed": "Kunne ikke åbne filen.",
+    "imported": "Indstillingerne er importeret.",
+    "unchanged": "Dine indstillinger svarer allerede til {{name}}.",
+    "applyFailed": "Nogle indstillinger kunne ikke gemmes. Prøv at importere igen."
+  },
+  "confirm": {
+    "title": "Vil du erstatte dine indstillinger?",
+    "description": "Indstillingerne fra {{name}} erstatter dine. Alt, hvad filen ikke indeholder, forbliver uændret.",
+    "changes": "Indstillinger, der ændres: {{count}}",
+    "ignored": "Ikke genkendt, så de springes over:",
+    "action": "Importer"
+  },
+  "error": {
+    "title": "{{name}} blev ikke importeret",
+    "notJson": "Filen er ikke gyldig JSON.",
+    "notSettings": "Det her er ikke en indstillingsfil fra Oleafly.",
+    "newerVersion": "Filen er lavet af en nyere version af Oleafly. Opdater Oleafly, og importer så filen igen.",
+    "invalid": "Nogle værdier er ikke tilladt, så intet blev ændret:",
+    "more": "+{{count}} mere",
+    "dismiss": "Luk"
+  },
+  "valueErrors": {
+    "boolean": "skal være true eller false",
+    "oneOf": "skal være en af disse værdier: {{values}}",
+    "range": "skal være et tal fra {{min}} til {{max}}",
+    "wholeRange": "skal være et heltal fra {{min}} til {{max}}",
+    "wholeRangeStep": "skal være et heltal fra {{min}} til {{max}} i trin på {{step}}",
+    "hexColor": "skal være en farve som #2563eb",
+    "hexColorOrEmpty": "skal være en farve som #2563eb, eller \"\" for at bruge temaets farve",
+    "text": "skal være tekst på højst {{max}} tegn",
+    "webAddress": "skal være en webadresse, der starter med http:// eller https://",
+    "list": "skal være en liste med højst {{max}} elementer",
+    "listItem": "er ikke et tilladt element",
+    "duplicate": "står der to gange",
+    "object": "skal være en gruppe indstillinger i krøllede parenteser",
+    "unknownKey": "er ikke en indstilling, Oleafly kender",
+    "dictionaryLocale": "skal være en ordbogskode som en_US",
+    "shortcut": "skal være en genvej som Mod-Shift-k, eller \"default\"",
+    "editorKey": "skal være en tast som Mod-d, \"\" for ingen, eller \"default\""
+  }
+}

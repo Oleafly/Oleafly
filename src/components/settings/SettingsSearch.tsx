@@ -235,6 +235,13 @@ export function useSettingsSearch<Id extends string>({
   const [applied, setApplied] = useState("");
   const setQuery = store.set;
   const [pendingRow, setPendingRow] = useState<PendingRow<Id> | null>(null);
+  const [catalogs, setCatalogs] = useState(0);
+
+  useEffect(() => {
+    const added = () => setCatalogs((count) => count + 1);
+    i18n.store.on("added", added);
+    return () => i18n.store.off("added", added);
+  }, [i18n]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -257,7 +264,7 @@ export function useSettingsSearch<Id extends string>({
       if (timer !== null) clearTimeout(timer);
     };
   }, [store]);
-  const indexRef = useRef<{ locale: string; index: SettingsSearchIndex } | null>(null);
+  const indexRef = useRef<{ locale: string; catalogs: number; index: SettingsSearchIndex } | null>(null);
   const selectRef = useRef(onSelectSection);
   selectRef.current = onSelectSection;
 
@@ -287,14 +294,15 @@ export function useSettingsSearch<Id extends string>({
   const active = !suspended && applied.trim() !== "";
   const hits: SettingsSearchHit<Id>[] | null = useMemo(() => {
     if (!active) return null;
-    if (indexRef.current?.locale !== locale) {
+    if (indexRef.current?.locale !== locale || indexRef.current.catalogs !== catalogs) {
       indexRef.current = {
         locale,
+        catalogs,
         index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform()),
       };
     }
     return searchSettings(indexRef.current.index, sections, applied, locale);
-  }, [active, applied, i18n, locale, sections]);
+  }, [active, applied, catalogs, i18n, locale, sections]);
   const currentVisible = hits ? hits.some((hit) => hit.id === currentSection) : true;
   const bestHitRef = useRef<Id | null>(null);
   bestHitRef.current = hits ? bestSettingsHit(hits, currentSection) : null;

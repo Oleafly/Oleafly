@@ -1,0 +1,59 @@
+{
+  "title": "Fichier de paramètres",
+  "description": "Enregistrez vos paramètres dans un fichier JSON, ou chargez un fichier que quelqu'un vous a transmis. Les clés API, les comptes, les intégrations et les agents ne sont jamais inclus.",
+  "export": "Exporter les paramètres",
+  "import": "Importer des paramètres",
+  "view": {
+    "label": "Voir le JSON des paramètres",
+    "summary": "Aperçu en lecture seule du fichier enregistré par l'export.",
+    "loading": "Lecture de vos paramètres",
+    "failed": "Impossible de lire vos paramètres."
+  },
+  "dialog": {
+    "pickTitle": "Importer des paramètres",
+    "filterName": "Paramètres Oleafly"
+  },
+  "toast": {
+    "exported": "Paramètres enregistrés dans {{name}}.",
+    "exportFailed": "Impossible d'enregistrer le fichier de paramètres.",
+    "readFailed": "Impossible d'ouvrir ce fichier.",
+    "imported": "Paramètres importés.",
+    "unchanged": "Vos paramètres correspondent déjà à {{name}}.",
+    "applyFailed": "Certains paramètres n'ont pas pu être enregistrés. Relancez l'import."
+  },
+  "confirm": {
+    "title": "Remplacer vos paramètres ?",
+    "description": "Les paramètres du fichier {{name}} vont remplacer les vôtres. Tout ce que le fichier ne contient pas reste inchangé.",
+    "changes": "Paramètres qui vont changer : {{count}}",
+    "ignored": "Non reconnus, ils seront ignorés :",
+    "action": "Importer"
+  },
+  "error": {
+    "title": "{{name}} n'a pas été importé",
+    "notJson": "Le fichier n'est pas du JSON valide.",
+    "notSettings": "Ce n'est pas un fichier de paramètres Oleafly.",
+    "newerVersion": "Ce fichier vient d'une version plus récente d'Oleafly. Mettez Oleafly à jour, puis importez-le à nouveau.",
+    "invalid": "Certaines valeurs ne sont pas autorisées, rien n'a donc été modifié :",
+    "more": "+{{count}} de plus",
+    "dismiss": "Fermer"
+  },
+  "valueErrors": {
+    "boolean": "doit être true ou false",
+    "oneOf": "doit être l'une de ces valeurs : {{values}}",
+    "range": "doit être un nombre de {{min}} à {{max}}",
+    "wholeRange": "doit être un nombre entier de {{min}} à {{max}}",
+    "wholeRangeStep": "doit être un nombre entier de {{min}} à {{max}}, par pas de {{step}}",
+    "hexColor": "doit être une couleur comme #2563eb",
+    "hexColorOrEmpty": "doit être une couleur comme #2563eb, ou \"\" pour utiliser la couleur du thème",
+    "text": "doit être un texte de {{max}} caractères au plus",
+    "webAddress": "doit être une adresse web qui commence par http:// ou https://",
+    "list": "doit être une liste de {{max}} entrées au plus",
+    "listItem": "n'est pas une entrée autorisée",
+    "duplicate": "apparaît deux fois",
+    "object": "doit être un groupe de paramètres entre accolades",
+    "unknownKey": "n'est pas un paramètre connu d'Oleafly",
+    "dictionaryLocale": "doit être un code de dictionnaire comme en_US",
+    "shortcut": "doit être un raccourci comme Mod-Shift-k, ou \"default\"",
+    "editorKey": "doit être une touche comme Mod-d, \"\" pour aucune, ou \"default\""
+  }
+}

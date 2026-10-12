@@ -32,6 +32,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settings", "language"],
     ["settings", "systemIntegration"],
     ["settings", "shellCommand"],
+    ["settingsFile"],
     keywords("general"),
   ],
   appearance: [

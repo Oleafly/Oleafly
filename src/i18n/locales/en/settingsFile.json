@@ -1,0 +1,59 @@
+{
+  "title": "Settings file",
+  "description": "Save your settings to a JSON file, or load one someone shared with you. API keys, accounts, integrations and agents are never included.",
+  "export": "Export settings",
+  "import": "Import settings",
+  "view": {
+    "label": "View settings JSON",
+    "summary": "Read-only preview of the file that Export saves.",
+    "loading": "Reading your settings",
+    "failed": "Couldn't read your settings."
+  },
+  "dialog": {
+    "pickTitle": "Import settings",
+    "filterName": "Oleafly settings"
+  },
+  "toast": {
+    "exported": "Settings saved to {{name}}.",
+    "exportFailed": "Couldn't save the settings file.",
+    "readFailed": "Couldn't open that file.",
+    "imported": "Settings imported.",
+    "unchanged": "Your settings already match {{name}}.",
+    "applyFailed": "Some settings couldn't be saved. Try the import again."
+  },
+  "confirm": {
+    "title": "Replace your settings?",
+    "description": "Settings from {{name}} will replace yours. Anything the file leaves out stays as it is.",
+    "changes": "Settings that will change: {{count}}",
+    "ignored": "Not recognized, so they'll be skipped:",
+    "action": "Import"
+  },
+  "error": {
+    "title": "{{name}} wasn't imported",
+    "notJson": "The file isn't valid JSON.",
+    "notSettings": "This isn't an Oleafly settings file.",
+    "newerVersion": "A newer version of Oleafly made this file. Update Oleafly, then import it again.",
+    "invalid": "Some values aren't allowed, so nothing was changed:",
+    "more": "+{{count}} more",
+    "dismiss": "Dismiss"
+  },
+  "valueErrors": {
+    "boolean": "must be true or false",
+    "oneOf": "must be one of: {{values}}",
+    "range": "must be a number from {{min}} to {{max}}",
+    "wholeRange": "must be a whole number from {{min}} to {{max}}",
+    "wholeRangeStep": "must be a whole number from {{min}} to {{max}}, in steps of {{step}}",
+    "hexColor": "must be a color like #2563eb",
+    "hexColorOrEmpty": "must be a color like #2563eb, or \"\" to use the theme's color",
+    "text": "must be text, at most {{max}} characters",
+    "webAddress": "must be a web address that starts with http:// or https://",
+    "list": "must be a list of at most {{max}} entries",
+    "listItem": "isn't an allowed entry",
+    "duplicate": "is listed twice",
+    "object": "must be a group of settings in braces",
+    "unknownKey": "isn't a setting Oleafly knows",
+    "dictionaryLocale": "must be a dictionary code like en_US",
+    "shortcut": "must be a shortcut like Mod-Shift-k, or \"default\"",
+    "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\""
+  }
+}

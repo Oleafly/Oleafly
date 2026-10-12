@@ -1,0 +1,59 @@
+{
+  "title": "设置文件",
+  "description": "将设置保存为 JSON 文件，或载入别人分享给你的文件。API 密钥、账户、集成和代理永远不会包含在内。",
+  "export": "导出设置",
+  "import": "导入设置",
+  "view": {
+    "label": "查看设置 JSON",
+    "summary": "导出时所保存文件的只读预览。",
+    "loading": "正在读取你的设置",
+    "failed": "无法读取你的设置。"
+  },
+  "dialog": {
+    "pickTitle": "导入设置",
+    "filterName": "Oleafly 设置"
+  },
+  "toast": {
+    "exported": "设置已保存到 {{name}}。",
+    "exportFailed": "无法保存设置文件。",
+    "readFailed": "无法打开该文件。",
+    "imported": "设置已导入。",
+    "unchanged": "你的设置已与 {{name}} 一致。",
+    "applyFailed": "部分设置无法保存。请重新导入。"
+  },
+  "confirm": {
+    "title": "要替换你的设置吗？",
+    "description": "{{name}} 中的设置将替换你当前的设置。文件中没有的设置保持不变。",
+    "changes": "将更改的设置：{{count}} 项",
+    "ignored": "无法识别，将跳过：",
+    "action": "导入"
+  },
+  "error": {
+    "title": "未导入 {{name}}",
+    "notJson": "该文件不是有效的 JSON。",
+    "notSettings": "这不是 Oleafly 设置文件。",
+    "newerVersion": "此文件由更新版本的 Oleafly 创建。请更新 Oleafly 后重新导入。",
+    "invalid": "部分值不被允许，因此未做任何更改：",
+    "more": "另有 {{count}} 项",
+    "dismiss": "关闭"
+  },
+  "valueErrors": {
+    "boolean": "必须为 true 或 false",
+    "oneOf": "必须是以下值之一：{{values}}",
+    "range": "必须是 {{min}} 到 {{max}} 之间的数字",
+    "wholeRange": "必须是 {{min}} 到 {{max}} 之间的整数",
+    "wholeRangeStep": "必须是 {{min}} 到 {{max}} 之间的整数，步长为 {{step}}",
+    "hexColor": "必须是 #2563eb 这样的颜色",
+    "hexColorOrEmpty": "必须是 #2563eb 这样的颜色，或为 \"\" 以使用主题颜色",
+    "text": "必须是文本，最多 {{max}} 个字符",
+    "webAddress": "必须是以 http:// 或 https:// 开头的网址",
+    "list": "必须是最多包含 {{max}} 项的列表",
+    "listItem": "不是允许的条目",
+    "duplicate": "出现了两次",
+    "object": "必须是用花括号括起来的一组设置",
+    "unknownKey": "不是 Oleafly 可识别的设置",
+    "dictionaryLocale": "必须是 en_US 这样的词典代码",
+    "shortcut": "必须是 Mod-Shift-k 这样的快捷键，或为 \"default\"",
+    "editorKey": "必须是 Mod-d 这样的按键，或用 \"\" 表示不设按键，或为 \"default\""
+  }
+}

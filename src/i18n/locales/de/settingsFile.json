@@ -1,0 +1,59 @@
+{
+  "title": "Einstellungsdatei",
+  "description": "Speichern Sie Ihre Einstellungen in einer JSON-Datei, oder laden Sie eine Datei, die jemand mit Ihnen geteilt hat. API-Schlüssel, Konten, Integrationen und Agenten sind nie enthalten.",
+  "export": "Einstellungen exportieren",
+  "import": "Einstellungen importieren",
+  "view": {
+    "label": "Einstellungs-JSON anzeigen",
+    "summary": "Schreibgeschützte Vorschau der Datei, die beim Exportieren gespeichert wird.",
+    "loading": "Ihre Einstellungen werden gelesen",
+    "failed": "Ihre Einstellungen konnten nicht gelesen werden."
+  },
+  "dialog": {
+    "pickTitle": "Einstellungen importieren",
+    "filterName": "Oleafly-Einstellungen"
+  },
+  "toast": {
+    "exported": "Einstellungen in {{name}} gespeichert.",
+    "exportFailed": "Die Einstellungsdatei konnte nicht gespeichert werden.",
+    "readFailed": "Diese Datei konnte nicht geöffnet werden.",
+    "imported": "Einstellungen importiert.",
+    "unchanged": "Ihre Einstellungen stimmen bereits mit {{name}} überein.",
+    "applyFailed": "Einige Einstellungen konnten nicht gespeichert werden. Versuchen Sie den Import erneut."
+  },
+  "confirm": {
+    "title": "Ihre Einstellungen ersetzen?",
+    "description": "Die Einstellungen aus {{name}} ersetzen Ihre aktuellen Einstellungen. Was die Datei nicht enthält, bleibt unverändert.",
+    "changes": "Einstellungen, die sich ändern: {{count}}",
+    "ignored": "Nicht erkannt, daher übersprungen:",
+    "action": "Importieren"
+  },
+  "error": {
+    "title": "{{name}} wurde nicht importiert",
+    "notJson": "Die Datei ist kein gültiges JSON.",
+    "notSettings": "Dies ist keine Oleafly-Einstellungsdatei.",
+    "newerVersion": "Diese Datei stammt aus einer neueren Version von Oleafly. Aktualisieren Sie Oleafly und importieren Sie die Datei dann erneut.",
+    "invalid": "Einige Werte sind nicht erlaubt, daher wurde nichts geändert:",
+    "more": "+{{count}} weitere",
+    "dismiss": "Schließen"
+  },
+  "valueErrors": {
+    "boolean": "muss true oder false sein",
+    "oneOf": "muss einer dieser Werte sein: {{values}}",
+    "range": "muss eine Zahl von {{min}} bis {{max}} sein",
+    "wholeRange": "muss eine ganze Zahl von {{min}} bis {{max}} sein",
+    "wholeRangeStep": "muss eine ganze Zahl von {{min}} bis {{max}} in Schritten von {{step}} sein",
+    "hexColor": "muss eine Farbe wie #2563eb sein",
+    "hexColorOrEmpty": "muss eine Farbe wie #2563eb sein, oder \"\" für die Farbe des Designs",
+    "text": "muss Text mit höchstens {{max}} Zeichen sein",
+    "webAddress": "muss eine Webadresse sein, die mit http:// oder https:// beginnt",
+    "list": "muss eine Liste mit höchstens {{max}} Einträgen sein",
+    "listItem": "ist kein zulässiger Eintrag",
+    "duplicate": "kommt doppelt vor",
+    "object": "muss eine Gruppe von Einstellungen in geschweiften Klammern sein",
+    "unknownKey": "ist keine Einstellung, die Oleafly kennt",
+    "dictionaryLocale": "muss ein Wörterbuchcode wie en_US sein",
+    "shortcut": "muss ein Tastenkürzel wie Mod-Shift-k sein, oder \"default\"",
+    "editorKey": "muss eine Taste wie Mod-d sein, \"\" für keine, oder \"default\""
+  }
+}

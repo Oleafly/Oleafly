@@ -139,6 +139,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
+const SettingsFileCard = lazy(() =>
+  Promise.all([
+    import("@/components/settings/SettingsFileCard"),
+    import("@/i18n/lazy-namespaces").then((module) => module.loadNamespace("settingsFile")),
+  ]).then(([module]) => module),
+);
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
 );
@@ -293,6 +299,11 @@ export function SettingsModal() {
   const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
+  useEffect(() => {
+    import("@/i18n/lazy-namespaces")
+      .then((module) => module.loadNamespace("settingsFile"))
+      .catch((error: unknown) => void logError("load settings file strings", error));
+  }, []);
   const [developerSettings, setDeveloperSettings] =
     useState<DeveloperSettingsModule | null>(null);
   const [libRoot, setLibRoot] = useState("");
@@ -1228,6 +1239,9 @@ export function SettingsModal() {
           onReset={resetGeneralPreferences}
           changed={generalChanged}
         />
+        <Suspense fallback={null}>
+          <SettingsFileCard />
+        </Suspense>
       </div>
     )
   );

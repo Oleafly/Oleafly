@@ -14,7 +14,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
 import { DEFAULT_OVERLEAF_SERVER, isOverleafError, type OverleafProject } from "@/lib/overleaf";
 import { projectModifiedLabel } from "@/lib/project-format";
-import { cn } from "@/lib/utils";
+import { cn, isLinux } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useOverleafImportStore, type OverleafRowProgress } from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
@@ -36,7 +36,7 @@ function withViewTransition(update: () => void): void {
     startViewTransition?: (callback: () => void) => { finished: Promise<void> };
   };
   const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  if (typeof view.startViewTransition !== "function" || reduced) {
+  if (isLinux || typeof view.startViewTransition !== "function" || reduced) {
     update();
     return;
   }

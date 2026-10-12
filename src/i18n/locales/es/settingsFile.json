@@ -1,0 +1,59 @@
+{
+  "title": "Archivo de ajustes",
+  "description": "Guarda tus ajustes en un archivo JSON o carga uno que alguien haya compartido contigo. Las claves de API, las cuentas, las integraciones y los agentes nunca se incluyen.",
+  "export": "Exportar ajustes",
+  "import": "Importar ajustes",
+  "view": {
+    "label": "Ver el JSON de los ajustes",
+    "summary": "Vista previa de solo lectura del archivo que se guarda al exportar.",
+    "loading": "Leyendo tus ajustes",
+    "failed": "No se pudieron leer tus ajustes."
+  },
+  "dialog": {
+    "pickTitle": "Importar ajustes",
+    "filterName": "Ajustes de Oleafly"
+  },
+  "toast": {
+    "exported": "Ajustes guardados en {{name}}.",
+    "exportFailed": "No se pudo guardar el archivo de ajustes.",
+    "readFailed": "No se pudo abrir ese archivo.",
+    "imported": "Ajustes importados.",
+    "unchanged": "Tus ajustes ya coinciden con {{name}}.",
+    "applyFailed": "Algunos ajustes no se pudieron guardar. Vuelve a intentar la importación."
+  },
+  "confirm": {
+    "title": "¿Reemplazar tus ajustes?",
+    "description": "Los ajustes de {{name}} reemplazarán los tuyos. Lo que el archivo no incluya se queda como está.",
+    "changes": "Ajustes que cambiarán: {{count}}",
+    "ignored": "No se reconocen, así que se omitirán:",
+    "action": "Importar"
+  },
+  "error": {
+    "title": "No se importó {{name}}",
+    "notJson": "El archivo no es JSON válido.",
+    "notSettings": "Este no es un archivo de ajustes de Oleafly.",
+    "newerVersion": "Este archivo lo creó una versión más reciente de Oleafly. Actualiza Oleafly y vuelve a importarlo.",
+    "invalid": "Algunos valores no están permitidos, así que no se cambió nada:",
+    "more": "+{{count}} más",
+    "dismiss": "Cerrar"
+  },
+  "valueErrors": {
+    "boolean": "debe ser true o false",
+    "oneOf": "debe ser uno de estos valores: {{values}}",
+    "range": "debe ser un número de {{min}} a {{max}}",
+    "wholeRange": "debe ser un número entero de {{min}} a {{max}}",
+    "wholeRangeStep": "debe ser un número entero de {{min}} a {{max}}, en pasos de {{step}}",
+    "hexColor": "debe ser un color como #2563eb",
+    "hexColorOrEmpty": "debe ser un color como #2563eb, o \"\" para usar el color del tema",
+    "text": "debe ser un texto de {{max}} caracteres como máximo",
+    "webAddress": "debe ser una dirección web que empiece por http:// o https://",
+    "list": "debe ser una lista de {{max}} elementos como máximo",
+    "listItem": "no es un elemento permitido",
+    "duplicate": "aparece dos veces",
+    "object": "debe ser un grupo de ajustes entre llaves",
+    "unknownKey": "no es un ajuste que Oleafly conozca",
+    "dictionaryLocale": "debe ser un código de diccionario como en_US",
+    "shortcut": "debe ser un atajo como Mod-Shift-k, o \"default\"",
+    "editorKey": "debe ser una tecla como Mod-d, \"\" para ninguna, o \"default\""
+  }
+}

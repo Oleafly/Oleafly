@@ -15,6 +15,7 @@ import type preview from "./locales/en/preview.json";
 import type references from "./locales/en/references.json";
 import type researchTools from "./locales/en/researchTools.json";
 import type settings from "./locales/en/settings.json";
+import type settingsFile from "./locales/en/settingsFile.json";
 import type shell from "./locales/en/shell.json";
 import type symbols from "./locales/en/symbols.json";
 import type templates from "./locales/en/templates.json";
@@ -38,6 +39,7 @@ export interface Resources {
   "references": typeof references;
   "researchTools": typeof researchTools;
   "settings": typeof settings;
+  "settingsFile": typeof settingsFile;
   "shell": typeof shell;
   "symbols": typeof symbols;
   "templates": typeof templates;
@@ -45,4 +47,4 @@ export interface Resources {
   "workspace": typeof workspace;
 }
 
-export const NAMESPACE_NAMES = ["ai","catalog","common","core","diagram","editor","errors","intelligence","library","native","onboarding","preflight","preview","references","researchTools","settings","shell","symbols","templates","usage","workspace"] as const;
+export const NAMESPACE_NAMES = ["ai","catalog","common","core","diagram","editor","errors","intelligence","library","native","onboarding","preflight","preview","references","researchTools","settings","settingsFile","shell","symbols","templates","usage","workspace"] as const;

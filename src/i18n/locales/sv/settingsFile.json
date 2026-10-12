@@ -1,0 +1,59 @@
+{
+  "title": "Inställningsfil",
+  "description": "Spara dina inställningar i en JSON-fil, eller läs in en fil som någon har delat med dig. API-nycklar, konton, integrationer och agenter tas aldrig med.",
+  "export": "Exportera inställningar",
+  "import": "Importera inställningar",
+  "view": {
+    "label": "Visa inställningarnas JSON",
+    "summary": "Skrivskyddad förhandsvisning av filen som exporten sparar.",
+    "loading": "Läser dina inställningar",
+    "failed": "Det gick inte att läsa dina inställningar."
+  },
+  "dialog": {
+    "pickTitle": "Importera inställningar",
+    "filterName": "Oleafly-inställningar"
+  },
+  "toast": {
+    "exported": "Inställningarna har sparats i {{name}}.",
+    "exportFailed": "Det gick inte att spara inställningsfilen.",
+    "readFailed": "Det gick inte att öppna filen.",
+    "imported": "Inställningarna har importerats.",
+    "unchanged": "Dina inställningar stämmer redan med {{name}}.",
+    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen."
+  },
+  "confirm": {
+    "title": "Vill du ersätta dina inställningar?",
+    "description": "Inställningarna från {{name}} ersätter dina. Allt som filen inte tar upp förblir som det är.",
+    "changes": "Inställningar som ändras: {{count}}",
+    "ignored": "Känns inte igen och hoppas därför över:",
+    "action": "Importera"
+  },
+  "error": {
+    "title": "{{name}} importerades inte",
+    "notJson": "Filen är inte giltig JSON.",
+    "notSettings": "Det här är inte en inställningsfil från Oleafly.",
+    "newerVersion": "Filen skapades av en nyare version av Oleafly. Uppdatera Oleafly och importera sedan filen igen.",
+    "invalid": "Vissa värden är inte tillåtna, så ingenting har ändrats:",
+    "more": "+{{count}} till",
+    "dismiss": "Stäng"
+  },
+  "valueErrors": {
+    "boolean": "måste vara true eller false",
+    "oneOf": "måste vara ett av följande värden: {{values}}",
+    "range": "måste vara ett tal från {{min}} till {{max}}",
+    "wholeRange": "måste vara ett heltal från {{min}} till {{max}}",
+    "wholeRangeStep": "måste vara ett heltal från {{min}} till {{max}}, i steg om {{step}}",
+    "hexColor": "måste vara en färg som #2563eb",
+    "hexColorOrEmpty": "måste vara en färg som #2563eb, eller \"\" för att använda temats färg",
+    "text": "måste vara text med högst {{max}} tecken",
+    "webAddress": "måste vara en webbadress som börjar med http:// eller https://",
+    "list": "måste vara en lista med högst {{max}} poster",
+    "listItem": "är inte en tillåten post",
+    "duplicate": "finns med två gånger",
+    "object": "måste vara en grupp inställningar inom klammerparenteser",
+    "unknownKey": "är inte en inställning som Oleafly känner till",
+    "dictionaryLocale": "måste vara en ordlistekod som en_US",
+    "shortcut": "måste vara ett kortkommando som Mod-Shift-k, eller \"default\"",
+    "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\""
+  }
+}

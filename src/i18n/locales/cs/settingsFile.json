@@ -1,0 +1,59 @@
+{
+  "title": "Soubor nastavení",
+  "description": "Uložte nastavení do souboru JSON, nebo načtěte soubor, který s vámi někdo sdílel. Klíče API, účty, integrace a agenti se do něj nikdy nezahrnují.",
+  "export": "Exportovat nastavení",
+  "import": "Importovat nastavení",
+  "view": {
+    "label": "Zobrazit JSON nastavení",
+    "summary": "Náhled souboru, který uloží export (jen pro čtení).",
+    "loading": "Načítání nastavení",
+    "failed": "Vaše nastavení se nepodařilo načíst."
+  },
+  "dialog": {
+    "pickTitle": "Importovat nastavení",
+    "filterName": "Nastavení Oleafly"
+  },
+  "toast": {
+    "exported": "Nastavení bylo uloženo do souboru {{name}}.",
+    "exportFailed": "Soubor nastavení se nepodařilo uložit.",
+    "readFailed": "Tento soubor se nepodařilo otevřít.",
+    "imported": "Nastavení bylo importováno.",
+    "unchanged": "Vaše nastavení už odpovídá souboru {{name}}.",
+    "applyFailed": "Některá nastavení se nepodařilo uložit. Zkuste import znovu."
+  },
+  "confirm": {
+    "title": "Nahradit vaše nastavení?",
+    "description": "Nastavení ze souboru {{name}} nahradí to vaše. Co soubor neobsahuje, zůstane beze změny.",
+    "changes": "Počet nastavení, která se změní: {{count}}",
+    "ignored": "Nerozpoznáno, proto se přeskočí:",
+    "action": "Importovat"
+  },
+  "error": {
+    "title": "Soubor {{name}} nebyl importován",
+    "notJson": "Soubor není platný JSON.",
+    "notSettings": "Toto není soubor nastavení Oleafly.",
+    "newerVersion": "Tento soubor vytvořila novější verze Oleafly. Aktualizujte Oleafly a pak soubor importujte znovu.",
+    "invalid": "Některé hodnoty nejsou povolené, proto se nic nezměnilo:",
+    "more": "a další ({{count}})",
+    "dismiss": "Zavřít"
+  },
+  "valueErrors": {
+    "boolean": "musí být true nebo false",
+    "oneOf": "musí být jedna z hodnot: {{values}}",
+    "range": "musí být číslo od {{min}} do {{max}}",
+    "wholeRange": "musí být celé číslo od {{min}} do {{max}}",
+    "wholeRangeStep": "musí být celé číslo od {{min}} do {{max}} s krokem {{step}}",
+    "hexColor": "musí být barva, například #2563eb",
+    "hexColorOrEmpty": "musí být barva, například #2563eb, nebo \"\" pro barvu motivu",
+    "text": "musí být text (maximální délka: {{max}})",
+    "webAddress": "musí být webová adresa, která začíná http:// nebo https://",
+    "list": "musí být seznam (maximální počet položek: {{max}})",
+    "listItem": "není povolená položka",
+    "duplicate": "se opakuje",
+    "object": "musí být skupina nastavení ve složených závorkách",
+    "unknownKey": "není nastavení, které Oleafly zná",
+    "dictionaryLocale": "musí být kód slovníku, například en_US",
+    "shortcut": "musí být klávesová zkratka, například Mod-Shift-k, nebo \"default\"",
+    "editorKey": "musí být klávesa, například Mod-d, \"\" pro žádnou, nebo \"default\""
+  }
+}
