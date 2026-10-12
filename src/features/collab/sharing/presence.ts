@@ -1,7 +1,7 @@
 import type { PeerMark } from "@/components/collab/CollabSlots";
 import type { AvatarPerson } from "@/components/ui/avatar";
 import type { CollabProjectMember, CollabProjectRole } from "@/lib/tauri";
-import type { LivePeer } from "../live/live-store";
+import type { PeerPlace, PeerPlaces } from "../live/live-store";
 import { collabPerson } from "../people";
 
 export interface PresentPerson {
@@ -11,7 +11,7 @@ export interface PresentPerson {
   path: string | null;
 }
 
-function peerPerson(peer: LivePeer, members: readonly CollabProjectMember[], unknownName: string) {
+function peerPerson(peer: PeerPlace, members: readonly CollabProjectMember[], unknownName: string) {
   const member = members.find((entry) => entry.person.account_id === peer.accountId) ?? null;
   const known = member?.person ?? peer.person;
   return {
@@ -21,7 +21,7 @@ function peerPerson(peer: LivePeer, members: readonly CollabProjectMember[], unk
 }
 
 export function presentPeople(
-  peers: Readonly<Record<string, LivePeer>>,
+  peers: PeerPlaces,
   members: readonly CollabProjectMember[],
   selfId: string | null,
   unknownName: string,
@@ -40,7 +40,7 @@ export function presentPeople(
 }
 
 export function peerMarks(
-  peers: Readonly<Record<string, LivePeer>>,
+  peers: PeerPlaces,
   members: readonly CollabProjectMember[],
   selfId: string | null,
   unknownName: string,

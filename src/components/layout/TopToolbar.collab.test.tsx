@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ item: vi.fn(), dialog: vi.fn() }));
+const mocks = vi.hoisted(() => ({ dialog: vi.fn() }));
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
@@ -14,12 +14,6 @@ vi.mock("@tauri-apps/api/window", () => ({
     close: () => Promise.resolve(),
   }),
 }));
-vi.mock("@/features/collab/sharing/CollabToolbarItem", () => ({
-  CollabToolbarItem: () => {
-    mocks.item();
-    return <button type="button">{"Share stub"}</button>;
-  },
-}));
 vi.mock("@/features/collab/sharing/ShareDialog", () => ({
   ShareDialog: ({ projectId }: { projectId: string }) => {
     mocks.dialog(projectId);
@@ -27,13 +21,26 @@ vi.mock("@/features/collab/sharing/ShareDialog", () => ({
   },
 }));
 
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { TopToolbar } from "./TopToolbar";
 import { useShareDialog } from "@/components/collab/share-dialog";
+import { useCollabLiveStore, type LivePeer } from "@/features/collab/live/live-store";
+import { ALICE_ID, BOB, CAROL, CAROL_ID, person, projectMember, shareInfo } from "@/features/collab/tests/fixtures";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { ThemeProvider } from "@/lib/theme";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+
+function peer(deviceId: string, accountId: string): LivePeer {
+  return { deviceId, accountId, person: null, path: null, cursor: null, anchor: null, seenAt: Date.now(), hue: 40 };
+}
+
+function toolbarItems(container: HTMLElement): string[] {
+  const actions = container.querySelector('[data-toolbar-part="actions"]') as HTMLElement;
+  return [...actions.children].map((element) => element.getAttribute("data-toolbar-item") ?? "");
+}
 
 function renderToolbar() {
   return render(
@@ -62,24 +69,59 @@ beforeEach(() => {
   useCompileStore.setState({ status: "idle", lastCompileCheckpoint: null });
   useSettingsStore.setState({ viewMode: "split", assistantOpen: false, workspaceHidden: false });
   useShareDialog.setState({ projectId: null, fromCopy: false });
+  useCollabLiveStore.setState({
+    projectId: "grant",
+    share: shareInfo(),
+    role: "owner",
+    status: { state: "online" },
+    pending: 0,
+    peers: { alice: peer("alice", ALICE_ID), carol: peer("carol", CAROL_ID) },
+    members: [projectMember(BOB, "owner"), projectMember(person(), "editor"), projectMember(CAROL, "viewer")],
+  });
 });
 
 afterEach(() => {
   cleanup();
   useSettingsStore.setState({ liveCollaboration: false });
+  useCollabLiveStore.setState({ projectId: null, share: null, status: null, pending: 0, peers: {}, members: [] });
 });
 
-describe("TopToolbar collaboration item", () => {
-  it("sits immediately left of Recompile and stays pinned when live collaboration is on", async () => {
+describe("TopToolbar collaboration items", () => {
+  it("keeps the avatars left of Recompile and puts Share right after version history", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     const view = renderToolbar();
-    expect(await screen.findByRole("button", { name: "Share stub" })).toBeInTheDocument();
-    const compile = view.container.querySelector('[data-toolbar-item="compile"]');
-    const collab = compile?.previousElementSibling;
-    expect(collab).toHaveAttribute("data-toolbar-item", "collab");
+    const share = await screen.findByRole("button", { name: enCollab.share.button });
+    await waitFor(() => expect(view.container.querySelector('[data-toolbar-item="collab"]')).not.toBeNull());
+    const items = toolbarItems(view.container);
+    expect(items.slice(0, items.indexOf("history") + 2)).toEqual(["collab", "compile", "export", "fork", "history", "share"]);
+    const collab = view.container.querySelector('[data-toolbar-item="collab"]');
     expect(collab).not.toHaveAttribute("data-overflow-order");
     expect(collab).not.toHaveAttribute("data-toolbar-icon");
-    expect(mocks.item).toHaveBeenCalled();
+    expect(collab?.querySelectorAll('[data-slot="avatar"]')).toHaveLength(2);
+    const history = screen.getByRole("button", { name: enShell.toolbar.versioning });
+    const shareItem = history.closest("[data-toolbar-item]")?.nextElementSibling;
+    expect(shareItem).toHaveAttribute("data-toolbar-item", "share");
+    expect(shareItem).toHaveAttribute("data-toolbar-icon");
+    expect(shareItem).not.toHaveAttribute("data-overflow-order");
+    expect(shareItem).toContainElement(share);
+  });
+
+  it("has no sync state button", async () => {
+    useSettingsStore.setState({ liveCollaboration: true });
+    renderToolbar();
+    await screen.findByRole("button", { name: enCollab.share.button });
+    for (const words of Object.values(enCollab.sync)) expect(screen.queryByRole("button", { name: words })).toBeNull();
+    expect(document.querySelector("svg.lucide-cloud-check")).toBeNull();
+  });
+
+  it("keeps Share next to version history when nobody else is here", async () => {
+    useSettingsStore.setState({ liveCollaboration: true });
+    useCollabLiveStore.setState({ share: null, status: null, peers: {}, members: [] });
+    const view = renderToolbar();
+    await screen.findByRole("button", { name: enCollab.share.button });
+    const items = toolbarItems(view.container);
+    expect(items).not.toContain("collab");
+    expect(items[items.indexOf("history") + 1]).toBe("share");
   });
 
   it("opens the share dialog from anywhere that asks for it", async () => {
@@ -96,7 +138,8 @@ describe("TopToolbar collaboration item", () => {
       await Promise.resolve();
     });
     expect(view.container.querySelector('[data-toolbar-item="collab"]')).toBeNull();
-    expect(mocks.item).not.toHaveBeenCalled();
+    expect(view.container.querySelector('[data-toolbar-item="share"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: enCollab.share.button })).toBeNull();
     expect(mocks.dialog).not.toHaveBeenCalled();
   });
 });

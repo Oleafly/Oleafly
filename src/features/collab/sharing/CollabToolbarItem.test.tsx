@@ -2,6 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Profiler } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
@@ -33,7 +34,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   collabServersList: mocks.collabServersList,
 }));
 
-import { CollabToolbarItem } from "./CollabToolbarItem";
+import { CollabShareButton, CollabToolbarItem } from "./CollabToolbarItem";
 
 const share = enCollab.share;
 const sync = enCollab.sync;
@@ -75,17 +76,17 @@ function hover(element: Element) {
   return screen.getByRole("tooltip");
 }
 
-describe("CollabToolbarItem", () => {
+describe("CollabShareButton", () => {
   it("offers Share on a project that is not shared yet", async () => {
     const user = userEvent.setup();
-    render(<CollabToolbarItem />);
+    render(<CollabShareButton />);
     expect(screen.getAllByRole("button")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: share.button }));
     expect(useShareDialog.getState()).toMatchObject({ projectId: "grant", fromCopy: false });
   });
 
   it("is an icon button with the same name and tooltip as the other toolbar actions", () => {
-    render(<CollabToolbarItem />);
+    render(<CollabShareButton />);
     const button = screen.getByRole("button", { name: share.button });
     expect(button).toHaveAttribute("aria-label", share.button);
     expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
@@ -97,7 +98,7 @@ describe("CollabToolbarItem", () => {
       projects: [libraryProject({ location: { kind: "linked", display_path: "~/grant", availability: "ok" } })],
     });
     const user = userEvent.setup();
-    render(<CollabToolbarItem />);
+    render(<CollabShareButton />);
     await waitFor(() => expect(useCollabStore.getState().status).toBe("ready"));
     await user.click(screen.getByRole("button", { name: share.copyAndShare }));
     expect(mocks.copyIntoLibrary).toHaveBeenCalledWith("grant", "Grant proposal", { openAfterCopy: true });
@@ -110,21 +111,117 @@ describe("CollabToolbarItem", () => {
       projects: [libraryProject({ location: { kind: "linked", display_path: "~/grant", availability: "ok" } })],
     });
     const user = userEvent.setup();
-    render(<CollabToolbarItem />);
+    render(<CollabShareButton />);
     await waitFor(() => expect(useCollabStore.getState().status).toBe("ready"));
     await user.click(screen.getByRole("button", { name: share.copyAndShare }));
     expect(mocks.copyIntoLibrary).not.toHaveBeenCalled();
     expect(useShareDialog.getState().projectId).toBe("grant");
   });
 
-  it("opens the Live collaboration pane from the sync state button", async () => {
+  it("no longer puts a sync state button in the toolbar", () => {
     liveShared({ state: "online" });
-    const user = userEvent.setup();
-    render(<CollabToolbarItem />);
-    await user.click(screen.getByRole("button", { name: sync.upToDate }));
-    expect(useSettingsStore.getState()).toMatchObject({ railTab: "collab", showTree: true });
+    render(
+      <>
+        <CollabToolbarItem />
+        <CollabShareButton />
+      </>,
+    );
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: share.button })).toBeInTheDocument();
+    for (const words of Object.values(sync)) expect(screen.queryByRole("button", { name: words })).toBeNull();
   });
 
+  it("keeps the plain Share tooltip while the project is not shared", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CollabShareButton />);
+      const tip = hover(screen.getByRole("button", { name: share.button }).parentElement as Element);
+      expect(tip).toHaveTextContent(new RegExp(`^${share.button}$`));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<[CollabLiveState | null, number, string]>([
+    [{ state: "online" }, 0, sync.upToDate],
+    [{ state: "online" }, 2, sync.syncing],
+    [{ state: "offline", retry_in_ms: 1000 }, 47, fill(sync.offline, { number: "47" })],
+    [{ state: "offline", retry_in_ms: 1000 }, 0, sync.reconnecting],
+    [{ state: "ended", reason: "signed_out" }, 0, sync.signedOut],
+    [{ state: "ended", reason: "stopped" }, 0, sync.paused],
+    [null, 0, sync.syncing],
+  ])("names the sync state %j with %i waiting in the Share tooltip", (status, pending, words) => {
+    vi.useFakeTimers();
+    try {
+      liveShared(status, pending);
+      render(<CollabShareButton />);
+      const button = screen.getByRole("button", { name: share.button });
+      const tip = hover(button.parentElement as Element);
+      expect(tip).toHaveTextContent(share.button);
+      expect(tip).toHaveTextContent(words);
+      expect(button).toHaveAttribute("aria-describedby", tip.id);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<["removed" | "archived" | "signed_out", string]>([
+    ["removed", sync.removed],
+    ["archived", sync.archived],
+    ["signed_out", sync.signedOut],
+  ])("keeps saying why sync ended (%s) on the Share button after the project stops being shared", (reason, words) => {
+    vi.useFakeTimers();
+    try {
+      useCollabLiveStore.setState({
+        projectId: "grant",
+        share: null,
+        status: { state: "ended", reason },
+        ended: reason,
+        peers: {},
+      });
+      const { container } = render(
+        <>
+          <CollabToolbarItem />
+          <CollabShareButton />
+        </>,
+      );
+      expect(container.querySelector('[data-toolbar-item="collab"]')).toBeNull();
+      const tip = hover(screen.getByRole("button", { name: share.button }).parentElement as Element);
+      expect(tip).toHaveTextContent(words);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("follows the sync state as it changes", () => {
+    vi.useFakeTimers();
+    try {
+      liveShared({ state: "online" }, 0);
+      render(<CollabShareButton />);
+      const host = screen.getByRole("button", { name: share.button }).parentElement as Element;
+      expect(hover(host)).toHaveTextContent(sync.upToDate);
+      act(() => useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 500 }, pending: 3 }));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(fill(sync.offline, { number: "3" }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("leaves the Share tooltip alone for a different project's live state", () => {
+    vi.useFakeTimers();
+    try {
+      liveShared({ state: "ended", reason: "removed" });
+      useCollabLiveStore.setState({ projectId: "other" });
+      render(<CollabShareButton />);
+      const tip = hover(screen.getByRole("button", { name: share.button }).parentElement as Element);
+      expect(tip).not.toHaveTextContent(sync.removed);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("CollabToolbarItem", () => {
   it("shows who is here as plain avatars with a tooltip each, never inside a button", () => {
     vi.useFakeTimers();
     try {
@@ -171,41 +268,70 @@ describe("CollabToolbarItem", () => {
       expect(tip).toHaveTextContent("Eli.tex");
       expect(tip).toHaveTextContent("Fay");
       expect(tip).toHaveTextContent("Fay.tex");
+      expect(tip).toHaveClass("max-w-xs");
+      const rows = [...(tip?.querySelectorAll('[data-slot="hidden-person"]') ?? [])];
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveTextContent(/^Eli.*Eli\.tex$/);
+      expect(rows[0]).toHaveClass("whitespace-nowrap");
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("keeps saying why sync ended after the project stops being shared", () => {
-    useCollabLiveStore.setState({
-      projectId: "grant",
-      share: null,
-      status: { state: "ended", reason: "removed" },
-      ended: "removed",
-      peers: {},
+  it("draws the avatars at the toolbar size in their own measured toolbar item", () => {
+    liveShared({ state: "online" }, 0, {
+      alice: peer("alice", ALICE_ID, "intro.tex"),
+      carol: peer("carol", CAROL_ID, null),
     });
-    render(<CollabToolbarItem />);
-    expect(screen.getByRole("button", { name: sync.removed })).toBeInTheDocument();
+    const { container } = render(<CollabToolbarItem />);
+    const item = container.querySelector('[data-toolbar-item="collab"]') as HTMLElement;
+    expect(item).not.toHaveAttribute("data-toolbar-icon");
+    expect(item).not.toHaveAttribute("data-overflow-order");
+    const avatars = item.querySelectorAll('[data-slot="avatar"]');
+    expect(avatars).toHaveLength(2);
+    for (const avatar of avatars) expect(avatar).toHaveClass("size-7", "p-1", "border-2", "border-background");
+    expect(avatars[0]).toHaveTextContent(/^AC$/);
+    expect(avatars[1]).toHaveTextContent(/^CD$/);
+    expect(avatars[1].parentElement).toHaveClass("-ml-1");
   });
 
-  it.each<[CollabLiveState | null, number, string]>([
-    [{ state: "online" }, 2, sync.syncing],
-    [{ state: "offline", retry_in_ms: 1000 }, 47, fill(sync.offline, { number: "47" })],
-    [{ state: "offline", retry_in_ms: 1000 }, 0, sync.reconnecting],
-    [{ state: "ended", reason: "signed_out" }, 0, sync.signedOut],
-    [{ state: "ended", reason: "removed" }, 0, sync.removed],
-    [{ state: "ended", reason: "archived" }, 0, sync.archived],
-    [null, 0, sync.syncing],
-  ])("names the sync state %j with %i waiting in words", (status, pending, words) => {
-    liveShared(status, pending);
-    render(<CollabToolbarItem />);
-    expect(screen.getByRole("button", { name: words })).toBeInTheDocument();
+  it("adds no toolbar item while nobody else is here", () => {
+    liveShared({ state: "online" }, 0, { mine: peer("mine", BOB_ID, "main.tex") });
+    const { container } = render(<CollabToolbarItem />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it("follows the sync state as it changes", () => {
-    liveShared({ state: "online" }, 0);
-    render(<CollabToolbarItem />);
-    act(() => useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 500 }, pending: 3 }));
-    expect(screen.getByRole("button", { name: fill(sync.offline, { number: "3" }) })).toBeInTheDocument();
+  it("adds no toolbar item for a project that is not shared", () => {
+    useCollabLiveStore.setState({ peers: { alice: peer("alice", ALICE_ID, null) } });
+    const { container } = render(<CollabToolbarItem />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("does not redraw the avatars while people only move their cursors", () => {
+    liveShared({ state: "online" }, 0, {
+      alice: peer("alice", ALICE_ID, "intro.tex"),
+      carol: peer("carol", CAROL_ID, null),
+    });
+    let commits = 0;
+    const { container } = render(
+      <Profiler id="toolbar" onRender={() => (commits += 1)}>
+        <CollabToolbarItem />
+      </Profiler>,
+    );
+    commits = 0;
+    for (let cursor = 1; cursor <= 20; cursor += 1) {
+      act(() =>
+        useCollabLiveStore.setState({
+          peers: {
+            alice: { ...peer("alice", ALICE_ID, "intro.tex"), cursor, anchor: cursor },
+            carol: peer("carol", CAROL_ID, null),
+          },
+        }),
+      );
+    }
+    expect(commits).toBe(0);
+    act(() => useCollabLiveStore.setState({ peers: { alice: peer("alice", ALICE_ID, "intro.tex") } }));
+    expect(commits).toBe(1);
+    expect(container.querySelectorAll('[data-slot="avatar"]')).toHaveLength(1);
   });
 });

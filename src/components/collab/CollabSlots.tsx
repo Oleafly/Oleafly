@@ -6,6 +6,8 @@ import type { ProjectSearchExtension } from "@/components/library/project-search
 import { i18n, loadNamespace } from "@/i18n";
 import type { QueryMeta } from "@/lib/query-suggestions";
 import type { ProjectInfo } from "@/lib/tauri";
+import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabRail } from "./collab-rail";
 import { useShareDialog } from "./share-dialog";
@@ -39,6 +41,7 @@ export interface CollabLibraryKit {
 const surfaces = () => import("@/features/collab/sharing/surfaces");
 
 const CollabToolbarItem = lazy(() => surfaces().then((module) => ({ default: module.CollabToolbarItem })));
+const CollabShareButton = lazy(() => surfaces().then((module) => ({ default: module.CollabShareButton })));
 const ShareDialog = lazy(() => surfaces().then((module) => ({ default: module.ShareDialog })));
 const TreePresence = lazy(() => surfaces().then((module) => ({ default: module.TreePresence })));
 const CollabActivityKeeper = lazy(() => surfaces().then((module) => ({ default: module.CollabActivityKeeper })));
@@ -93,9 +96,18 @@ function Gate({ when = true, children }: Readonly<{ when?: boolean; children: Re
 export function CollabToolbarSlot() {
   return (
     <Gate>
-      <div data-toolbar-item="collab" className="flex w-max shrink-0 items-center gap-1">
-        <CollabToolbarItem />
-      </div>
+      <CollabToolbarItem />
+    </Gate>
+  );
+}
+
+export function CollabShareSlot() {
+  const projectId = useFilesStore((state) => state.projectId);
+  return (
+    <Gate when={projectId !== null}>
+      <ToolbarAction name="share">
+        <CollabShareButton />
+      </ToolbarAction>
     </Gate>
   );
 }

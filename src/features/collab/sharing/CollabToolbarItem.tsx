@@ -8,13 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { isFolderProject } from "@/lib/library-projects";
 import { useFilesStore } from "@/store/files";
-import { useCollabLiveStore } from "../live/live-store";
+import { peerPlaces, useCollabLiveStore } from "../live/live-store";
 import { useCollabStore } from "../store";
 import { copyThenShare } from "./copy-then-share";
-import { openCollabPane } from "./open-pane";
 import { presentPeople, type PresentPerson } from "./presence";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
-import { syncState } from "./sync-state";
+import { syncState, type SyncState } from "./sync-state";
 
 function PersonLines({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
   const { t } = useTranslation(["collab"]);
@@ -29,70 +28,95 @@ function PersonLines({ entry }: Readonly<{ entry: PresentPerson | undefined }>) 
   );
 }
 
-function SyncButton() {
-  const live = useCollabLiveStore(useShallow((state) => ({ status: state.status, pending: state.pending })));
-  const state = syncState(live.status, live.pending);
-  const words = useSyncWords(state, live.pending);
+function HiddenPerson({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
+  const { t } = useTranslation(["collab"]);
+  if (!entry) return null;
+  const role = entry.role;
+  const details = [
+    role ? t(($) => $.collab.projectRoles[role]) : null,
+    entry.path ?? t(($) => $.collab.toolbar.noFile),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <Tooltip label={words}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={words}
-        className="size-7 hover:text-foreground"
-        onClick={openCollabPane}
-      >
-        <SyncStateIcon state={state} />
-      </Button>
-    </Tooltip>
+    <span data-slot="hidden-person" className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-left">
+      <span className="shrink-0 font-medium">{entry.person.name}</span>
+      <span className="truncate text-muted-foreground">{details}</span>
+    </span>
   );
 }
 
-function PresentAvatars() {
+function PresentAvatars({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["collab"]);
+  const peers = useCollabLiveStore((state) => peerPlaces(state.peers));
   const live = useCollabLiveStore(
     useShallow((state) => ({
-      peers: state.peers,
+      shared: state.projectId === projectId && state.share !== null,
       members: state.members,
       selfId: state.share?.account_id ?? null,
     })),
   );
   const unknownName = t(($) => $.collab.toolbar.unknownPerson);
   const people = useMemo(
-    () => presentPeople(live.peers, live.members, live.selfId, unknownName),
-    [live.peers, live.members, live.selfId, unknownName],
+    () => presentPeople(peers, live.members, live.selfId, unknownName),
+    [peers, live.members, live.selfId, unknownName],
   );
-  if (people.length === 0) return null;
+  if (!live.shared || people.length === 0) return null;
   const byId = new Map(people.map((entry) => [entry.accountId, entry]));
   return (
-    <AvatarStack
-      people={people.map((entry) => entry.person)}
-      size="sm"
-      className="px-0.5"
-      renderTip={(person) => <PersonLines entry={byId.get(person.id)} />}
-      renderMoreTip={(hidden) => (
-        <span className="flex flex-col gap-1">
-          {hidden.map((person) => (
-            <PersonLines key={person.id} entry={byId.get(person.id)} />
-          ))}
-        </span>
-      )}
-    />
+    <div data-toolbar-item="collab" className="flex w-max shrink-0 items-center">
+      <AvatarStack
+        people={people.map((entry) => entry.person)}
+        size="base"
+        className="px-0.5"
+        renderTip={(person) => <PersonLines entry={byId.get(person.id)} />}
+        renderMoreTip={(hidden) => (
+          <span className="flex flex-col gap-1">
+            {hidden.map((person) => (
+              <HiddenPerson key={person.id} entry={byId.get(person.id)} />
+            ))}
+          </span>
+        )}
+      />
+    </div>
   );
 }
 
 export function CollabToolbarItem() {
+  const projectId = useFilesStore((state) => state.projectId);
+  if (!projectId) return null;
+  return <PresentAvatars projectId={projectId} />;
+}
+
+function ShareTip({ label, state, words }: Readonly<{ label: string; state: SyncState; words: string }>) {
+  return (
+    <span className="flex flex-col gap-0.5 text-left">
+      <span>{label}</span>
+      <span className="flex items-center gap-1 font-normal text-muted-foreground">
+        <SyncStateIcon state={state} className="size-3" />
+        {words}
+      </span>
+    </span>
+  );
+}
+
+export function CollabShareButton() {
   const { t } = useTranslation(["collab"]);
   const projectId = useFilesStore((state) => state.projectId);
   const project = useFilesStore((state) => state.projects.find((entry) => entry.id === state.projectId) ?? null);
-  const visible = useCollabLiveStore(
-    (state) => state.projectId === projectId && (state.share !== null || state.status?.state === "ended"),
+  const live = useCollabLiveStore(
+    useShallow((state) => ({
+      shown: state.projectId === projectId && (state.share !== null || state.status?.state === "ended"),
+      status: state.status,
+      pending: state.pending,
+    })),
   );
   const serversStatus = useCollabStore((state) => state.status);
   const loadServers = useCollabStore((state) => state.load);
   const signedIn = useCollabStore((state) => state.servers.some((entry) => entry.signed_in));
   const linked = project !== null && isFolderProject(project);
+  const state = syncState(live.status, live.pending);
+  const words = useSyncWords(state, live.pending);
 
   useEffect(() => {
     if (linked && serversStatus === "idle") void loadServers();
@@ -106,21 +130,17 @@ export function CollabToolbarItem() {
   };
 
   return (
-    <>
-      {visible ? <SyncButton /> : null}
-      {visible ? <PresentAvatars /> : null}
-      <Tooltip label={label}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={label}
-          className="size-7 text-muted-foreground hover:text-foreground"
-          onClick={share}
-        >
-          {linked ? <CopyPlus aria-hidden className="size-4" /> : <Share2 aria-hidden className="size-4" />}
-        </Button>
-      </Tooltip>
-    </>
+    <Tooltip label={live.shown ? <ShareTip label={label} state={state} words={words} /> : label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={label}
+        className="size-7 text-muted-foreground hover:text-foreground"
+        onClick={share}
+      >
+        {linked ? <CopyPlus aria-hidden className="size-4" /> : <Share2 aria-hidden className="size-4" />}
+      </Button>
+    </Tooltip>
   );
 }

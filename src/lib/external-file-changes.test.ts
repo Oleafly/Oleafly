@@ -307,6 +307,42 @@ describe("applyFolderChange", () => {
     expect(mocks.listFiles).not.toHaveBeenCalled();
   });
 
+  it("moves an open tab along with a file renamed elsewhere", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    const opened = useFilesStore.getState().files["references.bib"];
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["references.bib", "refs.bib"],
+      rescan: false,
+      structural: true,
+      renamed: [["references.bib", "refs.bib"]],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toContain("refs.bib");
+    expect(state.openTabs).not.toContain("references.bib");
+    expect(state.activePath).toBe("refs.bib");
+    expect(state.files["refs.bib"]).toBe(opened);
+    expect(state.files["references.bib"]).toBeUndefined();
+  });
+
+  it("closes the tab of a clean file deleted elsewhere", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).not.toContain("notes.tex");
+    expect(state.files["notes.tex"]).toBeUndefined();
+  });
+
   it("asks about an unsaved buffer whose file changed on disk", async () => {
     await editOpenFile("main.tex", "original\n", "my edit\n");
     mocks.readFileContent.mockResolvedValue("their edit\n");

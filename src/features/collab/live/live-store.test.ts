@@ -68,8 +68,9 @@ vi.mock("@/store/files", async () => {
   };
 });
 
+import { collabProjectReadOnly } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
-import { startCollabLive, useCollabLiveStore } from "./live-store";
+import { PEER_TTL_MS, peerPlaces, startCollabLive, useCollabLiveStore } from "./live-store";
 
 const PROJECT = "project-1";
 const OTHER = "project-2";
@@ -209,6 +210,46 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().projectId).toBeNull();
   });
 
+  it("keeps a shared project read-only until live editing has started", async () => {
+    let finish: (value: unknown) => void = () => {};
+    mocks.collabLiveStart.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    finish({ role: "editor", account_id: ALICE, device_id: "device-me" });
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("tries again when live editing fails to start and stays read-only meanwhile", async () => {
+    vi.useFakeTimers();
+    mocks.collabLiveStart.mockRejectedValueOnce(new Error("busy"));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("lets a project that stops being shared be edited again", async () => {
+    vi.useFakeTimers();
+    mocks.collabLiveStart.mockRejectedValue(new Error("busy"));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    useCollabLiveStore.setState({ share: null });
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+  });
+
   it("stops live sync for a project that closes before going live", async () => {
     let finish: (value: unknown) => void = () => {};
     mocks.collabLiveStart.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
@@ -239,6 +280,21 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().merged).toEqual(merged);
     useCollabLiveStore.getState().dismissMerged();
     expect(useCollabLiveStore.getState().merged).toBeNull();
+  });
+
+  it("reloads the member list when this person's role changes", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const before = mocks.collabMembersList.mock.calls.length;
+    mocks.collabMembersList.mockResolvedValueOnce([
+      { ...member(ALICE, "Alice Chen"), role: "viewer" },
+      member(BOB, "Bob Jones"),
+    ]);
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    expect(useCollabLiveStore.getState().members[0]).toMatchObject({ role: "viewer" });
   });
 
   it("tracks peers with names from the member list and drops them when they leave", async () => {
@@ -288,6 +344,56 @@ describe("collab live store", () => {
     expect(Object.keys(useCollabLiveStore.getState().peers)).toEqual(["device-bob"]);
     vi.advanceTimersByTime(15_000);
     expect(useCollabLiveStore.getState().peers).toEqual({});
+  });
+
+  it("runs the expiry timer only while someone else is here", async () => {
+    vi.useFakeTimers();
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(vi.getTimerCount()).toBe(0);
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: null, cursor: null, anchor: null });
+    expect(vi.getTimerCount()).toBe(1);
+    emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "d" });
+    expect(vi.getTimerCount()).toBe(0);
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: null, cursor: null, anchor: null });
+    vi.advanceTimersByTime(PEER_TTL_MS + 1_000);
+    expect(useCollabLiveStore.getState().peers).toEqual({});
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps the same place list while people only move their cursors", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const bob: CollabPresence = {
+      projectId: PROJECT,
+      deviceId: "device-bob",
+      accountId: BOB,
+      path: "main.tex",
+      cursor: 4,
+      anchor: 4,
+    };
+    emit("presence", bob);
+    const places = peerPlaces(useCollabLiveStore.getState().peers);
+    expect(places["device-bob"]).toMatchObject({ accountId: BOB, path: "main.tex", hue: avatarHue(BOB) });
+    emit("presence", { ...bob, cursor: 90, anchor: 80 });
+    emit("presence", { ...bob, cursor: 91, anchor: 91 });
+    expect(peerPlaces(useCollabLiveStore.getState().peers)).toBe(places);
+    emit("presence", { ...bob, path: "intro.tex" });
+    const moved = peerPlaces(useCollabLiveStore.getState().peers);
+    expect(moved).not.toBe(places);
+    expect(moved["device-bob"]?.path).toBe("intro.tex");
+    emit("presence", { ...bob, deviceId: "device-bob-laptop", path: "intro.tex" });
+    expect(Object.keys(peerPlaces(useCollabLiveStore.getState().peers))).toEqual(["device-bob", "device-bob-laptop"]);
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen"), member(BOB, "Bob J.")]);
+    const named = peerPlaces(useCollabLiveStore.getState().peers);
+    await useCollabLiveStore.getState().refreshMembers();
+    const renamed = peerPlaces(useCollabLiveStore.getState().peers);
+    expect(renamed).not.toBe(named);
+    expect(renamed["device-bob"]?.person?.display_name).toBe("Bob J.");
+    emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "device-bob-laptop" });
+    expect(Object.keys(peerPlaces(useCollabLiveStore.getState().peers))).toEqual(["device-bob"]);
   });
 
   it("names a peer once the member list learns about them", async () => {

@@ -1,5 +1,6 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { avatarHue } from "@/components/ui/avatar";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import {
   collabLiveStart,
@@ -34,6 +35,30 @@ export interface LivePeer {
   anchor: number | null;
   seenAt: number;
   hue: number;
+}
+
+export type PeerPlace = Pick<LivePeer, "deviceId" | "accountId" | "person" | "path" | "hue">;
+export type PeerPlaces = Readonly<Record<string, PeerPlace>>;
+
+const placesFor = new WeakMap<PeerPlaces, PeerPlaces>();
+let lastPlaces: PeerPlaces = {};
+
+function samePlace(a: PeerPlace | undefined, b: PeerPlace): boolean {
+  return a !== undefined && a.accountId === b.accountId && a.person === b.person && a.path === b.path && a.hue === b.hue;
+}
+
+function samePlaces(a: PeerPlaces, b: PeerPlaces): boolean {
+  const keys = Object.keys(b);
+  return keys.length === Object.keys(a).length && keys.every((key) => samePlace(a[key], b[key]));
+}
+
+export function peerPlaces(peers: PeerPlaces): PeerPlaces {
+  const known = placesFor.get(peers);
+  if (known) return known;
+  const places = samePlaces(lastPlaces, peers) ? lastPlaces : peers;
+  placesFor.set(peers, places);
+  lastPlaces = places;
+  return places;
 }
 
 export interface CollabLiveStoreState {
@@ -145,6 +170,20 @@ interface LiveRun {
   ready: boolean;
   deviceId: string | null;
   release: (() => void) | null;
+  retry: ReturnType<typeof setTimeout> | null;
+}
+
+const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
+
+function holdEditors(projectId: string): void {
+  useCollabEditorGate.setState({ projectId, viewer: false, connecting: true });
+}
+
+function releaseEditors(projectId: string): void {
+  const gate = useCollabEditorGate.getState();
+  if (gate.projectId === projectId && gate.connecting) {
+    useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+  }
 }
 
 export function startCollabLive(hooks: LiveHooks = {}): () => void {
@@ -156,14 +195,18 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     const run = live;
     if (!run) return;
     live = null;
+    if (run.retry) clearTimeout(run.retry);
+    run.retry = null;
     run.release?.();
     run.release = null;
+    releaseEditors(run.projectId);
     if (run.ready) void collabLiveStop(run.projectId).catch((error) => logError("collab live stop", error));
   };
 
-  const goLive = async (projectId: string) => {
-    const run: LiveRun = { projectId, ready: false, deviceId: null, release: null };
+  const goLive = async (projectId: string, attempt = 0) => {
+    const run: LiveRun = { projectId, ready: false, deviceId: null, release: null, retry: null };
     live = run;
+    holdEditors(projectId);
     let info: Awaited<ReturnType<typeof collabLiveStart>>;
     try {
       await useFilesStore
@@ -176,8 +219,14 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       }
       info = await collabLiveStart(projectId);
     } catch (error) {
-      if (live === run) live = null;
       void logError("collab live start", error);
+      if (disposed || live !== run) return;
+      const delay = START_RETRY_MS[Math.min(attempt, START_RETRY_MS.length - 1)];
+      run.retry = setTimeout(() => {
+        run.retry = null;
+        if (disposed || live !== run || !store.getState().share) return;
+        void goLive(projectId, attempt + 1);
+      }, delay);
       return;
     }
     run.ready = true;
@@ -186,6 +235,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       return;
     }
     run.deviceId = info.device_id;
+    releaseEditors(projectId);
     store.setState({ role: info.role });
     void store.getState().refreshMembers();
     run.release =
@@ -219,7 +269,9 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onRole = (payload: CollabLiveRole) => {
     if (payload.projectId !== current()) return;
+    const changed = store.getState().role !== payload.role;
     store.setState({ role: payload.role });
+    if (changed) void store.getState().refreshMembers();
   };
 
   const onMerged = (payload: CollabLiveMerged) => {
@@ -275,7 +327,17 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       return () => {};
     }),
   );
-  const sweep = setInterval(expirePeers, PEER_SWEEP_MS);
+  let sweep: ReturnType<typeof setInterval> | null = null;
+  const unsubscribeSweep = store.subscribe((state, previous) => {
+    if (state.peers === previous.peers) return;
+    const present = Object.keys(state.peers).length > 0;
+    if (present && sweep === null) {
+      sweep = setInterval(expirePeers, PEER_SWEEP_MS);
+    } else if (!present && sweep !== null) {
+      clearInterval(sweep);
+      sweep = null;
+    }
+  });
 
   const unsubscribeStore = store.subscribe((state, previous) => {
     if (disposed || state.share === previous.share || !state.projectId) return;
@@ -300,7 +362,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     disposed = true;
     unsubscribeFiles();
     unsubscribeStore();
-    clearInterval(sweep);
+    unsubscribeSweep();
+    if (sweep !== null) clearInterval(sweep);
     stopLive();
     for (const pending of unlisteners) void pending.then((unlisten) => unlisten());
     store.setState(emptyLive(null));

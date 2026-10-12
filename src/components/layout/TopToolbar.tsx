@@ -46,7 +46,7 @@ import {
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
-import { CollabToolbarSlot, ShareDialogHost } from "@/components/collab/CollabSlots";
+import { CollabShareSlot, CollabToolbarSlot, ShareDialogHost } from "@/components/collab/CollabSlots";
 import "./top-toolbar.css";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -674,6 +674,7 @@ export function TopToolbar() {
         <ToolbarAction name="history" order={TOOLBAR_OVERFLOW.history} hidden={hideHistory}>
           <ProjectHistoryActions />
         </ToolbarAction>
+        <CollabShareSlot />
         {workspaceHidden && <ToolbarAction name="sidebar"><SidebarCollapseToggle /></ToolbarAction>}
         <WorkspaceDockControls overflow={toolbarLayout.overflow} onFork={showForkDialog} layoutControl={layoutControl}>
           {hideExport && <DropdownMenuSub onOpenChange={(open) => { if (open) prepareExportMenu(); }}>

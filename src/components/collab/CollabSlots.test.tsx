@@ -2,10 +2,12 @@
 
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 const loaded = vi.hoisted(() => ({
   toolbar: vi.fn(),
+  share: vi.fn(),
   dialog: vi.fn(),
   presence: vi.fn(),
   keeper: vi.fn(),
@@ -18,6 +20,10 @@ vi.mock("@/features/collab/sharing/CollabToolbarItem", () => ({
   CollabToolbarItem: () => {
     loaded.toolbar();
     return <span>{"collab toolbar"}</span>;
+  },
+  CollabShareButton: () => {
+    loaded.share();
+    return <button type="button">{"share button"}</button>;
   },
 }));
 vi.mock("@/features/collab/sharing/ShareDialog", () => ({
@@ -60,6 +66,7 @@ vi.mock("@/features/collab/sharing/OpenLinkDialog", () => ({
 import {
   CollabActivitySlot,
   CollabPanel,
+  CollabShareSlot,
   CollabToolbarSlot,
   CollabTreePresenceSlot,
   OpenLinkDialogSlot,
@@ -73,6 +80,7 @@ function renderEverySlot() {
   return render(
     <>
       <CollabToolbarSlot />
+      <CollabShareSlot />
       <ShareDialogHost />
       <CollabTreePresenceSlot onChange={() => undefined} />
       <CollabActivitySlot />
@@ -86,10 +94,12 @@ function renderEverySlot() {
 beforeEach(() => {
   vi.clearAllMocks();
   useShareDialog.setState({ projectId: null });
+  useFilesStore.setState({ projectId: "grant" });
 });
 
 afterEach(() => {
   useSettingsStore.setState({ liveCollaboration: false });
+  useFilesStore.setState({ projectId: null });
 });
 
 describe("collaboration slots", () => {
@@ -104,18 +114,35 @@ describe("collaboration slots", () => {
     for (const component of Object.values(loaded)) expect(component).not.toHaveBeenCalled();
   });
 
-  it("puts the toolbar item in a measured slot and loads the rest on demand when it is on", async () => {
+  it("puts Share in a measured icon slot and loads the rest on demand when it is on", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     const { container } = renderEverySlot();
     expect(await screen.findByText("collab toolbar")).toBeInTheDocument();
-    expect(container.querySelector('[data-toolbar-item="collab"]')).toHaveTextContent("collab toolbar");
+    expect(await screen.findByRole("button", { name: "share button" })).toBeInTheDocument();
+    const share = container.querySelector('[data-toolbar-item="share"]');
+    expect(share).toHaveAttribute("data-toolbar-icon");
+    expect(share).not.toHaveAttribute("data-overflow-order");
+    expect(share).toHaveTextContent("share button");
+    expect(container.querySelector('[data-toolbar-item="share"]')).not.toHaveTextContent("collab toolbar");
     expect(await screen.findByText("collab pane")).toBeInTheDocument();
     expect(await screen.findByText("shared with you")).toBeInTheDocument();
     expect(await screen.findByText("open link dialog")).toBeInTheDocument();
     expect(loaded.toolbar).toHaveBeenCalled();
+    expect(loaded.share).toHaveBeenCalled();
     expect(loaded.presence).toHaveBeenCalled();
     expect(loaded.keeper).toHaveBeenCalled();
     expect(loaded.dialog).not.toHaveBeenCalled();
+  });
+
+  it("adds no Share slot without an open project", async () => {
+    useSettingsStore.setState({ liveCollaboration: true });
+    useFilesStore.setState({ projectId: null });
+    const { container } = render(<CollabShareSlot />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container).toBeEmptyDOMElement();
+    expect(loaded.share).not.toHaveBeenCalled();
   });
 
   it("opens the share dialog for the project someone asked to share", async () => {

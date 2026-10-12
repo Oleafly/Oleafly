@@ -118,11 +118,12 @@ function decorationsFor(cursors: readonly RemoteCursor[]): DecorationSet {
 
 interface CursorField {
   cursors: readonly RemoteCursor[];
+  reported: ReadonlyMap<string, RemoteCursor>;
   decorations: DecorationSet;
 }
 
 const cursorField = StateField.define<CursorField>({
-  create: () => ({ cursors: [], decorations: Decoration.none }),
+  create: () => ({ cursors: [], reported: new Map(), decorations: Decoration.none }),
   update(value, transaction) {
     let cursors = value.cursors;
     if (transaction.docChanged && cursors.length > 0) {
@@ -132,17 +133,23 @@ const cursorField = StateField.define<CursorField>({
         anchor: transaction.changes.mapPos(cursor.anchor),
       }));
     }
+    let reported = value.reported;
     for (const effect of transaction.effects) {
       if (!effect.is(setRemoteCursors)) continue;
       const doc = transaction.state.doc;
-      cursors = effect.value.map((cursor) => ({
-        ...cursor,
-        head: clampPosition(doc, cursor.head),
-        anchor: clampPosition(doc, cursor.anchor),
-      }));
+      const placed = new Map(cursors.map((cursor) => [cursor.id, cursor]));
+      cursors = effect.value.map((cursor) => {
+        const before = reported.get(cursor.id);
+        const kept = placed.get(cursor.id);
+        if (kept && before && before.head === cursor.head && before.anchor === cursor.anchor) {
+          return { ...cursor, head: kept.head, anchor: kept.anchor };
+        }
+        return { ...cursor, head: clampPosition(doc, cursor.head), anchor: clampPosition(doc, cursor.anchor) };
+      });
+      reported = new Map(effect.value.map((cursor) => [cursor.id, cursor]));
     }
     if (cursors === value.cursors) return value;
-    return { cursors, decorations: decorationsFor(cursors) };
+    return { cursors, reported, decorations: decorationsFor(cursors) };
   },
   provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
 });

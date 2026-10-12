@@ -64,6 +64,12 @@ interface SidebarPanelViews {
     readonly filter: string;
     readonly handledFocusRequest: number;
   };
+  collab: {
+    readonly sectionOpen: {
+      readonly people: boolean;
+      readonly activity: boolean;
+    };
+  };
   researchWorkspace: { readonly tab: "tasks" | "folders" };
   researchTasks: { readonly filter: "all" | "running" | "review" | "done" };
 }

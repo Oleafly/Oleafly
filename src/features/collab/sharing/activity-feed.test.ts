@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
@@ -153,5 +153,25 @@ describe("startCollabActivity", () => {
     expect(useCollabRail.getState().unread).toBe(true);
     useCollabActivity.getState().markRead();
     expect(useCollabRail.getState().unread).toBe(false);
+  });
+
+  it("leaves stored settings alone while people move around", () => {
+    joined();
+    stop = startCollabActivity();
+    const getItem = vi.spyOn(localStorage, "getItem");
+    try {
+      for (let cursor = 0; cursor < 20; cursor += 1) {
+        useCollabLiveStore.setState({ peers: { carol: { ...peer("carol", CAROL_ID, "Carol Diaz"), cursor } } });
+      }
+      useCollabLiveStore.setState({ pending: 1 });
+      useCollabLiveStore.setState({ pending: 0 });
+      expect(getItem).not.toHaveBeenCalled();
+      expect(kinds()).toEqual(["joined", "welcome"]);
+      useCollabLiveStore.setState({ role: "viewer" });
+      expect(getItem).toHaveBeenCalled();
+      expect(kinds()).toEqual(["role", "joined", "welcome"]);
+    } finally {
+      getItem.mockRestore();
+    }
   });
 });

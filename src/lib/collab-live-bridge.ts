@@ -9,9 +9,14 @@ export interface CollabEditorPort {
 interface CollabEditorGate {
   projectId: string | null;
   viewer: boolean;
+  connecting: boolean;
 }
 
-export const useCollabEditorGate = create<CollabEditorGate>(() => ({ projectId: null, viewer: false }));
+export const useCollabEditorGate = create<CollabEditorGate>(() => ({
+  projectId: null,
+  viewer: false,
+  connecting: false,
+}));
 
 let port: CollabEditorPort | null = null;
 
@@ -31,7 +36,7 @@ export async function collabCompileBarrier(projectId: string | null): Promise<vo
 }
 
 const projectReadOnly = (gate: CollabEditorGate, projectId: string | null) =>
-  projectId !== null && gate.projectId === projectId && gate.viewer;
+  projectId !== null && gate.projectId === projectId && (gate.viewer || gate.connecting);
 
 const visualReadOnly = (gate: CollabEditorGate, projectId: string | null) =>
   projectId !== null && gate.projectId === projectId;

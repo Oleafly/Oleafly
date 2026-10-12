@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-export type AvatarSize = "xs" | "sm" | "md";
+export type AvatarSize = "xs" | "sm" | "base" | "md";
 
 export interface AvatarPerson {
   id: string;
@@ -11,22 +11,26 @@ export interface AvatarPerson {
   imageUrl?: string | null;
 }
 
-const BOX: Record<AvatarSize, string> = { xs: "size-4", sm: "size-5", md: "size-8" };
+const BOX: Record<AvatarSize, string> = { xs: "size-4", sm: "size-5", base: "size-7", md: "size-8" };
 const TEXT: Record<AvatarSize, string> = {
   xs: "text-[0.5625rem]",
   sm: "text-[0.625rem]",
+  base: "text-[0.625rem]",
   md: "text-xs",
 };
+const PAD: Record<AvatarSize, string> = { xs: "p-0.5", sm: "p-0.5", base: "p-1", md: "p-1.5" };
 const ICON: Record<AvatarSize, string> = {
   xs: "[&_svg]:size-2.5",
   sm: "[&_svg]:size-3",
+  base: "[&_svg]:size-3.5",
   md: "[&_svg]:size-4",
 };
-const LETTERS: Record<AvatarSize, number> = { xs: 1, sm: 2, md: 2 };
-const OVERLAP: Record<AvatarSize, string> = { xs: "-ml-1", sm: "-ml-1.5", md: "-ml-2.5" };
+const LETTERS: Record<AvatarSize, number> = { xs: 1, sm: 2, base: 2, md: 2 };
+const OVERLAP: Record<AvatarSize, string> = { xs: "-ml-1", sm: "-ml-1.5", base: "-ml-1", md: "-ml-2.5" };
 const SEPARATOR: Record<AvatarSize, string> = {
   xs: "border border-background",
   sm: "border-2 border-background",
+  base: "border-2 border-background",
   md: "border-2 border-background",
 };
 
@@ -97,6 +101,8 @@ export function Avatar({
         "flex shrink-0 items-center justify-center rounded-full font-bold text-white",
         BOX[size],
         TEXT[size],
+        "leading-none",
+        PAD[size],
         className,
       )}
       style={{ backgroundColor: `hsl(${avatarHue(person.id)} 55% 45%)` }}
@@ -132,6 +138,8 @@ export function AvatarStack({
           "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground",
           BOX[size],
           TEXT[size],
+          "leading-none",
+          PAD[size],
           SEPARATOR[size],
           shown.length > 0 && !renderMoreTip && OVERLAP[size],
         )}
@@ -162,7 +170,7 @@ export function AvatarStack({
         );
       })}
       {more && renderMoreTip ? (
-        <Tooltip label={renderMoreTip(hidden)} className={cn("shrink-0 rounded-full", shown.length > 0 && OVERLAP[size])}>
+        <Tooltip wide label={renderMoreTip(hidden)} className={cn("shrink-0 rounded-full", shown.length > 0 && OVERLAP[size])}>
           {more}
         </Tooltip>
       ) : (

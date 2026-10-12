@@ -1,15 +1,43 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { Profiler } from "react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { useShareDialog } from "@/components/collab/share-dialog";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { useCollabLiveStore, type LivePeer } from "../live/live-store";
+import { resetSidebarViewState } from "@/store/sidebar-view-state";
+import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
+
+const spies = vi.hoisted(() => ({ relativeTime: vi.fn(), person: vi.fn() }));
+
+vi.mock("@/lib/intl", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/intl")>();
+  return {
+    ...original,
+    formatRelativeTimeFrom: (...args: Parameters<typeof original.formatRelativeTimeFrom>) => {
+      spies.relativeTime();
+      return original.formatRelativeTimeFrom(...args);
+    },
+  };
+});
+
+vi.mock("../people", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../people")>();
+  return {
+    ...original,
+    collabPerson: (...args: Parameters<typeof original.collabPerson>) => {
+      spies.person();
+      return original.collabPerson(...args);
+    },
+  };
+});
+
 import { CollabPane } from "./CollabPane";
 
 const pane = enCollab.pane;
@@ -34,6 +62,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   localStorage.clear();
+  resetSidebarViewState();
+  useFilesStore.setState({ projectId: "grant" });
   useSettingsStore.setState({ railTab: "collab", showTree: true });
   useShareDialog.setState({ projectId: null, fromCopy: false });
   useCollabLiveStore.setState({
@@ -52,7 +82,13 @@ beforeEach(() => {
 
 afterEach(() => {
   useCollabActivity.setState({ projectId: null, entries: [], unread: false });
+  useFilesStore.setState({ projectId: null });
+  resetSidebarViewState();
 });
+
+function sectionToggle(name: string): HTMLElement {
+  return screen.getByRole("button", { name });
+}
 
 describe("CollabPane", () => {
   it("names the connection state and the server in its header", () => {
@@ -146,5 +182,155 @@ describe("CollabPane", () => {
     expect(screen.getByText(enCollab.sync.removed)).toBeInTheDocument();
     expect(screen.getByText(activity.removed)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: pane.manage })).toBeNull();
+  });
+
+  it("shows People and Activity as the same collapsible sections as the Files sidebar", () => {
+    feed([
+      { kind: "online", at: NOW - 1000, count: 1 },
+      { kind: "joined", at: NOW - 2000, accountId: CAROL_ID, name: "Carol Diaz", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const people = screen.getByTestId("collab-people");
+    const activitySection = screen.getByTestId("collab-activity");
+    expect(people).toHaveAttribute("aria-label", pane.people);
+    expect(activitySection).toHaveAttribute("aria-label", pane.activity);
+    expect(people.compareDocumentPosition(activitySection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const peopleToggle = sectionToggle(pane.people);
+    const activityToggle = sectionToggle(pane.activity);
+    expect(peopleToggle).toHaveAttribute("aria-expanded", "true");
+    expect(activityToggle).toHaveAttribute("aria-expanded", "true");
+    expect(peopleToggle).toHaveAttribute("aria-controls", "collab-people-content");
+    expect(peopleToggle.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
+    expect(peopleToggle.querySelector("svg.lucide-users")).toBeInTheDocument();
+    expect(activityToggle.querySelector("svg.lucide-activity")).toBeInTheDocument();
+    expect(within(peopleToggle).getByText(pane.people)).toBeInTheDocument();
+    expect(peopleToggle.querySelector("output")).toHaveTextContent("3");
+    expect(activityToggle.querySelector("output")).toHaveTextContent("2");
+  });
+
+  it("collapses and reopens each section from its header", () => {
+    render(<CollabPane />);
+    const peopleToggle = sectionToggle(pane.people);
+    fireEvent.click(peopleToggle);
+    expect(peopleToggle).toHaveAttribute("aria-expanded", "false");
+    expect(peopleToggle.querySelector("svg.lucide-chevron-right")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: pane.people })).toBeNull();
+    expect(document.getElementById("collab-people-content")).toHaveAttribute("hidden");
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(pane.empty)).toBeInTheDocument();
+    fireEvent.click(sectionToggle(pane.activity));
+    expect(screen.queryByText(pane.empty)).toBeNull();
+    fireEvent.click(peopleToggle);
+    expect(screen.getByRole("list", { name: pane.people })).toBeInTheDocument();
+  });
+
+  it("remembers which sections are open for each project when the pane comes back", () => {
+    const first = render(<CollabPane />);
+    fireEvent.click(sectionToggle(pane.activity));
+    first.unmount();
+    const second = render(<CollabPane />);
+    expect(sectionToggle(pane.people)).toHaveAttribute("aria-expanded", "true");
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "false");
+    act(() => useFilesStore.setState({ projectId: "thesis" }));
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(sectionToggle(pane.people));
+    act(() => useFilesStore.setState({ projectId: "grant" }));
+    expect(sectionToggle(pane.people)).toHaveAttribute("aria-expanded", "true");
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "false");
+    second.unmount();
+    render(<CollabPane />);
+    act(() => useFilesStore.setState({ projectId: "thesis" }));
+    expect(sectionToggle(pane.people)).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it.each<["removed" | "archived" | "signed_out", string]>([
+    ["removed", enCollab.sync.removed],
+    ["archived", enCollab.sync.archived],
+    ["signed_out", enCollab.sync.signedOut],
+  ])("keeps the ended state (%s) at the top of the pane with its sections still reachable", (reason, words) => {
+    useCollabLiveStore.setState({ share: null, status: { state: "ended", reason }, ended: reason, peers: {}, members: [] });
+    render(<CollabPane />);
+    const header = screen.getByText(words).closest("div") as HTMLElement;
+    expect(header.querySelector("svg")).toBeInTheDocument();
+    expect(screen.queryByTestId("collab-people")).toBeNull();
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("offers Sign in next to the state line while signed out", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "signed_out" }, ended: "signed_out" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const state = screen.getByText(enCollab.sync.signedOut).closest("div") as HTMLElement;
+    await user.click(within(state).getByRole("button", { name: activity.signIn }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
+  });
+
+  it.each<[Pick<CollabLiveStoreState, "status" | "pending">, string]>([
+    [{ status: { state: "online" }, pending: 0 }, enCollab.sync.upToDate],
+    [{ status: { state: "online" }, pending: 2 }, enCollab.sync.syncing],
+    [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 5 }, fill(enCollab.sync.offline, { number: "5" })],
+    [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 0 }, enCollab.sync.reconnecting],
+    [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused],
+  ])("names the live state %j at the top of the pane without a Sign in button", (live, words) => {
+    useCollabLiveStore.setState(live);
+    render(<CollabPane />);
+    const state = screen.getByText(words).closest("div") as HTMLElement;
+    expect(within(state).queryByRole("button")).toBeNull();
+  });
+
+  it("does not render again while people only move their cursors", () => {
+    let commits = 0;
+    render(
+      <Profiler id="pane" onRender={() => (commits += 1)}>
+        <CollabPane />
+      </Profiler>,
+    );
+    commits = 0;
+    for (let cursor = 1; cursor <= 20; cursor += 1) {
+      act(() =>
+        useCollabLiveStore.setState({
+          peers: {
+            bob: { ...peer("bob", BOB_ID, "main.tex"), cursor, anchor: cursor },
+            mine: peer("mine", ALICE_ID, "intro.tex"),
+          },
+        }),
+      );
+    }
+    expect(commits).toBe(0);
+    act(() => useCollabLiveStore.setState({ peers: { bob: peer("bob", BOB_ID, "refs.bib") } }));
+    expect(commits).toBe(1);
+    const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
+    expect(rows[1]).toHaveTextContent(fill(pane.hereIn, { path: "refs.bib" }));
+  });
+
+  it("redraws only its state line when the sync state changes", () => {
+    feed([
+      { kind: "online", at: NOW - 1000, count: 1 },
+      { kind: "joined", at: NOW - 2000, accountId: CAROL_ID, name: "Carol Diaz", count: 1 },
+    ]);
+    render(<CollabPane />);
+    spies.relativeTime.mockClear();
+    spies.person.mockClear();
+    act(() => useCollabLiveStore.setState({ pending: 3 }));
+    expect(screen.getByText(enCollab.sync.syncing)).toBeInTheDocument();
+    act(() => useCollabLiveStore.setState({ pending: 0, status: { state: "online" } }));
+    expect(screen.getByText(enCollab.sync.upToDate)).toBeInTheDocument();
+    expect(spies.relativeTime).not.toHaveBeenCalled();
+    expect(spies.person).not.toHaveBeenCalled();
+  });
+
+  it("draws a new activity entry without redrawing the ones already shown", () => {
+    feed([
+      { kind: "online", at: NOW - 1000, count: 1 },
+      { kind: "joined", at: NOW - 2000, accountId: CAROL_ID, name: "Carol Diaz", count: 1 },
+      { kind: "role", at: NOW - 3000, role: "viewer", count: 1 },
+    ]);
+    render(<CollabPane />);
+    spies.relativeTime.mockClear();
+    act(() => useCollabActivity.getState().add({ kind: "joined", at: NOW, accountId: BOB_ID, name: "Bob Smith" }));
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveTextContent(fill(activity.joined, { name: "Bob Smith" }));
+    expect(spies.relativeTime).toHaveBeenCalledTimes(1);
   });
 });

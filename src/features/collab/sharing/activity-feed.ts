@@ -45,6 +45,16 @@ function welcome(state: CollabLiveStoreState, at: number): NewActivity | null {
   return { kind: "welcome", at, owner, server: state.share.server_name, role };
 }
 
+function sharingChanged(state: CollabLiveStoreState, previous: CollabLiveStoreState | null): boolean {
+  return (
+    previous === null ||
+    previous.projectId !== state.projectId ||
+    previous.share !== state.share ||
+    previous.role !== state.role ||
+    previous.members !== state.members
+  );
+}
+
 interface FeedMemory {
   server: string;
   offline: boolean;
@@ -107,7 +117,7 @@ export function startCollabActivity(): () => void {
       memory.server = state.share?.server_name ?? "";
       memory.offline = state.status?.state === "offline";
     }
-    const greeting = welcome(state, at);
+    const greeting = sharingChanged(state, previous) ? welcome(state, at) : null;
     if (greeting) useCollabActivity.getState().add(greeting);
     syncRail();
   };

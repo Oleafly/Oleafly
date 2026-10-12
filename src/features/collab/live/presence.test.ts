@@ -72,4 +72,18 @@ describe("presence publisher", () => {
     publisher.schedule();
     expect(send).toHaveBeenCalledTimes(1);
   });
+
+  it("stays under ten frames a second while the selection moves a hundred times a second", () => {
+    const publisher = createPresencePublisher(() => current, send);
+    for (let tick = 1; tick <= 500; tick += 1) {
+      current = { path: "main.tex", cursor: tick, anchor: tick };
+      publisher.schedule();
+      vi.advanceTimersByTime(10);
+    }
+    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
+    publisher.dispose();
+    expect(send.mock.calls.length).toBeGreaterThanOrEqual(30);
+    expect(send.mock.calls.length).toBeLessThanOrEqual(5 * 10);
+    expect(send).toHaveBeenLastCalledWith({ path: "main.tex", cursor: 500, anchor: 500 });
+  });
 });

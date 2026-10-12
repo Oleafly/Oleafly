@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollabDocMessage } from "@/lib/tauri";
+import type { RemoteCursorSource } from "./remote-cursors";
 import {
   collabCompileBarrier,
   collabDocumentSession,
@@ -17,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   releaseExtension: vi.fn(),
   view: null as null | { state: { selection: { main: { head: number; anchor: number } } } },
   documentPath: null as string | null,
+  documentListeners: new Set<() => void>(),
+  cursorSource: null as null | RemoteCursorSource,
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -39,7 +42,17 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@oleafly/editor", () => ({
   getEditorView: () => mocks.view,
   getEditorDocumentPath: () => mocks.documentPath,
-  subscribeEditorDocument: () => () => {},
+  subscribeEditorDocument: (listener: () => void) => {
+    mocks.documentListeners.add(listener);
+    return () => mocks.documentListeners.delete(listener);
+  },
+}));
+
+vi.mock("./remote-cursors", () => ({
+  remoteCursors: (source: RemoteCursorSource) => {
+    mocks.cursorSource = source;
+    return [];
+  },
 }));
 
 vi.mock("@/components/editor/cm/collab-slot", () => ({
@@ -63,7 +76,7 @@ vi.mock("@/store/files", async () => {
 });
 
 import { useFilesStore } from "@/store/files";
-import { useCollabLiveStore } from "./live-store";
+import { type LivePeer, useCollabLiveStore } from "./live-store";
 import { peerCursors, startLiveEditing } from "./live-editing";
 
 const PROJECT = "project-1";
@@ -85,6 +98,8 @@ beforeEach(() => {
   channels = new Map();
   mocks.view = null;
   mocks.documentPath = null;
+  mocks.documentListeners.clear();
+  mocks.cursorSource = null;
   mocks.setCollabEditorExtension.mockReturnValue(mocks.releaseExtension);
   mocks.collabDocOpen.mockImplementation(async (_projectId: string, path: string, onMessage) => {
     if (path === "excluded.log") return null;
@@ -188,6 +203,48 @@ describe("live editing", () => {
     expect(collabVisualReadOnly(PROJECT)).toBe(false);
     expect(mocks.releaseExtension).toHaveBeenCalledOnce();
     expect(useFilesStore.getState().docVersion).toBe(version + 1);
+  });
+});
+
+describe("remote cursor source", () => {
+  function peer(deviceId: string, path: string | null, cursor: number | null): LivePeer {
+    return { deviceId, accountId: deviceId, person: null, path, cursor, anchor: cursor, seenAt: Date.now(), hue: 30 };
+  }
+
+  function place(...peers: LivePeer[]) {
+    useCollabLiveStore.setState({ peers: Object.fromEntries(peers.map((entry) => [entry.deviceId, entry])) });
+  }
+
+  it("wakes the editor only when someone in the open file moves or the file changes", () => {
+    mocks.documentPath = "main.tex";
+    place();
+    start();
+    const source = mocks.cursorSource;
+    if (!source) throw new Error("no cursor source");
+    const listener = vi.fn();
+    const stop = source.subscribe(listener);
+    listener.mockClear();
+    place(peer("bob", "main.tex", 4));
+    expect(listener).toHaveBeenCalledTimes(1);
+    place(peer("bob", "main.tex", 4));
+    place(peer("bob", "main.tex", 4), peer("carol", "intro.tex", 1));
+    place(peer("bob", "main.tex", 4), peer("carol", "intro.tex", 9));
+    expect(listener).toHaveBeenCalledTimes(1);
+    place(peer("bob", "main.tex", 5), peer("carol", "intro.tex", 9));
+    expect(listener).toHaveBeenCalledTimes(2);
+    place(peer("bob", "main.tex", 5), peer("carol", "main.tex", 9));
+    expect(listener).toHaveBeenCalledTimes(3);
+    expect(source.cursors()).toEqual([
+      { id: "bob", name: null, hue: 30, head: 5, anchor: 5 },
+      { id: "carol", name: null, hue: 30, head: 9, anchor: 9 },
+    ]);
+    mocks.documentPath = "intro.tex";
+    for (const notify of mocks.documentListeners) notify();
+    expect(listener).toHaveBeenCalledTimes(4);
+    stop();
+    place(peer("bob", "intro.tex", 1));
+    expect(listener).toHaveBeenCalledTimes(4);
+    expect(mocks.documentListeners.size).toBe(0);
   });
 });
 

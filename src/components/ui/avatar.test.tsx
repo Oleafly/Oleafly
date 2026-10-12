@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { Github } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
-import { Avatar, AvatarStack, avatarHue, type AvatarPerson } from "./avatar";
+import { Avatar, AvatarStack, avatarHue, type AvatarPerson, type AvatarSize } from "./avatar";
 
 const people: AvatarPerson[] = [
   { id: "a1", name: "Alice Chen" },
@@ -66,6 +66,22 @@ describe("Avatar", () => {
     expect(avatarIn(container)).toHaveClass("size-8");
   });
 
+  it("has a toolbar size between small and medium that keeps two initials clear of the edge", () => {
+    const { container } = render(<Avatar person={people[0]} size="base" />);
+    expect(avatarIn(container)).toHaveTextContent(/^[A-Z]{2}$/);
+    expect(avatarIn(container)).toHaveClass("size-7", "text-[0.625rem]", "p-1");
+  });
+
+  it.each<[AvatarSize, string]>([
+    ["xs", "p-0.5"],
+    ["sm", "p-0.5"],
+    ["base", "p-1"],
+    ["md", "p-1.5"],
+  ])("pads the %s initials so the letters stay clear of the edge", (size, padding) => {
+    const { container } = render(<Avatar person={people[0]} size={size} />);
+    expect(avatarIn(container)).toHaveClass(padding, "leading-none");
+  });
+
   it("keeps a surrogate pair whole in an initial", () => {
     const { container } = render(<Avatar person={{ id: "z", name: "😀 Lab" }} size="sm" />);
     expect(avatarIn(container)).toHaveTextContent("😀L");
@@ -109,6 +125,34 @@ describe("AvatarStack", () => {
     }
     expect(avatars[0]?.parentElement).not.toHaveClass("-ml-1.5");
     expect(avatars[1]?.parentElement).toHaveClass("-ml-1.5");
+  });
+
+  it("overlaps the small sizes by a quarter of the circle and the toolbar size lightly so two initials stay readable", () => {
+    const rem = (token: string) => Number(token) / 4;
+    const share = (size: AvatarSize) => {
+      const { container, unmount } = render(<AvatarStack people={people.slice(0, 2)} size={size} />);
+      const avatar = container.querySelectorAll('[data-slot="avatar"]')[1] as HTMLElement;
+      const box = /(?:^|\s)size-([\d.]+)/.exec(avatar.className)?.[1] ?? "0";
+      const overlap = /(?:^|\s)-ml-([\d.]+)/.exec(avatar.parentElement?.className ?? "")?.[1] ?? "0";
+      unmount();
+      return rem(overlap) / rem(box);
+    };
+    const shares = (["xs", "sm", "md"] as const).map(share);
+    for (const value of shares) {
+      expect(value).toBeGreaterThanOrEqual(0.25);
+      expect(value).toBeLessThanOrEqual(0.32);
+    }
+    expect(share("base")).toBeLessThanOrEqual(0.15);
+  });
+
+  it("sizes and pads the counter like the toolbar avatars it follows", () => {
+    const { container } = render(<AvatarStack people={people} size="base" />);
+    const avatars = [...container.querySelectorAll('[data-slot="avatar"]')];
+    expect(avatars[0]).toHaveClass("size-7", "border-2", "border-background");
+    expect(avatars[1]?.parentElement).toHaveClass("-ml-1");
+    const more = container.querySelector('[data-slot="avatar-more"]');
+    expect(more).toHaveClass("size-7", "text-[0.625rem]", "p-1", "border-2", "border-background", "-ml-1");
+    expect(more?.className).not.toMatch(/\bring\b|ring-|shadow|outline/);
   });
 
   it("adds no counter when everyone fits", () => {

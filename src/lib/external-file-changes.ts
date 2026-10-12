@@ -41,6 +41,8 @@ export interface FolderChangePayload {
   paths: string[];
   rescan: boolean;
   structural?: boolean;
+  renamed?: [string, string][];
+  deleted?: string[];
 }
 
 async function refreshAfterFolderChange(
@@ -57,9 +59,15 @@ async function refreshAfterFolderChange(
 }
 
 export function applyFolderChange(change: FolderChangePayload): void {
-  const files = useFilesStore.getState();
-  if (!change.projectId || change.projectId !== files.projectId) return;
+  if (!change.projectId || change.projectId !== useFilesStore.getState().projectId) return;
   if (!projectFolderAvailable(change.projectId)) return;
+  for (const [from, to] of change.renamed ?? []) {
+    useFilesStore.getState().applyExternalRename(change.projectId, from, to);
+  }
+  for (const path of change.deleted ?? []) {
+    useFilesStore.getState().applyExternalDelete(change.projectId, path);
+  }
+  const files = useFilesStore.getState();
   const known = new Set(files.tree.map((entry) => entry.path));
   const listAgain =
     change.rescan ||
