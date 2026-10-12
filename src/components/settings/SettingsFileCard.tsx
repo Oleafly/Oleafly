@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { ChevronRight, Download, Upload, X } from "lucide-react";
@@ -26,7 +26,14 @@ import {
   type SettingsFileProblem,
 } from "@/lib/settings-file/transfer";
 import type { SettingIssue } from "@/lib/settings-file/values";
-import { useTheme, type ThemePreference } from "@/lib/theme";
+import {
+  SET_THEME_PREFERENCE_EVENT,
+  TOGGLE_THEME_EVENT,
+  getStoredPreference,
+  isThemePreference,
+  requestThemePreference,
+  type ThemePreference,
+} from "@/lib/theme";
 import { THEME_CUSTOMIZATION_CHANGED_EVENT } from "@/lib/theme-customization";
 import { pickSettingsFile } from "@/lib/settings-file/native";
 import { writeBytesFile } from "@/lib/tauri";
@@ -148,9 +155,15 @@ function ProblemNotice({
   );
 }
 
+const THEME = {
+  get preference() {
+    return getStoredPreference();
+  },
+  setPreference: (preference: ThemePreference) => requestThemePreference(preference),
+};
+
 function SettingsJsonView() {
   const { t } = useTranslation(["settingsFile", "common"]);
-  const { preference } = useTheme();
   const [json, setJson] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -158,6 +171,7 @@ function SettingsJsonView() {
     let cancelled = false;
     let frame = 0;
     let config: ConfigPreferences | null = null;
+    let preference = getStoredPreference();
     const render = () => {
       frame = 0;
       if (cancelled) return;
@@ -171,6 +185,16 @@ function SettingsJsonView() {
     const schedule = () => {
       if (!cancelled && frame === 0) frame = window.requestAnimationFrame(render);
     };
+    const onThemeRequest = (event: Event) => {
+      const requested = event instanceof CustomEvent ? event.detail : null;
+      preference = isThemePreference(requested) ? requested : getStoredPreference();
+      schedule();
+    };
+    const onThemeToggle = () =>
+      window.requestAnimationFrame(() => {
+        preference = getStoredPreference();
+        schedule();
+      });
     const loadConfig = () =>
       void readConfigPreferences().then((loaded) => {
         config = loaded;
@@ -179,13 +203,17 @@ function SettingsJsonView() {
     loadConfig();
     const unsubscribe = [onConfigPreferencesSaved(loadConfig), watchSettingsSources(schedule)];
     window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, schedule);
+    window.addEventListener(SET_THEME_PREFERENCE_EVENT, onThemeRequest);
+    window.addEventListener(TOGGLE_THEME_EVENT, onThemeToggle);
     return () => {
       cancelled = true;
       if (frame !== 0) window.cancelAnimationFrame(frame);
       for (const stop of unsubscribe) stop();
       window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, schedule);
+      window.removeEventListener(SET_THEME_PREFERENCE_EVENT, onThemeRequest);
+      window.removeEventListener(TOGGLE_THEME_EVENT, onThemeToggle);
     };
-  }, [preference]);
+  }, []);
 
   const highlighted = useMemo(() => highlightSnippet(json ?? "", "json"), [json]);
 
@@ -211,10 +239,10 @@ function SettingsJsonView() {
 }
 
 function useCatalogUpdates(): void {
-  const [, setRevision] = useState(0);
+  const [, refresh] = useReducer((count: number) => count + 1, 0);
   useEffect(() => {
     const onAdded = (_language: string, namespace: string) => {
-      if (namespace === "settingsFile") setRevision((value) => value + 1);
+      if (namespace === "settingsFile") refresh();
     };
     i18n.store.on("added", onAdded);
     return () => i18n.store.off("added", onAdded);
@@ -223,7 +251,6 @@ function useCatalogUpdates(): void {
 
 export default function SettingsFileCard() {
   const { t } = useTranslation(["settingsFile", "common"]);
-  const theme = useTheme();
   useCatalogUpdates();
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<PendingImport | null>(null);
@@ -238,7 +265,7 @@ export default function SettingsFileCard() {
         filters: [{ name: t(($) => $.settingsFile.dialog.filterName), extensions: ["json"] }],
       });
       if (!destination) return;
-      const json = settingsJson(await readConfigPreferences(), theme.preference);
+      const json = settingsJson(await readConfigPreferences(), getStoredPreference());
       await writeBytesFile(destination, textToBase64(json));
       toast.success(t(($) => $.settingsFile.toast.exported, { name: basename(destination) || destination }));
     } catch (error) {
@@ -258,7 +285,10 @@ export default function SettingsFileCard() {
         t(($) => $.settingsFile.dialog.filterName),
       );
       if (!picked) return;
-      const result = readSettingsFile(picked.text, readLocalSnapshot(await readConfigPreferences(), theme.preference));
+      const result = readSettingsFile(
+        picked.text,
+        readLocalSnapshot(await readConfigPreferences(), getStoredPreference()),
+      );
       if (!result.ok) {
         setProblem({ name: picked.name, reason: result.reason, problems: result.reason === "invalid" ? result.problems : [] });
         return;
@@ -280,14 +310,14 @@ export default function SettingsFileCard() {
     if (!pending) return;
     const { plan } = pending;
     setPending(null);
-    applySettingsPlan(plan, theme).then(
+    applySettingsPlan(plan, THEME).then(
       () => toast.success(t(($) => $.settingsFile.toast.imported)),
       (error: unknown) => {
         void logError("apply imported settings", error);
         toast.error(t(($) => $.settingsFile.toast.applyFailed));
       },
     );
-  }, [pending, t, theme]);
+  }, [pending, t]);
 
   const confirmDescription = useMemo(() => {
     if (!pending) return "";

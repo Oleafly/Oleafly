@@ -185,6 +185,12 @@ describe("SettingsFileCard", () => {
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("Couldn't open that file."));
   });
 
+  it("works outside the theme provider, the way the Settings harness renders it", async () => {
+    render(<SettingsFileCardView />);
+    await userEvent.click(screen.getByTestId("settings-file-view"));
+    expect(await screen.findByTestId("settings-file-json")).toHaveTextContent('"theme": "system"');
+  });
+
   it("shows the current settings as read-only JSON that follows changes", async () => {
     render(<SettingsFileCard />);
     const toggle = screen.getByTestId("settings-file-view");

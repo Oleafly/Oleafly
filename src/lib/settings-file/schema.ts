@@ -231,21 +231,27 @@ const EDITOR_COLOR_KEYS: ReadonlySet<string> = new Set([
 ]);
 const EDITOR_COLOR_ROLES: ReadonlySet<string> = new Set(EDITOR_COLOR_IDS);
 
+function parseColorOverrides(key: string, overrides: unknown): Parsed<Record<string, string>> {
+  if (!EDITOR_COLOR_KEYS.has(key)) return fail({ kind: "unknownKey" }, key);
+  if (!isRecord(overrides)) return fail({ kind: "object" }, key);
+  const colors: Record<string, string> = {};
+  for (const [role, color] of Object.entries(overrides)) {
+    if (!EDITOR_COLOR_ROLES.has(role)) return fail({ kind: "unknownKey" }, `${key}.${role}`);
+    const parsed = hexColor.parse(color);
+    if (!parsed.ok) return fail(parsed.issue, `${key}.${role}`);
+    colors[role] = parsed.value;
+  }
+  return ok(colors);
+}
+
 const editorColors: ValueType<EditorColorSettings> = {
   parse(raw) {
     if (!isRecord(raw)) return fail({ kind: "object" });
     const settings: Record<string, Record<string, string>> = {};
     for (const [key, overrides] of Object.entries(raw)) {
-      if (!EDITOR_COLOR_KEYS.has(key)) return fail({ kind: "unknownKey" }, key);
-      if (!isRecord(overrides)) return fail({ kind: "object" }, key);
-      const colors: Record<string, string> = {};
-      for (const [role, color] of Object.entries(overrides)) {
-        if (!EDITOR_COLOR_ROLES.has(role)) return fail({ kind: "unknownKey" }, `${key}.${role}`);
-        const parsed = hexColor.parse(color);
-        if (!parsed.ok) return fail(parsed.issue, `${key}.${role}`);
-        colors[role] = parsed.value;
-      }
-      if (Object.keys(colors).length > 0) settings[key] = colors;
+      const colors = parseColorOverrides(key, overrides);
+      if (!colors.ok) return colors;
+      if (Object.keys(colors.value).length > 0) settings[key] = colors.value;
     }
     return ok(settings as EditorColorSettings);
   },

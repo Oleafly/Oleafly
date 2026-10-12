@@ -26,47 +26,111 @@ export type SnippetLang = "json" | "shell" | "toml";
 
 type PushSnippetToken = (cls: string | null, text: string) => void;
 
+const KEY_TEXT = "text-sky-700 dark:text-sky-300";
+const STRING_TEXT = "text-emerald-700 dark:text-emerald-400";
+const NUMBER_TEXT = "text-amber-700 dark:text-amber-400";
+const LITERAL_TEXT = "text-violet-700 dark:text-violet-400";
+const PUNCTUATION_TEXT = "text-muted-foreground";
+const JSON_PUNCTUATION: ReadonlySet<string> = new Set(["{", "}", "[", "]", ",", ":"]);
+const TOML_PUNCTUATION: ReadonlySet<string> = new Set(["{", "}", "=", ","]);
+const TOML_WORD_STOP: ReadonlySet<string> = new Set(["[", "]", '"', "=", "{", "}", ","]);
+const JSON_NUMBER = /^-?\d+(?:\.\d+)?$/;
+const BARE_KEY = /^[A-Za-z_][\w.]*$/;
+
+function isSpace(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r";
+}
+
+function runEnd(source: string, start: number, stops: (char: string) => boolean): number {
+  let index = start;
+  while (index < source.length && !stops(source[index])) index += 1;
+  return index;
+}
+
+function stringEnd(source: string, start: number): number {
+  let index = start + 1;
+  while (index < source.length) {
+    if (source[index] === "\\") index += 2;
+    else if (source[index] === '"') return index + 1;
+    else index += 1;
+  }
+  return source.length;
+}
+
+function spaceEnd(source: string, start: number): number {
+  return runEnd(source, start, (char) => !isSpace(char));
+}
+
+function jsonWordClass(word: string): string | null {
+  if (JSON_NUMBER.test(word)) return NUMBER_TEXT;
+  return word === "true" || word === "false" || word === "null" ? LITERAL_TEXT : null;
+}
+
 function highlightJsonSnippet(source: string, push: PushSnippetToken) {
-  // Keys, strings, numbers, booleans/null, punctuation.
-  const re =
-    /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?)\b|(\b(?:true|false|null)\b)|([{}[\],:])|(\s+)|([^\s"{}[\],:]+)/g;
-  for (const m of source.matchAll(re)) {
-    if (m[1] !== undefined && m[2] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[1]);
-      push("text-muted-foreground", m[2]);
-    } else if (m[1] !== undefined) {
-      push("text-emerald-700 dark:text-emerald-400", m[1]);
-    } else if (m[3] !== undefined) {
-      push("text-amber-700 dark:text-amber-400", m[3]);
-    } else if (m[4] !== undefined) {
-      push("text-violet-700 dark:text-violet-400", m[4]);
-    } else if (m[5] !== undefined) {
-      push("text-muted-foreground", m[5]);
-    } else if (m[6] !== undefined) {
-      push(null, m[6]);
-    } else if (m[7] !== undefined) {
-      push(null, m[7]);
+  let index = 0;
+  while (index < source.length) {
+    const char = source[index];
+    let end: number;
+    if (char === '"') {
+      end = stringEnd(source, index);
+      const colon = spaceEnd(source, end);
+      if (source[colon] === ":") {
+        push(KEY_TEXT, source.slice(index, end));
+        push(PUNCTUATION_TEXT, source.slice(end, colon + 1));
+        end = colon + 1;
+      } else {
+        push(STRING_TEXT, source.slice(index, end));
+      }
+    } else if (JSON_PUNCTUATION.has(char)) {
+      end = index + 1;
+      push(PUNCTUATION_TEXT, char);
+    } else if (isSpace(char)) {
+      end = spaceEnd(source, index);
+      push(null, source.slice(index, end));
+    } else {
+      end = runEnd(source, index, (next) => isSpace(next) || next === '"' || JSON_PUNCTUATION.has(next));
+      const word = source.slice(index, end);
+      push(jsonWordClass(word), word);
     }
+    index = end;
   }
 }
 
+function pushTomlWord(source: string, index: number, push: PushSnippetToken): number {
+  const end = runEnd(source, index, (next) => isSpace(next) || TOML_WORD_STOP.has(next));
+  const word = source.slice(index, end);
+  const equals = spaceEnd(source, end);
+  if (BARE_KEY.test(word) && source[equals] === "=") {
+    const valueStart = spaceEnd(source, equals + 1);
+    push(KEY_TEXT, word);
+    push(PUNCTUATION_TEXT, source.slice(end, valueStart));
+    return valueStart;
+  }
+  push(null, word);
+  return end;
+}
+
 function highlightTomlSnippet(source: string, push: PushSnippetToken) {
-  const re =
-    /(\[[^\]]+\])|([A-Za-z_][\w.]*)(\s*=\s*)|("(?:\\.|[^"\\])*")|([{}=,])|(\s+)|([^\s[\]"={}]+)/g;
-  for (const m of source.matchAll(re)) {
-    if (m[1] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[1]);
-    } else if (m[2] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[2]);
-      push("text-muted-foreground", m[3] ?? "");
-    } else if (m[4] !== undefined) {
-      push("text-emerald-700 dark:text-emerald-400", m[4]);
-    } else if (m[5] !== undefined) {
-      push("text-muted-foreground", m[5]);
-    } else if (m[6] !== undefined) {
-      push(null, m[6]);
-    } else if (m[7] !== undefined) {
-      push(null, m[7]);
+  let index = 0;
+  while (index < source.length) {
+    const char = source[index];
+    const close = char === "[" ? source.indexOf("]", index + 1) : -1;
+    if (close > index + 1) {
+      push(KEY_TEXT, source.slice(index, close + 1));
+      index = close + 1;
+    } else if (char === '"') {
+      const end = stringEnd(source, index);
+      push(STRING_TEXT, source.slice(index, end));
+      index = end;
+    } else if (TOML_PUNCTUATION.has(char) || char === "[" || char === "]") {
+      push(TOML_PUNCTUATION.has(char) ? PUNCTUATION_TEXT : null, char);
+      index += 1;
+    } else if (isSpace(char)) {
+      const end = spaceEnd(source, index);
+      push(null, source.slice(index, end));
+      index = end;
+    } else {
+      index = pushTomlWord(source, index, push);
     }
   }
 }

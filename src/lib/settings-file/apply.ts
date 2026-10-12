@@ -74,8 +74,7 @@ function announceProofreadingChange(state: SettingsState): void {
   );
 }
 
-export function applyPreferences(patch: Partial<PreferenceValues>): void {
-  const settings = useSettingsStore.getState();
+function storeChanges(patch: Partial<PreferenceValues>, settings: SettingsState): Record<string, unknown> {
   const state = settings as unknown as Record<string, unknown>;
   const changed: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(withDerivedValues(patch, settings))) {
@@ -84,10 +83,18 @@ export function applyPreferences(patch: Partial<PreferenceValues>): void {
     if (storageKey) writeStorage(storageKey, storedDefault(value));
     changed[key] = Array.isArray(value) ? [...value] : value;
   }
-  const disabledRules =
-    patch.harperDisabledRules && !sameSetting(settings.harperDisabledRules, patch.harperDisabledRules)
-      ? patch.harperDisabledRules
-      : null;
+  return changed;
+}
+
+function changedDisabledRules(patch: Partial<PreferenceValues>, settings: SettingsState): string[] | null {
+  const rules = patch.harperDisabledRules;
+  return rules && !sameSetting(settings.harperDisabledRules, rules) ? rules : null;
+}
+
+export function applyPreferences(patch: Partial<PreferenceValues>): void {
+  const settings = useSettingsStore.getState();
+  const changed = storeChanges(patch, settings);
+  const disabledRules = changedDisabledRules(patch, settings);
   if (Object.keys(changed).length > 0) {
     if (changed.webBrowser === false) changed.browserOpen = false;
     useSettingsStore.setState(changed as Partial<SettingsState>);

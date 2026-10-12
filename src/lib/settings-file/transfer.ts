@@ -126,7 +126,7 @@ function setPath(root: Record<string, unknown>, path: string, value: unknown): v
       node = created;
     }
   }
-  node[parts[parts.length - 1]] = value;
+  node[parts.at(-1) ?? path] = value;
 }
 
 export function buildSettingsDocument(snapshot: SettingsSnapshot): Record<string, unknown> {
@@ -194,7 +194,7 @@ function emptyPlan(): SettingsPlan {
 export function readSettingsFile(text: string, snapshot: SettingsSnapshot): SettingsFileRead {
   let root: unknown;
   try {
-    root = JSON.parse(text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text);
+    root = JSON.parse(text.codePointAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text);
   } catch {
     return { ok: false, reason: "notJson" };
   }
