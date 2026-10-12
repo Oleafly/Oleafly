@@ -1441,12 +1441,19 @@
       }
     },
     "overleaf": {
-      "description": "Traga projetos da sua conta do Overleaf ou do servidor Overleaf da sua universidade. O Oleafly guarda o login criptografado neste computador.",
+      "description": "Traga projetos da sua conta do Overleaf ou do servidor Overleaf da sua universidade e mantenha tudo sincronizado. O Oleafly guarda o login e o token Git criptografados neste computador.",
       "signedInAs": "Conectado como {{email}} em {{server}}",
       "signedIn": "Conectado em {{server}}",
       "signedOut": "Você não está conectado. O Oleafly pede login quando você importa projetos.",
       "signOut": "Sair",
-      "signOutFailed": "O Oleafly não conseguiu sair do Overleaf."
+      "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
+      "gitTitle": "Token Git para sincronização",
+      "gitSaved": "Há um token Git salvo. Os projetos que você vincular ficam sincronizados com o Overleaf.",
+      "gitMissing": "Nenhum token Git ainda. Crie um em Integração com Git nas configurações da sua conta do Overleaf para sincronizar projetos.",
+      "gitLabel": "Token Git do Overleaf",
+      "gitSave": "Salvar",
+      "gitRemove": "Remover",
+      "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro."
     }
   },
   "language": {

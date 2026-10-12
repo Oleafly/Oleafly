@@ -6,10 +6,19 @@ const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafSignOut: vi.fn(),
 }));
+const git = vi.hoisted(() => ({
+  overleafGitTokenStatus: vi.fn(async () => false),
+  overleafGitTokenSet: vi.fn(async () => undefined),
+  overleafGitTokenClear: vi.fn(async () => undefined),
+}));
 
 vi.mock("@/lib/overleaf", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/overleaf")>()),
   ...api,
+}));
+vi.mock("@/lib/overleaf-sync", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/overleaf-sync")>()),
+  ...git,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 
@@ -48,5 +57,23 @@ describe("OverleafSection", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Oleafly could not sign out of Overleaf."),
     );
+  });
+
+  it("saves, replaces and removes the Git token for sync", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    git.overleafGitTokenStatus.mockResolvedValueOnce(false);
+    render(<OverleafSection />);
+    expect(await screen.findByText(/No Git token yet/)).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "  olp_token_value  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(git.overleafGitTokenSet).toHaveBeenCalledWith(SERVER, "olp_token_value"));
+    expect(await screen.findByText(/A Git token is saved/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("overleaf-git-token-clear"));
+    await waitFor(() => expect(git.overleafGitTokenClear).toHaveBeenCalledWith(SERVER));
+    expect(await screen.findByText(/No Git token yet/)).toBeInTheDocument();
+    git.overleafGitTokenSet.mockRejectedValueOnce(new Error("io"));
+    fireEvent.change(screen.getByTestId("overleaf-git-token-input"), { target: { value: "olp_other" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Oleafly could not save the Git token. Check that you pasted the whole token.")).toBeInTheDocument();
   });
 });

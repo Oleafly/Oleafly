@@ -1403,5 +1403,55 @@
     "compiling": "Kompilerer",
     "hideLog": "Skjul kompileringsloggen",
     "showLog": "Vis kompileringsloggen"
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkronisering",
+    "title": "Synkroniser med Overleaf",
+    "cancel": "Annuller",
+    "more_one": "og {{count}} fil mere",
+    "more_other": "og {{count}} filer mere",
+    "status": {
+      "notLinked": "Ikke synkroniseret med Overleaf endnu.",
+      "linking": "Kobler til Overleaf",
+      "syncing": "Synkroniserer med Overleaf",
+      "needsToken": "Tilføj dit Git-token fra Overleaf for at synkronisere.",
+      "never": "Ikke synkroniseret endnu.",
+      "justNow": "for et øjeblik siden",
+      "synced": "Synkroniseret {{time}}.",
+      "conflicts_one": "{{count}} fil er ændret begge steder. Vælg, hvilken version du vil beholde.",
+      "conflicts_other": "{{count}} filer er ændret begge steder. Vælg, hvilke versioner du vil beholde."
+    },
+    "actions": {
+      "keepInSync": "Hold synkroniseret med Overleaf",
+      "syncNow": "Synkroniser nu",
+      "auto": "Synkroniser automatisk",
+      "resolve": "Vælg versioner",
+      "unlink": "Stop synkronisering",
+      "addToken": "Tilføj Git-token",
+      "changeToken": "Skift Git-token"
+    },
+    "token": {
+      "title": "Tilføj dit Git-token fra Overleaf",
+      "description": "Oleafly synkroniserer via Overleafs Git-integration. Opret et token under Git-integration i dine kontoindstillinger på Overleaf, og indsæt det her. Det forbliver krypteret på denne computer.",
+      "openSettings": "Åbn kontoindstillinger på Overleaf",
+      "label": "Git-token",
+      "note": "Git-integration kræver, at projektets ejer har et betalt abonnement eller et universitetsabonnement hos Overleaf.",
+      "save": "Gem og synkroniser"
+    },
+    "choice": {
+      "title": "Hvilken version skal gælde?",
+      "description": "Disse filer er forskellige her og på Overleaf. Filer, der kun findes ét sted, beholdes begge steder, så intet bliver slettet.",
+      "mine": "Brug mine versioner",
+      "theirs": "Brug Overleafs versioner"
+    },
+    "conflicts": {
+      "title": "Vælg versioner",
+      "description": "Disse filer er ændret både her og på Overleaf siden sidste synkronisering. Vælg, hvilken version du vil beholde for hver fil. Intet ændres, før du anvender dit valg.",
+      "mine": "Min",
+      "theirs": "Overleafs",
+      "allMine": "Behold alle mine",
+      "allTheirs": "Brug alle Overleafs",
+      "apply": "Anvend og synkroniser"
+    }
   }
 }

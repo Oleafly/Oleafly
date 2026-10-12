@@ -1370,5 +1370,53 @@
     "compiling": "컴파일 중",
     "hideLog": "컴파일 로그 숨기기",
     "showLog": "컴파일 로그 표시"
+  },
+  "overleafSync": {
+    "button": "Overleaf 동기화",
+    "title": "Overleaf와 동기화",
+    "cancel": "취소",
+    "more_other": "외 파일 {{count}}개",
+    "status": {
+      "notLinked": "아직 Overleaf와 동기화하지 않았습니다.",
+      "linking": "Overleaf에 연결하는 중",
+      "syncing": "Overleaf와 동기화하는 중",
+      "needsToken": "동기화하려면 Overleaf Git 토큰을 추가하세요.",
+      "never": "아직 동기화하지 않았습니다.",
+      "justNow": "방금",
+      "synced": "마지막 동기화: {{time}}.",
+      "conflicts_other": "파일 {{count}}개가 양쪽에서 바뀌었습니다. 남길 버전을 고르세요."
+    },
+    "actions": {
+      "keepInSync": "Overleaf와 계속 동기화",
+      "syncNow": "지금 동기화",
+      "auto": "자동으로 동기화",
+      "resolve": "버전 고르기",
+      "unlink": "동기화 중지",
+      "addToken": "Git 토큰 추가",
+      "changeToken": "Git 토큰 변경"
+    },
+    "token": {
+      "title": "Overleaf Git 토큰 추가",
+      "description": "Oleafly는 Overleaf의 Git 연동으로 동기화합니다. Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만든 뒤 여기에 붙여 넣으세요. 토큰은 이 컴퓨터에 암호화되어 보관됩니다.",
+      "openSettings": "Overleaf 계정 설정 열기",
+      "label": "Git 토큰",
+      "note": "Git 연동을 쓰려면 프로젝트 소유자에게 Overleaf 유료 요금제나 대학 요금제가 필요합니다.",
+      "save": "저장하고 동기화"
+    },
+    "choice": {
+      "title": "어느 버전을 남길까요?",
+      "description": "이 파일들은 여기와 Overleaf에서 내용이 다릅니다. 한쪽에만 있는 파일은 양쪽에 모두 남으므로 아무것도 삭제되지 않습니다.",
+      "mine": "내 버전 사용",
+      "theirs": "Overleaf 버전 사용"
+    },
+    "conflicts": {
+      "title": "버전 고르기",
+      "description": "이 파일들은 마지막 동기화 이후 여기와 Overleaf 양쪽에서 바뀌었습니다. 파일마다 남길 버전을 고르세요. 적용하기 전에는 아무것도 바뀌지 않습니다.",
+      "mine": "내 버전",
+      "theirs": "Overleaf 버전",
+      "allMine": "모두 내 버전 유지",
+      "allTheirs": "모두 Overleaf 버전 사용",
+      "apply": "적용하고 동기화"
+    }
   }
 }

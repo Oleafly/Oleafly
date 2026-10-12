@@ -198,6 +198,22 @@
     "project_unavailable": "このプロジェクトをダウンロードできませんでした。アクセス権がなくなった可能性があります。",
     "not_an_archive": "Overleaf から届いたのはプロジェクトのアーカイブではありませんでした。",
     "too_large": "このプロジェクトは読み込みの上限である 2 GB を超えています。",
-    "rate_limited": "Overleaf から Oleafly にペースを落とすよう求められました。1 分待ってから、もう一度お試しください。"
+    "rate_limited": "Overleaf から Oleafly にペースを落とすよう求められました。1 分待ってから、もう一度お試しください。",
+    "sync_busy": "このプロジェクトでは、すでに Overleaf との同期を実行しています。",
+    "sync_not_linked": "このプロジェクトは Overleaf にリンクされていません。",
+    "sync_needs_relink": "このプロジェクトの同期用コピーが見つかりません。同期を停止してから、もう一度プロジェクトをリンクしてください。",
+    "sync_already_linked": "このプロジェクトは、すでに別の Overleaf プロジェクトにリンクされています。先に同期を停止してください。",
+    "sync_offline": "Oleafly は Overleaf に接続できませんでした。変更はここに安全に残っており、次回同期されます。",
+    "sync_failed": "Overleaf との同期が完了しませんでした。ここにあるファイルは変更されていません。",
+    "sync_kept_changing": "同期中に Overleaf 側でプロジェクトが変更され続けました。少し待ってから、もう一度お試しください。",
+    "sync_case_clash": "Overleaf に、大文字と小文字だけが異なる名前のファイルがあります ({{files}})。Overleaf でどちらかの名前を変更してから、もう一度同期してください。",
+    "sync_invalid_names": "Overleaf の一部のファイル名は、このコンピュータに保存できません ({{files}})。Overleaf で名前を変更してから、もう一度同期してください。",
+    "sync_file_too_large": "{{file}} は、Overleaf が 1 ファイルに許可している 50 MB を超えています。",
+    "sync_too_large": "このプロジェクトは大きすぎて同期できません。上限は 5,000 ファイルまたは 2 GB です。",
+    "sync_path_blocked": "同じ名前のフォルダがあるため、{{file}} をここに書き込めません。",
+    "git_token_missing": "このプロジェクトを同期するには、Overleaf の Git トークンを追加してください。",
+    "git_token_invalid": "Overleaf の Git トークンではないようです。トークン全体をコピーして、もう一度お試しください。",
+    "git_token_rejected": "Overleaf が Git トークンを受け付けませんでした。有効期限が切れている可能性があります。Overleaf のアカウント設定で新しいトークンを作成してください。",
+    "git_unavailable": "このプロジェクトでは Overleaf の Git 連携を利用できません。プロジェクトのオーナーが有料プランか大学のプランに加入している必要があります。"
   }
 }

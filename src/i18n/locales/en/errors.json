@@ -198,6 +198,22 @@
     "project_unavailable": "This project could not be downloaded. You may no longer have access to it.",
     "not_an_archive": "Overleaf sent something other than a project archive.",
     "too_large": "This project is larger than the 2 GB import limit.",
-    "rate_limited": "Overleaf asked Oleafly to slow down. Wait a minute and try again."
+    "rate_limited": "Overleaf asked Oleafly to slow down. Wait a minute and try again.",
+    "sync_busy": "A sync with Overleaf is already running for this project.",
+    "sync_not_linked": "This project isn't linked to Overleaf.",
+    "sync_needs_relink": "The sync copy for this project is missing. Stop syncing, then link the project again.",
+    "sync_already_linked": "This project is already linked to a different Overleaf project. Stop syncing first.",
+    "sync_offline": "Oleafly could not reach Overleaf. Your changes are safe here and will sync next time.",
+    "sync_failed": "The sync with Overleaf didn't finish. Your files here are unchanged.",
+    "sync_kept_changing": "The project kept changing on Overleaf during the sync. Try again in a moment.",
+    "sync_case_clash": "Overleaf has files whose names differ only in capital letters ({{files}}). Rename one of them on Overleaf, then sync again.",
+    "sync_invalid_names": "Some file names on Overleaf can't be saved on this computer ({{files}}). Rename them on Overleaf, then sync again.",
+    "sync_file_too_large": "{{file}} is larger than the 50 MB Overleaf allows for one file.",
+    "sync_too_large": "This project is too large to sync. The limit is 5,000 files or 2 GB.",
+    "sync_path_blocked": "{{file}} can't be written here because a folder with that name is in the way.",
+    "git_token_missing": "Add your Overleaf Git token to sync this project.",
+    "git_token_invalid": "That doesn't look like an Overleaf Git token. Copy the whole token and try again.",
+    "git_token_rejected": "Overleaf didn't accept the Git token. It may have expired. Create a new one in your Overleaf account settings.",
+    "git_unavailable": "Overleaf's Git integration isn't available for this project. It needs a paid or university plan for the project's owner."
   }
 }

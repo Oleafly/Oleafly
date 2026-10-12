@@ -1441,12 +1441,19 @@
       }
     },
     "overleaf": {
-      "description": "Importez des projets depuis votre compte Overleaf ou le serveur Overleaf de votre université. Oleafly conserve la connexion chiffrée sur cet ordinateur.",
+      "description": "Importez des projets depuis votre compte Overleaf ou le serveur Overleaf de votre université, et gardez-les synchronisés. Oleafly conserve la connexion et le jeton Git chiffrés sur cet ordinateur.",
       "signedInAs": "Connecté en tant que {{email}} sur {{server}}",
       "signedIn": "Connecté sur {{server}}",
       "signedOut": "Non connecté. Oleafly vous demande de vous connecter quand vous importez des projets.",
       "signOut": "Se déconnecter",
-      "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf."
+      "signOutFailed": "Oleafly n'a pas pu se déconnecter d'Overleaf.",
+      "gitTitle": "Jeton Git pour la synchronisation",
+      "gitSaved": "Un jeton Git est enregistré. Les projets que vous liez restent synchronisés avec Overleaf.",
+      "gitMissing": "Aucun jeton Git pour l'instant. Créez-en un dans la section Intégration Git des paramètres de votre compte Overleaf pour synchroniser des projets.",
+      "gitLabel": "Jeton Git Overleaf",
+      "gitSave": "Enregistrer",
+      "gitRemove": "Retirer",
+      "gitFailed": "Oleafly n'a pas pu enregistrer le jeton Git. Vérifiez que vous avez collé le jeton en entier."
     }
   },
   "language": {

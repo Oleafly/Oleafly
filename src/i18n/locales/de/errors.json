@@ -198,6 +198,22 @@
     "project_unavailable": "Dieses Projekt konnte nicht heruntergeladen werden. Möglicherweise haben Sie keinen Zugriff mehr darauf.",
     "not_an_archive": "Overleaf hat etwas anderes als ein Projektarchiv gesendet.",
     "too_large": "Dieses Projekt ist größer als das Importlimit von 2 GB.",
-    "rate_limited": "Overleaf hat Oleafly gebeten, langsamer zu machen. Warten Sie eine Minute und versuchen Sie es erneut."
+    "rate_limited": "Overleaf hat Oleafly gebeten, langsamer zu machen. Warten Sie eine Minute und versuchen Sie es erneut.",
+    "sync_busy": "Für dieses Projekt läuft bereits eine Synchronisierung mit Overleaf.",
+    "sync_not_linked": "Dieses Projekt ist nicht mit Overleaf verknüpft.",
+    "sync_needs_relink": "Die Synchronisierungskopie dieses Projekts fehlt. Beenden Sie die Synchronisierung und verknüpfen Sie das Projekt dann erneut.",
+    "sync_already_linked": "Dieses Projekt ist bereits mit einem anderen Overleaf-Projekt verknüpft. Beenden Sie zuerst die Synchronisierung.",
+    "sync_offline": "Oleafly konnte Overleaf nicht erreichen. Ihre Änderungen sind hier sicher und werden beim nächsten Mal synchronisiert.",
+    "sync_failed": "Die Synchronisierung mit Overleaf wurde nicht abgeschlossen. Ihre Dateien hier sind unverändert.",
+    "sync_kept_changing": "Das Projekt hat sich während der Synchronisierung in Overleaf ständig geändert. Versuchen Sie es gleich noch einmal.",
+    "sync_case_clash": "Overleaf enthält Dateien, deren Namen sich nur in der Groß- und Kleinschreibung unterscheiden ({{files}}). Benennen Sie eine davon in Overleaf um und synchronisieren Sie dann erneut.",
+    "sync_invalid_names": "Einige Dateinamen aus Overleaf können auf diesem Computer nicht gespeichert werden ({{files}}). Benennen Sie die Dateien in Overleaf um und synchronisieren Sie dann erneut.",
+    "sync_file_too_large": "{{file}} ist größer als die 50 MB, die Overleaf für eine einzelne Datei erlaubt.",
+    "sync_too_large": "Dieses Projekt ist zu groß für die Synchronisierung. Das Limit liegt bei 5.000 Dateien oder 2 GB.",
+    "sync_path_blocked": "{{file}} kann hier nicht geschrieben werden, weil ein Ordner mit diesem Namen im Weg ist.",
+    "git_token_missing": "Fügen Sie Ihr Overleaf-Git-Token hinzu, um dieses Projekt zu synchronisieren.",
+    "git_token_invalid": "Das sieht nicht wie ein Overleaf-Git-Token aus. Kopieren Sie das ganze Token und versuchen Sie es erneut.",
+    "git_token_rejected": "Overleaf hat das Git-Token nicht akzeptiert. Möglicherweise ist es abgelaufen. Erstellen Sie in Ihren Overleaf-Kontoeinstellungen ein neues.",
+    "git_unavailable": "Die Git-Integration von Overleaf ist für dieses Projekt nicht verfügbar. Dafür braucht der Eigentümer des Projekts einen kostenpflichtigen Tarif oder einen Hochschultarif."
   }
 }

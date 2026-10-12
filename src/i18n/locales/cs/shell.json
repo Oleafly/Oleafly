@@ -1469,5 +1469,59 @@
     "compiling": "Kompilace probíhá",
     "hideLog": "Skrýt protokol kompilace",
     "showLog": "Zobrazit protokol kompilace"
+  },
+  "overleafSync": {
+    "button": "Synchronizace s Overleafem",
+    "title": "Synchronizovat s Overleafem",
+    "cancel": "Zrušit",
+    "more_one": "a {{count}} další soubor",
+    "more_few": "a {{count}} další soubory",
+    "more_many": "a {{count}} dalšího souboru",
+    "more_other": "a {{count}} dalších souborů",
+    "status": {
+      "notLinked": "Zatím nesynchronizováno s Overleafem.",
+      "linking": "Propojování s Overleafem",
+      "syncing": "Synchronizace s Overleafem",
+      "needsToken": "Pro synchronizaci přidejte svůj token Git z Overleafu.",
+      "never": "Zatím nesynchronizováno.",
+      "justNow": "před chvílí",
+      "synced": "Synchronizováno {{time}}.",
+      "conflicts_one": "{{count}} soubor se změnil na obou stranách. Vyberte, kterou verzi ponechat.",
+      "conflicts_few": "{{count}} soubory se změnily na obou stranách. Vyberte, které verze ponechat.",
+      "conflicts_many": "{{count}} souboru se změnilo na obou stranách. Vyberte, které verze ponechat.",
+      "conflicts_other": "{{count}} souborů se změnilo na obou stranách. Vyberte, které verze ponechat."
+    },
+    "actions": {
+      "keepInSync": "Udržovat synchronizované s Overleafem",
+      "syncNow": "Synchronizovat teď",
+      "auto": "Synchronizovat automaticky",
+      "resolve": "Vybrat verze",
+      "unlink": "Ukončit synchronizaci",
+      "addToken": "Přidat token Git",
+      "changeToken": "Změnit token Git"
+    },
+    "token": {
+      "title": "Přidejte svůj token Git z Overleafu",
+      "description": "Oleafly synchronizuje přes integraci Git v Overleafu. Vytvořte token v nastavení svého účtu Overleaf v části Integrace Git a vložte ho sem. Zůstane v tomto počítači zašifrovaný.",
+      "openSettings": "Otevřít nastavení účtu Overleaf",
+      "label": "Token Git",
+      "note": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
+      "save": "Uložit a synchronizovat"
+    },
+    "choice": {
+      "title": "Která verze má platit?",
+      "description": "Tyto soubory se tady a v Overleafu liší. Soubory, které existují jen na jedné straně, se ponechají na obou, takže se nic nesmaže.",
+      "mine": "Použít moje verze",
+      "theirs": "Použít verze z Overleafu"
+    },
+    "conflicts": {
+      "title": "Vybrat verze",
+      "description": "Tyto soubory se od poslední synchronizace změnily tady i v Overleafu. U každého vyberte verzi, kterou chcete ponechat. Dokud volbu nepoužijete, nic se nezmění.",
+      "mine": "Moje",
+      "theirs": "Z Overleafu",
+      "allMine": "Ponechat všechny moje",
+      "allTheirs": "Použít všechny z Overleafu",
+      "apply": "Použít a synchronizovat"
+    }
   }
 }

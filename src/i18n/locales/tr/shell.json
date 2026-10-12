@@ -1403,5 +1403,55 @@
     "compiling": "Derleniyor",
     "hideLog": "Derleme günlüğünü gizle",
     "showLog": "Derleme günlüğünü göster"
+  },
+  "overleafSync": {
+    "button": "Overleaf eşitlemesi",
+    "title": "Overleaf ile eşitle",
+    "cancel": "İptal",
+    "more_one": "ve {{count}} dosya daha",
+    "more_other": "ve {{count}} dosya daha",
+    "status": {
+      "notLinked": "Henüz Overleaf ile eşitlenmedi.",
+      "linking": "Overleaf'e bağlanıyor",
+      "syncing": "Overleaf ile eşitleniyor",
+      "needsToken": "Eşitlemek için Overleaf Git belirtecinizi ekleyin.",
+      "never": "Henüz eşitlenmedi.",
+      "justNow": "az önce",
+      "synced": "Son eşitleme: {{time}}.",
+      "conflicts_one": "{{count}} dosya iki tarafta da değişti. Hangi sürümün kalacağını seçin.",
+      "conflicts_other": "{{count}} dosya iki tarafta da değişti. Hangi sürümlerin kalacağını seçin."
+    },
+    "actions": {
+      "keepInSync": "Overleaf ile eşitlenmiş tut",
+      "syncNow": "Şimdi eşitle",
+      "auto": "Otomatik eşitle",
+      "resolve": "Sürümleri seç",
+      "unlink": "Eşitlemeyi durdur",
+      "addToken": "Git belirteci ekle",
+      "changeToken": "Git belirtecini değiştir"
+    },
+    "token": {
+      "title": "Overleaf Git belirtecinizi ekleyin",
+      "description": "Oleafly, Overleaf'in Git entegrasyonu üzerinden eşitler. Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun, ardından buraya yapıştırın. Belirteç bu bilgisayarda şifreli olarak kalır.",
+      "openSettings": "Overleaf hesap ayarlarını aç",
+      "label": "Git belirteci",
+      "note": "Git entegrasyonu için projenin sahibinin ücretli ya da üniversite Overleaf planına sahip olması gerekir.",
+      "save": "Kaydet ve eşitle"
+    },
+    "choice": {
+      "title": "Hangi sürüm geçerli olsun?",
+      "description": "Bu dosyalar burada ve Overleaf'te farklı. Yalnızca bir tarafta bulunan dosyalar iki tarafta da tutulur, yani hiçbir şey silinmez.",
+      "mine": "Benim sürümlerimi kullan",
+      "theirs": "Overleaf'teki sürümleri kullan"
+    },
+    "conflicts": {
+      "title": "Sürümleri seç",
+      "description": "Bu dosyalar son eşitlemeden bu yana hem burada hem Overleaf'te değişti. Her biri için tutulacak sürümü seçin. Seçiminizi uygulayana kadar hiçbir şey değişmez.",
+      "mine": "Benimki",
+      "theirs": "Overleaf'teki",
+      "allMine": "Tümünde benimkini tut",
+      "allTheirs": "Tümünde Overleaf'tekini kullan",
+      "apply": "Uygula ve eşitle"
+    }
   }
 }

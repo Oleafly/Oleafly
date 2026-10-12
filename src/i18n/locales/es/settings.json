@@ -1441,12 +1441,19 @@
       }
     },
     "overleaf": {
-      "description": "Trae proyectos de tu cuenta de Overleaf o del servidor Overleaf de tu universidad. Oleafly guarda la sesión cifrada en este equipo.",
+      "description": "Trae proyectos de tu cuenta de Overleaf o del servidor Overleaf de tu universidad y mantenlos sincronizados. Oleafly guarda la sesión y el token de Git cifrados en este equipo.",
       "signedInAs": "Sesión iniciada como {{email}} en {{server}}",
       "signedIn": "Sesión iniciada en {{server}}",
       "signedOut": "No has iniciado sesión. Oleafly te pedirá que inicies sesión cuando importes proyectos.",
       "signOut": "Cerrar sesión",
-      "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf."
+      "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf.",
+      "gitTitle": "Token de Git para sincronizar",
+      "gitSaved": "Hay un token de Git guardado. Los proyectos que vincules se mantienen sincronizados con Overleaf.",
+      "gitMissing": "Todavía no hay ningún token de Git. Crea uno en la sección Integración con Git de la configuración de tu cuenta de Overleaf para sincronizar proyectos.",
+      "gitLabel": "Token de Git de Overleaf",
+      "gitSave": "Guardar",
+      "gitRemove": "Quitar",
+      "gitFailed": "Oleafly no pudo guardar el token de Git. Comprueba que pegaste el token completo."
     }
   },
   "language": {

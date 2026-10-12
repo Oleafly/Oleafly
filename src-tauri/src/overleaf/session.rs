@@ -191,3 +191,59 @@ pub(crate) fn refresh_cookie(base: &str, session: &Session, cookie: &str) -> Res
     })
     .map(|_| ())
 }
+
+const GIT_ACCOUNT: &str = "overleaf_git_tokens";
+
+fn read_git_tokens() -> Result<BTreeMap<String, String>, String> {
+    match crate::secrets::get_secret(GIT_ACCOUNT)? {
+        Some(raw) => Ok(serde_json::from_str(&raw).unwrap_or_default()),
+        None => Ok(BTreeMap::new()),
+    }
+}
+
+fn write_git_tokens(tokens: &BTreeMap<String, String>) -> Result<(), String> {
+    let raw = if tokens.is_empty() {
+        String::new()
+    } else {
+        serde_json::to_string(tokens).map_err(|error| error.to_string())?
+    };
+    crate::secrets::set_secrets(&[(GIT_ACCOUNT, raw.as_str())])
+}
+
+pub(crate) fn valid_git_token(token: &str) -> bool {
+    (8..=256).contains(&token.len())
+        && token
+            .bytes()
+            .all(|byte| byte.is_ascii_graphic() && byte != b'"' && byte != b'\'' && byte != b'\\')
+}
+
+pub(crate) fn git_token(base: &str) -> Result<Option<String>, String> {
+    let _guard = STORE_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    Ok(read_git_tokens()?.remove(base))
+}
+
+pub(crate) fn save_git_token(base: &str, token: &str) -> Result<(), String> {
+    let token = token.trim();
+    if !valid_git_token(token) {
+        return Err(AppError::new("overleaf.git_token_invalid").into());
+    }
+    let _guard = STORE_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut tokens = read_git_tokens()?;
+    tokens.insert(base.to_string(), token.to_string());
+    write_git_tokens(&tokens)
+}
+
+pub(crate) fn forget_git_token(base: &str) -> Result<(), String> {
+    let _guard = STORE_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut tokens = read_git_tokens()?;
+    if tokens.remove(base).is_some() {
+        write_git_tokens(&tokens)?;
+    }
+    Ok(())
+}

@@ -1443,6 +1443,82 @@ fn run_git_authed(
     )
 }
 
+fn mirror_settings() -> Vec<String> {
+    [
+        format!("core.hooksPath={}", null_device()),
+        "commit.gpgsign=false".to_string(),
+        "tag.gpgsign=false".to_string(),
+        "core.fsmonitor=false".to_string(),
+        "core.autocrlf=false".to_string(),
+        "core.safecrlf=false".to_string(),
+        "core.longpaths=true".to_string(),
+        "core.quotepath=false".to_string(),
+        "core.precomposeunicode=true".to_string(),
+        "core.filemode=false".to_string(),
+        "core.symlinks=false".to_string(),
+        "core.protectNTFS=true".to_string(),
+        "core.protectHFS=true".to_string(),
+        "gc.auto=0".to_string(),
+        "merge.conflictstyle=merge".to_string(),
+        "user.name=Oleafly".to_string(),
+        "user.email=sync@oleafly.invalid".to_string(),
+        "credential.helper=".to_string(),
+    ]
+    .into_iter()
+    .flat_map(|setting| ["-c".to_string(), setting])
+    .collect()
+}
+
+fn mirror_command_env(command: &mut Command) {
+    command
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_LITERAL_PATHSPECS", "1");
+}
+
+pub(crate) fn run_mirror_git(root: &Path, args: &[&str]) -> Result<std::process::Output, String> {
+    let settings = mirror_settings();
+    let mut full: Vec<&str> = settings.iter().map(String::as_str).collect();
+    full.extend_from_slice(args);
+    run_configured_git(&root.to_path_buf(), &full, true, mirror_command_env)
+}
+
+pub(crate) fn run_mirror_git_remote(
+    root: &Path,
+    credential_origin: &str,
+    token: &str,
+    args: &[&str],
+) -> Result<std::process::Output, String> {
+    let mut settings = mirror_settings();
+    settings.extend([
+        "-c".to_string(),
+        format!("credential.{credential_origin}.helper="),
+        "-c".to_string(),
+        format!(
+            "credential.{credential_origin}.helper=!f() {{ test \"$1\" = get && printf 'username=git\\npassword=%s\\n' \"$OLEAFLY_MIRROR_TOKEN\"; }}; f"
+        ),
+        "-c".to_string(),
+        format!("credential.{credential_origin}.useHttpPath=false"),
+    ]);
+    let mut full: Vec<&str> = settings.iter().map(String::as_str).collect();
+    full.extend_from_slice(args);
+    run_configured_git_bounded(
+        &root.to_path_buf(),
+        &full,
+        true,
+        remote_bounds(),
+        |command| {
+            mirror_command_env(command);
+            command.env("OLEAFLY_MIRROR_TOKEN", token);
+        },
+    )
+}
+
+pub(crate) fn git_failure_text(out: &std::process::Output) -> String {
+    out_to_string(out)
+}
+
 /// Attach the authenticated repository history to content imported through the
 /// guarded archive path. Resetting only the index keeps the archive import's
 /// path and symlink protections intact while placing the worktree on top of the

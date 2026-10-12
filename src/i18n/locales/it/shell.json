@@ -1436,5 +1436,57 @@
     "compiling": "Compilazione in corso",
     "hideLog": "Nascondi il log di compilazione",
     "showLog": "Mostra il log di compilazione"
+  },
+  "overleafSync": {
+    "button": "Sincronizzazione con Overleaf",
+    "title": "Sincronizza con Overleaf",
+    "cancel": "Annulla",
+    "more_one": "e {{count}} altro file",
+    "more_many": "e altri {{count}} file",
+    "more_other": "e altri {{count}} file",
+    "status": {
+      "notLinked": "Non ancora sincronizzato con Overleaf.",
+      "linking": "Collegamento a Overleaf",
+      "syncing": "Sincronizzazione con Overleaf",
+      "needsToken": "Aggiungi il tuo token Git di Overleaf per sincronizzare.",
+      "never": "Nessuna sincronizzazione finora.",
+      "justNow": "poco fa",
+      "synced": "Sincronizzato {{time}}.",
+      "conflicts_one": "{{count}} file è cambiato da entrambe le parti. Scegli quale versione tenere.",
+      "conflicts_many": "{{count}} file sono cambiati da entrambe le parti. Scegli quali versioni tenere.",
+      "conflicts_other": "{{count}} file sono cambiati da entrambe le parti. Scegli quali versioni tenere."
+    },
+    "actions": {
+      "keepInSync": "Mantieni sincronizzato con Overleaf",
+      "syncNow": "Sincronizza ora",
+      "auto": "Sincronizza automaticamente",
+      "resolve": "Scegli le versioni",
+      "unlink": "Interrompi la sincronizzazione",
+      "addToken": "Aggiungi token Git",
+      "changeToken": "Cambia token Git"
+    },
+    "token": {
+      "title": "Aggiungi il tuo token Git di Overleaf",
+      "description": "Oleafly sincronizza tramite l'integrazione Git di Overleaf. Crea un token nella sezione Integrazione Git delle impostazioni del tuo account Overleaf, poi incollalo qui. Resta cifrato su questo computer.",
+      "openSettings": "Apri le impostazioni dell'account Overleaf",
+      "label": "Token Git",
+      "note": "L'integrazione Git richiede un piano Overleaf a pagamento o universitario per il proprietario del progetto.",
+      "save": "Salva e sincronizza"
+    },
+    "choice": {
+      "title": "Quale versione deve prevalere?",
+      "description": "Questi file sono diversi qui e su Overleaf. I file presenti solo da una parte vengono tenuti da entrambe, quindi non viene eliminato nulla.",
+      "mine": "Usa le mie versioni",
+      "theirs": "Usa le versioni di Overleaf"
+    },
+    "conflicts": {
+      "title": "Scegli le versioni",
+      "description": "Questi file sono cambiati sia qui sia su Overleaf dall'ultima sincronizzazione. Scegli la versione da tenere per ciascuno. Non cambia nulla finché non applichi la scelta.",
+      "mine": "La mia",
+      "theirs": "Quella di Overleaf",
+      "allMine": "Tieni tutte le mie",
+      "allTheirs": "Usa tutte quelle di Overleaf",
+      "apply": "Applica e sincronizza"
+    }
   }
 }

@@ -1425,12 +1425,19 @@
       }
     },
     "overleaf": {
-      "description": "Hämta projekt från ditt Overleaf-konto eller från ditt universitets Overleaf-server. Oleafly sparar inloggningen krypterad på den här datorn.",
+      "description": "Hämta projekt från ditt Overleaf-konto eller från ditt universitets Overleaf-server och håll dem synkade. Oleafly sparar inloggningen och Git-token krypterade på den här datorn.",
       "signedInAs": "Inloggad som {{email}} på {{server}}",
       "signedIn": "Inloggad på {{server}}",
       "signedOut": "Inte inloggad. Oleafly ber dig logga in när du importerar projekt.",
       "signOut": "Logga ut",
-      "signOutFailed": "Oleafly kunde inte logga ut från Overleaf."
+      "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
+      "gitTitle": "Git-token för synkning",
+      "gitSaved": "En Git-token är sparad. Projekt som du länkar hålls synkade med Overleaf.",
+      "gitMissing": "Ingen Git-token än. Skapa en under Git-integration i dina kontoinställningar på Overleaf för att synka projekt.",
+      "gitLabel": "Git-token från Overleaf",
+      "gitSave": "Spara",
+      "gitRemove": "Ta bort",
+      "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token."
     }
   },
   "language": {

@@ -1409,12 +1409,19 @@
       }
     },
     "overleaf": {
-      "description": "从你的 Overleaf 账户或你所在大学的 Overleaf 服务器导入项目。Oleafly 会在这台电脑上加密保存登录信息。",
+      "description": "从你的 Overleaf 账户或你所在大学的 Overleaf 服务器导入项目，并保持同步。Oleafly 会在这台电脑上加密保存登录信息和 Git 令牌。",
       "signedInAs": "已在 {{server}} 上以 {{email}} 的身份登录",
       "signedIn": "已在 {{server}} 上登录",
       "signedOut": "未登录。导入项目时，Oleafly 会请你登录。",
       "signOut": "退出登录",
-      "signOutFailed": "Oleafly 无法退出 Overleaf 登录。"
+      "signOutFailed": "Oleafly 无法退出 Overleaf 登录。",
+      "gitTitle": "用于同步的 Git 令牌",
+      "gitSaved": "已保存 Git 令牌。你关联的项目会与 Overleaf 保持同步。",
+      "gitMissing": "尚无 Git 令牌。请在 Overleaf 账户设置的“Git 集成”中创建一个，以便同步项目。",
+      "gitLabel": "Overleaf Git 令牌",
+      "gitSave": "保存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。"
     }
   },
   "language": {

@@ -1409,12 +1409,19 @@
       }
     },
     "overleaf": {
-      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案。Oleafly 會在這台電腦上加密保存登入資訊。",
+      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案，並保持同步。Oleafly 會在這台電腦上加密保存登入資訊和 Git 權杖。",
       "signedInAs": "已在 {{server}} 上以 {{email}} 的身分登入",
       "signedIn": "已在 {{server}} 上登入",
       "signedOut": "尚未登入。匯入專案時，Oleafly 會請你登入。",
       "signOut": "登出",
-      "signOutFailed": "Oleafly 無法登出 Overleaf。"
+      "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "gitTitle": "用於同步的 Git 權杖",
+      "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
+      "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
+      "gitLabel": "Overleaf Git 權杖",
+      "gitSave": "儲存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
     }
   },
   "language": {

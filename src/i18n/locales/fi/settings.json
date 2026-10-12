@@ -1425,12 +1425,19 @@
       }
     },
     "overleaf": {
-      "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta. Oleafly säilyttää kirjautumisen salattuna tällä koneella.",
+      "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta ja pidä ne synkronoituina. Oleafly säilyttää kirjautumisen ja Git-tokenin salattuina tällä koneella.",
       "signedInAs": "Kirjautunut palvelimelle {{server}} käyttäjänä {{email}}",
       "signedIn": "Kirjautunut palvelimelle {{server}}",
       "signedOut": "Et ole kirjautunut. Oleafly pyytää kirjautumaan, kun tuot projekteja.",
       "signOut": "Kirjaudu ulos",
-      "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista."
+      "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "gitTitle": "Git-tokeni synkronointia varten",
+      "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
+      "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
+      "gitLabel": "Overleafin Git-tokeni",
+      "gitSave": "Tallenna",
+      "gitRemove": "Poista",
+      "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
     }
   },
   "language": {

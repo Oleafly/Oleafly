@@ -1425,12 +1425,19 @@
       }
     },
     "overleaf": {
-      "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın. Oleafly oturum bilgisini bu bilgisayarda şifreli olarak saklar.",
+      "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın ve bunları eşitlenmiş tutun. Oleafly oturum bilgisini ve Git belirtecini bu bilgisayarda şifreli olarak saklar.",
       "signedInAs": "{{server}} üzerinde {{email}} olarak oturum açıldı",
       "signedIn": "{{server}} üzerinde oturum açıldı",
       "signedOut": "Oturum açılmadı. Proje içe aktardığınızda Oleafly oturum açmanızı ister.",
       "signOut": "Oturumu kapat",
-      "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı."
+      "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "gitTitle": "Eşitleme için Git belirteci",
+      "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
+      "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
+      "gitLabel": "Overleaf Git belirteci",
+      "gitSave": "Kaydet",
+      "gitRemove": "Kaldır",
+      "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
     }
   },
   "language": {

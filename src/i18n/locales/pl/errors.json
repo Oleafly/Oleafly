@@ -198,6 +198,22 @@
     "project_unavailable": "Nie udało się pobrać tego projektu. Być może nie masz już do niego dostępu.",
     "not_an_archive": "Overleaf przesłał coś innego niż archiwum projektu.",
     "too_large": "Ten projekt przekracza limit importu wynoszący 2 GB.",
-    "rate_limited": "Overleaf poprosił Oleafly o zwolnienie tempa. Odczekaj minutę i spróbuj ponownie."
+    "rate_limited": "Overleaf poprosił Oleafly o zwolnienie tempa. Odczekaj minutę i spróbuj ponownie.",
+    "sync_busy": "Synchronizacja tego projektu z Overleaf już trwa.",
+    "sync_not_linked": "Ten projekt nie jest połączony z Overleaf.",
+    "sync_needs_relink": "Brakuje kopii synchronizacji tego projektu. Zatrzymaj synchronizację, a potem połącz projekt ponownie.",
+    "sync_already_linked": "Ten projekt jest już połączony z innym projektem Overleaf. Najpierw zatrzymaj synchronizację.",
+    "sync_offline": "Oleafly nie mógł połączyć się z Overleaf. Twoje zmiany są tutaj bezpieczne i zostaną zsynchronizowane następnym razem.",
+    "sync_failed": "Synchronizacja z Overleaf nie została dokończona. Twoje pliki tutaj się nie zmieniły.",
+    "sync_kept_changing": "Projekt w Overleaf ciągle się zmieniał podczas synchronizacji. Spróbuj ponownie za chwilę.",
+    "sync_case_clash": "W Overleaf są pliki, których nazwy różnią się tylko wielkością liter ({{files}}). Zmień nazwę jednego z nich w Overleaf, a potem zsynchronizuj ponownie.",
+    "sync_invalid_names": "Niektórych nazw plików z Overleaf nie da się zapisać na tym komputerze ({{files}}). Zmień te nazwy w Overleaf, a potem zsynchronizuj ponownie.",
+    "sync_file_too_large": "Plik {{file}} przekracza limit 50 MB, jaki Overleaf ustala dla jednego pliku.",
+    "sync_too_large": "Ten projekt jest za duży, aby go synchronizować. Limit to 5000 plików lub 2 GB.",
+    "sync_path_blocked": "Nie można zapisać tutaj pliku {{file}}, ponieważ przeszkadza folder o tej samej nazwie.",
+    "git_token_missing": "Dodaj token Git z Overleaf, aby synchronizować ten projekt.",
+    "git_token_invalid": "To nie wygląda na token Git z Overleaf. Skopiuj cały token i spróbuj ponownie.",
+    "git_token_rejected": "Overleaf nie zaakceptował tokenu Git. Mógł wygasnąć. Utwórz nowy w ustawieniach konta Overleaf.",
+    "git_unavailable": "Integracja z Git w Overleaf nie jest dostępna dla tego projektu. Właściciel projektu potrzebuje płatnego lub uczelnianego planu."
   }
 }

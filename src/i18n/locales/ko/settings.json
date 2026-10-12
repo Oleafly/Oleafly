@@ -1409,12 +1409,19 @@
       }
     },
     "overleaf": {
-      "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져옵니다. Oleafly는 로그인 정보를 이 컴퓨터에 암호화해 보관합니다.",
+      "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져오고 계속 동기화합니다. Oleafly는 로그인 정보와 Git 토큰을 이 컴퓨터에 암호화해 보관합니다.",
       "signedInAs": "{{server}}에 {{email}}(으)로 로그인됨",
       "signedIn": "{{server}}에 로그인됨",
       "signedOut": "로그인되어 있지 않습니다. 프로젝트를 가져올 때 Oleafly가 로그인을 요청합니다.",
       "signOut": "로그아웃",
-      "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다."
+      "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
+      "gitTitle": "동기화용 Git 토큰",
+      "gitSaved": "Git 토큰이 저장되어 있습니다. 연결한 프로젝트는 Overleaf와 동기화된 상태로 유지됩니다.",
+      "gitMissing": "아직 Git 토큰이 없습니다. 프로젝트를 동기화하려면 Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만드세요.",
+      "gitLabel": "Overleaf Git 토큰",
+      "gitSave": "저장",
+      "gitRemove": "제거",
+      "gitFailed": "Oleafly가 Git 토큰을 저장하지 못했습니다. 토큰 전체를 붙여 넣었는지 확인하세요."
     }
   },
   "language": {

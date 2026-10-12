@@ -1425,12 +1425,19 @@
       }
     },
     "overleaf": {
-      "description": "Haal projecten over uit je Overleaf-account of van de Overleaf-server van je universiteit. Oleafly bewaart de aanmelding versleuteld op deze computer.",
+      "description": "Haal projecten over uit je Overleaf-account of van de Overleaf-server van je universiteit en houd ze gesynchroniseerd. Oleafly bewaart de aanmelding en het Git-token versleuteld op deze computer.",
       "signedInAs": "Aangemeld als {{email}} op {{server}}",
       "signedIn": "Aangemeld op {{server}}",
       "signedOut": "Niet aangemeld. Oleafly vraagt je om je aan te melden wanneer je projecten importeert.",
       "signOut": "Afmelden",
-      "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf."
+      "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "gitTitle": "Git-token voor synchronisatie",
+      "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
+      "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
+      "gitLabel": "Git-token van Overleaf",
+      "gitSave": "Opslaan",
+      "gitRemove": "Weghalen",
+      "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt."
     }
   },
   "language": {

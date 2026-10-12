@@ -1457,12 +1457,19 @@
       }
     },
     "overleaf": {
-      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity. Oleafly uchovává přihlášení v tomto počítači zašifrované.",
+      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity a udržujte je synchronizované. Oleafly uchovává přihlášení i token Git v tomto počítači zašifrované.",
       "signedInAs": "Přihlášeno jako {{email}} na {{server}}",
       "signedIn": "Přihlášeno na {{server}}",
       "signedOut": "Nepřihlášeno. Oleafly vás požádá o přihlášení při importu projektů.",
       "signOut": "Odhlásit se",
-      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu."
+      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "gitTitle": "Token Git pro synchronizaci",
+      "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
+      "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
+      "gitLabel": "Token Git z Overleafu",
+      "gitSave": "Uložit",
+      "gitRemove": "Odebrat",
+      "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token."
     }
   },
   "language": {
