@@ -666,13 +666,13 @@ fn code_fence(line: &str) -> Option<(char, usize)> {
 
 /// The `bibliography` entry of one YAML metadata block, if it sets one.
 fn yaml_bibliography(yaml: &str) -> Option<Vec<String>> {
-    let value = serde_yaml::from_str::<serde_yaml::Value>(yaml).ok()?;
+    let value = serde_norway::from_str::<serde_norway::Value>(yaml).ok()?;
     match value.get("bibliography")? {
-        serde_yaml::Value::String(entry) => Some(vec![entry.clone()]),
-        serde_yaml::Value::Sequence(entries) => Some(
+        serde_norway::Value::String(entry) => Some(vec![entry.clone()]),
+        serde_norway::Value::Sequence(entries) => Some(
             entries
                 .iter()
-                .filter_map(serde_yaml::Value::as_str)
+                .filter_map(serde_norway::Value::as_str)
                 .map(str::to_string)
                 .collect(),
         ),
