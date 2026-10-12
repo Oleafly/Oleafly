@@ -1,0 +1,1263 @@
+{
+  "versions": {
+    "loro": "1.16.2",
+    "yrs": "0.28.0",
+    "automerge": "0.12.0"
+  },
+  "seed": 20261011,
+  "scale": "full",
+  "platform": "macos aarch64",
+  "engines": [
+    "loro",
+    "yrs",
+    "automerge"
+  ],
+  "matrix": [
+    {
+      "scenario": "concurrent_rename_rename",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "concurrent_rename_rename",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "concurrent_rename_rename",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "rename_and_edit",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "rename_and_edit",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "rename_and_edit",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "move_cycle",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "move_cycle",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 1,
+      "notes": []
+    },
+    {
+      "scenario": "move_cycle",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 1,
+      "notes": []
+    },
+    {
+      "scenario": "move_and_trash",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "move_and_trash",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "move_and_trash",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_edit_restore",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_edit_restore",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_edit_restore",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_dir_with_edit_inside",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_dir_with_edit_inside",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "trash_dir_with_edit_inside",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "same_name_create",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "same_name_create",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "same_name_create",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "case_only_create",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "case_only_create",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "case_only_create",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "figure_collision",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "figure_collision",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "figure_collision",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "ai_rewrite_burst",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "ai_rewrite_burst",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "ai_rewrite_burst",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_shallow_compaction",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_shallow_compaction",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_shallow_compaction",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_full_snapshot",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_full_snapshot",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "offline_across_full_snapshot",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "late_join_after_compaction",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "late_join_after_compaction",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "late_join_after_compaction",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "out_of_order_and_duplicate_delivery",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "out_of_order_and_duplicate_delivery",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "out_of_order_and_duplicate_delivery",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "malformed_random_bytes",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 6,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: import: DecodeError(\"Invalid magic bytes\")",
+        "actor 0: batch 2: import: DecodeError(\"Invalid import data\")",
+        "actor 1: batch 1: import: DecodeError(\"Invalid magic bytes\")",
+        "actor 1: batch 2: import: DecodeError(\"Invalid import data\")",
+        "actor 2: batch 1: import: DecodeError(\"Invalid magic bytes\")",
+        "actor 2: batch 2: import: DecodeError(\"Invalid import data\")"
+      ]
+    },
+    {
+      "scenario": "malformed_random_bytes",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 6,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: decode: UnexpectedValue",
+        "actor 0: batch 2: decode: EndOfBuffer(1)",
+        "actor 1: batch 1: decode: UnexpectedValue",
+        "actor 1: batch 2: decode: EndOfBuffer(1)",
+        "actor 2: batch 1: decode: UnexpectedValue",
+        "actor 2: batch 2: decode: EndOfBuffer(1)"
+      ]
+    },
+    {
+      "scenario": "malformed_random_bytes",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "malformed_empty",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: import: DecodeError(\"Invalid import data\")",
+        "actor 1: batch 1: import: DecodeError(\"Invalid import data\")",
+        "actor 2: batch 1: import: DecodeError(\"Invalid import data\")"
+      ]
+    },
+    {
+      "scenario": "malformed_empty",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: decode: EndOfBuffer(1)",
+        "actor 1: batch 1: decode: EndOfBuffer(1)",
+        "actor 2: batch 1: decode: EndOfBuffer(1)"
+      ]
+    },
+    {
+      "scenario": "malformed_empty",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "malformed_truncated",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: import: DecodeChecksumMismatchError",
+        "actor 1: batch 1: import: DecodeChecksumMismatchError",
+        "actor 2: batch 1: import: DecodeChecksumMismatchError"
+      ]
+    },
+    {
+      "scenario": "malformed_truncated",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: decode: EndOfBuffer(17)",
+        "actor 1: batch 1: decode: EndOfBuffer(17)",
+        "actor 2: batch 1: decode: EndOfBuffer(17)"
+      ]
+    },
+    {
+      "scenario": "malformed_truncated",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "corrupt_in_transit",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 0: import: DecodeChecksumMismatchError",
+        "actor 1: batch 0: import: DecodeChecksumMismatchError",
+        "actor 2: batch 0: import: DecodeChecksumMismatchError"
+      ]
+    },
+    {
+      "scenario": "corrupt_in_transit",
+      "engine": "yrs",
+      "verdict": {
+        "status": "fail",
+        "reason": "no error, and actor 0 now differs from the author: file sections/intro.tex"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "corrupt_in_transit",
+      "engine": "automerge",
+      "verdict": {
+        "status": "fail",
+        "reason": "no error, and actor 0 now differs from the author: file sections/intro.tex"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "oversized_paste",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "oversized_paste",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "oversized_paste",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "oversized_refused",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 batch refused: TooLarge { size: 262268, cap: 65536 }",
+        "actor 1 batch refused: TooLarge { size: 262268, cap: 65536 }"
+      ]
+    },
+    {
+      "scenario": "oversized_refused",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 batch refused: TooLarge { size: 262166, cap: 65536 }",
+        "actor 1 batch refused: TooLarge { size: 262166, cap: 65536 }"
+      ]
+    },
+    {
+      "scenario": "oversized_refused",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 batch refused: TooLarge { size: 262281, cap: 65536 }",
+        "actor 1 batch refused: TooLarge { size: 262281, cap: 65536 }"
+      ]
+    },
+    {
+      "scenario": "kill_before_save",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_before_save",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_before_save",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_mid_save_empty",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (empty): decode: DecodeError(\"Invalid import data\")"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_empty",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (empty): decode: decode: EndOfBuffer(1)"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_empty",
+      "engine": "automerge",
+      "verdict": {
+        "status": "fail",
+        "reason": "actor 1 differs from actor 0: file figures/fig1.png"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 loaded a torn save (empty)",
+        "actor 1 still has pending updates"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_one_byte",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (one_byte): decode: DecodeError(\"Invalid import data\")"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_one_byte",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (one_byte): decode: decode: EndOfBuffer(1)"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_one_byte",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (one_byte): decode: Load(Parse(Incomplete(Size(3))))"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_half",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (half): decode: DecodeChecksumMismatchError"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_half",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (half): decode: decode: EndOfBuffer(90)"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_half",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (half): decode: Load(Parse(Incomplete(Size(426))))"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_drop_last_byte",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (drop_last_byte): decode: DecodeChecksumMismatchError"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_drop_last_byte",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (drop_last_byte): decode: decode: EndOfBuffer(1)"
+      ]
+    },
+    {
+      "scenario": "kill_mid_save_drop_last_byte",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 1 could not load the torn save (drop_last_byte): decode: Load(Parse(Incomplete(Size(1))))"
+      ]
+    },
+    {
+      "scenario": "kill_after_clean_save",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_clean_save",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_clean_save",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_save_before_send",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_save_before_send",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_save_before_send",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_send_before_receipt",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_send_before_receipt",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "kill_after_send_before_receipt",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "fresh_peer_after_crash",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "fresh_peer_after_crash",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "fresh_peer_after_crash",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "reused_peer_after_crash",
+      "engine": "loro",
+      "verdict": {
+        "status": "fail",
+        "reason": "actor 1 differs from actor 0: file main.tex"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "reused_peer_after_crash",
+      "engine": "yrs",
+      "verdict": {
+        "status": "fail",
+        "reason": "actor 1 differs from actor 0: file main.tex"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "reused_peer_after_crash",
+      "engine": "automerge",
+      "verdict": {
+        "status": "fail",
+        "reason": "actor 1 differs from actor 0: file main.tex"
+      },
+      "import_errors": 3,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": [
+        "actor 0: batch 1: import: DuplicateSeqNumber(1, ActorID(\"00000000000007d0\"))",
+        "actor 1: batch 0: import: DuplicateSeqNumber(1, ActorID(\"00000000000007d0\"))",
+        "actor 2: batch 1: import: DuplicateSeqNumber(1, ActorID(\"00000000000007d0\"))"
+      ]
+    },
+    {
+      "scenario": "surrogate_after_emoji",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "surrogate_after_emoji",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "surrogate_after_emoji",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "surrogate_mid_pair",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 1,
+      "tree_repairs": 0,
+      "notes": [
+        "splice f-main at 48 by 1: engine: UTF16InUnicodeCodePoint { pos: 48 }"
+      ]
+    },
+    {
+      "scenario": "surrogate_mid_pair",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "surrogate_mid_pair",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 0,
+      "tree_repairs": 0,
+      "notes": []
+    },
+    {
+      "scenario": "generated_trace",
+      "engine": "loro",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 4,
+      "tree_repairs": 0,
+      "notes": [
+        "compaction by offline actor 14",
+        "compaction by offline actor 10",
+        "compaction by offline actor 6",
+        "compaction by offline actor 4"
+      ]
+    },
+    {
+      "scenario": "generated_trace",
+      "engine": "yrs",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 4,
+      "tree_repairs": 0,
+      "notes": [
+        "compaction by offline actor 14",
+        "compaction by offline actor 10",
+        "compaction by offline actor 6",
+        "compaction by offline actor 4"
+      ]
+    },
+    {
+      "scenario": "generated_trace",
+      "engine": "automerge",
+      "verdict": {
+        "status": "pass"
+      },
+      "import_errors": 0,
+      "rejected_ops": 4,
+      "tree_repairs": 0,
+      "notes": [
+        "compaction by offline actor 14",
+        "compaction by offline actor 10",
+        "compaction by offline actor 6",
+        "compaction by offline actor 4"
+      ]
+    }
+  ],
+  "measurements": [
+    {
+      "engine": "loro",
+      "propagation_p50_ms": 80.043125,
+      "propagation_p95_ms": 108.048708,
+      "propagation_max_ms": 120.042708,
+      "update_bytes_mean": 99.7085,
+      "cold_join_ms": 122.4995,
+      "join_download_bytes": 749535,
+      "peak_join_bytes": 11698869,
+      "rejoin_ms": 11.1655,
+      "rejoin_bytes": 60804,
+      "months_days": 180,
+      "months_ops": 54000,
+      "snapshot_bytes": 1968127,
+      "compact_bytes": 1958284,
+      "save_bytes": 1968127,
+      "server_log_bytes": 266188,
+      "peak_months_bytes": 637459295,
+      "error": null
+    },
+    {
+      "engine": "yrs",
+      "propagation_p50_ms": 80.079666,
+      "propagation_p95_ms": 108.097291,
+      "propagation_max_ms": 120.079375,
+      "update_bytes_mean": 6155.931,
+      "cold_join_ms": 11.2295,
+      "join_download_bytes": 922078,
+      "peak_join_bytes": 5057829,
+      "rejoin_ms": 10.782833,
+      "rejoin_bytes": 678572,
+      "months_days": 180,
+      "months_ops": 54000,
+      "snapshot_bytes": 1838652,
+      "compact_bytes": 1838652,
+      "save_bytes": 1838652,
+      "server_log_bytes": 10527112,
+      "peak_months_bytes": 446554491,
+      "error": null
+    },
+    {
+      "engine": "automerge",
+      "propagation_p50_ms": 80.124041,
+      "propagation_p95_ms": 109.089416,
+      "propagation_max_ms": 120.53625,
+      "update_bytes_mean": 122.401,
+      "cold_join_ms": 416.277792,
+      "join_download_bytes": 572949,
+      "peak_join_bytes": 52700716,
+      "rejoin_ms": 455.640041,
+      "rejoin_bytes": 367614,
+      "months_days": 180,
+      "months_ops": 54000,
+      "snapshot_bytes": 1307681,
+      "compact_bytes": 1307681,
+      "save_bytes": 1307681,
+      "server_log_bytes": 1155321,
+      "peak_months_bytes": 325335789,
+      "error": null
+    }
+  ]
+}

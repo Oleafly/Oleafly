@@ -25,6 +25,7 @@ dist-ssr
 # Tauri / Rust
 src-tauri/target
 src-tauri/gen
+tools/collab-bakeoff/target/
 
 # Oleafly local data (never commit a real TeX bundle)
 src-tauri/resources/*.ttb
