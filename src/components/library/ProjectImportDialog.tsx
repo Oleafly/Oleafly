@@ -42,6 +42,16 @@ const OverleafImportView = lazy(() =>
   })),
 );
 
+type ImportView = "sources" | "github" | "target" | "arxiv" | "overleaf";
+
+const VIEW_WIDTH: Record<ImportView, string> = {
+  sources: "max-w-3xl",
+  overleaf: "h-[min(48rem,calc(100dvh-2rem))] max-w-5xl",
+  github: "max-w-xl",
+  target: "max-w-xl",
+  arxiv: "max-w-xl",
+};
+
 const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   project: CHOICE_ART.importArchive,
   word: CHOICE_ART.importWord,
@@ -86,7 +96,7 @@ export function ProjectImportDialog({
   };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
-  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv" | "overleaf">(
+  const [view, setView] = useState<ImportView>(
     initialView,
   );
   const [pendingPath, setPendingPath] = useState<string | null>(null);
@@ -312,71 +322,24 @@ export function ProjectImportDialog({
     );
   };
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !busyRef.current) onClose();
-      }}
-    >
-      <DialogContent
-        data-testid="project-import-dialog"
-        className={cn(
-          // A flex column capped at the window height: when the window is too
-          // short for every card (the smallest is 900x600), the body below the
-          // header scrolls and the title and close button stay in view.
-          "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
-          // The source cards use the chooser's width so the two dialogs line
-          // up; the single-purpose steps keep their narrower layout.
-          view === "sources" ? "max-w-3xl" : view === "overleaf" ? "h-[min(48rem,calc(100dvh-2rem))] max-w-5xl" : "max-w-xl",
-        )}
-      >
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            {view !== "sources" ? (
-              <button
-                type="button"
-                aria-label={t(($) => $.library.import.back)}
-                data-testid="project-import-back"
-                disabled={busy}
-                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
-                className="rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-              >
-                <ChevronLeft aria-hidden="true" className="size-4" />
-              </button>
-            ) : null}
-            {view === "github"
-              ? t(($) => $.library.import.githubTitle)
-              : view === "overleaf"
-                ? t(($) => $.library.import.overleaf.title)
-              : view === "arxiv"
-                ? t(($) => $.library.import.arxivTitle)
-                : view === "target"
-                  ? t(($) => $.library.import.targetTitle)
-                  : t(($) => $.library.import.title)}
-          </DialogTitle>
-          <DialogDescription>
-            {view === "github"
-              ? t(($) => $.library.import.githubDescription)
-              : view === "overleaf"
-                ? t(($) => $.library.import.overleaf.description)
-              : view === "arxiv"
-                ? t(($) => $.library.import.arxivDescription)
-                : view === "target"
-                  ? t(($) => $.library.import.targetDescription)
-                  : t(($) => $.library.import.description)}
-          </DialogDescription>
-        </DialogHeader>
+  const viewTitles: Record<ImportView, string> = {
+    sources: t(($) => $.library.import.title),
+    github: t(($) => $.library.import.githubTitle),
+    target: t(($) => $.library.import.targetTitle),
+    arxiv: t(($) => $.library.import.arxivTitle),
+    overleaf: t(($) => $.library.import.overleaf.title),
+  };
+  const viewDescriptions: Record<ImportView, string> = {
+    sources: t(($) => $.library.import.description),
+    github: t(($) => $.library.import.githubDescription),
+    target: t(($) => $.library.import.targetDescription),
+    arxiv: t(($) => $.library.import.arxivDescription),
+    overleaf: t(($) => $.library.import.overleaf.description),
+  };
 
-        {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
-        <div
-          className={cn(
-            "-mx-6 -mb-6 min-h-0 px-6 pb-6",
-            view === "overleaf" ? "flex flex-1 flex-col overflow-hidden" : "overflow-y-auto",
-          )}
-        >
-          {view === "overleaf" ? (
+  const renderBody = () => {
+    if (view === "overleaf") {
+      return (
             <Suspense
               fallback={
                 <output className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
@@ -391,7 +354,10 @@ export function ProjectImportDialog({
                 }}
               />
             </Suspense>
-          ) : view === "target" ? (
+      );
+    }
+    if (view === "target") {
+      return (
             <div className="grid gap-2">
               <p className="select-text break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
               {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
@@ -421,7 +387,10 @@ export function ProjectImportDialog({
                 ),
               )}
             </div>
-          ) : view === "arxiv" ? (
+      );
+    }
+    if (view === "arxiv") {
+      return (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -451,7 +420,10 @@ export function ProjectImportDialog({
                 {t(($) => $.library.import.arxivHint)}
               </p>
             </div>
-          ) : view === "sources" ? (
+      );
+    }
+    if (view === "sources") {
+      return (
             <div className="space-y-5">
               <section className="space-y-2">
                 <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -513,11 +485,64 @@ export function ProjectImportDialog({
                 </div>
               </section>
             </div>
-          ) : (
+      );
+    }
+    return (
             <div className="max-h-80 space-y-1 overflow-y-auto">
               {renderRepositoryList()}
             </div>
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busyRef.current) onClose();
+      }}
+    >
+      <DialogContent
+        data-testid="project-import-dialog"
+        className={cn(
+          // A flex column capped at the window height: when the window is too
+          // short for every card (the smallest is 900x600), the body below the
+          // header scrolls and the title and close button stay in view.
+          "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
+          // The source cards use the chooser's width so the two dialogs line
+          // up; the single-purpose steps keep their narrower layout.
+          VIEW_WIDTH[view],
+        )}
+      >
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            {view !== "sources" ? (
+              <button
+                type="button"
+                aria-label={t(($) => $.library.import.back)}
+                data-testid="project-import-back"
+                disabled={busy}
+                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
+                className="rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+              >
+                <ChevronLeft aria-hidden="true" className="size-4" />
+              </button>
+            ) : null}
+            {viewTitles[view]}
+          </DialogTitle>
+          <DialogDescription>
+            {viewDescriptions[view]}
+          </DialogDescription>
+        </DialogHeader>
+
+        {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
+        <div
+          className={cn(
+            "-mx-6 -mb-6 min-h-0 px-6 pb-6",
+            view === "overleaf" ? "flex flex-1 flex-col overflow-hidden" : "overflow-y-auto",
           )}
+        >
+          {renderBody()}
         </div>
       </DialogContent>
     </Dialog>

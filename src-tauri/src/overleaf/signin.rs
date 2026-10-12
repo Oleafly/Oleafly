@@ -52,7 +52,7 @@ pub(crate) async fn session_from_cookie(base: &str, cookie: String) -> Result<Se
 fn settle(pending: &Pending, outcome: Result<Session, String>) {
     let sender = pending
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take();
     if let Some(sender) = sender {
         let _ = sender.send(outcome);

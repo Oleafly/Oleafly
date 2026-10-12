@@ -146,7 +146,7 @@ fn with_store<T>(
 ) -> Result<(T, bool), String> {
     let _guard = STORE_LOCK
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut sessions = read_all()?;
     let before = sessions.clone();
     let result = work(&mut sessions);
@@ -160,7 +160,7 @@ fn with_store<T>(
 pub(crate) fn load(base: &str) -> Result<Option<Session>, String> {
     let _guard = STORE_LOCK
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     Ok(read_all()?.remove(base))
 }
 

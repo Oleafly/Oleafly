@@ -20,10 +20,15 @@ import { useOverleafImportStore, type OverleafRowProgress } from "@/store/overle
 import { useSettingsStore } from "@/store/settings";
 
 type Filter = "all" | "owned" | "shared";
+type LibraryTranslate = ReturnType<typeof useTranslation<["library"]>>["t"];
+
+const FILTERS: readonly Filter[] = ["all", "owned", "shared"];
+const LINK_BUTTON =
+  "rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
 
 function bookColor(id: string): string {
   let hash = 0;
-  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  for (const character of id) hash = (hash * 31 + (character.codePointAt(0) ?? 0)) >>> 0;
   return BOOK_SWATCHES[hash % BOOK_SWATCHES.length];
 }
 
@@ -40,225 +45,300 @@ function serverHost(server: string): string {
   }
 }
 
+function filterLabel(t: LibraryTranslate, filter: Filter): string {
+  const labels: Record<Filter, string> = {
+    all: t(($) => $.library.import.overleaf.filter.all),
+    owned: t(($) => $.library.import.overleaf.filter.owned),
+    shared: t(($) => $.library.import.overleaf.filter.shared),
+  };
+  return labels[filter];
+}
+
+function ownerLabel(t: LibraryTranslate, project: OverleafProject): string | null {
+  if (project.owned) return t(($) => $.library.import.overleaf.ownedByYou);
+  if (project.ownerName) return t(($) => $.library.import.overleaf.owner, { name: project.ownerName });
+  return null;
+}
+
+function promptText(t: LibraryTranslate, signing: boolean, expired: boolean): string {
+  if (signing) return t(($) => $.library.import.overleaf.signingIn);
+  if (expired) return t(($) => $.library.import.overleaf.expired);
+  return t(($) => $.library.import.overleaf.signInPrompt);
+}
+
+function matches(project: OverleafProject, filter: Filter, needle: string): boolean {
+  if (filter === "owned" && !project.owned) return false;
+  if (filter === "shared" && project.owned) return false;
+  if (!needle) return true;
+  return `${project.name} ${project.ownerName ?? ""}`.toLocaleLowerCase().includes(needle);
+}
+
+async function importAndRefresh(ids?: readonly string[]): Promise<void> {
+  const outcomes = await useOverleafImportStore.getState().importSelected(ids);
+  if (outcomes.some((outcome) => outcome.projectId)) {
+    await useFilesStore.getState().refreshProjects();
+  }
+}
+
 export function OverleafImportView({
   onOpenProject,
 }: Readonly<{ onOpenProject: (projectId: string) => void }>) {
-  const { t } = useTranslation(["library"]);
-  const store = useOverleafImportStore();
-  const layout = useSettingsStore((state) => state.homeProjectLayout);
-  const setLayout = useSettingsStore((state) => state.setHomeProjectLayout);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const selectAllId = useId();
-  const { open } = store;
+  const phase = useOverleafImportStore((state) => state.phase);
+  const open = useOverleafImportStore((state) => state.open);
 
   useEffect(() => {
     void open();
   }, [open]);
 
+  if (phase === "idle" || phase === "checking" || phase === "loading") {
+    return <LoadingState loading={phase === "loading"} />;
+  }
+  if (phase === "signed-out" || phase === "signing-in") return <SignInPanel />;
+  if (phase === "error") return <ErrorState />;
+  return <ProjectPicker onOpenProject={onOpenProject} />;
+}
+
+function LoadingState({ loading }: Readonly<{ loading: boolean }>) {
+  const { t } = useTranslation(["library"]);
+  return (
+    <output data-testid="overleaf-import-loading" className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+      <Spinner />
+      {loading ? t(($) => $.library.import.overleaf.loading) : t(($) => $.library.import.overleaf.checking)}
+    </output>
+  );
+}
+
+function ErrorState() {
+  const { t } = useTranslation(["library"]);
+  const error = useOverleafImportStore((state) => state.error);
+  const open = useOverleafImportStore((state) => state.open);
+  const unrecognized = isOverleafError(error, "unrecognized");
+  return (
+    <div className="space-y-3 rounded-lg border bg-card p-4">
+      <p role="alert" className="select-text text-sm text-destructive">
+        {unrecognized ? describeError(error) : t(($) => $.library.import.overleaf.loadFailed)}
+      </p>
+      {!unrecognized && error ? (
+        <p className="select-text text-xs text-muted-foreground">{describeError(error)}</p>
+      ) : null}
+      <Button type="button" variant="outline" size="sm" onClick={() => void open()}>
+        <RotateCw aria-hidden className="size-3.5" />
+        {t(($) => $.library.import.tryAgain)}
+      </Button>
+    </div>
+  );
+}
+
+function ProjectPicker({ onOpenProject }: Readonly<{ onOpenProject: (projectId: string) => void }>) {
+  const projects = useOverleafImportStore((state) => state.projects);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return store.projects.filter((project) => {
-      if (filter === "owned" && !project.owned) return false;
-      if (filter === "shared" && project.owned) return false;
-      if (!needle) return true;
-      return `${project.name} ${project.ownerName ?? ""}`.toLocaleLowerCase().includes(needle);
-    });
-  }, [store.projects, query, filter]);
-
-  if (store.phase === "idle" || store.phase === "checking" || store.phase === "loading") {
-    return (
-      <output data-testid="overleaf-import-loading" className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-        <Spinner />
-        {store.phase === "loading"
-          ? t(($) => $.library.import.overleaf.loading)
-          : t(($) => $.library.import.overleaf.checking)}
-      </output>
-    );
-  }
-
-  if (store.phase === "signed-out" || store.phase === "signing-in") {
-    return <SignInPanel />;
-  }
-
-  if (store.phase === "error") {
-    return (
-      <div className="space-y-3 rounded-lg border bg-card p-4">
-        <p role="alert" className="select-text text-sm text-destructive">
-          {isOverleafError(store.error, "unrecognized")
-            ? describeError(store.error)
-            : t(($) => $.library.import.overleaf.loadFailed)}
-        </p>
-        {!isOverleafError(store.error, "unrecognized") && store.error ? (
-          <p className="select-text text-xs text-muted-foreground">{describeError(store.error)}</p>
-        ) : null}
-        <Button type="button" variant="outline" size="sm" onClick={() => void store.open()}>
-          <RotateCw aria-hidden className="size-3.5" />
-          {t(($) => $.library.import.tryAgain)}
-        </Button>
-      </div>
-    );
-  }
-
-  const selected = new Set(store.selected);
-  const visibleIds = visible.map((project) => project.id);
-  const visibleSelected = visibleIds.filter((id) => selected.has(id)).length;
-  const allChecked = visibleIds.length > 0 && visibleSelected === visibleIds.length;
-  const anyImportedSelected = store.projects.some((project) => selected.has(project.id) && project.importedAs);
-  const doneCount = Object.values(store.progress).filter((row) => row.phase === "done").length;
-  const failedCount = Object.values(store.progress).filter((row) => row.phase === "failed").length;
-
-  const toggleAll = () => {
-    if (allChecked) {
-      store.setSelected(store.selected.filter((id) => !visibleIds.includes(id)));
-    } else {
-      store.setSelected([...store.selected, ...visibleIds]);
-    }
-  };
-
-  const runImport = async (ids?: readonly string[]) => {
-    const outcomes = await store.importSelected(ids);
-    if (outcomes.some((outcome) => outcome.projectId)) {
-      await useFilesStore.getState().refreshProjects();
-    }
-  };
+    return projects.filter((project) => matches(project, filter, needle));
+  }, [projects, query, filter]);
 
   return (
     <div data-testid="overleaf-import-view" className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1">
-          <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            data-testid="overleaf-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            aria-label={t(($) => $.library.import.overleaf.searchLabel)}
-            placeholder={t(($) => $.library.import.overleaf.searchPlaceholder, { count: store.projects.length })}
-            className="h-8 pl-8"
-          />
-        </div>
-        <fieldset
-          aria-label={t(($) => $.library.import.overleaf.filterLabel)}
-          className="flex items-center rounded-lg border p-0.5"
-        >
-          {(["all", "owned", "shared"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              data-testid={`overleaf-filter-${value}`}
-              onClick={() => setFilter(value)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-colors focus-visible:bg-accent/60 focus-visible:text-foreground",
-                filter === value ? "bg-accent text-foreground" : "hover:text-foreground",
-              )}
-            >
-              {value === "all"
-                ? t(($) => $.library.import.overleaf.filter.all)
-                : value === "owned"
-                  ? t(($) => $.library.import.overleaf.filter.owned)
-                  : t(($) => $.library.import.overleaf.filter.shared)}
-            </button>
-          ))}
-        </fieldset>
-        <LayoutToggle value={layout} onChange={setLayout} className="border p-0.5" />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <Checkbox
-            id={selectAllId}
-            data-testid="overleaf-select-all"
-            checked={allChecked ? true : visibleSelected > 0 ? "indeterminate" : false}
-            disabled={visibleIds.length === 0 || store.importing}
-            onCheckedChange={toggleAll}
-          />
-          <label htmlFor={selectAllId}>{t(($) => $.library.import.overleaf.selectAll)}</label>
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="truncate">
-            {store.status?.email
-              ? t(($) => $.library.import.overleaf.signedInAs, { email: store.status.email })
-              : t(($) => $.library.import.overleaf.signedIn)}
-          </span>
-          <button
-            type="button"
-            data-testid="overleaf-sign-out"
-            disabled={store.importing}
-            onClick={() => void store.signOut()}
-            className="rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50"
-          >
-            {t(($) => $.library.import.overleaf.signOut)}
-          </button>
-        </span>
-      </div>
-
+      <PickerToolbar query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} total={projects.length} />
+      <SelectionBar visibleIds={visible.map((project) => project.id)} />
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
-        {store.projects.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">{t(($) => $.library.import.overleaf.empty)}</p>
-        ) : visible.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">{t(($) => $.library.import.overleaf.noMatches)}</p>
-        ) : layout === "grid" ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4 gap-y-5 pb-2">
-            {visible.map((project) => (
-              <ProjectBook
-                key={project.id}
-                project={project}
-                checked={selected.has(project.id)}
-                progress={store.progress[project.id]}
-                busy={store.importing}
-                onToggle={() => store.toggle(project.id)}
-                onOpen={onOpenProject}
-                onRetry={() => void runImport([project.id])}
-              />
-            ))}
-          </div>
-        ) : (
-          <ul className="divide-y rounded-lg border">
-            {visible.map((project) => (
-              <ProjectRow
-                key={project.id}
-                project={project}
-                checked={selected.has(project.id)}
-                progress={store.progress[project.id]}
-                busy={store.importing}
-                onToggle={() => store.toggle(project.id)}
-                onOpen={onOpenProject}
-                onRetry={() => void runImport([project.id])}
-              />
-            ))}
-          </ul>
-        )}
+        <ProjectArea projects={projects} visible={visible} onOpenProject={onOpenProject} />
       </div>
+      <PickerFooter />
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
-        <div className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
-          <p data-testid="overleaf-selection-summary" className="font-medium text-foreground">
-            {doneCount > 0 || failedCount > 0
-              ? [
-                  doneCount > 0 ? t(($) => $.library.import.overleaf.doneSummary, { count: doneCount }) : null,
-                  failedCount > 0 ? t(($) => $.library.import.overleaf.failedSummary, { count: failedCount }) : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ")
-              : t(($) => $.library.import.overleaf.selected, { count: store.selected.length })}
-          </p>
-          <p>
-            {anyImportedSelected
-              ? t(($) => $.library.import.overleaf.copyNote)
-              : t(($) => $.library.import.overleaf.notCarried)}
-          </p>
-        </div>
-        <Button
-          type="button"
-          data-testid="overleaf-import-selected"
-          disabled={store.selected.length === 0 || store.importing}
-          onClick={() => void runImport()}
-        >
-          {store.importing ? <Spinner size="sm" /> : null}
-          {t(($) => $.library.import.overleaf.import, { count: store.selected.length })}
-        </Button>
+function PickerToolbar({
+  query,
+  onQuery,
+  filter,
+  onFilter,
+  total,
+}: Readonly<{
+  query: string;
+  onQuery: (query: string) => void;
+  filter: Filter;
+  onFilter: (filter: Filter) => void;
+  total: number;
+}>) {
+  const { t } = useTranslation(["library"]);
+  const layout = useSettingsStore((state) => state.homeProjectLayout);
+  const setLayout = useSettingsStore((state) => state.setHomeProjectLayout);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="relative min-w-48 flex-1">
+        <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          data-testid="overleaf-search"
+          value={query}
+          onChange={(event) => onQuery(event.target.value)}
+          aria-label={t(($) => $.library.import.overleaf.searchLabel)}
+          placeholder={t(($) => $.library.import.overleaf.searchPlaceholder, { count: total })}
+          className="h-8 pl-8"
+        />
       </div>
+      <fieldset aria-label={t(($) => $.library.import.overleaf.filterLabel)} className="flex items-center rounded-lg border p-0.5">
+        {FILTERS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={filter === value}
+            data-testid={`overleaf-filter-${value}`}
+            onClick={() => onFilter(value)}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-colors focus-visible:bg-accent/60 focus-visible:text-foreground",
+              filter === value ? "bg-accent text-foreground" : "hover:text-foreground",
+            )}
+          >
+            {filterLabel(t, value)}
+          </button>
+        ))}
+      </fieldset>
+      <LayoutToggle value={layout} onChange={setLayout} className="border p-0.5" />
+    </div>
+  );
+}
+
+function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
+  const { t } = useTranslation(["library"]);
+  const selectAllId = useId();
+  const selected = useOverleafImportStore((state) => state.selected);
+  const importing = useOverleafImportStore((state) => state.importing);
+  const email = useOverleafImportStore((state) => state.status?.email ?? null);
+  const setSelected = useOverleafImportStore((state) => state.setSelected);
+  const signOut = useOverleafImportStore((state) => state.signOut);
+  const chosen = new Set(selected);
+  const visibleSelected = visibleIds.filter((id) => chosen.has(id)).length;
+  const allChecked = visibleIds.length > 0 && visibleSelected === visibleIds.length;
+  let checkState: boolean | "indeterminate" = allChecked;
+  if (!allChecked && visibleSelected > 0) checkState = "indeterminate";
+
+  const toggleAll = () => {
+    setSelected(allChecked ? selected.filter((id) => !visibleIds.includes(id)) : [...selected, ...visibleIds]);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span className="flex items-center gap-2">
+        <Checkbox
+          id={selectAllId}
+          data-testid="overleaf-select-all"
+          checked={checkState}
+          disabled={visibleIds.length === 0 || importing}
+          onCheckedChange={toggleAll}
+        />
+        <label htmlFor={selectAllId}>{t(($) => $.library.import.overleaf.selectAll)}</label>
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="truncate">
+          {email
+            ? t(($) => $.library.import.overleaf.signedInAs, { email })
+            : t(($) => $.library.import.overleaf.signedIn)}
+        </span>
+        <button
+          type="button"
+          data-testid="overleaf-sign-out"
+          disabled={importing}
+          onClick={() => void signOut()}
+          className={LINK_BUTTON}
+        >
+          {t(($) => $.library.import.overleaf.signOut)}
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function ProjectArea({
+  projects,
+  visible,
+  onOpenProject,
+}: Readonly<{
+  projects: OverleafProject[];
+  visible: OverleafProject[];
+  onOpenProject: (projectId: string) => void;
+}>) {
+  const { t } = useTranslation(["library"]);
+  const layout = useSettingsStore((state) => state.homeProjectLayout);
+  const selected = useOverleafImportStore((state) => state.selected);
+  const progress = useOverleafImportStore((state) => state.progress);
+  const importing = useOverleafImportStore((state) => state.importing);
+  const toggle = useOverleafImportStore((state) => state.toggle);
+
+  if (projects.length === 0) {
+    return <p className="py-10 text-center text-sm text-muted-foreground">{t(($) => $.library.import.overleaf.empty)}</p>;
+  }
+  if (visible.length === 0) {
+    return <p className="py-10 text-center text-sm text-muted-foreground">{t(($) => $.library.import.overleaf.noMatches)}</p>;
+  }
+  const chosen = new Set(selected);
+  const itemProps = (project: OverleafProject) => ({
+    project,
+    checked: chosen.has(project.id),
+    progress: progress[project.id],
+    busy: importing,
+    onToggle: () => toggle(project.id),
+    onOpen: onOpenProject,
+    onRetry: () => void importAndRefresh([project.id]),
+  });
+  if (layout === "grid") {
+    return (
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4 gap-y-5 pb-2">
+        {visible.map((project) => (
+          <ProjectBook key={project.id} {...itemProps(project)} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <ul className="divide-y rounded-lg border">
+      {visible.map((project) => (
+        <ProjectRow key={project.id} {...itemProps(project)} />
+      ))}
+    </ul>
+  );
+}
+
+function PickerFooter() {
+  const { t } = useTranslation(["library"]);
+  const projects = useOverleafImportStore((state) => state.projects);
+  const selected = useOverleafImportStore((state) => state.selected);
+  const progress = useOverleafImportStore((state) => state.progress);
+  const importing = useOverleafImportStore((state) => state.importing);
+  const chosen = new Set(selected);
+  const anyImportedSelected = projects.some((project) => chosen.has(project.id) && project.importedAs);
+  const rows = Object.values(progress);
+  const doneCount = rows.filter((row) => row.phase === "done").length;
+  const failedCount = rows.filter((row) => row.phase === "failed").length;
+  const outcome: string[] = [];
+  if (doneCount > 0) outcome.push(t(($) => $.library.import.overleaf.doneSummary, { count: doneCount }));
+  if (failedCount > 0) outcome.push(t(($) => $.library.import.overleaf.failedSummary, { count: failedCount }));
+  const summary =
+    outcome.length > 0 ? outcome.join(" ") : t(($) => $.library.import.overleaf.selected, { count: selected.length });
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+      <div className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
+        <p data-testid="overleaf-selection-summary" className="font-medium text-foreground">
+          {summary}
+        </p>
+        <p>
+          {anyImportedSelected
+            ? t(($) => $.library.import.overleaf.copyNote)
+            : t(($) => $.library.import.overleaf.notCarried)}
+        </p>
+      </div>
+      <Button
+        type="button"
+        data-testid="overleaf-import-selected"
+        disabled={selected.length === 0 || importing}
+        onClick={() => void importAndRefresh()}
+      >
+        {importing ? <Spinner size="sm" /> : null}
+        {t(($) => $.library.import.overleaf.import, { count: selected.length })}
+      </Button>
     </div>
   );
 }
@@ -275,13 +355,7 @@ function SignInPanel() {
   return (
     <div data-testid="overleaf-sign-in-panel" className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-8 text-center">
       <OverleafBrandIcon className="size-8 text-[#47A141]" />
-      <p className="max-w-md text-sm text-muted-foreground">
-        {signing
-          ? t(($) => $.library.import.overleaf.signingIn)
-          : expired
-            ? t(($) => $.library.import.overleaf.expired)
-            : t(($) => $.library.import.overleaf.signInPrompt)}
-      </p>
+      <p className="max-w-md text-sm text-muted-foreground">{promptText(t, signing, expired)}</p>
       <Button
         type="button"
         data-testid="overleaf-sign-in"
@@ -314,7 +388,7 @@ function SignInPanel() {
             placeholder={DEFAULT_OVERLEAF_SERVER}
             className="h-8"
           />
-          <Button type="submit" size="sm" variant="outline" disabled={!draft.trim()}>
+          <Button type="submit" size="sm" variant="outline" data-testid="overleaf-save-server" disabled={!draft.trim()}>
             {t(($) => $.library.import.overleaf.saveServer)}
           </Button>
         </form>
@@ -329,7 +403,7 @@ function SignInPanel() {
               setDraft(store.server);
               setEditing(true);
             }}
-            className="rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50"
+            className={LINK_BUTTON}
           >
             {t(($) => $.library.import.overleaf.useDifferentServer)}
           </button>
@@ -341,7 +415,7 @@ function SignInPanel() {
                 store.setServer(DEFAULT_OVERLEAF_SERVER);
                 void store.open();
               }}
-              className="rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50"
+              className={LINK_BUTTON}
             >
               {t(($) => $.library.import.overleaf.useDefaultServer)}
             </button>
@@ -393,34 +467,28 @@ function ProjectStatus({ project, progress, onOpen, onRetry }: Pick<ItemProps, "
         <span className="max-w-56 truncate text-destructive" title={describeError(progress.error)}>
           {describeError(progress.error)}
         </span>
-        <button type="button" onClick={onRetry} className="rounded px-1 font-medium text-foreground hover:bg-accent focus-visible:bg-accent">
+        <button type="button" onClick={onRetry} className={LINK_BUTTON}>
           {t(($) => $.library.import.tryAgain)}
         </button>
       </span>
     );
   }
   const imported = progress?.phase === "done" ? progress.projectId : project.importedAs;
-  if (imported) {
-    return (
-      <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <CheckBadge tone="success" />
-        {t(($) => $.library.import.overleaf.imported)}
-        <button
-          type="button"
-          onClick={() => onOpen(imported)}
-          className="rounded px-1 font-medium text-foreground hover:bg-accent focus-visible:bg-accent"
-        >
-          {t(($) => $.library.import.overleaf.open)}
-        </button>
-      </span>
-    );
-  }
-  return null;
+  if (!imported) return null;
+  return (
+    <span data-testid={testId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <CheckBadge tone="success" />
+      {t(($) => $.library.import.overleaf.imported)}
+      <button type="button" onClick={() => onOpen(imported)} className={LINK_BUTTON}>
+        {t(($) => $.library.import.overleaf.open)}
+      </button>
+    </span>
+  );
 }
 
 function ProjectRow({ project, checked, progress, busy, onToggle, onOpen, onRetry }: ItemProps) {
   const { t } = useTranslation(["library"]);
-  const edited = editedLabel(project);
+  const details = [ownerLabel(t, project), editedLabel(project)].filter(Boolean).join(" · ");
   return (
     <li data-testid={`overleaf-project-${project.id}`} className="flex items-center gap-3 px-3 py-2 [contain-intrinsic-size:auto_3rem] [content-visibility:auto]">
       <Checkbox
@@ -431,14 +499,7 @@ function ProjectRow({ project, checked, progress, busy, onToggle, onOpen, onRetr
       />
       <button type="button" disabled={busy} onClick={onToggle} className="min-w-0 flex-1 rounded text-left focus-visible:bg-accent/60">
         <span className="block truncate text-sm font-medium text-foreground">{project.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {[
-            project.owned ? t(($) => $.library.import.overleaf.ownedByYou) : project.ownerName ? t(($) => $.library.import.overleaf.owner, { name: project.ownerName }) : null,
-            edited,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
+        <span className="block truncate text-xs text-muted-foreground">{details}</span>
       </button>
       {project.archived ? <Badge variant="outline" size="sm">{t(($) => $.library.import.overleaf.archived)}</Badge> : null}
       <ProjectStatus project={project} progress={progress} onOpen={onOpen} onRetry={onRetry} />

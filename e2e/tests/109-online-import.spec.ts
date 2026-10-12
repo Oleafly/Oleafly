@@ -31,7 +31,7 @@ test("signs in to an Overleaf server, lists its projects and imports them with t
 
   await tauriPage.click('[data-testid="overleaf-change-server"]');
   await tauriPage.fill('[data-testid="overleaf-server-input"]', server.base);
-  await tauriPage.locator('[data-testid="overleaf-server-input"]').press("Enter");
+  await tauriPage.click('[data-testid="overleaf-save-server"]');
   await expect(tauriPage.locator('[data-testid="overleaf-sign-in-panel"]')).toContainText(
     server.base.replace("http://", ""),
     { timeout: 20_000 },

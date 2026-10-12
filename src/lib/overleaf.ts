@@ -80,6 +80,8 @@ export async function overleafImportProjects(
 }
 
 export function isOverleafError(error: unknown, code: string): boolean {
-  const text = typeof error === "string" ? error : error instanceof Error ? error.message : "";
+  let text = "";
+  if (typeof error === "string") text = error;
+  else if (error instanceof Error) text = error.message;
   return text.includes(`"overleaf.${code}"`);
 }
