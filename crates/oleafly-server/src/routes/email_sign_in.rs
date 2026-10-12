@@ -104,14 +104,16 @@ pub(crate) async fn ask_for_address(
 pub(crate) fn page_expired() -> Response {
     sign_in_pages::message(
         StatusCode::FORBIDDEN,
+        sign_in_pages::Tone::Problem,
         "This page has expired",
-        "Go back to Oleafly and start signing in again.",
+        "It was open for more than an hour, or this browser blocked its cookie. Go back to Oleafly and start signing in again.",
     )
 }
 
 fn sign_in_expired() -> Response {
     sign_in_pages::message(
         StatusCode::BAD_REQUEST,
+        sign_in_pages::Tone::Problem,
         "This sign-in has expired",
         "Go back to Oleafly and start signing in again.",
     )
@@ -120,6 +122,7 @@ fn sign_in_expired() -> Response {
 fn email_sign_in_off() -> Response {
     sign_in_pages::message(
         StatusCode::BAD_REQUEST,
+        sign_in_pages::Tone::Notice,
         "Email sign-in is off",
         "This server doesn't sign people in by email any more. Go back to Oleafly and choose another way to sign in.",
     )
@@ -140,7 +143,12 @@ fn link_problem(link: &Link) -> Response {
             "It may be incomplete, or a newer link replaced it. Start signing in again in Oleafly to get a new one.",
         ),
     };
-    sign_in_pages::message(StatusCode::BAD_REQUEST, title, text)
+    sign_in_pages::message(
+        StatusCode::BAD_REQUEST,
+        sign_in_pages::Tone::Problem,
+        title,
+        text,
+    )
 }
 
 fn valid_address(raw: &str) -> Option<String> {
@@ -275,6 +283,7 @@ async fn request_link(
     let Some(token) = issued else {
         return Ok(sign_in_pages::message(
             StatusCode::TOO_MANY_REQUESTS,
+            sign_in_pages::Tone::Notice,
             "Too many sign-in emails",
             "Wait 15 minutes, then try again.",
         ));

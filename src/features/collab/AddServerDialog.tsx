@@ -27,7 +27,8 @@ import {
 } from "@/lib/tauri";
 import { collabErrorCode, collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
-import { accountPerson } from "./people";
+import { accountDetail, accountPerson } from "./people";
+import { canManageServer, serverRoleAllows, toServerRole } from "./roles";
 import { useCollabStore } from "./store";
 
 type Step =
@@ -281,26 +282,21 @@ export function AddServerDialog({
           </div>
         </div>
         {capabilities.needs_setup ? (
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium">{t(($) => $.collab.addServer.setupTitle)}</p>
-            <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.setupDescription)}</p>
-            <div className="space-y-1">
-              <label htmlFor={setupId} className="text-xs font-medium">
-                {t(($) => $.collab.addServer.setupCodeLabel)}
-              </label>
-              <Input
-                id={setupId}
-                value={setupCode}
-                onChange={(event) => setSetupCode(event.target.value)}
-                autoComplete="one-time-code"
-                spellCheck={false}
-                className="font-mono"
-              />
-            </div>
+          <div className="space-y-1">
+            <label htmlFor={setupId} className="text-xs font-medium">
+              {t(($) => $.collab.addServer.setupCodeLabel)}
+            </label>
+            <Input
+              id={setupId}
+              value={setupCode}
+              onChange={(event) => setSetupCode(event.target.value)}
+              autoComplete="one-time-code"
+              spellCheck={false}
+              className="font-mono"
+            />
           </div>
         ) : null}
         <div className="space-y-2">
-          <p className="text-sm font-medium">{t(($) => $.collab.addServer.signInTitle)}</p>
           <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.signInDescription)}</p>
           {capabilities.providers.length === 0 ? (
             <InlineAlert>{t(($) => $.collab.addServer.noProviders)}</InlineAlert>
@@ -342,18 +338,11 @@ export function AddServerDialog({
     );
   };
 
-  const renderWaiting = (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => (
+  const renderWaiting = (url: string, capabilities: CollabCapabilities) => (
     <div className="space-y-4">
-      <output className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
-        <Spinner className="mt-0.5" />
-        <span className="min-w-0">
-          <span className="block text-sm font-medium">{t(($) => $.collab.addServer.waitingTitle)}</span>
-          <span className="block text-xs text-muted-foreground">
-            {provider.kind === "email_link"
-              ? t(($) => $.collab.addServer.waitingEmailDescription)
-              : t(($) => $.collab.addServer.waitingDescription)}
-          </span>
-        </span>
+      <output className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+        <Spinner />
+        <span className="min-w-0 text-sm font-medium">{t(($) => $.collab.addServer.waitingTitle)}</span>
       </output>
       {offerCode ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -378,7 +367,6 @@ export function AddServerDialog({
         <LoadingState size="compact" label={t(($) => $.collab.addServer.codeRequesting)} />
       ) : (
         <>
-          <p className="text-sm">{t(($) => $.collab.addServer.codeSteps)}</p>
           <CodeValue
             label={t(($) => $.collab.addServer.codeAddressLabel)}
             value={code.verificationUri}
@@ -424,20 +412,15 @@ export function AddServerDialog({
 
   const renderDone = (server: CollabServer) => {
     const account = server.account ?? null;
+    const detail = account ? accountDetail(account) : "";
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-          {account ? <Avatar person={accountPerson(account)} size="md" /> : null}
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{t(($) => $.collab.addServer.doneTitle)}</p>
-            <p className="text-xs text-muted-foreground">
-              {t(($) => $.collab.addServer.doneDescription, {
-                server: server.name,
-                name: account?.display_name ?? server.name,
-              })}
-            </p>
+        {account && detail !== "" ? (
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+            <Avatar person={accountPerson(account)} size="md" />
+            <p className="min-w-0 truncate text-sm">{detail}</p>
           </div>
-        </div>
+        ) : null}
         <DialogFooter>
           <Button type="button" onClick={close}>
             {t(($) => $.collab.addServer.done)}
@@ -447,6 +430,51 @@ export function AddServerDialog({
     );
   };
 
+  const connectedDescription = (server: CollabServer) => {
+    const role = toServerRole(server.account?.server_role);
+    const name = server.account?.display_name ?? server.name;
+    if (canManageServer(role)) return t(($) => $.collab.addServer.doneManageDescription, { name });
+    if (role !== null && !serverRoleAllows(role, "shareProjects")) {
+      return t(($) => $.collab.addServer.doneGuestDescription, { name });
+    }
+    return t(($) => $.collab.addServer.doneDescription, { name });
+  };
+
+  const header = (): { title: string; description: string } => {
+    switch (step.kind) {
+      case "address":
+      case "checking":
+        return { title: t(($) => $.collab.addServer.title), description: t(($) => $.collab.addServer.description) };
+      case "server":
+        return step.capabilities.needs_setup
+          ? {
+              title: t(($) => $.collab.addServer.setupTitle, { server: step.capabilities.name }),
+              description: t(($) => $.collab.addServer.setupDescription),
+            }
+          : {
+              title: t(($) => $.collab.addServer.serverTitle, { server: step.capabilities.name }),
+              description: t(($) => $.collab.addServer.serverDescription),
+            };
+      case "signingIn":
+        return {
+          title: t(($) => $.collab.addServer.signingInTitle),
+          description:
+            step.provider.kind === "email_link"
+              ? t(($) => $.collab.addServer.waitingEmailDescription)
+              : t(($) => $.collab.addServer.waitingDescription, { provider: step.provider.label }),
+        };
+      case "code":
+        return { title: t(($) => $.collab.addServer.codeTitle), description: t(($) => $.collab.addServer.codeSteps) };
+      case "done":
+        return {
+          title: t(($) => $.collab.addServer.doneTitle, { server: step.server.name }),
+          description: connectedDescription(step.server),
+        };
+    }
+  };
+
+  const { title, description } = header();
+
   const renderStep = () => {
     switch (step.kind) {
       case "address":
@@ -455,7 +483,7 @@ export function AddServerDialog({
       case "server":
         return renderServer(step.url, step.capabilities);
       case "signingIn":
-        return renderWaiting(step.url, step.capabilities, step.provider);
+        return renderWaiting(step.url, step.capabilities);
       case "code":
         return renderCode(step.url, step.capabilities, step.code);
       case "done":
@@ -475,8 +503,8 @@ export function AddServerDialog({
         overlayClassName="z-[120]"
       >
         <DialogHeader>
-          <DialogTitle>{t(($) => $.collab.addServer.title)}</DialogTitle>
-          <DialogDescription>{t(($) => $.collab.addServer.description)}</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {renderStep()}
       </DialogContent>

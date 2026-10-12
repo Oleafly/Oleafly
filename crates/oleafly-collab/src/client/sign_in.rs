@@ -47,11 +47,11 @@ pub async fn sign_in(
         },
     )
     .map_err(CollabError::ProtocolMismatch)?;
-    let Some(kind) = manifest
+    let Some((kind, provider_label)) = manifest
         .providers
         .iter()
         .find(|provider| provider.id == provider_id)
-        .map(|provider| provider.kind)
+        .map(|provider| (provider.kind, provider.label.clone()))
     else {
         return Err(CollabError::Api {
             status: 400,
@@ -60,7 +60,9 @@ pub async fn sign_in(
         });
     };
     let timeout = wait_for(kind, timeout);
-    let listener = LoopbackListener::bind().await?;
+    let listener = LoopbackListener::bind()
+        .await?
+        .describing(&manifest.name, &provider_label);
     let verifier = random_b64url(VERIFIER_BYTES)?;
     let state = random_b64url(STATE_BYTES)?;
     let query = AuthStartQuery {

@@ -21,16 +21,20 @@ use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::throttle::{self, Throttle};
 use crate::auth::{browser_binding, csrf, db_error, devices, nonce, refresh};
 use crate::error::ServerError;
+use crate::mail::messages::escape;
 use crate::mail::notify;
 use crate::members;
 use crate::rate_limit::client_key;
 use crate::routes::auth::{checked_setup_code, email_link_available, Finish};
 use crate::routes::email_sign_in::{self, page_expired};
-use crate::routes::sign_in_pages::{self, device_label, provider_button, Field, Input};
+use crate::routes::sign_in_pages::{
+    self, device_label, heading, next, paragraph, provider_button, Field, Input, Tone,
+};
 use crate::routes::{json_body, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::state::AppState;
 use crate::tokens::random_token;
+use oleafly_collab_protocol::page::status;
 
 const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Oleafly.";
 pub(crate) const WRONG_CODE: &str =
@@ -406,6 +410,7 @@ pub(crate) fn check_typed_code(
 pub(crate) fn locked_out() -> Response {
     sign_in_pages::message(
         StatusCode::TOO_MANY_REQUESTS,
+        sign_in_pages::Tone::Notice,
         "Too many wrong codes",
         "Wait 10 minutes, then try again.",
     )
@@ -627,6 +632,7 @@ async fn deny(
         .await?;
     Ok(sign_in_pages::message(
         StatusCode::OK,
+        sign_in_pages::Tone::Notice,
         "Sign-in stopped",
         "Nobody can use this code now. If you meant to sign in, start again in Oleafly.",
     ))
@@ -637,9 +643,28 @@ pub(crate) fn finished(
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
 ) -> Response {
+    finished_naming(state, pending, outcome, None)
+}
+
+fn provider_label(state: &AppState, provider_id: &str) -> String {
+    state
+        .providers
+        .infos()
+        .into_iter()
+        .find(|info| info.id == provider_id)
+        .map_or_else(|| "your sign-in provider".to_owned(), |info| info.label)
+}
+
+pub(crate) fn finished_naming(
+    state: &AppState,
+    pending: &PendingSignIn,
+    outcome: Result<Finish, AuthErrorCode>,
+    account: Option<&str>,
+) -> Response {
     match outcome {
         Ok(Finish::DeviceApproved) => sign_in_pages::message(
             StatusCode::OK,
+            sign_in_pages::Tone::Success,
             "You're signed in",
             &format!(
                 "Go back to Oleafly on {}. It finishes signing in by itself. You can close this tab.",
@@ -648,18 +673,45 @@ pub(crate) fn finished(
         ),
         Ok(Finish::DeviceGone | Finish::Code(_)) => sign_in_pages::message(
             StatusCode::BAD_REQUEST,
+            sign_in_pages::Tone::Problem,
             "This code has expired",
             "Start signing in again in Oleafly to get a new code.",
         ),
-        Err(code @ (AuthErrorCode::NotAdmitted | AuthErrorCode::SetupCodeInvalid)) => {
-            sign_in_pages::message(
+        Err(AuthErrorCode::NotAdmitted) => {
+            let provider = provider_label(state, &pending.provider_id);
+            let who = account
+                .map(|account| {
+                    format!(
+                        "<p>You signed in to {} as <strong>{}</strong>.</p>",
+                        escape(&provider),
+                        escape(account)
+                    )
+                })
+                .unwrap_or_default();
+            sign_in_pages::render(
                 StatusCode::FORBIDDEN,
                 "You can't sign in here yet",
-                &ServerError::Auth(code).public_message(),
+                &format!(
+                    "{}{}{who}{}{}",
+                    status(Tone::Problem),
+                    heading("You can't sign in here yet"),
+                    paragraph(&ServerError::Auth(AuthErrorCode::NotAdmitted).public_message()),
+                    next(&format!(
+                        "To use a different account, sign out of {provider} in this browser, then start again in Oleafly."
+                    )),
+                ),
+                None,
             )
         }
+        Err(code @ AuthErrorCode::SetupCodeInvalid) => sign_in_pages::message(
+            StatusCode::FORBIDDEN,
+            sign_in_pages::Tone::Problem,
+            "You can't sign in here yet",
+            &ServerError::Auth(code).public_message(),
+        ),
         Err(code) => sign_in_pages::message(
             StatusCode::BAD_REQUEST,
+            sign_in_pages::Tone::Problem,
             "Sign-in didn't finish",
             &format!(
                 "{} To try again, open {} and enter the code from Oleafly.",

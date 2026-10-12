@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Laptop, Trash2, UserCheck, UserX } from "lucide-react";
+import { Laptop, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function MembersTab({
   loadError,
   onRetry,
   onMembersChange,
+  onAddPeople,
 }: Readonly<{
   serverId: string;
   actor: ServerRole;
@@ -48,6 +49,7 @@ export function MembersTab({
   loadError: string | null;
   onRetry: () => void;
   onMembersChange: MembersUpdate;
+  onAddPeople?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -208,7 +210,18 @@ export function MembersTab({
   return (
     <div className="space-y-2">
       {serverRoleAllows(actor, "approveGuests") ? <PendingGuests serverId={serverId} /> : null}
-      <p className="text-xs text-muted-foreground">{t(($) => $.collab.admin.members.description)}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5 text-xs text-muted-foreground">
+          <p>{t(($) => $.collab.admin.members.description)}</p>
+          {onAddPeople ? <p>{t(($) => $.collab.admin.members.addHint)}</p> : null}
+        </div>
+        {onAddPeople ? (
+          <Button type="button" size="sm" className="shrink-0" onClick={onAddPeople}>
+            <UserPlus aria-hidden />
+            {t(($) => $.collab.admin.members.addPeople)}
+          </Button>
+        ) : null}
+      </div>
       {renderMembers()}
       <ConfirmationDialog
         open={removing !== null}

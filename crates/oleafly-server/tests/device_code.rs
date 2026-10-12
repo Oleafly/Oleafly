@@ -288,6 +288,16 @@ async fn a_person_the_server_does_not_admit_sees_the_usual_refusal() {
         "{}",
         refused.body
     );
+    assert!(
+        text_of(&refused).contains("You signed in to GitHub as @mallory"),
+        "{}",
+        refused.body
+    );
+    assert!(
+        refused.body.contains("class=\"status problem\""),
+        "{}",
+        refused.body
+    );
     assert_eq!(
         poll(&setup.server, &device, &code.device_code).await,
         Err("not_admitted".to_owned())

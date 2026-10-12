@@ -67,7 +67,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
 
   const name = state.status === "ready" ? state.server?.name : undefined;
   useEffect(() => {
-    if (name) document.title = t(($) => $.collab.console.windowTitle, { name });
+    if (name) document.title = t(($) => $.collab.console.windowTitle);
   }, [name, t]);
 
   const renderState = () => {
@@ -122,5 +122,5 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
     return <AdminConsole key={server.server_id} server={server} actor={role} />;
   };
 
-  return <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">{renderState()}</div>;
+  return <div className="flex h-screen w-full overflow-hidden bg-sidebar text-foreground">{renderState()}</div>;
 }

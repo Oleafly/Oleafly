@@ -81,6 +81,31 @@ describe("MembersTab", () => {
     expect(rowOf(BOB_ID).querySelector('[data-slot="avatar"]')).not.toBeNull();
   });
 
+  it("takes you to the allowed list when you want to add someone", async () => {
+    const onAddPeople = vi.fn();
+    render(
+      <MembersTab
+        serverId={SERVER_ID}
+        actor="admin"
+        selfId={ALICE_ID}
+        members={[alice]}
+        loadError={null}
+        onRetry={() => undefined}
+        onMembersChange={() => undefined}
+        onAddPeople={onAddPeople}
+      />,
+    );
+    expect(screen.getByText(copy.addHint)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: copy.addPeople }));
+    expect(onAddPeople).toHaveBeenCalledOnce();
+  });
+
+  it("offers no add button where it cannot lead anywhere", () => {
+    render(<Harness actor="admin" initial={[alice]} />);
+    expect(screen.queryByRole("button", { name: copy.addPeople })).toBeNull();
+    expect(screen.queryByText(copy.addHint)).toBeNull();
+  });
+
   it("changes a member's role", async () => {
     mocks.collabAdminPatchMember.mockResolvedValue(member({ ...bob.account, server_role: "maintainer" }));
     const user = userEvent.setup();

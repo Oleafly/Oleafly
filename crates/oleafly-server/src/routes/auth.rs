@@ -93,16 +93,40 @@ pub(crate) fn back_to_app(
     client_state: &str,
     outcome: Result<&str, AuthErrorCode>,
 ) -> Response {
+    back_to_app_naming(redirect, client_state, outcome, None)
+}
+
+fn back_to_app_naming(
+    redirect: &Url,
+    client_state: &str,
+    outcome: Result<&str, AuthErrorCode>,
+    account: Option<&str>,
+) -> Response {
     let mut target = redirect.clone();
     {
         let mut pairs = target.query_pairs_mut();
         match outcome {
             Ok(code) => pairs.append_pair("code", code),
-            Err(error) => pairs.append_pair("error", error_param(error)),
+            Err(error) => {
+                if let (AuthErrorCode::NotAdmitted, Some(account)) = (&error, account) {
+                    pairs.append_pair("account", account);
+                }
+                pairs.append_pair("error", error_param(error))
+            }
         };
         pairs.append_pair("state", client_state);
     }
     found(target.as_str())
+}
+
+pub(crate) fn account_label(identity: &ExternalIdentity) -> String {
+    identity
+        .login
+        .as_deref()
+        .filter(|login| !login.is_empty())
+        .map(|login| format!("@{login}"))
+        .or_else(|| identity.verified_emails.first().cloned())
+        .unwrap_or_else(|| identity.display_name.clone())
 }
 
 fn callback_url(state: &AppState, provider: &str) -> Url {
@@ -293,13 +317,14 @@ async fn callback(
     let Ok(identity) = exchanged else {
         return conclude(&state, &pending, Err(AuthErrorCode::ProviderFailed));
     };
+    let account = account_label(&identity);
     let finishing = pending.clone();
     let max_members = state.config.limits.max_members_per_project;
     let outcome = state
         .db
         .call(move |conn| complete_sign_in(conn, &identity, &finishing, ip, max_members, now))
         .await?;
-    conclude(&state, &pending, outcome)
+    conclude_naming(&state, &pending, outcome, Some(&account))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -314,8 +339,19 @@ pub(crate) fn conclude(
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
 ) -> Result<Response, ServerError> {
+    conclude_naming(state, pending, outcome, None)
+}
+
+fn conclude_naming(
+    state: &AppState,
+    pending: &PendingSignIn,
+    outcome: Result<Finish, AuthErrorCode>,
+    account: Option<&str>,
+) -> Result<Response, ServerError> {
     if pending.device_authorization.is_some() {
-        return Ok(code_sign_in::finished(state, pending, outcome));
+        return Ok(code_sign_in::finished_naming(
+            state, pending, outcome, account,
+        ));
     }
     let redirect = Url::parse(&pending.redirect_uri)
         .map_err(|error| ServerError::Internal(error.to_string()))?;
@@ -325,7 +361,7 @@ pub(crate) fn conclude(
         Ok(Finish::DeviceApproved | Finish::DeviceGone) => {
             back_to_app(&redirect, client_state, Err(AuthErrorCode::InvalidCode))
         }
-        Err(error) => back_to_app(&redirect, client_state, Err(error)),
+        Err(error) => back_to_app_naming(&redirect, client_state, Err(error), account),
     })
 }
 

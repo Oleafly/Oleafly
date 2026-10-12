@@ -58,7 +58,7 @@ describe("AdminConsoleWindow", () => {
     expect(screen.getByText(copy.loading)).toBeInTheDocument();
     expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
     expect(mocks.collabServerRefresh).toHaveBeenCalledWith(SERVER_ID);
-    expect(document.title).toBe(fill(enCollab.console.windowTitle, { name: "Smith Lab" }));
+    expect(document.title).toBe("Oleafly Server Admin Console");
     expect(mocks.useWindowGeometry).toHaveBeenCalledWith(`oleafly.console.geometry.${SERVER_ID}`);
     expect(mocks.listen).toHaveBeenCalledWith("collab-server-changed", expect.any(Function));
   });

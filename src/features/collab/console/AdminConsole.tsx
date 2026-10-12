@@ -160,6 +160,7 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
             loadError={members.loadError}
             onRetry={members.retry}
             onMembersChange={members.update}
+            onAddPeople={serverRoleAllows(actor, "manageMembers") ? () => select("access") : undefined}
           />
         );
       case "access":
@@ -200,7 +201,7 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
   return (
     <div
       data-testid="admin-console"
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-sm text-foreground md:flex-row"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-sidebar text-sm text-foreground md:flex-row"
     >
       <ConsoleNav sections={sections} current={section} onSelect={select} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">

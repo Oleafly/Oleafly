@@ -51,6 +51,19 @@ function renderDialog(initialUrl: string | null = null) {
   return { onClose };
 }
 
+function expectHeader(title: string, description: string) {
+  expect(screen.getByRole("dialog", { name: title })).toHaveAccessibleDescription(description);
+}
+
+async function signInAs(signedIn: CollabServer) {
+  mocks.collabServerProbe.mockResolvedValue(capabilities());
+  mocks.collabServerSignIn.mockResolvedValue(signedIn);
+  const user = userEvent.setup();
+  renderDialog("https://collab.uni.edu");
+  await user.click(await screen.findByRole("button", { name: github }));
+  await screen.findByRole("button", { name: copy.done });
+}
+
 beforeAll(async () => {
   await loadNamespace("collab");
 });
@@ -90,7 +103,7 @@ describe("AddServerDialog", () => {
     expect(mocks.collabServerProbe).toHaveBeenCalledWith("https://collab.uni.edu");
     expect(await screen.findByText("Smith Lab")).toBeInTheDocument();
     expect(screen.getByText(fill(copy.version, { version: "1.0.0" }))).toBeInTheDocument();
-    expect(screen.queryByText(copy.setupTitle)).toBeNull();
+    expect(screen.queryByText(fill(copy.setupTitle, { server: "Smith Lab" }))).toBeNull();
     await user.click(screen.getByRole("button", { name: github }));
     expect(mocks.collabServerSignIn).toHaveBeenCalledWith("https://collab.uni.edu", "github", undefined);
     expect(
@@ -104,7 +117,9 @@ describe("AddServerDialog", () => {
     mocks.collabServerSignIn.mockResolvedValue(server({ account: account({ server_role: "admin" }) }));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    expect(await screen.findByText(copy.setupTitle)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: fill(copy.setupTitle, { server: "Smith Lab" }) }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: github })).toBeDisabled();
     await user.type(screen.getByLabelText(copy.setupCodeLabel), " 4F7K-Q2ZX ");
     await user.click(screen.getByRole("button", { name: github }));
@@ -138,7 +153,7 @@ describe("AddServerDialog", () => {
       await pending.promise.catch(() => undefined);
     });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.queryByText(copy.doneTitle)).toBeNull();
+    expect(screen.queryByText(fill(copy.doneTitle, { server: "Smith Lab" }))).toBeNull();
   });
 
   it("cancels the browser sign-in when the dialog closes while waiting", async () => {
@@ -197,7 +212,7 @@ describe("AddServerDialog", () => {
     await user.click(await screen.findByRole("button", { name: fill(copy.continueWith, { provider: "Email" }) }));
     expect(mocks.collabServerSignIn).toHaveBeenCalledWith("https://collab.uni.edu", "email-link", undefined);
     expect(screen.getByText(copy.waitingEmailDescription)).toBeInTheDocument();
-    expect(screen.queryByText(copy.waitingDescription)).toBeNull();
+    expect(screen.queryByText(fill(copy.waitingDescription, { provider: "Email" }))).toBeNull();
   });
 
   it("signs in with a code, shows the code and the address, then says who you are", async () => {
@@ -296,6 +311,90 @@ describe("AddServerDialog", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("keeps the add server header while you enter and check the address", async () => {
+    mocks.collabServerProbe.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog();
+    expectHeader(copy.title, copy.description);
+    await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expectHeader(copy.title, copy.description);
+  });
+
+  it("names the server in the header once it is found and asks how to sign in", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    renderDialog("https://collab.uni.edu");
+    await screen.findByRole("button", { name: github });
+    expectHeader(fill(copy.serverTitle, { server: "Smith Lab" }), copy.serverDescription);
+  });
+
+  it("explains setup in the header of a server nobody has signed in to, and only there", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities({ needs_setup: true }));
+    renderDialog("https://collab.uni.edu");
+    await screen.findByLabelText(copy.setupCodeLabel);
+    expectHeader(fill(copy.setupTitle, { server: "Smith Lab" }), copy.setupDescription);
+    expect(screen.getAllByText(copy.setupDescription)).toHaveLength(1);
+  });
+
+  it("tells you to finish in the browser with the service you picked", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    mocks.collabServerSignIn.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: github }));
+    const instruction = fill(copy.waitingDescription, { provider: "GitHub" });
+    expectHeader(copy.signingInTitle, instruction);
+    expect(screen.getAllByText(instruction)).toHaveLength(1);
+    expect(screen.getByText(copy.waitingTitle)).toBeInTheDocument();
+  });
+
+  it("puts the emailed link instructions in the header while an email sign-in waits", async () => {
+    mocks.collabServerProbe.mockResolvedValue(
+      capabilities({ providers: [{ id: "email-link", kind: "email_link", label: "Email" }] }),
+    );
+    mocks.collabServerSignIn.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: fill(copy.continueWith, { provider: "Email" }) }));
+    expectHeader(copy.signingInTitle, copy.waitingEmailDescription);
+    expect(screen.getAllByText(copy.waitingEmailDescription)).toHaveLength(1);
+  });
+
+  it("explains the code steps in the header of a code sign-in, and only there", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    codeSignInShowing(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await screen.findByText("BCDF-GHJK");
+    expectHeader(copy.codeTitle, copy.codeSteps);
+    expect(screen.getAllByText(copy.codeSteps)).toHaveLength(1);
+  });
+
+  it("says which server you joined and who you are once connected, without repeating it", async () => {
+    await signInAs(server());
+    expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneDescription, { name: "Alice Chen" }));
+    expect(screen.getAllByText(/Alice Chen/)).toHaveLength(1);
+    expect(screen.getAllByText(/Smith Lab/)).toHaveLength(1);
+    expect(screen.getByText("alice@uni.edu")).toBeInTheDocument();
+  });
+
+  it.each(["admin", "maintainer"] as const)(
+    "tells a server %s they can manage it from the admin console",
+    async (role) => {
+      await signInAs(server({ account: account({ server_role: role }) }));
+      expectHeader(
+        fill(copy.doneTitle, { server: "Smith Lab" }),
+        fill(copy.doneManageDescription, { name: "Alice Chen" }),
+      );
+    },
+  );
+
+  it("tells a guest they can open the projects they're invited to", async () => {
+    await signInAs(server({ account: account({ server_role: "guest" }) }));
+    expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneGuestDescription, { name: "Alice Chen" }));
   });
 
   it("closes from the done step without cancelling anything", async () => {

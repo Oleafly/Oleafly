@@ -2,10 +2,12 @@ use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use oleafly_collab_protocol::capabilities::ProviderInfo;
 
-use crate::mail::messages::{escape, platform_label};
-use crate::routes::landing::PAGE_STYLE;
+use oleafly_collab_protocol::page::{document, status};
 
-const FORM_STYLE: &str = "label{display:block;font-weight:600;margin:1rem 0 0.25rem}input{box-sizing:border-box;width:100%;padding:0.6rem 0.75rem;border:1px solid #c5ccd3;border-radius:0.5rem;font:inherit;color:inherit;background:#fff}input:focus{outline:none;border-color:#1f2933}form{margin:0}button{margin:0.75rem 0.5rem 0 0;padding:0.6rem 1rem;border-radius:0.5rem;border:1px solid #c5ccd3;background:#fff;color:inherit;font:inherit;cursor:pointer}button:hover,button:focus-visible{outline:none;background:#e4e7eb}button.primary{background:#1f2933;color:#fff;border-color:#1f2933}button.primary:hover,button.primary:focus-visible{background:#3e4c59}.error{color:#b42318}.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.5rem;letter-spacing:0.15em}";
+use crate::mail::messages::{escape, platform_label};
+
+pub use oleafly_collab_protocol::page::Tone;
+
 const CONTENT_SECURITY_POLICY: &str =
     "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'";
 
@@ -28,6 +30,10 @@ pub fn heading(text: &str) -> String {
 
 pub fn paragraph(text: &str) -> String {
     format!("<p>{}</p>", escape(text))
+}
+
+pub fn next(text: &str) -> String {
+    format!("<p class=\"next\">{}</p>", escape(text))
 }
 
 pub fn error(text: &str) -> String {
@@ -85,10 +91,7 @@ pub fn render(
     body: &str,
     cookie: Option<HeaderValue>,
 ) -> Response {
-    let page = format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"same-origin\"><title>{}</title><style>{PAGE_STYLE}{FORM_STYLE}</style></head><body>{body}</body></html>",
-        escape(title)
-    );
+    let page = document(title, body, None);
     let mut response = (status, page).into_response();
     let headers = response.headers_mut();
     headers.insert(
@@ -115,11 +118,11 @@ pub fn render(
     response
 }
 
-pub fn message(status: StatusCode, title: &str, text: &str) -> Response {
+pub fn message(status_code: StatusCode, tone: Tone, title: &str, text: &str) -> Response {
     render(
-        status,
+        status_code,
         title,
-        &format!("{}{}", heading(title), paragraph(text)),
+        &format!("{}{}{}", status(tone), heading(title), paragraph(text)),
         None,
     )
 }
@@ -155,7 +158,12 @@ mod tests {
 
     #[tokio::test]
     async fn pages_are_never_cached_framed_or_sniffed() {
-        let response = message(StatusCode::BAD_REQUEST, "Expired", "Start again.");
+        let response = message(
+            StatusCode::BAD_REQUEST,
+            Tone::Problem,
+            "Expired",
+            "Start again.",
+        );
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         let headers = response.headers();
         assert_eq!(headers[header::CACHE_CONTROL], "no-store");
@@ -169,12 +177,31 @@ mod tests {
             .unwrap();
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("<h1>Expired</h1>"));
-        assert!(text.contains(PAGE_STYLE));
+        assert!(text.contains(oleafly_collab_protocol::page::STYLE));
+    }
+
+    #[tokio::test]
+    async fn pages_wear_the_oleafly_brand_and_show_how_things_went() {
+        for (tone, class) in [
+            (Tone::Success, "status success"),
+            (Tone::Problem, "status problem"),
+            (Tone::Notice, "status notice"),
+        ] {
+            let response = message(StatusCode::OK, tone, "Title", "Body.");
+            let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+                .await
+                .unwrap();
+            let text = String::from_utf8_lossy(&body);
+            assert!(text.contains("<div class=\"brand\"><svg"), "{text}");
+            assert!(text.contains(class), "{text}");
+            assert!(text.contains("<h1>Title</h1>"));
+            assert!(text.contains("radial-gradient("));
+        }
     }
 
     #[tokio::test]
     async fn pages_let_their_own_forms_name_the_server_but_tell_no_one_else() {
-        let response = message(StatusCode::OK, "Sign in", "Enter the code.");
+        let response = message(StatusCode::OK, Tone::Notice, "Sign in", "Enter the code.");
         assert_eq!(response.headers()[header::REFERRER_POLICY], "same-origin");
         let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
             .await

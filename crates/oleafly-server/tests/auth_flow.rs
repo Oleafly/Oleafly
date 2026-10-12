@@ -157,6 +157,32 @@ async fn someone_nobody_added_is_not_admitted() {
 }
 
 #[tokio::test]
+async fn someone_turned_away_hears_which_account_they_used() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, None);
+    let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
+        .await
+        .expect("back at the app");
+    let query: std::collections::HashMap<String, String> =
+        landing.query_pairs().into_owned().collect();
+    assert_eq!(query.get("error").map(String::as_str), Some("not_admitted"));
+    assert_eq!(query.get("account").map(String::as_str), Some("@Carol-K"));
+}
+
+#[tokio::test]
+async fn a_finished_sign_in_never_names_the_account_in_the_address() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
+        .await
+        .expect("back at the app");
+    assert!(landing.query_pairs().any(|(key, _)| key == "code"));
+    assert!(!landing.query_pairs().any(|(key, _)| key == "account"));
+}
+
+#[tokio::test]
 async fn an_allowlisted_handle_is_admitted() {
     let (server, _github) = server_for(carol()).await;
     let admin = seed_member(server.app(), ServerRole::Admin).await;

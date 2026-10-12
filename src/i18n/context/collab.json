@@ -34,8 +34,18 @@
   },
   "addServer": {
     "addressPlaceholder": "Example server address shown in an empty field. Keep it exactly as written.",
+    "serverTitle": "Dialog title once the server answers and the person picks how to sign in. {{server}} is the server's name, such as Smith Lab",
+    "serverDescription": "Under the dialog title while the person picks a sign-in option. The people who run the server control who gets in",
+    "setupTitle": "Dialog title for a new server that has no admin yet. {{server}} is the server's name, such as Smith Lab",
     "setupDescription": "The setup code is a one-time code the server prints in its log the first time it starts",
     "continueWith": "{{provider}} is the name of a sign-in service, such as GitHub or University login",
+    "signingInTitle": "Dialog title while Oleafly waits for the person to finish signing in in their web browser",
+    "waitingDescription": "{{provider}} is the name of a sign-in service, such as GitHub or University login",
+    "doneTitle": "Dialog title once sign-in worked. {{server}} is the server's name, such as Smith Lab",
+    "doneDescription": "{{name}} is the person's display name on the server",
+    "doneManageDescription": "Shown to server admins and maintainers. {{name}} is the person's display name on the server",
+    "doneGuestDescription": "Shown to guests, who can only open projects they were invited to. {{name}} is the person's display name on the server",
+    "codeTitle": "Dialog title while the person signs in by typing a short code on another phone or computer",
     "codeExpires": "{{time}} is a clock time, such as 14:30 or 2:30 PM",
     "codeLabel": "Label above the short sign-in code Oleafly shows, such as BCDF-GHJK",
     "codeAddressLabel": "Label above the web address of the page where people type the code",
@@ -227,7 +237,7 @@
   },
   "console": {
     "open": "Button that opens a separate window where admins manage a collaboration server",
-    "windowTitle": "Title of that window. {{name}} is the server's name, such as Smith Lab",
+    "windowTitle": "Title of the admin console window. Oleafly Server is the product name and stays in English.",
     "sections": {
       "access": "Section with the list of allowed people and email domain rules that decide who may sign in",
       "checks": "Section that tests whether this computer can reach the server"

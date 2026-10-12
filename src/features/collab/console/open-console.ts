@@ -39,7 +39,7 @@ export async function openAdminConsole(server: Pick<CollabServer, "server_id" | 
   const query = new URLSearchParams({ view: CONSOLE_VIEW, server: server.server_id });
   const window = new WebviewWindow(label, {
     url: `index.html?${query.toString()}`,
-    title: i18n.t(($) => $.collab.console.windowTitle, { name: server.name }),
+    title: i18n.t(($) => $.collab.console.windowTitle),
     width: geometry?.width ?? DEFAULT_SIZE.width,
     height: geometry?.height ?? DEFAULT_SIZE.height,
     ...MIN_SIZE,

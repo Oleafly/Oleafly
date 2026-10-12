@@ -5,13 +5,13 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::page::{document, status, Tone};
 use url::Url;
 
 use crate::routes::path_id;
 use crate::state::AppState;
 
 pub const DOWNLOAD_URL: &str = "https://oleafly.com/download";
-pub const PAGE_STYLE: &str = "body{font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#1f2933;background:#fff}a{display:inline-block;margin:0.5rem 0.5rem 0 0;padding:0.6rem 1rem;border-radius:0.5rem;border:1px solid #c5ccd3;color:inherit;text-decoration:none}a.primary{background:#1f2933;color:#fff;border-color:#1f2933}p{line-height:1.5}";
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/p/{project}", get(landing))
@@ -41,11 +41,13 @@ async fn landing(
     };
     let open = escape(&open_link(&state.config.public_url, project));
     let server = escape(&state.config.server_name);
-    let page = format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Oleafly</title>\
-<style>{PAGE_STYLE}</style></head>\
-<body><h1>A shared Oleafly project</h1><p>Someone on {server} shared a project with this link. Open it in Oleafly to see it. You need to be added by its owner, or the owner needs to turn on link sharing.</p>\
-<a class=\"primary\" href=\"{open}\">Open in Oleafly</a><a href=\"{DOWNLOAD_URL}\">Get Oleafly</a></body></html>"
+    let page = document(
+        "A shared Oleafly project",
+        &format!(
+            "{}<h1>A shared Oleafly project</h1><p>Someone on {server} shared a project with this link. Open it in Oleafly to see it.</p><p class=\"next\">You need to be added by its owner, or the owner needs to turn on link sharing.</p><div class=\"actions\"><a class=\"button primary\" href=\"{open}\">Open in Oleafly</a><a class=\"button\" href=\"{DOWNLOAD_URL}\">Get Oleafly</a></div>",
+            status(Tone::Info)
+        ),
+        Some(&state.config.server_name),
     );
     (
         [(

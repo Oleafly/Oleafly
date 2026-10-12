@@ -5,12 +5,12 @@ use ::url::Url;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use oleafly_collab_protocol::page::{document, escape, status, Tone};
+
 use crate::CollabError;
 
 const MAX_REQUEST_BYTES: usize = 8192;
 const READ_TIMEOUT: Duration = Duration::from_secs(5);
-const DONE_PAGE: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Oleafly</title></head><body style=\"margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif\"><p style=\"font-size:3rem\">&#10003;</p></body></html>";
-const FAILED_PAGE: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Oleafly</title></head><body style=\"margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif\"><p style=\"font-size:3rem\">&#10005;</p></body></html>";
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CallbackOutcome {
@@ -24,6 +24,148 @@ pub(crate) enum CallbackOutcome {
 pub(crate) struct LoopbackListener {
     listener: TcpListener,
     port: u16,
+    pages: Pages,
+}
+
+struct Pages {
+    server: String,
+    provider: String,
+}
+
+impl Pages {
+    fn card(tone: Tone, heading: &str, reason: &str, next: Option<&str>) -> String {
+        let next = next
+            .map(|text| format!("<p class=\"next\">{text}</p>"))
+            .unwrap_or_default();
+        format!("{}<h1>{heading}</h1><p>{reason}</p>{next}", status(tone))
+    }
+
+    fn page(&self, title: &str, card: String) -> String {
+        document(title, &card, Some(&self.server))
+    }
+
+    fn signed_in(&self) -> String {
+        let server = escape(&self.server);
+        self.page(
+            "You're signed in",
+            Pages::card(
+                Tone::Success,
+                "You're signed in",
+                &format!("Oleafly is now connected to {server}."),
+                Some("Go back to Oleafly to keep going. You can close this tab."),
+            ),
+        )
+    }
+
+    fn refused(&self, code: &str, account: Option<&str>) -> String {
+        let server = escape(&self.server);
+        let provider = escape(&self.provider);
+        let (title, card) = match code {
+            "not_admitted" => {
+                let reason = match account {
+                    Some(account) => format!(
+                        "You signed in to {provider} as <strong>{}</strong>, and that account isn't on this server's list.",
+                        escape(account)
+                    ),
+                    None => format!("Your {provider} account isn't on this server's list."),
+                };
+                (
+                    format!("Not allowed on {}", self.server),
+                    Pages::card(
+                        Tone::Problem,
+                        &format!("{server} didn't let you in"),
+                        &reason,
+                        Some(&format!(
+                            "Ask the server's admin to add you. To use a different account, sign out of {provider} in this browser, then try again in Oleafly."
+                        )),
+                    ),
+                )
+            }
+            "sign_in_cancelled" => (
+                "Sign-in cancelled".to_string(),
+                Pages::card(
+                    Tone::Notice,
+                    "Sign-in cancelled",
+                    &format!("You didn't let {server} use your {provider} account."),
+                    Some("Go back to Oleafly if you want to try again."),
+                ),
+            ),
+            "setup_code_invalid" => (
+                "The setup code didn't work".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    "The setup code didn't work",
+                    "It's wrong, or someone already used it.",
+                    Some("Copy the newest Setup code line from the server's log, then try again in Oleafly."),
+                ),
+            ),
+            "provider_failed" => (
+                "Sign-in didn't finish".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    &format!("{provider} didn't finish signing you in"),
+                    &format!("The sign-in stopped before {server} heard back from {provider}."),
+                    Some("Go back to Oleafly and try again. If it keeps happening, tell the server's admin."),
+                ),
+            ),
+            "invalid_code" | "expired_nonce" => (
+                "This sign-in expired".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    "This sign-in expired",
+                    "It took too long, or it was already used.",
+                    Some("Go back to Oleafly and start signing in again."),
+                ),
+            ),
+            "unknown_provider" => (
+                "This sign-in option is off".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    "This sign-in option is off",
+                    &format!("{server} doesn't offer {provider} sign-in any more."),
+                    Some("Go back to Oleafly and choose another way to sign in."),
+                ),
+            ),
+            _ => (
+                "Sign-in didn't finish".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    "Sign-in didn't finish",
+                    &format!("{server} stopped the sign-in before it was done."),
+                    Some("Go back to Oleafly and try again."),
+                ),
+            ),
+        };
+        self.page(&title, card)
+    }
+
+    fn out_of_date(&self) -> String {
+        self.page(
+            "This sign-in is out of date",
+            Pages::card(
+                Tone::Problem,
+                "This sign-in is out of date",
+                "This page belongs to an earlier sign-in.",
+                Some("Go back to Oleafly and start signing in again."),
+            ),
+        )
+    }
+
+    fn unfinished(&self) -> String {
+        self.refused("", None)
+    }
+
+    fn elsewhere(&self) -> String {
+        self.page(
+            "Oleafly sign-in",
+            Pages::card(
+                Tone::Notice,
+                "Nothing to show here",
+                "Oleafly uses this address only while you sign in to a collaboration server.",
+                None,
+            ),
+        )
+    }
 }
 
 impl LoopbackListener {
@@ -39,7 +181,22 @@ impl LoopbackListener {
             .local_addr()
             .map_err(|error| CollabError::Io(error.to_string()))?
             .port();
-        Ok(LoopbackListener { listener, port })
+        Ok(LoopbackListener {
+            listener,
+            port,
+            pages: Pages {
+                server: "the server".to_string(),
+                provider: "your sign-in provider".to_string(),
+            },
+        })
+    }
+
+    pub(crate) fn describing(mut self, server: &str, provider: &str) -> LoopbackListener {
+        self.pages = Pages {
+            server: server.to_string(),
+            provider: provider.to_string(),
+        };
+        self
     }
 
     pub(crate) fn redirect_uri(&self) -> String {
@@ -68,16 +225,20 @@ impl LoopbackListener {
                 continue;
             };
             if target.path() != "/callback" {
-                respond(&mut stream, "404 Not Found", FAILED_PAGE).await;
+                respond(&mut stream, "404 Not Found", &self.pages.elsewhere()).await;
                 continue;
             }
             let query: HashMap<String, String> = target.query_pairs().into_owned().collect();
             if query.get("state").map(String::as_str) != Some(expected_state) {
-                respond(&mut stream, "400 Bad Request", FAILED_PAGE).await;
+                respond(&mut stream, "400 Bad Request", &self.pages.out_of_date()).await;
                 return Err(CollabError::Unauthorized);
             }
             if let Some(code) = query.get("error") {
-                respond(&mut stream, "200 OK", FAILED_PAGE).await;
+                let account = query
+                    .get("account")
+                    .map(String::as_str)
+                    .filter(|account| !account.is_empty());
+                respond(&mut stream, "200 OK", &self.pages.refused(code, account)).await;
                 return Ok(CallbackOutcome::Error {
                     code: code.clone(),
                     description: query.get("error_description").cloned(),
@@ -85,11 +246,11 @@ impl LoopbackListener {
             }
             return match query.get("code").filter(|code| !code.is_empty()) {
                 Some(code) => {
-                    respond(&mut stream, "200 OK", DONE_PAGE).await;
+                    respond(&mut stream, "200 OK", &self.pages.signed_in()).await;
                     Ok(CallbackOutcome::Code(code.clone()))
                 }
                 None => {
-                    respond(&mut stream, "400 Bad Request", FAILED_PAGE).await;
+                    respond(&mut stream, "400 Bad Request", &self.pages.unfinished()).await;
                     Err(CollabError::Unauthorized)
                 }
             };
@@ -185,8 +346,85 @@ mod tests {
             .text()
             .await
             .expect("body")
-            .contains("<title>Oleafly</title>"));
+            .contains("<title>You&#39;re signed in</title>"));
         assert!(port_is_closed(port).await);
+    }
+
+    async fn page_after(listener: LoopbackListener, query: &str) -> String {
+        let url = format!("{}?{query}", listener.redirect_uri());
+        let (_, response) = tokio::join!(listener.wait("s1", Duration::from_secs(5)), get(url));
+        response.text().await.expect("body")
+    }
+
+    async fn lab() -> LoopbackListener {
+        LoopbackListener::bind()
+            .await
+            .expect("bind")
+            .describing("Oleafly Lab", "GitHub")
+    }
+
+    #[tokio::test]
+    async fn a_finished_sign_in_says_where_you_are_signed_in() {
+        let page = page_after(lab().await, "code=abc&state=s1").await;
+        assert!(page.contains("class=\"brand\""), "{page}");
+        assert!(page.contains("class=\"status success\""));
+        assert!(page.contains("<h1>You're signed in</h1>"));
+        assert!(page.contains("Oleafly is now connected to Oleafly Lab."));
+        assert!(page.contains("You can close this tab."));
+    }
+
+    #[tokio::test]
+    async fn a_refused_sign_in_names_the_account_and_says_what_to_do() {
+        let page = page_after(lab().await, "error=not_admitted&account=%40carol&state=s1").await;
+        assert!(page.contains("class=\"status problem\""), "{page}");
+        assert!(page.contains("<h1>Oleafly Lab didn't let you in</h1>"));
+        assert!(page.contains("You signed in to GitHub as <strong>@carol</strong>"));
+        assert!(page.contains("Ask the server's admin to add you."));
+        assert!(page.contains("sign out of GitHub in this browser"));
+    }
+
+    #[tokio::test]
+    async fn a_refusal_without_an_account_still_gives_the_reason() {
+        let page = page_after(lab().await, "error=not_admitted&state=s1").await;
+        assert!(
+            page.contains("Your GitHub account isn't on this server's list."),
+            "{page}"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_account_name_cannot_add_markup_to_the_page() {
+        let page = page_after(
+            lab().await,
+            "error=not_admitted&account=%3Cscript%3Ex%3C%2Fscript%3E&state=s1",
+        )
+        .await;
+        assert!(page.contains("&lt;script&gt;x&lt;/script&gt;"), "{page}");
+        assert!(!page.contains("<script>"));
+    }
+
+    #[tokio::test]
+    async fn a_cancelled_sign_in_reads_as_a_choice_not_a_failure() {
+        let page = page_after(lab().await, "error=sign_in_cancelled&state=s1").await;
+        assert!(page.contains("class=\"status notice\""), "{page}");
+        assert!(page.contains("<h1>Sign-in cancelled</h1>"));
+    }
+
+    #[tokio::test]
+    async fn a_bad_setup_code_says_where_to_find_a_good_one() {
+        let page = page_after(lab().await, "error=setup_code_invalid&state=s1").await;
+        assert!(
+            page.contains("<h1>The setup code didn't work</h1>"),
+            "{page}"
+        );
+        assert!(page.contains("Setup code"));
+    }
+
+    #[tokio::test]
+    async fn any_other_failure_still_explains_the_next_step() {
+        let page = page_after(lab().await, "error=revoked&state=s1").await;
+        assert!(page.contains("class=\"status problem\""), "{page}");
+        assert!(page.contains("Go back to Oleafly"));
     }
 
     #[tokio::test]

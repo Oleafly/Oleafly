@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { fill, server } from "../tests/fixtures";
+import { server } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   isTauri: true,
@@ -77,7 +76,7 @@ describe("openAdminConsole", () => {
     expect(window.label).toBe(`admin-console-${ID}`);
     expect(window.options).toMatchObject({
       url: `index.html?view=admin&server=${ID}`,
-      title: fill(enCollab.console.windowTitle, { name: "Smith Lab" }),
+      title: "Oleafly Server Admin Console",
       width: 1040,
       height: 720,
       minWidth: 560,

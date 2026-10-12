@@ -88,6 +88,13 @@ describe("AdminConsole", () => {
     expect(health()).toBeNull();
   });
 
+  it("paints the content on the same surface as the navigation", async () => {
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    const console = screen.getByTestId("admin-console");
+    expect(console).toHaveClass("bg-sidebar");
+    expect(console).not.toHaveClass("bg-background");
+  });
+
   it("opens on the overview and shows each section from the navigation", async () => {
     const user = userEvent.setup();
     render(<AdminConsole server={ADMIN} actor="admin" />);
@@ -123,6 +130,15 @@ describe("AdminConsole", () => {
 
     await user.click(navItem("overview"));
     await waitFor(() => expect(mocks.collabAdminOverview).toHaveBeenCalledTimes(2));
+  });
+
+  it("sends you from People to the allowed list to add someone", async () => {
+    const user = userEvent.setup();
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    await user.click(navItem("people"));
+    await user.click(await screen.findByRole("button", { name: enCollab.admin.members.addPeople }));
+    expect(navItem("access")).toHaveAttribute("aria-current", "page");
+    expect(await screen.findByText(enCollab.admin.allowlist.empty)).toBeInTheDocument();
   });
 
   it("moves through the sections with the arrow keys", async () => {
