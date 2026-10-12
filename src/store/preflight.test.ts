@@ -461,6 +461,45 @@ describe("preflight store", () => {
     },
   );
 
+  it("lists every .bib key definition with its file, line and range, from the text in the editor", async () => {
+    seedProject();
+    const refsBib = [
+      '@string{jn = "Journal"}',
+      "@comment{jn, kept as a note}",
+      '@preamble{"\\newcommand{\\noop}[1]{}"}',
+      "@article{smith2020, title={A}}",
+      "% @article{smith2020, title={Commented out}}",
+      "@book{Jones2019, title={B}}",
+    ].join("\n");
+    const extraBib = "@inproceedings{smith2020,\n  title={Other}\n}";
+    useFilesStore.setState((state) => ({
+      tree: [...state.tree, { path: "extra.bib", is_dir: false }],
+      files: { ...state.files, "refs.bib": { content: refsBib, dirty: true } },
+    }));
+    useIndexStore.setState({
+      texts: { "refs.bib": "@article{stale, title={S}}", "extra.bib": extraBib },
+    });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    const head = (text: string, entry: string) => {
+      const from = text.indexOf(entry);
+      return { from, to: from + entry.length };
+    };
+    expect(refs.bibKeyDefinitions).toEqual([
+      { key: "smith2020", file: "refs.bib", line: 4, ...head(refsBib, "@article{smith2020") },
+      { key: "Jones2019", file: "refs.bib", line: 6, ...head(refsBib, "@book{Jones2019") },
+      { key: "smith2020", file: "extra.bib", line: 1, ...head(extraBib, "@inproceedings{smith2020") },
+    ]);
+    const [finding] = runRefsRules("", refs).filter((f) => f.id === "refs-duplicate-bib-key");
+    expect(finding).toMatchObject({
+      file: "refs.bib",
+      ...head(refsBib, "@article{smith2020"),
+      detail: { params: { places: "refs.bib:4, extra.bib:1" } },
+    });
+  });
+
   it("does not call one heading id in two Markdown files a duplicate", async () => {
     seedProject();
     useIndexStore.setState((state) => ({

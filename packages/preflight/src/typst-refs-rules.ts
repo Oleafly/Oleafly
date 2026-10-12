@@ -1,5 +1,11 @@
 import { message } from "./messages";
-import { bibliographyQuality, duplicateDoiFindings, projectLabelQuality, type RefsContext } from "./refs-rules";
+import {
+  bibliographyQuality,
+  duplicateBibKeyFindings,
+  duplicateDoiFindings,
+  projectLabelQuality,
+  type RefsContext,
+} from "./refs-rules";
 import {
   type TypstNameUse,
   type TypstPathReference,
@@ -243,9 +249,10 @@ export function runTypstRefsRules(sources: readonly TypstSourceFile[], ctx: Refs
     });
   }
   project.push(
-    ...duplicateDoiFindings(ctx),
+    ...duplicateDoiFindings(ctx, "typst"),
     ...bibliographyQuality({ ...ctx, allCitedKeys: [...tally.cited] }),
     ...projectLabelQuality(ctx),
+    ...duplicateBibKeyFindings(ctx, "typst"),
   );
   return [...perFile, ...project];
 }

@@ -319,6 +319,11 @@
       "title": "Lähdeviitteitä kahteen kertaan: {{keys}}",
       "detail": "Näillä viitteillä on sama DOI {{doi}}, joten ne ovat sama viite eri avaimilla. Säilytä yksi ja viittaa siihen, tai lähdeluettelo listaa sen kahdesti."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Viittausavain \"{{key}}\" on määritelty useammin kuin kerran",
+      "detail": "Määritelty kohdissa {{places}}. BibTeX käyttää vain ensimmäistä viitettä, jolla on tämä avain, eikä se erottele isoja ja pieniä kirjaimia avaimia verratessaan. Säilytä yksi viite tai anna muille uudet avaimet ja päivitä viittaukset, jotka käyttävät niitä.",
+      "detailTypst": "Määritelty kohdissa {{places}}. Typst keskeyttää kääntämisen, jos kahdella lähdeluettelon viitteellä on sama avain. Säilytä yksi viite tai anna muille uudet avaimet ja päivitä viittaukset, jotka käyttävät niitä."
+    },
     "submission-path-case": {
       "title": "Tiedostonimen kirjainkoko ei täsmää: {{target}}",
       "detailFigure": "Tämä kuva löytyy vain tiedostojärjestelmässä, joka ei erota kirjainkokoa. Projektissa on \"{{match}}\", joten käytä täsmälleen samaa kirjainkokoa ennen lähettämistä Linux-pohjaisiin käännösjärjestelmiin.",

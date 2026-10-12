@@ -319,6 +319,11 @@
       "title": "Yinelenen kaynakça kayıtları: {{keys}}",
       "detail": "Bu kayıtlar {{doi}} DOI'sini paylaşıyor, yani farklı anahtarlar altındaki aynı kaynak. Birini tutup ona atıf verin, yoksa kaynakçanız onu iki kez listeler."
     },
+    "refs-duplicate-bib-key": {
+      "title": "\"{{key}}\" atıf anahtarı birden çok kez tanımlanmış",
+      "detail": "Tanımlandığı yerler: {{places}}. BibTeX bu anahtara sahip yalnızca ilk kaydı kullanır ve anahtarları karşılaştırırken büyük ve küçük harf ayrımı yapmaz. Tek bir kayıt bırakın ya da diğerlerine yeni anahtarlar verip onları kullanan atıfları güncelleyin.",
+      "detailTypst": "Tanımlandığı yerler: {{places}}. İki kaynakça kaydı aynı anahtarı paylaştığında Typst derlemeyi durdurur. Tek bir kayıt bırakın ya da diğerlerine yeni anahtarlar verip onları kullanan atıfları güncelleyin."
+    },
     "submission-path-case": {
       "title": "Dosya adının büyük küçük harf durumu eşleşmiyor: {{target}}",
       "detailFigure": "Bu şekil yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var, bu yüzden Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin.",

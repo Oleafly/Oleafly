@@ -319,6 +319,11 @@
       "title": "Doppelte Literatureinträge: {{keys}}",
       "detail": "Diese Einträge teilen sich die DOI {{doi}}, sie sind also dieselbe Literaturangabe unter verschiedenen Schlüsseln. Behalten Sie einen und zitieren Sie ihn, sonst führt Ihr Literaturverzeichnis ihn zweimal auf."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Der Zitierschlüssel „{{key}}“ ist mehrfach definiert",
+      "detail": "Definiert in {{places}}. BibTeX verwendet nur den ersten Eintrag mit diesem Schlüssel und unterscheidet beim Vergleich von Schlüsseln nicht zwischen Groß- und Kleinschreibung. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden.",
+      "detailTypst": "Definiert in {{places}}. Typst bricht das Kompilieren ab, wenn zwei Literatureinträge denselben Schlüssel haben. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden."
+    },
     "submission-path-case": {
       "title": "Die Groß- und Kleinschreibung des Dateinamens passt nicht: {{target}}",
       "detailFigure": "Diese Abbildung wird nur auf einem Dateisystem gefunden, das Groß- und Kleinschreibung ignoriert. Das Projekt enthält „{{match}}“, übernehmen Sie diese Schreibweise also genau, bevor Sie bei Linux-basierten Bausystemen einreichen.",

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { runPreflight } from "./engine";
 import { runRefsRules, type RefsContext } from "./refs-rules";
 
 const ctx = (over: Partial<RefsContext> = {}): RefsContext => ({
@@ -85,6 +86,122 @@ describe("duplicate bib entries", () => {
   });
   it("does not fire when there are no duplicates", () => {
     expect(runRefsRules("", ctx()).some((x) => x.id === "refs-duplicate-bib")).toBe(false);
+  });
+  it("leaves one key defined twice with the same DOI to the repeated-key finding", () => {
+    const out = runRefsRules("", ctx({
+      duplicateDois: [{ doi: "10.1/x", keys: ["same", "same"] }],
+      bibKeyDefinitions: [
+        { key: "same", file: "refs.bib", line: 1, from: 0, to: 14 },
+        { key: "same", file: "extra.bib", line: 1, from: 0, to: 14 },
+      ],
+    }));
+    expect(out.map((x) => x.id).filter((id) => id.startsWith("refs-duplicate-bib"))).toEqual(["refs-duplicate-bib-key"]);
+  });
+  it("counts keys that differ only in letter case as one key, as BibTeX does", () => {
+    const out = runRefsRules("", ctx({ duplicateDois: [{ doi: "10.1/x", keys: ["smith2020", "Smith2020"] }] }));
+    expect(out.some((x) => x.id === "refs-duplicate-bib")).toBe(false);
+  });
+  it("names each distinct key once when a repeated key also shares a DOI with another", () => {
+    const out = runRefsRules("", ctx({ duplicateDois: [{ doi: "10.1/x", keys: ["same", "same", "other"] }] }));
+    expect(out.find((x) => x.id === "refs-duplicate-bib")?.title).toEqual({
+      key: "rules.refs-duplicate-bib.title",
+      params: { keys: "same, other" },
+    });
+  });
+});
+
+const definition = (key: string, file: string, line: number, from: number) => ({
+  key,
+  file,
+  line,
+  from,
+  to: from + key.length + 10,
+});
+
+const repeatedKeys = (c: RefsContext) => runRefsRules("", c).filter((f) => f.id === "refs-duplicate-bib-key");
+
+describe("bibliography keys defined more than once", () => {
+  it("reports a key defined in two .bib files and jumps to the first definition", () => {
+    const out = repeatedKeys(ctx({
+      bibKeyDefinitions: [
+        definition("smith2020", "refs.bib", 3, 40),
+        definition("jones2019", "refs.bib", 9, 200),
+        definition("smith2020", "extra.bib", 1, 0),
+      ],
+    }));
+    expect(out).toEqual([
+      {
+        id: "refs-duplicate-bib-key",
+        lens: "refs",
+        severity: "warning",
+        certainty: "verified",
+        title: { key: "rules.refs-duplicate-bib-key.title", params: { key: "smith2020" } },
+        detail: { key: "rules.refs-duplicate-bib-key.detail", params: { places: "refs.bib:3, extra.bib:1" } },
+        file: "refs.bib",
+        from: 40,
+        to: 59,
+      },
+    ]);
+  });
+
+  it("reports a key defined twice in one file with both lines", () => {
+    const [finding] = repeatedKeys(ctx({
+      bibKeyDefinitions: [
+        definition("same", "refs.bib", 2, 10),
+        definition("same", "refs.bib", 14, 300),
+      ],
+    }));
+    expect(finding.detail).toEqual({
+      key: "rules.refs-duplicate-bib-key.detail",
+      params: { places: "refs.bib:2, refs.bib:14" },
+    });
+    expect(finding).toMatchObject({ file: "refs.bib", from: 10 });
+  });
+
+  it("treats keys that differ only in letter case as one key, the way BibTeX does", () => {
+    const out = repeatedKeys(ctx({
+      bibKeyDefinitions: [
+        definition("smith2020", "refs.bib", 1, 0),
+        definition("Smith2020", "refs.bib", 5, 90),
+      ],
+    }));
+    expect(out).toHaveLength(1);
+    expect(out[0].title).toEqual({ key: "rules.refs-duplicate-bib-key.title", params: { key: "smith2020" } });
+    expect(out[0].detail.params).toEqual({ places: "refs.bib:1, refs.bib:5 (Smith2020)" });
+  });
+
+  it("stays quiet when every key is defined once", () => {
+    expect(repeatedKeys(ctx({
+      bibKeyDefinitions: [
+        definition("alpha", "refs.bib", 1, 0),
+        definition("beta", "refs.bib", 4, 60),
+        definition("gamma", "extra.bib", 1, 0),
+      ],
+    }))).toEqual([]);
+    expect(repeatedKeys(ctx())).toEqual([]);
+  });
+
+  it("reports each repeated key once even when the project has several LaTeX files", () => {
+    const report = runPreflight({
+      source: "",
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: "\\cite{smith2020}" },
+          { path: "chapter.tex", content: "\\cite{smith2020}" },
+        ],
+      },
+      refs: ctx({
+        bibKeys: ["smith2020"],
+        bibKeyDefinitions: [
+          definition("smith2020", "refs.bib", 1, 0),
+          definition("smith2020", "extra.bib", 7, 120),
+        ],
+      }),
+    });
+    const findings = report.findings.filter((f) => f.id === "refs-duplicate-bib-key");
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ file: "refs.bib", from: 0 });
   });
 });
 

@@ -16,6 +16,7 @@ import {
 } from "@oleafly/latex";
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { nameTarget } from "@/lib/index/build";
+import { parseFile } from "@/lib/index/parse-file";
 import type { Sym } from "@/lib/index/types";
 import { labelScope } from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
@@ -96,6 +97,22 @@ function collectBibEntries(texts: Readonly<Record<string, string>>): {
     .filter(([, keys]) => keys.length > 1)
     .map(([doi, keys]) => ({ doi, keys }));
   return { bibEntries, duplicateDois };
+}
+
+function collectBibKeyDefinitions(
+  texts: Readonly<Record<string, string>>,
+): NonNullable<RefsContext["bibKeyDefinitions"]> {
+  return Object.entries(texts)
+    .filter(([path]) => path.endsWith(".bib"))
+    .flatMap(([path, content]) => parseFile(path, content).defs)
+    .filter((definition) => definition.kind === "bibentry")
+    .map((definition) => ({
+      key: definition.name,
+      file: definition.file,
+      line: definition.line,
+      from: definition.from,
+      to: definition.to,
+    }));
 }
 
 const CITE_COMMAND =
@@ -194,6 +211,7 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
   const allCitedKeys = collectCitedKeys(projectTexts);
   const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
   const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index);
+  const bibKeyDefinitions = collectBibKeyDefinitions(projectTexts);
   return {
     bibKeys: currentBibKeys,
     definedLabels,
@@ -205,6 +223,7 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
     allCitedKeys,
     duplicateLabels,
     unreferencedLabels,
+    bibKeyDefinitions,
   };
 }
 

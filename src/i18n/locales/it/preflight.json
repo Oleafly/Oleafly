@@ -334,6 +334,11 @@
       "title": "Voci bibliografiche duplicate: {{keys}}",
       "detail": "Queste voci condividono il DOI {{doi}}, quindi sono lo stesso riferimento sotto chiavi diverse. Tienine una sola e cita quella, altrimenti la bibliografia la elencherà due volte."
     },
+    "refs-duplicate-bib-key": {
+      "title": "La chiave di citazione \"{{key}}\" è definita più di una volta",
+      "detail": "Definita in {{places}}. BibTeX usa solo la prima voce con questa chiave e, quando confronta le chiavi, non distingue tra maiuscole e minuscole. Tieni una sola voce, oppure assegna alle altre nuove chiavi e aggiorna le citazioni che le usano.",
+      "detailTypst": "Definita in {{places}}. Typst interrompe la compilazione quando due voci della bibliografia hanno la stessa chiave. Tieni una sola voce, oppure assegna alle altre nuove chiavi e aggiorna le citazioni che le usano."
+    },
     "submission-path-case": {
       "title": "Le maiuscole del nome file non corrispondono: {{target}}",
       "detailFigure": "Questa figura si risolve solo su un filesystem che ignora le maiuscole. Il progetto contiene \"{{match}}\", quindi rispetta esattamente quelle maiuscole prima di inviare a sistemi di compilazione basati su Linux.",

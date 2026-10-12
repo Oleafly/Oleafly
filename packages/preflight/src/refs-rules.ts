@@ -22,6 +22,15 @@ export interface RefsContext {
   allCitedKeys?: string[];
   duplicateLabels?: { label: string; files: string[] }[];
   unreferencedLabels?: { label: string; file: string }[];
+  bibKeyDefinitions?: BibKeyDefinition[];
+}
+
+export interface BibKeyDefinition {
+  key: string;
+  file: string;
+  line: number;
+  from: number;
+  to: number;
 }
 
 const GRAPHICS_EXT = ["", ".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
@@ -395,14 +404,69 @@ function missingBibliographyFindings(
   return out;
 }
 
-export function duplicateDoiFindings(ctx: RefsContext): Finding[] {
-  return ctx.duplicateDois.map((dup) => ({
-    id: "refs-duplicate-bib",
-    lens: "refs" as const,
-    severity: "warning" as const,
-    title: message("rules.refs-duplicate-bib.title", { keys: dup.keys.join(", ") }),
-    detail: message("rules.refs-duplicate-bib.detail", { doi: dup.doi }),
-  }));
+function bibKeyPlace(definition: BibKeyDefinition, shown: string): string {
+  const place = `${definition.file}:${definition.line}`;
+  return definition.key === shown ? place : `${place} (${definition.key})`;
+}
+
+export type BibKeyDialect = "bibtex" | "typst";
+
+function bibKeyIdentity(key: string, dialect: BibKeyDialect): string {
+  return dialect === "bibtex" ? key.toLowerCase() : key;
+}
+
+function distinctBibKeys(keys: readonly string[], dialect: BibKeyDialect): string[] {
+  const seen = new Map<string, string>();
+  for (const key of keys) {
+    const identity = bibKeyIdentity(key, dialect);
+    if (!seen.has(identity)) seen.set(identity, key);
+  }
+  return [...seen.values()];
+}
+
+export function duplicateDoiFindings(ctx: RefsContext, dialect: BibKeyDialect = "bibtex"): Finding[] {
+  return ctx.duplicateDois.flatMap((dup) => {
+    const keys = distinctBibKeys(dup.keys, dialect);
+    if (keys.length < 2) return [];
+    return [
+      {
+        id: "refs-duplicate-bib",
+        lens: "refs" as const,
+        severity: "warning" as const,
+        title: message("rules.refs-duplicate-bib.title", { keys: keys.join(", ") }),
+        detail: message("rules.refs-duplicate-bib.detail", { doi: dup.doi }),
+      },
+    ];
+  });
+}
+
+export function duplicateBibKeyFindings(ctx: RefsContext, dialect: BibKeyDialect = "bibtex"): Finding[] {
+  const groups = new Map<string, BibKeyDefinition[]>();
+  for (const definition of ctx.bibKeyDefinitions ?? []) {
+    const identity = bibKeyIdentity(definition.key, dialect);
+    const group = groups.get(identity);
+    if (group) group.push(definition);
+    else groups.set(identity, [definition]);
+  }
+  return [...groups.values()]
+    .filter((definitions) => definitions.length > 1)
+    .map((definitions) => {
+      const first = definitions[0];
+      const typst = dialect === "typst";
+      return {
+        id: "refs-duplicate-bib-key",
+        lens: "refs" as const,
+        severity: typst ? ("error" as const) : ("warning" as const),
+        certainty: "verified" as const,
+        title: message("rules.refs-duplicate-bib-key.title", { key: first.key }),
+        detail: message(typst ? "rules.refs-duplicate-bib-key.detailTypst" : "rules.refs-duplicate-bib-key.detail", {
+          places: definitions.map((item) => bibKeyPlace(item, first.key)).join(", "),
+        }),
+        file: first.file,
+        from: first.from,
+        to: first.to,
+      };
+    });
 }
 
 export function runRefsRules(
@@ -424,11 +488,15 @@ export function runRefsRules(
     ...missingGraphicsFindings(source, ctx),
     ...missingInputFindings(source, ctx),
     ...missingBibliographyFindings(source, ctx, options.file),
-    ...duplicateDoiFindings(ctx),
   ];
 
   if (options.includeProjectQuality !== false) {
-    out.push(...bibliographyQuality(ctx), ...projectLabelQuality(ctx));
+    out.push(
+      ...duplicateDoiFindings(ctx),
+      ...bibliographyQuality(ctx),
+      ...projectLabelQuality(ctx),
+      ...duplicateBibKeyFindings(ctx),
+    );
   }
 
   return out.sort((a, b) => (a.from ?? 0) - (b.from ?? 0));

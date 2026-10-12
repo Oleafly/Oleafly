@@ -334,6 +334,11 @@
       "title": "Entrées bibliographiques en double : {{keys}}",
       "detail": "Ces entrées partagent le DOI {{doi}} : c'est donc la même référence sous des clés différentes. N'en gardez qu'une et citez-la, sinon votre bibliographie la listera deux fois."
     },
+    "refs-duplicate-bib-key": {
+      "title": "La clé de citation « {{key}} » est définie plusieurs fois",
+      "detail": "Définie dans {{places}}. BibTeX n'utilise que la première entrée portant cette clé, et il ignore les majuscules quand il compare les clés. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent.",
+      "detailTypst": "Définie dans {{places}}. Typst arrête la compilation quand deux entrées bibliographiques partagent une clé. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent."
+    },
     "submission-path-case": {
       "title": "La casse du nom de fichier ne correspond pas : {{target}}",
       "detailFigure": "Cette figure ne se résout que sur un système de fichiers insensible à la casse. Le projet contient « {{match}} » : reproduisez exactement cette casse avant de soumettre à des systèmes de compilation basés sur Linux.",
