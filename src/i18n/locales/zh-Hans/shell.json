@@ -1376,5 +1376,11 @@
     "compiling": "正在编译",
     "hideLog": "隐藏编译日志",
     "showLog": "显示编译日志"
+  },
+  "collabSync": {
+    "paused_other": "有 {{count}} 个文件在 Oleafly 之外被更改。要把这些更改发送给所有人，还是只保留在本地？",
+    "send": "发送",
+    "keepLocal": "保留在本地",
+    "unavailable": "项目文件夹不可用，同步已暂停。文件夹恢复后会自动继续。"
   }
 }

@@ -249,6 +249,7 @@
       "driftedMany": "此任务开始后，项目中有 {{fileCount}} 个文件已发生更改。它们的差异对比的是旧版本，因此无法应用。",
       "applyAria": "应用 {{path}}",
       "changedSince": "任务开始后已更改",
+      "mergesOnApply": "此任务开始后，这个文件已被编辑。应用时会保留这些编辑，并加入任务的更改。",
       "loading": "正在加载…",
       "refreshPreview": "刷新预览",
       "preview": "预览",

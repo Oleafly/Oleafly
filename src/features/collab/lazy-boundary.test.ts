@@ -25,14 +25,30 @@ describe("collaboration stays out of the startup bundle", () => {
   });
 
   it("is loaded only through its lazy entry points", () => {
-    expect(sourcesOutsideCollab.filter((path) => DYNAMIC_COLLAB_IMPORT.test(read(path)))).toEqual([
+    expect(sourcesOutsideCollab.filter((path) => DYNAMIC_COLLAB_IMPORT.test(read(path))).sort()).toEqual([
       "src/components/collab/CollabSlots.tsx",
+      "src/components/layout/CollabLinkKeeper.tsx",
       "src/components/layout/CollabLiveKeeper.tsx",
       "src/components/layout/SettingsModal.tsx",
+      "src/main.tsx",
     ]);
     const app = read("src/App.tsx");
     expect(app).toMatch(/lazy\(\(\) =>\s*import\("@\/components\/layout\/SettingsModal"\)/);
     expect(app).not.toMatch(/from\s+"@\/components\/layout\/SettingsModal"/);
+  });
+
+  it("hears app links at the root through a keeper that loads the link intake on demand", () => {
+    const app = read("src/App.tsx");
+    expect(app).toMatch(/^import \{ CollabLinkKeeper \} from "@\/components\/layout\/CollabLinkKeeper";$/m);
+    expect(app).toMatch(/<CollabLinkKeeper \/>/);
+    const keeper = read("src/components/layout/CollabLinkKeeper.tsx");
+    expect(keeper).toMatch(/lazy\(\(\) =>\s*import\("@\/features\/collab\/links\/LinkIntake"\)/);
+    expect(keeper.match(/^import .*$/gm)).toEqual([
+      'import { lazy, Suspense, useCallback, useEffect, useState } from "react";',
+      'import { isTauri } from "@tauri-apps/api/core";',
+      'import { logError } from "@/lib/log";',
+      'import { collabPendingLinks, onCollabOpenLink } from "@/lib/tauri";',
+    ]);
   });
 
   it("keeps the English collaboration catalog out of the eager catalogs", () => {

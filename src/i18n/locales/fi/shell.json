@@ -1409,5 +1409,12 @@
     "compiling": "Käännetään",
     "hideLog": "Piilota käännöslokit",
     "showLog": "Näytä käännöslokit"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} tiedosto muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutos kaikille vai pidetäänkö se paikallisena?",
+    "paused_other": "{{count}} tiedostoa muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutokset kaikille vai pidetäänkö ne paikallisina?",
+    "send": "Lähetä",
+    "keepLocal": "Pidä paikallisena",
+    "unavailable": "Projektikansio ei ole käytettävissä, joten synkronointi on keskeytetty. Se jatkuu, kun kansio on taas käytettävissä."
   }
 }

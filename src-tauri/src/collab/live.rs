@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject, MergeReport};
+use oleafly_collab::live::{save_shared, DocSink, LiveProject, MergeReport};
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::ot::TextOperation;
 use oleafly_collab::sync::{
@@ -29,6 +29,11 @@ use super::disk::{
 };
 use super::state::CollabState;
 use crate::folder_watch::FolderChange;
+
+pub mod write;
+
+mod sync_hold;
+pub(crate) use sync_hold::{announce, outside_change, root_returned, SyncDecision};
 
 pub const LIVE_STATUS_EVENT: &str = "collab-live-status";
 pub const LIVE_ROLE_EVENT: &str = "collab-live-role";
@@ -130,6 +135,8 @@ pub trait LiveHost: Send + Sync + 'static {
     fn presence_left(&self, payload: PresenceLeftPayload);
     fn folder_changed(&self, change: FolderChange);
     fn new_device(&self, payload: NewDevicePayload);
+    fn renamed(&self, _payload: super::tree::RenamedPayload) {}
+    fn comments_changed(&self, _payload: super::comments::CommentsChangedPayload) {}
 }
 
 pub struct AppLiveHost {
@@ -171,6 +178,16 @@ impl LiveHost for AppLiveHost {
 
     fn new_device(&self, payload: NewDevicePayload) {
         let _ = self.app.emit(LIVE_NEW_DEVICE_EVENT, payload);
+    }
+
+    fn renamed(&self, payload: super::tree::RenamedPayload) {
+        let _ = self.app.emit(super::tree::LIVE_RENAMED_EVENT, payload);
+    }
+
+    fn comments_changed(&self, payload: super::comments::CommentsChangedPayload) {
+        let _ = self
+            .app
+            .emit(super::comments::COMMENTS_CHANGED_EVENT, payload);
     }
 }
 
@@ -598,12 +615,26 @@ fn apply_local_import(
         bases.record(&path, &text);
         disk.hashes.insert(path, hash);
     }
+    let mut beside = Vec::new();
     for (path, hash, _) in import.blobs {
         if !still(&path, &hash) {
             continue;
         }
         match placed.get(&path).cloned() {
-            Some((id, NodeKind::Blob, _)) => live.doc_mut().set_blob(&id, &hash)?,
+            Some((id, NodeKind::Blob, _)) if disk.hashes.contains_key(&path) => {
+                live.doc_mut().set_blob(&id, &hash)?
+            }
+            Some((theirs, NodeKind::Blob, _)) => {
+                let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
+                let ours = live.doc_mut().add_node(
+                    parent.as_deref(),
+                    name_of(&path),
+                    NodeKind::Blob,
+                    Some(&hash),
+                    "",
+                )?;
+                beside.push((ours, theirs, path.clone()));
+            }
             Some((id, _, _)) => {
                 live.doc_mut().trash(&id)?;
                 let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
@@ -638,6 +669,7 @@ fn apply_local_import(
     }
     if changed {
         disk.layout = materialize::layout(&live.doc().nodes()?);
+        super::tree::keep_beside(&mut disk.layout, beside);
     }
     Ok(changed)
 }
@@ -824,19 +856,29 @@ impl Active {
     }
 
     fn save_now(&self) {
-        let mut live = lock(&self.live);
-        let _ = live.save(&self.document_dir);
-        drop(live);
+        let _ = save_shared(&self.live, &self.document_dir);
         let _ = guard(&self.disk).save(&self.disk_file);
     }
 
+    async fn persist(&self) -> Result<(), CollabError> {
+        let live = Arc::clone(&self.live);
+        let dir = self.document_dir.clone();
+        tauri::async_runtime::spawn_blocking(move || save_shared(&live, &dir))
+            .await
+            .map_err(io)?
+    }
+
     async fn import_paths(&self, only: Option<Vec<String>>) -> Result<(), CollabError> {
+        if !self.root.is_dir() {
+            return Ok(());
+        }
         let snapshot = guard(&self.disk).clone();
         let mut import = {
             let live = lock(&self.live);
             read_local_changes(&self.root, &snapshot, &live, only.as_deref())?
         };
-        if import.is_empty() {
+        let edits = sync_hold::screen(&self.hold_dir(), &self.root, &snapshot, &mut import)?;
+        if import.is_empty() && edits.is_empty() {
             return Ok(());
         }
         if !lock(&self.live).can_edit() {
@@ -848,7 +890,17 @@ impl Active {
             let mut disk = guard(&self.disk);
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
-            apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?
+            let imported =
+                apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?;
+            let kept = sync_hold::apply_kept_edits(
+                &self.hold_dir(),
+                &self.root,
+                &mut live,
+                &mut disk,
+                &mut bases,
+                edits,
+            )?;
+            imported || kept
         };
         if changed {
             self.handle.flush();
@@ -859,8 +911,11 @@ impl Active {
     }
 
     async fn write_out(&self) -> Result<Vec<String>, CollabError> {
+        if !self.root.is_dir() {
+            return Ok(Vec::new());
+        }
         let previous = guard(&self.disk).layout.clone();
-        let (work, next, texts) = {
+        let (work, next, mut texts) = {
             let mut live = lock(&self.live);
             let work = live.take_disk_work();
             if work.is_empty() {
@@ -882,10 +937,11 @@ impl Active {
                     texts.push((placed.path.clone(), live.doc().text(&id)?));
                 }
             }
-            live.save(&self.document_dir)?;
             (work, next, texts)
         };
-        let plan = materialize::plan(&previous, &next);
+        self.persist().await?;
+        let mut plan = materialize::plan(&previous, &next);
+        let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
@@ -901,6 +957,8 @@ impl Active {
             let mut bases = guard(&self.bases);
             apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts)?
         };
+        conflicts.extend(shaped.conflicts.iter().cloned());
+        sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
         let mut missing = false;
         if !blobs.is_empty() {
             let access = self
@@ -1073,7 +1131,22 @@ async fn pump(
                     role,
                 });
             }
-            LiveEvent::Changed => active.kick(),
+            LiveEvent::Changed => {
+                let settled = super::tree::settle(&active.project_id, &active.live);
+                if settled.merged {
+                    active.handle.flush();
+                }
+                for renamed in settled.renamed {
+                    active.host.renamed(renamed);
+                }
+                active.kick();
+                super::comments::announce(
+                    &active.project_id,
+                    &active.live,
+                    active.account_id,
+                    active.host.as_ref(),
+                );
+            }
             LiveEvent::Acknowledged => active.refresh_pending(),
             LiveEvent::Presence {
                 device_id,
@@ -1114,6 +1187,12 @@ async fn pump(
             LiveEvent::Untrusted { device_id, seq } => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration skipped change {seq} in project {}: device {device_id} did not sign it with a key this app knows",
+                    active.project_id
+                ));
+            }
+            LiveEvent::Unsendable => {
+                let _ = crate::project::append_app_log(format!(
+                    "Live collaboration stopped sending changes in project {}: one edit is larger than the server accepts in a single change",
                     active.project_id
                 ));
             }
@@ -1172,13 +1251,10 @@ pub async fn start(
         .map_err(io)??
     };
     let (mut live, mut disk) = loaded;
+    super::tree::sign(&mut live, state, binding.server_id, tokens.account_id);
     let mut bases = initial_bases(&root, &disk, &live);
-    let mut import = read_local_changes(&root, &disk, &live, None)?;
-    if !import.is_empty() && live.can_edit() {
-        let failed = upload_blobs(&link, &import.blobs).await;
-        import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
-        apply_local_import(&mut live, &mut disk, &mut bases, import, &root)?;
-    }
+    let hold_dir = paths.project_dir(project_id)?;
+    sync_hold::catch_up(&root, &hold_dir, &link, &mut live, &mut disk, &mut bases).await?;
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
     let (writer_tx, writer_rx) = mpsc::unbounded_channel();
@@ -1298,6 +1374,34 @@ pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError
     active_for(project_id).map(|active| lock(&active.live).doc().snapshot())
 }
 
+pub(super) fn read_live<T>(project_id: &str, work: impl FnOnce(&LiveProject) -> T) -> Option<T> {
+    active_for(project_id).map(|active| work(&lock(&active.live)))
+}
+
+pub(super) fn comment_live<T>(
+    project_id: &str,
+    work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CollabError>,
+) -> Result<T, CollabError> {
+    let active = active_for(project_id).ok_or_else(not_live)?;
+    let outcome = work(&mut lock(&active.live), active.account_id)?;
+    active.save_now();
+    active.handle.flush();
+    active.refresh_pending();
+    Ok(outcome)
+}
+
+pub(super) fn edit_live<T>(
+    project_id: &str,
+    work: impl FnOnce(&mut LiveProject) -> Result<T, CollabError>,
+) -> Result<T, CollabError> {
+    let active = active_for(project_id).ok_or_else(not_live)?;
+    let outcome = work(&mut lock(&active.live))?;
+    active.handle.flush();
+    active.kick();
+    active.refresh_pending();
+    Ok(outcome)
+}
+
 pub fn doc_close(project_id: &str, file_id: &str) {
     if let Some(active) = active_for(project_id) {
         lock(&active.live).close_file(file_id);
@@ -1334,27 +1438,9 @@ pub fn app_wrote(project_id: &str, path: &str) {
     }
 }
 
-fn accept_local(root: &Path, disk: &mut DiskState) {
-    for placed in disk.layout.values() {
-        if placed.kind == NodeKind::Dir {
-            continue;
-        }
-        if let Some(bytes) =
-            safe_target(root, &placed.path).and_then(|target| std::fs::read(target).ok())
-        {
-            disk.hashes.insert(placed.path.clone(), sha256_hex(&bytes));
-        }
-    }
-}
-
-pub async fn resume(project_id: &str, send: bool) -> Result<(), CollabError> {
+pub async fn resume(project_id: &str, decision: SyncDecision) -> Result<(), CollabError> {
     let active = active_for(project_id).ok_or_else(not_live)?;
-    if send {
-        return active.import_paths(None).await;
-    }
-    let mut disk = guard(&active.disk);
-    accept_local(&active.root, &mut disk);
-    disk.save(&active.disk_file)
+    active.decide(decision).await
 }
 
 pub fn folder_changed(change: &FolderChange) {
@@ -1385,6 +1471,7 @@ pub async fn collab_live_start(
     let info = start(state.inner(), host, &project_id)
         .await
         .map_err(CollabCommandError::from)?;
+    announce(&project_id, &app);
     if !crate::folder_watch::is_watching(&project_id) {
         let _ = crate::folder_watch::watch_project_folder(app, project_id).await;
     }
@@ -1435,8 +1522,11 @@ pub async fn collab_doc_close(
 }
 
 #[tauri::command]
-pub async fn collab_sync_resume(project_id: String, send: bool) -> Result<(), CollabCommandError> {
-    resume(&project_id, send)
+pub async fn collab_sync_resume(
+    project_id: String,
+    decision: SyncDecision,
+) -> Result<(), CollabCommandError> {
+    resume(&project_id, decision)
         .await
         .map_err(CollabCommandError::from)
 }
@@ -1486,6 +1576,70 @@ mod tests {
             .collect();
         paths.sort();
         paths
+    }
+
+    #[test]
+    fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, _main) = project(root);
+        live.doc_mut().set_author("acct-bob", "Bob Smith");
+        let mut alice = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+        alice.set_author("acct-alice", "Alice Chen");
+        let theirs = alice
+            .add_node(None, "plot.png", NodeKind::Blob, Some("alicehash"), "")
+            .unwrap();
+        let update = alice.export_since(&live.doc().version()).unwrap();
+        assert!(live.import_update(1, &update).unwrap());
+        let bytes = [0x89, b'P', 1, 2];
+        std::fs::write(root.join("plot.png"), bytes).unwrap();
+        let only = ["plot.png".to_owned()];
+        let import = read_local_changes(root, &disk, &live, Some(&only)).unwrap();
+        apply_local_import(
+            &mut live,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            import,
+            root,
+        )
+        .unwrap();
+        let nodes = live.doc().nodes().unwrap();
+        let ours = nodes
+            .iter()
+            .find(|node| node.kind == NodeKind::Blob && node.id != theirs)
+            .expect("the local figure became its own file")
+            .id
+            .clone();
+        let next = materialize::layout(&nodes);
+        assert_eq!(next[&theirs].blob.as_deref(), Some("alicehash"));
+        assert_eq!(next[&ours].blob, Some(sha256_hex(&bytes)));
+        assert_eq!(next[&theirs].path, "plot.png");
+        assert_eq!(next[&ours].path, "plot (from Bob Smith).png");
+        assert_eq!(
+            disk.layout.get(&ours).map(|placed| placed.path.as_str()),
+            Some("plot.png")
+        );
+        assert!(!disk.layout.contains_key(&theirs));
+        let plan = materialize::plan(&disk.layout, &next);
+        let pass = apply_to_disk(
+            root,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            plan,
+            next,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(root.join("plot (from Bob Smith).png")).unwrap(),
+            bytes
+        );
+        let fetched: Vec<(&str, &str)> = pass
+            .blobs
+            .iter()
+            .map(|(path, hash, _)| (path.as_str(), hash.as_str()))
+            .collect();
+        assert_eq!(fetched, vec![("plot.png", "alicehash")]);
     }
 
     #[test]
@@ -1841,21 +1995,6 @@ mod tests {
     }
 
     #[test]
-    fn keeping_changes_local_stops_them_from_being_sent_later() {
-        let dir = tempfile::tempdir().unwrap();
-        let root = dir.path();
-        let (live, mut disk, _main) = project(root);
-        std::fs::write(root.join("main.tex"), "kept here").unwrap();
-        assert!(!read_local_changes(root, &disk, &live, None)
-            .unwrap()
-            .is_empty());
-        accept_local(root, &mut disk);
-        assert!(read_local_changes(root, &disk, &live, None)
-            .unwrap()
-            .is_empty());
-    }
-
-    #[test]
     fn a_file_changed_again_before_import_is_left_for_the_next_pass() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
@@ -1997,5 +2136,252 @@ mod tests {
                 }
             );
         });
+    }
+
+    #[derive(Default)]
+    struct CommentHost(Mutex<Vec<super::super::comments::CommentsChangedPayload>>);
+
+    impl LiveHost for CommentHost {
+        fn status(&self, _: StatusPayload) {}
+        fn role(&self, _: RolePayload) {}
+        fn merged(&self, _: MergedPayload) {}
+        fn presence(&self, _: PresencePayload) {}
+        fn presence_left(&self, _: PresenceLeftPayload) {}
+        fn folder_changed(&self, _: FolderChange) {}
+        fn new_device(&self, _: NewDevicePayload) {}
+        fn comments_changed(&self, payload: super::super::comments::CommentsChangedPayload) {
+            guard(&self.0).push(payload);
+        }
+    }
+
+    #[test]
+    fn the_pump_announces_comments_that_arrive_from_others() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let state = CollabState::new(
+                oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let keys = state.keys().await.unwrap();
+            let link = LiveLink {
+                client: Arc::new(
+                    ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+                ),
+                server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                device_id: DeviceId::new_v7(),
+                key: Arc::clone(&keys.key),
+                sessions: Arc::clone(&keys.sessions),
+            };
+            let root = dir.path().join("project");
+            std::fs::create_dir_all(&root).unwrap();
+            let (mut live, disk, main) = project(&root);
+            let mut other = LiveProject::new(
+                ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap(),
+                0,
+                ProjectRole::Editor,
+            );
+            other
+                .comment_doc()
+                .create_comment_thread(&main, 0, 2, AccountId::new_v7(), 1, "Hi", &[])
+                .unwrap();
+            let sent = other.next_outgoing().unwrap().unwrap();
+            assert!(live.import_update(1, &sent.payload).unwrap());
+            let shared: SharedLive = Arc::new(Mutex::new(live));
+            let (unused, _unused) = mpsc::unbounded_channel();
+            let (writer, _writer) = mpsc::unbounded_channel();
+            let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+            let host = Arc::new(CommentHost::default());
+            let active = Arc::new(Active {
+                project_id: "commented".to_owned(),
+                root,
+                document_dir: dir.path().join("document"),
+                disk_file: dir.path().join("disk.json"),
+                live: shared,
+                handle,
+                link,
+                disk: Mutex::new(disk),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                account_id: AccountId::new_v7(),
+                quiet_merge: AtomicBool::new(false),
+                waiting: AtomicBool::new(false),
+                last_status: Mutex::new(LiveStatus::Connecting),
+                bases: Mutex::new(WrittenTexts::default()),
+            });
+            let (events, receiver) = mpsc::unbounded_channel();
+            let pumping = tokio::spawn(pump(
+                Arc::downgrade(&active),
+                receiver,
+                state.paths().unwrap().clone(),
+            ));
+            events.send(LiveEvent::Changed).unwrap();
+            events.send(LiveEvent::Changed).unwrap();
+            drop(events);
+            pumping.await.unwrap();
+            active.handle.stop();
+            let heard = guard(&host.0).clone();
+            assert_eq!(heard.len(), 1);
+            assert_eq!(heard[0].project_id, "commented");
+            assert_eq!(heard[0].file_ids, vec![main]);
+            assert_eq!(heard[0].paths, vec!["main.tex".to_owned()]);
+        });
+    }
+
+    #[cfg(unix)]
+    struct BlockedSave {
+        runtime: tokio::runtime::Runtime,
+        active: Arc<Active>,
+        log: PathBuf,
+        _dir: tempfile::TempDir,
+        _channels: (
+            UnboundedReceiver<LiveEvent>,
+            UnboundedReceiver<WriterSignal>,
+        ),
+    }
+
+    #[cfg(unix)]
+    fn blocked_save() -> BlockedSave {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("project");
+        let document_dir = dir.path().join("document");
+        std::fs::create_dir_all(&root).unwrap();
+        let (mut live, disk, main) = project(&root);
+        live.save(&document_dir).unwrap();
+        let log = document_dir.join("doc.log");
+        assert!(std::process::Command::new("mkfifo")
+            .arg(&log)
+            .status()
+            .unwrap()
+            .success());
+        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+        let large: String = (0..1_000_000)
+            .map(|_| {
+                seed ^= seed << 13;
+                seed ^= seed >> 7;
+                seed ^= seed << 17;
+                char::from(b'a' + (seed % 26) as u8)
+            })
+            .collect();
+        live.local_text(&main, &large).unwrap();
+        live.mark_all_dirty().unwrap();
+        let (active, channels) = runtime.block_on(async {
+            let state = CollabState::new(
+                oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let keys = state.keys().await.unwrap();
+            let link = LiveLink {
+                client: Arc::new(
+                    ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+                ),
+                server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                device_id: DeviceId::new_v7(),
+                key: Arc::clone(&keys.key),
+                sessions: Arc::clone(&keys.sessions),
+            };
+            let shared: SharedLive = Arc::new(Mutex::new(live));
+            let (events, events_rx) = mpsc::unbounded_channel();
+            let (writer, writer_rx) = mpsc::unbounded_channel();
+            let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
+            let active = Arc::new(Active {
+                project_id: "saving".to_owned(),
+                root,
+                document_dir,
+                disk_file: dir.path().join("disk.json"),
+                live: shared,
+                handle,
+                link,
+                disk: Mutex::new(disk),
+                host: Arc::new(SilentHost),
+                writer,
+                account_id: AccountId::new_v7(),
+                quiet_merge: AtomicBool::new(false),
+                waiting: AtomicBool::new(false),
+                last_status: Mutex::new(LiveStatus::Connecting),
+                bases: Mutex::new(WrittenTexts::default()),
+            });
+            (active, (events_rx, writer_rx))
+        });
+        BlockedSave {
+            runtime,
+            active,
+            log,
+            _dir: dir,
+            _channels: channels,
+        }
+    }
+
+    #[cfg(unix)]
+    fn live_lock_free_while_the_log_is_written(blocked: &BlockedSave) -> bool {
+        use std::io::Read;
+        let (opened, reader) = std::sync::mpsc::channel();
+        let path = blocked.log.clone();
+        std::thread::spawn(move || {
+            let _ = opened.send(std::fs::File::open(path));
+        });
+        let mut reader = reader
+            .recv_timeout(Duration::from_secs(30))
+            .expect("the save never opened its change log")
+            .unwrap();
+        let mut first = [0u8; 1];
+        reader.read_exact(&mut first).unwrap();
+        let (taken, took) = std::sync::mpsc::channel();
+        let shared = Arc::clone(&blocked.active.live);
+        std::thread::spawn(move || {
+            let _held = lock(&shared);
+            let _ = taken.send(());
+        });
+        let free = took.recv_timeout(Duration::from_secs(5)).is_ok();
+        std::io::copy(&mut reader, &mut std::io::sink()).unwrap();
+        free
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn saving_now_leaves_the_live_document_free_while_the_disk_is_written() {
+        let blocked = blocked_save();
+        let (done, finished) = std::sync::mpsc::channel();
+        let active = Arc::clone(&blocked.active);
+        std::thread::spawn(move || {
+            active.save_now();
+            let _ = done.send(());
+        });
+        let free = live_lock_free_while_the_log_is_written(&blocked);
+        finished.recv_timeout(Duration::from_secs(30)).unwrap();
+        blocked.active.handle.stop();
+        assert!(
+            free,
+            "typing and comment reads waited for the change log to reach the disk"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writing_out_leaves_the_live_document_free_while_the_disk_is_written() {
+        let blocked = blocked_save();
+        let active = Arc::clone(&blocked.active);
+        let writing = blocked
+            .runtime
+            .spawn(async move { active.write_out().await.map(|_| ()) });
+        let free = live_lock_free_while_the_log_is_written(&blocked);
+        let outcome = blocked
+            .runtime
+            .block_on(async { tokio::time::timeout(Duration::from_secs(30), writing).await });
+        assert!(matches!(outcome, Ok(Ok(_))), "writing out never finished");
+        blocked.active.handle.stop();
+        assert!(
+            free,
+            "typing and comment reads waited for the change log to reach the disk"
+        );
     }
 }

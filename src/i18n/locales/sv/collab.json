@@ -35,6 +35,13 @@
         "title": "Ta bort {{name}}?",
         "description": "Oleafly loggar ut från den här servern och glömmer den. Projekt som redan finns på den här datorn ligger kvar där de är.",
         "confirm": "Ta bort servern"
+      },
+      "emails": {
+        "label": "Mejla mig när någon delar ett projekt",
+        "description": "Mejlet nämner projektet och har en länk för att öppna det.",
+        "noMail": "Den här servern skickar ingen e-post. Projekt som delas med dig visas fortfarande i ditt bibliotek under Delat med dig.",
+        "paused": "Serverns administratör har stängt av e-post för alla.",
+        "loadFailed": "Oleafly kunde inte läsa in dina e-postinställningar."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "Realtidsanslutning",
           "pass": "Redigeringar i realtid kommer fram.",
           "fail": "Något mellan dig och servern blockerar redigeringar i realtid. En brandvägg eller proxy kan behöva ändras.",
-          "info": "Redigeringar i realtid kommer fram, men anslutningen tog en stund.",
+          "info": "Redigeringar i realtid tar en långsammare väg eftersom det här nätverket blockerar den vanliga. De kommer ändå fram.",
           "skipped": "Kontrollerades inte eftersom en tidigare kontroll misslyckades."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "Den här servern har inget sätt att logga in än. Be dess administratör att konfigurera ett.",
     "waitingTitle": "Väntar på din webbläsare",
     "waitingDescription": "Slutför inloggningen i webbläsarfönstret som öppnades och kom sedan tillbaka hit.",
+    "waitingEmailDescription": "Skriv in din e-postadress i webbläsaren och öppna sedan länken vi skickar på den här datorn.",
     "cancel": "Avbryt",
     "back": "Tillbaka",
     "doneTitle": "Du är inloggad",
     "doneDescription": "Du är inloggad på {{server}} som {{name}}.",
-    "done": "Klar"
+    "done": "Klar",
+    "codeSignIn": "Logga in med en kod",
+    "codeSignInDescription": "Använd det här när webbläsaren inte kan komma tillbaka till Oleafly, eller för att logga in på en annan enhet.",
+    "codeRequesting": "Hämtar en kod…",
+    "codeSteps": "Öppna den här adressen på valfri telefon eller dator och skriv in koden.",
+    "codeAddressLabel": "Adress",
+    "codeLabel": "Kod",
+    "codeExpires": "Koden slutar fungera kl. {{time}}.",
+    "codeWaiting": "Väntar på att du loggar in",
+    "codeOpen": "Öppna i webbläsaren",
+    "codeOffer": "Kom webbläsaren inte tillbaka till Oleafly?",
+    "codeHint": "Om webbläsaren inte nådde Oleafly kan du logga in med en kod i stället."
   },
   "errors": {
     "unreachable": "Oleafly kunde inte nå servern. Kontrollera adressen och din anslutning och försök sedan igen.",
@@ -179,7 +198,8 @@
       "allowlist": "Tillåtna personer",
       "domains": "Domäner",
       "settings": "Serverinställningar",
-      "log": "Säkerhetslogg"
+      "log": "Säkerhetslogg",
+      "email": "E-post"
     },
     "members": {
       "description": "Alla som har loggat in på den här servern.",
@@ -271,9 +291,17 @@
         "label": "Tillåt åtkomstloggar för projekt",
         "description": "Projektägare kan föra en logg över vem som har öppnat deras projekt."
       },
+      "commentsAllowed": {
+        "label": "Tillåt kommentarer",
+        "description": "Personer i delade projekt kan kommentera text och svara. Om du stänger av det döljs kommentarer överallt och sparas ändå."
+      },
       "emailNotifications": {
         "label": "E-postaviseringar",
-        "description": "Servern skickar e-post till personer när de läggs till eller när någon delar ett projekt med dem."
+        "description": "Skicka de här mejlen. Stäng av för att stoppa dem för alla på servern."
+      },
+      "emailLinkSignIn": {
+        "label": "Inloggning via e-post",
+        "description": "Personer kan logga in med en länk som skickas till deras e-postadress. Det kräver serverns e-postinställningar. Dina åtkomstregler avgör fortfarande vem som kommer in."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "Lade till en domänregel",
         "domainRuleRemoved": "Tog bort en domänregel",
         "settingsChanged": "Ändrade serverinställningarna",
+        "projectShared": "Delade ett projekt",
+        "projectAccessGranted": "Gav någon åtkomst till ett projekt",
+        "projectAccessChanged": "Ändrade någons åtkomst till ett projekt",
+        "projectAccessRemoved": "Tog bort någon från ett projekt",
+        "projectLeft": "Lämnade ett projekt",
+        "projectLinkSharingOn": "Slog på delning via länk för ett projekt",
+        "projectLinkSharingOff": "Slog av delning via länk för ett projekt",
+        "projectLinkRoleChanged": "Ändrade vad länken till ett projekt ger",
+        "projectArchived": "Arkiverade ett projekt",
+        "projectUnarchived": "Återställde ett arkiverat projekt",
+        "projectSettingsChanged": "Ändrade inställningarna för ett projekt",
+        "projectAccessLogOn": "Slog på åtkomstloggen för ett projekt",
+        "projectAccessLogOff": "Slog av åtkomstloggen för ett projekt",
+        "projectCommentsOn": "Slog på kommentarer i ett projekt",
+        "projectCommentsOff": "Slog av kommentarer i ett projekt",
+        "projectRejoinRefused": "Försökte gå med igen i ett projekt de tagits bort från",
+        "guestInvited": "Bjöd in en gäst",
+        "guestInvitationApproved": "Godkände en gästinbjudan",
+        "guestInvitationDeclined": "Avböjde en gästinbjudan",
+        "guestInvitationRevoked": "Drog tillbaka en gästinbjudan",
+        "guestAdmissionEnded": "Avslutade en gästs åtkomst till servern",
         "unknown": "Annan serverhändelse"
+      },
+      "details": {
+        "project": "Projekt: {{title}}",
+        "provider": "Med {{provider}}",
+        "providerEmailLink": "Med en länk via e-post",
+        "signInCode": "Använde en inloggningskod",
+        "via": {
+          "allowlist": "Insläppt via listan över tillåtna personer",
+          "domain": "Insläppt via en domänregel",
+          "setup": "Använde konfigurationskoden",
+          "guest": "Insläppt som gäst",
+          "link": "Via projektets länk",
+          "invitation": "Via en gästinbjudan"
+        },
+        "newAccount": "Nytt konto",
+        "reactivated": "Kontot återaktiverat",
+        "reasons": {
+          "suspended": "Kontot är avstängt",
+          "notAdmitted": "Ingen åtkomstregel släpper in dem",
+          "setupCodeInvalid": "Fel konfigurationskod",
+          "guestInvitationUnusable": "Gästinbjudan fungerar inte längre",
+          "lockedOutIp": "För många försök från en nätverksadress",
+          "lockedOutAddress": "För många inloggningsmejl till en adress",
+          "stoppedByPerson": "Stoppades på inloggningssidan",
+          "otherBrowser": "Slutfördes i en annan webbläsare än den där det började",
+          "inactiveAccountAddress": "E-postadressen hör till ett borttaget eller avstängt konto",
+          "noProjectsLeft": "Inga projekt kvar"
+        },
+        "role": "Roll: {{role}}",
+        "roleChange": "Från {{from}} till {{to}}",
+        "device": "Enhet: {{name}}",
+        "byAdmin": "Från administratörskonsolen",
+        "settingOn": "{{setting}}: på",
+        "settingOff": "{{setting}}: av"
+      }
+    },
+    "email": {
+      "description": "Servern skickar e-post till personer när du lägger till dem, när någon delar ett projekt med dem och när deras konto loggar in på en ny enhet.",
+      "loading": "Läser in e-postinställningar…",
+      "on": {
+        "title": "E-post är på",
+        "from": "E-posten kommer från {{from}}."
+      },
+      "off": {
+        "title": "E-post är av",
+        "description": "Den här servern har inga e-postinställningar. Slå på e-post genom att ange OLEAFLY_SMTP_URL och OLEAFLY_MAIL_FROM på servern och sedan starta om den.",
+        "copyPath": "Tills dess kan du själv skicka den här länken till nya personer. Den lägger till servern i Oleafly.",
+        "address": "De kan också skriva in den här adressen under Lägg till server:"
+      },
+      "needsSettings": "Slå på e-post för servern först.",
+      "lastFailure": "Det senaste mejlet som misslyckades skickades {{date}}. E-postservern svarade:",
+      "test": {
+        "title": "Testmejl",
+        "description": "Skicka ett testmejl till {{address}} för att kontrollera att inställningarna fungerar.",
+        "send": "Skicka testmejl",
+        "sending": "Skickar…",
+        "sent": "Skickat till {{address}}. Om det inte finns i inkorgen, titta i skräppostmappen.",
+        "failed": "E-postservern tog inte emot testmejlet.",
+        "noAddress": "Ditt konto har ingen verifierad e-postadress, så det finns ingenstans att skicka ett test.",
+        "adminOnly": "Bara administratörer kan skicka ett testmejl."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "Alla som är inloggade på {{server}} och har länken kan öppna det här projektet.",
       "roleLabel": "Roll för personer som öppnar länken"
     },
+    "comments": {
+      "label": "Kommentarer",
+      "description": "Alla som kan redigera kan kommentera text i det här projektet. Om du stänger av det döljs kommentarerna, men de raderas inte.",
+      "serverOff": "Kommentarer är avstängda på {{server}}. Be dess administratör att slå på dem."
+    },
     "stop": "Sluta dela",
     "stopConfirm": {
       "title": "Sluta dela {{name}}?",
@@ -378,6 +492,10 @@
       "title": "Lämna {{name}}?",
       "description": "Din kopia slutar synka och ligger kvar på den här datorn som ett vanligt projekt.",
       "confirm": "Lämna"
+    },
+    "accessLog": {
+      "label": "Åtkomstlogg",
+      "description": "Servern noterar vem som öppnar projektet, går med i det eller laddar ned en kopia, från vilken enhet och när. Bara du ser listan, i panelen Samarbete i realtid."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "Någon"
   },
   "tree": {
-    "here": "{{name}} har den här filen öppen"
+    "here": "{{name}} har den här filen öppen",
+    "clash": "{{other}} heter också {{name}}, så den här filen fick ett nytt namn på disken."
   },
   "library": {
     "kind": "delat",
@@ -427,7 +546,18 @@
     "empty": "Inget har hänt än.",
     "here": "Här just nu",
     "hereIn": "I {{path}} just nu",
-    "away": "Inte här just nu"
+    "away": "Inte här just nu",
+    "deleted": "Nyligen raderade",
+    "deletedEmpty": "Inget har raderats nyligen.",
+    "accessLog": "Åtkomstlogg"
+  },
+  "deleted": {
+    "restore": "Återställ",
+    "restoreLabel": "Återställ {{name}}",
+    "inFolder": "Låg i {{folder}}",
+    "inProject": "Låg i projektmappen",
+    "byYou": "Raderad av dig",
+    "by": "Raderad av {{name}}"
   },
   "activity": {
     "welcomeEdit": "Delat av {{owner}} på {{server}}. Du kan redigera projektet.",
@@ -446,7 +576,11 @@
     "signIn": "Logga in",
     "repeated": "Antal gånger i rad: {{number}}",
     "newDevice": "{{name}} loggade in på en ny enhet",
-    "review": "Granska"
+    "review": "Granska",
+    "renamed": "{{name}} bytte namn på {{before}} till {{theirs}} efter att du hade döpt den till {{ours}}",
+    "mentioned": "{{name}} nämnde dig i en kommentar i {{path}}",
+    "mentionedHere": "{{name}} nämnde dig i en kommentar",
+    "showComment": "Visa kommentar"
   },
   "mergeReview": {
     "title": "Ändringar sammanfogade medan du var borta",
@@ -460,5 +594,264 @@
     "newFile": "Ny fil",
     "removedFile": "Borttagen",
     "diffLabel": "Ändringar i {{path}}"
+  },
+  "console": {
+    "open": "Öppna administratörskonsolen",
+    "windowTitle": "Administratörskonsol för {{name}}",
+    "title": "Administratörskonsol",
+    "sectionsLabel": "Avsnitt i administratörskonsolen",
+    "sections": {
+      "overview": "Översikt",
+      "people": "Personer",
+      "access": "Åtkomstregler",
+      "projects": "Projekt",
+      "settings": "Inställningar",
+      "email": "E-post",
+      "log": "Säkerhetslogg",
+      "checks": "Anslutningskontroller"
+    },
+    "health": {
+      "label": "Serverns hälsa: {{status}}",
+      "checking": "Kontrollerar",
+      "ok": "Fungerar",
+      "warning": "Kräver åtgärd",
+      "unreachable": "Går inte att nå"
+    },
+    "states": {
+      "loading": "Öppnar administratörskonsolen…",
+      "loadFailed": "Oleafly kunde inte öppna administratörskonsolen.",
+      "unknownTitle": "Den här servern finns inte i din lista",
+      "unknownDescription": "Lägg till servern igen i Inställningar och öppna sedan administratörskonsolen från dess kort.",
+      "signedOutTitle": "Du är utloggad från den här servern",
+      "signedOutDescription": "Logga in igen i Inställningar och öppna sedan administratörskonsolen från serverns kort.",
+      "refusedTitle": "Administratörskonsolen är till för administratörer och underhållare",
+      "refusedDescription": "Din roll på den här servern är {{role}}. Fråga en administratör om du behöver hantera den."
+    },
+    "overview": {
+      "loading": "Läser in översikten…",
+      "health": {
+        "title": "Hälsa",
+        "okLabel": "Allt fungerar",
+        "okDescription": "Personer kan logga in och servern kan spara filer.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Ingen kan logga in",
+            "description": "Konfigurera inloggning med GitHub eller OpenID på servern och starta om den. Om servern skickar e-post kan du i stället slå på Inloggning via e-post under Inställningar."
+          },
+          "storageNotWritable": {
+            "label": "Servern kan inte spara filer",
+            "description": "Kontrollera att serverns datamapp finns och att servern kan skriva till den."
+          },
+          "unknown": {
+            "label": "Servern rapporterade ett problem",
+            "description": "Uppdatera Oleafly för att se vad det är."
+          }
+        }
+      },
+      "glance": {
+        "title": "I korthet",
+        "people": "Personer",
+        "suspended": "Avstängda: {{number}}",
+        "devices": "Enheter",
+        "projects": "Delade projekt",
+        "projectsDetail": "Arkiverade: {{archived}}, laddas upp: {{pending}}",
+        "online": "Online nu",
+        "onlineDetail": "Öppna projekt: {{number}}",
+        "started": "Startad",
+        "version": "Version",
+        "protocol": "Protokoll {{protocol}}"
+      },
+      "storage": {
+        "title": "Lagring",
+        "adminOnly": "Bara administratörer kan se hur mycket lagring servern använder.",
+        "database": "Databas",
+        "databaseDetail": "Konton, inställningar och loggen",
+        "snapshots": "Ögonblicksbilder av projekt",
+        "snapshotsDetail": "Sparade kopior av varje projekt",
+        "files": "Filer",
+        "location": {
+          "disk": "På serverns disk",
+          "s3": "I S3-lagring",
+          "unknown": "I annan lagring"
+        }
+      },
+      "services": {
+        "title": "E-post och inloggning",
+        "email": "E-post",
+        "emailOn": "Konfigurerad",
+        "emailOff": "Inte konfigurerad",
+        "emailOnDescription": "Servern kan skicka e-post.",
+        "emailOffDescription": "Servern kan inte skicka e-post än, så ingen får aviseringar via e-post.",
+        "openEmail": "E-postinställningar",
+        "signIn": "Inloggningsalternativ",
+        "signInNone": "Inga än. Ingen kan logga in förrän ett alternativ har konfigurerats.",
+        "emailLinkOption": "Länk via e-post"
+      },
+      "settings": {
+        "title": "Serverinställningar",
+        "on": "På",
+        "off": "Av",
+        "change": "Ändra inställningar"
+      },
+      "limits": "Gränser: {{project}} per projekt, {{file}} per fil, {{people}} personer per projekt."
+    },
+    "projects": {
+      "description": "Alla projekt som delas på den här servern.",
+      "searchLabel": "Sök projekt",
+      "searchPlaceholder": "Sök på titel eller ägare",
+      "filterLabel": "Visa projekt",
+      "filter": {
+        "all": "Alla",
+        "active": "Delade",
+        "archived": "Arkiverade",
+        "pending": "Laddas upp"
+      },
+      "columns": {
+        "title": "Projekt",
+        "owner": "Ägare",
+        "members": "Personer",
+        "size": "Storlek",
+        "activity": "Senaste aktivitet",
+        "actions": "Åtgärder"
+      },
+      "sortBy": "Sortera efter {{column}}",
+      "status": {
+        "archived": "Arkiverat",
+        "pending": "Laddas upp",
+        "unknown": "Okänt"
+      },
+      "loading": "Läser in projekt…",
+      "empty": "Inga projekt delas på den här servern än.",
+      "noMatches": "Inga projekt matchar din sökning.",
+      "count": "Visar {{shown}} av {{total}}",
+      "loadMore": "Visa mer",
+      "archive": "Arkivera",
+      "archiveNamed": "Arkivera {{title}}",
+      "restore": "Återställ",
+      "restoreNamed": "Återställ {{title}}",
+      "archiveConfirm": {
+        "title": "Arkivera {{title}}?",
+        "description": "Alla slutar synka projektet och behåller sin egen kopia. Servern raderar projektet efter {{days}} dagar om du inte återställer det.",
+        "descriptionLater": "Alla slutar synka projektet och behåller sin egen kopia. Servern raderar arkiverade projekt efter ett tag om du inte återställer dem.",
+        "confirm": "Arkivera projektet"
+      },
+      "adminOnly": "Bara administratörer kan arkivera eller återställa projekt."
+    },
+    "checks": {
+      "description": "Kontrollera anslutningen från den här datorn till servern."
+    }
+  },
+  "links": {
+    "turnedOff": "Samarbete i realtid är avstängt. Slå på det i Inställningar under Experiment och öppna sedan länken igen.",
+    "openSettings": "Öppna Inställningar",
+    "malformed": "Oleafly kan inte öppna den här länken. Be den som skickade den om en ny.",
+    "opening": "Öppnar det delade projektet…",
+    "confirm": {
+      "title": "Gå med i det här delade projektet?",
+      "body": "När du går med läggs du till i projektet och dess filer kopieras till den här datorn. Gå bara med om du vet vem som skickade länken till dig.",
+      "project": "Projekt",
+      "owner": "Ägare",
+      "server": "Server",
+      "role": "Din roll",
+      "join": "Gå med"
+    }
+  },
+  "comments": {
+    "title": "Kommentarer",
+    "titleUnread": "Kommentarer, ny aktivitet",
+    "add": "Lägg till kommentar",
+    "showResolved": "Visa lösta kommentarer",
+    "hideResolved": "Dölj lösta kommentarer",
+    "noFile": "Öppna en fil för att se dess kommentarer.",
+    "empty": "Den här filen har inga kommentarer än.",
+    "emptyCanWrite": "Den här filen har inga kommentarer än. Markera text och välj Lägg till kommentar för att starta en.",
+    "loadFailed": "Det gick inte att läsa in kommentarerna för den här filen.",
+    "detached": "Frånkopplade",
+    "detachedHint": "Texten som de här kommentarerna gällde har tagits bort.",
+    "resolvedBy": "Löst av {{name}}",
+    "edited": "Redigerad",
+    "deleted": "Den här kommentaren har tagits bort.",
+    "newLabel": "Ny kommentar",
+    "newPlaceholder": "Skriv en kommentar. Skriv @ för att nämna någon.",
+    "replyLabel": "Svar",
+    "replyPlaceholder": "Skriv ett svar. Skriv @ för att nämna någon.",
+    "editLabel": "Redigera kommentar",
+    "post": "Kommentera",
+    "reply": "Svara",
+    "resolve": "Lös",
+    "reopen": "Öppna igen",
+    "deleteThread": "Ta bort tråd",
+    "messageActions": "Fler åtgärder för den här kommentaren",
+    "threadActions": "Fler åtgärder för den här tråden",
+    "showInEditor": "Visa i redigeraren",
+    "thread": "Kommentar från {{name}}",
+    "mentionList": "Personer att nämna",
+    "marker": "Visa kommentarerna på den här raden",
+    "unverifiedAuthor": "Det gick inte att bekräfta vem som skrev detta",
+    "unverifiedThread": "Kommentar från någon som Oleafly inte kunde bekräfta",
+    "resolvedUnverified": "Löst av någon som Oleafly inte kunde bekräfta",
+    "refusals": {
+      "notLive": "Projektet är inte anslutet just nu. Försök igen när anslutningen är tillbaka.",
+      "notYours": "Bara den som skrev kommentaren kan ändra den.",
+      "offServer": "Kommentarer är avstängda på den här servern.",
+      "offProject": "Kommentarer är avstängda för det här projektet. Be ägaren att slå på dem igen.",
+      "viewer": "Du kan läsa kommentarer här men inte skriva dem. Be ägaren om redigeringsbehörighet.",
+      "someoneReplied": "Någon annan har svarat, så tråden finns kvar. Du kan lösa den i stället.",
+      "messageDeleted": "Kommentaren har tagits bort, så du kan inte redigera den.",
+      "selectionChanged": "Texten du markerade har ändrats. Markera den igen och lägg till din kommentar.",
+      "tooLong": "Kommentaren är för lång. Korta ner den och försök igen.",
+      "empty": "Skriv något innan du skickar."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} öppnade projektet",
+    "joinedLink": "{{name}} gick med via länken",
+    "joinedShare": "{{name}} gick med efter att du delade projektet",
+    "downloaded": "{{name}} laddade ned en kopia",
+    "unknown": "{{name}} använde projektet",
+    "unknownDevice": "Okänd enhet",
+    "span": "{{from}} till {{to}}",
+    "more": "Visa äldre",
+    "loading": "Läser in åtkomstloggen…",
+    "loadFailed": "Oleafly kunde inte läsa in åtkomstloggen.",
+    "empty": "Inget registrerat än."
+  },
+  "guests": {
+    "badge": "Gäst",
+    "invite": {
+      "noAccount": "Ingen på {{server}} använder {{email}}. Bjud in personen som gäst, så ser den bara de projekt den är inbjuden till.",
+      "button": "Bjud in som gäst",
+      "buttonNamed": "Bjud in {{email}} som gäst",
+      "duplicate": "Den adressen har redan en inbjudan till det här projektet.",
+      "tooMany": "Du har skickat många inbjudningar den senaste timmen. Försök igen senare."
+    },
+    "sent": {
+      "emailed": "Inbjudan skickad till {{email}}.",
+      "emailedAfterApproval": "En administratör måste godkänna den här inbjudan. {{email}} får ett mejl när den är godkänd.",
+      "added": "{{email}} har redan ett konto på {{server}}, så personen har åtkomst nu.",
+      "sendLink": "{{server}} skickar inte e-post, så skicka själv den här länken till {{email}}. Med den lägger personen till servern och loggar in med den adressen.",
+      "sendLinkAfterApproval": "En administratör måste först godkänna den här inbjudan. {{server}} skickar inte e-post, så skicka själv den här länken till {{email}}. Den fungerar när inbjudan är godkänd.",
+      "linkLabel": "Länk för att lägga till {{server}}"
+    },
+    "list": {
+      "title": "Inbjudningar",
+      "status": {
+        "awaiting_approval": "Väntar på godkännande",
+        "invited": "Inbjuden",
+        "declined": "Avböjd"
+      },
+      "expires": "Går ut {{date}}",
+      "withdraw": "Dra tillbaka",
+      "withdrawNamed": "Dra tillbaka inbjudan till {{email}}"
+    },
+    "pending": {
+      "title": "Väntande gäster",
+      "description": "Projektägare har bjudit in de här personerna som gäster. En gäst ser bara de projekt den är inbjuden till och kan inte dela dem.",
+      "invitedBy": "{{inviter}} bjöd in dem till {{project}}",
+      "approve": "Godkänn",
+      "approveNamed": "Godkänn {{email}}",
+      "decline": "Avböj",
+      "declineNamed": "Avböj {{email}}"
+    }
   }
 }

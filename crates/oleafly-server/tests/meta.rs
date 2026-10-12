@@ -122,15 +122,36 @@ async fn only_link_sharing_is_advertised_among_the_optional_features() {
     );
     let manifest: CapabilityManifest =
         serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
-    assert!(!manifest.features.email);
-    assert!(!manifest.features.guests);
+    assert!(manifest.features.email);
+    assert!(manifest.features.guests);
     assert!(manifest.features.link_sharing);
-    assert!(!manifest.features.access_logs);
-    assert!(!manifest.features.comments);
+    assert!(manifest.features.access_logs);
+    assert!(manifest.features.comments);
     assert!(matches!(
         manifest.features.encryption,
         EncryptionSupport::None
     ));
+}
+
+#[tokio::test]
+async fn comments_are_advertised_only_while_the_server_allows_them() {
+    let app = test_app().await;
+    let manifest: CapabilityManifest =
+        serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
+    assert!(manifest.features.comments);
+    app.state
+        .db
+        .call(|conn| {
+            conn.execute_batch(
+                "INSERT INTO settings (key, value) VALUES ('comments_allowed', 0);",
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let manifest: CapabilityManifest =
+        serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
+    assert!(!manifest.features.comments);
 }
 
 #[tokio::test]
@@ -142,6 +163,72 @@ async fn health_and_readiness_answer() {
     let ready = support::send_get(&app.router, "/readyz", None).await;
     assert_eq!(ready.status, StatusCode::OK);
     assert_eq!(ready.body, json!({"status": "ready"}));
+}
+
+#[tokio::test]
+async fn readiness_fails_while_the_database_refuses_writes() {
+    let app = test_app().await;
+    app.state
+        .db
+        .call(|conn| {
+            conn.execute_batch("PRAGMA query_only = 1")?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let ready = support::send_get(&app.router, "/readyz", None).await;
+    assert_eq!(ready.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(ready.body["status"], "unavailable");
+    assert_eq!(ready.body["failing"], "database");
+    let health = support::send_get(&app.router, "/healthz", None).await;
+    assert_eq!(health.status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn readiness_fails_while_the_data_folder_refuses_writes() {
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let data_dir = file.path().join("data").display().to_string();
+    let app = test_app_with(support::config_with(&[(
+        "OLEAFLY_DATA_DIR",
+        data_dir.as_str(),
+    )]))
+    .await;
+    let ready = support::send_get(&app.router, "/readyz", None).await;
+    assert_eq!(ready.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(ready.body["status"], "unavailable");
+    assert_eq!(ready.body["failing"], "storage");
+    assert!(!ready.body.to_string().contains(&data_dir));
+}
+
+#[tokio::test]
+async fn readiness_leaves_nothing_behind_and_is_reused_for_a_few_seconds() {
+    let directory = tempfile::tempdir().unwrap();
+    let data_dir = directory.path().display().to_string();
+    let app = test_app_with(support::config_with(&[(
+        "OLEAFLY_DATA_DIR",
+        data_dir.as_str(),
+    )]))
+    .await;
+    let first = support::send_get(&app.router, "/readyz", None).await;
+    assert_eq!(first.status, StatusCode::OK);
+    assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 0);
+    let probe_rows: i64 = app
+        .state
+        .db
+        .call(|conn| {
+            let rows = conn.query_row(
+                "SELECT COUNT(*) FROM server_meta WHERE key NOT IN ('server_id', 'setup_code_hash')",
+                [],
+                |row| row.get(0),
+            )?;
+            conn.execute_batch("PRAGMA query_only = 1")?;
+            Ok(rows)
+        })
+        .await
+        .unwrap();
+    assert_eq!(probe_rows, 0);
+    let again = support::send_get(&app.router, "/readyz", None).await;
+    assert_eq!(again.status, StatusCode::OK);
 }
 
 #[tokio::test]

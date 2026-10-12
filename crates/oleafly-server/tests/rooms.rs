@@ -36,7 +36,8 @@ async fn an_update_is_acknowledged_and_reaches_the_others() {
         ServerFrame::Subscribed {
             project_id: project,
             role: ProjectRole::Owner,
-            head_seq: 0
+            head_seq: 0,
+            since_batch: None
         }
     );
     assert_eq!(
@@ -44,7 +45,8 @@ async fn an_update_is_acknowledged_and_reaches_the_others() {
         ServerFrame::Subscribed {
             project_id: project,
             role: ProjectRole::Editor,
-            head_seq: 0
+            head_seq: 0,
+            since_batch: None
         }
     );
     let change = envelope(&stage.bob, project, b"hello");
@@ -375,6 +377,14 @@ async fn hiding_tells_the_room_the_person_left_and_keeps_them_subscribed() {
 #[tokio::test]
 async fn a_compacted_log_asks_for_the_snapshot_first() {
     let stage = stage().await;
+    stage
+        .server
+        .state()
+        .snapshots
+        .set_policy(oleafly_server::snapshots::Policy {
+            build_after: 1,
+            keep_updates: 1,
+        });
     let project = shared_with_alice(&stage, ProjectRole::Editor).await;
     let mut bob = connect(&stage.server, &stage.bob).await;
     subscribe(&mut bob, project, 0).await;

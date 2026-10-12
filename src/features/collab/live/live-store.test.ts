@@ -440,6 +440,52 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
   });
 
+  it("reloads the member list when someone it has never heard of shows up", async () => {
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen")]);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const before = mocks.collabMembersList.mock.calls.length;
+    const bob: CollabPresence = { projectId: PROJECT, deviceId: "d", accountId: BOB, path: "main.tex", cursor: 1, anchor: null };
+    emit("presence", bob);
+    emit("presence", { ...bob, cursor: 2 });
+    emit("presence", { ...bob, cursor: 3 });
+    await settle();
+    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
+    expect(useCollabLiveStore.getState().members.map((entry) => entry.person.display_name)).toEqual([
+      "Alice Chen",
+      "Bob Jones",
+    ]);
+  });
+
+  it("learns who made merged changes or signed in on a new device", async () => {
+    const carol = "0192a0b0-0000-7000-8000-000000000003";
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen")]);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const before = mocks.collabMembersList.mock.calls.length;
+    emit<CollabLiveMerged>("merged", {
+      projectId: PROJECT,
+      files: [{ path: "main.tex", changes: 2 }],
+      authors: [{ accountId: BOB, files: [{ path: "main.tex", changes: 2 }] }],
+      review: { before: "b", after: "a" },
+    });
+    await settle();
+    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    mocks.collabMembersList.mockResolvedValueOnce([
+      member(ALICE, "Alice Chen"),
+      member(BOB, "Bob Jones"),
+      member(carol, "Carol Diaz"),
+    ]);
+    emit<CollabLiveNewDevice>("newDevice", { projectId: PROJECT, accountId: carol, deviceId: "tablet" });
+    emit<CollabLiveNewDevice>("newDevice", { projectId: PROJECT, accountId: BOB, deviceId: "phone" });
+    await settle();
+    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 2);
+    expect(useCollabLiveStore.getState().members).toHaveLength(3);
+  });
+
   it("makes the project local again when this person is removed", async () => {
     openProject(PROJECT);
     stop = startCollabLive();

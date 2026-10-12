@@ -320,6 +320,12 @@ try {
     $code = 0
     $failures = 0
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
+    $specs = $specs | Where-Object {
+      if ($_.Name -like "*-peer.spec.ts") {
+        Write-Host "e2e: skipping $($_.Name) (needs the headless collaboration peer; the collaboration job runs it)"
+        $false
+      } else { $true }
+    }
     if ($appBinary) {
       $specs = $specs | Where-Object {
         if ($_.Name -like "*-browser.spec.ts") {

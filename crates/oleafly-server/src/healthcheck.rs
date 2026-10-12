@@ -6,7 +6,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 pub const TIMEOUT: Duration = Duration::from_secs(5);
-pub const HEALTH_PATH: &str = "/healthz";
+pub const HEALTH_PATH: &str = "/readyz";
 
 pub fn target(vars: &BTreeMap<String, String>) -> Result<SocketAddr, String> {
     let bind = match vars

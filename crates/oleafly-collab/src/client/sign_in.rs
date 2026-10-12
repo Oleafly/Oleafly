@@ -3,7 +3,9 @@ use std::time::Duration;
 use oleafly_collab_protocol::auth::{
     challenge_message, AuthStartQuery, ChallengePurpose, SessionTokens, TokenRequest,
 };
-use oleafly_collab_protocol::capabilities::{negotiate, CapabilityManifest, ProtocolRange};
+use oleafly_collab_protocol::capabilities::{
+    negotiate, CapabilityManifest, ProtocolRange, ProviderKind,
+};
 use oleafly_collab_protocol::crypto::{b64url_encode, pkce_s256};
 use ring::rand::{SecureRandom, SystemRandom};
 
@@ -45,17 +47,19 @@ pub async fn sign_in(
         },
     )
     .map_err(CollabError::ProtocolMismatch)?;
-    if !manifest
+    let Some(kind) = manifest
         .providers
         .iter()
-        .any(|provider| provider.id == provider_id)
-    {
+        .find(|provider| provider.id == provider_id)
+        .map(|provider| provider.kind)
+    else {
         return Err(CollabError::Api {
             status: 400,
             code: "unknown_provider".to_string(),
             message: format!("this server has no sign-in provider {provider_id}"),
         });
-    }
+    };
+    let timeout = wait_for(kind, timeout);
     let listener = LoopbackListener::bind().await?;
     let verifier = random_b64url(VERIFIER_BYTES)?;
     let state = random_b64url(STATE_BYTES)?;
@@ -91,6 +95,15 @@ pub async fn sign_in(
     };
     let tokens = client.exchange_token(&request).await?;
     Ok((manifest, tokens))
+}
+
+pub(crate) const EMAIL_LINK_WAIT: Duration = Duration::from_secs(16 * 60);
+
+fn wait_for(kind: ProviderKind, timeout: Duration) -> Duration {
+    match kind {
+        ProviderKind::EmailLink => timeout.max(EMAIL_LINK_WAIT),
+        _ => timeout,
+    }
 }
 
 fn callback_error(code: String, description: Option<String>) -> CollabError {
@@ -279,6 +292,17 @@ mod tests {
             result,
             Err(CollabError::ProtocolMismatch(VersionMismatch::ClientTooOld))
         ));
+    }
+
+    #[test]
+    fn an_email_sign_in_waits_long_enough_for_the_link() {
+        let usual = Duration::from_secs(300);
+        assert_eq!(wait_for(ProviderKind::EmailLink, usual), EMAIL_LINK_WAIT);
+        assert!(EMAIL_LINK_WAIT > Duration::from_secs(15 * 60));
+        assert_eq!(wait_for(ProviderKind::Github, usual), usual);
+        assert_eq!(wait_for(ProviderKind::Oidc, usual), usual);
+        let longer = Duration::from_secs(30 * 60);
+        assert_eq!(wait_for(ProviderKind::EmailLink, longer), longer);
     }
 
     #[test]

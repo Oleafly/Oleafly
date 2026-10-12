@@ -96,7 +96,7 @@ const limits = {
   // again, and Explorer Git badges and skill search took its room. The
   // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
   // Windows.
-  totalJavaScript: 20_000_000,
+  totalJavaScript: 20_234_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

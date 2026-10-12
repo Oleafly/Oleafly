@@ -129,17 +129,14 @@ pub fn account_summary(
 ) -> Result<Option<AccountSummary>, ServerError> {
     let id = account.to_string();
     let row = conn
-        .query_row(
-            "SELECT display_name, avatar_url, server_role FROM accounts WHERE id = ?1",
-            [&id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            },
-        )
+        .prepare_cached("SELECT display_name, avatar_url, server_role FROM accounts WHERE id = ?1")?
+        .query_row([&id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
         .optional()?;
     let Some((display_name, avatar_url, role)) = row else {
         return Ok(None);
@@ -687,7 +684,7 @@ fn query_strings<P: Params>(
     sql: &str,
     arguments: P,
 ) -> Result<Vec<String>, ServerError> {
-    let mut statement = conn.prepare(sql)?;
+    let mut statement = conn.prepare_cached(sql)?;
     let values = statement
         .query_map(arguments, |row| row.get::<_, String>(0))?
         .collect::<Result<Vec<_>, _>>()?;

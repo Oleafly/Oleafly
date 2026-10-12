@@ -45,11 +45,18 @@ describe("RuntimeSettingsTab", () => {
     const user = userEvent.setup();
     render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
     await screen.findByRole("switch", { name: copy.directoryVisible.label });
-    expect(RUNTIME_SETTING_FIELDS).toEqual(["directory_visible", "directory_shows_email", "link_sharing_allowed"]);
+    expect(RUNTIME_SETTING_FIELDS).toEqual([
+      "directory_visible",
+      "directory_shows_email",
+      "link_sharing_allowed",
+      "access_logs_allowed",
+      "comments_allowed",
+      "email_link_sign_in",
+      "guests_enabled",
+      "guest_approval_required",
+    ]);
     for (const field of RUNTIME_SETTING_FIELDS) expect(toggle(field)).toBeInTheDocument();
-    for (const hidden of [copy.guestsEnabled, copy.guestApprovalRequired, copy.accessLogsAllowed, copy.emailNotifications]) {
-      expect(screen.queryByRole("switch", { name: hidden.label })).toBeNull();
-    }
+    expect(screen.queryByRole("switch", { name: copy.emailNotifications.label })).toBeNull();
     expect(screen.queryByText(copy.adminOnly)).toBeNull();
     expect(toggle("directory_visible")).toHaveAttribute("aria-checked", "false");
     expect(toggle("directory_shows_email")).toHaveAttribute("aria-disabled", "true");
@@ -58,6 +65,34 @@ describe("RuntimeSettingsTab", () => {
     expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { directory_visible: true });
     await waitFor(() => expect(toggle("directory_shows_email")).not.toHaveAttribute("aria-disabled"));
     expect(toggle("directory_visible")).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("lets an admin turn on sign-in by email", async () => {
+    mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
+    mocks.collabAdminPatchSettings.mockResolvedValue(runtimeSettings({ email_link_sign_in: true }));
+    const user = userEvent.setup();
+    render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
+    const emailSwitch = await screen.findByRole("switch", { name: copy.emailLinkSignIn.label });
+    expect(emailSwitch).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(copy.emailLinkSignIn.description)).toBeInTheDocument();
+    await user.click(emailSwitch);
+    expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { email_link_sign_in: true });
+    await waitFor(() => expect(toggle("email_link_sign_in")).toHaveAttribute("aria-checked", "true"));
+  });
+
+  it("lets an admin allow guests and asks for approval only once guests are allowed", async () => {
+    mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
+    mocks.collabAdminPatchSettings.mockResolvedValue(runtimeSettings({ guests_enabled: true }));
+    const user = userEvent.setup();
+    render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
+    const guests = await screen.findByRole("switch", { name: copy.guestsEnabled.label });
+    expect(guests).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(copy.guestsEnabled.description)).toBeInTheDocument();
+    expect(toggle("guest_approval_required")).toHaveAttribute("aria-disabled", "true");
+    await user.click(guests);
+    expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { guests_enabled: true });
+    await waitFor(() => expect(toggle("guest_approval_required")).not.toHaveAttribute("aria-disabled"));
+    expect(toggle("guest_approval_required")).toHaveAttribute("aria-checked", "true");
   });
 
   it("puts a switch back and explains when saving fails", async () => {

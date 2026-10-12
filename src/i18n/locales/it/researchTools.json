@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} file sono cambiati nel tuo progetto dopo l'avvio di questa attività. I loro diff sono rispetto alle versioni precedenti, quindi non possono essere applicati.",
       "applyAria": "Applica {{path}}",
       "changedSince": "Modificato nel frattempo",
+      "mergesOnApply": "Questo file è stato modificato dopo l'avvio dell'attività. L'applicazione mantiene quelle modifiche e aggiunge quelle dell'attività.",
       "loading": "Caricamento...",
       "refreshPreview": "Aggiorna l'anteprima",
       "preview": "Anteprima",

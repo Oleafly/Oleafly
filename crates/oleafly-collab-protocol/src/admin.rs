@@ -72,6 +72,8 @@ pub struct RuntimeSettings {
     pub access_logs_allowed: bool,
     pub email_notifications: bool,
     pub comments_allowed: bool,
+    #[serde(default)]
+    pub email_link_sign_in: bool,
 }
 
 impl Default for RuntimeSettings {
@@ -85,6 +87,7 @@ impl Default for RuntimeSettings {
             access_logs_allowed: true,
             email_notifications: true,
             comments_allowed: true,
+            email_link_sign_in: false,
         }
     }
 }
@@ -103,6 +106,7 @@ impl RuntimeSettings {
             (&mut self.access_logs_allowed, patch.access_logs_allowed),
             (&mut self.email_notifications, patch.email_notifications),
             (&mut self.comments_allowed, patch.comments_allowed),
+            (&mut self.email_link_sign_in, patch.email_link_sign_in),
         ];
         for (field, value) in fields {
             if let Some(value) = value {
@@ -130,6 +134,8 @@ pub struct RuntimeSettingsPatch {
     pub email_notifications: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comments_allowed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email_link_sign_in: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -156,6 +162,14 @@ pub enum SecurityEventKind {
     ProjectAccessChanged,
     ProjectAccessRemoved,
     ProjectArchived,
+    ProjectUnarchived,
+    ProjectSettingsChanged,
+    GuestInvited,
+    GuestInvitationApproved,
+    GuestInvitationDeclined,
+    GuestInvitationRevoked,
+    GuestAdmissionEnded,
+    ProjectRejoinRefused,
     #[serde(other)]
     Unknown,
 }
@@ -169,6 +183,8 @@ pub struct SecurityEvent {
     pub target: Option<String>,
     pub ip: Option<String>,
     pub detail: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_title: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -197,6 +213,7 @@ mod tests {
                 access_logs_allowed: true,
                 email_notifications: true,
                 comments_allowed: true,
+                email_link_sign_in: false,
             }
         );
         assert_eq!(
@@ -209,7 +226,8 @@ mod tests {
                 "link_sharing_allowed": true,
                 "access_logs_allowed": true,
                 "email_notifications": true,
-                "comments_allowed": true
+                "comments_allowed": true,
+                "email_link_sign_in": false
             })
         );
     }
@@ -257,6 +275,7 @@ mod tests {
             access_logs_allowed: Some(false),
             email_notifications: Some(false),
             comments_allowed: Some(false),
+            email_link_sign_in: Some(true),
         };
         let mut settings = RuntimeSettings::default();
         settings.apply(&flipped);
@@ -271,7 +290,35 @@ mod tests {
                 access_logs_allowed: false,
                 email_notifications: false,
                 comments_allowed: false,
+                email_link_sign_in: true,
             }
+        );
+    }
+
+    #[test]
+    fn email_link_sign_in_is_off_by_default_and_patchable() {
+        assert!(!RuntimeSettings::default().email_link_sign_in);
+        let older: RuntimeSettings = serde_json::from_value(json!({
+            "guests_enabled": false,
+            "guest_approval_required": true,
+            "directory_visible": true,
+            "directory_shows_email": true,
+            "link_sharing_allowed": true,
+            "access_logs_allowed": true,
+            "email_notifications": true,
+            "comments_allowed": true
+        }))
+        .unwrap();
+        assert!(!older.email_link_sign_in);
+        let patch: RuntimeSettingsPatch =
+            serde_json::from_str(r#"{"email_link_sign_in":true}"#).unwrap();
+        assert_eq!(patch.email_link_sign_in, Some(true));
+        let mut settings = RuntimeSettings::default();
+        settings.apply(&patch);
+        assert!(settings.email_link_sign_in);
+        assert_eq!(
+            serde_json::to_value(settings).unwrap()["email_link_sign_in"],
+            true
         );
     }
 
@@ -425,6 +472,32 @@ mod tests {
                 "project_access_removed",
             ),
             (SecurityEventKind::ProjectArchived, "project_archived"),
+            (SecurityEventKind::ProjectUnarchived, "project_unarchived"),
+            (
+                SecurityEventKind::ProjectSettingsChanged,
+                "project_settings_changed",
+            ),
+            (SecurityEventKind::GuestInvited, "guest_invited"),
+            (
+                SecurityEventKind::GuestInvitationApproved,
+                "guest_invitation_approved",
+            ),
+            (
+                SecurityEventKind::GuestInvitationDeclined,
+                "guest_invitation_declined",
+            ),
+            (
+                SecurityEventKind::GuestInvitationRevoked,
+                "guest_invitation_revoked",
+            ),
+            (
+                SecurityEventKind::GuestAdmissionEnded,
+                "guest_admission_ended",
+            ),
+            (
+                SecurityEventKind::ProjectRejoinRefused,
+                "project_rejoin_refused",
+            ),
             (SecurityEventKind::Unknown, "unknown"),
         ];
         for (kind, name) in kinds {

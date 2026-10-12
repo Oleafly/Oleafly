@@ -1442,5 +1442,13 @@
     "compiling": "Compilation en cours",
     "hideLog": "Masquer le journal de compilation",
     "showLog": "Afficher le journal de compilation"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fichier a été modifié en dehors d'Oleafly. Envoyer cette modification à tout le monde ou la garder en local ?",
+    "paused_many": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "paused_other": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "send": "Envoyer",
+    "keepLocal": "Garder en local",
+    "unavailable": "Le dossier du projet n'est pas disponible, la synchronisation est donc en pause. Elle reprendra quand le dossier sera de retour."
   }
 }

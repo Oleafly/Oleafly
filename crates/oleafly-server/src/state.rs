@@ -7,21 +7,26 @@ use ring::rand::{SecureRandom, SystemRandom};
 use rusqlite::{params, Connection};
 
 use crate::auth::ProviderRegistry;
-use crate::blobs::BlobStore;
+use crate::blobs::{cleanup, BlobStore};
 use crate::clock::Clock;
 use crate::config::{normalize_setup_code, ServerConfig};
 use crate::db::{self, Db};
 use crate::error::ServerError;
+use crate::mail::{Mailer, RetryPolicy};
 use crate::members;
-use crate::rate_limit::{RateLimiter, SIGN_IN_BURST, SIGN_IN_PER_MINUTE};
+use crate::polls::PollHub;
+use crate::rate_limit::{ConnectLimits, RateLimiter, SIGN_IN_BURST, SIGN_IN_PER_MINUTE};
 use crate::rooms::Rooms;
 use crate::security_log;
+use crate::snapshots::{Budget, Snapshots};
 use crate::sockets::SocketRegistry;
 use crate::tokens;
 
 pub const DATABASE_FILE: &str = "oleafly-server.sqlite3";
 pub const SETUP_LOG_PREFIX: &str = "Setup code: ";
 pub const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+pub const JOIN_BURST: u32 = 20;
+pub const JOIN_PER_MINUTE: u32 = 10;
 const SETUP_CODE_ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const EXPIRING_TABLES: [&str; 5] = [
     "nonces",
@@ -41,8 +46,14 @@ pub struct AppState {
     pub providers: Arc<ProviderRegistry>,
     pub sockets: Arc<SocketRegistry>,
     pub rate_limiter: Arc<RateLimiter>,
+    pub connects: Arc<ConnectLimits>,
+    pub join_limiter: Arc<RateLimiter>,
     pub rooms: Arc<Rooms>,
+    pub started_at: i64,
+    pub polls: Arc<PollHub>,
     pub blobs: BlobStore,
+    pub mailer: Mailer,
+    pub snapshots: Snapshots,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -50,6 +61,8 @@ pub struct MaintenanceReport {
     pub security_events: usize,
     pub expired_rows: usize,
     pub expired_projects: usize,
+    pub access_events: usize,
+    pub guest_invitations: usize,
 }
 
 impl AppState {
@@ -69,6 +82,15 @@ impl AppState {
         clock: Arc<dyn Clock>,
         database: Db,
     ) -> Result<AppState, ServerError> {
+        AppState::with_mail_retry(config, clock, database, RetryPolicy::default()).await
+    }
+
+    pub async fn with_mail_retry(
+        config: ServerConfig,
+        clock: Arc<dyn Clock>,
+        database: Db,
+        mail_retry: RetryPolicy,
+    ) -> Result<AppState, ServerError> {
         let http = reqwest::Client::builder()
             .user_agent(concat!("oleafly-server/", env!("CARGO_PKG_VERSION")))
             .timeout(Duration::from_secs(20))
@@ -79,6 +101,8 @@ impl AppState {
             })?;
         let providers = Arc::new(ProviderRegistry::from_config(&config, http.clone()));
         let blobs = BlobStore::from_config(&config)?;
+        let started_at = clock.now_ms();
+        let mailer = Mailer::start(&config, Arc::clone(&clock), mail_retry)?;
         let preset = config.setup_code.clone();
         let (server_id, setup_line) = database
             .call(move |conn| {
@@ -92,6 +116,13 @@ impl AppState {
         if let Some(line) = setup_line {
             tracing::warn!("{line}");
         }
+        let snapshots = Snapshots::new(blobs.clone(), &config.data_dir);
+        snapshots.set_budget(Budget {
+            memory_bytes: config.snapshot_memory_mb.saturating_mul(1024 * 1024),
+            max_snapshot_bytes: config.limits.max_project_mb.saturating_mul(1024 * 1024),
+        });
+        snapshots.move_legacy_files(&database).await?;
+        let polls = Arc::new(PollHub::with_hold(config.poll_hold));
         Ok(AppState {
             config: Arc::new(config),
             db: database,
@@ -101,8 +132,14 @@ impl AppState {
             providers,
             sockets: Arc::new(SocketRegistry::new()),
             rate_limiter: Arc::new(RateLimiter::new(SIGN_IN_BURST, SIGN_IN_PER_MINUTE)),
+            connects: Arc::new(ConnectLimits::default()),
+            join_limiter: Arc::new(RateLimiter::new(JOIN_BURST, JOIN_PER_MINUTE)),
             rooms: Arc::new(Rooms::new()),
+            started_at,
+            polls,
             blobs,
+            mailer,
+            snapshots,
         })
     }
 
@@ -131,7 +168,13 @@ impl AppState {
     pub async fn run_maintenance(&self) -> Result<MaintenanceReport, ServerError> {
         let now = self.clock.now_ms();
         let cutoff = now - i64::from(self.config.security_log_days) * DAY_MS;
-        let (security_events, expired_rows) = self
+        let mut report = MaintenanceReport::default();
+        let mut failed: Option<ServerError> = None;
+        let mut note = |step: &str, error: ServerError| {
+            tracing::warn!("Maintenance could not {step}: {error}");
+            failed.get_or_insert(error);
+        };
+        let pruned = self
             .db
             .call(move |conn| {
                 let security_events = security_log::prune(conn, cutoff)?;
@@ -144,13 +187,54 @@ impl AppState {
                 }
                 Ok((security_events, expired_rows))
             })
-            .await?;
-        let expired_projects = self.expire_projects(now).await?;
-        Ok(MaintenanceReport {
-            security_events,
-            expired_rows,
-            expired_projects,
-        })
+            .await;
+        match pruned {
+            Ok((security_events, expired_rows)) => {
+                report.security_events = security_events;
+                report.expired_rows = expired_rows;
+            }
+            Err(error) => note("prune the security log and expired sign-in rows", error),
+        }
+        match self
+            .db
+            .call(move |conn| crate::access_log::prune(conn, cutoff))
+            .await
+        {
+            Ok(count) => report.access_events = count,
+            Err(error) => note("prune the access log", error),
+        }
+        match self
+            .db
+            .call(move |conn| crate::guests::prune(conn, cutoff))
+            .await
+        {
+            Ok(count) => report.guest_invitations = count,
+            Err(error) => note("prune old guest invitations", error),
+        }
+        match self.expire_projects(now).await {
+            Ok(count) => report.expired_projects = count,
+            Err(error) => note("delete expired projects", error),
+        }
+        if let Err(error) = self.snapshots.move_legacy_files(&self.db).await {
+            note("move old snapshot files into the blob store", error);
+        }
+        if let Err(error) = self.snapshots.prune(&self.db, now).await {
+            note("remove superseded snapshots", error);
+        }
+        match cleanup::unused_files(&self.db, &self.snapshots, now).await {
+            Ok(unused) => {
+                if let Err(error) =
+                    cleanup::remove_unused_files(&self.db, &self.blobs, unused, now).await
+                {
+                    note("remove files no project uses", error);
+                }
+            }
+            Err(error) => note("find files no project uses", error),
+        }
+        if let Err(error) = cleanup::finish_removals(&self.db, &self.blobs, &self.snapshots).await {
+            note("finish removing stored files", error);
+        }
+        failed.map_or(Ok(report), Err)
     }
 
     async fn expire_projects(&self, now: i64) -> Result<usize, ServerError> {
@@ -162,18 +246,15 @@ impl AppState {
                 let ids = crate::projects::expired_projects(conn, pending_before, archived_before)?;
                 let mut deleted = Vec::with_capacity(ids.len());
                 for id in ids {
-                    deleted.push(crate::projects::delete_project(conn, id)?);
+                    deleted.push((id, crate::projects::delete_project(conn, id, now)?));
                 }
                 Ok(deleted)
             })
             .await?;
-        for deleted in &expired {
-            for file in &deleted.snapshot_files {
-                let _ = std::fs::remove_file(self.config.data_dir.join(file));
-            }
-            for hash in &deleted.orphan_blobs {
-                self.blobs.remove(hash).await?;
-            }
+        for (project, deleted) in &expired {
+            self.snapshots
+                .forget_project(*project, &deleted.snapshots)
+                .await;
         }
         Ok(expired.len())
     }

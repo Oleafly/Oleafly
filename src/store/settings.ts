@@ -75,6 +75,7 @@ export type RailTab =
   | "refs"
   | "research"
   | "collab"
+  | "comments"
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";

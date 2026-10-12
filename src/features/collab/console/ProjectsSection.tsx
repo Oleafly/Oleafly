@@ -1,0 +1,386 @@
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Search } from "lucide-react";
+import { SettingsNote } from "@/components/settings/SettingsNote";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { formatBytes } from "@/lib/format-bytes";
+import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
+import {
+  collabAdminArchiveProject,
+  collabAdminProjects,
+  collabAdminUnarchiveProject,
+  type CollabAdminProject,
+  type CollabAdminProjectSort,
+  type CollabAdminProjectsQuery,
+  type CollabProjectStatus,
+  type CollabSortOrder,
+} from "@/lib/tauri";
+import { collabErrorCode, collabErrorMessage } from "../errors";
+import { InlineAlert, LoadFailed } from "../feedback";
+import { collabPerson } from "../people";
+import { serverRoleAllows, type ServerRole } from "../roles";
+
+export const PROJECTS_PAGE_SIZE = 50;
+const SEARCH_DELAY_MS = 300;
+
+const FILTERS = ["all", "active", "archived", "pending"] as const;
+type Filter = (typeof FILTERS)[number];
+
+type Column = Exclude<CollabAdminProjectSort, "created">;
+const COLUMNS: readonly Column[] = ["title", "owner", "members", "size", "activity"];
+const NUMERIC: ReadonlySet<Column> = new Set<Column>(["members", "size"]);
+const ASCENDING_FIRST: ReadonlySet<Column> = new Set<Column>(["title", "owner"]);
+
+const STATUS_BADGE = {
+  archived: "muted",
+  pending: "info",
+  unknown: "muted",
+} as const satisfies Record<Exclude<CollabProjectStatus, "active">, BadgeVariant>;
+
+interface Sorting {
+  readonly column: Column;
+  readonly order: CollabSortOrder;
+}
+
+type ListState =
+  | { readonly status: "loading" }
+  | { readonly status: "failed"; readonly message: string }
+  | {
+      readonly status: "ready";
+      readonly items: CollabAdminProject[];
+      readonly next: string | null;
+      readonly total: number;
+    };
+
+function ariaSort(sorting: Sorting, column: Column): "ascending" | "descending" | "none" {
+  if (sorting.column !== column) return "none";
+  return sorting.order === "asc" ? "ascending" : "descending";
+}
+
+function StatusBadge({ status }: Readonly<{ status: CollabProjectStatus }>) {
+  const { t } = useTranslation(["collab"]);
+  if (status === "active") return null;
+  return (
+    <Badge variant={STATUS_BADGE[status]} size="sm">
+      {t(($) => $.collab.console.projects.status[status])}
+    </Badge>
+  );
+}
+
+export function ProjectsSection({
+  serverId,
+  actor,
+  archiveDays,
+  now,
+}: Readonly<{ serverId: string; actor: ServerRole; archiveDays: number | null; now: number }>) {
+  const { t } = useTranslation(["collab"]);
+  const canArchive = serverRoleAllows(actor, "deleteProjectForStorage");
+  const showSize = serverRoleAllows(actor, "viewStorage");
+  const columns = COLUMNS.filter((column) => column !== "size" || showSize);
+  const [search, setSearch] = useState("");
+  const searched = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [sorting, setSorting] = useState<Sorting>({ column: "activity", order: "desc" });
+  const [list, setList] = useState<ListState>({ status: "loading" });
+  const [request, setRequest] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const [confirming, setConfirming] = useState<CollabAdminProject | null>(null);
+
+  const query = useMemo<CollabAdminProjectsQuery>(
+    () => ({
+      q: searched === "" ? null : searched,
+      status: filter === "all" ? null : filter,
+      sort: sorting.column,
+      order: sorting.order,
+      cursor: null,
+      limit: PROJECTS_PAGE_SIZE,
+    }),
+    [searched, filter, sorting],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void request;
+    setMoreError(null);
+    collabAdminProjects(serverId, query).then(
+      (page) => {
+        if (active) setList({ status: "ready", items: page.items, next: page.next_cursor, total: page.total });
+      },
+      (error: unknown) => {
+        if (active) setList({ status: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [serverId, query, request]);
+
+  const loadMore = async () => {
+    if (list.status !== "ready" || !list.next) return;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await collabAdminProjects(serverId, { ...query, cursor: list.next });
+      setList((current) =>
+        current.status === "ready"
+          ? { status: "ready", items: [...current.items, ...page.items], next: page.next_cursor, total: page.total }
+          : current,
+      );
+    } catch (error) {
+      setMoreError(collabErrorMessage(collabErrorCode(error)));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const replace = (next: CollabAdminProject) =>
+    setList((current) =>
+      current.status === "ready"
+        ? {
+            ...current,
+            items: current.items.map((item) => (item.project_id === next.project_id ? next : item)),
+          }
+        : current,
+    );
+
+  const change = async (project: CollabAdminProject, archive: boolean) => {
+    setConfirming(null);
+    setBusyId(project.project_id);
+    setRowError(null);
+    try {
+      replace(
+        archive
+          ? await collabAdminArchiveProject(serverId, project.project_id)
+          : await collabAdminUnarchiveProject(serverId, project.project_id),
+      );
+    } catch (error) {
+      setRowError({ id: project.project_id, message: collabErrorMessage(collabErrorCode(error)) });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const sortBy = (column: Column) =>
+    setSorting((current) =>
+      current.column === column
+        ? { column, order: current.order === "asc" ? "desc" : "asc" }
+        : { column, order: ASCENDING_FIRST.has(column) ? "asc" : "desc" },
+    );
+
+  const columnCount = columns.length + (canArchive ? 1 : 0);
+
+  const renderAction = (project: CollabAdminProject) => {
+    const busy = busyId === project.project_id;
+    if (project.status === "archived") {
+      return (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          disabled={busy}
+          aria-label={t(($) => $.collab.console.projects.restoreNamed, { title: project.title })}
+          onClick={() => void change(project, false)}
+        >
+          {busy ? <Spinner /> : <ArchiveRestore aria-hidden />}
+          {t(($) => $.collab.console.projects.restore)}
+        </Button>
+      );
+    }
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        className="hover:bg-destructive/10 hover:text-destructive"
+        disabled={busy}
+        aria-label={t(($) => $.collab.console.projects.archiveNamed, { title: project.title })}
+        onClick={() => setConfirming(project)}
+      >
+        {busy ? <Spinner /> : <Archive aria-hidden />}
+        {t(($) => $.collab.console.projects.archive)}
+      </Button>
+    );
+  };
+
+  const renderRow = (project: CollabAdminProject) => (
+    <TableRow key={project.project_id} data-testid={`console-project-${project.project_id}`}>
+      <TableCell className="max-w-64">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium">{project.title}</span>
+          <StatusBadge status={project.status} />
+        </div>
+      </TableCell>
+      <TableCell className="max-w-48">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar person={collabPerson(project.owner)} size="sm" />
+          <span className="truncate">{project.owner.display_name}</span>
+        </div>
+      </TableCell>
+      <TableCell numeric>{formatNumber(project.member_count)}</TableCell>
+      {showSize ? (
+        <TableCell numeric className="whitespace-nowrap">
+          {project.size_bytes === null ? null : formatBytes(project.size_bytes)}
+        </TableCell>
+      ) : null}
+      <TableCell className="whitespace-nowrap text-muted-foreground">
+        <time dateTime={new Date(project.last_activity_at).toISOString()}>
+          {formatRelativeTimeFrom(project.last_activity_at, now)}
+        </time>
+      </TableCell>
+      {canArchive ? <TableCell className="text-right">{renderAction(project)}</TableCell> : null}
+    </TableRow>
+  );
+
+  const renderList = () => {
+    if (list.status === "loading") {
+      return <LoadingState size="compact" label={t(($) => $.collab.console.projects.loading)} />;
+    }
+    if (list.status === "failed") {
+      return (
+        <LoadFailed
+          message={t(($) => $.collab.admin.loadFailed)}
+          reason={list.message}
+          onRetry={() => setRequest((count) => count + 1)}
+        />
+      );
+    }
+    if (list.items.length === 0) {
+      const filtered = searched !== "" || filter !== "all";
+      return (
+        <EmptyState
+          size="compact"
+          className="rounded-lg border border-dashed px-4 py-6"
+          title={filtered ? t(($) => $.collab.console.projects.noMatches) : t(($) => $.collab.console.projects.empty)}
+        />
+      );
+    }
+    return (
+      <>
+        <Table containerClassName="rounded-lg border">
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead key={column} numeric={NUMERIC.has(column)} aria-sort={ariaSort(sorting, column)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="-mx-2 font-medium uppercase tracking-wide"
+                    aria-label={t(($) => $.collab.console.projects.sortBy, {
+                      column: t(($) => $.collab.console.projects.columns[column]),
+                    })}
+                    onClick={() => sortBy(column)}
+                  >
+                    {t(($) => $.collab.console.projects.columns[column])}
+                    {sorting.column === column ? (
+                      sorting.order === "asc" ? (
+                        <ArrowUp aria-hidden />
+                      ) : (
+                        <ArrowDown aria-hidden />
+                      )
+                    ) : null}
+                  </Button>
+                </TableHead>
+              ))}
+              {canArchive ? (
+                <TableHead>
+                  <span className="sr-only">{t(($) => $.collab.console.projects.columns.actions)}</span>
+                </TableHead>
+              ) : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.items.flatMap((project) => [
+              renderRow(project),
+              rowError?.id === project.project_id ? (
+                <TableRow key={`${project.project_id}-error`}>
+                  <TableCell colSpan={columnCount}>
+                    <InlineAlert>{rowError.message}</InlineAlert>
+                  </TableCell>
+                </TableRow>
+              ) : null,
+            ])}
+          </TableBody>
+        </Table>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.collab.console.projects.count, {
+              shown: formatNumber(list.items.length),
+              total: formatNumber(list.total),
+            })}
+          </p>
+          {list.next ? (
+            <Button type="button" variant="outline" size="sm" disabled={loadingMore} onClick={() => void loadMore()}>
+              {loadingMore ? <Spinner /> : null}
+              {t(($) => $.collab.console.projects.loadMore)}
+            </Button>
+          ) : null}
+        </div>
+        {moreError ? <InlineAlert>{moreError}</InlineAlert> : null}
+      </>
+    );
+  };
+
+  return (
+    <div className="space-y-3" data-testid="console-projects">
+      <p className="text-xs text-muted-foreground">{t(($) => $.collab.console.projects.description)}</p>
+      {canArchive ? null : <SettingsNote>{t(($) => $.collab.console.projects.adminOnly)}</SettingsNote>}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
+          <Search aria-hidden className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(($) => $.collab.console.projects.searchPlaceholder)}
+            aria-label={t(($) => $.collab.console.projects.searchLabel)}
+            maxLength={200}
+            className="pl-8"
+          />
+        </div>
+        <ButtonGroup aria-label={t(($) => $.collab.console.projects.filterLabel)}>
+          {FILTERS.map((option) => (
+            <Button
+              key={option}
+              type="button"
+              size="sm"
+              variant={filter === option ? "secondary" : "outline"}
+              aria-pressed={filter === option}
+              onClick={() => setFilter(option)}
+            >
+              {t(($) => $.collab.console.projects.filter[option])}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </div>
+      {renderList()}
+      <ConfirmationDialog
+        open={confirming !== null}
+        title={t(($) => $.collab.console.projects.archiveConfirm.title, { title: confirming?.title ?? "" })}
+        description={
+          archiveDays === null
+            ? t(($) => $.collab.console.projects.archiveConfirm.descriptionLater)
+            : t(($) => $.collab.console.projects.archiveConfirm.description, { days: formatNumber(archiveDays) })
+        }
+        confirmLabel={t(($) => $.collab.console.projects.archiveConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (confirming) void change(confirming, true);
+        }}
+        onCancel={() => setConfirming(null)}
+      />
+    </div>
+  );
+}

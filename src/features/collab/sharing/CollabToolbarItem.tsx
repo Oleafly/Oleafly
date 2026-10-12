@@ -19,10 +19,13 @@ function PersonLines({ entry }: Readonly<{ entry: PresentPerson | undefined }>) 
   const { t } = useTranslation(["collab"]);
   if (!entry) return null;
   const role = entry.role;
+  const kind = [role ? t(($) => $.collab.projectRoles[role]) : null, entry.guest ? t(($) => $.collab.guests.badge) : null]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <span className="flex flex-col text-left">
       <span className="font-medium">{entry.person.name}</span>
-      {role ? <span>{t(($) => $.collab.projectRoles[role])}</span> : null}
+      {kind ? <span>{kind}</span> : null}
       <span className="text-muted-foreground">{entry.path ?? t(($) => $.collab.toolbar.noFile)}</span>
     </span>
   );
@@ -34,6 +37,7 @@ function HiddenPerson({ entry }: Readonly<{ entry: PresentPerson | undefined }>)
   const role = entry.role;
   const details = [
     role ? t(($) => $.collab.projectRoles[role]) : null,
+    entry.guest ? t(($) => $.collab.guests.badge) : null,
     entry.path ?? t(($) => $.collab.toolbar.noFile),
   ]
     .filter(Boolean)

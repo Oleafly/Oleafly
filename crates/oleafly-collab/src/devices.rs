@@ -3,8 +3,9 @@ use std::path::Path;
 
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::envelope::Envelope;
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectDevice;
+use oleafly_collab_protocol::snapshots::{snapshot_signing_bytes, ProjectPeer};
 use serde::{Deserialize, Serialize};
 
 use crate::{write_atomic, CollabError};
@@ -19,6 +20,8 @@ struct Pinned {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceRegistry {
     devices: BTreeMap<DeviceId, Pinned>,
+    #[serde(default)]
+    peers: BTreeMap<u64, DeviceId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,6 +57,51 @@ impl DeviceRegistry {
 
     pub fn account_of(&self, device: DeviceId) -> Option<AccountId> {
         self.devices.get(&device).map(|pinned| pinned.account_id)
+    }
+
+    pub fn device_of_peer(&self, peer: u64) -> Option<DeviceId> {
+        self.peers.get(&peer).copied()
+    }
+
+    pub fn bind_peers(&mut self, peers: &[u64], device: DeviceId) -> bool {
+        let mut changed = false;
+        for peer in peers {
+            if !self.peers.contains_key(peer) {
+                self.peers.insert(*peer, device);
+                changed = true;
+            }
+        }
+        changed
+    }
+
+    pub fn pin_peers(&mut self, listed: &[ProjectPeer]) -> bool {
+        let mut changed = false;
+        for bound in listed {
+            changed |= self.peers.insert(bound.peer, bound.device_id) != Some(bound.device_id);
+        }
+        changed
+    }
+
+    pub fn verify_snapshot(
+        &self,
+        project: SharedProjectId,
+        seq: u64,
+        bytes: &[u8],
+        device: DeviceId,
+        signature: &[u8],
+    ) -> Verdict {
+        let Some(pinned) = self.devices.get(&device) else {
+            return Verdict::Unknown;
+        };
+        let digest = ring::digest::digest(&ring::digest::SHA256, bytes);
+        let message = snapshot_signing_bytes(project, seq, digest.as_ref());
+        let signed = b64url_decode(&pinned.public_key)
+            .is_ok_and(|key| verify_ed25519(&key, &message, signature));
+        if signed {
+            Verdict::Signed(pinned.account_id)
+        } else {
+            Verdict::Forged
+        }
     }
 
     pub fn verify(&self, envelope: &Envelope, claimed: Option<AccountId>) -> Verdict {
@@ -234,6 +282,56 @@ mod tests {
         assert_eq!(
             loaded.verify(&signed(laptop, &key, b"x"), None),
             Verdict::Signed(alice)
+        );
+    }
+
+    #[test]
+    fn a_writer_id_stays_with_the_first_device_seen_unless_the_server_says_otherwise() {
+        let (laptop, phone) = (DeviceId::new_v7(), DeviceId::new_v7());
+        let mut registry = DeviceRegistry::default();
+        assert!(registry.bind_peers(&[7, 8], laptop));
+        assert!(!registry.bind_peers(&[7], phone));
+        assert_eq!(registry.device_of_peer(7), Some(laptop));
+        assert_eq!(registry.device_of_peer(9), None);
+        let account = AccountId::new_v7();
+        assert!(registry.pin_peers(&[ProjectPeer {
+            peer: 8,
+            device_id: phone,
+            account_id: account,
+        }]));
+        assert_eq!(registry.device_of_peer(8), Some(phone));
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("devices.json");
+        registry.save(&path).unwrap();
+        assert_eq!(DeviceRegistry::load(&path), registry);
+        std::fs::write(&path, br#"{"devices":{}}"#).unwrap();
+        assert_eq!(DeviceRegistry::load(&path).device_of_peer(7), None);
+    }
+
+    #[test]
+    fn a_snapshot_signature_is_checked_against_the_pinned_key() {
+        let (alice, laptop, key) = (AccountId::new_v7(), DeviceId::new_v7(), device_key());
+        let project = SharedProjectId::new_v7();
+        let mut registry = DeviceRegistry::default();
+        let bytes = b"snapshot bytes";
+        let digest = ring::digest::digest(&ring::digest::SHA256, bytes);
+        let signature = key.sign(&snapshot_signing_bytes(project, 0, digest.as_ref()));
+        assert_eq!(
+            registry.verify_snapshot(project, 0, bytes, laptop, &signature),
+            Verdict::Unknown
+        );
+        registry.pin(vec![listed(laptop, alice, &key, 1)]);
+        assert_eq!(
+            registry.verify_snapshot(project, 0, bytes, laptop, &signature),
+            Verdict::Signed(alice)
+        );
+        assert_eq!(
+            registry.verify_snapshot(project, 0, b"other bytes", laptop, &signature),
+            Verdict::Forged
+        );
+        assert_eq!(
+            registry.verify_snapshot(SharedProjectId::new_v7(), 0, bytes, laptop, &signature),
+            Verdict::Forged
         );
     }
 }

@@ -131,6 +131,12 @@ describe("collaboration IPC contract", () => {
       "collab_admin_security_log",
       { serverId: SERVER, cursor: "c2" },
     ],
+    [
+      "collabLinkPreview",
+      () => tauri.collabLinkPreview(SERVER, ACCOUNT),
+      "collab_link_preview",
+      { serverId: SERVER, sharedProjectId: ACCOUNT },
+    ],
   ] as const)("sends %s", async (_label, call, command, args) => {
     await call();
     if (args === undefined) expect(mocks.invoke).toHaveBeenCalledWith(command);
@@ -168,7 +174,7 @@ describe("collaboration command drift", () => {
   const camel = (name: string) => name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
   it("registers every collaboration command once", () => {
-    expect(registered).toHaveLength(24);
+    expect(registered).toHaveLength(25);
     expect(new Set(registered).size).toBe(registered.length);
   });
 

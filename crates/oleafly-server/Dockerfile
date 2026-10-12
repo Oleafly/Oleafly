@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.27
 ARG RUST_VERSION=1.98.1
 ARG ALPINE_VERSION=3.22
-ARG DEBIAN_VERSION=13.7
+ARG RUNTIME_IMAGE=gcr.io/distroless/static-debian13:latest@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
@@ -20,27 +20,23 @@ COPY src-tauri/src ./src-tauri/src
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/build/target,sharing=locked \
-    xx-cargo build --release --locked -p oleafly-server --target-dir /build/target \
+    find crates -type f -exec touch {} + \
+    && xx-cargo build --release --locked -p oleafly-server --target-dir /build/target \
     && xx-verify --static "/build/target/$(xx-cargo --print-target-triple)/release/oleafly-server" \
-    && mkdir -p /out \
+    && mkdir -p /out/data \
+    && chmod 0700 /out/data \
     && cp "/build/target/$(xx-cargo --print-target-triple)/release/oleafly-server" /out/oleafly-server
 
 FROM scratch AS binary
 COPY --from=build /out/oleafly-server /oleafly-server
 
-FROM debian:${DEBIAN_VERSION}-slim AS runtime
+FROM ${RUNTIME_IMAGE} AS runtime
 LABEL org.opencontainers.image.title="Oleafly Server" \
+      org.opencontainers.image.description="Self-hosted collaboration server for Oleafly" \
       org.opencontainers.image.source="https://github.com/Oleafly/Oleafly" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 oleafly \
-    && useradd --uid 10001 --gid oleafly --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin oleafly \
-    && mkdir -p /data \
-    && chown oleafly:oleafly /data \
-    && chmod 0700 /data
-COPY --from=build /out/oleafly-server /usr/local/bin/oleafly-server
+COPY --from=build --chown=10001:10001 --chmod=0700 /out/data /data
+COPY --from=build --chmod=0755 /out/oleafly-server /usr/local/bin/oleafly-server
 ENV OLEAFLY_BIND=0.0.0.0:8080 \
     OLEAFLY_DATA_DIR=/data
 USER 10001:10001

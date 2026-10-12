@@ -9,6 +9,7 @@ export interface PresentPerson {
   person: AvatarPerson;
   role: CollabProjectRole | null;
   path: string | null;
+  guest: boolean;
 }
 
 function peerPerson(peer: PeerPlace, members: readonly CollabProjectMember[], unknownName: string) {
@@ -17,6 +18,7 @@ function peerPerson(peer: PeerPlace, members: readonly CollabProjectMember[], un
   return {
     person: known ? collabPerson(known) : { id: peer.accountId, name: unknownName },
     role: member?.role ?? null,
+    guest: member?.person.guest === true,
   };
 }
 
@@ -30,12 +32,13 @@ export function presentPeople(
   for (const peer of Object.values(peers)) {
     if (peer.accountId === selfId) continue;
     const existing = byAccount.get(peer.accountId);
-    const { person, role } = peerPerson(peer, members, unknownName);
+    const { person, role, guest } = peerPerson(peer, members, unknownName);
     byAccount.set(peer.accountId, {
       accountId: peer.accountId,
       person: { ...person, hue: peer.hue },
       role,
       path: existing?.path ?? peer.path,
+      guest,
     });
   }
   return [...byAccount.values()].sort((a, b) => a.person.name.localeCompare(b.person.name));

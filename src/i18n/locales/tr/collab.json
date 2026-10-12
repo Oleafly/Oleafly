@@ -35,6 +35,13 @@
         "title": "{{name}} kaldırılsın mı?",
         "description": "Oleafly bu sunucudaki oturumu kapatır ve sunucuyu unutur. Bu bilgisayarda zaten bulunan projeler oldukları yerde kalır.",
         "confirm": "Sunucuyu kaldır"
+      },
+      "emails": {
+        "label": "Biri bir proje paylaştığında bana e-posta gönder",
+        "description": "E-postada projenin adı ve onu açmak için bir bağlantı bulunur.",
+        "noMail": "Bu sunucu e-posta göndermez. Sizinle paylaşılan projeler kitaplığınızda Sizinle paylaşılanlar altında görünmeye devam eder.",
+        "paused": "Sunucunun yöneticisi e-postayı herkes için kapattı.",
+        "loadFailed": "Oleafly e-posta ayarlarınızı yükleyemedi."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "Canlı bağlantı",
           "pass": "Canlı düzenlemeler iletilebiliyor.",
           "fail": "Sizinle sunucu arasındaki bir şey canlı düzenlemeleri engelliyor. Bir güvenlik duvarı veya proxy ayarının değiştirilmesi gerekebilir.",
-          "info": "Canlı düzenlemeler iletiliyor, ancak bağlantı biraz zaman aldı.",
+          "info": "Bu ağ olağan yolu engellediği için canlı düzenlemeler daha yavaş bir yoldan gidiyor. Yine de ulaşıyorlar.",
           "skipped": "Önceki bir denetim başarısız olduğu için denetlenmedi."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "Bu sunucuda henüz oturum açmanın bir yolu yok. Sunucunun yöneticisinden bir yol ayarlamasını isteyin.",
     "waitingTitle": "Tarayıcınız bekleniyor",
     "waitingDescription": "Açılan tarayıcı penceresinde oturum açmayı tamamlayın, sonra buraya dönün.",
+    "waitingEmailDescription": "Tarayıcıda e-posta adresinizi girin, ardından göndereceğimiz bağlantıyı bu bilgisayarda açın.",
     "cancel": "İptal",
     "back": "Geri",
     "doneTitle": "Oturum açtınız",
     "doneDescription": "{{server}} sunucusunda {{name}} olarak oturum açtınız.",
-    "done": "Bitti"
+    "done": "Bitti",
+    "codeSignIn": "Kodla oturum aç",
+    "codeSignInDescription": "Tarayıcınız Oleafly'ye geri dönemediğinde ya da başka bir cihazda oturum açmak için bunu kullanın.",
+    "codeRequesting": "Kod alınıyor…",
+    "codeSteps": "Herhangi bir telefon veya bilgisayarda bu adresi açın ve kodu girin.",
+    "codeAddressLabel": "Adres",
+    "codeLabel": "Kod",
+    "codeExpires": "Kod saat {{time}} itibarıyla geçersiz olur.",
+    "codeWaiting": "Oturum açmanız bekleniyor",
+    "codeOpen": "Tarayıcıda aç",
+    "codeOffer": "Tarayıcı Oleafly'ye geri dönmedi mi?",
+    "codeHint": "Tarayıcınız Oleafly'ye ulaşamadıysa bunun yerine kodla oturum açın."
   },
   "errors": {
     "unreachable": "Oleafly sunucuya ulaşamadı. Adresi ve bağlantınızı kontrol edip yeniden deneyin.",
@@ -179,7 +198,8 @@
       "allowlist": "İzinli kişiler",
       "domains": "Alan adları",
       "settings": "Sunucu ayarları",
-      "log": "Güvenlik günlüğü"
+      "log": "Güvenlik günlüğü",
+      "email": "E-posta"
     },
     "members": {
       "description": "Bu sunucuda oturum açmış herkes.",
@@ -271,9 +291,17 @@
         "label": "Proje erişim günlüklerine izin ver",
         "description": "Proje sahipleri, projelerini kimin açtığının günlüğünü tutabilir."
       },
+      "commentsAllowed": {
+        "label": "Yorumlara izin ver",
+        "description": "Paylaşılan projelerdeki kişiler metne yorum yapıp yanıt verebilir. Kapatıldığında yorumlar her yerde gizlenir ve kayıtlı kalır."
+      },
       "emailNotifications": {
         "label": "E-posta bildirimleri",
-        "description": "Sunucu, kişiler eklendiğinde veya biri onlarla bir proje paylaştığında onlara e-posta gönderir."
+        "description": "Bu e-postaları gönder. Kapatırsanız sunucudaki herkes için durur."
+      },
+      "emailLinkSignIn": {
+        "label": "E-postayla oturum açma",
+        "description": "Kişiler, e-posta adreslerine gönderilen bir bağlantıyla oturum açabilir. Bunun için sunucunun e-posta ayarları gerekir. Kimin girebileceğine yine erişim kurallarınız karar verir."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "Bir alan adı kuralı ekledi",
         "domainRuleRemoved": "Bir alan adı kuralını kaldırdı",
         "settingsChanged": "Sunucu ayarlarını değiştirdi",
+        "projectShared": "Bir projeyi paylaştı",
+        "projectAccessGranted": "Birine bir projeye erişim verdi",
+        "projectAccessChanged": "Birinin bir projeye erişimini değiştirdi",
+        "projectAccessRemoved": "Birini bir projeden kaldırdı",
+        "projectLeft": "Bir projeden ayrıldı",
+        "projectLinkSharingOn": "Bir projede bağlantıyla paylaşımı açtı",
+        "projectLinkSharingOff": "Bir projede bağlantıyla paylaşımı kapattı",
+        "projectLinkRoleChanged": "Bir projenin bağlantısının neye izin verdiğini değiştirdi",
+        "projectArchived": "Bir projeyi arşivledi",
+        "projectUnarchived": "Arşivlenmiş bir projeyi geri yükledi",
+        "projectSettingsChanged": "Bir projenin ayarlarını değiştirdi",
+        "projectAccessLogOn": "Bir projenin erişim günlüğünü açtı",
+        "projectAccessLogOff": "Bir projenin erişim günlüğünü kapattı",
+        "projectCommentsOn": "Bir projede yorumları açtı",
+        "projectCommentsOff": "Bir projede yorumları kapattı",
+        "projectRejoinRefused": "Kaldırıldığı bir projeye yeniden katılmaya çalıştı",
+        "guestInvited": "Bir konuk davet etti",
+        "guestInvitationApproved": "Bir konuk davetini onayladı",
+        "guestInvitationDeclined": "Bir konuk davetini reddetti",
+        "guestInvitationRevoked": "Bir konuk davetini geri çekti",
+        "guestAdmissionEnded": "Bir konuğun sunucu erişimini sonlandırdı",
         "unknown": "Diğer sunucu olayı"
+      },
+      "details": {
+        "project": "Proje: {{title}}",
+        "provider": "{{provider}} ile",
+        "providerEmailLink": "E-posta bağlantısıyla",
+        "signInCode": "Oturum açma kodu kullandı",
+        "via": {
+          "allowlist": "İzinli kişiler listesiyle kabul edildi",
+          "domain": "Bir alan adı kuralıyla kabul edildi",
+          "setup": "Kurulum kodunu kullandı",
+          "guest": "Konuk olarak kabul edildi",
+          "link": "Proje bağlantısıyla",
+          "invitation": "Konuk davetiyle"
+        },
+        "newAccount": "Yeni hesap",
+        "reactivated": "Hesap yeniden etkinleştirildi",
+        "reasons": {
+          "suspended": "Hesap askıya alındı",
+          "notAdmitted": "Hiçbir erişim kuralı izin vermiyor",
+          "setupCodeInvalid": "Yanlış kurulum kodu",
+          "guestInvitationUnusable": "Konuk daveti artık geçerli değil",
+          "lockedOutIp": "Tek bir ağ adresinden çok fazla deneme",
+          "lockedOutAddress": "Tek bir adrese çok fazla oturum açma e-postası",
+          "stoppedByPerson": "Oturum açma sayfasında durduruldu",
+          "otherBrowser": "Başlatıldığı tarayıcıdan farklı bir tarayıcıda tamamlandı",
+          "inactiveAccountAddress": "E-posta adresi kaldırılmış ya da askıya alınmış bir hesaba ait",
+          "noProjectsLeft": "Hiç proje kalmadı"
+        },
+        "role": "Rol: {{role}}",
+        "roleChange": "{{from}} rolünden {{to}} rolüne",
+        "device": "Cihaz: {{name}}",
+        "byAdmin": "Yönetici konsolundan",
+        "settingOn": "{{setting}}: açık",
+        "settingOff": "{{setting}}: kapalı"
+      }
+    },
+    "email": {
+      "description": "Sunucu, kişileri eklediğinizde, biri onlarla bir proje paylaştığında ve hesapları yeni bir cihazda oturum açtığında onlara e-posta gönderir.",
+      "loading": "E-posta ayarları yükleniyor…",
+      "on": {
+        "title": "E-posta açık",
+        "from": "E-postalar {{from}} adresinden gelir."
+      },
+      "off": {
+        "title": "E-posta kapalı",
+        "description": "Bu sunucunun posta ayarı yok. E-postayı açmak için sunucuda OLEAFLY_SMTP_URL ve OLEAFLY_MAIL_FROM değerlerini ayarlayın, sonra sunucuyu yeniden başlatın.",
+        "copyPath": "O zamana kadar bu bağlantıyı yeni kişilere kendiniz gönderin. Bağlantı, sunucuyu Oleafly uygulamasına ekler.",
+        "address": "Bu adresi Sunucu ekle bölümüne de girebilirler:"
+      },
+      "needsSettings": "Önce sunucu için e-postayı açın.",
+      "lastFailure": "Gönderilemeyen son e-posta: {{date}}. Posta sunucusunun yanıtı:",
+      "test": {
+        "title": "Deneme e-postası",
+        "description": "Ayarların çalıştığını görmek için {{address}} adresine bir deneme e-postası gönderin.",
+        "send": "Deneme e-postası gönder",
+        "sending": "Gönderiliyor…",
+        "sent": "{{address}} adresine gönderildi. Gelen kutusunda yoksa istenmeyen klasörüne bakın.",
+        "failed": "Posta sunucusu deneme e-postasını kabul etmedi.",
+        "noAddress": "Hesabınızda doğrulanmış bir e-posta adresi yok, bu yüzden denemeyi gönderecek bir yer yok.",
+        "adminOnly": "Deneme e-postasını yalnızca yöneticiler gönderebilir."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "{{server}} sunucusunda oturum açmış ve bağlantıya sahip olan herkes bu projeyi açabilir.",
       "roleLabel": "Bağlantıyı açan kişilerin rolü"
     },
+    "comments": {
+      "label": "Yorumlar",
+      "description": "Düzenleyebilen herkes bu projedeki metne yorum yapabilir. Bunu kapatırsanız yorumlar gizlenir ama silinmez.",
+      "serverOff": "{{server}} sunucusunda yorumlar kapalı. Sunucunun yöneticisinden bunları açmasını isteyin."
+    },
     "stop": "Paylaşımı durdur",
     "stopConfirm": {
       "title": "{{name}} projesinin paylaşımı durdurulsun mu?",
@@ -378,6 +492,10 @@
       "title": "{{name}} projesinden ayrılmak istiyor musunuz?",
       "description": "Kopyanız eşitlenmeyi bırakır ve bu bilgisayarda sıradan bir proje olarak kalır.",
       "confirm": "Ayrıl"
+    },
+    "accessLog": {
+      "label": "Erişim günlüğü",
+      "description": "Sunucu, bu projeyi kimin açtığını, projeye kimin katıldığını veya kopyasını kimin indirdiğini, hangi cihazdan ve ne zaman olduğunu not eder. Bu listeyi yalnızca siz, Canlı iş birliği panelinde görürsünüz."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "Biri"
   },
   "tree": {
-    "here": "{{name}} şu anda bu dosyada"
+    "here": "{{name}} şu anda bu dosyada",
+    "clash": "{{other}} dosyasının adı da {{name}}, bu yüzden bu dosya diskte yeni bir ad aldı."
   },
   "library": {
     "kind": "paylaşılan",
@@ -427,7 +546,18 @@
     "empty": "Henüz bir şey olmadı.",
     "here": "Şu anda burada",
     "hereIn": "Şu anda {{path}} dosyasında",
-    "away": "Şu anda burada değil"
+    "away": "Şu anda burada değil",
+    "deleted": "Son silinenler",
+    "deletedEmpty": "Son zamanlarda hiçbir şey silinmedi.",
+    "accessLog": "Erişim günlüğü"
+  },
+  "deleted": {
+    "restore": "Geri yükle",
+    "restoreLabel": "{{name}} öğesini geri yükle",
+    "inFolder": "Konumu: {{folder}}",
+    "inProject": "Konumu: proje klasörü",
+    "byYou": "Siz sildiniz",
+    "by": "Silen: {{name}}"
   },
   "activity": {
     "welcomeEdit": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Düzenleyebilirsiniz.",
@@ -446,7 +576,11 @@
     "signIn": "Oturum aç",
     "repeated": "Art arda tekrar sayısı: {{number}}",
     "newDevice": "{{name}} yeni bir cihazda oturum açtı",
-    "review": "İncele"
+    "review": "İncele",
+    "renamed": "Siz {{ours}} adını verdikten sonra {{name}}, {{before}} dosyasının adını {{theirs}} olarak değiştirdi",
+    "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",
+    "mentionedHere": "{{name}} bir yorumda sizden bahsetti",
+    "showComment": "Yorumu göster"
   },
   "mergeReview": {
     "title": "Siz yokken birleştirilen değişiklikler",
@@ -460,5 +594,264 @@
     "newFile": "Yeni dosya",
     "removedFile": "Kaldırıldı",
     "diffLabel": "{{path}} içindeki değişiklikler"
+  },
+  "console": {
+    "open": "Yönetici konsolunu aç",
+    "windowTitle": "{{name}} yönetici konsolu",
+    "title": "Yönetici konsolu",
+    "sectionsLabel": "Yönetici konsolu bölümleri",
+    "sections": {
+      "overview": "Genel bakış",
+      "people": "Kişiler",
+      "access": "Erişim kuralları",
+      "projects": "Projeler",
+      "settings": "Ayarlar",
+      "email": "E-posta",
+      "log": "Güvenlik günlüğü",
+      "checks": "Bağlantı denetimleri"
+    },
+    "health": {
+      "label": "Sunucu durumu: {{status}}",
+      "checking": "Denetleniyor",
+      "ok": "Sorunsuz",
+      "warning": "Dikkat gerektiriyor",
+      "unreachable": "Ulaşılamıyor"
+    },
+    "states": {
+      "loading": "Yönetici konsolu açılıyor…",
+      "loadFailed": "Oleafly yönetici konsolunu açamadı.",
+      "unknownTitle": "Bu sunucu listenizde yok",
+      "unknownDescription": "Sunucuyu Ayarlar'da yeniden ekleyin, ardından yönetici konsolunu sunucunun kartından açın.",
+      "signedOutTitle": "Bu sunucudaki oturumunuz kapalı",
+      "signedOutDescription": "Ayarlar'da yeniden oturum açın, ardından yönetici konsolunu sunucunun kartından açın.",
+      "refusedTitle": "Yönetici konsolu yöneticiler ve sorumlular içindir",
+      "refusedDescription": "Bu sunucudaki rolünüz: {{role}}. Sunucuyu yönetmeniz gerekiyorsa bir yöneticiye sorun."
+    },
+    "overview": {
+      "loading": "Genel bakış yükleniyor…",
+      "health": {
+        "title": "Durum",
+        "okLabel": "Her şey çalışıyor",
+        "okDescription": "Kişiler oturum açabiliyor ve sunucu dosyaları kaydedebiliyor.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Kimse oturum açamıyor",
+            "description": "Sunucuda GitHub veya OpenID ile oturum açmayı ayarlayıp sunucuyu yeniden başlatın. Sunucu e-posta gönderiyorsa bunun yerine Ayarlar'da E-postayla oturum açma seçeneğini açabilirsiniz."
+          },
+          "storageNotWritable": {
+            "label": "Sunucu dosyaları kaydedemiyor",
+            "description": "Sunucunun veri klasörünün var olduğunu ve sunucunun bu klasöre yazabildiğini denetleyin."
+          },
+          "unknown": {
+            "label": "Sunucu bir sorun bildirdi",
+            "description": "Sorunun ne olduğunu görmek için Oleafly'yi güncelleyin."
+          }
+        }
+      },
+      "glance": {
+        "title": "Bir bakışta",
+        "people": "Kişiler",
+        "suspended": "Askıya alınan: {{number}}",
+        "devices": "Cihazlar",
+        "projects": "Paylaşılan projeler",
+        "projectsDetail": "Arşivlenen: {{archived}}, yükleniyor: {{pending}}",
+        "online": "Şu anda çevrimiçi",
+        "onlineDetail": "Açık projeler: {{number}}",
+        "started": "Başlatıldı",
+        "version": "Sürüm",
+        "protocol": "Protokol {{protocol}}"
+      },
+      "storage": {
+        "title": "Depolama",
+        "adminOnly": "Sunucunun ne kadar depolama kullandığını yalnızca yöneticiler görebilir.",
+        "database": "Veri tabanı",
+        "databaseDetail": "Hesaplar, ayarlar ve günlük",
+        "snapshots": "Proje anlık görüntüleri",
+        "snapshotsDetail": "Her projenin kaydedilmiş kopyaları",
+        "files": "Dosyalar",
+        "location": {
+          "disk": "Sunucunun diskinde",
+          "s3": "S3 depolamada",
+          "unknown": "Başka bir depolamada"
+        }
+      },
+      "services": {
+        "title": "E-posta ve oturum açma",
+        "email": "E-posta",
+        "emailOn": "Ayarlandı",
+        "emailOff": "Ayarlanmadı",
+        "emailOnDescription": "Sunucu e-posta gönderebilir.",
+        "emailOffDescription": "Sunucu henüz e-posta gönderemiyor, bu yüzden kimseye e-postayla bildirim gitmiyor.",
+        "openEmail": "E-posta ayarları",
+        "signIn": "Oturum açma seçenekleri",
+        "signInNone": "Henüz yok. Bir seçenek ayarlanana kadar kimse oturum açamaz.",
+        "emailLinkOption": "E-posta bağlantısı"
+      },
+      "settings": {
+        "title": "Sunucu ayarları",
+        "on": "Açık",
+        "off": "Kapalı",
+        "change": "Ayarları değiştir"
+      },
+      "limits": "Sınırlar: proje başına {{project}}, dosya başına {{file}}, proje başına {{people}} kişi."
+    },
+    "projects": {
+      "description": "Bu sunucuda paylaşılan tüm projeler.",
+      "searchLabel": "Projelerde ara",
+      "searchPlaceholder": "Başlığa veya sahibine göre arayın",
+      "filterLabel": "Gösterilecek projeler",
+      "filter": {
+        "all": "Tümü",
+        "active": "Paylaşılan",
+        "archived": "Arşivlenen",
+        "pending": "Yükleniyor"
+      },
+      "columns": {
+        "title": "Proje",
+        "owner": "Sahip",
+        "members": "Kişiler",
+        "size": "Boyut",
+        "activity": "Son etkinlik",
+        "actions": "İşlemler"
+      },
+      "sortBy": "{{column}} sütununa göre sırala",
+      "status": {
+        "archived": "Arşivlendi",
+        "pending": "Yükleniyor",
+        "unknown": "Bilinmiyor"
+      },
+      "loading": "Projeler yükleniyor…",
+      "empty": "Bu sunucuda henüz paylaşılan proje yok.",
+      "noMatches": "Aramanızla eşleşen proje yok.",
+      "count": "{{total}} projeden {{shown}} tanesi gösteriliyor",
+      "loadMore": "Daha fazla göster",
+      "archive": "Arşivle",
+      "archiveNamed": "{{title}} projesini arşivle",
+      "restore": "Geri yükle",
+      "restoreNamed": "{{title}} projesini geri yükle",
+      "archiveConfirm": {
+        "title": "{{title}} arşivlensin mi?",
+        "description": "Herkes projeyi eşitlemeyi bırakır ve kendi kopyasını saklar. Siz geri yüklemezseniz sunucu projeyi {{days}} gün sonra siler.",
+        "descriptionLater": "Herkes projeyi eşitlemeyi bırakır ve kendi kopyasını saklar. Siz geri yüklemezseniz sunucu arşivlenen projeleri bir süre sonra siler.",
+        "confirm": "Projeyi arşivle"
+      },
+      "adminOnly": "Projeleri yalnızca yöneticiler arşivleyebilir veya geri yükleyebilir."
+    },
+    "checks": {
+      "description": "Bu bilgisayardan sunucuya olan bağlantıyı denetleyin."
+    }
+  },
+  "links": {
+    "turnedOff": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın, ardından bağlantıyı yeniden açın.",
+    "openSettings": "Ayarları aç",
+    "malformed": "Oleafly bu bağlantıyı açamıyor. Gönderen kişiden yeni bir bağlantı isteyin.",
+    "opening": "Paylaşılan proje açılıyor…",
+    "confirm": {
+      "title": "Bu paylaşılan projeye katılmak istiyor musunuz?",
+      "body": "Katıldığınızda projeye eklenirsiniz ve projenin dosyaları bu bilgisayara kopyalanır. Yalnızca bağlantıyı kimin gönderdiğini biliyorsanız katılın.",
+      "project": "Proje",
+      "owner": "Sahip",
+      "server": "Sunucu",
+      "role": "Rolünüz",
+      "join": "Katıl"
+    }
+  },
+  "comments": {
+    "title": "Yorumlar",
+    "titleUnread": "Yorumlar, yeni etkinlik",
+    "add": "Yorum ekle",
+    "showResolved": "Çözülen yorumları göster",
+    "hideResolved": "Çözülen yorumları gizle",
+    "noFile": "Yorumlarını görmek için bir dosya açın.",
+    "empty": "Bu dosyada henüz yorum yok.",
+    "emptyCanWrite": "Bu dosyada henüz yorum yok. Başlatmak için metin seçin ve Yorum ekle'yi seçin.",
+    "loadFailed": "Bu dosyanın yorumları yüklenemedi.",
+    "detached": "Bağlantısı kopan yorumlar",
+    "detachedHint": "Bu yorumların ait olduğu metin silindi.",
+    "resolvedBy": "Çözen: {{name}}",
+    "edited": "Düzenlendi",
+    "deleted": "Bu yorum silindi.",
+    "newLabel": "Yeni yorum",
+    "newPlaceholder": "Bir yorum yazın. Birinden bahsetmek için @ yazın.",
+    "replyLabel": "Yanıt",
+    "replyPlaceholder": "Bir yanıt yazın. Birinden bahsetmek için @ yazın.",
+    "editLabel": "Yorumu düzenle",
+    "post": "Yorum yap",
+    "reply": "Yanıtla",
+    "resolve": "Çöz",
+    "reopen": "Yeniden aç",
+    "deleteThread": "Konuyu sil",
+    "messageActions": "Bu yorum için diğer işlemler",
+    "threadActions": "Bu konu için diğer işlemler",
+    "showInEditor": "Düzenleyicide göster",
+    "thread": "{{name}} kişisinin yorumu",
+    "mentionList": "Bahsedilebilecek kişiler",
+    "marker": "Bu satırdaki yorumları göster",
+    "unverifiedAuthor": "Bunu kimin yazdığı doğrulanamadı",
+    "unverifiedThread": "Oleafly'nin doğrulayamadığı birinden yorum",
+    "resolvedUnverified": "Oleafly'nin doğrulayamadığı biri tarafından çözüldü",
+    "refusals": {
+      "notLive": "Bu proje şu anda bağlı değil. Bağlantı geri geldiğinde yeniden deneyin.",
+      "notYours": "Bu yorumu yalnızca yazan kişi değiştirebilir.",
+      "offServer": "Bu sunucuda yorumlar kapalı.",
+      "offProject": "Bu projede yorumlar kapalı. Yeniden açması için proje sahibinden isteyin.",
+      "viewer": "Burada yorumları okuyabilirsiniz ama yazamazsınız. Sahibinden düzenleme izni isteyin.",
+      "someoneReplied": "Başka biri yanıt verdiği için bu konu kalıyor. Bunun yerine konuyu çözebilirsiniz.",
+      "messageDeleted": "Bu yorum silindiği için düzenleyemezsiniz.",
+      "selectionChanged": "Seçtiğiniz metin değişti. Yeniden seçip yorumunuzu ekleyin.",
+      "tooLong": "Bu yorum çok uzun. Kısaltıp yeniden deneyin.",
+      "empty": "Göndermeden önce bir şey yazın."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} projeyi açtı",
+    "joinedLink": "{{name}} bağlantıyla katıldı",
+    "joinedShare": "{{name}} siz paylaştıktan sonra katıldı",
+    "downloaded": "{{name}} bir kopya indirdi",
+    "unknown": "{{name}} projeyi kullandı",
+    "unknownDevice": "Bilinmeyen cihaz",
+    "span": "{{from}} ile {{to}} arası",
+    "more": "Daha eskileri göster",
+    "loading": "Erişim günlüğü yükleniyor…",
+    "loadFailed": "Oleafly erişim günlüğünü yükleyemedi.",
+    "empty": "Henüz kayıt yok."
+  },
+  "guests": {
+    "badge": "Konuk",
+    "invite": {
+      "noAccount": "{{server}} sunucusunda {{email}} adresini kullanan kimse yok. Bu kişiyi konuk olarak davet edin, yalnızca davet edildiği projeleri görür.",
+      "button": "Konuk olarak davet et",
+      "buttonNamed": "{{email}} adresini konuk olarak davet et",
+      "duplicate": "Bu adresin bu proje için zaten bir daveti var.",
+      "tooMany": "Son bir saatte çok sayıda davet gönderdiniz. Daha sonra yeniden deneyin."
+    },
+    "sent": {
+      "emailed": "Davet {{email}} adresine gönderildi.",
+      "emailedAfterApproval": "Bu davetin bir yönetici tarafından onaylanması gerekiyor. Onaylandığında {{email}} adresine e-posta gider.",
+      "added": "{{email}} adresinin {{server}} sunucusunda zaten bir hesabı var, bu yüzden artık erişimi var.",
+      "sendLink": "{{server}} e-posta göndermiyor, bu yüzden bu bağlantıyı {{email}} adresine kendiniz gönderin. Kişi bununla sunucuyu ekler ve o adresle oturum açar.",
+      "sendLinkAfterApproval": "Bu davetin önce bir yönetici tarafından onaylanması gerekiyor. {{server}} e-posta göndermiyor, bu yüzden bu bağlantıyı {{email}} adresine kendiniz gönderin. Davet onaylandığında çalışır.",
+      "linkLabel": "{{server}} sunucusunu ekleme bağlantısı"
+    },
+    "list": {
+      "title": "Davetler",
+      "status": {
+        "awaiting_approval": "Onay bekliyor",
+        "invited": "Davet edildi",
+        "declined": "Reddedildi"
+      },
+      "expires": "Son geçerlilik: {{date}}",
+      "withdraw": "Geri çek",
+      "withdrawNamed": "{{email}} davetini geri çek"
+    },
+    "pending": {
+      "title": "Bekleyen konuklar",
+      "description": "Proje sahipleri bu kişileri konuk olarak davet etti. Konuklar yalnızca davet edildikleri projeleri görür ve onları paylaşamaz.",
+      "invitedBy": "{{inviter}}, {{project}} projesine davet etti",
+      "approve": "Onayla",
+      "approveNamed": "{{email}} adresini onayla",
+      "decline": "Reddet",
+      "declineNamed": "{{email}} adresini reddet"
+    }
   }
 }

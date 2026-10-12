@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: oleafly-server
+    runtime: image
+    image:
+      url: ghcr.io/oleafly/oleafly-server:0.1
+    plan: 0.5c-512mb
+    healthCheckPath: /readyz
+    disk:
+      name: oleafly-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: OLEAFLY_PUBLIC_URL
+        fromService:
+          type: web
+          name: oleafly-server
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: PORT
+        value: "8080"
+      - key: OLEAFLY_BIND
+        value: 0.0.0.0:8080
+      - key: OLEAFLY_DATA_DIR
+        value: /data
+      - key: OLEAFLY_BEHIND_PROXY
+        value: "true"
+      - key: OLEAFLY_SERVER_NAME
+        sync: false
+      - key: OLEAFLY_GITHUB_CLIENT_ID
+        sync: false
+      - key: OLEAFLY_GITHUB_CLIENT_SECRET
+        sync: false

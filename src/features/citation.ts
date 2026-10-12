@@ -41,6 +41,7 @@ import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
@@ -328,6 +329,7 @@ async function writeCitationTarget(
   id: string | null,
   targetPath: string,
   newContent: string,
+  base: string,
 ): Promise<string | null> {
   if (files.files[targetPath] !== undefined) {
     if (!files.setContent(targetPath, newContent)) return linkedBibliographyMessage(targetPath);
@@ -346,7 +348,9 @@ async function writeCitationTarget(
   }
   if (id) {
     try {
-      await useFilesStore.getState().writeProjectFile(id, targetPath, newContent);
+      await useFilesStore
+        .getState()
+        .writeProjectFile(id, targetPath, newContent, ...sharedBaseOption(id, base));
       assertCitationProject(id);
     } catch (e) {
       return i18n.t(($) => $.core.citation.writeFailed, {
@@ -364,12 +368,13 @@ async function writeBibliographyDeclaration(
   mainPath: string,
   next: string,
   currentMainLoaded: boolean,
+  base: string,
 ): Promise<void> {
   if (currentMainLoaded && files.setContent(mainPath, next)) {
     await useFilesStore.getState().saveFile(mainPath);
     return;
   }
-  await useFilesStore.getState().writeProjectFile(id, mainPath, next);
+  await useFilesStore.getState().writeProjectFile(id, mainPath, next, ...sharedBaseOption(id, base));
 }
 
 async function ensureBibliographyDeclared(
@@ -389,7 +394,7 @@ async function ensureBibliographyDeclared(
       ? ensureTypstBibliography(main, targetPath)
       : ensureMarkdownBibliography(main, targetPath);
   if (next === main) return;
-  await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined);
+  await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined, main);
 }
 
 function appendBibEntries(content: string, blocks: readonly string[], format: BibliographyFormat = "bibtex"): string {
@@ -451,7 +456,7 @@ export async function addCitation(
     : setKey(bibtex.trim(), key);
   const newContent = appendBibEntries(content, [entry], format);
 
-  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  const writeError = await writeCitationTarget(files, id, target.path, newContent, content);
   if (writeError) return { error: writeError };
 
   await ensureBibliographyDeclared(files, id, loaded.main, target.path);
@@ -520,7 +525,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   const newContent = appendBibEntries(content, newBlocks, format);
 
   const errors: string[] = [];
-  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  const writeError = await writeCitationTarget(files, id, target.path, newContent, content);
   if (writeError) errors.push(writeError);
 
   if (!errors.length) {

@@ -283,6 +283,105 @@ intentionally omitted from public documentation.
 
 OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because the OAuth endpoints aren't CORS-enabled. Authenticated API calls (api.github.com) also run in Rust, so the token never reaches the webview.
 
+## Live collaboration load tests
+
+The crowd tests in `crates/oleafly-collab/tests/crowd` run scripted typists
+against a real Oleafly Server. `ten_people_typing_at_once_end_with_identical_documents`
+runs with the normal test suite. The `stress_` tests are ignored by default and
+need a release build:
+
+```bash
+cargo test --release -p oleafly-collab --test crowd -- --ignored --nocapture stress_
+```
+
+### The soak test
+
+`soak_twenty_people_over_fifty_files` starts the server binary as its own
+process, so its memory and CPU are measured apart from the clients. Twenty
+scripted people type into a project of 50 files. Four of them reach the server
+through a proxy that refuses WebSockets, so they stay on the long-poll fallback
+for the whole run. Every two minutes one person loses the network for a few
+seconds, and every minute someone adds a 64 KB figure.
+
+It prints a progress line every minute. The summary at the end has:
+
+- how long an edit takes to reach the others over a socket and over long-poll
+  (p50, p95 and p99, counted while both people are online),
+- how long the server takes to acknowledge an edit,
+- reconnects, and how long people took to come back after a cut,
+- the server's memory and CPU,
+- how fast the database, snapshots and files grow,
+- whether every copy of the project ended identical.
+
+Build the server first. The test looks for `oleafly-server` next to its own
+build output, so use the same profile and target folder:
+
+```bash
+cargo build --release -p oleafly-server
+CROWD_SOAK_MINUTES=10 cargo test --release -p oleafly-collab --test crowd soak -- --ignored --nocapture
+```
+
+Every setting is optional:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `CROWD_SOAK_MINUTES` | `10` | How long people type. Decimals work. |
+| `CROWD_SOAK_PEOPLE` | `20` | People in the project, the owner included. |
+| `CROWD_SOAK_FILES` | `50` | Text files in the project. |
+| `CROWD_SOAK_LONG_POLL` | `4` | People behind the proxy that refuses WebSockets. |
+| `CROWD_SOAK_PAUSE_MS` | `150,900` | Shortest and longest pause between keystrokes. |
+| `CROWD_SOAK_REPORT_SECONDS` | `60` | Time between progress lines. |
+| `CROWD_SOAK_CUT_SECONDS` | `120` | Time between network cuts. `0` turns cuts off. |
+| `CROWD_SOAK_CUT_FOR_MS` | `3000,12000` | Shortest and longest cut. |
+| `CROWD_SOAK_FIGURE_SECONDS` | `60` | Time between added figures. `0` turns figures off. |
+| `CROWD_SOAK_FIGURE_KB` | `64` | Size of each figure. |
+| `CROWD_SOAK_MAX_CHARS` | `30000` | A file longer than this gets deletes instead of inserts, so documents stop growing. |
+| `CROWD_SOAK_DATA` | a temporary folder | Keeps the server's data folder and `server.log` here. |
+| `CROWD_SERVER_BIN` | next to the test | Path to another server binary. |
+| `CROWD_SEED` | fixed | Seed for the typists. |
+
+### Running the 30-day soak
+
+A month-long run needs a machine that stays awake and a slower pace, so the
+documents and the update log grow at the rate of real writing rather than the
+burst rate of the short run. On macOS:
+
+```bash
+cargo build --release -p oleafly-server
+mkdir -p "$HOME/oleafly-soak"
+CROWD_SOAK_MINUTES=43200 \
+CROWD_SOAK_PAUSE_MS=1500,9000 \
+CROWD_SOAK_REPORT_SECONDS=900 \
+CROWD_SOAK_CUT_SECONDS=1800 \
+CROWD_SOAK_FIGURE_SECONDS=1800 \
+CROWD_SOAK_DATA="$HOME/oleafly-soak/data" \
+caffeinate -dimsu cargo test --release -p oleafly-collab --test crowd soak -- --ignored --nocapture \
+  > "$HOME/oleafly-soak/soak.log" 2>&1 &
+```
+
+On Linux, leave out `caffeinate -dimsu` and start it with `nohup` or inside
+tmux.
+
+Read `soak.log` once a day:
+
+- The server's RSS should level off after the first hour. A trend that keeps
+  rising is a leak.
+- The database should level off too. Clients upload a snapshot every 1,000
+  changes and the server keeps only the updates after its second-newest
+  snapshot, so the update log stays a few thousand rows long. The blob store
+  holds two snapshots per project under `blobs/snapshots/` (or the bucket's
+  `snapshots/` prefix).
+- Files grow by the figures added and nothing else.
+- p95 and p99 should stay where they were on the first day.
+- Reconnects should match the number of network cuts, and the problems count
+  should stay at 0.
+
+When the run ends, the summary and the test result are at the end of the log.
+If it fails, read `server.log` in the data folder.
+
+The test process holds every person's copy of the project, so its own memory
+grows with the documents. `CROWD_SOAK_MAX_CHARS` keeps that bounded.
+
 ## Coding style
 
 - TypeScript: follow what's already there. No comments unless asked. Respect `noUnusedLocals`/`noUnusedParameters`.

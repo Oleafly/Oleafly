@@ -1,5 +1,9 @@
 pub mod admission;
+pub mod browser_binding;
+pub mod csrf;
+pub mod device_code;
 pub mod devices;
+pub mod email_link;
 pub mod github;
 pub mod jws;
 pub mod nonce;
@@ -7,6 +11,8 @@ pub mod oidc;
 pub mod pending;
 pub mod refresh;
 pub mod setup;
+pub mod split_token;
+pub mod throttle;
 
 use std::time::Duration;
 

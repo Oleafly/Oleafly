@@ -11,6 +11,7 @@ import { COLLAB_PRESENCE_OPTIONS, type CollabPresence, useSettingsStore } from "
 import { AddServerDialog } from "./AddServerDialog";
 import { collabErrorMessage } from "./errors";
 import { LoadFailed } from "./feedback";
+import { useAddServerRequest } from "./links/add-server-request";
 import { ManageServerPanel } from "./ManageServerPanel";
 import { canManageServer, toServerRole } from "./roles";
 import { ServerCard } from "./ServerCard";
@@ -56,10 +57,17 @@ export function CollaborationSection() {
   const refreshAccounts = useCollabStore((state) => state.refreshAccounts);
   const [adding, setAdding] = useState<{ url: string | null } | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
+  const requestedUrl = useAddServerRequest((state) => state.url);
 
   useEffect(() => {
     void load().then(refreshAccounts);
   }, [load, refreshAccounts]);
+
+  useEffect(() => {
+    if (requestedUrl === null) return;
+    const url = useAddServerRequest.getState().take();
+    if (url !== null) setAdding({ url });
+  }, [requestedUrl]);
 
   useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => {
     void load();

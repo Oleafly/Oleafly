@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { RadioTower } from "lucide-react";
+import { Files, MessageSquare, RadioTower } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";
@@ -7,10 +7,13 @@ import { i18n, loadNamespace } from "@/i18n";
 import type { QueryMeta } from "@/lib/query-suggestions";
 import type { ProjectInfo } from "@/lib/tauri";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabRail } from "./collab-rail";
+import { useCommentsRail } from "./comments-rail";
 import { useShareDialog } from "./share-dialog";
+import { useTreeClashes } from "./tree-clashes";
 
 export interface PeerMark {
   id: string;
@@ -44,10 +47,18 @@ const CollabToolbarItem = lazy(() => surfaces().then((module) => ({ default: mod
 const CollabShareButton = lazy(() => surfaces().then((module) => ({ default: module.CollabShareButton })));
 const ShareDialog = lazy(() => surfaces().then((module) => ({ default: module.ShareDialog })));
 const TreePresence = lazy(() => surfaces().then((module) => ({ default: module.TreePresence })));
+const TreeClashes = lazy(() => surfaces().then((module) => ({ default: module.TreeClashes })));
 const CollabActivityKeeper = lazy(() => surfaces().then((module) => ({ default: module.CollabActivityKeeper })));
 const CollabPane = lazy(() => surfaces().then((module) => ({ default: module.CollabPane })));
 const SharedWithYou = lazy(() => surfaces().then((module) => ({ default: module.SharedWithYou })));
 const OpenLinkDialog = lazy(() => surfaces().then((module) => ({ default: module.OpenLinkDialog })));
+const comments = () => import("@/features/collab/comments");
+
+const CommentsPane = lazy(() => comments().then((module) => ({ default: module.CommentsPane })));
+const CommentsKeeper = lazy(() => comments().then((module) => ({ default: module.CommentsKeeper })));
+const SyncPauseBanner = lazy(() =>
+  import("@/features/collab/live/SyncPauseBanner").then((module) => ({ default: module.SyncPauseBanner })),
+);
 
 export function useCollabReady(): boolean {
   const enabled = useSettingsStore((state) => state.liveCollaboration);
@@ -121,6 +132,30 @@ export function ShareDialogHost() {
   );
 }
 
+export function CollabTreeClashSlot() {
+  return (
+    <Gate>
+      <TreeClashes />
+    </Gate>
+  );
+}
+
+export function TreeRowClash({ path }: Readonly<{ path: string }>) {
+  const label = useTreeClashes((state) => state.labels.get(path));
+  if (!label) return null;
+  return (
+    <Tooltip label={label} wide>
+      <span
+        role="img"
+        aria-label={label}
+        className="flex size-4 shrink-0 items-center justify-center rounded bg-amber-500/15 text-amber-600 dark:text-amber-400"
+      >
+        <Files aria-hidden className="size-3" />
+      </span>
+    </Tooltip>
+  );
+}
+
 export function CollabTreePresenceSlot({ onChange }: Readonly<{ onChange: (marks: PeerMarks) => void }>) {
   return (
     <Gate>
@@ -129,10 +164,24 @@ export function CollabTreePresenceSlot({ onChange }: Readonly<{ onChange: (marks
   );
 }
 
+export function CollabSyncPauseSlot() {
+  return (
+    <Gate>
+      <SyncPauseBanner />
+    </Gate>
+  );
+}
+
 export function CollabActivitySlot() {
+  const shared = useCollabRail((state) => state.visible);
   return (
     <Gate>
       <CollabActivityKeeper />
+      {shared ? (
+        <Suspense fallback={null}>
+          <CommentsKeeper />
+        </Suspense>
+      ) : null}
     </Gate>
   );
 }
@@ -158,6 +207,35 @@ export function CollabRailIcon({ className }: Readonly<{ className?: string }>) 
       <RadioTower aria-hidden className={className} />
       {unread ? (
         <span data-testid="collab-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
+          <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
+          <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+export function CommentsPanel() {
+  return (
+    <Gate>
+      <CommentsPane />
+    </Gate>
+  );
+}
+
+export function commentsRailLabel(): string {
+  return useCommentsRail.getState().unread
+    ? i18n.t(($) => $.collab.comments.titleUnread)
+    : i18n.t(($) => $.collab.comments.title);
+}
+
+export function CommentsRailIcon({ className }: Readonly<{ className?: string }>) {
+  const unread = useCommentsRail((state) => state.unread);
+  return (
+    <>
+      <MessageSquare aria-hidden className={className} />
+      {unread ? (
+        <span data-testid="comments-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
           <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-primary" />
         </span>

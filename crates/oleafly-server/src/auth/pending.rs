@@ -22,6 +22,7 @@ pub struct PendingSignIn {
     pub provider_verifier: String,
     pub provider_nonce: String,
     pub expires_at: i64,
+    pub device_authorization: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,8 +43,8 @@ pub fn insert(conn: &Connection, pending: &PendingSignIn, now: i64) -> Result<()
     conn.execute(
         "INSERT INTO pending_auth (id, provider_id, client_state, redirect_uri, code_challenge, \
          device_public_key, device_name, platform, setup_code_hash, provider_verifier, \
-         provider_nonce, created_at, expires_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+         provider_nonce, created_at, expires_at, device_authorization) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         params![
             pending.id,
             pending.provider_id,
@@ -57,19 +58,19 @@ pub fn insert(conn: &Connection, pending: &PendingSignIn, now: i64) -> Result<()
             pending.provider_verifier,
             pending.provider_nonce,
             now,
-            pending.expires_at
+            pending.expires_at,
+            pending.device_authorization
         ],
     )
     .map_err(db_error)?;
     Ok(())
 }
 
-pub fn take(conn: &Connection, id: &str, now: i64) -> Result<Option<PendingSignIn>, ServerError> {
-    let found = conn
-        .query_row(
+fn find(conn: &Connection, id: &str) -> Result<Option<PendingSignIn>, ServerError> {
+    conn.query_row(
             "SELECT id, provider_id, client_state, redirect_uri, code_challenge, device_public_key, \
-             device_name, platform, setup_code_hash, provider_verifier, provider_nonce, expires_at \
-             FROM pending_auth WHERE id = ?1",
+             device_name, platform, setup_code_hash, provider_verifier, provider_nonce, expires_at, \
+             device_authorization FROM pending_auth WHERE id = ?1",
             params![id],
             |row| {
                 Ok(PendingSignIn {
@@ -85,14 +86,32 @@ pub fn take(conn: &Connection, id: &str, now: i64) -> Result<Option<PendingSignI
                     provider_verifier: row.get(9)?,
                     provider_nonce: row.get(10)?,
                     expires_at: row.get(11)?,
+                    device_authorization: row.get(12)?,
                 })
             },
         )
         .optional()
-        .map_err(db_error)?;
+        .map_err(db_error)
+}
+
+pub fn take(conn: &Connection, id: &str, now: i64) -> Result<Option<PendingSignIn>, ServerError> {
+    let found = find(conn, id)?;
     conn.execute("DELETE FROM pending_auth WHERE id = ?1", params![id])
         .map_err(db_error)?;
     Ok(found.filter(|pending| pending.expires_at > now))
+}
+
+pub fn peek(conn: &Connection, id: &str, now: i64) -> Result<Option<PendingSignIn>, ServerError> {
+    Ok(find(conn, id)?.filter(|pending| pending.expires_at > now))
+}
+
+pub fn extend(conn: &Connection, id: &str, until: i64) -> Result<(), ServerError> {
+    conn.execute(
+        "UPDATE pending_auth SET expires_at = MAX(expires_at, ?2) WHERE id = ?1",
+        params![id, until],
+    )
+    .map_err(db_error)?;
+    Ok(())
 }
 
 pub fn issue_code(
@@ -185,7 +204,67 @@ mod tests {
             provider_verifier: "verifier".to_owned(),
             provider_nonce: "nonce".to_owned(),
             expires_at: now + PENDING_TTL_MS,
+            device_authorization: None,
         }
+    }
+
+    #[tokio::test]
+    async fn a_pending_sign_in_for_a_device_code_remembers_it() {
+        let app = test_app().await;
+        let mut pending = sample(1_000);
+        pending.device_authorization = Some("device-auth-1".to_owned());
+        let stored = pending.clone();
+        let taken = app
+            .state
+            .db
+            .call(move |conn| {
+                insert(conn, &stored, 1_000)?;
+                take(conn, "pending-1", 2_000)
+            })
+            .await
+            .expect("db");
+        assert_eq!(taken, Some(pending));
+    }
+
+    #[tokio::test]
+    async fn peeking_leaves_a_pending_sign_in_in_place_until_it_expires() {
+        let app = test_app().await;
+        let (seen, still_there, late) = app
+            .state
+            .db
+            .call(|conn| {
+                insert(conn, &sample(1_000), 1_000)?;
+                let seen = peek(conn, "pending-1", 2_000)?;
+                let late = peek(conn, "pending-1", 1_000 + PENDING_TTL_MS)?;
+                Ok((seen, take(conn, "pending-1", 2_000)?, late))
+            })
+            .await
+            .expect("db");
+        assert_eq!(seen, Some(sample(1_000)));
+        assert_eq!(still_there, Some(sample(1_000)));
+        assert_eq!(late, None);
+    }
+
+    #[tokio::test]
+    async fn extending_a_pending_sign_in_keeps_it_alive_and_never_shortens_it() {
+        let app = test_app().await;
+        let later = 1_000 + PENDING_TTL_MS + 5 * 60 * 1000;
+        let (kept, shortened) = app
+            .state
+            .db
+            .call(move |conn| {
+                insert(conn, &sample(1_000), 1_000)?;
+                extend(conn, "pending-1", later)?;
+                extend(conn, "pending-1", 2_000)?;
+                Ok((
+                    peek(conn, "pending-1", later - 1)?.map(|pending| pending.expires_at),
+                    take(conn, "pending-1", later)?,
+                ))
+            })
+            .await
+            .expect("db");
+        assert_eq!(kept, Some(later));
+        assert_eq!(shortened, None);
     }
 
     #[tokio::test]

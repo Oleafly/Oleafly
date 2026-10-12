@@ -63,6 +63,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 import { entryHash } from "@/lib/zotero/bib-text";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import {
   citationKeyForHit,
   ensureZoteroEntries,
@@ -435,5 +436,26 @@ describe("latexCiteSources", () => {
     const started = performance.now();
     latexCiteSources(text);
     expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
+describe("adding a Zotero item to a live shared project", () => {
+  it("merges the entry into a closed bibliography from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: false, connecting: false });
+    try {
+      const main = PLAIN.replace("\\end{document}", "\\bibliography{refs}\n\\end{document}");
+      const bib = "@book{doe2019,\n  title = {Kept}\n}\n";
+      project({ "main.tex": main, "refs.bib": bib }, ["main.tex"]);
+      disk["refs.bib"] = bib;
+      await ensureZoteroEntries([{ hit: hit(), key: "smithBBT2020" }]);
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "p1",
+        "refs.bib",
+        expect.stringContaining("@article{smithBBT2020"),
+        { base: bib },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

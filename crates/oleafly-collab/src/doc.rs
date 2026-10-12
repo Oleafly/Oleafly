@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use loro::event::Diff;
 use loro::{
-    ContainerID, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue, TextDelta, TreeID,
-    TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
+    ContainerID, EncodedBlobMode, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue,
+    TextDelta, TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
 };
 use oleafly_collab_protocol::ids::FileId;
 use ring::rand::{SecureRandom, SystemRandom};
@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::ot::{Component, TextOperation};
 use crate::CollabError;
+
+mod tree;
+
+pub use tree::{LostRename, Trashed};
 
 const TREE: &str = "tree";
 const META: &str = "meta";
@@ -61,17 +65,19 @@ pub struct FileNode {
     pub kind: NodeKind,
     pub blob: Option<String>,
     pub position: String,
+    pub author_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct DocChanges {
     pub texts: Vec<(String, Vec<TextDelta>)>,
     pub tree: bool,
+    pub comments: crate::comments::CommentEvents,
 }
 
 impl DocChanges {
     pub fn is_empty(&self) -> bool {
-        self.texts.is_empty() && !self.tree
+        self.texts.is_empty() && !self.tree && self.comments.is_empty()
     }
 }
 
@@ -99,6 +105,9 @@ fn recorder(doc: &LoroDoc) -> (SharedRecorder, loro::Subscription) {
             return;
         }
         for change in &event.events {
+            if crate::comments::record(&mut recorder.changes.comments, change) {
+                continue;
+            }
             match (change.target, &change.diff) {
                 (ContainerID::Root { name, .. }, Diff::Text(deltas)) => {
                     if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
@@ -118,6 +127,9 @@ pub struct ProjectDoc {
     tree: LoroTree,
     ids: HashMap<String, TreeID>,
     trash: Option<TreeID>,
+    log: tree::TreeLog,
+    authors: crate::comments::Authorship,
+    anchors: Mutex<crate::comments::Anchors>,
     recorded: SharedRecorder,
     _events: loro::Subscription,
 }
@@ -197,6 +209,9 @@ impl ProjectDoc {
             tree,
             ids: HashMap::new(),
             trash: Some(trash),
+            log: tree::TreeLog::default(),
+            authors: crate::comments::Authorship::default(),
+            anchors: Mutex::default(),
             recorded,
             _events: events,
         })
@@ -224,6 +239,9 @@ impl ProjectDoc {
             tree,
             ids: HashMap::new(),
             trash: None,
+            log: tree::TreeLog::default(),
+            authors: crate::comments::Authorship::default(),
+            anchors: Mutex::default(),
             recorded,
             _events: events,
         };
@@ -275,7 +293,23 @@ impl ProjectDoc {
         }
     }
 
-    fn text_of(&self, id: &str) -> Result<LoroText, CollabError> {
+    pub(crate) fn loro(&self) -> &LoroDoc {
+        &self.doc
+    }
+
+    pub(crate) fn authors(&self) -> &crate::comments::Authorship {
+        &self.authors
+    }
+
+    pub(crate) fn authors_mut(&mut self) -> &mut crate::comments::Authorship {
+        &mut self.authors
+    }
+
+    pub(crate) fn anchors(&self) -> std::sync::MutexGuard<'_, crate::comments::Anchors> {
+        self.anchors.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(crate) fn text_of(&self, id: &str) -> Result<LoroText, CollabError> {
         self.tree_id(id)?;
         Ok(self.doc.get_text(text_name(id)))
     }
@@ -299,6 +333,7 @@ impl ProjectDoc {
         meta.insert("id", id.as_str()).map_err(doc_error)?;
         meta.insert("name", name).map_err(doc_error)?;
         meta.insert("kind", kind.as_str()).map_err(doc_error)?;
+        self.log.created(&meta)?;
         if let Some(hash) = blob {
             meta.insert("blob", hash).map_err(doc_error)?;
         }
@@ -315,11 +350,9 @@ impl ProjectDoc {
 
     pub fn rename(&mut self, id: &str, name: &str) -> Result<(), CollabError> {
         let node = self.tree_id(id)?;
-        self.tree
-            .get_meta(node)
-            .map_err(doc_error)?
-            .insert("name", name)
-            .map_err(doc_error)?;
+        let meta = self.tree.get_meta(node).map_err(doc_error)?;
+        self.log.renaming(id, &meta, name)?;
+        meta.insert("name", name).map_err(doc_error)?;
         self.doc.commit();
         Ok(())
     }
@@ -348,6 +381,7 @@ impl ProjectDoc {
         let trash = self.trash.ok_or_else(|| {
             CollabError::Corrupt("the shared project has no trash folder".to_owned())
         })?;
+        self.stamp_trashed(node)?;
         self.tree
             .mov(node, TreeParentId::Node(trash))
             .map_err(doc_error)?;
@@ -451,6 +485,7 @@ impl ProjectDoc {
                     .unwrap_or(NodeKind::Text),
                 blob: meta_string(&meta, "blob"),
                 position: node.fractional_index.to_string(),
+                author_name: meta_string(&meta, "author_name"),
             });
         }
         Ok(views)
@@ -498,10 +533,31 @@ impl ProjectDoc {
         self.doc.export(ExportMode::Snapshot).map_err(doc_error)
     }
 
+    pub fn peer_id(&self) -> u64 {
+        self.doc.peer_id()
+    }
+
+    pub fn introduced_peers(&self, payload: &[u8]) -> Result<Vec<u64>, CollabError> {
+        let meta = LoroDoc::decode_import_blob_meta(payload, true).map_err(doc_error)?;
+        if meta.mode != EncodedBlobMode::Updates {
+            return Err(CollabError::Corrupt(
+                "a change arrived as something other than an update".to_owned(),
+            ));
+        }
+        let known = self.doc.oplog_vv();
+        Ok(meta
+            .partial_end_vv
+            .iter()
+            .filter(|(peer, end)| known.get(peer).copied().unwrap_or(0) < **end)
+            .map(|(peer, _)| *peer)
+            .collect())
+    }
+
     pub fn import(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
         let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error))?;
         if changes.tree {
             self.reindex()?;
+            self.log.tree_changed();
         }
         let arrived = status
             .success

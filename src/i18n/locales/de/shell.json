@@ -1409,5 +1409,12 @@
     "compiling": "Kompilierung läuft",
     "hideLog": "Kompilierprotokoll ausblenden",
     "showLog": "Kompilierprotokoll anzeigen"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} Datei wurde außerhalb von Oleafly geändert. Diese Änderung an alle senden oder nur lokal behalten?",
+    "paused_other": "{{count}} Dateien wurden außerhalb von Oleafly geändert. Diese Änderungen an alle senden oder nur lokal behalten?",
+    "send": "Senden",
+    "keepLocal": "Lokal behalten",
+    "unavailable": "Der Projektordner ist nicht verfügbar, daher ist die Synchronisierung angehalten. Sie läuft wieder, sobald der Ordner zurück ist."
   }
 }

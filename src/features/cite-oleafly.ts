@@ -12,6 +12,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 
 export type CiteOleaflyOutcome =
@@ -28,14 +29,14 @@ function linkedBibliographyMessage(path: string): string {
   return i18n.t(($) => $.core.citation.linkedBibliography, { path });
 }
 
-async function writeBibliography(projectId: string, path: string, content: string): Promise<void> {
+async function writeBibliography(projectId: string, path: string, content: string, base: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
     if (!files.setContent(path, content)) throw new Error(linkedBibliographyMessage(path));
     await useFilesStore.getState().saveFile(path);
     return;
   }
-  await files.writeProjectFile(projectId, path, content);
+  await files.writeProjectFile(projectId, path, content, ...sharedBaseOption(projectId, base));
 }
 
 function hasOleaflyEntry(path: string, content: string): boolean {
@@ -82,13 +83,13 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
   if (readOnly) return { kind: "read-only", path };
   const version = await appVersion().catch(() => "");
   const next = withOleaflyEntry(path, content, version);
-  await writeBibliography(projectId, path, next);
+  await writeBibliography(projectId, path, next, content);
   return {
     kind: "added",
     path,
     undo: async () => {
       if (useFilesStore.getState().projectId !== projectId) return;
-      await writeBibliography(projectId, path, content);
+      await writeBibliography(projectId, path, content, next);
     },
   };
 }

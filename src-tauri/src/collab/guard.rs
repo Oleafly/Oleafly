@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 pub const SYNC_PAUSED_EVENT: &str = "collab-sync-paused";
+pub const SYNC_RESUMED_EVENT: &str = "collab-sync-resumed";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -28,14 +29,26 @@ pub struct SyncPaused {
     pub reason: PauseReason,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncResumed {
+    pub project_id: String,
+}
+
 pub(crate) trait SyncPauseHost: Send + Sync + 'static {
     fn sync_paused(&self, paused: &SyncPaused);
+    fn sync_resumed(&self, resumed: &SyncResumed);
 }
 
 impl<R: tauri::Runtime> SyncPauseHost for tauri::AppHandle<R> {
     fn sync_paused(&self, paused: &SyncPaused) {
         use tauri::Emitter as _;
         let _ = self.emit(SYNC_PAUSED_EVENT, paused);
+    }
+
+    fn sync_resumed(&self, resumed: &SyncResumed) {
+        use tauri::Emitter as _;
+        let _ = self.emit(SYNC_RESUMED_EVENT, resumed);
     }
 }
 
@@ -46,6 +59,7 @@ pub(crate) struct MassChangeGuard {
     threshold: MassChangeThreshold,
     baseline: Mutex<SystemTime>,
     root_lost: AtomicBool,
+    waiting: AtomicBool,
 }
 
 impl MassChangeGuard {
@@ -57,6 +71,7 @@ impl MassChangeGuard {
             threshold: MassChangeThreshold::default(),
             baseline: Mutex::new(SystemTime::now()),
             root_lost: AtomicBool::new(false),
+            waiting: AtomicBool::new(false),
         }
     }
 
@@ -67,7 +82,7 @@ impl MassChangeGuard {
         if !self.root.is_dir() {
             return self.lose_root(tracked_total);
         }
-        self.root_lost.store(false, Ordering::SeqCst);
+        self.regain_root();
         let direct = if change.rescan {
             None
         } else {
@@ -107,11 +122,27 @@ impl MassChangeGuard {
 
     pub(crate) fn root_changed(&self) -> Option<MassChangeVerdict> {
         if self.root.is_dir() {
-            self.root_lost.store(false, Ordering::SeqCst);
+            self.regain_root();
             return None;
         }
         let total = self.tracked().as_ref().map_or(0, FileIdMap::len);
         Some(self.lose_root(total))
+    }
+
+    pub(crate) fn begin_waiting(&self) -> bool {
+        !self.waiting.swap(true, Ordering::SeqCst)
+    }
+
+    pub(crate) fn end_waiting(&self) {
+        self.waiting.store(false, Ordering::SeqCst);
+    }
+
+    fn regain_root(&self) {
+        if self.root_lost.swap(false, Ordering::SeqCst) {
+            self.host.sync_resumed(&SyncResumed {
+                project_id: self.project_id.clone(),
+            });
+        }
     }
 
     fn lose_root(&self, total: usize) -> MassChangeVerdict {
@@ -511,6 +542,99 @@ mod tests {
             [paused("guard-vanish", 0, 3, PauseReason::RootUnavailable)]
         );
         assert!(back.is_none());
+    }
+
+    #[test]
+    fn the_app_emits_the_resume_with_the_project_the_window_reads() {
+        use tauri::Listener as _;
+        let app = tauri::test::mock_app();
+        let heard = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let sink = Arc::clone(&heard);
+        app.listen_any(SYNC_RESUMED_EVENT, move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+        let host: &dyn SyncPauseHost = app.handle();
+
+        host.sync_resumed(&SyncResumed {
+            project_id: "paper".to_owned(),
+        });
+
+        assert_eq!(SYNC_RESUMED_EVENT, "collab-sync-resumed");
+        assert_eq!(
+            *heard.lock().unwrap(),
+            [serde_json::json!({ "projectId": "paper" })]
+        );
+    }
+
+    #[test]
+    fn a_root_that_comes_back_is_reported_as_resumed_once() {
+        let library = TempLibrary::new();
+        let root = library.project("guard-back", &THREE);
+        track("guard-back", &["main.tex", "refs.bib", "intro.tex"]);
+        let pauses = Arc::new(RecordedPauses::default());
+        let guard = MassChangeGuard::new("guard-back", &root, pauses.clone());
+        let present = guard.root_changed();
+        std::fs::remove_dir_all(&root).unwrap();
+        let lost = guard.root_changed();
+        let still_lost = guard.inspect(&change("guard-back", &["main.tex"]));
+        let quiet = pauses.resumed();
+        std::fs::create_dir(&root).unwrap();
+        let back = guard.root_changed();
+        let again = guard.root_changed();
+
+        assert!(present.is_none());
+        assert!(matches!(lost, Some(MassChangeVerdict::RootUnavailable)));
+        assert!(matches!(still_lost, MassChangeVerdict::RootUnavailable));
+        assert!(quiet.is_empty(), "{quiet:?}");
+        assert!(back.is_none());
+        assert!(again.is_none());
+        assert_eq!(
+            pauses.resumed(),
+            [SyncResumed {
+                project_id: "guard-back".to_owned()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_root_seen_again_by_an_inspection_is_reported_as_resumed() {
+        let library = TempLibrary::new();
+        let root = library.project("guard-seen", &THREE);
+        track("guard-seen", &["main.tex", "refs.bib", "intro.tex"]);
+        let pauses = Arc::new(RecordedPauses::default());
+        let guard = MassChangeGuard::new("guard-seen", &root, pauses.clone());
+        let parked = root.with_file_name("guard-seen-parked");
+        std::fs::rename(&root, &parked).unwrap();
+        let _ = guard.root_changed();
+        std::fs::rename(&parked, &root).unwrap();
+
+        let back = guard.inspect(&change("guard-seen", &["main.tex"]));
+
+        assert!(matches!(back, MassChangeVerdict::Apply));
+        assert_eq!(
+            pauses.resumed(),
+            [SyncResumed {
+                project_id: "guard-seen".to_owned()
+            }]
+        );
+    }
+
+    #[test]
+    fn only_the_first_caller_waits_for_a_lost_root() {
+        let library = TempLibrary::new();
+        let root = library.project("guard-wait", &THREE);
+        let guard = MassChangeGuard::new("guard-wait", &root, Arc::new(RecordedPauses::default()));
+
+        let first = guard.begin_waiting();
+        let second = guard.begin_waiting();
+        guard.end_waiting();
+        let after = guard.begin_waiting();
+
+        assert!(first);
+        assert!(!second);
+        assert!(after);
     }
 
     #[test]

@@ -4,6 +4,8 @@ use std::process::ExitCode;
 use oleafly_server::cli::{self, Command};
 use oleafly_server::config::ServerConfig;
 use oleafly_server::healthcheck;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -56,10 +58,13 @@ async fn run_server() -> ExitCode {
         .log_level
         .parse::<tracing::Level>()
         .unwrap_or(tracing::Level::INFO);
-    tracing_subscriber::fmt()
-        .with_max_level(level)
-        .with_ansi(false)
-        .with_target(false)
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_target(false),
+        )
+        .with(oleafly_server::log_filter(level))
         .init();
     match oleafly_server::serve(config).await {
         Ok(()) => ExitCode::SUCCESS,

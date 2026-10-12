@@ -1,4 +1,4 @@
-use crate::collab::guard::{SyncPauseHost, SyncPaused};
+use crate::collab::guard::{SyncPauseHost, SyncPaused, SyncResumed};
 use oleafly_collab::binding::{save_binding, ShareBinding};
 use oleafly_collab::file_ids::FileIdMap;
 use oleafly_collab::paths::CollabPaths;
@@ -64,11 +64,15 @@ pub(crate) fn share(project_id: &str) -> SharedProject {
 }
 
 #[derive(Default)]
-pub(crate) struct RecordedPauses(Mutex<Vec<SyncPaused>>);
+pub(crate) struct RecordedPauses(Mutex<Vec<SyncPaused>>, Mutex<Vec<SyncResumed>>);
 
 impl RecordedPauses {
     pub(crate) fn taken(&self) -> Vec<SyncPaused> {
         std::mem::take(&mut *self.0.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    pub(crate) fn resumed(&self) -> Vec<SyncResumed> {
+        std::mem::take(&mut *self.1.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }
 
@@ -78,6 +82,13 @@ impl SyncPauseHost for RecordedPauses {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .push(paused.clone());
+    }
+
+    fn sync_resumed(&self, resumed: &SyncResumed) {
+        self.1
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(resumed.clone());
     }
 }
 

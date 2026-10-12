@@ -75,10 +75,38 @@ describe("i18n runtime", () => {
     expect(i18n.hasResourceBundle("en", "not-a-namespace")).toBe(false);
   });
 
-  it("loads the collaboration catalog with a translated locale", async () => {
-    const { initializeI18n, i18n } = await import("./index");
+  it("loads a translated lazy catalog only when its namespace is asked for", async () => {
+    const { initializeI18n, i18n, loadNamespace } = await import("./index");
     await initializeI18n({ preference: "zh-Hans", systemLocale: async () => null, missingKeyMode: "throw" });
+    expect(i18n.hasResourceBundle("zh-Hans", "native")).toBe(true);
+    expect(i18n.hasResourceBundle("zh-Hans", "collab")).toBe(false);
+    await loadNamespace("collab");
     expect(i18n.hasResourceBundle("zh-Hans", "collab")).toBe(true);
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(true);
     expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+  });
+
+  it("brings a loaded lazy namespace along to the next language and leaves unloaded ones lazy", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    await applyLocale("ru");
+    expect(i18n.hasResourceBundle("ru", "native")).toBe(true);
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(false);
+    await loadNamespace("collab");
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(true);
+    await applyLocale("zh-Hans");
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+  });
+
+  it("loads the language being switched to when the namespace is asked for during the switch", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    const asked = loadNamespace("collab");
+    await applyLocale("zh-Hans");
+    await asked;
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+    const switching = applyLocale("ru");
+    await Promise.all([loadNamespace("collab"), switching]);
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(true);
   });
 });

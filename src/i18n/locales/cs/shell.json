@@ -1475,5 +1475,14 @@
     "compiling": "Kompilace probíhá",
     "hideLog": "Skrýt protokol kompilace",
     "showLog": "Zobrazit protokol kompilace"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} soubor se změnil mimo Oleafly. Odeslat tuto změnu všem, nebo ji ponechat jen místně?",
+    "paused_few": "{{count}} soubory se změnily mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_many": "{{count}} souboru se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_other": "{{count}} souborů se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "send": "Odeslat",
+    "keepLocal": "Ponechat místně",
+    "unavailable": "Složka projektu není dostupná, takže synchronizace je pozastavená. Znovu se spustí, až se složka vrátí."
   }
 }

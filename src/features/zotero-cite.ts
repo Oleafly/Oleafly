@@ -50,6 +50,7 @@ import {
   type HandListRequest,
 } from "./zotero-hand-bibliography";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -319,7 +320,13 @@ function relativePath(fromFile: string, target: string): string {
   return [...base.slice(shared).map(() => ".."), ...parts.slice(shared)].join("/");
 }
 
-async function writeText(projectId: string, path: string, next: string, exists: boolean): Promise<void> {
+async function writeText(
+  projectId: string,
+  path: string,
+  next: string,
+  exists: boolean,
+  base: string | undefined,
+): Promise<void> {
   written.set(path, { projectId, text: next, previous: knownText(path) });
   const files = useFilesStore.getState();
   if (files.projectId !== projectId) throw new Error(i18n.t(($) => $.core.citation.projectChanged));
@@ -329,7 +336,7 @@ async function writeText(projectId: string, path: string, next: string, exists: 
     }
     await useFilesStore.getState().saveFile(path);
   } else {
-    await files.writeProjectFile(projectId, path, next);
+    await files.writeProjectFile(projectId, path, next, ...sharedBaseOption(projectId, base));
   }
   if (exists) useIndexStore.getState().updateFile(path, next);
   else await useIndexStore.getState().rebuildFromDisk();
@@ -351,7 +358,7 @@ async function ensureDeclaration(projectId: string, target: string): Promise<voi
   } else if (kind === "markdown") {
     next = ensureMarkdownBibliography(current, relative);
   }
-  if (next !== current) await writeText(projectId, main, next, true);
+  if (next !== current) await writeText(projectId, main, next, true, current);
 }
 
 function hayagrivaEntry(entry: string, key: string): string {
@@ -431,9 +438,11 @@ async function addPending(write: PendingWrite): Promise<EnsureResult> {
   const latest = await readText(target.path, target.exists);
   const handEntries = handList ? handListEntries(handList, { sources: sourceTexts(), bib: latest, adding: added }) : [];
   const next = yaml ? appendHayagriva(latest, entries) : appendEntries(latest, [...handEntries, ...entries]);
-  await writeText(projectId, target.path, next, target.exists);
+  await writeText(projectId, target.path, next, target.exists, latest);
   const handText = handList ? handListText(handList, sourceTexts(), relativePath(mainDocument(), target.path)) : null;
-  if (handList && handText !== null) await writeText(projectId, handList.file, handText, true);
+  if (handList && handText !== null) {
+    await writeText(projectId, handList.file, handText, true, projectText(handList.file));
+  }
   await ensureDeclaration(projectId, target.path);
   await saveLinks(projectId, links).catch(() => undefined);
   return { added, reused, bibPath: target.path };
@@ -560,7 +569,7 @@ async function updateBib(projectId: string, bib: string, group: readonly StaleEn
     progress.updated.push(entry.key);
     progress.links[entry.key] = linkFor(entry.hit, bib, entryHash(body), fresh.dateModified, fresh.version);
   }
-  if (next !== text) await writeText(projectId, bib, next, true);
+  if (next !== text) await writeText(projectId, bib, next, true, text);
 }
 
 async function updateBibs(

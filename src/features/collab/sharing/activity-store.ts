@@ -18,6 +18,24 @@ export type NewActivity =
       review?: { before: string; after: string };
     }
   | { kind: "newDevice"; at: number; accountId: string; name: string }
+  | {
+      kind: "renamed";
+      at: number;
+      accountId: string | null;
+      name: string;
+      before: string;
+      ours: string;
+      theirs: string;
+    }
+  | {
+      kind: "mentioned";
+      at: number;
+      accountId: string;
+      name: string;
+      path: string | null;
+      threadId: string;
+      messageId: string;
+    }
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed" | "archived"; at: number }
   | { kind: "signedOut"; at: number; server: string };

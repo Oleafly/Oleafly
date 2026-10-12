@@ -6,6 +6,7 @@ import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
 import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import type { Sym } from "./types";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
   writeProjectFile: vi.fn(),
@@ -942,5 +943,27 @@ describe("applyRename edge cases", () => {
     await expect(applyRename(view, SYMBOL, "fig:new")).resolves.toBe("renamed");
     expect(mocks.writeProjectFile).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed to "fig:new" (0 edits in 0 files)');
+  });
+});
+
+describe("renaming a symbol in a live shared project", () => {
+  it("merges the edit into a closed file from the text it was planned on", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      mocks.renamePlan.mockReturnValue({
+        collision: false,
+        fileCount: 1,
+        edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+      });
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "chapters/intro.tex",
+        "See \\ref{fig:new}.\n",
+        { base: "See \\ref{fig:old}.\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

@@ -4,6 +4,7 @@ import type { EditorView } from "@codemirror/view";
 import { editBackgroundDocument, type BackgroundDocumentChange } from "@oleafly/editor";
 import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useReferencesStore } from "@/store/references";
@@ -673,7 +674,7 @@ async function writeRenamedFile(
   }
   if (!projectId) return "ignored";
   try {
-    await useFilesStore.getState().writeProjectFile(projectId, file, text);
+    await useFilesStore.getState().writeProjectFile(projectId, file, text, ...sharedBaseOption(projectId, base));
     return "edited";
   } catch {
     return "failed";

@@ -3,14 +3,14 @@ use std::pin::Pin;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab::{
-    sign_in, test_connection_pinned, CollabError, ConnectionCheck, ServerClient, ServerEntry,
-    ServerUrl, SignInRequest,
+    sign_in, sign_in_with_code, test_connection_pinned, CodeSignInRequest, CollabError,
+    ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SignInCode, SignInRequest,
 };
 use oleafly_collab_protocol::admin::{
     AllowlistEntry, DomainRule, MemberPatch, MemberSummary, NewAllowlistEntry, NewDomainRule, Page,
     RuntimeSettings, RuntimeSettingsPatch, SecurityEvent,
 };
-use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary};
+use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary, SessionTokens};
 use oleafly_collab_protocol::capabilities::{
     negotiate, CapabilityManifest, ProtocolRange, VersionMismatch, PROTOCOL_VERSION,
 };
@@ -118,6 +118,20 @@ impl AppHost {
 
 impl CollabHost for AppHost {
     fn open_browser(&self, url: &str) -> Result<(), CollabError> {
+        let scripted = scripted_browser(
+            url,
+            cfg!(feature = "e2e-testing"),
+            std::env::var_os(E2E_BROWSER_ENV),
+        );
+        if let Some(mut command) = scripted {
+            let mut child = command
+                .spawn()
+                .map_err(|error| CollabError::Io(error.to_string()))?;
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            return Ok(());
+        }
         open::that_detached(url).map_err(|error| CollabError::Io(error.to_string()))
     }
 
@@ -143,6 +157,46 @@ impl CollabHost for AppHost {
 
     fn platform(&self) -> String {
         std::env::consts::OS.to_string()
+    }
+}
+
+pub(crate) const E2E_BROWSER_ENV: &str = "OLEAFLY_E2E_BROWSER";
+
+pub(crate) fn scripted_browser(
+    url: &str,
+    e2e_build: bool,
+    configured: Option<std::ffi::OsString>,
+) -> Option<std::process::Command> {
+    let program = configured.filter(|program| e2e_build && !program.is_empty())?;
+    let mut command = std::process::Command::new(program);
+    command.arg(url);
+    Some(command)
+}
+
+#[cfg(test)]
+mod scripted_browser_tests {
+    use super::scripted_browser;
+    use std::ffi::{OsStr, OsString};
+
+    const PAGE: &str = "http://127.0.0.1:9/auth/start?provider=github&state=s";
+
+    #[test]
+    fn an_e2e_build_hands_the_sign_in_page_to_the_scripted_browser() {
+        let command = scripted_browser(PAGE, true, Some(OsString::from("/tmp/e2e-browser")))
+            .expect("an e2e build with a scripted browser uses it");
+        assert_eq!(command.get_program(), OsStr::new("/tmp/e2e-browser"));
+        assert_eq!(command.get_args().collect::<Vec<_>>(), [OsStr::new(PAGE)]);
+    }
+
+    #[test]
+    fn a_build_without_the_e2e_feature_never_uses_a_scripted_browser() {
+        assert!(scripted_browser(PAGE, false, Some(OsString::from("/tmp/e2e-browser"))).is_none());
+    }
+
+    #[test]
+    fn an_e2e_build_without_a_scripted_browser_opens_the_system_one() {
+        assert!(scripted_browser(PAGE, true, None).is_none());
+        assert!(scripted_browser(PAGE, true, Some(OsString::new())).is_none());
     }
 }
 
@@ -384,9 +438,21 @@ pub async fn sign_in_server(
         result = sign_in(request, &keys.key, &open, timeout) => result?,
         _ = cancel => return Err(CollabError::SignInCancelled),
     };
+    finish_sign_in(state, host, &url, pinned, manifest, tokens).await
+}
+
+async fn finish_sign_in(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    url: &ServerUrl,
+    pinned: Option<ServerId>,
+    manifest: CapabilityManifest,
+    tokens: SessionTokens,
+) -> Result<CollabServer, CollabError> {
+    let keys = state.keys().await?;
     let server = manifest.server_id;
     check_pin(pinned, server)?;
-    check_unique(state, &url, server)?;
+    check_unique(state, url, server)?;
     let account = ServerClient::new(url.clone())?
         .me(&tokens.access_token)
         .await?;
@@ -407,6 +473,33 @@ pub async fn sign_in_server(
     host.server_changed(server);
     host.signed_in();
     to_dto(state, &known(state, server)?)
+}
+
+pub async fn code_sign_in_server(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    url: &str,
+    setup_code: Option<String>,
+    show_code: &(dyn Fn(&SignInCode) -> Result<(), CollabError> + Send + Sync),
+) -> Result<CollabServer, CollabError> {
+    let url = ServerUrl::parse(url)?;
+    let pinned = pinned_id(state, &url)?;
+    let advertised = ServerClient::new(url.clone())?.capabilities().await?;
+    check_pin(pinned, advertised.server_id)?;
+    check_unique(state, &url, advertised.server_id)?;
+    let keys = state.keys().await?;
+    let cancel = state.begin_sign_in();
+    let request = CodeSignInRequest {
+        url: url.clone(),
+        device_name: host.device_name(),
+        platform: host.platform(),
+        setup_code,
+    };
+    let (manifest, tokens) = tokio::select! {
+        result = sign_in_with_code(request, &keys.key, show_code) => result?,
+        _ = cancel => return Err(CollabError::SignInCancelled),
+    };
+    finish_sign_in(state, host, &url, pinned, manifest, tokens).await
 }
 
 pub async fn sign_out_server(
@@ -695,6 +788,25 @@ pub async fn collab_server_sign_in(
     )
     .await
     .map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_server_code_sign_in(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CollabState>,
+    url: String,
+    setup_code: Option<String>,
+    on_code: tauri::ipc::Channel<SignInCode>,
+) -> Result<CollabServer, CollabCommandError> {
+    let host = AppHost::new(app);
+    let show = move |code: &SignInCode| {
+        on_code
+            .send(code.clone())
+            .map_err(|error| CollabError::Io(error.to_string()))
+    };
+    code_sign_in_server(state.inner(), &host, &url, setup_code, &show)
+        .await
+        .map_err(CollabCommandError::from)
 }
 
 #[tauri::command]
@@ -1422,6 +1534,80 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_code_sign_in_shows_the_code_then_adds_the_signed_in_server() {
+        let (_github, server) = github_server().await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::ignoring();
+        let shown: Arc<Mutex<Vec<SignInCode>>> = Arc::new(Mutex::new(Vec::new()));
+        let seen = Arc::clone(&shown);
+        let show = move |code: &SignInCode| -> Result<(), CollabError> {
+            seen.lock().expect("lock").push(code.clone());
+            let complete = code.verification_uri_complete.clone();
+            tokio::spawn(async move {
+                oleafly_server::test_support::approve_code(&complete, "GitHub")
+                    .await
+                    .expect("the browser finishes")
+            });
+            Ok(())
+        };
+        let added = tokio::time::timeout(
+            Duration::from_secs(60),
+            code_sign_in_server(
+                &state,
+                &host,
+                &server.url(),
+                Some(server.setup_code()),
+                &show,
+            ),
+        )
+        .await
+        .expect("the code sign-in finishes")
+        .expect("signed in with a code");
+        assert!(added.signed_in);
+        assert_eq!(
+            added
+                .account
+                .as_ref()
+                .map(|account| account.display_name.as_str()),
+            Some("Carol")
+        );
+        assert_eq!(shown.lock().expect("lock").len(), 1);
+        assert_eq!(host.opened(), None);
+        assert_eq!(host.changed(), [added.server_id]);
+        assert_eq!(list_servers(&state).expect("servers").len(), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn cancelling_a_code_sign_in_stops_the_wait() {
+        let (_github, server) = github_server().await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::ignoring();
+        let shown = Arc::new(Mutex::new(false));
+        let seen = Arc::clone(&shown);
+        let show = move |_: &SignInCode| -> Result<(), CollabError> {
+            *seen.lock().expect("lock") = true;
+            Ok(())
+        };
+        let url = server.url();
+        let (outcome, ()) = tokio::join!(
+            code_sign_in_server(&state, &host, &url, Some(server.setup_code()), &show),
+            async {
+                for _ in 0..100 {
+                    if *shown.lock().expect("lock") {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                }
+                state.cancel_sign_in();
+            }
+        );
+        assert!(matches!(outcome, Err(CollabError::SignInCancelled)));
+        assert!(list_servers(&state).expect("servers").is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_replaced_server_at_the_same_address_gets_no_token() {
         let (_github, first) = github_server().await;
         let relay = Relay::start(&first).await;
@@ -1612,6 +1798,7 @@ mod tests {
             access_logs_allowed: None,
             email_notifications: None,
             comments_allowed: None,
+            email_link_sign_in: None,
         };
         assert!(
             admin_patch_settings(&state, &host, id, patch)

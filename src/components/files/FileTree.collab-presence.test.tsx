@@ -2,7 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn(), presence: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  presence: vi.fn(),
+  clashes: new Map<string, string>(),
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (command: string, args?: unknown) =>
@@ -33,6 +37,20 @@ vi.mock("@/features/collab/sharing/TreePresence", async () => {
   };
 });
 
+vi.mock("@/features/collab/sharing/TreeClashes", async () => {
+  const { useEffect } = await import("react");
+  const { useTreeClashes } = await import("@/components/collab/tree-clashes");
+  return {
+    TreeClashes: () => {
+      useEffect(() => {
+        useTreeClashes.setState({ labels: new Map(mocks.clashes) });
+        return () => useTreeClashes.setState({ labels: new Map() });
+      }, []);
+      return null;
+    },
+  };
+});
+
 import { i18n } from "@/i18n";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
@@ -53,6 +71,7 @@ beforeEach(async () => {
     return undefined;
   });
   mocks.presence.mockReset();
+  mocks.clashes.clear();
   useSettingsStore.setState({ hiddenFilePatterns: [] });
   useFilesStore.setState({
     projectId: "project-1",
@@ -80,6 +99,17 @@ describe("FileTree collaboration presence", () => {
     expect(await within(main).findByRole("img", { name: "Alice Chen has this file open" })).toBeInTheDocument();
     const refs = screen.getByRole("treeitem", { name: /^refs\.bib/ });
     expect(within(refs).queryByRole("img")).toBeNull();
+  });
+
+  it("badges a file that got a new name on disk because another file has its name", async () => {
+    const label = "main.tex also has the name Main.tex, so this file got a new name on disk.";
+    mocks.clashes.set("refs.bib", label);
+    useSettingsStore.setState({ liveCollaboration: true });
+    render(<FileTree />);
+    const refs = screen.getByRole("treeitem", { name: /^refs\.bib/ });
+    expect(await within(refs).findByRole("img", { name: label })).toBeInTheDocument();
+    const main = screen.getByRole("treeitem", { name: /^main\.tex/ });
+    expect(within(main).queryByRole("img", { name: label })).toBeNull();
   });
 
   it("loads no presence while live collaboration is off", async () => {

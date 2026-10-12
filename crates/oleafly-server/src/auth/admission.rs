@@ -5,7 +5,9 @@ use oleafly_collab_protocol::roles::ServerRole;
 use rusqlite::Connection;
 
 use crate::auth::{setup, ExternalIdentity};
+use crate::db::parse_id;
 use crate::error::ServerError;
+use crate::guests;
 use crate::members;
 
 #[derive(Debug)]
@@ -25,7 +27,11 @@ pub enum Admission {
     Setup {
         existing: Option<AccountId>,
     },
+    Guest {
+        existing: Option<AccountId>,
+    },
     Suspended,
+    InactiveAccountAddress,
     SetupCodeInvalid,
     NotAdmitted,
 }
@@ -36,6 +42,7 @@ pub enum Via {
     Allowlist,
     Domain,
     Setup,
+    Guest,
 }
 
 impl Via {
@@ -45,6 +52,7 @@ impl Via {
             Via::Allowlist => "allowlist",
             Via::Domain => "domain",
             Via::Setup => "setup",
+            Via::Guest => "guest",
         }
     }
 }
@@ -107,21 +115,26 @@ pub fn decide(
             });
         }
     }
-    if removed.is_none() {
-        for email in &identity.verified_emails {
-            let Some(domain) = email_domain(email) else {
-                continue;
-            };
-            if let Some(rule) = members::find_domain_rule(conn, &domain)? {
-                return Ok(Admission::Domain {
-                    role: rule.role,
-                    existing: None,
-                });
-            }
-        }
+    let inactive = inactive_holders(conn, &identity.verified_emails)?;
+    let domain_role = match removed {
+        None => domain_rule_role(conn, &identity.verified_emails)?,
+        Some(_) => None,
+    };
+    if let Some(role) = domain_role.filter(|_| inactive.is_empty()) {
+        return Ok(Admission::Domain {
+            role,
+            existing: None,
+        });
     }
-    if let Some(admission) = guest_invitation(conn, identity)? {
+    let invitation = guest_invitation(conn, identity, removed)?;
+    if invitation.is_some() && !all_may_return_as_guest(conn, &inactive)? {
+        return Ok(Admission::InactiveAccountAddress);
+    }
+    if let Some(admission) = invitation {
         return Ok(admission);
+    }
+    if domain_role.is_some() {
+        return Ok(Admission::InactiveAccountAddress);
     }
     match setup_code_hash {
         Some(_) => Ok(Admission::SetupCodeInvalid),
@@ -133,11 +146,19 @@ pub fn apply(
     conn: &Connection,
     identity: &ExternalIdentity,
     admission: Admission,
+    max_members: u32,
     now: i64,
 ) -> Result<Applied, ServerError> {
     let (role, entry_id, existing, via) = match admission {
         Admission::Linked { account_id } => {
             members::add_verified_emails(conn, account_id, &identity.verified_emails)?;
+            guests::accept_for(
+                conn,
+                account_id,
+                &identity.verified_emails,
+                max_members,
+                now,
+            )?;
             return Ok(Applied::Admitted(Admitted {
                 account_id,
                 new_account: false,
@@ -152,7 +173,22 @@ pub fn apply(
         } => (role, Some(entry_id), existing, Via::Allowlist),
         Admission::Domain { role, existing } => (role, None, existing, Via::Domain),
         Admission::Setup { existing } => (ServerRole::Admin, None, existing, Via::Setup),
+        Admission::Guest { existing } => {
+            if !guests::admissible(conn, &identity.verified_emails, max_members, now)? {
+                return Ok(refused(
+                    AuthErrorCode::NotAdmitted,
+                    "guest_invitation_unusable",
+                ));
+            }
+            (ServerRole::Guest, None, existing, Via::Guest)
+        }
         Admission::Suspended => return Ok(refused(AuthErrorCode::NotAdmitted, "suspended")),
+        Admission::InactiveAccountAddress => {
+            return Ok(refused(
+                AuthErrorCode::NotAdmitted,
+                "address_of_inactive_account",
+            ))
+        }
         Admission::SetupCodeInvalid => {
             return Ok(refused(
                 AuthErrorCode::SetupCodeInvalid,
@@ -187,6 +223,13 @@ pub fn apply(
         }
     };
     members::add_verified_emails(conn, account_id, &identity.verified_emails)?;
+    guests::accept_for(
+        conn,
+        account_id,
+        &identity.verified_emails,
+        max_members,
+        now,
+    )?;
     if let Some(entry_id) = entry_id {
         members::bind_allowlist(conn, &entry_id, account_id)?;
     }
@@ -210,10 +253,82 @@ fn refused(code: AuthErrorCode, reason: &'static str) -> Applied {
 }
 
 fn guest_invitation(
-    _conn: &Connection,
-    _identity: &ExternalIdentity,
+    conn: &Connection,
+    identity: &ExternalIdentity,
+    removed: Option<AccountId>,
 ) -> Result<Option<Admission>, ServerError> {
+    if let Some(account) = removed {
+        if !may_return_as_guest(conn, account)? {
+            return Ok(None);
+        }
+    }
+    Ok(guests::has_candidate(conn, &identity.verified_emails)?
+        .then_some(Admission::Guest { existing: removed }))
+}
+
+fn domain_rule_role(
+    conn: &Connection,
+    emails: &[String],
+) -> Result<Option<ServerRole>, ServerError> {
+    for email in emails {
+        let Some(domain) = email_domain(email) else {
+            continue;
+        };
+        if let Some(rule) = members::find_domain_rule(conn, &domain)? {
+            return Ok(Some(rule.role));
+        }
+    }
     Ok(None)
+}
+
+fn inactive_holders(conn: &Connection, emails: &[String]) -> Result<Vec<AccountId>, ServerError> {
+    let mut statement = conn.prepare(
+        "SELECT a.id, a.status FROM account_emails e JOIN accounts a ON a.id = e.account_id \
+         WHERE e.email = ?1 ORDER BY a.id",
+    )?;
+    let mut inactive = Vec::new();
+    for email in emails
+        .iter()
+        .filter_map(|email| members::normalize_email(email))
+    {
+        let holders = statement
+            .query_map([email.as_str()], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        if holders.iter().any(|(_, status)| status == "active") {
+            continue;
+        }
+        for (id, _) in holders {
+            let account = parse_id(&id)?;
+            if !inactive.contains(&account) {
+                inactive.push(account);
+            }
+        }
+    }
+    Ok(inactive)
+}
+
+fn all_may_return_as_guest(conn: &Connection, accounts: &[AccountId]) -> Result<bool, ServerError> {
+    for account in accounts {
+        let removed = members::account_status(conn, *account)? == Some(MemberStatus::Removed);
+        if !removed || !may_return_as_guest(conn, *account)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn may_return_as_guest(conn: &Connection, account: AccountId) -> Result<bool, ServerError> {
+    if members::account_role(conn, account)? != Some(ServerRole::Guest) {
+        return Ok(false);
+    }
+    let grants: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM project_grants WHERE account_id = ?1",
+        [account.to_string()],
+        |row| row.get(0),
+    )?;
+    Ok(grants == 0)
 }
 
 fn email_domain(email: &str) -> Option<String> {

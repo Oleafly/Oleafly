@@ -78,6 +78,7 @@ import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
+import { sharedDocumentLive, writeSharedText } from "@/lib/shared-document-writes";
 
 export { SaveFlushError, type SaveFailure };
 
@@ -497,7 +498,7 @@ interface FilesStore {
     projectId: string,
     path: string,
     content: string,
-    options?: { crlf?: boolean },
+    options?: { crlf?: boolean; base?: string },
   ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
@@ -548,6 +549,7 @@ const pendingSaves = new Set<string>();
 // content back on disk.
 const pendingWrites = new Map<string, Promise<number>>();
 const diskSnapshots = new Map<string, DiskSnapshot>();
+const sharedSaveBases = new Map<string, string>();
 const diskConflicts = new Map<string, { warned: boolean; toastId?: number }>();
 let knownMutationProjectId: string | null = null;
 let knownMutationGeneration: number | null = null;
@@ -669,6 +671,7 @@ function projectKeysWhere(
 function resetDiskState(): void {
   for (const key of Array.from(diskConflicts.keys())) settleDiskConflict(key);
   diskSnapshots.clear();
+  sharedSaveBases.clear();
 }
 
 function forgetDiskStateUnder(projectId: string, isForgotten: (path: string) => boolean): void {
@@ -741,6 +744,7 @@ function enqueueWrite(
   path: string,
   content: string,
   overwrite = false,
+  sharedBase?: string,
 ): Promise<void> {
   const key = writeKey(projectId, path);
   const baseline =
@@ -755,6 +759,12 @@ function enqueueWrite(
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
       const bytes = crlf ? crlfBytes(content) : content;
+      const base = sharedBase === undefined || !crlf ? sharedBase : crlfBytes(sharedBase);
+      if (await writeSharedText(projectId, path, bytes, base)) {
+        diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
+        settleDiskConflict(key);
+        return rememberMutationGeneration(projectId, expectedGeneration);
+      }
       const expectedHash = overwrite ? undefined : snapshot?.hash;
       const result = expectedHash === undefined
         ? await writeFileContent(projectId, path, bytes, expectedGeneration)
@@ -1935,8 +1945,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   setContent: (path, content, opts) => {
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
-    if (get().files[path]?.content === content) return true;
+    const before = get().files[path];
+    if (before?.content === content) return true;
     const saved = matchesSavedDiskText(projectId, path, content);
+    if (!saved && before && !before.dirty && projectId && sharedDocumentLive(projectId)) {
+      sharedSaveBases.set(writeKey(projectId, path), before.content);
+    }
     set((s) => ({
       files: {
         ...s.files,
@@ -1977,7 +1991,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const key = writeKey(projectId, path);
     const overwrite = options?.overwrite === true && diskConflicts.get(key)?.warned === true;
     try {
-      await enqueueWrite(projectId, path, written, overwrite);
+      await enqueueWrite(projectId, path, written, overwrite, sharedSaveBases.get(key));
     } catch (error) {
       recordFailedSave(projectId, path, error, get);
       throw error;
@@ -1996,6 +2010,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return { files: { ...s.files, [path]: { ...cur, dirty: false } } };
     });
     const current = get();
+    if (current.projectId === projectId && current.files[path]?.dirty && sharedDocumentLive(projectId)) {
+      sharedSaveBases.set(key, written);
+    } else {
+      sharedSaveBases.delete(key);
+    }
     if (current.projectId === projectId && current.files[path]?.dirty) {
       pendingSaves.add(path);
       scheduleAutosave(get);
@@ -2013,6 +2032,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     fileReloadRevision++;
     rememberDiskSnapshot(projectId, path, snapshot);
     settleDiskConflict(writeKey(projectId, path));
+    sharedSaveBases.delete(writeKey(projectId, path));
     set((s) => {
       if (s.projectId !== projectId || !s.files[path]) return {};
       return {
@@ -2330,21 +2350,31 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const canonicalContent = normalizeTextContent(content);
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
-    const result = await writeFileContent(
+    const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
+    const shared = await writeSharedText(
       projectId,
       path,
       bytes,
-      expectedGeneration,
+      base === undefined || !crlf ? base : crlfBytes(base),
     );
+    const result = shared
+      ? null
+      : await writeFileContent(
+          projectId,
+          path,
+          bytes,
+          expectedGeneration,
+        );
     rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
-    if (Number.isSafeInteger(result?.generation)) {
+    if (result && Number.isSafeInteger(result.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
     if (get().projectId !== projectId) return;
     const current = get().files[path];
     if (adoptable(current)) {
       pendingSaves.delete(path);
+      sharedSaveBases.delete(writeKey(projectId, path));
       set((s) => {
         if (s.projectId !== projectId || !adoptable(s.files[path])) return {};
         return {
@@ -2404,12 +2434,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (currentFile?.dirty) {
       const localContent = currentFile.content;
       pendingSaves.delete(path);
-      void enqueueWrite(projectId, path, localContent)
+      void enqueueWrite(projectId, path, localContent, false, canonicalContent)
         .then(() => {
           if (
             get().projectId === projectId &&
             get().files[path]?.content === localContent
           ) {
+            sharedSaveBases.delete(writeKey(projectId, path));
             set((s) => ({
               files: {
                 ...s.files,
@@ -2442,6 +2473,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
     const mustFollowPendingWrite = pendingWrites.has(writeKey(projectId, path));
     pendingSaves.delete(path);
+    sharedSaveBases.delete(writeKey(projectId, path));
     set((s) => {
       const activatesPath = !s.activePath || s.activePath === path;
       return {

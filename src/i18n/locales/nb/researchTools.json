@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} filer ble endret i prosjektet ditt etter at denne oppgaven startet. Diffene er mot de eldre versjonene, så de kan ikke tas i bruk.",
       "applyAria": "Ta i bruk {{path}}",
       "changedSince": "Endret siden",
+      "mergesOnApply": "Filen ble redigert etter at oppgaven startet. Når du tar den i bruk, beholdes de redigeringene, og oppgavens endringer legges til.",
       "loading": "Laster...",
       "refreshPreview": "Oppdater forhåndsvisningen",
       "preview": "Forhåndsvis",

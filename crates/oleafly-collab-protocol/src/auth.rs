@@ -180,6 +180,66 @@ pub struct ApiError {
     pub message: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceCodeRequest {
+    pub device_public_key: String,
+    pub device_name: String,
+    pub platform: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup_code: Option<String>,
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceCodeResponse {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub verification_uri_complete: String,
+    pub expires_in: u64,
+    pub interval: u64,
+}
+
+impl fmt::Debug for DeviceCodeResponse {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("DeviceCodeResponse")
+            .field("device_code", &REDACTED)
+            .field("user_code", &self.user_code)
+            .field("verification_uri", &self.verification_uri)
+            .field("expires_in", &self.expires_in)
+            .field("interval", &self.interval)
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceTokenRequest {
+    pub device_code: String,
+    pub nonce: String,
+    pub signature: String,
+}
+
+impl fmt::Debug for DeviceTokenRequest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("DeviceTokenRequest")
+            .field("device_code", &REDACTED)
+            .field("nonce", &self.nonce)
+            .field("signature", &self.signature)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum DevicePoll {
+    Pending { interval: u64 },
+    SlowDown { interval: u64 },
+    Denied,
+    Expired,
+    Approved { tokens: SessionTokens },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,5 +446,95 @@ mod tests {
         assert!(!printed.contains("secret-"), "{printed}");
         assert!(printed.contains(ACCOUNT));
         assert!(printed.contains("[redacted]"));
+    }
+
+    #[test]
+    fn device_code_requests_and_replies_match_the_wire_json() {
+        let request: DeviceCodeRequest = serde_json::from_str(
+            r#"{"device_public_key":"k","device_name":"Lab PC","platform":"linux"}"#,
+        )
+        .unwrap();
+        assert_eq!(request.setup_code, None);
+        assert_eq!(request.device_name, "Lab PC");
+        let with_code = DeviceCodeRequest {
+            setup_code: Some("4F7K-Q2ZX".to_string()),
+            ..request
+        };
+        assert_eq!(
+            serde_json::to_value(&with_code).unwrap()["setup_code"],
+            "4F7K-Q2ZX"
+        );
+        let wire = serde_json::json!({
+            "device_code": "dc",
+            "user_code": "BCDF-GHJK",
+            "verification_uri": "https://collab.uni.edu/auth/device",
+            "verification_uri_complete": "https://collab.uni.edu/auth/device?code=BCDF-GHJK",
+            "expires_in": 600,
+            "interval": 5
+        });
+        let reply: DeviceCodeResponse = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(reply.user_code, "BCDF-GHJK");
+        assert_eq!((reply.expires_in, reply.interval), (600, 5));
+        assert_eq!(serde_json::to_value(&reply).unwrap(), wire);
+        let poll: DeviceTokenRequest =
+            serde_json::from_str(r#"{"device_code":"dc","nonce":"n","signature":"s"}"#).unwrap();
+        assert_eq!(poll.nonce, "n");
+    }
+
+    #[test]
+    fn device_polls_are_tagged_by_status() {
+        let tokens = SessionTokens {
+            account_id: ACCOUNT.parse().unwrap(),
+            device_id: DEVICE.parse().unwrap(),
+            access_token: "at".to_string(),
+            access_expires_at: 1,
+            refresh_token: "rt".to_string(),
+        };
+        let cases = [
+            (
+                DevicePoll::Pending { interval: 5 },
+                serde_json::json!({"status": "pending", "interval": 5}),
+            ),
+            (
+                DevicePoll::SlowDown { interval: 10 },
+                serde_json::json!({"status": "slow_down", "interval": 10}),
+            ),
+            (DevicePoll::Denied, serde_json::json!({"status": "denied"})),
+            (
+                DevicePoll::Expired,
+                serde_json::json!({"status": "expired"}),
+            ),
+            (
+                DevicePoll::Approved {
+                    tokens: tokens.clone(),
+                },
+                serde_json::json!({"status": "approved", "tokens": serde_json::to_value(&tokens).unwrap()}),
+            ),
+        ];
+        for (poll, wire) in cases {
+            assert_eq!(serde_json::to_value(&poll).unwrap(), wire);
+            assert_eq!(serde_json::from_value::<DevicePoll>(wire).unwrap(), poll);
+        }
+    }
+
+    #[test]
+    fn debug_output_never_shows_device_codes() {
+        let reply = DeviceCodeResponse {
+            device_code: "secret-device".to_string(),
+            user_code: "BCDF-GHJK".to_string(),
+            verification_uri: "https://collab.uni.edu/auth/device".to_string(),
+            verification_uri_complete: "https://collab.uni.edu/auth/device?code=BCDF-GHJK"
+                .to_string(),
+            expires_in: 600,
+            interval: 5,
+        };
+        let poll = DeviceTokenRequest {
+            device_code: "secret-device".to_string(),
+            nonce: "n".to_string(),
+            signature: "s".to_string(),
+        };
+        let printed = format!("{reply:?} {poll:?}");
+        assert!(!printed.contains("secret-"), "{printed}");
+        assert!(printed.contains("BCDF-GHJK"));
     }
 }

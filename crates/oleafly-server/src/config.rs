@@ -2,12 +2,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use oleafly_collab_protocol::capabilities::Limits;
 use url::{Host, Url};
 
 pub const DEFAULT_DATA_DIR: &str = "/data";
 pub const DEFAULT_SERVER_NAME: &str = "Oleafly Server";
+pub const DEFAULT_POLL_HOLD_SECONDS: u64 = 25;
+pub const MAX_POLL_HOLD_SECONDS: u64 = 40;
 pub const MIN_SETUP_CODE_CHARS: usize = 12;
 const RESERVED_PREFIXES: [&str; 7] = [".well-known", "api", "auth", "healthz", "p", "readyz", "ws"];
 const OIDC_PREFIX: &str = "OLEAFLY_OIDC_";
@@ -99,6 +102,8 @@ pub struct ServerConfig {
     pub log_level: String,
     pub security_log_days: u32,
     pub archive_days: u32,
+    pub snapshot_memory_mb: u64,
+    pub poll_hold: Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -230,6 +235,19 @@ impl ServerConfig {
         };
         let security_log_days = source.number("OLEAFLY_SECURITY_LOG_DAYS", 365u32)?;
         let archive_days = source.number("OLEAFLY_ARCHIVE_DAYS", 30u32)?;
+        let snapshot_memory_mb = source.number(
+            "OLEAFLY_SNAPSHOT_MEMORY_MB",
+            source.half_the_memory_limit_mb(),
+        )?;
+        let poll_hold_seconds =
+            source.number("OLEAFLY_POLL_HOLD_SECONDS", DEFAULT_POLL_HOLD_SECONDS)?;
+        if poll_hold_seconds > MAX_POLL_HOLD_SECONDS {
+            return Err(ConfigError::new(
+                "OLEAFLY_POLL_HOLD_SECONDS",
+                format!("OLEAFLY_POLL_HOLD_SECONDS can be at most {MAX_POLL_HOLD_SECONDS}, not {poll_hold_seconds}. Set it a few seconds below the idle timeout of your proxy."),
+            ));
+        }
+        let poll_hold = Duration::from_secs(poll_hold_seconds);
         Ok(ServerConfig {
             public_url,
             bind,
@@ -246,6 +264,8 @@ impl ServerConfig {
             log_level,
             security_log_days,
             archive_days,
+            snapshot_memory_mb,
+            poll_hold,
         })
     }
 
@@ -278,6 +298,12 @@ pub fn normalize_setup_code(code: &str) -> String {
 fn read_secret_file(path: &Path) -> std::io::Result<String> {
     std::fs::read_to_string(path)
 }
+
+const DEFAULT_SNAPSHOT_MEMORY_MB: u64 = 1024;
+const MEMORY_LIMIT_FILES: [&str; 2] = [
+    "/sys/fs/cgroup/memory.max",
+    "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+];
 
 struct Source<'a> {
     vars: &'a BTreeMap<String, String>,
@@ -340,6 +366,17 @@ impl Source<'_> {
                 format!("{name} must be a whole number of at least 1, not {raw}."),
             )),
         }
+    }
+
+    fn half_the_memory_limit_mb(&self) -> u64 {
+        const UNLIMITED: u64 = 1 << 40;
+        const MB: u64 = 1024 * 1024;
+        MEMORY_LIMIT_FILES
+            .iter()
+            .filter_map(|file| (self.read_file)(Path::new(file)).ok())
+            .filter_map(|text| text.trim().parse::<u64>().ok())
+            .find(|limit| *limit < UNLIMITED)
+            .map_or(DEFAULT_SNAPSHOT_MEMORY_MB, |limit| (limit / 2 / MB).max(1))
     }
 
     fn flag(&self, name: &str, default: bool) -> Result<bool, ConfigError> {
@@ -604,20 +641,10 @@ fn check_email(smtp_url: Option<&str>, mail_from: Option<&str>) -> Result<(), Co
             "Email needs OLEAFLY_SMTP_URL as well as OLEAFLY_MAIL_FROM. Set both, or neither to run without email.",
         )),
         (Some(smtp), Some(from)) => {
-            let smtp_ok = Url::parse(smtp)
-                .is_ok_and(|url| matches!(url.scheme(), "smtp" | "smtps") && url.host_str().is_some());
-            if !smtp_ok {
-                return Err(ConfigError::new(
-                    "OLEAFLY_SMTP_URL",
-                    "OLEAFLY_SMTP_URL must look like smtps://user:password@smtp.example.edu:465.",
-                ));
-            }
-            if !from.contains('@') {
-                return Err(ConfigError::new(
-                    "OLEAFLY_MAIL_FROM",
-                    "OLEAFLY_MAIL_FROM must contain an email address, such as Smith Lab <lab@example.edu>.",
-                ));
-            }
+            crate::mail::SmtpSettings::parse(smtp)
+                .map_err(|message| ConfigError::new("OLEAFLY_SMTP_URL", message))?;
+            crate::mail::parse_from(from)
+                .map_err(|message| ConfigError::new("OLEAFLY_MAIL_FROM", message))?;
             Ok(())
         }
     }
@@ -859,6 +886,8 @@ impl fmt::Debug for ServerConfig {
             .field("log_level", &self.log_level)
             .field("security_log_days", &self.security_log_days)
             .field("archive_days", &self.archive_days)
+            .field("snapshot_memory_mb", &self.snapshot_memory_mb)
+            .field("poll_hold", &self.poll_hold)
             .finish()
     }
 }
@@ -899,6 +928,45 @@ mod tests {
         read: &dyn Fn(&Path) -> std::io::Result<String>,
     ) -> Result<ServerConfig, ConfigError> {
         ServerConfig::from_vars(&vars(pairs), read)
+    }
+
+    fn cgroup_file(
+        wanted: &'static str,
+        answer: &'static str,
+    ) -> impl Fn(&Path) -> std::io::Result<String> {
+        move |path: &Path| {
+            if path == Path::new(wanted) {
+                Ok(answer.to_string())
+            } else {
+                missing_file(path)
+            }
+        }
+    }
+
+    #[test]
+    fn snapshot_memory_is_half_the_container_limit_unless_set() {
+        let v2 = "/sys/fs/cgroup/memory.max";
+        let v1 = "/sys/fs/cgroup/memory/memory.limit_in_bytes";
+        assert_eq!(load(&[BASE]).unwrap().snapshot_memory_mb, 1024);
+        let memory = |file, answer| {
+            load_with(&[BASE], &cgroup_file(file, answer))
+                .unwrap()
+                .snapshot_memory_mb
+        };
+        assert_eq!(memory(v2, "536870912\n"), 256);
+        assert_eq!(memory(v2, "max\n"), 1024);
+        assert_eq!(memory(v1, "1073741824\n"), 512);
+        assert_eq!(memory(v1, "9223372036854771712\n"), 1024);
+        let set = load_with(
+            &[BASE, ("OLEAFLY_SNAPSHOT_MEMORY_MB", "300")],
+            &cgroup_file(v2, "536870912"),
+        )
+        .unwrap();
+        assert_eq!(set.snapshot_memory_mb, 300);
+        assert_eq!(
+            load_err(&[BASE, ("OLEAFLY_SNAPSHOT_MEMORY_MB", "0")]).variable,
+            "OLEAFLY_SNAPSHOT_MEMORY_MB"
+        );
     }
 
     #[test]
@@ -1411,6 +1479,30 @@ mod tests {
             .variable,
             "OLEAFLY_SMTP_URL"
         );
+        for from in ["Smith Lab <lab@>", "lab@", "Smith Lab <@example.edu>"] {
+            assert_eq!(
+                load_err(&[
+                    BASE,
+                    ("OLEAFLY_SMTP_URL", "smtps://smtp.example.edu"),
+                    ("OLEAFLY_MAIL_FROM", from),
+                ])
+                .variable,
+                "OLEAFLY_MAIL_FROM",
+                "{from}"
+            );
+        }
+        for smtp in ["smtp://", "smtps://:465", "smtp://user:pw@"] {
+            assert_eq!(
+                load_err(&[
+                    BASE,
+                    ("OLEAFLY_SMTP_URL", smtp),
+                    ("OLEAFLY_MAIL_FROM", "lab@example.edu"),
+                ])
+                .variable,
+                "OLEAFLY_SMTP_URL",
+                "{smtp}"
+            );
+        }
         for short in ["short-code", "ABCD-EFGH-JKM", "ABCD-EFGH-JKMN-PQRS!"] {
             let error = load_err(&[BASE, ("OLEAFLY_SETUP_CODE", short)]);
             assert_eq!(error.variable, "OLEAFLY_SETUP_CODE", "{short}");

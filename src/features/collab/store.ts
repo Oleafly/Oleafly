@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  collabServerCodeSignIn,
   collabServerRefresh,
   collabServerRemove,
   collabServerSignIn,
@@ -7,6 +8,7 @@ import {
   collabServersList,
   type CollabErrorCode,
   type CollabServer,
+  type CollabSignInCode,
 } from "@/lib/tauri";
 import { collabErrorCode } from "./errors";
 
@@ -20,6 +22,11 @@ interface CollabStore {
   pending: Readonly<Record<string, CollabServerAction>>;
   load: () => Promise<void>;
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
+  signInWithCode: (
+    url: string,
+    setupCode: string | undefined,
+    onCode: (code: CollabSignInCode) => void,
+  ) => Promise<CollabServer>;
   signOut: (serverId: string) => Promise<CollabErrorCode | null>;
   remove: (serverId: string) => Promise<CollabErrorCode | null>;
   refreshAccounts: () => Promise<void>;
@@ -59,6 +66,12 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   },
   signIn: async (url, providerId, setupCode) => {
     const server = await collabServerSignIn(url, providerId, setupCode);
+    loadRequest += 1;
+    set((state) => ({ servers: upsert(state.servers, server), status: "ready", loadError: null }));
+    return server;
+  },
+  signInWithCode: async (url, setupCode, onCode) => {
+    const server = await collabServerCodeSignIn(url, setupCode, onCode);
     loadRequest += 1;
     set((state) => ({ servers: upsert(state.servers, server), status: "ready", loadError: null }));
     return server;

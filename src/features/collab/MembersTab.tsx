@@ -18,9 +18,11 @@ import {
 import { DevicesList } from "./DevicesList";
 import { collabErrorCode, collabErrorMessage } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
+import { GuestBadge } from "./GuestBadge";
+import { PendingGuests } from "./PendingGuests";
 import { accountDetail, accountPerson } from "./people";
 import { RolePicker } from "./RolePicker";
-import { canChangeMember, serverRoleAllows, toServerRole, type ServerRole } from "./roles";
+import { canChangeMember, isStaffRole, serverRoleAllows, toServerRole, type ServerRole } from "./roles";
 
 export type MembersUpdate = (update: (members: CollabMember[]) => CollabMember[]) => void;
 
@@ -92,12 +94,17 @@ export function MembersTab({
     const suspended = member.status === "suspended";
     const busy = busyId === accountId;
     const editable = !removed && role !== null && canChangeMember(actor, role);
+    const devicesShown =
+      canSeeDevices &&
+      !removed &&
+      (isSelf || role === null || !isStaffRole(role) || serverRoleAllows(actor, "manageStaff"));
     return (
       <li key={accountId} data-testid={`collab-member-${accountId}`} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
         <Avatar person={accountPerson(member.account)} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-medium">{name}</span>
+            {role === "guest" ? <GuestBadge /> : null}
             {isSelf ? (
               <Badge variant="primaryGhost" size="sm">
                 {t(($) => $.collab.admin.members.you)}
@@ -124,7 +131,7 @@ export function MembersTab({
             {role === null ? member.account.server_role : t(($) => $.collab.roles[role])}
           </Badge>
         )}
-        {canSeeDevices && !removed ? (
+        {devicesShown ? (
           <Button
             type="button"
             variant="ghost"
@@ -200,6 +207,7 @@ export function MembersTab({
 
   return (
     <div className="space-y-2">
+      {serverRoleAllows(actor, "approveGuests") ? <PendingGuests serverId={serverId} /> : null}
       <p className="text-xs text-muted-foreground">{t(($) => $.collab.admin.members.description)}</p>
       {renderMembers()}
       <ConfirmationDialog

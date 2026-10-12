@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 import {
   Activity,
   Archive,
+  AtSign,
   CloudCheck,
   CloudOff,
   GitMerge,
   LogOut,
   MonitorSmartphone,
+  PencilLine,
   RadioTower,
   Share2,
   UserCog,
@@ -17,6 +19,7 @@ import {
   UserX,
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
+import { openCommentThread } from "@/components/collab/comments-rail";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
 import { Avatar } from "@/components/ui/avatar";
@@ -30,10 +33,13 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
+import { GuestBadge } from "../GuestBadge";
 import { collabPerson } from "../people";
 import { peerHue } from "../live/peer-hue";
+import { AccessLog } from "./AccessLog";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
 import { MergeReviewDialog } from "./MergeReviewDialog";
+import { RecentlyDeleted } from "./RecentlyDeleted";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
 import { syncState } from "./sync-state";
 
@@ -51,11 +57,13 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   archived: Archive,
   signedOut: LogOut,
   newDevice: MonitorSmartphone,
+  renamed: PencilLine,
+  mentioned: AtSign,
 };
 
 const TICK_MS = 60_000;
 
-const OPEN_SECTIONS = { people: true, activity: true };
+const OPEN_SECTIONS = { people: true, activity: true, deleted: false, accessLog: false };
 
 function openCollaborationSettings() {
   const settings = useSettingsStore.getState();
@@ -102,6 +110,7 @@ const People = memo(function People({
             <div className="min-w-0 flex-1">
               <p className="flex min-w-0 items-center gap-1.5 text-xs">
                 <span className="truncate font-medium">{member.person.display_name}</span>
+                {member.person.guest ? <GuestBadge /> : null}
                 {self ? (
                   <Badge variant="primaryGhost" size="sm">
                     {t(($) => $.collab.manage.you)}
@@ -150,6 +159,17 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.signedOut, { server: entry.server });
     case "newDevice":
       return t(($) => $.collab.activity.newDevice, { name: entry.name || unknown });
+    case "renamed":
+      return t(($) => $.collab.activity.renamed, {
+        name: entry.name || unknown,
+        before: entry.before,
+        ours: entry.ours,
+        theirs: entry.theirs,
+      });
+    case "mentioned":
+      return entry.path
+        ? t(($) => $.collab.activity.mentioned, { name: entry.name || unknown, path: entry.path })
+        : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
   }
 }
 
@@ -214,6 +234,17 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               onClick={openCollaborationSettings}
             >
               {t(($) => $.collab.activity.signIn)}
+            </Button>
+          ) : null}
+          {entry.kind === "mentioned" && entry.path ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={() => entry.path && openCommentThread(entry.path, entry.threadId)}
+            >
+              {t(($) => $.collab.activity.showComment)}
             </Button>
           ) : null}
         </div>
@@ -355,6 +386,14 @@ export function CollabPane() {
         >
           <ActivityList title={activityTitle} entries={entries} />
         </SidebarSection>
+        <RecentlyDeleted
+          open={sectionOpen.deleted ?? false}
+          onOpenChange={(open) => setSectionOpen((value) => ({ ...value, deleted: open }))}
+        />
+        <AccessLog
+          open={sectionOpen.accessLog ?? false}
+          onOpenChange={(open) => setSectionOpen((value) => ({ ...value, accessLog: open }))}
+        />
       </div>
     </div>
   );

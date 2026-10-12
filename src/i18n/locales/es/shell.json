@@ -1442,5 +1442,13 @@
     "compiling": "Compilando",
     "hideLog": "Ocultar el registro de compilación",
     "showLog": "Mostrar el registro de compilación"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} archivo cambió fuera de Oleafly. ¿Enviar este cambio a todos o mantenerlo en local?",
+    "paused_many": "{{count}} archivos cambiaron fuera de Oleafly. ¿Enviar estos cambios a todos o mantenerlos en local?",
+    "paused_other": "{{count}} archivos cambiaron fuera de Oleafly. ¿Enviar estos cambios a todos o mantenerlos en local?",
+    "send": "Enviar",
+    "keepLocal": "Mantener en local",
+    "unavailable": "La carpeta del proyecto no está disponible, así que la sincronización está en pausa. Se reanuda cuando la carpeta vuelva."
   }
 }

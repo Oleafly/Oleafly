@@ -47,10 +47,14 @@ pub struct EditorChannel {
 
 impl EditorChannel {
     pub fn new(text: String) -> EditorChannel {
+        EditorChannel::starting_at(text, 0)
+    }
+
+    pub fn starting_at(text: String, rev: u64) -> EditorChannel {
         EditorChannel {
             text,
-            rev: 0,
-            first_rev: 0,
+            rev,
+            first_rev: rev,
             history: VecDeque::new(),
         }
     }

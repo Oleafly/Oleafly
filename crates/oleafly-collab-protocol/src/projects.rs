@@ -20,6 +20,12 @@ pub struct PersonSummary {
     pub avatar_url: Option<String>,
     pub email: Option<String>,
     pub login: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub guest: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,6 +39,14 @@ pub struct ProjectSummary {
     pub link_sharing: bool,
     pub link_role: ProjectRole,
     pub head_seq: u64,
+    #[serde(default = "comments_on")]
+    pub comments_enabled: bool,
+    #[serde(default)]
+    pub access_log: bool,
+}
+
+fn comments_on() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,6 +77,10 @@ pub struct ProjectPatch {
     pub link_sharing: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link_role: Option<ProjectRole>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comments_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access_log: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,7 +140,36 @@ mod tests {
             avatar_url: None,
             email: Some("carol@uni.edu".to_string()),
             login: Some("carol".to_string()),
+            guest: false,
         }
+    }
+
+    #[test]
+    fn a_guest_is_marked_and_everyone_else_keeps_the_old_wire_shape() {
+        let guest = PersonSummary {
+            guest: true,
+            ..carol()
+        };
+        let wire = serde_json::to_value(&guest).unwrap();
+        assert_eq!(wire["guest"], json!(true));
+        assert_eq!(
+            serde_json::from_value::<PersonSummary>(wire).unwrap(),
+            guest
+        );
+        let member = serde_json::to_value(carol()).unwrap();
+        assert!(member.get("guest").is_none());
+        let older = json!({
+            "account_id": ACCOUNT,
+            "display_name": "Carol Smith",
+            "avatar_url": null,
+            "email": null,
+            "login": null
+        });
+        assert!(
+            !serde_json::from_value::<PersonSummary>(older)
+                .unwrap()
+                .guest
+        );
     }
 
     #[test]
@@ -138,6 +185,8 @@ mod tests {
                 link_sharing: false,
                 link_role: ProjectRole::Viewer,
                 head_seq: 12,
+                comments_enabled: false,
+                access_log: true,
             },
             json!({
                 "project_id": PROJECT,
@@ -154,8 +203,73 @@ mod tests {
                 "created_at": 5,
                 "link_sharing": false,
                 "link_role": "viewer",
-                "head_seq": 12
+                "head_seq": 12,
+                "comments_enabled": false,
+                "access_log": true
             }),
+        );
+    }
+
+    #[test]
+    fn a_summary_from_an_older_server_allows_comments() {
+        let older = json!({
+            "project_id": PROJECT,
+            "title": "Grant proposal",
+            "owner": {
+                "account_id": ACCOUNT,
+                "display_name": "Carol Smith",
+                "avatar_url": null,
+                "email": null,
+                "login": null
+            },
+            "role": "viewer",
+            "status": "active",
+            "created_at": 5,
+            "link_sharing": false,
+            "link_role": "viewer",
+            "head_seq": 0
+        });
+        assert!(
+            serde_json::from_value::<ProjectSummary>(older)
+                .unwrap()
+                .comments_enabled
+        );
+    }
+
+    #[test]
+    fn a_summary_from_an_older_server_keeps_no_access_log() {
+        let older = json!({
+            "project_id": PROJECT,
+            "title": "Grant proposal",
+            "owner": {
+                "account_id": ACCOUNT,
+                "display_name": "Carol Smith",
+                "avatar_url": null,
+                "email": null,
+                "login": null
+            },
+            "role": "owner",
+            "status": "active",
+            "created_at": 5,
+            "link_sharing": false,
+            "link_role": "viewer",
+            "head_seq": 0
+        });
+        assert!(
+            !serde_json::from_value::<ProjectSummary>(older)
+                .unwrap()
+                .access_log
+        );
+    }
+
+    #[test]
+    fn an_access_log_switch_travels_alone_in_a_patch() {
+        round_trip(
+            ProjectPatch {
+                access_log: Some(true),
+                ..ProjectPatch::default()
+            },
+            json!({ "access_log": true }),
         );
     }
 
@@ -198,8 +312,17 @@ mod tests {
                 title: None,
                 link_sharing: Some(true),
                 link_role: Some(ProjectRole::Editor),
+                comments_enabled: None,
+                access_log: None,
             },
             json!({ "link_sharing": true, "link_role": "editor" }),
+        );
+        round_trip(
+            ProjectPatch {
+                comments_enabled: Some(false),
+                ..ProjectPatch::default()
+            },
+            json!({ "comments_enabled": false }),
         );
         round_trip(
             MemberGrant {

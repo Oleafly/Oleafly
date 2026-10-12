@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} dosya, bu görev başladıktan sonra projenizde değişti. Farkları daha eski sürümlere göre olduğu için uygulanamazlar.",
       "applyAria": "{{path}} dosyasını uygula",
       "changedSince": "Sonradan değişti",
+      "mergesOnApply": "Bu dosya görev başladıktan sonra düzenlendi. Uygulamak bu düzenlemeleri korur ve görevin değişikliklerini ekler.",
       "loading": "Yükleniyor...",
       "refreshPreview": "Önizlemeyi yenile",
       "preview": "Önizle",

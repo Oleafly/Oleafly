@@ -1,24 +1,20 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
+import { AppWindow, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  collabAdminMembers,
-  collabServerProbe,
-  type CollabMember,
-  type CollabProvider,
-  type CollabServer,
-} from "@/lib/tauri";
+import { collabServerProbe, type CollabProvider, type CollabServer } from "@/lib/tauri";
 import { AllowlistTab } from "./AllowlistTab";
+import { openAdminConsole } from "./console/open-console";
 import { DomainRulesTab } from "./DomainRulesTab";
-import { collabErrorCode, collabErrorMessage } from "./errors";
-import { MembersTab, type MembersUpdate } from "./MembersTab";
+import { EmailTab } from "./EmailTab";
+import { MembersTab } from "./MembersTab";
 import { serverRoleAllows, toServerRole, type ServerAction, type ServerRole } from "./roles";
 import { RuntimeSettingsTab } from "./RuntimeSettingsTab";
 import { SecurityLogTab } from "./SecurityLogTab";
+import { useServerMembers } from "./use-server-members";
 
-export const MANAGE_TABS = ["members", "allowlist", "domains", "settings", "log"] as const;
+export const MANAGE_TABS = ["members", "allowlist", "domains", "settings", "email", "log"] as const;
 
 export type ManageTab = (typeof MANAGE_TABS)[number];
 
@@ -27,6 +23,7 @@ const TAB_ACTION: Readonly<Record<ManageTab, ServerAction>> = {
   allowlist: "manageMembers",
   domains: "manageDomainRules",
   settings: "manageMembers",
+  email: "manageMembers",
   log: "readSecurityLog",
 };
 
@@ -38,27 +35,8 @@ export function ManageServerPanel({ server, onBack }: Readonly<{ server: CollabS
   const { t } = useTranslation(["collab"]);
   const serverId = server.server_id;
   const role = server.signed_in ? toServerRole(server.account?.server_role) : null;
-  const [members, setMembers] = useState<CollabMember[] | null>(null);
-  const [membersError, setMembersError] = useState<string | null>(null);
-  const [membersRequest, setMembersRequest] = useState(0);
+  const { members, loadError: membersError, retry: retryMembers, update: updateMembers } = useServerMembers(serverId);
   const [providers, setProviders] = useState<CollabProvider[]>([]);
-
-  useEffect(() => {
-    let active = true;
-    void membersRequest;
-    setMembersError(null);
-    collabAdminMembers(serverId).then(
-      (next) => {
-        if (active) setMembers(next);
-      },
-      (error: unknown) => {
-        if (active) setMembersError(collabErrorMessage(collabErrorCode(error)));
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [serverId, membersRequest]);
 
   useEffect(() => {
     let active = true;
@@ -75,9 +53,6 @@ export function ManageServerPanel({ server, onBack }: Readonly<{ server: CollabS
     };
   }, [server.url]);
 
-  const updateMembers: MembersUpdate = (update) =>
-    setMembers((current) => (current === null ? current : update(current)));
-
   if (role === null) return null;
   const tabs = visibleManageTabs(role);
   const selfId = server.account?.account_id ?? null;
@@ -88,7 +63,13 @@ export function ManageServerPanel({ server, onBack }: Readonly<{ server: CollabS
         <ArrowLeft aria-hidden />
         {t(($) => $.collab.admin.back)}
       </Button>
-      <h3 className="text-sm font-semibold">{t(($) => $.collab.admin.title, { name: server.name })}</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{t(($) => $.collab.admin.title, { name: server.name })}</h3>
+        <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
+          <AppWindow aria-hidden />
+          {t(($) => $.collab.console.open)}
+        </Button>
+      </div>
       {tabs.length > 0 ? (
         <Tabs defaultValue={tabs[0]} className="space-y-3">
           <TabsList scrollable>
@@ -106,7 +87,7 @@ export function ManageServerPanel({ server, onBack }: Readonly<{ server: CollabS
                 selfId={selfId}
                 members={members}
                 loadError={membersError}
-                onRetry={() => setMembersRequest((count) => count + 1)}
+                onRetry={retryMembers}
                 onMembersChange={updateMembers}
               />
             </TabsContent>
@@ -124,6 +105,11 @@ export function ManageServerPanel({ server, onBack }: Readonly<{ server: CollabS
           {tabs.includes("settings") ? (
             <TabsContent value="settings">
               <RuntimeSettingsTab serverId={serverId} actor={role} />
+            </TabsContent>
+          ) : null}
+          {tabs.includes("email") ? (
+            <TabsContent value="email">
+              <EmailTab server={server} actor={role} />
             </TabsContent>
           ) : null}
           {tabs.includes("log") ? (

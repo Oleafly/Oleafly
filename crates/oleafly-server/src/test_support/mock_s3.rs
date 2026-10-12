@@ -29,6 +29,9 @@ pub enum MockS3Fault {
     AccessDenied,
     Unavailable,
     Stall(Duration),
+    LoseWrites,
+    FailNext(u32),
+    RefuseDeletes,
 }
 
 pub struct MockS3 {
@@ -42,6 +45,7 @@ struct Shared {
     objects: Mutex<BTreeMap<String, Vec<u8>>>,
     fault: Mutex<Option<MockS3Fault>>,
     rejections: Mutex<Vec<String>>,
+    requests: Mutex<usize>,
 }
 
 fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -111,6 +115,10 @@ impl MockS3 {
     pub fn rejections(&self) -> Vec<String> {
         locked(&self.shared.rejections).clone()
     }
+
+    pub fn requests(&self) -> usize {
+        *locked(&self.shared.requests)
+    }
 }
 
 impl Drop for MockS3 {
@@ -126,7 +134,18 @@ async fn handle(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    let fault = *locked(&shared.fault);
+    *locked(&shared.requests) += 1;
+    let fault = {
+        let mut current = locked(&shared.fault);
+        let seen = *current;
+        if let Some(MockS3Fault::FailNext(left)) = seen {
+            *current = left
+                .checked_sub(1)
+                .filter(|left| *left > 0)
+                .map(MockS3Fault::FailNext);
+        }
+        seen
+    };
     if let Some(MockS3Fault::Stall(delay)) = fault {
         tokio::time::sleep(delay).await;
     }
@@ -136,7 +155,10 @@ async fn handle(
     }
     match fault {
         Some(MockS3Fault::AccessDenied) => return s3_error(StatusCode::FORBIDDEN, "AccessDenied"),
-        Some(MockS3Fault::Unavailable) => {
+        Some(MockS3Fault::Unavailable | MockS3Fault::FailNext(_)) => {
+            return s3_error(StatusCode::SERVICE_UNAVAILABLE, "SlowDown")
+        }
+        Some(MockS3Fault::RefuseDeletes) if method == Method::DELETE => {
             return s3_error(StatusCode::SERVICE_UNAVAILABLE, "SlowDown")
         }
         _ => {}
@@ -152,12 +174,22 @@ async fn handle(
     let mut objects = locked(&shared.objects);
     match method {
         Method::PUT => {
-            objects.insert(key.to_string(), body.to_vec());
+            if fault != Some(MockS3Fault::LoseWrites) {
+                objects.insert(key.to_string(), body.to_vec());
+            }
             StatusCode::OK.into_response()
         }
         Method::GET => match objects.get(key) {
             Some(bytes) => (StatusCode::OK, bytes.clone()).into_response(),
             None => s3_error(StatusCode::NOT_FOUND, "NoSuchKey"),
+        },
+        Method::HEAD => match objects.get(key) {
+            Some(bytes) => (
+                StatusCode::OK,
+                [(header::CONTENT_LENGTH, bytes.len().to_string())],
+            )
+                .into_response(),
+            None => StatusCode::NOT_FOUND.into_response(),
         },
         Method::DELETE => {
             objects.remove(key);

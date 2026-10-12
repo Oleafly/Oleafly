@@ -1,12 +1,14 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::Path;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use loro::VersionVector;
-use oleafly_collab_protocol::ids::{AccountId, BatchId};
+use loro::{EncodedBlobMode, ExportMode, IdSpan, ImportBlobMetadata, LoroDoc, VersionVector, ID};
+use oleafly_collab_protocol::ids::{AccountId, BatchId, DeviceId};
 use oleafly_collab_protocol::projects::{
     project_role_allows, ProjectAction, ProjectDevice, ProjectRole,
 };
+use oleafly_collab_protocol::snapshots::ProjectPeer;
 use serde::{Deserialize, Serialize};
 
 use crate::devices::{DeviceRegistry, NewDevice};
@@ -23,7 +25,10 @@ const DOC_FILE: &str = "doc.bin";
 const STATE_FILE: &str = "sync.json";
 const LOG_FILE: &str = "doc.log";
 const DEVICES_FILE: &str = "devices.json";
+const AUTHORS_FILE: &str = "authors.json";
 const LOG_LIMIT: usize = 500;
+pub const BATCH_BYTES: usize = 4 * 1024 * 1024;
+const SMALLEST_BATCH_BYTES: usize = 16 * 1024;
 
 struct OpenFile {
     channel: EditorChannel,
@@ -51,6 +56,13 @@ impl DiskWork {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PeerCheck {
+    Fine,
+    Refused,
+    Unknown(Vec<u64>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MergeReport {
     pub before: Vec<u8>,
     pub after: Vec<u8>,
@@ -69,6 +81,38 @@ struct StoredState {
     last_seq: u64,
     #[serde(with = "crate::live::hex_bytes")]
     confirmed: Vec<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    anchor: Option<BatchId>,
+}
+
+struct Piece {
+    peer: u64,
+    from: i32,
+    to: i32,
+    lamport: u32,
+    deps: Vec<ID>,
+}
+
+impl Piece {
+    fn atoms(&self) -> usize {
+        usize::try_from(self.to - self.from).unwrap_or(0)
+    }
+}
+
+fn update_meta(payload: &[u8]) -> Option<ImportBlobMetadata> {
+    LoroDoc::decode_import_blob_meta(payload, true)
+        .ok()
+        .filter(|meta| meta.mode == EncodedBlobMode::Updates)
+}
+
+fn held_by_server(confirmed: &mut VersionVector, meta: &ImportBlobMetadata) {
+    for (peer, end) in meta.partial_end_vv.iter() {
+        let start = meta.partial_start_vv.get(peer).copied().unwrap_or(0);
+        let held = confirmed.get(peer).copied().unwrap_or(0);
+        if start <= held && held < *end {
+            confirmed.set_end(ID::new(*peer, *end));
+        }
+    }
 }
 
 pub struct LiveProject {
@@ -84,8 +128,18 @@ pub struct LiveProject {
     seen: BTreeSet<u64>,
     persisted: Option<VersionVector>,
     log_records: usize,
+    saving: Arc<Mutex<()>>,
     devices: DeviceRegistry,
     devices_dirty: bool,
+    comments: crate::comments::CommentEvents,
+    authors_dirty: bool,
+    retired: HashMap<String, u64>,
+    device: Option<DeviceId>,
+    batch_limit: usize,
+    unsendable: bool,
+    told_unsendable: bool,
+    anchor: Option<BatchId>,
+    numbered: BTreeMap<u64, BatchId>,
 }
 
 fn read_log(path: &Path) -> Vec<Vec<u8>> {
@@ -123,6 +177,64 @@ fn append_log(path: &Path, record: &[u8]) -> Result<(), CollabError> {
         .map_err(|error| CollabError::Io(error.to_string()))
 }
 
+fn to_json<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, CollabError> {
+    serde_json::to_vec(value).map_err(|error| CollabError::Corrupt(error.to_string()))
+}
+
+enum SavedDocument {
+    Unchanged,
+    Appended(Vec<u8>),
+    Replaced(Vec<u8>),
+}
+
+pub struct PendingSave {
+    dir: PathBuf,
+    document: SavedDocument,
+    version: VersionVector,
+    state: Vec<u8>,
+    devices: Option<Vec<u8>>,
+    authors: Option<Vec<u8>>,
+}
+
+impl PendingSave {
+    pub fn write(&self) -> Result<(), CollabError> {
+        let dir = &self.dir;
+        std::fs::create_dir_all(dir).map_err(|error| CollabError::Io(error.to_string()))?;
+        match &self.document {
+            SavedDocument::Unchanged => {}
+            SavedDocument::Appended(record) => append_log(&dir.join(LOG_FILE), record)?,
+            SavedDocument::Replaced(snapshot) => {
+                write_atomic(&dir.join(DOC_FILE), snapshot)?;
+                match std::fs::remove_file(dir.join(LOG_FILE)) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(CollabError::Io(error.to_string())),
+                }
+            }
+        }
+        write_atomic(&dir.join(STATE_FILE), &self.state)?;
+        if let Some(json) = &self.devices {
+            write_atomic(&dir.join(DEVICES_FILE), json)?;
+        }
+        if let Some(json) = &self.authors {
+            write_atomic(&dir.join(AUTHORS_FILE), json)?;
+        }
+        Ok(())
+    }
+}
+
+fn hold(live: &Mutex<LiveProject>) -> MutexGuard<'_, LiveProject> {
+    live.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+pub fn save_shared(live: &Mutex<LiveProject>, dir: &Path) -> Result<(), CollabError> {
+    let saving = Arc::clone(&hold(live).saving);
+    let _turn = saving.lock().unwrap_or_else(PoisonError::into_inner);
+    let pending = hold(live).begin_save(dir)?;
+    let written = pending.write();
+    hold(live).end_save(pending, written)
+}
+
 impl LiveProject {
     pub fn new(doc: ProjectDoc, last_seq: u64, role: ProjectRole) -> LiveProject {
         let confirmed = doc.version();
@@ -139,8 +251,18 @@ impl LiveProject {
             seen: BTreeSet::new(),
             persisted: None,
             log_records: 0,
+            saving: Arc::default(),
             devices: DeviceRegistry::default(),
             devices_dirty: false,
+            comments: crate::comments::CommentEvents::default(),
+            authors_dirty: false,
+            retired: HashMap::new(),
+            device: None,
+            batch_limit: BATCH_BYTES,
+            unsendable: false,
+            told_unsendable: false,
+            anchor: None,
+            numbered: BTreeMap::new(),
         }
     }
 
@@ -161,44 +283,78 @@ impl LiveProject {
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
         live.confirmed = decode_version(&state.confirmed)?;
+        live.anchor = state.anchor;
         live.persisted = Some(live.doc.version());
         live.log_records = records.len();
         live.devices = DeviceRegistry::load(&dir.join(DEVICES_FILE));
+        if let Some(authors) = std::fs::read(dir.join(AUTHORS_FILE))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        {
+            live.doc.set_authorship(authors);
+        }
         Ok(live)
     }
 
     pub fn save(&mut self, dir: &Path) -> Result<(), CollabError> {
-        std::fs::create_dir_all(dir).map_err(|error| CollabError::Io(error.to_string()))?;
+        let pending = self.begin_save(dir)?;
+        let written = pending.write();
+        self.end_save(pending, written)
+    }
+
+    pub fn begin_save(&mut self, dir: &Path) -> Result<PendingSave, CollabError> {
         let appendable = self.log_records < LOG_LIMIT && dir.join(DOC_FILE).is_file();
-        match self.persisted.as_ref().filter(|_| appendable) {
-            Some(persisted) => {
-                if self.doc.has_changes_since(persisted) {
-                    append_log(&dir.join(LOG_FILE), &self.doc.export_since(persisted)?)?;
-                    self.log_records += 1;
-                }
+        let document = match self.persisted.as_ref().filter(|_| appendable) {
+            Some(persisted) if self.doc.has_changes_since(persisted) => {
+                SavedDocument::Appended(self.doc.export_since(persisted)?)
             }
-            None => {
-                write_atomic(&dir.join(DOC_FILE), &self.doc.snapshot()?)?;
-                match std::fs::remove_file(dir.join(LOG_FILE)) {
-                    Ok(()) => {}
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                    Err(error) => return Err(CollabError::Io(error.to_string())),
-                }
-                self.log_records = 0;
-            }
-        }
-        self.persisted = Some(self.doc.version());
+            Some(_) => SavedDocument::Unchanged,
+            None => SavedDocument::Replaced(self.doc.snapshot()?),
+        };
         let state = StoredState {
             last_seq: self.last_seq,
             confirmed: self.confirmed.encode(),
+            anchor: self.anchor,
         };
-        let json =
-            serde_json::to_vec(&state).map_err(|error| CollabError::Corrupt(error.to_string()))?;
-        write_atomic(&dir.join(STATE_FILE), &json)?;
-        if self.devices_dirty {
-            self.devices.save(&dir.join(DEVICES_FILE))?;
-            self.devices_dirty = false;
+        let state = to_json(&state)?;
+        let devices = if self.devices_dirty {
+            Some(to_json(&self.devices)?)
+        } else {
+            None
+        };
+        let authors = if self.authors_dirty {
+            Some(to_json(self.doc.authorship())?)
+        } else {
+            None
+        };
+        self.devices_dirty = false;
+        self.authors_dirty = false;
+        Ok(PendingSave {
+            dir: dir.to_path_buf(),
+            document,
+            version: self.doc.version(),
+            state,
+            devices,
+            authors,
+        })
+    }
+
+    pub fn end_save(
+        &mut self,
+        pending: PendingSave,
+        written: Result<(), CollabError>,
+    ) -> Result<(), CollabError> {
+        if let Err(error) = written {
+            self.devices_dirty |= pending.devices.is_some();
+            self.authors_dirty |= pending.authors.is_some();
+            return Err(error);
         }
+        match pending.document {
+            SavedDocument::Unchanged => {}
+            SavedDocument::Appended(_) => self.log_records += 1,
+            SavedDocument::Replaced(_) => self.log_records = 0,
+        }
+        self.persisted = Some(pending.version);
         Ok(())
     }
 
@@ -239,6 +395,55 @@ impl LiveProject {
         &self.devices
     }
 
+    pub fn check_peers(&self, payload: &[u8], device: DeviceId) -> PeerCheck {
+        let Ok(introduced) = self.doc.introduced_peers(payload) else {
+            return PeerCheck::Refused;
+        };
+        let own = self.doc.peer_id();
+        let mut unknown = Vec::new();
+        for peer in introduced {
+            if peer == own {
+                return PeerCheck::Refused;
+            }
+            match self.devices.device_of_peer(peer) {
+                Some(bound) if bound == device => {}
+                Some(_) => return PeerCheck::Refused,
+                None => unknown.push(peer),
+            }
+        }
+        if unknown.is_empty() {
+            PeerCheck::Fine
+        } else {
+            PeerCheck::Unknown(unknown)
+        }
+    }
+
+    pub fn pin_peers(&mut self, listed: Vec<ProjectPeer>) {
+        if self.devices.pin_peers(&listed) {
+            self.devices_dirty = true;
+        }
+        let vouched = listed.iter().map(|bound| (bound.peer, bound.account_id));
+        if self.doc.authors_mut().vouch(vouched) {
+            self.authors_dirty = true;
+        }
+    }
+
+    pub fn peers_vouched(&self) -> bool {
+        self.doc.authorship().vouched()
+    }
+
+    pub fn bind_own_peer(&mut self, device: DeviceId) {
+        let own = self.doc.peer_id();
+        if self.devices.bind_peers(&[own], device) {
+            self.devices_dirty = true;
+        }
+        if let Some(me) = self.doc.author_account() {
+            if self.doc.authors_mut().witness([own], me) {
+                self.authors_dirty = true;
+            }
+        }
+    }
+
     pub fn pin_devices(&mut self, listed: Vec<ProjectDevice>) -> Vec<NewDevice> {
         let before = self.devices.clone();
         let announced = self.devices.pin(listed);
@@ -250,18 +455,28 @@ impl LiveProject {
 
     pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<(u64, String), CollabError> {
         let text = self.doc.text(id)?;
-        let channel = EditorChannel::new(text.clone());
+        let start = self
+            .editor_rev(id)
+            .or_else(|| self.retired.get(id).copied())
+            .map_or(0, |rev| rev + 1);
+        let channel = EditorChannel::starting_at(text.clone(), start);
         let rev = channel.rev();
         self.open.insert(id.to_owned(), OpenFile { channel, sink });
         Ok((rev, text))
     }
 
     pub fn close_file(&mut self, id: &str) {
-        self.open.remove(id);
+        if let Some(closed) = self.open.remove(id) {
+            self.retired.insert(id.to_owned(), closed.channel.rev());
+        }
     }
 
     pub fn is_open(&self, id: &str) -> bool {
         self.open.contains_key(id)
+    }
+
+    pub fn editor_rev(&self, id: &str) -> Option<u64> {
+        self.open.get(id).map(|open| open.channel.rev())
     }
 
     pub fn editor_change(
@@ -304,6 +519,7 @@ impl LiveProject {
     }
 
     fn route(&mut self, changes: DocChanges, author: Option<AccountId>) -> Result<(), CollabError> {
+        self.comments.extend(changes.comments);
         if changes.tree {
             self.disk.tree = true;
         }
@@ -347,9 +563,51 @@ impl LiveProject {
         if seq > self.last_seq {
             self.seen.insert(seq);
         }
+        let before = self.last_seq;
         while self.seen.remove(&(self.last_seq + 1)) {
             self.last_seq += 1;
         }
+        if self.last_seq != before {
+            self.moved_to(self.last_seq);
+        }
+    }
+
+    fn moved_to(&mut self, last: u64) {
+        self.anchor = self.numbered.remove(&last);
+        self.numbered.retain(|seq, _| *seq > last);
+    }
+
+    pub fn note_batch(&mut self, seq: u64, batch: BatchId) {
+        if seq == self.last_seq && seq > 0 {
+            self.anchor = Some(batch);
+        } else if seq > self.last_seq {
+            self.numbered.insert(seq, batch);
+        }
+    }
+
+    pub fn anchor(&self) -> Option<BatchId> {
+        self.anchor
+    }
+
+    pub fn diverged(&self, head: u64, at_since: Option<BatchId>) -> bool {
+        head < self.last_seq
+            || matches!((self.anchor, at_since), (Some(mine), Some(theirs)) if mine != theirs)
+    }
+
+    pub fn rebase(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
+        let held = LoroDoc::decode_import_blob_meta(snapshot, true)
+            .ok()
+            .filter(|meta| meta.mode == EncodedBlobMode::Snapshot)
+            .ok_or_else(|| CollabError::Corrupt("the server's snapshot does not load".to_owned()))?
+            .partial_end_vv;
+        let imported = self.doc.import(snapshot)?;
+        self.confirmed = held;
+        self.last_seq = seq;
+        self.seen.clear();
+        self.numbered.clear();
+        self.anchor = None;
+        self.outgoing = None;
+        self.route(imported.changes, None)
     }
 
     pub fn import_update(&mut self, seq: u64, payload: &[u8]) -> Result<bool, CollabError> {
@@ -362,11 +620,46 @@ impl LiveProject {
         payload: &[u8],
         author: Option<AccountId>,
     ) -> Result<bool, CollabError> {
+        self.import_signed(seq, payload, None, author)
+    }
+
+    pub fn import_signed(
+        &mut self,
+        seq: u64,
+        payload: &[u8],
+        device: Option<DeviceId>,
+        author: Option<AccountId>,
+    ) -> Result<bool, CollabError> {
         if seq <= self.last_seq || self.seen.contains(&seq) {
             return Ok(false);
         }
+        let meta = update_meta(payload);
+        let introduced = match &meta {
+            Some(meta) if device.is_some() || author.is_some() => {
+                let known = self.doc.version();
+                meta.partial_end_vv
+                    .iter()
+                    .filter(|(peer, end)| known.get(peer).copied().unwrap_or(0) < **end)
+                    .map(|(peer, _)| *peer)
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
         let imported = self.doc.import(payload)?;
+        if let Some(device) = device {
+            if self.devices.bind_peers(&introduced, device) {
+                self.devices_dirty = true;
+            }
+        }
+        if let Some(account) = author {
+            if self.doc.authors_mut().witness(introduced, account) {
+                self.authors_dirty = true;
+            }
+        }
         advance(&mut self.confirmed, &imported.arrived);
+        if let Some(meta) = &meta {
+            held_by_server(&mut self.confirmed, meta);
+        }
         self.mark_seen(seq);
         self.received += 1;
         self.route(imported.changes, author)?;
@@ -380,7 +673,10 @@ impl LiveProject {
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
         let imported = self.doc.import(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
-        self.last_seq = self.last_seq.max(seq);
+        if seq > self.last_seq {
+            self.last_seq = seq;
+            self.moved_to(seq);
+        }
         self.seen.retain(|known| *known > seq);
         self.mark_seen(seq);
         self.route(imported.changes, None)
@@ -408,7 +704,125 @@ impl LiveProject {
     }
 
     pub fn pending_changes(&self) -> u64 {
-        self.doc.pending_since(&self.confirmed)
+        self.unsent()
+            .iter()
+            .map(|(_, from, to)| u64::try_from(to - from).unwrap_or(0))
+            .sum()
+    }
+
+    fn sendable(&self, peer: u64) -> bool {
+        match (self.devices.device_of_peer(peer), self.device) {
+            (Some(bound), Some(own)) => bound == own || peer == self.doc.peer_id(),
+            _ => true,
+        }
+    }
+
+    fn unsent(&self) -> Vec<(u64, i32, i32)> {
+        let mut unsent: Vec<(u64, i32, i32)> = self
+            .doc
+            .version()
+            .iter()
+            .filter_map(|(peer, end)| {
+                let from = self.confirmed.get(peer).copied().unwrap_or(0);
+                (from < *end && self.sendable(*peer)).then_some((*peer, from, *end))
+            })
+            .collect();
+        unsent.sort_unstable();
+        unsent
+    }
+
+    fn pieces(&self) -> Vec<Piece> {
+        let loro = self.doc.loro();
+        let mut pieces = Vec::new();
+        for (peer, from, to) in self.unsent() {
+            let mut counter = from;
+            while counter < to {
+                let Some(change) = loro.get_change(ID::new(peer, counter)) else {
+                    break;
+                };
+                let start = change.id.counter;
+                let end = start
+                    .saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX))
+                    .min(to);
+                if end <= counter {
+                    break;
+                }
+                let deps = if counter == start {
+                    change.deps.iter().collect()
+                } else {
+                    Vec::new()
+                };
+                let lamport = change
+                    .lamport
+                    .saturating_add(u32::try_from(counter - start).unwrap_or(0));
+                pieces.push(Piece {
+                    peer,
+                    from: counter,
+                    to: end,
+                    lamport,
+                    deps,
+                });
+                counter = end;
+            }
+        }
+        pieces.sort_by_key(|piece| (piece.lamport, piece.peer));
+        pieces
+    }
+
+    fn ready(&self, pieces: Vec<Piece>) -> Vec<Piece> {
+        let mut reach = self.confirmed.clone();
+        let mut blocked = BTreeSet::new();
+        let mut ready = Vec::new();
+        for piece in pieces {
+            let next = reach.get(&piece.peer).copied().unwrap_or(0);
+            let fits = !blocked.contains(&piece.peer)
+                && next >= piece.from
+                && piece
+                    .deps
+                    .iter()
+                    .all(|dep| reach.get(&dep.peer).copied().unwrap_or(0) > dep.counter);
+            if fits {
+                reach.set_end(ID::new(piece.peer, piece.to));
+                ready.push(piece);
+            } else {
+                blocked.insert(piece.peer);
+            }
+        }
+        ready
+    }
+
+    fn export_prefix(
+        &self,
+        ready: &[Piece],
+        atoms: usize,
+    ) -> Result<(Vec<u8>, VersionVector), CollabError> {
+        let mut ends: BTreeMap<u64, (i32, i32)> = BTreeMap::new();
+        let mut left = atoms;
+        for piece in ready {
+            if left == 0 {
+                break;
+            }
+            let take = left.min(piece.atoms());
+            let entry = ends.entry(piece.peer).or_insert((piece.from, piece.from));
+            entry.1 = piece.from + i32::try_from(take).unwrap_or(i32::MAX);
+            left -= take;
+        }
+        let spans: Vec<IdSpan> = ends
+            .iter()
+            .map(|(peer, (from, to))| IdSpan::new(*peer, *from, *to))
+            .collect();
+        let payload = self
+            .doc
+            .loro()
+            .export(ExportMode::UpdatesInRange {
+                spans: Cow::Owned(spans),
+            })
+            .map_err(|error| CollabError::Corrupt(error.to_string()))?;
+        let mut version = self.confirmed.clone();
+        for (peer, (_, to)) in ends {
+            version.set_end(ID::new(peer, to));
+        }
+        Ok((payload, version))
     }
 
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
@@ -451,13 +865,30 @@ impl LiveProject {
             outgoing.sent = true;
             return Ok(Some(outgoing.clone()));
         }
-        if !self.can_edit() || !self.doc.has_changes_since(&self.confirmed) {
+        if !self.can_edit() || self.unsendable {
             return Ok(None);
+        }
+        let ready = self.ready(self.pieces());
+        let total: usize = ready.iter().map(Piece::atoms).sum();
+        if total == 0 {
+            return Ok(None);
+        }
+        let mut atoms = total.min(self.batch_limit.saturating_mul(2)).max(1);
+        let (mut payload, mut version) = self.export_prefix(&ready, atoms)?;
+        while payload.len() > self.batch_limit {
+            if atoms == 1 {
+                self.unsendable = true;
+                return Ok(None);
+            }
+            let wanted = (self.batch_limit as u128 * 9 / 10).max(1);
+            let scaled = atoms as u128 * wanted / payload.len().max(1) as u128;
+            atoms = usize::try_from(scaled).unwrap_or(1).clamp(1, atoms - 1);
+            (payload, version) = self.export_prefix(&ready, atoms)?;
         }
         let outgoing = Outgoing {
             batch: BatchId::new_v7(),
-            payload: self.doc.export_since(&self.confirmed)?,
-            version: self.doc.version(),
+            payload,
+            version,
             sent: true,
         };
         self.outgoing = Some(outgoing.clone());
@@ -473,12 +904,39 @@ impl LiveProject {
             if let Some(outgoing) = self.outgoing.take() {
                 self.confirmed.merge(&outgoing.version);
             }
+            self.note_batch(seq, batch);
             self.mark_seen(seq);
         }
     }
 
     pub fn refused(&mut self) {
         self.outgoing = None;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_batch_limit(&mut self, bytes: usize) {
+        self.batch_limit = bytes.max(1);
+    }
+
+    pub fn set_device(&mut self, device: DeviceId) {
+        self.device = Some(device);
+    }
+
+    pub fn take_unsendable(&mut self) -> bool {
+        let tell = self.unsendable && !self.told_unsendable;
+        self.told_unsendable |= tell;
+        tell
+    }
+
+    pub fn too_large(&mut self) {
+        let refused = self
+            .outgoing
+            .take()
+            .map_or(self.batch_limit, |outgoing| outgoing.payload.len());
+        if refused <= SMALLEST_BATCH_BYTES {
+            self.unsendable = true;
+        }
+        self.batch_limit = (refused.min(self.batch_limit) / 2).max(SMALLEST_BATCH_BYTES);
     }
 
     pub fn disconnected(&mut self) {
@@ -488,7 +946,11 @@ impl LiveProject {
     }
 
     pub fn has_unsent(&self) -> bool {
-        self.outgoing.is_some() || self.doc.has_changes_since(&self.confirmed)
+        self.outgoing.is_some() || !self.unsent().is_empty()
+    }
+
+    pub fn sendable_now(&self) -> bool {
+        self.outgoing.is_none() && !self.unsendable && self.can_edit() && !self.unsent().is_empty()
     }
 
     pub fn mark_all_dirty(&mut self) -> Result<(), CollabError> {
@@ -503,6 +965,18 @@ impl LiveProject {
 
     pub fn take_disk_work(&mut self) -> DiskWork {
         std::mem::take(&mut self.disk)
+    }
+
+    pub fn comment_doc(&mut self) -> &mut ProjectDoc {
+        &mut self.doc
+    }
+
+    pub fn take_comment_changes(&mut self) -> crate::comments::CommentChanges {
+        let events = std::mem::take(&mut self.comments);
+        if events.is_empty() {
+            return crate::comments::CommentChanges::default();
+        }
+        self.doc.comment_changes(events)
     }
 }
 
@@ -532,8 +1006,9 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
+    use crate::client::test_util::noise;
     use crate::doc::NodeKind;
-    use oleafly_collab_protocol::ids::AccountId;
+    use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 
     fn recorder() -> (DocSink, Arc<Mutex<Vec<DocMessage>>>) {
         let seen = Arc::new(Mutex::new(Vec::new()));
@@ -831,6 +1306,69 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn a_shared_save_writes_the_change_log_before_the_sync_state_and_leaves_the_project_free() {
+        use std::io::Read;
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let before = std::fs::read(dir.path().join(STATE_FILE)).unwrap();
+        let log = dir.path().join(LOG_FILE);
+        assert!(std::process::Command::new("mkfifo")
+            .arg(&log)
+            .status()
+            .unwrap()
+            .success());
+        let body: String = (0..1_000_000u64)
+            .map(|at| char::from(b'a' + ((at.wrapping_mul(2_654_435_761) >> 9) % 26) as u8))
+            .collect();
+        bob.local_text(&main, &body).unwrap();
+        bob.skip_update(1);
+        let shared = Arc::new(Mutex::new(bob));
+        let saving = {
+            let shared = Arc::clone(&shared);
+            let dir = dir.path().to_path_buf();
+            std::thread::spawn(move || save_shared(&shared, &dir))
+        };
+        let (opened, reader) = std::sync::mpsc::channel();
+        let path = log.clone();
+        std::thread::spawn(move || {
+            let _ = opened.send(std::fs::File::open(path));
+        });
+        let mut reader = reader
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .expect("the save never opened its change log")
+            .unwrap();
+        let mut first = [0u8; 1];
+        reader.read_exact(&mut first).unwrap();
+        let free = shared.try_lock().is_ok();
+        let during = std::fs::read(dir.path().join(STATE_FILE)).unwrap();
+        std::io::copy(&mut reader, &mut std::io::sink()).unwrap();
+        let _ = saving.join().unwrap();
+        assert!(
+            free,
+            "the project stayed locked while its change log was written"
+        );
+        assert_eq!(
+            during, before,
+            "the sync state moved ahead of the change log"
+        );
+    }
+
+    #[test]
+    fn a_failed_save_keeps_the_writer_ids_for_the_next_one() {
+        let (mut bob, _alice, _main) = pair();
+        bob.bind_own_peer(DeviceId::new_v7());
+        let dir = tempfile::tempdir().unwrap();
+        let taken = dir.path().join("taken");
+        std::fs::write(&taken, b"a file, not a folder").unwrap();
+        assert!(bob.save(&taken).is_err());
+        let document = dir.path().join("document");
+        bob.save(&document).unwrap();
+        assert!(document.join(DEVICES_FILE).is_file());
+    }
+
     #[test]
     fn a_half_written_change_record_is_ignored_on_load() {
         let (mut bob, _alice, main) = pair();
@@ -863,5 +1401,243 @@ mod tests {
             loaded.doc().text(&main).unwrap(),
             bob.doc().text(&main).unwrap()
         );
+    }
+
+    #[test]
+    fn an_open_file_reports_its_editor_revision_and_a_reopen_never_reuses_one() {
+        let (mut bob, _alice, main) = pair();
+        assert_eq!(bob.editor_rev(&main), None);
+        let (sink, _seen) = recorder();
+        let (first, _) = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        assert_eq!(bob.editor_rev(&main), Some(first));
+        bob.editor_change(&main, first, insert(3, "d", 3)).unwrap();
+        let typed = bob.editor_rev(&main).unwrap();
+        assert!(typed > first);
+        bob.close_file(&main);
+        assert_eq!(bob.editor_rev(&main), None);
+        let (again, text) = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        assert!(again > typed, "{again} after {typed}");
+        assert_eq!(text, "abcd");
+        let (replaced, _) = bob.open_file(&main, sink).unwrap();
+        assert!(replaced > again, "{replaced} after {again}");
+        bob.editor_change(&main, replaced, insert(0, "x", 4))
+            .unwrap();
+        assert_eq!(bob.doc().text(&main).unwrap(), "xabcd");
+        assert_eq!(bob.editor_rev(&main), Some(replaced + 1));
+    }
+
+    #[test]
+    fn a_change_is_checked_against_the_writer_ids_this_copy_knows() {
+        let (owner, mut alice, main) = pair();
+        let (laptop, mallory) = (DeviceId::new_v7(), DeviceId::new_v7());
+        let base = owner.doc().snapshot().unwrap();
+        let write_as = |peer: u64, text: &str| {
+            let mut writer = ProjectDoc::load(&base).unwrap();
+            let since = writer.version();
+            writer.loro().set_peer_id(peer).unwrap();
+            writer.set_text(&main, text).unwrap();
+            writer.export_since(&since).unwrap()
+        };
+        let own = alice.doc().peer_id();
+        assert_eq!(
+            alice.check_peers(&write_as(own, "abc mine?"), mallory),
+            PeerCheck::Refused
+        );
+        let fresh = write_as(41, "abc new");
+        assert_eq!(
+            alice.check_peers(&fresh, laptop),
+            PeerCheck::Unknown(vec![41])
+        );
+        assert!(alice.import_signed(1, &fresh, Some(laptop), None).unwrap());
+        assert_eq!(alice.devices().device_of_peer(41), Some(laptop));
+        let more = write_as(41, "abc forged");
+        assert_eq!(alice.check_peers(&more, mallory), PeerCheck::Refused);
+        assert_eq!(alice.check_peers(&more, laptop), PeerCheck::Fine);
+        assert_eq!(alice.check_peers(&fresh, mallory), PeerCheck::Fine);
+        assert_eq!(
+            alice.check_peers(b"not a change", laptop),
+            PeerCheck::Refused
+        );
+        assert_eq!(alice.check_peers(&base, laptop), PeerCheck::Refused);
+    }
+
+    fn end_of(payload: &[u8]) -> loro::VersionVector {
+        loro::LoroDoc::decode_import_blob_meta(payload, false)
+            .unwrap()
+            .partial_end_vv
+    }
+
+    fn deliver_all(from: &mut LiveProject, to: &mut LiveProject, limit: usize) -> usize {
+        let mut seq = to.last_seq();
+        let mut batches = 0;
+        while let Some(outgoing) = from.next_outgoing().unwrap() {
+            assert!(
+                outgoing.payload.len() <= limit,
+                "batch {} carries {} bytes, over {limit}",
+                batches + 1,
+                outgoing.payload.len()
+            );
+            seq += 1;
+            assert!(to.import_update(seq, &outgoing.payload).unwrap());
+            assert!(
+                to.doc().version().includes_vv(&end_of(&outgoing.payload)),
+                "batch {} could not be applied when it arrived",
+                batches + 1
+            );
+            from.acknowledged(outgoing.batch, seq);
+            batches += 1;
+        }
+        batches
+    }
+
+    #[test]
+    fn a_change_bigger_than_one_batch_goes_out_in_pieces_that_each_fit() {
+        let (mut bob, mut alice, main) = pair();
+        let limit = 32 * 1024;
+        bob.set_batch_limit(limit);
+        let big = noise(200_000, 7);
+        bob.local_text(&main, &big).unwrap();
+        let batches = deliver_all(&mut bob, &mut alice, limit);
+        assert!(batches >= 6, "only {batches} batches");
+        assert_eq!(alice.doc().text(&main).unwrap(), big);
+        assert!(!bob.has_unsent());
+        assert_eq!(bob.pending_changes(), 0);
+    }
+
+    #[test]
+    fn pieces_from_two_writer_ids_of_one_device_arrive_in_an_order_the_other_copy_can_apply() {
+        let (mut bob, mut alice, main) = pair();
+        let limit = 16 * 1024;
+        bob.set_batch_limit(limit);
+        bob.local_text(&main, &noise(40_000, 1)).unwrap();
+        bob.comment_doc().loro().set_peer_id(4242).unwrap();
+        let more = format!("{}{}", bob.doc().text(&main).unwrap(), noise(40_000, 2));
+        bob.local_text(&main, &more).unwrap();
+        let batches = deliver_all(&mut bob, &mut alice, limit);
+        assert!(batches >= 4, "only {batches} batches");
+        assert_eq!(alice.doc().text(&main).unwrap(), more);
+    }
+
+    #[test]
+    fn a_single_edit_too_large_for_any_batch_is_refused_here_and_never_sent_again() {
+        let (mut bob, mut alice, main) = pair();
+        bob.set_batch_limit(16 * 1024);
+        bob.local_text(&main, "abcd").unwrap();
+        let huge = noise(64 * 1024, 3);
+        bob.comment_doc()
+            .loro()
+            .get_map("oversized")
+            .insert("value", huge.as_str())
+            .unwrap();
+        bob.comment_doc().loro().commit();
+        let first = bob
+            .next_outgoing()
+            .unwrap()
+            .expect("the small change still goes out");
+        assert!(alice.import_update(1, &first.payload).unwrap());
+        bob.acknowledged(first.batch, 1);
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcd");
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert!(bob.take_unsendable());
+        assert!(!bob.take_unsendable());
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert!(bob.has_unsent());
+    }
+
+    #[test]
+    fn a_batch_the_server_calls_too_large_is_cut_smaller_and_sent_again() {
+        let (mut bob, mut alice, main) = pair();
+        let big = noise(100_000, 9);
+        bob.local_text(&main, &big).unwrap();
+        let whole = bob.next_outgoing().unwrap().unwrap();
+        bob.too_large();
+        let smaller = bob
+            .next_outgoing()
+            .unwrap()
+            .expect("the change goes out again in a smaller piece");
+        assert_ne!(smaller.batch, whole.batch);
+        assert!(
+            smaller.payload.len() * 2 <= whole.payload.len() + 1024,
+            "{} after {}",
+            smaller.payload.len(),
+            whole.payload.len()
+        );
+        assert!(alice.import_update(1, &smaller.payload).unwrap());
+        bob.acknowledged(smaller.batch, 1);
+        deliver_all(&mut bob, &mut alice, whole.payload.len());
+        assert_eq!(alice.doc().text(&main).unwrap(), big);
+    }
+
+    #[test]
+    fn changes_under_another_devices_writer_id_are_left_for_that_device_to_send() {
+        let (mut bob, mut alice, main) = pair();
+        let base = alice.doc().snapshot().unwrap();
+        let (alice_device, bob_device) = (DeviceId::new_v7(), DeviceId::new_v7());
+        alice.set_device(alice_device);
+        bob.local_text(&main, "abcB").unwrap();
+        let theirs = bob.next_outgoing().unwrap().unwrap();
+        assert!(alice
+            .import_signed(1, &theirs.payload, Some(bob_device), None)
+            .unwrap());
+        alice.rebase(0, &base).unwrap();
+        assert_eq!(alice.pending_changes(), 0);
+        alice.local_text(&main, "AabcB").unwrap();
+        assert!(
+            alice.next_outgoing().unwrap().is_none(),
+            "Alice's change builds on Bob's, which the server lost"
+        );
+        assert!(alice
+            .import_signed(1, &theirs.payload, Some(bob_device), None)
+            .unwrap());
+        let mine = alice
+            .next_outgoing()
+            .unwrap()
+            .expect("Alice's own change goes out once Bob's is back");
+        let writers: Vec<u64> = end_of(&mine.payload).keys().copied().collect();
+        assert_eq!(writers, vec![alice.doc().peer_id()]);
+    }
+
+    #[test]
+    fn after_a_rebase_changes_the_server_sends_back_are_not_uploaded_again() {
+        let (mut bob, _alice, main) = pair();
+        let base = bob.doc().snapshot().unwrap();
+        bob.local_text(&main, "abcd").unwrap();
+        let mine = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(mine.batch, 1);
+        bob.rebase(0, &base).unwrap();
+        assert_eq!(bob.last_seq(), 0);
+        assert!(bob.has_unsent());
+        assert!(bob.import_signed(1, &mine.payload, None, None).unwrap());
+        assert!(!bob.has_unsent());
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert_eq!(bob.last_seq(), 1);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abcd");
+    }
+
+    #[test]
+    fn the_change_at_the_last_seen_number_is_remembered_through_gaps_and_a_restart() {
+        let (mut bob, mut alice, main) = pair();
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 1);
+        assert_eq!(bob.anchor(), Some(first.batch));
+        bob.local_text(&main, "abcde").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        alice.note_batch(2, second.batch);
+        assert!(alice.import_update(2, &second.payload).unwrap());
+        assert_eq!(alice.anchor(), None);
+        alice.note_batch(1, first.batch);
+        assert!(alice.import_update(1, &first.payload).unwrap());
+        assert_eq!(alice.last_seq(), 2);
+        assert_eq!(alice.anchor(), Some(second.batch));
+        assert!(!alice.diverged(2, Some(second.batch)));
+        assert!(!alice.diverged(9, None));
+        assert!(alice.diverged(1, None));
+        assert!(alice.diverged(2, Some(first.batch)));
+        let dir = tempfile::tempdir().unwrap();
+        alice.save(dir.path()).unwrap();
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert_eq!(loaded.anchor(), Some(second.batch));
+        assert!(loaded.diverged(2, Some(first.batch)));
     }
 }

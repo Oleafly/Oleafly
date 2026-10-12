@@ -2,22 +2,24 @@ use axum::body::Body;
 use axum::http::{header, Method, Request};
 use oleafly_collab_protocol::admin::{
     AllowlistMatcher, MemberPatch, MemberStatus, NewAllowlistEntry, NewDomainRule,
+    RuntimeSettingsPatch, SecurityEventKind,
 };
 use oleafly_collab_protocol::auth::AuthErrorCode;
 use oleafly_collab_protocol::crypto::pkce_s256;
+use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::auth::admission::{self, Admission, Applied, Via};
 use oleafly_server::auth::oidc::OidcProvider;
 use oleafly_server::auth::{ExternalIdentity, IdentityProvider};
 use oleafly_server::clock::Clock;
 use oleafly_server::config::ProviderConfig;
-use oleafly_server::members;
 use oleafly_server::state::setup_code_hash;
 use oleafly_server::test_support::{
-    authorization_code, seed_member, test_app_with, test_config, MockOidc, MockOidcUser, TestApp,
-    TEST_SETUP_CODE,
+    allowlist, authorization_code, oidc_provider, seed_member, sign_in, test_app_with, test_config,
+    MockOidc, MockOidcUser, TestApp, TestDevice, TestServer, TEST_SETUP_CODE,
 };
 use oleafly_server::tokens::random_token;
+use oleafly_server::{guests, members, projects, security_log, settings};
 use serde_json::{json, Value};
 use tower::ServiceExt;
 use url::Url;
@@ -92,7 +94,7 @@ async fn admit(app: &TestApp, identity: &ExternalIdentity, setup_hash: Option<St
         .db
         .call(move |conn| {
             let decision = admission::decide(conn, &identity, setup_hash.as_deref())?;
-            admission::apply(conn, &identity, decision, now)
+            admission::apply(conn, &identity, decision, 20, now)
         })
         .await
         .expect("admit")
@@ -561,4 +563,443 @@ async fn a_valid_setup_code_makes_the_first_admin_even_when_a_rule_also_matches(
         decide(&app, &bob, Some(setup_code_hash("WRONG-CODE"))).await,
         Admission::Domain { .. }
     ));
+}
+
+struct Returning {
+    decision: Admission,
+    applied: Applied,
+    status: Option<MemberStatus>,
+    role: Option<ServerRole>,
+    old_grant: Option<ProjectRole>,
+    new_grant: Option<ProjectRole>,
+}
+
+async fn removed_then_invited(role: ServerRole) -> Returning {
+    let app = app_with_github().await;
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            let yara = members::create_account(conn, "Yara", None, ServerRole::Member, now)?;
+            let xavi = members::create_account(conn, "Xavi", None, ServerRole::Member, now)?;
+            let bob = members::create_account(conn, "Bob", None, role, now)?;
+            members::link_identity(
+                conn,
+                bob,
+                "github",
+                "https://github.com",
+                "42",
+                Some("bob"),
+                now,
+            )?;
+            members::add_verified_emails(conn, bob, &["bob@uni.edu".to_owned()])?;
+            let thesis = projects::create_pending(conn, yara, "Yara thesis", now)?;
+            projects::set_status(conn, thesis, ProjectStatus::Active, now)?;
+            projects::grant(conn, thesis, bob, ProjectRole::Editor, yara, now)?;
+            let paper = projects::create_pending(conn, xavi, "Xavi paper", now)?;
+            projects::set_status(conn, paper, ProjectStatus::Active, now)?;
+            members::remove_account(conn, bob, now)?;
+            settings::patch(
+                conn,
+                &RuntimeSettingsPatch {
+                    guests_enabled: Some(true),
+                    guest_approval_required: Some(false),
+                    ..Default::default()
+                },
+            )?;
+            guests::create(
+                conn,
+                paper,
+                "bob@uni.edu",
+                ProjectRole::Viewer,
+                xavi,
+                false,
+                now,
+            )?;
+            let identity = github("42", "bob", &["bob@uni.edu"]);
+            let decision = admission::decide(conn, &identity, None)?;
+            let again = admission::decide(conn, &identity, None)?;
+            let applied = admission::apply(conn, &identity, again, 20, now)?;
+            Ok(Returning {
+                decision,
+                applied,
+                status: members::account_status(conn, bob)?,
+                role: members::account_role(conn, bob)?,
+                old_grant: projects::role_of(conn, thesis, bob)?,
+                new_grant: projects::role_of(conn, paper, bob)?,
+            })
+        })
+        .await
+        .expect("db")
+}
+
+#[tokio::test]
+async fn a_member_removed_from_the_server_does_not_return_through_a_guest_invitation() {
+    let returning = removed_then_invited(ServerRole::Member).await;
+    assert!(matches!(returning.decision, Admission::NotAdmitted));
+    assert!(matches!(
+        returning.applied,
+        Applied::Refused {
+            code: AuthErrorCode::NotAdmitted,
+            ..
+        }
+    ));
+    assert_eq!(returning.status, Some(MemberStatus::Removed));
+    assert_eq!(returning.role, Some(ServerRole::Member));
+    assert_eq!(returning.old_grant, Some(ProjectRole::Editor));
+    assert_eq!(returning.new_grant, None);
+}
+
+#[tokio::test]
+async fn a_removed_guest_who_still_has_projects_does_not_return_through_a_new_invitation() {
+    let returning = removed_then_invited(ServerRole::Guest).await;
+    assert!(matches!(returning.decision, Admission::NotAdmitted));
+    assert_eq!(returning.status, Some(MemberStatus::Removed));
+    assert_eq!(returning.new_grant, None);
+}
+
+#[tokio::test]
+async fn a_removed_member_added_again_gets_their_old_projects_back() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let matcher = AllowlistMatcher::ProviderLogin {
+        provider: "github".to_owned(),
+        login: "grace".to_owned(),
+    };
+    allow(&app, &admin.access_token, matcher.clone()).await;
+    let grace = github("9009", "grace", &["grace@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &grace, None).await else {
+        panic!("grace was refused");
+    };
+    let account = first.account_id;
+    let now = app.clock.now_ms();
+    let thesis = app
+        .state
+        .db
+        .call(move |conn| {
+            let owner = members::create_account(conn, "Yara", None, ServerRole::Member, now)?;
+            let thesis = projects::create_pending(conn, owner, "Thesis", now)?;
+            projects::set_status(conn, thesis, ProjectStatus::Active, now)?;
+            projects::grant(conn, thesis, account, ProjectRole::Editor, owner, now)?;
+            Ok(thesis)
+        })
+        .await
+        .expect("grant");
+    remove(&app, &admin.access_token, account).await;
+    allow(&app, &admin.access_token, matcher).await;
+    let Applied::Admitted(again) = admit(&app, &grace, None).await else {
+        panic!("grace was refused the second time");
+    };
+    assert_eq!(again.account_id, account);
+    let role = app
+        .state
+        .db
+        .call(move |conn| projects::role_of(conn, thesis, account))
+        .await
+        .expect("role");
+    assert_eq!(role, Some(ProjectRole::Editor));
+}
+
+const FORMER_ADDRESS: &str = "address_of_inactive_account";
+
+fn mallory_at(subject: &str) -> MockOidcUser {
+    MockOidcUser {
+        subject: subject.to_owned(),
+        name: "Mallory Reyes".to_owned(),
+        email: Some("mallory@uni.edu".to_owned()),
+        email_verified: Some(json!(true)),
+    }
+}
+
+async fn account_count(server: &TestServer) -> i64 {
+    server
+        .state()
+        .db
+        .call(|conn| {
+            Ok(conn.query_row("SELECT COUNT(*) FROM accounts", [], |row| {
+                row.get::<_, i64>(0)
+            })?)
+        })
+        .await
+        .expect("count")
+}
+
+async fn refusal_reasons(server: &TestServer) -> Vec<Value> {
+    server
+        .state()
+        .db
+        .call(|conn| security_log::page(conn, None, 200))
+        .await
+        .expect("security log")
+        .items
+        .into_iter()
+        .filter(|event| event.kind == SecurityEventKind::SignInRefused)
+        .map(|event| event.detail["reason"].clone())
+        .collect()
+}
+
+struct SecondIdentity {
+    server: TestServer,
+    admin: oleafly_server::test_support::SeededMember,
+    first: oleafly_collab_protocol::ids::AccountId,
+    refused: Option<String>,
+    accounts_before: i64,
+    _issuers: [MockOidc; 2],
+}
+
+async fn second_identity_after(status: MemberStatus) -> SecondIdentity {
+    let uni = MockOidc::start(vec![mallory_at("uni-1")]).await;
+    let lab = MockOidc::start(vec![mallory_at("lab-1")]).await;
+    let mut config = test_config();
+    config.providers.push(oidc_provider("uni", &uni, false));
+    config.providers.push(oidc_provider("lab", &lab, false));
+    let server = TestServer::start(config).await;
+    let admin = seed_member(server.app(), ServerRole::Admin).await;
+    server
+        .state()
+        .db
+        .call(|conn| {
+            let rule = NewDomainRule {
+                domain: "uni.edu".to_owned(),
+                role: ServerRole::Member,
+            };
+            members::add_domain_rule(conn, &rule, None, 0)?;
+            Ok(())
+        })
+        .await
+        .expect("domain rule");
+    let first = sign_in(&server, "uni", &TestDevice::generate(), None)
+        .await
+        .expect("the domain rule admits the first identity")
+        .account_id;
+    let now = server.clock().now_ms();
+    server
+        .state()
+        .db
+        .call(move |conn| match status {
+            MemberStatus::Removed => members::remove_account(conn, first, now).map(|_| ()),
+            other => members::set_status(conn, first, &other, now),
+        })
+        .await
+        .expect("status");
+    let accounts_before = account_count(&server).await;
+    let refused = sign_in(&server, "lab", &TestDevice::generate(), None)
+        .await
+        .err();
+    SecondIdentity {
+        server,
+        admin,
+        first,
+        refused,
+        accounts_before,
+        _issuers: [uni, lab],
+    }
+}
+
+async fn status_of(
+    server: &TestServer,
+    account: oleafly_collab_protocol::ids::AccountId,
+) -> Option<MemberStatus> {
+    server
+        .state()
+        .db
+        .call(move |conn| members::account_status(conn, account))
+        .await
+        .expect("status")
+}
+
+#[tokio::test]
+async fn a_removed_member_gets_no_new_account_from_a_domain_rule_under_a_second_identity() {
+    let second = second_identity_after(MemberStatus::Removed).await;
+    assert_eq!(second.refused.as_deref(), Some("not_admitted"));
+    assert_eq!(account_count(&second.server).await, second.accounts_before);
+    assert!(refusal_reasons(&second.server)
+        .await
+        .contains(&json!(FORMER_ADDRESS)));
+    assert_eq!(
+        status_of(&second.server, second.first).await,
+        Some(MemberStatus::Removed)
+    );
+    let newcomer = github("7101", "nadia", &["nadia@uni.edu"]);
+    assert!(matches!(
+        decide(second.server.app(), &newcomer, None).await,
+        Admission::Domain { existing: None, .. }
+    ));
+}
+
+#[tokio::test]
+async fn a_suspended_member_gets_no_new_account_from_a_domain_rule_under_a_second_identity() {
+    let second = second_identity_after(MemberStatus::Suspended).await;
+    assert_eq!(second.refused.as_deref(), Some("not_admitted"));
+    assert_eq!(account_count(&second.server).await, second.accounts_before);
+    assert!(refusal_reasons(&second.server)
+        .await
+        .contains(&json!(FORMER_ADDRESS)));
+    assert_eq!(
+        status_of(&second.server, second.first).await,
+        Some(MemberStatus::Suspended)
+    );
+}
+
+#[tokio::test]
+async fn an_allowlist_entry_for_the_address_still_brings_a_removed_member_back_to_their_old_account(
+) {
+    let second = second_identity_after(MemberStatus::Removed).await;
+    allowlist(
+        &second.server,
+        &second.admin.access_token,
+        AllowlistMatcher::Email {
+            email: "mallory@uni.edu".to_owned(),
+        },
+        ServerRole::Member,
+    )
+    .await;
+    let elsewhere = ExternalIdentity {
+        provider_id: "lab".to_owned(),
+        issuer: "https://lab.example".to_owned(),
+        subject: "lab-1".to_owned(),
+        login: None,
+        display_name: "Mallory Reyes".to_owned(),
+        avatar_url: None,
+        verified_emails: vec!["mallory@uni.edu".to_owned()],
+    };
+    assert!(matches!(
+        decide(second.server.app(), &elsewhere, None).await,
+        Admission::Allowlisted { existing: None, .. }
+    ));
+    let back = sign_in(&second.server, "uni", &TestDevice::generate(), None)
+        .await
+        .expect("the allowlist lets them back in");
+    assert_eq!(back.account_id, second.first);
+    assert_eq!(
+        status_of(&second.server, second.first).await,
+        Some(MemberStatus::Active)
+    );
+}
+
+struct InvitedElsewhere {
+    applied: Applied,
+    accounts_before: i64,
+    accounts_after: i64,
+}
+
+async fn inactive_then_invited_under_another_identity(
+    role: ServerRole,
+    status: MemberStatus,
+) -> InvitedElsewhere {
+    let app = app_with_github().await;
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            let count = |conn: &rusqlite::Connection| {
+                conn.query_row("SELECT COUNT(*) FROM accounts", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+            };
+            let xavi = members::create_account(conn, "Xavi", None, ServerRole::Member, now)?;
+            let bob = members::create_account(conn, "Bob", None, role, now)?;
+            members::link_identity(
+                conn,
+                bob,
+                "github",
+                "https://github.com",
+                "42",
+                Some("bob"),
+                now,
+            )?;
+            members::add_verified_emails(conn, bob, &["bob@uni.edu".to_owned()])?;
+            match status {
+                MemberStatus::Removed => {
+                    members::remove_account(conn, bob, now)?;
+                }
+                other => members::set_status(conn, bob, &other, now)?,
+            }
+            let paper = projects::create_pending(conn, xavi, "Xavi paper", now)?;
+            projects::set_status(conn, paper, ProjectStatus::Active, now)?;
+            settings::patch(
+                conn,
+                &RuntimeSettingsPatch {
+                    guests_enabled: Some(true),
+                    guest_approval_required: Some(false),
+                    ..Default::default()
+                },
+            )?;
+            guests::create(
+                conn,
+                paper,
+                "bob@uni.edu",
+                ProjectRole::Viewer,
+                xavi,
+                false,
+                now,
+            )?;
+            let accounts_before = count(conn)?;
+            let identity = github("43", "bob-elsewhere", &["bob@uni.edu"]);
+            let decision = admission::decide(conn, &identity, None)?;
+            let applied = admission::apply(conn, &identity, decision, 20, now)?;
+            Ok(InvitedElsewhere {
+                applied,
+                accounts_before,
+                accounts_after: count(conn)?,
+            })
+        })
+        .await
+        .expect("db")
+}
+
+#[tokio::test]
+async fn a_removed_member_does_not_return_as_a_guest_under_a_second_identity() {
+    let invited =
+        inactive_then_invited_under_another_identity(ServerRole::Member, MemberStatus::Removed)
+            .await;
+    assert!(
+        matches!(
+            invited.applied,
+            Applied::Refused {
+                code: AuthErrorCode::NotAdmitted,
+                reason: FORMER_ADDRESS
+            }
+        ),
+        "{:?}",
+        invited.applied
+    );
+    assert_eq!(invited.accounts_after, invited.accounts_before);
+}
+
+#[tokio::test]
+async fn a_suspended_guest_does_not_return_as_a_guest_under_a_second_identity() {
+    let invited =
+        inactive_then_invited_under_another_identity(ServerRole::Guest, MemberStatus::Suspended)
+            .await;
+    assert!(
+        matches!(
+            invited.applied,
+            Applied::Refused {
+                code: AuthErrorCode::NotAdmitted,
+                reason: FORMER_ADDRESS
+            }
+        ),
+        "{:?}",
+        invited.applied
+    );
+    assert_eq!(invited.accounts_after, invited.accounts_before);
+}
+
+#[tokio::test]
+async fn a_guest_whose_projects_all_ended_may_accept_a_new_invitation_under_a_second_identity() {
+    let invited =
+        inactive_then_invited_under_another_identity(ServerRole::Guest, MemberStatus::Removed)
+            .await;
+    assert!(
+        matches!(
+            invited.applied,
+            Applied::Admitted(admission::Admitted {
+                via: Via::Guest,
+                ..
+            })
+        ),
+        "{:?}",
+        invited.applied
+    );
 }

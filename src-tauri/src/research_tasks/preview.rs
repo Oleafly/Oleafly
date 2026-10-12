@@ -7,8 +7,9 @@ use cap_std::fs::{Dir, OpenOptions};
 use sha2::{Digest, Sha256};
 
 use super::isolation::normalized_relative;
-use super::model::{TaskArtifactPreview, TaskFilePreview, TaskPreviewContent};
+use super::model::{ResearchTask, TaskArtifactPreview, TaskFilePreview, TaskPreviewContent};
 use super::store::TaskStore;
+use crate::collab::live::write::SharedDocument;
 
 const MAX_TEXT_BYTES: u64 = 400_000;
 const MAX_IMAGE_BYTES: u64 = 8 * 1024 * 1024;
@@ -19,6 +20,17 @@ pub(crate) fn file_preview(
     path: &str,
 ) -> Result<TaskFilePreview, String> {
     let task = store.require(task_id)?;
+    let project_root = crate::paths::project_dir(&task.project_id).ok();
+    let document = SharedDocument::of(&task.project_id);
+    task_file_preview(task, path, project_root.as_deref(), document.as_ref())
+}
+
+pub(super) fn task_file_preview(
+    task: ResearchTask,
+    path: &str,
+    project_root: Option<&Path>,
+    document: Option<&SharedDocument>,
+) -> Result<TaskFilePreview, String> {
     let isolation = task
         .isolation
         .ok_or_else(|| "This task has no saved workspace to preview.".to_string())?;
@@ -35,11 +47,11 @@ pub(crate) fn file_preview(
     let execution = PreviewRoot::open(Path::new(&isolation.execution_root))?;
     let before = read_expected(&baseline, &relative, change.before_sha256.as_deref())?;
     let after = read_expected(&execution, &relative, change.after_sha256.as_deref())?;
-    let project_sha256 = crate::paths::project_dir(&task.project_id)
-        .ok()
-        .and_then(|root| super::apply::current_project_hash(&root, &relative).ok())
+    let project_sha256 = project_root
+        .and_then(|root| super::apply::current_project_hash(root, &relative).ok())
         .flatten();
     let base_is_current = project_sha256.as_deref() == change.before_sha256.as_deref();
+    let merges_with_shared = super::apply::merges_with_shared(document, &isolation, &change);
     Ok(TaskFilePreview {
         path: path.to_string(),
         change: change.kind,
@@ -47,6 +59,7 @@ pub(crate) fn file_preview(
         after,
         project_sha256,
         base_is_current,
+        merges_with_shared,
     })
 }
 

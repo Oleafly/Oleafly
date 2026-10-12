@@ -1409,5 +1409,12 @@
     "compiling": "Compiling",
     "hideLog": "Hide the compile log",
     "showLog": "Show the compile log"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} file changed outside Oleafly. Send this change to everyone, or keep it local?",
+    "paused_other": "{{count}} files changed outside Oleafly. Send these changes to everyone, or keep them local?",
+    "send": "Send",
+    "keepLocal": "Keep local",
+    "unavailable": "The project folder is unavailable, so syncing is paused. It starts again when the folder is back."
   }
 }

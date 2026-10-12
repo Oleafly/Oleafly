@@ -199,6 +199,24 @@ describe("RemoteDocumentSession", () => {
     expect(onPhase).toHaveBeenLastCalledWith("detached");
   });
 
+  it("reports the channel revision it has applied", async () => {
+    const channel = new FakeChannel("abc");
+    channel.reset("abc");
+    const { session, editor, id } = await opened(channel);
+    expect(session.revision).toBe(1);
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    expect(session.revision).toBe(1);
+    channel.drain();
+    expect(session.revision).toBe(2);
+    channel.remote(insertAt(0, "Z", 4));
+    expect(session.revision).toBe(2);
+    channel.deliverOne(id);
+    expect(session.revision).toBe(3);
+    channel.reset("fresh");
+    channel.deliverOne(id);
+    expect(session.revision).toBe(4);
+  });
+
   it("resolves settled once every change is confirmed and closes its file", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

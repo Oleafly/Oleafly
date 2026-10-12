@@ -325,7 +325,7 @@ pub async fn share_project(
         progress(index + 1);
     }
     client
-        .put_snapshot(&access, shared, 0, built.doc.snapshot()?)
+        .put_first_snapshot(&access, shared, built.doc.snapshot()?, &keys.key)
         .await?;
     client.commit_project(&access, shared).await?;
     let paths = state.paths()?;
@@ -406,8 +406,15 @@ pub async fn join_project(
     let client = client_for(&entry)?;
     let keys = state.keys().await?;
     let access = keys.sessions.access_token(server, &client).await?;
-    let (seq, snapshot) = client.get_snapshot(&access, shared).await?;
-    let doc = ProjectDoc::load(&snapshot)?;
+    let verified = oleafly_collab::snapshots::fetch_verified(
+        &client,
+        &access,
+        shared,
+        &oleafly_collab::devices::DeviceRegistry::default(),
+    )
+    .await?;
+    let seq = verified.seq;
+    let doc = ProjectDoc::load(&verified.bytes)?;
     let layout = materialize::layout(&doc.nodes()?);
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     let mut dirs: Vec<String> = Vec::new();
@@ -473,6 +480,12 @@ pub async fn join_project(
         .map_err(|error| CollabError::Io(format!("{error:?}")))?;
     crate::project::initialize_git_for_new_project(&local_id);
     let mut live = LiveProject::new(doc, seq, summary.role);
+    if let Some(listed) = verified.listed {
+        live.pin_devices(listed);
+    }
+    if let Ok(peers) = client.project_peers(&access, shared).await {
+        live.pin_peers(peers);
+    }
     live.save(&paths.document_dir(&local_id)?)?;
     DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
     save_binding(
@@ -713,6 +726,8 @@ pub async fn collab_link_sharing_set(
         title: None,
         link_sharing: Some(enabled),
         link_role: Some(role),
+        comments_enabled: None,
+        access_log: None,
     };
     with_binding(
         state.inner(),
@@ -814,6 +829,23 @@ pub async fn collab_open_link(
     open_link(state.inner(), host.as_ref(), &link)
         .await
         .map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_link_preview(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CollabState>,
+    server_id: String,
+    shared_project_id: String,
+) -> Result<ProjectSummary, CollabCommandError> {
+    let server = parse_id(&server_id, "server")?;
+    let shared = parse_id(&shared_project_id, "project")?;
+    let host = AppHost::new(app);
+    authed(state.inner(), &host, server, |client, access| {
+        Box::pin(async move { client.join_preview(access, shared).await })
+    })
+    .await
+    .map_err(CollabCommandError::from)
 }
 
 #[cfg(test)]

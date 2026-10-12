@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, LogIn, LogOut, Server, ShieldCheck, Trash2 } from "lucide-react";
+import { Activity, AppWindow, LogIn, LogOut, Server, ShieldCheck, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,26 +8,17 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  collabServerDevices,
-  collabServerSignOutDevice,
-  collabServerTest,
-  type CollabConnectionCheck,
-  type CollabServer,
-} from "@/lib/tauri";
+import { collabServerDevices, collabServerSignOutDevice, type CollabServer } from "@/lib/tauri";
+import { openAdminConsole } from "./console/open-console";
 import { ConnectionChecks } from "./ConnectionChecks";
 import { DevicesList } from "./DevicesList";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { EmailPreferencesRow } from "./EmailPreferencesRow";
+import { collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
 import { accountDetail, accountPerson } from "./people";
 import { canManageServer, toServerRole } from "./roles";
 import { useCollabStore } from "./store";
-
-type ConnectionTest =
-  | { state: "idle" }
-  | { state: "running" }
-  | { state: "done"; checks: CollabConnectionCheck[] }
-  | { state: "failed"; message: string };
+import { useConnectionTest } from "./use-connection-test";
 
 export function ServerCard({
   server,
@@ -42,18 +33,9 @@ export function ServerCard({
   const remove = useCollabStore((state) => state.remove);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [test, setTest] = useState<ConnectionTest>({ state: "idle" });
+  const { test, run: runTest } = useConnectionTest(server.url);
   const account = server.signed_in ? server.account : null;
   const role = toServerRole(account?.server_role);
-
-  const runTest = async () => {
-    setTest({ state: "running" });
-    try {
-      setTest({ state: "done", checks: await collabServerTest(server.url) });
-    } catch (error) {
-      setTest({ state: "failed", message: collabErrorMessage(collabErrorCode(error)) });
-    }
-  };
 
   const doSignOut = async () => {
     setActionError(null);
@@ -143,6 +125,12 @@ export function ServerCard({
               {t(($) => $.collab.section.server.manage)}
             </Button>
           ) : null}
+          {account && canManageServer(role) ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
+              <AppWindow aria-hidden />
+              {t(($) => $.collab.console.open)}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -161,6 +149,7 @@ export function ServerCard({
         ) : null}
         {test.state === "done" ? <ConnectionChecks checks={test.checks} /> : null}
         {test.state === "failed" ? <InlineAlert>{test.message}</InlineAlert> : null}
+        {account ? <EmailPreferencesRow key={`emails-${serverId}`} serverId={serverId} /> : null}
         {account ? (
           <DevicesList
             key={serverId}

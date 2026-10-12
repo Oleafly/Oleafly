@@ -1,9 +1,10 @@
 use std::time::{Duration, UNIX_EPOCH};
 
+use oleafly_collab_protocol::auth::ApiError;
 use oleafly_collab_protocol::capabilities::{
     negotiate, CapabilityManifest, ProtocolRange, VersionMismatch, WELL_KNOWN_PATH,
 };
-use oleafly_collab_protocol::ids::ServerId;
+use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use reqwest::header::DATE;
 use serde::{Deserialize, Serialize};
 
@@ -67,11 +68,9 @@ pub async fn test_connection_pinned(
     url: &ServerUrl,
     expected: Option<ServerId>,
 ) -> Vec<ConnectionCheck> {
-    let (reachable, probe, websocket) = tokio::join!(
-        reachable_check(url),
-        probe_manifest(url),
-        websocket_check(url)
-    );
+    let (reachable, probe, socket) =
+        tokio::join!(reachable_check(url), probe_manifest(url), socket_opens(url));
+    let websocket = websocket_check(url, socket, &probe).await;
     vec![
         reachable,
         https_check(url, &probe),
@@ -139,14 +138,49 @@ async fn probe_manifest(url: &ServerUrl) -> ManifestProbe {
     }
 }
 
-async fn websocket_check(url: &ServerUrl) -> ConnectionCheck {
-    match open_socket(url).await {
-        Ok(mut socket) => {
-            let _ = socket.close(None).await;
-            check(CheckId::WebSocket, CheckStatus::Pass, None)
-        }
-        Err(error) => check(CheckId::WebSocket, CheckStatus::Fail, Some(detail(&error))),
+async fn socket_opens(url: &ServerUrl) -> Result<(), CollabError> {
+    let mut socket = open_socket(url).await?;
+    let _ = socket.close(None).await;
+    Ok(())
+}
+
+async fn long_poll_answers(url: &ServerUrl) -> bool {
+    let Ok(client) = ServerClient::new(url.clone()) else {
+        return false;
+    };
+    let mut target = url.endpoint("api/v1/projects");
+    if let Ok(mut segments) = target.path_segments_mut() {
+        segments.push(&SharedProjectId::new_v7().to_string());
+        segments.push("poll");
     }
+    let Ok(response) = client.http().get(target).send().await else {
+        return false;
+    };
+    if response.status() != reqwest::StatusCode::UNAUTHORIZED {
+        return false;
+    }
+    response
+        .json::<ApiError>()
+        .await
+        .is_ok_and(|error| error.code == "unauthorized")
+}
+
+async fn websocket_check(
+    url: &ServerUrl,
+    opened: Result<(), CollabError>,
+    probe: &ManifestProbe,
+) -> ConnectionCheck {
+    let Err(error) = opened else {
+        return check(CheckId::WebSocket, CheckStatus::Pass, None);
+    };
+    if probe.transport.is_ok() && long_poll_answers(url).await {
+        return check(
+            CheckId::WebSocket,
+            CheckStatus::Info,
+            Some("fallback".to_string()),
+        );
+    }
+    check(CheckId::WebSocket, CheckStatus::Fail, Some(detail(&error)))
 }
 
 fn https_check(url: &ServerUrl, probe: &ManifestProbe) -> ConnectionCheck {
@@ -388,5 +422,32 @@ mod tests {
             ]
         );
         assert_eq!(checks[5].detail.as_deref(), Some("configured"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_network_that_blocks_websockets_names_the_slower_fallback() {
+        let server = TestServer::start(test_config()).await;
+        let upstream = server
+            .url()
+            .trim_start_matches("http://")
+            .parse()
+            .expect("server address");
+        let proxy = oleafly_server::test_support::BlockingProxy::start(upstream).await;
+        let url = ServerUrl::parse(&proxy.url()).expect("proxy address");
+        let checks = test_connection(&url).await;
+        assert_eq!(
+            checks[3],
+            check(
+                CheckId::WebSocket,
+                CheckStatus::Info,
+                Some("fallback".to_string())
+            )
+        );
+        assert_eq!(checks[0].status, CheckStatus::Pass);
+        assert_eq!(checks[2].status, CheckStatus::Pass);
+        assert!(proxy.refused() >= 1);
+        proxy.block_websockets(false);
+        let open = test_connection(&url).await;
+        assert_eq!(open[3], check(CheckId::WebSocket, CheckStatus::Pass, None));
     }
 }

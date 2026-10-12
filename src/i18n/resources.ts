@@ -83,8 +83,14 @@ export async function loadLocaleResources(locale: SupportedLocale): Promise<Reco
   const prefix = `./locales/${locale}/`;
   const entries = await Promise.all(
     Object.entries(lazyCatalogs)
-      .filter(([path]) => path.startsWith(prefix))
+      .filter(([path]) => path.startsWith(prefix) && !LAZY_NAMESPACES.includes(namespaceOf(path)))
       .map(async ([path, load]) => [namespaceOf(path), await load()] as const),
   );
   return Object.fromEntries(entries);
+}
+
+export async function loadLocaleCatalog(locale: SupportedLocale, namespace: string): Promise<Catalog | null> {
+  const path = `./locales/${locale}/${namespace}.json`;
+  if (locale === "en" || !LAZY_NAMESPACES.includes(namespace) || !Object.hasOwn(lazyCatalogs, path)) return null;
+  return lazyCatalogs[path]();
 }

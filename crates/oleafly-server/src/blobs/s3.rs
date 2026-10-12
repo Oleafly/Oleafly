@@ -1,12 +1,17 @@
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
 use axum::body::Bytes;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HOST};
 use reqwest::{Method, StatusCode};
+use ring::rand::{SecureRandom, SystemRandom};
 use url::Url;
 
+use oleafly_collab_protocol::ids::SharedProjectId;
+
 use crate::blobs::sigv4::{self, Credentials, Request};
+use crate::blobs::snapshot_key;
 use crate::clock::Clock;
 use crate::config::S3Config;
 use crate::error::ServerError;
@@ -14,19 +19,31 @@ use crate::error::ServerError;
 const ERROR_BODY_LIMIT: usize = 4096;
 const NO_SUCH_BUCKET: &str = "NoSuchBucket";
 
+enum Attempt<T> {
+    Done(T),
+    Again(ServerError),
+    Stop(ServerError),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct S3Timeouts {
     pub connect: Duration,
+    pub first_byte: Duration,
     pub base: Duration,
     pub min_bytes_per_second: u64,
+    pub attempts: u32,
+    pub retry_pause: Duration,
 }
 
 impl Default for S3Timeouts {
     fn default() -> S3Timeouts {
         S3Timeouts {
             connect: Duration::from_secs(10),
+            first_byte: Duration::from_secs(10),
             base: Duration::from_secs(30),
             min_bytes_per_second: 256 * 1024,
+            attempts: 3,
+            retry_pause: Duration::from_millis(200),
         }
     }
 }
@@ -42,9 +59,11 @@ impl S3Timeouts {
 #[derive(Clone)]
 pub struct S3Blobs {
     inner: Arc<Inner>,
+    max_snapshot_bytes: u64,
 }
 
 struct Inner {
+    locks: Arc<[tokio::sync::Mutex<()>]>,
     client: reqwest::Client,
     clock: Arc<dyn Clock>,
     timeouts: S3Timeouts,
@@ -103,7 +122,9 @@ impl S3Blobs {
                 ServerError::Internal(format!("could not build the S3 client: {error}"))
             })?;
         Ok(S3Blobs {
+            max_snapshot_bytes: max_blob_bytes,
             inner: Arc::new(Inner {
+                locks: crate::blobs::lock_stripes(),
                 client,
                 clock,
                 timeouts,
@@ -120,94 +141,278 @@ impl S3Blobs {
         })
     }
 
+    pub(crate) fn locks(&self) -> &Arc<[tokio::sync::Mutex<()>]> {
+        &self.inner.locks
+    }
+
+    pub fn with_snapshot_limit(mut self, bytes: u64) -> S3Blobs {
+        self.max_snapshot_bytes = bytes;
+        self
+    }
+
+    pub fn snapshot_read_timeout(&self) -> Duration {
+        self.inner.timeouts.for_bytes(self.max_snapshot_bytes)
+    }
+
     pub fn key(&self, hash: &str) -> String {
         format!("{}{}/{hash}", self.inner.key_prefix, &hash[..2])
     }
 
+    pub fn snapshot_object_key(&self, project: SharedProjectId, hash: &str) -> String {
+        format!("{}{}", self.inner.key_prefix, snapshot_key(project, hash))
+    }
+
     pub fn object_url(&self, hash: &str) -> Url {
+        self.url_of(&self.key(hash))
+    }
+
+    fn url_of(&self, key: &str) -> Url {
         let mut url = self.inner.origin.clone();
         url.set_path(&format!(
             "{}/{}",
             self.inner.bucket_path,
-            sigv4::uri_encode(&self.key(hash), true)
+            sigv4::uri_encode(key, true)
         ));
         url
     }
 
     pub async fn put(&self, hash: &str, bytes: Bytes) -> Result<(), ServerError> {
-        let timeout = self.inner.timeouts.for_bytes(bytes.len() as u64);
-        let response = self
-            .send(Method::PUT, hash, Some(bytes), hash, timeout)
-            .await?;
-        let status = response.status();
-        if status.is_success() {
-            return Ok(());
-        }
-        let code = error_code(response).await;
-        Err(self.failure(&Method::PUT, hash, status, code.as_deref()))
+        self.put_object(&self.key(hash), hash, bytes).await
     }
 
     pub async fn get(&self, hash: &str) -> Result<Option<Bytes>, ServerError> {
-        let timeout = self.inner.timeouts.for_bytes(self.inner.max_blob_bytes);
-        let response = self
-            .send(
-                Method::GET,
-                hash,
-                None,
-                sigv4::EMPTY_PAYLOAD_SHA256,
-                timeout,
-            )
-            .await?;
-        let status = response.status();
-        if status.is_success() {
-            return response
-                .bytes()
-                .await
-                .map(Some)
-                .map_err(|error| self.transport_error(&Method::GET, hash, &error, timeout));
-        }
-        let code = error_code(response).await;
-        if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {
-            return Ok(None);
-        }
-        Err(self.failure(&Method::GET, hash, status, code.as_deref()))
+        self.get_object(&self.key(hash), self.inner.max_blob_bytes)
+            .await
     }
 
     pub async fn remove(&self, hash: &str) -> Result<(), ServerError> {
-        let timeout = self.inner.timeouts.base;
-        let response = self
-            .send(
-                Method::DELETE,
-                hash,
-                None,
-                sigv4::EMPTY_PAYLOAD_SHA256,
-                timeout,
-            )
-            .await?;
-        let status = response.status();
-        if status.is_success() {
-            return Ok(());
-        }
-        let code = error_code(response).await;
-        if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {
-            return Ok(());
-        }
-        Err(self.failure(&Method::DELETE, hash, status, code.as_deref()))
+        self.remove_object(&self.key(hash)).await
     }
 
-    fn location(&self, hash: &str) -> String {
-        format!("s3://{}/{}", self.inner.bucket, self.key(hash))
+    pub async fn put_snapshot(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+        bytes: Bytes,
+    ) -> Result<(), ServerError> {
+        self.put_object(&self.snapshot_object_key(project, hash), hash, bytes)
+            .await
+    }
+
+    pub async fn get_snapshot(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<Option<Bytes>, ServerError> {
+        self.get_object(
+            &self.snapshot_object_key(project, hash),
+            self.max_snapshot_bytes,
+        )
+        .await
+    }
+
+    pub async fn snapshot_size(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<Option<u64>, ServerError> {
+        let key = self.snapshot_object_key(project, hash);
+        let timeout = self.inner.timeouts.first_byte;
+        self.with_retries(|| async {
+            let response = match self
+                .send(
+                    Method::HEAD,
+                    &key,
+                    None,
+                    sigv4::EMPTY_PAYLOAD_SHA256,
+                    Some(timeout),
+                )
+                .await
+            {
+                Ok(response) => response,
+                Err(error) => return Attempt::Again(error),
+            };
+            let status = response.status();
+            if status.is_success() {
+                return Attempt::Done(
+                    response
+                        .headers()
+                        .get(reqwest::header::CONTENT_LENGTH)
+                        .and_then(|value| value.to_str().ok())
+                        .and_then(|value| value.parse::<u64>().ok()),
+                );
+            }
+            if status == StatusCode::NOT_FOUND {
+                return Attempt::Done(None);
+            }
+            self.refused(&Method::HEAD, &key, status, None)
+        })
+        .await
+    }
+
+    pub async fn remove_snapshot(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<(), ServerError> {
+        self.remove_object(&self.snapshot_object_key(project, hash))
+            .await
+    }
+
+    async fn put_object(&self, key: &str, hash: &str, bytes: Bytes) -> Result<(), ServerError> {
+        let timeout = self.inner.timeouts.for_bytes(bytes.len() as u64);
+        self.with_retries(|| async {
+            let response = match self
+                .send(Method::PUT, key, Some(bytes.clone()), hash, Some(timeout))
+                .await
+            {
+                Ok(response) => response,
+                Err(error) => return Attempt::Again(error),
+            };
+            let status = response.status();
+            if status.is_success() {
+                return Attempt::Done(());
+            }
+            let code = error_code(response).await;
+            self.refused(&Method::PUT, key, status, code.as_deref())
+        })
+        .await
+    }
+
+    async fn get_object(&self, key: &str, largest: u64) -> Result<Option<Bytes>, ServerError> {
+        let first_byte = self.inner.timeouts.first_byte;
+        self.with_retries(|| async {
+            let sent = tokio::time::timeout(
+                first_byte,
+                self.send(Method::GET, key, None, sigv4::EMPTY_PAYLOAD_SHA256, None),
+            )
+            .await;
+            let response = match sent {
+                Ok(Ok(response)) => response,
+                Ok(Err(error)) => return Attempt::Again(error),
+                Err(_) => return Attempt::Again(self.timed_out(&Method::GET, key, first_byte)),
+            };
+            let status = response.status();
+            if status.is_success() {
+                let size = response.content_length().unwrap_or(largest);
+                let reading = self.inner.timeouts.for_bytes(size);
+                return match tokio::time::timeout(reading, response.bytes()).await {
+                    Ok(Ok(bytes)) => Attempt::Done(Some(bytes)),
+                    Ok(Err(error)) => {
+                        Attempt::Again(self.transport_error(&Method::GET, key, &error, reading))
+                    }
+                    Err(_) => Attempt::Again(self.timed_out(&Method::GET, key, reading)),
+                };
+            }
+            let code = error_code(response).await;
+            if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {
+                return Attempt::Done(None);
+            }
+            self.refused(&Method::GET, key, status, code.as_deref())
+        })
+        .await
+    }
+
+    async fn remove_object(&self, key: &str) -> Result<(), ServerError> {
+        let timeout = self.inner.timeouts.first_byte;
+        self.with_retries(|| async {
+            let response = match self
+                .send(
+                    Method::DELETE,
+                    key,
+                    None,
+                    sigv4::EMPTY_PAYLOAD_SHA256,
+                    Some(timeout),
+                )
+                .await
+            {
+                Ok(response) => response,
+                Err(error) => return Attempt::Again(error),
+            };
+            let status = response.status();
+            if status.is_success() {
+                return Attempt::Done(());
+            }
+            let code = error_code(response).await;
+            if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {
+                return Attempt::Done(());
+            }
+            self.refused(&Method::DELETE, key, status, code.as_deref())
+        })
+        .await
+    }
+
+    async fn with_retries<T, F, Fut>(&self, mut attempt: F) -> Result<T, ServerError>
+    where
+        F: FnMut() -> Fut,
+        Fut: Future<Output = Attempt<T>>,
+    {
+        let attempts = self.inner.timeouts.attempts.max(1);
+        let mut tried = 0;
+        loop {
+            tried += 1;
+            match attempt().await {
+                Attempt::Done(value) => return Ok(value),
+                Attempt::Stop(error) => return Err(error),
+                Attempt::Again(error) if tried >= attempts => return Err(error),
+                Attempt::Again(_) => tokio::time::sleep(self.pause_before(tried)).await,
+            }
+        }
+    }
+
+    fn pause_before(&self, tried: u32) -> Duration {
+        let ceiling = self
+            .inner
+            .timeouts
+            .retry_pause
+            .saturating_mul(1 << tried.saturating_sub(1).min(6));
+        let mut random = [0u8; 8];
+        if SystemRandom::new().fill(&mut random).is_err() {
+            return ceiling;
+        }
+        let share = u64::from_le_bytes(random) % 1_000;
+        ceiling.mul_f64(share as f64 / 1_000.0)
+    }
+
+    fn refused<T>(
+        &self,
+        method: &Method,
+        key: &str,
+        status: StatusCode,
+        code: Option<&str>,
+    ) -> Attempt<T> {
+        let error = self.failure(method, key, status, code);
+        if status.is_server_error()
+            || status == StatusCode::TOO_MANY_REQUESTS
+            || status == StatusCode::REQUEST_TIMEOUT
+        {
+            Attempt::Again(error)
+        } else {
+            Attempt::Stop(error)
+        }
+    }
+
+    fn timed_out(&self, method: &Method, key: &str, timeout: Duration) -> ServerError {
+        ServerError::Internal(format!(
+            "the S3 blob store did not answer {method} {} within {:.1} s",
+            self.location(key),
+            timeout.as_secs_f64()
+        ))
+    }
+
+    fn location(&self, key: &str) -> String {
+        format!("s3://{}/{key}", self.inner.bucket)
     }
 
     async fn send(
         &self,
         method: Method,
-        hash: &str,
+        key: &str,
         body: Option<Bytes>,
         payload_sha256: &str,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> Result<reqwest::Response, ServerError> {
-        let url = self.object_url(hash);
+        let url = self.url_of(key);
         let amz_date = sigv4::amz_date(self.inner.clock.now_ms());
         let headers = [
             ("host", self.inner.host.as_str()),
@@ -234,7 +439,6 @@ impl S3Blobs {
             .inner
             .client
             .request(method.clone(), url)
-            .timeout(timeout)
             .header(HOST, &self.inner.host)
             .header("x-amz-content-sha256", payload_sha256)
             .header("x-amz-date", &amz_date)
@@ -244,34 +448,41 @@ impl S3Blobs {
                 .header(CONTENT_TYPE, "application/octet-stream")
                 .body(body);
         }
-        request
-            .send()
-            .await
-            .map_err(|error| self.transport_error(&method, hash, &error, timeout))
+        if let Some(timeout) = timeout {
+            request = request.timeout(timeout);
+        }
+        request.send().await.map_err(|error| {
+            self.transport_error(
+                &method,
+                key,
+                &error,
+                timeout.unwrap_or(self.inner.timeouts.first_byte),
+            )
+        })
     }
 
     fn failure(
         &self,
         method: &Method,
-        hash: &str,
+        key: &str,
         status: StatusCode,
         code: Option<&str>,
     ) -> ServerError {
         let code = code.map(|code| format!(" ({code})")).unwrap_or_default();
         ServerError::Internal(format!(
             "the S3 blob store answered {status}{code} to {method} {}",
-            self.location(hash)
+            self.location(key)
         ))
     }
 
     fn transport_error(
         &self,
         method: &Method,
-        hash: &str,
+        key: &str,
         error: &reqwest::Error,
         timeout: Duration,
     ) -> ServerError {
-        let location = self.location(hash);
+        let location = self.location(key);
         ServerError::Internal(if error.is_timeout() {
             format!(
                 "the S3 blob store did not answer {method} {location} within {:.1} s",
@@ -323,6 +534,9 @@ async fn error_code(mut response: reqwest::Response) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use std::time::Instant;
+
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::task::JoinHandle;
 
     use super::*;
     use crate::blobs::{sha256_hex, BlobStore};
@@ -379,6 +593,26 @@ mod tests {
             blobs(&minio).object_url(&hash).as_str(),
             format!("http://minio:9000/lab-bucket/thesis/files/{shard}/{hash}")
         );
+    }
+
+    #[test]
+    fn snapshot_reads_wait_long_enough_for_a_whole_project() {
+        let timeouts = S3Timeouts::default();
+        let store = blobs(&aws("lab-bucket", "oleafly", "eu-west-1"));
+        assert_eq!(store.snapshot_read_timeout(), timeouts.for_bytes(1 << 20));
+        let store = store.with_snapshot_limit(200 << 20);
+        assert_eq!(store.snapshot_read_timeout(), timeouts.for_bytes(200 << 20));
+        let mut config = crate::test_support::test_config();
+        config.limits.max_project_mb = 300;
+        config.blob_store =
+            crate::config::BlobStoreConfig::S3(Box::new(aws("lab-bucket", "oleafly", "eu-west-1")));
+        match BlobStore::from_config(&config) {
+            Ok(BlobStore::S3(configured)) => assert_eq!(
+                configured.snapshot_read_timeout(),
+                timeouts.for_bytes(300 << 20)
+            ),
+            _ => panic!("expected an S3 store"),
+        }
     }
 
     #[tokio::test]
@@ -546,8 +780,10 @@ mod tests {
         mock.set_fault(Some(MockS3Fault::Stall(Duration::from_secs(20))));
         let timeouts = S3Timeouts {
             connect: Duration::from_secs(2),
+            first_byte: Duration::from_millis(300),
             base: Duration::from_millis(300),
             min_bytes_per_second: u64::MAX,
+            ..S3Timeouts::default()
         };
         let store = BlobStore::s3(
             &mock.config("oleafly"),
@@ -585,6 +821,134 @@ mod tests {
         .expect("store");
         let detail = internal(store.get(&sha256_hex(b"figure bytes")).await);
         assert!(detail.contains("could not reach"), "{detail}");
+    }
+
+    async fn raw_store(answer: &'static [u8], timeouts: S3Timeouts) -> (BlobStore, JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let address = listener.local_addr().expect("address");
+        let task = tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut request = [0u8; 8192];
+                    let _ = socket.read(&mut request).await;
+                    let _ = socket.write_all(answer).await;
+                    tokio::time::sleep(Duration::from_secs(120)).await;
+                    drop(socket);
+                });
+            }
+        });
+        let mut config = aws("lab-bucket", "oleafly", "us-east-1");
+        config.endpoint = Some(Url::parse(&format!("http://{address}")).expect("endpoint"));
+        let store = BlobStore::s3(&config, 1 << 30, Arc::new(SystemClock), timeouts)
+            .expect("store")
+            .with_snapshot_limit(1 << 30);
+        (store, task)
+    }
+
+    #[tokio::test]
+    async fn a_read_that_never_starts_gives_up_after_the_first_byte_timeout() {
+        let timeouts = S3Timeouts {
+            first_byte: Duration::from_millis(300),
+            base: Duration::from_secs(30),
+            min_bytes_per_second: 1,
+            retry_pause: Duration::from_millis(10),
+            ..S3Timeouts::default()
+        };
+        let (store, task) = raw_store(b"", timeouts).await;
+        let project = SharedProjectId::new_v7();
+        let started = Instant::now();
+        let read = tokio::time::timeout(
+            Duration::from_secs(10),
+            store.get_snapshot(project, &sha256_hex(b"state")),
+        )
+        .await;
+        task.abort();
+        let detail = internal(read.expect("the read gave up within 10 s"));
+        assert!(detail.contains("did not answer"), "{detail}");
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[tokio::test]
+    async fn a_read_whose_body_stalls_gives_up_after_the_time_its_size_needs() {
+        let timeouts = S3Timeouts {
+            first_byte: Duration::from_secs(2),
+            base: Duration::from_millis(300),
+            min_bytes_per_second: 1024 * 1024,
+            retry_pause: Duration::from_millis(10),
+            ..S3Timeouts::default()
+        };
+        let (store, task) = raw_store(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nproj",
+            timeouts,
+        )
+        .await;
+        let project = SharedProjectId::new_v7();
+        let started = Instant::now();
+        let read = tokio::time::timeout(
+            Duration::from_secs(10),
+            store.get_snapshot(project, &sha256_hex(b"project state")),
+        )
+        .await;
+        task.abort();
+        assert!(
+            matches!(read, Ok(Err(ServerError::Internal(_)))),
+            "the stalled read was still waiting after 10 s"
+        );
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[tokio::test]
+    async fn a_store_that_fails_for_a_moment_is_asked_again_but_a_refusal_is_not() {
+        let mock = MockS3::start().await;
+        let store = mock.store("oleafly");
+        let hash = sha256_hex(b"figure bytes");
+        let project = SharedProjectId::new_v7();
+        mock.set_fault(Some(MockS3Fault::FailNext(2)));
+        store
+            .put(&hash, Bytes::from_static(b"figure bytes"))
+            .await
+            .expect("a put after two refusals");
+        mock.set_fault(Some(MockS3Fault::FailNext(2)));
+        assert_eq!(
+            store.get(&hash).await.expect("a get after two refusals"),
+            Some(Bytes::from_static(b"figure bytes"))
+        );
+        mock.set_fault(Some(MockS3Fault::FailNext(2)));
+        let snapshot = store
+            .put_snapshot(project, Bytes::from_static(b"state"))
+            .await
+            .expect("a snapshot put after two refusals");
+        mock.set_fault(Some(MockS3Fault::FailNext(2)));
+        assert_eq!(
+            store
+                .snapshot_size(project, &snapshot)
+                .await
+                .expect("a size after two refusals"),
+            Some(5)
+        );
+        mock.set_fault(Some(MockS3Fault::FailNext(2)));
+        store
+            .remove(&hash)
+            .await
+            .expect("a remove after two refusals");
+        assert_eq!(mock.object(&format!("oleafly/{}/{hash}", &hash[..2])), None);
+
+        let before = mock.requests();
+        mock.set_fault(Some(MockS3Fault::AccessDenied));
+        internal(store.get(&hash).await);
+        assert_eq!(mock.requests() - before, 1, "a refusal is not asked again");
+        let before = mock.requests();
+        mock.set_fault(Some(MockS3Fault::FailNext(10)));
+        let detail = internal(store.get_snapshot(project, &snapshot).await);
+        assert!(detail.contains("503"), "{detail}");
+        assert_eq!(
+            mock.requests() - before,
+            3,
+            "an outage is asked three times"
+        );
+        mock.set_fault(None);
     }
 
     #[tokio::test]

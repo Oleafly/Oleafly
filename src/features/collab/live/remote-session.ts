@@ -52,6 +52,10 @@ export class RemoteDocumentSession implements DocumentSession {
     return this.pending === null && this.outstanding === null && this.buffer === null;
   }
 
+  get revision(): number {
+    return this.serverRev;
+  }
+
   version(): number {
     return this.localVersion;
   }

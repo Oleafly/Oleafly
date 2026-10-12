@@ -1,7 +1,6 @@
-use crate::collab::guard::{MassChangeGuard, SyncPauseHost};
+use crate::collab::guard::{MassChangeGuard, SyncPauseHost, SyncResumed};
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
-use oleafly_collab::MassChangeVerdict;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -16,6 +15,7 @@ const NETWORK_POLL_INTERVAL: Duration = Duration::from_secs(3);
 const MAX_BATCH_PATHS: usize = 256;
 const OWN_WRITE_WINDOW: Duration = Duration::from_secs(10);
 const MAX_OWN_WRITES: usize = 512;
+const ROOT_POLL: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -501,7 +501,7 @@ pub(crate) fn watch_project_reporting(
     host: Arc<dyn SyncPauseHost>,
     mode_override: Option<WatchMode>,
 ) -> Result<Option<u64>, String> {
-    watch_project_as(begin_request(), project_id, sink, host, mode_override)
+    watch_project_as(begin_request(), project_id, sink, host, mode_override, true)
 }
 
 fn watch_project_as(
@@ -510,6 +510,7 @@ fn watch_project_as(
     sink: ChangeSink,
     host: Arc<dyn SyncPauseHost>,
     mode_override: Option<WatchMode>,
+    fresh: bool,
 ) -> Result<Option<u64>, String> {
     let location = crate::project_location::locate(project_id)?;
     let shared = crate::collab::registry::is_shared(project_id);
@@ -528,34 +529,113 @@ fn watch_project_as(
     } else {
         WatchMode::Native
     });
-    let guard = shared.then(|| Arc::new(MassChangeGuard::new(project_id, &location.root, host)));
+    let guard = shared.then(|| {
+        Arc::new(MassChangeGuard::new(
+            project_id,
+            &location.root,
+            Arc::clone(&host),
+        ))
+    });
     let change_guard = guard.clone();
+    let pause_host = Arc::clone(&host);
+    let outer_sink = Arc::clone(&sink);
     let sink: ChangeSink = Arc::new(move |change: FolderChange| {
         crate::linked_registry::note_changed(&change.project_id);
         if let Some(guard) = &change_guard {
-            if !matches!(guard.inspect(&change), MassChangeVerdict::Pause { .. }) {
-                crate::collab::live::folder_changed(&change);
-            }
+            let verdict = guard.inspect(&change);
+            crate::collab::live::outside_change(&change, verdict, pause_host.as_ref());
         }
         sink(change);
     });
     let probe_id = project_id.to_owned();
+    let composed = Arc::clone(&sink);
+    let announce = (fresh && guard.is_some()).then(|| Arc::clone(&host));
     let on_root_changed = Box::new(move || {
         if let Some(guard) = &guard {
             let _ = guard.root_changed();
         }
         if crate::project_location::locate(&probe_id).is_err() {
             stop(&probe_id, Some(request));
+            if let Some(guard) = guard.as_ref().filter(|guard| guard.begin_waiting()) {
+                let waiter = RootWaiter {
+                    request,
+                    project_id: probe_id.clone(),
+                    guard: Arc::clone(guard),
+                    composed: Arc::clone(&composed),
+                    outer: Arc::clone(&outer_sink),
+                    host: Arc::clone(&host),
+                    mode_override,
+                };
+                if std::thread::Builder::new()
+                    .name("oleafly-folder-return".into())
+                    .spawn(move || waiter.run())
+                    .is_err()
+                {
+                    guard.end_waiting();
+                }
+            }
         }
     });
-    install(
+    let installed = install(
         request,
         project_id,
         &location.root,
         mode,
         sink,
         on_root_changed,
-    )
+    )?;
+    if let (Some(_), Some(host)) = (installed, announce) {
+        host.sync_resumed(&SyncResumed {
+            project_id: project_id.to_owned(),
+        });
+    }
+    Ok(installed)
+}
+
+struct RootWaiter {
+    request: u64,
+    project_id: String,
+    guard: Arc<MassChangeGuard>,
+    composed: ChangeSink,
+    outer: ChangeSink,
+    host: Arc<dyn SyncPauseHost>,
+    mode_override: Option<WatchMode>,
+}
+
+impl RootWaiter {
+    fn run(self) {
+        loop {
+            std::thread::sleep(ROOT_POLL);
+            if !is_latest(self.request) || is_watching(&self.project_id) {
+                self.guard.end_waiting();
+                return;
+            }
+            if self.guard.root_changed().is_none() {
+                break;
+            }
+        }
+        self.guard.end_waiting();
+        let watched = watch_project_as(
+            self.request,
+            &self.project_id,
+            Arc::clone(&self.outer),
+            Arc::clone(&self.host),
+            self.mode_override,
+            false,
+        );
+        if !matches!(watched, Ok(Some(_))) {
+            return;
+        }
+        (self.composed)(FolderChange {
+            project_id: self.project_id.clone(),
+            paths: Vec::new(),
+            rescan: true,
+            structural: true,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
+        });
+        crate::collab::live::root_returned(&self.project_id);
+    }
 }
 
 #[tauri::command]
@@ -570,7 +650,7 @@ pub async fn watch_project_folder<R: tauri::Runtime>(
         let sink: ChangeSink = Arc::new(move |change| {
             let _ = app.emit(FOLDER_CHANGED_EVENT, change);
         });
-        watch_project_as(request, &project_id, sink, host, None)
+        watch_project_as(request, &project_id, sink, host, None, true)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -1247,6 +1327,105 @@ mod tests {
                 total: 3,
                 reason: PauseReason::RootUnavailable,
             }]
+        );
+    }
+
+    fn wait_for_token(project_id: &str, present: bool) -> Option<u64> {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while active_token(project_id).is_some() != present && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        active_token(project_id)
+    }
+
+    #[test]
+    fn starting_to_watch_a_shared_project_says_its_folder_is_there() {
+        use crate::collab::guard::SyncResumed;
+        use crate::collab::testing::{share, RecordedPauses, TempLibrary};
+        let library = TempLibrary::new();
+        library.project("watch-there", &[("main.tex", "one")]);
+        let _shared = share("watch-there");
+        let pauses = Arc::new(RecordedPauses::default());
+        let (sink, _receiver) = recorder();
+
+        let token = watch_project_reporting(
+            "watch-there",
+            sink,
+            pauses.clone(),
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap();
+        let heard = pauses.resumed();
+        stop("watch-there", token);
+
+        assert!(token.is_some());
+        assert_eq!(
+            heard,
+            [SyncResumed {
+                project_id: "watch-there".into()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_shared_project_whose_folder_comes_back_is_watched_again_and_says_so() {
+        use crate::collab::guard::SyncResumed;
+        use crate::collab::testing::{share, track, RecordedPauses, TempLibrary};
+        let library = TempLibrary::new();
+        let files = ["main.tex", "refs.bib", "intro.tex"];
+        let root = library.project(
+            "watch-return",
+            &[
+                ("main.tex", "one"),
+                ("refs.bib", "one"),
+                ("intro.tex", "one"),
+            ],
+        );
+        for file in files {
+            age(&root.join(file));
+        }
+        let _shared = share("watch-return");
+        track("watch-return", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let (sink, receiver) = recorder();
+
+        let token = watch_project_reporting(
+            "watch-return",
+            sink,
+            pauses.clone(),
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+        let started = pauses.resumed();
+        let parked = root.with_file_name("watch-return-parked");
+        std::fs::rename(&root, &parked).unwrap();
+        let gone = wait_for_token("watch-return", false);
+        let quiet = pauses.resumed();
+        std::fs::rename(&parked, &root).unwrap();
+        let back = wait_for_token("watch-return", true);
+        std::thread::sleep(Duration::from_millis(300));
+        let resumed = pauses.resumed();
+        while receiver.try_recv().is_ok() {}
+        std::fs::write(root.join("main.tex"), "two, longer").unwrap();
+        let edit = next_change(&receiver);
+        stop("watch-return", back);
+
+        assert!(token.is_some());
+        assert_eq!(started.len(), 1, "{started:?}");
+        assert_eq!(gone, None);
+        assert!(quiet.is_empty(), "{quiet:?}");
+        assert!(back.is_some());
+        assert_eq!(
+            resumed,
+            [SyncResumed {
+                project_id: "watch-return".into()
+            }]
+        );
+        let edit = edit.expect("an edit after the folder came back is reported");
+        assert!(
+            edit.rescan || edit.paths.contains(&"main.tex".to_string()),
+            "{edit:?}"
         );
     }
 }

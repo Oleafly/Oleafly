@@ -10,6 +10,7 @@ use crate::build_router;
 use crate::clock::{Clock, ManualClock};
 use crate::config::ServerConfig;
 use crate::db::Db;
+use crate::mail::RetryPolicy;
 use crate::members;
 use crate::state::AppState;
 use crate::tokens;
@@ -67,6 +68,35 @@ pub async fn test_app_with(config: ServerConfig) -> TestApp {
     }
 }
 
+pub async fn test_app_with_mail_retry(config: ServerConfig, retry: RetryPolicy) -> TestApp {
+    let clock = ManualClock::new(TEST_START_MS);
+    let shared: Arc<dyn Clock> = clock.clone();
+    let database = Db::open_in_memory().expect("the in-memory database opens");
+    let state = AppState::with_mail_retry(config, shared, database, retry)
+        .await
+        .expect("the app state builds");
+    let router = build_router(state.clone());
+    TestApp {
+        state,
+        router,
+        clock,
+    }
+}
+
+pub fn fast_mail_retry(attempts: usize) -> RetryPolicy {
+    RetryPolicy {
+        delays: vec![std::time::Duration::from_millis(20); attempts.saturating_sub(1)],
+        attempt_timeout: std::time::Duration::from_secs(5),
+    }
+}
+
+pub fn mail_config(smtp: &MockSmtp) -> ServerConfig {
+    let mut config = test_config();
+    config.smtp_url = Some(smtp.url());
+    config.mail_from = Some(MOCK_MAIL_FROM.to_string());
+    config
+}
+
 pub async fn seed_member(app: &TestApp, role: ServerRole) -> SeededMember {
     let now = app.clock.now_ms();
     app.state
@@ -100,6 +130,12 @@ fn no_secret_files(path: &Path) -> std::io::Result<String> {
         path.display().to_string(),
     ))
 }
+mod blocking_proxy;
+
+pub use blocking_proxy::BlockingProxy;
+mod code_browser;
+
+pub use code_browser::{approve_code, CodePage};
 mod crowd;
 
 pub use crowd::{
@@ -117,6 +153,11 @@ mod mock_s3;
 pub use mock_s3::{
     MockS3, MockS3Fault, MOCK_S3_ACCESS_KEY_ID, MOCK_S3_BUCKET, MOCK_S3_REGION,
     MOCK_S3_SECRET_ACCESS_KEY,
+};
+mod mock_smtp;
+
+pub use mock_smtp::{
+    CapturedEmail, MockSmtp, MockSmtpFault, MOCK_MAIL_FROM, MOCK_SMTP_PASSWORD, MOCK_SMTP_USER,
 };
 mod server;
 

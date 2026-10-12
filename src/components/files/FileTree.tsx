@@ -81,7 +81,13 @@ import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
 import { logError } from "@/lib/log";
 import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/features/dropped-files";
-import { CollabTreePresenceSlot, TreeRowPeers, type PeerMarks } from "@/components/collab/CollabSlots";
+import {
+  CollabTreeClashSlot,
+  CollabTreePresenceSlot,
+  TreeRowClash,
+  TreeRowPeers,
+  type PeerMarks,
+} from "@/components/collab/CollabSlots";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
   const picked = await pickOpenPath(
@@ -1028,6 +1034,7 @@ export function FileTree({
   return (
     <>
       <CollabTreePresenceSlot onChange={setPeerMarks} />
+      <CollabTreeClashSlot />
       <SidebarSection
         id="source-tree"
         title={t(($) => $.workspace.files.title)}
@@ -1592,6 +1599,7 @@ function TreeRow({
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
       )}
       <span className="ml-auto flex shrink-0 items-center gap-1">
+        <TreeRowClash path={node.path} />
         <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />
         {unreadable && (
           <span className="text-[0.6875rem] text-muted-foreground">

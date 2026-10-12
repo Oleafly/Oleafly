@@ -11,6 +11,7 @@ import type {
   CollabProjectSummary,
   CollabRuntimeSettings,
   CollabSecurityEvent,
+  CollabSecurityLogKind,
   CollabServer,
   CollabShareCheck,
   CollabShareInfo,
@@ -122,7 +123,9 @@ export function runtimeSettings(overrides: Partial<CollabRuntimeSettings> = {}):
   };
 }
 
-export function securityEvent(overrides: Partial<CollabSecurityEvent> = {}): CollabSecurityEvent {
+export function securityEvent(
+  overrides: Partial<Omit<CollabSecurityEvent, "kind">> & { kind?: CollabSecurityLogKind } = {},
+): CollabSecurityEvent {
   return {
     id: 1,
     at: 1_760_000_000_000,
@@ -132,7 +135,7 @@ export function securityEvent(overrides: Partial<CollabSecurityEvent> = {}): Col
     ip: "203.0.113.7",
     detail: {},
     ...overrides,
-  };
+  } as CollabSecurityEvent;
 }
 
 export function check(

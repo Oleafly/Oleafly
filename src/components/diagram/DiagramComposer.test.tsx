@@ -60,6 +60,7 @@ vi.mock("@/lib/tauri", () => ({
   readIsolatedPdf: vi.fn(),
   writeProjectBytes: vi.fn(),
   writeFileContent: vi.fn(),
+  collabWriteText: vi.fn(async () => ({ handled: true })),
   writeBytesFile: vi.fn(),
   listFiles: vi.fn(),
   createImageProject: vi.fn(),
@@ -80,6 +81,7 @@ import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { tourRegistry } from "@/lib/tours/registry";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { DiagramComposer } from "./DiagramComposer";
 
 async function openComposer() {
@@ -232,6 +234,19 @@ describe("the diagram host adapters", () => {
 
     vi.mocked(tauriApi.writeFileContent).mockResolvedValueOnce(undefined as never);
     await expect(props.host.writeFileContent("p", "fig.tex", "x")).resolves.toBeUndefined();
+  });
+
+  it("saves a figure source into a live shared project through the shared document", async () => {
+    const props = await openComposer();
+    vi.mocked(tauriApi.writeFileContent).mockClear();
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    try {
+      await props.host.writeFileContent("paper", "figures/flow.tex", "\\draw;\n");
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+    expect(tauriApi.collabWriteText).toHaveBeenCalledWith("paper", "figures/flow.tex", null, "\\draw;\n");
+    expect(tauriApi.writeFileContent).not.toHaveBeenCalled();
   });
 
   it("reads and updates the open project through the files store", async () => {

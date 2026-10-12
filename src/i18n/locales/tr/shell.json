@@ -1409,5 +1409,12 @@
     "compiling": "Derleniyor",
     "hideLog": "Derleme günlüğünü gizle",
     "showLog": "Derleme günlüğünü göster"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} dosya Oleafly dışında değişti. Bu değişiklik herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "paused_other": "{{count}} dosya Oleafly dışında değişti. Bu değişiklikler herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "send": "Gönder",
+    "keepLocal": "Yerelde tut",
+    "unavailable": "Proje klasörü kullanılamıyor, bu yüzden eşitleme duraklatıldı. Klasör geri geldiğinde yeniden başlar."
   }
 }

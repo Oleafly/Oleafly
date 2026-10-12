@@ -44,10 +44,24 @@ async fn healthcheck_fails_on_a_closed_port_and_on_a_non_200_answer() {
     let refused = healthcheck::check(closed).await.unwrap_err();
     assert!(refused.contains("could not connect"), "{refused}");
     let failing = Router::new().route(
-        "/healthz",
+        healthcheck::HEALTH_PATH,
         get(|| async { StatusCode::SERVICE_UNAVAILABLE }),
     );
     let address = serve_on_loopback(failing).await;
+    let error = healthcheck::check(address).await.unwrap_err();
+    assert!(error.contains("503"), "{error}");
+}
+
+#[tokio::test]
+async fn healthcheck_fails_against_a_server_that_cannot_store_anything() {
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let data_dir = file.path().join("data").display().to_string();
+    let app = test_app_with(support::config_with(&[(
+        "OLEAFLY_DATA_DIR",
+        data_dir.as_str(),
+    )]))
+    .await;
+    let address = serve_on_loopback(app.router.clone()).await;
     let error = healthcheck::check(address).await.unwrap_err();
     assert!(error.contains("503"), "{error}");
 }

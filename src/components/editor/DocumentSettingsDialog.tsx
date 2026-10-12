@@ -39,6 +39,7 @@ import { toast } from "@/lib/toast";
 import { typstProjectFonts } from "@/lib/typst-options";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 
 const DEFAULT_OPTION = "__default__";
 
@@ -85,7 +86,7 @@ async function writeMainText(
   if (loaded !== undefined && useFilesStore.getState().setContent(mainDoc, next)) {
     await useFilesStore.getState().saveFile(mainDoc);
   } else {
-    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next);
+    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next, ...sharedBaseOption(projectId, text));
   }
   return true;
 }

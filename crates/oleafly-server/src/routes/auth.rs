@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use axum::http::{header, StatusCode};
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -18,11 +18,15 @@ use url::Url;
 use crate::auth::admission::{self, Applied, Via};
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::refresh::{self, RefreshOutcome};
-use crate::auth::{db_error, devices, nonce, setup, ExternalIdentity};
+use crate::auth::{
+    browser_binding, db_error, device_code, devices, email_link, nonce, setup, ExternalIdentity,
+};
 use crate::error::ServerError;
+use crate::mail::notify;
 use crate::members;
-use crate::routes::{Authenticated, ClientIp};
+use crate::routes::{code_sign_in, email_sign_in, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
+use crate::settings;
 use crate::state::{setup_code_hash, AppState};
 use crate::tokens::random_token;
 
@@ -73,7 +77,7 @@ pub fn error_param(code: AuthErrorCode) -> &'static str {
     }
 }
 
-fn found(location: &str) -> Response {
+pub(crate) fn found(location: &str) -> Response {
     (
         StatusCode::FOUND,
         [
@@ -84,7 +88,7 @@ fn found(location: &str) -> Response {
         .into_response()
 }
 
-fn back_to_app(
+pub(crate) fn back_to_app(
     redirect: &Url,
     client_state: &str,
     outcome: Result<&str, AuthErrorCode>,
@@ -114,8 +118,40 @@ fn well_formed(query: &AuthStartQuery) -> bool {
     challenge && key && client_state && name && platform
 }
 
+pub(crate) async fn checked_setup_code(
+    state: &AppState,
+    code: Option<&str>,
+) -> Result<Result<Option<String>, AuthErrorCode>, ServerError> {
+    let Some(code) = code.filter(|code| !code.trim().is_empty()) else {
+        return Ok(Ok(None));
+    };
+    let hash = setup_code_hash(code);
+    let candidate = hash.clone();
+    let matches = state
+        .db
+        .call(move |conn| setup::matches(conn, &candidate))
+        .await?;
+    Ok(if matches {
+        Ok(Some(hash))
+    } else {
+        Err(AuthErrorCode::SetupCodeInvalid)
+    })
+}
+
+pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, ServerError> {
+    if !state.mailer.is_configured() {
+        return Ok(false);
+    }
+    let runtime = state.db.call(|conn| settings::load(conn)).await?;
+    Ok(email_link::available(
+        state.mailer.is_configured(),
+        &runtime,
+    ))
+}
+
 async fn start(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<AuthStartQuery>,
 ) -> Result<Response, ServerError> {
     let redirect = loopback_redirect(&query.redirect_uri)
@@ -123,35 +159,21 @@ async fn start(
     if !well_formed(&query) {
         return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
     }
-    let Some(provider) = state.providers.get(&query.provider) else {
+    let provider = state.providers.get(&query.provider);
+    let offered = match provider {
+        Some(_) => true,
+        None => query.provider == email_link::PROVIDER_ID && email_link_available(&state).await?,
+    };
+    if !offered {
         return Ok(back_to_app(
             &redirect,
             &query.state,
             Err(AuthErrorCode::UnknownProvider),
         ));
-    };
-    let setup_code_hash = match query
-        .setup_code
-        .as_deref()
-        .filter(|code| !code.trim().is_empty())
-    {
-        Some(code) => {
-            let hash = setup_code_hash(code);
-            let candidate = hash.clone();
-            if !state
-                .db
-                .call(move |conn| setup::matches(conn, &candidate))
-                .await?
-            {
-                return Ok(back_to_app(
-                    &redirect,
-                    &query.state,
-                    Err(AuthErrorCode::SetupCodeInvalid),
-                ));
-            }
-            Some(hash)
-        }
-        None => None,
+    }
+    let setup_code_hash = match checked_setup_code(&state, query.setup_code.as_deref()).await? {
+        Ok(hash) => hash,
+        Err(code) => return Ok(back_to_app(&redirect, &query.state, Err(code))),
     };
     let now = state.clock.now_ms();
     let pending = PendingSignIn {
@@ -167,6 +189,10 @@ async fn start(
         provider_verifier: random_token(),
         provider_nonce: random_token(),
         expires_at: now + PENDING_TTL_MS,
+        device_authorization: None,
+    };
+    let Some(provider) = provider else {
+        return email_sign_in::ask_for_address(&state, &headers, pending, now).await;
     };
     let callback = callback_url(&state, &pending.provider_id);
     let authorize = provider
@@ -198,10 +224,36 @@ struct CallbackQuery {
     error: Option<String>,
 }
 
+async fn refuse_other_browser(
+    state: &AppState,
+    pending: &PendingSignIn,
+    ip: Option<String>,
+    now: i64,
+) -> Result<Response, ServerError> {
+    let event = NewSecurityEvent {
+        actor: None,
+        kind: SecurityEventKind::SignInRefused,
+        target: Some(pending.device_name.clone()),
+        ip,
+        detail: json!({
+            "provider": pending.provider_id,
+            "flow": "device_code",
+            "reason": "other_browser",
+            "platform": pending.platform
+        }),
+    };
+    state
+        .db
+        .call(move |conn| security_log::record(conn, now, event).map(|_| ()))
+        .await?;
+    conclude(state, pending, Err(AuthErrorCode::InvalidCode))
+}
+
 async fn callback(
     State(state): State<AppState>,
     Path(provider_id): Path<String>,
     ClientIp(ip): ClientIp,
+    headers: HeaderMap,
     Query(query): Query<CallbackQuery>,
 ) -> Result<Response, ServerError> {
     let now = state.clock.now_ms();
@@ -214,32 +266,20 @@ async fn callback(
         .await?
         .filter(|pending| pending.provider_id == provider_id)
         .ok_or_else(|| ServerError::BadRequest(EXPIRED.to_owned()))?;
-    let redirect = Url::parse(&pending.redirect_uri)
-        .map_err(|error| ServerError::Internal(error.to_string()))?;
-    let client_state = pending.client_state.clone();
+    if pending.device_authorization.is_some()
+        && !browser_binding::holds(&headers, &state.config, &pending.code_challenge)
+    {
+        return refuse_other_browser(&state, &pending, ip, now).await;
+    }
     let Some(provider) = state.providers.get(&provider_id) else {
-        return Ok(back_to_app(
-            &redirect,
-            &client_state,
-            Err(AuthErrorCode::UnknownProvider),
-        ));
+        return conclude(&state, &pending, Err(AuthErrorCode::UnknownProvider));
     };
     let code = match (query.code, query.error.as_deref()) {
         (Some(code), None) => code,
         (_, Some("access_denied")) => {
-            return Ok(back_to_app(
-                &redirect,
-                &client_state,
-                Err(AuthErrorCode::SignInCancelled),
-            ))
+            return conclude(&state, &pending, Err(AuthErrorCode::SignInCancelled))
         }
-        _ => {
-            return Ok(back_to_app(
-                &redirect,
-                &client_state,
-                Err(AuthErrorCode::ProviderFailed),
-            ))
-        }
+        _ => return conclude(&state, &pending, Err(AuthErrorCode::ProviderFailed)),
     };
     let callback = callback_url(&state, &provider_id);
     let exchanged = provider
@@ -251,32 +291,60 @@ async fn callback(
         )
         .await;
     let Ok(identity) = exchanged else {
-        return Ok(back_to_app(
-            &redirect,
-            &client_state,
-            Err(AuthErrorCode::ProviderFailed),
-        ));
+        return conclude(&state, &pending, Err(AuthErrorCode::ProviderFailed));
     };
+    let finishing = pending.clone();
+    let max_members = state.config.limits.max_members_per_project;
     let outcome = state
         .db
-        .call(move |conn| complete_sign_in(conn, &identity, &pending, ip, now))
+        .call(move |conn| complete_sign_in(conn, &identity, &finishing, ip, max_members, now))
         .await?;
+    conclude(&state, &pending, outcome)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Finish {
+    Code(String),
+    DeviceApproved,
+    DeviceGone,
+}
+
+pub(crate) fn conclude(
+    state: &AppState,
+    pending: &PendingSignIn,
+    outcome: Result<Finish, AuthErrorCode>,
+) -> Result<Response, ServerError> {
+    if pending.device_authorization.is_some() {
+        return Ok(code_sign_in::finished(state, pending, outcome));
+    }
+    let redirect = Url::parse(&pending.redirect_uri)
+        .map_err(|error| ServerError::Internal(error.to_string()))?;
+    let client_state = &pending.client_state;
     Ok(match outcome {
-        Ok(issued) => back_to_app(&redirect, &client_state, Ok(&issued)),
-        Err(error) => back_to_app(&redirect, &client_state, Err(error)),
+        Ok(Finish::Code(code)) => back_to_app(&redirect, client_state, Ok(&code)),
+        Ok(Finish::DeviceApproved | Finish::DeviceGone) => {
+            back_to_app(&redirect, client_state, Err(AuthErrorCode::InvalidCode))
+        }
+        Err(error) => back_to_app(&redirect, client_state, Err(error)),
     })
 }
 
-fn complete_sign_in(
+pub(crate) fn complete_sign_in(
     conn: &mut Connection,
     identity: &ExternalIdentity,
     pending: &PendingSignIn,
     ip: Option<String>,
+    max_members: u32,
     now: i64,
-) -> Result<Result<String, AuthErrorCode>, ServerError> {
+) -> Result<Result<Finish, AuthErrorCode>, ServerError> {
     let tx = conn.transaction().map_err(db_error)?;
+    if let Some(id) = &pending.device_authorization {
+        if device_code::find_pending(&tx, id, now)?.is_none() {
+            return Ok(Ok(Finish::DeviceGone));
+        }
+    }
     let decision = admission::decide(&tx, identity, pending.setup_code_hash.as_deref())?;
-    let result = match admission::apply(&tx, identity, decision, now)? {
+    let result = match admission::apply(&tx, identity, decision, max_members, now)? {
         Applied::Admitted(admitted) => {
             if admitted.via == Via::Setup {
                 security_log::record(
@@ -303,11 +371,23 @@ fn complete_sign_in(
                         "provider": identity.provider_id,
                         "via": admitted.via.as_str(),
                         "new_account": admitted.new_account,
-                        "reactivated": admitted.reactivated
+                        "reactivated": admitted.reactivated,
+                        "device_code": pending.device_authorization.is_some()
                     }),
                 },
             )?;
-            Ok(pending::issue_code(&tx, pending, admitted.account_id, now)?)
+            match &pending.device_authorization {
+                None => Ok(Finish::Code(pending::issue_code(
+                    &tx,
+                    pending,
+                    admitted.account_id,
+                    now,
+                )?)),
+                Some(id) => {
+                    device_code::approve(&tx, id, admitted.account_id, now)?;
+                    Ok(Finish::DeviceApproved)
+                }
+            }
         }
         Applied::Refused { code, reason } => {
             security_log::record(
@@ -327,10 +407,14 @@ fn complete_sign_in(
                         "provider": identity.provider_id,
                         "issuer": identity.issuer,
                         "subject": identity.subject,
-                        "reason": reason
+                        "reason": reason,
+                        "device_code": pending.device_authorization.is_some()
                     }),
                 },
             )?;
+            if let Some(id) = &pending.device_authorization {
+                device_code::refuse(&tx, id)?;
+            }
             Err(code)
         }
     };
@@ -351,7 +435,7 @@ fn redeem_code(
     server_id: ServerId,
     ip: Option<String>,
     now: i64,
-) -> Result<SessionTokens, ServerError> {
+) -> Result<(SessionTokens, Option<(String, String)>), ServerError> {
     if !nonce::consume(conn, &request.nonce, now)? {
         return Err(ServerError::Auth(AuthErrorCode::ExpiredNonce));
     }
@@ -404,7 +488,10 @@ fn redeem_code(
     }
     let tokens = refresh::issue_session(&tx, code.account_id, registered.device_id, now)?;
     tx.commit().map_err(db_error)?;
-    Ok(tokens)
+    let added = registered
+        .added
+        .then(|| (code.device_name.clone(), code.platform.clone()));
+    Ok((tokens, added))
 }
 
 async fn token(
@@ -414,10 +501,20 @@ async fn token(
 ) -> Result<Json<SessionTokens>, ServerError> {
     let now = state.clock.now_ms();
     let server_id = state.server_id;
-    let tokens = state
+    let (tokens, added) = state
         .db
         .call(move |conn| redeem_code(conn, &request, server_id, ip, now))
         .await?;
+    if let Some((name, platform)) = added {
+        notify::new_sign_in(
+            &state,
+            tokens.account_id,
+            tokens.device_id,
+            name,
+            platform,
+            now,
+        );
+    }
     Ok(Json(tokens))
 }
 

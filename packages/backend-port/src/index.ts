@@ -1546,13 +1546,13 @@ export interface BackendPort {
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
   collabLiveStop: (projectId: string) => Promise<void>;
   collabLiveFlush: (projectId: string) => Promise<void>;
-  collabSyncResume: (projectId: string, send: boolean) => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
   collabDocClose: (projectId: string, fileId: string) => Promise<void>;
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
   collabPresenceLeave: (projectId: string) => Promise<void>;
   collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
+  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<{ handled: boolean }>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
@@ -1599,4 +1599,355 @@ export interface BackendPort {
   synctexForward: (projectId: string, mainDoc: string, file: string, line: number) => Promise<SynctexRect | null>;
   synctexInverse: (projectId: string, mainDoc: string, page: number, x: number, y: number) => Promise<SynctexHit | null>;
   synctexMapLine: (compiledSource: string, currentSource: string, line: number, currentToCompiled: boolean) => Promise<number | null>;
+  collabTrashList: (projectId: string) => Promise<CollabTrashEntry[]>;
+  collabTrashRestore: (projectId: string, id: string) => Promise<void>;
+  collabTreeClashes: (projectId: string) => Promise<CollabTreeClash[]>;
+}
+
+export interface CollabTrashEntry {
+  id: string;
+  name: string;
+  kind: "dir" | "text" | "blob";
+  folder: string | null;
+  deletedBy: string | null;
+  deletedAt: number | null;
+}
+export interface CollabTreeClash {
+  path: string;
+  name: string;
+  other: string;
+}
+export interface CollabLiveRenamed {
+  projectId: string;
+  accountId: string | null;
+  before: string;
+  ours: string;
+  theirs: string;
+}
+
+export type CollabHealthStatus = "ok" | "warning" | "unknown";
+export type CollabHealthIssue = "no_sign_in_provider" | "storage_not_writable" | "unknown";
+export type CollabFilesLocation = "disk" | "s3" | "unknown";
+export interface CollabServerCounts {
+    people: number;
+    suspended_people: number;
+    devices: number;
+    projects: number;
+    archived_projects: number;
+    pending_projects: number;
+    open_rooms: number;
+    people_online: number;
+}
+export interface CollabStorageUsage {
+    database_bytes: number;
+    snapshot_bytes: number;
+    file_bytes: number;
+    files_location: CollabFilesLocation;
+}
+export interface CollabAdminOverview {
+    server_name: string;
+    version: string;
+    protocol: { min: number; max: number };
+    started_at: number;
+    now: number;
+    health: { status: CollabHealthStatus; issues: CollabHealthIssue[] };
+    counts: CollabServerCounts;
+    storage: CollabStorageUsage | null;
+    email_configured: boolean;
+    providers: CollabProvider[];
+    settings: CollabRuntimeSettings;
+    limits: CollabCapabilities["limits"];
+    archive_days: number;
+}
+export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
+export type CollabSortOrder = "asc" | "desc";
+export interface CollabAdminProjectsQuery {
+    q?: string | null;
+    status?: CollabProjectStatus | null;
+    sort?: CollabAdminProjectSort | null;
+    order?: CollabSortOrder | null;
+    cursor?: string | null;
+    limit?: number | null;
+}
+export interface CollabAdminProject {
+    project_id: string;
+    title: string;
+    owner: CollabPerson;
+    status: CollabProjectStatus;
+    member_count: number;
+    size_bytes: number | null;
+    created_at: number;
+    last_activity_at: number;
+    archived_at: number | null;
+}
+export interface CollabAdminProjectsPage {
+    items: CollabAdminProject[];
+    next_cursor: string | null;
+    total: number;
+}
+export interface BackendPort {
+  collabAdminOverview: (serverId: string) => Promise<CollabAdminOverview>;
+  collabAdminProjects: (serverId: string, query: CollabAdminProjectsQuery) => Promise<CollabAdminProjectsPage>;
+  collabAdminArchiveProject: (serverId: string, projectId: string) => Promise<CollabAdminProject>;
+  collabAdminUnarchiveProject: (serverId: string, projectId: string) => Promise<CollabAdminProject>;
+}
+
+export interface CollabEmailFailure {
+    at: number;
+    message: string;
+}
+export interface CollabEmailStatus {
+    configured: boolean;
+    from: string | null;
+    notifications: boolean;
+    last_failure: CollabEmailFailure | null;
+}
+export interface CollabEmailTestResult {
+    sent_to: string[];
+    delivered: boolean;
+    error: string | null;
+}
+export interface CollabEmailPreferences {
+    shared_with_you: boolean;
+    mail_configured: boolean;
+    notifications: boolean;
+}
+export interface CollabEmailPreferencesPatch {
+    shared_with_you?: boolean | null;
+}
+export interface BackendPort {
+  collabAdminEmailStatus: (serverId: string) => Promise<CollabEmailStatus>;
+  collabAdminEmailTest: (serverId: string) => Promise<CollabEmailTestResult>;
+  collabEmailPreferences: (serverId: string) => Promise<CollabEmailPreferences>;
+  collabSetEmailPreferences: (serverId: string, patch: CollabEmailPreferencesPatch) => Promise<CollabEmailPreferences>;
+}
+export type CollabSyncDecision = "send" | "keep_local";
+export interface CollabSyncPaused {
+    projectId: string;
+    changed: number;
+    total: number;
+    reason: "mass_change" | "root_unavailable";
+}
+export interface CollabSyncResumed {
+    projectId: string;
+}
+export interface BackendPort {
+  collabSyncDecide: (projectId: string, decision: CollabSyncDecision) => Promise<void>;
+}
+
+export interface CollabProjectSummary {
+    comments_enabled?: boolean;
+}
+export interface CollabCommentRange {
+    from: number;
+    to: number;
+}
+export interface CollabCommentAnchor {
+    quote: string;
+    range: CollabCommentRange | null;
+}
+export interface CollabCommentResolution {
+    by: string;
+    at: number;
+}
+export interface CollabCommentMessage {
+    id: string;
+    author: string;
+    at: number;
+    body: string;
+    editedAt: number | null;
+    deleted: boolean;
+    mentions: string[];
+}
+export interface CollabCommentThread {
+    id: string;
+    fileId: string;
+    anchor: CollabCommentAnchor;
+    createdBy: string;
+    createdAt: number;
+    resolved: CollabCommentResolution | null;
+    messages: CollabCommentMessage[];
+}
+export interface CollabCommentMember {
+    accountId: string;
+    displayName: string;
+    login?: string | null;
+}
+export interface CollabCommentsStatus {
+    serverAllowed: boolean;
+    projectEnabled: boolean;
+    canComment: boolean;
+}
+export interface CollabCommentsStatusChanged {
+    projectId: string;
+    status: CollabCommentsStatus;
+}
+export interface CollabCommentMentioned {
+    fileId: string;
+    path: string | null;
+    threadId: string;
+    messageId: string;
+    author: string;
+}
+export interface CollabCommentsChanged {
+    projectId: string;
+    fileIds: string[];
+    paths: string[];
+    mentioned: CollabCommentMentioned[];
+}
+export interface BackendPort {
+  collabCommentsStatus: (projectId: string) => Promise<CollabCommentsStatus>;
+  collabCommentsSetEnabled: (projectId: string, enabled: boolean) => Promise<CollabProjectSummary>;
+  collabCommentReply: (projectId: string, fileId: string, threadId: string, body: string, members: CollabCommentMember[]) => Promise<CollabCommentMessage>;
+  collabCommentEdit: (projectId: string, fileId: string, threadId: string, messageId: string, body: string, members: CollabCommentMember[]) => Promise<CollabCommentMessage>;
+  collabCommentDelete: (projectId: string, fileId: string, threadId: string, messageId: string) => Promise<void>;
+  collabCommentResolve: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
+  collabCommentReopen: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
+  collabCommentThreadDelete: (projectId: string, fileId: string, threadId: string) => Promise<void>;
+}
+
+export interface CollabProjectSummary {
+    access_log?: boolean;
+}
+export type CollabAccessKind = "opened" | "joined" | "downloaded" | "unknown";
+export type CollabJoinedVia = "link" | "share" | "unknown";
+export interface CollabAccessEntry {
+    id: number;
+    kind: CollabAccessKind;
+    via: CollabJoinedVia | null;
+    person: CollabPerson;
+    device_name: string;
+    at: number;
+    last_at: number;
+    times: number;
+}
+export type CollabAccessLogPage = CollabPage<CollabAccessEntry>;
+export interface CollabAccessLogStatus {
+    serverAllowed: boolean;
+    enabled: boolean;
+}
+export interface BackendPort {
+  collabAccessLogStatus: (projectId: string) => Promise<CollabAccessLogStatus>;
+  collabAccessLogSetEnabled: (projectId: string, enabled: boolean) => Promise<CollabProjectSummary>;
+  collabAccessLogPage: (projectId: string, cursor: string | null) => Promise<CollabAccessLogPage>;
+}
+
+export interface CollabPerson {
+    guest?: boolean;
+}
+export type CollabGuestInvitationStatus =
+    | "awaiting_approval"
+    | "invited"
+    | "accepted"
+    | "declined"
+    | "revoked"
+    | "expired"
+    | "unknown";
+export interface CollabGuestInvitation {
+    id: string;
+    project_id: string;
+    project_title: string;
+    email: string;
+    role: CollabProjectRole;
+    status: CollabGuestInvitationStatus;
+    invited_by: CollabPerson;
+    created_at: number;
+    expires_at: number;
+}
+export interface CollabProjectGuestInvitations {
+    guests_enabled: boolean;
+    approval_required: boolean;
+    sends_email: boolean;
+    add_link: string;
+    invitations: CollabGuestInvitation[];
+}
+export interface CollabGuestInviteResult {
+    invitation: CollabGuestInvitation;
+    emailed: boolean;
+    add_link: string;
+}
+export interface BackendPort {
+  collabGuestInvitations: (projectId: string) => Promise<CollabProjectGuestInvitations>;
+  collabGuestInvite: (projectId: string, email: string, role: CollabProjectRole) => Promise<CollabGuestInviteResult>;
+  collabGuestInvitationRevoke: (projectId: string, invitationId: string) => Promise<void>;
+  collabAdminGuestInvitations: (serverId: string) => Promise<CollabGuestInvitation[]>;
+  collabAdminGuestApprove: (serverId: string, invitationId: string) => Promise<CollabGuestInvitation>;
+  collabAdminGuestDecline: (serverId: string, invitationId: string) => Promise<CollabGuestInvitation>;
+  collabAdminGuestRevoke: (serverId: string, invitationId: string) => Promise<void>;
+}
+
+export interface CollabSignInCode {
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string;
+    expiresAt: number;
+}
+export interface CollabRuntimeSettings {
+    email_link_sign_in?: boolean;
+}
+export interface BackendPort {
+  collabServerCodeSignIn: (
+    url: string,
+    setupCode: string | undefined,
+    onCode: (code: CollabSignInCode) => void,
+  ) => Promise<CollabServer>;
+}
+
+export interface CollabCommentMessage {
+    verified: boolean;
+}
+export interface CollabCommentThread {
+    verified: boolean;
+}
+export interface CollabCommentResolution {
+    verified: boolean;
+}
+export interface CollabCommentsChanged {
+    local: boolean;
+}
+export interface CollabCommentThreadList {
+    rev: number | null;
+    threads: CollabCommentThread[];
+}
+export type CollabCommentErrorCode =
+    | "comment_not_live"
+    | "comment_not_yours"
+    | "comment_off_server"
+    | "comment_off_project"
+    | "comment_viewer"
+    | "comment_someone_replied"
+    | "comment_message_deleted"
+    | "comment_selection_changed"
+    | "comment_too_long"
+    | "comment_empty";
+export interface CollabCommentError {
+    code: CollabCommentErrorCode;
+    message: string;
+}
+export interface BackendPort {
+  collabCommentThreadList: (projectId: string, path: string) => Promise<CollabCommentThreadList>;
+  collabCommentCreate: (projectId: string, path: string, from: number, to: number, rev: number | null, body: string, members: CollabCommentMember[]) => Promise<CollabCommentThread>;
+}
+
+export type CollabSecurityLogKind =
+    | CollabSecurityEventKind
+    | "project_shared"
+    | "project_access_granted"
+    | "project_access_changed"
+    | "project_access_removed"
+    | "project_archived"
+    | "project_unarchived"
+    | "project_settings_changed"
+    | "guest_invited"
+    | "guest_invitation_approved"
+    | "guest_invitation_declined"
+    | "guest_invitation_revoked"
+    | "guest_admission_ended"
+    | "project_rejoin_refused";
+export interface CollabSecurityEvent {
+    project_title?: string | null;
+}
+
+export interface BackendPort {
+  collabLinkPreview: (serverId: string, sharedProjectId: string) => Promise<CollabProjectSummary>;
 }

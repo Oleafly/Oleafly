@@ -1376,5 +1376,11 @@
     "compiling": "正在編譯",
     "hideLog": "隱藏編譯記錄檔",
     "showLog": "顯示編譯記錄檔"
+  },
+  "collabSync": {
+    "paused_other": "有 {{count}} 個檔案在 Oleafly 之外被變更。要將這些變更傳送給所有人，還是只保留在本機？",
+    "send": "傳送",
+    "keepLocal": "保留在本機",
+    "unavailable": "專案資料夾無法使用，同步已暫停。資料夾恢復後會自動繼續。"
   }
 }

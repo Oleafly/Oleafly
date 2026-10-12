@@ -74,6 +74,7 @@ import {
 import { resolveBibliographyPath } from "@oleafly/latex";
 import { hayagrivaEntries } from "@/lib/citation/hayagriva";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const BIBTEX = "@article{placeholder,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}";
 
@@ -781,5 +782,42 @@ describe("Typst Hayagriva bibliographies", () => {
       ["hopper1959looms", "book", "10.1/one"],
       ["lovelace1843cards", "article", undefined],
     ]);
+  });
+});
+
+describe("adding a citation in a live shared project", () => {
+  it("merges the entry and the bibliography line into closed files from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      const bib = "@book{old,\n  title = {Old}\n}\n";
+      filesState.mainDoc = "paper.typ";
+      filesState.activePath = "paper.typ";
+      filesState.engine = {
+        source_extensions: ["typ"],
+        capabilities: { formatting_profile: "typst" },
+      };
+      filesState.files = {};
+      filesState.tree = [{ path: "refs.bib", is_dir: false }];
+      mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
+        path === "refs.bib" ? bib : "= Paper\n",
+      );
+
+      await addCitation(BIBTEX);
+
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "refs.bib",
+        expect.stringContaining("lovelace2024edge"),
+        { base: bib },
+      );
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "paper.typ",
+        '= Paper\n\n#bibliography("refs.bib")\n',
+        { base: "= Paper\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

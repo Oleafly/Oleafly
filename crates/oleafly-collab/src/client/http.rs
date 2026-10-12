@@ -10,17 +10,36 @@ use oleafly_collab_protocol::auth::{
     SessionTokens, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
+use oleafly_collab_protocol::email::{
+    EmailPreferences, EmailPreferencesPatch, EmailStatus, EmailTestResult,
+};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
     MemberGrant, NewProject, PersonSummary, ProjectDevice, ProjectMember, ProjectPatch,
     ProjectRole, ProjectSummary,
+};
+use oleafly_collab_protocol::snapshots::{
+    snapshot_signing_bytes, ProjectPeer, SNAPSHOT_DEVICE_HEADER, SNAPSHOT_SIGNATURE_HEADER,
 };
 use reqwest::header::LOCATION;
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 
 use super::{ServerUrl, CONNECT_TIMEOUT};
-use crate::CollabError;
+use crate::{CollabError, DeviceKey};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SnapshotSignature {
+    pub device_id: DeviceId,
+    pub signature: Vec<u8>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SnapshotDownload {
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+    pub signed: Option<SnapshotSignature>,
+}
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const TRANSFER_TIMEOUT: Duration = Duration::from_secs(600);
@@ -393,6 +412,19 @@ impl ServerClient {
         .await
     }
 
+    pub async fn join_preview(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<ProjectSummary, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &["join"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
     pub async fn put_blob(
         &self,
         access: &str,
@@ -443,6 +475,120 @@ impl ServerClient {
                 .body(snapshot),
         )
         .await
+    }
+
+    pub async fn put_first_snapshot(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        snapshot: Vec<u8>,
+        key: &DeviceKey,
+    ) -> Result<(), CollabError> {
+        let digest = ring::digest::digest(&ring::digest::SHA256, &snapshot);
+        let signature = key.sign_b64(&snapshot_signing_bytes(project, 0, digest.as_ref()));
+        let mut url = self.project_url(project, &["snapshot"]);
+        url.query_pairs_mut().append_pair("seq", "0");
+        empty(
+            self.http
+                .put(url)
+                .bearer_auth(access)
+                .header(SNAPSHOT_SIGNATURE_HEADER, signature)
+                .timeout(TRANSFER_TIMEOUT)
+                .body(snapshot),
+        )
+        .await
+    }
+
+    pub async fn snapshot_hint(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        seq: u64,
+    ) -> Result<(), CollabError> {
+        let mut url = self.project_url(project, &["snapshot"]);
+        url.query_pairs_mut().append_pair("seq", &seq.to_string());
+        empty(self.http.put(url).bearer_auth(access)).await
+    }
+
+    pub async fn download_snapshot(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        before: Option<u64>,
+    ) -> Result<SnapshotDownload, CollabError> {
+        let mut url = self.project_url(project, &["snapshot"]);
+        if let Some(before) = before {
+            url.query_pairs_mut()
+                .append_pair("before", &before.to_string());
+        }
+        let (headers, bytes) = bytes(
+            self.http
+                .get(url)
+                .bearer_auth(access)
+                .timeout(TRANSFER_TIMEOUT),
+        )
+        .await?;
+        let header = |name: &str| {
+            headers
+                .get(name)
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned)
+        };
+        let seq = header(SNAPSHOT_SEQ_HEADER)
+            .and_then(|value| value.parse::<u64>().ok())
+            .ok_or_else(|| CollabError::Api {
+                status: 200,
+                code: "invalid_response".to_string(),
+                message: "the snapshot has no sequence number".to_string(),
+            })?;
+        let signed = match (
+            header(SNAPSHOT_DEVICE_HEADER).and_then(|value| value.parse::<DeviceId>().ok()),
+            header(SNAPSHOT_SIGNATURE_HEADER)
+                .and_then(|value| oleafly_collab_protocol::crypto::b64url_decode(&value).ok()),
+        ) {
+            (Some(device_id), Some(signature)) => Some(SnapshotSignature {
+                device_id,
+                signature,
+            }),
+            _ => None,
+        };
+        Ok(SnapshotDownload { seq, bytes, signed })
+    }
+
+    pub async fn project_peers(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<Vec<ProjectPeer>, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &["peers"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn snapshot_seq(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<Option<u64>, CollabError> {
+        let response = self
+            .http
+            .head(self.project_url(project, &["snapshot"]))
+            .bearer_auth(access)
+            .send()
+            .await
+            .map_err(network_error)?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        let response = check_status(response).await?;
+        Ok(response
+            .headers()
+            .get(SNAPSHOT_SEQ_HEADER)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok()))
     }
 
     pub async fn get_snapshot(
@@ -535,6 +681,48 @@ impl ServerClient {
         json(self.http.get(url).bearer_auth(access)).await
     }
 
+    pub async fn admin_email_status(&self, access: &str) -> Result<EmailStatus, CollabError> {
+        json(
+            self.http
+                .get(self.url.endpoint("api/v1/admin/email"))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn admin_email_test(&self, access: &str) -> Result<EmailTestResult, CollabError> {
+        json(
+            self.http
+                .post(self.url.endpoint("api/v1/admin/email/test"))
+                .bearer_auth(access)
+                .json(&serde_json::json!({})),
+        )
+        .await
+    }
+
+    pub async fn email_preferences(&self, access: &str) -> Result<EmailPreferences, CollabError> {
+        json(
+            self.http
+                .get(self.url.endpoint("api/v1/me/email-preferences"))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn set_email_preferences(
+        &self,
+        access: &str,
+        patch: &EmailPreferencesPatch,
+    ) -> Result<EmailPreferences, CollabError> {
+        json(
+            self.http
+                .patch(self.url.endpoint("api/v1/me/email-preferences"))
+                .bearer_auth(access)
+                .json(patch),
+        )
+        .await
+    }
+
     fn item(&self, collection: &str, id: &str) -> Url {
         let mut url = self.url.endpoint(collection);
         if let Ok(mut segments) = url.path_segments_mut() {
@@ -562,7 +750,7 @@ pub(crate) fn build_http(
     builder.build()
 }
 
-async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabError> {
+pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabError> {
     let response = check_status(request.send().await.map_err(network_error)?).await?;
     let status = response.status().as_u16();
     let body = response.bytes().await.map_err(network_error)?;
@@ -666,7 +854,75 @@ mod tests {
             access_logs_allowed: None,
             email_notifications: None,
             comments_allowed: None,
+            email_link_sign_in: None,
         }
+    }
+
+    fn first_snapshot() -> Vec<u8> {
+        crate::doc::ProjectDoc::create()
+            .and_then(|doc| doc.snapshot())
+            .expect("a snapshot")
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn asks_which_snapshot_the_server_holds_without_downloading_it() {
+        let (_server, client, _admin, member) = admin_and_member().await;
+        let token = &member.access_token;
+        let project = client
+            .create_project(token, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        assert_eq!(
+            client
+                .snapshot_seq(token, project)
+                .await
+                .expect("no snapshot yet"),
+            None
+        );
+        client
+            .put_snapshot(token, project, 0, first_snapshot())
+            .await
+            .expect("upload");
+        assert_eq!(
+            client.snapshot_seq(token, project).await.expect("held"),
+            Some(0)
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn previews_a_project_link_without_joining_it() {
+        let (_server, client, admin, member) = admin_and_member().await;
+        let owner = &admin.access_token;
+        let project = client
+            .create_project(owner, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        client
+            .put_snapshot(owner, project, 0, first_snapshot())
+            .await
+            .expect("upload");
+        client.commit_project(owner, project).await.expect("commit");
+        let link = ProjectPatch {
+            link_sharing: Some(true),
+            link_role: Some(ProjectRole::Editor),
+            ..ProjectPatch::default()
+        };
+        client
+            .patch_project(owner, project, &link)
+            .await
+            .expect("link on");
+        let shown = client
+            .join_preview(&member.access_token, project)
+            .await
+            .expect("preview");
+        assert_eq!(shown.title, "Thesis");
+        assert_eq!(shown.role, ProjectRole::Editor);
+        assert!(matches!(
+            client.project(&member.access_token, project).await,
+            Err(CollabError::Api { status: 404, .. })
+        ));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -952,6 +1208,60 @@ mod tests {
             client.capabilities().await,
             Err(CollabError::NotHttps)
         ));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn email_status_test_email_and_preferences_reach_the_server() {
+        let smtp = oleafly_server::test_support::MockSmtp::start().await;
+        let server = TestServer::start(oleafly_server::test_support::mail_config(&smtp)).await;
+        let admin = seed(&server, ServerRole::Admin).await;
+        let member = seed(&server, ServerRole::Member).await;
+        let account = admin.account_id;
+        server
+            .state()
+            .db
+            .call(move |conn| {
+                oleafly_server::members::add_verified_emails(
+                    conn,
+                    account,
+                    &["admin@uni.edu".to_string()],
+                )
+            })
+            .await
+            .expect("admin email");
+        let client = ServerClient::new(server_url(&server)).expect("client");
+        let status = client
+            .admin_email_status(&admin.access_token)
+            .await
+            .expect("status");
+        assert!(status.configured);
+        assert!(status.notifications);
+        let result = client
+            .admin_email_test(&admin.access_token)
+            .await
+            .expect("test email");
+        assert!(result.delivered);
+        assert_eq!(result.sent_to, ["admin@uni.edu"]);
+        assert_eq!(smtp.messages().len(), 1);
+        assert!(matches!(
+            client.admin_email_test(&member.access_token).await,
+            Err(CollabError::Api { status: 403, .. })
+        ));
+        let preferences = client
+            .email_preferences(&member.access_token)
+            .await
+            .expect("preferences");
+        assert!(preferences.shared_with_you && preferences.mail_configured);
+        let changed = client
+            .set_email_preferences(
+                &member.access_token,
+                &EmailPreferencesPatch {
+                    shared_with_you: Some(false),
+                },
+            )
+            .await
+            .expect("change");
+        assert!(!changed.shared_with_you);
     }
 
     #[tokio::test]

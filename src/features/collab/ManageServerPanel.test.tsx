@@ -34,12 +34,17 @@ const mocks = vi.hoisted(() => ({
   collabAdminAddDomainRule: vi.fn(),
   collabAdminRemoveDomainRule: vi.fn(),
   collabAdminPatchSettings: vi.fn(),
+  collabAdminEmailStatus: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+
+const consoleMocks = vi.hoisted(() => ({ openAdminConsole: vi.fn() }));
+
+vi.mock("./console/open-console", () => consoleMocks);
 
 import { ManageServerPanel, visibleManageTabs } from "./ManageServerPanel";
 
@@ -57,12 +62,18 @@ beforeEach(() => {
   mocks.collabAdminDomainRules.mockResolvedValue([]);
   mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
   mocks.collabAdminSecurityLog.mockResolvedValue({ items: [], next_cursor: null });
+  mocks.collabAdminEmailStatus.mockResolvedValue({
+    configured: false,
+    from: null,
+    notifications: true,
+    last_failure: null,
+  });
 });
 
 describe("visibleManageTabs", () => {
   it("follows the role table", () => {
-    expect(visibleManageTabs("admin")).toEqual(["members", "allowlist", "domains", "settings", "log"]);
-    expect(visibleManageTabs("maintainer")).toEqual(["members", "allowlist", "domains", "settings", "log"]);
+    expect(visibleManageTabs("admin")).toEqual(["members", "allowlist", "domains", "settings", "email", "log"]);
+    expect(visibleManageTabs("maintainer")).toEqual(["members", "allowlist", "domains", "settings", "email", "log"]);
     expect(visibleManageTabs("member")).toEqual([]);
     expect(visibleManageTabs("guest")).toEqual([]);
   });
@@ -85,6 +96,9 @@ describe("ManageServerPanel", () => {
     expect(await screen.findByText(admin.domains.empty)).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: admin.tabs.settings }));
     expect(await screen.findByRole("switch", { name: admin.settings.directoryVisible.label })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: admin.tabs.email }));
+    expect(await screen.findByText(admin.email.off.title)).toBeInTheDocument();
+    expect(mocks.collabAdminEmailStatus).toHaveBeenCalledWith(SERVER_ID);
     await user.click(screen.getByRole("tab", { name: admin.tabs.log }));
     expect(await screen.findByText(admin.log.empty)).toBeInTheDocument();
     expect(mocks.collabAdminSecurityLog).toHaveBeenCalledWith(SERVER_ID);
@@ -107,5 +121,15 @@ describe("ManageServerPanel", () => {
   it("renders nothing for someone who is not signed in", () => {
     const { container } = render(<ManageServerPanel server={signedOutServer()} onBack={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("ManageServerPanel admin console", () => {
+  it("opens the admin console for the same server", async () => {
+    const entry = server({ account: account({ server_role: "maintainer" }) });
+    render(<ManageServerPanel server={entry} onBack={vi.fn()} />);
+    await screen.findByText("Alice Chen");
+    await userEvent.setup().click(screen.getByRole("button", { name: enCollab.console.open }));
+    expect(consoleMocks.openAdminConsole).toHaveBeenCalledWith(entry);
   });
 });

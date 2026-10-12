@@ -1409,5 +1409,12 @@
     "compiling": "Kompilerer",
     "hideLog": "Skjul kompileringsloggen",
     "showLog": "Vis kompileringsloggen"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fil er endret utenfor Oleafly. Vil du sende endringen til alle eller beholde den lokalt?",
+    "paused_other": "{{count}} filer er endret utenfor Oleafly. Vil du sende endringene til alle eller beholde dem lokalt?",
+    "send": "Send",
+    "keepLocal": "Behold lokalt",
+    "unavailable": "Prosjektmappen er ikke tilgjengelig, så synkroniseringen er satt på pause. Den starter igjen når mappen er tilbake."
   }
 }

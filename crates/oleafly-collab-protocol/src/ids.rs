@@ -72,6 +72,7 @@ typed_id!(DeviceId);
 typed_id!(ServerId);
 typed_id!(SharedProjectId);
 typed_id!(BatchId);
+typed_id!(CommentId);
 
 #[cfg(test)]
 mod tests {
@@ -96,6 +97,7 @@ mod tests {
         check(ServerId::new_v7());
         check(SharedProjectId::new_v7());
         check(BatchId::new_v7());
+        check(CommentId::new_v7());
         assert_eq!(
             FileId::new_v7().as_uuid().get_version(),
             Some(Version::SortRand)

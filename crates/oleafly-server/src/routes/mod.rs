@@ -1,15 +1,25 @@
+pub mod access_log;
 pub mod admin;
 pub mod auth;
+pub mod code_sign_in;
+pub mod console;
 pub mod devices;
+pub mod email;
+pub mod email_sign_in;
+pub mod guests;
 pub mod landing;
 pub mod meta;
+pub mod poll;
 pub mod projects;
+pub mod sign_in_pages;
 pub mod ws;
 
 use std::convert::Infallible;
 use std::net::{IpAddr, SocketAddr};
+use std::pin::Pin;
 use std::str::FromStr;
 
+use axum::body::{Body, Bytes, HttpBody};
 use axum::extract::rejection::{JsonRejection, PathRejection};
 use axum::extract::{ConnectInfo, FromRequestParts, Path};
 use axum::http::request::Parts;
@@ -28,10 +38,17 @@ pub fn api_routes() -> Router<AppState> {
     Router::new()
         .merge(meta::router())
         .merge(admin::router())
+        .merge(console::router())
         .merge(auth::router())
+        .merge(email_sign_in::router())
+        .merge(code_sign_in::router())
         .merge(devices::router())
+        .merge(email::router())
         .merge(ws::router())
+        .merge(poll::router())
         .merge(projects::router())
+        .merge(access_log::router())
+        .merge(guests::router())
         .merge(landing::router())
 }
 
@@ -146,4 +163,72 @@ pub fn path_id<T: FromStr>(path: Result<Path<String>, PathRejection>) -> Result<
     let Path(raw) = path.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
     raw.parse::<T>()
         .map_err(|_| ServerError::BadRequest(format!("{raw} is not a valid id.")))
+}
+
+pub async fn read_body_within(mut body: Body, limit: u64) -> Result<Option<Bytes>, ServerError> {
+    let mut collected: Vec<u8> = Vec::new();
+    while let Some(frame) = std::future::poll_fn(|cx| Pin::new(&mut body).poll_frame(cx)).await {
+        let frame = frame.map_err(|_| {
+            ServerError::BadRequest("The upload did not finish. Try again.".to_string())
+        })?;
+        let Ok(data) = frame.into_data() else {
+            continue;
+        };
+        if collected.len() as u64 + data.len() as u64 > limit {
+            return Ok(None);
+        }
+        collected.extend_from_slice(&data);
+    }
+    Ok(Some(Bytes::from(collected)))
+}
+
+#[cfg(test)]
+mod body_tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    use axum::body::{Body, Bytes};
+    use futures_util::stream::{self, StreamExt};
+
+    use super::read_body_within;
+    use crate::error::ServerError;
+
+    fn counted(chunks: usize, size: usize, polled: Arc<AtomicUsize>) -> Body {
+        let chunks = stream::iter(
+            (0..chunks).map(move |_| Ok::<_, std::io::Error>(Bytes::from(vec![7u8; size]))),
+        )
+        .inspect(move |_| {
+            polled.fetch_add(1, Ordering::SeqCst);
+        });
+        Body::from_stream(chunks)
+    }
+
+    #[tokio::test]
+    async fn a_body_within_the_limit_comes_back_whole() {
+        let polled = Arc::new(AtomicUsize::new(0));
+        let read = read_body_within(counted(4, 10, polled), 40)
+            .await
+            .expect("the body reads");
+        assert_eq!(read.map(|bytes| bytes.len()), Some(40));
+    }
+
+    #[tokio::test]
+    async fn reading_stops_as_soon_as_the_limit_is_passed() {
+        let polled = Arc::new(AtomicUsize::new(0));
+        let read = read_body_within(counted(100, 10, Arc::clone(&polled)), 25)
+            .await
+            .expect("the body reads");
+        assert!(read.is_none());
+        assert_eq!(polled.load(Ordering::SeqCst), 3);
+    }
+
+    #[tokio::test]
+    async fn a_body_that_breaks_off_is_a_bad_request() {
+        let broken = stream::iter(vec![
+            Ok(Bytes::from_static(b"start")),
+            Err(std::io::Error::other("the client went away")),
+        ]);
+        let read = read_body_within(Body::from_stream(broken), 1024).await;
+        assert!(matches!(read, Err(ServerError::BadRequest(_))));
+    }
 }

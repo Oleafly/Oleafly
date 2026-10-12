@@ -17,12 +17,17 @@ const mocks = vi.hoisted(() => ({
   collabServerTest: vi.fn(),
   collabServerDevices: vi.fn(),
   collabServerSignOutDevice: vi.fn(),
+  collabEmailPreferences: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+
+const consoleMocks = vi.hoisted(() => ({ openAdminConsole: vi.fn() }));
+
+vi.mock("./console/open-console", () => consoleMocks);
 
 import { ServerCard } from "./ServerCard";
 import { useCollabStore } from "./store";
@@ -49,6 +54,11 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.collabServerDevices.mockResolvedValue([]);
+  mocks.collabEmailPreferences.mockResolvedValue({
+    shared_with_you: true,
+    mail_configured: true,
+    notifications: true,
+  });
 });
 
 describe("ServerCard", () => {
@@ -164,5 +174,39 @@ describe("ServerCard", () => {
     }
     renderCard(signedOutServer());
     expect(screen.queryByRole("button", { name: copy.server.manage })).toBeNull();
+  });
+});
+
+describe("ServerCard admin console", () => {
+  it.each(["admin", "maintainer"] as const)("lets a %s open the admin console for this server", async (role) => {
+    const user = userEvent.setup();
+    const entry = server({ account: account({ server_role: role }) });
+    renderCard(entry);
+    await user.click(screen.getByRole("button", { name: enCollab.console.open }));
+    expect(consoleMocks.openAdminConsole).toHaveBeenCalledWith(entry);
+  });
+
+  it("keeps the admin console from members and signed out computers", () => {
+    renderCard(server({ account: account({ server_role: "member" }) }));
+    expect(screen.queryByRole("button", { name: enCollab.console.open })).not.toBeInTheDocument();
+    cleanup();
+    renderCard(signedOutServer({ account: account({ server_role: "admin" }) }));
+    expect(screen.queryByRole("button", { name: enCollab.console.open })).not.toBeInTheDocument();
+  });
+});
+
+describe("ServerCard email preference", () => {
+  it("offers the shared project email switch to the signed-in account only", async () => {
+    renderCard();
+    expect(await screen.findByRole("switch", { name: copy.server.emails.label })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(mocks.collabEmailPreferences).toHaveBeenCalledWith(SERVER_ID);
+    cleanup();
+    mocks.collabEmailPreferences.mockClear();
+    renderCard(signedOutServer());
+    expect(screen.queryByRole("switch", { name: copy.server.emails.label })).toBeNull();
+    expect(mocks.collabEmailPreferences).not.toHaveBeenCalled();
   });
 });

@@ -55,6 +55,7 @@ async fn main() {
     ]
     .into_iter()
     .map(|(key, value)| (key.to_owned(), value))
+    .chain(std::env::vars().filter(|(key, _)| key.starts_with("OLEAFLY_")))
     .collect();
     let mut config = ServerConfig::from_vars(&vars, &no_secret_files).expect("dev configuration");
     config.providers.push(github_provider("github", &github));

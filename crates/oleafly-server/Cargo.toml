@@ -14,6 +14,9 @@ test-support = []
 [dependencies]
 async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "query", "tokio", "ws"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "rustls-native-certs"] }
+loro = "=1.16.2"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 ring = "0.17"

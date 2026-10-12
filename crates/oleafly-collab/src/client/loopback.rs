@@ -28,9 +28,13 @@ pub(crate) struct LoopbackListener {
 
 impl LoopbackListener {
     pub(crate) async fn bind() -> Result<LoopbackListener, CollabError> {
-        let listener = TcpListener::bind(("127.0.0.1", 0))
+        LoopbackListener::bind_to(("127.0.0.1", 0)).await
+    }
+
+    pub(crate) async fn bind_to(address: (&str, u16)) -> Result<LoopbackListener, CollabError> {
+        let listener = TcpListener::bind(address)
             .await
-            .map_err(|error| CollabError::Io(error.to_string()))?;
+            .map_err(|_| CollabError::SignInTimedOut)?;
         let port = listener
             .local_addr()
             .map_err(|error| CollabError::Io(error.to_string()))?
@@ -212,6 +216,12 @@ mod tests {
                 description: Some("nope".to_string()),
             }
         );
+    }
+
+    #[tokio::test]
+    async fn a_port_that_cannot_be_opened_reads_as_a_browser_that_never_came_back() {
+        let outcome = LoopbackListener::bind_to(("192.0.2.1", 0)).await;
+        assert!(matches!(outcome, Err(CollabError::SignInTimedOut)));
     }
 
     #[tokio::test]

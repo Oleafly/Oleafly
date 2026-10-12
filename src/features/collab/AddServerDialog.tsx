@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Github, KeyRound, Mail, Server } from "lucide-react";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { Check, Copy, ExternalLink, Github, Hash, KeyRound, Mail, Server } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import {
   collabServerProbe,
@@ -21,6 +23,7 @@ import {
   type CollabCapabilities,
   type CollabProvider,
   type CollabServer,
+  type CollabSignInCode,
 } from "@/lib/tauri";
 import { collabErrorCode, collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
@@ -31,15 +34,27 @@ type Step =
   | { kind: "address" }
   | { kind: "checking" }
   | { kind: "server"; url: string; capabilities: CollabCapabilities }
-  | { kind: "signingIn"; url: string; capabilities: CollabCapabilities }
+  | { kind: "signingIn"; url: string; capabilities: CollabCapabilities; provider: CollabProvider }
+  | { kind: "code"; url: string; capabilities: CollabCapabilities; code: CollabSignInCode | null }
   | { kind: "done"; server: CollabServer };
 
+export const CODE_OFFER_DELAY_MS = 20_000;
+
 const SCHEME = /^[a-z][a-z\d+.-]*:\/\//i;
+const ADD_LINK = /^oleafly:\/\/server\/add\/?\?/i;
+
+function addLinkTarget(link: string): string | null {
+  if (!ADD_LINK.test(link)) return null;
+  const query = link.slice(link.indexOf("?") + 1);
+  const target = new URLSearchParams(query).get("url")?.trim() ?? "";
+  return target === "" ? null : target;
+}
 
 export function normalizeServerAddress(input: string): string {
   const trimmed = input.trim();
   if (trimmed === "") return "";
-  return SCHEME.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const address = addLinkTarget(trimmed) ?? trimmed;
+  return SCHEME.test(address) ? address : `https://${address}`;
 }
 
 function ProviderIcon({ provider }: Readonly<{ provider: CollabProvider }>) {
@@ -52,13 +67,45 @@ function cancelPendingSignIn() {
   collabServerSignInCancel().catch(() => undefined);
 }
 
+function CodeValue({
+  label,
+  value,
+  large,
+  copied,
+  onCopy,
+}: Readonly<{ label: string; value: string; large: boolean; copied: boolean; onCopy: () => void }>) {
+  const { t } = useTranslation(["common"]);
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium">{label}</p>
+      <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+        <span
+          className={
+            large
+              ? "min-w-0 flex-1 select-all font-mono text-xl tracking-widest"
+              : "min-w-0 flex-1 select-all break-all font-mono text-xs"
+          }
+        >
+          {value}
+        </span>
+        <Button type="button" variant="ghost" size="sm" onClick={onCopy}>
+          {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+          {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function AddServerDialog({
   open,
   initialUrl,
   onClose,
 }: Readonly<{ open: boolean; initialUrl: string | null; onClose: () => void }>) {
-  const { t } = useTranslation(["collab", "common"]);
+  const { t, i18n } = useTranslation(["collab", "common"]);
   const signIn = useCollabStore((state) => state.signIn);
+  const signInWithCode = useCollabStore((state) => state.signInWithCode);
+  const { copiedText, copy } = useCopyStatus();
   const addressId = useId();
   const setupId = useId();
   const attempt = useRef(0);
@@ -66,6 +113,9 @@ export function AddServerDialog({
   const [setupCode, setSetupCode] = useState("");
   const [step, setStep] = useState<Step>({ kind: "address" });
   const [error, setError] = useState<string | null>(null);
+  const [codeHint, setCodeHint] = useState(false);
+  const [offerCode, setOfferCode] = useState(false);
+  const waiting = step.kind === "signingIn";
 
   const probe = useCallback(async (raw: string) => {
     const url = normalizeServerAddress(raw);
@@ -84,12 +134,37 @@ export function AddServerDialog({
     }
   }, []);
 
-  const startSignIn = async (url: string, capabilities: CollabCapabilities, providerId: string) => {
+  const startSignIn = async (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => {
     const current = ++attempt.current;
     setError(null);
-    setStep({ kind: "signingIn", url, capabilities });
+    setCodeHint(false);
+    setStep({ kind: "signingIn", url, capabilities, provider });
     try {
-      const server = await signIn(url, providerId, capabilities.needs_setup ? setupCode.trim() : undefined);
+      const server = await signIn(url, provider.id, capabilities.needs_setup ? setupCode.trim() : undefined);
+      if (current !== attempt.current) return;
+      setStep({ kind: "done", server });
+    } catch (failure) {
+      if (current !== attempt.current) return;
+      const code = collabErrorCode(failure);
+      setError(collabErrorMessage(code));
+      setCodeHint(code === "sign_in_timed_out");
+      setStep({ kind: "server", url, capabilities });
+    }
+  };
+
+  const startCodeSignIn = async (url: string, capabilities: CollabCapabilities) => {
+    const current = ++attempt.current;
+    setError(null);
+    setCodeHint(false);
+    setStep({ kind: "code", url, capabilities, code: null });
+    try {
+      const server = await signInWithCode(
+        url,
+        capabilities.needs_setup ? setupCode.trim() : undefined,
+        (code) => {
+          if (current === attempt.current) setStep({ kind: "code", url, capabilities, code });
+        },
+      );
       if (current !== attempt.current) return;
       setStep({ kind: "done", server });
     } catch (failure) {
@@ -99,9 +174,16 @@ export function AddServerDialog({
     }
   };
 
+  const switchToCode = async (url: string, capabilities: CollabCapabilities) => {
+    attempt.current += 1;
+    await collabServerSignInCancel().catch(() => undefined);
+    await startCodeSignIn(url, capabilities);
+  };
+
   const goTo = (next: Step) => {
     attempt.current += 1;
     setError(null);
+    setCodeHint(false);
     setStep(next);
   };
 
@@ -111,7 +193,7 @@ export function AddServerDialog({
   };
 
   const close = () => {
-    if (step.kind === "signingIn") cancelPendingSignIn();
+    if (step.kind === "signingIn" || step.kind === "code") cancelPendingSignIn();
     attempt.current += 1;
     onClose();
   };
@@ -122,9 +204,17 @@ export function AddServerDialog({
     setAddress(initialUrl ?? "");
     setSetupCode("");
     setError(null);
+    setCodeHint(false);
     setStep({ kind: "address" });
     if (initialUrl) void probe(initialUrl);
   }, [open, initialUrl, probe]);
+
+  useEffect(() => {
+    setOfferCode(false);
+    if (!waiting) return;
+    const timer = setTimeout(() => setOfferCode(true), CODE_OFFER_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
 
   useEffect(() => {
     if (!open) return;
@@ -222,16 +312,27 @@ export function AddServerDialog({
                   type="button"
                   variant="outline"
                   disabled={codeMissing}
-                  onClick={() => void startSignIn(url, capabilities, provider.id)}
+                  onClick={() => void startSignIn(url, capabilities, provider)}
                 >
                   <ProviderIcon provider={provider} />
                   {t(($) => $.collab.addServer.continueWith, { provider: provider.label })}
                 </Button>
               ))}
+              <Button
+                type="button"
+                variant={codeHint ? "outline" : "ghost"}
+                disabled={codeMissing}
+                onClick={() => void startCodeSignIn(url, capabilities)}
+              >
+                <Hash aria-hidden />
+                {t(($) => $.collab.addServer.codeSignIn)}
+              </Button>
+              <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeSignInDescription)}</p>
             </div>
           )}
         </div>
         {error ? <InlineAlert>{error}</InlineAlert> : null}
+        {codeHint ? <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeHint)}</p> : null}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => goTo({ kind: "address" })}>
             {t(($) => $.collab.addServer.back)}
@@ -241,18 +342,79 @@ export function AddServerDialog({
     );
   };
 
-  const renderWaiting = (url: string, capabilities: CollabCapabilities) => (
+  const renderWaiting = (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => (
     <div className="space-y-4">
       <output className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
         <Spinner className="mt-0.5" />
         <span className="min-w-0">
           <span className="block text-sm font-medium">{t(($) => $.collab.addServer.waitingTitle)}</span>
           <span className="block text-xs text-muted-foreground">
-            {t(($) => $.collab.addServer.waitingDescription)}
+            {provider.kind === "email_link"
+              ? t(($) => $.collab.addServer.waitingEmailDescription)
+              : t(($) => $.collab.addServer.waitingDescription)}
           </span>
         </span>
       </output>
+      {offerCode ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeOffer)}</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void switchToCode(url, capabilities)}>
+            <Hash aria-hidden />
+            {t(($) => $.collab.addServer.codeSignIn)}
+          </Button>
+        </div>
+      ) : null}
       <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => cancelWaiting(url, capabilities)}>
+          {t(($) => $.collab.addServer.cancel)}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
+  const renderCode = (url: string, capabilities: CollabCapabilities, code: CollabSignInCode | null) => (
+    <div className="space-y-4">
+      {code === null ? (
+        <LoadingState size="compact" label={t(($) => $.collab.addServer.codeRequesting)} />
+      ) : (
+        <>
+          <p className="text-sm">{t(($) => $.collab.addServer.codeSteps)}</p>
+          <CodeValue
+            label={t(($) => $.collab.addServer.codeAddressLabel)}
+            value={code.verificationUri}
+            large={false}
+            copied={copiedText === code.verificationUri}
+            onCopy={() => void copy(code.verificationUri)}
+          />
+          <CodeValue
+            label={t(($) => $.collab.addServer.codeLabel)}
+            value={code.userCode}
+            large
+            copied={copiedText === code.userCode}
+            onCopy={() => void copy(code.userCode)}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.collab.addServer.codeExpires, {
+              time: new Date(code.expiresAt).toLocaleTimeString(i18n.language, { hour: "numeric", minute: "2-digit" }),
+            })}
+          </p>
+          <output className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Spinner />
+            {t(($) => $.collab.addServer.codeWaiting)}
+          </output>
+        </>
+      )}
+      <DialogFooter>
+        {code ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => void openExternal(code.verificationUriComplete).catch(() => undefined)}
+          >
+            <ExternalLink aria-hidden />
+            {t(($) => $.collab.addServer.codeOpen)}
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" onClick={() => cancelWaiting(url, capabilities)}>
           {t(($) => $.collab.addServer.cancel)}
         </Button>
@@ -293,7 +455,9 @@ export function AddServerDialog({
       case "server":
         return renderServer(step.url, step.capabilities);
       case "signingIn":
-        return renderWaiting(step.url, step.capabilities);
+        return renderWaiting(step.url, step.capabilities, step.provider);
+      case "code":
+        return renderCode(step.url, step.capabilities, step.code);
       case "done":
         return renderDone(step.server);
     }

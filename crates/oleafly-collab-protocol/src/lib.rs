@@ -1,9 +1,15 @@
+pub mod access_log;
 pub mod admin;
 pub mod auth;
 pub mod capabilities;
+pub mod console;
 pub mod crypto;
+pub mod email;
 pub mod envelope;
 pub mod frames;
+pub mod guests;
 pub mod ids;
+pub mod poll;
 pub mod projects;
 pub mod roles;
+pub mod snapshots;

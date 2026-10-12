@@ -249,6 +249,7 @@
       "driftedMany": "這個任務開始後，專案中有 {{fileCount}} 個檔案已變更。它們的差異是對照舊版本，因此無法套用。",
       "applyAria": "套用 {{path}}",
       "changedSince": "開始後已變更",
+      "mergesOnApply": "這個任務開始後，此檔案已被編輯。套用時會保留這些編輯，並加入任務的變更。",
       "loading": "載入中…",
       "refreshPreview": "重新整理預覽",
       "preview": "預覽",

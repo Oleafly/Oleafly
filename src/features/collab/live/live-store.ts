@@ -194,6 +194,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const store = useCollabLiveStore;
   let disposed = false;
   let live: LiveRun | null = null;
+  let askedAbout = new Set<string>();
 
   const stopLive = () => {
     const run = live;
@@ -253,11 +254,23 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const openProject = (projectId: string | null) => {
     stopLive();
+    askedAbout = new Set();
     store.setState(emptyLive(projectId));
     if (projectId) void store.getState().refreshShare();
   };
 
   const current = () => store.getState().projectId;
+
+  const learnAbout = (accountIds: readonly string[]) => {
+    const state = store.getState();
+    const unknown = accountIds.filter(
+      (accountId) =>
+        accountId !== state.share?.account_id && !personFor(state.members, accountId) && !askedAbout.has(accountId),
+    );
+    if (unknown.length === 0) return;
+    for (const accountId of unknown) askedAbout.add(accountId);
+    void state.refreshMembers();
+  };
 
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
@@ -281,11 +294,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const onMerged = (payload: CollabLiveMerged) => {
     if (payload.projectId !== current()) return;
     store.setState({ merged: payload });
+    learnAbout(payload.authors.map((author) => author.accountId));
   };
 
   const onNewDevice = (payload: CollabLiveNewDevice) => {
     if (payload.projectId !== current()) return;
     store.setState({ newDevice: payload });
+    learnAbout([payload.accountId]);
   };
 
   const onPresence = (payload: CollabPresence) => {
@@ -305,6 +320,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         },
       },
     }));
+    learnAbout([payload.accountId]);
   };
 
   const onLeft = (payload: CollabPresenceLeft) => {

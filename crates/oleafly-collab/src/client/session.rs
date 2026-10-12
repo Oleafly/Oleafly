@@ -1,11 +1,14 @@
-use std::sync::Arc;
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, UNIX_EPOCH};
 
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, RefreshRequest, SessionTokens,
 };
 use oleafly_collab_protocol::ids::ServerId;
+use reqwest::header::{HeaderMap, DATE};
 
+use super::http::{check_status, network_error};
 use super::{now_ms, ServerClient};
 use crate::{CollabError, DeviceKey, SecretPort};
 
@@ -21,6 +24,7 @@ pub struct SessionManager {
     secrets: Arc<dyn SecretPort>,
     key: Arc<DeviceKey>,
     refresh: tokio::sync::Mutex<()>,
+    server_clocks: Mutex<HashMap<ServerId, i64>>,
 }
 
 impl SessionManager {
@@ -29,7 +33,26 @@ impl SessionManager {
             secrets,
             key,
             refresh: tokio::sync::Mutex::new(()),
+            server_clocks: Mutex::new(HashMap::new()),
         }
+    }
+
+    fn server_now(&self, server: ServerId) -> i64 {
+        let offset = self
+            .server_clocks
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&server)
+            .copied()
+            .unwrap_or(0);
+        now_ms() + offset
+    }
+
+    fn learn_server_clock(&self, server: ServerId, server_ms: i64) {
+        self.server_clocks
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(server, server_ms - now_ms());
     }
 
     pub fn store(&self, server: ServerId, tokens: &SessionTokens) -> Result<(), CollabError> {
@@ -75,7 +98,7 @@ impl SessionManager {
     ) -> Result<String, CollabError> {
         let _guard = self.refresh.lock().await;
         let tokens = self.tokens(server)?.ok_or(CollabError::Unauthorized)?;
-        if !force && tokens.access_expires_at - now_ms() >= REFRESH_MARGIN_MS {
+        if !force && tokens.access_expires_at - self.server_now(server) >= REFRESH_MARGIN_MS {
             return Ok(tokens.access_token);
         }
         let mut attempt = 1;
@@ -112,8 +135,44 @@ impl SessionManager {
             signature: self.key.sign_b64(&message),
             nonce: challenge.nonce,
         };
-        client.refresh(&request).await
+        let (tokens, server_ms) = post_refresh(client, &request).await?;
+        if let Some(server_ms) = server_ms {
+            self.learn_server_clock(server, server_ms);
+        }
+        Ok(tokens)
     }
+}
+
+async fn post_refresh(
+    client: &ServerClient,
+    request: &RefreshRequest,
+) -> Result<(SessionTokens, Option<i64>), CollabError> {
+    let response = client
+        .http()
+        .post(client.url().endpoint("auth/refresh"))
+        .json(request)
+        .send()
+        .await
+        .map_err(network_error)?;
+    let response = check_status(response).await?;
+    let server_ms = server_time(response.headers());
+    let status = response.status().as_u16();
+    let body = response.bytes().await.map_err(network_error)?;
+    let tokens = serde_json::from_slice(&body).map_err(|error| CollabError::Api {
+        status,
+        code: "invalid_response".to_string(),
+        message: error.to_string(),
+    })?;
+    Ok((tokens, server_ms))
+}
+
+fn server_time(headers: &HeaderMap) -> Option<i64> {
+    headers
+        .get(DATE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| httpdate::parse_http_date(value).ok())
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .and_then(|elapsed| i64::try_from(elapsed.as_millis()).ok())
 }
 
 fn is_revocation(error: &CollabError) -> bool {
@@ -193,6 +252,80 @@ mod tests {
         assert_eq!(
             manager.access_token(server, &client).await.expect("token"),
             "still-fresh"
+        );
+    }
+
+    async fn answering(
+        server_now: i64,
+        original: &SessionTokens,
+        access: &str,
+    ) -> crate::ServerUrl {
+        use crate::client::test_util::{canned, http_response};
+        let date = httpdate::fmt_http_date(
+            std::time::UNIX_EPOCH + Duration::from_millis(server_now as u64),
+        );
+        let body = serde_json::json!({
+            "nonce": "nonce",
+            "expires_at": server_now + 120_000,
+            "account_id": original.account_id,
+            "device_id": original.device_id,
+            "access_token": access,
+            "access_expires_at": server_now + 600_000,
+            "refresh_token": format!("{access}-refresh"),
+        })
+        .to_string();
+        canned(http_response(
+            "200 OK",
+            &[("Date", &date), ("Content-Type", "application/json")],
+            &body,
+        ))
+        .await
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_clock_running_ahead_of_the_server_does_not_refresh_on_every_call() {
+        let (_secrets, manager) = manager();
+        let server = ServerId::new_v7();
+        let server_now = now_ms() - 9 * 60_000 - 30_000;
+        let original = tokens("stale", 0);
+        manager.store(server, &original).expect("store");
+        let online =
+            ServerClient::new(answering(server_now, &original, "fresh").await).expect("client");
+        assert_eq!(
+            manager.access_token(server, &online).await.expect("token"),
+            "fresh"
+        );
+        let offline = ServerClient::new(closed_url().await).expect("client");
+        assert_eq!(
+            manager
+                .access_token(server, &offline)
+                .await
+                .expect("a token issued a moment ago is still good"),
+            "fresh"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_clock_running_behind_the_server_refreshes_before_the_server_expires_the_token() {
+        let (_secrets, manager) = manager();
+        let server = ServerId::new_v7();
+        let original = tokens("stale", 0);
+        manager.store(server, &original).expect("store");
+        let server_now = now_ms() + 9 * 60_000 + 30_000;
+        let first =
+            ServerClient::new(answering(server_now, &original, "first").await).expect("client");
+        assert_eq!(
+            manager.access_token(server, &first).await.expect("token"),
+            "first"
+        );
+        let mut nearly_expired = manager.tokens(server).expect("read").expect("stored");
+        nearly_expired.access_expires_at = server_now + 30_000;
+        manager.store(server, &nearly_expired).expect("store");
+        let second =
+            ServerClient::new(answering(server_now, &original, "second").await).expect("client");
+        assert_eq!(
+            manager.access_token(server, &second).await.expect("token"),
+            "second"
         );
     }
 

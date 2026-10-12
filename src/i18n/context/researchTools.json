@@ -45,6 +45,7 @@
       "start": "Starts the research task now",
       "preview": "Loads the diff for one changed file",
       "changedSince": "The file changed in the project after the task started",
+      "mergesOnApply": "Calm note under one changed file in a shared project. The file was edited after the task started, and applying merges the task's changes with those edits instead of refusing",
       "changeAdded": "A file the task created, shown lowercase and capitalized by CSS",
       "changeModified": "A file the task edited, shown lowercase and capitalized by CSS",
       "changeDeleted": "A file the task removed, shown lowercase and capitalized by CSS",

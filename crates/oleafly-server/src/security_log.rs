@@ -39,6 +39,14 @@ pub fn kind_to_str(kind: &SecurityEventKind) -> &'static str {
         SecurityEventKind::ProjectAccessChanged => "project_access_changed",
         SecurityEventKind::ProjectAccessRemoved => "project_access_removed",
         SecurityEventKind::ProjectArchived => "project_archived",
+        SecurityEventKind::ProjectUnarchived => "project_unarchived",
+        SecurityEventKind::ProjectSettingsChanged => "project_settings_changed",
+        SecurityEventKind::GuestInvited => "guest_invited",
+        SecurityEventKind::GuestInvitationApproved => "guest_invitation_approved",
+        SecurityEventKind::GuestInvitationDeclined => "guest_invitation_declined",
+        SecurityEventKind::GuestInvitationRevoked => "guest_invitation_revoked",
+        SecurityEventKind::GuestAdmissionEnded => "guest_admission_ended",
+        SecurityEventKind::ProjectRejoinRefused => "project_rejoin_refused",
         SecurityEventKind::Unknown => "unknown",
     }
 }
@@ -66,6 +74,14 @@ pub fn kind_from_str(text: &str) -> Option<SecurityEventKind> {
         "project_access_changed" => Some(SecurityEventKind::ProjectAccessChanged),
         "project_access_removed" => Some(SecurityEventKind::ProjectAccessRemoved),
         "project_archived" => Some(SecurityEventKind::ProjectArchived),
+        "project_unarchived" => Some(SecurityEventKind::ProjectUnarchived),
+        "project_settings_changed" => Some(SecurityEventKind::ProjectSettingsChanged),
+        "guest_invited" => Some(SecurityEventKind::GuestInvited),
+        "guest_invitation_approved" => Some(SecurityEventKind::GuestInvitationApproved),
+        "guest_invitation_declined" => Some(SecurityEventKind::GuestInvitationDeclined),
+        "guest_invitation_revoked" => Some(SecurityEventKind::GuestInvitationRevoked),
+        "guest_admission_ended" => Some(SecurityEventKind::GuestAdmissionEnded),
+        "project_rejoin_refused" => Some(SecurityEventKind::ProjectRejoinRefused),
         _ => None,
     }
 }
@@ -96,6 +112,7 @@ struct RawEvent {
     target: Option<String>,
     ip: Option<String>,
     detail: String,
+    project_title: Option<String>,
 }
 
 pub fn page(
@@ -115,7 +132,10 @@ pub fn page(
             })?,
     };
     let mut statement = conn.prepare(
-        "SELECT id, at, actor, kind, target, ip, detail FROM security_log WHERE id < ?1 ORDER BY id DESC LIMIT ?2",
+        "SELECT s.id, s.at, s.actor, s.kind, s.target, s.ip, s.detail, p.title FROM security_log s \
+         LEFT JOIN projects p ON p.id = COALESCE(\
+         CASE WHEN json_valid(s.detail) THEN json_extract(s.detail, '$.project') END, s.target) \
+         WHERE s.id < ?1 ORDER BY s.id DESC LIMIT ?2",
     )?;
     let rows = statement
         .query_map(params![before, i64::from(limit) + 1], |row| {
@@ -127,6 +147,7 @@ pub fn page(
                 target: row.get(4)?,
                 ip: row.get(5)?,
                 detail: row.get(6)?,
+                project_title: row.get(7)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -154,6 +175,7 @@ fn event_from_raw(raw: RawEvent) -> Result<SecurityEvent, ServerError> {
         target: raw.target,
         ip: raw.ip,
         detail: serde_json::from_str(&raw.detail).unwrap_or(serde_json::Value::Null),
+        project_title: raw.project_title,
     })
 }
 
@@ -165,9 +187,10 @@ pub fn prune(conn: &Connection, older_than: i64) -> Result<usize, ServerError> {
 mod tests {
     use super::*;
     use crate::db::Db;
+    use oleafly_collab_protocol::ids::SharedProjectId;
     use serde_json::json;
 
-    const ALL_KINDS: [SecurityEventKind; 21] = [
+    const ALL_KINDS: [SecurityEventKind; 29] = [
         SecurityEventKind::SetupCompleted,
         SecurityEventKind::SignIn,
         SecurityEventKind::SignInRefused,
@@ -189,6 +212,14 @@ mod tests {
         SecurityEventKind::ProjectAccessChanged,
         SecurityEventKind::ProjectAccessRemoved,
         SecurityEventKind::ProjectArchived,
+        SecurityEventKind::ProjectUnarchived,
+        SecurityEventKind::ProjectSettingsChanged,
+        SecurityEventKind::GuestInvited,
+        SecurityEventKind::GuestInvitationApproved,
+        SecurityEventKind::GuestInvitationDeclined,
+        SecurityEventKind::GuestInvitationRevoked,
+        SecurityEventKind::GuestAdmissionEnded,
+        SecurityEventKind::ProjectRejoinRefused,
     ];
 
     fn event(target: &str) -> NewSecurityEvent {
@@ -236,6 +267,14 @@ mod tests {
                 "project_access_changed",
                 "project_access_removed",
                 "project_archived",
+                "project_unarchived",
+                "project_settings_changed",
+                "guest_invited",
+                "guest_invitation_approved",
+                "guest_invitation_declined",
+                "guest_invitation_revoked",
+                "guest_admission_ended",
+                "project_rejoin_refused",
             ]
         );
         for name in &names {
@@ -339,6 +378,59 @@ mod tests {
                 }
                 assert_eq!(page(conn, None, 0)?.items.len(), 1);
                 assert_eq!(page(conn, None, 1_000)?.items.len(), 200);
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn pages_name_the_project_an_event_is_about() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let owner = AccountId::new_v7();
+                conn.execute(
+                    "INSERT INTO accounts (id, display_name, avatar_url, server_role, status, created_at, updated_at) VALUES (?1, 'Owner', NULL, 'member', 'active', 1, 1)",
+                    [owner.to_string()],
+                )?;
+                let project = crate::projects::create_pending(conn, owner, "Thesis draft", 1)?;
+                let gone = SharedProjectId::new_v7();
+                let about = |target: String, detail: serde_json::Value| NewSecurityEvent {
+                    actor: Some(owner),
+                    kind: SecurityEventKind::ProjectAccessGranted,
+                    target: Some(target),
+                    ip: None,
+                    detail,
+                };
+                record(conn, 1, about(project.to_string(), json!({ "via": "link" })))?;
+                record(
+                    conn,
+                    2,
+                    about(owner.to_string(), json!({ "project": project.to_string() })),
+                )?;
+                record(conn, 3, about(gone.to_string(), json!({})))?;
+                record(conn, 4, about(owner.to_string(), json!({})))?;
+                conn.execute(
+                    "INSERT INTO security_log (at, actor, kind, target, ip, detail) VALUES (5, NULL, 'sign_in', ?1, NULL, 'not json')",
+                    [project.to_string()],
+                )?;
+                let listed = page(conn, None, 10)?;
+                let titles: Vec<Option<&str>> = listed
+                    .items
+                    .iter()
+                    .map(|item| item.project_title.as_deref())
+                    .collect();
+                assert_eq!(
+                    titles,
+                    [
+                        Some("Thesis draft"),
+                        None,
+                        None,
+                        Some("Thesis draft"),
+                        Some("Thesis draft"),
+                    ]
+                );
                 Ok(())
             })
             .await

@@ -15,6 +15,7 @@ import { isReadOnlyLink } from "@/lib/project-paths";
 import { notifyError } from "@/lib/toast";
 import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
 
@@ -36,14 +37,14 @@ function currentSource(projectId: string, path: string): Promise<string> {
   return readFileContent(projectId, path);
 }
 
-async function writeSource(projectId: string, path: string, content: string): Promise<void> {
+async function writeSource(projectId: string, path: string, content: string, base: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
     if (!files.setContent(path, content)) throw new Error(`${path} is read-only`);
     await useFilesStore.getState().saveFile(path);
     return;
   }
-  await files.writeProjectFile(projectId, path, content);
+  await files.writeProjectFile(projectId, path, content, ...sharedBaseOption(projectId, base));
 }
 
 export function TypstBibliographyStylePicker({
@@ -72,9 +73,10 @@ export function TypstBibliographyStylePicker({
     if (style === current || busy) return;
     setBusy(true);
     try {
-      const next = setTypstBibliographyStyle(await currentSource(projectId, path), style);
+      const source = await currentSource(projectId, path);
+      const next = setTypstBibliographyStyle(source, style);
       if (next === null || useFilesStore.getState().projectId !== projectId) return;
-      await writeSource(projectId, path, next);
+      await writeSource(projectId, path, next, source);
     } catch (error) {
       notifyError("change Typst citation style", error, t(($) => $.references.bibliographyStyle.failed));
     } finally {

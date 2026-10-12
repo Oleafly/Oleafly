@@ -8,6 +8,7 @@ use oleafly_server::test_support::{
 };
 use reqwest::StatusCode;
 use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
@@ -287,9 +288,116 @@ async fn the_hello_must_arrive_within_ten_seconds() {
     assert!(matches!(
         next_frame(&mut socket).await,
         Some(ServerFrame::Error {
-            code: FrameErrorCode::Unauthorized,
+            code: FrameErrorCode::Internal,
             ..
         })
     ));
     assert_eq!(next_frame(&mut socket).await, None);
+}
+
+async fn welcomed(server: &TestServer, device: &TestDevice, tokens: &SessionTokens) -> Socket {
+    let (mut socket, nonce, server_id) = open(server).await;
+    send_frame(
+        &mut socket,
+        &hello(device, tokens, &nonce, server_id, PROTOCOL_VERSION),
+    )
+    .await;
+    assert!(matches!(
+        next_frame(&mut socket).await,
+        Some(ServerFrame::Welcome { .. })
+    ));
+    socket
+}
+
+#[tokio::test]
+async fn a_message_over_the_size_limit_is_answered_before_the_socket_closes() {
+    let (server, _github) = server_with_carol().await;
+    let device = TestDevice::generate();
+    let tokens = first_session(&server, &device).await;
+    let mut socket = welcomed(&server, &device, &tokens).await;
+    let oversized = "x".repeat(oleafly_server::routes::ws::MAX_FRAME_BYTES + 64 * 1024);
+    socket
+        .send(Message::text(oversized))
+        .await
+        .expect("send the oversized message");
+    assert!(matches!(
+        next_frame(&mut socket).await,
+        Some(ServerFrame::Error {
+            code: FrameErrorCode::TooLarge,
+            ..
+        })
+    ));
+    let mut close_code = None;
+    while let Some(Ok(message)) = socket.next().await {
+        if let Message::Close(frame) = message {
+            close_code = frame.map(|frame| frame.code);
+            break;
+        }
+    }
+    assert_eq!(close_code, Some(CloseCode::Size));
+}
+
+#[tokio::test]
+async fn a_database_failure_while_checking_a_hello_asks_to_try_again() {
+    let (server, _github) = server_with_carol().await;
+    let device = TestDevice::generate();
+    let tokens = first_session(&server, &device).await;
+    server
+        .state()
+        .db
+        .call(|conn| {
+            conn.execute_batch("ALTER TABLE access_tokens RENAME TO access_tokens_away")?;
+            Ok(())
+        })
+        .await
+        .expect("move the token table away");
+    let (mut socket, nonce, server_id) = open(&server).await;
+    send_frame(
+        &mut socket,
+        &hello(&device, &tokens, &nonce, server_id, PROTOCOL_VERSION),
+    )
+    .await;
+    let answer = next_frame(&mut socket).await;
+    assert!(
+        matches!(
+            answer,
+            Some(ServerFrame::Error {
+                code: FrameErrorCode::Internal,
+                ..
+            })
+        ),
+        "{answer:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_database_that_cannot_write_still_welcomes_a_valid_session() {
+    let (server, _github) = server_with_carol().await;
+    let device = TestDevice::generate();
+    let tokens = first_session(&server, &device).await;
+    server
+        .state()
+        .db
+        .call(|conn| {
+            conn.execute_batch("PRAGMA query_only = ON")?;
+            Ok(())
+        })
+        .await
+        .expect("stop writes");
+    let (mut socket, nonce, server_id) = open(&server).await;
+    send_frame(
+        &mut socket,
+        &hello(&device, &tokens, &nonce, server_id, PROTOCOL_VERSION),
+    )
+    .await;
+    let answer = next_frame(&mut socket).await;
+    assert!(
+        matches!(answer, Some(ServerFrame::Welcome { .. })),
+        "{answer:?}"
+    );
+    send_frame(&mut socket, &ClientFrame::Ping { id: 3 }).await;
+    assert_eq!(
+        next_frame(&mut socket).await,
+        Some(ServerFrame::Pong { id: 3 })
+    );
 }

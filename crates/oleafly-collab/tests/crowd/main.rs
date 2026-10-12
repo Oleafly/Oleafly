@@ -2,6 +2,7 @@ mod content;
 mod cost;
 mod measure;
 mod relay;
+mod soak;
 mod typist;
 
 use std::collections::{HashMap, HashSet};
@@ -449,7 +450,6 @@ impl Harness {
         sessions: Arc<SessionManager>,
         client: Arc<ServerClient>,
     ) -> (Arc<Person>, UnboundedReceiver<LiveEvent>) {
-        let (events, receiver) = mpsc::unbounded_channel();
         let link = LiveLink {
             client,
             server_id: self.server_id,
@@ -458,35 +458,7 @@ impl Harness {
             key,
             sessions,
         };
-        let log = Arc::new(EditLog::default());
-        lock(&self.logs).push((index, Arc::clone(&log)));
-        let person = Arc::new(Person {
-            index,
-            name: NAMES[index].to_owned(),
-            live: Arc::new(Mutex::new(live)),
-            link,
-            events,
-            handle: Mutex::new(None),
-            relay,
-            log,
-            queued: Arc::new(AtomicU64::new(0)),
-            handled: AtomicU64::new(0),
-            synced: AtomicBool::new(true),
-            done: AtomicBool::new(false),
-            halt: AtomicBool::new(false),
-            online: AtomicBool::new(false),
-            expect_offline: AtomicBool::new(false),
-            went_online_at: Mutex::new(None),
-            reconnected_at: Mutex::new(None),
-            offline_seen_at: Mutex::new(None),
-            offline_events: AtomicU64::new(0),
-            edits: AtomicU64::new(0),
-            problems: Mutex::new(Vec::new()),
-            latency: Mutex::new(Vec::new()),
-            offline_latency: Mutex::new(Vec::new()),
-            ack_latency: Mutex::new(Vec::new()),
-        });
-        (person, receiver)
+        new_person(index, live, link, relay, &self.logs)
     }
 
     async fn owner(&self, live: LiveProject) -> (Arc<Person>, UnboundedReceiver<LiveEvent>) {
@@ -560,6 +532,45 @@ impl Harness {
     }
 }
 
+fn new_person(
+    index: usize,
+    live: LiveProject,
+    link: LiveLink,
+    relay: Option<Relay>,
+    logs: &Logs,
+) -> (Arc<Person>, UnboundedReceiver<LiveEvent>) {
+    let (events, receiver) = mpsc::unbounded_channel();
+    let log = Arc::new(EditLog::default());
+    lock(logs).push((index, Arc::clone(&log)));
+    let person = Arc::new(Person {
+        index,
+        name: NAMES[index].to_owned(),
+        live: Arc::new(Mutex::new(live)),
+        link,
+        events,
+        handle: Mutex::new(None),
+        relay,
+        log,
+        queued: Arc::new(AtomicU64::new(0)),
+        handled: AtomicU64::new(0),
+        synced: AtomicBool::new(true),
+        done: AtomicBool::new(false),
+        halt: AtomicBool::new(false),
+        online: AtomicBool::new(false),
+        expect_offline: AtomicBool::new(false),
+        went_online_at: Mutex::new(None),
+        reconnected_at: Mutex::new(None),
+        offline_seen_at: Mutex::new(None),
+        offline_events: AtomicU64::new(0),
+        edits: AtomicU64::new(0),
+        problems: Mutex::new(Vec::new()),
+        latency: Mutex::new(Vec::new()),
+        offline_latency: Mutex::new(Vec::new()),
+        ack_latency: Mutex::new(Vec::new()),
+    });
+    (person, receiver)
+}
+
 type Routed = (String, u64, DocMessage);
 
 #[derive(Clone)]
@@ -572,6 +583,7 @@ struct Plan {
     single_file: bool,
     main_file: String,
     offline: Option<Offline>,
+    max_chars: Option<usize>,
 }
 
 #[derive(Default)]
@@ -601,7 +613,8 @@ fn submit(
         .map_err(|error| format!("the editor change for {id} failed: {error}"))?;
     let after = live.doc().version();
     drop(live);
-    person.log.record(&before, &after, offline);
+    let away = offline || person.expect_offline.load(Ordering::SeqCst);
+    person.log.record(&before, &after, away);
     person.flush();
     Ok(())
 }
@@ -787,7 +800,12 @@ impl Editor {
             .files
             .get_mut(&current)
             .ok_or_else(|| format!("{current} is not open"))?;
+        let crowded = plan.max_chars.is_some_and(|limit| doc.length > limit);
         let sent = match rng.below(100) {
+            _ if crowded => {
+                doc.jump_random(rng);
+                doc.delete_ahead(20 + rng.below(60))
+            }
             0..=5 => {
                 doc.jump_random(rng);
                 doc.type_text(&phrase(rng))
@@ -1029,6 +1047,7 @@ impl Crowd {
                 .offline
                 .clone()
                 .filter(|offline| offline.person == index),
+            max_chars: None,
         }
     }
 
@@ -1094,10 +1113,22 @@ async fn settle(
     people: &[Arc<Person>],
     within: Duration,
 ) -> Result<Instant, String> {
+    settle_on(|| head_seq(harness), people, within).await
+}
+
+async fn settle_on<F, Fut>(
+    head_seq: F,
+    people: &[Arc<Person>],
+    within: Duration,
+) -> Result<Instant, String>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = u64>,
+{
     let start = Instant::now();
     let mut quiet_once = false;
     loop {
-        let head = head_seq(harness).await;
+        let head = head_seq().await;
         let mut reasons = Vec::new();
         let mut reference: Option<VersionVector> = None;
         for person in people {
@@ -1735,6 +1766,25 @@ fn stress_long_session_with_snapshot_compaction() {
     scenario.late_joiner = true;
     scenario.settle_within = Duration::from_secs(180);
     execute(scenario);
+}
+
+#[test]
+#[ignore = "soak test, build oleafly-server in release first, then run with --release -- --ignored --nocapture"]
+fn soak_twenty_people_over_fifty_files() {
+    let _serial = lock(&SERIAL);
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+    let report = runtime.block_on(soak::run(soak::SoakPlan::from_env()));
+    runtime.shutdown_timeout(Duration::from_secs(5));
+    report.print();
+    assert!(
+        report.problems.is_empty(),
+        "the soak did not end cleanly: {:#?}",
+        report.problems
+    );
+    assert!(report.converged(), "the soak never converged");
 }
 
 #[test]

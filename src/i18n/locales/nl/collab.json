@@ -35,6 +35,13 @@
         "title": "{{name}} weghalen?",
         "description": "Oleafly meldt zich af bij deze server en vergeet hem. Projecten die al op deze computer staan, blijven waar ze zijn.",
         "confirm": "Server weghalen"
+      },
+      "emails": {
+        "label": "Mail me als iemand een project deelt",
+        "description": "De e-mail noemt het project en bevat een link om het te openen.",
+        "noMail": "Deze server verstuurt geen e-mail. Projecten die met je gedeeld zijn, staan nog steeds in je bibliotheek onder Met jou gedeeld.",
+        "paused": "De beheerder van de server heeft e-mail voor iedereen uitgezet.",
+        "loadFailed": "Oleafly kon je e-mailinstellingen niet laden."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "Liveverbinding",
           "pass": "Live bewerkingen komen door.",
           "fail": "Iets tussen jou en de server blokkeert live bewerkingen. Misschien moet een firewall of proxy worden aangepast.",
-          "info": "Live bewerkingen komen door, maar het verbinden duurde even.",
+          "info": "Live bewerkingen nemen een tragere route omdat dit netwerk de gewone route blokkeert. Ze komen nog steeds aan.",
           "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "Deze server heeft nog geen manier om je aan te melden. Vraag de beheerder er een in te stellen.",
     "waitingTitle": "Wachten op je browser",
     "waitingDescription": "Rond het aanmelden af in het browservenster dat is geopend en kom daarna hier terug.",
+    "waitingEmailDescription": "Vul in de browser je e-mailadres in en open daarna op deze computer de link die we je sturen.",
     "cancel": "Annuleren",
     "back": "Terug",
     "doneTitle": "Je bent aangemeld",
     "doneDescription": "Je bent bij {{server}} aangemeld als {{name}}.",
-    "done": "Klaar"
+    "done": "Klaar",
+    "codeSignIn": "Aanmelden met een code",
+    "codeSignInDescription": "Gebruik dit als je browser niet terug kan naar Oleafly, of om je op een ander apparaat aan te melden.",
+    "codeRequesting": "Code ophalen…",
+    "codeSteps": "Open dit adres op een willekeurige telefoon of computer en vul de code in.",
+    "codeAddressLabel": "Adres",
+    "codeLabel": "Code",
+    "codeExpires": "De code werkt tot {{time}}.",
+    "codeWaiting": "Wachten tot je je aanmeldt",
+    "codeOpen": "Openen in browser",
+    "codeOffer": "Is je browser niet teruggekomen bij Oleafly?",
+    "codeHint": "Als je browser Oleafly niet kon bereiken, meld je dan aan met een code."
   },
   "errors": {
     "unreachable": "Oleafly kon de server niet bereiken. Controleer het adres en je verbinding en probeer het opnieuw.",
@@ -179,7 +198,8 @@
       "allowlist": "Toegestane personen",
       "domains": "Domeinen",
       "settings": "Serverinstellingen",
-      "log": "Beveiligingslogboek"
+      "log": "Beveiligingslogboek",
+      "email": "E-mail"
     },
     "members": {
       "description": "Iedereen die zich bij deze server heeft aangemeld.",
@@ -271,9 +291,17 @@
         "label": "Toegangslogboeken voor projecten toestaan",
         "description": "Projecteigenaren kunnen een logboek bijhouden van wie hun project heeft geopend."
       },
+      "commentsAllowed": {
+        "label": "Opmerkingen toestaan",
+        "description": "Mensen in gedeelde projecten kunnen opmerkingen bij tekst plaatsen en reageren. Uitgeschakeld zijn opmerkingen overal verborgen en blijven ze bewaard."
+      },
       "emailNotifications": {
         "label": "Meldingen per e-mail",
-        "description": "De server stuurt mensen een e-mail als ze worden toegevoegd of als iemand een project met ze deelt."
+        "description": "Deze e-mails versturen. Zet dit uit om ze voor iedereen op de server te stoppen."
+      },
+      "emailLinkSignIn": {
+        "label": "Aanmelden via e-mail",
+        "description": "Mensen kunnen zich aanmelden met een link die naar hun e-mailadres wordt gestuurd. Hiervoor zijn de e-mailinstellingen van de server nodig. Je toegangsregels bepalen nog steeds wie erin komt."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "Domeinregel toegevoegd",
         "domainRuleRemoved": "Domeinregel verwijderd",
         "settingsChanged": "Serverinstellingen gewijzigd",
+        "projectShared": "Project gedeeld",
+        "projectAccessGranted": "Iemand toegang tot een project gegeven",
+        "projectAccessChanged": "Iemands toegang tot een project gewijzigd",
+        "projectAccessRemoved": "Iemand uit een project verwijderd",
+        "projectLeft": "Project verlaten",
+        "projectLinkSharingOn": "Delen via link aangezet voor een project",
+        "projectLinkSharingOff": "Delen via link uitgezet voor een project",
+        "projectLinkRoleChanged": "Gewijzigd wat de link van een project toestaat",
+        "projectArchived": "Project gearchiveerd",
+        "projectUnarchived": "Gearchiveerd project hersteld",
+        "projectSettingsChanged": "Instellingen van een project gewijzigd",
+        "projectAccessLogOn": "Toegangslogboek van een project aangezet",
+        "projectAccessLogOff": "Toegangslogboek van een project uitgezet",
+        "projectCommentsOn": "Opmerkingen in een project aangezet",
+        "projectCommentsOff": "Opmerkingen in een project uitgezet",
+        "projectRejoinRefused": "Geprobeerd terug te keren in een project na verwijdering",
+        "guestInvited": "Gast uitgenodigd",
+        "guestInvitationApproved": "Gastuitnodiging goedgekeurd",
+        "guestInvitationDeclined": "Gastuitnodiging afgewezen",
+        "guestInvitationRevoked": "Gastuitnodiging ingetrokken",
+        "guestAdmissionEnded": "Toegang van een gast tot de server beëindigd",
         "unknown": "Andere servergebeurtenis"
+      },
+      "details": {
+        "project": "Project: {{title}}",
+        "provider": "Met {{provider}}",
+        "providerEmailLink": "Met een link per e-mail",
+        "signInCode": "Met een aanmeldcode",
+        "via": {
+          "allowlist": "Toegelaten via de lijst met toegestane personen",
+          "domain": "Toegelaten via een domeinregel",
+          "setup": "Met de installatiecode",
+          "guest": "Toegelaten als gast",
+          "link": "Via de link van het project",
+          "invitation": "Via een gastuitnodiging"
+        },
+        "newAccount": "Nieuw account",
+        "reactivated": "Account opnieuw geactiveerd",
+        "reasons": {
+          "suspended": "Het account is geschorst",
+          "notAdmitted": "Geen toegangsregel laat deze persoon toe",
+          "setupCodeInvalid": "Verkeerde installatiecode",
+          "guestInvitationUnusable": "De gastuitnodiging werkt niet meer",
+          "lockedOutIp": "Te veel pogingen vanaf één netwerkadres",
+          "lockedOutAddress": "Te veel aanmeldmails naar één adres",
+          "stoppedByPerson": "Gestopt op de aanmeldpagina",
+          "otherBrowser": "Afgerond in een andere browser dan waarin het begon",
+          "inactiveAccountAddress": "Het e-mailadres hoort bij een verwijderd of geschorst account",
+          "noProjectsLeft": "Geen projecten meer"
+        },
+        "role": "Rol: {{role}}",
+        "roleChange": "Van {{from}} naar {{to}}",
+        "device": "Apparaat: {{name}}",
+        "byAdmin": "Vanuit de beheerconsole",
+        "settingOn": "{{setting}}: aan",
+        "settingOff": "{{setting}}: uit"
+      }
+    },
+    "email": {
+      "description": "De server stuurt mensen een e-mail als je ze toevoegt, als iemand een project met ze deelt en als hun account inlogt op een nieuw apparaat.",
+      "loading": "E-mailinstellingen laden…",
+      "on": {
+        "title": "E-mail staat aan",
+        "from": "E-mails komen van {{from}}."
+      },
+      "off": {
+        "title": "E-mail staat uit",
+        "description": "Deze server heeft geen mailinstellingen. Zet e-mail aan door OLEAFLY_SMTP_URL en OLEAFLY_MAIL_FROM op de server in te stellen en de server daarna opnieuw te starten.",
+        "copyPath": "Stuur nieuwe mensen tot die tijd zelf deze link. Die voegt de server toe aan Oleafly.",
+        "address": "Ze kunnen dit adres ook invullen bij Server toevoegen:"
+      },
+      "needsSettings": "Zet eerst e-mail aan voor de server.",
+      "lastFailure": "De laatste mislukte e-mail was op {{date}}. De mailserver antwoordde:",
+      "test": {
+        "title": "Test-e-mail",
+        "description": "Stuur een test-e-mail naar {{address}} om te controleren of de instellingen werken.",
+        "send": "Test-e-mail sturen",
+        "sending": "Versturen…",
+        "sent": "Verstuurd naar {{address}}. Staat hij niet in je inbox, kijk dan in de spammap.",
+        "failed": "De mailserver heeft de test-e-mail niet aangenomen.",
+        "noAddress": "Je account heeft geen geverifieerd e-mailadres, dus er is geen plek om een test naartoe te sturen.",
+        "adminOnly": "Alleen beheerders kunnen een test-e-mail sturen."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "Iedereen die bij {{server}} is aangemeld en de link heeft, kan dit project openen.",
       "roleLabel": "Rol voor mensen die de link openen"
     },
+    "comments": {
+      "label": "Opmerkingen",
+      "description": "Iedereen die kan bewerken, kan opmerkingen plaatsen bij tekst in dit project. Als je dit uitzet, worden opmerkingen verborgen, maar niet verwijderd.",
+      "serverOff": "Opmerkingen staan uit op {{server}}. Vraag de beheerder om ze aan te zetten."
+    },
     "stop": "Delen stoppen",
     "stopConfirm": {
       "title": "Delen van {{name}} stoppen?",
@@ -378,6 +492,10 @@
       "title": "{{name}} verlaten?",
       "description": "Je kopie synchroniseert niet meer en blijft als gewoon project op deze computer staan.",
       "confirm": "Verlaten"
+    },
+    "accessLog": {
+      "label": "Toegangslogboek",
+      "description": "De server noteert wie dit project opent, eraan deelneemt of een kopie downloadt, met welk apparaat en wanneer. Alleen jij ziet deze lijst, in het paneel Live samenwerken."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "Iemand"
   },
   "tree": {
-    "here": "{{name}} heeft dit bestand open"
+    "here": "{{name}} heeft dit bestand open",
+    "clash": "{{other}} heet ook {{name}}, dus dit bestand heeft op de schijf een nieuwe naam gekregen."
   },
   "library": {
     "kind": "gedeeld",
@@ -427,7 +546,18 @@
     "empty": "Er is nog niets gebeurd.",
     "here": "Nu hier",
     "hereIn": "Nu in {{path}}",
-    "away": "Nu niet hier"
+    "away": "Nu niet hier",
+    "deleted": "Onlangs verwijderd",
+    "deletedEmpty": "Er is de laatste tijd niets verwijderd.",
+    "accessLog": "Toegangslogboek"
+  },
+  "deleted": {
+    "restore": "Herstellen",
+    "restoreLabel": "{{name}} herstellen",
+    "inFolder": "Stond in {{folder}}",
+    "inProject": "Stond in de projectmap",
+    "byYou": "Verwijderd door jou",
+    "by": "Verwijderd door {{name}}"
   },
   "activity": {
     "welcomeEdit": "Gedeeld door {{owner}} op {{server}}. Je kunt het bewerken.",
@@ -446,7 +576,11 @@
     "signIn": "Aanmelden",
     "repeated": "Aantal keer achter elkaar: {{number}}",
     "newDevice": "{{name}} heeft zich aangemeld op een nieuw apparaat",
-    "review": "Bekijken"
+    "review": "Bekijken",
+    "renamed": "{{name}} heeft {{before}} hernoemd naar {{theirs}} nadat jij het {{ours}} had genoemd",
+    "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
+    "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
+    "showComment": "Opmerking tonen"
   },
   "mergeReview": {
     "title": "Wijzigingen samengevoegd terwijl je weg was",
@@ -460,5 +594,264 @@
     "newFile": "Nieuw bestand",
     "removedFile": "Verwijderd",
     "diffLabel": "Wijzigingen in {{path}}"
+  },
+  "console": {
+    "open": "Beheerconsole openen",
+    "windowTitle": "Beheerconsole van {{name}}",
+    "title": "Beheerconsole",
+    "sectionsLabel": "Onderdelen van de beheerconsole",
+    "sections": {
+      "overview": "Overzicht",
+      "people": "Mensen",
+      "access": "Toegangsregels",
+      "projects": "Projecten",
+      "settings": "Instellingen",
+      "email": "E-mail",
+      "log": "Beveiligingslogboek",
+      "checks": "Verbindingscontroles"
+    },
+    "health": {
+      "label": "Serverstatus: {{status}}",
+      "checking": "Controleren",
+      "ok": "In orde",
+      "warning": "Aandacht nodig",
+      "unreachable": "Onbereikbaar"
+    },
+    "states": {
+      "loading": "De beheerconsole openen…",
+      "loadFailed": "Oleafly kon de beheerconsole niet openen.",
+      "unknownTitle": "Deze server staat niet in je lijst",
+      "unknownDescription": "Voeg de server opnieuw toe in Instellingen en open de beheerconsole daarna vanaf de kaart van de server.",
+      "signedOutTitle": "Je bent afgemeld bij deze server",
+      "signedOutDescription": "Meld je opnieuw aan in Instellingen en open de beheerconsole daarna vanaf de kaart van de server.",
+      "refusedTitle": "De beheerconsole is voor beheerders en onderhouders",
+      "refusedDescription": "Je rol op deze server is {{role}}. Moet je de server beheren, vraag het dan aan een beheerder."
+    },
+    "overview": {
+      "loading": "Het overzicht laden…",
+      "health": {
+        "title": "Status",
+        "okLabel": "Alles werkt",
+        "okDescription": "Mensen kunnen zich aanmelden en de server kan bestanden opslaan.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Niemand kan zich aanmelden",
+            "description": "Stel aanmelden met GitHub of OpenID in op de server en start hem opnieuw. Als de server e-mail verstuurt, kun je in plaats daarvan Aanmelden via e-mail aanzetten bij Instellingen."
+          },
+          "storageNotWritable": {
+            "label": "De server kan geen bestanden opslaan",
+            "description": "Controleer of de gegevensmap van de server bestaat en of de server erin kan schrijven."
+          },
+          "unknown": {
+            "label": "De server meldde een probleem",
+            "description": "Werk Oleafly bij om te zien wat het is."
+          }
+        }
+      },
+      "glance": {
+        "title": "In één oogopslag",
+        "people": "Mensen",
+        "suspended": "Geschorst: {{number}}",
+        "devices": "Apparaten",
+        "projects": "Gedeelde projecten",
+        "projectsDetail": "Gearchiveerd: {{archived}}, wordt geüpload: {{pending}}",
+        "online": "Nu online",
+        "onlineDetail": "Geopende projecten: {{number}}",
+        "started": "Gestart",
+        "version": "Versie",
+        "protocol": "Protocol {{protocol}}"
+      },
+      "storage": {
+        "title": "Opslag",
+        "adminOnly": "Alleen beheerders kunnen zien hoeveel opslag de server gebruikt.",
+        "database": "Database",
+        "databaseDetail": "Accounts, instellingen en het logboek",
+        "snapshots": "Momentopnamen van projecten",
+        "snapshotsDetail": "Opgeslagen kopieën van elk project",
+        "files": "Bestanden",
+        "location": {
+          "disk": "Op de schijf van de server",
+          "s3": "In S3-opslag",
+          "unknown": "In andere opslag"
+        }
+      },
+      "services": {
+        "title": "E-mail en aanmelden",
+        "email": "E-mail",
+        "emailOn": "Ingesteld",
+        "emailOff": "Niet ingesteld",
+        "emailOnDescription": "De server kan e-mail versturen.",
+        "emailOffDescription": "De server kan nog geen e-mail versturen, dus niemand krijgt meldingen per e-mail.",
+        "openEmail": "E-mailinstellingen",
+        "signIn": "Aanmeldopties",
+        "signInNone": "Nog geen. Niemand kan zich aanmelden totdat er een is ingesteld.",
+        "emailLinkOption": "Link per e-mail"
+      },
+      "settings": {
+        "title": "Serverinstellingen",
+        "on": "Aan",
+        "off": "Uit",
+        "change": "Instellingen wijzigen"
+      },
+      "limits": "Limieten: {{project}} per project, {{file}} per bestand, {{people}} mensen per project."
+    },
+    "projects": {
+      "description": "Elk project dat op deze server wordt gedeeld.",
+      "searchLabel": "Projecten zoeken",
+      "searchPlaceholder": "Zoek op titel of eigenaar",
+      "filterLabel": "Projecten tonen",
+      "filter": {
+        "all": "Alle",
+        "active": "Gedeeld",
+        "archived": "Gearchiveerd",
+        "pending": "Wordt geüpload"
+      },
+      "columns": {
+        "title": "Project",
+        "owner": "Eigenaar",
+        "members": "Mensen",
+        "size": "Grootte",
+        "activity": "Laatste activiteit",
+        "actions": "Acties"
+      },
+      "sortBy": "Sorteren op {{column}}",
+      "status": {
+        "archived": "Gearchiveerd",
+        "pending": "Wordt geüpload",
+        "unknown": "Onbekend"
+      },
+      "loading": "Projecten laden…",
+      "empty": "Er worden nog geen projecten gedeeld op deze server.",
+      "noMatches": "Geen projecten komen overeen met je zoekopdracht.",
+      "count": "{{shown}} van {{total}} getoond",
+      "loadMore": "Meer tonen",
+      "archive": "Archiveren",
+      "archiveNamed": "{{title}} archiveren",
+      "restore": "Herstellen",
+      "restoreNamed": "{{title}} herstellen",
+      "archiveConfirm": {
+        "title": "{{title}} archiveren?",
+        "description": "Het project synchroniseert voor niemand meer en iedereen houdt een eigen kopie. De server verwijdert het project na {{days}} dagen, tenzij je het herstelt.",
+        "descriptionLater": "Het project synchroniseert voor niemand meer en iedereen houdt een eigen kopie. De server verwijdert gearchiveerde projecten na een tijdje, tenzij je ze herstelt.",
+        "confirm": "Project archiveren"
+      },
+      "adminOnly": "Alleen beheerders kunnen projecten archiveren of herstellen."
+    },
+    "checks": {
+      "description": "Controleer de verbinding van deze computer met de server."
+    }
+  },
+  "links": {
+    "turnedOff": "Live samenwerken staat uit. Zet het aan in Instellingen onder Experimenten en open de link daarna opnieuw.",
+    "openSettings": "Instellingen openen",
+    "malformed": "Oleafly kan deze link niet openen. Vraag degene die hem stuurde om een nieuwe.",
+    "opening": "Het gedeelde project wordt geopend…",
+    "confirm": {
+      "title": "Deelnemen aan dit gedeelde project?",
+      "body": "Als je deelneemt, word je aan het project toegevoegd en worden de bestanden naar deze computer gekopieerd. Neem alleen deel als je weet wie je de link heeft gestuurd.",
+      "project": "Project",
+      "owner": "Eigenaar",
+      "server": "Server",
+      "role": "Je rol",
+      "join": "Deelnemen"
+    }
+  },
+  "comments": {
+    "title": "Opmerkingen",
+    "titleUnread": "Opmerkingen, nieuwe activiteit",
+    "add": "Opmerking toevoegen",
+    "showResolved": "Opgeloste opmerkingen tonen",
+    "hideResolved": "Opgeloste opmerkingen verbergen",
+    "noFile": "Open een bestand om de opmerkingen te zien.",
+    "empty": "Er zijn nog geen opmerkingen bij dit bestand.",
+    "emptyCanWrite": "Er zijn nog geen opmerkingen bij dit bestand. Selecteer tekst en kies Opmerking toevoegen om er een te beginnen.",
+    "loadFailed": "De opmerkingen bij dit bestand konden niet worden geladen.",
+    "detached": "Losgekoppeld",
+    "detachedHint": "De tekst waar deze opmerkingen bij hoorden, is verwijderd.",
+    "resolvedBy": "Opgelost door {{name}}",
+    "edited": "Bewerkt",
+    "deleted": "Deze opmerking is verwijderd.",
+    "newLabel": "Nieuwe opmerking",
+    "newPlaceholder": "Schrijf een opmerking. Typ @ om iemand te noemen.",
+    "replyLabel": "Antwoord",
+    "replyPlaceholder": "Schrijf een antwoord. Typ @ om iemand te noemen.",
+    "editLabel": "Opmerking bewerken",
+    "post": "Plaatsen",
+    "reply": "Antwoorden",
+    "resolve": "Oplossen",
+    "reopen": "Heropenen",
+    "deleteThread": "Gesprek verwijderen",
+    "messageActions": "Meer acties voor deze opmerking",
+    "threadActions": "Meer acties voor dit gesprek",
+    "showInEditor": "Tonen in de editor",
+    "thread": "Opmerking van {{name}}",
+    "mentionList": "Mensen om te noemen",
+    "marker": "Opmerkingen op deze regel tonen",
+    "unverifiedAuthor": "Oleafly kon niet nagaan wie dit schreef",
+    "unverifiedThread": "Opmerking van iemand die Oleafly niet kon verifiëren",
+    "resolvedUnverified": "Opgelost door iemand die Oleafly niet kon verifiëren",
+    "refusals": {
+      "notLive": "Dit project is nu niet verbonden. Probeer het opnieuw zodra de verbinding terug is.",
+      "notYours": "Alleen wie deze opmerking schreef, kan haar wijzigen.",
+      "offServer": "Opmerkingen staan uit op deze server.",
+      "offProject": "Opmerkingen staan uit voor dit project. Vraag de eigenaar om ze weer aan te zetten.",
+      "viewer": "Je kunt hier opmerkingen lezen, maar niet schrijven. Vraag de eigenaar om bewerkrechten.",
+      "someoneReplied": "Iemand anders heeft gereageerd, dus dit gesprek blijft staan. Je kunt het in plaats daarvan oplossen.",
+      "messageDeleted": "Deze opmerking is verwijderd, dus je kunt haar niet bewerken.",
+      "selectionChanged": "De tekst die je selecteerde is veranderd. Selecteer hem opnieuw en voeg je opmerking toe.",
+      "tooLong": "Deze opmerking is te lang. Maak haar korter en probeer het opnieuw.",
+      "empty": "Schrijf iets voordat je plaatst."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} heeft het project geopend",
+    "joinedLink": "{{name}} doet mee via de link",
+    "joinedShare": "{{name}} doet mee nadat je het project deelde",
+    "downloaded": "{{name}} heeft een kopie gedownload",
+    "unknown": "{{name}} heeft het project gebruikt",
+    "unknownDevice": "Onbekend apparaat",
+    "span": "{{from}} tot {{to}}",
+    "more": "Oudere tonen",
+    "loading": "Toegangslogboek laden…",
+    "loadFailed": "Oleafly kon het toegangslogboek niet laden.",
+    "empty": "Nog niets vastgelegd."
+  },
+  "guests": {
+    "badge": "Gast",
+    "invite": {
+      "noAccount": "Niemand op {{server}} gebruikt {{email}}. Nodig deze persoon uit als gast, dan ziet die alleen de projecten waarvoor die is uitgenodigd.",
+      "button": "Uitnodigen als gast",
+      "buttonNamed": "{{email}} uitnodigen als gast",
+      "duplicate": "Dat adres heeft al een uitnodiging voor dit project.",
+      "tooMany": "Je hebt het afgelopen uur veel uitnodigingen verstuurd. Probeer het later opnieuw."
+    },
+    "sent": {
+      "emailed": "Uitnodiging gemaild naar {{email}}.",
+      "emailedAfterApproval": "Een beheerder moet deze uitnodiging goedkeuren. {{email}} krijgt een e-mail zodra die is goedgekeurd.",
+      "added": "{{email}} heeft al een account op {{server}} en heeft nu toegang.",
+      "sendLink": "{{server}} verstuurt geen e-mail, dus stuur deze link zelf naar {{email}}. Daarmee voegt die de server toe en meldt die zich aan met dat adres.",
+      "sendLinkAfterApproval": "Een beheerder moet deze uitnodiging eerst goedkeuren. {{server}} verstuurt geen e-mail, dus stuur deze link zelf naar {{email}}. De link werkt zodra de uitnodiging is goedgekeurd.",
+      "linkLabel": "Link om {{server}} toe te voegen"
+    },
+    "list": {
+      "title": "Uitnodigingen",
+      "status": {
+        "awaiting_approval": "Wacht op goedkeuring",
+        "invited": "Uitgenodigd",
+        "declined": "Afgewezen"
+      },
+      "expires": "Verloopt op {{date}}",
+      "withdraw": "Intrekken",
+      "withdrawNamed": "Uitnodiging voor {{email}} intrekken"
+    },
+    "pending": {
+      "title": "Wachtende gasten",
+      "description": "Projecteigenaren hebben deze mensen als gast uitgenodigd. Een gast ziet alleen de projecten waarvoor die is uitgenodigd en kan ze niet delen.",
+      "invitedBy": "{{inviter}} heeft ze uitgenodigd voor {{project}}",
+      "approve": "Goedkeuren",
+      "approveNamed": "{{email}} goedkeuren",
+      "decline": "Afwijzen",
+      "declineNamed": "{{email}} afwijzen"
+    }
   }
 }

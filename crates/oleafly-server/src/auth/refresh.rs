@@ -10,6 +10,7 @@ use crate::error::ServerError;
 use crate::tokens::{hash_token, issue_access_token, random_token};
 
 pub const REFRESH_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
+const FAMILY_SEPARATOR: char = '.';
 
 #[derive(Debug)]
 pub enum RefreshOutcome {
@@ -52,7 +53,7 @@ fn issue_in_family(
     )
     .map_err(db_error)?;
     let (access_token, access_expires_at) = issue_access_token(conn, account, device, now)?;
-    let refresh_token = random_token();
+    let refresh_token = format!("{family}{FAMILY_SEPARATOR}{}", random_token());
     conn.execute(
         "INSERT INTO refresh_tokens (token_hash, family_id, account_id, device_id, created_at, \
          expires_at, rotated_at, replaced_by, revoked_at, grace_reply) \
@@ -104,7 +105,7 @@ pub fn rotate(
         .optional()
         .map_err(db_error)?;
     let Some(stored) = stored else {
-        return Ok(RefreshOutcome::Invalid);
+        return reuse_of_forgotten(conn, presented, device, now);
     };
     if stored.device_id != device.to_string() || stored.revoked_at.is_some() {
         return Ok(RefreshOutcome::Invalid);
@@ -115,6 +116,12 @@ pub fn rotate(
             if stored.expires_at <= now {
                 return Ok(RefreshOutcome::Invalid);
             }
+            conn.execute(
+                "DELETE FROM refresh_tokens WHERE family_id = ?1 AND rotated_at IS NOT NULL \
+                 AND token_hash != ?2",
+                params![stored.family_id, hash],
+            )
+            .map_err(db_error)?;
             let tokens = issue_in_family(conn, account, device, &stored.family_id, now)?;
             let reply = seal_reply(presented, &tokens)?;
             conn.execute(
@@ -146,6 +153,35 @@ pub fn rotate(
             })
         }
     }
+}
+
+fn reuse_of_forgotten(
+    conn: &Connection,
+    presented: &str,
+    device: DeviceId,
+    now: i64,
+) -> Result<RefreshOutcome, ServerError> {
+    let Some((family, _)) = presented
+        .split_once(FAMILY_SEPARATOR)
+        .filter(|(family, secret)| !family.is_empty() && !secret.is_empty())
+    else {
+        return Ok(RefreshOutcome::Invalid);
+    };
+    let alive: bool = conn
+        .query_row(
+            "SELECT EXISTS (SELECT 1 FROM refresh_tokens WHERE family_id = ?1 AND device_id = ?2 \
+             AND revoked_at IS NULL AND expires_at > ?3)",
+            params![family, device.to_string(), now],
+            |row| row.get(0),
+        )
+        .map_err(db_error)?;
+    Ok(if alive {
+        RefreshOutcome::Reused {
+            family_id: family.to_owned(),
+        }
+    } else {
+        RefreshOutcome::Invalid
+    })
 }
 
 fn successor_unused(
@@ -306,6 +342,129 @@ mod tests {
             .await
             .expect("db");
         assert!(matches!(replayed, RefreshOutcome::Reused { .. }));
+    }
+
+    fn family_rows(conn: &Connection, device: DeviceId) -> Result<i64, ServerError> {
+        conn.query_row(
+            "SELECT COUNT(*) FROM refresh_tokens WHERE device_id = ?1",
+            params![device.to_string()],
+            |row| row.get(0),
+        )
+        .map_err(db_error)
+    }
+
+    fn chain(
+        conn: &Connection,
+        device: DeviceId,
+        first: &SessionTokens,
+        rotations: i64,
+    ) -> Result<String, ServerError> {
+        let mut current = first.refresh_token.clone();
+        for step in 0..rotations {
+            match rotate(conn, &current, device, 2_000 + step * 540_000)? {
+                RefreshOutcome::Rotated(tokens) => current = tokens.refresh_token,
+                other => panic!("expected a rotation, got {other:?}"),
+            }
+        }
+        Ok(current)
+    }
+
+    #[tokio::test]
+    async fn a_device_that_refreshes_all_day_keeps_only_its_last_two_tokens() {
+        let app = test_app().await;
+        let (rows, replayed) = app
+            .state
+            .db
+            .call(|conn| {
+                let account =
+                    members::create_account(conn, "Carol", None, ServerRole::Member, 1_000)?;
+                let device =
+                    devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
+                let first = issue_session(conn, account, device, 1_000)?;
+                let mut previous = first.refresh_token.clone();
+                let mut current = first.refresh_token.clone();
+                for step in 0..160 {
+                    match rotate(conn, &current, device, 2_000 + step * 540_000)? {
+                        RefreshOutcome::Rotated(tokens) => {
+                            previous = current;
+                            current = tokens.refresh_token;
+                        }
+                        other => panic!("expected a rotation, got {other:?}"),
+                    }
+                }
+                let rows = family_rows(conn, device)?;
+                let replayed = rotate(conn, &previous, device, 2_000 + 160 * 540_000)?;
+                Ok((rows, replayed))
+            })
+            .await
+            .expect("db");
+        assert_eq!(rows, 2);
+        assert!(
+            matches!(replayed, RefreshOutcome::Replayed(_)),
+            "{replayed:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_token_rotated_long_ago_is_still_caught_as_reuse() {
+        let app = test_app().await;
+        let (reused, family_alive) = app
+            .state
+            .db
+            .call(|conn| {
+                let account =
+                    members::create_account(conn, "Carol", None, ServerRole::Member, 1_000)?;
+                let device =
+                    devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
+                let first = issue_session(conn, account, device, 1_000)?;
+                let current = chain(conn, device, &first, 40)?;
+                let reused = rotate(conn, &first.refresh_token, device, 30_000_000)?;
+                if let RefreshOutcome::Reused { family_id } = &reused {
+                    revoke_family(conn, family_id, 30_000_000)?;
+                }
+                let after = rotate(conn, &current, device, 30_000_001)?;
+                Ok((reused, matches!(after, RefreshOutcome::Rotated(_))))
+            })
+            .await
+            .expect("db");
+        assert!(
+            matches!(reused, RefreshOutcome::Reused { .. }),
+            "{reused:?}"
+        );
+        assert!(!family_alive);
+    }
+
+    #[tokio::test]
+    async fn a_made_up_token_is_invalid_unless_it_names_a_live_family_of_the_same_device() {
+        let app = test_app().await;
+        let (other_device, unknown_family, same_device) = app
+            .state
+            .db
+            .call(|conn| {
+                let account =
+                    members::create_account(conn, "Carol", None, ServerRole::Member, 1_000)?;
+                let laptop =
+                    devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
+                let desktop =
+                    devices::register(conn, account, "key-2", "Desktop", "linux", 1_000)?.device_id;
+                let first = issue_session(conn, account, laptop, 1_000)?;
+                chain(conn, laptop, &first, 3)?;
+                let (family, _) = first
+                    .refresh_token
+                    .split_once('.')
+                    .expect("the token names its family");
+                let forged = format!("{family}.not-the-secret");
+                Ok((
+                    rotate(conn, &forged, desktop, 5_000_000)?,
+                    rotate(conn, "unknown-family.not-the-secret", laptop, 5_000_000)?,
+                    rotate(conn, &forged, laptop, 5_000_000)?,
+                ))
+            })
+            .await
+            .expect("db");
+        assert!(matches!(other_device, RefreshOutcome::Invalid));
+        assert!(matches!(unknown_family, RefreshOutcome::Invalid));
+        assert!(matches!(same_device, RefreshOutcome::Reused { .. }));
     }
 
     #[tokio::test]

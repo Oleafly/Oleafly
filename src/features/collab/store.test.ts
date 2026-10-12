@@ -5,6 +5,7 @@ import { account, collabError, deferred, server, SERVER_ID, signedOutServer } fr
 const mocks = vi.hoisted(() => ({
   collabServersList: vi.fn(),
   collabServerSignIn: vi.fn(),
+  collabServerCodeSignIn: vi.fn(),
   collabServerSignOut: vi.fn(),
   collabServerRemove: vi.fn(),
   collabServerRefresh: vi.fn(),
@@ -58,6 +59,21 @@ describe("collab store", () => {
     mocks.collabServerSignIn.mockResolvedValueOnce(other);
     await useCollabStore.getState().signIn("https://jones.example.edu", "github");
     expect(useCollabStore.getState().servers.map((entry) => entry.name)).toEqual(["Smith Lab", "Jones Lab"]);
+  });
+
+  it("adds a server signed in with a code and passes the code on", async () => {
+    useCollabStore.setState({ servers: [signedOutServer()], status: "ready" });
+    const shown = vi.fn();
+    mocks.collabServerCodeSignIn.mockImplementationOnce(
+      async (_url: string, _setup: string | undefined, onCode: (code: unknown) => void) => {
+        onCode({ userCode: "BCDF-GHJK" });
+        return server();
+      },
+    );
+    await useCollabStore.getState().signInWithCode("https://collab.uni.edu", undefined, shown);
+    expect(mocks.collabServerCodeSignIn).toHaveBeenCalledWith("https://collab.uni.edu", undefined, shown);
+    expect(shown).toHaveBeenCalledWith({ userCode: "BCDF-GHJK" });
+    expect(useCollabStore.getState().servers).toEqual([server()]);
   });
 
   it("passes a refused sign-in back to the caller", async () => {

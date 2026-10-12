@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -10,6 +10,7 @@ const loaded = vi.hoisted(() => ({
   share: vi.fn(),
   dialog: vi.fn(),
   presence: vi.fn(),
+  clashes: vi.fn(),
   keeper: vi.fn(),
   pane: vi.fn(),
   sharedWithYou: vi.fn(),
@@ -35,6 +36,12 @@ vi.mock("@/features/collab/sharing/ShareDialog", () => ({
 vi.mock("@/features/collab/sharing/TreePresence", () => ({
   TreePresence: (props: unknown) => {
     loaded.presence(props);
+    return null;
+  },
+}));
+vi.mock("@/features/collab/sharing/TreeClashes", () => ({
+  TreeClashes: () => {
+    loaded.clashes();
     return null;
   },
 }));
@@ -68,13 +75,16 @@ import {
   CollabPanel,
   CollabShareSlot,
   CollabToolbarSlot,
+  CollabTreeClashSlot,
   CollabTreePresenceSlot,
   OpenLinkDialogSlot,
   ShareDialogHost,
   SharedWithYouSlot,
+  TreeRowClash,
   TreeRowPeers,
 } from "./CollabSlots";
 import { useShareDialog } from "./share-dialog";
+import { useTreeClashes } from "./tree-clashes";
 
 function renderEverySlot() {
   return render(
@@ -83,6 +93,7 @@ function renderEverySlot() {
       <CollabShareSlot />
       <ShareDialogHost />
       <CollabTreePresenceSlot onChange={() => undefined} />
+      <CollabTreeClashSlot />
       <CollabActivitySlot />
       <CollabPanel />
       <SharedWithYouSlot />
@@ -130,6 +141,7 @@ describe("collaboration slots", () => {
     expect(loaded.toolbar).toHaveBeenCalled();
     expect(loaded.share).toHaveBeenCalled();
     expect(loaded.presence).toHaveBeenCalled();
+    expect(loaded.clashes).toHaveBeenCalled();
     expect(loaded.keeper).toHaveBeenCalled();
     expect(loaded.dialog).not.toHaveBeenCalled();
   });
@@ -173,6 +185,31 @@ describe("TreeRowPeers", () => {
 
   it("draws nothing for a file nobody has open", () => {
     const { container } = render(<TreeRowPeers marks={undefined} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("TreeRowClash", () => {
+  afterEach(() => {
+    useTreeClashes.setState({ labels: new Map() });
+  });
+
+  it("marks a renamed file with a tinted badge whose app tooltip names the other file", async () => {
+    const label = "figs/plot.png also has the name plot.png, so this file got a new name on disk.";
+    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", label]]) });
+    render(<TreeRowClash path="figs/plot (from Bob Smith).png" />);
+    const badge = screen.getByRole("img", { name: label });
+    expect(badge).not.toHaveAttribute("title");
+    expect(badge.className).toContain("bg-amber-500/15");
+    expect(badge.className).not.toMatch(/\b(ring|outline)-/);
+    expect(badge.querySelector("svg.lucide-files")).toBeInTheDocument();
+    fireEvent.mouseEnter(badge.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+  });
+
+  it("draws nothing for a file that kept its name", () => {
+    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", "label"]]) });
+    const { container } = render(<TreeRowClash path="figs/plot.png" />);
     expect(container).toBeEmptyDOMElement();
   });
 });

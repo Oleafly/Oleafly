@@ -1442,5 +1442,13 @@
     "compiling": "Compilando",
     "hideLog": "Ocultar o log de compilação",
     "showLog": "Mostrar o log de compilação"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} arquivo mudou fora do Oleafly. Enviar esta alteração para todos ou mantê-la local?",
+    "paused_many": "{{count}} arquivos mudaram fora do Oleafly. Enviar estas alterações para todos ou mantê-las locais?",
+    "paused_other": "{{count}} arquivos mudaram fora do Oleafly. Enviar estas alterações para todos ou mantê-las locais?",
+    "send": "Enviar",
+    "keepLocal": "Manter local",
+    "unavailable": "A pasta do projeto não está disponível, então a sincronização está pausada. Ela recomeça quando a pasta voltar."
   }
 }

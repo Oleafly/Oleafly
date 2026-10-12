@@ -31,6 +31,26 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
+  litestream:
+    image: litestream/litestream:0.5.17
+    profiles:
+      - litestream
+    restart: unless-stopped
+    user: "10001:10001"
+    depends_on:
+      oleafly-server:
+        condition: service_healthy
+    command: ["replicate", "-config", "/etc/litestream.yml"]
+    environment:
+      LITESTREAM_REPLICA_URL: ${LITESTREAM_REPLICA_URL:-}
+      LITESTREAM_ENDPOINT: ${LITESTREAM_ENDPOINT:-}
+      LITESTREAM_REGION: ${LITESTREAM_REGION:-us-east-1}
+      LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_ACCESS_KEY_ID:-}
+      LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_SECRET_ACCESS_KEY:-}
+    volumes:
+      - oleafly-data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+
 volumes:
   oleafly-data:
   caddy-data:

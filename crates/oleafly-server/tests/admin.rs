@@ -92,6 +92,7 @@ fn settings_patch(guests_enabled: Option<bool>, link_sharing_allowed: Option<boo
         access_logs_allowed: None,
         email_notifications: None,
         comments_allowed: None,
+        email_link_sign_in: None,
     })
     .unwrap()
 }
@@ -866,7 +867,7 @@ async fn settings_are_read_by_maintainers_and_changed_by_admins() {
     let again: RuntimeSettings = parse(support::send_get(router, SETTINGS, token(&admin)).await);
     assert!(again.guests_enabled && !again.link_sharing_allowed);
     let manifest: CapabilityManifest = parse(support::send_get(router, MANIFEST, None).await);
-    assert!(!manifest.features.guests);
+    assert!(manifest.features.guests);
     assert!(!manifest.features.link_sharing);
     let events = logged(&app).await;
     let logged_changes = of_kind(&events, "settings_changed");
@@ -955,7 +956,7 @@ async fn security_log_pages_newest_first() {
 }
 
 #[tokio::test]
-async fn maintainers_sign_out_any_device() {
+async fn maintainers_sign_out_members_devices() {
     let app = test_app().await;
     let maintainer = seed_member(&app, ServerRole::Maintainer).await;
     let member = seed_member(&app, ServerRole::Member).await;
@@ -979,17 +980,17 @@ async fn maintainers_sign_out_any_device() {
     );
     expect_status(
         support::send_delete(router, &device_path(admin.device_id), token(&maintainer)).await,
-        StatusCode::NO_CONTENT,
+        StatusCode::FORBIDDEN,
     );
     let events = logged(&app).await;
     let signed_out = of_kind(&events, "device_signed_out");
-    assert_eq!(signed_out.len(), 2);
-    assert_eq!(signed_out[1].target, Some(member.device_id.to_string()));
+    assert_eq!(signed_out.len(), 1);
+    assert_eq!(signed_out[0].target, Some(member.device_id.to_string()));
     assert_eq!(
-        signed_out[1].detail["account_id"],
+        signed_out[0].detail["account_id"],
         member.account_id.to_string()
     );
-    assert_eq!(signed_out[1].actor, Some(maintainer.account_id));
+    assert_eq!(signed_out[0].actor, Some(maintainer.account_id));
 }
 
 #[tokio::test]
@@ -1180,4 +1181,39 @@ async fn admin_routes_never_create_or_read_project_grants() {
         }
     }
     assert!(logged(&app).await.is_empty());
+}
+
+#[tokio::test]
+async fn maintainers_cannot_list_or_sign_out_staff_devices() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let maintainer = seed_member(&app, ServerRole::Maintainer).await;
+    let other = seed_member(&app, ServerRole::Maintainer).await;
+    let router = &app.router;
+    for staff in [&admin, &other] {
+        let devices = format!("{}/devices", member_path(staff.account_id));
+        expect_status(
+            support::send_get(router, &devices, token(&maintainer)).await,
+            StatusCode::FORBIDDEN,
+        );
+        expect_status(
+            support::send_delete(router, &device_path(staff.device_id), token(&maintainer)).await,
+            StatusCode::FORBIDDEN,
+        );
+        expect_status(
+            support::send_get(router, "/api/v1/me", token(staff)).await,
+            StatusCode::OK,
+        );
+    }
+    let own = format!("{}/devices", member_path(maintainer.account_id));
+    let listed: Vec<DeviceSummary> = parse(expect_status(
+        support::send_get(router, &own, token(&maintainer)).await,
+        StatusCode::OK,
+    ));
+    assert_eq!(listed.len(), 1);
+    expect_status(
+        support::send_delete(router, &device_path(other.device_id), token(&admin)).await,
+        StatusCode::NO_CONTENT,
+    );
+    assert_eq!(of_kind(&logged(&app).await, "device_signed_out").len(), 1);
 }

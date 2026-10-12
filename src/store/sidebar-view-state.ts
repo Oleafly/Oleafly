@@ -68,6 +68,8 @@ interface SidebarPanelViews {
     readonly sectionOpen: {
       readonly people: boolean;
       readonly activity: boolean;
+      readonly deleted?: boolean;
+      readonly accessLog?: boolean;
     };
   };
   researchWorkspace: { readonly tab: "tasks" | "folders" };

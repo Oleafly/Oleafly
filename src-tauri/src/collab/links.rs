@@ -36,6 +36,18 @@ pub fn is_link(text: &str) -> bool {
     cleaned(text).is_some()
 }
 
+pub fn add_server_url(link: &str) -> Option<String> {
+    let url = tauri::Url::parse(cleaned(link)?).ok()?;
+    let host = url.host_str()?;
+    if !host.eq_ignore_ascii_case("server") || url.path().trim_end_matches('/') != "/add" {
+        return None;
+    }
+    url.query_pairs()
+        .find(|(name, _)| name == "url")
+        .map(|(_, value)| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
 pub fn links_in<I>(arguments: I) -> Vec<String>
 where
     I: IntoIterator,
@@ -168,6 +180,29 @@ mod tests {
         );
         assert_eq!(server_and_project(&spaced).0, "https://uni.edu/collab lab");
         assert_eq!(server_and_project(&slashed).0, "https://uni.edu");
+    }
+
+    #[test]
+    fn an_add_server_link_names_the_server_to_add() {
+        assert_eq!(
+            add_server_url("oleafly://server/add?url=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly")
+                .as_deref(),
+            Some("https://www.cs.uni.edu/oleafly")
+        );
+        assert_eq!(
+            add_server_url(" \"OLEAFLY://server/add/?url=https%3A%2F%2Funi.edu\" ").as_deref(),
+            Some("https://uni.edu")
+        );
+        for other in [
+            "oleafly://server/add",
+            "oleafly://server/add?url=",
+            "oleafly://server/remove?url=https%3A%2F%2Funi.edu",
+            "oleafly://open?server=https%3A%2F%2Funi.edu&project=x",
+            "https://server/add?url=https%3A%2F%2Funi.edu",
+        ] {
+            assert_eq!(add_server_url(other), None, "{other}");
+        }
+        assert!(links_in(["oleafly://server/add?url=https%3A%2F%2Funi.edu"]).len() == 1);
     }
 
     #[test]

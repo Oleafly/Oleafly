@@ -17,6 +17,11 @@ export const RUNTIME_SETTING_FIELDS = [
   "directory_visible",
   "directory_shows_email",
   "link_sharing_allowed",
+  "access_logs_allowed",
+  "comments_allowed",
+  "email_link_sign_in",
+  "guests_enabled",
+  "guest_approval_required",
 ] as const satisfies readonly (keyof CollabRuntimeSettings)[];
 
 export type RuntimeSettingField = (typeof RUNTIME_SETTING_FIELDS)[number];
@@ -25,10 +30,16 @@ export const RUNTIME_SETTING_COPY = {
   directory_visible: "directoryVisible",
   directory_shows_email: "directoryShowsEmail",
   link_sharing_allowed: "linkSharingAllowed",
+  access_logs_allowed: "accessLogsAllowed",
+  comments_allowed: "commentsAllowed",
+  email_link_sign_in: "emailLinkSignIn",
+  guests_enabled: "guestsEnabled",
+  guest_approval_required: "guestApprovalRequired",
 } as const satisfies Record<RuntimeSettingField, string>;
 
 const REQUIRES: Readonly<Partial<Record<RuntimeSettingField, RuntimeSettingField>>> = {
   directory_shows_email: "directory_visible",
+  guest_approval_required: "guests_enabled",
 };
 
 export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: string; actor: ServerRole }>) {
@@ -101,7 +112,7 @@ export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: str
             testId={`collab-setting-${field}`}
             label={t(($) => $.collab.admin.settings[key].label)}
             description={t(($) => $.collab.admin.settings[key].description)}
-            checked={settings[field]}
+            checked={settings[field] ?? false}
             disabled={!editable || saving || (parent !== undefined && !settings[parent])}
             onChange={(value) => void change(field, value)}
           />

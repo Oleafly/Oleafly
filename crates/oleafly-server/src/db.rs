@@ -8,12 +8,20 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 10;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 2] = [
+const MIGRATIONS: [&str; 10] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
+    include_str!("../migrations/0003_email.sql"),
+    include_str!("../migrations/0004_comments.sql"),
+    include_str!("../migrations/0005_snapshot_blobs.sql"),
+    include_str!("../migrations/0006_access_log.sql"),
+    include_str!("../migrations/0007_guests.sql"),
+    include_str!("../migrations/0008_sign_in_links.sql"),
+    include_str!("../migrations/0009_peer_bindings.sql"),
+    include_str!("../migrations/0010_storage_cleanup.sql"),
 ];
 
 #[derive(Clone)]
@@ -140,19 +148,27 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 19] = [
+    const TABLES: [&str; 28] = [
         "access_tokens",
         "account_emails",
         "accounts",
         "allowlist",
         "auth_codes",
+        "device_authorizations",
         "devices",
         "domain_rules",
+        "email_link_tokens",
+        "email_preferences",
+        "guest_invitations",
         "identities",
         "nonces",
         "pending_auth",
+        "pending_removals",
+        "project_access_log",
         "project_blobs",
         "project_grants",
+        "project_peers",
+        "project_removals",
         "project_snapshots",
         "project_updates",
         "projects",
@@ -160,26 +176,39 @@ mod tests {
         "security_log",
         "server_meta",
         "settings",
+        "sign_in_throttle",
     ];
 
-    const INDEXES: [&str; 17] = [
+    const INDEXES: [&str; 29] = [
         "access_tokens_device",
         "access_tokens_expires",
         "account_emails_email",
         "accounts_role_status",
         "allowlist_bound_account",
         "auth_codes_expires",
+        "device_authorizations_expires",
         "devices_account",
+        "email_link_tokens_expires",
+        "email_link_tokens_pending",
+        "guest_invitations_email",
+        "guest_invitations_inviter",
+        "guest_invitations_open",
+        "guest_invitations_project",
         "identities_account",
         "nonces_expires",
         "pending_auth_expires",
+        "project_access_log_device",
+        "project_access_log_last_at",
+        "project_access_log_project",
         "project_blobs_hash",
+        "project_blobs_used",
         "project_grants_account",
         "projects_status",
         "refresh_tokens_device",
         "refresh_tokens_expires",
         "refresh_tokens_family",
         "security_log_at",
+        "sign_in_throttle_expires",
     ];
 
     fn names(conn: &Connection, kind: &str) -> Vec<String> {

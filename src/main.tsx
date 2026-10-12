@@ -19,7 +19,7 @@ import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
-import { readCachedPreference } from "@/i18n";
+import { loadNamespace, readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstMigrationStore } from "@/store/typst-migration";
 import { registerContributions } from "@/contributions";
@@ -52,7 +52,7 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter";
+type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter" | "admin";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
@@ -61,7 +61,8 @@ function currentWindowView(): WindowView {
     view === "preview" ||
     view === "browser" ||
     view === "present" ||
-    view === "presenter"
+    view === "presenter" ||
+    view === "admin"
   ) {
     return view;
   }
@@ -95,7 +96,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "browser" || view === "present" || view === "presenter") {
+  if (view === "browser" || view === "present" || view === "presenter" || view === "admin") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -140,6 +141,11 @@ const PresentationWindow = lazy(() =>
 );
 const PresenterWindow = lazy(() =>
   import("@/components/presentation/PresenterWindow").then((module) => ({ default: module.PresenterWindow })),
+);
+const AdminConsoleWindow = lazy(() =>
+  Promise.all([import("@/features/collab/console/AdminConsoleWindow"), loadNamespace("collab")]).then(([module]) => ({
+    default: module.AdminConsoleWindow,
+  })),
 );
 const TypstMigrationDialog = lazy(() =>
   import("@/components/migration/TypstMigrationDialog").then((module) => ({ default: module.TypstMigrationDialog })),
@@ -195,6 +201,17 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
         <AppZoom />
         <Suspense fallback={null}>
           {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
+        </Suspense>
+      </ThemeProvider>
+    );
+  }
+  if (view === "admin") {
+    return (
+      <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
+        <Suspense fallback={null}>
+          <AdminConsoleWindow />
         </Suspense>
       </ThemeProvider>
     );

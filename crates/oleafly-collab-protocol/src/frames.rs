@@ -113,6 +113,8 @@ pub enum ServerFrame {
         project_id: SharedProjectId,
         role: ProjectRole,
         head_seq: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        since_batch: Option<crate::ids::BatchId>,
     },
     Update {
         project_id: SharedProjectId,
@@ -387,6 +389,7 @@ mod tests {
                 project_id: PROJECT.parse().unwrap(),
                 role: crate::roles::ProjectRole::Editor,
                 head_seq: 9,
+                since_batch: None,
             },
             json!({ "type": "subscribed", "project_id": PROJECT, "role": "editor", "head_seq": 9 }),
         );
@@ -468,6 +471,41 @@ mod tests {
                 project_id: PROJECT.parse().unwrap(),
             },
             json!({ "type": "project_archived", "project_id": PROJECT }),
+        );
+    }
+
+    #[test]
+    fn subscribed_names_the_change_stored_at_the_clients_since_number() {
+        let named = ServerFrame::Subscribed {
+            project_id: PROJECT.parse().unwrap(),
+            role: crate::roles::ProjectRole::Editor,
+            head_seq: 9,
+            since_batch: Some(BATCH.parse().unwrap()),
+        };
+        assert_server_wire(
+            named,
+            json!({
+                "type": "subscribed",
+                "project_id": PROJECT,
+                "role": "editor",
+                "head_seq": 9,
+                "since_batch": BATCH
+            }),
+        );
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({
+                "type": "subscribed",
+                "project_id": PROJECT,
+                "role": "editor",
+                "head_seq": 9
+            }))
+            .unwrap(),
+            ServerFrame::Subscribed {
+                project_id: PROJECT.parse().unwrap(),
+                role: crate::roles::ProjectRole::Editor,
+                head_seq: 9,
+                since_batch: None,
+            }
         );
     }
 

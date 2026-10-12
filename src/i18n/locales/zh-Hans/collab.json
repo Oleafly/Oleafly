@@ -35,6 +35,13 @@
         "title": "要移除 {{name}} 吗？",
         "description": "Oleafly 会退出此服务器的登录，并不再记住它。这台电脑上已有的项目会原样保留。",
         "confirm": "移除服务器"
+      },
+      "emails": {
+        "label": "有人共享项目时给我发邮件",
+        "description": "邮件会写明项目名称，并附有打开它的链接。",
+        "noMail": "此服务器不发送电子邮件。与你共享的项目仍会显示在你的库中的“与你共享的项目”里。",
+        "paused": "服务器管理员已为所有人关闭电子邮件。",
+        "loadFailed": "Oleafly 无法加载你的邮件设置。"
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "实时连接",
           "pass": "实时编辑可以正常传输。",
           "fail": "你与服务器之间有东西阻止了实时编辑。可能需要调整防火墙或代理。",
-          "info": "实时编辑可以传输，但连接耗时较长。",
+          "info": "此网络屏蔽了常规通道，所以实时编辑改走较慢的通道。编辑仍会送达。",
           "skipped": "前面的检查失败，因此未检查。"
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "此服务器还没有任何登录方式。请让其管理员设置一种。",
     "waitingTitle": "正在等待浏览器",
     "waitingDescription": "请在已打开的浏览器窗口中完成登录，然后回到这里。",
+    "waitingEmailDescription": "请在浏览器中输入你的电子邮件地址，然后在这台电脑上打开我们发送的链接。",
     "cancel": "取消",
     "back": "返回",
     "doneTitle": "你已登录",
     "doneDescription": "你已以 {{name}} 的身份登录 {{server}}。",
-    "done": "完成"
+    "done": "完成",
+    "codeSignIn": "用登录码登录",
+    "codeSignInDescription": "当浏览器无法回到 Oleafly，或要在其他设备上登录时使用。",
+    "codeRequesting": "正在获取登录码…",
+    "codeSteps": "在任意手机或电脑上打开这个地址并输入登录码。",
+    "codeAddressLabel": "地址",
+    "codeLabel": "登录码",
+    "codeExpires": "登录码将在 {{time}} 失效。",
+    "codeWaiting": "正在等待你登录",
+    "codeOpen": "在浏览器中打开",
+    "codeOffer": "浏览器没有回到 Oleafly？",
+    "codeHint": "如果浏览器无法连接到 Oleafly，请改用登录码登录。"
   },
   "errors": {
     "unreachable": "Oleafly 无法连接到服务器。请检查地址和网络连接，然后重试。",
@@ -179,7 +198,8 @@
       "allowlist": "允许的人员",
       "domains": "域名",
       "settings": "服务器设置",
-      "log": "安全日志"
+      "log": "安全日志",
+      "email": "电子邮件"
     },
     "members": {
       "description": "所有登录过此服务器的人。",
@@ -271,9 +291,17 @@
         "label": "允许项目访问日志",
         "description": "项目所有者可以记录谁打开过他们的项目。"
       },
+      "commentsAllowed": {
+        "label": "允许评论",
+        "description": "共享项目中的成员可以评论文本并回复。关闭后，评论会在所有地方隐藏，但仍会保存。"
+      },
       "emailNotifications": {
         "label": "电子邮件通知",
-        "description": "当有人被添加，或有人与其共享项目时，服务器会向其发送电子邮件。"
+        "description": "发送这些邮件。关闭后，服务器上的所有人都不会再收到。"
+      },
+      "emailLinkSignIn": {
+        "label": "通过电子邮件登录",
+        "description": "用户可以通过发送到其电子邮件地址的链接登录。这需要服务器的电子邮件设置。谁能进入仍由你的访问规则决定。"
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "添加了一条域名规则",
         "domainRuleRemoved": "移除了一条域名规则",
         "settingsChanged": "更改了服务器设置",
+        "projectShared": "共享了一个项目",
+        "projectAccessGranted": "给某人授予了项目访问权限",
+        "projectAccessChanged": "更改了某人的项目访问权限",
+        "projectAccessRemoved": "将某人移出了项目",
+        "projectLeft": "退出了项目",
+        "projectLinkSharingOn": "开启了项目的链接共享",
+        "projectLinkSharingOff": "关闭了项目的链接共享",
+        "projectLinkRoleChanged": "更改了项目链接的权限",
+        "projectArchived": "归档了一个项目",
+        "projectUnarchived": "恢复了一个已归档的项目",
+        "projectSettingsChanged": "更改了项目设置",
+        "projectAccessLogOn": "开启了项目访问日志",
+        "projectAccessLogOff": "关闭了项目访问日志",
+        "projectCommentsOn": "开启了项目评论",
+        "projectCommentsOff": "关闭了项目评论",
+        "projectRejoinRefused": "尝试重新加入已将其移出的项目",
+        "guestInvited": "邀请了一位访客",
+        "guestInvitationApproved": "批准了一个访客邀请",
+        "guestInvitationDeclined": "拒绝了一个访客邀请",
+        "guestInvitationRevoked": "撤回了一个访客邀请",
+        "guestAdmissionEnded": "结束了访客对服务器的访问",
         "unknown": "其他服务器事件"
+      },
+      "details": {
+        "project": "项目：{{title}}",
+        "provider": "通过 {{provider}}",
+        "providerEmailLink": "通过电子邮件链接",
+        "signInCode": "使用了登录码",
+        "via": {
+          "allowlist": "因允许名单而获准进入",
+          "domain": "因域名规则而获准进入",
+          "setup": "使用了设置码",
+          "guest": "以访客身份获准进入",
+          "link": "通过项目链接",
+          "invitation": "通过访客邀请"
+        },
+        "newAccount": "新账户",
+        "reactivated": "账户已重新启用",
+        "reasons": {
+          "suspended": "账户已停用",
+          "notAdmitted": "没有访问规则允许其进入",
+          "setupCodeInvalid": "设置码错误",
+          "guestInvitationUnusable": "访客邀请已失效",
+          "lockedOutIp": "同一网络地址尝试次数过多",
+          "lockedOutAddress": "发往同一地址的登录邮件过多",
+          "stoppedByPerson": "在登录页面被中止",
+          "otherBrowser": "在与开始时不同的浏览器中完成",
+          "inactiveAccountAddress": "其邮箱属于已移除或已停用的账户",
+          "noProjectsLeft": "已没有任何项目"
+        },
+        "role": "角色：{{role}}",
+        "roleChange": "从 {{from}} 改为 {{to}}",
+        "device": "设备：{{name}}",
+        "byAdmin": "来自管理控制台",
+        "settingOn": "{{setting}}：开启",
+        "settingOff": "{{setting}}：关闭"
+      }
+    },
+    "email": {
+      "description": "当你添加成员、有人与其共享项目，或其账户在新设备上登录时，服务器会向其发送电子邮件。",
+      "loading": "正在加载邮件设置…",
+      "on": {
+        "title": "电子邮件已开启",
+        "from": "邮件发件人：{{from}}。"
+      },
+      "off": {
+        "title": "电子邮件已关闭",
+        "description": "此服务器没有邮件设置。要开启电子邮件，请在服务器上设置 OLEAFLY_SMTP_URL 和 OLEAFLY_MAIL_FROM，然后重启服务器。",
+        "copyPath": "在此之前，请自己把这个链接发给新成员。它会把服务器添加到 Oleafly。",
+        "address": "他们也可以在“添加服务器”中输入这个地址："
+      },
+      "needsSettings": "请先为服务器开启电子邮件。",
+      "lastFailure": "上一封发送失败的邮件：{{date}}。邮件服务器的回复：",
+      "test": {
+        "title": "测试邮件",
+        "description": "向 {{address}} 发送一封测试邮件，检查设置是否有效。",
+        "send": "发送测试邮件",
+        "sending": "正在发送…",
+        "sent": "已发送到 {{address}}。如果收件箱里没有，请查看垃圾邮件文件夹。",
+        "failed": "邮件服务器没有接受测试邮件。",
+        "noAddress": "你的账户没有已验证的电子邮件地址，因此无处发送测试邮件。",
+        "adminOnly": "只有管理员可以发送测试邮件。"
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "任何已登录 {{server}} 且拥有链接的人都可以打开此项目。",
       "roleLabel": "通过链接打开的人员的角色"
     },
+    "comments": {
+      "label": "评论",
+      "description": "能编辑的人都可以评论此项目中的文本。关闭后，评论会被隐藏，但不会被删除。",
+      "serverOff": "{{server}} 已关闭评论。请让其管理员开启。"
+    },
     "stop": "停止共享",
     "stopConfirm": {
       "title": "要停止共享 {{name}} 吗？",
@@ -378,6 +492,10 @@
       "title": "要退出 {{name}} 吗？",
       "description": "你的副本将停止同步，并作为普通项目保留在这台电脑上。",
       "confirm": "退出"
+    },
+    "accessLog": {
+      "label": "访问日志",
+      "description": "服务器会记录谁打开了此项目、加入了项目或下载了副本，以及所用设备和时间。只有你能在“实时协作”面板中看到此列表。"
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "某人"
   },
   "tree": {
-    "here": "{{name}} 打开了此文件"
+    "here": "{{name}} 打开了此文件",
+    "clash": "{{other}} 也叫 {{name}}，因此这个文件在磁盘上使用了新名称。"
   },
   "library": {
     "kind": "共享",
@@ -427,7 +546,18 @@
     "empty": "还没有任何活动。",
     "here": "当前在此项目中",
     "hereIn": "当前在 {{path}} 中",
-    "away": "当前不在此项目中"
+    "away": "当前不在此项目中",
+    "deleted": "最近删除",
+    "deletedEmpty": "最近没有删除任何内容。",
+    "accessLog": "访问日志"
+  },
+  "deleted": {
+    "restore": "恢复",
+    "restoreLabel": "恢复 {{name}}",
+    "inFolder": "原位置：{{folder}}",
+    "inProject": "原位置：项目文件夹",
+    "byYou": "由你删除",
+    "by": "由 {{name}} 删除"
   },
   "activity": {
     "welcomeEdit": "由 {{server}} 上的 {{owner}} 共享。你可以编辑。",
@@ -446,7 +576,11 @@
     "signIn": "登录",
     "repeated": "连续次数：{{number}}",
     "newDevice": "{{name}} 在新设备上登录了",
-    "review": "查看"
+    "review": "查看",
+    "renamed": "你将它命名为 {{ours}} 之后，{{name}} 把 {{before}} 重命名为 {{theirs}}",
+    "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
+    "mentionedHere": "{{name}} 在评论中提及了你",
+    "showComment": "查看评论"
   },
   "mergeReview": {
     "title": "你离开期间合并的更改",
@@ -460,5 +594,264 @@
     "newFile": "新文件",
     "removedFile": "已移除",
     "diffLabel": "{{path}} 中的更改"
+  },
+  "console": {
+    "open": "打开管理控制台",
+    "windowTitle": "{{name}} 管理控制台",
+    "title": "管理控制台",
+    "sectionsLabel": "管理控制台栏目",
+    "sections": {
+      "overview": "概览",
+      "people": "人员",
+      "access": "访问规则",
+      "projects": "项目",
+      "settings": "设置",
+      "email": "电子邮件",
+      "log": "安全日志",
+      "checks": "连接检查"
+    },
+    "health": {
+      "label": "服务器状态：{{status}}",
+      "checking": "正在检查",
+      "ok": "正常",
+      "warning": "需要处理",
+      "unreachable": "无法访问"
+    },
+    "states": {
+      "loading": "正在打开管理控制台…",
+      "loadFailed": "Oleafly 无法打开管理控制台。",
+      "unknownTitle": "此服务器不在你的列表中",
+      "unknownDescription": "请在设置中重新添加该服务器，然后从它的卡片打开管理控制台。",
+      "signedOutTitle": "你未登录此服务器",
+      "signedOutDescription": "请在设置中重新登录，然后从服务器卡片打开管理控制台。",
+      "refusedTitle": "管理控制台仅供管理员和维护者使用",
+      "refusedDescription": "你在此服务器上的角色是 {{role}}。如果需要管理此服务器，请询问管理员。"
+    },
+    "overview": {
+      "loading": "正在加载概览…",
+      "health": {
+        "title": "运行状况",
+        "okLabel": "一切正常",
+        "okDescription": "用户可以登录，服务器也可以保存文件。",
+        "issues": {
+          "noSignInProvider": {
+            "label": "无人可以登录",
+            "description": "请在服务器上设置 GitHub 或 OpenID 登录，然后重启服务器。如果服务器能发送邮件，也可以改为在设置中开启“通过电子邮件登录”。"
+          },
+          "storageNotWritable": {
+            "label": "服务器无法保存文件",
+            "description": "请检查服务器的数据文件夹是否存在，以及服务器能否写入该文件夹。"
+          },
+          "unknown": {
+            "label": "服务器报告了一个问题",
+            "description": "请更新 Oleafly 以查看具体问题。"
+          }
+        }
+      },
+      "glance": {
+        "title": "概况",
+        "people": "人员",
+        "suspended": "已停用：{{number}}",
+        "devices": "设备",
+        "projects": "共享项目",
+        "projectsDetail": "已归档：{{archived}}，上传中：{{pending}}",
+        "online": "当前在线",
+        "onlineDetail": "打开的项目：{{number}}",
+        "started": "启动时间",
+        "version": "版本",
+        "protocol": "协议 {{protocol}}"
+      },
+      "storage": {
+        "title": "存储",
+        "adminOnly": "只有管理员可以查看服务器使用了多少存储空间。",
+        "database": "数据库",
+        "databaseDetail": "账户、设置和日志",
+        "snapshots": "项目快照",
+        "snapshotsDetail": "每个项目的已保存副本",
+        "files": "文件",
+        "location": {
+          "disk": "位于服务器磁盘",
+          "s3": "位于 S3 存储",
+          "unknown": "位于其他存储"
+        }
+      },
+      "services": {
+        "title": "电子邮件和登录",
+        "email": "电子邮件",
+        "emailOn": "已设置",
+        "emailOff": "未设置",
+        "emailOnDescription": "服务器可以发送电子邮件。",
+        "emailOffDescription": "服务器还不能发送电子邮件，因此不会有人收到邮件通知。",
+        "openEmail": "邮件设置",
+        "signIn": "登录方式",
+        "signInNone": "暂无。设置登录方式之前，任何人都无法登录。",
+        "emailLinkOption": "电子邮件链接"
+      },
+      "settings": {
+        "title": "服务器设置",
+        "on": "开启",
+        "off": "关闭",
+        "change": "更改设置"
+      },
+      "limits": "限制：每个项目 {{project}}，每个文件 {{file}}，每个项目 {{people}} 人。"
+    },
+    "projects": {
+      "description": "此服务器上共享的所有项目。",
+      "searchLabel": "搜索项目",
+      "searchPlaceholder": "按标题或所有者搜索",
+      "filterLabel": "显示项目",
+      "filter": {
+        "all": "全部",
+        "active": "共享中",
+        "archived": "已归档",
+        "pending": "上传中"
+      },
+      "columns": {
+        "title": "项目",
+        "owner": "所有者",
+        "members": "人员",
+        "size": "大小",
+        "activity": "最近活动",
+        "actions": "操作"
+      },
+      "sortBy": "按 {{column}} 排序",
+      "status": {
+        "archived": "已归档",
+        "pending": "上传中",
+        "unknown": "未知"
+      },
+      "loading": "正在加载项目…",
+      "empty": "此服务器上还没有共享项目。",
+      "noMatches": "没有与搜索匹配的项目。",
+      "count": "显示 {{total}} 个中的 {{shown}} 个",
+      "loadMore": "显示更多",
+      "archive": "归档",
+      "archiveNamed": "归档 {{title}}",
+      "restore": "恢复",
+      "restoreNamed": "恢复 {{title}}",
+      "archiveConfirm": {
+        "title": "要归档 {{title}} 吗？",
+        "description": "所有人都会停止同步该项目，并保留自己的副本。除非你将其恢复，否则服务器会在 {{days}} 天后删除该项目。",
+        "descriptionLater": "所有人都会停止同步该项目，并保留自己的副本。除非你将其恢复，否则服务器会在一段时间后删除已归档的项目。",
+        "confirm": "归档项目"
+      },
+      "adminOnly": "只有管理员可以归档或恢复项目。"
+    },
+    "checks": {
+      "description": "检查这台电脑与服务器之间的连接。"
+    }
+  },
+  "links": {
+    "turnedOff": "实时协作已关闭。请在设置的“实验功能”中开启，然后重新打开链接。",
+    "openSettings": "打开设置",
+    "malformed": "Oleafly 无法打开此链接。请向发送者索取新链接。",
+    "opening": "正在打开共享项目…",
+    "confirm": {
+      "title": "要加入这个共享项目吗？",
+      "body": "加入后，你会被添加到项目中，项目文件也会复制到这台电脑。只有在你知道是谁发来链接时才加入。",
+      "project": "项目",
+      "owner": "所有者",
+      "server": "服务器",
+      "role": "你的角色",
+      "join": "加入"
+    }
+  },
+  "comments": {
+    "title": "评论",
+    "titleUnread": "评论，有新动态",
+    "add": "添加评论",
+    "showResolved": "显示已解决的评论",
+    "hideResolved": "隐藏已解决的评论",
+    "noFile": "打开文件即可查看其评论。",
+    "empty": "此文件还没有评论。",
+    "emptyCanWrite": "此文件还没有评论。选中一些文本，然后选择“添加评论”即可发起。",
+    "loadFailed": "无法加载此文件的评论。",
+    "detached": "已脱离的评论",
+    "detachedHint": "这些评论所针对的文本已被删除。",
+    "resolvedBy": "由 {{name}} 解决",
+    "edited": "已编辑",
+    "deleted": "此评论已删除。",
+    "newLabel": "新评论",
+    "newPlaceholder": "添加评论。输入 @ 可提及他人。",
+    "replyLabel": "回复",
+    "replyPlaceholder": "写下回复。输入 @ 可提及他人。",
+    "editLabel": "编辑评论",
+    "post": "评论",
+    "reply": "回复",
+    "resolve": "解决",
+    "reopen": "重新打开",
+    "deleteThread": "删除讨论",
+    "messageActions": "此评论的更多操作",
+    "threadActions": "此讨论的更多操作",
+    "showInEditor": "在编辑器中显示",
+    "thread": "{{name}} 的评论",
+    "mentionList": "可提及的人",
+    "marker": "显示此行的评论",
+    "unverifiedAuthor": "无法确认是谁写的",
+    "unverifiedThread": "来自 Oleafly 无法确认身份的人的评论",
+    "resolvedUnverified": "由 Oleafly 无法确认身份的人解决",
+    "refusals": {
+      "notLive": "此项目当前未连接。请在重新连接后再试。",
+      "notYours": "只有写这条评论的人才能修改它。",
+      "offServer": "此服务器已关闭评论。",
+      "offProject": "此项目已关闭评论。请让所有者重新开启。",
+      "viewer": "你可以在这里阅读评论，但不能发表。请向所有者申请编辑权限。",
+      "someoneReplied": "其他人已经回复，所以这个讨论会保留。你可以改为将它标记为已解决。",
+      "messageDeleted": "这条评论已删除，因此无法编辑。",
+      "selectionChanged": "你选中的文本已更改。请重新选择后再添加评论。",
+      "tooLong": "这条评论太长了。请缩短后再试。",
+      "empty": "发布前请先写点内容。"
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} 打开了项目",
+    "joinedLink": "{{name}} 通过链接加入了项目",
+    "joinedShare": "{{name}} 在你共享后加入了项目",
+    "downloaded": "{{name}} 下载了副本",
+    "unknown": "{{name}} 使用了项目",
+    "unknownDevice": "未知设备",
+    "span": "{{from}} 至 {{to}}",
+    "more": "显示更早的记录",
+    "loading": "正在加载访问日志…",
+    "loadFailed": "Oleafly 无法加载访问日志。",
+    "empty": "暂无记录。"
+  },
+  "guests": {
+    "badge": "访客",
+    "invite": {
+      "noAccount": "{{server}} 上没有人使用 {{email}}。将其邀请为访客后，对方只能看到受邀的项目。",
+      "button": "邀请为访客",
+      "buttonNamed": "邀请 {{email}} 为访客",
+      "duplicate": "该地址已有此项目的邀请。",
+      "tooMany": "你在过去一小时内发送了很多邀请。请稍后再试。"
+    },
+    "sent": {
+      "emailed": "邀请已发送至 {{email}}。",
+      "emailedAfterApproval": "此邀请需要管理员批准。批准后 {{email}} 会收到一封邮件。",
+      "added": "{{email}} 已在 {{server}} 上有账户，所以现在已经可以访问。",
+      "sendLink": "{{server}} 不发送邮件，请你自己把此链接发给 {{email}}。对方用它添加服务器，并用该地址登录。",
+      "sendLinkAfterApproval": "此邀请需要先由管理员批准。{{server}} 不发送邮件，请你自己把此链接发给 {{email}}。邀请批准后链接即可使用。",
+      "linkLabel": "添加 {{server}} 的链接"
+    },
+    "list": {
+      "title": "邀请",
+      "status": {
+        "awaiting_approval": "等待批准",
+        "invited": "已邀请",
+        "declined": "已拒绝"
+      },
+      "expires": "{{date}} 到期",
+      "withdraw": "撤回",
+      "withdrawNamed": "撤回给 {{email}} 的邀请"
+    },
+    "pending": {
+      "title": "待处理的访客",
+      "description": "项目所有者将这些人邀请为访客。访客只能看到受邀的项目，且不能共享这些项目。",
+      "invitedBy": "{{inviter}} 邀请他们加入 {{project}}",
+      "approve": "批准",
+      "approveNamed": "批准 {{email}}",
+      "decline": "拒绝",
+      "declineNamed": "拒绝 {{email}}"
+    }
   }
 }

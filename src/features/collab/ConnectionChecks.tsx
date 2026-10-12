@@ -23,7 +23,7 @@ const CHECK_STATUSES = ["pass", "fail", "info", "skipped"] as const;
 
 type CheckStatus = (typeof CHECK_STATUSES)[number];
 
-const DETAIL_TOKENS: ReadonlySet<string> = new Set(["loopback", "configured", "not_configured"]);
+const DETAIL_TOKENS: ReadonlySet<string> = new Set(["loopback", "configured", "not_configured", "fallback"]);
 
 export function checkKey(id: string): CheckKey | null {
   return Object.hasOwn(CHECK_KEYS, id) ? CHECK_KEYS[id as keyof typeof CHECK_KEYS] : null;

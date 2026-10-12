@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} files changed in your project after this task started. Their diffs are against the older versions, so they cannot be applied.",
       "applyAria": "Apply {{path}}",
       "changedSince": "Changed since",
+      "mergesOnApply": "This file was edited after the task started. Applying keeps those edits and adds the task's changes.",
       "loading": "Loading...",
       "refreshPreview": "Refresh preview",
       "preview": "Preview",

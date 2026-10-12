@@ -1768,9 +1768,6 @@ export const collabLiveStop = (projectId: string) =>
   invoke<void>("collab_live_stop", { projectId });
 export const collabLiveFlush = (projectId: string) =>
   invoke<void>("collab_live_flush", { projectId });
-export const collabSyncResume = (projectId: string, send: boolean) =>
-  invoke<void>("collab_sync_resume", { projectId, send });
-
 export async function collabDocOpen(
   projectId: string,
   path: string,
@@ -2074,3 +2071,210 @@ export const synctexMapLine = (
     line,
     currentToCompiled,
   });
+
+export const collabWriteText = (projectId: string, path: string, base: string | null, text: string) =>
+  invoke<{ handled: boolean }>("collab_write_text", { projectId, path, base, text });
+
+export const COLLAB_LIVE_RENAMED_EVENT = "collab-live-renamed";
+
+export const collabTrashList = (projectId: string) =>
+  invoke<import("@oleafly/backend-port").CollabTrashEntry[]>("collab_trash_list", { projectId });
+export const collabTrashRestore = (projectId: string, id: string) =>
+  invoke<void>("collab_trash_restore", { projectId, id });
+export const collabTreeClashes = (projectId: string) =>
+  invoke<import("@oleafly/backend-port").CollabTreeClash[]>("collab_tree_clashes", { projectId });
+
+export function onCollabLiveRenamed(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveRenamed) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveRenamed>(COLLAB_LIVE_RENAMED_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+import type {
+  CollabAdminOverview,
+  CollabAdminProject,
+  CollabAdminProjectsPage,
+  CollabAdminProjectsQuery,
+} from "@oleafly/backend-port";
+
+export const collabAdminOverview = (serverId: string) =>
+  invoke<CollabAdminOverview>("collab_admin_overview", { serverId });
+export const collabAdminProjects = (serverId: string, query: CollabAdminProjectsQuery) =>
+  invoke<CollabAdminProjectsPage>("collab_admin_projects", { serverId, query });
+export const collabAdminArchiveProject = (serverId: string, projectId: string) =>
+  invoke<CollabAdminProject>("collab_admin_archive_project", { serverId, projectId });
+export const collabAdminUnarchiveProject = (serverId: string, projectId: string) =>
+  invoke<CollabAdminProject>("collab_admin_unarchive_project", { serverId, projectId });
+
+import type {
+  CollabEmailPreferences,
+  CollabEmailPreferencesPatch,
+  CollabEmailStatus,
+  CollabEmailTestResult,
+} from "@oleafly/backend-port";
+
+export const collabAdminEmailStatus = (serverId: string) =>
+  invoke<CollabEmailStatus>("collab_admin_email_status", { serverId });
+export const collabAdminEmailTest = (serverId: string) =>
+  invoke<CollabEmailTestResult>("collab_admin_email_test", { serverId });
+export const collabEmailPreferences = (serverId: string) =>
+  invoke<CollabEmailPreferences>("collab_email_preferences", { serverId });
+export const collabSetEmailPreferences = (serverId: string, patch: CollabEmailPreferencesPatch) =>
+  invoke<CollabEmailPreferences>("collab_set_email_preferences", { serverId, patch });
+export type CollabSyncDecision = import("@oleafly/backend-port").CollabSyncDecision;
+export type CollabSyncPaused = import("@oleafly/backend-port").CollabSyncPaused;
+export type CollabSyncResumed = import("@oleafly/backend-port").CollabSyncResumed;
+export const COLLAB_SYNC_PAUSED_EVENT = "collab-sync-paused";
+export const COLLAB_SYNC_RESUMED_EVENT = "collab-sync-resumed";
+export const collabSyncDecide = (projectId: string, decision: CollabSyncDecision) =>
+  invoke<void>("collab_sync_resume", { projectId, decision });
+export function onCollabSyncPaused(handler: (payload: CollabSyncPaused) => void): Promise<UnlistenFn> {
+  return listen<CollabSyncPaused>(COLLAB_SYNC_PAUSED_EVENT, ({ payload }) => handler(payload));
+}
+export function onCollabSyncResumed(handler: (payload: CollabSyncResumed) => void): Promise<UnlistenFn> {
+  return listen<CollabSyncResumed>(COLLAB_SYNC_RESUMED_EVENT, ({ payload }) => handler(payload));
+}
+
+import type {
+  CollabCommentMember,
+  CollabCommentMessage,
+  CollabCommentsChanged,
+  CollabCommentsStatus,
+  CollabCommentsStatusChanged,
+  CollabCommentThread,
+} from "@oleafly/backend-port";
+
+export const COLLAB_COMMENTS_CHANGED_EVENT = "collab-comments-changed";
+export const COLLAB_COMMENTS_STATUS_EVENT = "collab-comments-status";
+
+export const collabCommentsStatus = (projectId: string) =>
+  invoke<CollabCommentsStatus>("collab_comments_status", { projectId });
+export const collabCommentsSetEnabled = (projectId: string, enabled: boolean) =>
+  invoke<CollabProjectSummary>("collab_comments_set_enabled", { projectId, enabled });
+export const collabCommentReply = (
+  projectId: string,
+  fileId: string,
+  threadId: string,
+  body: string,
+  members: CollabCommentMember[],
+) => invoke<CollabCommentMessage>("collab_comment_reply", { projectId, fileId, threadId, body, members });
+export const collabCommentEdit = (
+  projectId: string,
+  fileId: string,
+  threadId: string,
+  messageId: string,
+  body: string,
+  members: CollabCommentMember[],
+) =>
+  invoke<CollabCommentMessage>("collab_comment_edit", { projectId, fileId, threadId, messageId, body, members });
+export const collabCommentDelete = (projectId: string, fileId: string, threadId: string, messageId: string) =>
+  invoke<void>("collab_comment_delete", { projectId, fileId, threadId, messageId });
+export const collabCommentResolve = (projectId: string, fileId: string, threadId: string) =>
+  invoke<CollabCommentThread>("collab_comment_resolve", { projectId, fileId, threadId });
+export const collabCommentReopen = (projectId: string, fileId: string, threadId: string) =>
+  invoke<CollabCommentThread>("collab_comment_reopen", { projectId, fileId, threadId });
+export const collabCommentThreadDelete = (projectId: string, fileId: string, threadId: string) =>
+  invoke<void>("collab_comment_thread_delete", { projectId, fileId, threadId });
+
+export function onCollabCommentsChanged(handler: (payload: CollabCommentsChanged) => void): Promise<UnlistenFn> {
+  return listen<CollabCommentsChanged>(COLLAB_COMMENTS_CHANGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabCommentsStatus(
+  handler: (payload: CollabCommentsStatusChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<CollabCommentsStatusChanged>(COLLAB_COMMENTS_STATUS_EVENT, ({ payload }) => handler(payload));
+}
+
+import type { CollabAccessLogPage, CollabAccessLogStatus } from "@oleafly/backend-port";
+
+export const collabAccessLogStatus = (projectId: string) =>
+  invoke<CollabAccessLogStatus>("collab_access_log_status", { projectId });
+export const collabAccessLogSetEnabled = (projectId: string, enabled: boolean) =>
+  invoke<CollabProjectSummary>("collab_access_log_set_enabled", { projectId, enabled });
+export const collabAccessLogPage = (projectId: string, cursor: string | null) =>
+  invoke<CollabAccessLogPage>("collab_access_log_page", { projectId, cursor });
+
+import type {
+  CollabGuestInvitation,
+  CollabGuestInviteResult,
+  CollabProjectGuestInvitations,
+} from "@oleafly/backend-port";
+
+export type {
+  CollabGuestInvitation,
+  CollabGuestInvitationStatus,
+  CollabGuestInviteResult,
+  CollabProjectGuestInvitations,
+} from "@oleafly/backend-port";
+
+export const collabGuestInvitations = (projectId: string) =>
+  invoke<CollabProjectGuestInvitations>("collab_guest_invitations", { projectId });
+export const collabGuestInvite = (projectId: string, email: string, role: CollabProjectRole) =>
+  invoke<CollabGuestInviteResult>("collab_guest_invite", { projectId, email, role });
+export const collabGuestInvitationRevoke = (projectId: string, invitationId: string) =>
+  invoke<void>("collab_guest_invitation_revoke", { projectId, invitationId });
+export const collabAdminGuestInvitations = (serverId: string) =>
+  invoke<CollabGuestInvitation[]>("collab_admin_guest_invitations", { serverId });
+export const collabAdminGuestApprove = (serverId: string, invitationId: string) =>
+  invoke<CollabGuestInvitation>("collab_admin_guest_approve", { serverId, invitationId });
+export const collabAdminGuestDecline = (serverId: string, invitationId: string) =>
+  invoke<CollabGuestInvitation>("collab_admin_guest_decline", { serverId, invitationId });
+export const collabAdminGuestRevoke = (serverId: string, invitationId: string) =>
+  invoke<void>("collab_admin_guest_revoke", { serverId, invitationId });
+
+import type { CollabSignInCode } from "@oleafly/backend-port";
+
+export type { CollabSignInCode } from "@oleafly/backend-port";
+
+export async function collabServerCodeSignIn(
+  url: string,
+  setupCode: string | undefined,
+  onCode: (code: CollabSignInCode) => void,
+): Promise<CollabServer> {
+  const channel = new Channel<CollabSignInCode>();
+  channel.onmessage = onCode;
+  return invoke<CollabServer>("collab_server_code_sign_in", { url, setupCode: setupCode ?? null, onCode: channel });
+}
+
+import type { CollabCommentError, CollabCommentErrorCode, CollabCommentThreadList } from "@oleafly/backend-port";
+
+export const collabCommentThreadList = (projectId: string, path: string) =>
+  invoke<CollabCommentThreadList>("collab_comment_thread_list", { projectId, path });
+export const collabCommentCreate = (
+  projectId: string,
+  path: string,
+  from: number,
+  to: number,
+  rev: number | null,
+  body: string,
+  members: CollabCommentMember[],
+) => invoke<CollabCommentThread>("collab_comment_create", { projectId, path, from, to, rev, body, members });
+
+const COLLAB_COMMENT_ERROR_CODES = new Set<string>([
+  "comment_not_live",
+  "comment_not_yours",
+  "comment_off_server",
+  "comment_off_project",
+  "comment_viewer",
+  "comment_someone_replied",
+  "comment_message_deleted",
+  "comment_selection_changed",
+  "comment_too_long",
+  "comment_empty",
+] satisfies CollabCommentErrorCode[]);
+
+export function isCollabCommentError(value: unknown): value is CollabCommentError {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as { code?: unknown; message?: unknown };
+  return (
+    typeof candidate.code === "string" &&
+    COLLAB_COMMENT_ERROR_CODES.has(candidate.code) &&
+    typeof candidate.message === "string"
+  );
+}
+
+export const collabLinkPreview = (serverId: string, sharedProjectId: string) =>
+  invoke<CollabProjectSummary>("collab_link_preview", { serverId, sharedProjectId });

@@ -45,6 +45,7 @@ vi.mock("@/store/files", () => ({
 }));
 
 import { DocumentSettingsDialog } from "./DocumentSettingsDialog";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const settings = enEditor.typstSettings;
 const doc = enEditor.documentSettings;
@@ -393,5 +394,28 @@ describe("DocumentSettingsDialog failures and storage", () => {
     fireEvent.click(font);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(mocks.fonts).toHaveBeenCalledOnce();
+  });
+});
+
+describe("DocumentSettingsDialog in a live shared project", () => {
+  it("merges the settings into a closed main file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    try {
+      const source = '#import "lib.typ": conf\n#show: conf.with(title: [T])\n= Intro\n';
+      mocks.state.activePath = "chapters/one.typ";
+      mocks.readFile.mockResolvedValue(source);
+      render(<DocumentSettingsDialog onClose={vi.fn()} />);
+      fireEvent.change(await screen.findByLabelText(settings.fields.region), { target: { value: "us" } });
+      fireEvent.click(screen.getByRole("button", { name: settings.apply }));
+      await waitFor(() => expect(mocks.state.writeProjectFile).toHaveBeenCalledOnce());
+      expect(mocks.state.writeProjectFile).toHaveBeenCalledWith(
+        "paper",
+        "main.typ",
+        '#import "lib.typ": conf\n#show: conf.with(title: [T])\n#set text(region: "US")\n= Intro\n',
+        { base: source },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

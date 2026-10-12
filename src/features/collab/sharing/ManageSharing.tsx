@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, DoorOpen, Link2, Trash2, UserPlus } from "lucide-react";
+import { Check, Copy, DoorOpen, Link2, MessageSquare, ScrollText, Trash2, UserPlus } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Avatar } from "@/components/ui/avatar";
@@ -11,6 +11,9 @@ import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import {
+  collabAccessLogSetEnabled,
+  collabCommentsSetEnabled,
+  collabCommentsStatus,
   collabLeaveProject,
   collabLinkSharingSet,
   collabMemberRemove,
@@ -19,6 +22,7 @@ import {
   collabPeopleSearch,
   collabProjectSummary,
   collabStopSharing,
+  type CollabCommentsStatus,
   type CollabPerson,
   type CollabProjectMember,
   type CollabProjectSummary,
@@ -27,7 +31,17 @@ import {
 import { collabErrorCode, collabErrorMessage } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
+import { useAccessLogSwitches } from "./access-log-store";
+import { GuestBadge } from "../GuestBadge";
 import { syncMembersChange, syncShareChange } from "./after-change";
+import {
+  GuestInvitationList,
+  GuestInviteOffer,
+  InviteOutcomeNote,
+  looksLikeEmail,
+  useProjectGuests,
+  type InviteOutcome,
+} from "./GuestInvitations";
 import { ProjectRolePicker, toGrantableRole, type GrantableRole } from "./ProjectRolePicker";
 
 const SEARCH_DELAY_MS = 250;
@@ -54,12 +68,16 @@ function AddPeople({
   projectId,
   server,
   members,
+  guestsEnabled,
   onAdded,
+  onInvited,
 }: Readonly<{
   projectId: string;
   server: string;
   members: readonly CollabProjectMember[];
+  guestsEnabled: boolean;
   onAdded: (member: CollabProjectMember) => void;
+  onInvited: (outcome: InviteOutcome) => void;
 }>) {
   const { t } = useTranslation(["collab"]);
   const inputId = useId();
@@ -68,7 +86,14 @@ function AddPeople({
   const [search, setSearch] = useState<SearchState>({ kind: "idle" });
   const [adding, setAdding] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<InviteOutcome | null>(null);
   const trimmed = query.trim();
+
+  const invited = (next: InviteOutcome) => {
+    setOutcome(next);
+    setQuery("");
+    onInvited(next);
+  };
 
   useEffect(() => {
     if (trimmed.length < SEARCH_MIN_LENGTH) {
@@ -115,6 +140,17 @@ function AddPeople({
     if (search.kind === "failed") return <InlineAlert>{search.message}</InlineAlert>;
     if (search.kind !== "done") return null;
     const people = search.people.filter((person) => !present.has(person.account_id));
+    if (people.length === 0 && search.people.length === 0 && guestsEnabled && looksLikeEmail(trimmed)) {
+      return (
+        <GuestInviteOffer
+          projectId={projectId}
+          server={server}
+          email={trimmed.toLowerCase()}
+          role={role}
+          onInvited={invited}
+        />
+      );
+    }
     if (people.length === 0) {
       return <p className="text-xs text-muted-foreground">{t(($) => $.collab.manage.add.noResults, { server })}</p>;
     }
@@ -161,6 +197,7 @@ function AddPeople({
         <ProjectRolePicker value={role} label={t(($) => $.collab.manage.add.roleLabel)} onChange={setRole} />
       </div>
       {renderResults()}
+      {outcome && trimmed === "" ? <InviteOutcomeNote outcome={outcome} server={server} /> : null}
       {error ? <InlineAlert>{error}</InlineAlert> : null}
     </div>
   );
@@ -240,6 +277,120 @@ function LinkSharing({
   );
 }
 
+function CommentsSetting({
+  projectId,
+  server,
+  summary,
+  onSummary,
+}: Readonly<{
+  projectId: string;
+  server: string;
+  summary: CollabProjectSummary;
+  onSummary: (summary: CollabProjectSummary) => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  const [status, setStatus] = useState<CollabCommentsStatus | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const serverOff = status !== null && !status.serverAllowed;
+  const enabled = (summary.comments_enabled ?? true) && !serverOff;
+
+  useEffect(() => {
+    let active = true;
+    collabCommentsStatus(projectId).then(
+      (next) => {
+        if (active) setStatus(next);
+      },
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  const save = async (next: boolean) => {
+    if (saving || serverOff) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onSummary(await collabCommentsSetEnabled(projectId, next));
+    } catch (failure) {
+      setError(collabErrorMessage(collabErrorCode(failure)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <SettingsToggleRow
+        label={t(($) => $.collab.manage.comments.label)}
+        description={
+          serverOff
+            ? t(($) => $.collab.manage.comments.serverOff, { server })
+            : t(($) => $.collab.manage.comments.description)
+        }
+        checked={enabled}
+        disabled={saving || serverOff}
+        adornment={<MessageSquare aria-hidden className="size-4 text-muted-foreground" />}
+        onChange={(next) => void save(next)}
+      />
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
+function AccessLogSetting({
+  projectId,
+  summary,
+  onSummary,
+}: Readonly<{
+  projectId: string;
+  summary: CollabProjectSummary;
+  onSummary: (summary: CollabProjectSummary) => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  const status = useAccessLogSwitches((state) => state.byProject[projectId]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void useAccessLogSwitches.getState().load(projectId);
+  }, [projectId]);
+
+  if (!status?.serverAllowed) return null;
+  const enabled = summary.access_log ?? status.enabled;
+
+  const save = async (next: boolean) => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await collabAccessLogSetEnabled(projectId, next);
+      onSummary(updated);
+      useAccessLogSwitches.getState().set(projectId, { serverAllowed: true, enabled: updated.access_log ?? next });
+    } catch (failure) {
+      setError(collabErrorMessage(collabErrorCode(failure)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <SettingsToggleRow
+        label={t(($) => $.collab.manage.accessLog.label)}
+        description={t(($) => $.collab.manage.accessLog.description)}
+        checked={enabled}
+        disabled={saving}
+        adornment={<ScrollText aria-hidden className="size-4 text-muted-foreground" />}
+        onChange={(next) => void save(next)}
+      />
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
 export function ManageSharing({
   projectId,
   name,
@@ -259,6 +410,16 @@ export function ManageSharing({
   const [ending, setEnding] = useState(false);
   const [endBusy, setEndBusy] = useState(false);
   const [endError, setEndError] = useState<string | null>(null);
+  const guests = useProjectGuests(projectId, isOwner);
+
+  const afterInvite = (outcome: InviteOutcome) => {
+    if (outcome.result.invitation.status === "accepted") {
+      setRequest((count) => count + 1);
+      syncMembersChange(projectId);
+    } else {
+      guests.reload();
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -336,6 +497,7 @@ export function ManageSharing({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-medium">{person.display_name}</span>
+            {person.guest ? <GuestBadge /> : null}
             {accountId === share.account_id ? (
               <Badge variant="primaryGhost" size="sm">
                 {t(($) => $.collab.manage.you)}
@@ -399,10 +561,12 @@ export function ManageSharing({
             projectId={projectId}
             server={server}
             members={members}
+            guestsEnabled={guests.info?.guests_enabled ?? false}
             onAdded={(member) => {
               setMembers((current) => (current ? upsertMember(current, member) : current));
               syncMembersChange(projectId);
             }}
+            onInvited={afterInvite}
           />
         ) : null}
         <div className="space-y-2">
@@ -411,6 +575,9 @@ export function ManageSharing({
             {members.map((member) => renderRow(member))}
           </ul>
         </div>
+        {isOwner && guests.info ? (
+          <GuestInvitationList projectId={projectId} info={guests.info} onWithdrawn={guests.remove} />
+        ) : null}
         <LinkSharing
           projectId={projectId}
           server={server}
@@ -419,6 +586,10 @@ export function ManageSharing({
           isOwner={isOwner}
           onSummary={setSummary}
         />
+        {isOwner ? (
+          <CommentsSetting projectId={projectId} server={server} summary={summary} onSummary={setSummary} />
+        ) : null}
+        {isOwner ? <AccessLogSetting projectId={projectId} summary={summary} onSummary={setSummary} /> : null}
       </>
     );
   };

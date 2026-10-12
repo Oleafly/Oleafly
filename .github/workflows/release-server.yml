@@ -1,0 +1,319 @@
+name: Release server
+
+on:
+  push:
+    tags:
+      - "server-v*.*.*"
+  pull_request:
+    paths:
+      - "crates/oleafly-server/**"
+      - "crates/oleafly-collab-protocol/**"
+      - "deploy/server/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/release-server.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Server tag to build, push and attach to a draft release (e.g. server-v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-server-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOCKERFILE: crates/oleafly-server/Dockerfile
+  PLATFORMS: linux/amd64,linux/arm64
+  DOCKER_BUILD_RECORD_UPLOAD: "false"
+
+jobs:
+  build:
+    name: Image and static binaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Work out the version and image tags
+        id: version
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.event.inputs.tag || github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cargo_version="$(awk -F'"' '/^version[[:space:]]*=/ { print $2; exit }' crates/oleafly-server/Cargo.toml)"
+          toolchain="$(awk -F'"' '/^[[:space:]]*channel[[:space:]]*=/ { print $2; exit }' rust-toolchain.toml)"
+          docker_rust="$(awk -F= '/^ARG RUST_VERSION=/ { print $2; exit }' "$DOCKERFILE")"
+          if [ -z "$cargo_version" ]; then
+            echo "::error file=crates/oleafly-server/Cargo.toml::could not read the package version"
+            exit 1
+          fi
+          if [ "$docker_rust" != "$toolchain" ]; then
+            echo "::error file=$DOCKERFILE::ARG RUST_VERSION is '${docker_rust}' but rust-toolchain.toml pins '${toolchain}'. Change both together."
+            exit 1
+          fi
+          case "$EVENT" in
+            push | workflow_dispatch)
+              if [[ ! "$REF" =~ ^server-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                echo "::error::'${REF}' is not a server tag such as server-v0.1.0"
+                exit 1
+              fi
+              version="${REF#server-v}"
+              if [ "$version" != "$cargo_version" ]; then
+                echo "::error file=crates/oleafly-server/Cargo.toml::the tag ${REF} says ${version} but crates/oleafly-server/Cargo.toml says ${cargo_version}"
+                exit 1
+              fi
+              publish=true
+              ;;
+            *)
+              version="$cargo_version"
+              publish=false
+              ;;
+          esac
+          image="ghcr.io/${OWNER,,}/oleafly-server"
+          tags="${image}:${version}"
+          if [[ "$version" != *-* ]]; then
+            tags+=$'\n'"${image}:${version%.*}"
+            tags+=$'\n'"${image}:latest"
+          fi
+          {
+            echo "version=${version}"
+            echo "publish=${publish}"
+            echo "tag=${REF}"
+            echo "image=${image}"
+            echo "tags<<EOF_TAGS"
+            echo "$tags"
+            echo "EOF_TAGS"
+          } >> "$GITHUB_OUTPUT"
+          echo "version=${version} publish=${publish} image=${image}"
+          echo "$tags"
+
+      - name: Set up QEMU to run the arm64 image
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the amd64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/amd64
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: oleafly-server:ci-amd64
+
+      - name: Build the arm64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/arm64
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: oleafly-server:ci-arm64
+
+      - name: Smoke-test both images
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash deploy/server/smoke-test.sh oleafly-server:ci-amd64
+          bash deploy/server/smoke-test.sh oleafly-server:ci-arm64
+
+      - name: Build the static binaries
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ env.PLATFORMS }}
+          target: binary
+          outputs: type=local,dest=dist/binaries
+          provenance: false
+          sbom: false
+
+      - name: Check and package the static binaries
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          for platform in linux_amd64 linux_arm64; do
+            case "$platform" in
+              linux_amd64) triple=x86_64-unknown-linux-musl ;;
+              linux_arm64) triple=aarch64-unknown-linux-musl ;;
+            esac
+            binary="dist/binaries/$platform/oleafly-server"
+            if [ ! -f "$binary" ]; then
+              echo "::error::missing $binary"
+              find dist/binaries -maxdepth 3 -print
+              exit 1
+            fi
+            chmod 0755 "$binary"
+            description="$(file -b "$binary")"
+            echo "$platform: $description"
+            if [[ "$description" != *"statically linked"* && "$description" != *"static-pie linked"* ]]; then
+              echo "::error::$binary is not statically linked: $description"
+              exit 1
+            fi
+            reported="$("$binary" --version)"
+            if [ "$reported" != "oleafly-server $VERSION" ]; then
+              echo "::error::$binary reports '$reported', expected 'oleafly-server $VERSION'"
+              exit 1
+            fi
+            stem="oleafly-server-$VERSION-$triple"
+            mkdir -p "dist/stage/$stem"
+            cp "$binary" "dist/stage/$stem/oleafly-server"
+            cp LICENSE deploy/server/oleafly-server.service "dist/stage/$stem/"
+            tar -czf "dist/release/$stem.tar.gz" -C dist/stage "$stem"
+          done
+          (cd dist/release && sha256sum -- *.tar.gz > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Log in to GitHub Container Registry
+        if: steps.version.outputs.publish == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the multi-arch image with an SBOM and provenance
+        id: push
+        if: steps.version.outputs.publish == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ steps.version.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Attest the image provenance
+        if: steps.version.outputs.publish == 'true'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.version.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Smoke-test the pushed image on both platforms
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          IMAGE: ${{ steps.version.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for platform in linux/amd64 linux/arm64; do
+            docker pull --platform "$platform" "$IMAGE@$DIGEST"
+            PLATFORM="$platform" bash deploy/server/smoke-test.sh "$IMAGE@$DIGEST"
+            docker image rm "$IMAGE@$DIGEST" || true
+          done
+
+      - name: Attest the release archives
+        if: steps.version.outputs.publish == 'true'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/release/*.tar.gz
+
+      - name: Upload the release archives
+        uses: actions/upload-artifact@v7
+        with:
+          name: oleafly-server-release
+          path: dist/release/
+          retention-days: 7
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        env:
+          PUBLISH: ${{ steps.version.outputs.publish }}
+          TAGS: ${{ steps.version.outputs.tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "### Oleafly Server"
+            if [ "$PUBLISH" = "true" ]; then
+              echo "Pushed \`${DIGEST:-unknown digest}\` as:"
+            else
+              echo "Dry run. Nothing was pushed. These tags would be pushed on a server tag:"
+            fi
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+            if [ -f dist/release/SHA256SUMS ]; then
+              echo '```'
+              cat dist/release/SHA256SUMS
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
+  draft:
+    name: Draft release
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download the release archives
+        uses: actions/download-artifact@v8
+        with:
+          name: oleafly-server-release
+          path: archives
+
+      - name: Verify the checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd archives
+          ls -l
+          sha256sum -c SHA256SUMS
+
+      - name: Create or update the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Oleafly Server $VERSION" \
+              --notes "Draft. Oleafly Server $VERSION as a single static program for x86-64 and ARM Linux, with a SHA256SUMS file to check the downloads. The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps are in docs/collaboration-server.md."
+          fi
+          gh release upload "$TAG" archives/* --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Draft release ready. Publishing it is a separate, deliberate step."

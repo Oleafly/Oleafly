@@ -1,4 +1,5 @@
 pub mod binding;
+pub mod comments;
 pub mod device_key;
 pub mod devices;
 pub mod doc;
@@ -24,11 +25,13 @@ pub mod client;
 
 pub use client::ServerUrl;
 pub mod servers;
+pub mod snapshots;
 pub mod sync;
 
 pub use client::ServerClient;
 pub use client::{connect_socket, SocketConnection};
 pub use client::{session_account, SessionManager};
 pub use client::{sign_in, SignInRequest};
+pub use client::{sign_in_with_code, CodeSignInRequest, SignInCode};
 pub use client::{test_connection, test_connection_pinned, CheckId, CheckStatus, ConnectionCheck};
 pub use servers::{ServerEntry, ServerRegistry};

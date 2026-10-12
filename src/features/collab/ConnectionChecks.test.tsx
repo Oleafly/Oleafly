@@ -73,6 +73,14 @@ describe("ConnectionChecks", () => {
     expect(row("email")).toHaveTextContent(checks.items.email.pass);
   });
 
+  it("says when live edits take the slower route instead of calling the check a failure", () => {
+    render(<ConnectionChecks checks={[check("websocket", "info", "fallback")]} />);
+    expect(row("webSocket")).toHaveAttribute("data-status", "info");
+    expect(row("webSocket").textContent).toBe(
+      `${checks.items.webSocket.label} · ${checks.status.info}${checks.items.webSocket.info}`,
+    );
+  });
+
   it("leaves out checks it does not know and reads an unknown status as a note", () => {
     const unknown = { id: "future_check", status: "pass", detail: null } as unknown as CollabConnectionCheck;
     const odd = { id: "clock", status: "unsure", detail: null } as unknown as CollabConnectionCheck;

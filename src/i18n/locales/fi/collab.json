@@ -35,6 +35,13 @@
         "title": "Poistetaanko {{name}}?",
         "description": "Oleafly kirjautuu ulos tältä palvelimelta ja unohtaa sen. Tällä koneella jo olevat projektit pysyvät paikoillaan.",
         "confirm": "Poista palvelin"
+      },
+      "emails": {
+        "label": "Lähetä minulle sähköpostia, kun joku jakaa projektin",
+        "description": "Viestissä kerrotaan projektin nimi, ja siinä on linkki sen avaamiseen.",
+        "noMail": "Tämä palvelin ei lähetä sähköpostia. Kanssasi jaetut projektit näkyvät silti kirjastossasi kohdassa Kanssasi jaetut.",
+        "paused": "Palvelimen ylläpitäjä on poistanut sähköpostin käytöstä kaikilta.",
+        "loadFailed": "Oleafly ei voinut ladata sähköpostiasetuksiasi."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "Reaaliaikainen yhteys",
           "pass": "Reaaliaikaiset muokkaukset pääsevät perille.",
           "fail": "Jokin sinun ja palvelimen välillä estää reaaliaikaiset muokkaukset. Palomuuria tai välityspalvelinta voi joutua muuttamaan.",
-          "info": "Reaaliaikaiset muokkaukset pääsevät perille, mutta yhteyden muodostaminen kesti hetken.",
+          "info": "Reaaliaikaiset muokkaukset kulkevat hitaampaa reittiä, koska tämä verkko estää tavallisen. Ne pääsevät silti perille.",
           "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "Tällä palvelimella ei ole vielä kirjautumistapaa. Pyydä sen ylläpitäjää määrittämään sellainen.",
     "waitingTitle": "Odotetaan selainta",
     "waitingDescription": "Viimeistele kirjautuminen avautuneessa selainikkunassa ja palaa sitten tänne.",
+    "waitingEmailDescription": "Kirjoita sähköpostiosoitteesi selaimeen ja avaa sitten lähettämämme linkki tällä tietokoneella.",
     "cancel": "Peruuta",
     "back": "Takaisin",
     "doneTitle": "Olet kirjautunut sisään",
     "doneDescription": "Olet kirjautunut palvelimelle {{server}} käyttäjänä {{name}}.",
-    "done": "Valmis"
+    "done": "Valmis",
+    "codeSignIn": "Kirjaudu koodilla",
+    "codeSignInDescription": "Käytä tätä, jos selain ei pääse takaisin Oleafly-sovellukseen, tai kun haluat kirjautua toisella laitteella.",
+    "codeRequesting": "Haetaan koodia…",
+    "codeSteps": "Avaa tämä osoite millä tahansa puhelimella tai tietokoneella ja kirjoita koodi.",
+    "codeAddressLabel": "Osoite",
+    "codeLabel": "Koodi",
+    "codeExpires": "Koodi lakkaa toimimasta klo {{time}}.",
+    "codeWaiting": "Odotetaan, että kirjaudut",
+    "codeOpen": "Avaa selaimessa",
+    "codeOffer": "Eikö selain palannut Oleafly-sovellukseen?",
+    "codeHint": "Jos selain ei saanut yhteyttä Oleafly-sovellukseen, kirjaudu sen sijaan koodilla."
   },
   "errors": {
     "unreachable": "Oleafly ei saanut yhteyttä palvelimeen. Tarkista osoite ja yhteytesi ja yritä sitten uudelleen.",
@@ -179,7 +198,8 @@
       "allowlist": "Sallitut henkilöt",
       "domains": "Verkkotunnukset",
       "settings": "Palvelimen asetukset",
-      "log": "Tietoturvaloki"
+      "log": "Tietoturvaloki",
+      "email": "Sähköposti"
     },
     "members": {
       "description": "Kaikki, jotka ovat kirjautuneet tälle palvelimelle.",
@@ -271,9 +291,17 @@
         "label": "Salli projektien käyttölokit",
         "description": "Projektien omistajat voivat pitää lokia siitä, kuka on avannut heidän projektinsa."
       },
+      "commentsAllowed": {
+        "label": "Salli kommentit",
+        "description": "Jaettujen projektien jäsenet voivat kommentoida tekstiä ja vastata. Kun tämä on pois päältä, kommentit piilotetaan kaikkialta ja ne säilyvät."
+      },
       "emailNotifications": {
         "label": "Sähköposti-ilmoitukset",
-        "description": "Palvelin lähettää ihmisille sähköpostia, kun heidät lisätään tai kun joku jakaa projektin heidän kanssaan."
+        "description": "Lähetä nämä viestit. Kun poistat tämän käytöstä, ne loppuvat kaikilta palvelimen käyttäjiltä."
+      },
+      "emailLinkSignIn": {
+        "label": "Kirjautuminen sähköpostilla",
+        "description": "Käyttäjät voivat kirjautua sähköpostiosoitteeseensa lähetetyllä linkillä. Tämä vaatii palvelimen sähköpostiasetukset. Käyttösääntösi ratkaisevat edelleen, kuka pääsee sisään."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "Lisäsi verkkotunnussäännön",
         "domainRuleRemoved": "Poisti verkkotunnussäännön",
         "settingsChanged": "Muutti palvelimen asetuksia",
+        "projectShared": "Jakoi projektin",
+        "projectAccessGranted": "Antoi jollekulle pääsyn projektiin",
+        "projectAccessChanged": "Muutti jonkun pääsyä projektiin",
+        "projectAccessRemoved": "Poisti jonkun projektista",
+        "projectLeft": "Poistui projektista",
+        "projectLinkSharingOn": "Otti projektin linkkijaon käyttöön",
+        "projectLinkSharingOff": "Poisti projektin linkkijaon käytöstä",
+        "projectLinkRoleChanged": "Muutti, mitä projektin linkki sallii",
+        "projectArchived": "Arkistoi projektin",
+        "projectUnarchived": "Palautti arkistoidun projektin",
+        "projectSettingsChanged": "Muutti projektin asetuksia",
+        "projectAccessLogOn": "Otti projektin käyttölokin käyttöön",
+        "projectAccessLogOff": "Poisti projektin käyttölokin käytöstä",
+        "projectCommentsOn": "Otti kommentit käyttöön projektissa",
+        "projectCommentsOff": "Poisti kommentit käytöstä projektissa",
+        "projectRejoinRefused": "Yritti palata projektiin, josta hänet oli poistettu",
+        "guestInvited": "Kutsui vieraan",
+        "guestInvitationApproved": "Hyväksyi vieraskutsun",
+        "guestInvitationDeclined": "Hylkäsi vieraskutsun",
+        "guestInvitationRevoked": "Perui vieraskutsun",
+        "guestAdmissionEnded": "Päätti vieraan pääsyn palvelimelle",
         "unknown": "Muu palvelintapahtuma"
+      },
+      "details": {
+        "project": "Projekti: {{title}}",
+        "provider": "Palvelulla {{provider}}",
+        "providerEmailLink": "Sähköpostilinkillä",
+        "signInCode": "Käytti kirjautumiskoodia",
+        "via": {
+          "allowlist": "Päästetty sisään sallittujen henkilöiden listan perusteella",
+          "domain": "Päästetty sisään verkkotunnussäännön perusteella",
+          "setup": "Käytti käyttöönottokoodia",
+          "guest": "Päästetty sisään vieraana",
+          "link": "Projektin linkin kautta",
+          "invitation": "Vieraskutsun kautta"
+        },
+        "newAccount": "Uusi tili",
+        "reactivated": "Tili otettu uudelleen käyttöön",
+        "reasons": {
+          "suspended": "Tili on jäädytetty",
+          "notAdmitted": "Mikään pääsysääntö ei päästä sisään",
+          "setupCodeInvalid": "Väärä käyttöönottokoodi",
+          "guestInvitationUnusable": "Vieraskutsu ei enää toimi",
+          "lockedOutIp": "Liian monta yritystä yhdestä verkko-osoitteesta",
+          "lockedOutAddress": "Liian monta kirjautumissähköpostia yhteen osoitteeseen",
+          "stoppedByPerson": "Pysäytetty kirjautumissivulla",
+          "otherBrowser": "Viimeistelty eri selaimessa kuin aloitettu",
+          "inactiveAccountAddress": "Sähköposti kuuluu poistetulle tai jäädytetylle tilille",
+          "noProjectsLeft": "Ei enää projekteja"
+        },
+        "role": "Rooli: {{role}}",
+        "roleChange": "Aiemmin {{from}}, nyt {{to}}",
+        "device": "Laite: {{name}}",
+        "byAdmin": "Hallintakonsolista",
+        "settingOn": "{{setting}}: käytössä",
+        "settingOff": "{{setting}}: ei käytössä"
+      }
+    },
+    "email": {
+      "description": "Palvelin lähettää ihmisille sähköpostia, kun lisäät heidät, kun joku jakaa projektin heidän kanssaan ja kun heidän tililleen kirjaudutaan uudella laitteella.",
+      "loading": "Ladataan sähköpostiasetuksia…",
+      "on": {
+        "title": "Sähköposti on käytössä",
+        "from": "Viestien lähettäjä on {{from}}."
+      },
+      "off": {
+        "title": "Sähköposti ei ole käytössä",
+        "description": "Tällä palvelimella ei ole sähköpostiasetuksia. Ota sähköposti käyttöön asettamalla palvelimelle OLEAFLY_SMTP_URL ja OLEAFLY_MAIL_FROM ja käynnistämällä se sitten uudelleen.",
+        "copyPath": "Siihen asti lähetä tämä linkki uusille ihmisille itse. Se lisää palvelimen Oleafly-sovellukseen.",
+        "address": "He voivat myös kirjoittaa tämän osoitteen kohtaan Lisää palvelin:"
+      },
+      "needsSettings": "Ota ensin sähköposti käyttöön palvelimella.",
+      "lastFailure": "Viimeisin epäonnistunut sähköposti: {{date}}. Postipalvelin vastasi:",
+      "test": {
+        "title": "Testiviesti",
+        "description": "Lähetä testiviesti osoitteeseen {{address}} ja tarkista, että asetukset toimivat.",
+        "send": "Lähetä testiviesti",
+        "sending": "Lähetetään…",
+        "sent": "Lähetetty osoitteeseen {{address}}. Jos viesti ei ole saapuneissa, katso roskapostikansiosta.",
+        "failed": "Postipalvelin ei hyväksynyt testiviestiä.",
+        "noAddress": "Tililläsi ei ole vahvistettua sähköpostiosoitetta, joten testiä ei voi lähettää minnekään.",
+        "adminOnly": "Vain ylläpitäjät voivat lähettää testiviestin."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "Kuka tahansa palvelimelle {{server}} kirjautunut, jolla on linkki, voi avata tämän projektin.",
       "roleLabel": "Linkin kautta avaavien rooli"
     },
+    "comments": {
+      "label": "Kommentit",
+      "description": "Kaikki, joilla on muokkausoikeus, voivat kommentoida tämän projektin tekstiä. Jos poistat tämän käytöstä, kommentit piilotetaan, mutta niitä ei poisteta.",
+      "serverOff": "Kommentit on poistettu käytöstä palvelimella {{server}}. Pyydä sen ylläpitäjää ottamaan ne käyttöön."
+    },
     "stop": "Lopeta jakaminen",
     "stopConfirm": {
       "title": "Lopetetaanko projektin {{name}} jakaminen?",
@@ -378,6 +492,10 @@
       "title": "Poistutaanko projektista {{name}}?",
       "description": "Kopiosi lakkaa synkronoitumasta ja jää tälle koneelle tavallisena projektina.",
       "confirm": "Poistu"
+    },
+    "accessLog": {
+      "label": "Käyttöloki",
+      "description": "Palvelin kirjaa, kuka avaa tämän projektin, liittyy siihen tai lataa siitä kopion, millä laitteella ja milloin. Vain sinä näet tämän luettelon, paneelissa Reaaliaikainen yhteistyö."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "Joku"
   },
   "tree": {
-    "here": "{{name}} on avannut tämän tiedoston"
+    "here": "{{name}} on avannut tämän tiedoston",
+    "clash": "Tiedostolla {{other}} on myös nimi {{name}}, joten tämä tiedosto sai levyllä uuden nimen."
   },
   "library": {
     "kind": "jaettu",
@@ -427,7 +546,18 @@
     "empty": "Mitään ei ole vielä tapahtunut.",
     "here": "Nyt paikalla",
     "hereIn": "Nyt tiedostossa {{path}}",
-    "away": "Ei nyt paikalla"
+    "away": "Ei nyt paikalla",
+    "deleted": "Äskettäin poistetut",
+    "deletedEmpty": "Mitään ei ole poistettu viime aikoina.",
+    "accessLog": "Käyttöloki"
+  },
+  "deleted": {
+    "restore": "Palauta",
+    "restoreLabel": "Palauta {{name}}",
+    "inFolder": "Oli kansiossa {{folder}}",
+    "inProject": "Oli projektikansiossa",
+    "byYou": "Sinä poistit",
+    "by": "Poistaja: {{name}}"
   },
   "activity": {
     "welcomeEdit": "{{owner}} jakoi tämän palvelimella {{server}}. Voit muokata.",
@@ -446,7 +576,11 @@
     "signIn": "Kirjaudu sisään",
     "repeated": "Kertoja peräkkäin: {{number}}",
     "newDevice": "{{name}} kirjautui uudella laitteella",
-    "review": "Tarkastele"
+    "review": "Tarkastele",
+    "renamed": "{{name}} nimesi tiedoston {{before}} uudelleen nimelle {{theirs}}, kun olit jo antanut sille nimen {{ours}}",
+    "mentioned": "{{name}} mainitsi sinut kommentissa tiedostossa {{path}}",
+    "mentionedHere": "{{name}} mainitsi sinut kommentissa",
+    "showComment": "Näytä kommentti"
   },
   "mergeReview": {
     "title": "Poissaolosi aikana yhdistetyt muutokset",
@@ -460,5 +594,264 @@
     "newFile": "Uusi tiedosto",
     "removedFile": "Poistettu",
     "diffLabel": "Muutokset tiedostossa {{path}}"
+  },
+  "console": {
+    "open": "Avaa hallintakonsoli",
+    "windowTitle": "Palvelimen {{name}} hallintakonsoli",
+    "title": "Hallintakonsoli",
+    "sectionsLabel": "Hallintakonsolin osiot",
+    "sections": {
+      "overview": "Yleiskatsaus",
+      "people": "Henkilöt",
+      "access": "Pääsysäännöt",
+      "projects": "Projektit",
+      "settings": "Asetukset",
+      "email": "Sähköposti",
+      "log": "Tietoturvaloki",
+      "checks": "Yhteystarkistukset"
+    },
+    "health": {
+      "label": "Palvelimen tila: {{status}}",
+      "checking": "Tarkistetaan",
+      "ok": "Kunnossa",
+      "warning": "Vaatii huomiota",
+      "unreachable": "Ei tavoitettavissa"
+    },
+    "states": {
+      "loading": "Avataan hallintakonsolia…",
+      "loadFailed": "Oleafly ei voinut avata hallintakonsolia.",
+      "unknownTitle": "Tämä palvelin ei ole listallasi",
+      "unknownDescription": "Lisää palvelin uudelleen Asetuksissa ja avaa sitten hallintakonsoli sen kortista.",
+      "signedOutTitle": "Olet kirjautunut ulos tältä palvelimelta",
+      "signedOutDescription": "Kirjaudu uudelleen sisään Asetuksissa ja avaa sitten hallintakonsoli palvelimen kortista.",
+      "refusedTitle": "Hallintakonsoli on ylläpitäjille ja valvojille",
+      "refusedDescription": "Roolisi tällä palvelimella on {{role}}. Kysy ylläpitäjältä, jos sinun täytyy hallita palvelinta."
+    },
+    "overview": {
+      "loading": "Ladataan yleiskatsausta…",
+      "health": {
+        "title": "Tila",
+        "okLabel": "Kaikki toimii",
+        "okDescription": "Ihmiset voivat kirjautua sisään, ja palvelin voi tallentaa tiedostoja.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Kukaan ei voi kirjautua sisään",
+            "description": "Määritä palvelimelle kirjautuminen GitHubilla tai OpenID:llä ja käynnistä se uudelleen. Jos palvelin lähettää sähköpostia, voit sen sijaan ottaa Kirjautuminen sähköpostilla -asetuksen käyttöön kohdassa Asetukset."
+          },
+          "storageNotWritable": {
+            "label": "Palvelin ei voi tallentaa tiedostoja",
+            "description": "Tarkista, että sen datakansio on olemassa ja että palvelin voi kirjoittaa siihen."
+          },
+          "unknown": {
+            "label": "Palvelin ilmoitti ongelmasta",
+            "description": "Päivitä Oleafly nähdäksesi, mistä on kyse."
+          }
+        }
+      },
+      "glance": {
+        "title": "Lyhyesti",
+        "people": "Henkilöt",
+        "suspended": "Jäädytetty: {{number}}",
+        "devices": "Laitteet",
+        "projects": "Jaetut projektit",
+        "projectsDetail": "Arkistoitu: {{archived}}, lähetys kesken: {{pending}}",
+        "online": "Verkossa nyt",
+        "onlineDetail": "Avoimia projekteja: {{number}}",
+        "started": "Käynnistetty",
+        "version": "Versio",
+        "protocol": "Protokolla {{protocol}}"
+      },
+      "storage": {
+        "title": "Tallennustila",
+        "adminOnly": "Vain ylläpitäjät näkevät, kuinka paljon tallennustilaa palvelin käyttää.",
+        "database": "Tietokanta",
+        "databaseDetail": "Tilit, asetukset ja loki",
+        "snapshots": "Projektien tilannevedokset",
+        "snapshotsDetail": "Tallennetut kopiot jokaisesta projektista",
+        "files": "Tiedostot",
+        "location": {
+          "disk": "Palvelimen levyllä",
+          "s3": "S3-tallennustilassa",
+          "unknown": "Muussa tallennustilassa"
+        }
+      },
+      "services": {
+        "title": "Sähköposti ja kirjautuminen",
+        "email": "Sähköposti",
+        "emailOn": "Määritetty",
+        "emailOff": "Ei määritetty",
+        "emailOnDescription": "Palvelin voi lähettää sähköpostia.",
+        "emailOffDescription": "Palvelin ei voi vielä lähettää sähköpostia, joten kukaan ei saa ilmoituksia sähköpostitse.",
+        "openEmail": "Sähköpostiasetukset",
+        "signIn": "Kirjautumistavat",
+        "signInNone": "Ei vielä yhtään. Kukaan ei voi kirjautua sisään, ennen kuin jokin tapa on määritetty.",
+        "emailLinkOption": "Sähköpostilinkki"
+      },
+      "settings": {
+        "title": "Palvelimen asetukset",
+        "on": "Käytössä",
+        "off": "Ei käytössä",
+        "change": "Muuta asetuksia"
+      },
+      "limits": "Rajat: {{project}} projektia kohden, {{file}} tiedostoa kohden, {{people}} henkilöä projektia kohden."
+    },
+    "projects": {
+      "description": "Kaikki tällä palvelimella jaetut projektit.",
+      "searchLabel": "Hae projekteja",
+      "searchPlaceholder": "Hae nimellä tai omistajalla",
+      "filterLabel": "Näytä projektit",
+      "filter": {
+        "all": "Kaikki",
+        "active": "Jaetut",
+        "archived": "Arkistoidut",
+        "pending": "Lähetys kesken"
+      },
+      "columns": {
+        "title": "Projekti",
+        "owner": "Omistaja",
+        "members": "Henkilöt",
+        "size": "Koko",
+        "activity": "Viimeisin tapahtuma",
+        "actions": "Toiminnot"
+      },
+      "sortBy": "Järjestä: {{column}}",
+      "status": {
+        "archived": "Arkistoitu",
+        "pending": "Lähetys kesken",
+        "unknown": "Tuntematon"
+      },
+      "loading": "Ladataan projekteja…",
+      "empty": "Tällä palvelimella ei ole vielä jaettuja projekteja.",
+      "noMatches": "Mikään projekti ei vastaa hakuasi.",
+      "count": "Näytetään {{shown}}/{{total}}",
+      "loadMore": "Näytä lisää",
+      "archive": "Arkistoi",
+      "archiveNamed": "Arkistoi {{title}}",
+      "restore": "Palauta",
+      "restoreNamed": "Palauta {{title}}",
+      "archiveConfirm": {
+        "title": "Arkistoidaanko {{title}}?",
+        "description": "Projektin synkronointi loppuu kaikilta, ja jokainen säilyttää oman kopionsa. Palvelin poistaa projektin {{days}} päivän kuluttua, ellet palauta sitä.",
+        "descriptionLater": "Projektin synkronointi loppuu kaikilta, ja jokainen säilyttää oman kopionsa. Palvelin poistaa arkistoidut projektit jonkin ajan kuluttua, ellet palauta niitä.",
+        "confirm": "Arkistoi projekti"
+      },
+      "adminOnly": "Vain ylläpitäjät voivat arkistoida tai palauttaa projekteja."
+    },
+    "checks": {
+      "description": "Tarkista yhteys tältä koneelta palvelimelle."
+    }
+  },
+  "links": {
+    "turnedOff": "Reaaliaikainen yhteistyö on pois päältä. Ota se käyttöön Asetusten Kokeilut-osiossa ja avaa linkki sitten uudelleen.",
+    "openSettings": "Avaa Asetukset",
+    "malformed": "Oleafly ei voi avata tätä linkkiä. Pyydä lähettäjältä uusi linkki.",
+    "opening": "Avataan jaettua projektia…",
+    "confirm": {
+      "title": "Liitytkö tähän jaettuun projektiin?",
+      "body": "Kun liityt, sinut lisätään projektiin ja sen tiedostot kopioidaan tälle koneelle. Liity vain, jos tiedät, kuka lähetti sinulle linkin.",
+      "project": "Projekti",
+      "owner": "Omistaja",
+      "server": "Palvelin",
+      "role": "Roolisi",
+      "join": "Liity"
+    }
+  },
+  "comments": {
+    "title": "Kommentit",
+    "titleUnread": "Kommentit, uutta toimintaa",
+    "add": "Lisää kommentti",
+    "showResolved": "Näytä ratkaistut kommentit",
+    "hideResolved": "Piilota ratkaistut kommentit",
+    "noFile": "Avaa tiedosto nähdäksesi sen kommentit.",
+    "empty": "Tässä tiedostossa ei ole vielä kommentteja.",
+    "emptyCanWrite": "Tässä tiedostossa ei ole vielä kommentteja. Valitse tekstiä ja valitse Lisää kommentti aloittaaksesi.",
+    "loadFailed": "Tämän tiedoston kommentteja ei voitu ladata.",
+    "detached": "Irrotetut",
+    "detachedHint": "Teksti, jota nämä kommentit koskivat, on poistettu.",
+    "resolvedBy": "Ratkaisija: {{name}}",
+    "edited": "Muokattu",
+    "deleted": "Tämä kommentti on poistettu.",
+    "newLabel": "Uusi kommentti",
+    "newPlaceholder": "Kirjoita kommentti. Mainitse joku kirjoittamalla @.",
+    "replyLabel": "Vastaus",
+    "replyPlaceholder": "Kirjoita vastaus. Mainitse joku kirjoittamalla @.",
+    "editLabel": "Muokkaa kommenttia",
+    "post": "Kommentoi",
+    "reply": "Vastaa",
+    "resolve": "Ratkaise",
+    "reopen": "Avaa uudelleen",
+    "deleteThread": "Poista keskustelu",
+    "messageActions": "Lisää toimintoja tälle kommentille",
+    "threadActions": "Lisää toimintoja tälle keskustelulle",
+    "showInEditor": "Näytä editorissa",
+    "thread": "Kommentti käyttäjältä {{name}}",
+    "mentionList": "Mainittavat henkilöt",
+    "marker": "Näytä tämän rivin kommentit",
+    "unverifiedAuthor": "Kirjoittajaa ei voitu vahvistaa",
+    "unverifiedThread": "Kommentti joltakulta, jota Oleafly ei voinut vahvistaa",
+    "resolvedUnverified": "Ratkaissut joku, jota Oleafly ei voinut vahvistaa",
+    "refusals": {
+      "notLive": "Tämä projekti ei ole nyt yhteydessä. Yritä uudelleen, kun yhteys palaa.",
+      "notYours": "Vain kommentin kirjoittaja voi muuttaa sitä.",
+      "offServer": "Kommentit on poistettu käytöstä tällä palvelimella.",
+      "offProject": "Kommentit on poistettu käytöstä tässä projektissa. Pyydä omistajaa ottamaan ne takaisin käyttöön.",
+      "viewer": "Voit lukea kommentteja täällä mutta et kirjoittaa niitä. Pyydä omistajalta muokkausoikeutta.",
+      "someoneReplied": "Joku muu vastasi, joten keskustelu säilyy. Voit sen sijaan merkitä sen ratkaistuksi.",
+      "messageDeleted": "Tämä kommentti on poistettu, joten et voi muokata sitä.",
+      "selectionChanged": "Valitsemasi teksti on muuttunut. Valitse se uudelleen ja lisää kommenttisi.",
+      "tooLong": "Tämä kommentti on liian pitkä. Lyhennä sitä ja yritä uudelleen.",
+      "empty": "Kirjoita jotain ennen lähettämistä."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} avasi projektin",
+    "joinedLink": "{{name}} liittyi linkin kautta",
+    "joinedShare": "{{name}} liittyi, kun olit jakanut projektin",
+    "downloaded": "{{name}} latasi kopion",
+    "unknown": "{{name}} käytti projektia",
+    "unknownDevice": "Tuntematon laite",
+    "span": "{{from}} ja {{to}} välillä",
+    "more": "Näytä vanhemmat",
+    "loading": "Ladataan käyttölokia…",
+    "loadFailed": "Oleafly ei voinut ladata käyttölokia.",
+    "empty": "Mitään ei ole vielä kirjattu."
+  },
+  "guests": {
+    "badge": "Vieras",
+    "invite": {
+      "noAccount": "Kukaan palvelimella {{server}} ei käytä osoitetta {{email}}. Kutsu hänet vieraaksi, niin hän näkee vain projektit, joihin hänet on kutsuttu.",
+      "button": "Kutsu vieraaksi",
+      "buttonNamed": "Kutsu {{email}} vieraaksi",
+      "duplicate": "Tällä osoitteella on jo kutsu tähän projektiin.",
+      "tooMany": "Olet lähettänyt viimeisen tunnin aikana paljon kutsuja. Yritä myöhemmin uudelleen."
+    },
+    "sent": {
+      "emailed": "Kutsu lähetetty osoitteeseen {{email}}.",
+      "emailedAfterApproval": "Ylläpitäjän täytyy hyväksyä tämä kutsu. {{email}} saa sähköpostin, kun kutsu on hyväksytty.",
+      "added": "Osoitteella {{email}} on jo tili palvelimella {{server}}, joten hänellä on nyt pääsy.",
+      "sendLink": "{{server}} ei lähetä sähköpostia, joten lähetä tämä linkki itse osoitteeseen {{email}}. Sen avulla hän lisää palvelimen ja kirjautuu sillä osoitteella.",
+      "sendLinkAfterApproval": "Ylläpitäjän täytyy ensin hyväksyä tämä kutsu. {{server}} ei lähetä sähköpostia, joten lähetä tämä linkki itse osoitteeseen {{email}}. Se toimii, kun kutsu on hyväksytty.",
+      "linkLabel": "Linkki palvelimen {{server}} lisäämiseen"
+    },
+    "list": {
+      "title": "Kutsut",
+      "status": {
+        "awaiting_approval": "Odottaa hyväksyntää",
+        "invited": "Kutsuttu",
+        "declined": "Hylätty"
+      },
+      "expires": "Vanhenee {{date}}",
+      "withdraw": "Peru",
+      "withdrawNamed": "Peru kutsu osoitteelle {{email}}"
+    },
+    "pending": {
+      "title": "Odottavat vieraat",
+      "description": "Projektien omistajat ovat kutsuneet nämä ihmiset vieraiksi. Vieras näkee vain projektit, joihin hänet on kutsuttu, eikä voi jakaa niitä.",
+      "invitedBy": "{{inviter}} kutsui heidät projektiin {{project}}",
+      "approve": "Hyväksy",
+      "approveNamed": "Hyväksy {{email}}",
+      "decline": "Hylkää",
+      "declineNamed": "Hylkää {{email}}"
+    }
   }
 }

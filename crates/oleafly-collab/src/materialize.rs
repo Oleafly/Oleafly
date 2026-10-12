@@ -94,46 +94,118 @@ fn in_trash(parents: &BTreeMap<&str, &NodeParent>, id: &str) -> bool {
     true
 }
 
-pub fn layout(nodes: &[FileNode]) -> Layout {
-    let by_id: BTreeMap<&str, &FileNode> =
-        nodes.iter().map(|node| (node.id.as_str(), node)).collect();
+type Groups<'a> = BTreeMap<(NodeParent, String), Vec<&'a FileNode>>;
+
+fn groups(nodes: &[FileNode]) -> Groups<'_> {
+    let ids: BTreeSet<&str> = nodes.iter().map(|node| node.id.as_str()).collect();
     let parents: BTreeMap<&str, &NodeParent> = nodes
         .iter()
         .map(|node| (node.id.as_str(), &node.parent))
         .collect();
-    let mut groups: BTreeMap<(NodeParent, String), Vec<&FileNode>> = BTreeMap::new();
+    let mut groups = Groups::new();
     for node in nodes {
         if in_trash(&parents, &node.id) {
             continue;
         }
         let parent = match &node.parent {
-            NodeParent::Node(parent) if !by_id.contains_key(parent.as_str()) => NodeParent::Root,
+            NodeParent::Node(parent) if !ids.contains(parent.as_str()) => NodeParent::Root,
             other => other.clone(),
         };
         let name = safe_name(&node.name, &node.id);
         groups.entry((parent, fold(&name))).or_default().push(node);
     }
-    let mut names: BTreeMap<&str, String> = BTreeMap::new();
-    for ((parent, folded), members) in groups.iter_mut() {
+    for members in groups.values_mut() {
         members.sort_by(|left, right| {
             left.position
                 .cmp(&right.position)
                 .then_with(|| left.id.cmp(&right.id))
         });
+    }
+    groups
+}
+
+const CREDIT_LIMIT: usize = 40;
+
+fn credit(author: &str) -> String {
+    let cleaned: String = author
+        .chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect();
+    cleaned
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(CREDIT_LIMIT)
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+fn credited(name: &str, node: &FileNode, first: &FileNode) -> Option<String> {
+    if node.kind != NodeKind::Blob || node.blob == first.blob {
+        return None;
+    }
+    let author = credit(node.author_name.as_deref()?);
+    if author.is_empty() {
+        return None;
+    }
+    let named = match name.rfind('.') {
+        Some(dot) if dot > 0 => format!("{} (from {author}){}", &name[..dot], &name[dot..]),
+        _ => format!("{name} (from {author})"),
+    };
+    (safe_name(&named, &node.id) == named).then_some(named)
+}
+
+struct Naming<'a> {
+    names: BTreeMap<&'a str, String>,
+    clashes: Vec<Clash>,
+}
+
+fn naming<'a>(groups: &Groups<'a>) -> Naming<'a> {
+    let mut taken: BTreeSet<(NodeParent, String)> = groups.keys().cloned().collect();
+    let mut names: BTreeMap<&str, String> = BTreeMap::new();
+    let mut clashes = Vec::new();
+    for ((parent, folded), members) in groups {
         let reserved = *parent == NodeParent::Root
             && RESERVED_TOP
                 .iter()
                 .any(|reserved| fold(reserved) == *folded);
+        let Some(first) = members.first() else {
+            continue;
+        };
         for (index, node) in members.iter().enumerate() {
             let name = safe_name(&node.name, &node.id);
-            let name = if index == 0 && !reserved {
-                name
-            } else {
-                suffixed(&name, &node.id)
-            };
-            names.insert(node.id.as_str(), name);
+            if index == 0 && !reserved {
+                names.insert(node.id.as_str(), name);
+                continue;
+            }
+            let named = credited(&name, node, first)
+                .filter(|named| index > 0 && taken.insert((parent.clone(), fold(named))))
+                .unwrap_or_else(|| suffixed(&name, &node.id));
+            if !reserved {
+                clashes.push(Clash {
+                    id: node.id.clone(),
+                    name,
+                    other: first.id.clone(),
+                });
+            }
+            names.insert(node.id.as_str(), named);
         }
     }
+    Naming { names, clashes }
+}
+
+pub fn layout(nodes: &[FileNode]) -> Layout {
+    let by_id: BTreeMap<&str, &FileNode> =
+        nodes.iter().map(|node| (node.id.as_str(), node)).collect();
+    let names = naming(&groups(nodes)).names;
     let mut placed = Layout::new();
     for node in nodes {
         let Some(path) = path_of(&node.id, &by_id, &names) else {
@@ -151,6 +223,33 @@ pub fn layout(nodes: &[FileNode]) -> Layout {
     let taken: BTreeSet<String> = placed.values().map(|entry| fold(&entry.path)).collect();
     debug_assert_eq!(taken.len(), placed.len());
     placed
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Clash {
+    pub id: String,
+    pub name: String,
+    pub other: String,
+}
+
+pub fn clashes(nodes: &[FileNode]) -> Vec<Clash> {
+    naming(&groups(nodes)).clashes
+}
+
+pub fn duplicate_blobs(nodes: &[FileNode]) -> Vec<String> {
+    let mut duplicates = Vec::new();
+    for members in groups(nodes).values() {
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        for node in members {
+            let Some(blob) = node.blob.as_deref().filter(|_| node.kind == NodeKind::Blob) else {
+                continue;
+            };
+            if !seen.insert(blob) {
+                duplicates.push(node.id.clone());
+            }
+        }
+    }
+    duplicates
 }
 
 fn path_of(
@@ -229,7 +328,99 @@ mod tests {
             kind,
             blob: None,
             position: id.to_owned(),
+            author_name: None,
         }
+    }
+
+    fn figure(id: &str, parent: NodeParent, name: &str, blob: &str, author: &str) -> FileNode {
+        FileNode {
+            blob: Some(blob.to_owned()),
+            author_name: Some(author.to_owned()),
+            ..node(id, parent, name, NodeKind::Blob)
+        }
+    }
+
+    #[test]
+    fn a_later_different_figure_with_the_same_name_is_named_for_its_creator() {
+        let figs = NodeParent::Node("d1".into());
+        let nodes = vec![
+            node("d1", NodeParent::Root, "figs", NodeKind::Dir),
+            figure("a1", figs.clone(), "plot.png", "h1", "Alice Chen"),
+            figure("b2", figs.clone(), "Plot.png", "h2", "Bob Smith"),
+            figure("c3", figs.clone(), "plot.png", "h3", "Bob Smith"),
+            figure("d4", figs, "plot.png", "h1", "Carol Diaz"),
+            figure("f6", NodeParent::Root, "notes", "h6", "Erin"),
+            figure("g7", NodeParent::Root, "notes", "h7", "Dan: Lee"),
+            figure("h8", NodeParent::Root, "notes", "h8", "   "),
+            figure("i9", NodeParent::Root, "notes", "h9", "Carol/Diaz\u{7}"),
+            node("j0", NodeParent::Root, "notes", NodeKind::Text),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["a1"].path, "figs/plot.png");
+        assert_eq!(placed["b2"].path, "figs/Plot (from Bob Smith).png");
+        assert_eq!(placed["c3"].path, "figs/plot (c3).png");
+        assert_eq!(placed["d4"].path, "figs/plot (d4).png");
+        assert_eq!(placed["f6"].path, "notes");
+        assert_eq!(placed["g7"].path, "notes (from Dan Lee)");
+        assert_eq!(placed["h8"].path, "notes (h8)");
+        assert_eq!(placed["i9"].path, "notes (from Carol Diaz)");
+        assert_eq!(placed["j0"].path, "notes (j0)");
+    }
+
+    #[test]
+    fn a_credited_name_never_takes_a_name_another_file_already_has() {
+        let nodes = vec![
+            figure("a1", NodeParent::Root, "plot.png", "h1", "Alice"),
+            figure("b2", NodeParent::Root, "plot.png", "h2", "Bob"),
+            figure("c3", NodeParent::Root, "plot (from Bob).png", "h3", "Carol"),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["a1"].path, "plot.png");
+        assert_eq!(placed["b2"].path, "plot (b2).png");
+        assert_eq!(placed["c3"].path, "plot (from Bob).png");
+    }
+
+    #[test]
+    fn clashes_name_the_original_name_and_the_file_that_kept_it() {
+        let nodes = vec![
+            node("a1", NodeParent::Root, "Main.tex", NodeKind::Text),
+            node("b2", NodeParent::Root, "main.tex", NodeKind::Text),
+            figure("c3", NodeParent::Root, "plot.png", "h1", "Alice"),
+            figure("d4", NodeParent::Root, "plot.png", "h2", "Bob"),
+            node("x9", NodeParent::Root, ".oleafly", NodeKind::Dir),
+            node("t1", NodeParent::Trash, "main.tex", NodeKind::Text),
+        ];
+        assert_eq!(
+            clashes(&nodes),
+            vec![
+                Clash {
+                    id: "b2".to_owned(),
+                    name: "main.tex".to_owned(),
+                    other: "a1".to_owned(),
+                },
+                Clash {
+                    id: "d4".to_owned(),
+                    name: "plot.png".to_owned(),
+                    other: "c3".to_owned(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn only_identical_figures_with_the_same_name_in_one_folder_are_duplicates() {
+        let figs = NodeParent::Node("d1".into());
+        let nodes = vec![
+            node("d1", NodeParent::Root, "figs", NodeKind::Dir),
+            figure("a1", figs.clone(), "plot.png", "same", "Alice"),
+            figure("b2", figs.clone(), "PLOT.png", "same", "Bob"),
+            figure("c3", figs.clone(), "plot.png", "other", "Bob"),
+            figure("d4", figs.clone(), "copy.png", "same", "Bob"),
+            figure("e5", NodeParent::Root, "plot.png", "same", "Bob"),
+            figure("f6", NodeParent::Trash, "plot.png", "same", "Bob"),
+            node("t1", figs.clone(), "plot.png", NodeKind::Text),
+        ];
+        assert_eq!(duplicate_blobs(&nodes), vec!["b2".to_owned()]);
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub fn defaults() -> RuntimeSettings {
         access_logs_allowed: true,
         email_notifications: true,
         comments_allowed: true,
+        email_link_sign_in: false,
     }
 }
 
@@ -43,6 +44,7 @@ pub fn patch(
         ("access_logs_allowed", patch.access_logs_allowed),
         ("email_notifications", patch.email_notifications),
         ("comments_allowed", patch.comments_allowed),
+        ("email_link_sign_in", patch.email_link_sign_in),
     ];
     for (key, value) in changes {
         if let Some(value) = value {
@@ -64,7 +66,7 @@ pub fn differences(before: &RuntimeSettings, after: &RuntimeSettings) -> Map<Str
         .collect()
 }
 
-fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 8] {
+fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 9] {
     [
         ("guests_enabled", settings.guests_enabled),
         ("guest_approval_required", settings.guest_approval_required),
@@ -74,6 +76,7 @@ fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 8] {
         ("access_logs_allowed", settings.access_logs_allowed),
         ("email_notifications", settings.email_notifications),
         ("comments_allowed", settings.comments_allowed),
+        ("email_link_sign_in", settings.email_link_sign_in),
     ]
 }
 
@@ -87,6 +90,7 @@ fn set_field(settings: &mut RuntimeSettings, key: &str, value: bool) {
         "access_logs_allowed" => settings.access_logs_allowed = value,
         "email_notifications" => settings.email_notifications = value,
         "comments_allowed" => settings.comments_allowed = value,
+        "email_link_sign_in" => settings.email_link_sign_in = value,
         _ => {}
     }
 }
@@ -109,7 +113,34 @@ mod tests {
             access_logs_allowed: None,
             email_notifications: None,
             comments_allowed,
+            email_link_sign_in: None,
         }
+    }
+
+    #[tokio::test]
+    async fn email_link_sign_in_starts_off_and_an_admin_can_turn_it_on() {
+        let (before, after, reloaded) = Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let before = load(conn)?;
+                let after = patch(
+                    conn,
+                    &RuntimeSettingsPatch {
+                        email_link_sign_in: Some(true),
+                        ..RuntimeSettingsPatch::default()
+                    },
+                )?;
+                Ok((before, after, load(conn)?))
+            })
+            .await
+            .unwrap();
+        assert!(!before.email_link_sign_in);
+        assert!(after.email_link_sign_in);
+        assert!(reloaded.email_link_sign_in);
+        assert_eq!(
+            serde_json::Value::Object(differences(&before, &after)),
+            serde_json::json!({"email_link_sign_in": {"from": false, "to": true}})
+        );
     }
 
     #[tokio::test]

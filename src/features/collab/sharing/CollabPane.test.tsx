@@ -18,6 +18,12 @@ import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activ
 
 const spies = vi.hoisted(() => ({ relativeTime: vi.fn(), person: vi.fn(), review: vi.fn() }));
 
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  collabTrashList: vi.fn(async () => []),
+  collabTrashRestore: vi.fn(async () => undefined),
+}));
+
 vi.mock("./MergeReviewDialog", () => ({
   MergeReviewDialog: (props: { projectId: string; entry: unknown; onClose: () => void }) => {
     spies.review(props);
@@ -263,6 +269,43 @@ describe("CollabPane", () => {
     expect(within(peopleToggle).getByText(pane.people)).toBeInTheDocument();
     expect(peopleToggle.querySelector("output")).toHaveTextContent("3");
     expect(activityToggle.querySelector("output")).toHaveTextContent("2");
+  });
+
+  it("adds Recently deleted after Activity, closed until opened", async () => {
+    render(<CollabPane />);
+    const activitySection = screen.getByTestId("collab-activity");
+    const deleted = screen.getByTestId("collab-deleted");
+    expect(activitySection.compareDocumentPosition(deleted) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const toggle = sectionToggle(pane.deleted);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByText(pane.deletedEmpty)).toBeInTheDocument();
+  });
+
+  it("says whose name won when someone renamed a file you had just renamed", () => {
+    feed([
+      {
+        kind: "renamed",
+        at: NOW,
+        accountId: BOB_ID,
+        name: "Bob Smith",
+        before: "intro.tex",
+        ours: "overview.tex",
+        theirs: "background.tex",
+        count: 1,
+      },
+      { kind: "renamed", at: NOW - 1000, accountId: null, name: "", before: "a.tex", ours: "b.tex", theirs: "c.tex", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(
+      fill(activity.renamed, { name: "Bob Smith", before: "intro.tex", theirs: "background.tex", ours: "overview.tex" }),
+    );
+    expect(rows[0].querySelector("svg.lucide-pencil-line")).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent(
+      fill(activity.renamed, { name: enCollab.toolbar.unknownPerson, before: "a.tex", theirs: "c.tex", ours: "b.tex" }),
+    );
   });
 
   it("collapses and reopens each section from its header", () => {

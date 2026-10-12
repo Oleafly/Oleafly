@@ -8,7 +8,9 @@ use oleafly_server::blobs::sha256_hex;
 use oleafly_server::config::BlobStoreConfig;
 use oleafly_server::test_support::{security_event_kinds, test_config, MockS3, MockS3Fault};
 use oleafly_server::tokens::random_token;
-use people::{call, create_project, grant, put_bytes, read, share_project, stage, stage_with};
+use people::{
+    call, create_project, first_snapshot, grant, put_bytes, read, share_project, stage, stage_with,
+};
 use reqwest::{Method, StatusCode};
 use serde_json::json;
 
@@ -40,7 +42,7 @@ async fn a_project_goes_live_only_after_its_first_snapshot() {
     assert!(listed.is_empty());
     let snapshot = format!("/api/v1/projects/{project}/snapshot?seq=0");
     assert_eq!(
-        put_bytes(server, &snapshot, bob.token(), b"snapshot".to_vec())
+        put_bytes(server, &snapshot, bob.token(), first_snapshot())
             .await
             .status(),
         StatusCode::NO_CONTENT
@@ -100,8 +102,8 @@ async fn snapshots_round_trip_and_cannot_run_ahead_of_the_log() {
         Some("0")
     );
     assert_eq!(
-        response.bytes().await.expect("bytes").as_ref(),
-        b"first snapshot"
+        response.bytes().await.expect("bytes").to_vec(),
+        first_snapshot()
     );
 }
 
@@ -316,6 +318,12 @@ async fn stopping_sharing_archives_the_project_for_everyone() {
         put_bytes(server, &path, alice.token(), b"late".to_vec())
             .await
             .status(),
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        put_bytes(server, &path, bob.token(), b"late".to_vec())
+            .await
+            .status(),
         StatusCode::CONFLICT
     );
     assert!(security_event_kinds(server)
@@ -442,7 +450,16 @@ async fn a_server_with_a_bucket_keeps_files_there_and_reports_outages() {
             .status(),
         StatusCode::NOT_FOUND
     );
-    assert_eq!(bucket.keys(), vec![key]);
+    assert_eq!(
+        bucket.keys(),
+        vec![
+            key,
+            format!(
+                "oleafly/snapshots/{project}/{}",
+                sha256_hex(&first_snapshot())
+            )
+        ]
+    );
     assert_eq!(bucket.rejections(), Vec::<String>::new());
 }
 
@@ -466,4 +483,188 @@ async fn expired_drafts_lose_their_files_from_the_bucket() {
     let report = server.state().run_maintenance().await.expect("maintenance");
     assert_eq!(report.expired_projects, 1);
     assert!(bucket.keys().is_empty());
+}
+
+#[tokio::test]
+async fn only_the_owner_turns_comments_off_for_a_project_and_everyone_sees_it() {
+    let stage = stage().await;
+    let (server, bob, alice) = (&stage.server, &stage.bob, &stage.alice);
+    let project = share_project(server, bob, "Thesis").await.project_id;
+    grant(server, bob, project, alice, ProjectRole::Editor).await;
+    let show = format!("/api/v1/projects/{project}");
+    let before: ProjectSummary =
+        read(call(server, Method::GET, &show, alice.token(), None).await).await;
+    assert!(before.comments_enabled);
+    assert_eq!(
+        call(
+            server,
+            Method::PATCH,
+            &show,
+            alice.token(),
+            Some(json!({ "comments_enabled": false }))
+        )
+        .await
+        .status(),
+        StatusCode::FORBIDDEN
+    );
+    let turned_off: ProjectSummary = read(
+        call(
+            server,
+            Method::PATCH,
+            &show,
+            bob.token(),
+            Some(json!({ "comments_enabled": false })),
+        )
+        .await,
+    )
+    .await;
+    assert!(!turned_off.comments_enabled);
+    let seen: ProjectSummary =
+        read(call(server, Method::GET, &show, alice.token(), None).await).await;
+    assert!(!seen.comments_enabled);
+    let listed: Vec<ProjectSummary> =
+        read(call(server, Method::GET, "/api/v1/projects", alice.token(), None).await).await;
+    assert!(!listed[0].comments_enabled);
+    let renamed: ProjectSummary = read(
+        call(
+            server,
+            Method::PATCH,
+            &show,
+            bob.token(),
+            Some(json!({ "title": "Thesis draft" })),
+        )
+        .await,
+    )
+    .await;
+    assert!(!renamed.comments_enabled);
+    let events = server
+        .state()
+        .db
+        .call(|conn| oleafly_server::security_log::page(conn, None, 200))
+        .await
+        .unwrap()
+        .items;
+    let changed: Vec<_> = events
+        .iter()
+        .filter(|event| event.kind == SecurityEventKind::ProjectSettingsChanged)
+        .collect();
+    assert_eq!(changed.len(), 1);
+    assert_eq!(
+        changed[0].target.as_deref(),
+        Some(project.to_string().as_str())
+    );
+    assert_eq!(changed[0].detail, json!({ "comments_enabled": false }));
+    let back_on: ProjectSummary = read(
+        call(
+            server,
+            Method::PATCH,
+            &show,
+            bob.token(),
+            Some(json!({ "comments_enabled": true })),
+        )
+        .await,
+    )
+    .await;
+    assert!(back_on.comments_enabled);
+}
+
+#[tokio::test]
+async fn an_owner_sees_member_emails_only_when_the_server_shows_them() {
+    let stage = stage().await;
+    let (server, bob, alice) = (&stage.server, &stage.bob, &stage.alice);
+    let hidden = call(
+        server,
+        Method::PATCH,
+        "/api/v1/admin/settings",
+        bob.token(),
+        Some(json!({ "directory_shows_email": false })),
+    )
+    .await;
+    assert_eq!(hidden.status(), StatusCode::OK);
+    let project = share_project(server, alice, "Thesis").await.project_id;
+    let granted: ProjectMember =
+        read(grant(server, alice, project, bob, ProjectRole::Editor).await).await;
+    assert_eq!(granted.person.email, None);
+    let members = format!("/api/v1/projects/{project}/members");
+    let listed: Vec<ProjectMember> =
+        read(call(server, Method::GET, &members, alice.token(), None).await).await;
+    assert_eq!(listed.len(), 2);
+    assert!(listed.iter().all(|member| member.person.email.is_none()));
+    let staff: Vec<ProjectMember> =
+        read(call(server, Method::GET, &members, bob.token(), None).await).await;
+    assert!(staff.iter().all(|member| member.person.email.is_some()));
+}
+
+async fn reads_after_archive(
+    server: &oleafly_server::test_support::TestServer,
+    person: &people::Person,
+    project: oleafly_collab_protocol::ids::SharedProjectId,
+    blob: &str,
+) -> Vec<StatusCode> {
+    let base = format!("/api/v1/projects/{project}");
+    let mut statuses = Vec::new();
+    for path in [
+        base.clone(),
+        format!("{base}/members"),
+        format!("{base}/devices"),
+        format!("{base}/snapshot"),
+        format!("{base}/blobs/{blob}"),
+    ] {
+        statuses.push(
+            call(server, Method::GET, &path, person.token(), None)
+                .await
+                .status(),
+        );
+    }
+    statuses.push(
+        call(
+            server,
+            Method::HEAD,
+            &format!("{base}/snapshot"),
+            person.token(),
+            None,
+        )
+        .await
+        .status(),
+    );
+    statuses
+}
+
+#[tokio::test]
+async fn after_stop_sharing_only_the_owner_and_admins_can_still_read_the_project() {
+    let stage = stage().await;
+    let (server, bob, alice) = (&stage.server, &stage.bob, &stage.alice);
+    let blob = sha256_hex(b"figure");
+    for (owner, other) in [(bob, alice), (alice, bob)] {
+        let project = share_project(server, owner, "Thesis").await.project_id;
+        grant(server, owner, project, other, ProjectRole::Editor).await;
+        let path = format!("/api/v1/projects/{project}/blobs/{blob}");
+        assert_eq!(
+            put_bytes(server, &path, owner.token(), b"figure".to_vec())
+                .await
+                .status(),
+            StatusCode::NO_CONTENT
+        );
+        let archive = format!("/api/v1/projects/{project}/archive");
+        assert_eq!(
+            call(server, Method::POST, &archive, owner.token(), None)
+                .await
+                .status(),
+            StatusCode::NO_CONTENT
+        );
+        for person in [owner, other] {
+            let expected = if person.tokens.account_id == alice.tokens.account_id
+                && owner.tokens.account_id != alice.tokens.account_id
+            {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::OK
+            };
+            let statuses = reads_after_archive(server, person, project, &blob).await;
+            assert!(
+                statuses.iter().all(|status| *status == expected),
+                "{statuses:?}"
+            );
+        }
+    }
 }

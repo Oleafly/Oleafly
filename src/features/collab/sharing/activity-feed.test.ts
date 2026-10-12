@@ -1,8 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useSettingsStore } from "@/store/settings";
+import type { CollabLiveRenamed } from "@/lib/tauri";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
 import { ALICE_ID, BOB, BOB_ID, CAROL_ID, person, projectMember, shareInfo } from "../tests/fixtures";
+const renamed = vi.hoisted(() => ({
+  handler: null as ((payload: CollabLiveRenamed) => void) | null,
+  unlisten: vi.fn(),
+}));
+
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  onCollabLiveRenamed: vi.fn(async (handler: (payload: CollabLiveRenamed) => void) => {
+    renamed.handler = handler;
+    return renamed.unlisten;
+  }),
+}));
+
 import { startCollabActivity, WELCOMED_KEY } from "./activity-feed";
 import { useCollabActivity } from "./activity-store";
 
@@ -154,6 +168,37 @@ describe("startCollabActivity", () => {
     useCollabLiveStore.setState({ newDevice: { projectId: "grant", accountId: CAROL_ID, deviceId: "phone" } });
     expect(kinds().slice(0, 2)).toEqual(["newDevice", "newDevice"]);
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ accountId: CAROL_ID, name: "" });
+  });
+
+  it("notes quietly, with a rail dot, when someone else's name for a file wins over yours", async () => {
+    joined();
+    stop = startCollabActivity();
+    await vi.waitFor(() => expect(renamed.handler).not.toBeNull());
+    useCollabActivity.getState().markRead();
+    const lost = { before: "intro.tex", ours: "overview.tex", theirs: "background.tex" };
+    renamed.handler?.({ projectId: "thesis", accountId: BOB_ID, ...lost });
+    expect(kinds()).toEqual(["welcome"]);
+    expect(useCollabRail.getState().unread).toBe(false);
+    renamed.handler?.({ projectId: "grant", accountId: BOB_ID, ...lost });
+    renamed.handler?.({ projectId: "grant", accountId: null, ...lost });
+    expect(useCollabActivity.getState().entries.slice(0, 2)).toMatchObject([
+      { kind: "renamed", accountId: null, name: "", ...lost },
+      { kind: "renamed", accountId: BOB_ID, name: "Bob Smith", ...lost },
+    ]);
+    expect(useCollabRail.getState().unread).toBe(true);
+    stop();
+    expect(renamed.unlisten).toHaveBeenCalled();
+  });
+
+  it("keeps the feed working when it cannot listen for renames", async () => {
+    const { onCollabLiveRenamed } = await import("@/lib/tauri");
+    vi.mocked(onCollabLiveRenamed).mockRejectedValueOnce(new Error("no bridge"));
+    joined();
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ role: "viewer" });
+    expect(kinds()).toEqual(["role", "welcome"]);
+    stop();
+    await Promise.resolve();
   });
 
   it("names the server when this person is signed out", () => {

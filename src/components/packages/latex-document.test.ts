@@ -38,6 +38,7 @@ const root = vi.hoisted(() => ({ resolveEffectiveMainDoc: vi.fn(() => ({ mainDoc
 vi.mock("@/lib/tex-root", () => root);
 
 import { documentPackages, insertUsepackage, latexMainDocument } from "./latex-document";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const MAIN = "\\documentclass{article}\n\\usepackage{amsmath}\n\\begin{document}\nHi\n\\end{document}\n";
 const WITH_BOOKTABS =
@@ -117,5 +118,25 @@ describe("insertUsepackage", () => {
     expect(await insertUsepackage("main.tex", "booktabs", "")).toBe("no-preamble");
     expect(files.state.writeProjectFile).not.toHaveBeenCalled();
     expect(editor.view.state.doc.toString()).toBe(MAIN);
+  });
+});
+
+describe("adding a package in a live shared project", () => {
+  it("merges the line into a closed main file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    try {
+      files.state.activePath = "refs.bib";
+      files.state.files = {};
+      backend.readFileContent.mockResolvedValue(MAIN);
+      expect(await insertUsepackage("main.tex", "geometry", "margin=1in")).toBe("file");
+      expect(files.state.writeProjectFile).toHaveBeenCalledWith(
+        "paper",
+        "main.tex",
+        MAIN.replace("{amsmath}\n", "{amsmath}\n\\usepackage[margin=1in]{geometry}\n"),
+        { base: MAIN },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

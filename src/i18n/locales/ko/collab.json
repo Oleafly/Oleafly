@@ -35,6 +35,13 @@
         "title": "{{name}}을(를) 제거할까요?",
         "description": "Oleafly가 이 서버에서 로그아웃하고 목록에서 지웁니다. 이 컴퓨터에 이미 있는 프로젝트는 그대로 남습니다.",
         "confirm": "서버 제거"
+      },
+      "emails": {
+        "label": "누군가 프로젝트를 공유하면 이메일로 알려 주기",
+        "description": "이메일에는 프로젝트 이름과 여는 링크가 들어 있습니다.",
+        "noMail": "이 서버는 이메일을 보내지 않습니다. 공유받은 프로젝트는 라이브러리의 나와 공유된 프로젝트에 계속 표시됩니다.",
+        "paused": "서버 관리자가 모든 사람의 이메일을 껐습니다.",
+        "loadFailed": "Oleafly가 이메일 설정을 불러오지 못했습니다."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "실시간 연결",
           "pass": "실시간 편집이 정상적으로 전달됩니다.",
           "fail": "사용자와 서버 사이의 무언가가 실시간 편집을 막고 있습니다. 방화벽이나 프록시 설정을 바꿔야 할 수 있습니다.",
-          "info": "실시간 편집은 전달되지만 연결하는 데 시간이 좀 걸렸습니다.",
+          "info": "이 네트워크가 일반 경로를 차단해서 실시간 편집이 더 느린 경로로 전달됩니다. 편집은 그래도 도착합니다.",
           "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "이 서버에는 아직 로그인 방법이 없습니다. 서버 관리자에게 설정을 요청하세요.",
     "waitingTitle": "브라우저를 기다리는 중",
     "waitingDescription": "열린 브라우저 창에서 로그인을 마친 다음 여기로 돌아오세요.",
+    "waitingEmailDescription": "브라우저에 이메일 주소를 입력한 다음, 보내 드리는 링크를 이 컴퓨터에서 여세요.",
     "cancel": "취소",
     "back": "뒤로",
     "doneTitle": "로그인되었습니다",
     "doneDescription": "{{server}}에 {{name}}(으)로 로그인되었습니다.",
-    "done": "완료"
+    "done": "완료",
+    "codeSignIn": "코드로 로그인",
+    "codeSignInDescription": "브라우저가 Oleafly로 돌아오지 못할 때나 다른 기기에서 로그인할 때 사용하세요.",
+    "codeRequesting": "코드를 받는 중…",
+    "codeSteps": "아무 휴대폰이나 컴퓨터에서 이 주소를 열고 코드를 입력하세요.",
+    "codeAddressLabel": "주소",
+    "codeLabel": "코드",
+    "codeExpires": "코드는 {{time}}에 만료됩니다.",
+    "codeWaiting": "로그인을 기다리는 중",
+    "codeOpen": "브라우저에서 열기",
+    "codeOffer": "브라우저가 Oleafly로 돌아오지 않았나요?",
+    "codeHint": "브라우저가 Oleafly에 연결하지 못했다면 대신 코드로 로그인하세요."
   },
   "errors": {
     "unreachable": "Oleafly가 서버에 연결하지 못했습니다. 주소와 연결 상태를 확인한 다음 다시 시도하세요.",
@@ -179,7 +198,8 @@
       "allowlist": "허용된 사람",
       "domains": "도메인",
       "settings": "서버 설정",
-      "log": "보안 로그"
+      "log": "보안 로그",
+      "email": "이메일"
     },
     "members": {
       "description": "이 서버에 로그인한 적이 있는 모든 사람입니다.",
@@ -271,9 +291,17 @@
         "label": "프로젝트 접근 로그 허용",
         "description": "프로젝트 소유자가 누가 프로젝트를 열었는지 기록을 남길 수 있습니다."
       },
+      "commentsAllowed": {
+        "label": "댓글 허용",
+        "description": "공유 프로젝트의 사람들이 텍스트에 댓글을 달고 답할 수 있습니다. 끄면 댓글이 모든 곳에서 숨겨지고 저장된 상태로 남습니다."
+      },
       "emailNotifications": {
         "label": "이메일 알림",
-        "description": "누군가 추가되거나 다른 사람이 프로젝트를 공유하면 서버가 그 사람에게 이메일을 보냅니다."
+        "description": "이 이메일을 보냅니다. 끄면 서버의 모든 사람에게 보내지 않습니다."
+      },
+      "emailLinkSignIn": {
+        "label": "이메일로 로그인",
+        "description": "이메일 주소로 보낸 링크로 로그인할 수 있습니다. 서버의 이메일 설정이 필요합니다. 누가 들어올 수 있는지는 계속 접근 규칙이 정합니다."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "도메인 규칙을 추가함",
         "domainRuleRemoved": "도메인 규칙을 제거함",
         "settingsChanged": "서버 설정을 변경함",
+        "projectShared": "프로젝트를 공유함",
+        "projectAccessGranted": "프로젝트 접근 권한을 부여함",
+        "projectAccessChanged": "프로젝트 접근 권한을 변경함",
+        "projectAccessRemoved": "프로젝트에서 사람을 제거함",
+        "projectLeft": "프로젝트에서 나감",
+        "projectLinkSharingOn": "프로젝트의 링크 공유를 켬",
+        "projectLinkSharingOff": "프로젝트의 링크 공유를 끔",
+        "projectLinkRoleChanged": "프로젝트 링크로 할 수 있는 일을 변경함",
+        "projectArchived": "프로젝트를 보관함",
+        "projectUnarchived": "보관된 프로젝트를 복원함",
+        "projectSettingsChanged": "프로젝트 설정을 변경함",
+        "projectAccessLogOn": "프로젝트 접근 로그를 켬",
+        "projectAccessLogOff": "프로젝트 접근 로그를 끔",
+        "projectCommentsOn": "프로젝트의 댓글을 켬",
+        "projectCommentsOff": "프로젝트의 댓글을 끔",
+        "projectRejoinRefused": "제거된 프로젝트에 다시 참여하려고 함",
+        "guestInvited": "게스트를 초대함",
+        "guestInvitationApproved": "게스트 초대를 승인함",
+        "guestInvitationDeclined": "게스트 초대를 거절함",
+        "guestInvitationRevoked": "게스트 초대를 취소함",
+        "guestAdmissionEnded": "게스트의 서버 접근을 종료함",
         "unknown": "기타 서버 이벤트"
+      },
+      "details": {
+        "project": "프로젝트: {{title}}",
+        "provider": "{{provider}}(으)로",
+        "providerEmailLink": "이메일 링크로",
+        "signInCode": "로그인 코드를 사용함",
+        "via": {
+          "allowlist": "허용된 사람 목록으로 허용됨",
+          "domain": "도메인 규칙으로 허용됨",
+          "setup": "설정 코드를 사용함",
+          "guest": "게스트로 허용됨",
+          "link": "프로젝트 링크로",
+          "invitation": "게스트 초대로"
+        },
+        "newAccount": "새 계정",
+        "reactivated": "계정을 다시 활성화함",
+        "reasons": {
+          "suspended": "계정이 정지됨",
+          "notAdmitted": "허용하는 접근 규칙이 없음",
+          "setupCodeInvalid": "설정 코드가 틀림",
+          "guestInvitationUnusable": "게스트 초대를 더 이상 사용할 수 없음",
+          "lockedOutIp": "한 네트워크 주소에서 시도가 너무 많음",
+          "lockedOutAddress": "한 주소로 보낸 로그인 이메일이 너무 많음",
+          "stoppedByPerson": "로그인 페이지에서 중지됨",
+          "otherBrowser": "시작한 브라우저와 다른 브라우저에서 완료됨",
+          "inactiveAccountAddress": "이메일이 제거되었거나 정지된 계정에 속함",
+          "noProjectsLeft": "남은 프로젝트가 없음"
+        },
+        "role": "역할: {{role}}",
+        "roleChange": "{{from}}에서 {{to}}(으)로",
+        "device": "기기: {{name}}",
+        "byAdmin": "관리 콘솔에서",
+        "settingOn": "{{setting}}: 켜짐",
+        "settingOff": "{{setting}}: 꺼짐"
+      }
+    },
+    "email": {
+      "description": "사람을 추가할 때, 누군가 프로젝트를 공유할 때, 계정이 새 기기에서 로그인할 때 서버가 이메일을 보냅니다.",
+      "loading": "이메일 설정을 불러오는 중…",
+      "on": {
+        "title": "이메일이 켜져 있습니다",
+        "from": "이메일은 {{from}}에서 보냅니다."
+      },
+      "off": {
+        "title": "이메일이 꺼져 있습니다",
+        "description": "이 서버에는 메일 설정이 없습니다. 이메일을 켜려면 서버에 OLEAFLY_SMTP_URL과 OLEAFLY_MAIL_FROM을 설정한 다음 다시 시작하세요.",
+        "copyPath": "그때까지는 새로 온 사람에게 이 링크를 직접 보내세요. Oleafly에 서버를 추가합니다.",
+        "address": "서버 추가에서 이 주소를 입력할 수도 있습니다:"
+      },
+      "needsSettings": "먼저 서버의 이메일을 켜세요.",
+      "lastFailure": "마지막으로 실패한 이메일: {{date}}. 메일 서버 응답:",
+      "test": {
+        "title": "테스트 이메일",
+        "description": "{{address}}(으)로 테스트 이메일을 보내 설정이 작동하는지 확인합니다.",
+        "send": "테스트 이메일 보내기",
+        "sending": "보내는 중…",
+        "sent": "{{address}}(으)로 보냈습니다. 받은편지함에 없으면 스팸함을 확인하세요.",
+        "failed": "메일 서버가 테스트 이메일을 받지 않았습니다.",
+        "noAddress": "계정에 확인된 이메일 주소가 없어서 테스트를 보낼 곳이 없습니다.",
+        "adminOnly": "관리자만 테스트 이메일을 보낼 수 있습니다."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "{{server}}에 로그인한 사람 중 링크가 있는 사람은 누구나 이 프로젝트를 열 수 있습니다.",
       "roleLabel": "링크로 여는 사람의 역할"
     },
+    "comments": {
+      "label": "댓글",
+      "description": "편집할 수 있는 사람은 누구나 이 프로젝트의 텍스트에 댓글을 달 수 있습니다. 끄면 댓글이 숨겨지지만 삭제되지는 않습니다.",
+      "serverOff": "{{server}}에서 댓글이 꺼져 있습니다. 서버 관리자에게 켜 달라고 요청하세요."
+    },
     "stop": "공유 중지",
     "stopConfirm": {
       "title": "{{name}} 공유를 중지할까요?",
@@ -378,6 +492,10 @@
       "title": "{{name}}에서 나갈까요?",
       "description": "내 사본은 더 이상 동기화되지 않고, 일반 프로젝트로 이 컴퓨터에 남습니다.",
       "confirm": "나가기"
+    },
+    "accessLog": {
+      "label": "접근 로그",
+      "description": "이 프로젝트를 연 사람, 참여한 사람, 사본을 내려받은 사람을 사용한 기기와 시간과 함께 서버가 기록합니다. 이 목록은 실시간 공동 작업 패널에서 나만 볼 수 있습니다."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "누군가"
   },
   "tree": {
-    "here": "이 파일을 열어 둔 사람: {{name}}"
+    "here": "이 파일을 열어 둔 사람: {{name}}",
+    "clash": "{{other}}의 이름도 {{name}}이어서 이 파일은 디스크에서 새 이름을 받았습니다."
   },
   "library": {
     "kind": "공유",
@@ -427,7 +546,18 @@
     "empty": "아직 활동이 없습니다.",
     "here": "지금 여기 있음",
     "hereIn": "지금 {{path}}에 있음",
-    "away": "지금 여기 없음"
+    "away": "지금 여기 없음",
+    "deleted": "최근 삭제한 항목",
+    "deletedEmpty": "최근에 삭제된 항목이 없습니다.",
+    "accessLog": "접근 로그"
+  },
+  "deleted": {
+    "restore": "복원",
+    "restoreLabel": "{{name}} 복원",
+    "inFolder": "원래 위치: {{folder}}",
+    "inProject": "원래 위치: 프로젝트 폴더",
+    "byYou": "내가 삭제함",
+    "by": "{{name}} 님이 삭제함"
   },
   "activity": {
     "welcomeEdit": "{{server}}의 {{owner}} 님이 공유했습니다. 편집할 수 있습니다.",
@@ -446,7 +576,11 @@
     "signIn": "로그인",
     "repeated": "연속 횟수: {{number}}",
     "newDevice": "{{name}} 님이 새 기기에서 로그인했습니다",
-    "review": "검토"
+    "review": "검토",
+    "renamed": "내가 {{ours}}(으)로 이름을 바꾼 뒤 {{name}} 님이 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다",
+    "mentioned": "{{name}} 님이 {{path}}의 댓글에서 회원님을 멘션했습니다",
+    "mentionedHere": "{{name}} 님이 댓글에서 회원님을 멘션했습니다",
+    "showComment": "댓글 보기"
   },
   "mergeReview": {
     "title": "자리를 비운 동안 병합된 변경 사항",
@@ -460,5 +594,264 @@
     "newFile": "새 파일",
     "removedFile": "삭제됨",
     "diffLabel": "{{path}}의 변경 사항"
+  },
+  "console": {
+    "open": "관리 콘솔 열기",
+    "windowTitle": "{{name}} 관리 콘솔",
+    "title": "관리 콘솔",
+    "sectionsLabel": "관리 콘솔 섹션",
+    "sections": {
+      "overview": "개요",
+      "people": "사용자",
+      "access": "접근 규칙",
+      "projects": "프로젝트",
+      "settings": "설정",
+      "email": "이메일",
+      "log": "보안 로그",
+      "checks": "연결 점검"
+    },
+    "health": {
+      "label": "서버 상태: {{status}}",
+      "checking": "확인 중",
+      "ok": "정상",
+      "warning": "조치 필요",
+      "unreachable": "연결 불가"
+    },
+    "states": {
+      "loading": "관리 콘솔을 여는 중…",
+      "loadFailed": "Oleafly가 관리 콘솔을 열지 못했습니다.",
+      "unknownTitle": "이 서버가 목록에 없습니다",
+      "unknownDescription": "설정에서 서버를 다시 추가한 다음 서버 카드에서 관리 콘솔을 여세요.",
+      "signedOutTitle": "이 서버에서 로그아웃되어 있습니다",
+      "signedOutDescription": "설정에서 다시 로그인한 다음 서버 카드에서 관리 콘솔을 여세요.",
+      "refusedTitle": "관리 콘솔은 관리자와 유지 관리자만 쓸 수 있습니다",
+      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요."
+    },
+    "overview": {
+      "loading": "개요를 불러오는 중…",
+      "health": {
+        "title": "상태",
+        "okLabel": "모두 정상입니다",
+        "okDescription": "사용자가 로그인할 수 있고 서버가 파일을 저장할 수 있습니다.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "아무도 로그인할 수 없습니다",
+            "description": "서버에서 GitHub 또는 OpenID 로그인을 설정한 뒤 서버를 다시 시작하세요. 서버가 이메일을 보낼 수 있다면 대신 설정에서 이메일로 로그인을 켤 수 있습니다."
+          },
+          "storageNotWritable": {
+            "label": "서버가 파일을 저장할 수 없습니다",
+            "description": "서버의 데이터 폴더가 있는지, 서버가 그 폴더에 쓸 수 있는지 확인하세요."
+          },
+          "unknown": {
+            "label": "서버가 문제를 보고했습니다",
+            "description": "어떤 문제인지 보려면 Oleafly를 업데이트하세요."
+          }
+        }
+      },
+      "glance": {
+        "title": "한눈에 보기",
+        "people": "사용자",
+        "suspended": "정지됨: {{number}}",
+        "devices": "기기",
+        "projects": "공유 프로젝트",
+        "projectsDetail": "보관됨: {{archived}}, 업로드 중: {{pending}}",
+        "online": "현재 온라인",
+        "onlineDetail": "열린 프로젝트: {{number}}",
+        "started": "시작 시각",
+        "version": "버전",
+        "protocol": "프로토콜 {{protocol}}"
+      },
+      "storage": {
+        "title": "저장소",
+        "adminOnly": "관리자만 서버의 저장소 사용량을 볼 수 있습니다.",
+        "database": "데이터베이스",
+        "databaseDetail": "계정, 설정, 로그",
+        "snapshots": "프로젝트 스냅숏",
+        "snapshotsDetail": "각 프로젝트의 저장된 사본",
+        "files": "파일",
+        "location": {
+          "disk": "서버 디스크",
+          "s3": "S3 저장소",
+          "unknown": "기타 저장소"
+        }
+      },
+      "services": {
+        "title": "이메일 및 로그인",
+        "email": "이메일",
+        "emailOn": "설정됨",
+        "emailOff": "설정 안 됨",
+        "emailOnDescription": "서버가 이메일을 보낼 수 있습니다.",
+        "emailOffDescription": "서버가 아직 이메일을 보낼 수 없어서 아무도 이메일 알림을 받지 못합니다.",
+        "openEmail": "이메일 설정",
+        "signIn": "로그인 방법",
+        "signInNone": "아직 없습니다. 로그인 방법을 설정하기 전까지는 아무도 로그인할 수 없습니다.",
+        "emailLinkOption": "이메일 링크"
+      },
+      "settings": {
+        "title": "서버 설정",
+        "on": "켜짐",
+        "off": "꺼짐",
+        "change": "설정 변경"
+      },
+      "limits": "한도: 프로젝트당 {{project}}, 파일당 {{file}}, 프로젝트당 {{people}}명."
+    },
+    "projects": {
+      "description": "이 서버에서 공유된 모든 프로젝트입니다.",
+      "searchLabel": "프로젝트 검색",
+      "searchPlaceholder": "제목이나 소유자로 검색",
+      "filterLabel": "표시할 프로젝트",
+      "filter": {
+        "all": "전체",
+        "active": "공유 중",
+        "archived": "보관됨",
+        "pending": "업로드 중"
+      },
+      "columns": {
+        "title": "프로젝트",
+        "owner": "소유자",
+        "members": "인원",
+        "size": "크기",
+        "activity": "마지막 활동",
+        "actions": "작업"
+      },
+      "sortBy": "{{column}} 기준으로 정렬",
+      "status": {
+        "archived": "보관됨",
+        "pending": "업로드 중",
+        "unknown": "알 수 없음"
+      },
+      "loading": "프로젝트를 불러오는 중…",
+      "empty": "아직 이 서버에서 공유된 프로젝트가 없습니다.",
+      "noMatches": "검색과 일치하는 프로젝트가 없습니다.",
+      "count": "{{total}}개 중 {{shown}}개 표시",
+      "loadMore": "더 보기",
+      "archive": "보관",
+      "archiveNamed": "{{title}} 보관",
+      "restore": "복원",
+      "restoreNamed": "{{title}} 복원",
+      "archiveConfirm": {
+        "title": "{{title}}을(를) 보관할까요?",
+        "description": "모든 사람의 동기화가 중지되고, 각자 자기 사본을 그대로 갖습니다. 복원하지 않으면 서버가 {{days}}일 후에 프로젝트를 삭제합니다.",
+        "descriptionLater": "모든 사람의 동기화가 중지되고, 각자 자기 사본을 그대로 갖습니다. 복원하지 않으면 서버가 보관된 프로젝트를 일정 시간이 지난 뒤 삭제합니다.",
+        "confirm": "프로젝트 보관"
+      },
+      "adminOnly": "관리자만 프로젝트를 보관하거나 복원할 수 있습니다."
+    },
+    "checks": {
+      "description": "이 컴퓨터에서 서버로의 연결을 확인합니다."
+    }
+  },
+  "links": {
+    "turnedOff": "실시간 공동 작업이 꺼져 있습니다. 설정의 실험 기능에서 켠 다음 링크를 다시 여세요.",
+    "openSettings": "설정 열기",
+    "malformed": "Oleafly에서 이 링크를 열 수 없습니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
+    "opening": "공유 프로젝트를 여는 중…",
+    "confirm": {
+      "title": "이 공유 프로젝트에 참여할까요?",
+      "body": "참여하면 프로젝트에 추가되고 프로젝트 파일이 이 컴퓨터로 복사됩니다. 링크를 보낸 사람을 아는 경우에만 참여하세요.",
+      "project": "프로젝트",
+      "owner": "소유자",
+      "server": "서버",
+      "role": "내 역할",
+      "join": "참여"
+    }
+  },
+  "comments": {
+    "title": "댓글",
+    "titleUnread": "댓글, 새 활동",
+    "add": "댓글 추가",
+    "showResolved": "해결된 댓글 보기",
+    "hideResolved": "해결된 댓글 숨기기",
+    "noFile": "파일을 열면 댓글을 볼 수 있습니다.",
+    "empty": "이 파일에는 아직 댓글이 없습니다.",
+    "emptyCanWrite": "이 파일에는 아직 댓글이 없습니다. 텍스트를 선택하고 댓글 추가를 눌러 시작하세요.",
+    "loadFailed": "이 파일의 댓글을 불러오지 못했습니다.",
+    "detached": "분리된 댓글",
+    "detachedHint": "이 댓글들이 달려 있던 텍스트가 삭제되었습니다.",
+    "resolvedBy": "{{name}} 님이 해결함",
+    "edited": "수정됨",
+    "deleted": "삭제된 댓글입니다.",
+    "newLabel": "새 댓글",
+    "newPlaceholder": "댓글을 입력하세요. @를 입력하면 다른 사람을 멘션할 수 있습니다.",
+    "replyLabel": "답글",
+    "replyPlaceholder": "답글을 입력하세요. @를 입력하면 다른 사람을 멘션할 수 있습니다.",
+    "editLabel": "댓글 수정",
+    "post": "댓글 달기",
+    "reply": "답글 달기",
+    "resolve": "해결",
+    "reopen": "다시 열기",
+    "deleteThread": "스레드 삭제",
+    "messageActions": "이 댓글의 추가 작업",
+    "threadActions": "이 스레드의 추가 작업",
+    "showInEditor": "편집기에서 보기",
+    "thread": "{{name}} 님의 댓글",
+    "mentionList": "멘션할 사람",
+    "marker": "이 줄의 댓글 보기",
+    "unverifiedAuthor": "작성자를 확인할 수 없음",
+    "unverifiedThread": "Oleafly가 확인할 수 없는 사람의 댓글",
+    "resolvedUnverified": "Oleafly가 확인할 수 없는 사람이 해결함",
+    "refusals": {
+      "notLive": "지금은 이 프로젝트가 연결되어 있지 않습니다. 다시 연결되면 다시 시도하세요.",
+      "notYours": "이 댓글은 작성한 사람만 변경할 수 있습니다.",
+      "offServer": "이 서버에서는 댓글이 꺼져 있습니다.",
+      "offProject": "이 프로젝트에서는 댓글이 꺼져 있습니다. 소유자에게 다시 켜 달라고 요청하세요.",
+      "viewer": "여기서 댓글을 읽을 수는 있지만 쓸 수는 없습니다. 소유자에게 편집 권한을 요청하세요.",
+      "someoneReplied": "다른 사람이 답글을 달아서 이 스레드는 남겨 둡니다. 대신 해결로 표시할 수 있습니다.",
+      "messageDeleted": "삭제된 댓글이라 수정할 수 없습니다.",
+      "selectionChanged": "선택한 텍스트가 바뀌었습니다. 다시 선택한 다음 댓글을 추가하세요.",
+      "tooLong": "댓글이 너무 깁니다. 줄인 다음 다시 시도하세요.",
+      "empty": "게시하기 전에 내용을 입력하세요."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} 님이 프로젝트를 열었습니다",
+    "joinedLink": "{{name}} 님이 링크로 참여했습니다",
+    "joinedShare": "{{name}} 님이 공유를 받고 참여했습니다",
+    "downloaded": "{{name}} 님이 사본을 내려받았습니다",
+    "unknown": "{{name}} 님이 프로젝트를 사용했습니다",
+    "unknownDevice": "알 수 없는 기기",
+    "span": "{{from}}부터 {{to}}까지",
+    "more": "이전 기록 보기",
+    "loading": "접근 로그를 불러오는 중…",
+    "loadFailed": "Oleafly가 접근 로그를 불러오지 못했습니다.",
+    "empty": "아직 기록된 내용이 없습니다."
+  },
+  "guests": {
+    "badge": "게스트",
+    "invite": {
+      "noAccount": "{{server}}에서 {{email}}을(를) 사용하는 사람이 없습니다. 게스트로 초대하면 초대받은 프로젝트만 볼 수 있습니다.",
+      "button": "게스트로 초대",
+      "buttonNamed": "{{email}}을(를) 게스트로 초대",
+      "duplicate": "이 주소에는 이미 이 프로젝트 초대가 있습니다.",
+      "tooMany": "지난 한 시간 동안 초대를 많이 보냈습니다. 나중에 다시 시도하세요."
+    },
+    "sent": {
+      "emailed": "{{email}}(으)로 초대 메일을 보냈습니다.",
+      "emailedAfterApproval": "이 초대는 관리자의 승인이 필요합니다. 승인되면 {{email}}(으)로 메일이 갑니다.",
+      "added": "{{email}}은(는) 이미 {{server}} 계정이 있어서 지금 바로 접근할 수 있습니다.",
+      "sendLink": "{{server}}은(는) 메일을 보내지 않으므로 이 링크를 {{email}}에게 직접 보내세요. 상대는 이 링크로 서버를 추가하고 그 주소로 로그인합니다.",
+      "sendLinkAfterApproval": "이 초대는 먼저 관리자의 승인이 필요합니다. {{server}}은(는) 메일을 보내지 않으므로 이 링크를 {{email}}에게 직접 보내세요. 초대가 승인되면 링크가 작동합니다.",
+      "linkLabel": "{{server}} 추가 링크"
+    },
+    "list": {
+      "title": "초대",
+      "status": {
+        "awaiting_approval": "승인 대기 중",
+        "invited": "초대됨",
+        "declined": "거절됨"
+      },
+      "expires": "{{date}}에 만료",
+      "withdraw": "취소",
+      "withdrawNamed": "{{email}} 초대 취소"
+    },
+    "pending": {
+      "title": "대기 중인 게스트",
+      "description": "프로젝트 소유자가 이 사람들을 게스트로 초대했습니다. 게스트는 초대받은 프로젝트만 볼 수 있고 공유할 수 없습니다.",
+      "invitedBy": "{{inviter}} 님이 {{project}}에 초대했습니다",
+      "approve": "승인",
+      "approveNamed": "{{email}} 승인",
+      "decline": "거절",
+      "declineNamed": "{{email}} 거절"
+    }
   }
 }

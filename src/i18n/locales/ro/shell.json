@@ -1442,5 +1442,13 @@
     "compiling": "Se compilează",
     "hideLog": "Ascunde jurnalul de compilare",
     "showLog": "Arată jurnalul de compilare"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fișier s-a schimbat în afara Oleafly. Trimiți această modificare tuturor sau o păstrezi local?",
+    "paused_few": "{{count}} fișiere s-au schimbat în afara Oleafly. Trimiți aceste modificări tuturor sau le păstrezi local?",
+    "paused_other": "{{count}} de fișiere s-au schimbat în afara Oleafly. Trimiți aceste modificări tuturor sau le păstrezi local?",
+    "send": "Trimite",
+    "keepLocal": "Păstrează local",
+    "unavailable": "Folderul proiectului nu este disponibil, așa că sincronizarea e în pauză. Pornește din nou când folderul revine."
   }
 }

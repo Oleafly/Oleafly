@@ -16,9 +16,11 @@ The server keeps everything in one folder, set by `OLEAFLY_DATA_DIR`:
 
 - **Accounts.** Each member's display name, avatar address, verified email addresses, and their user ID and login at the sign-in provider. The server never sees or stores a password.
 - **Devices.** Each computer that signed in: its name, operating system, public key, and when it was last seen. Sign-in tokens are stored only as hashes.
-- **The security log.** Sign-ins, refused sign-ins, devices added and signed out, members and roles changed, and settings changed, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
+- **The security log.** Sign-ins and refused sign-ins, devices added and signed out, changes to members, roles and settings, projects shared, archived and restored, changes to who can open a project, and guest invitations, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
 - **Server settings** that admins change in Oleafly.
-- **Shared projects**, once project sharing arrives in a later version. Every file and the full history of changes. When an owner stops sharing a project, the server will keep it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then delete it.
+- **Project access logs**, for projects whose owner turns one on: who opened the project, joined it or downloaded a copy, with the device name and the time. Only the project's owner can read it. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted, as in the security log.
+- **Guest invitations**: the invited email address, the project, the role and who sent it. Answered and expired invitations are deleted `OLEAFLY_SECURITY_LOG_DAYS` days after they were answered or expired.
+- **Shared projects.** Every file and the full history of changes. Files a project no longer uses, such as the old copy of a figure someone replaced, are deleted 30 days after the project last used them. A file uploaded for a change that hasn't reached the server yet is kept for those 30 days as well. When an owner stops sharing a project, the server keeps it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then deletes it. In that time only the owner and any admins in the project can download it.
 
 **Projects are not encrypted on the server.** Anyone who can read the data folder, the machine's disk or your backups can read every project stored there. That includes whoever runs the machine and the company that hosts it. Inside Oleafly the rules are stricter: no server role, admin included, can open a project unless the project's owner added them. If you need to keep a project away from the people who run a server, run your own server for it.
 
@@ -28,9 +30,9 @@ Every member's computer also keeps a full copy of each project shared with them.
 
 You need:
 
-- A Linux machine that stays on. A small virtual machine is enough to start. Keep an eye on its memory and disk as your projects grow.
-- A domain name for the server, such as `collab.example.org`, with a DNS record pointing at the machine. If the machine has no public address, read [Without a public address](#without-a-public-address).
-- At least one sign-in provider. Read [Sign-in providers](#sign-in-providers).
+- A Linux machine that stays on, or an account with a hosting service such as Render or Railway. A small virtual machine is enough to start. Keep an eye on its memory and disk as your projects grow.
+- A domain name for the server, such as `collab.example.org`, with a DNS record pointing at the machine. Render and Railway give you an address if you don't have one. If the machine has no public address, read [Without a public address](#without-a-public-address).
+- A way for people to sign in: at least one sign-in provider, or an email account the server can send from. Read [Sign-in providers](#sign-in-providers).
 
 Then pick how to run it:
 
@@ -38,7 +40,10 @@ Then pick how to run it:
 | --- | --- |
 | [Docker Compose](#docker-compose) | Any machine with Docker. Caddy gets the HTTPS certificate for you. |
 | [Coolify](#coolify) | You already run a Coolify server. |
+| [Render](#render) or [Railway](#railway) | You'd rather pay a hosting service than look after a machine. |
 | [Linux without Docker](#linux-without-docker) | A university virtual machine where you can't use Docker. |
+
+The server runs on x86-64 and ARM machines. Each release is published as a container image, `ghcr.io/oleafly/oleafly-server`, and as a single Linux program on the [releases page](https://github.com/Oleafly/Oleafly/releases).
 
 ## Settings
 
@@ -67,10 +72,12 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. | `200` |
 | `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
-| `OLEAFLY_BEHIND_PROXY` | Trust the client address that a proxy in front of the server passes on. Read [Behind a university proxy](#behind-a-university-proxy). The Compose and Coolify files turn it on. | `false` |
-| `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. | `info` |
-| `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries. | `365` |
+| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half the container's memory limit, or `1024` without a limit |
+| `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
+| `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. Libraries the server uses only log warnings unless you pick `debug` or `trace`. | `info` |
+| `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries, project access log entries and answered or expired guest invitations. | `365` |
 | `OLEAFLY_ARCHIVE_DAYS` | How many days to keep a project after its owner stops sharing it. | `30` |
+| `OLEAFLY_POLL_HOLD_SECONDS` | How long the server keeps a long-polling request open when no edits are waiting, from 1 to 40 seconds. Keep it a few seconds under the idle timeout of any proxy in front of the server. Read [When WebSocket connections are blocked](#when-websocket-connections-are-blocked). | `25` |
 
 In the Compose `.env` file, put a value in single quotes if it contains `$` or `#`.
 
@@ -80,7 +87,7 @@ Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SE
 
 ### Files in a bucket
 
-By default the server keeps files in `OLEAFLY_DATA_DIR`. It can keep them in Amazon S3 instead, or in another store with an S3-compatible API, such as MinIO or Cloudflare R2. The database and project snapshots stay in `OLEAFLY_DATA_DIR` either way, so the server still needs its data folder.
+By default the server keeps files in `OLEAFLY_DATA_DIR`. It can keep them in Amazon S3 instead, or in another store with an S3-compatible API, such as MinIO or Cloudflare R2. Project snapshots are stored in the same place as files. The database stays in `OLEAFLY_DATA_DIR` either way, so the server still needs its data folder.
 
 1. Create a bucket and block public access to it.
 2. Create a key that can read, write and delete objects in that bucket and nothing else. On Amazon S3 that means `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::lab-bucket/*`, or on `arn:aws:s3:::lab-bucket/oleafly/*` if you use a folder.
@@ -97,7 +104,15 @@ For a store other than Amazon S3, also set `OLEAFLY_S3_ENDPOINT` to its address,
 
 The part after the bucket name is an optional folder. Each file is named after its SHA-256 hash and sits under the first two characters of that hash, so a file whose hash starts with `3f9a` is stored as `oleafly/3f/3f9a...`. When the server reads a file back, it checks the bytes against the hash and refuses a file that doesn't match.
 
-If a setting is missing or malformed, the server doesn't start and says which one. If the bucket refuses a request or doesn't answer in time, that upload or download fails, and the server log shows what the bucket said, such as `403 Forbidden (AccessDenied)`.
+Project snapshots have their own `snapshots` folder with a folder for each project, so a snapshot is stored as `oleafly/snapshots/<project id>/<hash>`. The server checks a snapshot against its hash when it reads it, the same as a file. Without a bucket, the same layout is in the `blobs` folder inside `OLEAFLY_DATA_DIR`.
+
+When a project is shared, the owner's app uploads its first snapshot and signs it with that device's key. From then on the server builds every snapshot itself. It starts from the previous snapshot and adds the changes people sent since. A new snapshot is built once a project has 1,000 changes past the last one. The server always keeps at least the last 2,000 changes, so a device that was away for a short time catches up from those changes and doesn't download the whole project again. Old snapshots that nothing needs are removed as soon as a newer one is stored.
+
+Building a snapshot needs about ten times the size of the previous snapshot plus the changes since it. The server only starts a build that fits in `OLEAFLY_SNAPSHOT_MEMORY_MB`, and builds running at the same time share that amount. If a build doesn't fit, the server skips it, logs how much memory it needs, and keeps all the project's changes. Devices then catch up from those changes a few megabytes at a time. Raise the setting and the next snapshot gets built. The server also won't store a snapshot larger than `OLEAFLY_MAX_PROJECT_MB`.
+
+Every change records which internal writer ids it adds text under. The server ties each writer id to the first device that used it. It refuses a change that adds text under a writer id another device already used, and it refuses anything that isn't a valid document change. Apps check the same rule before they apply a change. They also read the list of writer ids from `GET /api/v1/projects/{id}/peers` to tell who wrote each comment.
+
+If a setting is missing or malformed, the server doesn't start and says which one. If the bucket refuses a request, that upload or download fails and the server log shows what the bucket said, such as `403 Forbidden (AccessDenied)`. A server error, a timeout or a dropped connection is different: the server tries the request up to three times, with a short random pause in between. A download gives up when the bucket hasn't started answering after 10 seconds, or when the whole object takes longer than 30 seconds plus one second for every 256 KB. If the server can't delete an object, it writes that down and tries again at each maintenance pass, every 6 hours, so an outage doesn't leave objects behind.
 
 ## Docker Compose
 
@@ -140,6 +155,8 @@ Docker opens ports 80 and 443 itself, even when a host firewall such as `ufw` is
 
 If you change the `Caddyfile`, run `docker compose up -d --force-recreate caddy`.
 
+To copy the database to a bucket as it changes, add the Litestream service. Read [Continuous copies with Litestream](#continuous-copies-with-litestream).
+
 To keep the GitHub client secret out of `.env`, pass it as a Docker secret. Save the secret with your editor in `secrets/github_client_secret` next to `docker-compose.yml`, let the server's user (ID 10001) read it, and delete the `OLEAFLY_GITHUB_CLIENT_SECRET` line from `.env`:
 
 ```sh
@@ -166,22 +183,99 @@ Run `docker compose up -d` again.
 
 ## Coolify
 
-Coolify builds the server from the Oleafly repository and puts its own proxy in front, so this setup has no Caddy.
+Coolify puts its own proxy in front of the server and gets the certificate, so this setup has no Caddy. Coolify can build the server from the Oleafly repository, or run the [published image](#deploy-the-published-image), which skips the build.
 
-1. In your Coolify project, select **+ New** and choose the public repository `https://github.com/Oleafly/Oleafly` on the branch `main`.
-2. Under **General › Build pipeline**, set **Build strategy** to **Compose**, **Base Directory** to `/`, and **Docker Compose Location** to `/deploy/server/docker-compose.coolify.yml`.
-3. Under **Advanced › Build**, set **Build arguments** to **Managed manually in Dockerfile**. The server's image needs no build arguments, and this keeps your secrets out of the build.
-4. Under **Domains**, add a domain for the `oleafly-server` service: `https://collab.example.org:8080`. The `:8080` tells Coolify's proxy which port the container listens on. People still connect on the normal HTTPS port. Coolify fills in `OLEAFLY_PUBLIC_URL` from this domain.
-5. Under **Environment Variables**, set `OLEAFLY_SERVER_NAME` and a [sign-in provider](#sign-in-providers). Leave the ones you don't use empty.
-6. Select **Deploy**. When it finishes, look for `Setup code` in the logs of the `oleafly-server` service and [become the first admin](#become-the-first-admin).
+Before you start, point your domain's DNS record, such as `collab.example.org`, at the Coolify server. Then create the GitHub OAuth app as described under [GitHub](#github), with the callback address `https://collab.example.org/auth/callback/github`, and keep its client ID and secret at hand.
+
+### Build from the repository
+
+1. In your Coolify project, select **+ New**, then **Public Repository**, and enter `https://github.com/Oleafly/Oleafly`. Keep the branch `main`.
+2. Set **Build Pack** to **Docker Compose**, **Base Directory** to `/` and **Docker Compose Location** to `/deploy/server/docker-compose.coolify.yml`, then select **Continue**.
+3. Under **Advanced › Build**, set **Build arguments** to **Managed manually in Dockerfile**. The server's image needs no build arguments. Left on automatic, Coolify writes every variable, secrets included, into the image's build history.
+4. Under **General**, set the domain of `oleafly-server` to `https://collab.example.org:8080` and save. The `:8080` tells Coolify's proxy which port the server listens on. People still connect on the usual HTTPS port, and Coolify sets `OLEAFLY_PUBLIC_URL` to `https://collab.example.org` for you.
+5. Under **Environment Variables**, fill in `OLEAFLY_SERVER_NAME`, which Coolify marks as required, then `OLEAFLY_GITHUB_CLIENT_ID` and `OLEAFLY_GITHUB_CLIENT_SECRET`. Leave the variables you don't use empty. [Settings](#settings) explains each one.
+6. Select **Deploy**. The first build compiles the server and takes a few minutes. When it's done, Coolify shows the resource as running and healthy.
+7. Open `https://collab.example.org/healthz` in a browser. It shows `{"status":"ok"}`.
+8. Open **Logs**, choose the `oleafly-server` container, and copy the code from the newest line that starts with `Setup code:`.
+9. In Oleafly, open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
+
+If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
 
 The Coolify file has room for GitHub and one OpenID Connect provider named `UNIVERSITY`. Set `OLEAFLY_OIDC_UNIVERSITY_LABEL` to the text people should see, such as `GitLab`. Its callback address ends in `/auth/callback/university`. For more providers, deploy from a fork with your own copy of the file.
 
-The data lives in a Docker volume whose name ends in `oleafly-data`. Find it with `docker volume ls --filter name=oleafly-data`.
+The data lives in a Docker volume whose name ends in `oleafly-data`. Find it with `docker volume ls --filter name=oleafly-data`. The image has no shell, so Coolify's **Terminal** can't open one in the server's container. Logs and the health check work as usual.
+
+### Deploy the published image
+
+Each server release is published as `ghcr.io/oleafly/oleafly-server`, for x86-64 and ARM. Running it skips the build, which suits a small Coolify server.
+
+Follow the steps above with two changes. In step 2, set **Docker Compose Location** to `/deploy/server/docker-compose.coolify-image.yml`. Skip step 3, because nothing gets built. The file asks for the `0.1` tag, so each **Redeploy** pulls the newest `0.1` release.
+
+## Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Oleafly/Oleafly)
+
+The button reads [`render.yaml`](../render.yaml) from the Oleafly repository. It creates one web service from the published image, with a 1 GB disk for the data folder. Render attaches disks only to paid instance types, so the service starts on the smallest paid one, in Render's Oregon region. For another region, deploy from a fork with `region` set in `render.yaml`.
+
+1. Select the button and sign in to Render.
+2. Render asks for `OLEAFLY_SERVER_NAME` and the GitHub client ID and secret. Fill in the name and leave the GitHub fields empty for now. Their callback address depends on the service's address, which you don't have yet.
+3. Select **Deploy Blueprint**. Once the service is live, its page shows its address, such as `https://oleafly-server.onrender.com`. The Blueprint sets `OLEAFLY_PUBLIC_URL` to that address.
+4. Create the GitHub OAuth app as described under [GitHub](#github), with that address followed by `/auth/callback/github` as the callback address. Add the client ID and secret under the service's **Environment**. Render restarts the server with them.
+5. Find the newest `Setup code:` line in the service's **Logs** and [become the first admin](#become-the-first-admin).
+
+If you give the service your own domain, set `OLEAFLY_PUBLIC_URL` to it under **Environment** and change the callback address at GitHub to match.
+
+Because of the disk, Render stops the running server before it starts the new one, so each deploy takes the server away for a few seconds. Oleafly reconnects by itself.
+
+## Railway
+
+Railway runs the published image, with a volume for the data folder.
+
+1. In a Railway project, select **+ New**, then **Docker Image**, and enter `ghcr.io/oleafly/oleafly-server:0.1`. Railway may start a first deploy straight away. It stops with `OLEAFLY_PUBLIC_URL is not set`, which is expected at this point.
+2. Open the service. Under **Settings › Networking**, select **Generate Domain** and enter port `8080`. Railway shows the address, such as `oleafly-server-production.up.railway.app`.
+3. Under **Settings › Deploy**, set **Healthcheck Path** to `/readyz`.
+4. Right-click the project canvas, add a volume, attach it to the server's service and set its mount path to `/data`.
+5. Under **Variables**, open the **Raw Editor** and paste these lines with your own server name. For the GitHub values, follow [GitHub](#github). The callback address is your address from step 2 with `https://` in front and `/auth/callback/github` after it, such as `https://oleafly-server-production.up.railway.app/auth/callback/github`.
+
+   ```ini
+   OLEAFLY_PUBLIC_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
+   OLEAFLY_BIND=0.0.0.0:8080
+   OLEAFLY_DATA_DIR=/data
+   OLEAFLY_BEHIND_PROXY=true
+   OLEAFLY_SERVER_NAME=Smith Lab
+   OLEAFLY_GITHUB_CLIENT_ID=Ov23liExampleClientId
+   OLEAFLY_GITHUB_CLIENT_SECRET=example-client-secret
+   PORT=8080
+   RAILWAY_RUN_UID=0
+   ```
+
+   Railway mounts volumes as root. `RAILWAY_RUN_UID=0` runs the server as root so it can write to the volume.
+
+6. Deploy the changes. Find the newest `Setup code:` line in the service's **Deploy Logs** and [become the first admin](#become-the-first-admin).
 
 ## Linux without Docker
 
 On a machine without Docker, the server runs as a single program under systemd, with Caddy in front for HTTPS.
+
+### Download the server
+
+Each server release on GitHub has a ready-built program for x86-64 and for ARM, and a `SHA256SUMS` file to check it against. It needs nothing else installed. Set `version` to the release you want, and on an ARM machine set `target` to `aarch64-unknown-linux-musl`:
+
+```sh
+version=0.1.0
+target=x86_64-unknown-linux-musl
+base="https://github.com/Oleafly/Oleafly/releases/download/server-v$version"
+curl -fLO "$base/oleafly-server-$version-$target.tar.gz"
+curl -fLO "$base/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+tar -xzf "oleafly-server-$version-$target.tar.gz"
+sudo install -m 0755 "oleafly-server-$version-$target/oleafly-server" /usr/local/bin/oleafly-server
+oleafly-server --version
+```
+
+The archive also holds the systemd unit, `oleafly-server.service`, so you can install it from the unpacked folder in [Run it with systemd](#run-it-with-systemd) instead of from `deploy/server`. With the GitHub CLI installed, `gh attestation verify "oleafly-server-$version-$target.tar.gz" --repo Oleafly/Oleafly` also checks that GitHub built the archive from the Oleafly repository.
+
+To build the program yourself instead, follow the next section.
 
 ### Build the server
 
@@ -260,50 +354,129 @@ collab.example.org {
 }
 ```
 
-If your university already runs the web server in front, read the next section instead.
+For nginx or Apache, or if your university already runs the web server in front, read [Behind a reverse proxy](#behind-a-reverse-proxy).
 
-## Behind a university proxy
+<a name="behind-a-university-proxy"></a>
 
-When your university's web server handles HTTPS and forwards requests to Oleafly Server:
+## Behind a reverse proxy
 
-- Run the server where only the proxy can reach it. On the same machine, use `OLEAFLY_BIND=127.0.0.1:8080`.
-- Set `OLEAFLY_BEHIND_PROXY=true`. The server then takes the client's address from `X-Forwarded-For`. Turn it on only when every request comes through the proxy. Otherwise anyone can put a fake address in the security log.
-- If the server lives under a path, include the path in `OLEAFLY_PUBLIC_URL`, for example `https://www.cs.example.edu/oleafly`, and in the callback addresses you register with sign-in providers. The server answers both with and without that path, so your proxy can pass it on or strip it, whichever suits its configuration.
+The server speaks plain HTTP, so something in front of it handles HTTPS: Caddy in the Compose setup, Coolify's proxy, or a web server you already run, such as your university's. Whatever sits in front has to:
 
-The proxy has to:
+- accept requests as large as `OLEAFLY_MAX_PROJECT_MB`,
+- add the client's address to `X-Forwarded-For`.
 
-- pass WebSocket upgrades through,
-- set `X-Forwarded-For` to the client's address,
-- let WebSocket connections stay open for a long time, at least an hour,
-- accept requests as large as `OLEAFLY_MAX_PROJECT_MB`.
+It should also pass WebSocket upgrades through to `/ws` and keep those connections open for at least an hour. Live editing uses them when it can. If they're blocked, live editing still works over slower HTTP long-polling. Read [When WebSocket connections are blocked](#when-websocket-connections-are-blocked).
 
-For nginx, this example keeps the path. Put the `map` block in the `http` section:
+Run the server where only the proxy can reach it. On the same machine, set `OLEAFLY_BIND=127.0.0.1:8080`. Then set `OLEAFLY_BEHIND_PROXY=true`.
+
+### When WebSocket connections are blocked
+
+Live editing normally runs over a WebSocket connection to `/ws`. Some networks block those, often a university or company network with a filtering proxy. Live editing still works there, just more slowly. When two WebSocket attempts in a row fail while the server still answers over HTTPS, Oleafly switches to HTTP long-polling. It sends edits to `/api/v1/projects/<project>/frames` and waits for other people's edits on `/api/v1/projects/<project>/poll`, holding each request open for up to 25 seconds, or for `OLEAFLY_POLL_HOLD_SECONDS` if you set it. Every edit still arrives. Oleafly tries a WebSocket again every minute and goes back to it as soon as one connects.
+
+**Test connection** in Oleafly and **Connection checks** in the [admin console](#admin-console) say when this happens: "Live edits take a slower route because this network blocks the usual one. They still arrive."
+
+If you run the proxy in front of the server, pass WebSocket upgrades through anyway. Long-polling works, but each batch of edits costs an extra request and a little more delay.
+
+Some proxies close a request that stays quiet for less than 30 seconds, nginx with a short `proxy_read_timeout` for one. They answer those long-polling requests with a 502 or 504 error, and edits arrive late. Set `OLEAFLY_POLL_HOLD_SECONDS` a few seconds under that timeout, such as `8` for a 10-second timeout.
+
+### What `OLEAFLY_BEHIND_PROXY` changes
+
+The server notes a client address in two places: the security log, and the limits on how often one address can start a sign-in or open a live connection. Sign-ins from one address allow a burst of 60, then one a second. Live connections have their own, larger limit, so a whole class behind one address can reconnect at once after a restart and still sign in. Only connections that fail to prove their session use it up: a burst of 300, then ten a second. A connection that proves its session counts against its own device instead, which can reconnect 60 times in a burst, then once a second. The server also pings each live connection every 30 seconds. It closes a connection that leaves those pings unanswered for 90 seconds, and one that stops reading what the server sends.
+
+Without the setting, the server uses the address of whatever connected to it. Behind a proxy that is always the proxy, so everyone shares one limit and the security log shows only the proxy's address.
+
+With `OLEAFLY_BEHIND_PROXY=true`, the server reads the `X-Forwarded-For` header and uses the last address in it, which is the one your proxy added. If the header is missing or holds no valid address, the server falls back to the connecting address. Nothing else changes. The server ignores `X-Forwarded-Proto`, `X-Forwarded-Host` and `Forwarded`, and builds every address it hands out from `OLEAFLY_PUBLIC_URL`.
+
+Turn it on only when every request comes through your proxy. If people can also reach the server directly, anyone can send a made-up `X-Forwarded-For`, put any address in the security log and get around the sign-in limit.
+
+With two proxies in a row, for example Cloudflare's proxy in front of your own, the last address is the outer proxy's, and the security log fills up with Cloudflare's addresses. Set up the inner proxy to trust the outer one and pass on the visitor's address, or use [Cloudflare Tunnel](#without-a-public-address), which connects to the server directly.
+
+### Caddy
+
+Caddy passes WebSocket connections and `X-Forwarded-For` through without extra settings, and gets the certificate itself. [Put HTTPS in front](#put-https-in-front) has the whole `Caddyfile`.
+
+### nginx
+
+Get a certificate for the domain first, for example with certbot. Then save this as `/etc/nginx/conf.d/oleafly.conf` and run `sudo nginx -t && sudo systemctl reload nginx`:
 
 ```nginx
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
 }
-```
 
-and the `location` block in your `server` block:
+server {
+    listen 443 ssl;
+    server_name collab.example.org;
+    ssl_certificate /etc/letsencrypt/live/collab.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/collab.example.org/privkey.pem;
 
-```nginx
-location /oleafly/ {
-    proxy_pass http://127.0.0.1:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
-    proxy_set_header X-Forwarded-For $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_read_timeout 1h;
-    proxy_send_timeout 1h;
-    client_max_body_size 200m;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+        client_max_body_size 200m;
+    }
 }
 ```
 
-If your university signs its own certificates, for the proxy or for its sign-in service, install its certificate authority on the server's machine (or, with Docker, in the server's image) and on every computer that runs Oleafly. Both trust the operating system's certificates as well as the usual public ones.
+`client_max_body_size` matches the default `OLEAFLY_MAX_PROJECT_MB` of 200. If you raise one, raise the other.
+
+### Apache
+
+You need Apache 2.4.47 or newer, which Debian 12 and Ubuntu 22.04 and later have. Turn on the modules:
+
+```sh
+sudo a2enmod proxy proxy_http ssl
+```
+
+Save this as `/etc/apache2/sites-available/oleafly.conf`, then run `sudo a2ensite oleafly && sudo systemctl reload apache2`:
+
+```apache
+<VirtualHost *:443>
+    ServerName collab.example.org
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/collab.example.org/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/collab.example.org/privkey.pem
+
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:8080/ upgrade=websocket timeout=3600
+    ProxyPassReverse / http://127.0.0.1:8080/
+</VirtualHost>
+```
+
+`upgrade=websocket` passes WebSocket connections through and `timeout=3600` keeps them open for an hour. Apache adds the client's address to `X-Forwarded-For` by itself.
+
+### Under a path
+
+If the server lives under a path, include the path in `OLEAFLY_PUBLIC_URL`, for example `https://www.cs.example.edu/oleafly`, and in the callback addresses you register with sign-in providers. The server answers both with and without that path, so your proxy can pass it on or strip it, whichever suits its configuration. With nginx, use `location /oleafly/ {` with the same lines inside, and keep `proxy_pass http://127.0.0.1:8080;` without a path so nginx passes the path on.
+
+### Certificates your university signs
+
+If your university signs its own certificates, for the proxy or for its sign-in service, the server has to trust that certificate authority. So does every computer that runs Oleafly.
+
+Without Docker, add it to the operating system. On Debian and Ubuntu, copy it into `/usr/local/share/ca-certificates/` with a name ending in `.crt` and run `sudo update-ca-certificates`.
+
+The Docker image has no package manager, so give it a certificate list that includes yours. Next to `docker-compose.yml`, on a Debian or Ubuntu machine:
+
+```sh
+cat /etc/ssl/certs/ca-certificates.crt university-ca.pem > ca-bundle.pem
+chmod 644 ca-bundle.pem
+```
+
+Then add the file to the server in `docker-compose.override.yml` and run `docker compose up -d` again:
+
+```yaml
+services:
+  oleafly-server:
+    volumes:
+      - ./ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
+```
 
 ## Without a public address
 
@@ -325,12 +498,17 @@ If the machine has no public address, for example a computer in your lab behind 
    ```
 
 5. Back in the dashboard, open the tunnel. Under **Routes**, select **Add route**, then **Published application**. Under **Hostname**, enter the subdomain and pick your domain. Set **Service URL** to `http://oleafly-server:8080` and select **Add route**.
+6. Check that it answers at `https://collab.example.org/healthz`, then [become the first admin](#become-the-first-admin).
+
+On a machine without Docker, install `cloudflared` from [Cloudflare's package repository](https://pkg.cloudflare.com/), run `sudo cloudflared service install` followed by the token, and set **Service URL** to `http://127.0.0.1:8080`.
+
+Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. On its Free and Pro plans it refuses requests larger than 100 MB, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
 
 When you update the server later, name the service so Caddy stays off: `docker compose up -d --build oleafly-server`.
 
 ## Sign-in providers
 
-People sign in through providers you configure, so the server never handles passwords. Configure at least one. Each provider sends people back to a callback address on your server:
+People sign in through providers you configure, so the server never handles passwords. Configure at least one, or set up [email](#email) and turn on [sign-in by email link](#sign-in-by-email-link). Each provider sends people back to a callback address on your server:
 
 `https://collab.example.org/auth/callback/<provider>`
 
@@ -380,6 +558,33 @@ Allowlist entries and domain rules only match verified email addresses. The serv
 
 Some institutional providers leave that claim out. If yours does, and it only hands out addresses your institution controls, set `OLEAFLY_OIDC_<NAME>_TRUST_EMAIL=true`. Never set it for a provider where people can type in any email address they like, because anyone could then sign in as someone on your allowlist.
 
+### Sign in by email link
+
+People can also sign in with a link the server emails them, so they don't need a GitHub or OpenID Connect account. This needs [email](#email). Then an admin turns on **Sign in by email** under **Settings** in the [admin console](#admin-console). It's off by default.
+
+1. In **Add server**, the person selects **Continue with Email**. Oleafly opens a page from your server in their browser.
+2. They enter their email address and select **Email me a link**.
+3. The email has a **Sign in** button. The link works once, for 15 minutes, on the computer that asked for it.
+4. Opening the link shows a page with a **Sign in** button. Selecting it finishes the sign-in, and Oleafly carries on by itself. Opening the link alone doesn't use it, so a mail scanner that follows links can't use it up.
+
+Your access rules still decide who gets in: an allowed list entry for that email address, a domain rule, or a [guest invitation](#guests). An allowed list entry by GitHub user name doesn't match an email link. The page says the same thing whether or not the server lets the address in, so nobody can use it to find out who has an account. If someone already has an account with that verified address, for example from signing in with GitHub, the link signs them in to that same account.
+
+Turning **Sign in by email** on also opens existing accounts to email links. A link signs in to the account that already has that address as a verified address. The server keeps every verified address a provider has reported for an account, not just the main one, and it keeps an address even after the person removes it from the provider. GitHub, for example, reports every verified address on the GitHub account. So anyone who can read mail at one of those addresses can sign in to that account by email. Before you turn it on, check that people still control every address on their accounts. If an address belongs to more than one account that can sign in, the link signs in to none of them, and your access rules decide whether it gets an account of its own. If the only account with that address is suspended or removed, the link is refused until you let that person back in, even when a domain rule covers the address.
+
+The server sends at most 3 links to one address and 10 links to one IP address in 15 minutes. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. Turning **Sign in by email** off stops links that were already sent.
+
+### Sign in with a code
+
+When the browser can't get back to Oleafly after a sign-in, for example on a locked-down computer, people can sign in with a code instead. It needs no setting and works with every sign-in option the server has. Oleafly offers **Sign in with a code** in **Add server**, and again when a browser sign-in takes more than 20 seconds.
+
+1. Oleafly shows your server's address followed by `/auth/device`, such as `https://collab.example.org/auth/device`, and a code of eight letters, such as `BCDF-GHJK`.
+2. On any phone or computer, the person opens that address, types the code and selects **Continue**.
+3. The page names the computer that asked. They check the name and sign in with any option the server offers. Oleafly then finishes signing in by itself.
+
+The sign-in has to finish in the browser where they typed the code. If someone else starts a sign-in and sends them the provider's sign-in page as a link, it doesn't sign anyone in. If they choose Email, they can open the emailed link on any device, but the page it opens asks for the code again. A link that someone else asked for is no use without the code on that person's computer.
+
+If they didn't start the sign-in, **Stop, this wasn't me** cancels the code. A code works once and stops working after 10 minutes, and only the copy of Oleafly that asked for it can finish the sign-in. One IP address can ask for 20 codes and type 10 wrong codes in 10 minutes, counting the code pages of emailed links. All IPv6 addresses in one `/64` network count as one address. After that it has to wait 10 minutes.
+
 ## Become the first admin
 
 A new server has no admin. Until someone finishes setup, the server makes a new one-time setup code each time it starts and writes it to its log, and Oleafly sees that the server needs setup.
@@ -397,13 +602,36 @@ If you set `OLEAFLY_SETUP_CODE`, the server never prints your code. The log only
 
 Then add people under **Manage server**. Once you've added them, they can add the server in Oleafly.
 
-You can add a person by email address, by GitHub user name, or let everyone with a verified address at your domain in. User names work only for GitHub, because other providers let people choose or change theirs. Someone you remove stays out, even when a domain rule covers their address. To let them back in, add them again by email address or user name.
+You can add a person by email address, by GitHub user name, or let everyone with a verified address at your domain in. User names work only for GitHub, because other providers let people choose or change theirs. Someone you remove stays out, even when a domain rule covers their address or an owner invites them as a guest. To let them back in, add them again by email address or user name. They get their old account back, with every project they had.
 
-The server limits how often one address can start a sign-in or open a live connection, so a flood of requests can't fill its database. People signing in normally never reach the limit.
+The server limits how often one address can start a sign-in or open a live connection, so a flood of requests can't fill its database. All IPv6 addresses in one `/64` network count as one address. People signing in normally never reach the limit.
+
+## Admin console
+
+The admin console is a window for running one server from Oleafly. Admins and maintainers can open it. In Oleafly, open **Settings › Collaboration** and select **Open admin console** on the server's card, or at the top of **Manage server**. Each server gets its own window. Selecting the button again brings that window to the front, and the window remembers its size and position.
+
+If you're signed out of the server, or your role is member or guest, the window says so and shows nothing else.
+
+| Section | What it shows and does |
+| --- | --- |
+| Overview | Whether the server is healthy, how many people, devices and projects it has and who is online, how much storage it uses, its email and sign-in options, and its settings at a glance. It warns **Nobody can sign in** when the server has no sign-in option, which means no GitHub or OpenID Connect provider and no [sign-in by email link](#sign-in-by-email-link). It warns **The server can't save files** when the data folder can't be written to. |
+| People | Everyone who has signed in. Change roles, suspend or remove people, and sign out their devices. [Guest](#guests) invitations waiting for approval are at the top. |
+| Access rules | The allowed people list and the domain rules from [Become the first admin](#become-the-first-admin). |
+| Projects | Every project shared on the server, with its owner, how many people it has, its size and its last activity. Search by title or owner, show only shared, archived or uploading projects, and archive or restore a project. |
+| Settings | The server settings, such as **Allow guests**, **Allow link sharing** and **Sign in by email**. |
+| Email | Whether email is set up, the From address and the last failure. Send a test email from here. Read [Email](#email). |
+| Security log | Sign-ins and refused sign-ins, devices, people, settings, projects and guests. Each entry says who did it, when and from which IP address, with details such as the project, the sign-in option used or why a sign-in was refused. |
+| Connection checks | The same checks as **Test connection**, run from your computer to the server. |
+
+Maintainers can use every section, but they can't make anyone an admin or maintainer, see or sign out another admin's or maintainer's devices, see storage use, archive or restore projects, change server settings or send a test email. Admins can do all of it.
+
+Archiving a project from the console stops sharing it for everyone. People stop syncing it and keep their own copies, and the server deletes it after `OLEAFLY_ARCHIVE_DAYS` days unless an admin restores it first. Restoring shares it again with the same people. A project that never finished its first upload can't be restored. Both show in the security log.
+
+The console never opens a project. It shows titles, owners and sizes, and nothing inside them.
 
 ## Email
 
-Email is optional, and everything else works without it. Without email you send people the server's address yourself, and Oleafly lists the projects that have been shared with each person.
+Email is optional, and everything else works without it. Without email you send people the server's address yourself, and Oleafly lists the projects shared with each person under Shared with you.
 
 To set it up, give the server an SMTP account:
 
@@ -414,11 +642,73 @@ OLEAFLY_MAIL_FROM=Smith Lab <oleafly@example.org>
 
 Set both lines or neither. Write special characters in the user name and password in URL form, for example `%40` for `@`.
 
-This version checks these settings when it starts, but it doesn't send email yet. Until a version that sends email, Oleafly shows email as off for this server even with these lines set.
+`smtps://` uses TLS from the start, on port 465 unless you name another port. `smtp://` uses port 587 unless you name another, then switches to TLS with STARTTLS. If the mail server doesn't offer STARTTLS, the server won't send. A mail relay on the same machine is the one exception: `smtp://localhost`, `smtp://127.0.0.1` and `smtp://[::1]` send without TLS. The server checks the mail server's certificate against the system's trusted certificates.
+
+### What the server sends
+
+There are five kinds of email, each as plain text with a simple HTML version. Email to someone who already has an account goes only to their verified addresses, and GitHub's noreply addresses are always skipped.
+
+Adding someone to the allowed list by email address sends that address the server's name, an Add to Oleafly link and the plain server address to type under Add server. Adding someone by GitHub user name or through a domain rule sends nothing, because the server has no address for them yet.
+
+When a project owner adds someone to a project, that person gets the project title, who shared it, their role and a link that opens the project in Oleafly. The email also has the project's web page, for when the link doesn't open the app. Changing someone's role later sends nothing. Each person can turn these emails off on the server's card in Settings > Collaboration.
+
+A sign-in on another device sends the account the device name, its system and the time in the server's time zone, with a reminder to sign that device out under Settings > Collaboration if it wasn't them. Set `TZ`, for example `TZ=Europe/Berlin`, to choose the time zone. A new account's first device gets no email.
+
+A [guest invitation](#guests) goes to the invited address with the project title, who invited them, an Add to Oleafly link and the address to sign in with. When approval is on, it goes out once the invitation is approved.
+
+A [sign-in link](#sign-in-by-email-link) goes to whoever asks for one on the server's sign-in page.
+
+Admins can stop all of these except sign-in links for everyone with Email notifications on the Email tab. Sign-in links always go out, because people can't sign in without them.
+
+### Test it
+
+In Oleafly, open Settings > Collaboration, choose Manage server on the server's card and open the Email tab. It shows whether email is on and the From address, never the password. An admin can choose Send test email to send one to their own verified address. The tab then says whether it went out, or what the mail server answered.
+
+When email is off, the tab shows the Add to Oleafly link and the server address so you can send them yourself.
+
+### When the mail server is down
+
+Sending never holds up the action behind it. The server keeps emails in a queue in memory and tries again after 30 seconds, 2 minutes, 10 minutes, 30 minutes and 2 hours. Each failed try is a warning in the server log, and the Email tab shows the latest failure. If the last try fails too, the server logs an error and drops that email. Emails still waiting when the server restarts are lost.
+
+## Guests
+
+A guest is someone from outside your server, such as a coauthor at another university, whom a project owner invites to a project. Guests see only the projects they're invited to.
+
+### Turn guests on
+
+Guests are off on a new server. An admin turns them on with **Allow guests** under **Settings** in the [admin console](#admin-console), or under **Server settings** in **Manage server**. **Approve guests first** is on by default, so an admin or maintainer approves each invitation before it works. Turn it off to let invitations work straight away.
+
+If you turn **Allow guests** off later, owners can't send new invitations and unused invitations stop working. Guests who already signed in keep their projects until an owner removes them or you remove them under **People**.
+
+### Invite a guest
+
+Only a project's owner can invite guests to it. In **Manage sharing**, the owner types the person's email address under **Add people**. If nobody on the server uses that address, Oleafly offers **Invite as guest**, with the role Editor or Viewer.
+
+- An invitation is for one address and one project, and it ends after 14 days.
+- One person can send up to 20 invitations an hour.
+- When approval is on, the invitation waits under **Pending guests** at the top of **People**, where admins and maintainers approve, decline or withdraw it. The owner can withdraw it too.
+- If the server sends email and Email notifications is on, the guest gets an [invitation email](#what-the-server-sends). Otherwise Oleafly gives the owner an Add to Oleafly link to send themselves.
+- If exactly one account on the server has that address, that person gets the project straight away, after approval if it's needed. If two or more accounts have it, the invitation waits until one of them signs in with it. If the project is already at the server's limit on people, the invitation waits too, and works the next time the person signs in after someone has left.
+
+### How a guest signs in
+
+The guest adds the server in Oleafly and signs in with any option that gives the server the invited address as a verified address: GitHub, an OpenID Connect provider or an [email link](#sign-in-by-email-link). An unverified address doesn't count. The first sign-in makes a guest account and opens every project that address was invited to.
+
+### What guests can and can't do
+
+Guests can open and compile the projects they were invited to, edit them if they're editors, and sign out their own devices. They can't see the member directory or anyone's email address, share projects, invite other people, or join a project through its link. To give a guest another project, that project's owner invites the same address. The guest already has an account, so the invitation works at once, or once it's approved when approval is on.
+
+When a guest is removed from their last project, or leaves it, the server ends their access: it removes the account and signs out every device. A new invitation brings the same account back. If you remove a guest under **People** while they still have projects, a new invitation won't bring them back.
+
+### Removal sticks
+
+When an owner removes someone from a project, guest or not, that person can't come back through the project's link, even with link sharing on. Each try shows in the security log. To let them back in, the owner adds them again, or sends a new invitation if they're a guest. Someone who leaves a project on their own can still rejoin through its link.
 
 ## Backups
 
-Everything the server keeps is in its data folder. Back it up regularly and keep the copies private, since they hold every project. If you keep files in a bucket, back up the bucket too, or turn on versioning for it.
+What a full backup needs depends on where files are stored. With files on disk (`OLEAFLY_BLOB_STORE=fs`, the default), the database, files and project snapshots are all in the data folder, so back up the whole folder as shown below. With files in a bucket, the data folder holds the database and the bucket holds files and project snapshots. A copy of the database plus the bucket is a full backup. Turn on versioning for the bucket so an object deleted by mistake can be brought back.
+
+Back up regularly and keep the copies private, since they hold every project. Your settings, such as `.env`, aren't in the data folder, so keep a copy of them as well.
 
 With Docker Compose, the server stops for a few seconds while you copy the volume. Oleafly reconnects by itself.
 
@@ -438,6 +728,8 @@ sudo systemctl start oleafly-server
 ```
 
 Copy the archive to another machine.
+
+On Coolify, the volume's name starts with the resource's ID. Find it with `docker volume ls --filter name=oleafly-data`, use it in place of `oleafly-server_oleafly-data`, and stop and start the server from Coolify's dashboard instead of with `docker compose`.
 
 ### Restore drill
 
@@ -479,19 +771,93 @@ sudo tar -C /var/lib/private/oleafly-server -xzf /root/oleafly-data-2026-10-11.t
 sudo systemctl start oleafly-server
 ```
 
+A restored server is missing the changes people made after the backup was made. Each app notices when it reconnects, whether it stayed open or was opened later, and sends its own missing changes again. Nobody has to do anything for that. A change that builds on someone else's missing change waits until that person opens the project, because only their app can send their changes. Ask everyone who was editing around the time of the failure to open the project once.
+
+### Continuous copies with Litestream
+
+An archive only holds what was there when you made it. [Litestream](https://litestream.io) copies each change to the server's database to an S3-compatible bucket about a second after it happens. The Compose file includes it as an optional service.
+
+Litestream copies the database. If files are in a bucket, the bucket already holds files and project snapshots, so the Litestream copy and the bucket together can bring back a lost disk. If files are on disk, they and the snapshots are in the `blobs` folder of the data folder, which Litestream doesn't copy. Keep making archives of the volume in that case. Either way, Litestream keeps a copy of the database that is never more than a few seconds old.
+
+1. Create a bucket, or a folder in one, that only this server's Litestream uses. Don't share it with `OLEAFLY_BLOB_STORE`. Give Litestream a key that can list the bucket and read, write and delete objects in it.
+2. Add the details to `.env`:
+
+   ```sh
+   LITESTREAM_REPLICA_URL=s3://lab-backups/oleafly-server
+   LITESTREAM_REGION=eu-west-1
+   LITESTREAM_ACCESS_KEY_ID=your-access-key-id
+   LITESTREAM_SECRET_ACCESS_KEY=your-secret-access-key
+   COMPOSE_PROFILES=litestream
+   ```
+
+   For a store other than Amazon S3, also set `LITESTREAM_ENDPOINT` to its address, such as `https://<account-id>.r2.cloudflarestorage.com`, and set `LITESTREAM_REGION` to the region it expects (`auto` for R2). `COMPOSE_PROFILES` makes every `docker compose` command include Litestream.
+3. Start it:
+
+   ```sh
+   docker compose up -d
+   ```
+
+4. Check that it copied the database. This prints a line with `snapshot complete`:
+
+   ```sh
+   docker compose logs litestream | grep 'snapshot complete'
+   ```
+
+Litestream takes a full copy once a day and keeps a week of copies and the changes between them. The schedule is in `litestream.yml`.
+
+#### Litestream restore drill
+
+This drill restores the database from the bucket into a scratch volume, starts a second copy of the server on it and checks that both are the same server. The running server isn't touched.
+
+```sh
+cd Oleafly/deploy/server
+docker run --rm -v oleafly-litestream-drill:/data "$(docker compose images -q oleafly-server)" --version
+docker compose run --rm --no-deps -v oleafly-litestream-drill:/restore litestream restore -config /etc/litestream.yml -o /restore/oleafly-server.sqlite3 /data/oleafly-server.sqlite3
+docker run -d --name oleafly-litestream-drill -v oleafly-litestream-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid "$(docker compose images -q oleafly-server)"
+docker run --rm --network container:oleafly-litestream-drill curlimages/curl:8.22.0 -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/.well-known/oleafly-server
+curl -fsS https://collab.example.org/.well-known/oleafly-server
+```
+
+The first command creates the scratch volume with the owner the server needs. The `server_id` in the last two answers must match. Remove the copy when you're done:
+
+```sh
+docker rm -f oleafly-litestream-drill
+docker volume rm oleafly-litestream-drill
+```
+
+#### Restore the database from Litestream
+
+When the database file is damaged or gone but the rest of the data folder is fine, stop the server and Litestream, remove what's left of the database, restore it and start again:
+
+```sh
+cd Oleafly/deploy/server
+docker compose stop oleafly-server litestream
+docker run --rm -v oleafly-server_oleafly-data:/data debian:13.7-slim rm -rf /data/oleafly-server.sqlite3 /data/oleafly-server.sqlite3-wal /data/oleafly-server.sqlite3-shm /data/.oleafly-server.sqlite3-litestream
+docker compose run --rm --no-deps litestream restore -config /etc/litestream.yml /data/oleafly-server.sqlite3
+docker compose up -d
+```
+
+After a lost disk with files in a bucket, run the commands above on the new, empty volume and keep the same bucket settings in `.env`. Every project comes back with its files and snapshots.
+
+After a lost disk with files on disk, [restore](#restore) your newest archive and leave it at that. Don't put a newer database from Litestream on top of an older archive. The database would point at files and snapshots the archive doesn't have, and those projects wouldn't open.
+
 ## Upgrading
 
 Back up first. The server updates its database the first time a new version starts, so going back to an older version means restoring the backup you took before upgrading.
 
+Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
+
 - Docker Compose: run `git pull` in the `Oleafly` folder, then `docker compose up -d --build` in `deploy/server`.
-- Coolify: select **Redeploy**.
-- systemd: run `git pull` in the `Oleafly` folder, run the `cargo build` and `sudo install` commands from [Build the server](#build-the-server) again, then run `sudo systemctl restart oleafly-server`.
+- Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
+- Render: open the service and start a manual deploy, which pulls the image again.
+- Railway: deploy the service again from its menu. For images on GitHub's registry, Railway can also update the image by itself.
+- systemd: install the new release as in [Download the server](#download-the-server), or run `git pull` in the `Oleafly` folder and repeat the `cargo build` and `sudo install` commands from [Build the server](#build-the-server). Then run `sudo systemctl restart oleafly-server`.
 
 Oleafly checks the server's version every time it connects. If the app and the server can't work together, Oleafly says which one needs an update.
 
 ## Roles and permissions
 
-Each person has one server role, given by the server's admins and maintainers. In each project they were added to, they also have a project role, given by that project's owner. This version runs the server roles. Sharing projects comes in a later version, so the project columns, and the rows about projects, the member list and project access logs, describe how that will work. A cell says whether that role on its own allows the action. No server role opens a project by itself: project access comes only from the project's owner.
+Each person has one server role, given by the server's admins and maintainers. In each project they were added to, they also have a project role, given by that project's owner. A cell says whether that role on its own allows the action. No server role opens a project by itself: project access comes only from the project's owner.
 
 | Action | Admin | Maintainer | Member | Guest | Owner | Editor | Viewer |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -505,19 +871,20 @@ Each person has one server role, given by the server's admins and maintainers. I
 | Edit | No | No | No | No | Yes | Yes | No |
 | Compile | No | No | No | No | Yes | Yes | Yes |
 | Read the project access log | No | No | No | No | Yes, when it is on | No | No |
-| Read the security log | Yes | Yes | No | No | Entries about the project | No | No |
+| Read the security log | Yes | Yes | No | No | No | No | No |
 | Add members to the server | Yes | Yes | No | No | n/a | n/a | n/a |
 | Appoint maintainers | Yes | No | No | No | n/a | n/a | n/a |
 | Change server settings | Yes | No | No | No | n/a | n/a | n/a |
 | Delete a project | Yes, to free storage | No | No | No | Yes, by stopping sharing | No | No |
-| Sign out someone's device | Yes | Yes | Own devices only | Own devices only | n/a | n/a | n/a |
+| Sign out someone's device | Yes | Yes, but not other admins' or maintainers' | Own devices only | Own devices only | n/a | n/a | n/a |
 | Read stored projects with direct server access | Not in the app | Not in the app | Not in the app | Not in the app | n/a | n/a | n/a |
 
 The last row matters most. Projects are not encrypted on the server, so whoever runs the machine can read every stored project, whatever their role. Oleafly gives no role, admin included, a way to do it from the app. When an admin deletes a project to free storage, its owner and members are told, and their own copies stay on their computers.
 
 ## Checking the server
 
-- `https://collab.example.org/healthz` answers `200` while the server runs. `/readyz` answers `200` once its database is ready.
-- The Docker image checks `/healthz` by itself, so `docker ps` and Coolify show whether the server is healthy.
-- In Oleafly, **Test connection** under **Settings › Collaboration** checks the address, HTTPS, the version, WebSocket connections, sign-in providers and the server's clock, and names the first problem it finds.
-- A certificate error from Oleafly or in the server's log usually means a certificate authority that the machine doesn't trust yet. Read the end of [Behind a university proxy](#behind-a-university-proxy).
+- `https://collab.example.org/healthz` answers `200` while the server process runs.
+- `/readyz` answers `200` only while the server can write to its database and its data folder. When it can't, for example on a full disk, it answers `503` and names what failed (`database` or `storage`).
+- The Docker image checks `/readyz` by itself with the server's own `oleafly-server healthcheck` command, so `docker ps` and Coolify show an unhealthy server instead of a running one that can't save anything.
+- In Oleafly, **Test connection** under **Settings › Collaboration** checks the address, HTTPS, the version, WebSocket connections, sign-in providers and the server's clock, and names the first problem it finds. When WebSocket connections are blocked but long-polling gets through, it says live edits take a slower route. **Connection checks** in the [admin console](#admin-console) runs the same checks.
+- A certificate error from Oleafly or in the server's log usually means a certificate authority that the machine doesn't trust yet. Read [Certificates your university signs](#certificates-your-university-signs).

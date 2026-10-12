@@ -1,5 +1,6 @@
 import { useCollabRail } from "@/components/collab/collab-rail";
-import type { CollabProjectMember } from "@/lib/tauri";
+import { logError } from "@/lib/log";
+import { onCollabLiveRenamed, type CollabLiveRenamed, type CollabProjectMember } from "@/lib/tauri";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { useCollabActivity, type NewActivity } from "./activity-store";
 
@@ -103,6 +104,14 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
   return found;
 }
 
+function renamedEntry(payload: CollabLiveRenamed): NewActivity | null {
+  const live = useCollabLiveStore.getState();
+  if (payload.projectId !== live.projectId) return null;
+  const { accountId, before, ours, theirs } = payload;
+  const name = accountId ? memberName(accountId, live.members) : "";
+  return { kind: "renamed", at: Date.now(), accountId, name, before, ours, theirs };
+}
+
 function syncRail() {
   const live = useCollabLiveStore.getState();
   const visible = live.projectId !== null && (live.share !== null || live.status?.state === "ended");
@@ -133,10 +142,18 @@ export function startCollabActivity(): () => void {
   };
   const stopLive = useCollabLiveStore.subscribe((state, previous) => sync(state, previous));
   const stopActivity = useCollabActivity.subscribe(syncRail);
+  const stopRenamed = onCollabLiveRenamed((payload) => {
+    const entry = renamedEntry(payload);
+    if (entry) useCollabActivity.getState().add(entry);
+  }).catch((error: unknown) => {
+    void logError("collab renamed listen", error);
+    return () => undefined;
+  });
   sync(useCollabLiveStore.getState(), null);
   return () => {
     stopLive();
     stopActivity();
+    void stopRenamed.then((unlisten) => unlisten());
     useCollabRail.setState({ visible: false, unread: false });
   };
 }

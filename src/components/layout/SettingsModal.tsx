@@ -48,6 +48,8 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
+import { NavItem } from "@/components/ui/nav-item";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
@@ -567,8 +569,8 @@ export function SettingsModal() {
     }
     if (storageSummary) {
       return (
-        <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
-          {[
+        <StatGrid
+          stats={[
             {
               id: "projects",
               label: t(($) => $.shell.settings.data.storage.stats.projects),
@@ -619,18 +621,8 @@ export function SettingsModal() {
               value: formatBytes(storageSummary.app_data_bytes),
               detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
             },
-          ].map((item) => (
-            <div key={item.id} className="min-w-0 bg-card px-3 py-3">
-              <dt className="text-muted-foreground">{item.label}</dt>
-              <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                {item.value}
-              </dd>
-              <dd className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
-                {item.detail}
-              </dd>
-            </div>
-          ))}
-        </dl>
+          ]}
+        />
       );
     }
     return (
@@ -1292,22 +1284,13 @@ export function SettingsModal() {
             <div id={sectionListId} className="flex flex-col gap-0.5">
             {visibleNavigation.map(({ id, label, icon: Icon }) => (
             <Fragment key={id}>
-            <button
-              type="button"
-              aria-current={section === id ? "page" : undefined}
+            <NavItem
+              icon={Icon}
+              label={label}
+              active={section === id}
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
-              className={cn(
-                // Every row carries a border so the active one can show it without shifting.
-                "flex items-center gap-2.5 whitespace-nowrap rounded-md border px-2.5 py-2 text-sm transition-colors",
-                section === id
-                  ? "border-border bg-background font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
-            </button>
+            />
             <SettingsSearchRows
               label={label}
               rows={searchRows.get(id) ?? []}

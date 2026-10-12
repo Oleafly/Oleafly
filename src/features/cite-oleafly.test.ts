@@ -21,6 +21,7 @@ import { hayagrivaEntries, hayagrivaKeys } from "@/lib/citation/hayagriva";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { notifyError } from "@/lib/toast";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
@@ -314,5 +315,25 @@ describe("runCiteOleaflyAction outcomes", () => {
       failure,
       "Could not add the Oleafly citation. Copy it from Settings, Help & About instead.",
     );
+  });
+});
+
+describe("citeOleafly in a live shared project", () => {
+  it("merges the entry into a closed bibliography from the text it read, and undoes it the same way", async () => {
+    latexProject();
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    try {
+      const content = "@book{knuth1984,\n  title = {The TeXbook}\n}\n";
+      target.mockResolvedValue({ path: "refs.bib", exists: true, content });
+      const outcome = await citeOleafly();
+      if (outcome.kind !== "added") throw new Error("the entry was not added");
+      const calls = writeProjectFile.mock.calls as unknown as [string, string, string, { base?: string }?][];
+      const [, , written, options] = calls[0];
+      expect(options).toEqual({ base: content });
+      await outcome.undo();
+      expect(writeProjectFile).toHaveBeenLastCalledWith("paper", "refs.bib", content, { base: written });
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

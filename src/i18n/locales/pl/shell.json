@@ -1475,5 +1475,14 @@
     "compiling": "Kompilowanie",
     "hideLog": "Ukryj dziennik kompilacji",
     "showLog": "Pokaż dziennik kompilacji"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} plik zmienił się poza Oleafly. Wysłać tę zmianę wszystkim czy zachować ją lokalnie?",
+    "paused_few": "{{count}} pliki zmieniły się poza Oleafly. Wysłać te zmiany wszystkim czy zachować je lokalnie?",
+    "paused_many": "{{count}} plików zmieniło się poza Oleafly. Wysłać te zmiany wszystkim czy zachować je lokalnie?",
+    "paused_other": "{{count}} pliku zmieniło się poza Oleafly. Wysłać te zmiany wszystkim czy zachować je lokalnie?",
+    "send": "Wyślij",
+    "keepLocal": "Zachowaj lokalnie",
+    "unavailable": "Folder projektu jest niedostępny, więc synchronizacja jest wstrzymana. Wznowi się, gdy folder wróci."
   }
 }

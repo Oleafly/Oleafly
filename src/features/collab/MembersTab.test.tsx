@@ -117,6 +117,13 @@ describe("MembersTab", () => {
     expect(within(rowOf(BOB_ID)).getByRole("combobox")).toBeInTheDocument();
   });
 
+  it("offers a maintainer the devices of members and their own but not of other staff", () => {
+    render(<Harness actor="maintainer" initial={[alice, carol, bob]} selfId={CAROL_ID} />);
+    expect(within(rowOf(ALICE_ID)).queryByRole("button", { name: copy.devices })).toBeNull();
+    expect(within(rowOf(CAROL_ID)).getByRole("button", { name: copy.devices })).toBeInTheDocument();
+    expect(within(rowOf(BOB_ID)).getByRole("button", { name: copy.devices })).toBeInTheDocument();
+  });
+
   it("explains that the last admin cannot step down", async () => {
     mocks.collabAdminPatchMember.mockRejectedValue(collabError("conflict"));
     const user = userEvent.setup();

@@ -153,10 +153,38 @@ pub async fn create_project(server: &TestServer, owner: &Person, title: &str) ->
     response.json().await.expect("project summary")
 }
 
+pub const SNAPSHOT_PEER: u64 = 7;
+pub const SNAPSHOT_TEXT: &str = "first snapshot";
+
+pub fn first_snapshot() -> Vec<u8> {
+    let doc = loro::LoroDoc::new();
+    doc.set_peer_id(SNAPSHOT_PEER).expect("peer");
+    doc.get_text("text")
+        .insert(0, SNAPSHOT_TEXT)
+        .expect("insert");
+    doc.commit();
+    doc.export(loro::ExportMode::Snapshot).expect("snapshot")
+}
+
+pub fn change(text: &[u8]) -> Vec<u8> {
+    let doc = loro::LoroDoc::new();
+    doc.get_text("text")
+        .insert(0, &String::from_utf8_lossy(text))
+        .expect("insert");
+    doc.commit();
+    doc.export(loro::ExportMode::all_updates()).expect("change")
+}
+
+pub fn text_of(snapshot: &[u8]) -> String {
+    let doc = loro::LoroDoc::new();
+    doc.import(snapshot).expect("a loro document");
+    doc.get_text("text").to_string()
+}
+
 pub async fn share_project(server: &TestServer, owner: &Person, title: &str) -> ProjectSummary {
     let created = create_project(server, owner, title).await;
     let path = format!("/api/v1/projects/{}/snapshot?seq=0", created.project_id);
-    let uploaded = put_bytes(server, &path, owner.token(), b"first snapshot".to_vec()).await;
+    let uploaded = put_bytes(server, &path, owner.token(), first_snapshot()).await;
     assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
     let commit = format!("/api/v1/projects/{}/commit", created.project_id);
     read(call(server, Method::POST, &commit, owner.token(), None).await).await
@@ -246,6 +274,10 @@ pub async fn subscribe(socket: &mut Socket, project: SharedProjectId, since: u64
 }
 
 pub fn envelope(person: &Person, project: SharedProjectId, payload: &[u8]) -> Envelope {
+    signed_by(person, &person.device, project, &change(payload))
+}
+
+pub fn raw_envelope(person: &Person, project: SharedProjectId, payload: &[u8]) -> Envelope {
     signed_by(person, &person.device, project, payload)
 }
 

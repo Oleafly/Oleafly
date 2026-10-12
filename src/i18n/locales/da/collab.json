@@ -35,6 +35,13 @@
         "title": "Vil du fjerne {{name}}?",
         "description": "Oleafly logger ud af denne server og glemmer den. Projekter, der allerede ligger på denne computer, bliver, hvor de er.",
         "confirm": "Fjern serveren"
+      },
+      "emails": {
+        "label": "Send mig en e-mail, når nogen deler et projekt",
+        "description": "E-mailen nævner projektet og har et link, der åbner det.",
+        "noMail": "Denne server sender ikke e-mails. Projekter, der deles med dig, vises stadig i dit bibliotek under Delt med dig.",
+        "paused": "Serverens administrator har slået e-mail fra for alle.",
+        "loadFailed": "Oleafly kunne ikke indlæse dine e-mailindstillinger."
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "Realtidsforbindelse",
           "pass": "Redigeringer i realtid kan komme igennem.",
           "fail": "Noget mellem dig og serveren blokerer redigeringer i realtid. En firewall eller proxy skal måske ændres.",
-          "info": "Redigeringer i realtid kommer igennem, men forbindelsen tog lidt tid.",
+          "info": "Redigeringer i realtid tager en langsommere vej, fordi dette netværk blokerer den sædvanlige. De kommer stadig igennem.",
           "skipped": "Ikke tjekket, fordi et tidligere tjek mislykkedes."
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "Denne server har endnu ingen måde at logge ind på. Bed dens administrator om at sætte en op.",
     "waitingTitle": "Venter på din browser",
     "waitingDescription": "Gør login færdigt i det browservindue, der blev åbnet, og vend så tilbage hertil.",
+    "waitingEmailDescription": "Skriv din e-mailadresse i browseren, og åbn så det link, vi sender dig, på denne computer.",
     "cancel": "Annuller",
     "back": "Tilbage",
     "doneTitle": "Du er logget ind",
     "doneDescription": "Du er logget ind på {{server}} som {{name}}.",
-    "done": "Færdig"
+    "done": "Færdig",
+    "codeSignIn": "Log ind med en kode",
+    "codeSignInDescription": "Brug dette, når din browser ikke kan komme tilbage til Oleafly, eller for at logge ind på en anden enhed.",
+    "codeRequesting": "Henter en kode…",
+    "codeSteps": "Åbn denne adresse på en telefon eller computer, og skriv koden.",
+    "codeAddressLabel": "Adresse",
+    "codeLabel": "Kode",
+    "codeExpires": "Koden holder op med at virke kl. {{time}}.",
+    "codeWaiting": "Venter på, at du logger ind",
+    "codeOpen": "Åbn i browser",
+    "codeOffer": "Kom browseren ikke tilbage til Oleafly?",
+    "codeHint": "Hvis din browser ikke kunne nå Oleafly, så log ind med en kode i stedet."
   },
   "errors": {
     "unreachable": "Oleafly kunne ikke nå serveren. Tjek adressen og din forbindelse, og prøv igen.",
@@ -179,7 +198,8 @@
       "allowlist": "Tilladte personer",
       "domains": "Domæner",
       "settings": "Serverindstillinger",
-      "log": "Sikkerhedslog"
+      "log": "Sikkerhedslog",
+      "email": "E-mail"
     },
     "members": {
       "description": "Alle, der har logget ind på denne server.",
@@ -271,9 +291,17 @@
         "label": "Tillad adgangslog for projekter",
         "description": "Projektejere kan føre en log over, hvem der har åbnet deres projekt."
       },
+      "commentsAllowed": {
+        "label": "Tillad kommentarer",
+        "description": "Personer i delte projekter kan kommentere tekst og svare. Slår du det fra, skjules kommentarer overalt og gemmes stadig."
+      },
       "emailNotifications": {
         "label": "Notifikationer via e-mail",
-        "description": "Serveren sender folk en e-mail, når de bliver tilføjet, eller når nogen deler et projekt med dem."
+        "description": "Send disse e-mails. Slå det fra for at stoppe dem for alle på serveren."
+      },
+      "emailLinkSignIn": {
+        "label": "Log ind via e-mail",
+        "description": "Folk kan logge ind med et link, der sendes til deres e-mailadresse. Det kræver serverens e-mailindstillinger. Dine adgangsregler afgør stadig, hvem der kommer ind."
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "Tilføjede en domæneregel",
         "domainRuleRemoved": "Fjernede en domæneregel",
         "settingsChanged": "Ændrede serverindstillingerne",
+        "projectShared": "Delte et projekt",
+        "projectAccessGranted": "Gav nogen adgang til et projekt",
+        "projectAccessChanged": "Ændrede nogens adgang til et projekt",
+        "projectAccessRemoved": "Fjernede nogen fra et projekt",
+        "projectLeft": "Forlod et projekt",
+        "projectLinkSharingOn": "Slog deling via link til for et projekt",
+        "projectLinkSharingOff": "Slog deling via link fra for et projekt",
+        "projectLinkRoleChanged": "Ændrede, hvad et projekts link giver adgang til",
+        "projectArchived": "Arkiverede et projekt",
+        "projectUnarchived": "Gendannede et arkiveret projekt",
+        "projectSettingsChanged": "Ændrede et projekts indstillinger",
+        "projectAccessLogOn": "Slog et projekts adgangslog til",
+        "projectAccessLogOff": "Slog et projekts adgangslog fra",
+        "projectCommentsOn": "Slog kommentarer til i et projekt",
+        "projectCommentsOff": "Slog kommentarer fra i et projekt",
+        "projectRejoinRefused": "Prøvede at komme tilbage til et projekt, de var fjernet fra",
+        "guestInvited": "Inviterede en gæst",
+        "guestInvitationApproved": "Godkendte en gæsteinvitation",
+        "guestInvitationDeclined": "Afviste en gæsteinvitation",
+        "guestInvitationRevoked": "Trak en gæsteinvitation tilbage",
+        "guestAdmissionEnded": "Afsluttede en gæsts adgang til serveren",
         "unknown": "Anden serverhændelse"
+      },
+      "details": {
+        "project": "Projekt: {{title}}",
+        "provider": "Med {{provider}}",
+        "providerEmailLink": "Med et link i en e-mail",
+        "signInCode": "Brugte en loginkode",
+        "via": {
+          "allowlist": "Lukket ind via listen over tilladte personer",
+          "domain": "Lukket ind via en domæneregel",
+          "setup": "Brugte opsætningskoden",
+          "guest": "Lukket ind som gæst",
+          "link": "Via projektets link",
+          "invitation": "Via en gæsteinvitation"
+        },
+        "newAccount": "Ny konto",
+        "reactivated": "Konto genaktiveret",
+        "reasons": {
+          "suspended": "Kontoen er suspenderet",
+          "notAdmitted": "Ingen adgangsregel lukker dem ind",
+          "setupCodeInvalid": "Forkert opsætningskode",
+          "guestInvitationUnusable": "Deres gæsteinvitation virker ikke længere",
+          "lockedOutIp": "For mange forsøg fra én netværksadresse",
+          "lockedOutAddress": "For mange login-e-mails til én adresse",
+          "stoppedByPerson": "Stoppet på login-siden",
+          "otherBrowser": "Afsluttet i en anden browser end den, det startede i",
+          "inactiveAccountAddress": "Deres e-mail tilhører en fjernet eller suspenderet konto",
+          "noProjectsLeft": "Ingen projekter tilbage"
+        },
+        "role": "Rolle: {{role}}",
+        "roleChange": "Fra {{from}} til {{to}}",
+        "device": "Enhed: {{name}}",
+        "byAdmin": "Fra administrationskonsollen",
+        "settingOn": "{{setting}}: til",
+        "settingOff": "{{setting}}: fra"
+      }
+    },
+    "email": {
+      "description": "Serveren sender folk en e-mail, når du tilføjer dem, når nogen deler et projekt med dem, og når deres konto logger ind på en ny enhed.",
+      "loading": "Indlæser e-mailindstillinger…",
+      "on": {
+        "title": "E-mail er slået til",
+        "from": "E-mails kommer fra {{from}}."
+      },
+      "off": {
+        "title": "E-mail er slået fra",
+        "description": "Denne server har ingen mailindstillinger. Slå e-mail til ved at sætte OLEAFLY_SMTP_URL og OLEAFLY_MAIL_FROM på serveren og derefter genstarte den.",
+        "copyPath": "Indtil da kan du selv sende dette link til nye personer. Det tilføjer serveren i Oleafly.",
+        "address": "De kan også skrive denne adresse under Tilføj server:"
+      },
+      "needsSettings": "Slå først e-mail til for serveren.",
+      "lastFailure": "Den seneste e-mail, der mislykkedes, var {{date}}. Mailserveren svarede:",
+      "test": {
+        "title": "Test-e-mail",
+        "description": "Send en test-e-mail til {{address}} for at tjekke, at indstillingerne virker.",
+        "send": "Send test-e-mail",
+        "sending": "Sender…",
+        "sent": "Sendt til {{address}}. Hvis den ikke er i indbakken, så kig i spam-mappen.",
+        "failed": "Mailserveren tog ikke imod test-e-mailen.",
+        "noAddress": "Din konto har ingen bekræftet e-mailadresse, så der er ikke noget sted at sende en test.",
+        "adminOnly": "Kun administratorer kan sende en test-e-mail."
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "Alle, der er logget ind på {{server}} og har linket, kan åbne dette projekt.",
       "roleLabel": "Rolle for personer, der åbner linket"
     },
+    "comments": {
+      "label": "Kommentarer",
+      "description": "Alle, der kan redigere, kan kommentere tekst i dette projekt. Hvis du slår det fra, skjules kommentarerne, men de slettes ikke.",
+      "serverOff": "Kommentarer er slået fra på {{server}}. Bed dens administrator om at slå dem til."
+    },
     "stop": "Stop deling",
     "stopConfirm": {
       "title": "Vil du stoppe delingen af {{name}}?",
@@ -378,6 +492,10 @@
       "title": "Vil du forlade {{name}}?",
       "description": "Din kopi holder op med at synkronisere og bliver liggende på denne computer som et almindeligt projekt.",
       "confirm": "Forlad"
+    },
+    "accessLog": {
+      "label": "Adgangslog",
+      "description": "Serveren noterer, hvem der åbner projektet, deltager i det eller henter en kopi, og fra hvilken enhed og hvornår. Kun du kan se listen, i panelet Samarbejde i realtid."
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "Nogen"
   },
   "tree": {
-    "here": "{{name}} har denne fil åben"
+    "here": "{{name}} har denne fil åben",
+    "clash": "{{other}} hedder også {{name}}, så denne fil har fået et nyt navn på disken."
   },
   "library": {
     "kind": "delt",
@@ -427,7 +546,18 @@
     "empty": "Der er ikke sket noget endnu.",
     "here": "Her lige nu",
     "hereIn": "I {{path}} lige nu",
-    "away": "Ikke her lige nu"
+    "away": "Ikke her lige nu",
+    "deleted": "Slettet for nylig",
+    "deletedEmpty": "Intet er slettet for nylig.",
+    "accessLog": "Adgangslog"
+  },
+  "deleted": {
+    "restore": "Gendan",
+    "restoreLabel": "Gendan {{name}}",
+    "inFolder": "Lå i {{folder}}",
+    "inProject": "Lå i projektmappen",
+    "byYou": "Slettet af dig",
+    "by": "Slettet af {{name}}"
   },
   "activity": {
     "welcomeEdit": "Delt af {{owner}} på {{server}}. Du kan redigere projektet.",
@@ -446,7 +576,11 @@
     "signIn": "Log ind",
     "repeated": "Antal gange i træk: {{number}}",
     "newDevice": "{{name}} loggede ind på en ny enhed",
-    "review": "Gennemse"
+    "review": "Gennemse",
+    "renamed": "{{name}} omdøbte {{before}} til {{theirs}}, efter du havde kaldt den {{ours}}",
+    "mentioned": "{{name}} nævnte dig i en kommentar i {{path}}",
+    "mentionedHere": "{{name}} nævnte dig i en kommentar",
+    "showComment": "Vis kommentar"
   },
   "mergeReview": {
     "title": "Ændringer flettet ind, mens du var væk",
@@ -460,5 +594,264 @@
     "newFile": "Ny fil",
     "removedFile": "Fjernet",
     "diffLabel": "Ændringer i {{path}}"
+  },
+  "console": {
+    "open": "Åbn administrationskonsollen",
+    "windowTitle": "Administrationskonsol for {{name}}",
+    "title": "Administrationskonsol",
+    "sectionsLabel": "Sektioner i administrationskonsollen",
+    "sections": {
+      "overview": "Overblik",
+      "people": "Personer",
+      "access": "Adgangsregler",
+      "projects": "Projekter",
+      "settings": "Indstillinger",
+      "email": "E-mail",
+      "log": "Sikkerhedslog",
+      "checks": "Forbindelsestjek"
+    },
+    "health": {
+      "label": "Serverens tilstand: {{status}}",
+      "checking": "Tjekker",
+      "ok": "I orden",
+      "warning": "Kræver opmærksomhed",
+      "unreachable": "Kan ikke nås"
+    },
+    "states": {
+      "loading": "Åbner administrationskonsollen…",
+      "loadFailed": "Oleafly kunne ikke åbne administrationskonsollen.",
+      "unknownTitle": "Denne server er ikke på din liste",
+      "unknownDescription": "Tilføj serveren igen i Indstillinger, og åbn så administrationskonsollen fra dens kort.",
+      "signedOutTitle": "Du er logget ud af denne server",
+      "signedOutDescription": "Log ind igen i Indstillinger, og åbn så administrationskonsollen fra serverens kort.",
+      "refusedTitle": "Administrationskonsollen er for administratorer og vedligeholdere",
+      "refusedDescription": "Din rolle på denne server er {{role}}. Spørg en administrator, hvis du skal administrere den."
+    },
+    "overview": {
+      "loading": "Indlæser overblikket…",
+      "health": {
+        "title": "Tilstand",
+        "okLabel": "Alt virker",
+        "okDescription": "Folk kan logge ind, og serveren kan gemme filer.",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Ingen kan logge ind",
+            "description": "Opsæt login med GitHub eller OpenID på serveren, og genstart den. Hvis serveren sender e-mails, kan du i stedet slå Log ind via e-mail til under Indstillinger."
+          },
+          "storageNotWritable": {
+            "label": "Serveren kan ikke gemme filer",
+            "description": "Tjek, at dens datamappe findes, og at serveren kan skrive til den."
+          },
+          "unknown": {
+            "label": "Serveren har meldt om et problem",
+            "description": "Opdater Oleafly for at se, hvad det er."
+          }
+        }
+      },
+      "glance": {
+        "title": "Hurtigt overblik",
+        "people": "Personer",
+        "suspended": "Suspenderet: {{number}}",
+        "devices": "Enheder",
+        "projects": "Delte projekter",
+        "projectsDetail": "Arkiveret: {{archived}}, uploades: {{pending}}",
+        "online": "Online nu",
+        "onlineDetail": "Åbne projekter: {{number}}",
+        "started": "Startet",
+        "version": "Version",
+        "protocol": "Protokol {{protocol}}"
+      },
+      "storage": {
+        "title": "Lagring",
+        "adminOnly": "Kun administratorer kan se, hvor meget lagerplads serveren bruger.",
+        "database": "Database",
+        "databaseDetail": "Konti, indstillinger og loggen",
+        "snapshots": "Projektsnapshots",
+        "snapshotsDetail": "Gemte kopier af hvert projekt",
+        "files": "Filer",
+        "location": {
+          "disk": "På serverens disk",
+          "s3": "I S3-lagring",
+          "unknown": "I anden lagring"
+        }
+      },
+      "services": {
+        "title": "E-mail og login",
+        "email": "E-mail",
+        "emailOn": "Sat op",
+        "emailOff": "Ikke sat op",
+        "emailOnDescription": "Serveren kan sende e-mail.",
+        "emailOffDescription": "Serveren kan ikke sende e-mail endnu, så ingen får besked via e-mail.",
+        "openEmail": "E-mailindstillinger",
+        "signIn": "Loginmuligheder",
+        "signInNone": "Ingen endnu. Ingen kan logge ind, før en er sat op.",
+        "emailLinkOption": "Link i e-mail"
+      },
+      "settings": {
+        "title": "Serverindstillinger",
+        "on": "Til",
+        "off": "Fra",
+        "change": "Ændr indstillinger"
+      },
+      "limits": "Grænser: {{project}} pr. projekt, {{file}} pr. fil, {{people}} personer pr. projekt."
+    },
+    "projects": {
+      "description": "Alle projekter, der er delt på denne server.",
+      "searchLabel": "Søg i projekter",
+      "searchPlaceholder": "Søg på titel eller ejer",
+      "filterLabel": "Vis projekter",
+      "filter": {
+        "all": "Alle",
+        "active": "Delte",
+        "archived": "Arkiverede",
+        "pending": "Uploades"
+      },
+      "columns": {
+        "title": "Projekt",
+        "owner": "Ejer",
+        "members": "Personer",
+        "size": "Størrelse",
+        "activity": "Seneste aktivitet",
+        "actions": "Handlinger"
+      },
+      "sortBy": "Sorter efter {{column}}",
+      "status": {
+        "archived": "Arkiveret",
+        "pending": "Uploades",
+        "unknown": "Ukendt"
+      },
+      "loading": "Indlæser projekter…",
+      "empty": "Der er ikke delt nogen projekter på denne server endnu.",
+      "noMatches": "Ingen projekter matcher din søgning.",
+      "count": "Viser {{shown}} af {{total}}",
+      "loadMore": "Vis flere",
+      "archive": "Arkiver",
+      "archiveNamed": "Arkiver {{title}}",
+      "restore": "Gendan",
+      "restoreNamed": "Gendan {{title}}",
+      "archiveConfirm": {
+        "title": "Vil du arkivere {{title}}?",
+        "description": "Alle holder op med at synkronisere det og beholder deres egen kopi. Serveren sletter projektet efter {{days}} dage, medmindre du gendanner det.",
+        "descriptionLater": "Alle holder op med at synkronisere det og beholder deres egen kopi. Serveren sletter arkiverede projekter efter et stykke tid, medmindre du gendanner dem.",
+        "confirm": "Arkiver projektet"
+      },
+      "adminOnly": "Kun administratorer kan arkivere eller gendanne projekter."
+    },
+    "checks": {
+      "description": "Tjek forbindelsen fra denne computer til serveren."
+    }
+  },
+  "links": {
+    "turnedOff": "Samarbejde i realtid er slået fra. Slå det til i Indstillinger under Eksperimenter, og åbn linket igen.",
+    "openSettings": "Åbn Indstillinger",
+    "malformed": "Oleafly kan ikke åbne dette link. Bed den, der sendte det, om et nyt.",
+    "opening": "Åbner det delte projekt…",
+    "confirm": {
+      "title": "Vil du deltage i dette delte projekt?",
+      "body": "Når du deltager, bliver du føjet til projektet, og dets filer kopieres til denne computer. Deltag kun, hvis du ved, hvem der har sendt dig linket.",
+      "project": "Projekt",
+      "owner": "Ejer",
+      "server": "Server",
+      "role": "Din rolle",
+      "join": "Deltag"
+    }
+  },
+  "comments": {
+    "title": "Kommentarer",
+    "titleUnread": "Kommentarer, ny aktivitet",
+    "add": "Tilføj kommentar",
+    "showResolved": "Vis løste kommentarer",
+    "hideResolved": "Skjul løste kommentarer",
+    "noFile": "Åbn en fil for at se dens kommentarer.",
+    "empty": "Der er ingen kommentarer til denne fil endnu.",
+    "emptyCanWrite": "Der er ingen kommentarer til denne fil endnu. Markér noget tekst, og vælg Tilføj kommentar for at starte en.",
+    "loadFailed": "Kommentarerne til denne fil kunne ikke indlæses.",
+    "detached": "Frakoblet",
+    "detachedHint": "Teksten, som disse kommentarer handlede om, er slettet.",
+    "resolvedBy": "Løst af {{name}}",
+    "edited": "Redigeret",
+    "deleted": "Denne kommentar er slettet.",
+    "newLabel": "Ny kommentar",
+    "newPlaceholder": "Skriv en kommentar. Skriv @ for at nævne nogen.",
+    "replyLabel": "Svar",
+    "replyPlaceholder": "Skriv et svar. Skriv @ for at nævne nogen.",
+    "editLabel": "Rediger kommentar",
+    "post": "Kommentér",
+    "reply": "Svar",
+    "resolve": "Løs",
+    "reopen": "Genåbn",
+    "deleteThread": "Slet tråd",
+    "messageActions": "Flere handlinger for denne kommentar",
+    "threadActions": "Flere handlinger for denne tråd",
+    "showInEditor": "Vis i editoren",
+    "thread": "Kommentar fra {{name}}",
+    "mentionList": "Personer, du kan nævne",
+    "marker": "Vis kommentarerne på denne linje",
+    "unverifiedAuthor": "Kunne ikke bekræfte, hvem der skrev dette",
+    "unverifiedThread": "Kommentar fra en, som Oleafly ikke kunne bekræfte",
+    "resolvedUnverified": "Løst af en, som Oleafly ikke kunne bekræfte",
+    "refusals": {
+      "notLive": "Projektet er ikke forbundet lige nu. Prøv igen, når forbindelsen er tilbage.",
+      "notYours": "Kun den person, der skrev kommentaren, kan ændre den.",
+      "offServer": "Kommentarer er slået fra på denne server.",
+      "offProject": "Kommentarer er slået fra for dette projekt. Bed ejeren om at slå dem til igen.",
+      "viewer": "Du kan læse kommentarer her, men ikke skrive dem. Bed ejeren om redigeringsadgang.",
+      "someoneReplied": "En anden har svaret, så tråden bliver. Du kan løse den i stedet.",
+      "messageDeleted": "Kommentaren er slettet, så du kan ikke redigere den.",
+      "selectionChanged": "Den tekst, du markerede, er ændret. Marker den igen, og tilføj din kommentar.",
+      "tooLong": "Kommentaren er for lang. Gør den kortere, og prøv igen.",
+      "empty": "Skriv noget, før du sender."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} åbnede projektet",
+    "joinedLink": "{{name}} deltog via linket",
+    "joinedShare": "{{name}} deltog, efter du delte projektet",
+    "downloaded": "{{name}} hentede en kopi",
+    "unknown": "{{name}} brugte projektet",
+    "unknownDevice": "Ukendt enhed",
+    "span": "{{from}} til {{to}}",
+    "more": "Vis ældre",
+    "loading": "Indlæser adgangsloggen…",
+    "loadFailed": "Oleafly kunne ikke indlæse adgangsloggen.",
+    "empty": "Intet registreret endnu."
+  },
+  "guests": {
+    "badge": "Gæst",
+    "invite": {
+      "noAccount": "Ingen på {{server}} bruger {{email}}. Inviter personen som gæst, så ser personen kun de projekter, den er inviteret til.",
+      "button": "Inviter som gæst",
+      "buttonNamed": "Inviter {{email}} som gæst",
+      "duplicate": "Den adresse har allerede en invitation til dette projekt.",
+      "tooMany": "Du har sendt mange invitationer den sidste time. Prøv igen senere."
+    },
+    "sent": {
+      "emailed": "Invitation sendt til {{email}}.",
+      "emailedAfterApproval": "En administrator skal godkende denne invitation. {{email}} får en e-mail, når den er godkendt.",
+      "added": "{{email}} har allerede en konto på {{server}}, så personen har adgang nu.",
+      "sendLink": "{{server}} sender ikke e-mail, så send selv dette link til {{email}}. Med det tilføjer personen serveren og logger ind med den adresse.",
+      "sendLinkAfterApproval": "En administrator skal først godkende denne invitation. {{server}} sender ikke e-mail, så send selv dette link til {{email}}. Det virker, når invitationen er godkendt.",
+      "linkLabel": "Link til at tilføje {{server}}"
+    },
+    "list": {
+      "title": "Invitationer",
+      "status": {
+        "awaiting_approval": "Venter på godkendelse",
+        "invited": "Inviteret",
+        "declined": "Afvist"
+      },
+      "expires": "Udløber {{date}}",
+      "withdraw": "Træk tilbage",
+      "withdrawNamed": "Træk invitationen til {{email}} tilbage"
+    },
+    "pending": {
+      "title": "Ventende gæster",
+      "description": "Projektejere har inviteret disse personer som gæster. En gæst ser kun de projekter, den er inviteret til, og kan ikke dele dem.",
+      "invitedBy": "{{inviter}} inviterede dem til {{project}}",
+      "approve": "Godkend",
+      "approveNamed": "Godkend {{email}}",
+      "decline": "Afvis",
+      "declineNamed": "Afvis {{email}}"
+    }
   }
 }

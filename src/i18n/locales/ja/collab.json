@@ -35,6 +35,13 @@
         "title": "{{name}} を削除しますか？",
         "description": "Oleafly はこのサーバーからサインアウトし、一覧から削除します。このコンピュータにあるプロジェクトはそのまま残ります。",
         "confirm": "サーバーを削除"
+      },
+      "emails": {
+        "label": "プロジェクトが共有されたらメールで知らせる",
+        "description": "メールにはプロジェクト名と、開くためのリンクが入っています。",
+        "noMail": "このサーバーはメールを送りません。共有されたプロジェクトは、ライブラリの「あなたと共有されたプロジェクト」に引き続き表示されます。",
+        "paused": "サーバーの管理者が全員へのメールをオフにしています。",
+        "loadFailed": "Oleafly はメールの設定を読み込めませんでした。"
       }
     },
     "devices": {
@@ -91,7 +98,7 @@
           "label": "リアルタイム接続",
           "pass": "リアルタイムの編集が届きます。",
           "fail": "あなたとサーバーの間にある何かが、リアルタイムの編集を妨げています。ファイアウォールやプロキシの設定変更が必要かもしれません。",
-          "info": "リアルタイムの編集は届きますが、接続に時間がかかりました。",
+          "info": "このネットワークが通常の経路をブロックしているため、リアルタイムの編集は低速な経路を使います。それでも編集は届きます。",
           "skipped": "前のチェックが失敗したため、確認していません。"
         },
         "signInProviders": {
@@ -135,11 +142,23 @@
     "noProviders": "このサーバーにはまだサインイン方法がありません。管理者に設定を依頼してください。",
     "waitingTitle": "ブラウザでの操作を待っています",
     "waitingDescription": "開いたブラウザのウィンドウでサインインを済ませてから、ここに戻ってください。",
+    "waitingEmailDescription": "ブラウザでメールアドレスを入力し、届いたリンクをこのコンピューターで開いてください。",
     "cancel": "キャンセル",
     "back": "戻る",
     "doneTitle": "サインインしました",
     "doneDescription": "{{server}} に {{name}} としてサインインしました。",
-    "done": "完了"
+    "done": "完了",
+    "codeSignIn": "コードでサインイン",
+    "codeSignInDescription": "ブラウザから Oleafly に戻れないときや、別のデバイスでサインインするときに使います。",
+    "codeRequesting": "コードを取得しています…",
+    "codeSteps": "スマートフォンやコンピューターでこのアドレスを開き、コードを入力してください。",
+    "codeAddressLabel": "アドレス",
+    "codeLabel": "コード",
+    "codeExpires": "このコードは {{time}} に使えなくなります。",
+    "codeWaiting": "サインインを待っています",
+    "codeOpen": "ブラウザで開く",
+    "codeOffer": "ブラウザが Oleafly に戻ってきませんか？",
+    "codeHint": "ブラウザが Oleafly に接続できなかった場合は、コードでサインインしてください。"
   },
   "errors": {
     "unreachable": "Oleafly はサーバーに接続できませんでした。アドレスと接続を確認して、もう一度お試しください。",
@@ -179,7 +198,8 @@
       "allowlist": "許可するユーザー",
       "domains": "ドメイン",
       "settings": "サーバーの設定",
-      "log": "セキュリティログ"
+      "log": "セキュリティログ",
+      "email": "メール"
     },
     "members": {
       "description": "このサーバーにサインインしたことのあるすべての人です。",
@@ -271,9 +291,17 @@
         "label": "プロジェクトのアクセスログを許可",
         "description": "プロジェクトの所有者は、誰がプロジェクトを開いたかを記録できます。"
       },
+      "commentsAllowed": {
+        "label": "コメントを許可",
+        "description": "共有プロジェクトのメンバーはテキストにコメントして返信できます。オフにするとコメントはどこにも表示されなくなりますが、保存されたままです。"
+      },
       "emailNotifications": {
         "label": "メール通知",
-        "description": "メンバーとして追加されたときや、誰かがプロジェクトを共有したときに、サーバーからメールが届きます。"
+        "description": "これらのメールを送ります。オフにすると、サーバー上の全員に送られなくなります。"
+      },
+      "emailLinkSignIn": {
+        "label": "メールでサインイン",
+        "description": "メールアドレスに届くリンクでサインインできるようにします。サーバーのメール設定が必要です。誰が参加できるかは、引き続きアクセスルールで決まります。"
       }
     },
     "log": {
@@ -302,7 +330,88 @@
         "domainRuleAdded": "ドメインのルールを追加しました",
         "domainRuleRemoved": "ドメインのルールを削除しました",
         "settingsChanged": "サーバーの設定を変更しました",
+        "projectShared": "プロジェクトを共有しました",
+        "projectAccessGranted": "プロジェクトへのアクセス権を付与しました",
+        "projectAccessChanged": "プロジェクトへのアクセス権を変更しました",
+        "projectAccessRemoved": "プロジェクトからユーザーを削除しました",
+        "projectLeft": "プロジェクトから退出しました",
+        "projectLinkSharingOn": "プロジェクトのリンク共有をオンにしました",
+        "projectLinkSharingOff": "プロジェクトのリンク共有をオフにしました",
+        "projectLinkRoleChanged": "プロジェクトのリンクでできることを変更しました",
+        "projectArchived": "プロジェクトをアーカイブしました",
+        "projectUnarchived": "アーカイブしたプロジェクトを復元しました",
+        "projectSettingsChanged": "プロジェクトの設定を変更しました",
+        "projectAccessLogOn": "プロジェクトのアクセスログをオンにしました",
+        "projectAccessLogOff": "プロジェクトのアクセスログをオフにしました",
+        "projectCommentsOn": "プロジェクトのコメントをオンにしました",
+        "projectCommentsOff": "プロジェクトのコメントをオフにしました",
+        "projectRejoinRefused": "削除されたプロジェクトに再参加しようとしました",
+        "guestInvited": "ゲストを招待しました",
+        "guestInvitationApproved": "ゲストの招待を承認しました",
+        "guestInvitationDeclined": "ゲストの招待を却下しました",
+        "guestInvitationRevoked": "ゲストの招待を取り消しました",
+        "guestAdmissionEnded": "ゲストのサーバーへのアクセスを終了しました",
         "unknown": "その他のサーバーイベント"
+      },
+      "details": {
+        "project": "プロジェクト: {{title}}",
+        "provider": "{{provider}} で",
+        "providerEmailLink": "メールのリンクで",
+        "signInCode": "サインインコードを使用",
+        "via": {
+          "allowlist": "許可するユーザーのリストで許可",
+          "domain": "ドメインのルールで許可",
+          "setup": "セットアップコードを使用",
+          "guest": "ゲストとして許可",
+          "link": "プロジェクトのリンクから",
+          "invitation": "ゲストの招待から"
+        },
+        "newAccount": "新しいアカウント",
+        "reactivated": "アカウントを再有効化",
+        "reasons": {
+          "suspended": "アカウントは利用停止中です",
+          "notAdmitted": "どのアクセスのルールにも該当しません",
+          "setupCodeInvalid": "セットアップコードが違います",
+          "guestInvitationUnusable": "ゲストの招待はもう使えません",
+          "lockedOutIp": "1 つのネットワークアドレスからの試行が多すぎます",
+          "lockedOutAddress": "1 つのアドレスへのサインインメールが多すぎます",
+          "stoppedByPerson": "サインインページで中止されました",
+          "otherBrowser": "開始したブラウザとは別のブラウザで完了しました",
+          "inactiveAccountAddress": "このメールアドレスは削除済みか利用停止中のアカウントのものです",
+          "noProjectsLeft": "残っているプロジェクトがありません"
+        },
+        "role": "役割: {{role}}",
+        "roleChange": "{{from}} から {{to}} へ",
+        "device": "デバイス: {{name}}",
+        "byAdmin": "管理コンソールから",
+        "settingOn": "{{setting}}: オン",
+        "settingOff": "{{setting}}: オフ"
+      }
+    },
+    "email": {
+      "description": "メンバーを追加したとき、誰かがプロジェクトを共有したとき、アカウントが新しい端末でサインインしたときに、サーバーからメールが届きます。",
+      "loading": "メールの設定を読み込み中…",
+      "on": {
+        "title": "メールはオンです",
+        "from": "メールの送信元は {{from}} です。"
+      },
+      "off": {
+        "title": "メールはオフです",
+        "description": "このサーバーにはメールの設定がありません。メールをオンにするには、サーバーで OLEAFLY_SMTP_URL と OLEAFLY_MAIL_FROM を設定してから再起動してください。",
+        "copyPath": "それまでは、新しいメンバーにこのリンクを自分で送ってください。Oleafly にサーバーが追加されます。",
+        "address": "「サーバーを追加」でこのアドレスを入力することもできます:"
+      },
+      "needsSettings": "先にサーバーのメールをオンにしてください。",
+      "lastFailure": "最後に送信できなかったメール: {{date}}。メールサーバーの応答:",
+      "test": {
+        "title": "テストメール",
+        "description": "{{address}} にテストメールを送って、設定が動くか確かめます。",
+        "send": "テストメールを送信",
+        "sending": "送信中…",
+        "sent": "{{address}} に送りました。受信トレイにない場合は、迷惑メールフォルダを確認してください。",
+        "failed": "メールサーバーがテストメールを受け付けませんでした。",
+        "noAddress": "アカウントに確認済みのメールアドレスがないため、テストの送り先がありません。",
+        "adminOnly": "テストメールを送れるのは管理者だけです。"
       }
     }
   },
@@ -367,6 +476,11 @@
       "sharingDescription": "{{server}} にサインインしていてリンクを知っている人は、誰でもこのプロジェクトを開けます。",
       "roleLabel": "リンクから開いた人の役割"
     },
+    "comments": {
+      "label": "コメント",
+      "description": "編集できる人は誰でも、このプロジェクトのテキストにコメントできます。オフにするとコメントは非表示になりますが、削除はされません。",
+      "serverOff": "{{server}} ではコメントがオフになっています。管理者にオンにするよう依頼してください。"
+    },
     "stop": "共有を停止",
     "stopConfirm": {
       "title": "{{name}} の共有を停止しますか？",
@@ -378,6 +492,10 @@
       "title": "{{name}} から退出しますか？",
       "description": "あなたのコピーは同期されなくなり、通常のプロジェクトとしてこのコンピュータに残ります。",
       "confirm": "退出"
+    },
+    "accessLog": {
+      "label": "アクセスログ",
+      "description": "このプロジェクトを開いた人、参加した人、コピーをダウンロードした人を、使ったデバイスと日時とともにサーバーが記録します。この一覧は リアルタイム共同編集 パネルで、あなただけが見られます。"
     }
   },
   "sync": {
@@ -395,7 +513,8 @@
     "unknownPerson": "誰か"
   },
   "tree": {
-    "here": "{{name}} がこのファイルを開いています"
+    "here": "{{name}} がこのファイルを開いています",
+    "clash": "{{other}} も {{name}} という名前のため、このファイルはディスク上で別の名前になりました。"
   },
   "library": {
     "kind": "共有",
@@ -427,7 +546,18 @@
     "empty": "まだ何も起きていません。",
     "here": "現在ここにいます",
     "hereIn": "現在 {{path}} を開いています",
-    "away": "現在ここにはいません"
+    "away": "現在ここにはいません",
+    "deleted": "最近削除した項目",
+    "deletedEmpty": "最近削除されたものはありません。",
+    "accessLog": "アクセスログ"
+  },
+  "deleted": {
+    "restore": "復元",
+    "restoreLabel": "{{name}} を復元",
+    "inFolder": "元の場所: {{folder}}",
+    "inProject": "元の場所: プロジェクトフォルダー",
+    "byYou": "あなたが削除",
+    "by": "{{name}} が削除"
   },
   "activity": {
     "welcomeEdit": "{{server}} の {{owner}} が共有したプロジェクトです。編集できます。",
@@ -446,7 +576,11 @@
     "signIn": "サインイン",
     "repeated": "連続回数: {{number}}",
     "newDevice": "{{name}} が新しいデバイスでサインインしました",
-    "review": "確認"
+    "review": "確認",
+    "renamed": "あなたが {{ours}} という名前にした後、{{name}} が {{before}} を {{theirs}} に変更しました",
+    "mentioned": "{{name}} が {{path}} のコメントであなたをメンションしました",
+    "mentionedHere": "{{name}} がコメントであなたをメンションしました",
+    "showComment": "コメントを表示"
   },
   "mergeReview": {
     "title": "不在中に取り込んだ変更",
@@ -460,5 +594,264 @@
     "newFile": "新しいファイル",
     "removedFile": "削除済み",
     "diffLabel": "{{path}} の変更"
+  },
+  "console": {
+    "open": "管理コンソールを開く",
+    "windowTitle": "{{name}} の管理コンソール",
+    "title": "管理コンソール",
+    "sectionsLabel": "管理コンソールのセクション",
+    "sections": {
+      "overview": "概要",
+      "people": "ユーザー",
+      "access": "アクセスのルール",
+      "projects": "プロジェクト",
+      "settings": "設定",
+      "email": "メール",
+      "log": "セキュリティログ",
+      "checks": "接続チェック"
+    },
+    "health": {
+      "label": "サーバーの状態: {{status}}",
+      "checking": "確認中",
+      "ok": "正常",
+      "warning": "要対応",
+      "unreachable": "接続不可"
+    },
+    "states": {
+      "loading": "管理コンソールを開いています…",
+      "loadFailed": "Oleafly は管理コンソールを開けませんでした。",
+      "unknownTitle": "このサーバーは一覧にありません",
+      "unknownDescription": "設定でサーバーをもう一度追加してから、そのカードから管理コンソールを開いてください。",
+      "signedOutTitle": "このサーバーからサインアウトしています",
+      "signedOutDescription": "設定でもう一度サインインしてから、サーバーのカードから管理コンソールを開いてください。",
+      "refusedTitle": "管理コンソールは管理者とメンテナー専用です",
+      "refusedDescription": "このサーバーでのあなたの役割は {{role}} です。サーバーの管理が必要な場合は、管理者に依頼してください。"
+    },
+    "overview": {
+      "loading": "概要を読み込み中…",
+      "health": {
+        "title": "状態",
+        "okLabel": "すべて正常に動作しています",
+        "okDescription": "ユーザーはサインインでき、サーバーはファイルを保存できます。",
+        "issues": {
+          "noSignInProvider": {
+            "label": "誰もサインインできません",
+            "description": "サーバーで GitHub または OpenID のサインインを設定してから、サーバーを再起動してください。サーバーがメールを送信できる場合は、代わりに設定で「メールでサインイン」をオンにできます。"
+          },
+          "storageNotWritable": {
+            "label": "サーバーがファイルを保存できません",
+            "description": "サーバーのデータフォルダがあること、そしてサーバーがそこに書き込めることを確認してください。"
+          },
+          "unknown": {
+            "label": "サーバーが問題を報告しました",
+            "description": "内容を確認するには Oleafly を更新してください。"
+          }
+        }
+      },
+      "glance": {
+        "title": "概況",
+        "people": "ユーザー",
+        "suspended": "利用停止中: {{number}}",
+        "devices": "端末",
+        "projects": "共有プロジェクト",
+        "projectsDetail": "アーカイブ済み: {{archived}}、アップロード中: {{pending}}",
+        "online": "現在オンライン",
+        "onlineDetail": "開いているプロジェクト: {{number}}",
+        "started": "起動日時",
+        "version": "バージョン",
+        "protocol": "プロトコル {{protocol}}"
+      },
+      "storage": {
+        "title": "保存領域",
+        "adminOnly": "サーバーの保存領域の使用量を確認できるのは管理者だけです。",
+        "database": "データベース",
+        "databaseDetail": "アカウント、設定、ログ",
+        "snapshots": "プロジェクトのスナップショット",
+        "snapshotsDetail": "各プロジェクトの保存済みコピー",
+        "files": "ファイル",
+        "location": {
+          "disk": "サーバーのディスク上",
+          "s3": "S3 ストレージ上",
+          "unknown": "その他の保存先"
+        }
+      },
+      "services": {
+        "title": "メールとサインイン",
+        "email": "メール",
+        "emailOn": "設定済み",
+        "emailOff": "未設定",
+        "emailOnDescription": "サーバーはメールを送信できます。",
+        "emailOffDescription": "サーバーはまだメールを送信できないため、メールで通知を受け取る人はいません。",
+        "openEmail": "メールの設定",
+        "signIn": "サインイン方法",
+        "signInNone": "まだありません。設定するまで誰もサインインできません。",
+        "emailLinkOption": "メールのリンク"
+      },
+      "settings": {
+        "title": "サーバーの設定",
+        "on": "オン",
+        "off": "オフ",
+        "change": "設定を変更"
+      },
+      "limits": "上限: 1 プロジェクトあたり {{project}}、1 ファイルあたり {{file}}、1 プロジェクトあたり {{people}} 人。"
+    },
+    "projects": {
+      "description": "このサーバーで共有されているすべてのプロジェクトです。",
+      "searchLabel": "プロジェクトを検索",
+      "searchPlaceholder": "タイトルまたは所有者で検索",
+      "filterLabel": "表示するプロジェクト",
+      "filter": {
+        "all": "すべて",
+        "active": "共有中",
+        "archived": "アーカイブ済み",
+        "pending": "アップロード中"
+      },
+      "columns": {
+        "title": "プロジェクト",
+        "owner": "所有者",
+        "members": "人数",
+        "size": "サイズ",
+        "activity": "最終アクティビティ",
+        "actions": "操作"
+      },
+      "sortBy": "{{column}} で並べ替え",
+      "status": {
+        "archived": "アーカイブ済み",
+        "pending": "アップロード中",
+        "unknown": "不明"
+      },
+      "loading": "プロジェクトを読み込み中…",
+      "empty": "このサーバーで共有されているプロジェクトはまだありません。",
+      "noMatches": "検索に一致するプロジェクトはありません。",
+      "count": "{{total}} 件中 {{shown}} 件を表示",
+      "loadMore": "さらに表示",
+      "archive": "アーカイブ",
+      "archiveNamed": "{{title}} をアーカイブ",
+      "restore": "復元",
+      "restoreNamed": "{{title}} を復元",
+      "archiveConfirm": {
+        "title": "{{title}} をアーカイブしますか？",
+        "description": "全員の同期が停止し、各自が自分のコピーを保持します。復元しない限り、サーバーは {{days}} 日後にプロジェクトを削除します。",
+        "descriptionLater": "全員の同期が停止し、各自が自分のコピーを保持します。復元しない限り、サーバーはアーカイブしたプロジェクトをしばらくしてから削除します。",
+        "confirm": "プロジェクトをアーカイブ"
+      },
+      "adminOnly": "プロジェクトをアーカイブまたは復元できるのは管理者だけです。"
+    },
+    "checks": {
+      "description": "このコンピュータからサーバーへの接続を確認します。"
+    }
+  },
+  "links": {
+    "turnedOff": "リアルタイム共同編集はオフになっています。設定の「実験的な機能」でオンにしてから、もう一度リンクを開いてください。",
+    "openSettings": "設定を開く",
+    "malformed": "Oleafly ではこのリンクを開けません。送ってくれた人に新しいリンクを頼んでください。",
+    "opening": "共有プロジェクトを開いています…",
+    "confirm": {
+      "title": "この共有プロジェクトに参加しますか？",
+      "body": "参加するとプロジェクトに追加され、そのファイルがこのコンピュータにコピーされます。リンクを送った人がわかる場合だけ参加してください。",
+      "project": "プロジェクト",
+      "owner": "所有者",
+      "server": "サーバー",
+      "role": "あなたの役割",
+      "join": "参加する"
+    }
+  },
+  "comments": {
+    "title": "コメント",
+    "titleUnread": "コメント、新しいアクティビティ",
+    "add": "コメントを追加",
+    "showResolved": "解決済みのコメントを表示",
+    "hideResolved": "解決済みのコメントを非表示",
+    "noFile": "ファイルを開くと、そのコメントが表示されます。",
+    "empty": "このファイルにはまだコメントがありません。",
+    "emptyCanWrite": "このファイルにはまだコメントがありません。テキストを選択して「コメントを追加」を選ぶと始められます。",
+    "loadFailed": "このファイルのコメントを読み込めませんでした。",
+    "detached": "切り離されたコメント",
+    "detachedHint": "これらのコメントが付いていたテキストは削除されました。",
+    "resolvedBy": "{{name}} が解決済みにしました",
+    "edited": "編集済み",
+    "deleted": "このコメントは削除されました。",
+    "newLabel": "新しいコメント",
+    "newPlaceholder": "コメントを入力します。@ を入力すると誰かをメンションできます。",
+    "replyLabel": "返信",
+    "replyPlaceholder": "返信を入力します。@ を入力すると誰かをメンションできます。",
+    "editLabel": "コメントを編集",
+    "post": "コメント",
+    "reply": "返信",
+    "resolve": "解決",
+    "reopen": "再開",
+    "deleteThread": "スレッドを削除",
+    "messageActions": "このコメントのその他の操作",
+    "threadActions": "このスレッドのその他の操作",
+    "showInEditor": "エディターで表示",
+    "thread": "{{name}} のコメント",
+    "mentionList": "メンションできるユーザー",
+    "marker": "この行のコメントを表示",
+    "unverifiedAuthor": "誰が書いたか確認できません",
+    "unverifiedThread": "Oleafly が確認できなかった人のコメント",
+    "resolvedUnverified": "Oleafly が確認できなかった人が解決済みにしました",
+    "refusals": {
+      "notLive": "このプロジェクトは現在接続されていません。再接続してから、もう一度お試しください。",
+      "notYours": "このコメントを変更できるのは、書いた本人だけです。",
+      "offServer": "このサーバーではコメントがオフになっています。",
+      "offProject": "このプロジェクトではコメントがオフになっています。所有者にオンに戻すよう依頼してください。",
+      "viewer": "ここではコメントを読めますが、書くことはできません。所有者に編集権限を依頼してください。",
+      "someoneReplied": "ほかの人が返信したため、このスレッドは残ります。代わりに解決済みにできます。",
+      "messageDeleted": "このコメントは削除されたため、編集できません。",
+      "selectionChanged": "選択したテキストが変更されました。もう一度選択してから、コメントを追加してください。",
+      "tooLong": "このコメントは長すぎます。短くしてから、もう一度お試しください。",
+      "empty": "投稿する前に何か書いてください。"
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} がプロジェクトを開きました",
+    "joinedLink": "{{name}} がリンクから参加しました",
+    "joinedShare": "{{name}} があなたの共有を受けて参加しました",
+    "downloaded": "{{name}} がコピーをダウンロードしました",
+    "unknown": "{{name}} がプロジェクトを使用しました",
+    "unknownDevice": "不明なデバイス",
+    "span": "{{from}} から {{to}} まで",
+    "more": "以前の記録を表示",
+    "loading": "アクセスログを読み込み中…",
+    "loadFailed": "Oleafly はアクセスログを読み込めませんでした。",
+    "empty": "まだ記録はありません。"
+  },
+  "guests": {
+    "badge": "ゲスト",
+    "invite": {
+      "noAccount": "{{server}} に {{email}} を使っている人はいません。ゲストとして招待すると、招待されたプロジェクトだけが見えます。",
+      "button": "ゲストとして招待",
+      "buttonNamed": "{{email}} をゲストとして招待",
+      "duplicate": "このアドレスには、このプロジェクトへの招待がすでにあります。",
+      "tooMany": "この1時間に多くの招待を送りました。しばらくしてからもう一度お試しください。"
+    },
+    "sent": {
+      "emailed": "{{email}} に招待メールを送りました。",
+      "emailedAfterApproval": "この招待は管理者の承認が必要です。承認されると {{email}} にメールが届きます。",
+      "added": "{{email}} はすでに {{server}} のアカウントを持っているため、今すぐアクセスできます。",
+      "sendLink": "{{server}} はメールを送信しないため、このリンクを {{email}} にご自身で送ってください。相手はこのリンクでサーバーを追加し、そのアドレスでサインインします。",
+      "sendLinkAfterApproval": "この招待はまず管理者の承認が必要です。{{server}} はメールを送信しないため、このリンクを {{email}} にご自身で送ってください。招待が承認されると使えるようになります。",
+      "linkLabel": "{{server}} を追加するリンク"
+    },
+    "list": {
+      "title": "招待",
+      "status": {
+        "awaiting_approval": "承認待ち",
+        "invited": "招待済み",
+        "declined": "辞退"
+      },
+      "expires": "{{date}} に期限切れ",
+      "withdraw": "取り消す",
+      "withdrawNamed": "{{email}} への招待を取り消す"
+    },
+    "pending": {
+      "title": "保留中のゲスト",
+      "description": "プロジェクトの所有者がこれらの人をゲストとして招待しました。ゲストは招待されたプロジェクトだけを見ることができ、共有はできません。",
+      "invitedBy": "{{inviter}} が {{project}} に招待しました",
+      "approve": "承認",
+      "approveNamed": "{{email}} を承認",
+      "decline": "却下",
+      "declineNamed": "{{email}} を却下"
+    }
   }
 }

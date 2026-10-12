@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::error::ServerError;
+use crate::mail::notify;
 use crate::members;
 use crate::routes::{json_body, path_id, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
@@ -93,6 +94,17 @@ fn existing_member(conn: &Connection, account: AccountId) -> Result<MemberSummar
     }
 }
 
+fn require_staff_rights(
+    auth: Authenticated,
+    owner: AccountId,
+    role: ServerRole,
+) -> Result<(), ServerError> {
+    if members::is_staff(role) && owner != auth.account_id {
+        auth.require(ServerAction::ManageStaff)?;
+    }
+    Ok(())
+}
+
 async fn member_devices(
     State(state): State<AppState>,
     auth: Authenticated,
@@ -103,7 +115,8 @@ async fn member_devices(
     let devices = state
         .db
         .call(move |conn| {
-            existing_member(conn, target)?;
+            let member = existing_member(conn, target)?;
+            require_staff_rights(auth, target, member.account.server_role)?;
             members::device_summaries(conn, target)
         })
         .await?;
@@ -295,9 +308,13 @@ async fn sign_out_device(
     let device: DeviceId = path_id(path)?;
     let owner = state
         .db
-        .call(move |conn| members::device_owner(conn, device))
-        .await?
-        .ok_or(ServerError::NotFound)?;
+        .call(move |conn| {
+            let owner = members::device_owner(conn, device)?.ok_or(ServerError::NotFound)?;
+            let role = members::account_role(conn, owner)?.ok_or(ServerError::NotFound)?;
+            require_staff_rights(auth, owner, role)?;
+            Ok(owner)
+        })
+        .await?;
     state.revoke_device(device).await?;
     let now = state.clock.now_ms();
     state
@@ -374,6 +391,9 @@ async fn add_allowlist(
             Ok(created)
         })
         .await?;
+    if let AllowlistMatcher::Email { email } = &created.matcher {
+        notify::added_to_server(&state, email.clone(), created.role);
+    }
     Ok((StatusCode::CREATED, Json(created)))
 }
 

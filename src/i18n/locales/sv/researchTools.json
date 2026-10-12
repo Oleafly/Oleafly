@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} filer ändrades i ditt projekt efter att uppgiften startade. Deras jämförelser gäller de äldre versionerna, så de går inte att tillämpa.",
       "applyAria": "Tillämpa {{path}}",
       "changedSince": "Ändrad sedan dess",
+      "mergesOnApply": "Filen redigerades efter att uppgiften startade. När du tillämpar behålls de redigeringarna och uppgiftens ändringar läggs till.",
       "loading": "Läser in...",
       "refreshPreview": "Uppdatera förhandsvisningen",
       "preview": "Förhandsvisa",
