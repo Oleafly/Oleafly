@@ -6,6 +6,7 @@ import { documentContextForPreamble, WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import {
   flushWysiwygPendingEdits,
   getWysiwygDocumentContext,
@@ -582,4 +583,40 @@ describe("WysiwygEditor native nodes", () => {
     expect(getWysiwygDocumentContext()).toEqual({ theoremEnvironments: ["observation"], booktabs: false });
   });
 
+});
+
+describe("Visual Markdown in a live shared project", () => {
+  const NOTES = "# Notes\n\nShared text.\n";
+
+  beforeEach(() => {
+    lastEditor = null;
+    useFilesStore.setState({
+      projectId: "shared-project",
+      activePath: "notes.md",
+      files: { "notes.md": { content: NOTES, dirty: false } },
+    });
+  });
+
+  it("is read-only while the project is live and editable again once it is local", () => {
+    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    try {
+      expect(editor.isEditable).toBe(false);
+      act(() => {
+        editor.commands.insertContentAt(editor.state.doc.content.size, " Blocked");
+        flushWysiwygPendingEdits();
+      });
+      expect(editor.getText()).not.toContain("Blocked");
+      act(() => acquireEditorMutationLease("shared-project").release());
+      expect(editor.isEditable).toBe(false);
+      expect(useFilesStore.getState().files["notes.md"]).toEqual({ content: NOTES, dirty: false });
+      act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
+      expect(editor.isEditable).toBe(true);
+    } finally {
+      mounted.unmount();
+      useCollabEditorGate.setState({ projectId: null, viewer: false });
+      useFilesStore.setState({ projectId: null });
+    }
+  });
 });

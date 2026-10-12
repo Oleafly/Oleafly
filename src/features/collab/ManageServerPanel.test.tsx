@@ -84,7 +84,7 @@ describe("ManageServerPanel", () => {
     await user.click(screen.getByRole("tab", { name: admin.tabs.domains }));
     expect(await screen.findByText(admin.domains.empty)).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: admin.tabs.settings }));
-    expect(await screen.findByRole("switch", { name: admin.settings.guestsEnabled.label })).toBeInTheDocument();
+    expect(await screen.findByRole("switch", { name: admin.settings.directoryVisible.label })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: admin.tabs.log }));
     expect(await screen.findByText(admin.log.empty)).toBeInTheDocument();
     expect(mocks.collabAdminSecurityLog).toHaveBeenCalledWith(SERVER_ID);

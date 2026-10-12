@@ -150,7 +150,9 @@
     "internal": "Oleaflyssä tapahtui virhe. Yritä uudelleen.",
     "server_changed": "Tämä osoite kuuluu nyt toiselle palvelimelle, joten Oleafly ei lähettänyt sille mitään. Jos luotat uuteen palvelimeen, poista tämä palvelin ja lisää se uudelleen.",
     "duplicate_server": "Tämä palvelin on jo listallasi eri osoitteella. Jos se on siirtynyt, poista ensin vanha merkintä ja lisää se sitten uudelleen.",
-    "device_in_use": "Joku muu on jo kirjautunut tälle palvelimelle tämän koneen käyttäjätililtä. Jokainen tarvitsee koneelle oman käyttäjätilin voidakseen kirjautua sisään."
+    "device_in_use": "Joku muu on jo kirjautunut tälle palvelimelle tämän koneen käyttäjätililtä. Jokainen tarvitsee koneelle oman käyttäjätilin voidakseen kirjautua sisään.",
+    "server_unknown": "Linkki on palvelimelle, jota et ole vielä lisännyt. Lisää palvelin Yhteistyö-asetuksissa ja avaa linkki sitten uudelleen.",
+    "too_large": "Osa tiedostoista on suurempia kuin tämä palvelin sallii. Pienennä tai poista ne ja yritä sitten uudelleen."
   },
   "roles": {
     "admin": "Ylläpitäjä",
@@ -294,5 +296,145 @@
         "unknown": "Muu palvelintapahtuma"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Omistaja",
+    "editor": "Muokkaaja",
+    "viewer": "Katselija"
+  },
+  "share": {
+    "button": "Jaa",
+    "copyAndShare": "Kopioi Oleaflyhin ja jaa",
+    "title": "Jaa projekti {{name}}",
+    "description": "Työstä tätä projektia muiden kanssa yhteistyöpalvelimen kautta.",
+    "loading": "Ladataan…",
+    "linked": "Tämä projekti on Oleaflyn ulkopuolinen kansio. Oleafly kopioi sen kirjastoosi ja jakaa kopion. Alkuperäiseen kansioon ei kosketa.",
+    "editCopy": "Tämä on jaettu kopio. Muokkaa tästä lähtien tätä kopiota, älä alkuperäistä kansiota.",
+    "serverLabel": "Palvelin",
+    "noServers": "Kirjaudu ensin yhteistyöpalvelimelle ja palaa sitten jakamaan.",
+    "openSettings": "Avaa Yhteistyö-asetukset",
+    "checking": "Tarkistetaan projektia…",
+    "checkFailed": "Oleafly ei voinut tarkistaa tätä projektia.",
+    "files": "Tiedostot",
+    "size": "Koko",
+    "disclosure": "Palvelin {{server}} voi lukea tämän projektin tiedostoja.",
+    "cloudSynced": "Oleafly-kirjastosi on kansiossa, jota iCloud, Dropbox tai vastaava palvelu synkronoi. Kaksi synkronointipalvelua kilpailisi samoista tiedostoista, joten Oleafly ei voi jakaa sieltä. Siirrä kirjasto ensin pois kansiosta.",
+    "tooLarge": "Nämä tiedostot ylittävät palvelimen rajan, joka on {{size}} MB. Pienennä tai poista ne ennen jakamista.",
+    "renamed": "Kaikki nimet eivät toimi jokaisella koneella. Muut saavat nämä tiedostot hieman eri nimellä.",
+    "excluded": "Ei jaeta: käännöstulosteet, Oleafly-asetukset ja Git-historia.",
+    "start": "Jaa",
+    "uploading": "Lähetetään tiedostoja: {{done}}/{{total}}",
+    "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu."
+  },
+  "manage": {
+    "sharedOn": "Jaettu palvelimella {{server}}",
+    "yourRole": "Roolisi: {{role}}",
+    "loading": "Ladataan käyttöoikeuksia…",
+    "loadFailed": "Oleafly ei voinut ladata käyttöoikeuksia.",
+    "people": "Henkilöt, joilla on pääsy",
+    "you": "Sinä",
+    "roleLabel": "Käyttäjän {{name}} rooli",
+    "remove": "Poista",
+    "removeNamed": "Poista {{name}}",
+    "removeConfirm": {
+      "title": "Poistetaanko {{name}} tästä projektista?",
+      "description": "Hänen kopionsa lakkaa synkronoitumasta ja jää hänen koneelleen tavallisena projektina.",
+      "confirm": "Poista"
+    },
+    "add": {
+      "label": "Lisää henkilöitä",
+      "placeholder": "Nimi, käyttäjänimi tai sähköposti",
+      "roleLabel": "Lisättävien henkilöiden rooli",
+      "searching": "Haetaan…",
+      "noResults": "Kukaan palvelimella {{server}} ei vastaa hakua.",
+      "add": "Lisää",
+      "addNamed": "Lisää {{name}}"
+    },
+    "link": {
+      "copy": "Kopioi linkki",
+      "copied": "Linkki kopioitu",
+      "copyFailed": "Linkkiä ei voitu kopioida",
+      "sharing": "Linkkijako",
+      "sharingDescription": "Kuka tahansa palvelimelle {{server}} kirjautunut, jolla on linkki, voi avata tämän projektin.",
+      "roleLabel": "Linkin kautta avaavien rooli"
+    },
+    "stop": "Lopeta jakaminen",
+    "stopConfirm": {
+      "title": "Lopetetaanko projektin {{name}} jakaminen?",
+      "description": "Kaikkien kopiot lakkaavat synkronoitumasta ja muuttuvat tavallisiksi projekteiksi. Palvelin säilyttää jaetun kopion jonkin aikaa ja poistaa sen sitten.",
+      "confirm": "Lopeta jakaminen"
+    },
+    "leave": "Poistu projektista",
+    "leaveConfirm": {
+      "title": "Poistutaanko projektista {{name}}?",
+      "description": "Kopiosi lakkaa synkronoitumasta ja jää tälle koneelle tavallisena projektina.",
+      "confirm": "Poistu"
+    }
+  },
+  "sync": {
+    "upToDate": "Ajan tasalla",
+    "syncing": "Synkronoidaan",
+    "offline": "Ei yhteyttä. Odottavia muutoksia: {{number}}",
+    "reconnecting": "Yhdistetään uudelleen",
+    "signedOut": "Ei kirjautunut",
+    "removed": "Pääsy poistettu",
+    "archived": "Jakaminen lopetettu",
+    "paused": "Tauolla"
+  },
+  "toolbar": {
+    "noFile": "Ei avointa tiedostoa",
+    "unknownPerson": "Joku"
+  },
+  "tree": {
+    "here": "{{name}} on avannut tämän tiedoston"
+  },
+  "library": {
+    "kind": "jaettu",
+    "location": "Jaetut projektit",
+    "flag": "Jaettu",
+    "sharedWithYou": {
+      "title": "Kanssasi jaetut",
+      "from": "{{owner}} palvelimella {{server}}",
+      "open": "Avaa",
+      "openNamed": "Avaa {{name}}"
+    },
+    "openLink": {
+      "menu": "Avaa jaetun projektin linkki…",
+      "title": "Avaa jaettu projekti",
+      "description": "Liitä linkki, jonka joku lähetti sinulle.",
+      "label": "Projektin linkki",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Avaa",
+      "serverUnknown": "Palvelin {{server}} ei ole vielä palvelinlistallasi. Lisää se Yhteistyö-asetuksissa ja avaa linkki sitten uudelleen.",
+      "noAccess": "Sinulla ei ole pääsyä tähän projektiin. Pyydä pääsyä projektin omistajalta."
+    }
+  },
+  "pane": {
+    "title": "Reaaliaikainen yhteistyö",
+    "titleUnread": "Reaaliaikainen yhteistyö, uusia tapahtumia",
+    "manage": "Hallitse jakamista",
+    "people": "Henkilöt",
+    "activity": "Tapahtumat",
+    "empty": "Mitään ei ole vielä tapahtunut.",
+    "here": "Nyt paikalla",
+    "hereIn": "Nyt tiedostossa {{path}}",
+    "away": "Ei nyt paikalla"
+  },
+  "activity": {
+    "welcomeEdit": "{{owner}} jakoi tämän palvelimella {{server}}. Voit muokata.",
+    "welcomeView": "{{owner}} jakoi tämän palvelimella {{server}}. Voit katsella.",
+    "joined": "{{name}} avasi projektin",
+    "left": "{{name}} sulki projektin",
+    "online": "Yhteys palautui",
+    "merged": "Poissaolosi aikana yhdistetyt muiden muutokset: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Näytä tiedostot",
+    "hideFiles": "Piilota tiedostot",
+    "role": "Uusi roolisi: {{role}}",
+    "removed": "Sinulla ei ole enää pääsyä tähän jaettuun projektiin. Kopiosi jää tänne tavallisena projektina.",
+    "archived": "Omistaja lopetti tämän projektin jakamisen. Kopiosi jää tänne tavallisena projektina.",
+    "signedOut": "Olet kirjautunut ulos palvelimelta {{server}}, joten tämä projekti ei synkronoidu. Muutoksesi pysyvät tällä koneella.",
+    "signIn": "Kirjaudu sisään",
+    "repeated": "Kertoja peräkkäin: {{number}}"
   }
 }

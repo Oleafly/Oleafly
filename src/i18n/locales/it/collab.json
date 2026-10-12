@@ -150,7 +150,9 @@
     "internal": "Qualcosa non ha funzionato in Oleafly. Riprova.",
     "server_changed": "Questo indirizzo ora appartiene a un altro server, quindi Oleafly non gli ha inviato nulla. Se ti fidi del nuovo server, rimuovi questo e aggiungilo di nuovo.",
     "duplicate_server": "Questo server è già nel tuo elenco con un altro indirizzo. Se è stato spostato, rimuovi prima la voce vecchia, poi aggiungilo di nuovo.",
-    "device_in_use": "Un'altra persona ha già eseguito l'accesso a questo server da questo account utente del computer. Per accedere, ogni persona ha bisogno del proprio account utente sul computer."
+    "device_in_use": "Un'altra persona ha già eseguito l'accesso a questo server da questo account utente del computer. Per accedere, ogni persona ha bisogno del proprio account utente sul computer.",
+    "server_unknown": "Questo link è per un server che non hai ancora aggiunto. Aggiungilo nelle impostazioni di Collaborazione, poi apri di nuovo il link.",
+    "too_large": "Alcuni file superano la dimensione consentita da questo server. Riducili o rimuovili, poi riprova."
   },
   "roles": {
     "admin": "Amministratore",
@@ -294,5 +296,145 @@
         "unknown": "Altro evento del server"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Proprietario",
+    "editor": "Editor",
+    "viewer": "Visualizzatore"
+  },
+  "share": {
+    "button": "Condividi",
+    "copyAndShare": "Copia in Oleafly e condividi",
+    "title": "Condividi {{name}}",
+    "description": "Lavora a questo progetto con altre persone tramite un server di collaborazione.",
+    "loading": "Caricamento…",
+    "linked": "Questo progetto è una cartella esterna a Oleafly. Oleafly la copia nella tua libreria e condivide quella copia. La cartella originale resta invariata.",
+    "editCopy": "Questa è la copia condivisa. D'ora in poi modifica questa, non la cartella originale.",
+    "serverLabel": "Server",
+    "noServers": "Prima accedi a un server di collaborazione, poi torna qui per condividere.",
+    "openSettings": "Apri le impostazioni di Collaborazione",
+    "checking": "Controllo del progetto…",
+    "checkFailed": "Oleafly non è riuscito a controllare questo progetto.",
+    "files": "File",
+    "size": "Dimensione",
+    "disclosure": "{{server}} può leggere i file di questo progetto.",
+    "cloudSynced": "La tua libreria Oleafly si trova in una cartella sincronizzata da iCloud, Dropbox o un servizio simile. Due servizi di sincronizzazione si contenderebbero gli stessi file, quindi Oleafly non può condividere da lì. Prima sposta la libreria fuori da quella cartella.",
+    "tooLarge": "Questi file superano il limite del server, che è di {{size}} MB. Riducili o rimuovili prima di condividere.",
+    "renamed": "Alcuni nomi non funzionano su tutti i computer. Le altre persone ricevono questi file con un nome leggermente diverso.",
+    "excluded": "Non condivisi: file di compilazione, impostazioni di Oleafly e cronologia Git.",
+    "start": "Condividi",
+    "uploading": "Caricamento dei file: {{done}} di {{total}}",
+    "failed": "La condivisione non è stata completata, quindi non è stato condiviso nulla."
+  },
+  "manage": {
+    "sharedOn": "Condiviso su {{server}}",
+    "yourRole": "Il tuo ruolo: {{role}}",
+    "loading": "Caricamento delle persone con accesso…",
+    "loadFailed": "Oleafly non è riuscito a caricare chi ha accesso.",
+    "people": "Persone con accesso",
+    "you": "Tu",
+    "roleLabel": "Ruolo di {{name}}",
+    "remove": "Rimuovi",
+    "removeNamed": "Rimuovi {{name}}",
+    "removeConfirm": {
+      "title": "Vuoi rimuovere {{name}} da questo progetto?",
+      "description": "La sua copia smette di sincronizzarsi e resta sul suo computer come un normale progetto.",
+      "confirm": "Rimuovi"
+    },
+    "add": {
+      "label": "Aggiungi persone",
+      "placeholder": "Nome, nome utente o email",
+      "roleLabel": "Ruolo delle persone che aggiungi",
+      "searching": "Ricerca in corso…",
+      "noResults": "Nessuno su {{server}} corrisponde.",
+      "add": "Aggiungi",
+      "addNamed": "Aggiungi {{name}}"
+    },
+    "link": {
+      "copy": "Copia link",
+      "copied": "Link copiato",
+      "copyFailed": "Impossibile copiare il link",
+      "sharing": "Condivisione tramite link",
+      "sharingDescription": "Chiunque abbia eseguito l'accesso a {{server}} e abbia il link può aprire questo progetto.",
+      "roleLabel": "Ruolo di chi apre il link"
+    },
+    "stop": "Interrompi la condivisione",
+    "stopConfirm": {
+      "title": "Vuoi interrompere la condivisione di {{name}}?",
+      "description": "Le copie di tutti smettono di sincronizzarsi e diventano normali progetti. Il server conserva la copia condivisa per un po', poi la elimina.",
+      "confirm": "Interrompi la condivisione"
+    },
+    "leave": "Abbandona il progetto",
+    "leaveConfirm": {
+      "title": "Vuoi abbandonare {{name}}?",
+      "description": "La tua copia smette di sincronizzarsi e resta su questo computer come un normale progetto.",
+      "confirm": "Abbandona"
+    }
+  },
+  "sync": {
+    "upToDate": "Aggiornato",
+    "syncing": "Sincronizzazione",
+    "offline": "Offline. Modifiche in attesa: {{number}}",
+    "reconnecting": "Riconnessione",
+    "signedOut": "Accesso non eseguito",
+    "removed": "Accesso rimosso",
+    "archived": "Condivisione interrotta",
+    "paused": "In pausa"
+  },
+  "toolbar": {
+    "noFile": "Nessun file aperto",
+    "unknownPerson": "Qualcuno"
+  },
+  "tree": {
+    "here": "{{name}} ha aperto questo file"
+  },
+  "library": {
+    "kind": "condiviso",
+    "location": "Progetti condivisi",
+    "flag": "Condiviso",
+    "sharedWithYou": {
+      "title": "Condivisi con te",
+      "from": "{{owner}} su {{server}}",
+      "open": "Apri",
+      "openNamed": "Apri {{name}}"
+    },
+    "openLink": {
+      "menu": "Apri il link di un progetto condiviso…",
+      "title": "Apri un progetto condiviso",
+      "description": "Incolla il link che ti hanno inviato.",
+      "label": "Link del progetto",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Apri",
+      "serverUnknown": "{{server}} non è ancora nel tuo elenco di server. Aggiungilo nelle impostazioni di Collaborazione, poi apri di nuovo il link.",
+      "noAccess": "Non hai accesso a questo progetto. Chiedilo al suo proprietario."
+    }
+  },
+  "pane": {
+    "title": "Collaborazione in tempo reale",
+    "titleUnread": "Collaborazione in tempo reale, nuova attività",
+    "manage": "Gestisci la condivisione",
+    "people": "Persone",
+    "activity": "Attività",
+    "empty": "Non è ancora successo nulla.",
+    "here": "Presente ora",
+    "hereIn": "Presente in {{path}}",
+    "away": "Al momento non presente"
+  },
+  "activity": {
+    "welcomeEdit": "Condiviso da {{owner}} su {{server}}. Puoi modificarlo.",
+    "welcomeView": "Condiviso da {{owner}} su {{server}}. Puoi visualizzarlo.",
+    "joined": "{{name}} ha aperto il progetto",
+    "left": "{{name}} ha chiuso il progetto",
+    "online": "Di nuovo online",
+    "merged": "Modifiche degli altri unite mentre eri via: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Mostra i file",
+    "hideFiles": "Nascondi i file",
+    "role": "Il tuo nuovo ruolo: {{role}}",
+    "removed": "Non hai più accesso a questo progetto condiviso. La tua copia resta qui come un normale progetto.",
+    "archived": "Il proprietario ha interrotto la condivisione di questo progetto. La tua copia resta qui come un normale progetto.",
+    "signedOut": "Non hai eseguito l'accesso a {{server}}, quindi questo progetto non si sincronizza. Le tue modifiche restano su questo computer.",
+    "signIn": "Accedi",
+    "repeated": "Volte di fila: {{number}}"
   }
 }

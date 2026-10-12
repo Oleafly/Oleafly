@@ -24,8 +24,10 @@ describe("collaboration stays out of the startup bundle", () => {
     expect(sourcesOutsideCollab.filter((path) => STATIC_COLLAB_IMPORT.test(read(path)))).toEqual([]);
   });
 
-  it("is loaded only by the Settings modal, which App loads lazily", () => {
+  it("is loaded only through its lazy entry points", () => {
     expect(sourcesOutsideCollab.filter((path) => DYNAMIC_COLLAB_IMPORT.test(read(path)))).toEqual([
+      "src/components/collab/CollabSlots.tsx",
+      "src/components/layout/CollabLiveKeeper.tsx",
       "src/components/layout/SettingsModal.tsx",
     ]);
     const app = read("src/App.tsx");

@@ -150,7 +150,9 @@
     "internal": "Något gick fel i Oleafly. Försök igen.",
     "server_changed": "Den här adressen tillhör nu en annan server, så Oleafly skickade ingenting till den. Om du litar på den nya servern tar du bort den här och lägger till den igen.",
     "duplicate_server": "Den här servern finns redan i din lista under en annan adress. Om den har flyttat tar du först bort den gamla posten och lägger sedan till den igen.",
-    "device_in_use": "Någon annan har redan loggat in på den här servern från det här användarkontot på datorn. Varje person behöver ett eget användarkonto på datorn för att logga in."
+    "device_in_use": "Någon annan har redan loggat in på den här servern från det här användarkontot på datorn. Varje person behöver ett eget användarkonto på datorn för att logga in.",
+    "server_unknown": "Den här länken gäller en server som du inte har lagt till än. Lägg till den i samarbetsinställningarna och öppna sedan länken igen.",
+    "too_large": "Vissa filer är större än den här servern tillåter. Gör dem mindre eller ta bort dem och försök sedan igen."
   },
   "roles": {
     "admin": "Administratör",
@@ -294,5 +296,145 @@
         "unknown": "Annan serverhändelse"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Ägare",
+    "editor": "Redigerare",
+    "viewer": "Läsare"
+  },
+  "share": {
+    "button": "Dela",
+    "copyAndShare": "Kopiera till Oleafly och dela",
+    "title": "Dela {{name}}",
+    "description": "Arbeta med andra i det här projektet via en samarbetsserver.",
+    "loading": "Läser in…",
+    "linked": "Det här projektet är en mapp utanför Oleafly. Oleafly kopierar den till ditt bibliotek och delar kopian. Originalmappen lämnas orörd.",
+    "editCopy": "Det här är den delade kopian. Redigera den här från och med nu, inte originalmappen.",
+    "serverLabel": "Server",
+    "noServers": "Logga först in på en samarbetsserver och kom sedan tillbaka för att dela.",
+    "openSettings": "Öppna samarbetsinställningarna",
+    "checking": "Kontrollerar projektet…",
+    "checkFailed": "Oleafly kunde inte kontrollera det här projektet.",
+    "files": "Filer",
+    "size": "Storlek",
+    "disclosure": "{{server}} kan läsa filerna i det här projektet.",
+    "cloudSynced": "Ditt Oleafly-bibliotek ligger i en mapp som iCloud, Dropbox eller en liknande tjänst synkar. Två synktjänster skulle slåss om samma filer, så Oleafly kan inte dela därifrån. Flytta först biblioteket ut ur den mappen.",
+    "tooLarge": "Filerna överskrider serverns gräns på {{size}} MB. Gör dem mindre eller ta bort dem innan du delar.",
+    "renamed": "Vissa namn fungerar inte på alla datorer. Andra får de här filerna under ett något annorlunda namn.",
+    "excluded": "Delas inte: byggfiler, Oleafly-inställningar och Git-historik.",
+    "start": "Dela",
+    "uploading": "Laddar upp filer: {{done}} av {{total}}",
+    "failed": "Delningen slutfördes inte, så inget delades."
+  },
+  "manage": {
+    "sharedOn": "Delat på {{server}}",
+    "yourRole": "Din roll: {{role}}",
+    "loading": "Läser in vem som har åtkomst…",
+    "loadFailed": "Oleafly kunde inte läsa in vem som har åtkomst.",
+    "people": "Personer med åtkomst",
+    "you": "Du",
+    "roleLabel": "Roll för {{name}}",
+    "remove": "Ta bort",
+    "removeNamed": "Ta bort {{name}}",
+    "removeConfirm": {
+      "title": "Ta bort {{name}} från det här projektet?",
+      "description": "Personens kopia slutar synka och ligger kvar på personens dator som ett vanligt projekt.",
+      "confirm": "Ta bort"
+    },
+    "add": {
+      "label": "Lägg till personer",
+      "placeholder": "Namn, användarnamn eller e-post",
+      "roleLabel": "Roll för personer du lägger till",
+      "searching": "Söker…",
+      "noResults": "Ingen på {{server}} matchar.",
+      "add": "Lägg till",
+      "addNamed": "Lägg till {{name}}"
+    },
+    "link": {
+      "copy": "Kopiera länk",
+      "copied": "Länken kopierades",
+      "copyFailed": "Det gick inte att kopiera länken",
+      "sharing": "Länkdelning",
+      "sharingDescription": "Alla som är inloggade på {{server}} och har länken kan öppna det här projektet.",
+      "roleLabel": "Roll för personer som öppnar länken"
+    },
+    "stop": "Sluta dela",
+    "stopConfirm": {
+      "title": "Sluta dela {{name}}?",
+      "description": "Allas kopior slutar synka och blir vanliga projekt. Servern behåller den delade kopian ett tag och raderar den sedan.",
+      "confirm": "Sluta dela"
+    },
+    "leave": "Lämna projektet",
+    "leaveConfirm": {
+      "title": "Lämna {{name}}?",
+      "description": "Din kopia slutar synka och ligger kvar på den här datorn som ett vanligt projekt.",
+      "confirm": "Lämna"
+    }
+  },
+  "sync": {
+    "upToDate": "Uppdaterat",
+    "syncing": "Synkar",
+    "offline": "Offline. Väntande ändringar: {{number}}",
+    "reconnecting": "Ansluter igen",
+    "signedOut": "Utloggad",
+    "removed": "Åtkomst borttagen",
+    "archived": "Delning stoppad",
+    "paused": "Pausad"
+  },
+  "toolbar": {
+    "noFile": "Ingen fil öppen",
+    "unknownPerson": "Någon"
+  },
+  "tree": {
+    "here": "{{name}} har den här filen öppen"
+  },
+  "library": {
+    "kind": "delat",
+    "location": "Delade projekt",
+    "flag": "Delat",
+    "sharedWithYou": {
+      "title": "Delat med dig",
+      "from": "{{owner}} på {{server}}",
+      "open": "Öppna",
+      "openNamed": "Öppna {{name}}"
+    },
+    "openLink": {
+      "menu": "Öppna länk till delat projekt…",
+      "title": "Öppna ett delat projekt",
+      "description": "Klistra in länken som någon skickade till dig.",
+      "label": "Projektlänk",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Öppna",
+      "serverUnknown": "{{server}} finns inte i din lista över servrar än. Lägg till den i samarbetsinställningarna och öppna sedan länken igen.",
+      "noAccess": "Du har inte åtkomst till det här projektet. Fråga projektets ägare."
+    }
+  },
+  "pane": {
+    "title": "Samarbete i realtid",
+    "titleUnread": "Samarbete i realtid, ny aktivitet",
+    "manage": "Hantera delning",
+    "people": "Personer",
+    "activity": "Aktivitet",
+    "empty": "Inget har hänt än.",
+    "here": "Här just nu",
+    "hereIn": "I {{path}} just nu",
+    "away": "Inte här just nu"
+  },
+  "activity": {
+    "welcomeEdit": "Delat av {{owner}} på {{server}}. Du kan redigera projektet.",
+    "welcomeView": "Delat av {{owner}} på {{server}}. Du kan visa projektet.",
+    "joined": "{{name}} öppnade projektet",
+    "left": "{{name}} stängde projektet",
+    "online": "Online igen",
+    "merged": "Sammanfogade ändringar från andra medan du var borta: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Visa filer",
+    "hideFiles": "Dölj filer",
+    "role": "Din nya roll: {{role}}",
+    "removed": "Du har inte längre åtkomst till det här delade projektet. Din kopia ligger kvar här som ett vanligt projekt.",
+    "archived": "Ägaren har slutat dela det här projektet. Din kopia ligger kvar här som ett vanligt projekt.",
+    "signedOut": "Du är utloggad från {{server}}, så det här projektet synkas inte. Dina ändringar stannar på den här datorn.",
+    "signIn": "Logga in",
+    "repeated": "Antal gånger i rad: {{number}}"
   }
 }

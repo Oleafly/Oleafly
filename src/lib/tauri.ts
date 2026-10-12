@@ -71,6 +71,23 @@ import type {
   CollabSecurityEvent,
   CollabServer,
   CollabServerChanged,
+  CollabDocMessage,
+  CollabDocOpened,
+  CollabLiveInfo,
+  CollabLiveMerged,
+  CollabShareCheck,
+  CollabLiveRole,
+  CollabLiveStatus,
+  CollabPerson,
+  CollabPresence,
+  CollabPresenceLeft,
+  CollabProjectMember,
+  CollabProjectRole,
+  CollabProjectSummary,
+  CollabShareInfo,
+  CollabSharedWithMe,
+  CollabShareProgress,
+  CollabTextOperation,
   CompileResult,
   ComponentInfo,
   CopyFileResult,
@@ -1633,6 +1650,8 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "server_changed",
   "duplicate_server",
   "device_in_use",
+  "server_unknown",
+  "too_large",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -1700,6 +1719,107 @@ export const collabAdminSecurityLog = (serverId: string, cursor?: string) =>
     serverId,
     cursor: cursor ?? null,
   });
+
+export const COLLAB_SHARE_PROGRESS_EVENT = "collab-share-progress";
+export const COLLAB_LIVE_STATUS_EVENT = "collab-live-status";
+export const COLLAB_LIVE_ROLE_EVENT = "collab-live-role";
+export const COLLAB_PRESENCE_EVENT = "collab-presence";
+export const COLLAB_PRESENCE_LEFT_EVENT = "collab-presence-left";
+export const COLLAB_LIVE_MERGED_EVENT = "collab-live-merged";
+export const COLLAB_OPEN_LINK_EVENT = "collab-open-link";
+
+export const collabShareInfo = (projectId: string) =>
+  invoke<CollabShareInfo | null>("collab_share_info", { projectId });
+export const collabShareCheck = (projectId: string, serverId: string) =>
+  invoke<CollabShareCheck>("collab_share_check", { projectId, serverId });
+export const collabShareProject = (projectId: string, serverId: string) =>
+  invoke<CollabShareInfo>("collab_share_project", { projectId, serverId });
+export const collabProjectSummary = (projectId: string) =>
+  invoke<CollabProjectSummary>("collab_project_summary", { projectId });
+export const collabMembersList = (projectId: string) =>
+  invoke<CollabProjectMember[]>("collab_members_list", { projectId });
+export const collabMemberSet = (projectId: string, accountId: string, role: CollabProjectRole) =>
+  invoke<CollabProjectMember>("collab_member_set", { projectId, accountId, role });
+export const collabMemberRemove = (projectId: string, accountId: string) =>
+  invoke<void>("collab_member_remove", { projectId, accountId });
+export const collabPeopleSearch = (projectId: string, query: string) =>
+  invoke<CollabPerson[]>("collab_people_search", { projectId, query });
+export const collabLinkSharingSet = (projectId: string, enabled: boolean, role: CollabProjectRole) =>
+  invoke<CollabProjectSummary>("collab_link_sharing_set", { projectId, enabled, role });
+export const collabStopSharing = (projectId: string) =>
+  invoke<void>("collab_stop_sharing", { projectId });
+export const collabLeaveProject = (projectId: string) =>
+  invoke<void>("collab_leave_project", { projectId });
+export const collabSharedWithMe = () => invoke<CollabSharedWithMe[]>("collab_shared_with_me");
+export const collabJoinProject = (serverId: string, sharedProjectId: string) =>
+  invoke<string>("collab_join_project", { serverId, sharedProjectId });
+export const collabOpenLink = (link: string) => invoke<string>("collab_open_link", { link });
+export const collabPendingLinks = () => invoke<string[]>("collab_pending_links");
+
+export function onCollabOpenLink(handler: () => void): Promise<UnlistenFn> {
+  return listen<null>(COLLAB_OPEN_LINK_EVENT, () => handler());
+}
+export const collabLiveStart = (projectId: string) =>
+  invoke<CollabLiveInfo>("collab_live_start", { projectId });
+export const collabLiveStop = (projectId: string) =>
+  invoke<void>("collab_live_stop", { projectId });
+export const collabLiveFlush = (projectId: string) =>
+  invoke<void>("collab_live_flush", { projectId });
+export const collabSyncResume = (projectId: string, send: boolean) =>
+  invoke<void>("collab_sync_resume", { projectId, send });
+
+export async function collabDocOpen(
+  projectId: string,
+  path: string,
+  onMessage: (message: CollabDocMessage) => void,
+): Promise<CollabDocOpened | null> {
+  const channel = new Channel<CollabDocMessage>();
+  channel.onmessage = onMessage;
+  return invoke<CollabDocOpened | null>("collab_doc_open", { projectId, path, channel });
+}
+
+export const collabDocChange = (
+  projectId: string,
+  fileId: string,
+  rev: number,
+  op: CollabTextOperation,
+) => invoke<void>("collab_doc_change", { projectId, fileId, rev, op });
+export const collabDocClose = (projectId: string, fileId: string) =>
+  invoke<void>("collab_doc_close", { projectId, fileId });
+export const collabPresenceSet = (
+  projectId: string,
+  path: string | null,
+  cursor: number | null,
+  anchor: number | null,
+) => invoke<void>("collab_presence_set", { projectId, path, cursor, anchor });
+
+export function onCollabShareProgress(
+  handler: (payload: CollabShareProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<CollabShareProgress>(COLLAB_SHARE_PROGRESS_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabLiveStatus(handler: (payload: CollabLiveStatus) => void): Promise<UnlistenFn> {
+  return listen<CollabLiveStatus>(COLLAB_LIVE_STATUS_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabLiveMerged(handler: (payload: CollabLiveMerged) => void): Promise<UnlistenFn> {
+  return listen<CollabLiveMerged>(COLLAB_LIVE_MERGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabLiveRole(handler: (payload: CollabLiveRole) => void): Promise<UnlistenFn> {
+  return listen<CollabLiveRole>(COLLAB_LIVE_ROLE_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabPresence(handler: (payload: CollabPresence) => void): Promise<UnlistenFn> {
+  return listen<CollabPresence>(COLLAB_PRESENCE_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabPresenceLeft(
+  handler: (payload: CollabPresenceLeft) => void,
+): Promise<UnlistenFn> {
+  return listen<CollabPresenceLeft>(COLLAB_PRESENCE_LEFT_EVENT, ({ payload }) => handler(payload));
+}
 
 export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
   invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });

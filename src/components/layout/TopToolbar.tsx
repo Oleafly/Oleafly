@@ -46,6 +46,7 @@ import {
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { CollabToolbarSlot, ShareDialogHost } from "@/components/collab/CollabSlots";
 import "./top-toolbar.css";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -634,6 +635,7 @@ export function TopToolbar() {
         className={cn(toolbarLayout.stacked ? "contents" : "col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-1", isMac && "pr-3")}>
       <div data-toolbar-part="actions" data-tauri-drag-region
         className={cn("flex w-max shrink-0 items-center gap-1", toolbarLayout.stacked && "col-span-3 row-start-2 justify-self-end px-2")}>
+        <CollabToolbarSlot />
         <div data-toolbar-item="compile" className="flex w-max shrink-0 items-center gap-1">
           <CompileControls iconOnly={toolbarLayout.iconOnly} />
         </div>
@@ -692,6 +694,7 @@ export function TopToolbar() {
       </div>
       </div>
     </header>
+    <ShareDialogHost />
 
     <ModalShell
       open={forkOpen}

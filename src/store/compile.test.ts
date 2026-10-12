@@ -155,6 +155,7 @@ import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { SaveFlushError } from "@/store/save-flush-error";
+import { installCollabEditorPort } from "@/lib/collab-live-bridge";
 import {
   acceptCompileOffer,
   beginCompileRequestIdentity,
@@ -1012,6 +1013,38 @@ describe("saving before a compile", () => {
     expect(mocks.notifyError).not.toHaveBeenCalled();
     expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("has live collaboration write a shared project to disk after saving and before compiling", async () => {
+    const order: string[] = [];
+    mocks.saveAllDirty.mockImplementationOnce(async () => {
+      order.push("save");
+    });
+    const flushLive = vi.fn(async (projectId: string) => {
+      order.push(`flush ${projectId}`);
+    });
+    const uninstall = installCollabEditorPort({ documentSession: () => null, flush: flushLive });
+    try {
+      await saveAllForCompile();
+    } finally {
+      uninstall();
+    }
+    expect(order).toEqual(["save", "flush project"]);
+  });
+
+  it("stops the compile when live collaboration cannot write the project", async () => {
+    mocks.saveAllDirty.mockResolvedValueOnce(undefined);
+    const uninstall = installCollabEditorPort({
+      documentSession: () => null,
+      flush: async () => {
+        throw new Error("live flush failed");
+      },
+    });
+    try {
+      await expect(saveAllForCompile()).rejects.toThrow("live flush failed");
+    } finally {
+      uninstall();
+    }
   });
 
   it("retries only a mutation conflict and passes other failures on", async () => {

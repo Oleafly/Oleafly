@@ -81,6 +81,7 @@ import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
 import { logError } from "@/lib/log";
 import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/features/dropped-files";
+import { CollabTreePresenceSlot, TreeRowPeers, type PeerMarks } from "@/components/collab/CollabSlots";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
   const picked = await pickOpenPath(
@@ -295,8 +296,11 @@ interface TreeCtx {
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
   git: GitDecorations;
+  peers: PeerMarks;
   focusSibling: (path: string, step: 1 | -1) => void;
 }
+
+const NO_PEERS: PeerMarks = new Map();
 
 export function FileTree({
   collapsed: controlledCollapsed,
@@ -328,6 +332,7 @@ export function FileTree({
   if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
 
   const loading = useFilesStore((s) => s.loading);
+  const [peerMarks, setPeerMarks] = useState<PeerMarks>(NO_PEERS);
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(readSidebarView(projectId, "files")?.expanded),
   );
@@ -934,6 +939,7 @@ export function FileTree({
     setDragOver: updateDragOver,
     onMove: move,
     git,
+    peers: peerMarks,
     focusSibling: (path, step) => {
       const start = flatIndex.get(path);
       if (start === undefined) return;
@@ -1021,6 +1027,7 @@ export function FileTree({
 
   return (
     <>
+      <CollabTreePresenceSlot onChange={setPeerMarks} />
       <SidebarSection
         id="source-tree"
         title={t(($) => $.workspace.files.title)}
@@ -1585,6 +1592,7 @@ function TreeRow({
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
       )}
       <span className="ml-auto flex shrink-0 items-center gap-1">
+        <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />
         {unreadable && (
           <span className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.workspace.files.unreadable)}

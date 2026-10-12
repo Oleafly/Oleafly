@@ -150,7 +150,9 @@
     "internal": "Oleafly 發生錯誤。請再試一次。",
     "server_changed": "這個位址現在屬於另一個伺服器，因此 Oleafly 沒有傳送任何資料給它。如果你信任新的伺服器，請移除這個伺服器後再重新新增。",
     "duplicate_server": "這個伺服器已在你的清單中，但使用的是另一個位址。如果伺服器已搬移，請先移除舊的項目，再重新新增。",
-    "device_in_use": "已有其他人透過這台電腦上的這個使用者帳號登入了這個伺服器。每個人都需要在這台電腦上有自己的使用者帳號才能登入。"
+    "device_in_use": "已有其他人透過這台電腦上的這個使用者帳號登入了這個伺服器。每個人都需要在這台電腦上有自己的使用者帳號才能登入。",
+    "server_unknown": "這個連結來自你尚未新增的伺服器。請在協作設定中新增該伺服器，然後再次開啟連結。",
+    "too_large": "部分檔案超過這個伺服器允許的大小。請縮小或移除這些檔案，然後再試一次。"
   },
   "roles": {
     "admin": "管理員",
@@ -294,5 +296,145 @@
         "unknown": "其他伺服器事件"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "擁有者",
+    "editor": "編輯者",
+    "viewer": "檢視者"
+  },
+  "share": {
+    "button": "分享",
+    "copyAndShare": "複製到 Oleafly 並分享",
+    "title": "分享 {{name}}",
+    "description": "透過協作伺服器，與其他人一起編輯這個專案。",
+    "loading": "正在載入…",
+    "linked": "這個專案是位於 Oleafly 之外的資料夾。Oleafly 會將它複製到你的專案庫，並分享該副本。原本的資料夾不會被更動。",
+    "editCopy": "這是分享的副本。從現在起請編輯這份副本，而不是原本的資料夾。",
+    "serverLabel": "伺服器",
+    "noServers": "請先登入協作伺服器，再回到這裡分享。",
+    "openSettings": "開啟協作設定",
+    "checking": "正在檢查專案…",
+    "checkFailed": "Oleafly 無法檢查這個專案。",
+    "files": "檔案",
+    "size": "大小",
+    "disclosure": "{{server}} 可以讀取這個專案的檔案。",
+    "cloudSynced": "你的 Oleafly 專案庫位於由 iCloud、Dropbox 或類似服務同步的資料夾中。兩個同步服務會搶著處理同一批檔案，因此 Oleafly 無法從那裡分享。請先將專案庫移出該資料夾。",
+    "tooLarge": "這些檔案超過伺服器 {{size}} MB 的上限。請在分享前縮小或移除這些檔案。",
+    "renamed": "有些名稱無法在每台電腦上使用。其他人收到這些檔案時，名稱會略有不同。",
+    "excluded": "不會分享：建置輸出、Oleafly 設定與 Git 歷史記錄。",
+    "start": "分享",
+    "uploading": "正在上傳檔案：{{done}}/{{total}}",
+    "failed": "分享未完成，因此沒有分享任何內容。"
+  },
+  "manage": {
+    "sharedOn": "已在 {{server}} 上分享",
+    "yourRole": "你的角色：{{role}}",
+    "loading": "正在載入有存取權的人…",
+    "loadFailed": "Oleafly 無法載入有存取權的人。",
+    "people": "有存取權的人",
+    "you": "你",
+    "roleLabel": "{{name}} 的角色",
+    "remove": "移除",
+    "removeNamed": "移除 {{name}}",
+    "removeConfirm": {
+      "title": "要將 {{name}} 從這個專案移除嗎？",
+      "description": "對方的副本會停止同步，並以一般專案的形式留在對方的電腦上。",
+      "confirm": "移除"
+    },
+    "add": {
+      "label": "新增人員",
+      "placeholder": "名稱、登入名稱或電子郵件",
+      "roleLabel": "新增人員的角色",
+      "searching": "正在搜尋…",
+      "noResults": "{{server}} 上沒有符合的人。",
+      "add": "新增",
+      "addNamed": "新增 {{name}}"
+    },
+    "link": {
+      "copy": "複製連結",
+      "copied": "已複製連結",
+      "copyFailed": "無法複製連結",
+      "sharing": "透過連結分享",
+      "sharingDescription": "任何已登入 {{server}} 且擁有連結的人，都可以開啟這個專案。",
+      "roleLabel": "透過連結開啟的人的角色"
+    },
+    "stop": "停止分享",
+    "stopConfirm": {
+      "title": "要停止分享 {{name}} 嗎？",
+      "description": "所有人的副本都會停止同步，成為一般專案。伺服器會將分享的副本保留一段時間，之後再刪除。",
+      "confirm": "停止分享"
+    },
+    "leave": "退出專案",
+    "leaveConfirm": {
+      "title": "要退出 {{name}} 嗎？",
+      "description": "你的副本會停止同步，並以一般專案的形式留在這台電腦上。",
+      "confirm": "退出"
+    }
+  },
+  "sync": {
+    "upToDate": "已是最新",
+    "syncing": "正在同步",
+    "offline": "離線。等待同步的變更：{{number}}",
+    "reconnecting": "正在重新連線",
+    "signedOut": "已登出",
+    "removed": "存取權已移除",
+    "archived": "分享已停止",
+    "paused": "已暫停"
+  },
+  "toolbar": {
+    "noFile": "未開啟檔案",
+    "unknownPerson": "某人"
+  },
+  "tree": {
+    "here": "{{name}} 開啟了這個檔案"
+  },
+  "library": {
+    "kind": "已分享",
+    "location": "分享的專案",
+    "flag": "已分享",
+    "sharedWithYou": {
+      "title": "與你分享的專案",
+      "from": "{{server}} 上的 {{owner}}",
+      "open": "開啟",
+      "openNamed": "開啟 {{name}}"
+    },
+    "openLink": {
+      "menu": "開啟分享的專案連結…",
+      "title": "開啟分享的專案",
+      "description": "貼上別人傳給你的連結。",
+      "label": "專案連結",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "開啟",
+      "serverUnknown": "{{server}} 尚未在你的伺服器清單中。請在協作設定中新增它，然後再次開啟連結。",
+      "noAccess": "你沒有這個專案的存取權。請聯絡專案擁有者。"
+    }
+  },
+  "pane": {
+    "title": "即時協作",
+    "titleUnread": "即時協作，有新活動",
+    "manage": "管理分享",
+    "people": "人員",
+    "activity": "活動",
+    "empty": "目前還沒有任何活動。",
+    "here": "目前在這個專案中",
+    "hereIn": "目前在 {{path}} 中",
+    "away": "目前不在這個專案中"
+  },
+  "activity": {
+    "welcomeEdit": "由 {{server}} 上的 {{owner}} 分享。你可以編輯。",
+    "welcomeView": "由 {{server}} 上的 {{owner}} 分享。你可以檢視。",
+    "joined": "{{name}} 開啟了專案",
+    "left": "{{name}} 關閉了專案",
+    "online": "已重新上線",
+    "merged": "你離開期間合併的他人變更：{{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "顯示檔案",
+    "hideFiles": "隱藏檔案",
+    "role": "你的角色已變更為 {{role}}",
+    "removed": "你已無法存取這個分享的專案。你的副本會以一般專案的形式留在這裡。",
+    "archived": "擁有者已停止分享這個專案。你的副本會以一般專案的形式留在這裡。",
+    "signedOut": "你已登出 {{server}}，因此這個專案沒有同步。你的變更會留在這台電腦上。",
+    "signIn": "登入",
+    "repeated": "連續次數：{{number}}"
   }
 }

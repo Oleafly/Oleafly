@@ -150,7 +150,9 @@
     "internal": "Oleafly에서 문제가 발생했습니다. 다시 시도하세요.",
     "server_changed": "이 주소가 이제 다른 서버를 가리키고 있어 Oleafly가 아무것도 보내지 않았습니다. 새 서버를 신뢰한다면 이 서버를 제거한 다음 다시 추가하세요.",
     "duplicate_server": "이 서버는 이미 다른 주소로 목록에 있습니다. 서버가 옮겨졌다면 먼저 이전 항목을 제거한 다음 다시 추가하세요.",
-    "device_in_use": "다른 사람이 이미 이 컴퓨터의 사용자 계정으로 이 서버에 로그인했습니다. 로그인하려면 사람마다 이 컴퓨터에 자신의 사용자 계정이 있어야 합니다."
+    "device_in_use": "다른 사람이 이미 이 컴퓨터의 사용자 계정으로 이 서버에 로그인했습니다. 로그인하려면 사람마다 이 컴퓨터에 자신의 사용자 계정이 있어야 합니다.",
+    "server_unknown": "아직 추가하지 않은 서버의 링크입니다. 공동 작업 설정에서 서버를 추가한 다음 링크를 다시 여세요.",
+    "too_large": "일부 파일이 이 서버에서 허용하는 크기보다 큽니다. 파일 크기를 줄이거나 파일을 제거한 다음 다시 시도하세요."
   },
   "roles": {
     "admin": "관리자",
@@ -294,5 +296,145 @@
         "unknown": "기타 서버 이벤트"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "소유자",
+    "editor": "편집자",
+    "viewer": "뷰어"
+  },
+  "share": {
+    "button": "공유",
+    "copyAndShare": "Oleafly에 복사하고 공유",
+    "title": "{{name}} 공유",
+    "description": "공동 작업 서버를 통해 다른 사람과 이 프로젝트를 함께 작업합니다.",
+    "loading": "불러오는 중…",
+    "linked": "이 프로젝트는 Oleafly 밖에 있는 폴더입니다. Oleafly가 이 폴더를 라이브러리로 복사하고 그 사본을 공유합니다. 원래 폴더는 건드리지 않습니다.",
+    "editCopy": "공유된 사본입니다. 앞으로는 원래 폴더가 아니라 이 사본을 편집하세요.",
+    "serverLabel": "서버",
+    "noServers": "먼저 공동 작업 서버에 로그인한 다음 여기로 돌아와 공유하세요.",
+    "openSettings": "공동 작업 설정 열기",
+    "checking": "프로젝트를 확인하는 중…",
+    "checkFailed": "Oleafly가 이 프로젝트를 확인하지 못했습니다.",
+    "files": "파일",
+    "size": "크기",
+    "disclosure": "{{server}}에서 이 프로젝트의 파일을 읽을 수 있습니다.",
+    "cloudSynced": "Oleafly 라이브러리가 iCloud, Dropbox 같은 서비스가 동기화하는 폴더에 있습니다. 두 동기화 서비스가 같은 파일을 두고 충돌하므로 Oleafly는 그곳에서 공유할 수 없습니다. 먼저 라이브러리를 그 폴더 밖으로 옮기세요.",
+    "tooLarge": "이 파일들은 서버 한도인 {{size}} MB를 넘습니다. 공유하기 전에 파일 크기를 줄이거나 파일을 제거하세요.",
+    "renamed": "일부 파일 이름은 컴퓨터에 따라 쓸 수 없습니다. 다른 사람에게는 이 파일들이 조금 다른 이름으로 전달됩니다.",
+    "excluded": "공유하지 않는 항목: 빌드 출력, Oleafly 설정, Git 기록.",
+    "start": "공유",
+    "uploading": "파일 업로드 중: {{total}}개 중 {{done}}개",
+    "failed": "공유가 끝나지 않아 아무것도 공유되지 않았습니다."
+  },
+  "manage": {
+    "sharedOn": "{{server}}에서 공유 중",
+    "yourRole": "내 역할: {{role}}",
+    "loading": "접근 권한이 있는 사람을 불러오는 중…",
+    "loadFailed": "Oleafly가 접근 권한이 있는 사람을 불러오지 못했습니다.",
+    "people": "접근 권한이 있는 사람",
+    "you": "나",
+    "roleLabel": "{{name}}의 역할",
+    "remove": "제거",
+    "removeNamed": "{{name}} 제거",
+    "removeConfirm": {
+      "title": "{{name}}을(를) 이 프로젝트에서 제거할까요?",
+      "description": "이 사람의 사본은 더 이상 동기화되지 않고, 일반 프로젝트로 그 사람의 컴퓨터에 남습니다.",
+      "confirm": "제거"
+    },
+    "add": {
+      "label": "사람 추가",
+      "placeholder": "이름, 사용자 이름 또는 이메일",
+      "roleLabel": "추가할 사람의 역할",
+      "searching": "검색하는 중…",
+      "noResults": "{{server}}에 일치하는 사람이 없습니다.",
+      "add": "추가",
+      "addNamed": "{{name}} 추가"
+    },
+    "link": {
+      "copy": "링크 복사",
+      "copied": "링크 복사됨",
+      "copyFailed": "링크를 복사하지 못했습니다",
+      "sharing": "링크 공유",
+      "sharingDescription": "{{server}}에 로그인한 사람 중 링크가 있는 사람은 누구나 이 프로젝트를 열 수 있습니다.",
+      "roleLabel": "링크로 여는 사람의 역할"
+    },
+    "stop": "공유 중지",
+    "stopConfirm": {
+      "title": "{{name}} 공유를 중지할까요?",
+      "description": "모든 사람의 사본이 더 이상 동기화되지 않고 일반 프로젝트가 됩니다. 서버는 공유된 사본을 한동안 보관한 뒤 삭제합니다.",
+      "confirm": "공유 중지"
+    },
+    "leave": "프로젝트 나가기",
+    "leaveConfirm": {
+      "title": "{{name}}에서 나갈까요?",
+      "description": "내 사본은 더 이상 동기화되지 않고, 일반 프로젝트로 이 컴퓨터에 남습니다.",
+      "confirm": "나가기"
+    }
+  },
+  "sync": {
+    "upToDate": "최신 상태",
+    "syncing": "동기화 중",
+    "offline": "오프라인. 대기 중인 변경 사항: {{number}}",
+    "reconnecting": "다시 연결하는 중",
+    "signedOut": "로그아웃됨",
+    "removed": "접근 권한 제거됨",
+    "archived": "공유 중지됨",
+    "paused": "일시 중지됨"
+  },
+  "toolbar": {
+    "noFile": "열린 파일 없음",
+    "unknownPerson": "누군가"
+  },
+  "tree": {
+    "here": "이 파일을 열어 둔 사람: {{name}}"
+  },
+  "library": {
+    "kind": "공유",
+    "location": "공유 프로젝트",
+    "flag": "공유됨",
+    "sharedWithYou": {
+      "title": "나와 공유된 프로젝트",
+      "from": "{{server}}의 {{owner}}",
+      "open": "열기",
+      "openNamed": "{{name}} 열기"
+    },
+    "openLink": {
+      "menu": "공유 프로젝트 링크 열기…",
+      "title": "공유 프로젝트 열기",
+      "description": "받은 링크를 붙여 넣으세요.",
+      "label": "프로젝트 링크",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "열기",
+      "serverUnknown": "{{server}}은(는) 아직 서버 목록에 없습니다. 공동 작업 설정에서 추가한 다음 링크를 다시 여세요.",
+      "noAccess": "이 프로젝트에 접근할 권한이 없습니다. 프로젝트 소유자에게 요청하세요."
+    }
+  },
+  "pane": {
+    "title": "실시간 공동 작업",
+    "titleUnread": "실시간 공동 작업, 새 활동 있음",
+    "manage": "공유 관리",
+    "people": "참여자",
+    "activity": "활동",
+    "empty": "아직 활동이 없습니다.",
+    "here": "지금 여기 있음",
+    "hereIn": "지금 {{path}}에 있음",
+    "away": "지금 여기 없음"
+  },
+  "activity": {
+    "welcomeEdit": "{{server}}의 {{owner}} 님이 공유했습니다. 편집할 수 있습니다.",
+    "welcomeView": "{{server}}의 {{owner}} 님이 공유했습니다. 볼 수 있습니다.",
+    "joined": "{{name}} 님이 프로젝트를 열었습니다",
+    "left": "{{name}} 님이 프로젝트를 닫았습니다",
+    "online": "다시 온라인 상태가 되었습니다",
+    "merged": "자리를 비운 동안 병합된 다른 사람의 변경 사항: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "파일 보기",
+    "hideFiles": "파일 숨기기",
+    "role": "이제 내 역할은 {{role}}입니다",
+    "removed": "이 공유 프로젝트에 더 이상 접근할 수 없습니다. 내 사본은 일반 프로젝트로 여기에 남습니다.",
+    "archived": "소유자가 이 프로젝트 공유를 중지했습니다. 내 사본은 일반 프로젝트로 여기에 남습니다.",
+    "signedOut": "{{server}}에서 로그아웃되어 이 프로젝트가 동기화되지 않습니다. 변경 내용은 이 컴퓨터에 남아 있습니다.",
+    "signIn": "로그인",
+    "repeated": "연속 횟수: {{number}}"
   }
 }

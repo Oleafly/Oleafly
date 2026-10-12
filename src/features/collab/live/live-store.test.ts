@@ -1,0 +1,353 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  CollabLiveMerged,
+  CollabLiveRole,
+  CollabLiveStatus,
+  CollabPresence,
+  CollabPresenceLeft,
+  CollabProjectMember,
+  CollabShareInfo,
+} from "@/lib/tauri";
+import { avatarHue } from "@/components/ui/avatar";
+
+type Handler<T> = (payload: T) => void;
+
+const mocks = vi.hoisted(() => ({
+  collabShareInfo: vi.fn(),
+  collabLiveStart: vi.fn(),
+  collabLiveStop: vi.fn(),
+  collabLiveFlush: vi.fn(),
+  collabMembersList: vi.fn(),
+  collabPresenceSet: vi.fn(),
+  collabDocOpen: vi.fn(),
+  collabDocChange: vi.fn(),
+  collabDocClose: vi.fn(),
+  handlers: {} as Record<string, ((payload: unknown) => void) | undefined>,
+  unlisten: vi.fn(),
+}));
+
+function listener(name: string) {
+  return vi.fn(async (handler: (payload: unknown) => void) => {
+    mocks.handlers[name] = handler;
+    return () => {
+      mocks.unlisten(name);
+      if (mocks.handlers[name] === handler) mocks.handlers[name] = undefined;
+    };
+  });
+}
+
+vi.mock("@/lib/tauri", () => ({
+  collabShareInfo: mocks.collabShareInfo,
+  collabLiveStart: mocks.collabLiveStart,
+  collabLiveStop: mocks.collabLiveStop,
+  collabLiveFlush: mocks.collabLiveFlush,
+  collabMembersList: mocks.collabMembersList,
+  collabPresenceSet: mocks.collabPresenceSet,
+  collabDocOpen: mocks.collabDocOpen,
+  collabDocChange: mocks.collabDocChange,
+  collabDocClose: mocks.collabDocClose,
+  onCollabLiveStatus: listener("status"),
+  onCollabLiveRole: listener("role"),
+  onCollabLiveMerged: listener("merged"),
+  onCollabPresence: listener("presence"),
+  onCollabPresenceLeft: listener("left"),
+}));
+
+vi.mock("@/store/files", async () => {
+  const { create } = await import("zustand");
+  return {
+    useFilesStore: create(() => ({
+      projectId: null as string | null,
+      activePath: null as string | null,
+      files: {} as Record<string, { content: string; dirty: boolean }>,
+      docVersion: 0,
+      saveAllDirty: vi.fn(async () => {}),
+      setContent: vi.fn(() => true),
+      bumpDocVersion: vi.fn(),
+    })),
+  };
+});
+
+import { useFilesStore } from "@/store/files";
+import { startCollabLive, useCollabLiveStore } from "./live-store";
+
+const PROJECT = "project-1";
+const OTHER = "project-2";
+const ALICE = "0192a0b0-0000-7000-8000-000000000001";
+const BOB = "0192a0b0-0000-7000-8000-000000000002";
+
+function share(overrides: Partial<CollabShareInfo> = {}): CollabShareInfo {
+  return {
+    project_id: PROJECT,
+    server_id: "server",
+    server_name: "Smith Lab",
+    server_url: "https://collab.uni.edu",
+    shared_project_id: "shared-1",
+    role: "editor",
+    link: "https://collab.uni.edu/p/shared-1",
+    account_id: ALICE,
+    ...overrides,
+  };
+}
+
+function member(accountId: string, name: string): CollabProjectMember {
+  return {
+    person: { account_id: accountId, display_name: name, avatar_url: null, email: null, login: null },
+    role: "editor",
+    granted_at: 1,
+  };
+}
+
+function emit<T>(name: string, payload: T): void {
+  const handler = mocks.handlers[name] as Handler<T> | undefined;
+  if (!handler) throw new Error(`no ${name} listener`);
+  handler(payload);
+}
+
+async function settle(): Promise<void> {
+  for (let index = 0; index < 10; index += 1) await Promise.resolve();
+}
+
+function openProject(projectId: string | null): void {
+  useFilesStore.setState({ projectId, activePath: null, files: {} });
+}
+
+let stop: (() => void) | null = null;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.handlers = {};
+  mocks.collabShareInfo.mockResolvedValue(share());
+  mocks.collabLiveStart.mockResolvedValue({ role: "editor", account_id: ALICE, device_id: "device-me" });
+  mocks.collabLiveStop.mockResolvedValue(undefined);
+  mocks.collabLiveFlush.mockResolvedValue(undefined);
+  mocks.collabMembersList.mockResolvedValue([member(ALICE, "Alice Chen"), member(BOB, "Bob Jones")]);
+  mocks.collabPresenceSet.mockResolvedValue(undefined);
+  openProject(null);
+});
+
+afterEach(() => {
+  stop?.();
+  stop = null;
+  vi.useRealTimers();
+});
+
+describe("collab live store", () => {
+  it("starts empty", () => {
+    expect(useCollabLiveStore.getState()).toMatchObject({
+      projectId: null,
+      share: null,
+      role: null,
+      status: null,
+      pending: 0,
+      peers: {},
+      members: [],
+      merged: null,
+      ended: null,
+    });
+  });
+
+  it("goes live when the open project is shared", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabShareInfo).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.collabLiveStart).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.collabMembersList).toHaveBeenCalledWith(PROJECT);
+    expect(useCollabLiveStore.getState()).toMatchObject({
+      projectId: PROJECT,
+      share: share(),
+      role: "editor",
+      members: [member(ALICE, "Alice Chen"), member(BOB, "Bob Jones")],
+    });
+  });
+
+  it("saves unsaved buffers before going live", async () => {
+    const order: string[] = [];
+    vi.mocked(useFilesStore.getState().saveAllDirty).mockImplementationOnce(async () => {
+      order.push("save");
+    });
+    mocks.collabLiveStart.mockImplementationOnce(async () => {
+      order.push("start");
+      return { role: "editor", account_id: ALICE, device_id: "device-me" };
+    });
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(order).toEqual(["save", "start"]);
+  });
+
+  it("still goes live when saving fails", async () => {
+    vi.mocked(useFilesStore.getState().saveAllDirty).mockRejectedValueOnce(new Error("disk full"));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledWith(PROJECT);
+  });
+
+  it("stays local when the open project is not shared", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabLiveStart).not.toHaveBeenCalled();
+    expect(useCollabLiveStore.getState()).toMatchObject({ projectId: PROJECT, share: null, role: null });
+  });
+
+  it("stops the old project and checks the new one when the project changes", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    openProject(OTHER);
+    await settle();
+    expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.collabShareInfo).toHaveBeenLastCalledWith(OTHER);
+    expect(useCollabLiveStore.getState()).toMatchObject({ projectId: OTHER, share: null, role: null, members: [] });
+    openProject(null);
+    await settle();
+    expect(useCollabLiveStore.getState().projectId).toBeNull();
+  });
+
+  it("stops live sync for a project that closes before going live", async () => {
+    let finish: (value: unknown) => void = () => {};
+    mocks.collabLiveStart.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    openProject(null);
+    await settle();
+    finish({ role: "editor", account_id: ALICE, device_id: "device-me" });
+    await settle();
+    expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
+    expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, role: null });
+  });
+
+  it("follows status, role and merge events for the open project only", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveStatus>("status", { projectId: OTHER, status: { state: "offline", retry_in_ms: 5 }, pending: 9 });
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending: 2 });
+    expect(useCollabLiveStore.getState()).toMatchObject({ status: { state: "online" }, pending: 2 });
+    emit<CollabLiveRole>("role", { projectId: OTHER, role: "owner" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    expect(useCollabLiveStore.getState().role).toBe("viewer");
+    const merged: CollabLiveMerged = { projectId: PROJECT, files: [{ path: "main.tex", changes: 3 }] };
+    emit<CollabLiveMerged>("merged", { projectId: OTHER, files: [] });
+    emit<CollabLiveMerged>("merged", merged);
+    expect(useCollabLiveStore.getState().merged).toEqual(merged);
+    useCollabLiveStore.getState().dismissMerged();
+    expect(useCollabLiveStore.getState().merged).toBeNull();
+  });
+
+  it("tracks peers with names from the member list and drops them when they leave", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const bob: CollabPresence = {
+      projectId: PROJECT,
+      deviceId: "device-bob",
+      accountId: BOB,
+      path: "main.tex",
+      cursor: 4,
+      anchor: 2,
+    };
+    emit("presence", bob);
+    emit("presence", { ...bob, deviceId: "device-me", accountId: ALICE });
+    emit("presence", { ...bob, projectId: OTHER, deviceId: "device-elsewhere" });
+    const peers = useCollabLiveStore.getState().peers;
+    expect(Object.keys(peers)).toEqual(["device-bob"]);
+    expect(peers["device-bob"]).toMatchObject({
+      deviceId: "device-bob",
+      accountId: BOB,
+      person: member(BOB, "Bob Jones").person,
+      path: "main.tex",
+      cursor: 4,
+      anchor: 2,
+      hue: avatarHue(BOB),
+    });
+    emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "device-bob" });
+    expect(useCollabLiveStore.getState().peers).toEqual({});
+  });
+
+  it("forgets a peer after thirty seconds without an update", async () => {
+    vi.useFakeTimers();
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("presence", {
+      projectId: PROJECT,
+      deviceId: "device-bob",
+      accountId: BOB,
+      path: null,
+      cursor: null,
+      anchor: null,
+    });
+    vi.advanceTimersByTime(20_000);
+    expect(Object.keys(useCollabLiveStore.getState().peers)).toEqual(["device-bob"]);
+    vi.advanceTimersByTime(15_000);
+    expect(useCollabLiveStore.getState().peers).toEqual({});
+  });
+
+  it("names a peer once the member list learns about them", async () => {
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen")]);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: null, cursor: null, anchor: null });
+    expect(useCollabLiveStore.getState().peers.d.person).toBeNull();
+    await useCollabLiveStore.getState().refreshMembers();
+    expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
+  });
+
+  it("makes the project local again when this person is removed", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "removed" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState()).toMatchObject({ ended: "removed", share: null, role: null });
+    useCollabLiveStore.getState().dismissEnded();
+    expect(useCollabLiveStore.getState().ended).toBeNull();
+  });
+
+  it("does not report its own stop as an ending", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "stopped" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState().ended).toBeNull();
+  });
+
+  it("goes live after the project is shared and stops after sharing ends", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabLiveStart).not.toHaveBeenCalled();
+    mocks.collabShareInfo.mockResolvedValue(share({ role: "owner" }));
+    await useCollabLiveStore.getState().refreshShare();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledWith(PROJECT);
+    mocks.collabShareInfo.mockResolvedValue(null);
+    await useCollabLiveStore.getState().refreshShare();
+    await settle();
+    expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
+    expect(useCollabLiveStore.getState()).toMatchObject({ share: null, role: null, status: null });
+  });
+
+  it("stops live sync, listeners and timers when the lifecycle ends", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    stop();
+    stop = null;
+    await settle();
+    expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(5);
+    expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
+  });
+});

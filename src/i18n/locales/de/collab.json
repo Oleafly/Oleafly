@@ -150,7 +150,9 @@
     "internal": "In Oleafly ist etwas schiefgelaufen. Versuchen Sie es erneut.",
     "server_changed": "Diese Adresse gehört jetzt zu einem anderen Server, daher hat Oleafly ihm nichts gesendet. Wenn Sie dem neuen Server vertrauen, entfernen Sie diesen Eintrag und fügen Sie ihn erneut hinzu.",
     "duplicate_server": "Dieser Server steht bereits unter einer anderen Adresse in Ihrer Liste. Wenn er umgezogen ist, entfernen Sie zuerst den alten Eintrag und fügen Sie ihn dann erneut hinzu.",
-    "device_in_use": "Von diesem Benutzerkonto auf dem Computer hat sich bereits eine andere Person bei diesem Server angemeldet. Jede Person braucht ein eigenes Benutzerkonto auf dem Computer, um sich anzumelden."
+    "device_in_use": "Von diesem Benutzerkonto auf dem Computer hat sich bereits eine andere Person bei diesem Server angemeldet. Jede Person braucht ein eigenes Benutzerkonto auf dem Computer, um sich anzumelden.",
+    "server_unknown": "Dieser Link gehört zu einem Server, den Sie noch nicht hinzugefügt haben. Fügen Sie ihn in den Einstellungen für die Zusammenarbeit hinzu und öffnen Sie den Link dann erneut.",
+    "too_large": "Einige Dateien sind größer, als dieser Server erlaubt. Verkleinern oder entfernen Sie sie und versuchen Sie es dann erneut."
   },
   "roles": {
     "admin": "Admin",
@@ -294,5 +296,145 @@
         "unknown": "Anderes Serverereignis"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Inhaber",
+    "editor": "Bearbeiter",
+    "viewer": "Betrachter"
+  },
+  "share": {
+    "button": "Teilen",
+    "copyAndShare": "In Oleafly kopieren und teilen",
+    "title": "{{name}} teilen",
+    "description": "Arbeiten Sie über einen Kollaborationsserver gemeinsam mit anderen an diesem Projekt.",
+    "loading": "Wird geladen…",
+    "linked": "Dieses Projekt ist ein Ordner außerhalb von Oleafly. Oleafly kopiert ihn in Ihre Bibliothek und teilt diese Kopie. Der ursprüngliche Ordner bleibt unangetastet.",
+    "editCopy": "Dies ist die geteilte Kopie. Bearbeiten Sie ab jetzt diese und nicht den ursprünglichen Ordner.",
+    "serverLabel": "Server",
+    "noServers": "Melden Sie sich zuerst bei einem Kollaborationsserver an und kehren Sie dann zum Teilen hierher zurück.",
+    "openSettings": "Einstellungen für die Zusammenarbeit öffnen",
+    "checking": "Das Projekt wird geprüft…",
+    "checkFailed": "Oleafly konnte dieses Projekt nicht prüfen.",
+    "files": "Dateien",
+    "size": "Größe",
+    "disclosure": "{{server}} kann die Dateien dieses Projekts lesen.",
+    "cloudSynced": "Ihre Oleafly-Bibliothek liegt in einem Ordner, den iCloud, Dropbox oder ein ähnlicher Dienst synchronisiert. Zwei Synchronisierungsdienste würden sich um dieselben Dateien streiten, daher kann Oleafly von dort aus nicht teilen. Verschieben Sie die Bibliothek zuerst aus diesem Ordner.",
+    "tooLarge": "Diese Dateien überschreiten das Limit des Servers von {{size}} MB. Verkleinern oder entfernen Sie sie, bevor Sie teilen.",
+    "renamed": "Manche Namen funktionieren nicht auf jedem Computer. Andere erhalten diese Dateien unter einem leicht geänderten Namen.",
+    "excluded": "Nicht geteilt: Ausgabedateien, Oleafly-Einstellungen und Git-Verlauf.",
+    "start": "Teilen",
+    "uploading": "Dateien werden hochgeladen: {{done}} von {{total}}",
+    "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt."
+  },
+  "manage": {
+    "sharedOn": "Geteilt über {{server}}",
+    "yourRole": "Ihre Rolle: {{role}}",
+    "loading": "Personen mit Zugriff werden geladen…",
+    "loadFailed": "Oleafly konnte nicht laden, wer Zugriff hat.",
+    "people": "Personen mit Zugriff",
+    "you": "Sie",
+    "roleLabel": "Rolle von {{name}}",
+    "remove": "Entfernen",
+    "removeNamed": "{{name}} entfernen",
+    "removeConfirm": {
+      "title": "{{name}} aus diesem Projekt entfernen?",
+      "description": "Die Kopie dieser Person wird nicht mehr abgeglichen und bleibt als normales Projekt auf ihrem Computer.",
+      "confirm": "Entfernen"
+    },
+    "add": {
+      "label": "Personen hinzufügen",
+      "placeholder": "Name, Anmeldename oder E-Mail",
+      "roleLabel": "Rolle für Personen, die Sie hinzufügen",
+      "searching": "Wird gesucht…",
+      "noResults": "Niemand auf {{server}} passt zur Suche.",
+      "add": "Hinzufügen",
+      "addNamed": "{{name}} hinzufügen"
+    },
+    "link": {
+      "copy": "Link kopieren",
+      "copied": "Link kopiert",
+      "copyFailed": "Der Link konnte nicht kopiert werden",
+      "sharing": "Teilen per Link",
+      "sharingDescription": "Alle, die bei {{server}} angemeldet sind und den Link haben, können dieses Projekt öffnen.",
+      "roleLabel": "Rolle für Personen, die den Link öffnen"
+    },
+    "stop": "Teilen beenden",
+    "stopConfirm": {
+      "title": "Teilen von {{name}} beenden?",
+      "description": "Die Kopien aller Beteiligten werden nicht mehr abgeglichen und zu normalen Projekten. Der Server behält die geteilte Kopie noch eine Weile und löscht sie dann.",
+      "confirm": "Teilen beenden"
+    },
+    "leave": "Projekt verlassen",
+    "leaveConfirm": {
+      "title": "{{name}} verlassen?",
+      "description": "Ihre Kopie wird nicht mehr abgeglichen und bleibt als normales Projekt auf diesem Computer.",
+      "confirm": "Verlassen"
+    }
+  },
+  "sync": {
+    "upToDate": "Aktuell",
+    "syncing": "Wird abgeglichen",
+    "offline": "Offline. Wartende Änderungen: {{number}}",
+    "reconnecting": "Verbindung wird wiederhergestellt",
+    "signedOut": "Abgemeldet",
+    "removed": "Zugriff entzogen",
+    "archived": "Teilen beendet",
+    "paused": "Pausiert"
+  },
+  "toolbar": {
+    "noFile": "Keine Datei geöffnet",
+    "unknownPerson": "Jemand"
+  },
+  "tree": {
+    "here": "{{name}} hat diese Datei geöffnet"
+  },
+  "library": {
+    "kind": "Geteilt",
+    "location": "Geteilte Projekte",
+    "flag": "Geteilt",
+    "sharedWithYou": {
+      "title": "Mit Ihnen geteilt",
+      "from": "{{owner}} bei {{server}}",
+      "open": "Öffnen",
+      "openNamed": "{{name}} öffnen"
+    },
+    "openLink": {
+      "menu": "Link zu geteiltem Projekt öffnen…",
+      "title": "Geteiltes Projekt öffnen",
+      "description": "Fügen Sie den Link ein, den Ihnen jemand geschickt hat.",
+      "label": "Projektlink",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Öffnen",
+      "serverUnknown": "{{server}} steht noch nicht in Ihrer Serverliste. Fügen Sie ihn in den Einstellungen für die Zusammenarbeit hinzu und öffnen Sie den Link dann erneut.",
+      "noAccess": "Sie haben keinen Zugriff auf dieses Projekt. Wenden Sie sich an die Person, der es gehört."
+    }
+  },
+  "pane": {
+    "title": "Live-Zusammenarbeit",
+    "titleUnread": "Live-Zusammenarbeit, neue Aktivität",
+    "manage": "Teilen verwalten",
+    "people": "Personen",
+    "activity": "Aktivität",
+    "empty": "Bisher ist nichts passiert.",
+    "here": "Gerade hier",
+    "hereIn": "Gerade in {{path}}",
+    "away": "Gerade nicht hier"
+  },
+  "activity": {
+    "welcomeEdit": "Geteilt von {{owner}} bei {{server}}. Sie können es bearbeiten.",
+    "welcomeView": "Geteilt von {{owner}} bei {{server}}. Sie können es ansehen.",
+    "joined": "{{name}} hat das Projekt geöffnet",
+    "left": "{{name}} hat das Projekt geschlossen",
+    "online": "Wieder online",
+    "merged": "Während Ihrer Abwesenheit zusammengeführte Änderungen anderer: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Dateien anzeigen",
+    "hideFiles": "Dateien ausblenden",
+    "role": "Ihre Rolle ist jetzt {{role}}",
+    "removed": "Sie haben keinen Zugriff mehr auf dieses geteilte Projekt. Ihre Kopie bleibt hier als normales Projekt erhalten.",
+    "archived": "Die Person, der dieses Projekt gehört, teilt es nicht mehr. Ihre Kopie bleibt hier als normales Projekt erhalten.",
+    "signedOut": "Sie sind von {{server}} abgemeldet, daher wird dieses Projekt nicht abgeglichen. Ihre Änderungen bleiben auf diesem Computer.",
+    "signIn": "Anmelden",
+    "repeated": "Anzahl in Folge: {{number}}"
   }
 }

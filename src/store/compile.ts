@@ -1,4 +1,5 @@
 import { create, type StoreApi } from "zustand";
+import { collabCompileBarrier } from "@/lib/collab-live-bridge";
 import {
   cancelCompile,
   clearBuildDir,
@@ -876,6 +877,7 @@ export async function saveAllForCompile(): Promise<void> {
     if (!String(error).includes(MUTATION_CONFLICT)) throw error;
     await useFilesStore.getState().saveAllDirty();
   }
+  await collabCompileBarrier(useFilesStore.getState().projectId);
 }
 
 export function clearFolderPause(): void {

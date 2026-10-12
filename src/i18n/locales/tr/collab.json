@@ -150,7 +150,9 @@
     "internal": "Oleafly'de bir şeyler ters gitti. Yeniden deneyin.",
     "server_changed": "Bu adres artık başka bir sunucuya ait, bu yüzden Oleafly ona hiçbir şey göndermedi. Yeni sunucuya güveniyorsanız bunu kaldırıp yeniden ekleyin.",
     "duplicate_server": "Bu sunucu listenizde zaten başka bir adresle bulunuyor. Taşındıysa önce eski kaydı kaldırın, ardından yeniden ekleyin.",
-    "device_in_use": "Başka biri bilgisayardaki bu kullanıcı hesabından bu sunucuda zaten oturum açmış. Oturum açabilmek için herkesin bilgisayarda kendi kullanıcı hesabı olmalıdır."
+    "device_in_use": "Başka biri bilgisayardaki bu kullanıcı hesabından bu sunucuda zaten oturum açmış. Oturum açabilmek için herkesin bilgisayarda kendi kullanıcı hesabı olmalıdır.",
+    "server_unknown": "Bu bağlantı henüz eklemediğiniz bir sunucuya ait. Sunucuyu Ayarlar'daki İş Birliği bölümünden ekleyin, ardından bağlantıyı yeniden açın.",
+    "too_large": "Bazı dosyalar bu sunucunun izin verdiğinden büyük. Dosyaları küçültün veya kaldırın, ardından yeniden deneyin."
   },
   "roles": {
     "admin": "Yönetici",
@@ -294,5 +296,145 @@
         "unknown": "Diğer sunucu olayı"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Sahip",
+    "editor": "Düzenleyen",
+    "viewer": "Görüntüleyen"
+  },
+  "share": {
+    "button": "Paylaş",
+    "copyAndShare": "Oleafly'ye kopyala ve paylaş",
+    "title": "{{name}} projesini paylaş",
+    "description": "Bu proje üzerinde bir iş birliği sunucusu aracılığıyla başkalarıyla birlikte çalışın.",
+    "loading": "Yükleniyor…",
+    "linked": "Bu proje, Oleafly dışındaki bir klasör. Oleafly onu kitaplığınıza kopyalar ve bu kopyayı paylaşır. Özgün klasöre dokunulmaz.",
+    "editCopy": "Bu, paylaşılan kopyadır. Bundan sonra özgün klasörü değil, bu kopyayı düzenleyin.",
+    "serverLabel": "Sunucu",
+    "noServers": "Önce bir iş birliği sunucusunda oturum açın, ardından paylaşmak için buraya dönün.",
+    "openSettings": "İş Birliği ayarlarını aç",
+    "checking": "Proje denetleniyor…",
+    "checkFailed": "Oleafly bu projeyi denetleyemedi.",
+    "files": "Dosyalar",
+    "size": "Boyut",
+    "disclosure": "{{server}} bu projenin dosyalarını okuyabilir.",
+    "cloudSynced": "Oleafly kitaplığınız, iCloud, Dropbox veya benzeri bir hizmetin eşitlediği bir klasörde. İki eşitleme hizmeti aynı dosyalar için çakışır, bu yüzden Oleafly oradan paylaşım yapamaz. Önce kitaplığı bu klasörün dışına taşıyın.",
+    "tooLarge": "Bu dosyalar sunucunun {{size}} MB sınırını aşıyor. Paylaşmadan önce dosyaları küçültün veya kaldırın.",
+    "renamed": "Bazı adlar her bilgisayarda çalışmaz. Diğer kişiler bu dosyaları biraz farklı bir adla alır.",
+    "excluded": "Paylaşılmayanlar: derleme çıktısı, Oleafly ayarları ve Git geçmişi.",
+    "start": "Paylaş",
+    "uploading": "Dosyalar yükleniyor: {{done}} / {{total}}",
+    "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı."
+  },
+  "manage": {
+    "sharedOn": "{{server}} sunucusunda paylaşıldı",
+    "yourRole": "Rolünüz: {{role}}",
+    "loading": "Erişimi olanlar yükleniyor…",
+    "loadFailed": "Oleafly erişimi olanları yükleyemedi.",
+    "people": "Erişimi olan kişiler",
+    "you": "Siz",
+    "roleLabel": "{{name}} için rol",
+    "remove": "Kaldır",
+    "removeNamed": "{{name}} kişisini kaldır",
+    "removeConfirm": {
+      "title": "{{name}} bu projeden kaldırılsın mı?",
+      "description": "Kişinin kopyası eşitlenmeyi bırakır ve kendi bilgisayarında sıradan bir proje olarak kalır.",
+      "confirm": "Kaldır"
+    },
+    "add": {
+      "label": "Kişi ekle",
+      "placeholder": "Ad, kullanıcı adı veya e-posta",
+      "roleLabel": "Eklediğiniz kişilerin rolü",
+      "searching": "Aranıyor…",
+      "noResults": "{{server}} sunucusunda eşleşen kimse yok.",
+      "add": "Ekle",
+      "addNamed": "{{name}} kişisini ekle"
+    },
+    "link": {
+      "copy": "Bağlantıyı kopyala",
+      "copied": "Bağlantı kopyalandı",
+      "copyFailed": "Bağlantı kopyalanamadı",
+      "sharing": "Bağlantıyla paylaşım",
+      "sharingDescription": "{{server}} sunucusunda oturum açmış ve bağlantıya sahip olan herkes bu projeyi açabilir.",
+      "roleLabel": "Bağlantıyı açan kişilerin rolü"
+    },
+    "stop": "Paylaşımı durdur",
+    "stopConfirm": {
+      "title": "{{name}} projesinin paylaşımı durdurulsun mu?",
+      "description": "Herkesin kopyası eşitlenmeyi bırakır ve sıradan bir projeye dönüşür. Sunucu paylaşılan kopyayı bir süre saklar, ardından siler.",
+      "confirm": "Paylaşımı durdur"
+    },
+    "leave": "Projeden ayrıl",
+    "leaveConfirm": {
+      "title": "{{name}} projesinden ayrılmak istiyor musunuz?",
+      "description": "Kopyanız eşitlenmeyi bırakır ve bu bilgisayarda sıradan bir proje olarak kalır.",
+      "confirm": "Ayrıl"
+    }
+  },
+  "sync": {
+    "upToDate": "Güncel",
+    "syncing": "Eşitleniyor",
+    "offline": "Çevrimdışı. Bekleyen değişiklikler: {{number}}",
+    "reconnecting": "Yeniden bağlanılıyor",
+    "signedOut": "Oturum kapalı",
+    "removed": "Erişim kaldırıldı",
+    "archived": "Paylaşım durduruldu",
+    "paused": "Duraklatıldı"
+  },
+  "toolbar": {
+    "noFile": "Açık dosya yok",
+    "unknownPerson": "Biri"
+  },
+  "tree": {
+    "here": "{{name}} şu anda bu dosyada"
+  },
+  "library": {
+    "kind": "paylaşılan",
+    "location": "Paylaşılan projeler",
+    "flag": "Paylaşılan",
+    "sharedWithYou": {
+      "title": "Sizinle paylaşılanlar",
+      "from": "{{server}} sunucusunda {{owner}}",
+      "open": "Aç",
+      "openNamed": "{{name}} projesini aç"
+    },
+    "openLink": {
+      "menu": "Paylaşılan proje bağlantısını aç…",
+      "title": "Paylaşılan bir projeyi aç",
+      "description": "Size gönderilen bağlantıyı yapıştırın.",
+      "label": "Proje bağlantısı",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Aç",
+      "serverUnknown": "{{server}} henüz sunucu listenizde değil. Sunucuyu Ayarlar'daki İş Birliği bölümünden ekleyin, ardından bağlantıyı yeniden açın.",
+      "noAccess": "Bu projeye erişiminiz yok. Projenin sahibine danışın."
+    }
+  },
+  "pane": {
+    "title": "Canlı iş birliği",
+    "titleUnread": "Canlı iş birliği, yeni etkinlik var",
+    "manage": "Paylaşımı yönet",
+    "people": "Kişiler",
+    "activity": "Etkinlik",
+    "empty": "Henüz bir şey olmadı.",
+    "here": "Şu anda burada",
+    "hereIn": "Şu anda {{path}} dosyasında",
+    "away": "Şu anda burada değil"
+  },
+  "activity": {
+    "welcomeEdit": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Düzenleyebilirsiniz.",
+    "welcomeView": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Görüntüleyebilirsiniz.",
+    "joined": "{{name}} projeyi açtı",
+    "left": "{{name}} projeyi kapattı",
+    "online": "Yeniden çevrimiçi",
+    "merged": "Siz yokken başkalarından birleştirilen değişiklikler: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Dosyaları göster",
+    "hideFiles": "Dosyaları gizle",
+    "role": "Yeni rolünüz: {{role}}",
+    "removed": "Bu paylaşılan projeye artık erişiminiz yok. Kopyanız burada sıradan bir proje olarak kalır.",
+    "archived": "Proje sahibi bu projeyi paylaşmayı durdurdu. Kopyanız burada sıradan bir proje olarak kalır.",
+    "signedOut": "{{server}} sunucusundaki oturumunuz kapalı, bu yüzden bu proje eşitlenmiyor. Değişiklikleriniz bu bilgisayarda kalır.",
+    "signIn": "Oturum aç",
+    "repeated": "Art arda tekrar sayısı: {{number}}"
   }
 }

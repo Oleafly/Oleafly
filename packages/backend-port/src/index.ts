@@ -436,6 +436,7 @@ export interface ProjectInfo {
     recovery_pending: boolean;
     location?: ProjectLocationInfo;
     last_opened_at?: number;
+    shared?: ProjectSharing | null;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -1106,13 +1107,121 @@ export type CollabErrorCode =
     | "internal"
     | "server_changed"
     | "duplicate_server"
-    | "device_in_use";
+    | "device_in_use"
+    | "server_unknown"
+    | "too_large";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
 }
 export interface CollabServerChanged {
     serverId: string;
+}
+export type CollabProjectRole = "owner" | "editor" | "viewer";
+export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
+export interface CollabPerson {
+    account_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    email: string | null;
+    login: string | null;
+}
+export interface CollabProjectSummary {
+    project_id: string;
+    title: string;
+    owner: CollabPerson;
+    role: CollabProjectRole;
+    status: CollabProjectStatus;
+    created_at: number;
+    link_sharing: boolean;
+    link_role: CollabProjectRole;
+    head_seq: number;
+}
+export interface CollabProjectMember {
+    person: CollabPerson;
+    role: CollabProjectRole;
+    granted_at: number;
+}
+export interface CollabShareInfo {
+    project_id: string;
+    server_id: string;
+    server_name: string;
+    server_url: string;
+    shared_project_id: string;
+    role: CollabProjectRole;
+    link: string;
+    account_id: string | null;
+}
+export interface CollabSharedWithMe {
+    server_id: string;
+    server_name: string;
+    project: CollabProjectSummary;
+    local_project_id: string | null;
+}
+export interface CollabShareProgress {
+    projectId: string;
+    done: number;
+    total: number;
+}
+export type CollabLiveEndReason = "removed" | "archived" | "signed_out" | "stopped";
+export type CollabLiveState =
+    | { state: "connecting" }
+    | { state: "online" }
+    | { state: "offline"; retry_in_ms: number }
+    | { state: "ended"; reason: CollabLiveEndReason };
+export interface CollabLiveStatus {
+    projectId: string;
+    status: CollabLiveState;
+    pending: number;
+}
+export interface CollabLiveMerged {
+    projectId: string;
+    files: { path: string; changes: number }[];
+}
+export interface CollabShareCheck {
+    server_name: string;
+    file_count: number;
+    total_bytes: number;
+    excluded: string[];
+    too_large: string[];
+    renamed: string[];
+    max_file_mb: number;
+    cloud_synced: boolean;
+}
+export interface CollabLiveRole {
+    projectId: string;
+    role: CollabProjectRole;
+}
+export interface CollabPresence {
+    projectId: string;
+    deviceId: string;
+    accountId: string;
+    path: string | null;
+    cursor: number | null;
+    anchor: number | null;
+}
+export interface CollabPresenceLeft {
+    projectId: string;
+    deviceId: string;
+}
+export interface CollabLiveInfo {
+    role: CollabProjectRole;
+    account_id: string;
+    device_id: string;
+}
+export type CollabTextOperation = (number | string)[];
+export type CollabDocMessage =
+    | { kind: "ack"; rev: number; length: number }
+    | { kind: "remote"; rev: number; op: CollabTextOperation; length: number }
+    | { kind: "reset"; rev: number; text: string };
+export interface CollabDocOpened {
+    file_id: string;
+    rev: number;
+    text: string;
+}
+export interface ProjectSharing {
+    server_name: string;
+    role: CollabProjectRole;
 }
 
 /**
@@ -1407,6 +1516,29 @@ export interface BackendPort {
   collabAdminSettings: (serverId: string) => Promise<CollabRuntimeSettings>;
   collabAdminPatchSettings: (serverId: string, patch: CollabRuntimeSettingsPatch) => Promise<CollabRuntimeSettings>;
   collabAdminSecurityLog: (serverId: string, cursor?: string) => Promise<CollabPage<CollabSecurityEvent>>;
+  collabShareInfo: (projectId: string) => Promise<CollabShareInfo | null>;
+  collabShareCheck: (projectId: string, serverId: string) => Promise<CollabShareCheck>;
+  collabShareProject: (projectId: string, serverId: string) => Promise<CollabShareInfo>;
+  collabProjectSummary: (projectId: string) => Promise<CollabProjectSummary>;
+  collabMembersList: (projectId: string) => Promise<CollabProjectMember[]>;
+  collabMemberSet: (projectId: string, accountId: string, role: CollabProjectRole) => Promise<CollabProjectMember>;
+  collabMemberRemove: (projectId: string, accountId: string) => Promise<void>;
+  collabPeopleSearch: (projectId: string, query: string) => Promise<CollabPerson[]>;
+  collabLinkSharingSet: (projectId: string, enabled: boolean, role: CollabProjectRole) => Promise<CollabProjectSummary>;
+  collabStopSharing: (projectId: string) => Promise<void>;
+  collabLeaveProject: (projectId: string) => Promise<void>;
+  collabSharedWithMe: () => Promise<CollabSharedWithMe[]>;
+  collabJoinProject: (serverId: string, sharedProjectId: string) => Promise<string>;
+  collabOpenLink: (link: string) => Promise<string>;
+  collabPendingLinks: () => Promise<string[]>;
+  collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
+  collabLiveStop: (projectId: string) => Promise<void>;
+  collabLiveFlush: (projectId: string) => Promise<void>;
+  collabSyncResume: (projectId: string, send: boolean) => Promise<void>;
+  collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
+  collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
+  collabDocClose: (projectId: string, fileId: string) => Promise<void>;
+  collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;

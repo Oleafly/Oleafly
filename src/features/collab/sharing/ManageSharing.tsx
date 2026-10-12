@@ -1,0 +1,483 @@
+import { useEffect, useId, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Check, Copy, DoorOpen, Link2, Trash2, UserPlus } from "lucide-react";
+import { useShareDialog } from "@/components/collab/share-dialog";
+import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { LoadingState } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
+import {
+  collabLeaveProject,
+  collabLinkSharingSet,
+  collabMemberRemove,
+  collabMemberSet,
+  collabMembersList,
+  collabPeopleSearch,
+  collabProjectSummary,
+  collabStopSharing,
+  type CollabPerson,
+  type CollabProjectMember,
+  type CollabProjectSummary,
+  type CollabShareInfo,
+} from "@/lib/tauri";
+import { collabErrorCode, collabErrorMessage } from "../errors";
+import { InlineAlert, LoadFailed } from "../feedback";
+import { collabPerson, personDetail } from "../people";
+import { syncMembersChange, syncShareChange } from "./after-change";
+import { ProjectRolePicker, toGrantableRole, type GrantableRole } from "./ProjectRolePicker";
+
+const SEARCH_DELAY_MS = 250;
+const SEARCH_MIN_LENGTH = 2;
+
+type SearchState =
+  | { kind: "idle" }
+  | { kind: "searching" }
+  | { kind: "done"; people: CollabPerson[] }
+  | { kind: "failed"; message: string };
+
+function ownerFirst(members: readonly CollabProjectMember[]): CollabProjectMember[] {
+  return [...members].sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));
+}
+
+function upsertMember(members: readonly CollabProjectMember[], next: CollabProjectMember): CollabProjectMember[] {
+  const id = next.person.account_id;
+  return members.some((member) => member.person.account_id === id)
+    ? members.map((member) => (member.person.account_id === id ? next : member))
+    : [...members, next];
+}
+
+function AddPeople({
+  projectId,
+  server,
+  members,
+  onAdded,
+}: Readonly<{
+  projectId: string;
+  server: string;
+  members: readonly CollabProjectMember[];
+  onAdded: (member: CollabProjectMember) => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  const inputId = useId();
+  const [query, setQuery] = useState("");
+  const [role, setRole] = useState<GrantableRole>("editor");
+  const [search, setSearch] = useState<SearchState>({ kind: "idle" });
+  const [adding, setAdding] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const trimmed = query.trim();
+
+  useEffect(() => {
+    if (trimmed.length < SEARCH_MIN_LENGTH) {
+      setSearch({ kind: "idle" });
+      return;
+    }
+    let active = true;
+    setSearch({ kind: "searching" });
+    const timer = window.setTimeout(() => {
+      collabPeopleSearch(projectId, trimmed).then(
+        (people) => {
+          if (active) setSearch({ kind: "done", people });
+        },
+        (failure: unknown) => {
+          if (active) setSearch({ kind: "failed", message: collabErrorMessage(collabErrorCode(failure)) });
+        },
+      );
+    }, SEARCH_DELAY_MS);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [projectId, trimmed]);
+
+  const add = async (person: CollabPerson) => {
+    setAdding(person.account_id);
+    setError(null);
+    try {
+      onAdded(await collabMemberSet(projectId, person.account_id, role));
+      setQuery("");
+    } catch (failure) {
+      setError(collabErrorMessage(collabErrorCode(failure)));
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  const present = new Set(members.map((member) => member.person.account_id));
+
+  const renderResults = () => {
+    if (search.kind === "searching") {
+      return <p className="text-xs text-muted-foreground">{t(($) => $.collab.manage.add.searching)}</p>;
+    }
+    if (search.kind === "failed") return <InlineAlert>{search.message}</InlineAlert>;
+    if (search.kind !== "done") return null;
+    const people = search.people.filter((person) => !present.has(person.account_id));
+    if (people.length === 0) {
+      return <p className="text-xs text-muted-foreground">{t(($) => $.collab.manage.add.noResults, { server })}</p>;
+    }
+    return (
+      <ul className="divide-y rounded-lg border bg-card">
+        {people.map((person) => (
+          <li key={person.account_id} className="flex items-center gap-3 px-3 py-2">
+            <Avatar person={collabPerson(person)} size="md" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{person.display_name}</p>
+              <p className="truncate text-xs text-muted-foreground">{personDetail(person)}</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={adding !== null}
+              aria-label={t(($) => $.collab.manage.add.addNamed, { name: person.display_name })}
+              onClick={() => void add(person)}
+            >
+              <UserPlus aria-hidden />
+              {t(($) => $.collab.manage.add.add)}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={inputId} className="text-sm font-medium">
+        {t(($) => $.collab.manage.add.label)}
+      </label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={inputId}
+          value={query}
+          autoComplete="off"
+          placeholder={t(($) => $.collab.manage.add.placeholder)}
+          onChange={(event) => setQuery(event.target.value)}
+          className="h-8 flex-1 text-sm"
+        />
+        <ProjectRolePicker value={role} label={t(($) => $.collab.manage.add.roleLabel)} onChange={setRole} />
+      </div>
+      {renderResults()}
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
+function LinkSharing({
+  projectId,
+  server,
+  link,
+  summary,
+  isOwner,
+  onSummary,
+}: Readonly<{
+  projectId: string;
+  server: string;
+  link: string;
+  summary: CollabProjectSummary;
+  isOwner: boolean;
+  onSummary: (summary: CollabProjectSummary) => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  const copy = useCopyStatus();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const linkRole = toGrantableRole(summary.link_role) ?? "viewer";
+
+  const save = async (enabled: boolean, role: GrantableRole) => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onSummary(await collabLinkSharingSet(projectId, enabled, role));
+    } catch (failure) {
+      setError(collabErrorMessage(collabErrorCode(failure)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyLabel = () => {
+    if (copy.status === "copied") return t(($) => $.collab.manage.link.copied);
+    if (copy.status === "failed") return t(($) => $.collab.manage.link.copyFailed);
+    return t(($) => $.collab.manage.link.copy);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Button type="button" variant="outline" size="sm" onClick={() => void copy.copy(link)}>
+        {copy.copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+        {copyLabel()}
+      </Button>
+      {isOwner ? (
+        <>
+          <SettingsToggleRow
+            label={t(($) => $.collab.manage.link.sharing)}
+            description={t(($) => $.collab.manage.link.sharingDescription, { server })}
+            checked={summary.link_sharing}
+            disabled={saving}
+            adornment={<Link2 aria-hidden className="size-4 text-muted-foreground" />}
+            onChange={(enabled) => void save(enabled, linkRole)}
+          />
+          {summary.link_sharing ? (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">{t(($) => $.collab.manage.link.roleLabel)}</span>
+              <ProjectRolePicker
+                value={linkRole}
+                disabled={saving}
+                label={t(($) => $.collab.manage.link.roleLabel)}
+                onChange={(role) => void save(true, role)}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
+export function ManageSharing({
+  projectId,
+  name,
+  share,
+}: Readonly<{ projectId: string; name: string; share: CollabShareInfo }>) {
+  const { t } = useTranslation(["collab"]);
+  const close = useShareDialog((state) => state.close);
+  const isOwner = share.role === "owner";
+  const server = share.server_name;
+  const [summary, setSummary] = useState<CollabProjectSummary | null>(null);
+  const [members, setMembers] = useState<CollabProjectMember[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [request, setRequest] = useState(0);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
+  const [removing, setRemoving] = useState<CollabProjectMember | null>(null);
+  const [ending, setEnding] = useState(false);
+  const [endBusy, setEndBusy] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void request;
+    setLoadError(null);
+    Promise.all([collabProjectSummary(projectId), collabMembersList(projectId)]).then(
+      ([nextSummary, nextMembers]) => {
+        if (!active) return;
+        setSummary(nextSummary);
+        setMembers(ownerFirst(nextMembers));
+      },
+      (error: unknown) => {
+        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [projectId, request]);
+
+  const runRow = async (member: CollabProjectMember, action: () => Promise<void>) => {
+    const accountId = member.person.account_id;
+    setBusyId(accountId);
+    setRowError(null);
+    try {
+      await action();
+      syncMembersChange(projectId);
+    } catch (error) {
+      setRowError({ accountId, message: collabErrorMessage(collabErrorCode(error)) });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const changeRole = (member: CollabProjectMember, role: GrantableRole) =>
+    runRow(member, async () => {
+      const next = await collabMemberSet(projectId, member.person.account_id, role);
+      setMembers((current) => (current ? upsertMember(current, next) : current));
+    });
+
+  const remove = (member: CollabProjectMember) => {
+    setRemoving(null);
+    return runRow(member, async () => {
+      await collabMemberRemove(projectId, member.person.account_id);
+      setMembers((current) =>
+        current ? current.filter((item) => item.person.account_id !== member.person.account_id) : current,
+      );
+    });
+  };
+
+  const end = async () => {
+    setEnding(false);
+    setEndBusy(true);
+    setEndError(null);
+    try {
+      if (isOwner) await collabStopSharing(projectId);
+      else await collabLeaveProject(projectId);
+    } catch (error) {
+      setEndError(collabErrorMessage(collabErrorCode(error)));
+      setEndBusy(false);
+      return;
+    }
+    await syncShareChange(projectId);
+    close();
+  };
+
+  const renderRow = (member: CollabProjectMember) => {
+    const person = member.person;
+    const accountId = person.account_id;
+    const grantable = toGrantableRole(member.role);
+    const editable = isOwner && grantable !== null;
+    return (
+      <li key={accountId} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+        <Avatar person={collabPerson(person)} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-medium">{person.display_name}</span>
+            {accountId === share.account_id ? (
+              <Badge variant="primaryGhost" size="sm">
+                {t(($) => $.collab.manage.you)}
+              </Badge>
+            ) : null}
+          </div>
+          <p className="truncate text-xs text-muted-foreground">{personDetail(person)}</p>
+        </div>
+        {editable ? (
+          <>
+            <ProjectRolePicker
+              value={grantable}
+              disabled={busyId === accountId}
+              label={t(($) => $.collab.manage.roleLabel, { name: person.display_name })}
+              onChange={(role) => {
+                if (role !== member.role) void changeRole(member, role);
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="hover:bg-destructive/10 hover:text-destructive"
+              disabled={busyId === accountId}
+              aria-label={t(($) => $.collab.manage.removeNamed, { name: person.display_name })}
+              onClick={() => setRemoving(member)}
+            >
+              <Trash2 aria-hidden />
+              {t(($) => $.collab.manage.remove)}
+            </Button>
+          </>
+        ) : (
+          <Badge variant="muted" size="sm">
+            {t(($) => $.collab.projectRoles[member.role])}
+          </Badge>
+        )}
+        {rowError?.accountId === accountId ? (
+          <div className="basis-full">
+            <InlineAlert>{rowError.message}</InlineAlert>
+          </div>
+        ) : null}
+      </li>
+    );
+  };
+
+  const renderPeople = () => {
+    if (loadError) {
+      return (
+        <LoadFailed
+          message={t(($) => $.collab.manage.loadFailed)}
+          reason={loadError}
+          onRetry={() => setRequest((count) => count + 1)}
+        />
+      );
+    }
+    if (!members || !summary) return <LoadingState size="compact" label={t(($) => $.collab.manage.loading)} />;
+    return (
+      <>
+        {isOwner ? (
+          <AddPeople
+            projectId={projectId}
+            server={server}
+            members={members}
+            onAdded={(member) => {
+              setMembers((current) => (current ? upsertMember(current, member) : current));
+              syncMembersChange(projectId);
+            }}
+          />
+        ) : null}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">{t(($) => $.collab.manage.people)}</h3>
+          <ul aria-label={t(($) => $.collab.manage.people)} className="divide-y rounded-lg border bg-card">
+            {members.map((member) => renderRow(member))}
+          </ul>
+        </div>
+        <LinkSharing
+          projectId={projectId}
+          server={server}
+          link={share.link}
+          summary={summary}
+          isOwner={isOwner}
+          onSummary={setSummary}
+        />
+      </>
+    );
+  };
+
+  const endLabel = isOwner ? t(($) => $.collab.manage.stop) : t(($) => $.collab.manage.leave);
+
+  return (
+    <div className="space-y-4">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">{t(($) => $.collab.manage.sharedOn, { server })}</span>
+        <Badge variant="muted" size="sm">
+          {t(($) => $.collab.manage.yourRole, { role: t(($) => $.collab.projectRoles[share.role]) })}
+        </Badge>
+      </p>
+      {renderPeople()}
+      {endError ? <InlineAlert>{endError}</InlineAlert> : null}
+      <div className="flex justify-start border-t pt-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={endBusy}
+          onClick={() => setEnding(true)}
+        >
+          {isOwner ? <Trash2 aria-hidden /> : <DoorOpen aria-hidden />}
+          {endLabel}
+        </Button>
+      </div>
+      <ConfirmationDialog
+        open={removing !== null}
+        title={t(($) => $.collab.manage.removeConfirm.title, { name: removing?.person.display_name ?? "" })}
+        description={t(($) => $.collab.manage.removeConfirm.description)}
+        confirmLabel={t(($) => $.collab.manage.removeConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (removing) void remove(removing);
+        }}
+        onCancel={() => setRemoving(null)}
+      />
+      <ConfirmationDialog
+        open={ending}
+        title={
+          isOwner
+            ? t(($) => $.collab.manage.stopConfirm.title, { name })
+            : t(($) => $.collab.manage.leaveConfirm.title, { name })
+        }
+        description={
+          isOwner
+            ? t(($) => $.collab.manage.stopConfirm.description)
+            : t(($) => $.collab.manage.leaveConfirm.description)
+        }
+        confirmLabel={
+          isOwner ? t(($) => $.collab.manage.stopConfirm.confirm) : t(($) => $.collab.manage.leaveConfirm.confirm)
+        }
+        destructive
+        onConfirm={() => void end()}
+        onCancel={() => setEnding(false)}
+      />
+    </div>
+  );
+}

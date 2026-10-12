@@ -150,7 +150,9 @@
     "internal": "Oleafly 出现问题。请重试。",
     "server_changed": "此地址现在属于另一台服务器，因此 Oleafly 没有向它发送任何内容。如果你信任新的服务器，请移除此服务器后重新添加。",
     "duplicate_server": "此服务器已在你的列表中，但使用的是另一个地址。如果服务器已迁移，请先移除旧条目，再重新添加。",
-    "device_in_use": "已有其他人通过这台电脑上的此用户账户登录了此服务器。每个人都需要在这台电脑上拥有自己的用户账户才能登录。"
+    "device_in_use": "已有其他人通过这台电脑上的此用户账户登录了此服务器。每个人都需要在这台电脑上拥有自己的用户账户才能登录。",
+    "server_unknown": "此链接来自你尚未添加的服务器。请在协作设置中添加该服务器，然后重新打开链接。",
+    "too_large": "部分文件超出了此服务器允许的大小。请缩小或移除这些文件，然后重试。"
   },
   "roles": {
     "admin": "管理员",
@@ -294,5 +296,145 @@
         "unknown": "其他服务器事件"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "所有者",
+    "editor": "编辑者",
+    "viewer": "查看者"
+  },
+  "share": {
+    "button": "共享",
+    "copyAndShare": "复制到 Oleafly 并共享",
+    "title": "共享 {{name}}",
+    "description": "通过协作服务器与他人一起编辑此项目。",
+    "loading": "正在加载…",
+    "linked": "此项目是 Oleafly 之外的文件夹。Oleafly 会将其复制到你的库中，并共享该副本。原文件夹不会被改动。",
+    "editCopy": "这是共享的副本。从现在起请编辑这个副本，而不是原文件夹。",
+    "serverLabel": "服务器",
+    "noServers": "请先登录协作服务器，然后回到这里共享。",
+    "openSettings": "打开协作设置",
+    "checking": "正在检查项目…",
+    "checkFailed": "Oleafly 无法检查此项目。",
+    "files": "文件",
+    "size": "大小",
+    "disclosure": "{{server}} 可以读取此项目的文件。",
+    "cloudSynced": "你的 Oleafly 库位于由 iCloud、Dropbox 或类似服务同步的文件夹中。两个同步服务会争夺同一批文件，因此 Oleafly 无法从那里共享。请先将库移出该文件夹。",
+    "tooLarge": "这些文件超出了服务器 {{size}} MB 的上限。请在共享前缩小或移除这些文件。",
+    "renamed": "有些名称并非在所有电脑上都可用。其他人收到的这些文件，名称会略有不同。",
+    "excluded": "不会共享：构建输出、Oleafly 设置和 Git 历史。",
+    "start": "共享",
+    "uploading": "正在上传文件：{{done}}/{{total}}",
+    "failed": "共享未完成，因此没有共享任何内容。"
+  },
+  "manage": {
+    "sharedOn": "已在 {{server}} 上共享",
+    "yourRole": "你的角色：{{role}}",
+    "loading": "正在加载有权访问的人员…",
+    "loadFailed": "Oleafly 无法加载有权访问的人员。",
+    "people": "有权访问的人员",
+    "you": "你",
+    "roleLabel": "{{name}} 的角色",
+    "remove": "移除",
+    "removeNamed": "移除 {{name}}",
+    "removeConfirm": {
+      "title": "要将 {{name}} 从此项目中移除吗？",
+      "description": "其副本将停止同步，并作为普通项目保留在其电脑上。",
+      "confirm": "移除"
+    },
+    "add": {
+      "label": "添加人员",
+      "placeholder": "姓名、登录名或电子邮箱",
+      "roleLabel": "所添加人员的角色",
+      "searching": "正在搜索…",
+      "noResults": "{{server}} 上没有匹配的人员。",
+      "add": "添加",
+      "addNamed": "添加 {{name}}"
+    },
+    "link": {
+      "copy": "复制链接",
+      "copied": "已复制链接",
+      "copyFailed": "无法复制链接",
+      "sharing": "链接共享",
+      "sharingDescription": "任何已登录 {{server}} 且拥有链接的人都可以打开此项目。",
+      "roleLabel": "通过链接打开的人员的角色"
+    },
+    "stop": "停止共享",
+    "stopConfirm": {
+      "title": "要停止共享 {{name}} 吗？",
+      "description": "所有人的副本都将停止同步，变为普通项目。服务器会将共享副本保留一段时间，然后将其删除。",
+      "confirm": "停止共享"
+    },
+    "leave": "退出项目",
+    "leaveConfirm": {
+      "title": "要退出 {{name}} 吗？",
+      "description": "你的副本将停止同步，并作为普通项目保留在这台电脑上。",
+      "confirm": "退出"
+    }
+  },
+  "sync": {
+    "upToDate": "已是最新",
+    "syncing": "正在同步",
+    "offline": "离线。等待同步的更改：{{number}}",
+    "reconnecting": "正在重新连接",
+    "signedOut": "未登录",
+    "removed": "访问权限已移除",
+    "archived": "共享已停止",
+    "paused": "已暂停"
+  },
+  "toolbar": {
+    "noFile": "未打开文件",
+    "unknownPerson": "某人"
+  },
+  "tree": {
+    "here": "{{name}} 打开了此文件"
+  },
+  "library": {
+    "kind": "共享",
+    "location": "共享项目",
+    "flag": "已共享",
+    "sharedWithYou": {
+      "title": "与你共享的项目",
+      "from": "{{server}} 上的 {{owner}}",
+      "open": "打开",
+      "openNamed": "打开 {{name}}"
+    },
+    "openLink": {
+      "menu": "打开共享项目链接…",
+      "title": "打开共享项目",
+      "description": "粘贴别人发给你的链接。",
+      "label": "项目链接",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "打开",
+      "serverUnknown": "{{server}} 还不在你的服务器列表中。请在协作设置中添加它，然后重新打开链接。",
+      "noAccess": "你没有此项目的访问权限。请联系项目所有者。"
+    }
+  },
+  "pane": {
+    "title": "实时协作",
+    "titleUnread": "实时协作，有新活动",
+    "manage": "管理共享",
+    "people": "人员",
+    "activity": "活动",
+    "empty": "还没有任何活动。",
+    "here": "当前在此项目中",
+    "hereIn": "当前在 {{path}} 中",
+    "away": "当前不在此项目中"
+  },
+  "activity": {
+    "welcomeEdit": "由 {{server}} 上的 {{owner}} 共享。你可以编辑。",
+    "welcomeView": "由 {{server}} 上的 {{owner}} 共享。你可以查看。",
+    "joined": "{{name}} 打开了项目",
+    "left": "{{name}} 关闭了项目",
+    "online": "已恢复在线",
+    "merged": "你离开期间合并的他人更改：{{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "显示文件",
+    "hideFiles": "隐藏文件",
+    "role": "你的角色已变为 {{role}}",
+    "removed": "你已无法访问此共享项目。你的副本会作为普通项目保留在这里。",
+    "archived": "所有者已停止共享此项目。你的副本会作为普通项目保留在这里。",
+    "signedOut": "你已退出 {{server}} 的登录，因此此项目没有同步。你的更改会保留在这台电脑上。",
+    "signIn": "登录",
+    "repeated": "连续次数：{{number}}"
   }
 }

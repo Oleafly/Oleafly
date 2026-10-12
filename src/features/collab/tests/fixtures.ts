@@ -6,9 +6,16 @@ import type {
   CollabDevice,
   CollabDomainRule,
   CollabMember,
+  CollabPerson,
+  CollabProjectMember,
+  CollabProjectSummary,
   CollabRuntimeSettings,
   CollabSecurityEvent,
   CollabServer,
+  CollabShareCheck,
+  CollabShareInfo,
+  CollabSharedWithMe,
+  ProjectInfo,
 } from "@/lib/tauri";
 
 export const SERVER_ID = "0192a0b0-0000-7000-8000-0000000000a1";
@@ -152,4 +159,96 @@ export function deferred<T>() {
     reject = fail;
   });
   return { promise, resolve, reject };
+}
+
+export const SHARED_ID = "0192a0b0-0000-7000-8000-0000000000b1";
+
+export function person(overrides: Partial<CollabPerson> = {}): CollabPerson {
+  return {
+    account_id: ALICE_ID,
+    display_name: "Alice Chen",
+    avatar_url: null,
+    email: "alice@uni.edu",
+    login: "alice-chen",
+    ...overrides,
+  };
+}
+
+export const BOB = person({ account_id: BOB_ID, display_name: "Bob Smith", email: "bob@uni.edu", login: "bobsmith" });
+export const CAROL = person({ account_id: CAROL_ID, display_name: "Carol Diaz", email: null, login: "carol" });
+
+export function projectMember(
+  who: CollabPerson = person(),
+  role: CollabProjectMember["role"] = "editor",
+): CollabProjectMember {
+  return { person: who, role, granted_at: 1_760_000_000_000 };
+}
+
+export function shareInfo(overrides: Partial<CollabShareInfo> = {}): CollabShareInfo {
+  return {
+    project_id: "grant",
+    server_id: SERVER_ID,
+    server_name: "Smith Lab",
+    server_url: "https://collab.uni.edu",
+    shared_project_id: SHARED_ID,
+    role: "owner",
+    link: `https://collab.uni.edu/p/${SHARED_ID}`,
+    account_id: BOB_ID,
+    ...overrides,
+  };
+}
+
+export function shareCheck(overrides: Partial<CollabShareCheck> = {}): CollabShareCheck {
+  return {
+    server_name: "Smith Lab",
+    file_count: 12,
+    total_bytes: 3 * 1024 * 1024,
+    excluded: [".oleafly/", "main.pdf"],
+    too_large: [],
+    renamed: [],
+    max_file_mb: 50,
+    cloud_synced: false,
+    ...overrides,
+  };
+}
+
+export function projectSummary(overrides: Partial<CollabProjectSummary> = {}): CollabProjectSummary {
+  return {
+    project_id: SHARED_ID,
+    title: "Grant proposal",
+    owner: BOB,
+    role: "owner",
+    status: "active",
+    created_at: 1_760_000_000_000,
+    link_sharing: false,
+    link_role: "viewer",
+    head_seq: 4,
+    ...overrides,
+  };
+}
+
+export function sharedWithMe(overrides: Partial<CollabSharedWithMe> = {}): CollabSharedWithMe {
+  return {
+    server_id: SERVER_ID,
+    server_name: "Smith Lab",
+    project: projectSummary({ role: "editor" }),
+    local_project_id: null,
+    ...overrides,
+  };
+}
+
+export function libraryProject(overrides: Partial<ProjectInfo> = {}): ProjectInfo {
+  return {
+    id: "grant",
+    name: "Grant proposal",
+    main_doc: "main.tex",
+    kind: "document",
+    created_at: 1_760_000_000,
+    updated_at: 1_760_000_000,
+    has_preview: false,
+    exports: [],
+    forked_from: null,
+    recovery_pending: false,
+    ...overrides,
+  };
 }

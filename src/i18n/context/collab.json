@@ -61,5 +61,36 @@
     "members": {
       "devices": "Button on a member's row that shows the computers signed in with that person's account"
     }
+  },
+  "projectRoles": {
+    "editor": "Role on one shared project: can change files. Different from the server roles under roles.",
+    "viewer": "Role on one shared project: can open and read it but not change it."
+  },
+  "share": {
+    "copyAndShare": "Button on a project that is a folder outside Oleafly. It copies the folder into the library, then shares the copy.",
+    "renamed": "Some characters in file names are refused on some systems, so those files get a slightly different name on other people's computers."
+  },
+  "manage": {
+    "link": {
+      "sharing": "Name of a switch. When it is on, anyone signed in to the server who has the project link can open the project."
+    }
+  },
+  "sync": {
+    "offline": "Status text. The number of local changes that have not reached the server yet comes after the colon, so no plural form is needed."
+  },
+  "library": {
+    "kind": "Small label on a project card, shown in capitals. Match the existing project kind labels in library.json.",
+    "openLink": {
+      "placeholder": "Example link shown in an empty field. Keep it exactly as written."
+    }
+  },
+  "pane": {
+    "title": "Name of a side panel that shows who has the shared project open and what happened to it recently.",
+    "titleUnread": "Name of the same side panel tab while it has activity the person has not seen yet.",
+    "hereIn": "{{path}} is the file the person has open, for example main.tex."
+  },
+  "activity": {
+    "mergedFile": "One file and the number of changes merged into it.",
+    "repeated": "Shown under an entry that happened several times in a row, such as the connection dropping and coming back. The count comes after the colon so no plural form is needed."
   }
 }

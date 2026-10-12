@@ -71,7 +71,11 @@ describe("SidebarPanelHeader", () => {
     "src/components/layout/ReferencesPanel.tsx",
     "src/components/research/ResearchWorkspacePanel.tsx",
     "src/components/layout/McpActivityPanel.tsx",
+    "src/features/collab/sharing/CollabPane.tsx",
   ];
+  const LAZY_BRIDGES: Readonly<Record<string, string>> = {
+    "src/components/collab/CollabSlots.tsx": "src/features/collab/sharing/CollabPane.tsx",
+  };
 
   it("keeps the icon at full size and cuts a long title with an ellipsis", () => {
     const { container } = render(
@@ -119,9 +123,10 @@ describe("SidebarPanelHeader", () => {
     const modules = [...tabs.matchAll(/panel:\s*(\w+)/g)].map(([, name]) => {
       const direct = new RegExp(String.raw`import \{[^}]*\b${name}\b[^}]*\} from "@/([^"]+)"`).exec(tabs);
       const lazy = new RegExp(String.raw`const ${name} = lazy\(\(\) =>\s*import\("@/([^"]+)"\)`).exec(tabs);
-      return `src/${(direct ?? lazy)?.[1]}.tsx`;
+      const module = `src/${(direct ?? lazy)?.[1]}.tsx`;
+      return LAZY_BRIDGES[module] ?? module;
     });
-    expect(modules.length).toBeGreaterThanOrEqual(7);
+    expect(modules.length).toBeGreaterThanOrEqual(8);
     expect(new Set(modules)).toEqual(new Set(RAIL_PANELS));
   });
 

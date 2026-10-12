@@ -150,7 +150,9 @@
     "internal": "Noget gik galt i Oleafly. Prøv igen.",
     "server_changed": "Denne adresse tilhører nu en anden server, så Oleafly sendte ikke noget til den. Hvis du stoler på den nye server, så fjern denne, og tilføj den igen.",
     "duplicate_server": "Denne server er allerede på din liste under en anden adresse. Hvis den er flyttet, så fjern først den gamle post, og tilføj den så igen.",
-    "device_in_use": "En anden har allerede logget ind på denne server fra denne brugerkonto på computeren. Hver person skal have sin egen brugerkonto på computeren for at logge ind."
+    "device_in_use": "En anden har allerede logget ind på denne server fra denne brugerkonto på computeren. Hver person skal have sin egen brugerkonto på computeren for at logge ind.",
+    "server_unknown": "Dette link hører til en server, du ikke har tilføjet endnu. Tilføj den i samarbejdsindstillingerne, og åbn linket igen.",
+    "too_large": "Nogle filer er større, end denne server tillader. Gør dem mindre, eller fjern dem, og prøv igen."
   },
   "roles": {
     "admin": "Administrator",
@@ -294,5 +296,145 @@
         "unknown": "Anden serverhændelse"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Ejer",
+    "editor": "Redaktør",
+    "viewer": "Læser"
+  },
+  "share": {
+    "button": "Del",
+    "copyAndShare": "Kopiér til Oleafly og del",
+    "title": "Del {{name}}",
+    "description": "Arbejd sammen med andre om dette projekt via en samarbejdsserver.",
+    "loading": "Indlæser…",
+    "linked": "Dette projekt er en mappe uden for Oleafly. Oleafly kopierer den til dit bibliotek og deler kopien. Den oprindelige mappe bliver ikke rørt.",
+    "editCopy": "Dette er den delte kopi. Rediger denne fra nu af, ikke den oprindelige mappe.",
+    "serverLabel": "Server",
+    "noServers": "Log først ind på en samarbejdsserver, og kom så tilbage for at dele.",
+    "openSettings": "Åbn samarbejdsindstillinger",
+    "checking": "Tjekker projektet…",
+    "checkFailed": "Oleafly kunne ikke tjekke dette projekt.",
+    "files": "Filer",
+    "size": "Størrelse",
+    "disclosure": "{{server}} kan læse projektets filer.",
+    "cloudSynced": "Dit Oleafly-bibliotek ligger i en mappe, som iCloud, Dropbox eller en lignende tjeneste synkroniserer. To synkroniseringstjenester ville kæmpe om de samme filer, så Oleafly kan ikke dele derfra. Flyt først biblioteket ud af den mappe.",
+    "tooLarge": "Disse filer overskrider serverens grænse på {{size}} MB. Gør dem mindre, eller fjern dem, før du deler.",
+    "renamed": "Nogle navne virker ikke på alle computere. Andre får disse filer under et lidt andet navn.",
+    "excluded": "Ikke delt: byggefiler, Oleafly-indstillinger og Git-historik.",
+    "start": "Del",
+    "uploading": "Uploader filer: {{done}} af {{total}}",
+    "failed": "Delingen blev ikke færdig, så intet blev delt."
+  },
+  "manage": {
+    "sharedOn": "Delt på {{server}}",
+    "yourRole": "Din rolle: {{role}}",
+    "loading": "Indlæser, hvem der har adgang…",
+    "loadFailed": "Oleafly kunne ikke indlæse, hvem der har adgang.",
+    "people": "Personer med adgang",
+    "you": "Dig",
+    "roleLabel": "Rolle for {{name}}",
+    "remove": "Fjern",
+    "removeNamed": "Fjern {{name}}",
+    "removeConfirm": {
+      "title": "Vil du fjerne {{name}} fra dette projekt?",
+      "description": "Personens kopi holder op med at synkronisere og bliver liggende på personens computer som et almindeligt projekt.",
+      "confirm": "Fjern"
+    },
+    "add": {
+      "label": "Tilføj personer",
+      "placeholder": "Navn, loginnavn eller e-mail",
+      "roleLabel": "Rolle for personer, du tilføjer",
+      "searching": "Søger…",
+      "noResults": "Ingen på {{server}} matcher.",
+      "add": "Tilføj",
+      "addNamed": "Tilføj {{name}}"
+    },
+    "link": {
+      "copy": "Kopiér link",
+      "copied": "Linket er kopieret",
+      "copyFailed": "Linket kunne ikke kopieres",
+      "sharing": "Deling via link",
+      "sharingDescription": "Alle, der er logget ind på {{server}} og har linket, kan åbne dette projekt.",
+      "roleLabel": "Rolle for personer, der åbner linket"
+    },
+    "stop": "Stop deling",
+    "stopConfirm": {
+      "title": "Vil du stoppe delingen af {{name}}?",
+      "description": "Alles kopier holder op med at synkronisere og bliver til almindelige projekter. Serveren beholder den delte kopi et stykke tid og sletter den derefter.",
+      "confirm": "Stop deling"
+    },
+    "leave": "Forlad projektet",
+    "leaveConfirm": {
+      "title": "Vil du forlade {{name}}?",
+      "description": "Din kopi holder op med at synkronisere og bliver liggende på denne computer som et almindeligt projekt.",
+      "confirm": "Forlad"
+    }
+  },
+  "sync": {
+    "upToDate": "Opdateret",
+    "syncing": "Synkroniserer",
+    "offline": "Offline. Ventende ændringer: {{number}}",
+    "reconnecting": "Opretter forbindelse igen",
+    "signedOut": "Logget ud",
+    "removed": "Adgang fjernet",
+    "archived": "Deling stoppet",
+    "paused": "På pause"
+  },
+  "toolbar": {
+    "noFile": "Ingen fil åben",
+    "unknownPerson": "Nogen"
+  },
+  "tree": {
+    "here": "{{name}} har denne fil åben"
+  },
+  "library": {
+    "kind": "delt",
+    "location": "Delte projekter",
+    "flag": "Delt",
+    "sharedWithYou": {
+      "title": "Delt med dig",
+      "from": "{{owner}} på {{server}}",
+      "open": "Åbn",
+      "openNamed": "Åbn {{name}}"
+    },
+    "openLink": {
+      "menu": "Åbn link til delt projekt…",
+      "title": "Åbn et delt projekt",
+      "description": "Indsæt det link, som nogen har sendt dig.",
+      "label": "Projektlink",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Åbn",
+      "serverUnknown": "{{server}} er ikke på din liste over servere endnu. Tilføj den i samarbejdsindstillingerne, og åbn linket igen.",
+      "noAccess": "Du har ikke adgang til dette projekt. Spørg projektets ejer."
+    }
+  },
+  "pane": {
+    "title": "Samarbejde i realtid",
+    "titleUnread": "Samarbejde i realtid, ny aktivitet",
+    "manage": "Administrer deling",
+    "people": "Personer",
+    "activity": "Aktivitet",
+    "empty": "Der er ikke sket noget endnu.",
+    "here": "Her lige nu",
+    "hereIn": "I {{path}} lige nu",
+    "away": "Ikke her lige nu"
+  },
+  "activity": {
+    "welcomeEdit": "Delt af {{owner}} på {{server}}. Du kan redigere projektet.",
+    "welcomeView": "Delt af {{owner}} på {{server}}. Du kan se projektet.",
+    "joined": "{{name}} åbnede projektet",
+    "left": "{{name}} lukkede projektet",
+    "online": "Online igen",
+    "merged": "Ændringer fra andre, der blev flettet ind, mens du var væk: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Vis filer",
+    "hideFiles": "Skjul filer",
+    "role": "Din nye rolle: {{role}}",
+    "removed": "Du har ikke længere adgang til dette delte projekt. Din kopi bliver her som et almindeligt projekt.",
+    "archived": "Ejeren er holdt op med at dele dette projekt. Din kopi bliver her som et almindeligt projekt.",
+    "signedOut": "Du er logget ud af {{server}}, så dette projekt synkroniseres ikke. Dine ændringer bliver på denne computer.",
+    "signIn": "Log ind",
+    "repeated": "Antal gange i træk: {{number}}"
   }
 }

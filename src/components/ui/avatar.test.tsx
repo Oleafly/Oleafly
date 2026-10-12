@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { Github } from "lucide-react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { Avatar, AvatarStack, avatarHue, type AvatarPerson } from "./avatar";
 
@@ -114,5 +114,40 @@ describe("AvatarStack", () => {
   it("adds no counter when everyone fits", () => {
     render(<AvatarStack people={people.slice(0, 2)} />);
     expect(screen.queryByText(/^\+\d+$/)).toBeNull();
+  });
+
+  it("keeps the native title when no tooltip is asked for", () => {
+    const { container } = render(<AvatarStack people={people.slice(0, 2)} />);
+    expect(container.querySelector('[title="Alice Chen"]')).not.toBeNull();
+  });
+
+  it("shows the app tooltip on each avatar and on the counter, outside any button", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <AvatarStack
+          people={people}
+          renderTip={(person) => `${person.name} details`}
+          renderMoreTip={(hidden) => hidden.map((person) => person.name).join(" and ")}
+        />,
+      );
+      expect(container.querySelector("button")).toBeNull();
+      expect(container.querySelector("[title]")).toBeNull();
+      expect(screen.getByText("Alice Chen details")).toHaveClass("sr-only");
+      expect(screen.getByText("Eve Park and Femi Ade")).toHaveClass("sr-only");
+      const avatars = [...container.querySelectorAll('[data-slot="avatar"]')];
+      expect(avatars).toHaveLength(4);
+      expect(avatars[1]?.closest(".-ml-1\\.5")).not.toBeNull();
+      fireEvent.mouseEnter(avatars[1]?.parentElement as Element);
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Bob Smith details");
+      fireEvent.mouseLeave(avatars[1]?.parentElement as Element);
+      const more = container.querySelector('[data-slot="avatar-more"]') as HTMLElement;
+      fireEvent.mouseEnter(more.parentElement as Element);
+      act(() => vi.advanceTimersByTime(400));
+      expect(within(screen.getByRole("tooltip")).getByText("Eve Park and Femi Ade")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

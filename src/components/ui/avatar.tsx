@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export type AvatarSize = "xs" | "sm" | "md";
@@ -110,42 +111,63 @@ export function AvatarStack({
   max = 4,
   size = "sm",
   className,
+  renderTip,
+  renderMoreTip,
 }: Readonly<{
   people: AvatarPerson[];
   max?: number;
   size?: AvatarSize;
   className?: string;
+  renderTip?: (person: AvatarPerson) => ReactNode;
+  renderMoreTip?: (hidden: AvatarPerson[]) => ReactNode;
 }>) {
   const { t } = useTranslation(["common"]);
   const shown = people.slice(0, Math.max(0, max));
-  const hidden = people.length - shown.length;
+  const hidden = people.slice(shown.length);
+  const more =
+    hidden.length > 0 ? (
+      <span
+        data-slot="avatar-more"
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground",
+          BOX[size],
+          TEXT[size],
+          SEPARATOR[size],
+          shown.length > 0 && !renderMoreTip && OVERLAP[size],
+        )}
+      >
+        <span aria-hidden>{`+${hidden.length}`}</span>
+        <span className="sr-only">{t(($) => $.common.avatar.more, { count: hidden.length })}</span>
+        {renderMoreTip ? <span className="sr-only">{renderMoreTip(hidden)}</span> : null}
+      </span>
+    ) : null;
   return (
     <div data-slot="avatar-stack" className={cn("flex items-center", className)}>
-      {shown.map((person, index) => (
-        <span
-          key={person.id}
-          title={person.name}
-          className={cn("flex shrink-0 rounded-full", index > 0 && OVERLAP[size])}
-        >
-          <Avatar person={person} size={size} className={SEPARATOR[size]} />
-          <span className="sr-only">{person.name}</span>
-        </span>
-      ))}
-      {hidden > 0 ? (
-        <span
-          data-slot="avatar-more"
-          className={cn(
-            "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground",
-            BOX[size],
-            TEXT[size],
-            SEPARATOR[size],
-            shown.length > 0 && OVERLAP[size],
-          )}
-        >
-          <span aria-hidden>{`+${hidden}`}</span>
-          <span className="sr-only">{t(($) => $.common.avatar.more, { count: hidden })}</span>
-        </span>
-      ) : null}
+      {shown.map((person, index) => {
+        const overlap = cn("shrink-0 rounded-full", index > 0 && OVERLAP[size]);
+        const content = (
+          <>
+            <Avatar person={person} size={size} className={SEPARATOR[size]} />
+            <span className="sr-only">{renderTip ? renderTip(person) : person.name}</span>
+          </>
+        );
+        return renderTip ? (
+          <Tooltip key={person.id} label={renderTip(person)} className={overlap}>
+            {content}
+          </Tooltip>
+        ) : (
+          <span key={person.id} title={person.name} className={cn("flex", overlap)}>
+            {content}
+          </span>
+        );
+      })}
+      {more && renderMoreTip ? (
+        <Tooltip label={renderMoreTip(hidden)} className={cn("shrink-0 rounded-full", shown.length > 0 && OVERLAP[size])}>
+          {more}
+        </Tooltip>
+      ) : (
+        more
+      )}
     </div>
   );
 }

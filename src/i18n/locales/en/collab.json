@@ -150,7 +150,9 @@
     "internal": "Something went wrong in Oleafly. Try again.",
     "server_changed": "This address now belongs to a different server, so Oleafly didn't send it anything. If you trust the new server, remove this one and add it again.",
     "duplicate_server": "This server is already in your list under another address. If it moved, remove the old entry first, then add it again.",
-    "device_in_use": "Someone else already signed in to this server from this computer account. Each person needs their own account on the computer to sign in."
+    "device_in_use": "Someone else already signed in to this server from this computer account. Each person needs their own account on the computer to sign in.",
+    "server_unknown": "This link is for a server you haven't added yet. Add it in Collaboration settings, then open the link again.",
+    "too_large": "Some files are bigger than this server allows. Make them smaller or remove them, then try again."
   },
   "roles": {
     "admin": "Admin",
@@ -294,5 +296,145 @@
         "unknown": "Other server event"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Owner",
+    "editor": "Editor",
+    "viewer": "Viewer"
+  },
+  "share": {
+    "button": "Share",
+    "copyAndShare": "Copy into Oleafly and share",
+    "title": "Share {{name}}",
+    "description": "Work on this project with other people through a collaboration server.",
+    "loading": "Loading…",
+    "linked": "This project is a folder outside Oleafly. Oleafly copies it into your library and shares that copy. The original folder isn't touched.",
+    "editCopy": "This is the shared copy. Edit this one from now on, not the original folder.",
+    "serverLabel": "Server",
+    "noServers": "Sign in to a collaboration server first, then come back to share.",
+    "openSettings": "Open Collaboration settings",
+    "checking": "Checking the project…",
+    "checkFailed": "Oleafly couldn't check this project.",
+    "files": "Files",
+    "size": "Size",
+    "disclosure": "{{server}} can read this project's files.",
+    "cloudSynced": "Your Oleafly library is in a folder that iCloud, Dropbox or a similar service syncs. Two sync services would fight over the same files, so Oleafly can't share from there. Move the library out of that folder first.",
+    "tooLarge": "These files are over the server's limit of {{size}} MB. Make them smaller or remove them before you share.",
+    "renamed": "Some names don't work on every computer. Other people get these files under a slightly different name.",
+    "excluded": "Not shared: build output, Oleafly settings and Git history.",
+    "start": "Share",
+    "uploading": "Uploading files: {{done}} of {{total}}",
+    "failed": "Sharing didn't finish, so nothing was shared."
+  },
+  "manage": {
+    "sharedOn": "Shared on {{server}}",
+    "yourRole": "Your role: {{role}}",
+    "loading": "Loading who has access…",
+    "loadFailed": "Oleafly couldn't load who has access.",
+    "people": "People with access",
+    "you": "You",
+    "roleLabel": "Role for {{name}}",
+    "remove": "Remove",
+    "removeNamed": "Remove {{name}}",
+    "removeConfirm": {
+      "title": "Remove {{name}} from this project?",
+      "description": "Their copy stops syncing and stays on their computer as an ordinary project.",
+      "confirm": "Remove"
+    },
+    "add": {
+      "label": "Add people",
+      "placeholder": "Name, sign-in name or email",
+      "roleLabel": "Role for people you add",
+      "searching": "Searching…",
+      "noResults": "Nobody on {{server}} matches.",
+      "add": "Add",
+      "addNamed": "Add {{name}}"
+    },
+    "link": {
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Couldn't copy the link",
+      "sharing": "Link sharing",
+      "sharingDescription": "Anyone signed in to {{server}} who has the link can open this project.",
+      "roleLabel": "Role for people who open the link"
+    },
+    "stop": "Stop sharing",
+    "stopConfirm": {
+      "title": "Stop sharing {{name}}?",
+      "description": "Everyone's copy stops syncing and becomes an ordinary project. The server keeps the shared copy for a while, then deletes it.",
+      "confirm": "Stop sharing"
+    },
+    "leave": "Leave project",
+    "leaveConfirm": {
+      "title": "Leave {{name}}?",
+      "description": "Your copy stops syncing and stays on this computer as an ordinary project.",
+      "confirm": "Leave"
+    }
+  },
+  "sync": {
+    "upToDate": "Up to date",
+    "syncing": "Syncing",
+    "offline": "Offline. Changes waiting: {{number}}",
+    "reconnecting": "Reconnecting",
+    "signedOut": "Signed out",
+    "removed": "Access removed",
+    "archived": "Sharing stopped",
+    "paused": "Paused"
+  },
+  "toolbar": {
+    "noFile": "No file open",
+    "unknownPerson": "Someone"
+  },
+  "tree": {
+    "here": "{{name}} has this file open"
+  },
+  "library": {
+    "kind": "shared",
+    "location": "Shared projects",
+    "flag": "Shared",
+    "sharedWithYou": {
+      "title": "Shared with you",
+      "from": "{{owner}} on {{server}}",
+      "open": "Open",
+      "openNamed": "Open {{name}}"
+    },
+    "openLink": {
+      "menu": "Open shared project link…",
+      "title": "Open a shared project",
+      "description": "Paste the link someone sent you.",
+      "label": "Project link",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Open",
+      "serverUnknown": "{{server}} isn't on your list of servers yet. Add it in Collaboration settings, then open the link again.",
+      "noAccess": "You don't have access to this project. Ask its owner."
+    }
+  },
+  "pane": {
+    "title": "Live collaboration",
+    "titleUnread": "Live collaboration, new activity",
+    "manage": "Manage sharing",
+    "people": "People",
+    "activity": "Activity",
+    "empty": "Nothing has happened yet.",
+    "here": "Here now",
+    "hereIn": "Here now in {{path}}",
+    "away": "Not here right now"
+  },
+  "activity": {
+    "welcomeEdit": "Shared by {{owner}} on {{server}}. You can edit.",
+    "welcomeView": "Shared by {{owner}} on {{server}}. You can view.",
+    "joined": "{{name}} opened the project",
+    "left": "{{name}} closed the project",
+    "online": "Back online",
+    "merged": "Merged changes from others while you were away: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Show files",
+    "hideFiles": "Hide files",
+    "role": "Your role is now {{role}}",
+    "removed": "You no longer have access to this shared project. Your copy stays here as an ordinary project.",
+    "archived": "The owner stopped sharing this project. Your copy stays here as an ordinary project.",
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. Your changes stay on this computer.",
+    "signIn": "Sign in",
+    "repeated": "Times in a row: {{number}}"
   }
 }

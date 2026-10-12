@@ -2,6 +2,7 @@ import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
+import { collabVisualReadOnly, useCollabVisualReadOnly } from "@/lib/collab-live-bridge";
 import {
   useCallback,
   useEffect,
@@ -102,13 +103,18 @@ export function documentContextForPreamble(preamble: string): WysiwygDocumentCon
     booktabs: BOOKTABS_PACKAGE.test(preamble),
   };
 }
+function visualReadOnly(projectId: string | null): boolean {
+  return activeFileReadOnly() || collabVisualReadOnly(projectId);
+}
+
 const ExternalMutationGate = Extension.create({
   name: "externalMutationGate",
   addProseMirrorPlugins() {
     return [new Plugin({
       filterTransaction: (transaction) => !transaction.docChanged ||
         transaction.getMeta(EXTERNAL_DOCUMENT_SYNC) === true ||
-        (!isEditorMutationLocked(useFilesStore.getState().projectId) && !activeFileReadOnly()),
+        (!isEditorMutationLocked(useFilesStore.getState().projectId) &&
+          !visualReadOnly(useFilesStore.getState().projectId)),
     })];
   },
 });
@@ -519,7 +525,8 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
   const saveFile = useFilesStore((s) => s.saveFile);
-  const readOnly = useActiveFileReadOnly();
+  const collabReadOnly = useCollabVisualReadOnly(projectId);
+  const readOnly = useActiveFileReadOnly() || collabReadOnly;
   const latexSplitRef = useRef<LatexDocumentSplit | null>(null);
   const frontmatterRef = useRef("");
   const markdownSourceRef = useRef<MarkdownSourceSnapshot | null>(null);
@@ -691,7 +698,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     editor?.on("transaction", publishHistory);
     const unregisterMutationOwner = editor ? registerEditorMutationOwner({
       projectId: () => projectIdRef.current,
-      setLocked: (locked) => editor.setEditable(!locked && !activeFileReadOnly(), false),
+      setLocked: (locked) => editor.setEditable(!locked && !visualReadOnly(projectIdRef.current), false),
       reconcile: () => synchronizeRef.current(),
     }) : undefined;
     setWysiwygFlushController(
@@ -877,7 +884,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   }, [editor, activePath, projectId, saveFile, flush]);
 
   const onPreambleChange = (value: string) => {
-    if (isEditorMutationLocked(projectIdRef.current) || activeFileReadOnly()) return;
+    if (isEditorMutationLocked(projectIdRef.current) || visualReadOnly(projectIdRef.current)) return;
     setPreamble(value);
     preambleRef.current = value;
     setWysiwygDocumentContext(documentContextForPreamble(value));

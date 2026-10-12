@@ -14,29 +14,20 @@ import { InlineAlert, LoadFailed } from "./feedback";
 import { serverRoleAllows, type ServerRole } from "./roles";
 
 export const RUNTIME_SETTING_FIELDS = [
-  "guests_enabled",
-  "guest_approval_required",
   "directory_visible",
   "directory_shows_email",
   "link_sharing_allowed",
-  "access_logs_allowed",
-  "email_notifications",
 ] as const satisfies readonly (keyof CollabRuntimeSettings)[];
 
 export type RuntimeSettingField = (typeof RUNTIME_SETTING_FIELDS)[number];
 
 export const RUNTIME_SETTING_COPY = {
-  guests_enabled: "guestsEnabled",
-  guest_approval_required: "guestApprovalRequired",
   directory_visible: "directoryVisible",
   directory_shows_email: "directoryShowsEmail",
   link_sharing_allowed: "linkSharingAllowed",
-  access_logs_allowed: "accessLogsAllowed",
-  email_notifications: "emailNotifications",
 } as const satisfies Record<RuntimeSettingField, string>;
 
 const REQUIRES: Readonly<Partial<Record<RuntimeSettingField, RuntimeSettingField>>> = {
-  guest_approval_required: "guests_enabled",
   directory_shows_email: "directory_visible",
 };
 

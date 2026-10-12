@@ -35,12 +35,14 @@ import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
 import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
+import { CollabActivitySlot } from "@/components/collab/CollabSlots";
 import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
 import { ZenSession } from "@/components/layout/ZenSession";
 import { ZenCompileCorner, ZenTitleStrip } from "@/components/layout/ZenChrome";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
+import { CollabLiveKeeper } from "@/components/layout/CollabLiveKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
   editorUndo,
@@ -893,6 +895,7 @@ function AppContent() {
         <BackendProtocolBanner />
         <FolderUnavailableBanner />
         <OpenedFolderBanners />
+        <CollabActivitySlot />
         <ShellCommandsBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
@@ -1370,6 +1373,7 @@ export default function App() {
       <ProjectAvailabilityKeeper />
       <OpenFolderKeeper />
       <FolderWatchKeeper />
+      <CollabLiveKeeper />
       <AppContent />
       <OpenCompileKeeper />
     </>

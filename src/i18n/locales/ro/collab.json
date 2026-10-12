@@ -150,7 +150,9 @@
     "internal": "Ceva nu a mers bine în Oleafly. Încearcă din nou.",
     "server_changed": "Această adresă aparține acum altui server, așa că Oleafly nu i-a trimis nimic. Dacă ai încredere în noul server, elimină-l pe acesta și adaugă-l din nou.",
     "duplicate_server": "Acest server este deja în lista ta cu altă adresă. Dacă s-a mutat, elimină mai întâi intrarea veche, apoi adaugă-l din nou.",
-    "device_in_use": "Altcineva s-a autentificat deja pe acest server din acest cont de utilizator al computerului. Fiecare persoană are nevoie de propriul cont de utilizator pe computer ca să se autentifice."
+    "device_in_use": "Altcineva s-a autentificat deja pe acest server din acest cont de utilizator al computerului. Fiecare persoană are nevoie de propriul cont de utilizator pe computer ca să se autentifice.",
+    "server_unknown": "Acest link este pentru un server pe care nu l-ai adăugat încă. Adaugă-l în setările de Colaborare, apoi deschide din nou linkul.",
+    "too_large": "Unele fișiere sunt mai mari decât permite acest server. Micșorează-le sau elimină-le, apoi încearcă din nou."
   },
   "roles": {
     "admin": "Administrator",
@@ -294,5 +296,145 @@
         "unknown": "Alt eveniment pe server"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Proprietar",
+    "editor": "Editor",
+    "viewer": "Cititor"
+  },
+  "share": {
+    "button": "Partajează",
+    "copyAndShare": "Copiază în Oleafly și partajează",
+    "title": "Partajează {{name}}",
+    "description": "Lucrează la acest proiect cu alte persoane printr-un server de colaborare.",
+    "loading": "Se încarcă…",
+    "linked": "Acest proiect este un folder din afara Oleafly. Oleafly îl copiază în biblioteca ta și partajează copia. Folderul original nu este modificat.",
+    "editCopy": "Aceasta este copia partajată. De acum înainte editează această copie, nu folderul original.",
+    "serverLabel": "Server",
+    "noServers": "Autentifică-te mai întâi pe un server de colaborare, apoi revino ca să partajezi.",
+    "openSettings": "Deschide setările de Colaborare",
+    "checking": "Se verifică proiectul…",
+    "checkFailed": "Oleafly nu a putut verifica acest proiect.",
+    "files": "Fișiere",
+    "size": "Dimensiune",
+    "disclosure": "{{server}} poate citi fișierele acestui proiect.",
+    "cloudSynced": "Biblioteca ta Oleafly se află într-un folder sincronizat de iCloud, Dropbox sau un serviciu similar. Două servicii de sincronizare și-ar disputa aceleași fișiere, așa că Oleafly nu poate partaja de acolo. Mută mai întâi biblioteca în afara acelui folder.",
+    "tooLarge": "Aceste fișiere depășesc limita serverului, de {{size}} MB. Micșorează-le sau elimină-le înainte să partajezi.",
+    "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
+    "excluded": "Nu se partajează: fișierele de compilare, setările Oleafly și istoricul Git.",
+    "start": "Partajează",
+    "uploading": "Se încarcă fișierele: {{done}} din {{total}}",
+    "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic."
+  },
+  "manage": {
+    "sharedOn": "Partajat pe {{server}}",
+    "yourRole": "Rolul tău: {{role}}",
+    "loading": "Se încarcă cine are acces…",
+    "loadFailed": "Oleafly nu a putut încărca cine are acces.",
+    "people": "Persoane cu acces",
+    "you": "Tu",
+    "roleLabel": "Rol pentru {{name}}",
+    "remove": "Elimină",
+    "removeNamed": "Elimină {{name}}",
+    "removeConfirm": {
+      "title": "Elimini {{name}} din acest proiect?",
+      "description": "Copia acestei persoane nu se mai sincronizează și rămâne pe computerul ei ca proiect obișnuit.",
+      "confirm": "Elimină"
+    },
+    "add": {
+      "label": "Adaugă persoane",
+      "placeholder": "Nume, nume de utilizator sau e-mail",
+      "roleLabel": "Rol pentru persoanele pe care le adaugi",
+      "searching": "Se caută…",
+      "noResults": "Nimeni de pe {{server}} nu se potrivește.",
+      "add": "Adaugă",
+      "addNamed": "Adaugă {{name}}"
+    },
+    "link": {
+      "copy": "Copiază linkul",
+      "copied": "Linkul a fost copiat",
+      "copyFailed": "Linkul nu a putut fi copiat",
+      "sharing": "Partajare prin link",
+      "sharingDescription": "Oricine este autentificat pe {{server}} și are linkul poate deschide acest proiect.",
+      "roleLabel": "Rol pentru cei care deschid linkul"
+    },
+    "stop": "Oprește partajarea",
+    "stopConfirm": {
+      "title": "Oprești partajarea pentru {{name}}?",
+      "description": "Copiile tuturor nu se mai sincronizează și devin proiecte obișnuite. Serverul păstrează copia partajată o vreme, apoi o șterge.",
+      "confirm": "Oprește partajarea"
+    },
+    "leave": "Părăsește proiectul",
+    "leaveConfirm": {
+      "title": "Părăsești {{name}}?",
+      "description": "Copia ta nu se mai sincronizează și rămâne pe acest computer ca proiect obișnuit.",
+      "confirm": "Părăsește"
+    }
+  },
+  "sync": {
+    "upToDate": "Actualizat",
+    "syncing": "Se sincronizează",
+    "offline": "Offline. Modificări în așteptare: {{number}}",
+    "reconnecting": "Se reconectează",
+    "signedOut": "Deconectat",
+    "removed": "Acces eliminat",
+    "archived": "Partajare oprită",
+    "paused": "Întrerupt"
+  },
+  "toolbar": {
+    "noFile": "Niciun fișier deschis",
+    "unknownPerson": "Cineva"
+  },
+  "tree": {
+    "here": "{{name}} are acest fișier deschis"
+  },
+  "library": {
+    "kind": "partajat",
+    "location": "Proiecte partajate",
+    "flag": "Partajat",
+    "sharedWithYou": {
+      "title": "Partajate cu tine",
+      "from": "{{owner}} pe {{server}}",
+      "open": "Deschide",
+      "openNamed": "Deschide {{name}}"
+    },
+    "openLink": {
+      "menu": "Deschide linkul unui proiect partajat…",
+      "title": "Deschide un proiect partajat",
+      "description": "Lipește linkul pe care ți l-a trimis cineva.",
+      "label": "Linkul proiectului",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Deschide",
+      "serverUnknown": "{{server}} nu este încă în lista ta de servere. Adaugă-l în setările de Colaborare, apoi deschide din nou linkul.",
+      "noAccess": "Nu ai acces la acest proiect. Cere-i acces proprietarului."
+    }
+  },
+  "pane": {
+    "title": "Colaborare în timp real",
+    "titleUnread": "Colaborare în timp real, activitate nouă",
+    "manage": "Gestionează partajarea",
+    "people": "Persoane",
+    "activity": "Activitate",
+    "empty": "Nu s-a întâmplat încă nimic.",
+    "here": "Aici acum",
+    "hereIn": "Acum în {{path}}",
+    "away": "Nu este aici acum"
+  },
+  "activity": {
+    "welcomeEdit": "Partajat de {{owner}} pe {{server}}. Poți edita.",
+    "welcomeView": "Partajat de {{owner}} pe {{server}}. Poți vizualiza.",
+    "joined": "{{name}} a deschis proiectul",
+    "left": "{{name}} a închis proiectul",
+    "online": "Din nou online",
+    "merged": "Modificări ale altora îmbinate cât ai lipsit: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Arată fișierele",
+    "hideFiles": "Ascunde fișierele",
+    "role": "Noul tău rol: {{role}}",
+    "removed": "Nu mai ai acces la acest proiect partajat. Copia ta rămâne aici ca proiect obișnuit.",
+    "archived": "Proprietarul a oprit partajarea acestui proiect. Copia ta rămâne aici ca proiect obișnuit.",
+    "signedOut": "Ești deconectat de la {{server}}, așa că acest proiect nu se sincronizează. Modificările tale rămân pe acest computer.",
+    "signIn": "Autentifică-te",
+    "repeated": "Număr de ori la rând: {{number}}"
   }
 }

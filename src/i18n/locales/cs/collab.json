@@ -150,7 +150,9 @@
     "internal": "V Oleafly se něco pokazilo. Zkuste to znovu.",
     "server_changed": "Tato adresa teď patří jinému serveru, takže mu Oleafly nic neposlal. Pokud novému serveru důvěřujete, odeberte tento server a přidejte ho znovu.",
     "duplicate_server": "Tento server už máte v seznamu pod jinou adresou. Pokud se přesunul, nejdřív odeberte starou položku a potom ho přidejte znovu.",
-    "device_in_use": "Z tohoto uživatelského účtu v počítači se k tomuto serveru už přihlásil někdo jiný. Každý, kdo se chce přihlásit, potřebuje v počítači vlastní uživatelský účet."
+    "device_in_use": "Z tohoto uživatelského účtu v počítači se k tomuto serveru už přihlásil někdo jiný. Každý, kdo se chce přihlásit, potřebuje v počítači vlastní uživatelský účet.",
+    "server_unknown": "Tento odkaz vede na server, který jste ještě nepřidali. Přidejte ho v Nastavení v sekci Spolupráce a pak odkaz otevřete znovu.",
+    "too_large": "Některé soubory jsou větší, než tento server povoluje. Zmenšete je nebo je odeberte a zkuste to znovu."
   },
   "roles": {
     "admin": "Administrátor",
@@ -294,5 +296,145 @@
         "unknown": "Jiná událost serveru"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Vlastník",
+    "editor": "Editor",
+    "viewer": "Čtenář"
+  },
+  "share": {
+    "button": "Sdílet",
+    "copyAndShare": "Zkopírovat do Oleafly a sdílet",
+    "title": "Sdílet {{name}}",
+    "description": "Pracujte na tomto projektu s dalšími lidmi přes server pro spolupráci.",
+    "loading": "Načítání…",
+    "linked": "Tento projekt je složka mimo Oleafly. Oleafly ho zkopíruje do vaší knihovny a bude sdílet tuto kopii. Původní složka zůstane beze změny.",
+    "editCopy": "Toto je sdílená kopie. Od teď upravujte ji, ne původní složku.",
+    "serverLabel": "Server",
+    "noServers": "Nejdřív se přihlaste k serveru pro spolupráci a pak se sem vraťte, abyste mohli projekt sdílet.",
+    "openSettings": "Otevřít nastavení spolupráce",
+    "checking": "Kontroluje se projekt…",
+    "checkFailed": "Oleafly nemohl tento projekt zkontrolovat.",
+    "files": "Soubory",
+    "size": "Velikost",
+    "disclosure": "Server {{server}} může číst soubory tohoto projektu.",
+    "cloudSynced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje iCloud, Dropbox nebo podobná služba. Dvě synchronizační služby by se přetahovaly o stejné soubory, proto z ní Oleafly nemůže sdílet. Nejdřív knihovnu z této složky přesuňte.",
+    "tooLarge": "Tyto soubory překračují limit serveru {{size}} MB. Před sdílením je zmenšete nebo odeberte.",
+    "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
+    "excluded": "Nesdílí se: výstup sestavení, nastavení Oleafly a historie Gitu.",
+    "start": "Sdílet",
+    "uploading": "Nahrávání souborů: {{done}} z {{total}}",
+    "failed": "Sdílení se nedokončilo, takže se nic nesdílelo."
+  },
+  "manage": {
+    "sharedOn": "Sdíleno na serveru {{server}}",
+    "yourRole": "Vaše role: {{role}}",
+    "loading": "Načítá se, kdo má přístup…",
+    "loadFailed": "Oleafly nemohl načíst, kdo má přístup.",
+    "people": "Lidé s přístupem",
+    "you": "Vy",
+    "roleLabel": "Role pro {{name}}",
+    "remove": "Odebrat",
+    "removeNamed": "Odebrat {{name}}",
+    "removeConfirm": {
+      "title": "Odebrat {{name}} z tohoto projektu?",
+      "description": "Kopie této osoby se přestane synchronizovat a zůstane v jejím počítači jako běžný projekt.",
+      "confirm": "Odebrat"
+    },
+    "add": {
+      "label": "Přidat lidi",
+      "placeholder": "Jméno, přihlašovací jméno nebo e-mail",
+      "roleLabel": "Role pro přidané lidi",
+      "searching": "Hledá se…",
+      "noResults": "Na serveru {{server}} nikdo neodpovídá.",
+      "add": "Přidat",
+      "addNamed": "Přidat {{name}}"
+    },
+    "link": {
+      "copy": "Kopírovat odkaz",
+      "copied": "Odkaz zkopírován",
+      "copyFailed": "Odkaz se nepodařilo zkopírovat",
+      "sharing": "Sdílení odkazem",
+      "sharingDescription": "Kdokoli přihlášený k serveru {{server}}, kdo má odkaz, může tento projekt otevřít.",
+      "roleLabel": "Role pro lidi, kteří otevřou odkaz"
+    },
+    "stop": "Ukončit sdílení",
+    "stopConfirm": {
+      "title": "Ukončit sdílení projektu {{name}}?",
+      "description": "Kopie všech se přestanou synchronizovat a stanou se běžnými projekty. Server sdílenou kopii ještě nějakou dobu ponechá a pak ji smaže.",
+      "confirm": "Ukončit sdílení"
+    },
+    "leave": "Opustit projekt",
+    "leaveConfirm": {
+      "title": "Opustit projekt {{name}}?",
+      "description": "Vaše kopie se přestane synchronizovat a zůstane v tomto počítači jako běžný projekt.",
+      "confirm": "Opustit"
+    }
+  },
+  "sync": {
+    "upToDate": "Aktuální",
+    "syncing": "Synchronizuje se",
+    "offline": "Offline. Čekající změny: {{number}}",
+    "reconnecting": "Znovu se připojuje",
+    "signedOut": "Odhlášeno",
+    "removed": "Přístup odebrán",
+    "archived": "Sdílení ukončeno",
+    "paused": "Pozastaveno"
+  },
+  "toolbar": {
+    "noFile": "Žádný otevřený soubor",
+    "unknownPerson": "Někdo"
+  },
+  "tree": {
+    "here": "{{name}} má tento soubor otevřený"
+  },
+  "library": {
+    "kind": "sdílený",
+    "location": "Sdílené projekty",
+    "flag": "Sdílený",
+    "sharedWithYou": {
+      "title": "Sdíleno s vámi",
+      "from": "{{owner}} na serveru {{server}}",
+      "open": "Otevřít",
+      "openNamed": "Otevřít {{name}}"
+    },
+    "openLink": {
+      "menu": "Otevřít odkaz na sdílený projekt…",
+      "title": "Otevřít sdílený projekt",
+      "description": "Vložte odkaz, který vám někdo poslal.",
+      "label": "Odkaz na projekt",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Otevřít",
+      "serverUnknown": "Server {{server}} zatím není ve vašem seznamu serverů. Přidejte ho v Nastavení v sekci Spolupráce a pak odkaz otevřete znovu.",
+      "noAccess": "K tomuto projektu nemáte přístup. Požádejte jeho vlastníka."
+    }
+  },
+  "pane": {
+    "title": "Živá spolupráce",
+    "titleUnread": "Živá spolupráce, nová aktivita",
+    "manage": "Spravovat sdílení",
+    "people": "Lidé",
+    "activity": "Aktivita",
+    "empty": "Zatím se nic nestalo.",
+    "here": "Právě tady",
+    "hereIn": "Právě v souboru {{path}}",
+    "away": "Teď tu není"
+  },
+  "activity": {
+    "welcomeEdit": "Sdílí {{owner}} na serveru {{server}}. Můžete upravovat.",
+    "welcomeView": "Sdílí {{owner}} na serveru {{server}}. Můžete prohlížet.",
+    "joined": "Uživatel {{name}} otevřel projekt",
+    "left": "Uživatel {{name}} zavřel projekt",
+    "online": "Opět online",
+    "merged": "Sloučené změny od ostatních během vaší nepřítomnosti: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Zobrazit soubory",
+    "hideFiles": "Skrýt soubory",
+    "role": "Vaše nová role: {{role}}",
+    "removed": "K tomuto sdílenému projektu už nemáte přístup. Vaše kopie tu zůstane jako běžný projekt.",
+    "archived": "Vlastník přestal tento projekt sdílet. Vaše kopie tu zůstane jako běžný projekt.",
+    "signedOut": "Jste odhlášeni ze serveru {{server}}, takže se tento projekt nesynchronizuje. Vaše změny zůstanou v tomto počítači.",
+    "signIn": "Přihlásit se",
+    "repeated": "Kolikrát za sebou: {{number}}"
   }
 }

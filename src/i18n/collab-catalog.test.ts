@@ -22,6 +22,8 @@ const ERROR_CODES = [
   "server_changed",
   "duplicate_server",
   "device_in_use",
+  "server_unknown",
+  "too_large",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];

@@ -39,21 +39,25 @@ beforeEach(() => {
 });
 
 describe("RuntimeSettingsTab", () => {
-  it("shows every setting and saves one switch at a time for an admin", async () => {
-    mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
-    mocks.collabAdminPatchSettings.mockResolvedValue(runtimeSettings({ guests_enabled: true }));
+  it("shows the settings that work today and saves one switch at a time for an admin", async () => {
+    mocks.collabAdminSettings.mockResolvedValue(runtimeSettings({ directory_visible: false }));
+    mocks.collabAdminPatchSettings.mockResolvedValue(runtimeSettings({ directory_visible: true }));
     const user = userEvent.setup();
     render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
-    await screen.findByRole("switch", { name: copy.guestsEnabled.label });
+    await screen.findByRole("switch", { name: copy.directoryVisible.label });
+    expect(RUNTIME_SETTING_FIELDS).toEqual(["directory_visible", "directory_shows_email", "link_sharing_allowed"]);
     for (const field of RUNTIME_SETTING_FIELDS) expect(toggle(field)).toBeInTheDocument();
+    for (const hidden of [copy.guestsEnabled, copy.guestApprovalRequired, copy.accessLogsAllowed, copy.emailNotifications]) {
+      expect(screen.queryByRole("switch", { name: hidden.label })).toBeNull();
+    }
     expect(screen.queryByText(copy.adminOnly)).toBeNull();
-    expect(toggle("guests_enabled")).toHaveAttribute("aria-checked", "false");
-    expect(toggle("guest_approval_required")).toHaveAttribute("aria-disabled", "true");
+    expect(toggle("directory_visible")).toHaveAttribute("aria-checked", "false");
+    expect(toggle("directory_shows_email")).toHaveAttribute("aria-disabled", "true");
 
-    await user.click(toggle("guests_enabled"));
-    expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { guests_enabled: true });
-    await waitFor(() => expect(toggle("guest_approval_required")).not.toHaveAttribute("aria-disabled"));
-    expect(toggle("guests_enabled")).toHaveAttribute("aria-checked", "true");
+    await user.click(toggle("directory_visible"));
+    expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { directory_visible: true });
+    await waitFor(() => expect(toggle("directory_shows_email")).not.toHaveAttribute("aria-disabled"));
+    expect(toggle("directory_visible")).toHaveAttribute("aria-checked", "true");
   });
 
   it("puts a switch back and explains when saving fails", async () => {

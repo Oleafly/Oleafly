@@ -18,6 +18,7 @@ import {
   History,
   Info,
   Palette,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -65,12 +66,20 @@ export function projectKindLabel(t: LibraryTranslate, kind: string | undefined):
   }
 }
 
-function projectTypeLabel(t: LibraryTranslate, project: ProjectInfo): string {
+export type ProjectCollabCopy = Readonly<{ kind: string; share: string; copyAndShare: string }>;
+
+function projectTypeLabel(t: LibraryTranslate, project: ProjectInfo, collab: ProjectCollabCopy | null): string {
   if (isFolderProject(project)) return t(($) => $.library.projects.kind.external);
+  if (collab && project.shared) return collab.kind;
   return projectKindLabel(t, project.kind);
 }
 
-function projectCardLabels(t: LibraryTranslate, project: ProjectInfo, updatedAt: number) {
+function projectCardLabels(
+  t: LibraryTranslate,
+  project: ProjectInfo,
+  updatedAt: number,
+  collab: ProjectCollabCopy | null,
+) {
   if (project.recovery_pending) {
     return {
       date: t(($) => $.library.projects.openToRecover),
@@ -82,12 +91,17 @@ function projectCardLabels(t: LibraryTranslate, project: ProjectInfo, updatedAt:
   return {
     date: projectModifiedLabel(updatedAt),
     engine: projectEngineLabel(project),
-    kind: projectTypeLabel(t, project),
+    kind: projectTypeLabel(t, project, collab),
     openLabel: undefined,
   };
 }
 
-function projectRowColumns(t: LibraryTranslate, project: ProjectInfo, updatedAt: number) {
+function projectRowColumns(
+  t: LibraryTranslate,
+  project: ProjectInfo,
+  updatedAt: number,
+  collab: ProjectCollabCopy | null,
+) {
   if (project.recovery_pending) {
     return {
       kind: t(($) => $.library.projects.recoveryShort),
@@ -96,7 +110,7 @@ function projectRowColumns(t: LibraryTranslate, project: ProjectInfo, updatedAt:
     };
   }
   return {
-    kind: projectTypeLabel(t, project),
+    kind: projectTypeLabel(t, project, collab),
     engine: projectEngineLabel(project),
     activity: projectModifiedLabel(updatedAt),
   };
@@ -129,10 +143,12 @@ function ProjectRowCaption({
   t,
   project,
   folderState,
+  collab,
 }: Readonly<{
   t: LibraryTranslate;
   project: ProjectInfo;
   folderState: UnavailableFolder | null;
+  collab: ProjectCollabCopy | null;
 }>) {
   if (project.recovery_pending) {
     return (
@@ -141,7 +157,7 @@ function ProjectRowCaption({
       </span>
     );
   }
-  const caption = `${projectEngineLabel(project)} · ${projectTypeLabel(t, project)}`;
+  const caption = `${projectEngineLabel(project)} · ${projectTypeLabel(t, project, collab)}`;
   if (folderState) {
     return (
       <span className="mt-1 block min-w-0 text-xs lg:hidden">
@@ -174,6 +190,7 @@ export type ProjectCardActions = Readonly<{
   history: (project: ProjectInfo) => void;
   fork: (project: ProjectInfo) => void;
   trash: (project: ProjectInfo) => void;
+  share?: (project: ProjectInfo) => void;
 }>;
 
 type MenuKit = Readonly<{
@@ -203,16 +220,19 @@ function ProjectMenuItems({
   reachable,
   kit,
   actions,
+  collab,
 }: Readonly<{
   project: ProjectInfo;
   color: string;
   reachable: boolean;
   kit: MenuKit;
   actions: ProjectCardActions;
+  collab: ProjectCollabCopy | null;
 }>) {
   const { t } = useTranslation(["common", "library"]);
   const colorLabels = useBookColorLabels();
   const { Item, Sub, SubTrigger, SubContent } = kit;
+  const share = collab && actions.share ? actions.share : null;
   if (p.recovery_pending) {
     return (
       <Item onClick={() => actions.openById(p.id)}>
@@ -254,6 +274,11 @@ function ProjectMenuItems({
         <Item disabled={!reachable} onClick={() => actions.copyIntoLibrary(p)}>
           <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}
         </Item>
+        {share && collab ? (
+          <Item disabled={!reachable} onClick={() => share(p)}>
+            <Share2 className="mr-2 size-4" /> {collab.copyAndShare}
+          </Item>
+        ) : null}
         {colorSub}
         <Item onClick={() => actions.remove(p)}>
           <FolderMinus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.remove)}
@@ -269,6 +294,11 @@ function ProjectMenuItems({
       <Item onClick={() => actions.details(p)}>
         <Info className="mr-2 size-4" /> {t(($) => $.library.projects.details)}
       </Item>
+      {share && collab ? (
+        <Item onClick={() => share(p)}>
+          <Share2 className="mr-2 size-4" /> {collab.share}
+        </Item>
+      ) : null}
       <Item onClick={() => actions.history(p)}>
         <History className="mr-2 size-4" /> {t(($) => $.library.projects.exportHistory)}
       </Item>
@@ -295,6 +325,7 @@ export type ProjectCardData = Readonly<{
   forkNames: ReadonlyMap<string, string>;
   hoverPreview: boolean;
   actions: ProjectCardActions;
+  collab?: ProjectCollabCopy | null;
 }>;
 
 type CardProps = Readonly<{
@@ -306,6 +337,7 @@ type CardProps = Readonly<{
   hoverPreview: boolean;
   thumb: string | null | undefined;
   actions: ProjectCardActions;
+  collab: ProjectCollabCopy | null;
 }>;
 
 const ProjectGridCard = memo(function ProjectGridCard({
@@ -317,10 +349,11 @@ const ProjectGridCard = memo(function ProjectGridCard({
   hoverPreview,
   thumb,
   actions,
+  collab,
   lastRow,
 }: CardProps & Readonly<{ lastRow: boolean }>) {
   const { t } = useTranslation(["common", "library"]);
-  const labels = projectCardLabels(t, p, updatedAt);
+  const labels = projectCardLabels(t, p, updatedAt, collab);
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -358,6 +391,7 @@ const ProjectGridCard = memo(function ProjectGridCard({
                     reachable={folderState === null}
                     kit={DROPDOWN_MENU_KIT}
                     actions={actions}
+                    collab={collab}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -381,6 +415,7 @@ const ProjectGridCard = memo(function ProjectGridCard({
           reachable={folderState === null}
           kit={CONTEXT_MENU_KIT}
           actions={actions}
+          collab={collab}
         />
       </ContextMenuContent>
     </ContextMenu>
@@ -426,6 +461,7 @@ const ProjectListRow = memo(function ProjectListRow({
   hoverPreview,
   thumb,
   actions,
+  collab,
   forkSource,
   previewing: previewStore,
 }: CardProps &
@@ -439,7 +475,7 @@ const ProjectListRow = memo(function ProjectListRow({
     () => previewStore.get() === p.id,
   );
   const recoveryPending = p.recovery_pending;
-  const columns = projectRowColumns(t, p, updatedAt);
+  const columns = projectRowColumns(t, p, updatedAt, collab);
   const startPreview = () => {
     if (recoveryPending || folderState || !hoverPreview) return;
     previewStore.set(p.id);
@@ -489,7 +525,7 @@ const ProjectListRow = memo(function ProjectListRow({
               <span className="block truncate text-sm font-medium text-foreground">
                 {p.name}
               </span>
-              <ProjectRowCaption t={t} project={p} folderState={folderState} />
+              <ProjectRowCaption t={t} project={p} folderState={folderState} collab={collab} />
             </span>
           </button>
           <span className="hidden text-xs capitalize text-muted-foreground lg:block">
@@ -569,6 +605,7 @@ const ProjectListRow = memo(function ProjectListRow({
                     reachable={folderState === null}
                     kit={DROPDOWN_MENU_KIT}
                     actions={actions}
+                    collab={collab}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -583,6 +620,7 @@ const ProjectListRow = memo(function ProjectListRow({
           reachable={folderState === null}
           kit={CONTEXT_MENU_KIT}
           actions={actions}
+          collab={collab}
         />
       </ContextMenuContent>
     </ContextMenu>
@@ -642,6 +680,7 @@ function cardProps(project: ProjectInfo, data: ProjectCardData) {
     hoverPreview: data.hoverPreview,
     thumb: data.thumbs[project.id],
     actions: data.actions,
+    collab: data.collab ?? null,
   };
 }
 

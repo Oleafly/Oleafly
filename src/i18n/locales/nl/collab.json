@@ -150,7 +150,9 @@
     "internal": "Er ging iets mis in Oleafly. Probeer het opnieuw.",
     "server_changed": "Dit adres hoort nu bij een andere server, dus Oleafly heeft er niets naartoe gestuurd. Vertrouw je de nieuwe server, haal deze dan weg en voeg hem opnieuw toe.",
     "duplicate_server": "Deze server staat al in je lijst onder een ander adres. Is hij verhuisd, haal dan eerst de oude vermelding weg en voeg hem daarna opnieuw toe.",
-    "device_in_use": "Iemand anders heeft zich al vanaf dit gebruikersaccount op de computer aangemeld bij deze server. Iedereen heeft een eigen gebruikersaccount op de computer nodig om zich aan te melden."
+    "device_in_use": "Iemand anders heeft zich al vanaf dit gebruikersaccount op de computer aangemeld bij deze server. Iedereen heeft een eigen gebruikersaccount op de computer nodig om zich aan te melden.",
+    "server_unknown": "Deze link hoort bij een server die je nog niet hebt toegevoegd. Voeg hem toe in de samenwerkingsinstellingen en open de link daarna opnieuw.",
+    "too_large": "Sommige bestanden zijn groter dan deze server toestaat. Maak ze kleiner of haal ze weg en probeer het opnieuw."
   },
   "roles": {
     "admin": "Beheerder",
@@ -294,5 +296,145 @@
         "unknown": "Andere servergebeurtenis"
       }
     }
+  },
+  "projectRoles": {
+    "owner": "Eigenaar",
+    "editor": "Bewerker",
+    "viewer": "Lezer"
+  },
+  "share": {
+    "button": "Delen",
+    "copyAndShare": "Naar Oleafly kopiëren en delen",
+    "title": "{{name}} delen",
+    "description": "Werk via een samenwerkingsserver met anderen aan dit project.",
+    "loading": "Laden…",
+    "linked": "Dit project is een map buiten Oleafly. Oleafly kopieert hem naar je bibliotheek en deelt die kopie. De oorspronkelijke map blijft ongemoeid.",
+    "editCopy": "Dit is de gedeelde kopie. Bewerk vanaf nu deze en niet de oorspronkelijke map.",
+    "serverLabel": "Server",
+    "noServers": "Meld je eerst aan bij een samenwerkingsserver en kom dan terug om te delen.",
+    "openSettings": "Samenwerkingsinstellingen openen",
+    "checking": "Het project controleren…",
+    "checkFailed": "Oleafly kon dit project niet controleren.",
+    "files": "Bestanden",
+    "size": "Grootte",
+    "disclosure": "{{server}} kan de bestanden van dit project lezen.",
+    "cloudSynced": "Je Oleafly-bibliotheek staat in een map die iCloud, Dropbox of een vergelijkbare dienst synchroniseert. Twee synchronisatiediensten zouden om dezelfde bestanden vechten, dus Oleafly kan daar niet vandaan delen. Verplaats de bibliotheek eerst uit die map.",
+    "tooLarge": "Deze bestanden gaan over de limiet van {{size}} MB van de server. Maak ze kleiner of haal ze weg voordat je deelt.",
+    "renamed": "Sommige namen werken niet op elke computer. Anderen krijgen deze bestanden onder een iets andere naam.",
+    "excluded": "Niet gedeeld: buildbestanden, Oleafly-instellingen en Git-geschiedenis.",
+    "start": "Delen",
+    "uploading": "Bestanden uploaden: {{done}} van {{total}}",
+    "failed": "Het delen is niet afgerond, dus er is niets gedeeld."
+  },
+  "manage": {
+    "sharedOn": "Gedeeld via {{server}}",
+    "yourRole": "Je rol: {{role}}",
+    "loading": "Laden wie toegang heeft…",
+    "loadFailed": "Oleafly kon niet laden wie toegang heeft.",
+    "people": "Mensen met toegang",
+    "you": "Jij",
+    "roleLabel": "Rol van {{name}}",
+    "remove": "Weghalen",
+    "removeNamed": "{{name}} weghalen",
+    "removeConfirm": {
+      "title": "{{name}} uit dit project weghalen?",
+      "description": "Hun kopie synchroniseert niet meer en blijft als gewoon project op hun computer staan.",
+      "confirm": "Weghalen"
+    },
+    "add": {
+      "label": "Mensen toevoegen",
+      "placeholder": "Naam, aanmeldnaam of e-mail",
+      "roleLabel": "Rol voor mensen die je toevoegt",
+      "searching": "Zoeken…",
+      "noResults": "Niemand op {{server}} komt overeen.",
+      "add": "Toevoegen",
+      "addNamed": "{{name}} toevoegen"
+    },
+    "link": {
+      "copy": "Link kopiëren",
+      "copied": "Link gekopieerd",
+      "copyFailed": "Kon de link niet kopiëren",
+      "sharing": "Delen via link",
+      "sharingDescription": "Iedereen die bij {{server}} is aangemeld en de link heeft, kan dit project openen.",
+      "roleLabel": "Rol voor mensen die de link openen"
+    },
+    "stop": "Delen stoppen",
+    "stopConfirm": {
+      "title": "Delen van {{name}} stoppen?",
+      "description": "De kopie van iedereen synchroniseert niet meer en wordt een gewoon project. De server bewaart de gedeelde kopie nog een tijdje en verwijdert hem daarna.",
+      "confirm": "Delen stoppen"
+    },
+    "leave": "Project verlaten",
+    "leaveConfirm": {
+      "title": "{{name}} verlaten?",
+      "description": "Je kopie synchroniseert niet meer en blijft als gewoon project op deze computer staan.",
+      "confirm": "Verlaten"
+    }
+  },
+  "sync": {
+    "upToDate": "Bijgewerkt",
+    "syncing": "Synchroniseren",
+    "offline": "Offline. Wachtende wijzigingen: {{number}}",
+    "reconnecting": "Opnieuw verbinden",
+    "signedOut": "Afgemeld",
+    "removed": "Toegang ingetrokken",
+    "archived": "Delen gestopt",
+    "paused": "Gepauzeerd"
+  },
+  "toolbar": {
+    "noFile": "Geen bestand open",
+    "unknownPerson": "Iemand"
+  },
+  "tree": {
+    "here": "{{name}} heeft dit bestand open"
+  },
+  "library": {
+    "kind": "gedeeld",
+    "location": "Gedeelde projecten",
+    "flag": "Gedeeld",
+    "sharedWithYou": {
+      "title": "Met jou gedeeld",
+      "from": "{{owner}} op {{server}}",
+      "open": "Openen",
+      "openNamed": "{{name}} openen"
+    },
+    "openLink": {
+      "menu": "Link naar gedeeld project openen…",
+      "title": "Een gedeeld project openen",
+      "description": "Plak de link die iemand je heeft gestuurd.",
+      "label": "Projectlink",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Openen",
+      "serverUnknown": "{{server}} staat nog niet in je lijst met servers. Voeg hem toe in de samenwerkingsinstellingen en open de link daarna opnieuw.",
+      "noAccess": "Je hebt geen toegang tot dit project. Vraag het aan de eigenaar."
+    }
+  },
+  "pane": {
+    "title": "Live samenwerken",
+    "titleUnread": "Live samenwerken, nieuwe activiteit",
+    "manage": "Delen beheren",
+    "people": "Mensen",
+    "activity": "Activiteit",
+    "empty": "Er is nog niets gebeurd.",
+    "here": "Nu hier",
+    "hereIn": "Nu in {{path}}",
+    "away": "Nu niet hier"
+  },
+  "activity": {
+    "welcomeEdit": "Gedeeld door {{owner}} op {{server}}. Je kunt het bewerken.",
+    "welcomeView": "Gedeeld door {{owner}} op {{server}}. Je kunt het bekijken.",
+    "joined": "{{name}} heeft het project geopend",
+    "left": "{{name}} heeft het project gesloten",
+    "online": "Weer online",
+    "merged": "Samengevoegde wijzigingen van anderen terwijl je weg was: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Bestanden tonen",
+    "hideFiles": "Bestanden verbergen",
+    "role": "Je nieuwe rol: {{role}}",
+    "removed": "Je hebt geen toegang meer tot dit gedeelde project. Je kopie blijft hier als gewoon project staan.",
+    "archived": "De eigenaar deelt dit project niet meer. Je kopie blijft hier als gewoon project staan.",
+    "signedOut": "Je bent afgemeld bij {{server}}, dus dit project synchroniseert niet. Je wijzigingen blijven op deze computer.",
+    "signIn": "Aanmelden",
+    "repeated": "Aantal keer achter elkaar: {{number}}"
   }
 }
