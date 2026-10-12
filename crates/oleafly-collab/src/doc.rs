@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use loro::event::Diff;
 use loro::{
-    ContainerID, ExportMode, Frontiers, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue, TextDelta,
-    TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
+    ContainerID, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue, TextDelta, TreeID,
+    TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
 };
 use oleafly_collab_protocol::ids::FileId;
 use ring::rand::{SecureRandom, SystemRandom};
@@ -81,11 +82,44 @@ pub struct Imported {
     pub pending: bool,
 }
 
+#[derive(Default)]
+struct Recorder {
+    on: bool,
+    changes: DocChanges,
+}
+
+type SharedRecorder = Arc<Mutex<Recorder>>;
+
+fn recorder(doc: &LoroDoc) -> (SharedRecorder, loro::Subscription) {
+    let shared: SharedRecorder = Arc::new(Mutex::new(Recorder::default()));
+    let sink = Arc::clone(&shared);
+    let subscription = doc.subscribe_root(Arc::new(move |event| {
+        let mut recorder = sink.lock().unwrap_or_else(PoisonError::into_inner);
+        if !recorder.on {
+            return;
+        }
+        for change in &event.events {
+            match (change.target, &change.diff) {
+                (ContainerID::Root { name, .. }, Diff::Text(deltas)) => {
+                    if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
+                        recorder.changes.texts.push((id.to_owned(), deltas.clone()));
+                    }
+                }
+                (_, Diff::Text(_)) => {}
+                _ => recorder.changes.tree = true,
+            }
+        }
+    }));
+    (shared, subscription)
+}
+
 pub struct ProjectDoc {
     doc: LoroDoc,
     tree: LoroTree,
     ids: HashMap<String, TreeID>,
     trash: Option<TreeID>,
+    recorded: SharedRecorder,
+    _events: loro::Subscription,
 }
 
 fn doc_error<T: std::fmt::Debug>(error: T) -> CollabError {
@@ -157,11 +191,14 @@ impl ProjectDoc {
         meta.insert("kind", NodeKind::Dir.as_str())
             .map_err(doc_error)?;
         doc.commit();
+        let (recorded, events) = recorder(&doc);
         Ok(ProjectDoc {
             doc,
             tree,
             ids: HashMap::new(),
             trash: Some(trash),
+            recorded,
+            _events: events,
         })
     }
 
@@ -171,11 +208,14 @@ impl ProjectDoc {
         doc.import(bytes).map_err(doc_error)?;
         let tree = doc.get_tree(TREE);
         tree.enable_fractional_index(0);
+        let (recorded, events) = recorder(&doc);
         let mut loaded = ProjectDoc {
             doc,
             tree,
             ids: HashMap::new(),
             trash: None,
+            recorded,
+            _events: events,
         };
         loaded.reindex()?;
         if loaded.trash.is_none() {
@@ -334,18 +374,36 @@ impl ProjectDoc {
 
     pub fn set_text(&mut self, id: &str, content: &str) -> Result<DocChanges, CollabError> {
         let text = self.text_of(id)?;
-        let before = self.doc.state_frontiers();
         let options = UpdateOptions {
             timeout_ms: Some(UPDATE_TIMEOUT_MS),
             use_refined_diff: true,
         };
-        if text.update(content, options).is_err() {
-            let length = text.len_utf16();
-            text.splice_utf16(0, length, content).map_err(doc_error)?;
-        }
+        let (_, changes) = self.recording(|doc| {
+            if text.update(content, options).is_err() {
+                let length = text.len_utf16();
+                text.splice_utf16(0, length, content).map_err(doc_error)?;
+            }
+            doc.commit();
+            Ok(())
+        })?;
+        Ok(changes)
+    }
+
+    fn recording<T>(
+        &self,
+        work: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
+    ) -> Result<(T, DocChanges), CollabError> {
         self.doc.commit();
-        let after = self.doc.state_frontiers();
-        self.changes_between(&before, &after)
+        {
+            let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
+            recorder.on = true;
+            recorder.changes = DocChanges::default();
+        }
+        let outcome = work(&self.doc);
+        let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
+        recorder.on = false;
+        let changes = std::mem::take(&mut recorder.changes);
+        Ok((outcome?, changes))
     }
 
     pub fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
@@ -426,11 +484,10 @@ impl ProjectDoc {
     }
 
     pub fn import(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
-        let before = self.doc.state_frontiers();
-        let status = self.doc.import(bytes).map_err(doc_error)?;
-        self.reindex()?;
-        let after = self.doc.state_frontiers();
-        let changes = self.changes_between(&before, &after)?;
+        let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error))?;
+        if changes.tree {
+            self.reindex()?;
+        }
         let arrived = status
             .success
             .iter()
@@ -441,30 +498,6 @@ impl ProjectDoc {
             arrived,
             pending: status.pending.is_some(),
         })
-    }
-
-    fn changes_between(
-        &self,
-        before: &Frontiers,
-        after: &Frontiers,
-    ) -> Result<DocChanges, CollabError> {
-        let mut changes = DocChanges::default();
-        if before == after {
-            return Ok(changes);
-        }
-        let batch = self.doc.diff(before, after).map_err(doc_error)?;
-        for (container, diff) in batch.iter() {
-            match (container, diff) {
-                (ContainerID::Root { name, .. }, Diff::Text(deltas)) => {
-                    if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
-                        changes.texts.push((id.to_owned(), deltas.clone()));
-                    }
-                }
-                (_, Diff::Text(_)) => {}
-                _ => changes.tree = true,
-            }
-        }
-        Ok(changes)
     }
 }
 
@@ -498,6 +531,98 @@ mod tests {
             .unwrap();
         let joiner = ProjectDoc::load(&owner.snapshot().unwrap()).unwrap();
         (owner, joiner, main)
+    }
+
+    fn next(seed: &mut u64) -> u64 {
+        *seed = seed
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        *seed >> 33
+    }
+
+    fn applied(text: &str, operation: &TextOperation) -> String {
+        let units: Vec<u16> = text.encode_utf16().collect();
+        let mut out: Vec<u16> = Vec::new();
+        let mut at = 0;
+        for component in operation.components() {
+            match component {
+                Component::Retain(count) => {
+                    out.extend_from_slice(&units[at..at + count]);
+                    at += count;
+                }
+                Component::Insert(inserted) => out.extend(inserted.encode_utf16()),
+                Component::Delete(count) => at += count,
+            }
+        }
+        out.extend_from_slice(&units[at..]);
+        String::from_utf16(&out).unwrap()
+    }
+
+    #[test]
+    fn an_import_reports_exactly_the_text_and_tree_changes_it_made() {
+        let mut seed = 11u64;
+        let mut writer = ProjectDoc::create().unwrap();
+        let main = writer
+            .add_node(None, "main.tex", NodeKind::Text, None, "Hello world\n")
+            .unwrap();
+        let notes = writer
+            .add_node(None, "notes.md", NodeKind::Text, None, "日本語 notes 🪸\n")
+            .unwrap();
+        let mut reader = ProjectDoc::load(&writer.snapshot().unwrap()).unwrap();
+        let pieces = ["a", "é", "🪸", "line\n", "コーラル", " "];
+        for round in 0..300 {
+            let before = writer.version();
+            for _ in 0..1 + next(&mut seed) % 4 {
+                let id = if next(&mut seed).is_multiple_of(2) {
+                    &main
+                } else {
+                    &notes
+                };
+                let text = writer.text(id).unwrap();
+                let chars: Vec<char> = text.chars().collect();
+                let at = (next(&mut seed) as usize) % (chars.len() + 1);
+                let prefix: String = chars[..at].iter().collect();
+                let rest: String = chars[at..].iter().collect();
+                let mut operation = TextOperation::default();
+                operation.retain(prefix.encode_utf16().count());
+                if next(&mut seed).is_multiple_of(3) && !rest.is_empty() {
+                    let gone: String = rest
+                        .chars()
+                        .take(1 + next(&mut seed) as usize % 3)
+                        .collect();
+                    operation.delete(gone.encode_utf16().count());
+                    operation.retain(rest.encode_utf16().count() - gone.encode_utf16().count());
+                } else {
+                    operation.insert(pieces[next(&mut seed) as usize % pieces.len()]);
+                    operation.retain(rest.encode_utf16().count());
+                }
+                writer.apply_operation(id, &operation).unwrap();
+            }
+            let renamed = round % 50 == 49;
+            if renamed {
+                writer.rename(&notes, &format!("notes-{round}.md")).unwrap();
+            }
+            let update = writer.export_since(&before).unwrap();
+            let main_before = reader.text(&main).unwrap();
+            let notes_before = reader.text(&notes).unwrap();
+            let imported = reader.import(&update).unwrap();
+            let mut main_after = main_before.clone();
+            let mut notes_after = notes_before.clone();
+            for (id, deltas) in &imported.changes.texts {
+                let target = if id == &main {
+                    &mut main_after
+                } else {
+                    &mut notes_after
+                };
+                let operation = delta_to_operation(target, deltas).unwrap();
+                *target = applied(target, &operation);
+            }
+            assert_eq!(main_after, reader.text(&main).unwrap(), "round {round}");
+            assert_eq!(notes_after, reader.text(&notes).unwrap(), "round {round}");
+            assert_eq!(imported.changes.tree, renamed, "round {round}");
+        }
+        assert_eq!(reader.text(&main).unwrap(), writer.text(&main).unwrap());
+        assert_eq!(reader.nodes().unwrap(), writer.nodes().unwrap());
     }
 
     #[test]

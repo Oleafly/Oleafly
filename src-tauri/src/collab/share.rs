@@ -330,7 +330,7 @@ pub async fn share_project(
     client.commit_project(&access, shared).await?;
     let paths = state.paths()?;
     let layout = materialize::layout(&built.doc.nodes()?);
-    let live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
+    let mut live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
     live.save(&paths.document_dir(project_id)?)?;
     DiskState {
         layout,
@@ -472,7 +472,7 @@ pub async fn join_project(
     crate::trust::mark_library_restricted(&local_id)
         .map_err(|error| CollabError::Io(format!("{error:?}")))?;
     crate::project::initialize_git_for_new_project(&local_id);
-    let live = LiveProject::new(doc, seq, summary.role);
+    let mut live = LiveProject::new(doc, seq, summary.role);
     live.save(&paths.document_dir(&local_id)?)?;
     DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
     save_binding(

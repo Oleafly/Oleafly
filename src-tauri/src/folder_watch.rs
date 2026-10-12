@@ -24,6 +24,10 @@ pub struct FolderChange {
     pub paths: Vec<String>,
     pub rescan: bool,
     pub structural: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub renamed: Vec<(String, String)>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub deleted: Vec<String>,
 }
 
 pub(crate) type ChangeSink = Arc<dyn Fn(FolderChange) + Send + Sync>;
@@ -261,6 +265,8 @@ impl Batch {
                 batch.paths.into_keys().collect()
             },
             rescan: batch.rescan,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
         })
     }
 }

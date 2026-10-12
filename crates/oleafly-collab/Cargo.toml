@@ -27,4 +27,4 @@ webpki-roots = "1"
 [dev-dependencies]
 oleafly-server = { path = "../oleafly-server", features = ["test-support"] }
 tempfile = { workspace = true }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }

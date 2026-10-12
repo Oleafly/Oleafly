@@ -19,8 +19,12 @@ use crate::{CollabError, DeviceKey, SessionManager};
 const PING_EVERY: Duration = Duration::from_secs(20);
 const PONG_WITHIN: Duration = Duration::from_secs(30);
 const SUBSCRIBE_WITHIN: Duration = Duration::from_secs(20);
-const SNAPSHOT_EVERY: u64 = 200;
-const BACKOFF_MS: [u64; 6] = [500, 1_000, 2_000, 4_000, 8_000, 15_000];
+const SNAPSHOT_EVERY: u64 = 1_000;
+const BACKOFF_MS: [u64; 5] = [500, 1_000, 2_000, 3_000, 5_000];
+
+fn should_snapshot(acknowledged: u64) -> bool {
+    acknowledged > 0 && acknowledged.is_multiple_of(SNAPSHOT_EVERY)
+}
 
 #[derive(Clone)]
 pub struct LiveLink {
@@ -433,6 +437,10 @@ async fn online(
                         lock(project).acknowledged(batch_id, seq);
                         let _ = events.send(LiveEvent::Acknowledged);
                         since_snapshot += 1;
+                        if should_snapshot(seq) {
+                            since_snapshot = 0;
+                            upload_snapshot(link, project);
+                        }
                         if flush(link, project, wire).await.is_err() {
                             return retry;
                         }
@@ -455,10 +463,6 @@ async fn online(
                     }
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
-                }
-                if since_snapshot >= SNAPSHOT_EVERY {
-                    since_snapshot = 0;
-                    upload_snapshot(link, project);
                 }
             }
             command = commands.recv() => match command {
@@ -496,6 +500,21 @@ async fn online(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_change_that_lands_on_the_interval_uploads_a_snapshot() {
+        assert!(!should_snapshot(0));
+        assert!(!should_snapshot(SNAPSHOT_EVERY - 1));
+        assert!(should_snapshot(SNAPSHOT_EVERY));
+        assert!(!should_snapshot(SNAPSHOT_EVERY + 1));
+        assert!(should_snapshot(SNAPSHOT_EVERY * 3));
+        assert_eq!(SNAPSHOT_EVERY, 1_000);
+    }
+
+    #[test]
+    fn reconnecting_never_waits_more_than_five_seconds() {
+        assert_eq!(BACKOFF_MS.iter().max(), Some(&5_000));
+    }
     use crate::client::test_util::{two_people, Pair, Person};
     use crate::doc::{NodeKind, ProjectDoc};
     use crate::editor::DocMessage;

@@ -100,6 +100,12 @@ fn no_secret_files(path: &Path) -> std::io::Result<String> {
         path.display().to_string(),
     ))
 }
+mod crowd;
+
+pub use crowd::{
+    find_shared_project, grant_project_role, init_dev_logging, project_log, seed_person,
+    serve_until, PersonSeed, ProjectLog,
+};
 mod mock_github;
 
 pub use mock_github::{authorization_code, github_provider, MockGithub, MockGithubUser};

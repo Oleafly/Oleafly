@@ -304,6 +304,8 @@ mod tests {
             paths: paths.iter().map(|path| (*path).to_owned()).collect(),
             rescan: false,
             structural: false,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
         }
     }
 
@@ -313,6 +315,8 @@ mod tests {
             paths: Vec::new(),
             rescan: true,
             structural: true,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
         }
     }
 

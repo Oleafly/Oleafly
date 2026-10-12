@@ -16,6 +16,8 @@ pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
 const DOC_FILE: &str = "doc.bin";
 const STATE_FILE: &str = "sync.json";
+const LOG_FILE: &str = "doc.log";
+const LOG_LIMIT: usize = 500;
 
 struct OpenFile {
     channel: EditorChannel,
@@ -60,6 +62,43 @@ pub struct LiveProject {
     received: u64,
     catch_up: Option<std::collections::BTreeMap<String, u32>>,
     seen: BTreeSet<u64>,
+    persisted: Option<VersionVector>,
+    log_records: usize,
+}
+
+fn read_log(path: &Path) -> Vec<Vec<u8>> {
+    let Ok(bytes) = std::fs::read(path) else {
+        return Vec::new();
+    };
+    let mut records = Vec::new();
+    let mut at = 0;
+    while at + 4 <= bytes.len() {
+        let length =
+            u32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]) as usize;
+        let Some(end) = at.checked_add(4 + length).filter(|end| *end <= bytes.len()) else {
+            break;
+        };
+        records.push(bytes[at + 4..end].to_vec());
+        at = end;
+    }
+    records
+}
+
+fn append_log(path: &Path, record: &[u8]) -> Result<(), CollabError> {
+    use std::io::Write;
+    let length = u32::try_from(record.len())
+        .map_err(|_| CollabError::Corrupt("a change record is too large".to_owned()))?;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|error| CollabError::Io(error.to_string()))?;
+    let mut framed = Vec::with_capacity(record.len() + 4);
+    framed.extend_from_slice(&length.to_le_bytes());
+    framed.extend_from_slice(record);
+    file.write_all(&framed)
+        .and_then(|()| file.sync_data())
+        .map_err(|error| CollabError::Io(error.to_string()))
 }
 
 impl LiveProject {
@@ -76,6 +115,8 @@ impl LiveProject {
             received: 0,
             catch_up: None,
             seen: BTreeSet::new(),
+            persisted: None,
+            log_records: 0,
         }
     }
 
@@ -87,15 +128,41 @@ impl LiveProject {
                 .map_err(|error| CollabError::Io(error.to_string()))?,
         )
         .map_err(|error| CollabError::Corrupt(error.to_string()))?;
-        let doc = ProjectDoc::load(&bytes)?;
+        let mut doc = ProjectDoc::load(&bytes)?;
+        let records = read_log(&dir.join(LOG_FILE));
+        for record in &records {
+            if doc.import(record).is_err() {
+                break;
+            }
+        }
         let mut live = LiveProject::new(doc, state.last_seq, role);
         live.confirmed = decode_version(&state.confirmed)?;
+        live.persisted = Some(live.doc.version());
+        live.log_records = records.len();
         Ok(live)
     }
 
-    pub fn save(&self, dir: &Path) -> Result<(), CollabError> {
+    pub fn save(&mut self, dir: &Path) -> Result<(), CollabError> {
         std::fs::create_dir_all(dir).map_err(|error| CollabError::Io(error.to_string()))?;
-        write_atomic(&dir.join(DOC_FILE), &self.doc.snapshot()?)?;
+        let appendable = self.log_records < LOG_LIMIT && dir.join(DOC_FILE).is_file();
+        match self.persisted.as_ref().filter(|_| appendable) {
+            Some(persisted) => {
+                if self.doc.has_changes_since(persisted) {
+                    append_log(&dir.join(LOG_FILE), &self.doc.export_since(persisted)?)?;
+                    self.log_records += 1;
+                }
+            }
+            None => {
+                write_atomic(&dir.join(DOC_FILE), &self.doc.snapshot()?)?;
+                match std::fs::remove_file(dir.join(LOG_FILE)) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(CollabError::Io(error.to_string())),
+                }
+                self.log_records = 0;
+            }
+        }
+        self.persisted = Some(self.doc.version());
         let state = StoredState {
             last_seq: self.last_seq,
             confirmed: self.confirmed.encode(),
@@ -571,5 +638,85 @@ mod tests {
         let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
         assert_eq!(loaded.doc().text(&main).unwrap(), "abcdef");
         assert!(loaded.has_unsent());
+    }
+
+    fn type_at_end(live: &mut LiveProject, id: &str, text: &str) {
+        let current = live.doc().text(id).unwrap();
+        let mut operation = TextOperation::default();
+        operation.retain(current.encode_utf16().count());
+        operation.insert(text);
+        live.local_operation(id, &operation).unwrap();
+    }
+
+    #[test]
+    fn many_small_saves_reload_every_change() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        for round in 0..60 {
+            type_at_end(&mut bob, &main, &format!(" {round}"));
+            bob.save(dir.path()).unwrap();
+        }
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(
+            loaded.doc().text(&main).unwrap(),
+            bob.doc().text(&main).unwrap()
+        );
+        assert_eq!(loaded.last_seq(), bob.last_seq());
+    }
+
+    #[test]
+    fn a_small_change_is_appended_instead_of_rewriting_the_whole_document() {
+        let (mut bob, _alice, main) = pair();
+        let body: String = (0..2_000u64)
+            .map(|line| format!("line {line} {:x}\n", line.wrapping_mul(2_654_435_761)))
+            .collect();
+        bob.local_text(&main, &body).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let snapshot = std::fs::read(dir.path().join(DOC_FILE)).unwrap();
+        type_at_end(&mut bob, &main, "x");
+        bob.save(dir.path()).unwrap();
+        assert_eq!(std::fs::read(dir.path().join(DOC_FILE)).unwrap(), snapshot);
+        let log = std::fs::metadata(dir.path().join(LOG_FILE)).unwrap().len() as usize;
+        assert!(
+            log * 20 < snapshot.len(),
+            "log {log} snapshot {}",
+            snapshot.len()
+        );
+    }
+
+    #[test]
+    fn a_half_written_change_record_is_ignored_on_load() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        type_at_end(&mut bob, &main, " kept");
+        bob.save(dir.path()).unwrap();
+        let mut log = std::fs::OpenOptions::new()
+            .append(true)
+            .open(dir.path().join(LOG_FILE))
+            .unwrap();
+        std::io::Write::write_all(&mut log, &[200, 0, 0, 0, 1, 2, 3]).unwrap();
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(loaded.doc().text(&main).unwrap().ends_with(" kept"));
+    }
+
+    #[test]
+    fn the_change_log_is_folded_into_the_document_after_many_saves() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        for round in 0..=LOG_LIMIT {
+            type_at_end(&mut bob, &main, &format!("{}", round % 10));
+            bob.save(dir.path()).unwrap();
+        }
+        let log = std::fs::metadata(dir.path().join(LOG_FILE)).map_or(0, |meta| meta.len());
+        assert!(log < 1_000, "log still {log} bytes");
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(
+            loaded.doc().text(&main).unwrap(),
+            bob.doc().text(&main).unwrap()
+        );
     }
 }

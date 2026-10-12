@@ -41,6 +41,7 @@ async fn main() {
         vec![
             person(8, "bob", "Bob Smith"),
             person(9, "alice", "Alice Chen"),
+            person(10, "carol", "Carol Diaz"),
         ],
     )
     .await;
@@ -81,7 +82,7 @@ async fn main() {
         .expect("listen on the dev address");
     println!("Oleafly dev server on http://{SERVER} (data in {data_dir})");
     println!("Setup code for the first sign-in: {SETUP_CODE}");
-    println!("Mock GitHub signs in Bob Smith first, then Alice Chen, in turn.");
+    println!("Mock GitHub signs in Bob Smith, then Alice Chen, then Carol Diaz, in turn.");
     if seeded {
         println!("Anyone with an @lab.test email is admitted as a member.");
     }

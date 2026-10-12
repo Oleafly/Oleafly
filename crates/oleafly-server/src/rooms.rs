@@ -126,6 +126,7 @@ impl Rooms {
 pub fn deliver(member: &RoomMember, frame: ServerFrame) {
     match member.frames.try_send(frame) {
         Ok(()) | Err(TrySendError::Closed(_)) => {}
+        Err(TrySendError::Full(ServerFrame::Presence { .. })) => {}
         Err(TrySendError::Full(_)) => {
             let _ = member.control.send(SocketControl::Overloaded);
         }
@@ -193,6 +194,27 @@ mod tests {
         rooms.broadcast(project, None, &archived(project));
         rooms.broadcast(project, None, &archived(project));
         assert_eq!(controls.try_recv().ok(), Some(SocketControl::Overloaded));
+    }
+
+    #[test]
+    fn a_full_queue_drops_cursor_updates_instead_of_closing() {
+        let rooms = Rooms::new();
+        let project = SharedProjectId::new_v7();
+        let (slow, _frames, mut controls) = member(1, AccountId::new_v7(), 1);
+        rooms.join(project, slow);
+        let here = ServerFrame::Presence {
+            project_id: project,
+            device_id: oleafly_collab_protocol::ids::DeviceId::new_v7(),
+            account_id: AccountId::new_v7(),
+            state: oleafly_collab_protocol::projects::PresenceState {
+                file_id: Some("main".to_owned()),
+                cursor: Some(1),
+                anchor: None,
+            },
+        };
+        rooms.broadcast(project, None, &here);
+        rooms.broadcast(project, None, &here);
+        assert!(controls.try_recv().is_err());
     }
 
     #[test]

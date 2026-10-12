@@ -25,8 +25,7 @@ use tokio::sync::oneshot;
 
 use super::commands::CollabCommandError;
 use super::disk::{
-    as_text, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex, write_file,
-    DiskState,
+    as_text, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex, DiskState,
 };
 use super::state::CollabState;
 use crate::folder_watch::FolderChange;
@@ -166,7 +165,7 @@ pub struct Active {
     quiet_merge: AtomicBool,
     waiting: AtomicBool,
     last_status: Mutex<LiveStatus>,
-    bases: Mutex<HashMap<String, String>>,
+    bases: Mutex<WrittenTexts>,
 }
 
 static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -357,20 +356,81 @@ fn ensure_dir(
 }
 
 fn writable(root: &Path, disk: &DiskState, path: &str) -> bool {
-    let Some(target) = safe_target(root, path) else {
-        return false;
-    };
+    checked(root, disk, path).is_some()
+}
+
+fn checked(root: &Path, disk: &DiskState, path: &str) -> Option<Option<super::disk::Stamp>> {
+    let target = safe_target(root, path)?;
+    let stamp = super::disk::stamp_of(&target);
     match std::fs::read(&target) {
-        Err(_) => true,
+        Err(_) => Some(None),
         Ok(bytes) => disk
             .hashes
             .get(path)
-            .is_some_and(|known| *known == sha256_hex(&bytes)),
+            .is_some_and(|known| *known == sha256_hex(&bytes))
+            .then_some(stamp),
     }
 }
 
-fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> HashMap<String, String> {
-    let mut bases = HashMap::new();
+const WRITTEN_KEPT: usize = 4;
+
+#[derive(Default)]
+struct WrittenTexts(HashMap<String, std::collections::VecDeque<String>>);
+
+impl WrittenTexts {
+    fn record(&mut self, path: &str, text: &str) {
+        let kept = self.0.entry(path.to_owned()).or_default();
+        if kept.back().is_some_and(|last| last == text) {
+            return;
+        }
+        kept.push_back(text.to_owned());
+        while kept.len() > WRITTEN_KEPT {
+            kept.pop_front();
+        }
+    }
+
+    fn latest(&self, path: &str) -> Option<&String> {
+        self.0.get(path)?.back()
+    }
+
+    fn closest(&self, path: &str, found: &str) -> Option<&String> {
+        self.0
+            .get(path)?
+            .iter()
+            .rev()
+            .min_by_key(|candidate| differing_bytes(candidate, found))
+    }
+
+    fn forget(&mut self, path: &str) {
+        self.0.remove(path);
+    }
+
+    fn rename(&mut self, from: &str, to: &str) {
+        if let Some(kept) = self.0.remove(from) {
+            self.0.insert(to.to_owned(), kept);
+        }
+    }
+}
+
+fn differing_bytes(left: &str, right: &str) -> usize {
+    let prefix = left
+        .char_indices()
+        .zip(right.chars())
+        .find(|((_, a), b)| a != b)
+        .map_or(left.len().min(right.len()), |((at, _), _)| at);
+    let (left_rest, right_rest) = (&left[prefix..], &right[prefix..]);
+    let suffix: usize = left_rest
+        .chars()
+        .rev()
+        .zip(right_rest.chars().rev())
+        .take_while(|(a, b)| a == b)
+        .map(|(a, _)| a.len_utf8())
+        .sum();
+    left_rest.len() + right_rest.len() - 2 * suffix
+}
+
+fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> WrittenTexts {
+    let mut bases = WrittenTexts::default();
     for (id, placed) in disk
         .layout
         .iter()
@@ -390,7 +450,7 @@ fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> HashMap<S
                 .filter(|text| sha256_hex(text.as_bytes()) == *known)
         });
         if let Some(text) = text {
-            bases.insert(placed.path.clone(), text);
+            bases.record(&placed.path, &text);
         }
     }
     bases
@@ -410,7 +470,7 @@ fn merged_onto(base: &str, disk: &str, current: &str) -> Option<TextOperation> {
 fn apply_local_import(
     live: &mut LiveProject,
     disk: &mut DiskState,
-    bases: &mut HashMap<String, String>,
+    bases: &mut WrittenTexts,
     import: LocalImport,
     root: &Path,
 ) -> Result<bool, CollabError> {
@@ -421,6 +481,47 @@ fn apply_local_import(
             .and_then(|target| std::fs::read(target).ok())
             .is_some_and(|bytes| sha256_hex(&bytes) == hash)
     };
+    let mut import = import;
+    for old in import.removed.clone() {
+        let Some((id, kind, blob)) = placed.get(&old).cloned() else {
+            continue;
+        };
+        let Some(known) = disk.hashes.get(&old).cloned() else {
+            continue;
+        };
+        let arrived = |path: &str, hash: &str| {
+            hash == known && !placed.contains_key(path) && still(path, hash)
+        };
+        let found = match kind {
+            NodeKind::Text => import
+                .texts
+                .iter()
+                .position(|(path, _, hash)| arrived(path, hash))
+                .map(|index| import.texts.remove(index).0),
+            NodeKind::Blob => import
+                .blobs
+                .iter()
+                .position(|(path, hash, _)| arrived(path, hash))
+                .map(|index| import.blobs.remove(index).0),
+            NodeKind::Dir => None,
+        };
+        let Some(new) = found else {
+            continue;
+        };
+        let parent = ensure_dir(live, &mut placed, parent_of(&new))?;
+        live.doc_mut().move_to(&id, parent.as_deref())?;
+        if name_of(&old) != name_of(&new) {
+            live.doc_mut().rename(&id, name_of(&new))?;
+        }
+        placed.remove(&old);
+        placed.insert(new.clone(), (id, kind, blob));
+        if let Some(hash) = disk.hashes.remove(&old) {
+            disk.hashes.insert(new.clone(), hash);
+        }
+        bases.rename(&old, &new);
+        import.removed.retain(|path| *path != old);
+        changed = true;
+    }
     for path in import.dirs {
         ensure_dir(live, &mut placed, Some(&path))?;
         changed = true;
@@ -433,7 +534,7 @@ fn apply_local_import(
             Some((id, NodeKind::Text, _)) => {
                 let current = live.doc().text(&id)?;
                 let merged = bases
-                    .get(&path)
+                    .closest(&path, &text)
                     .and_then(|base| merged_onto(base, &text, &current));
                 changed |= match merged {
                     Some(operation) => live.local_operation(&id, &operation)?,
@@ -465,7 +566,7 @@ fn apply_local_import(
                 changed = true;
             }
         }
-        bases.insert(path.clone(), text.clone());
+        bases.record(&path, &text);
         disk.hashes.insert(path, hash);
     }
     for (path, hash, _) in import.blobs {
@@ -510,6 +611,135 @@ fn apply_local_import(
         disk.layout = materialize::layout(&live.doc().nodes()?);
     }
     Ok(changed)
+}
+
+struct DiskPass {
+    changed: BTreeSet<String>,
+    conflicts: Vec<String>,
+    blobs: Vec<(String, String, Option<super::disk::Stamp>)>,
+    moved: Vec<(String, String)>,
+    removed: Vec<String>,
+}
+
+fn apply_to_disk(
+    root: &Path,
+    disk: &mut DiskState,
+    bases: &mut WrittenTexts,
+    mut plan: materialize::DiskPlan,
+    next: Layout,
+    texts: &[(String, String)],
+) -> Result<DiskPass, CollabError> {
+    let mut conflicts: Vec<String> = Vec::new();
+    let mut changed: BTreeSet<String> = BTreeSet::new();
+    let mut blobs = Vec::new();
+    let mut renamed: Vec<(String, String)> = Vec::new();
+    let mut gone: Vec<String> = Vec::new();
+    let mut aliased = Vec::new();
+    plan.removed.retain(|path| {
+        match next
+            .values()
+            .find(|placed| super::disk::same_file(root, path, &placed.path))
+        {
+            Some(placed) => {
+                aliased.push((path.clone(), placed.path.clone()));
+                false
+            }
+            None => true,
+        }
+    });
+    plan.moved.extend(aliased);
+    plan.moved
+        .sort_by_key(|(from, _)| from.matches('/').count());
+    for (from, to) in &plan.moved {
+        let moved = super::disk::move_path(root, from, to)
+            || (!super::disk::exists_exact(root, from) && super::disk::exists_exact(root, to));
+        if !moved {
+            continue;
+        }
+        if !renamed
+            .iter()
+            .any(|(parent, _): &(String, String)| from.starts_with(&format!("{parent}/")))
+        {
+            renamed.push((from.clone(), to.clone()));
+        }
+        if let Some(hash) = disk.hashes.remove(from) {
+            disk.hashes.insert(to.clone(), hash);
+        }
+        bases.rename(from, to);
+        changed.insert(from.clone());
+        changed.insert(to.clone());
+    }
+    for dir in &plan.dirs {
+        if let Some(target) = safe_target(root, dir) {
+            let _ = std::fs::create_dir_all(target);
+            changed.insert(dir.clone());
+        }
+    }
+    for (path, text) in texts {
+        let Some(stamp) = checked(root, disk, path) else {
+            conflicts.push(path.clone());
+            continue;
+        };
+        match super::disk::write_file_over(root, path, text.as_bytes(), stamp.as_ref())
+            .map_err(CollabError::Io)?
+        {
+            super::disk::WriteOutcome::ChangedOutside => {
+                conflicts.push(path.clone());
+                continue;
+            }
+            super::disk::WriteOutcome::Written => {
+                changed.insert(path.clone());
+            }
+            super::disk::WriteOutcome::Same => {}
+        }
+        disk.hashes
+            .insert(path.clone(), sha256_hex(text.as_bytes()));
+        bases.record(path, text);
+    }
+    for id in &plan.written {
+        if let Some(placed) = next.get(id).filter(|placed| placed.kind == NodeKind::Blob) {
+            if let Some(hash) = &placed.blob {
+                let on_disk = safe_target(root, &placed.path)
+                    .and_then(|target| std::fs::read(target).ok())
+                    .is_some_and(|bytes| sha256_hex(&bytes) == *hash);
+                if on_disk {
+                    disk.hashes.insert(placed.path.clone(), hash.clone());
+                } else if let Some(stamp) = checked(root, disk, &placed.path) {
+                    blobs.push((placed.path.clone(), hash.clone(), stamp));
+                } else {
+                    conflicts.push(placed.path.clone());
+                }
+            }
+        }
+    }
+    for path in &plan.removed {
+        if !writable(root, disk, path) {
+            conflicts.push(path.clone());
+            continue;
+        }
+        super::disk::remove_path(root, path);
+        disk.hashes.remove(path);
+        bases.forget(path);
+        changed.insert(path.clone());
+        gone.push(path.clone());
+    }
+    disk.layout = next;
+    let removed: Vec<String> = gone
+        .iter()
+        .filter(|path| {
+            !gone
+                .iter()
+                .any(|parent| path.starts_with(&format!("{parent}/")))
+        })
+        .cloned()
+        .collect();
+    Ok(DiskPass {
+        changed,
+        conflicts,
+        blobs,
+        moved: renamed,
+        removed,
+    })
 }
 
 async fn upload_blobs(link: &LiveLink, blobs: &[(String, String, Vec<u8>)]) -> BTreeSet<String> {
@@ -565,7 +795,7 @@ impl Active {
     }
 
     fn save_now(&self) {
-        let live = lock(&self.live);
+        let mut live = lock(&self.live);
         let _ = live.save(&self.document_dir);
         drop(live);
         let _ = guard(&self.disk).save(&self.disk_file);
@@ -627,75 +857,21 @@ impl Active {
             (work, next, texts)
         };
         let plan = materialize::plan(&previous, &next);
-        let mut conflicts: Vec<String> = Vec::new();
-        let mut changed: BTreeSet<String> = BTreeSet::new();
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
-        let mut blobs = Vec::new();
-        {
+        let DiskPass {
+            mut changed,
+            mut conflicts,
+            blobs,
+            moved,
+            removed,
+        } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
-            for (from, to) in &plan.moved {
-                if !super::disk::move_path(&self.root, from, to) {
-                    continue;
-                }
-                if let Some(hash) = disk.hashes.remove(from) {
-                    disk.hashes.insert(to.clone(), hash);
-                }
-                if let Some(base) = bases.remove(from) {
-                    bases.insert(to.clone(), base);
-                }
-                changed.insert(from.clone());
-                changed.insert(to.clone());
-            }
-            for dir in &plan.dirs {
-                if let Some(target) = safe_target(&self.root, dir) {
-                    let _ = std::fs::create_dir_all(target);
-                    changed.insert(dir.clone());
-                }
-            }
-            for (path, text) in &texts {
-                if !writable(&self.root, &disk, path) {
-                    conflicts.push(path.clone());
-                    continue;
-                }
-                if write_file(&self.root, path, text.as_bytes()).map_err(CollabError::Io)? {
-                    changed.insert(path.clone());
-                }
-                disk.hashes
-                    .insert(path.clone(), sha256_hex(text.as_bytes()));
-                bases.insert(path.clone(), text.clone());
-            }
-            for id in &plan.written {
-                if let Some(placed) = next.get(id).filter(|placed| placed.kind == NodeKind::Blob) {
-                    if let Some(hash) = &placed.blob {
-                        let on_disk = safe_target(&self.root, &placed.path)
-                            .and_then(|target| std::fs::read(target).ok())
-                            .is_some_and(|bytes| sha256_hex(&bytes) == *hash);
-                        if on_disk {
-                            disk.hashes.insert(placed.path.clone(), hash.clone());
-                        } else if writable(&self.root, &disk, &placed.path) {
-                            blobs.push((placed.path.clone(), hash.clone()));
-                        } else {
-                            conflicts.push(placed.path.clone());
-                        }
-                    }
-                }
-            }
-            for path in &plan.removed {
-                if !writable(&self.root, &disk, path) {
-                    conflicts.push(path.clone());
-                    continue;
-                }
-                super::disk::remove_path(&self.root, path);
-                disk.hashes.remove(path);
-                bases.remove(path);
-                changed.insert(path.clone());
-            }
-            disk.layout = next;
-        }
+            apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts)?
+        };
         let mut missing = false;
         if !blobs.is_empty() {
             let access = self
@@ -703,7 +879,7 @@ impl Active {
                 .sessions
                 .access_token(self.link.server_id, &self.link.client)
                 .await;
-            for (path, hash) in blobs {
+            for (path, hash, stamp) in blobs {
                 let fetched = match &access {
                     Ok(access) => self
                         .link
@@ -719,9 +895,15 @@ impl Active {
                     continue;
                 };
                 let mut disk = guard(&self.disk);
-                write_file(&self.root, &path, &bytes).map_err(CollabError::Io)?;
-                disk.hashes.insert(path.clone(), hash);
-                changed.insert(path);
+                match super::disk::write_file_over(&self.root, &path, &bytes, stamp.as_ref())
+                    .map_err(CollabError::Io)?
+                {
+                    super::disk::WriteOutcome::ChangedOutside => conflicts.push(path),
+                    _ => {
+                        disk.hashes.insert(path.clone(), hash);
+                        changed.insert(path);
+                    }
+                }
             }
         }
         let _ = guard(&self.disk).save(&self.disk_file);
@@ -739,6 +921,8 @@ impl Active {
                 paths: changed.into_iter().collect(),
                 rescan: false,
                 structural,
+                renamed: moved,
+                deleted: removed,
             });
         }
         Ok(conflicts)
@@ -874,7 +1058,8 @@ pub async fn start(
     let _lifecycle = LIFECYCLE.lock().await;
     if let Some(active) = active_for(project_id) {
         let role = lock(&active.live).role();
-        active.emit_status(guard(&active.last_status).clone());
+        let status = guard(&active.last_status).clone();
+        active.emit_status(status);
         active.host.role(RolePayload {
             project_id: project_id.to_owned(),
             role,
@@ -1229,9 +1414,14 @@ mod tests {
         std::fs::write(root.join("project.json"), "{}").unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         assert_eq!(import.blobs.len(), 1);
-        assert!(
-            apply_local_import(&mut live, &mut disk, &mut HashMap::new(), import, root).unwrap()
-        );
+        assert!(apply_local_import(
+            &mut live,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            import,
+            root
+        )
+        .unwrap());
         assert_eq!(live.doc().text(&main).unwrap(), "abcd");
         assert_eq!(
             paths_of(&live),
@@ -1250,7 +1440,14 @@ mod tests {
         let removed =
             read_local_changes(root, &disk, &live, Some(&["new.tex".to_owned()])).unwrap();
         assert_eq!(removed.removed, vec!["new.tex".to_owned()]);
-        apply_local_import(&mut live, &mut disk, &mut HashMap::new(), removed, root).unwrap();
+        apply_local_import(
+            &mut live,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            removed,
+            root,
+        )
+        .unwrap();
         assert!(!paths_of(&live).contains(&"new.tex".to_owned()));
     }
 
@@ -1259,27 +1456,277 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         let (mut live, mut disk, main) = project(root);
-        let mut bases = HashMap::new();
-        bases.insert("main.tex".to_owned(), "abc".to_owned());
+        let mut bases = WrittenTexts::default();
+        bases.record("main.tex", "abc");
         live.local_text(&main, "abcX").unwrap();
         std::fs::write(root.join("main.tex"), "Zabc").unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
         assert_eq!(live.doc().text(&main).unwrap(), "ZabcX");
-        assert_eq!(bases.get("main.tex").map(String::as_str), Some("Zabc"));
+        assert_eq!(bases.latest("main.tex").map(String::as_str), Some("Zabc"));
+    }
+
+    #[test]
+    fn an_outside_write_from_an_older_read_keeps_the_newer_remote_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, main) = project(root);
+        let mut bases = WrittenTexts::default();
+        bases.record("main.tex", "abc");
+        live.local_text(&main, "abcX").unwrap();
+        bases.record("main.tex", "abcX");
+        std::fs::write(root.join("main.tex"), "Zabc").unwrap();
+        let import = read_local_changes(root, &disk, &live, None).unwrap();
+        apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
+        assert_eq!(live.doc().text(&main).unwrap(), "ZabcX");
+    }
+
+    struct SilentHost;
+
+    impl LiveHost for SilentHost {
+        fn status(&self, _: StatusPayload) {}
+        fn role(&self, _: RolePayload) {}
+        fn merged(&self, _: MergedPayload) {}
+        fn presence(&self, _: PresencePayload) {}
+        fn presence_left(&self, _: PresenceLeftPayload) {}
+        fn folder_changed(&self, _: FolderChange) {}
+    }
+
+    #[test]
+    fn starting_live_again_for_a_live_project_answers() {
+        let (done, outcome) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let dir = tempfile::tempdir().unwrap();
+                let state = CollabState::new(
+                    oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                    Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+                );
+                let keys = state.keys().await.unwrap();
+                let link = LiveLink {
+                    client: Arc::new(
+                        ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+                    ),
+                    server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                    project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                    device_id: DeviceId::new_v7(),
+                    key: Arc::clone(&keys.key),
+                    sessions: Arc::clone(&keys.sessions),
+                };
+                let root = dir.path().join("project");
+                std::fs::create_dir_all(&root).unwrap();
+                let (live, disk, _) = project(&root);
+                let shared: SharedLive = Arc::new(Mutex::new(live));
+                let (events, _events) = mpsc::unbounded_channel();
+                let (writer, _writer) = mpsc::unbounded_channel();
+                let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
+                let active = Arc::new(Active {
+                    project_id: "already-live".to_owned(),
+                    root,
+                    document_dir: dir.path().join("document"),
+                    disk_file: dir.path().join("disk.json"),
+                    live: shared,
+                    handle,
+                    link,
+                    disk: Mutex::new(disk),
+                    host: Arc::new(SilentHost),
+                    writer,
+                    account_id: AccountId::new_v7(),
+                    quiet_merge: AtomicBool::new(false),
+                    waiting: AtomicBool::new(false),
+                    last_status: Mutex::new(LiveStatus::Connecting),
+                    bases: Mutex::new(WrittenTexts::default()),
+                });
+                *guard(&ACTIVE) = Some(Arc::clone(&active));
+                let again = start(&state, Arc::new(SilentHost), "already-live").await;
+                *guard(&ACTIVE) = None;
+                active.handle.stop();
+                let _ = done.send(again.is_ok());
+            });
+        });
+        let answered = outcome.recv_timeout(Duration::from_secs(10));
+        assert_eq!(
+            answered,
+            Ok(true),
+            "starting a project that is already live never answered"
+        );
+    }
+
+    fn hashes_for(entries: &[(&str, &str)]) -> std::collections::BTreeMap<String, String> {
+        entries
+            .iter()
+            .map(|(path, text)| ((*path).to_owned(), sha256_hex(text.as_bytes())))
+            .collect()
+    }
+
+    #[test]
+    fn a_case_rename_that_arrives_as_remove_and_add_keeps_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("data")).unwrap();
+        std::fs::write(root.join("data/sites.tex"), "s").unwrap();
+        let mut doc = ProjectDoc::create().unwrap();
+        let folder = doc.add_node(None, "data", NodeKind::Dir, None, "").unwrap();
+        let old = doc
+            .add_node(Some(&folder), "sites.tex", NodeKind::Text, None, "s")
+            .unwrap();
+        let previous = materialize::layout(&doc.nodes().unwrap());
+        doc.trash(&old).unwrap();
+        doc.add_node(Some(&folder), "Sites.tex", NodeKind::Text, None, "s")
+            .unwrap();
+        let next = materialize::layout(&doc.nodes().unwrap());
+        let mut disk = DiskState {
+            layout: previous.clone(),
+            hashes: hashes_for(&[("data/sites.tex", "s")]),
+        };
+        let plan = materialize::plan(&previous, &next);
+        let texts = vec![("data/Sites.tex".to_owned(), "s".to_owned())];
+        let pass = apply_to_disk(
+            root,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            plan,
+            next,
+            &texts,
+        )
+        .unwrap();
+        assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
+        if root.join("DATA").exists() || std::fs::metadata(root.join("data/SITES.TEX")).is_ok() {
+            assert_eq!(
+                pass.moved,
+                vec![("data/sites.tex".to_owned(), "data/Sites.tex".to_owned())]
+            );
+        }
+        assert!(super::super::disk::exists_exact(root, "data/Sites.tex"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("data/Sites.tex")).unwrap(),
+            "s"
+        );
+        assert!(disk.hashes.contains_key("data/Sites.tex"));
+    }
+
+    #[test]
+    fn files_in_a_folder_renamed_elsewhere_stay_writable() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("data")).unwrap();
+        std::fs::write(root.join("data/x.tex"), "x").unwrap();
+        let mut doc = ProjectDoc::create().unwrap();
+        let folder = doc.add_node(None, "data", NodeKind::Dir, None, "").unwrap();
+        doc.add_node(Some(&folder), "x.tex", NodeKind::Text, None, "x")
+            .unwrap();
+        let previous = materialize::layout(&doc.nodes().unwrap());
+        doc.rename(&folder, "results").unwrap();
+        let next = materialize::layout(&doc.nodes().unwrap());
+        let mut disk = DiskState {
+            layout: previous.clone(),
+            hashes: hashes_for(&[("data/x.tex", "x")]),
+        };
+        let plan = materialize::plan(&previous, &next);
+        let texts = vec![("results/x.tex".to_owned(), "x".to_owned())];
+        let pass = apply_to_disk(
+            root,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            plan,
+            next,
+            &texts,
+        )
+        .unwrap();
+        assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
+        assert_eq!(
+            std::fs::read_to_string(root.join("results/x.tex")).unwrap(),
+            "x"
+        );
+        assert_eq!(pass.moved, vec![("data".to_owned(), "results".to_owned())]);
+        assert!(pass.removed.is_empty());
+        assert!(!root.join("data").exists());
+        assert!(disk.hashes.contains_key("results/x.tex"));
+        assert!(!disk.hashes.contains_key("data/x.tex"));
+    }
+
+    #[test]
+    fn a_folder_removed_elsewhere_is_reported_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("data")).unwrap();
+        std::fs::write(root.join("data/x.tex"), "x").unwrap();
+        std::fs::write(root.join("keep.tex"), "k").unwrap();
+        let mut doc = ProjectDoc::create().unwrap();
+        let folder = doc.add_node(None, "data", NodeKind::Dir, None, "").unwrap();
+        doc.add_node(Some(&folder), "x.tex", NodeKind::Text, None, "x")
+            .unwrap();
+        doc.add_node(None, "keep.tex", NodeKind::Text, None, "k")
+            .unwrap();
+        let previous = materialize::layout(&doc.nodes().unwrap());
+        doc.trash(&folder).unwrap();
+        let next = materialize::layout(&doc.nodes().unwrap());
+        let mut disk = DiskState {
+            layout: previous.clone(),
+            hashes: hashes_for(&[("data/x.tex", "x"), ("keep.tex", "k")]),
+        };
+        let plan = materialize::plan(&previous, &next);
+        let pass = apply_to_disk(
+            root,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            plan,
+            next,
+            &[],
+        )
+        .unwrap();
+        assert!(!root.join("data").exists());
+        assert!(root.join("keep.tex").exists());
+        assert_eq!(pass.removed, vec!["data".to_owned()]);
+    }
+
+    #[test]
+    fn a_file_renamed_here_keeps_its_identity() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, main) = project(root);
+        std::fs::create_dir_all(root.join("parts")).unwrap();
+        std::fs::rename(root.join("main.tex"), root.join("parts/intro.tex")).unwrap();
+        let import = read_local_changes(root, &disk, &live, None).unwrap();
+        apply_local_import(
+            &mut live,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            import,
+            root,
+        )
+        .unwrap();
+        assert_eq!(paths_of(&live), vec!["parts", "parts/intro.tex"]);
+        let layout = materialize::layout(&live.doc().nodes().unwrap());
+        assert_eq!(
+            layout.get(&main).map(|placed| placed.path.as_str()),
+            Some("parts/intro.tex")
+        );
+        assert_eq!(live.doc().text(&main).unwrap(), "abc");
+        assert!(disk.hashes.contains_key("parts/intro.tex"));
+        assert!(!disk.hashes.contains_key("main.tex"));
     }
 
     #[test]
     fn a_rename_that_only_changes_case_keeps_one_file() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        let (mut live, mut disk, _main) = project(root);
-        let mut bases = HashMap::new();
+        let (mut live, mut disk, main) = project(root);
+        let mut bases = WrittenTexts::default();
         std::fs::rename(root.join("main.tex"), root.join("tmp.tex")).unwrap();
         std::fs::rename(root.join("tmp.tex"), root.join("Main.tex")).unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
         assert_eq!(paths_of(&live), vec!["Main.tex"]);
+        let layout = materialize::layout(&live.doc().nodes().unwrap());
+        assert_eq!(
+            layout.get(&main).map(|placed| placed.path.as_str()),
+            Some("Main.tex")
+        );
     }
 
     #[test]
@@ -1328,7 +1775,14 @@ mod tests {
         std::fs::write(root.join("main.tex"), "first").unwrap();
         let import = read_local_changes(root, &disk, &live, None).unwrap();
         std::fs::write(root.join("main.tex"), "second").unwrap();
-        apply_local_import(&mut live, &mut disk, &mut HashMap::new(), import, root).unwrap();
+        apply_local_import(
+            &mut live,
+            &mut disk,
+            &mut WrittenTexts::default(),
+            import,
+            root,
+        )
+        .unwrap();
         assert_eq!(live.doc().text(&main).unwrap(), "abc");
     }
 }

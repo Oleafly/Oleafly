@@ -248,6 +248,67 @@ pub fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<bool, Str
     Ok(true)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stamp {
+    length: u64,
+    modified: Option<std::time::SystemTime>,
+    identity: u64,
+}
+
+pub fn stamp_of(path: &Path) -> Option<Stamp> {
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    #[cfg(unix)]
+    let identity = {
+        use std::os::unix::fs::MetadataExt;
+        metadata.ino()
+    };
+    #[cfg(not(unix))]
+    let identity = 0;
+    Some(Stamp {
+        length: metadata.len(),
+        modified: metadata.modified().ok(),
+        identity,
+    })
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum WriteOutcome {
+    Same,
+    Written,
+    ChangedOutside,
+}
+
+pub fn write_file_over(
+    root: &Path,
+    relative: &str,
+    bytes: &[u8],
+    checked: Option<&Stamp>,
+) -> Result<WriteOutcome, String> {
+    use std::io::Write;
+    let target =
+        safe_target(root, relative).ok_or_else(|| format!("refused to write {relative}"))?;
+    if std::fs::read(&target).is_ok_and(|current| current == bytes) {
+        return Ok(WriteOutcome::Same);
+    }
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        if inside_app_folder(root, parent) {
+            return Err(format!("refused to write {relative}"));
+        }
+    }
+    let mut staged = crate::sandbox::AtomicFile::new(&target)?;
+    let file = staged.staging_file_mut();
+    file.write_all(bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(|error| error.to_string())?;
+    if stamp_of(&target).as_ref() != checked {
+        return Ok(WriteOutcome::ChangedOutside);
+    }
+    staged.commit()?;
+    crate::folder_watch::note_own_write(&target);
+    Ok(WriteOutcome::Written)
+}
+
 pub fn remove_path(root: &Path, relative: &str) {
     let Some(target) = safe_target(root, relative) else {
         return;
@@ -313,6 +374,16 @@ fn same_entry(first: &Path, second: &Path) -> bool {
     }
 }
 
+pub fn same_file(root: &Path, first: &str, second: &str) -> bool {
+    if first == second || first.to_lowercase() != second.to_lowercase() {
+        return false;
+    }
+    match (safe_target(root, first), safe_target(root, second)) {
+        (Some(a), Some(b)) => exists_exact(root, first) && same_entry(&a, &b),
+        _ => false,
+    }
+}
+
 pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
     let (Some(source), Some(target)) = (safe_target(root, from), safe_target(root, to)) else {
         return false;
@@ -352,6 +423,34 @@ mod tests {
         let path = root.join(relative);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
+    }
+
+    #[test]
+    fn a_file_replaced_after_the_check_is_never_overwritten() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(root, "main.tex", "ours before");
+        let checked = stamp_of(&root.join("main.tex"));
+        let replacement = root.join(".main.tex.agent");
+        std::fs::write(&replacement, "written by an agent").unwrap();
+        std::fs::rename(&replacement, root.join("main.tex")).unwrap();
+        assert_eq!(
+            write_file_over(root, "main.tex", b"ours after", checked.as_ref()).unwrap(),
+            WriteOutcome::ChangedOutside
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "written by an agent"
+        );
+        let fresh = stamp_of(&root.join("main.tex"));
+        assert_eq!(
+            write_file_over(root, "main.tex", b"ours after", fresh.as_ref()).unwrap(),
+            WriteOutcome::Written
+        );
+        assert_eq!(
+            write_file_over(root, "new.tex", b"new", None).unwrap(),
+            WriteOutcome::Written
+        );
     }
 
     #[test]
