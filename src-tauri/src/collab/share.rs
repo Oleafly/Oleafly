@@ -12,6 +12,7 @@ use oleafly_collab_protocol::ids::{AccountId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
     PersonSummary, ProjectMember, ProjectPatch, ProjectRole, ProjectSummary,
 };
+use oleafly_collab_protocol::snapshots::ProjectPeer;
 use serde::Serialize;
 use tauri::Emitter;
 
@@ -495,9 +496,7 @@ pub async fn join_project(
     if let Some(listed) = verified.listed {
         live.pin_devices(listed);
     }
-    if let Ok(peers) = client.project_peers(&access, shared).await {
-        live.pin_peers(peers);
-    }
+    admit_writers(&mut live, client.project_peers(&access, shared).await);
     live.save(&paths.document_dir(&local_id)?)?;
     DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
     super::settings::remember(
@@ -518,6 +517,13 @@ pub async fn join_project(
     super::registry::invalidate(&local_id);
     super::live::note_fresh_join(&local_id);
     Ok(local_id)
+}
+
+fn admit_writers(live: &mut LiveProject, listed: Result<Vec<ProjectPeer>, CollabError>) {
+    match listed {
+        Ok(peers) => live.pin_peers(peers),
+        Err(_) => live.await_writers(),
+    }
 }
 
 fn parse_link(link: &str) -> Result<(String, SharedProjectId), CollabError> {
@@ -885,6 +891,34 @@ mod tests {
         );
         assert!(parse_link("https://uni.edu/p/not-an-id").is_err());
         assert!(parse_link("hello").is_err());
+    }
+
+    #[test]
+    fn a_copy_joined_without_the_writer_list_shows_no_comment_author_as_verified() {
+        let mut written = ProjectDoc::create().unwrap();
+        let main = written
+            .add_node(None, "main.tex", NodeKind::Text, None, "Hello there\n")
+            .unwrap();
+        let forged = written
+            .create_comment_thread(&main, 0, 5, AccountId::new_v7(), 1, "Not mine", &[])
+            .unwrap();
+        let snapshot = written.snapshot().unwrap();
+        for failure in [
+            api(404, "not_found", "Not found."),
+            CollabError::Network("offline".to_owned()),
+        ] {
+            let mut joined =
+                LiveProject::new(ProjectDoc::load(&snapshot).unwrap(), 1, ProjectRole::Editor);
+            admit_writers(&mut joined, Err(failure));
+            let seen = joined
+                .doc()
+                .comment_thread(&main, forged.id)
+                .unwrap()
+                .unwrap();
+            assert!(!seen.verified);
+            assert!(!seen.messages[0].verified);
+            assert!(!joined.peers_vouched());
+        }
     }
 
     #[test]

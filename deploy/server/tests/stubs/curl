@@ -33,7 +33,7 @@ serve_file() {
 	emit <"$1"
 }
 case $url in
-	https://get.docker.com)
+	https://raw.githubusercontent.com/docker/docker-install/*/install.sh)
 		[ -f "$state/get-docker-unreachable" ] && exit 6
 		serve_file /stub/get-docker.sh
 		;;

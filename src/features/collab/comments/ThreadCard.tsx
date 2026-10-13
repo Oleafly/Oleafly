@@ -115,17 +115,15 @@ function MessageRow({
           <span className={cn("truncate font-medium", !message.verified && "italic text-muted-foreground")}>
             {name}
           </span>
-          <time
-            dateTime={new Date(message.at).toISOString()}
-            title={formatDateTime(message.at)}
-            className="shrink-0 text-[0.6875rem] text-muted-foreground"
-          >
-            {formatRelativeTimeFrom(message.at, context.now)}
-          </time>
+          <Tooltip label={formatDateTime(message.at)} className="shrink-0">
+            <time dateTime={new Date(message.at).toISOString()} className="text-[0.6875rem] text-muted-foreground">
+              {formatRelativeTimeFrom(message.at, context.now)}
+            </time>
+          </Tooltip>
           {message.editedAt !== null && !message.deleted ? (
-            <span title={formatDateTime(message.editedAt)} className="shrink-0 text-[0.6875rem] text-muted-foreground">
-              {t(($) => $.collab.comments.edited)}
-            </span>
+            <Tooltip label={formatDateTime(message.editedAt)} className="shrink-0">
+              <span className="text-[0.6875rem] text-muted-foreground">{t(($) => $.collab.comments.edited)}</span>
+            </Tooltip>
           ) : null}
           {own && context.canWrite && !message.deleted && !editing ? (
             <DropdownMenu>

@@ -5,6 +5,7 @@ import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
+import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import { collabAccessLogPage, type CollabAccessEntry } from "@/lib/tauri";
 import { collabErrorCode, collabErrorMessage } from "../errors";
@@ -52,9 +53,9 @@ const AccessRow = memo(function AccessRow({ entry, now }: Readonly<{ entry: Coll
         <p className="select-text break-words font-medium">{sentence(entry, t)}</p>
         <p className="flex flex-wrap items-center gap-x-1.5 text-muted-foreground">
           <span className="min-w-0 truncate">{entry.device_name || t(($) => $.collab.accessLog.unknownDevice)}</span>
-          <time dateTime={new Date(entry.at).toISOString()} title={span}>
-            {formatRelativeTimeFrom(entry.at, now)}
-          </time>
+          <Tooltip label={span}>
+            <time dateTime={new Date(entry.at).toISOString()}>{formatRelativeTimeFrom(entry.at, now)}</time>
+          </Tooltip>
         </p>
       </div>
     </li>

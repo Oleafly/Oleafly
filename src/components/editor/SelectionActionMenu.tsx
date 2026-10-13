@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
 import { requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { MenuRow } from "@/components/ui/menu-row";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
@@ -71,7 +72,9 @@ function CommentPill({ onDone }: Readonly<{ onDone: () => void }>) {
 
 export function SelectionActionMenu() {
   const { t } = useTranslation(["common", "editor"]);
-  const canComment = useCommentsRail((state) => state.canCompose);
+  const collabReady = useCollabReady();
+  const canCompose = useCommentsRail((state) => state.canCompose);
+  const canComment = collabReady && canCompose;
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);

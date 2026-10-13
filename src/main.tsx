@@ -19,7 +19,7 @@ import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
-import { loadNamespace, readCachedPreference } from "@/i18n";
+import { readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstMigrationStore } from "@/store/typst-migration";
 import { registerContributions } from "@/contributions";
@@ -34,6 +34,7 @@ import { StoredAppTypography } from "@/lib/app-typography";
 import { AppZoom } from "@/lib/app-zoom";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { AdminConsoleSlot } from "@/components/collab/CollabSlots";
 
 markBootStage("entry-evaluated");
 
@@ -142,11 +143,6 @@ const PresentationWindow = lazy(() =>
 const PresenterWindow = lazy(() =>
   import("@/components/presentation/PresenterWindow").then((module) => ({ default: module.PresenterWindow })),
 );
-const AdminConsoleWindow = lazy(() =>
-  Promise.all([import("@/features/collab/console/AdminConsoleWindow"), loadNamespace("collab")]).then(([module]) => ({
-    default: module.AdminConsoleWindow,
-  })),
-);
 const TypstMigrationDialog = lazy(() =>
   import("@/components/migration/TypstMigrationDialog").then((module) => ({ default: module.TypstMigrationDialog })),
 );
@@ -210,9 +206,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <ThemeProvider>
         <StoredAppTypography />
         <AppZoom />
-        <Suspense fallback={null}>
-          <AdminConsoleWindow />
-        </Suspense>
+        <AdminConsoleSlot />
       </ThemeProvider>
     );
   }

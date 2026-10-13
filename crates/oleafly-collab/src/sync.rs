@@ -12,6 +12,7 @@ use oleafly_collab_protocol::frames::{
 };
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
+use oleafly_collab_protocol::snapshots::ProjectPeer;
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::Serialize;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
@@ -845,37 +846,26 @@ fn hint_snapshot(link: &LiveLink, project: &SharedLive) {
     });
 }
 
-enum Writers {
-    Listed(Vec<oleafly_collab_protocol::snapshots::ProjectPeer>),
-    Unlisted,
-    Unreachable,
-}
-
-async fn listed_peers(link: &LiveLink) -> Writers {
-    let Ok(access) = link
+async fn listed_peers(link: &LiveLink) -> Option<Vec<ProjectPeer>> {
+    let access = link
         .sessions
         .access_token(link.server_id, &link.client)
         .await
-    else {
-        return Writers::Unreachable;
-    };
-    match link.client.project_peers(&access, link.project).await {
-        Ok(listed) => Writers::Listed(listed),
-        Err(CollabError::Api { status: 404, .. }) => Writers::Unlisted,
-        Err(_) => Writers::Unreachable,
-    }
+        .ok()?;
+    link.client.project_peers(&access, link.project).await.ok()
 }
 
-fn admit_writers(live: &mut LiveProject, writers: Writers) -> bool {
+fn admit_writers(live: &mut LiveProject, writers: Option<Vec<ProjectPeer>>) -> bool {
     match writers {
-        Writers::Listed(listed) => live.pin_peers(listed),
-        Writers::Unlisted => live.await_writers(false),
-        Writers::Unreachable => {
-            live.await_writers(true);
-            return true;
+        Some(listed) => {
+            live.pin_peers(listed);
+            false
+        }
+        None => {
+            live.await_writers();
+            true
         }
     }
-    false
 }
 
 #[derive(Default)]
@@ -918,9 +908,16 @@ fn retry_writers(
     }));
 }
 
-async fn seed_peers(link: &LiveLink, project: &SharedLive) {
+async fn seed_peers(
+    link: &LiveLink,
+    project: &SharedLive,
+    events: &UnboundedSender<LiveEvent>,
+    retry: &WriterRetry,
+) {
     let writers = listed_peers(link).await;
-    admit_writers(&mut lock(project), writers);
+    if admit_writers(&mut lock(project), writers) {
+        retry_writers(link, project, events, retry);
+    }
 }
 
 async fn serve(
@@ -956,7 +953,7 @@ async fn serve_wire(
         Err(_) => return Exit::Retry(Reached::Never),
     };
     if !lock(project).peers_vouched() {
-        seed_peers(link, project).await;
+        seed_peers(link, project, events, retry).await;
     }
     let catching_up = {
         let mut live = lock(project);
@@ -1052,7 +1049,6 @@ async fn peer_trust(
                 PeerCheck::Fine | PeerCheck::Unknown(_) => Trust::Signed(None),
             }
         }
-        Err(CollabError::Api { status: 404, .. }) => Trust::Signed(None),
         Err(_) => Trust::Unreachable,
     }
 }
@@ -3155,6 +3151,22 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn a_writer_list_missing_when_sync_connects_is_asked_for_again_until_it_arrives() {
+        let pair = two_people().await;
+        let (project, main, bob_live, _alice_live) = shared(&pair).await;
+        let proxy = crate::client::test_util::PathProxy::start(&pair._server.url(), "/peers").await;
+        proxy.answer(Some("503 Service Unavailable"));
+        let mut through = link(&pair, &pair.bob, project);
+        through.client = Arc::new(ServerClient::new(proxy.url.clone()).unwrap());
+        let mut bob = side(bob_live, &main);
+        start(&mut bob, through);
+        until_status(&mut bob, LiveStatus::Online).await;
+        assert!(!lock(&bob.live).peers_vouched());
+        proxy.answer(None);
+        until(|| lock(&bob.live).peers_vouched()).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn asking_again_for_the_writer_list_stops_when_live_sync_stops() {
         let pair = two_people().await;
         let join = comments_then_a_snapshot(&pair).await;
@@ -3173,7 +3185,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn a_server_without_the_writer_list_still_shows_comments_as_it_did_before() {
+    async fn a_writer_list_answered_with_not_found_leaves_every_comment_author_unverified() {
         let pair = two_people().await;
         let join = comments_then_a_snapshot(&pair).await;
         let proxy = crate::client::test_util::PathProxy::start(&pair._server.url(), "/peers").await;
@@ -3182,44 +3194,41 @@ mod tests {
         through.client = Arc::new(ServerClient::new(proxy.url.clone()).unwrap());
         let mut late = join.joiner();
         start(&mut late, through);
-        join.first_sight(&late).await;
+        assert!(!join.first_sight(&late).await.verified);
         until_text(&late, &join.main, &join.typed).await;
-        assert!(join.thread(&late, join.honest).unwrap().verified);
+        let forged = join.thread(&late, join.forged).unwrap();
+        assert!(!forged.verified);
+        assert!(!forged.messages[0].verified);
+        assert!(!join.thread(&late, join.honest).unwrap().verified);
         assert!(!lock(&late.live).peers_vouched());
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn an_older_server_without_the_writer_list_still_lets_changes_through() {
+    async fn a_change_from_a_new_writer_waits_whenever_the_server_gives_no_writer_list() {
         let pair = two_people().await;
         let (project, main, bob_live, mut alice_live) = shared(&pair).await;
         alice_live.local_text(&main, "abcX").unwrap();
         let payload = alice_live.next_outgoing().unwrap().unwrap().payload;
         let envelope = signed_envelope(&pair.alice, project, payload);
         let bob = side(bob_live, &main);
-        for (status, accepted) in [
-            ("404 Not Found", true),
-            ("500 Internal Server Error", false),
-        ] {
+        for status in ["404 Not Found", "500 Internal Server Error"] {
             let answer = canned(http_response(
                 status,
                 &[("content-type", "application/json")],
                 r#"{"code":"not_found","message":"Not found."}"#,
             ))
             .await;
-            let mut older = link(&pair, &pair.bob, project);
-            older.client = Arc::new(ServerClient::new(answer).unwrap());
-            let verdict = peer_trust(&older, &bob.live, &mut BTreeSet::new(), &envelope).await;
-            assert_eq!(
-                matches!(verdict, Trust::Signed(_)),
-                accepted,
-                "{status} answered the wrong way"
-            );
-            assert_eq!(
+            let mut failing = link(&pair, &pair.bob, project);
+            failing.client = Arc::new(ServerClient::new(answer).unwrap());
+            let verdict = peer_trust(&failing, &bob.live, &mut BTreeSet::new(), &envelope).await;
+            assert!(
                 matches!(verdict, Trust::Unreachable),
-                !accepted,
-                "{status} answered the wrong way"
+                "{status} must hold the change back"
             );
         }
+        let current = link(&pair, &pair.bob, project);
+        let verdict = peer_trust(&current, &bob.live, &mut BTreeSet::new(), &envelope).await;
+        assert!(matches!(verdict, Trust::Signed(_)));
     }
 
     const BIG_WAIT: Duration = Duration::from_secs(300);

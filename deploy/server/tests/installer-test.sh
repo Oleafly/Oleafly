@@ -12,13 +12,19 @@ failed=0
 failures=
 status=
 installer_shell=${INSTALLER_SHELL:-sh}
+docker_pin=$(sed -n 's/^docker_script_commit=//p' "$src/install.sh")
+docker_pin_sha256=$(sed -n 's/^docker_script_sha256=//p' "$src/install.sh")
+docker_pin_url=https://raw.githubusercontent.com/docker/docker-install/$docker_pin/install.sh
+docker_stub_sha256=
 
 . "$src/tests/lib.sh"
 
 make_release() {
 	release=/stub/releases/server-v$1
 	mkdir -p "$release"
-	sed "s/^installer_version=unreleased\$/installer_version=$1/" "$src/install.sh" >"$release/install.sh"
+	sed -e "s/^installer_version=unreleased\$/installer_version=$1/" \
+		-e "s/^docker_script_sha256=[0-9a-f]*\$/docker_script_sha256=$docker_stub_sha256/" \
+		"$src/install.sh" >"$release/install.sh"
 	sed -E "s#^([[:space:]]*image:[[:space:]]*)ghcr\\.io/oleafly/oleafly-server:[^[:space:]]+[[:space:]]*\$#\\1ghcr.io/oleafly/oleafly-server:$1#" "$src/docker-compose.yml" >"$release/docker-compose.yml"
 	cp "$src/Caddyfile" "$release/Caddyfile"
 	cp "$src/.env.example" "$release/env.example"
@@ -37,6 +43,7 @@ setup_stubs() {
 	cp "$src/tests/stubs/docker" /stub/bin/docker.real
 	cp "$src/tests/stubs/get-docker.sh" /stub/get-docker.sh
 	chmod 755 /stub/bin/* /stub/get-docker.sh
+	docker_stub_sha256=$(sha256sum /stub/get-docker.sh | awk '{ print $1 }')
 	make_release 0.1.0
 	make_release 0.1.1
 	cp -R /stub/releases/server-v0.1.1 /stub/releases/latest
@@ -256,8 +263,32 @@ begin "stops and prints Docker's install command when Docker is missing and the 
 terminal "$installer_shell /stub/install-0.1.0.sh" "Install Docker now? [y/N] " "n"
 expect_status 1
 expect "the exact command is shown" out_has 'curl -fsSL https://get.docker.com | sudo sh'
-expect "Docker's script didn't run" log_lacks 'get-docker.sh'
+expect "Docker's script wasn't downloaded" log_lacks 'docker-install'
+expect "Docker's script didn't run" log_lacks 'docker install script ran'
 expect "nothing was installed" [ ! -e "$install_dir" ]
+finish
+
+begin "refuses to run Docker's script when it doesn't match the pinned checksum"
+echo 'echo tampered' >>/stub/get-docker.sh
+run_full OLEAFLY_INSTALL_DOCKER=yes "$installer_shell" /stub/install-0.1.0.sh --yes
+expect_status 1
+expect "the pinned copy was downloaded" log_has "$docker_pin_url"
+expect "the refusal says why" out_has "Docker's install script doesn't match the checksum this installer expects, so the installer won't run it. Nothing was changed."
+expect "Docker's script didn't run" log_lacks 'docker install script ran'
+expect "Docker isn't installed" [ ! -e /stub/late/docker ]
+expect "no release was downloaded" log_lacks 'SHA256SUMS'
+expect "nothing was installed" [ ! -e "$install_dir" ]
+finish
+
+begin "refuses to run Docker's script when it doesn't match the pinned checksum, after yes in a terminal"
+terminal "$installer_shell /stub/install-0.1.0.sh" "Install Docker now? [y/N] " "y"
+expect_status 1
+expect "the refusal says why" out_has "so the installer won't run it. Nothing was changed."
+expect "Docker's script didn't run" log_lacks 'docker install script ran'
+expect "Docker isn't installed" [ ! -e /stub/late/docker ]
+expect "nothing was installed" [ ! -e "$install_dir" ]
+cp "$src/tests/stubs/get-docker.sh" /stub/get-docker.sh
+chmod 755 /stub/get-docker.sh
 finish
 
 begin "installs Docker with Docker's script when Docker is missing and the answer is yes"
@@ -273,7 +304,9 @@ terminal "$installer_shell /stub/install-0.1.0.sh" \
 	"Keep files in an S3 bucket? [y/N] " "n" \
 	"Go ahead? [Y/n] " "y"
 expect_status 0
-expect "Docker's script ran" log_has 'get-docker.sh'
+expect "the pinned copy was downloaded" log_has "$docker_pin_url"
+expect "get.docker.com wasn't asked" log_lacks 'https://get.docker.com'
+expect "Docker's script ran and was told its commit" log_has "docker install script ran, commit $docker_pin"
 expect "Docker was started" log_has 'systemctl enable --now docker'
 expect "the server was started" [ -f /stub/state/up ]
 finish
@@ -283,14 +316,16 @@ run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect_status 1
 expect "the exact command is shown" out_has 'curl -fsSL https://get.docker.com | sudo sh'
 expect "the opt-in is named" out_has 'OLEAFLY_INSTALL_DOCKER=yes'
-expect "Docker's script didn't run" log_lacks 'get-docker.sh'
+expect "Docker's script wasn't downloaded" log_lacks 'docker-install'
+expect "Docker's script didn't run" log_lacks 'docker install script ran'
 finish
 
 begin "with --yes and OLEAFLY_INSTALL_DOCKER=yes, installs Docker"
 touch /stub/state/https-ok
 run_full OLEAFLY_INSTALL_DOCKER=yes "$installer_shell" /stub/install-0.1.0.sh --yes
 expect_status 0
-expect "Docker's script ran" log_has 'get-docker.sh'
+expect "the pinned copy was downloaded" log_has "$docker_pin_url"
+expect "Docker's script ran and was told its commit" log_has "docker install script ran, commit $docker_pin"
 expect "the server was started" [ -f /stub/state/up ]
 finish
 
@@ -328,6 +363,28 @@ expect "the issuer is saved" env_has 'OLEAFLY_OIDC_UNI_ISSUER=https://sso.exampl
 expect "the secret is saved" env_has 'OLEAFLY_OIDC_UNI_CLIENT_SECRET=oidc-secret'
 expect "the summary names it" out_has 'Sign-in: OpenID Connect (uni)'
 expect "the secret isn't printed" out_lacks 'oidc-secret'
+finish
+
+begin "reads settings by name without eval and keeps odd values exactly as given"
+all_good
+odd_secret="p\$ss; \`touch /stub/state/ran-backtick\` \"q\" \$(touch /stub/state/ran-dollar) \$HOME"
+odd_label="O'Brien Lab; SSO for everyone"
+odd_github_label="Sign in; \"GitHub\" \$HOME \`touch /stub/state/ran-label\`"
+run OLEAFLY_DOMAIN=collab.example.org OLEAFLY_OIDC_LAB_ISSUER=https://sso.example.edu/realms/lab \
+	OLEAFLY_OIDC_LAB_CLIENT_ID='lab client' OLEAFLY_OIDC_LAB_CLIENT_SECRET="$odd_secret" \
+	OLEAFLY_OIDC_LAB_LABEL="$odd_label" OLEAFLY_GITHUB_LABEL="$odd_github_label" \
+	"$installer_shell" /stub/install-0.1.0.sh --yes
+expect_status 0
+expect "install.sh has no eval" sh -c "! grep -nw eval '$src/install.sh'"
+expect "the client ID with a space is kept" env_has "OLEAFLY_OIDC_LAB_CLIENT_ID='lab client'"
+expect "the secret is kept character for character" env_has "OLEAFLY_OIDC_LAB_CLIENT_SECRET='$odd_secret'"
+expect "the label with an apostrophe is kept" env_has "OLEAFLY_OIDC_LAB_LABEL=\"$odd_label\""
+expect "a passed-through setting is kept character for character" env_has "OLEAFLY_GITHUB_LABEL='$odd_github_label'"
+expect "nothing in a backtick ran" [ ! -e /stub/state/ran-backtick ]
+expect "nothing in a dollar sign ran" [ ! -e /stub/state/ran-dollar ]
+expect "nothing in the passed-through setting ran" [ ! -e /stub/state/ran-label ]
+expect "the summary names it" out_has 'Sign-in: OpenID Connect (lab)'
+expect "the secret isn't printed" out_lacks "p\$ss"
 finish
 
 begin "without a terminal and without --yes, says how to run it unattended"
@@ -685,6 +742,20 @@ setpriv --reuid="$uid" --regid="$gid" --init-groups env -i PATH="$stub_path" HOM
 status=$?
 expect "status works through sudo, got $status" [ "$status" = 0 ]
 rm -f /etc/sudoers.d/labadmin
+finish
+
+begin "the pinned commit of Docker's script has the checksum install.sh expects"
+expect "the commit is a full git hash, got '$docker_pin'" sh -c "printf '%s\n' '$docker_pin' | grep -Eqx '[0-9a-f]{40}'"
+expect "the checksum is a SHA-256, got '$docker_pin_sha256'" sh -c "printf '%s\n' '$docker_pin_sha256' | grep -Eqx '[0-9a-f]{64}'"
+if ! command -v curl >/dev/null 2>&1; then
+	apt-get update -qq >/dev/null 2>&1
+	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null 2>&1
+fi
+rm -f /stub/docker-install.sh
+curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o /stub/docker-install.sh "$docker_pin_url" >"$out" 2>&1
+status=$?
+expect_status 0
+expect "the download has the pinned checksum" [ "$(sha256sum /stub/docker-install.sh | awk '{ print $1 }')" = "$docker_pin_sha256" ]
 finish
 
 printf '\n%s passed, %s failed\n' "$passed" "$failed"

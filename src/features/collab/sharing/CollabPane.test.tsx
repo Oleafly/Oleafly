@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import { formatDateTime } from "@/lib/intl";
 import { avatarHue } from "@/components/ui/avatar";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
@@ -199,6 +200,31 @@ describe("CollabPane", () => {
     expect(rows[2]).toHaveTextContent(enCollab.projectRoles.viewer);
     expect(rows[2]).toHaveTextContent(pane.away);
     expect(people).not.toHaveTextContent(CAROL_ID);
+  });
+
+  it("shows the full place and exact times in app tooltips, never in native titles", async () => {
+    useCollabLiveStore.setState({
+      peers: {
+        bob: peer("bob", BOB_ID, "chapters/methods/experiments/results/main.tex"),
+        mine: peer("mine", ALICE_ID, "intro.tex"),
+      },
+    });
+    feed([{ kind: "online", at: NOW - 120_000, count: 1 }]);
+    const user = userEvent.setup();
+    const { container } = render(<CollabPane />);
+    expect(container.querySelector("[title]")).toBeNull();
+    const people = screen.getByRole("list", { name: pane.people });
+    const place = within(people).getByText(/…\/results\/main\.tex$/);
+    await user.hover(place);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      fill(pane.hereIn, { path: "chapters/methods/experiments/results/main.tex" }),
+    );
+    await user.unhover(place);
+    const time = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem")[0].querySelector(
+      "time",
+    ) as HTMLElement;
+    await user.hover(time);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(NOW - 120_000));
   });
 
   it("goes to a person from their row in People by mouse, Enter or Space", async () => {
@@ -626,15 +652,16 @@ describe("CollabPane", () => {
     expect(screen.getByRole("separator", { name: resize })).toBeInTheDocument();
   });
 
-  it("keeps the file name whole when a person is in a file with a long path", () => {
+  it("keeps the file name whole when a person is in a file with a long path", async () => {
     const long = "chapters/part-one/section-three/subsection-alpha/very-long-file-name.tex";
     useCollabLiveStore.setState({ peers: { bob: peer("bob", BOB_ID, long) } });
     render(<CollabPane />);
     const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
-    const where = within(rows[1]).getByTitle(fill(pane.hereIn, { path: long }));
-    expect(where.textContent).toContain("very-long-file-name.tex");
+    const where = within(rows[1]).getByText(/very-long-file-name\.tex$/);
     expect(where.textContent).toContain("…");
     expect(where.textContent).not.toContain("section-three");
+    fireEvent.mouseEnter(where);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(fill(pane.hereIn, { path: long }));
   });
 
   it("does not render again while people only move their cursors", () => {

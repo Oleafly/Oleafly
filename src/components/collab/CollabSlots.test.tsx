@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadNamespace } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -15,6 +16,7 @@ const loaded = vi.hoisted(() => ({
   pane: vi.fn(),
   sharedWithYou: vi.fn(),
   openLink: vi.fn(),
+  admin: vi.fn(),
 }));
 
 vi.mock("@/features/collab/sharing/CollabToolbarItem", () => ({
@@ -70,7 +72,15 @@ vi.mock("@/features/collab/sharing/OpenLinkDialog", () => ({
   },
 }));
 
+vi.mock("@/features/collab/console/AdminConsoleWindow", () => ({
+  AdminConsoleWindow: () => {
+    loaded.admin();
+    return <span>{"admin console"}</span>;
+  },
+}));
+
 import {
+  AdminConsoleSlot,
   CollabActivitySlot,
   CollabPanel,
   CollabShareSlot,
@@ -98,6 +108,7 @@ function renderEverySlot() {
       <CollabPanel />
       <SharedWithYouSlot />
       <OpenLinkDialogSlot open onClose={() => undefined} />
+      <AdminConsoleSlot />
     </>,
   );
 }
@@ -157,6 +168,13 @@ describe("collaboration slots", () => {
     expect(loaded.share).not.toHaveBeenCalled();
   });
 
+  it("opens the server admin console window only while live collaboration is on", async () => {
+    useSettingsStore.setState({ liveCollaboration: true });
+    render(<AdminConsoleSlot />);
+    expect(await screen.findByText("admin console")).toBeInTheDocument();
+    expect(loaded.admin).toHaveBeenCalled();
+  });
+
   it("opens the share dialog for the project someone asked to share", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     render(<ShareDialogHost />);
@@ -168,7 +186,21 @@ describe("collaboration slots", () => {
 });
 
 describe("TreeRowPeers", () => {
-  it("draws one labelled dot per person in their colour", () => {
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  beforeEach(() => {
+    useSettingsStore.setState({ liveCollaboration: true });
+  });
+
+  it("draws nothing while live collaboration is off, even for a file someone has open", () => {
+    useSettingsStore.setState({ liveCollaboration: false });
+    const { container } = render(<TreeRowPeers marks={[{ id: "alice", hue: 200, label: "Alice Chen is in this file" }]} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("draws one labelled dot per person in their colour and names them in the app tooltip", async () => {
     render(
       <TreeRowPeers
         marks={[
@@ -177,10 +209,12 @@ describe("TreeRowPeers", () => {
         ]}
       />,
     );
-    const alice = screen.getByRole("img", { name: "Alice Chen is in this file" });
-    expect(alice).toHaveAttribute("title", "Alice Chen is in this file");
+    const alice = await screen.findByRole("img", { name: "Alice Chen is in this file" });
+    expect(alice).not.toHaveAttribute("title");
     expect(alice).toHaveStyle({ backgroundColor: "hsl(200 55% 45%)" });
     expect(screen.getByRole("img", { name: "Bob Smith is in this file" })).toBeInTheDocument();
+    fireEvent.mouseEnter(alice.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Alice Chen is in this file");
   });
 
   it("draws nothing for a file nobody has open", () => {
@@ -190,8 +224,23 @@ describe("TreeRowPeers", () => {
 });
 
 describe("TreeRowClash", () => {
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  beforeEach(() => {
+    useSettingsStore.setState({ liveCollaboration: true });
+  });
+
   afterEach(() => {
     useTreeClashes.setState({ labels: new Map() });
+  });
+
+  it("draws nothing while live collaboration is off, even for a renamed file", () => {
+    useSettingsStore.setState({ liveCollaboration: false });
+    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", "label"]]) });
+    const { container } = render(<TreeRowClash path="figs/plot (from Bob Smith).png" />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("marks a renamed file with a tinted badge whose app tooltip names the other file", async () => {

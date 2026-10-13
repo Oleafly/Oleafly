@@ -179,9 +179,9 @@ const People = memo(function People({
     const path = here.get(accountId);
     if (!path) return <span>{t(($) => $.collab.pane.here)}</span>;
     return (
-      <span title={t(($) => $.collab.pane.hereIn, { path })}>
+      <Tooltip label={t(($) => $.collab.pane.hereIn, { path })} wide className="inline">
         {t(($) => $.collab.pane.hereIn, { path: middleEllipsisPath(path, PANE_PATH_CHARS) })}
-      </span>
+      </Tooltip>
     );
   };
   return (
@@ -305,9 +305,9 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
           </ul>
         ) : null}
         <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-          <time dateTime={new Date(entry.at).toISOString()} title={formatDateTime(entry.at)}>
-            {formatRelativeTimeFrom(entry.at, now)}
-          </time>
+          <Tooltip label={formatDateTime(entry.at)}>
+            <time dateTime={new Date(entry.at).toISOString()}>{formatRelativeTimeFrom(entry.at, now)}</time>
+          </Tooltip>
           {entry.kind === "merged" && entry.files.length > 0 ? (
             <Button
               type="button"

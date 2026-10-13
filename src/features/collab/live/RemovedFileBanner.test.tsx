@@ -107,6 +107,16 @@ describe("RemovedFileBanner", () => {
     expect(screen.getByTestId("collab-removed-notice")).toBeTruthy();
   });
 
+  it("shows the full path in the app tooltip and never in a native title", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<RemovedFileBanner />);
+    show(notice());
+    const message = screen.getByText(fill(copy.deletedBy, { name: "Bob Smith", file: "results.tex" }));
+    expect(container.querySelector("[title]")).toBeNull();
+    await user.hover(message);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("sections/results.tex");
+  });
+
   it("shows nothing for another project", () => {
     render(<RemovedFileBanner />);
     act(() => useRemovedNotices.setState({ projectId: "other", notices: [notice()] }));

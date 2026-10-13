@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/context-menu";
 import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { commentTarget, requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { formatWithLanguageService, type FormatScope } from "./cm/language-service-format";
 import {
@@ -178,8 +179,9 @@ function CommentMenuEntry() {
 }
 
 function CommentMenuItem() {
+  const ready = useCollabReady();
   const canCompose = useCommentsRail((state) => state.canCompose);
-  return canCompose ? <CommentMenuEntry /> : null;
+  return ready && canCompose ? <CommentMenuEntry /> : null;
 }
 
 function TypstNavigationItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {

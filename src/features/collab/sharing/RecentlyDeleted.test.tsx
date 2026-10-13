@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import { formatDateTime } from "@/lib/intl";
 import type { CollabTrashEntry } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
@@ -104,6 +105,15 @@ describe("RecentlyDeleted", () => {
     const toggle = screen.getByRole("button", { name: enCollab.pane.deleted });
     expect(toggle.querySelector("output")).toHaveTextContent("3");
     expect(toggle.querySelector("svg.lucide-trash-2")).toBeInTheDocument();
+  });
+
+  it("shows the exact deletion time in the app tooltip, never in a native title", async () => {
+    const user = userEvent.setup();
+    view();
+    const list = await screen.findByRole("list", { name: enCollab.pane.deleted });
+    expect(list.querySelector("[title]")).toBeNull();
+    await user.hover(within(list).getAllByRole("listitem")[0].querySelector("time") as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(NOW - 60_000));
   });
 
   it("calls someone who left the project by a neutral name", async () => {

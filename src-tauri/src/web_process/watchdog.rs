@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
+#[cfg(target_os = "macos")]
 pub(crate) const TICK: Duration = Duration::from_secs(1);
+#[cfg(target_os = "macos")]
 pub(crate) const PROBE_INTERVAL: Duration = Duration::from_secs(10);
 pub(crate) const UNANSWERED_LIMIT: Duration = Duration::from_secs(30);
 pub(crate) const UI_TICK_STALE: Duration = Duration::from_secs(3);

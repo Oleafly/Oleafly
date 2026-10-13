@@ -62,12 +62,13 @@ beforeAll(async () => {
 beforeEach(() => {
   viewWith(5, 10);
   useCommentsRail.setState({ visible: true, canCompose: true, request: null });
-  useSettingsStore.setState({ railTab: "files", showTree: true });
+  useSettingsStore.setState({ railTab: "files", showTree: true, liveCollaboration: true });
 });
 
 afterEach(() => {
   cleanup();
   useCommentsRail.setState({ visible: false, canCompose: false, request: null });
+  useSettingsStore.setState({ liveCollaboration: false });
 });
 
 describe("Comment in the editor menu", () => {
@@ -87,6 +88,12 @@ describe("Comment in the editor menu", () => {
 
   it("is missing while the person cannot comment", () => {
     useCommentsRail.setState({ canCompose: false });
+    openMenu(LATEX_ENGINE);
+    expect(screen.queryByTestId("context-comment")).not.toBeInTheDocument();
+  });
+
+  it("is missing while live collaboration is off, even when the comment state allows it", () => {
+    useSettingsStore.setState({ liveCollaboration: false });
     openMenu(LATEX_ENGINE);
     expect(screen.queryByTestId("context-comment")).not.toBeInTheDocument();
   });

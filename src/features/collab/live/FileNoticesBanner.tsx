@@ -6,18 +6,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton, type WorkspaceBannerTone } from "@/components/ui/workspace-banner";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList } from "@/lib/intl";
+import { basename } from "@/lib/path-utils";
 import type { CollabLiveKeptFile, CollabLocalCopyOffer, CollabUploadFile } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
 import { useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
+import { PathMessage } from "./PathMessage";
 
 const NO_UPLOADS: readonly CollabUploadFile[] = [];
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
-
-function fileName(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
-}
 
 function Dismiss({ tone, onDismiss }: Readonly<{ tone: WorkspaceBannerTone; onDismiss: () => void }>) {
   const { t } = useTranslation(["collab"]);
@@ -31,7 +29,7 @@ function Dismiss({ tone, onDismiss }: Readonly<{ tone: WorkspaceBannerTone; onDi
 function UploadRow({ files, failed }: Readonly<{ files: readonly CollabUploadFile[]; failed: boolean }>) {
   const { t } = useTranslation(["collab"]);
   const retrying = useFileNotices((state) => state.retrying);
-  const names = formatList(files.map((file) => fileName(file.path)));
+  const names = formatList(files.map((file) => basename(file.path)));
   const tone: WorkspaceBannerTone = failed ? "warning" : "primary";
   const message = failed
     ? t(($) => $.collab.files.failed, { files: names })
@@ -43,9 +41,7 @@ function UploadRow({ files, failed }: Readonly<{ files: readonly CollabUploadFil
       ) : (
         <CloudUpload aria-hidden className="size-3.5 shrink-0 text-primary" />
       )}
-      <p className="min-w-0 flex-1 select-text" title={files.map((file) => file.path).join("\n")}>
-        {message}
-      </p>
+      <PathMessage paths={files.map((file) => file.path)}>{message}</PathMessage>
       <WorkspaceBannerButton
         tone={tone}
         className={failed ? undefined : "text-primary"}
@@ -61,7 +57,7 @@ function UploadRow({ files, failed }: Readonly<{ files: readonly CollabUploadFil
 
 function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
   const { t } = useTranslation(["collab"]);
-  const name = fileName(file.path);
+  const name = basename(file.path);
   const message =
     file.limit === null
       ? t(($) => $.collab.files.tooLargeUnknown, { file: name })
@@ -73,9 +69,7 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
   return (
     <WorkspaceBanner tone="warning" data-testid="collab-upload-too-large">
       <FileWarning aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 select-text" title={file.path}>
-        {message}
-      </p>
+      <PathMessage paths={[file.path]}>{message}</PathMessage>
       <Dismiss tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
     </WorkspaceBanner>
   );
@@ -83,7 +77,7 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
 
 function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: string }>) {
   const { t } = useTranslation(["collab"]);
-  const values = { name, file: fileName(file.path), copy: fileName(file.copy) };
+  const values = { name, file: basename(file.path), copy: basename(file.copy) };
   let message: string;
   if (file.kind === "replaced") message = t(($) => $.collab.files.replaced, values);
   else if (file.kind === "beside") message = t(($) => $.collab.files.beside, values);
@@ -91,9 +85,7 @@ function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: stri
   return (
     <WorkspaceBanner tone="primary" data-testid="collab-kept-copy">
       <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
-      <p className="min-w-0 flex-1 select-text" title={`${file.path}\n${file.copy}`}>
-        {message}
-      </p>
+      <PathMessage paths={[file.path, file.copy]}>{message}</PathMessage>
       <Dismiss tone="primary" onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
     </WorkspaceBanner>
   );
@@ -103,13 +95,11 @@ function LocalCopyRow({ offer }: Readonly<{ offer: CollabLocalCopyOffer }>) {
   const { t } = useTranslation(["collab"]);
   const bringing = useFileNotices((state) => state.bringing);
   const failure = useFileNotices((state) => state.offerFailure);
-  const files = formatList(offer.files.map(fileName));
+  const files = formatList(offer.files.map(basename));
   return (
     <WorkspaceBanner tone="primary" data-testid="collab-local-copy-offer">
       <FolderInput aria-hidden className="size-3.5 shrink-0 text-primary" />
-      <p className="min-w-0 flex-1 select-text" title={offer.files.join("\n")}>
-        {t(($) => $.collab.files.localCopy, { files, name: offer.name })}
-      </p>
+      <PathMessage paths={offer.files}>{t(($) => $.collab.files.localCopy, { files, name: offer.name })}</PathMessage>
       <span className="flex shrink-0 items-center gap-1">
         <WorkspaceBannerButton
           tone="primary"

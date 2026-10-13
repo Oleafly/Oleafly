@@ -25,12 +25,13 @@ beforeEach(() => {
   openFile.mockClear();
   useCommentsRail.setState({ visible: true, unread: false, canCompose: true, request: null, reveal: null });
   useFilesStore.setState({ projectId: "paper", activePath: "chapters/intro.tex", openFile });
-  useSettingsStore.setState({ railTab: "files", showTree: false });
+  useSettingsStore.setState({ railTab: "files", showTree: false, liveCollaboration: true });
 });
 
 afterEach(() => {
   for (const view of views.splice(0)) view.destroy();
   useCommentsRail.setState({ visible: false, unread: false, canCompose: false, request: null, reveal: null });
+  useSettingsStore.setState({ liveCollaboration: false });
 });
 
 describe("starting a comment from the editor", () => {
@@ -55,6 +56,14 @@ describe("starting a comment from the editor", () => {
     useCommentsRail.setState({ canCompose: false });
     expect(requestComment(editor(4, 15))).toBe(false);
     expect(requestComment(null)).toBe(false);
+    expect(useCommentsRail.getState().request).toBeNull();
+    expect(useSettingsStore.getState().railTab).toBe("files");
+  });
+
+  it("offers nothing from the shortcut while live collaboration is off", () => {
+    useSettingsStore.setState({ liveCollaboration: false });
+    expect(commentTarget(editor(4, 15))).toBeNull();
+    expect(requestComment(editor(4, 15))).toBe(false);
     expect(useCommentsRail.getState().request).toBeNull();
     expect(useSettingsStore.getState().railTab).toBe("files");
   });

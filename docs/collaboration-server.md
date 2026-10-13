@@ -132,7 +132,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 Point your domain's DNS record at the machine first. The installer then:
 
 1. Checks that the machine runs Linux on x86-64 or ARM and that ports 80 and 443 are free.
-2. Uses Docker if it's there. If it isn't, it asks before it installs Docker with Docker's own script from `get.docker.com`.
+2. Uses Docker if it's there. If it isn't, it asks before it installs Docker with Docker's own install script. It downloads a fixed version of that script and checks it against a known SHA-256 first, and won't run a copy that doesn't match.
 3. Asks for the domain, the server's name and a sign-in provider. It shows the callback address for GitHub or OpenID Connect before it asks for the client ID, so you can create the app while it waits. It can also set up [email](#email) and a [bucket for files](#files-in-a-bucket).
 4. Checks that the domain points to this machine. If it doesn't yet, the installer says so and carries on, and Caddy keeps trying to get the certificate. To find the machine's public address, it may ask `ifconfig.me`.
 5. Downloads the release's `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `.env.example` into `/opt/oleafly-server`, and checks each one against the release's `SHA256SUMS`.

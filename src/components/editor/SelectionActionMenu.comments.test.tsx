@@ -40,12 +40,13 @@ beforeAll(async () => {
 beforeEach(() => {
   controller.getEditorView.mockReturnValue(editorView());
   useFilesStore.setState({ projectId: "paper", activePath: "intro.tex" });
-  useSettingsStore.setState({ railTab: "files", showTree: true });
+  useSettingsStore.setState({ railTab: "files", showTree: true, liveCollaboration: true });
   useCommentsRail.setState({ visible: true, canCompose: true, request: null });
 });
 
 afterEach(() => {
   useCommentsRail.setState({ visible: false, canCompose: false, request: null });
+  useSettingsStore.setState({ liveCollaboration: false });
 });
 
 describe("Comment in the selection menu", () => {
@@ -55,6 +56,13 @@ describe("Comment in the selection menu", () => {
     fireEvent.click(screen.getByRole("button", { name: enCollab.comments.add }));
     expect(useCommentsRail.getState().request).toEqual({ path: "intro.tex", from: 2, to: 10, quote: "selected" });
     expect(useSettingsStore.getState().railTab).toBe("comments");
+    expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
+  });
+
+  it("is left out while live collaboration is off, even when the comment state allows it", () => {
+    useSettingsStore.setState({ liveCollaboration: false });
+    showMenu();
+    expect(screen.getByRole("button", { name: en.selectionActions.askAi })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
   });
 

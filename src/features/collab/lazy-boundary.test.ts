@@ -30,11 +30,17 @@ describe("collaboration stays out of the startup bundle", () => {
       "src/components/layout/CollabLinkKeeper.tsx",
       "src/components/layout/CollabLiveKeeper.tsx",
       "src/components/layout/SettingsModal.tsx",
-      "src/main.tsx",
     ]);
     const app = read("src/App.tsx");
     expect(app).toMatch(/lazy\(\(\) =>\s*import\("@\/components\/layout\/SettingsModal"\)/);
     expect(app).not.toMatch(/from\s+"@\/components\/layout\/SettingsModal"/);
+  });
+
+  it("opens the admin console window only through the gated collaboration slot", () => {
+    const main = read("src/main.tsx");
+    expect(main).toMatch(/^import \{ AdminConsoleSlot \} from "@\/components\/collab\/CollabSlots";$/m);
+    expect(main).toMatch(/<AdminConsoleSlot \/>/);
+    expect(main).not.toMatch(/AdminConsoleWindow/);
   });
 
   it("hears app links at the root through a keeper that loads the link intake on demand", () => {

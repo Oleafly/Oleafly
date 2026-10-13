@@ -162,6 +162,33 @@ describe("FileNoticesBanner", () => {
     expect(screen.queryByRole("button", { name: copy.bringIn })).toBeNull();
   });
 
+  it("keeps the full paths in the app tooltip and never in a native title", async () => {
+    const user = userEvent.setup();
+    const offer = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex", "figures/map.png"] };
+    const { container } = render(<FileNoticesBanner />);
+    act(() => useFileNotices.setState({ projectId: "paper", offer }));
+    show(
+      [
+        upload(),
+        upload({ path: "figures/chart.png", state: "failed" }),
+        upload({ path: "figures/big60.png", state: "too_large" }),
+      ],
+      [kept()],
+    );
+    expect(container.querySelector("[title]")).toBeNull();
+    await user.hover(screen.getByText(fill(copy.waiting, { files: "plot.png" })));
+    const waiting = await screen.findByRole("tooltip");
+    expect(waiting).toHaveTextContent("figures/plot.png");
+    await user.unhover(screen.getByText(fill(copy.waiting, { files: "plot.png" })));
+    await user.hover(
+      screen.getByText(fill(copy.replaced, { name: "Bob Smith", file: "plot.png", copy: "plot (from Alice Chen).png" })),
+    );
+    const replaced = await screen.findByRole("tooltip");
+    expect(replaced).toHaveTextContent("figures/plot.png");
+    expect(replaced).toHaveTextContent("figures/plot (from Alice Chen).png");
+    expect(replaced.querySelectorAll(".block")).toHaveLength(2);
+  });
+
   it("tells the person whose file kept its name where the other person's file went", () => {
     render(<FileNoticesBanner />);
     show([], [kept({ id: "theirs-id", kind: "beside", path: "sections/plan.tex", copy: "sections/plan (from Bob Smith).tex" })]);

@@ -8,6 +8,9 @@ install_url=https://oleafly.com/server/install.sh
 docs_url=https://oleafly.com/docs/collaboration/server/
 operations_url=https://oleafly.com/docs/collaboration/server-operations/
 issues_url=https://github.com/Oleafly/oleafly-server/issues
+docker_script_commit=ada7a567e59b3935bd601bb21e422da50e80e376
+docker_script_sha256=2b102d809152ea157a59f171319f489d971273b2d26dd7e9a6d1d737ce89289d
+docker_script_url=https://raw.githubusercontent.com/docker/docker-install/$docker_script_commit/install.sh
 
 dir=${OLEAFLY_DIR:-/opt/oleafly-server}
 noninteractive=0
@@ -288,7 +291,7 @@ check_platform() {
 		aarch64 | arm64) arch=aarch64 ;;
 		*) fail "Oleafly Server runs on x86-64 and ARM (aarch64) machines. This one is $arch." ;;
 	esac
-	for tool in curl awk sed od tr mktemp sha256sum install; do
+	for tool in curl awk sed od tr mktemp sha256sum install printenv; do
 		command -v "$tool" >/dev/null 2>&1 || fail "This installer needs $tool, which isn't installed." "Install it with your package manager and run the installer again."
 	done
 	item "Linux on $arch."
@@ -356,14 +359,19 @@ install_docker() {
 	else
 		have_tty || fail "Docker isn't installed, and there's no terminal to ask about installing it." "Install it with: curl -fsSL https://get.docker.com | sudo sh" "Then run the installer again."
 		tell "Docker isn't installed, and the server runs in Docker."
-		tell "The installer can install it with Docker's own script from get.docker.com."
+		tell "The installer can install it with Docker's own install script."
+		tell "It downloads a known version of that script and checks it before running it."
 		if ! confirm "  Install Docker now? [y/N] " n; then
 			fail "Docker is needed. Install it with Docker's script, then run the installer again:" "  curl -fsSL https://get.docker.com | sudo sh" "Docker's other ways to install: https://docs.docker.com/engine/install/"
 		fi
 	fi
 	item "Installing Docker with Docker's script. This takes a few minutes."
-	curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$tmp/get-docker.sh" https://get.docker.com || fail "Couldn't download Docker's install script from https://get.docker.com." "Check this machine's network connection and try again."
-	as_root sh "$tmp/get-docker.sh" </dev/null || fail "Docker's install script stopped with an error. Its output is above." "Docker's instructions for this system: https://docs.docker.com/engine/install/"
+	fetch "$docker_script_url" "$tmp/get-docker.sh" || fail "Couldn't download Docker's install script from $docker_script_url." "Check this machine's network connection and try again. Nothing was changed."
+	actual=$(sha256sum "$tmp/get-docker.sh" | awk '{ print $1 }')
+	if [ "$actual" != "$docker_script_sha256" ]; then
+		fail "Docker's install script doesn't match the checksum this installer expects, so the installer won't run it. Nothing was changed." "Try again in a few minutes. If it happens again, report it at $issues_url" "Docker's other ways to install: https://docs.docker.com/engine/install/"
+	fi
+	as_root env LOAD_SCRIPT_COMMIT_SHA="$docker_script_commit" sh "$tmp/get-docker.sh" </dev/null || fail "Docker's install script stopped with an error. Its output is above." "Docker's instructions for this system: https://docs.docker.com/engine/install/"
 	command -v docker >/dev/null 2>&1 || fail "Docker's install script finished, but the docker command isn't there." "Docker's instructions for this system: https://docs.docker.com/engine/install/"
 }
 
@@ -710,14 +718,10 @@ env_sign_in() {
 	fi
 	names=$(env | sed -n 's/^OLEAFLY_OIDC_\([A-Za-z0-9][A-Za-z0-9]*\)_ISSUER=..*/\1/p' | sort -u)
 	for name in $names; do
-		issuer=
-		client_id=
-		client_secret=
-		label=
-		eval "issuer=\${OLEAFLY_OIDC_${name}_ISSUER-}"
-		eval "client_id=\${OLEAFLY_OIDC_${name}_CLIENT_ID-}"
-		eval "client_secret=\${OLEAFLY_OIDC_${name}_CLIENT_SECRET-}"
-		eval "label=\${OLEAFLY_OIDC_${name}_LABEL-}"
+		issuer=$(printenv "OLEAFLY_OIDC_${name}_ISSUER") || issuer=
+		client_id=$(printenv "OLEAFLY_OIDC_${name}_CLIENT_ID") || client_id=
+		client_secret=$(printenv "OLEAFLY_OIDC_${name}_CLIENT_SECRET") || client_secret=
+		label=$(printenv "OLEAFLY_OIDC_${name}_LABEL") || label=
 		case $issuer in
 			https://*) ;;
 			*) fail "OLEAFLY_OIDC_${name}_ISSUER has to be an https:// address." ;;
@@ -929,8 +933,7 @@ env_passthrough() {
 		case $key in
 			OLEAFLY_DOMAIN | OLEAFLY_SERVER_NAME | OLEAFLY_GITHUB_CLIENT_ID | OLEAFLY_GITHUB_CLIENT_SECRET | OLEAFLY_SMTP_URL | OLEAFLY_MAIL_FROM) continue ;;
 		esac
-		value=
-		eval "value=\${$key-}"
+		value=$(printenv "$key") || value=
 		if [ -n "$value" ]; then
 			case $value in
 				*'

@@ -95,14 +95,24 @@ describe("AccessLog", () => {
     expect(rows[0].querySelector("time")).toHaveTextContent("2 minutes ago");
     expect(rows[1]).toHaveTextContent(fill(copy.opened, { name: "Alice Chen" }));
     expect(rows[1].querySelector("time")).toHaveTextContent("1 hour ago");
-    expect(rows[1].querySelector("time")).toHaveAttribute(
-      "title",
-      fill(copy.span, { from: formatDateTime(NOW - 3_600_000), to: formatDateTime(NOW - 600_000) }),
-    );
+    expect(list.querySelector("[title]")).toBeNull();
     expect(rows[2]).toHaveTextContent(fill(copy.joinedShare, { name: "Carol Diaz" }));
     expect(rows[3]).toHaveTextContent(fill(copy.joinedLink, { name: "Alice Chen" }));
     expect(rows[3]).toHaveTextContent(copy.unknownDevice);
     expect(screen.queryByRole("button", { name: copy.more })).toBeNull();
+  });
+
+  it("shows when repeated visits began and ended in the app tooltip on the time", async () => {
+    mocks.collabAccessLogPage.mockResolvedValue(
+      page([entry({ id: 3, kind: "opened", at: NOW - 3_600_000, last_at: NOW - 600_000, times: 4 })]),
+    );
+    const user = userEvent.setup();
+    view();
+    const list = await screen.findByRole("list", { name: title });
+    await user.hover(list.querySelector("time") as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      fill(copy.span, { from: formatDateTime(NOW - 3_600_000), to: formatDateTime(NOW - 600_000) }),
+    );
   });
 
   it("loads older entries a page at a time", async () => {

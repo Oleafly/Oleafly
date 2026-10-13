@@ -133,9 +133,9 @@ impl Authorship {
         self.vouched || self.awaiting || !self.peers.is_empty()
     }
 
-    pub fn await_vouch(&mut self, awaiting: bool) -> bool {
-        let changed = self.awaiting != awaiting;
-        self.awaiting = awaiting;
+    pub fn await_vouch(&mut self) -> bool {
+        let changed = !self.awaiting;
+        self.awaiting = true;
         changed
     }
 

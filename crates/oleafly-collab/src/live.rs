@@ -467,8 +467,8 @@ impl LiveProject {
         }
     }
 
-    pub fn await_writers(&mut self, awaiting: bool) {
-        if self.doc.authors_mut().await_vouch(awaiting) {
+    pub fn await_writers(&mut self) {
+        if self.doc.authors_mut().await_vouch() {
             self.authors_dirty = true;
         }
     }

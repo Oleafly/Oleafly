@@ -165,9 +165,18 @@ describe("AvatarStack", () => {
     expect(screen.queryByText(/^\+\d+$/)).toBeNull();
   });
 
-  it("keeps the native title when no tooltip is asked for", () => {
-    const { container } = render(<AvatarStack people={people.slice(0, 2)} />);
-    expect(container.querySelector('[title="Alice Chen"]')).not.toBeNull();
+  it("names each person in the app tooltip when no tooltip is asked for, never in a native title", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<AvatarStack people={people.slice(0, 2)} />);
+      expect(container.querySelector("[title]")).toBeNull();
+      const avatars = [...container.querySelectorAll('[data-slot="avatar"]')];
+      fireEvent.mouseEnter(avatars[0]?.parentElement as Element);
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Alice Chen");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("names each avatar for screen readers with a plain label and can show a wide tooltip", () => {

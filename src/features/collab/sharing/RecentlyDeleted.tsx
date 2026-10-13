@@ -4,6 +4,7 @@ import { FileText, Folder, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { collabTrashList, collabTrashRestore, type CollabTrashEntry } from "@/lib/tauri";
@@ -90,9 +91,11 @@ const DeletedRow = memo(function DeletedRow({
           <span className="min-w-0 truncate">{folder}</span>
           {who ? <span>{who}</span> : null}
           {entry.deletedAt === null ? null : (
-            <time dateTime={new Date(entry.deletedAt).toISOString()} title={formatDateTime(entry.deletedAt)}>
-              {formatRelativeTimeFrom(entry.deletedAt, now)}
-            </time>
+            <Tooltip label={formatDateTime(entry.deletedAt)}>
+              <time dateTime={new Date(entry.deletedAt).toISOString()}>
+                {formatRelativeTimeFrom(entry.deletedAt, now)}
+              </time>
+            </Tooltip>
           )}
         </p>
       </div>

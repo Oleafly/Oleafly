@@ -8,6 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import type { EditorView } from "@codemirror/view";
 import { setEditorView } from "@oleafly/editor";
 import { loadNamespace } from "@/i18n";
+import { formatDateTime } from "@/lib/intl";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import type { CollabCommentThread } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -138,6 +139,26 @@ describe("Comments tab", () => {
     const gone = screen.getByRole("list", { name: copy.detached });
     expect(gone).toHaveTextContent("a deleted sentence");
     expect(screen.getByText(copy.detachedHint)).toBeInTheDocument();
+  });
+
+  it("shows exact times and the jump hint in app tooltips, by pointer or keyboard, never in native titles", async () => {
+    const user = userEvent.setup();
+    const { container } = show([conversation]);
+    expect(container.querySelector("[title]")).toBeNull();
+    const first = card("quick");
+    const times = first.querySelectorAll("time");
+    await user.hover(times[0] as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(AT - 120_000));
+    await user.unhover(times[0] as HTMLElement);
+    await user.hover(within(first).getByText(copy.edited));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(AT));
+    await user.unhover(within(first).getByText(copy.edited));
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    const quote = screen.getByRole("button", { name: "quick" });
+    fireEvent.keyDown(document, { key: "Tab" });
+    act(() => quote.focus());
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(copy.showInEditor);
+    expect(quote).toHaveAccessibleDescription(copy.showInEditor);
   });
 
   it("moves a thread to Detached as soon as its text is gone from the editor, before the server says so", () => {
@@ -476,13 +497,15 @@ describe("comments across the project", () => {
     expect(screen.queryAllByRole("region")).toEqual([]);
   });
 
-  it("shows no section for the open file without comments and a folded one for another file that has some", () => {
+  it("shows no section for the open file without comments and a folded one for another file that has some", async () => {
     show([], { counts: [{ path: "appendix/refs.tex", open: 2, resolved: 0 }] });
     expect(regions()).toEqual(["refs.tex"]);
     const header = screen.getByRole("button", { name: "refs.tex" });
     expect(header).toHaveAttribute("aria-expanded", "false");
     expect(header).toHaveTextContent("2");
-    expect(within(header).getByText("refs.tex")).toHaveAttribute("title", "appendix/refs.tex");
+    expect(within(header).getByText("refs.tex")).not.toHaveAttribute("title");
+    fireEvent.mouseEnter(within(header).getByText("refs.tex"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("appendix/refs.tex");
     expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
     expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
   });
@@ -500,7 +523,7 @@ describe("comments across the project", () => {
     const intro = screen.getByRole("button", { name: "intro.tex" });
     expect(intro).toHaveAttribute("aria-expanded", "true");
     expect(intro).toHaveTextContent("1");
-    expect(within(intro).getByText("intro.tex")).toHaveAttribute("title", "chapters/intro.tex");
+    expect(within(intro).getByText("intro.tex")).not.toHaveAttribute("title");
     expect(screen.getByRole("button", { name: "abstract.tex" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("button", { name: copy.showResolved })).toHaveTextContent("3");
     await user.click(screen.getByRole("button", { name: copy.showResolved }));

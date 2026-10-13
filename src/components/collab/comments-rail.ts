@@ -39,7 +39,7 @@ export function showCommentsTab(): void {
 }
 
 export function commentTarget(view: EditorView | null): CommentRequest | null {
-  if (!view || !useCommentsRail.getState().canCompose) return null;
+  if (!view || !useSettingsStore.getState().liveCollaboration || !useCommentsRail.getState().canCompose) return null;
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
   const selection = view.state.selection.main;

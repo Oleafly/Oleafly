@@ -62,6 +62,9 @@ const CollabBanners = lazy(() =>
 const RemovedFileBanner = lazy(() =>
   import("@/features/collab/live/RemovedFileBanner").then((module) => ({ default: module.RemovedFileBanner })),
 );
+const AdminConsoleWindow = lazy(() =>
+  import("@/features/collab/console/AdminConsoleWindow").then((module) => ({ default: module.AdminConsoleWindow })),
+);
 
 export function useCollabReady(): boolean {
   const enabled = useSettingsStore((state) => state.liveCollaboration);
@@ -144,6 +147,14 @@ export function CollabTreeClashSlot() {
 }
 
 export function TreeRowClash({ path }: Readonly<{ path: string }>) {
+  return (
+    <Gate>
+      <RowClash path={path} />
+    </Gate>
+  );
+}
+
+function RowClash({ path }: Readonly<{ path: string }>) {
   const label = useTreeClashes((state) => state.labels.get(path));
   if (!label) return null;
   return (
@@ -271,19 +282,35 @@ export function OpenLinkDialogSlot({ open, onClose }: Readonly<{ open: boolean; 
   );
 }
 
+export function AdminConsoleSlot() {
+  return (
+    <Gate>
+      <AdminConsoleWindow />
+    </Gate>
+  );
+}
+
 export function TreeRowPeers({ marks }: Readonly<{ marks: readonly PeerMark[] | undefined }>) {
   if (!marks || marks.length === 0) return null;
   return (
+    <Gate>
+      <RowPeers marks={marks} />
+    </Gate>
+  );
+}
+
+function RowPeers({ marks }: Readonly<{ marks: readonly PeerMark[] }>) {
+  return (
     <span className="flex shrink-0 items-center gap-0.5">
       {marks.map((mark) => (
-        <span
-          key={mark.id}
-          role="img"
-          aria-label={mark.label}
-          title={mark.label}
-          className="size-1.5 rounded-full"
-          style={{ backgroundColor: `hsl(${mark.hue} 55% 45%)` }}
-        />
+        <Tooltip key={mark.id} label={mark.label}>
+          <span
+            role="img"
+            aria-label={mark.label}
+            className="size-1.5 rounded-full"
+            style={{ backgroundColor: `hsl(${mark.hue} 55% 45%)` }}
+          />
+        </Tooltip>
       ))}
     </span>
   );

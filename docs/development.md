@@ -10,7 +10,10 @@ oleafly-desktop/
 │   ├── oleafly-core/       shared Rust project, path, and build-directory policy
 │   ├── oleafly-cli/        oleafly commands and native compiler adapter
 │   ├── oleafly-agent/      provider-neutral agent runtime
-│   └── oleafly-history/    content-addressed compile checkpoints
+│   ├── oleafly-history/    content-addressed compile checkpoints
+│   ├── oleafly-collab-protocol/  messages shared by the app and the collaboration server
+│   ├── oleafly-collab/     live collaboration client: shared project document, sync and comments
+│   └── oleafly-server/     the collaboration server (Axum and SQLite)
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
 │   ├── contributions/      registers rail tabs / commands / AI toolsets into the registry

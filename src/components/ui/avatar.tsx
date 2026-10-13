@@ -202,14 +202,10 @@ export function AvatarStack({
             <span className="sr-only">{label}</span>
           </>
         );
-        return renderTip ? (
-          <Tooltip key={person.id} label={renderTip(person)} wide={tipWide} className={overlap}>
+        return (
+          <Tooltip key={person.id} label={renderTip ? renderTip(person) : person.name} wide={tipWide} className={overlap}>
             {content}
           </Tooltip>
-        ) : (
-          <span key={person.id} title={person.name} className={cn("flex", overlap)}>
-            {content}
-          </span>
         );
       })}
       {more && renderMoreTip ? (

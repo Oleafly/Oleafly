@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Quote } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 function useClamped(text: string, expanded: boolean) {
@@ -35,6 +36,22 @@ export function CommentQuote({
   const [expanded, setExpanded] = useState(false);
   const [ref, clamped] = useClamped(quote, expanded);
   const textClass = cn("whitespace-pre-wrap break-words", !expanded && "line-clamp-3");
+  const text = (
+    <span ref={ref} data-quote-text className={cn("block", textClass)}>
+      {quote}
+    </span>
+  );
+  const jump = onJump ? (
+    <button
+      type="button"
+      data-thread-jump
+      onClick={onJump}
+      onKeyDown={onJumpKeyDown}
+      className="block w-full rounded-sm text-left transition-colors hover:text-foreground focus-visible:bg-amber-500/15 focus-visible:text-foreground"
+    >
+      {text}
+    </button>
+  ) : null;
   return (
     <div
       data-slot="comment-quote"
@@ -42,23 +59,12 @@ export function CommentQuote({
     >
       <Quote aria-hidden="true" className="mt-0.5 size-3 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="min-w-0 flex-1">
-        {onJump ? (
-          <button
-            type="button"
-            data-thread-jump
-            title={title}
-            onClick={onJump}
-            onKeyDown={onJumpKeyDown}
-            className="block w-full rounded-sm text-left transition-colors hover:text-foreground focus-visible:bg-amber-500/15 focus-visible:text-foreground"
-          >
-            <span ref={ref} data-quote-text className={cn("block", textClass)}>
-              {quote}
-            </span>
-          </button>
+        {jump && title ? (
+          <Tooltip label={title} className="flex w-full">
+            {jump}
+          </Tooltip>
         ) : (
-          <span ref={ref} data-quote-text className={cn("block", textClass)}>
-            {quote}
-          </span>
+          jump ?? text
         )}
         {clamped || expanded ? (
           <button
