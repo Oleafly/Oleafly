@@ -17,6 +17,7 @@ export interface ProjectLocation {
 export interface OpenLocationOptions {
   /** Hand keyboard focus back to where it was, for jumps the user did not start. */
   keepFocus?: boolean;
+  keepSelection?: boolean;
   /** Bring the source editor forward from a layout that hides it. Defaults to true. */
   showEditor?: boolean;
   /** From the PDF-only view, show the editor beside the PDF or in its place. Defaults to "split". */
@@ -35,6 +36,10 @@ let pending: AbortController | null = null;
 
 function inEditor(node: Element | null | undefined): boolean {
   return !!node?.closest?.(".cm-editor");
+}
+
+function centre(editor: EditorController, view: ReadyView, target: ProjectLocation) {
+  if (target.range) editor.scrollEditorPositionLocally(view, target.range.from);
 }
 
 function reveal(editor: EditorController, view: ReadyView, target: ProjectLocation) {
@@ -129,7 +134,8 @@ async function openLocation(
   try {
     const view = await editor.waitForEditorDocument(target.path, abort.signal);
     if (!view || !current()) return false;
-    if (options.keepFocus) keepingFocus(editor, () => reveal(editor, view, target));
+    if (options.keepSelection) centre(editor, view, target);
+    else if (options.keepFocus) keepingFocus(editor, () => reveal(editor, view, target));
     else reveal(editor, view, target);
     return true;
   } finally {

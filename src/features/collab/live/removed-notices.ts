@@ -34,6 +34,7 @@ export interface RemovedNoticesState {
 }
 
 const NONE: readonly RemovedNotice[] = [];
+let returned = new Set<string>();
 const LOCAL_COPY: ReadonlySet<CollabLiveEndedReason> = new Set(["removed", "archived", "access_ended"]);
 
 function covers(parent: string, path: string): boolean {
@@ -98,9 +99,22 @@ export const useRemovedNotices = create<RemovedNoticesState>((set, get) => ({
   },
 }));
 
+function cameBack(projectId: string, ids: readonly string[]): void {
+  for (const id of ids) returned.add(id);
+  useRemovedNotices.setState((state) => {
+    if (state.projectId !== projectId) return state;
+    const notices = state.notices.filter((notice) => !returned.has(notice.id));
+    if (notices.length === state.notices.length) return state;
+    const failure = state.failure && returned.has(state.failure.id) ? null : state.failure;
+    return { notices, failure };
+  });
+}
+
 function removed(payload: CollabLiveRemoved): void {
   const files = useFilesStore.getState();
   if (files.projectId !== payload.projectId) return;
+  for (const file of payload.files) returned.delete(file.id);
+  if (payload.restored.length > 0) cameBack(payload.projectId, payload.restored);
   const open = (path: string) => files.openTabs.some((tab) => covers(path, tab));
   const told = payload.files.filter((file) => file.yours || open(file.path));
   for (const file of payload.files) {
@@ -132,7 +146,7 @@ function recall(projectId: string): void {
       useRemovedNotices.setState((state) => {
         if (state.projectId !== projectId) return state;
         const shown = new Set(state.notices.map((existing) => existing.id));
-        const kept = files.filter((file) => !shown.has(file.id)).map(notice);
+        const kept = files.filter((file) => !shown.has(file.id) && !returned.has(file.id)).map(notice);
         return kept.length === 0 ? state : { notices: [...state.notices, ...kept] };
       });
     })
@@ -140,6 +154,7 @@ function recall(projectId: string): void {
 }
 
 function openProject(projectId: string | null): void {
+  returned = new Set();
   useRemovedNotices.setState({ projectId, notices: NONE, restoring: null, failure: null });
   if (projectId) recall(projectId);
 }

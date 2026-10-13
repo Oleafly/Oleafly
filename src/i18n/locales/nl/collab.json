@@ -532,7 +532,9 @@
     "noFile": "Geen bestand open",
     "unknownPerson": "Iemand",
     "viewing": "Bekijkt {{path}}",
-    "editing": "Bewerkt {{path}}"
+    "editing": "Bewerkt {{path}}",
+    "goTo": "Ga naar {{name}}",
+    "nowhere": "Niet in een bestand, dus er is geen plek om naartoe te gaan"
   },
   "tree": {
     "here": "{{name}} heeft dit bestand open",
@@ -802,9 +804,9 @@
     "add": "Opmerking toevoegen",
     "showResolved": "Opgeloste opmerkingen tonen",
     "hideResolved": "Opgeloste opmerkingen verbergen",
-    "noFile": "Open een bestand om de opmerkingen te zien.",
-    "empty": "Er zijn nog geen opmerkingen bij dit bestand.",
-    "emptyCanWrite": "Er zijn nog geen opmerkingen bij dit bestand. Selecteer tekst en kies Opmerking toevoegen om er een te beginnen.",
+    "empty": "Er zijn nog geen opmerkingen.",
+    "emptyCanWrite": "Er zijn nog geen opmerkingen. Selecteer tekst en kies Opmerking toevoegen om er een te beginnen.",
+    "allResolved": "Alle opmerkingen zijn opgelost.",
     "loadFailed": "De opmerkingen bij dit bestand konden niet worden geladen.",
     "detached": "Losgekoppeld",
     "detachedHint": "De tekst waar deze opmerkingen bij hoorden, is verwijderd.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} is groter dan deze server toestaat. Het bestand blijft alleen op deze computer.",
     "replaced": "{{name}} heeft {{file}} tegelijk met jou vervangen. Jouw versie is bewaard als {{copy}}.",
     "added": "{{file}} heet nu {{copy}}, omdat {{name}} een bestand met dezelfde naam heeft toegevoegd.",
+    "beside": "{{name}} heeft ook een bestand met de naam {{file}}. Dat is bewaard als {{copy}}.",
+    "localCopy": "Je hebt {{files}} in {{name}} gewijzigd terwijl je geen toegang tot dit project had.",
+    "bringIn": "Wijzigingen overnemen",
+    "keepSeparate": "Apart houden",
+    "broughtIn": "Je wijzigingen uit {{name}} staan nu in dit project.",
     "retry": "Opnieuw proberen",
     "dismiss": "Sluiten"
   }

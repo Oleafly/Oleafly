@@ -878,6 +878,16 @@ impl ProjectDoc {
         Ok(threads)
     }
 
+    pub fn commented_files(&self) -> BTreeSet<String> {
+        let mut files = BTreeSet::new();
+        self.loro().get_map(COMMENTS).for_each(|key, _| {
+            if let Some((file, _)) = split_key(key) {
+                files.insert(file);
+            }
+        });
+        files
+    }
+
     pub fn comment_thread(
         &self,
         file_id: &str,

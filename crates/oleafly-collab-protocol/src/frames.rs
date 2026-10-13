@@ -39,6 +39,8 @@ pub enum ClientFrame {
     PresenceLeave {
         project_id: SharedProjectId,
     },
+    #[serde(other)]
+    Unknown,
 }
 
 impl fmt::Debug for ClientFrame {
@@ -91,6 +93,7 @@ impl fmt::Debug for ClientFrame {
                 .debug_struct("PresenceLeave")
                 .field("project_id", project_id)
                 .finish(),
+            ClientFrame::Unknown => formatter.write_str("Unknown"),
         }
     }
 }
@@ -154,10 +157,20 @@ pub enum ServerFrame {
         role: Option<ProjectRole>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         change: Option<MemberChange>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        comments: Option<CommentSwitches>,
     },
     ProjectArchived {
         project_id: SharedProjectId,
     },
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentSwitches {
+    pub server: bool,
+    pub project: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -309,6 +322,70 @@ mod tests {
     }
 
     #[test]
+    fn a_frame_of_a_type_this_build_does_not_know_reads_as_unknown_and_its_details_are_ignored() {
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({
+                "type": "from_a_later_server",
+                "project_id": PROJECT,
+                "detail": { "kind": "unknown", "n": 1 }
+            }))
+            .unwrap(),
+            ServerFrame::Unknown
+        );
+        assert_eq!(
+            serde_json::from_value::<ClientFrame>(json!({
+                "type": "from_a_later_client",
+                "detail": [1, 2]
+            }))
+            .unwrap(),
+            ClientFrame::Unknown
+        );
+        assert!(serde_json::from_value::<ServerFrame>(json!({ "type": "pong" })).is_err());
+        assert!(serde_json::from_value::<ClientFrame>(json!({ "type": "ping" })).is_err());
+        let batch: Vec<ServerFrame> = serde_json::from_value(json!([
+            { "type": "pong", "id": 1 },
+            { "type": "from_a_later_server", "detail": null },
+            { "type": "pong", "id": 2 }
+        ]))
+        .unwrap();
+        assert_eq!(
+            batch,
+            vec![
+                ServerFrame::Pong { id: 1 },
+                ServerFrame::Unknown,
+                ServerFrame::Pong { id: 2 }
+            ]
+        );
+    }
+
+    #[test]
+    fn an_access_change_can_carry_the_comment_switches_and_earlier_clients_ignore_them() {
+        let frame = ServerFrame::AccessChanged {
+            project_id: PROJECT.parse().unwrap(),
+            role: Some(ProjectRole::Editor),
+            change: None,
+            comments: Some(CommentSwitches {
+                server: true,
+                project: false,
+            }),
+        };
+        let wire = json!({
+            "type": "access_changed",
+            "project_id": PROJECT,
+            "role": "editor",
+            "comments": { "server": true, "project": false }
+        });
+        assert_server_wire(frame, wire.clone());
+        assert_eq!(
+            serde_json::from_value::<EarlierServerFrame>(wire).unwrap(),
+            EarlierServerFrame::AccessChanged {
+                project_id: PROJECT.parse().unwrap(),
+                role: Some(ProjectRole::Editor),
+            }
+        );
+    }
+
+    #[test]
     fn an_access_change_can_name_who_changed_whom_and_earlier_clients_ignore_it() {
         let change = MemberChange {
             account_id: DEVICE_OWNER.parse().unwrap(),
@@ -319,6 +396,7 @@ mod tests {
             project_id: PROJECT.parse().unwrap(),
             role: Some(ProjectRole::Editor),
             change: Some(change),
+            comments: None,
         };
         let wire = json!({
             "type": "access_changed",
@@ -388,8 +466,16 @@ mod tests {
     fn malformed_frames_are_rejected() {
         for wire in [
             json!({ "type": "bogus" }),
-            json!({ "id": 1 }),
             json!({ "type": "Ping", "id": 1 }),
+        ] {
+            assert_eq!(
+                serde_json::from_value::<ClientFrame>(wire.clone()).unwrap(),
+                ClientFrame::Unknown,
+                "{wire}"
+            );
+        }
+        for wire in [
+            json!({ "id": 1 }),
             json!({ "type": "ping", "id": -1 }),
             json!({
                 "type": "hello",
@@ -572,6 +658,7 @@ mod tests {
                 project_id: PROJECT.parse().unwrap(),
                 role: None,
                 change: None,
+                comments: None,
             },
             json!({ "type": "access_changed", "project_id": PROJECT, "role": null }),
         );

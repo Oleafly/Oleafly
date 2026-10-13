@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
+  flashRemoteCursor,
   REMOTE_CURSOR_STYLES,
+  REMOTE_FLASH_MS,
   remoteCursors,
   remoteCursorsIn,
   type RemoteCursor,
@@ -127,5 +129,34 @@ describe("remote cursors", () => {
     expect(styles).not.toMatch(/outline|boxShadow|box-shadow|ring/i);
     expect(REMOTE_CURSOR_STYLES[".cm-remote-selection"].backgroundColor).toMatch(/^hsl\(/);
     expect(REMOTE_CURSOR_STYLES[".cm-remote-caret-label"].fontSize).toMatch(/rem$/);
+    expect(REMOTE_CURSOR_STYLES[".cm-remote-flash"].backgroundColor).toMatch(/^hsl\(/);
+  });
+
+  it("tints the line a peer's caret is on for a moment, in their colour", async () => {
+    vi.useFakeTimers();
+    try {
+      const source = new Source();
+      source.list = [{ ...bob, name: null, head: 14, anchor: 14 }];
+      const view = editor(source, "first line\nsecond line\nthird line");
+      await tick();
+      expect(flashRemoteCursor(view, bob.id)).toBe(true);
+      const tinted = view.contentDOM.querySelectorAll<HTMLElement>(".cm-remote-flash");
+      expect(tinted).toHaveLength(1);
+      expect(tinted[0].textContent).toBe("second line");
+      expect(tinted[0].style.getPropertyValue("--remote-hue")).toBe("200");
+      vi.advanceTimersByTime(REMOTE_FLASH_MS);
+      expect(view.contentDOM.querySelector(".cm-remote-flash")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("tints nothing for someone whose caret is not in this document", async () => {
+    const source = new Source();
+    source.list = [bob];
+    const view = editor(source);
+    await tick();
+    expect(flashRemoteCursor(view, "device-nobody")).toBe(false);
+    expect(view.contentDOM.querySelector(".cm-remote-flash")).toBeNull();
   });
 });

@@ -242,7 +242,7 @@ async fn frames(
                     break;
                 }
             }
-            ClientFrame::Hello { .. } | ClientFrame::Subscribe { .. } => {
+            ClientFrame::Hello { .. } | ClientFrame::Subscribe { .. } | ClientFrame::Unknown => {
                 replies.push(unexpected_frame());
             }
         }

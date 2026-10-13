@@ -8,7 +8,9 @@ use axum::{Json, Router};
 use oleafly_collab_protocol::admin::{RuntimeSettings, SecurityEventKind};
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
-use oleafly_collab_protocol::frames::{MemberChange, MemberChangeKind, ServerFrame};
+use oleafly_collab_protocol::frames::{
+    CommentSwitches, MemberChange, MemberChangeKind, ServerFrame,
+};
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
     project_role_allows, MemberGrant, NewProject, PersonSummary, ProjectAction, ProjectDevice,
@@ -239,6 +241,7 @@ async fn update(
     }
     let account = auth.account_id;
     let now = state.clock.now_ms();
+    let comments_switched = patch.comments_enabled.is_some();
     let updated = state
         .db
         .call(move |conn| {
@@ -302,7 +305,55 @@ async fn update(
             projects::summary(conn, &row, role)
         })
         .await?;
+    if comments_switched {
+        tell_comment_switches(&state, project).await;
+    }
     Ok(Json(updated))
+}
+
+pub(crate) async fn tell_comment_switches(state: &AppState, project: SharedProjectId) {
+    let accounts = state.rooms.accounts(project);
+    if accounts.is_empty() {
+        return;
+    }
+    let found = state
+        .db
+        .call(move |conn| {
+            let switches = CommentSwitches {
+                server: settings::load(conn)?.comments_allowed,
+                project: projects::project_row(conn, project)?
+                    .is_some_and(|row| row.comments_enabled),
+            };
+            let roles = accounts
+                .into_iter()
+                .map(|account| Ok((account, projects::role_of(conn, project, account)?)))
+                .collect::<Result<Vec<_>, ServerError>>()?;
+            Ok((switches, roles))
+        })
+        .await;
+    let (switches, roles) = match found {
+        Ok(found) => found,
+        Err(error) => {
+            tracing::warn!(
+                "could not tell a project's members that comments were switched: {error}"
+            );
+            return;
+        }
+    };
+    for (account, role) in roles {
+        if let Some(role) = role {
+            state.rooms.notify_account(
+                project,
+                account,
+                &ServerFrame::AccessChanged {
+                    project_id: project,
+                    role: Some(role),
+                    change: None,
+                    comments: Some(switches),
+                },
+            );
+        }
+    }
 }
 
 async fn commit(
@@ -965,6 +1016,7 @@ async fn grant_member(
             project_id: project,
             role: Some(role),
             change,
+            comments: None,
         },
     );
     if let Some(change) = change {
@@ -1011,6 +1063,7 @@ async fn tell_members(state: &AppState, project: SharedProjectId, change: Member
                     project_id: project,
                     role: Some(role),
                     change: Some(change),
+                    comments: None,
                 },
             );
         }
@@ -1075,6 +1128,7 @@ async fn remove_member(
         project_id: project,
         role: None,
         change: Some(change),
+        comments: None,
     };
     for member in state.rooms.remove_account(project, target) {
         crate::rooms::deliver(&member, frame.clone());

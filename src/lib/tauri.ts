@@ -2149,6 +2149,13 @@ export function onCollabLiveKept(
   );
 }
 
+export const collabLocalCopyOffer = (projectId: string) =>
+  invoke<import("@oleafly/backend-port").CollabLocalCopyOffer | null>("collab_local_copy_offer", { projectId });
+export const collabLocalCopyBringIn = (projectId: string, copyId: string) =>
+  invoke<void>("collab_local_copy_bring_in", { projectId, copyId });
+export const collabLocalCopyDecline = (projectId: string, copyId: string) =>
+  invoke<void>("collab_local_copy_decline", { projectId, copyId });
+
 import type {
   CollabAdminOverview,
   CollabAdminProject,
@@ -2302,10 +2309,17 @@ export async function collabServerCodeSignIn(
   return invoke<CollabServer>("collab_server_code_sign_in", { url, setupCode: setupCode ?? null, onCode: channel });
 }
 
-import type { CollabCommentError, CollabCommentErrorCode, CollabCommentThreadList } from "@oleafly/backend-port";
+import type {
+  CollabCommentCount,
+  CollabCommentError,
+  CollabCommentErrorCode,
+  CollabCommentThreadList,
+} from "@oleafly/backend-port";
 
 export const collabCommentThreadList = (projectId: string, path: string) =>
   invoke<CollabCommentThreadList>("collab_comment_thread_list", { projectId, path });
+export const collabCommentCounts = (projectId: string) =>
+  invoke<CollabCommentCount[]>("collab_comment_counts", { projectId });
 export const collabCommentCreate = (
   projectId: string,
   path: string,

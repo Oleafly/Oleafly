@@ -532,7 +532,9 @@
     "noFile": "Ei avointa tiedostoa",
     "unknownPerson": "Joku",
     "viewing": "Katselee: {{path}}",
-    "editing": "Muokkaa: {{path}}"
+    "editing": "Muokkaa: {{path}}",
+    "goTo": "Siirry: {{name}}",
+    "nowhere": "Ei missään tiedostossa, joten siirtymiskohdetta ei ole"
   },
   "tree": {
     "here": "{{name}} on avannut tämän tiedoston",
@@ -802,9 +804,9 @@
     "add": "Lisää kommentti",
     "showResolved": "Näytä ratkaistut kommentit",
     "hideResolved": "Piilota ratkaistut kommentit",
-    "noFile": "Avaa tiedosto nähdäksesi sen kommentit.",
-    "empty": "Tässä tiedostossa ei ole vielä kommentteja.",
-    "emptyCanWrite": "Tässä tiedostossa ei ole vielä kommentteja. Valitse tekstiä ja valitse Lisää kommentti aloittaaksesi.",
+    "empty": "Kommentteja ei ole vielä.",
+    "emptyCanWrite": "Kommentteja ei ole vielä. Valitse tekstiä ja valitse Lisää kommentti aloittaaksesi.",
+    "allResolved": "Kaikki kommentit on ratkaistu.",
     "loadFailed": "Tämän tiedoston kommentteja ei voitu ladata.",
     "detached": "Irrotetut",
     "detachedHint": "Teksti, jota nämä kommentit koskivat, on poistettu.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} on suurempi kuin tämä palvelin sallii. Tiedosto jää vain tälle tietokoneelle.",
     "replaced": "{{name}} korvasi tiedoston {{file}} samaan aikaan kuin sinä. Versiosi on tallessa nimellä {{copy}}.",
     "added": "{{file}} on nyt {{copy}}, koska {{name}} lisäsi samannimisen tiedoston.",
+    "beside": "Myös käyttäjällä {{name}} on tiedosto nimeltä {{file}}. Se on tallessa nimellä {{copy}}.",
+    "localCopy": "Muutit kohteita {{files}} projektissa {{name}}, kun sinulla ei ollut pääsyä tähän projektiin.",
+    "bringIn": "Tuo muutokset",
+    "keepSeparate": "Pidä erillään",
+    "broughtIn": "Muutoksesi projektista {{name}} ovat nyt tässä projektissa.",
     "retry": "Yritä uudelleen",
     "dismiss": "Sulje"
   }

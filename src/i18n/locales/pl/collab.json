@@ -532,7 +532,9 @@
     "noFile": "Brak otwartego pliku",
     "unknownPerson": "Ktoś",
     "viewing": "Przegląda {{path}}",
-    "editing": "Edytuje {{path}}"
+    "editing": "Edytuje {{path}}",
+    "goTo": "Przejdź do: {{name}}",
+    "nowhere": "Nie jest w żadnym pliku, więc nie ma dokąd przejść"
   },
   "tree": {
     "here": "{{name}} ma otwarty ten plik",
@@ -802,9 +804,9 @@
     "add": "Dodaj komentarz",
     "showResolved": "Pokaż rozwiązane komentarze",
     "hideResolved": "Ukryj rozwiązane komentarze",
-    "noFile": "Otwórz plik, aby zobaczyć jego komentarze.",
-    "empty": "Ten plik nie ma jeszcze komentarzy.",
-    "emptyCanWrite": "Ten plik nie ma jeszcze komentarzy. Zaznacz tekst i wybierz Dodaj komentarz, aby dodać pierwszy.",
+    "empty": "Nie ma jeszcze komentarzy.",
+    "emptyCanWrite": "Nie ma jeszcze komentarzy. Zaznacz tekst i wybierz Dodaj komentarz, aby dodać pierwszy.",
+    "allResolved": "Wszystkie komentarze są rozwiązane.",
     "loadFailed": "Nie udało się wczytać komentarzy do tego pliku.",
     "detached": "Odłączone",
     "detachedHint": "Tekst, którego dotyczyły te komentarze, został usunięty.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} jest większy, niż pozwala ten serwer. Plik zostaje tylko na tym komputerze.",
     "replaced": "Plik {{file}} został w tym samym momencie zastąpiony też przez: {{name}}. Twoja wersja jest zapisana jako {{copy}}.",
     "added": "{{file}} ma teraz nazwę {{copy}}, bo plik o tej samej nazwie dodał(a): {{name}}.",
+    "beside": "Plik o nazwie {{file}} ma też: {{name}}. Jest zapisany jako {{copy}}.",
+    "localCopy": "Twoje zmiany w {{name}} z czasu bez dostępu do tego projektu: {{files}}.",
+    "bringIn": "Przenieś zmiany",
+    "keepSeparate": "Zachowaj osobno",
+    "broughtIn": "Twoje zmiany z {{name}} są teraz w tym projekcie.",
     "retry": "Ponów",
     "dismiss": "Zamknij"
   }

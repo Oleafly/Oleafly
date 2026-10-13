@@ -532,7 +532,9 @@
     "noFile": "Niciun fișier deschis",
     "unknownPerson": "Cineva",
     "viewing": "Vizualizează {{path}}",
-    "editing": "Editează {{path}}"
+    "editing": "Editează {{path}}",
+    "goTo": "Mergi la {{name}}",
+    "nowhere": "Nu este în niciun fișier, deci nu ai unde să mergi"
   },
   "tree": {
     "here": "{{name}} are acest fișier deschis",
@@ -802,9 +804,9 @@
     "add": "Adaugă comentariu",
     "showResolved": "Arată comentariile rezolvate",
     "hideResolved": "Ascunde comentariile rezolvate",
-    "noFile": "Deschide un fișier ca să-i vezi comentariile.",
-    "empty": "Acest fișier nu are încă niciun comentariu.",
-    "emptyCanWrite": "Acest fișier nu are încă niciun comentariu. Selectează un text și alege Adaugă comentariu ca să începi unul.",
+    "empty": "Încă nu există comentarii.",
+    "emptyCanWrite": "Încă nu există comentarii. Selectează un text și alege Adaugă comentariu ca să începi unul.",
+    "allResolved": "Toate comentariile sunt rezolvate.",
     "loadFailed": "Comentariile acestui fișier nu s-au putut încărca.",
     "detached": "Detașate",
     "detachedHint": "Textul la care se refereau aceste comentarii a fost șters.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} este mai mare decât permite acest server. Rămâne doar pe acest computer.",
     "replaced": "{{name}} a înlocuit {{file}} în același timp cu tine. Versiunea ta este păstrată ca {{copy}}.",
     "added": "{{file}} se numește acum {{copy}}, pentru că {{name}} a adăugat un fișier cu același nume.",
+    "beside": "{{name}} are și un fișier numit {{file}}. Acesta este păstrat ca {{copy}}.",
+    "localCopy": "Ai modificat {{files}} în {{name}} cât timp nu ai avut acces la acest proiect.",
+    "bringIn": "Adu modificările",
+    "keepSeparate": "Păstrează separat",
+    "broughtIn": "Modificările tale din {{name}} sunt acum în acest proiect.",
     "retry": "Reîncearcă",
     "dismiss": "Închide"
   }

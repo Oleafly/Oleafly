@@ -87,6 +87,20 @@ struct StoredState {
     offline_edits: HashMap<String, BTreeMap<u64, i32>>,
 }
 
+pub struct Arrival {
+    pub seq: u64,
+    pub payload: Vec<u8>,
+    pub device: Option<DeviceId>,
+    pub author: Option<AccountId>,
+}
+
+struct Received {
+    arrival: Arrival,
+    meta: Option<ImportBlobMetadata>,
+    introduced: Vec<u64>,
+    spans: Vec<(u64, i32, i32)>,
+}
+
 struct Piece {
     peer: u64,
     from: i32,
@@ -282,9 +296,13 @@ impl LiveProject {
         .map_err(|error| CollabError::Corrupt(error.to_string()))?;
         let mut doc = ProjectDoc::load(&bytes)?;
         let records = read_log(&dir.join(LOG_FILE));
-        for record in &records {
-            if doc.import(record).is_err() {
-                break;
+        let saved: Vec<&[u8]> = records.iter().map(Vec::as_slice).collect();
+        if doc.import_all(&saved).is_err() {
+            doc = ProjectDoc::load(&bytes)?;
+            for record in &records {
+                if doc.import(record).is_err() {
+                    break;
+                }
             }
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
@@ -529,23 +547,39 @@ impl LiveProject {
     }
 
     fn route(&mut self, changes: DocChanges, author: Option<AccountId>) -> Result<(), CollabError> {
+        let touched: Vec<String> = changes.texts.iter().map(|(id, _)| id.clone()).collect();
+        self.count_catch_up(touched, author);
+        self.deliver(changes)
+    }
+
+    fn count_catch_up(
+        &mut self,
+        texts: impl IntoIterator<Item = String>,
+        author: Option<AccountId>,
+    ) {
+        let Some(catch_up) = self.catch_up.as_mut() else {
+            return;
+        };
+        for id in texts {
+            if let Some(author) = author {
+                *catch_up
+                    .authors
+                    .entry(author)
+                    .or_default()
+                    .entry(id.clone())
+                    .or_default() += 1;
+            }
+            *catch_up.files.entry(id).or_default() += 1;
+        }
+    }
+
+    fn deliver(&mut self, changes: DocChanges) -> Result<(), CollabError> {
         self.comments.extend(changes.comments);
         if changes.tree {
             self.disk.tree = true;
         }
         for (id, deltas) in changes.texts {
             self.disk.texts.insert(id.clone());
-            if let Some(catch_up) = self.catch_up.as_mut() {
-                *catch_up.files.entry(id.clone()).or_default() += 1;
-                if let Some(author) = author {
-                    *catch_up
-                        .authors
-                        .entry(author)
-                        .or_default()
-                        .entry(id.clone())
-                        .or_default() += 1;
-                }
-            }
             let Some(open) = self.open.get_mut(&id) else {
                 continue;
             };
@@ -640,40 +674,95 @@ impl LiveProject {
         device: Option<DeviceId>,
         author: Option<AccountId>,
     ) -> Result<bool, CollabError> {
-        if seq <= self.last_seq || self.seen.contains(&seq) {
-            return Ok(false);
-        }
-        let meta = update_meta(payload);
-        let introduced = match &meta {
-            Some(meta) if device.is_some() || author.is_some() => {
-                let known = self.doc.version();
-                meta.partial_end_vv
-                    .iter()
-                    .filter(|(peer, end)| known.get(peer).copied().unwrap_or(0) < **end)
-                    .map(|(peer, _)| *peer)
-                    .collect()
+        let imported = self.import_arrivals(vec![Arrival {
+            seq,
+            payload: payload.to_vec(),
+            device,
+            author,
+        }])?;
+        Ok(imported > 0)
+    }
+
+    pub fn import_arrivals(&mut self, arrivals: Vec<Arrival>) -> Result<usize, CollabError> {
+        let mut known = self.doc.version();
+        let mut fresh: Vec<Received> = Vec::new();
+        for arrival in arrivals {
+            let repeated = arrival.seq <= self.last_seq
+                || self.seen.contains(&arrival.seq)
+                || fresh.iter().any(|kept| kept.arrival.seq == arrival.seq);
+            if repeated {
+                continue;
             }
-            _ => Vec::new(),
-        };
-        let imported = self.doc.import(payload)?;
-        if let Some(device) = device {
-            if self.devices.bind_peers(&introduced, device) {
-                self.devices_dirty = true;
+            let meta = update_meta(&arrival.payload);
+            let mut introduced = Vec::new();
+            let mut spans = Vec::new();
+            for (peer, end) in meta.iter().flat_map(|meta| meta.partial_end_vv.iter()) {
+                let had = known.get(peer).copied().unwrap_or(0);
+                if had < *end {
+                    let from = meta
+                        .as_ref()
+                        .and_then(|meta| meta.partial_start_vv.get(peer).copied())
+                        .unwrap_or(0);
+                    introduced.push(*peer);
+                    spans.push((*peer, had.max(from), *end));
+                    known.set_end(ID::new(*peer, *end));
+                }
             }
+            if arrival.device.is_none() && arrival.author.is_none() {
+                introduced.clear();
+            }
+            fresh.push(Received {
+                arrival,
+                meta,
+                introduced,
+                spans,
+            });
         }
-        if let Some(account) = author {
-            if self.doc.authors_mut().witness(introduced, account) {
-                self.authors_dirty = true;
+        if fresh.is_empty() {
+            return Ok(0);
+        }
+        let payloads: Vec<&[u8]> = fresh
+            .iter()
+            .map(|received| received.arrival.payload.as_slice())
+            .collect();
+        let imported = self.doc.import_all(&payloads)?;
+        for received in &fresh {
+            if let Some(device) = received.arrival.device {
+                if self.devices.bind_peers(&received.introduced, device) {
+                    self.devices_dirty = true;
+                }
+            }
+            if let Some(account) = received.arrival.author {
+                if self
+                    .doc
+                    .authors_mut()
+                    .witness(received.introduced.iter().copied(), account)
+                {
+                    self.authors_dirty = true;
+                }
             }
         }
         advance(&mut self.confirmed, &imported.arrived);
-        if let Some(meta) = &meta {
-            held_by_server(&mut self.confirmed, meta);
+        for received in &fresh {
+            if let Some(meta) = &received.meta {
+                held_by_server(&mut self.confirmed, meta);
+            }
+            self.mark_seen(received.arrival.seq);
+            self.received += 1;
         }
-        self.mark_seen(seq);
-        self.received += 1;
-        self.route(imported.changes, author)?;
-        Ok(true)
+        match fresh.as_slice() {
+            [only] => self.route(imported.changes, only.arrival.author)?,
+            _ => {
+                if self.catch_up.is_some() {
+                    for received in &fresh {
+                        let touched = self.doc.texts_changed_in(&received.spans);
+                        self.count_catch_up(touched, received.arrival.author);
+                    }
+                }
+                self.deliver(imported.changes)?;
+            }
+        }
+        Ok(fresh.len())
     }
 
     pub fn skip_update(&mut self, seq: u64) {
@@ -1364,6 +1453,66 @@ mod tests {
         );
         assert!(alice.end_catch_up().is_none());
         assert_eq!(bob.pending_changes(), 1);
+    }
+
+    #[test]
+    fn changes_taken_in_together_while_catching_up_are_counted_per_file_and_author() {
+        let (mut bob, mut alice, main) = pair();
+        let bob_account = AccountId::new_v7();
+        let carol_account = AccountId::new_v7();
+        let notes = bob
+            .doc_mut()
+            .add_node(None, "notes.tex", NodeKind::Text, None, "n")
+            .unwrap();
+        let added = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(added.batch, 1);
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 2);
+        bob.local_text(&notes, "notes").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        assert!(alice.import_update(1, &added.payload).unwrap());
+        let (sink, seen) = recorder();
+        alice.open_file(&main, sink).unwrap();
+        alice.begin_catch_up();
+        let arrival = |seq: u64, payload: &[u8], author: AccountId| Arrival {
+            seq,
+            payload: payload.to_vec(),
+            device: None,
+            author: Some(author),
+        };
+
+        let taken = alice
+            .import_arrivals(vec![
+                arrival(2, &first.payload, bob_account),
+                arrival(3, &second.payload, carol_account),
+                arrival(2, &first.payload, bob_account),
+            ])
+            .unwrap();
+
+        assert_eq!(taken, 2);
+        assert_eq!(alice.last_seq(), 3);
+        assert_eq!(alice.received(), 3);
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcd");
+        assert_eq!(alice.doc().text(&notes).unwrap(), "notes");
+        let report = alice.end_catch_up().expect("something merged");
+        assert_eq!(report.files.get(&main), Some(&1));
+        assert_eq!(report.files.get(&notes), Some(&1));
+        assert_eq!(
+            report.authors.get(&bob_account),
+            Some(&BTreeMap::from([(main.clone(), 1)]))
+        );
+        assert_eq!(
+            report.authors.get(&carol_account),
+            Some(&BTreeMap::from([(notes.clone(), 1)]))
+        );
+        assert!(seen
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|message| matches!(message, DocMessage::Remote { .. })));
+        let work = alice.take_disk_work();
+        assert!(work.texts.contains(&main) && work.texts.contains(&notes));
     }
 
     #[test]

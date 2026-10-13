@@ -1,10 +1,16 @@
 import { create } from "zustand";
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
-import { showCommentsTab, useCommentsRail, type CommentRequest } from "@/components/collab/comments-rail";
+import {
+  openCommentThread,
+  showCommentsTab,
+  useCommentsRail,
+  type CommentRequest,
+} from "@/components/collab/comments-rail";
 import { setCommentsEditorExtension } from "@/components/editor/cm/comments-slot";
 import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import {
+  collabCommentCounts,
   collabCommentCreate,
   collabCommentDelete,
   collabCommentEdit,
@@ -17,6 +23,7 @@ import {
   isCollabCommentError,
   onCollabCommentsChanged,
   onCollabCommentsStatus,
+  type CollabCommentCount,
   type CollabCommentMember,
   type CollabCommentMessage,
   type CollabCommentsChanged,
@@ -44,6 +51,12 @@ import {
 
 export type CommentsPhase = "idle" | "loading" | "ready" | "failed";
 
+export interface FileThreads {
+  phase: CommentsPhase;
+  threads: CollabCommentThread[];
+  error: CollabErrorCode | null;
+}
+
 export interface CommentsState {
   projectId: string | null;
   status: CollabCommentsStatus | null;
@@ -56,6 +69,8 @@ export interface CommentsState {
   showResolved: boolean;
   draft: CommentRequest | null;
   emptied: readonly string[];
+  counts: readonly CollabCommentCount[] | null;
+  elsewhere: Readonly<Record<string, FileThreads>>;
 }
 
 const RELOAD_DELAY_MS = 150;
@@ -77,6 +92,8 @@ function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "
     selectedId: null,
     draft: null,
     emptied: [],
+    counts: null,
+    elsewhere: {},
   };
 }
 
@@ -278,6 +295,104 @@ function keepUnchanged(previous: CollabCommentThread[], next: CollabCommentThrea
   return same ? previous : kept;
 }
 
+function without(
+  elsewhere: Readonly<Record<string, FileThreads>>,
+  path: string,
+): Readonly<Record<string, FileThreads>> {
+  if (!Object.hasOwn(elsewhere, path)) return elsewhere;
+  return Object.fromEntries(Object.entries(elsewhere).filter(([key]) => key !== path));
+}
+
+let countToken = 0;
+
+async function refreshCounts(): Promise<void> {
+  const projectId = useComments.getState().projectId;
+  const token = ++countToken;
+  if (!projectId) return;
+  let counts: CollabCommentCount[];
+  try {
+    counts = await collabCommentCounts(projectId);
+  } catch (error) {
+    if (token !== countToken) return;
+    if (collabErrorCode(error) !== "not_found") void logError("collab comment counts", error);
+    useComments.setState((state) => (state.counts === null ? { counts: [] } : state));
+    return;
+  }
+  if (token !== countToken || useComments.getState().projectId !== projectId) return;
+  useComments.setState((state) => {
+    const listed = new Set(counts.map((count) => count.path));
+    const kept = Object.entries(state.elsewhere).filter(([path]) => listed.has(path));
+    const same = sameData(state.counts, counts);
+    const trimmed = kept.length !== Object.keys(state.elsewhere).length;
+    if (same && !trimmed) return state;
+    return {
+      counts: same ? state.counts : counts,
+      elsewhere: trimmed ? Object.fromEntries(kept) : state.elsewhere,
+    };
+  });
+}
+
+const elsewhereTokens = new Map<string, number>();
+let elsewhereToken = 0;
+
+function setElsewhere(path: string, change: (entry: FileThreads) => FileThreads): void {
+  useComments.setState((state) => {
+    const entry = state.elsewhere[path];
+    if (!entry) return state;
+    const next = change(entry);
+    if (next.phase === entry.phase && next.error === entry.error && next.threads === entry.threads) return state;
+    return { elsewhere: { ...state.elsewhere, [path]: next } };
+  });
+}
+
+async function loadElsewhere(path: string): Promise<void> {
+  const projectId = useComments.getState().projectId;
+  if (!projectId) return;
+  const token = ++elsewhereToken;
+  elsewhereTokens.set(path, token);
+  const stale = () => elsewhereTokens.get(path) !== token || useComments.getState().projectId !== projectId;
+  try {
+    const listed = await collabCommentThreadList(projectId, path);
+    if (stale()) return;
+    setElsewhere(path, (entry) => ({
+      phase: "ready",
+      error: null,
+      threads: keepUnchanged(entry.threads, byDocument(listed.threads)),
+    }));
+  } catch (error) {
+    if (stale()) return;
+    const code = collabErrorCode(error);
+    if (code !== "not_found") void logError("collab comments load", error);
+    setElsewhere(path, (entry) =>
+      code === "not_found" ? { phase: "ready", error: null, threads: [] } : { ...entry, phase: "failed", error: code },
+    );
+  }
+}
+
+export function expandFile(path: string): void {
+  useComments.setState((state) => {
+    const entry = state.elsewhere[path];
+    if (entry && entry.phase !== "failed") return state;
+    return { elsewhere: { ...state.elsewhere, [path]: { phase: "loading", threads: entry?.threads ?? [], error: null } } };
+  });
+  void loadElsewhere(path);
+}
+
+export function collapseFile(path: string): void {
+  useComments.setState((state) => {
+    const elsewhere = without(state.elsewhere, path);
+    return elsewhere === state.elsewhere ? state : { elsewhere };
+  });
+}
+
+export function openThreadIn(path: string, id: string): void {
+  if (path === useComments.getState().path) {
+    selectThread(id, { reveal: true });
+    return;
+  }
+  openCommentThread(path, id);
+}
+
 async function currentList(projectId: string, path: string, token: number): Promise<CollabCommentThread[] | null> {
   for (let attempt = 1; ; attempt += 1) {
     const listed = await collabCommentThreadList(projectId, path);
@@ -300,7 +415,15 @@ async function load(path: string | null): Promise<CollabCommentThread[] | null> 
   if (useComments.getState().path === path) {
     if (useComments.getState().phase !== "ready") useComments.setState({ phase: "loading", error: null });
   } else {
-    useComments.setState({ path, threads: [], phase: "loading", error: null, selectedId: null, emptied: [] });
+    useComments.setState((state) => ({
+      path,
+      threads: [],
+      phase: "loading",
+      error: null,
+      selectedId: null,
+      emptied: [],
+      elsewhere: without(state.elsewhere, path),
+    }));
   }
   let listed: CollabCommentThread[] | null;
   try {
@@ -371,17 +494,41 @@ function requireProject(): string {
   return projectId;
 }
 
+function patched(
+  threads: CollabCommentThread[],
+  id: string,
+  change: (thread: CollabCommentThread) => CollabCommentThread | null,
+): CollabCommentThread[] {
+  return byDocument(
+    threads.flatMap((thread) => {
+      if (thread.id !== id) return [thread];
+      const next = change(thread);
+      return next ? [next] : [];
+    }),
+  );
+}
+
 function patchThread(id: string, change: (thread: CollabCommentThread) => CollabCommentThread | null): void {
   useComments.setState((state) => {
-    if (!state.threads.some((thread) => thread.id === id)) return state;
-    const threads = byDocument(
-      state.threads.flatMap((thread) => {
-        if (thread.id !== id) return [thread];
-        const next = change(thread);
-        return next ? [next] : [];
-      }),
-    );
-    return { threads, selectedId: threads.some((thread) => thread.id === state.selectedId) ? state.selectedId : null };
+    const holds = (threads: readonly CollabCommentThread[]) => threads.some((thread) => thread.id === id);
+    const here = holds(state.threads);
+    const touched = Object.entries(state.elsewhere).filter(([, entry]) => holds(entry.threads));
+    if (!here && touched.length === 0) return state;
+    const next: Partial<CommentsState> = {};
+    if (here) {
+      const threads = patched(state.threads, id, change);
+      next.threads = threads;
+      next.selectedId = threads.some((thread) => thread.id === state.selectedId) ? state.selectedId : null;
+    }
+    if (touched.length > 0) {
+      next.elsewhere = {
+        ...state.elsewhere,
+        ...Object.fromEntries(
+          touched.map(([path, entry]) => [path, { ...entry, threads: patched(entry.threads, id, change) }]),
+        ),
+      };
+    }
+    return next;
   });
 }
 
@@ -526,6 +673,8 @@ export function startComments(): () => void {
   let release: (() => void) | null = null;
   let reloadTimer: ReturnType<typeof setTimeout> | null = null;
   let anchorTimer: ReturnType<typeof setTimeout> | null = null;
+  let elsewhereTimer: ReturnType<typeof setTimeout> | null = null;
+  let touched = new Set<string>();
   let statusToken = 0;
 
   const install = () => {
@@ -540,6 +689,13 @@ export function startComments(): () => void {
     reloadTimer = null;
     if (anchorTimer !== null) clearTimeout(anchorTimer);
     anchorTimer = null;
+  };
+  const forgetElsewhere = () => {
+    if (elsewhereTimer !== null) clearTimeout(elsewhereTimer);
+    elsewhereTimer = null;
+    touched = new Set();
+    countToken += 1;
+    elsewhereTokens.clear();
   };
 
   const syncRail = () => {
@@ -559,9 +715,11 @@ export function startComments(): () => void {
     if (shown && !wasShown) {
       install();
       void load(currentPath());
+      void refreshCounts();
     } else if (!shown && wasShown) {
       uninstall();
       cancelReload();
+      forgetElsewhere();
       loadToken += 1;
       useComments.setState({
         path: null,
@@ -571,6 +729,8 @@ export function startComments(): () => void {
         selectedId: null,
         draft: null,
         emptied: [],
+        counts: null,
+        elsewhere: {},
       });
     }
     syncRail();
@@ -597,6 +757,7 @@ export function startComments(): () => void {
     }
     uninstall();
     cancelReload();
+    forgetElsewhere();
     loadToken += 1;
     statusToken += 1;
     useComments.setState(blank(projectId));
@@ -623,6 +784,23 @@ export function startComments(): () => void {
     }, ANCHOR_RELOAD_MS);
   };
 
+  const scheduleElsewhere = (payload: CollabCommentsChanged) => {
+    for (const path of payload.paths) touched.add(path);
+    for (const [path, entry] of Object.entries(useComments.getState().elsewhere)) {
+      if (entry.threads.some((thread) => payload.fileIds.includes(thread.fileId))) touched.add(path);
+    }
+    if (elsewhereTimer !== null) clearTimeout(elsewhereTimer);
+    elsewhereTimer = setTimeout(() => {
+      elsewhereTimer = null;
+      const paths = touched;
+      touched = new Set();
+      void refreshCounts();
+      for (const path of Object.keys(useComments.getState().elsewhere)) {
+        if (paths.has(path)) void loadElsewhere(path);
+      }
+    }, RELOAD_DELAY_MS);
+  };
+
   const onChanged = (payload: CollabCommentsChanged) => {
     const state = useComments.getState();
     if (payload.projectId !== state.projectId) return;
@@ -638,6 +816,7 @@ export function startComments(): () => void {
     } else if (!payload.local && (payload.fileIds.length > 0 || payload.paths.length > 0)) {
       noteUnseen();
     }
+    scheduleElsewhere(payload);
   };
 
   const stopLive = useCollabLiveStore.subscribe((live, previous) => {
@@ -655,7 +834,9 @@ export function startComments(): () => void {
   });
   const stopFiles = useFilesStore.subscribe((files, previous) => {
     if (files.activePath === previous.activePath && files.projectId === previous.projectId) return;
-    if (commentsShown(useComments.getState().status)) void load(currentPath());
+    if (!commentsShown(useComments.getState().status)) return;
+    void load(currentPath());
+    void refreshCounts();
   });
   const stopRail = useCommentsRail.subscribe((rail, previous) => {
     if (rail.request && rail.request !== previous.request) {
@@ -692,6 +873,7 @@ export function startComments(): () => void {
     for (const pending of listening) void pending.then((unlisten) => unlisten());
     uninstall();
     cancelReload();
+    forgetElsewhere();
     loadToken += 1;
     statusToken += 1;
     useComments.setState(blank(null));

@@ -77,7 +77,11 @@ impl Writer {
         self.last = update;
         loop {
             match next_frame(&mut self.socket).await.expect("a reply") {
-                ServerFrame::Update { .. } | ServerFrame::Presence { .. } => {}
+                ServerFrame::Update { .. }
+                | ServerFrame::Presence { .. }
+                | ServerFrame::AccessChanged {
+                    comments: Some(_), ..
+                } => {}
                 reply => return reply,
             }
         }

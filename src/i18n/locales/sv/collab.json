@@ -532,7 +532,9 @@
     "noFile": "Ingen fil öppen",
     "unknownPerson": "Någon",
     "viewing": "Tittar på {{path}}",
-    "editing": "Redigerar {{path}}"
+    "editing": "Redigerar {{path}}",
+    "goTo": "Gå till {{name}}",
+    "nowhere": "Inte i någon fil, så det finns ingenstans att gå"
   },
   "tree": {
     "here": "{{name}} har den här filen öppen",
@@ -802,9 +804,9 @@
     "add": "Lägg till kommentar",
     "showResolved": "Visa lösta kommentarer",
     "hideResolved": "Dölj lösta kommentarer",
-    "noFile": "Öppna en fil för att se dess kommentarer.",
-    "empty": "Den här filen har inga kommentarer än.",
-    "emptyCanWrite": "Den här filen har inga kommentarer än. Markera text och välj Lägg till kommentar för att starta en.",
+    "empty": "Inga kommentarer än.",
+    "emptyCanWrite": "Inga kommentarer än. Markera text och välj Lägg till kommentar för att starta en.",
+    "allResolved": "Alla kommentarer är lösta.",
     "loadFailed": "Det gick inte att läsa in kommentarerna för den här filen.",
     "detached": "Frånkopplade",
     "detachedHint": "Texten som de här kommentarerna gällde har tagits bort.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} är större än den här servern tillåter. Filen finns bara kvar på den här datorn.",
     "replaced": "{{name}} ersatte {{file}} samtidigt som du. Din version är sparad som {{copy}}.",
     "added": "{{file}} heter nu {{copy}} eftersom {{name}} lade till en fil med samma namn.",
+    "beside": "{{name}} har också en fil som heter {{file}}. Den är sparad som {{copy}}.",
+    "localCopy": "Du ändrade {{files}} i {{name}} medan du inte hade åtkomst till det här projektet.",
+    "bringIn": "Hämta in ändringarna",
+    "keepSeparate": "Håll isär",
+    "broughtIn": "Dina ändringar från {{name}} finns nu i det här projektet.",
     "retry": "Försök igen",
     "dismiss": "Stäng"
   }

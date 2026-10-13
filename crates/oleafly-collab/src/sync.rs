@@ -3,11 +3,13 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::verify_ed25519;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
-use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, MemberChange, ServerFrame};
+use oleafly_collab_protocol::frames::{
+    ClientFrame, CommentSwitches, FrameErrorCode, MemberChange, ServerFrame,
+};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use ring::rand::{SecureRandom, SystemRandom};
@@ -21,7 +23,7 @@ use crate::client::{
     Polled, ServerClient, Socket,
 };
 use crate::devices::Verdict;
-use crate::live::{LiveProject, MergeReport, Outgoing, PeerCheck};
+use crate::live::{Arrival, LiveProject, MergeReport, Outgoing, PeerCheck};
 use crate::{CollabError, DeviceKey, SessionManager};
 
 const PING_EVERY: Duration = Duration::from_secs(20);
@@ -36,6 +38,7 @@ const HTTPS_CHECK_WITHIN: Duration = Duration::from_secs(10);
 const JITTER_FLOOR_MS: u64 = 100;
 const STEADY_AFTER: Duration = Duration::from_secs(10);
 const READY_BURST: u32 = 64;
+const BACKLOG_BATCH: usize = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Reached {
@@ -169,6 +172,7 @@ pub enum LiveEvent {
     },
     Unsendable,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
+    Comments(CommentSwitches),
 }
 
 #[derive(Debug)]
@@ -1029,6 +1033,100 @@ async fn signature_trust(
     }
 }
 
+type Incoming = (u64, Option<AccountId>, Envelope);
+
+async fn next_frame(
+    held: &mut Option<ServerFrame>,
+    wire: &mut Wire,
+) -> Result<ServerFrame, CollabError> {
+    match held.take() {
+        Some(frame) => Ok(frame),
+        None => wire.next().await,
+    }
+}
+
+fn ready_updates(
+    wire: &mut Wire,
+    held: &mut Option<ServerFrame>,
+    first: Incoming,
+) -> (Vec<Incoming>, bool) {
+    let mut backlog = vec![first];
+    while backlog.len() < BACKLOG_BATCH {
+        match wire.next().now_or_never() {
+            Some(Ok(ServerFrame::Update {
+                seq,
+                account_id,
+                envelope,
+                ..
+            })) => backlog.push((seq, account_id, envelope)),
+            Some(Ok(other)) => {
+                *held = Some(other);
+                break;
+            }
+            Some(Err(_)) => return (backlog, true),
+            None => break,
+        }
+    }
+    (backlog, false)
+}
+
+async fn take_in(
+    link: &LiveLink,
+    project: &SharedLive,
+    events: &UnboundedSender<LiveEvent>,
+    refreshed: &mut Refreshed,
+    backlog: Vec<Incoming>,
+) -> (usize, bool) {
+    let mut batch: Vec<Arrival> = Vec::new();
+    let mut unbound: BTreeSet<u64> = BTreeSet::new();
+    let mut imported = 0;
+    for (seq, account_id, envelope) in backlog {
+        let first_seen: Vec<u64> = {
+            let live = lock(project);
+            live.doc()
+                .introduced_peers(&envelope.payload)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|peer| live.devices().device_of_peer(*peer).is_none())
+                .collect()
+        };
+        if first_seen.iter().any(|peer| unbound.contains(peer)) {
+            match lock(project).import_arrivals(std::mem::take(&mut batch)) {
+                Ok(count) => imported += count,
+                Err(_) => return (imported, false),
+            }
+            unbound.clear();
+        }
+        lock(project).note_batch(seq, envelope.batch_id);
+        match trust(link, project, events, refreshed, &envelope, account_id).await {
+            Trust::Signed(author) => {
+                unbound.extend(first_seen);
+                batch.push(Arrival {
+                    seq,
+                    payload: envelope.payload,
+                    device: Some(envelope.device_id),
+                    author,
+                });
+            }
+            Trust::Refused => {
+                lock(project).skip_update(seq);
+                let _ = events.send(LiveEvent::Untrusted {
+                    device_id: envelope.device_id,
+                    seq,
+                });
+            }
+            Trust::Unreachable => {
+                let count = lock(project).import_arrivals(batch).unwrap_or(0);
+                return (imported + count, false);
+            }
+        }
+    }
+    match lock(project).import_arrivals(batch) {
+        Ok(count) => (imported + count, true),
+        Err(_) => (imported, false),
+    }
+}
+
 fn report_merged(project: &SharedLive, events: &UnboundedSender<LiveEvent>) {
     if let Some(report) = lock(project).end_catch_up() {
         let _ = events.send(LiveEvent::Merged(report));
@@ -1063,33 +1161,26 @@ async fn online(
     let mut since_snapshot = 0u64;
     let mut refreshed = Refreshed::default();
     let mut burst = 0u32;
+    let mut held: Option<ServerFrame> = None;
     loop {
         tokio::select! {
             biased;
-            frame = wire.next(), if burst < READY_BURST => {
+            frame = next_frame(&mut held, wire), if burst < READY_BURST => {
                 burst += 1;
                 let Ok(frame) = frame else { return retry };
                 last_heard = tokio::time::Instant::now();
                 match frame {
                     ServerFrame::Update { seq, account_id, envelope, .. } => {
-                        lock(project).note_batch(seq, envelope.batch_id);
-                        match trust(link, project, events, &mut refreshed, &envelope, account_id).await {
-                            Trust::Signed(author) => {
-                                let imported = lock(project).import_signed(seq, &envelope.payload, Some(envelope.device_id), author);
-                                match imported {
-                                    Ok(true) => {
-                                        let _ = events.send(LiveEvent::Changed);
-                                        since_snapshot += 1;
-                                    }
-                                    Ok(false) => {}
-                                    Err(_) => return retry,
-                                }
-                            }
-                            Trust::Refused => {
-                                lock(project).skip_update(seq);
-                                let _ = events.send(LiveEvent::Untrusted { device_id: envelope.device_id, seq });
-                            }
-                            Trust::Unreachable => return retry,
+                        let (backlog, broken) = ready_updates(wire, &mut held, (seq, account_id, envelope));
+                        burst = burst.saturating_add(u32::try_from(backlog.len() - 1).unwrap_or(u32::MAX));
+                        let seq = backlog.iter().map(|(seq, ..)| *seq).max().unwrap_or(seq);
+                        let (imported, whole) = take_in(link, project, events, &mut refreshed, backlog).await;
+                        if imported > 0 {
+                            let _ = events.send(LiveEvent::Changed);
+                            since_snapshot += imported as u64;
+                        }
+                        if broken || !whole {
+                            return retry;
                         }
                         if catching_up.is_some_and(|head| seq >= head) {
                             catching_up = None;
@@ -1122,15 +1213,25 @@ async fn online(
                     ServerFrame::PresenceLeft { device_id, .. } => {
                         let _ = events.send(LiveEvent::PresenceLeft { device_id });
                     }
-                    ServerFrame::AccessChanged { role, change, .. } => {
+                    ServerFrame::AccessChanged { role, change, comments, .. } => {
                         if let Some(change) = change {
                             let _ = events.send(LiveEvent::Members(change));
                         }
                         let Some(role) = role else {
                             return Exit::End(EndReason::Removed);
                         };
-                        lock(project).set_role(role);
+                        let more = {
+                            let mut live = lock(project);
+                            live.set_role(role);
+                            live.sendable_now()
+                        };
                         let _ = events.send(LiveEvent::Role(role));
+                        if let Some(comments) = comments {
+                            let _ = events.send(LiveEvent::Comments(comments));
+                        }
+                        if more && flush(link, project, events, wire).await.is_err() {
+                            return retry;
+                        }
                     }
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
                     ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
@@ -1918,6 +2019,98 @@ mod tests {
                 before: Some("!abc".to_owned()),
                 after: Some("!abcde".to_owned()),
             }]
+        );
+    }
+
+    fn typed_apart(start: &[u8], main: &str, writers: u64, edits: usize) -> Vec<Vec<u8>> {
+        let writers: Vec<loro::LoroDoc> = (0..writers)
+            .map(|index| {
+                let writer = loro::LoroDoc::new();
+                writer.import(start).unwrap();
+                writer.set_peer_id(u64::MAX - 1 - index).unwrap();
+                writer
+            })
+            .collect();
+        let mut stream = Vec::new();
+        for edit in 0..edits {
+            for (index, writer) in writers.iter().enumerate() {
+                let peer = writer.peer_id();
+                let from = writer.oplog_vv().get(&peer).copied().unwrap_or(0);
+                let text = writer.get_text(format!("text:{main}"));
+                let at = (edit * 7_919 + index * 131) % (text.len_unicode() + 1);
+                text.insert(at, &format!("[w{index} e{edit}]")).unwrap();
+                writer.commit();
+                let to = writer.oplog_vv().get(&peer).copied().unwrap_or(0);
+                stream.push(
+                    writer
+                        .export(loro::ExportMode::UpdatesInRange {
+                            spans: std::borrow::Cow::Owned(vec![loro::IdSpan::new(peer, from, to)]),
+                        })
+                        .unwrap(),
+                );
+            }
+        }
+        stream
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_copy_with_a_large_file_catches_up_on_a_backlog_of_concurrent_typing_within_a_few_batch_imports(
+    ) {
+        let pair = two_people().await;
+        let (project, main, mut bob_live, alice_live) = shared(&pair).await;
+        let before_big = bob_live.doc().snapshot().unwrap();
+        let since = bob_live.doc().version();
+        let big = "a line of the large bibliography file\n".repeat(40_000);
+        bob_live
+            .doc_mut()
+            .add_node(None, "big.tex", NodeKind::Text, None, &big)
+            .unwrap();
+        let big_update = bob_live.doc().export_since(&since).unwrap();
+        store_on_server(
+            &pair,
+            &pair.bob,
+            signed_envelope(&pair.bob, project, big_update),
+        )
+        .await;
+        let with_big = bob_live.doc().snapshot().unwrap();
+        let stream = typed_apart(&before_big, &main, 4, 40);
+        for payload in &stream {
+            store_on_server(
+                &pair,
+                &pair.bob,
+                signed_envelope(&pair.bob, project, payload.clone()),
+            )
+            .await;
+        }
+        let plain = loro::LoroDoc::new();
+        plain.import(&with_big).unwrap();
+        let begun = std::time::Instant::now();
+        plain.import_batch(&stream).unwrap();
+        let plain_batch = begun.elapsed();
+        let wanted = plain.oplog_vv();
+        let alice_live = LiveProject::new(
+            ProjectDoc::load(&with_big).unwrap(),
+            alice_live.last_seq(),
+            ProjectRole::Editor,
+        );
+        let mut alice = side(alice_live, &main);
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut alice, LiveStatus::Online).await;
+        let begun = tokio::time::Instant::now();
+        let allowed = plain_batch * 12 + Duration::from_secs(2);
+        while !lock(&alice.live).doc().version().includes_vv(&wanted) && begun.elapsed() < allowed {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let took = begun.elapsed();
+        let arrived = lock(&alice.live).received();
+        assert!(
+            took <= allowed && lock(&alice.live).doc().version().includes_vv(&wanted),
+            "after {took:?} Alice had taken in {arrived} of the {} stored changes, one plain batch import of them took {plain_batch:?}",
+            stream.len() + 1
+        );
+        assert_eq!(
+            text(&alice, &main),
+            plain.get_text(format!("text:{main}")).to_string()
         );
     }
 
@@ -2983,19 +3176,23 @@ mod tests {
         assert!(live.next_outgoing().unwrap().is_some());
     }
 
-    async fn turn_project_comments_off(pair: &Pair, project: SharedProjectId) {
+    async fn set_project_comments(pair: &Pair, project: SharedProjectId, enabled: bool) {
         let client = ServerClient::new(pair.url.clone()).unwrap();
         client
             .patch_project(
                 &pair.bob.tokens.access_token,
                 project,
                 &oleafly_collab_protocol::projects::ProjectPatch {
-                    comments_enabled: Some(false),
+                    comments_enabled: Some(enabled),
                     ..Default::default()
                 },
             )
             .await
             .unwrap();
+    }
+
+    async fn turn_project_comments_off(pair: &Pair, project: SharedProjectId) {
+        set_project_comments(pair, project, false).await;
     }
 
     async fn a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives(
@@ -3084,6 +3281,464 @@ mod tests {
     ) {
         a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives(true)
             .await;
+    }
+
+    const PROMPTLY: Duration = Duration::from_secs(2);
+
+    fn write_around_a_comment(side: &Side, main: &str, author: AccountId, round: usize) {
+        append(side, main, &format!(" a{round}"));
+        lock(&side.live)
+            .comment_doc()
+            .create_comment_thread(
+                main,
+                0,
+                3,
+                author,
+                1,
+                "written while comments were off",
+                &[],
+            )
+            .unwrap();
+        append(side, main, &format!(" b{round}"));
+    }
+
+    async fn reached(side: &mut Side, wanted: impl Fn(&LiveStatus) -> bool) -> bool {
+        let mut told = false;
+        tokio::time::timeout(Duration::from_secs(30), async {
+            while let Some(event) = side.events.recv().await {
+                match event {
+                    LiveEvent::CommentsNotSent(_) => told = true,
+                    LiveEvent::Status(status) if wanted(&status) => return,
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .expect("the connection status changed");
+        told
+    }
+
+    async fn went_offline(side: &mut Side) -> bool {
+        reached(side, |status| matches!(status, LiveStatus::Offline { .. })).await
+    }
+
+    async fn back_online(side: &mut Side) -> bool {
+        reached(side, |status| *status == LiveStatus::Online).await
+    }
+
+    async fn arrived_promptly(
+        alice: &mut Side,
+        bob: &Side,
+        main: &str,
+        round: usize,
+        since: tokio::time::Instant,
+        mut told: bool,
+    ) {
+        let words = format!(" a{round} b{round}");
+        loop {
+            while let Ok(event) = alice.events.try_recv() {
+                told |= matches!(event, LiveEvent::CommentsNotSent(_));
+            }
+            if told && text(bob, main).contains(&words) {
+                break;
+            }
+            assert!(
+                since.elapsed() < PROMPTLY,
+                "round {round}: after {:?} Bob had {:?} and Alice was told her comment was not sent: {told}",
+                since.elapsed(),
+                text(bob, main)
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(lock(&bob.live)
+            .doc()
+            .comment_threads(main)
+            .unwrap()
+            .is_empty());
+    }
+
+    async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: bool) {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let proxy = proxy_for(&pair).await;
+        proxy.block_websockets(blocked);
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start_with(
+            &mut alice,
+            link_via(&pair, &pair.alice, project, &proxy),
+            quick(),
+        );
+        until_status(&mut bob, LiveStatus::Online).await;
+        back_online(&mut alice).await;
+        turn_project_comments_off(&pair, project).await;
+        append(&bob, &main, " ready");
+        flushed(&bob);
+        until(|| text(&alice, &main).ends_with(" ready")).await;
+        let snapshots = &pair._server.state().snapshots;
+        snapshots.set_budget(oleafly_server::snapshots::Budget {
+            memory_bytes: 1,
+            ..snapshots.budget()
+        });
+        let author = pair.alice.tokens.account_id;
+        for round in 0..6 {
+            let (since, told) = match round {
+                0 => {
+                    proxy.go_offline();
+                    went_offline(&mut alice).await;
+                    write_around_a_comment(&alice, &main, author, round);
+                    proxy.go_online();
+                    let told = back_online(&mut alice).await;
+                    (tokio::time::Instant::now(), told)
+                }
+                1 => {
+                    set_project_comments(&pair, project, true).await;
+                    proxy.go_offline();
+                    went_offline(&mut alice).await;
+                    write_around_a_comment(&alice, &main, author, round);
+                    set_project_comments(&pair, project, false).await;
+                    tokio::time::sleep(Duration::from_millis(1_500)).await;
+                    proxy.go_online();
+                    let told = back_online(&mut alice).await;
+                    (tokio::time::Instant::now(), told)
+                }
+                2 => {
+                    proxy.go_offline();
+                    went_offline(&mut alice).await;
+                    write_around_a_comment(&alice, &main, author, round);
+                    proxy.go_online();
+                    let first = back_online(&mut alice).await;
+                    proxy.go_offline();
+                    let dropped = went_offline(&mut alice).await;
+                    proxy.go_online();
+                    let again = back_online(&mut alice).await;
+                    (tokio::time::Instant::now(), first || dropped || again)
+                }
+                3 => {
+                    proxy.go_offline();
+                    went_offline(&mut alice).await;
+                    proxy.go_online();
+                    back_online(&mut alice).await;
+                    write_around_a_comment(&alice, &main, author, round);
+                    flushed(&alice);
+                    (tokio::time::Instant::now(), false)
+                }
+                _ => {
+                    write_around_a_comment(&alice, &main, author, round);
+                    flushed(&alice);
+                    (tokio::time::Instant::now(), false)
+                }
+            };
+            arrived_promptly(&mut alice, &bob, &main, round, since, told).await;
+            append(&bob, &main, &format!(" B{round}"));
+            flushed(&bob);
+        }
+        acknowledged(&alice).await;
+        until(|| text(&alice, &main) == text(&bob, &main)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_edits_around_every_refused_comment_arrive_within_seconds_over_a_socket() {
+        the_edits_around_every_refused_comment_arrive_within_seconds(false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_edits_around_every_refused_comment_arrive_within_seconds_over_long_poll() {
+        the_edits_around_every_refused_comment_arrive_within_seconds(true).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_refused_comment_change_is_refused_again_and_the_next_edit_is_checked_without_a_rebuild(
+    ) {
+        use oleafly_server::comment_guard::Verdict;
+        let pair = two_people().await;
+        let (project, main, bob_live, _alice_live) = shared(&pair).await;
+        let mut doc = ProjectDoc::load(&bob_live.doc().snapshot().unwrap()).unwrap();
+        let typed = |doc: &mut ProjectDoc, word: &str| {
+            let since = doc.version();
+            let typed = format!("{}{word}", doc.text(&main).unwrap());
+            doc.set_text(&main, &typed).unwrap();
+            doc.export_since(&since).unwrap()
+        };
+        let state = pair._server.state();
+        let check = |payload: Vec<u8>| {
+            state
+                .comment_guard
+                .check(&state.db, &state.snapshots, project, payload)
+        };
+        let one = typed(&mut doc, " one");
+        assert_eq!(check(one.clone()).await.unwrap(), Verdict::Allowed);
+        store_on_server(&pair, &pair.bob, signed_envelope(&pair.bob, project, one)).await;
+        state
+            .snapshots
+            .set_budget(oleafly_server::snapshots::Budget {
+                memory_bytes: 1,
+                ..state.snapshots.budget()
+            });
+        let mut aside = ProjectDoc::load(&doc.snapshot().unwrap()).unwrap();
+        let since = aside.version();
+        aside
+            .create_comment_thread(&main, 0, 3, pair.bob.tokens.account_id, 1, "no", &[])
+            .unwrap();
+        let comment = aside.export_since(&since).unwrap();
+        for _ in 0..2 {
+            assert_eq!(
+                check(comment.clone()).await.unwrap(),
+                Verdict::ChangesComments
+            );
+        }
+        assert_eq!(
+            check(typed(&mut doc, " two")).await.unwrap(),
+            Verdict::Allowed
+        );
+    }
+
+    async fn frames_of_an_unknown_type_are_skipped_and_the_ones_around_them_arrive(blocked: bool) {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let upstream = pair
+            ._server
+            .url()
+            .trim_start_matches("http://")
+            .parse()
+            .unwrap();
+        let later = oleafly_server::test_support::FutureFrames::start(upstream).await;
+        let proxy = oleafly_server::test_support::BlockingProxy::start(later.address()).await;
+        proxy.block_websockets(blocked);
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start_with(
+            &mut alice,
+            link_via(&pair, &pair.alice, project, &proxy),
+            quick(),
+        );
+        until_status(&mut bob, LiveStatus::Online).await;
+        let mut before = Vec::new();
+        tokio::time::timeout(Duration::from_secs(20), async {
+            while let Some(event) = alice.events.recv().await {
+                let online = event == LiveEvent::Status(LiveStatus::Online);
+                before.push(event);
+                if online {
+                    return;
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("Alice never came online, she heard {before:?}"));
+        let mut heard = Vec::new();
+        for word in [" one", " two"] {
+            append(&bob, &main, word);
+            flushed(&bob);
+            acknowledged(&bob).await;
+        }
+        until_text(&alice, &main, "abc one two").await;
+        append(&alice, &main, " three");
+        flushed(&alice);
+        until_text(&bob, &main, "abc one two three").await;
+        acknowledged(&alice).await;
+        assert!(
+            later.injected() >= 4,
+            "{} unknown frames were sent",
+            later.injected()
+        );
+        while let Ok(event) = alice.events.try_recv() {
+            heard.push(event);
+        }
+        for event in &heard {
+            assert!(
+                matches!(event, LiveEvent::Changed | LiveEvent::Acknowledged),
+                "after coming online Alice heard {event:?}"
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_frame_of_an_unknown_type_is_skipped_and_the_frames_around_it_arrive_over_a_socket() {
+        frames_of_an_unknown_type_are_skipped_and_the_ones_around_them_arrive(false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_frame_of_an_unknown_type_is_skipped_and_the_frames_around_it_arrive_in_long_poll_batches(
+    ) {
+        frames_of_an_unknown_type_are_skipped_and_the_ones_around_them_arrive(true).await;
+    }
+
+    async fn switch_comments(pair: &Pair, project: SharedProjectId, server_wide: bool, on: bool) {
+        if server_wide {
+            ServerClient::new(pair.url.clone())
+                .unwrap()
+                .admin_patch_settings(
+                    &pair.bob.tokens.access_token,
+                    &oleafly_collab_protocol::admin::RuntimeSettingsPatch {
+                        comments_allowed: Some(on),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap();
+        } else {
+            set_project_comments(pair, project, on).await;
+        }
+    }
+
+    async fn a_member_hears_comments_switched_within_seconds(blocked: bool, server_wide: bool) {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let proxy = proxy_for(&pair).await;
+        proxy.block_websockets(blocked);
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start_with(
+            &mut alice,
+            link_via(&pair, &pair.alice, project, &proxy),
+            quick(),
+        );
+        until_status(&mut bob, LiveStatus::Online).await;
+        back_online(&mut alice).await;
+        for on in [false, true, false, true] {
+            switch_comments(&pair, project, server_wide, on).await;
+            let heard = tokio::time::timeout(PROMPTLY, async {
+                loop {
+                    match alice.events.recv().await {
+                        Some(LiveEvent::Comments(switches)) => return switches,
+                        Some(_) => {}
+                        None => panic!("Alice's events ended"),
+                    }
+                }
+            })
+            .await
+            .unwrap_or_else(|_| {
+                panic!("Alice was not told within {PROMPTLY:?} that comments were turned on: {on}")
+            });
+            assert_eq!(
+                heard,
+                CommentSwitches {
+                    server: on || !server_wide,
+                    project: on || server_wide,
+                }
+            );
+        }
+        lock(&alice.live)
+            .comment_doc()
+            .create_comment_thread(
+                &main,
+                0,
+                3,
+                pair.alice.tokens.account_id,
+                1,
+                "comments are back",
+                &[],
+            )
+            .unwrap();
+        flushed(&alice);
+        until(|| {
+            lock(&bob.live)
+                .doc()
+                .comment_threads(&main)
+                .is_ok_and(|threads| threads.len() == 1)
+        })
+        .await;
+        assert!(!alice
+            .events
+            .try_recv()
+            .is_ok_and(|event| matches!(event, LiveEvent::CommentsNotSent(_))));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_member_hears_project_comments_turned_off_and_on_within_seconds_over_a_socket() {
+        a_member_hears_comments_switched_within_seconds(false, false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_member_hears_project_comments_turned_off_and_on_within_seconds_over_long_poll() {
+        a_member_hears_comments_switched_within_seconds(true, false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_member_hears_server_comments_turned_off_and_on_within_seconds_over_a_socket() {
+        a_member_hears_comments_switched_within_seconds(false, true).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_member_hears_server_comments_turned_off_and_on_within_seconds_over_long_poll() {
+        a_member_hears_comments_switched_within_seconds(true, true).await;
+    }
+
+    async fn an_edit_refused_while_its_writer_was_a_viewer_goes_out_once_they_can_edit_again(
+        blocked: bool,
+    ) {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        let upstream = pair
+            ._server
+            .url()
+            .trim_start_matches("http://")
+            .parse()
+            .unwrap();
+        let slow = slow_link(upstream, Duration::from_millis(150)).await;
+        let proxy = oleafly_server::test_support::BlockingProxy::start(slow).await;
+        proxy.block_websockets(blocked);
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        start_with(
+            &mut alice,
+            link_via(&pair, &pair.alice, project, &proxy),
+            quick(),
+        );
+        until_status(&mut bob, LiveStatus::Online).await;
+        back_online(&mut alice).await;
+        let client = ServerClient::new(pair.url.clone()).unwrap();
+        let grant = |role| {
+            client.grant_member(
+                &pair.bob.tokens.access_token,
+                project,
+                pair.alice.tokens.account_id,
+                role,
+            )
+        };
+        grant(ProjectRole::Viewer).await.unwrap();
+        append(&alice, &main, " kept");
+        flushed(&alice);
+        until_event(&mut alice, |event| {
+            *event == LiveEvent::Role(ProjectRole::Viewer)
+        })
+        .await;
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        assert_eq!(text(&bob, &main), "abc");
+        assert!(lock(&alice.live).has_unsent());
+        grant(ProjectRole::Editor).await.unwrap();
+        until_event(&mut alice, |event| {
+            *event == LiveEvent::Role(ProjectRole::Editor)
+        })
+        .await;
+        let since = tokio::time::Instant::now();
+        while text(&bob, &main) != "abc kept" {
+            assert!(
+                since.elapsed() < PROMPTLY,
+                "Bob still had {:?} {:?} after Alice could edit again",
+                text(&bob, &main),
+                since.elapsed()
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        acknowledged(&alice).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_edit_refused_while_its_writer_was_a_viewer_goes_out_once_they_can_edit_again_over_a_socket(
+    ) {
+        an_edit_refused_while_its_writer_was_a_viewer_goes_out_once_they_can_edit_again(false)
+            .await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_edit_refused_while_its_writer_was_a_viewer_goes_out_once_they_can_edit_again_over_long_poll(
+    ) {
+        an_edit_refused_while_its_writer_was_a_viewer_goes_out_once_they_can_edit_again(true).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]

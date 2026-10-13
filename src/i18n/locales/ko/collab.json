@@ -532,7 +532,9 @@
     "noFile": "열린 파일 없음",
     "unknownPerson": "누군가",
     "viewing": "{{path}} 보는 중",
-    "editing": "{{path}} 편집 중"
+    "editing": "{{path}} 편집 중",
+    "goTo": "{{name}} 님 위치로 이동",
+    "nowhere": "열린 파일이 없어 이동할 곳이 없습니다"
   },
   "tree": {
     "here": "이 파일을 열어 둔 사람: {{name}}",
@@ -802,9 +804,9 @@
     "add": "댓글 추가",
     "showResolved": "해결된 댓글 보기",
     "hideResolved": "해결된 댓글 숨기기",
-    "noFile": "파일을 열면 댓글을 볼 수 있습니다.",
-    "empty": "이 파일에는 아직 댓글이 없습니다.",
-    "emptyCanWrite": "이 파일에는 아직 댓글이 없습니다. 텍스트를 선택하고 댓글 추가를 눌러 시작하세요.",
+    "empty": "아직 댓글이 없습니다.",
+    "emptyCanWrite": "아직 댓글이 없습니다. 텍스트를 선택하고 댓글 추가를 눌러 시작하세요.",
+    "allResolved": "모든 댓글이 해결되었습니다.",
     "loadFailed": "이 파일의 댓글을 불러오지 못했습니다.",
     "detached": "분리된 댓글",
     "detachedHint": "이 댓글들이 달려 있던 텍스트가 삭제되었습니다.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} 파일은 이 서버에서 허용하는 크기보다 큽니다. 이 컴퓨터에만 남습니다.",
     "replaced": "{{name}} 님이 같은 시점에 {{file}} 파일을 바꿨습니다. 내 버전은 {{copy}}(으)로 보관됩니다.",
     "added": "{{name}} 님이 같은 이름의 파일을 추가해서 {{file}} 파일 이름이 {{copy}}(으)로 바뀌었습니다.",
+    "beside": "{{name}} 님에게도 {{file}} 파일이 있습니다. 그 파일은 {{copy}}(으)로 보관됩니다.",
+    "localCopy": "이 프로젝트에 접근할 수 없던 동안 {{name}}에서 {{files}}을(를) 변경했습니다.",
+    "bringIn": "변경 내용 가져오기",
+    "keepSeparate": "따로 두기",
+    "broughtIn": "{{name}}의 변경 내용이 이제 이 프로젝트에 있습니다.",
     "retry": "다시 시도",
     "dismiss": "닫기"
   }

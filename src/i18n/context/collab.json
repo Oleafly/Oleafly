@@ -322,10 +322,13 @@
     "more": "Button under the access log that loads the next, older entries"
   },
   "comments": {
-    "title": "Name of a side panel tab that lists the comment threads on the file open in the editor of a shared project.",
+    "title": "Name of a side panel tab that lists the comment threads of a shared project, grouped by file.",
     "titleUnread": "Name of the same tab while it has comments from other people that the person has not seen yet.",
     "add": "Menu item in the editor's right-click menu and a small button over selected text. Starts a new comment on the selected text. Not a code comment.",
     "showResolved": "Tooltip of a toggle button that also lists comment threads already marked as resolved.",
+    "empty": "Shown in the Comments tab when no file in the shared project has comments, to a person who can only read them.",
+    "emptyCanWrite": "Shown in the Comments tab when no file in the shared project has comments. 'Add comment' is the name of the menu item that starts a comment.",
+    "allResolved": "Shown in the Comments tab when the shared project has comments but every thread is marked as resolved and resolved threads are hidden. The Show resolved comments button in the tab's header lists them.",
     "detached": "Title of a section listing comment threads whose text was deleted from the file, so they are no longer attached to any text.",
     "resolvedBy": "{{name}} is the person who marked the comment thread as resolved.",
     "edited": "Small label next to a comment that was changed after it was posted.",

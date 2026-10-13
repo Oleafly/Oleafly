@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -48,6 +49,7 @@ import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
+import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
 import { collabPerson } from "../people";
@@ -100,6 +102,60 @@ function presencePaths(peers: PeerPlaces): Map<string, string | null> {
   return paths;
 }
 
+function PersonRow({
+  member,
+  selfId,
+  details,
+  goTo,
+}: Readonly<{
+  member: CollabProjectMember;
+  selfId: string | null;
+  details: ReactNode;
+  goTo: string | null;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  const describedBy = useId();
+  const accountId = member.person.account_id;
+  const self = accountId === selfId;
+  const content = (
+    <>
+      <Avatar person={{ ...collabPerson(member.person), hue: peerHue(accountId, selfId) }} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="flex min-w-0 items-center gap-1.5 text-xs">
+          <span className="truncate font-medium">{member.person.display_name}</span>
+          {member.person.guest ? <GuestBadge /> : null}
+          {self ? (
+            <Badge variant="primaryGhost" size="sm">
+              {t(($) => $.collab.manage.you)}
+            </Badge>
+          ) : null}
+        </p>
+        <p id={describedBy} className="truncate text-[0.6875rem] text-muted-foreground">
+          {t(($) => $.collab.projectRoles[member.role])}
+          {self ? null : <> · {details}</>}
+        </p>
+      </div>
+    </>
+  );
+  return (
+    <li className={goTo ? "flex" : "flex items-center gap-2 rounded-md px-1 py-1"}>
+      {goTo ? (
+        <button
+          type="button"
+          aria-label={goTo}
+          aria-describedby={describedBy}
+          onClick={() => void goToPerson(accountId)}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent focus-visible:bg-accent"
+        >
+          {content}
+        </button>
+      ) : (
+        content
+      )}
+    </li>
+  );
+}
+
 const People = memo(function People({
   title,
   members,
@@ -131,24 +187,17 @@ const People = memo(function People({
         const accountId = member.person.account_id;
         const self = accountId === selfId;
         return (
-          <li key={accountId} className="flex items-center gap-2 rounded-md px-1 py-1">
-            <Avatar person={{ ...collabPerson(member.person), hue: peerHue(accountId, selfId) }} size="sm" />
-            <div className="min-w-0 flex-1">
-              <p className="flex min-w-0 items-center gap-1.5 text-xs">
-                <span className="truncate font-medium">{member.person.display_name}</span>
-                {member.person.guest ? <GuestBadge /> : null}
-                {self ? (
-                  <Badge variant="primaryGhost" size="sm">
-                    {t(($) => $.collab.manage.you)}
-                  </Badge>
-                ) : null}
-              </p>
-              <p className="truncate text-[0.6875rem] text-muted-foreground">
-                {t(($) => $.collab.projectRoles[member.role])}
-                {self ? null : <> · {whereabouts(accountId)}</>}
-              </p>
-            </div>
-          </li>
+          <PersonRow
+            key={accountId}
+            member={member}
+            selfId={selfId}
+            details={self ? null : whereabouts(accountId)}
+            goTo={
+              !self && here.get(accountId)
+                ? t(($) => $.collab.toolbar.goTo, { name: member.person.display_name })
+                : null
+            }
+          />
         );
       })}
     </ul>

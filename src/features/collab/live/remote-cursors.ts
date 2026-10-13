@@ -51,9 +51,15 @@ export const REMOTE_CURSOR_STYLES = {
     whiteSpace: "nowrap",
     userSelect: "none",
   },
+  ".cm-remote-flash": {
+    backgroundColor: "hsl(var(--remote-hue) 85% 55% / 0.18)",
+  },
 };
 
+export const REMOTE_FLASH_MS = 1_200;
+
 const setRemoteCursors = StateEffect.define<readonly RemoteCursor[]>();
+const setRemoteFlash = StateEffect.define<string | null>();
 
 function isLowSurrogate(code: number): boolean {
   return code >= 0xdc00 && code <= 0xdfff;
@@ -98,9 +104,17 @@ class CaretWidget extends WidgetType {
   }
 }
 
-function decorationsFor(cursors: readonly RemoteCursor[]): DecorationSet {
+function decorationsFor(doc: Text, cursors: readonly RemoteCursor[], flash: string | null): DecorationSet {
   const ranges = [];
   for (const cursor of cursors) {
+    if (cursor.id === flash) {
+      ranges.push(
+        Decoration.line({
+          class: "cm-remote-flash",
+          attributes: { style: `--remote-hue: ${cursor.hue}` },
+        }).range(doc.lineAt(cursor.head).from),
+      );
+    }
     const from = Math.min(cursor.head, cursor.anchor);
     const to = Math.max(cursor.head, cursor.anchor);
     if (from < to) {
@@ -119,13 +133,15 @@ function decorationsFor(cursors: readonly RemoteCursor[]): DecorationSet {
 interface CursorField {
   cursors: readonly RemoteCursor[];
   reported: ReadonlyMap<string, RemoteCursor>;
+  flash: string | null;
   decorations: DecorationSet;
 }
 
 const cursorField = StateField.define<CursorField>({
-  create: () => ({ cursors: [], reported: new Map(), decorations: Decoration.none }),
+  create: () => ({ cursors: [], reported: new Map(), flash: null, decorations: Decoration.none }),
   update(value, transaction) {
     let cursors = value.cursors;
+    let flash = value.flash;
     if (transaction.docChanged && cursors.length > 0) {
       cursors = cursors.map((cursor) => ({
         ...cursor,
@@ -135,6 +151,7 @@ const cursorField = StateField.define<CursorField>({
     }
     let reported = value.reported;
     for (const effect of transaction.effects) {
+      if (effect.is(setRemoteFlash)) flash = effect.value;
       if (!effect.is(setRemoteCursors)) continue;
       const doc = transaction.state.doc;
       const placed = new Map(cursors.map((cursor) => [cursor.id, cursor]));
@@ -148,8 +165,8 @@ const cursorField = StateField.define<CursorField>({
       });
       reported = new Map(effect.value.map((cursor) => [cursor.id, cursor]));
     }
-    if (cursors === value.cursors) return value;
-    return { cursors, reported, decorations: decorationsFor(cursors) };
+    if (cursors === value.cursors && flash === value.flash) return value;
+    return { cursors, reported, flash, decorations: decorationsFor(transaction.state.doc, cursors, flash) };
   },
   provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
 });
@@ -186,4 +203,13 @@ export function remoteCursors(source: RemoteCursorSource): Extension {
 
 export function remoteCursorsIn(state: EditorState): readonly RemoteCursor[] {
   return state.field(cursorField, false)?.cursors ?? [];
+}
+
+export function flashRemoteCursor(view: EditorView, id: string): boolean {
+  if (!remoteCursorsIn(view.state).some((cursor) => cursor.id === id)) return false;
+  view.dispatch({ effects: setRemoteFlash.of(id) });
+  setTimeout(() => {
+    if (view.state.field(cursorField, false)?.flash === id) view.dispatch({ effects: setRemoteFlash.of(null) });
+  }, REMOTE_FLASH_MS);
+  return true;
 }

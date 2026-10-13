@@ -3,12 +3,13 @@ import { useTranslation } from "react-i18next";
 import { CopyPlus, Share2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useShareDialog } from "@/components/collab/share-dialog";
-import { Avatar, AvatarStack } from "@/components/ui/avatar";
+import { Avatar, AvatarStack, type AvatarAction, type AvatarPerson } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { isFolderProject } from "@/lib/library-projects";
 import { useFilesStore } from "@/store/files";
+import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
 import { useCollabStore } from "../store";
@@ -24,7 +25,7 @@ const MORE_PATH_CHARS = 40;
 type Translate = ReturnType<typeof useTranslation<["collab"]>>["t"];
 
 function placeOf(entry: PresentPerson, t: Translate, path: string | null): string {
-  if (!path) return t(($) => $.collab.toolbar.noFile);
+  if (!path) return t(($) => $.collab.toolbar.nowhere);
   return entry.role === "editor" || entry.role === "owner"
     ? t(($) => $.collab.toolbar.editing, { path })
     : t(($) => $.collab.toolbar.viewing, { path });
@@ -49,10 +50,14 @@ function PersonTip({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
           ) : null}
           {entry.guest ? <GuestBadge /> : null}
         </span>
-        <span className="truncate leading-tight text-muted-foreground">
-          <span aria-hidden="true">{shown}</span>
-          <span className="sr-only">{full}</span>
-        </span>
+        {entry.path ? (
+          <span className="truncate leading-tight text-muted-foreground">
+            <span aria-hidden="true">{shown}</span>
+            <span className="sr-only">{full}</span>
+          </span>
+        ) : (
+          <span className="leading-tight text-muted-foreground">{full}</span>
+        )}
       </span>
     </span>
   );
@@ -108,6 +113,14 @@ function PresentAvatars({ projectId }: Readonly<{ projectId: string }>) {
   );
   if (!live.shared || people.length === 0) return null;
   const byId = new Map(people.map((entry) => [entry.accountId, entry]));
+  const goTo = (person: AvatarPerson): AvatarAction | null => {
+    const entry = byId.get(person.id);
+    if (!entry?.path) return null;
+    return {
+      label: t(($) => $.collab.toolbar.goTo, { name: person.name }),
+      run: () => void goToPerson(entry.accountId),
+    };
+  };
   return (
     <div data-toolbar-item="collab" className="flex w-max shrink-0 items-center">
       <AvatarStack
@@ -115,6 +128,7 @@ function PresentAvatars({ projectId }: Readonly<{ projectId: string }>) {
         size="base"
         className="cursor-pointer px-0.5"
         tipWide
+        action={goTo}
         renderTip={(person) => <PersonTip entry={byId.get(person.id)} />}
         renderLabel={(person) => <PersonLabel entry={byId.get(person.id)} />}
         renderMoreTip={(hidden) => (

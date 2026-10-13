@@ -746,7 +746,8 @@ async fn removing_someone_tells_their_long_poll_and_the_room() {
                 account_id: stage.alice.tokens.account_id,
                 by: stage.bob.tokens.account_id,
                 kind: MemberChangeKind::Removed,
-            })
+            }),
+            comments: None,
         }
     );
     assert_eq!(
@@ -791,7 +792,8 @@ async fn a_new_role_and_stopping_sharing_reach_a_long_poll() {
                 account_id: stage.alice.tokens.account_id,
                 by: stage.bob.tokens.account_id,
                 kind: MemberChangeKind::RoleChanged,
-            })
+            }),
+            comments: None,
         }
     );
     let path = format!("/api/v1/projects/{project}/archive");

@@ -243,7 +243,8 @@ async fn removing_someone_tells_them_and_the_room() {
                 account_id: stage.alice.tokens.account_id,
                 by: stage.bob.tokens.account_id,
                 kind: MemberChangeKind::Removed,
-            })
+            }),
+            comments: None,
         })
     );
     assert_eq!(
@@ -286,7 +287,8 @@ async fn a_new_role_reaches_the_person_while_they_are_connected() {
                 account_id: stage.alice.tokens.account_id,
                 by: stage.bob.tokens.account_id,
                 kind: MemberChangeKind::RoleChanged,
-            })
+            }),
+            comments: None,
         })
     );
 }

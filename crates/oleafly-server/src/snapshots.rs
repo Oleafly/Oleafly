@@ -1,10 +1,13 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, PoisonError, RwLock};
 
 use axum::body::Bytes;
-use loro::{ExportMode, LoroDoc, LoroValue, ValueOrContainer, VersionVector};
+use loro::{
+    ExportMode, IdSpan, ImportStatus, LoroDoc, LoroResult, LoroValue, ValueOrContainer,
+    VersionVector, ID,
+};
 use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use tokio::sync::Mutex;
@@ -84,6 +87,127 @@ const READ_SNAPSHOT_FACTOR: u64 = 6;
 const READ_LOG_FACTOR: u64 = 3;
 const TREE: &str = "tree";
 const BLOB_KEY: &str = "blob";
+const STAGED_IMPORT_BYTES: usize = 64 * 1024;
+const STAGE_ATOMS: i32 = 16_384;
+
+pub(crate) fn import_update(doc: &LoroDoc, payload: &[u8]) -> LoroResult<ImportStatus> {
+    if payload.len() >= STAGED_IMPORT_BYTES && !continues_its_own_head(doc, payload) {
+        if let Some(status) = in_pieces(doc, |scratch| scratch.import(payload)) {
+            return Ok(status);
+        }
+    }
+    doc.import(payload)
+}
+
+fn continues_its_own_head(doc: &LoroDoc, payload: &[u8]) -> bool {
+    let Some(reach) = peers::update_reach(payload) else {
+        return false;
+    };
+    let heads: Vec<peers::Span> = doc
+        .oplog_frontiers()
+        .iter()
+        .map(|id| (id.peer, id.counter))
+        .collect();
+    match (
+        heads.as_slice(),
+        reach.deps.as_slice(),
+        reach.starts.as_slice(),
+        reach.ends.as_slice(),
+    ) {
+        ([head], [dep], [(peer, start)], [(writer, _)]) => {
+            head == dep && head.0 == *peer && *writer == *peer && *start == head.1 + 1
+        }
+        _ => false,
+    }
+}
+
+fn import_updates(doc: &LoroDoc, payloads: &[Vec<u8>]) -> LoroResult<ImportStatus> {
+    if payloads
+        .iter()
+        .any(|payload| payload.len() >= STAGED_IMPORT_BYTES)
+    {
+        if let Some(status) = in_pieces(doc, |scratch| scratch.import_batch(payloads)) {
+            return Ok(status);
+        }
+    }
+    doc.import_batch(payloads)
+}
+
+fn in_pieces(
+    doc: &LoroDoc,
+    load: impl FnOnce(&LoroDoc) -> LoroResult<ImportStatus>,
+) -> Option<ImportStatus> {
+    let known = doc.oplog_vv();
+    if known.is_empty() {
+        return None;
+    }
+    let scratch = doc.fork();
+    scratch.detach();
+    let status = load(&scratch).ok()?;
+    if status.pending.is_some() {
+        return None;
+    }
+    let target = scratch.oplog_vv();
+    for piece in pieces(&scratch, &known, &target)? {
+        doc.import(&piece).ok()?;
+    }
+    doc.oplog_vv().includes_vv(&target).then_some(status)
+}
+
+fn pieces(
+    scratch: &LoroDoc,
+    known: &VersionVector,
+    target: &VersionVector,
+) -> Option<Vec<Vec<u8>>> {
+    let mut chunks: Vec<(u32, u64, i32, i32)> = Vec::new();
+    for (peer, end) in target.iter() {
+        let mut counter = known.get(peer).copied().unwrap_or(0);
+        while counter < *end {
+            let change = scratch.get_change(ID::new(*peer, counter))?;
+            let first = change.id.counter;
+            let last = first
+                .saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX))
+                .min(*end);
+            if last <= counter {
+                return None;
+            }
+            while counter < last {
+                let to = counter.saturating_add(STAGE_ATOMS).min(last);
+                let offset = u32::try_from(counter - first).unwrap_or(0);
+                chunks.push((change.lamport.saturating_add(offset), *peer, counter, to));
+                counter = to;
+            }
+        }
+    }
+    chunks.sort_unstable();
+    let mut pieces = Vec::new();
+    let mut spans: BTreeMap<u64, (i32, i32)> = BTreeMap::new();
+    let mut atoms = 0;
+    for (_, peer, from, to) in chunks {
+        spans.entry(peer).or_insert((from, from)).1 = to;
+        atoms += to - from;
+        if atoms >= STAGE_ATOMS {
+            pieces.push(piece(scratch, &std::mem::take(&mut spans))?);
+            atoms = 0;
+        }
+    }
+    if !spans.is_empty() {
+        pieces.push(piece(scratch, &spans)?);
+    }
+    Some(pieces)
+}
+
+fn piece(scratch: &LoroDoc, spans: &BTreeMap<u64, (i32, i32)>) -> Option<Vec<u8>> {
+    let spans = spans
+        .iter()
+        .map(|(peer, (from, to))| IdSpan::new(*peer, *from, *to))
+        .collect();
+    scratch
+        .export(ExportMode::UpdatesInRange {
+            spans: std::borrow::Cow::Owned(spans),
+        })
+        .ok()
+}
 
 pub fn build_cost(snapshot_bytes: u64, log_bytes: u64) -> u64 {
     snapshot_bytes
@@ -930,7 +1054,7 @@ fn heads_after(
     Some(heads)
 }
 
-fn builds_on(reach: &peers::Reach, known: &VersionVector) -> bool {
+pub(crate) fn builds_on(reach: &peers::Reach, known: &VersionVector) -> bool {
     let counter = |peer: &u64| known.get(peer).copied().unwrap_or(0);
     reach
         .starts
@@ -983,7 +1107,7 @@ impl Replay {
                 self.import_all(&mut waiting);
                 let current = self.heads();
                 if current == deps {
-                    let _ = self.doc.import(&envelope.payload);
+                    let _ = import_update(&self.doc, &envelope.payload);
                     heads = Some(self.heads());
                     continue;
                 }
@@ -1008,9 +1132,9 @@ impl Replay {
             return;
         }
         let before = self.doc.oplog_vv();
-        if self.doc.import_batch(waiting).is_err() && self.doc.oplog_vv() == before {
+        if import_updates(&self.doc, waiting).is_err() && self.doc.oplog_vv() == before {
             for payload in waiting.iter() {
-                let _ = self.doc.import(payload);
+                let _ = import_update(&self.doc, payload);
             }
         }
         waiting.clear();

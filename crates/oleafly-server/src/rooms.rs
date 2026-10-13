@@ -246,6 +246,10 @@ impl Rooms {
         }
     }
 
+    pub fn projects(&self) -> Vec<SharedProjectId> {
+        self.lock().keys().copied().collect()
+    }
+
     pub fn accounts(&self, project: SharedProjectId) -> Vec<AccountId> {
         let mut accounts: Vec<AccountId> = Vec::new();
         if let Some(room) = self.lock().get(&project) {

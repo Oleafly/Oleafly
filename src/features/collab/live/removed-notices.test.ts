@@ -68,7 +68,11 @@ function file(overrides: Partial<CollabLiveRemovedFile> = {}): CollabLiveRemoved
 }
 
 function removed(...files: CollabLiveRemovedFile[]): void {
-  mocks.removedHandler?.({ projectId: "paper", files });
+  mocks.removedHandler?.({ projectId: "paper", files, restored: [] });
+}
+
+function restoredElsewhere(...ids: string[]): void {
+  mocks.removedHandler?.({ projectId: "paper", files: [], restored: ids });
 }
 
 async function settle(): Promise<void> {
@@ -146,6 +150,19 @@ describe("files someone else deleted", () => {
     expect(state.failure).toEqual({ id: "results-id", code: "forbidden" });
   });
 
+  it("go away for everyone when someone else brings the file back", () => {
+    removed(file(), file({ path: "plan.tex", id: "plan-id", yours: true }));
+    expect(useRemovedNotices.getState().notices).toHaveLength(2);
+    restoredElsewhere("results-id", "plan-id");
+    expect(useRemovedNotices.getState().notices).toEqual([]);
+  });
+
+  it("ignore a file brought back in another project", () => {
+    removed(file());
+    mocks.removedHandler?.({ projectId: "other", files: [], restored: ["results-id"] });
+    expect(useRemovedNotices.getState().notices).toHaveLength(1);
+  });
+
   it("go away when dismissed or when another project opens", () => {
     removed(file(), file({ path: "ai2.tex", id: "ai2-id" }));
     useRemovedNotices.getState().dismiss("results-id");
@@ -190,6 +207,23 @@ describe("offline work lost to someone else's delete", () => {
     expect(useRemovedNotices.getState().notices).toEqual([]);
     await settle();
     expect(mocks.collabLiveRemovedDismiss).toHaveBeenCalledWith("paper", "plan-id");
+  });
+
+  it("stays gone when the saved list arrives after someone brought the file back", async () => {
+    let answer: (files: CollabLiveRemovedFile[]) => void = () => {};
+    mocks.collabLiveRemovedList.mockImplementation(
+      () =>
+        new Promise<CollabLiveRemovedFile[]>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    useFilesStore.setState({ projectId: "other" });
+    useFilesStore.setState({ projectId: "paper" });
+    restoredElsewhere("plan-id");
+    await settle();
+    answer([file({ path: "plan.tex", id: "plan-id", yours: true })]);
+    await settle();
+    expect(useRemovedNotices.getState().notices).toEqual([]);
   });
 
   it("does not repeat a notice the live session already showed", async () => {

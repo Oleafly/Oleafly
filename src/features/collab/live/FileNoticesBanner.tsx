@@ -1,13 +1,14 @@
 import { useMemo } from "react";
-import { CloudAlert, CloudUpload, Files, FileWarning, X } from "lucide-react";
+import { CloudAlert, CloudUpload, Files, FileWarning, FolderInput, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton, type WorkspaceBannerTone } from "@/components/ui/workspace-banner";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList } from "@/lib/intl";
-import type { CollabLiveKeptFile, CollabUploadFile } from "@/lib/tauri";
+import type { CollabLiveKeptFile, CollabLocalCopyOffer, CollabUploadFile } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { collabErrorMessage } from "../errors";
 import { useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
 
@@ -83,10 +84,10 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
 function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: string }>) {
   const { t } = useTranslation(["collab"]);
   const values = { name, file: fileName(file.path), copy: fileName(file.copy) };
-  const message =
-    file.kind === "replaced"
-      ? t(($) => $.collab.files.replaced, values)
-      : t(($) => $.collab.files.added, values);
+  let message: string;
+  if (file.kind === "replaced") message = t(($) => $.collab.files.replaced, values);
+  else if (file.kind === "beside") message = t(($) => $.collab.files.beside, values);
+  else message = t(($) => $.collab.files.added, values);
   return (
     <WorkspaceBanner tone="primary" data-testid="collab-kept-copy">
       <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
@@ -98,14 +99,63 @@ function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: stri
   );
 }
 
+function LocalCopyRow({ offer }: Readonly<{ offer: CollabLocalCopyOffer }>) {
+  const { t } = useTranslation(["collab"]);
+  const bringing = useFileNotices((state) => state.bringing);
+  const failure = useFileNotices((state) => state.offerFailure);
+  const files = formatList(offer.files.map(fileName));
+  return (
+    <WorkspaceBanner tone="primary" data-testid="collab-local-copy-offer">
+      <FolderInput aria-hidden className="size-3.5 shrink-0 text-primary" />
+      <p className="min-w-0 flex-1 select-text" title={offer.files.join("\n")}>
+        {t(($) => $.collab.files.localCopy, { files, name: offer.name })}
+      </p>
+      <span className="flex shrink-0 items-center gap-1">
+        <WorkspaceBannerButton
+          tone="primary"
+          className="text-primary"
+          disabled={bringing}
+          onClick={() => void useFileNotices.getState().bringIn()}
+        >
+          {bringing ? <Spinner size="xs" /> : null}
+          {t(($) => $.collab.files.bringIn)}
+        </WorkspaceBannerButton>
+        <WorkspaceBannerButton
+          tone="primary"
+          disabled={bringing}
+          onClick={() => useFileNotices.getState().keepSeparate()}
+        >
+          {t(($) => $.collab.files.keepSeparate)}
+        </WorkspaceBannerButton>
+      </span>
+      {failure ? (
+        <p role="alert" className="w-full select-text text-destructive">
+          {collabErrorMessage(failure)}
+        </p>
+      ) : null}
+    </WorkspaceBanner>
+  );
+}
+
+function BroughtInRow({ name }: Readonly<{ name: string }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <WorkspaceBanner tone="primary" data-testid="collab-local-copy-done">
+      <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
+      <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.files.broughtIn, { name })}</p>
+      <Dismiss tone="primary" onDismiss={() => useFileNotices.getState().dismissBroughtIn()} />
+    </WorkspaceBanner>
+  );
+}
+
 export function FileNoticesBanner() {
   const { t } = useTranslation(["collab"]);
   const projectId = useFilesStore((state) => state.projectId);
   const notices = useFileNotices(
     useShallow((state) =>
       state.projectId === projectId && projectId !== null
-        ? { uploads: state.uploads, kept: state.kept }
-        : { uploads: NO_UPLOADS, kept: NO_KEPT },
+        ? { uploads: state.uploads, kept: state.kept, offer: state.offer, broughtIn: state.broughtIn }
+        : { uploads: NO_UPLOADS, kept: NO_KEPT, offer: null, broughtIn: null },
     ),
   );
   const members = useCollabLiveStore((state) => state.members);
@@ -116,12 +166,13 @@ export function FileNoticesBanner() {
   const failed = notices.uploads.filter((file) => file.state === "failed");
   const waiting = notices.uploads.filter((file) => file.state === "waiting");
   const tooLarge = notices.uploads.filter((file) => file.state === "too_large");
-  if (failed.length === 0 && waiting.length === 0 && tooLarge.length === 0 && notices.kept.length === 0) {
-    return null;
-  }
+  const quiet = failed.length === 0 && waiting.length === 0 && tooLarge.length === 0 && notices.kept.length === 0;
+  if (quiet && !notices.offer && !notices.broughtIn) return null;
   const someone = t(($) => $.collab.toolbar.unknownPerson);
   return (
     <div className="flex shrink-0 flex-col">
+      {notices.offer ? <LocalCopyRow offer={notices.offer} /> : null}
+      {notices.broughtIn ? <BroughtInRow name={notices.broughtIn} /> : null}
       {failed.length > 0 ? <UploadRow files={failed} failed /> : null}
       {waiting.length > 0 ? <UploadRow files={waiting} failed={false} /> : null}
       {tooLarge.map((file) => (

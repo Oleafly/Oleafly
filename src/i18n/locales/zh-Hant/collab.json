@@ -532,7 +532,9 @@
     "noFile": "未開啟檔案",
     "unknownPerson": "某人",
     "viewing": "正在檢視 {{path}}",
-    "editing": "正在編輯 {{path}}"
+    "editing": "正在編輯 {{path}}",
+    "goTo": "前往 {{name}} 所在位置",
+    "nowhere": "未在任何檔案中，無法前往"
   },
   "tree": {
     "here": "{{name}} 開啟了這個檔案",
@@ -802,9 +804,9 @@
     "add": "新增評論",
     "showResolved": "顯示已解決的評論",
     "hideResolved": "隱藏已解決的評論",
-    "noFile": "開啟檔案即可查看其評論。",
-    "empty": "這個檔案還沒有評論。",
-    "emptyCanWrite": "這個檔案還沒有評論。選取一些文字，然後選擇「新增評論」即可開始。",
+    "empty": "還沒有評論。",
+    "emptyCanWrite": "還沒有評論。選取一些文字，然後選擇「新增評論」即可開始。",
+    "allResolved": "所有評論都已解決。",
     "loadFailed": "無法載入這個檔案的評論。",
     "detached": "已脫離的評論",
     "detachedHint": "這些評論所針對的文字已被刪除。",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} 超過此伺服器允許的大小。它只會保留在這台電腦上。",
     "replaced": "{{name}} 與你同時替換了 {{file}}。你的版本已儲存為 {{copy}}。",
     "added": "因為 {{name}} 新增了同名檔案，{{file}} 現在是 {{copy}}。",
+    "beside": "{{name}} 也有一個名為 {{file}} 的檔案。該檔案已儲存為 {{copy}}。",
+    "localCopy": "你在無法存取此專案期間，在 {{name}} 中修改了 {{files}}。",
+    "bringIn": "匯入這些變更",
+    "keepSeparate": "保持分開",
+    "broughtIn": "你在 {{name}} 中的變更現已加入此專案。",
     "retry": "重試",
     "dismiss": "關閉"
   }

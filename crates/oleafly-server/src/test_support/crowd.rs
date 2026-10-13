@@ -132,6 +132,7 @@ pub async fn grant_project_role(
                 project_id: project,
                 role: Some(role),
                 change: None,
+                comments: None,
             },
         );
     }

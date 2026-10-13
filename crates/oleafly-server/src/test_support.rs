@@ -136,6 +136,9 @@ pub use blocking_proxy::BlockingProxy;
 mod code_browser;
 
 pub use code_browser::{approve_code, CodePage};
+mod future_frames;
+
+pub use future_frames::{FutureFrames, FUTURE_FRAME};
 mod crowd;
 
 pub use crowd::{

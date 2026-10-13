@@ -172,7 +172,9 @@ mod tests {
     use oleafly_collab::doc::NodeKind;
     use oleafly_collab::{materialize, save_binding, MemorySecrets};
     use oleafly_server::config::ProviderConfig;
-    use oleafly_server::test_support::{test_config, MockGithub, MockGithubUser, TestServer};
+    use oleafly_server::test_support::{
+        test_config, FutureFrames, MockGithub, MockGithubUser, TestServer,
+    };
 
     use super::super::{
         active_for, start, LiveHost, MergedPayload, NewDevicePayload, PresenceLeftPayload,
@@ -225,10 +227,44 @@ mod tests {
         fn new_device(&self, _: NewDevicePayload) {}
     }
 
+    #[derive(Default)]
+    struct Heard {
+        statuses: std::sync::Mutex<Vec<LiveStatus>>,
+        others: std::sync::atomic::AtomicUsize,
+    }
+
+    impl Heard {
+        fn other(&self) {
+            self.others
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    impl LiveHost for Heard {
+        fn status(&self, payload: StatusPayload) {
+            self.statuses.lock().unwrap().push(payload.status);
+        }
+        fn role(&self, _: RolePayload) {}
+        fn merged(&self, _: MergedPayload) {
+            self.other();
+        }
+        fn presence(&self, _: PresencePayload) {
+            self.other();
+        }
+        fn presence_left(&self, _: PresenceLeftPayload) {
+            self.other();
+        }
+        fn folder_changed(&self, _: FolderChange) {}
+        fn new_device(&self, _: NewDevicePayload) {
+            self.other();
+        }
+    }
+
     struct Lab {
         state: CollabState,
         server: ServerId,
         root: PathBuf,
+        later: Option<FutureFrames>,
         _test_server: TestServer,
         _github: MockGithub,
         _dir: tempfile::TempDir,
@@ -245,6 +281,10 @@ mod tests {
 
     impl Lab {
         fn new(reachable: bool) -> Lab {
+            Lab::open(reachable, false, Arc::new(Quiet))
+        }
+
+        fn open(reachable: bool, through_later_server: bool, host: Arc<dyn LiveHost>) -> Lab {
             let library = TempLibrary::new();
             let turn = crate::collab::live::write::rig::live_turn();
             let root = library.project(PROJECT, &[("main.tex", "hello\n")]);
@@ -256,7 +296,7 @@ mod tests {
                 CollabPaths::new(dir.path().join("collab")),
                 Arc::new(MemorySecrets::default()),
             );
-            let (github, test_server, server) = tauri::async_runtime::block_on(async {
+            let (github, test_server, server, later) = tauri::async_runtime::block_on(async {
                 let github = MockGithub::start(vec![MockGithubUser {
                     id: 1,
                     login: "alice".to_owned(),
@@ -293,19 +333,35 @@ mod tests {
                 )
                 .await
                 .unwrap();
-                if !reachable {
+                let later = if through_later_server {
+                    let upstream = test_server
+                        .url()
+                        .trim_start_matches("http://")
+                        .parse()
+                        .unwrap();
+                    Some(FutureFrames::start(upstream).await)
+                } else {
+                    None
+                };
+                let route = match (&later, reachable) {
+                    (Some(later), _) => Some(later.url()),
+                    (None, false) => Some(closed_url()),
+                    (None, true) => None,
+                };
+                if let Some(url) = route {
                     let paths = state.paths().unwrap();
                     let mut binding = load_binding(paths, PROJECT).unwrap().unwrap();
-                    binding.server_url = closed_url();
+                    binding.server_url = url;
                     save_binding(paths, PROJECT, &binding).unwrap();
                 }
-                start(&state, Arc::new(Quiet), PROJECT).await.unwrap();
-                (github, test_server, signed.server_id)
+                start(&state, host, PROJECT).await.unwrap();
+                (github, test_server, signed.server_id, later)
             });
             let lab = Lab {
                 state,
                 server,
                 root,
+                later,
                 _test_server: test_server,
                 _github: github,
                 _dir: dir,
@@ -366,12 +422,140 @@ mod tests {
         fn signed_in(&self) -> bool {
             self.state.has_session(self.server).unwrap()
         }
+
+        fn switch_comments_elsewhere(&self, server_wide: bool, on: bool) {
+            tauri::async_runtime::block_on(async {
+                let keys = self.state.keys().await.unwrap();
+                let access = keys
+                    .sessions
+                    .tokens(self.server)
+                    .unwrap()
+                    .unwrap()
+                    .access_token;
+                let binding = load_binding(self.state.paths().unwrap(), PROJECT)
+                    .unwrap()
+                    .unwrap();
+                let client = oleafly_collab::ServerClient::new(
+                    oleafly_collab::ServerUrl::parse(&binding.server_url).unwrap(),
+                )
+                .unwrap();
+                if server_wide {
+                    client
+                        .admin_patch_settings(
+                            &access,
+                            &oleafly_collab_protocol::admin::RuntimeSettingsPatch {
+                                comments_allowed: Some(on),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .unwrap();
+                } else {
+                    client
+                        .patch_project(
+                            &access,
+                            binding.shared_project_id,
+                            &oleafly_collab_protocol::projects::ProjectPatch {
+                                comments_enabled: Some(on),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .unwrap();
+                }
+            });
+        }
+
+        fn write_a_comment(&self) -> Result<(), String> {
+            crate::collab::comments::write_comment(&self.state, PROJECT, |live, who| {
+                crate::collab::comments::create_at(
+                    live,
+                    who,
+                    "main.tex",
+                    0,
+                    5,
+                    None,
+                    "a note",
+                    &[],
+                    1,
+                )
+            })
+            .map(|_| ())
+            .map_err(|error| match error {
+                CollabError::Api { code, .. } => code,
+                other => other.to_string(),
+            })
+        }
     }
 
     impl Drop for Lab {
         fn drop(&mut self) {
             tauri::async_runtime::block_on(stop(PROJECT));
         }
+    }
+
+    #[test]
+    fn comments_switched_elsewhere_reach_this_app_within_seconds_and_decide_whether_it_may_comment()
+    {
+        let lab = Lab::new(true);
+        let paths = lab.state.paths().unwrap().clone();
+        for server_wide in [false, true] {
+            for on in [false, true] {
+                lab.switch_comments_elsewhere(server_wide, on);
+                let switched = std::time::Instant::now();
+                let wanted = crate::collab::comments::CommentSwitches {
+                    server: on || !server_wide,
+                    project: on || server_wide,
+                };
+                while crate::collab::comments::load_switches(&paths, PROJECT) != wanted {
+                    assert!(
+                        switched.elapsed() < Duration::from_secs(2),
+                        "the app still had {:?} two seconds after comments were turned on: {on} (server wide: {server_wide})",
+                        crate::collab::comments::load_switches(&paths, PROJECT)
+                    );
+                    std::thread::sleep(POLL);
+                }
+                let refusal = if server_wide {
+                    "comments_off_server"
+                } else {
+                    "comments_off_project"
+                };
+                assert_eq!(
+                    lab.write_a_comment(),
+                    if on { Ok(()) } else { Err(refusal.to_owned()) }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn frames_of_an_unknown_type_leave_the_app_online_and_tell_it_nothing() {
+        let heard = Arc::new(Heard::default());
+        let lab = Lab::open(true, true, Arc::clone(&heard) as Arc<dyn LiveHost>);
+        lab.type_text("hello\nfrom a later server\n");
+        lab.active().handle.flush();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while lab.waiting() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the edit was never acknowledged"
+            );
+            std::thread::sleep(POLL);
+        }
+        assert!(lab.later.as_ref().unwrap().injected() >= 2);
+        let statuses = heard.statuses.lock().unwrap().clone();
+        let online = statuses
+            .iter()
+            .position(|status| *status == LiveStatus::Online)
+            .expect("the app came online");
+        assert!(
+            statuses[online..]
+                .iter()
+                .all(|status| *status == LiveStatus::Online),
+            "{statuses:?}"
+        );
+        assert_eq!(heard.others.load(std::sync::atomic::Ordering::SeqCst), 0);
+        assert!(!lab.active().handle.is_finished());
     }
 
     #[test]

@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   collabUploadList: vi.fn(),
   collabUploadRetry: vi.fn(),
   collabUploadDismiss: vi.fn(),
+  collabLocalCopyOffer: vi.fn(),
+  collabLocalCopyBringIn: vi.fn(),
+  collabLocalCopyDecline: vi.fn(),
   uploadsHandler: null as null | ((payload: CollabLiveUploads) => void),
   keptHandler: null as null | ((payload: CollabLiveKept) => void),
 }));
@@ -13,6 +16,11 @@ vi.mock("@/lib/tauri", () => ({
   collabUploadList: mocks.collabUploadList,
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,
+  collabLocalCopyOffer: mocks.collabLocalCopyOffer,
+  collabLocalCopyBringIn: mocks.collabLocalCopyBringIn,
+  collabLocalCopyDecline: mocks.collabLocalCopyDecline,
+  isCollabCommandError: (error: unknown) =>
+    typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string",
   onCollabLiveUploads: vi.fn(async (handler: (payload: CollabLiveUploads) => void) => {
     mocks.uploadsHandler = handler;
     return () => {
@@ -72,6 +80,9 @@ beforeEach(async () => {
   mocks.collabUploadList.mockResolvedValue([]);
   mocks.collabUploadRetry.mockResolvedValue(undefined);
   mocks.collabUploadDismiss.mockResolvedValue(undefined);
+  mocks.collabLocalCopyOffer.mockResolvedValue(null);
+  mocks.collabLocalCopyBringIn.mockResolvedValue(undefined);
+  mocks.collabLocalCopyDecline.mockResolvedValue(undefined);
   useFilesStore.setState({ projectId: "paper" });
   stop = startFileNotices();
   await settle();
@@ -126,5 +137,49 @@ describe("file notices", () => {
     useFileNotices.getState().dismissUpload("big.png");
     expect(mocks.collabUploadDismiss).toHaveBeenCalledWith("paper", "big.png");
     expect(useFileNotices.getState().uploads.map((file) => file.path)).toEqual(["figures/plot.png"]);
+  });
+});
+
+describe("changes made in a local copy", () => {
+  const OFFER = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex", "plot.png"] };
+
+  async function offered(): Promise<void> {
+    stop();
+    mocks.collabLocalCopyOffer.mockResolvedValueOnce(OFFER);
+    stop = startFileNotices();
+    await settle();
+  }
+
+  it("are offered when the shared project opens and brought in when the person asks", async () => {
+    await offered();
+    expect(mocks.collabLocalCopyOffer).toHaveBeenCalledWith("paper");
+    expect(useFileNotices.getState().offer).toEqual(OFFER);
+    await useFileNotices.getState().bringIn();
+    expect(mocks.collabLocalCopyBringIn).toHaveBeenCalledWith("paper", "paper-copy");
+    expect(useFileNotices.getState()).toMatchObject({ offer: null, bringing: false, broughtIn: OFFER.name });
+    useFileNotices.getState().dismissBroughtIn();
+    expect(useFileNotices.getState().broughtIn).toBeNull();
+  });
+
+  it("stay offered with the reason when bringing them in fails", async () => {
+    await offered();
+    mocks.collabLocalCopyBringIn.mockRejectedValueOnce({ code: "not_found", message: "not live" });
+    await useFileNotices.getState().bringIn();
+    expect(useFileNotices.getState()).toMatchObject({ offer: OFFER, bringing: false, offerFailure: "not_found" });
+  });
+
+  it("go away for good when the person keeps the copy separate", async () => {
+    await offered();
+    useFileNotices.getState().keepSeparate();
+    expect(useFileNotices.getState().offer).toBeNull();
+    await settle();
+    expect(mocks.collabLocalCopyDecline).toHaveBeenCalledWith("paper", "paper-copy");
+  });
+
+  it("belong to the project they were offered in", async () => {
+    await offered();
+    useFilesStore.setState({ projectId: "thesis" });
+    await settle();
+    expect(useFileNotices.getState()).toMatchObject({ projectId: "thesis", offer: null, broughtIn: null });
   });
 });

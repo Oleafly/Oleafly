@@ -532,7 +532,9 @@
     "noFile": "Açık dosya yok",
     "unknownPerson": "Biri",
     "viewing": "Görüntülüyor: {{path}}",
-    "editing": "Düzenliyor: {{path}}"
+    "editing": "Düzenliyor: {{path}}",
+    "goTo": "{{name}} kişisine git",
+    "nowhere": "Hiçbir dosyada değil, gidilecek bir yer yok"
   },
   "tree": {
     "here": "{{name}} şu anda bu dosyada",
@@ -802,9 +804,9 @@
     "add": "Yorum ekle",
     "showResolved": "Çözülen yorumları göster",
     "hideResolved": "Çözülen yorumları gizle",
-    "noFile": "Yorumlarını görmek için bir dosya açın.",
-    "empty": "Bu dosyada henüz yorum yok.",
-    "emptyCanWrite": "Bu dosyada henüz yorum yok. Başlatmak için metin seçin ve Yorum ekle'yi seçin.",
+    "empty": "Henüz yorum yok.",
+    "emptyCanWrite": "Henüz yorum yok. Başlatmak için metin seçin ve Yorum ekle'yi seçin.",
+    "allResolved": "Tüm yorumlar çözüldü.",
     "loadFailed": "Bu dosyanın yorumları yüklenemedi.",
     "detached": "Bağlantısı kopan yorumlar",
     "detachedHint": "Bu yorumların ait olduğu metin silindi.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} bu sunucunun izin verdiğinden büyük. Yalnızca bu bilgisayarda kalır.",
     "replaced": "{{name}}, {{file}} dosyasını sizinle aynı anda değiştirdi. Sizin sürümünüz {{copy}} olarak saklandı.",
     "added": "{{name}} aynı adda bir dosya eklediği için {{file}} artık {{copy}} adını taşıyor.",
+    "beside": "Aynı adda bir {{file}} dosyası {{name}} tarafından da eklendi. Bu dosya {{copy}} olarak saklandı.",
+    "localCopy": "Bu projeye erişiminiz yokken {{name}} içinde {{files}} dosyalarını değiştirdiniz.",
+    "bringIn": "Değişiklikleri aktar",
+    "keepSeparate": "Ayrı tut",
+    "broughtIn": "{{name}} içindeki değişiklikleriniz artık bu projede.",
     "retry": "Yeniden dene",
     "dismiss": "Kapat"
   }

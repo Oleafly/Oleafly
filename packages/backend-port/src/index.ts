@@ -1687,6 +1687,7 @@ export interface CollabLiveRemovedFile {
 export interface CollabLiveRemoved {
   projectId: string;
   files: CollabLiveRemovedFile[];
+  restored: string[];
 }
 export type CollabUploadState = "waiting" | "failed" | "too_large";
 export interface CollabUploadFile {
@@ -1703,12 +1704,17 @@ export interface CollabLiveKeptFile {
   id: string;
   path: string;
   copy: string;
-  kind: "replaced" | "added";
+  kind: "replaced" | "added" | "beside";
   by: string | null;
 }
 export interface CollabLiveKept {
   projectId: string;
   files: CollabLiveKeptFile[];
+}
+export interface CollabLocalCopyOffer {
+  copyId: string;
+  name: string;
+  files: string[];
 }
 
 export type CollabHealthStatus = "ok" | "warning" | "unknown";
@@ -2006,6 +2012,11 @@ export interface CollabCommentThreadList {
     rev: number | null;
     threads: CollabCommentThread[];
 }
+export interface CollabCommentCount {
+    path: string;
+    open: number;
+    resolved: number;
+}
 export type CollabCommentErrorCode =
     | "comment_not_live"
     | "comment_not_yours"
@@ -2023,6 +2034,7 @@ export interface CollabCommentError {
 }
 export interface BackendPort {
   collabCommentThreadList: (projectId: string, path: string) => Promise<CollabCommentThreadList>;
+  collabCommentCounts: (projectId: string) => Promise<CollabCommentCount[]>;
   collabCommentCreate: (projectId: string, path: string, from: number, to: number, rev: number | null, body: string, members: CollabCommentMember[]) => Promise<CollabCommentThread>;
 }
 

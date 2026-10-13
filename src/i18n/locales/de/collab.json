@@ -532,7 +532,9 @@
     "noFile": "Keine Datei geöffnet",
     "unknownPerson": "Jemand",
     "viewing": "Sieht {{path}} an",
-    "editing": "Bearbeitet {{path}}"
+    "editing": "Bearbeitet {{path}}",
+    "goTo": "Zu {{name}} springen",
+    "nowhere": "In keiner Datei, daher gibt es kein Ziel"
   },
   "tree": {
     "here": "{{name}} hat diese Datei geöffnet",
@@ -802,9 +804,9 @@
     "add": "Kommentar hinzufügen",
     "showResolved": "Erledigte Kommentare anzeigen",
     "hideResolved": "Erledigte Kommentare ausblenden",
-    "noFile": "Öffnen Sie eine Datei, um ihre Kommentare zu sehen.",
-    "empty": "Zu dieser Datei gibt es noch keine Kommentare.",
-    "emptyCanWrite": "Zu dieser Datei gibt es noch keine Kommentare. Markieren Sie Text und wählen Sie Kommentar hinzufügen, um einen zu beginnen.",
+    "empty": "Noch keine Kommentare.",
+    "emptyCanWrite": "Noch keine Kommentare. Markieren Sie Text und wählen Sie Kommentar hinzufügen, um einen zu beginnen.",
+    "allResolved": "Alle Kommentare sind erledigt.",
     "loadFailed": "Die Kommentare zu dieser Datei konnten nicht geladen werden.",
     "detached": "Losgelöst",
     "detachedHint": "Der Text, auf den sich diese Kommentare bezogen, wurde gelöscht.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} ist größer, als dieser Server erlaubt. Die Datei bleibt nur auf diesem Computer.",
     "replaced": "{{name}} hat {{file}} gleichzeitig mit dir ersetzt. Deine Version ist als {{copy}} gespeichert.",
     "added": "{{file}} heißt jetzt {{copy}}, weil {{name}} eine Datei mit demselben Namen hinzugefügt hat.",
+    "beside": "{{name}} hat auch eine Datei namens {{file}}. Sie ist als {{copy}} gespeichert.",
+    "localCopy": "Du hast {{files}} in {{name}} geändert, während du keinen Zugriff auf dieses Projekt hattest.",
+    "bringIn": "Änderungen übernehmen",
+    "keepSeparate": "Getrennt lassen",
+    "broughtIn": "Deine Änderungen aus {{name}} sind jetzt in diesem Projekt.",
     "retry": "Erneut versuchen",
     "dismiss": "Ausblenden"
   }

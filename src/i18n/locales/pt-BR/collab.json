@@ -532,7 +532,9 @@
     "noFile": "Nenhum arquivo aberto",
     "unknownPerson": "Alguém",
     "viewing": "Vendo {{path}}",
-    "editing": "Editando {{path}}"
+    "editing": "Editando {{path}}",
+    "goTo": "Ir até {{name}}",
+    "nowhere": "Não está em nenhum arquivo, então não há para onde ir"
   },
   "tree": {
     "here": "{{name}} está com este arquivo aberto",
@@ -802,9 +804,9 @@
     "add": "Adicionar comentário",
     "showResolved": "Mostrar comentários resolvidos",
     "hideResolved": "Ocultar comentários resolvidos",
-    "noFile": "Abra um arquivo para ver os comentários dele.",
-    "empty": "Este arquivo ainda não tem comentários.",
-    "emptyCanWrite": "Este arquivo ainda não tem comentários. Selecione um texto e escolha Adicionar comentário para começar.",
+    "empty": "Ainda não há comentários.",
+    "emptyCanWrite": "Ainda não há comentários. Selecione um texto e escolha Adicionar comentário para começar.",
+    "allResolved": "Todos os comentários estão resolvidos.",
     "loadFailed": "Não foi possível carregar os comentários deste arquivo.",
     "detached": "Desvinculados",
     "detachedHint": "O texto destes comentários foi excluído.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} é maior do que este servidor permite. Ele fica só neste computador.",
     "replaced": "{{name}} substituiu {{file}} ao mesmo tempo que você. A sua versão foi guardada como {{copy}}.",
     "added": "{{file}} agora se chama {{copy}} porque {{name}} adicionou um arquivo com o mesmo nome.",
+    "beside": "{{name}} também tem um arquivo chamado {{file}}. Ele foi guardado como {{copy}}.",
+    "localCopy": "Você alterou {{files}} em {{name}} enquanto não tinha acesso a este projeto.",
+    "bringIn": "Trazer alterações",
+    "keepSeparate": "Manter separado",
+    "broughtIn": "Suas alterações de {{name}} já estão neste projeto.",
     "retry": "Tentar novamente",
     "dismiss": "Dispensar"
   }

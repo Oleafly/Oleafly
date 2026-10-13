@@ -1,17 +1,23 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
 import {
+  collabLocalCopyBringIn,
+  collabLocalCopyDecline,
+  collabLocalCopyOffer,
   collabUploadDismiss,
   collabUploadList,
   collabUploadRetry,
   onCollabLiveKept,
   onCollabLiveUploads,
+  type CollabErrorCode,
   type CollabLiveKept,
   type CollabLiveKeptFile,
   type CollabLiveUploads,
+  type CollabLocalCopyOffer,
   type CollabUploadFile,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { collabErrorCode } from "../errors";
 import { useCollabLiveStore } from "./live-store";
 
 export interface FileNoticesState {
@@ -19,10 +25,19 @@ export interface FileNoticesState {
   uploads: readonly CollabUploadFile[];
   kept: readonly CollabLiveKeptFile[];
   retrying: boolean;
+  offer: CollabLocalCopyOffer | null;
+  bringing: boolean;
+  offerFailure: CollabErrorCode | null;
+  broughtIn: string | null;
   retry: () => Promise<void>;
   dismissUpload: (path: string) => void;
   dismissKept: (id: string) => void;
+  bringIn: () => Promise<void>;
+  keepSeparate: () => void;
+  dismissBroughtIn: () => void;
 }
+
+const NO_OFFER = { offer: null, bringing: false, offerFailure: null, broughtIn: null } as const;
 
 const NO_UPLOADS: readonly CollabUploadFile[] = [];
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
@@ -32,6 +47,7 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
   uploads: NO_UPLOADS,
   kept: NO_KEPT,
   retrying: false,
+  ...NO_OFFER,
   retry: async () => {
     const { projectId, retrying } = get();
     if (!projectId || retrying) return;
@@ -51,6 +67,28 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
     void collabUploadDismiss(projectId, path).catch((error) => logError("dismiss a figure notice", error));
   },
   dismissKept: (id) => set((state) => ({ kept: state.kept.filter((file) => file.id !== id) })),
+  bringIn: async () => {
+    const { projectId, offer, bringing } = get();
+    if (!projectId || !offer || bringing) return;
+    set({ bringing: true, offerFailure: null });
+    try {
+      await collabLocalCopyBringIn(projectId, offer.copyId);
+    } catch (error) {
+      if (get().projectId === projectId) set({ bringing: false, offerFailure: collabErrorCode(error) });
+      return;
+    }
+    if (get().projectId !== projectId) return;
+    set({ offer: null, bringing: false, broughtIn: offer.name });
+  },
+  keepSeparate: () => {
+    const { projectId, offer, bringing } = get();
+    if (!projectId || !offer || bringing) return;
+    set({ offer: null, offerFailure: null });
+    void collabLocalCopyDecline(projectId, offer.copyId).catch((error) =>
+      logError("keep a local copy separate", error),
+    );
+  },
+  dismissBroughtIn: () => set({ broughtIn: null }),
 }));
 
 function uploaded(payload: CollabLiveUploads): void {
@@ -83,13 +121,19 @@ function keptCopies(payload: CollabLiveKept): void {
 }
 
 function load(projectId: string | null): void {
-  useFileNotices.setState({ projectId, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false });
+  useFileNotices.setState({ projectId, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false, ...NO_OFFER });
   if (!projectId) return;
   collabUploadList(projectId).then(
     (files) => {
       if (useFileNotices.getState().projectId === projectId) useFileNotices.setState({ uploads: files });
     },
     (error) => void logError("list shared figures", error),
+  );
+  collabLocalCopyOffer(projectId).then(
+    (offer) => {
+      if (useFileNotices.getState().projectId === projectId) useFileNotices.setState({ offer });
+    },
+    (error) => void logError("look for local copy changes", error),
   );
 }
 
@@ -113,6 +157,6 @@ export function startFileNotices(): () => void {
     stopFiles();
     void stopUploads.then((stop) => stop());
     void stopKept.then((stop) => stop());
-    useFileNotices.setState({ projectId: null, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false });
+    useFileNotices.setState({ projectId: null, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false, ...NO_OFFER });
   };
 }

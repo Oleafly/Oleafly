@@ -36,7 +36,7 @@ use crate::folder_watch::FolderChange;
 pub mod write;
 
 mod kept;
-mod local_copy;
+pub mod local_copy;
 mod moves;
 mod sync_hold;
 mod unsent;
@@ -164,6 +164,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn renamed(&self, _payload: super::tree::RenamedPayload) {}
     fn comments_changed(&self, _payload: super::comments::CommentsChangedPayload) {}
     fn comments_not_sent(&self, _payload: super::comments::CommentsNotSentPayload) {}
+    fn comments_status(&self, _payload: super::comments::CommentsStatusPayload) {}
     fn members(&self, _payload: MembersPayload) {}
     fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
     fn removed(&self, _payload: RemovedPayload) {}
@@ -226,6 +227,12 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(super::comments::COMMENTS_NOT_SENT_EVENT, payload);
+    }
+
+    fn comments_status(&self, payload: super::comments::CommentsStatusPayload) {
+        let _ = self
+            .app
+            .emit(super::comments::COMMENTS_STATUS_EVENT, payload);
     }
 
     fn members(&self, payload: MembersPayload) {
@@ -651,11 +658,35 @@ fn apply_local_import(
         ensure_dir(live, &mut placed, Some(&path))?;
         changed = true;
     }
+    let mut beside = Vec::new();
     for (path, text, hash) in import.texts {
         if !still(&path, &hash) {
             continue;
         }
         match placed.get(&path).cloned() {
+            Some((theirs, NodeKind::Text, _))
+                if kept::take_replaced_arrival(
+                    root,
+                    live,
+                    bases.latest(&path).map(String::as_str),
+                    &path,
+                    &theirs,
+                    &text,
+                ) =>
+            {
+                let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
+                let ours = live.doc_mut().add_node(
+                    parent.as_deref(),
+                    name_of(&path),
+                    NodeKind::Text,
+                    None,
+                    &text,
+                )?;
+                live.doc_mut()
+                    .set_crlf(&ours, import.crlf.contains(&path))?;
+                beside.push((ours, theirs, path.clone()));
+                changed = true;
+            }
             Some((id, NodeKind::Text, _)) => {
                 let current = live.doc().text(&id)?;
                 let merged = bases
@@ -705,7 +736,6 @@ fn apply_local_import(
             disk.hashes.insert(path, hash);
         }
     }
-    let mut beside = Vec::new();
     for (path, hash, _) in import.blobs {
         if !still(&path, &hash) {
             continue;
@@ -1072,18 +1102,8 @@ impl Active {
                 files: kept,
             });
         }
-        if !removed.is_empty() {
-            let notices = moves::removed_notices(
-                &self.project_id,
-                &mut lock(&self.live),
-                &previous,
-                &removed,
-            );
-            if let Some(payload) = notices {
-                moves::remember_lost(&self.notices_file(), &payload);
-                self.host.removed(payload);
-            }
-        }
+        self.announce_removed(&previous, &removed);
+        self.note_arrivals(&previous, &changed);
         let mut missing = false;
         if !blobs.is_empty() {
             let access = self
@@ -1141,6 +1161,7 @@ impl Active {
     }
 
     fn detach(&self, paths: &oleafly_collab::CollabPaths) {
+        local_copy::keep_origin(paths, &self.project_id, lock(&self.live).doc());
         let _ = remove_binding(paths, &self.project_id);
         super::registry::invalidate(&self.project_id);
         local_copy::name_local_copy(&self.project_id);
@@ -1348,6 +1369,16 @@ async fn pump(
                     &active.project_id,
                     &active.live,
                     unsent,
+                    active.host.as_ref(),
+                );
+            }
+            LiveEvent::Comments(switches) => {
+                let role = lock(&active.live).role();
+                super::comments::switched(
+                    &paths,
+                    &active.project_id,
+                    switches,
+                    role,
                     active.host.as_ref(),
                 );
             }

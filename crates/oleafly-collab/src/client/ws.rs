@@ -193,10 +193,14 @@ async fn next_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
 pub(crate) async fn read_frame(socket: &mut Socket) -> Result<ServerFrame, CollabError> {
     while let Some(message) = socket.next().await {
         match message.map_err(ws_error)? {
-            Message::Text(text) => {
-                return serde_json::from_str(text.as_str())
-                    .map_err(|error| CollabError::Network(format!("unreadable frame: {error}")));
-            }
+            Message::Text(text) => match serde_json::from_str(text.as_str()) {
+                Ok(ServerFrame::Unknown) => {}
+                read => {
+                    return read.map_err(|error| {
+                        CollabError::Network(format!("unreadable frame: {error}"))
+                    })
+                }
+            },
             Message::Close(_) => break,
             _ => {}
         }

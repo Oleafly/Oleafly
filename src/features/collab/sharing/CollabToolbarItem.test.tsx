@@ -26,9 +26,17 @@ import {
   shareInfo,
 } from "../tests/fixtures";
 
-const mocks = vi.hoisted(() => ({ copyIntoLibrary: vi.fn(), collabServersList: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  copyIntoLibrary: vi.fn(),
+  collabServersList: vi.fn(),
+  openProjectLocation: vi.fn(async () => true),
+}));
 
 vi.mock("@/store/copy-into-library", () => ({ copyIntoLibrary: mocks.copyIntoLibrary }));
+vi.mock("@/lib/open-location", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/open-location")>()),
+  openProjectLocation: mocks.openProjectLocation,
+}));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabServersList: mocks.collabServersList,
@@ -222,7 +230,7 @@ describe("CollabShareButton", () => {
 });
 
 describe("CollabToolbarItem", () => {
-  it("shows who is here as plain avatars with a tooltip each, never inside a button", () => {
+  it("shows who is here as avatars with a tooltip each, in a stack that is never inside a button", () => {
     vi.useFakeTimers();
     try {
       liveShared({ state: "online" }, 0, {
@@ -234,7 +242,9 @@ describe("CollabToolbarItem", () => {
       const { container } = render(<CollabToolbarItem />);
       const stack = container.querySelector('[data-slot="avatar-stack"]') as HTMLElement;
       expect(stack.closest("button")).toBeNull();
-      expect(within(stack).queryByRole("button")).toBeNull();
+      expect(within(stack).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+        fill(toolbar.goTo, { name: "Alice Chen" }),
+      ]);
       const avatars = stack.querySelectorAll('[data-slot="avatar"]');
       expect(avatars).toHaveLength(2);
       const alice = hover(avatars[0].parentElement as Element);
@@ -245,7 +255,7 @@ describe("CollabToolbarItem", () => {
       const carol = hover(avatars[1].parentElement as Element);
       expect(carol).toHaveTextContent("Carol Diaz");
       expect(carol).toHaveTextContent(enCollab.projectRoles.viewer);
-      expect(carol).toHaveTextContent(toolbar.noFile);
+      expect(carol).toHaveTextContent(toolbar.nowhere);
       expect(stack).not.toHaveTextContent("Bob Smith");
     } finally {
       vi.useRealTimers();
@@ -300,7 +310,7 @@ describe("CollabToolbarItem", () => {
       const bob = hover(avatars[1].parentElement as Element);
       expect(bob).toHaveTextContent("Bob Smith");
       expect(bob).toHaveTextContent(enCollab.projectRoles.owner);
-      expect(bob).toHaveTextContent(toolbar.noFile);
+      expect(bob).toHaveTextContent(toolbar.nowhere);
       fireEvent.mouseLeave(avatars[1].parentElement as Element);
       const carol = hover(avatars[2].parentElement as Element);
       expect(carol).toHaveTextContent(enCollab.projectRoles.viewer);
@@ -399,6 +409,73 @@ describe("CollabToolbarItem", () => {
     const avatars = container.querySelectorAll('[data-slot="avatar"]');
     expect(avatars[0]).toHaveStyle({ backgroundColor: "hsl(210 55% 45%)" });
     expect(avatars[1]).toHaveStyle({ backgroundColor: "hsl(15 55% 45%)" });
+  });
+
+  it("goes to a person's file and cursor when their avatar is clicked", async () => {
+    liveShared({ state: "online" }, 0, {
+      alice: { ...peer("alice", ALICE_ID, "chapters/intro.tex"), cursor: 120, anchor: 118 },
+    });
+    const user = userEvent.setup();
+    render(<CollabToolbarItem />);
+    await user.click(screen.getByRole("button", { name: fill(toolbar.goTo, { name: "Alice Chen" }) }));
+    await waitFor(() =>
+      expect(mocks.openProjectLocation).toHaveBeenCalledExactlyOnceWith(
+        { path: "chapters/intro.tex", range: { from: 120, to: 120 } },
+        { keepSelection: true },
+      ),
+    );
+  });
+
+  it.each(["{Enter}", " "])("goes to the person from the keyboard with %j", async (key) => {
+    liveShared({ state: "online" }, 0, { alice: { ...peer("alice", ALICE_ID, "intro.tex"), cursor: 7, anchor: 7 } });
+    const user = userEvent.setup();
+    render(<CollabToolbarItem />);
+    await user.tab();
+    const button = screen.getByRole("button", { name: fill(toolbar.goTo, { name: "Alice Chen" }) });
+    expect(button).toHaveFocus();
+    await user.keyboard(key);
+    await waitFor(() =>
+      expect(mocks.openProjectLocation).toHaveBeenCalledExactlyOnceWith(
+        { path: "intro.tex", range: { from: 7, to: 7 } },
+        { keepSelection: true },
+      ),
+    );
+  });
+
+  it("does not offer to go to someone who is not in a file and says why in their tooltip", async () => {
+    vi.useFakeTimers();
+    try {
+      liveShared({ state: "online" }, 0, { carol: peer("carol", CAROL_ID, null) });
+      const { container } = render(<CollabToolbarItem />);
+      const stack = container.querySelector('[data-slot="avatar-stack"]') as HTMLElement;
+      expect(within(stack).queryByRole("button")).toBeNull();
+      const avatar = stack.querySelector('[data-slot="avatar"]') as HTMLElement;
+      fireEvent.click(avatar);
+      expect(mocks.openProjectLocation).not.toHaveBeenCalled();
+      const tip = hover(avatar.parentElement as Element);
+      expect(tip).toHaveTextContent("Carol Diaz");
+      expect(tip).toHaveTextContent(toolbar.nowhere);
+      expect(stack).toHaveTextContent(toolbar.nowhere);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the tooltip and the place for screen readers on an avatar you can go to", () => {
+    vi.useFakeTimers();
+    try {
+      liveShared({ state: "online" }, 0, { alice: peer("alice", ALICE_ID, "intro.tex") });
+      render(<CollabToolbarItem />);
+      const button = screen.getByRole("button", { name: fill(toolbar.goTo, { name: "Alice Chen" }) });
+      expect(button).toHaveAccessibleDescription(
+        `Alice Chen, ${enCollab.projectRoles.editor}, ${fill(toolbar.editing, { path: "intro.tex" })}`,
+      );
+      const tip = hover(button);
+      expect(tip).toHaveTextContent(fill(toolbar.editing, { path: "intro.tex" }));
+      expect(button.className).not.toMatch(/(^|\s)(focus-visible:)?(ring|outline)/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("adds no toolbar item while nobody else is here", () => {

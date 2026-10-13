@@ -21,6 +21,7 @@ import {
   deleteMessage,
   deleteThread,
   editMessage,
+  openThreadIn,
   reopenThread,
   replyToThread,
   resolveThread,
@@ -253,7 +254,14 @@ export const ThreadCard = memo(function ThreadCard({
   selected,
   focus,
   context,
-}: Readonly<{ thread: CollabCommentThread; selected: boolean; focus: number; context: ThreadContext }>) {
+  path,
+}: Readonly<{
+  thread: CollabCommentThread;
+  selected: boolean;
+  focus: number;
+  context: ThreadContext;
+  path?: string;
+}>) {
   const { t } = useTranslation(["collab"]);
   const card = useRef<HTMLElement>(null);
   const seen = useRef(focus);
@@ -289,7 +297,7 @@ export const ThreadCard = memo(function ThreadCard({
           <CommentQuote
             quote={thread.anchor.quote}
             title={t(($) => $.collab.comments.showInEditor)}
-            onJump={() => selectThread(thread.id, { reveal: true })}
+            onJump={() => (path === undefined ? selectThread(thread.id, { reveal: true }) : openThreadIn(path, thread.id))}
             onJumpKeyDown={moveFocus}
           />
           {context.canWrite ? <ThreadActions thread={thread} self={context.self} /> : null}

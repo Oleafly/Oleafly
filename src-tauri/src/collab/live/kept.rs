@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use oleafly_collab::doc::{FileNode, NodeKind, NodeParent};
 use oleafly_collab::live::LiveProject;
@@ -6,7 +9,7 @@ use oleafly_collab::materialize::{self, Layout, Placed};
 use oleafly_collab::CollabError;
 use serde::Serialize;
 
-use super::{name_of, parent_of};
+use super::{guard, lock, name_of, parent_of, Active};
 
 pub const LIVE_KEPT_EVENT: &str = "collab-live-kept";
 const SHORT_HASH: usize = 6;
@@ -16,6 +19,130 @@ const SHORT_HASH: usize = 6;
 pub enum KeptKind {
     Replaced,
     Added,
+    Beside,
+}
+
+pub(super) const ARRIVAL_WINDOW: Duration = Duration::from_secs(10);
+
+struct Arrival {
+    id: String,
+    at: Instant,
+    settled: bool,
+}
+
+type Arrivals = HashMap<String, Arrival>;
+
+static ARRIVALS: LazyLock<Mutex<HashMap<PathBuf, Arrivals>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn recent(arrivals: &mut Arrivals) {
+    arrivals.retain(|_, arrival| arrival.at.elapsed() < ARRIVAL_WINDOW);
+}
+
+#[cfg(test)]
+pub(super) fn age_arrivals(root: &Path, by: Duration) {
+    if let Some(arrivals) = guard(&ARRIVALS).get_mut(root) {
+        for arrival in arrivals.values_mut() {
+            arrival.at = arrival.at.checked_sub(by).unwrap_or(arrival.at);
+        }
+    }
+}
+
+fn meaningful(text: &str) -> impl Iterator<Item = &str> {
+    text.lines().map(str::trim).filter(|line| !line.is_empty())
+}
+
+fn replaces_every_line(before: &str, after: &str) -> bool {
+    let kept: HashSet<&str> = meaningful(after).collect();
+    let mut lines = meaningful(before).peekable();
+    !kept.is_empty() && lines.peek().is_some() && lines.all(|line| !kept.contains(line))
+}
+
+fn from_someone_else(live: &LiveProject, id: &str) -> bool {
+    let by = live.doc().author_of(id);
+    by.is_some() && by.as_deref() != live.doc().author_key()
+}
+
+pub(super) fn take_replaced_arrival(
+    root: &Path,
+    live: &LiveProject,
+    received: Option<&str>,
+    path: &str,
+    id: &str,
+    text: &str,
+) -> bool {
+    if live.is_open(id) || !from_someone_else(live, id) {
+        return false;
+    }
+    let mut all = guard(&ARRIVALS);
+    let Some(arrivals) = all.get_mut(root) else {
+        return false;
+    };
+    recent(arrivals);
+    let Some(arrival) = arrivals
+        .get_mut(path)
+        .filter(|arrival| arrival.id == id && !arrival.settled)
+    else {
+        return false;
+    };
+    let replaced = match received {
+        Some(received) => replaces_every_line(received, text),
+        None => live
+            .doc()
+            .text(id)
+            .is_ok_and(|current| replaces_every_line(&current, text)),
+    };
+    if replaced {
+        arrival.settled = true;
+    }
+    replaced
+}
+
+impl Active {
+    pub(super) fn note_arrivals(&self, previous: &Layout, written: &BTreeSet<String>) {
+        if previous.is_empty() || written.is_empty() {
+            return;
+        }
+        let fresh: Vec<(String, String)> = guard(&self.disk)
+            .layout
+            .iter()
+            .filter(|(id, placed)| {
+                placed.kind == NodeKind::Text
+                    && !previous.contains_key(*id)
+                    && written.contains(&placed.path)
+            })
+            .map(|(id, placed)| (id.clone(), placed.path.clone()))
+            .collect();
+        if fresh.is_empty() {
+            return;
+        }
+        let theirs: Vec<(String, String)> = {
+            let live = lock(&self.live);
+            fresh
+                .into_iter()
+                .filter(|(id, _)| from_someone_else(&live, id))
+                .collect()
+        };
+        if theirs.is_empty() {
+            return;
+        }
+        let mut all = guard(&ARRIVALS);
+        let arrivals = all.entry(self.root.clone()).or_default();
+        recent(arrivals);
+        for (id, path) in theirs {
+            if arrivals.get(&path).is_some_and(|known| known.id == id) {
+                continue;
+            }
+            arrivals.insert(
+                path,
+                Arrival {
+                    id,
+                    at: Instant::now(),
+                    settled: false,
+                },
+            );
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -48,7 +175,12 @@ fn tagged(name: &str, tag: &str) -> String {
     }
 }
 
-fn copy_name(name: &str, author: Option<&str>, hash: &str, taken: &mut BTreeSet<String>) -> String {
+pub(super) fn copy_name(
+    name: &str,
+    author: Option<&str>,
+    hash: &str,
+    taken: &mut BTreeSet<String>,
+) -> String {
     let credited = author.and_then(|author| {
         materialize::credited_name(name, author, hash, |named| {
             taken.insert(named.to_lowercase())
@@ -146,8 +278,29 @@ pub(super) fn notices(
             })
         })
         .collect();
+    let me = live.doc().author_key();
     for clash in materialize::clashes(nodes) {
-        let (Some(before), Some(after)) = (previous.get(&clash.id), next.get(&clash.id)) else {
+        let Some(after) = next.get(&clash.id) else {
+            continue;
+        };
+        let Some(before) = previous.get(&clash.id) else {
+            let kept = previous
+                .get(&clash.other)
+                .zip(next.get(&clash.other))
+                .filter(|(was, now)| was.path == now.path);
+            let by = live.doc().author_of(&clash.id);
+            let mine = me.is_some()
+                && live.doc().author_of(&clash.other).as_deref() == me
+                && by.as_deref() != me;
+            if let Some((_, now)) = kept.filter(|_| mine && after.kind != NodeKind::Dir) {
+                files.push(KeptFile {
+                    id: clash.id.clone(),
+                    path: now.path.clone(),
+                    copy: after.path.clone(),
+                    kind: KeptKind::Beside,
+                    by,
+                });
+            }
             continue;
         };
         if before.kind == NodeKind::Dir
@@ -409,6 +562,59 @@ mod tests {
     }
 
     #[test]
+    fn a_same_name_file_from_your_other_computer_is_not_announced_as_someone_elses() {
+        run(async {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path().join("project");
+            std::fs::create_dir_all(root.join("chapters")).unwrap();
+            let mut owner = ProjectDoc::create().unwrap();
+            owner.set_author(ALICE, "Alice Chen");
+            let chapters = owner
+                .add_node(None, "chapters", NodeKind::Dir, None, "")
+                .unwrap();
+            let mut desktop = signed(&owner, BOB, "Bob Smith");
+            let mut laptop = signed(&owner, BOB, "Bob Smith");
+            let since = laptop.version();
+            desktop
+                .add_node(
+                    Some(&chapters),
+                    "plan.tex",
+                    NodeKind::Text,
+                    None,
+                    "Desktop plan",
+                )
+                .unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(3));
+            laptop
+                .add_node(
+                    Some(&chapters),
+                    "plan.tex",
+                    NodeKind::Text,
+                    None,
+                    "Laptop plan",
+                )
+                .unwrap();
+            std::fs::write(root.join("chapters/plan.tex"), "Desktop plan").unwrap();
+            let disk = disk_of(&desktop, &[("chapters/plan.tex", b"Desktop plan")]);
+            let host = Arc::new(Recording::default());
+            let active = active_for_bob(
+                dir.path(),
+                &root,
+                LiveProject::new(desktop, 0, ProjectRole::Editor),
+                disk,
+                Arc::clone(&host),
+            )
+            .await;
+            let update = laptop.export_since(&since).unwrap();
+            assert!(lock(&active.live).import_update(1, &update).unwrap());
+            active.write_out().await.unwrap();
+            active.handle.stop();
+            assert_eq!(placed_texts(lock(&active.live).doc()).len(), 2);
+            assert!(host.kept.lock().unwrap().is_empty());
+        });
+    }
+
+    #[test]
     fn a_file_renamed_here_because_someone_added_the_same_name_is_reported() {
         run(async {
             let dir = tempfile::tempdir().unwrap();
@@ -473,6 +679,219 @@ mod tests {
                 ("chapters/plan.tex", copy, KeptKind::Added)
             );
             assert_eq!(file.by.as_deref(), Some(ALICE));
+        });
+    }
+
+    fn placed_texts(doc: &ProjectDoc) -> BTreeMap<String, String> {
+        materialize::layout(&doc.nodes().unwrap())
+            .into_iter()
+            .filter(|(_, placed)| placed.kind == NodeKind::Text)
+            .map(|(id, placed)| (placed.path, doc.text(&id).unwrap()))
+            .collect()
+    }
+
+    struct Arrived {
+        dir: tempfile::TempDir,
+        root: PathBuf,
+        sender: ProjectDoc,
+        active: Arc<Active>,
+        host: Arc<Recording>,
+        plan: String,
+    }
+
+    impl Arrived {
+        fn read(&self, path: &str) -> String {
+            std::fs::read_to_string(self.root.join(path)).unwrap()
+        }
+
+        async fn replace(&self, text: &str) {
+            std::fs::write(self.root.join("sections/plan.tex"), text).unwrap();
+            self.active
+                .import_paths(Some(vec!["sections/plan.tex".to_owned()]))
+                .await
+                .unwrap();
+            self.active.write_out().await.unwrap();
+        }
+
+        fn texts(&self) -> BTreeMap<String, String> {
+            placed_texts(lock(&self.active.live).doc())
+        }
+
+        fn kept(&self) -> Vec<KeptFile> {
+            self.host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.clone())
+                .collect()
+        }
+    }
+
+    async fn plan_from(account: &str, name: &str, text: &str) -> Arrived {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("project");
+        std::fs::create_dir_all(root.join("sections")).unwrap();
+        let mut owner = ProjectDoc::create().unwrap();
+        owner.set_author(ALICE, "Alice Chen");
+        let sections = owner
+            .add_node(None, "sections", NodeKind::Dir, None, "")
+            .unwrap();
+        let mut sender = signed(&owner, account, name);
+        let bob = signed(&owner, BOB, "Bob Smith");
+        let since = bob.version();
+        let disk = disk_of(&bob, &[]);
+        let plan = sender
+            .add_node(Some(&sections), "plan.tex", NodeKind::Text, None, text)
+            .unwrap();
+        let host = Arc::new(Recording::default());
+        let active = active_for_bob(
+            dir.path(),
+            &root,
+            LiveProject::new(bob, 0, ProjectRole::Editor),
+            disk,
+            Arc::clone(&host),
+        )
+        .await;
+        let update = sender.export_since(&since).unwrap();
+        assert!(lock(&active.live).import_update(1, &update).unwrap());
+        active.write_out().await.unwrap();
+        let arrived = Arrived {
+            dir,
+            root,
+            sender,
+            active,
+            host,
+            plan,
+        };
+        assert_eq!(arrived.read("sections/plan.tex"), text);
+        arrived
+    }
+
+    fn only_plan(text: &str) -> BTreeMap<String, String> {
+        let mut expected = BTreeMap::new();
+        expected.insert("sections/plan.tex".to_owned(), text.to_owned());
+        expected
+    }
+
+    #[test]
+    fn a_file_replaced_moments_after_it_arrived_from_someone_else_keeps_both_and_tells_both_people()
+    {
+        run(async {
+            let alices = "Third plan by alice.\n";
+            let bobs = "Third plan by bob.\n";
+            let arrived = plan_from(ALICE, "Alice Chen", alices).await;
+            arrived.replace(bobs).await;
+            arrived.active.handle.stop();
+
+            let copy = "sections/plan (from Bob Smith).tex";
+            let mut expected = only_plan(alices);
+            expected.insert(copy.to_owned(), bobs.to_owned());
+            assert_eq!(arrived.texts(), expected);
+            assert_eq!(arrived.read("sections/plan.tex"), alices);
+            assert_eq!(arrived.read(copy), bobs);
+            let kept = arrived.kept();
+            assert_eq!(kept.len(), 1, "{kept:?}");
+            assert_eq!(
+                (kept[0].path.as_str(), kept[0].copy.as_str(), kept[0].kind),
+                ("sections/plan.tex", copy, KeptKind::Added)
+            );
+            assert_eq!(kept[0].by.as_deref(), Some(ALICE));
+
+            let alice_root = arrived.dir.path().join("alice");
+            std::fs::create_dir_all(alice_root.join("sections")).unwrap();
+            std::fs::write(alice_root.join("sections/plan.tex"), alices).unwrap();
+            let alice_doc = signed(&arrived.sender, ALICE, "Alice Chen");
+            let since = alice_doc.version();
+            let alice_disk = disk_of(&alice_doc, &[("sections/plan.tex", alices.as_bytes())]);
+            let alice_host = Arc::new(Recording::default());
+            let alice_dir = tempfile::tempdir().unwrap();
+            let alice = active_for_bob(
+                alice_dir.path(),
+                &alice_root,
+                LiveProject::new(alice_doc, 0, ProjectRole::Owner),
+                alice_disk,
+                Arc::clone(&alice_host),
+            )
+            .await;
+            let update = lock(&arrived.active.live)
+                .doc()
+                .export_since(&since)
+                .unwrap();
+            assert!(lock(&alice.live).import_update(1, &update).unwrap());
+            alice.write_out().await.unwrap();
+            alice.handle.stop();
+            assert_eq!(placed_texts(lock(&alice.live).doc()), expected);
+            assert_eq!(
+                std::fs::read_to_string(alice_root.join(copy)).unwrap(),
+                bobs
+            );
+            let told: Vec<KeptFile> = alice_host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.clone())
+                .collect();
+            assert_eq!(told.len(), 1, "{told:?}");
+            assert_eq!(
+                (told[0].path.as_str(), told[0].copy.as_str(), told[0].kind),
+                ("sections/plan.tex", copy, KeptKind::Beside)
+            );
+            assert_eq!(told[0].by.as_deref(), Some(BOB));
+        });
+    }
+
+    #[test]
+    fn a_change_that_keeps_part_of_a_file_that_just_arrived_stays_an_edit() {
+        run(async {
+            let arrived = plan_from(ALICE, "Alice Chen", "Plan by alice.\nShared intro.\n").await;
+            let bobs = "Plan by bob.\nShared intro.\n";
+            arrived.replace(bobs).await;
+            arrived.active.handle.stop();
+            assert_eq!(arrived.texts(), only_plan(bobs));
+            assert!(arrived.kept().is_empty());
+        });
+    }
+
+    #[test]
+    fn replacing_a_file_that_is_open_here_stays_an_edit() {
+        run(async {
+            let arrived = plan_from(ALICE, "Alice Chen", "Third plan by alice.\n").await;
+            let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            lock(&arrived.active.live)
+                .open_file(&arrived.plan, sink)
+                .unwrap();
+            let bobs = "Third plan by bob.\n";
+            arrived.replace(bobs).await;
+            arrived.active.handle.stop();
+            assert_eq!(arrived.texts(), only_plan(bobs));
+            assert!(arrived.kept().is_empty());
+        });
+    }
+
+    #[test]
+    fn replacing_a_file_long_after_it_arrived_stays_an_edit() {
+        run(async {
+            let arrived = plan_from(ALICE, "Alice Chen", "Third plan by alice.\n").await;
+            super::age_arrivals(&arrived.root, super::ARRIVAL_WINDOW);
+            let bobs = "Third plan by bob.\n";
+            arrived.replace(bobs).await;
+            arrived.active.handle.stop();
+            assert_eq!(arrived.texts(), only_plan(bobs));
+            assert!(arrived.kept().is_empty());
+        });
+    }
+
+    #[test]
+    fn replacing_your_own_file_from_another_computer_stays_an_edit() {
+        run(async {
+            let arrived = plan_from(BOB, "Bob Smith", "Plan from the laptop.\n").await;
+            let bobs = "Plan from the desktop.\n";
+            arrived.replace(bobs).await;
+            arrived.active.handle.stop();
+            assert_eq!(arrived.texts(), only_plan(bobs));
+            assert!(arrived.kept().is_empty());
         });
     }
 }

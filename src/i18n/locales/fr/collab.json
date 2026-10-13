@@ -532,7 +532,9 @@
     "noFile": "Aucun fichier ouvert",
     "unknownPerson": "Quelqu'un",
     "viewing": "Consulte {{path}}",
-    "editing": "Modifie {{path}}"
+    "editing": "Modifie {{path}}",
+    "goTo": "Rejoindre {{name}}",
+    "nowhere": "N'est dans aucun fichier, il n'y a donc nulle part où aller"
   },
   "tree": {
     "here": "{{name}} a ouvert ce fichier",
@@ -802,9 +804,9 @@
     "add": "Ajouter un commentaire",
     "showResolved": "Afficher les commentaires résolus",
     "hideResolved": "Masquer les commentaires résolus",
-    "noFile": "Ouvrez un fichier pour voir ses commentaires.",
-    "empty": "Ce fichier n'a pas encore de commentaires.",
-    "emptyCanWrite": "Ce fichier n'a pas encore de commentaires. Sélectionnez du texte et choisissez Ajouter un commentaire pour en écrire un.",
+    "empty": "Aucun commentaire pour l'instant.",
+    "emptyCanWrite": "Aucun commentaire pour l'instant. Sélectionnez du texte et choisissez Ajouter un commentaire pour en écrire un.",
+    "allResolved": "Tous les commentaires sont résolus.",
     "loadFailed": "Impossible de charger les commentaires de ce fichier.",
     "detached": "Détachés",
     "detachedHint": "Le texte de ces commentaires a été supprimé.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} dépasse la taille acceptée par ce serveur. Il reste uniquement sur cet ordinateur.",
     "replaced": "{{name}} a remplacé {{file}} en même temps que vous. Votre version est conservée sous le nom {{copy}}.",
     "added": "{{file}} s'appelle maintenant {{copy}}, car {{name}} a ajouté un fichier du même nom.",
+    "beside": "{{name}} a aussi un fichier nommé {{file}}. Il est conservé sous le nom {{copy}}.",
+    "localCopy": "Vous avez modifié {{files}} dans {{name}} pendant que vous n'aviez pas accès à ce projet.",
+    "bringIn": "Importer les modifications",
+    "keepSeparate": "Garder séparé",
+    "broughtIn": "Vos modifications de {{name}} sont maintenant dans ce projet.",
     "retry": "Réessayer",
     "dismiss": "Ignorer"
   }

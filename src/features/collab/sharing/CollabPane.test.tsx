@@ -17,7 +17,17 @@ import { peerHue } from "../live/peer-hue";
 import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
-const spies = vi.hoisted(() => ({ relativeTime: vi.fn(), person: vi.fn(), review: vi.fn() }));
+const spies = vi.hoisted(() => ({
+  relativeTime: vi.fn(),
+  person: vi.fn(),
+  review: vi.fn(),
+  openProjectLocation: vi.fn(async () => true),
+}));
+
+vi.mock("@/lib/open-location", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/open-location")>()),
+  openProjectLocation: spies.openProjectLocation,
+}));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
@@ -103,6 +113,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  spies.openProjectLocation.mockClear();
   useCollabActivity.setState({ projectId: null, entries: [], unread: false });
   useFilesStore.setState({ projectId: null });
   resetSidebarViewState();
@@ -188,6 +199,55 @@ describe("CollabPane", () => {
     expect(rows[2]).toHaveTextContent(enCollab.projectRoles.viewer);
     expect(rows[2]).toHaveTextContent(pane.away);
     expect(people).not.toHaveTextContent(CAROL_ID);
+  });
+
+  it("goes to a person from their row in People by mouse, Enter or Space", async () => {
+    useCollabLiveStore.setState({
+      peers: {
+        bob: { ...peer("bob", BOB_ID, "chapters/main.tex"), cursor: 42, anchor: 40 },
+        mine: peer("mine", ALICE_ID, "intro.tex"),
+      },
+    });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const people = screen.getByRole("list", { name: pane.people });
+    const row = within(people).getByRole("button", { name: fill(enCollab.toolbar.goTo, { name: "Bob Smith" }) });
+    const there = [{ path: "chapters/main.tex", range: { from: 42, to: 42 } }, { keepSelection: true }];
+
+    await user.click(row);
+    await vi.waitFor(() => expect(spies.openProjectLocation).toHaveBeenCalledTimes(1));
+    expect(spies.openProjectLocation).toHaveBeenLastCalledWith(...there);
+
+    row.focus();
+    await user.keyboard("{Enter}");
+    await vi.waitFor(() => expect(spies.openProjectLocation).toHaveBeenCalledTimes(2));
+    await user.keyboard(" ");
+    await vi.waitFor(() => expect(spies.openProjectLocation).toHaveBeenCalledTimes(3));
+    expect(spies.openProjectLocation).toHaveBeenLastCalledWith(...there);
+  });
+
+  it("offers to go only to people who are in a file, and keeps their role and place readable", () => {
+    useCollabLiveStore.setState({
+      peers: {
+        bob: peer("bob", BOB_ID, "main.tex"),
+        carol: peer("carol", CAROL_ID, null),
+        mine: peer("mine", ALICE_ID, "intro.tex"),
+      },
+    });
+    render(<CollabPane />);
+    const people = screen.getByRole("list", { name: pane.people });
+    const buttons = within(people).getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      fill(enCollab.toolbar.goTo, { name: "Bob Smith" }),
+    ]);
+    expect(buttons[0]).toHaveAccessibleDescription(
+      `${enCollab.projectRoles.owner} · ${fill(pane.hereIn, { path: "main.tex" })}`,
+    );
+    expect(buttons[0].className).toMatch(/hover:bg-/);
+    expect(buttons[0].className).toMatch(/focus-visible:bg-/);
+    expect(buttons[0].className).not.toMatch(/(^|\s)(focus-visible:)?(ring|outline)/);
+    const rows = within(people).getAllByRole("listitem");
+    expect(rows[2]).toHaveTextContent(pane.here);
   });
 
   it("paints each person in the colour their caret uses, away from your own", () => {

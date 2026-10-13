@@ -69,6 +69,14 @@ pub struct CommentThreadList {
     pub threads: Vec<CommentThread>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentCount {
+    pub path: String,
+    pub open: usize,
+    pub resolved: usize,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommentSwitches {
     pub server: bool,
@@ -237,6 +245,31 @@ fn path_in(layout: &Layout, file_id: &str) -> Option<String> {
 
 pub(crate) fn threads_at(doc: &ProjectDoc, path: &str) -> Result<Vec<CommentThread>, CollabError> {
     doc.comment_threads(&file_at(doc, path)?)
+}
+
+pub(crate) fn counts_in(doc: &ProjectDoc) -> Result<Vec<CommentCount>, CollabError> {
+    let commented = doc.commented_files();
+    let mut counts = Vec::new();
+    for (file, placed) in layout_of(doc) {
+        if placed.kind != NodeKind::Text || !commented.contains(&file) {
+            continue;
+        }
+        let threads = doc.comment_threads(&file)?;
+        if threads.is_empty() {
+            continue;
+        }
+        let resolved = threads
+            .iter()
+            .filter(|thread| thread.resolved.is_some())
+            .count();
+        counts.push(CommentCount {
+            path: placed.path,
+            open: threads.len() - resolved,
+            resolved,
+        });
+    }
+    counts.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(counts)
 }
 
 pub(crate) fn thread_list_at(
@@ -446,6 +479,25 @@ pub(crate) fn announce(project_id: &str, live: &SharedLive, me: AccountId, host:
     host.comments_changed(payload_for(project_id, me, changes, &layout));
 }
 
+pub(crate) fn switched(
+    paths: &CollabPaths,
+    project_id: &str,
+    switches: oleafly_collab_protocol::frames::CommentSwitches,
+    role: ProjectRole,
+    host: &dyn LiveHost,
+) {
+    let status = settle_status(
+        paths,
+        project_id,
+        Ok((switches.server, switches.project)),
+        role,
+    );
+    host.comments_status(CommentsStatusPayload {
+        project_id: project_id.to_owned(),
+        status,
+    });
+}
+
 pub(crate) fn tell_not_sent(
     project_id: &str,
     live: &SharedLive,
@@ -487,6 +539,24 @@ pub async fn list_threads(
             rev: None,
             threads: threads_at(saved.doc(), &path)?,
         })
+    })
+    .await
+    .map_err(io)?
+}
+
+pub async fn count_comments(
+    state: &CollabState,
+    project_id: &str,
+) -> Result<Vec<CommentCount>, CollabError> {
+    if let Some(counted) = super::live::read_live(project_id, |live| counts_in(live.doc())) {
+        return counted;
+    }
+    let paths = state.paths()?;
+    load_binding(paths, project_id)?.ok_or_else(not_shared)?;
+    let dir = paths.document_dir(project_id)?;
+    tokio::task::spawn_blocking(move || {
+        let saved = LiveProject::load(&dir, ProjectRole::Viewer)?;
+        counts_in(saved.doc())
     })
     .await
     .map_err(io)?
@@ -538,7 +608,7 @@ pub async fn set_comments_enabled(
     Ok((summary, status))
 }
 
-fn write_comment<T>(
+pub(crate) fn write_comment<T>(
     state: &CollabState,
     project_id: &str,
     work: impl FnOnce(&mut LiveProject, &Commenter) -> Result<T, CollabError>,
@@ -603,6 +673,16 @@ pub async fn collab_comment_thread_list(
     path: String,
 ) -> Result<CommentThreadList, CollabCommandError> {
     list_threads(state.inner(), &project_id, &path)
+        .await
+        .map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_comment_counts(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+) -> Result<Vec<CommentCount>, CollabCommandError> {
+    count_comments(state.inner(), &project_id)
         .await
         .map_err(CollabCommandError::from)
 }
@@ -759,6 +839,7 @@ mod tests {
     struct HeardComments(
         Mutex<Vec<CommentsChangedPayload>>,
         Mutex<Vec<CommentsNotSentPayload>>,
+        Mutex<Vec<CommentsStatusPayload>>,
     );
 
     impl HeardComments {
@@ -780,6 +861,9 @@ mod tests {
         }
         fn comments_not_sent(&self, payload: CommentsNotSentPayload) {
             self.1.lock().unwrap().push(payload);
+        }
+        fn comments_status(&self, payload: CommentsStatusPayload) {
+            self.2.lock().unwrap().push(payload);
         }
     }
 
@@ -1042,6 +1126,62 @@ mod tests {
     }
 
     #[test]
+    fn comments_switched_elsewhere_are_remembered_and_shown_at_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = CollabPaths::new(dir.path().join("collab"));
+        let heard = HeardComments::default();
+        let refusal = |paths: &CollabPaths| {
+            let who = Commenter {
+                account: AccountId::new_v7(),
+                role: ProjectRole::Editor,
+                switches: load_switches(paths, "paper"),
+            };
+            match who.may_write() {
+                Ok(()) => None,
+                Err(CollabError::Api { code, .. }) => Some(code),
+                Err(other) => Some(other.to_string()),
+            }
+        };
+        for (server, project, refused) in [
+            (true, false, Some("comments_off_project")),
+            (true, true, None),
+            (false, true, Some("comments_off_server")),
+            (true, true, None),
+        ] {
+            switched(
+                &paths,
+                "paper",
+                oleafly_collab_protocol::frames::CommentSwitches { server, project },
+                ProjectRole::Editor,
+                &heard,
+            );
+            assert_eq!(refusal(&paths).as_deref(), refused);
+            assert_eq!(
+                heard.2.lock().unwrap().pop(),
+                Some(CommentsStatusPayload {
+                    project_id: "paper".to_owned(),
+                    status: CommentsStatus {
+                        server_allowed: server,
+                        project_enabled: project,
+                        can_comment: refused.is_none(),
+                    },
+                })
+            );
+        }
+        switched(
+            &paths,
+            "paper",
+            oleafly_collab_protocol::frames::CommentSwitches {
+                server: true,
+                project: true,
+            },
+            ProjectRole::Viewer,
+            &heard,
+        );
+        assert!(!heard.2.lock().unwrap().pop().unwrap().status.can_comment);
+    }
+
+    #[test]
     fn the_switches_are_remembered_for_when_the_server_cannot_be_reached() {
         let dir = tempfile::tempdir().unwrap();
         let paths = CollabPaths::new(dir.path().join("collab"));
@@ -1135,6 +1275,115 @@ mod tests {
             assert!(list_threads(&state, "never-shared", "chapters/intro.tex")
                 .await
                 .is_err());
+        });
+    }
+
+    fn commented_project(author: AccountId) -> ProjectDoc {
+        let mut doc = ProjectDoc::create().unwrap();
+        let chapters = doc
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        let intro = doc
+            .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, TEXT)
+            .unwrap();
+        let refs = doc
+            .add_node(None, "refs.tex", NodeKind::Text, None, TEXT)
+            .unwrap();
+        doc.add_node(None, "notes.tex", NodeKind::Text, None, TEXT)
+            .unwrap();
+        let emptied = doc
+            .add_node(None, "emptied.tex", NodeKind::Text, None, TEXT)
+            .unwrap();
+        let old = doc
+            .add_node(None, "old.tex", NodeKind::Text, None, TEXT)
+            .unwrap();
+        let mut thread = |file: &str, from: usize, to: usize| {
+            doc.create_comment_thread(file, from, to, author, 1, "Why?", &[])
+                .unwrap()
+                .id
+        };
+        thread(&intro, 4, 9);
+        let done = thread(&intro, 10, 15);
+        thread(&refs, 4, 9);
+        thread(&refs, 16, 19);
+        let deleted = thread(&emptied, 4, 9);
+        thread(&old, 4, 9);
+        doc.resolve_comment_thread(&intro, done, author, 2).unwrap();
+        doc.delete_comment_thread(&emptied, deleted, author)
+            .unwrap();
+        doc.trash(&old).unwrap();
+        doc
+    }
+
+    #[test]
+    fn comments_are_counted_per_file_across_the_project_with_open_and_resolved_apart() {
+        let doc = commented_project(AccountId::new_v7());
+        let counts = counts_in(&doc).unwrap();
+        assert_eq!(
+            counts,
+            vec![
+                CommentCount {
+                    path: "chapters/intro.tex".to_owned(),
+                    open: 1,
+                    resolved: 1,
+                },
+                CommentCount {
+                    path: "refs.tex".to_owned(),
+                    open: 2,
+                    resolved: 0,
+                },
+            ]
+        );
+        assert_eq!(
+            serde_json::to_value(&counts[0]).unwrap(),
+            serde_json::json!({ "path": "chapters/intro.tex", "open": 1, "resolved": 1 })
+        );
+        assert!(counts_in(&ProjectDoc::create().unwrap())
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn a_project_that_is_not_live_counts_its_comments_from_its_saved_document() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let paths = CollabPaths::new(dir.path().join("collab"));
+            let state = crate::collab::state::CollabState::new(
+                paths.clone(),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let mut live = LiveProject::new(
+                commented_project(AccountId::new_v7()),
+                0,
+                ProjectRole::Owner,
+            );
+            live.save(&paths.document_dir("saved-counts").unwrap())
+                .unwrap();
+            oleafly_collab::save_binding(
+                &paths,
+                "saved-counts",
+                &oleafly_collab::ShareBinding {
+                    server_url: "https://collab.test".to_owned(),
+                    server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                    shared_project_id: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                    role: ProjectRole::Viewer,
+                    created_at: 0,
+                },
+            )
+            .unwrap();
+            let counted = count_comments(&state, "saved-counts").await.unwrap();
+            assert_eq!(
+                counted
+                    .iter()
+                    .map(|count| (count.path.as_str(), count.open, count.resolved))
+                    .collect::<Vec<_>>(),
+                vec![("chapters/intro.tex", 1, 1), ("refs.tex", 2, 0)]
+            );
+            assert!(count_comments(&state, "never-shared").await.is_err());
         });
     }
 

@@ -532,7 +532,9 @@
     "noFile": "Ingen fil åpen",
     "unknownPerson": "Noen",
     "viewing": "Ser på {{path}}",
-    "editing": "Redigerer {{path}}"
+    "editing": "Redigerer {{path}}",
+    "goTo": "Gå til {{name}}",
+    "nowhere": "Ikke i en fil, så det er ingen steder å gå"
   },
   "tree": {
     "here": "{{name}} har denne filen åpen",
@@ -802,9 +804,9 @@
     "add": "Legg til kommentar",
     "showResolved": "Vis løste kommentarer",
     "hideResolved": "Skjul løste kommentarer",
-    "noFile": "Åpne en fil for å se kommentarene i den.",
-    "empty": "Det er ingen kommentarer i denne filen ennå.",
-    "emptyCanWrite": "Det er ingen kommentarer i denne filen ennå. Merk litt tekst og velg Legg til kommentar for å starte en.",
+    "empty": "Det er ingen kommentarer ennå.",
+    "emptyCanWrite": "Det er ingen kommentarer ennå. Merk litt tekst og velg Legg til kommentar for å starte en.",
+    "allResolved": "Alle kommentarene er løst.",
     "loadFailed": "Kunne ikke laste inn kommentarene til denne filen.",
     "detached": "Frakoblet",
     "detachedHint": "Teksten disse kommentarene gjaldt, er slettet.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} er større enn denne serveren tillater. Filen blir bare på denne datamaskinen.",
     "replaced": "{{name}} erstattet {{file}} samtidig med deg. Versjonen din er lagret som {{copy}}.",
     "added": "{{file}} heter nå {{copy}} fordi {{name}} la til en fil med samme navn.",
+    "beside": "{{name}} har også en fil som heter {{file}}. Den er lagret som {{copy}}.",
+    "localCopy": "Du endret {{files}} i {{name}} mens du ikke hadde tilgang til dette prosjektet.",
+    "bringIn": "Hent inn endringene",
+    "keepSeparate": "Hold atskilt",
+    "broughtIn": "Endringene dine fra {{name}} er nå i dette prosjektet.",
     "retry": "Prøv på nytt",
     "dismiss": "Lukk"
   }

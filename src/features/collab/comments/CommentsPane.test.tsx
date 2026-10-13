@@ -8,6 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import type { EditorView } from "@codemirror/view";
 import { setEditorView } from "@oleafly/editor";
 import { loadNamespace } from "@/i18n";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import type { CollabCommentThread } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "../live/live-store";
@@ -54,6 +55,8 @@ function show(threads: CollabCommentThread[], overrides: Partial<ReturnType<type
     selectedId: null,
     showResolved: false,
     draft: null,
+    counts: [],
+    elsewhere: {},
     ...overrides,
   });
   return render(<CommentsPane />);
@@ -103,8 +106,19 @@ beforeEach(() => {
 afterEach(() => {
   setEditorView(null);
   vi.restoreAllMocks();
-  useComments.setState({ projectId: null, status: null, path: null, threads: [], phase: "idle", draft: null, selectedId: null });
+  useComments.setState({
+    projectId: null,
+    status: null,
+    path: null,
+    threads: [],
+    phase: "idle",
+    draft: null,
+    selectedId: null,
+    counts: null,
+    elsewhere: {},
+  });
   useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
+  useCommentsRail.setState({ reveal: null });
 });
 
 describe("Comments tab", () => {
@@ -311,10 +325,10 @@ describe("Comments tab", () => {
     expect(reply).toHaveValue("Ask @Carol Diaz and @bo");
   });
 
-  it("explains a missing file, an empty file and a failed load", async () => {
+  it("explains a project with no comments, with or without a file open, and a failed load", async () => {
     const user = userEvent.setup();
     const { unmount } = show([], { path: null });
-    expect(screen.getByText(copy.noFile)).toBeInTheDocument();
+    expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
     unmount();
     const second = show([]);
     expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
@@ -402,6 +416,126 @@ describe("Comments tab", () => {
     await user.click(screen.getByRole("button", { name: copy.post }));
     const region = screen.getByRole("region", { name: copy.newLabel });
     await waitFor(() => expect(within(region).getByRole("alert")).toHaveTextContent(copy.refusals.offProject));
+  });
+});
+
+describe("comments across the project", () => {
+  const cite = commentThread("t-cite", { from: 2, to: 6 }, {
+    fileId: "file-refs",
+    anchor: { quote: "cite", range: { from: 2, to: 6 } },
+  });
+
+  function regions(): (string | null)[] {
+    return screen.getAllByRole("region").map((region) => region.getAttribute("aria-label"));
+  }
+
+  it("shows one plain message and no file section when the project has no comments", () => {
+    expect(copy.emptyCanWrite).toBe("No comments yet. Select some text and choose Add comment to start one.");
+    show([], { counts: [] });
+    expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
+    expect(screen.queryAllByRole("region")).toEqual([]);
+    expect(screen.queryByRole("button", { name: "intro.tex" })).toBeNull();
+  });
+
+  it("tells people who cannot comment only that there are no comments yet", () => {
+    expect(copy.empty).toBe("No comments yet.");
+    viewAs("viewer");
+    show([], { status: commentsStatus({ canComment: false }), counts: [] });
+    expect(screen.getByText(copy.empty)).toBeInTheDocument();
+    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(screen.queryAllByRole("region")).toEqual([]);
+  });
+
+  it("says every comment is resolved, with no section, when all of them are hidden as resolved", async () => {
+    const user = userEvent.setup();
+    expect(copy.allResolved).toBe("All comments are resolved.");
+    show([resolved], {
+      counts: [
+        { path: "chapters/intro.tex", open: 0, resolved: 1 },
+        { path: "old.tex", open: 0, resolved: 2 },
+      ],
+    });
+    expect(screen.getByText(copy.allResolved)).toBeInTheDocument();
+    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(screen.queryAllByRole("region")).toEqual([]);
+    expect(screen.getByRole("button", { name: copy.showResolved })).toHaveTextContent("3");
+    await user.click(screen.getByRole("button", { name: copy.showResolved }));
+    expect(screen.queryByText(copy.allResolved)).toBeNull();
+    expect(regions()).toEqual(["intro.tex", "old.tex"]);
+  });
+
+  it("says every comment is resolved to people who cannot comment too, even with no file open", () => {
+    viewAs("viewer");
+    show([], {
+      path: null,
+      status: commentsStatus({ canComment: false }),
+      counts: [{ path: "old.tex", open: 0, resolved: 1 }],
+    });
+    expect(screen.getByText(copy.allResolved)).toBeInTheDocument();
+    expect(screen.queryByText(copy.empty)).toBeNull();
+    expect(screen.queryAllByRole("region")).toEqual([]);
+  });
+
+  it("shows no section for the open file without comments and a folded one for another file that has some", () => {
+    show([], { counts: [{ path: "appendix/refs.tex", open: 2, resolved: 0 }] });
+    expect(regions()).toEqual(["refs.tex"]);
+    const header = screen.getByRole("button", { name: "refs.tex" });
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(header).toHaveTextContent("2");
+    expect(within(header).getByText("refs.tex")).toHaveAttribute("title", "appendix/refs.tex");
+    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
+  });
+
+  it("puts the open file first and expanded, and counts resolved threads only while they are shown", async () => {
+    const user = userEvent.setup();
+    show([conversation, resolved], {
+      counts: [
+        { path: "abstract.tex", open: 1, resolved: 0 },
+        { path: "chapters/intro.tex", open: 1, resolved: 1 },
+        { path: "old.tex", open: 0, resolved: 2 },
+      ],
+    });
+    expect(regions()).toEqual(["intro.tex", "abstract.tex"]);
+    const intro = screen.getByRole("button", { name: "intro.tex" });
+    expect(intro).toHaveAttribute("aria-expanded", "true");
+    expect(intro).toHaveTextContent("1");
+    expect(within(intro).getByText("intro.tex")).toHaveAttribute("title", "chapters/intro.tex");
+    expect(screen.getByRole("button", { name: "abstract.tex" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: copy.showResolved })).toHaveTextContent("3");
+    await user.click(screen.getByRole("button", { name: copy.showResolved }));
+    expect(regions()).toEqual(["intro.tex", "abstract.tex", "old.tex"]);
+    expect(screen.getByRole("button", { name: "intro.tex" })).toHaveTextContent("2");
+    expect(screen.getByRole("button", { name: "old.tex" })).toHaveTextContent("2");
+  });
+
+  it("lists another file's threads when its section is expanded and opens that file at the chosen comment", async () => {
+    const user = userEvent.setup();
+    const openFile = vi.fn().mockResolvedValue(undefined);
+    const original = useFilesStore.getState().openFile;
+    useFilesStore.setState({ projectId: "paper", activePath: "chapters/intro.tex", openFile });
+    mocks.collabCommentThreadList.mockResolvedValue(threadList([cite]));
+    try {
+      show([conversation], {
+        counts: [
+          { path: "appendix/refs.tex", open: 1, resolved: 0 },
+          { path: "chapters/intro.tex", open: 1, resolved: 0 },
+        ],
+      });
+      await user.click(screen.getByRole("button", { name: "refs.tex" }));
+      expect(mocks.collabCommentThreadList).toHaveBeenCalledWith("paper", "appendix/refs.tex");
+      const list = await screen.findByRole("list", { name: "refs.tex" });
+      expect(screen.getByRole("button", { name: "refs.tex" })).toHaveAttribute("aria-expanded", "true");
+      await user.click(within(list).getByRole("button", { name: "cite" }));
+      expect(openFile).toHaveBeenCalledWith("appendix/refs.tex");
+      expect(useCommentsRail.getState().reveal).toEqual({ path: "appendix/refs.tex", threadId: "t-cite" });
+      expect(useComments.getState().selectedId).toBeNull();
+      await user.click(screen.getByRole("button", { name: "refs.tex" }));
+      expect(screen.queryByRole("list", { name: "refs.tex" })).toBeNull();
+      expect(useComments.getState().elsewhere).toEqual({});
+    } finally {
+      useFilesStore.setState({ openFile: original });
+    }
   });
 });
 

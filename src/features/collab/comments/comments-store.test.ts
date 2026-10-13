@@ -18,6 +18,7 @@ import { commentMessage, commentsStatus, commentThread, INTRO_FILE, threadList }
 const mocks = vi.hoisted(() => ({
   collabCommentsStatus: vi.fn(),
   collabCommentThreadList: vi.fn(),
+  collabCommentCounts: vi.fn(),
   collabCommentCreate: vi.fn(),
   collabCommentReply: vi.fn(),
   collabCommentEdit: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabCommentsStatus: mocks.collabCommentsStatus,
   collabCommentThreadList: mocks.collabCommentThreadList,
+  collabCommentCounts: mocks.collabCommentCounts,
   collabCommentCreate: mocks.collabCommentCreate,
   collabCommentReply: mocks.collabCommentReply,
   collabCommentEdit: mocks.collabCommentEdit,
@@ -65,10 +67,12 @@ vi.mock("@/components/editor/cm/comments-slot", () => ({
 
 import { commentSpansIn } from "./editor-comments";
 import {
+  collapseFile,
   createThread,
   deleteMessage,
   deleteThread,
   editMessage,
+  expandFile,
   openCommentFromEditor,
   reopenThread,
   replyToThread,
@@ -149,6 +153,7 @@ beforeEach(() => {
   localStorage.clear();
   mocks.collabCommentsStatus.mockResolvedValue(commentsStatus());
   mocks.collabCommentThreadList.mockResolvedValue(threadList([]));
+  mocks.collabCommentCounts.mockResolvedValue([]);
   mocks.session.mockReturnValue(null);
   useSettingsStore.setState({ railTab: "files", showTree: true });
   useFilesStore.setState({ projectId: "paper", activePath: "intro.tex" });
@@ -574,6 +579,52 @@ describe("comments for a shared project", () => {
       view.destroy();
       setEditorDocumentPath(null);
     }
+  });
+
+  it("keeps the per-file comment counts current as comments change anywhere in the project, without polling", async () => {
+    start();
+    await waitFor(() => expect(useComments.getState().counts).toEqual([]));
+    expect(mocks.collabCommentCounts).toHaveBeenCalledWith("paper");
+    const before = mocks.collabCommentCounts.mock.calls.length;
+    mocks.collabCommentCounts.mockResolvedValue([{ path: "refs.tex", open: 1, resolved: 0 }]);
+    emit("collab-comments-changed", changed({ fileIds: ["file-refs"], paths: ["refs.tex"] }));
+    await waitFor(() => expect(useComments.getState().counts).toEqual([{ path: "refs.tex", open: 1, resolved: 0 }]));
+    expect(mocks.collabCommentCounts).toHaveBeenCalledTimes(before + 1);
+    mocks.collabCommentCounts.mockResolvedValue([{ path: "refs.tex", open: 0, resolved: 1 }]);
+    emit("collab-comments-changed", changed({ local: true, fileIds: ["file-refs"], paths: ["refs.tex"] }));
+    await waitFor(() => expect(useComments.getState().counts).toEqual([{ path: "refs.tex", open: 0, resolved: 1 }]));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(mocks.collabCommentCounts).toHaveBeenCalledTimes(before + 2);
+  });
+
+  it("reloads an expanded file's threads when its comments change and stops once it is folded", async () => {
+    const refs = (...threads: CollabCommentThread[]) => threadList(threads);
+    const first = commentThread("r1", { from: 0, to: 4 }, { fileId: "file-refs" });
+    const second = commentThread("r2", { from: 9, to: 12 }, { fileId: "file-refs" });
+    mocks.collabCommentCounts.mockResolvedValue([{ path: "refs.tex", open: 1, resolved: 0 }]);
+    mocks.collabCommentThreadList.mockImplementation(async (_project: string, path: string) =>
+      path === "refs.tex" ? refs(first) : refs(),
+    );
+    start();
+    await waitFor(() => expect(useComments.getState().counts).toHaveLength(1));
+    act(() => expandFile("refs.tex"));
+    expect(useComments.getState().elsewhere["refs.tex"]?.phase).toBe("loading");
+    await waitFor(() => expect(useComments.getState().elsewhere["refs.tex"]?.threads.map((thread) => thread.id)).toEqual(["r1"]));
+    expect(mocks.collabCommentThreadList).toHaveBeenCalledWith("paper", "refs.tex");
+    mocks.collabCommentThreadList.mockImplementation(async (_project: string, path: string) =>
+      path === "refs.tex" ? refs(first, second) : refs(),
+    );
+    emit("collab-comments-changed", changed({ fileIds: ["file-refs"], paths: ["refs.tex"] }));
+    await waitFor(() =>
+      expect(useComments.getState().elsewhere["refs.tex"]?.threads.map((thread) => thread.id)).toEqual(["r1", "r2"]),
+    );
+    expect(useComments.getState().path).toBe("intro.tex");
+    act(() => collapseFile("refs.tex"));
+    expect(useComments.getState().elsewhere).toEqual({});
+    mocks.collabCommentThreadList.mockClear();
+    emit("collab-comments-changed", changed({ fileIds: ["file-refs"], paths: ["refs.tex"] }));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(mocks.collabCommentThreadList).not.toHaveBeenCalledWith("paper", "refs.tex");
   });
 
   it("treats a message it could not verify as someone else's, even if it claims to be the person's", async () => {

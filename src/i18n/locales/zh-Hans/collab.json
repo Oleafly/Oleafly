@@ -532,7 +532,9 @@
     "noFile": "未打开文件",
     "unknownPerson": "某人",
     "viewing": "正在查看 {{path}}",
-    "editing": "正在编辑 {{path}}"
+    "editing": "正在编辑 {{path}}",
+    "goTo": "前往 {{name}} 所在位置",
+    "nowhere": "未在任何文件中，无法前往"
   },
   "tree": {
     "here": "{{name}} 打开了此文件",
@@ -802,9 +804,9 @@
     "add": "添加评论",
     "showResolved": "显示已解决的评论",
     "hideResolved": "隐藏已解决的评论",
-    "noFile": "打开文件即可查看其评论。",
-    "empty": "此文件还没有评论。",
-    "emptyCanWrite": "此文件还没有评论。选中一些文本，然后选择“添加评论”即可发起。",
+    "empty": "还没有评论。",
+    "emptyCanWrite": "还没有评论。选中一些文本，然后选择“添加评论”即可发起。",
+    "allResolved": "所有评论都已解决。",
     "loadFailed": "无法加载此文件的评论。",
     "detached": "已脱离的评论",
     "detachedHint": "这些评论所针对的文本已被删除。",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} 超过此服务器允许的大小。它只保留在这台电脑上。",
     "replaced": "{{name}} 与你同时替换了 {{file}}。你的版本已保存为 {{copy}}。",
     "added": "因为 {{name}} 添加了同名文件，{{file}} 现在是 {{copy}}。",
+    "beside": "{{name}} 也有一个名为 {{file}} 的文件。该文件已保存为 {{copy}}。",
+    "localCopy": "你在无法访问此项目期间，在 {{name}} 中修改了 {{files}}。",
+    "bringIn": "导入这些更改",
+    "keepSeparate": "保持分开",
+    "broughtIn": "你在 {{name}} 中的更改现已加入此项目。",
     "retry": "重试",
     "dismiss": "关闭"
   }

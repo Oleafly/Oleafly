@@ -114,6 +114,16 @@ pub struct Imported {
     pub pending: bool,
 }
 
+impl Imported {
+    fn absorb(&mut self, later: Imported) {
+        self.changes.texts.extend(later.changes.texts);
+        self.changes.tree |= later.changes.tree;
+        self.changes.comments.extend(later.changes.comments);
+        self.arrived.extend(later.arrived);
+        self.pending |= later.pending;
+    }
+}
+
 #[derive(Default)]
 struct Recorder {
     on: bool,
@@ -157,6 +167,7 @@ pub struct ProjectDoc {
     authors: crate::comments::Authorship,
     anchors: Mutex<crate::comments::Anchors>,
     recorded: SharedRecorder,
+    compacted_with: VersionVector,
     _events: loro::Subscription,
 }
 
@@ -239,6 +250,7 @@ impl ProjectDoc {
             authors: crate::comments::Authorship::default(),
             anchors: Mutex::default(),
             recorded,
+            compacted_with: VersionVector::new(),
             _events: events,
         })
     }
@@ -269,6 +281,7 @@ impl ProjectDoc {
             authors: crate::comments::Authorship::default(),
             anchors: Mutex::default(),
             recorded,
+            compacted_with: VersionVector::new(),
             _events: events,
         };
         wrapped.reindex()?;
@@ -689,6 +702,86 @@ impl ProjectDoc {
     }
 
     pub fn import(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
+        self.import_all(&[bytes])
+    }
+
+    pub fn texts_changed_in(&self, spans: &[(u64, i32, i32)]) -> Vec<String> {
+        let mut texts: Vec<String> = spans
+            .iter()
+            .filter(|(_, from, to)| from < to)
+            .flat_map(|(peer, from, to)| {
+                self.doc.get_changed_containers_in(
+                    ID::new(*peer, *from),
+                    usize::try_from(to - from).unwrap_or(0),
+                )
+            })
+            .filter_map(|container| match container {
+                ContainerID::Root { name, .. } => name.strip_prefix(TEXT_PREFIX).map(str::to_owned),
+                _ => None,
+            })
+            .collect();
+        texts.sort_unstable();
+        texts.dedup();
+        texts
+    }
+
+    pub fn import_all(&mut self, payloads: &[&[u8]]) -> Result<Imported, CollabError> {
+        let mut imported = Imported::default();
+        let mut together: Vec<Vec<u8>> = Vec::new();
+        for payload in payloads {
+            if payload.len() >= STAGED_IMPORT_BYTES {
+                self.import_together(std::mem::take(&mut together), &mut imported)?;
+                let alone = self.import_one(payload)?;
+                imported.absorb(alone);
+            } else {
+                together.push(payload.to_vec());
+            }
+        }
+        self.import_together(together, &mut imported)?;
+        self.compact_for_new_writers()?;
+        Ok(imported)
+    }
+
+    fn import_together(
+        &mut self,
+        payloads: Vec<Vec<u8>>,
+        imported: &mut Imported,
+    ) -> Result<(), CollabError> {
+        if payloads.is_empty() {
+            return Ok(());
+        }
+        let (status, changes) =
+            self.recording(|doc| doc.import_batch(&payloads).map_err(doc_error))?;
+        if changes.tree {
+            self.reindex()?;
+            self.log.tree_changed();
+        }
+        imported.absorb(Imported {
+            changes,
+            arrived: status
+                .success
+                .iter()
+                .map(|(peer, (_, end))| (*peer, *end))
+                .collect(),
+            pending: status.pending.is_some(),
+        });
+        Ok(())
+    }
+
+    fn compact_for_new_writers(&mut self) -> Result<(), CollabError> {
+        let now = self.doc.oplog_vv();
+        if now
+            .iter()
+            .all(|(peer, _)| self.compacted_with.get(peer).is_some())
+        {
+            return Ok(());
+        }
+        self.doc.export(ExportMode::Snapshot).map_err(doc_error)?;
+        self.compacted_with = now;
+        Ok(())
+    }
+
+    fn import_one(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
         let staged = if bytes.len() >= STAGED_IMPORT_BYTES {
             self.staged(bytes)
         } else {

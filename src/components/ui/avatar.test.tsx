@@ -223,4 +223,28 @@ describe("AvatarStack", () => {
       vi.useRealTimers();
     }
   });
+
+  it("makes an avatar a button only for people with an action, named by the action and described by the label", () => {
+    const run = vi.fn();
+    const { container } = render(
+      <AvatarStack
+        people={people.slice(0, 3)}
+        renderTip={(person) => `${person.name} details`}
+        renderLabel={(person) => `${person.name} label`}
+        action={(person) => (person.id === "c3" ? null : { label: `Go to ${person.name}`, run: () => run(person.id) })}
+      />,
+    );
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual(["Go to Alice Chen", "Go to Bob Smith"]);
+    expect(buttons[0]).toHaveAccessibleDescription("Alice Chen label");
+    expect(buttons[0]).toHaveAttribute("type", "button");
+    expect(buttons[0].querySelector('[data-slot="avatar"]')).toHaveClass("border-2", "group-focus-visible:border-primary");
+    expect(buttons[0].className).not.toMatch(/ring|outline|shadow/);
+    expect(buttons[1].parentElement).toHaveClass("-ml-1.5");
+    fireEvent.click(buttons[1]);
+    expect(run).toHaveBeenCalledExactlyOnceWith("b2");
+    const carol = [...container.querySelectorAll('[data-slot="avatar"]')][2];
+    expect(carol.closest("button")).toBeNull();
+    expect(screen.getByText("Carol label")).toHaveClass("sr-only");
+  });
 });

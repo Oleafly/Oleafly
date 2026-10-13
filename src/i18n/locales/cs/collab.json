@@ -532,7 +532,9 @@
     "noFile": "Žádný otevřený soubor",
     "unknownPerson": "Někdo",
     "viewing": "Prohlíží {{path}}",
-    "editing": "Upravuje {{path}}"
+    "editing": "Upravuje {{path}}",
+    "goTo": "Přejít k {{name}}",
+    "nowhere": "Není v žádném souboru, takže není kam přejít"
   },
   "tree": {
     "here": "{{name}} má tento soubor otevřený",
@@ -802,9 +804,9 @@
     "add": "Přidat komentář",
     "showResolved": "Zobrazit vyřešené komentáře",
     "hideResolved": "Skrýt vyřešené komentáře",
-    "noFile": "Otevřete soubor a uvidíte jeho komentáře.",
-    "empty": "K tomuto souboru zatím nejsou žádné komentáře.",
-    "emptyCanWrite": "K tomuto souboru zatím nejsou žádné komentáře. Vyberte text a zvolte Přidat komentář.",
+    "empty": "Zatím tu nejsou žádné komentáře.",
+    "emptyCanWrite": "Zatím tu nejsou žádné komentáře. Vyberte text a zvolte Přidat komentář.",
+    "allResolved": "Všechny komentáře jsou vyřešené.",
     "loadFailed": "Komentáře k tomuto souboru se nepodařilo načíst.",
     "detached": "Odpojené",
     "detachedHint": "Text, ke kterému se tyto komentáře vztahovaly, byl smazán.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} je větší, než tento server povoluje. Zůstane jen v tomto počítači.",
     "replaced": "{{name}} nahradil(a) {{file}} ve stejnou chvíli jako vy. Vaše verze je uložena jako {{copy}}.",
     "added": "{{file}} je teď {{copy}}, protože {{name}} přidal(a) soubor se stejným názvem.",
+    "beside": "{{name}} má také soubor s názvem {{file}}. Je uložen jako {{copy}}.",
+    "localCopy": "Změnili jste {{files}} v {{name}}, když jste k tomuto projektu neměli přístup.",
+    "bringIn": "Přenést změny",
+    "keepSeparate": "Ponechat odděleně",
+    "broughtIn": "Vaše změny z {{name}} jsou teď v tomto projektu.",
     "retry": "Zkusit znovu",
     "dismiss": "Zavřít"
   }

@@ -532,7 +532,9 @@
     "noFile": "No file open",
     "unknownPerson": "Someone",
     "viewing": "Viewing {{path}}",
-    "editing": "Editing {{path}}"
+    "editing": "Editing {{path}}",
+    "goTo": "Go to {{name}}",
+    "nowhere": "Not in a file, so there is nowhere to go"
   },
   "tree": {
     "here": "{{name}} has this file open",
@@ -802,9 +804,9 @@
     "add": "Add comment",
     "showResolved": "Show resolved comments",
     "hideResolved": "Hide resolved comments",
-    "noFile": "Open a file to see its comments.",
-    "empty": "No comments on this file yet.",
-    "emptyCanWrite": "No comments on this file yet. Select some text and choose Add comment to start one.",
+    "empty": "No comments yet.",
+    "emptyCanWrite": "No comments yet. Select some text and choose Add comment to start one.",
+    "allResolved": "All comments are resolved.",
     "loadFailed": "Couldn't load the comments for this file.",
     "detached": "Detached",
     "detachedHint": "The text these comments were on was deleted.",
@@ -916,6 +918,11 @@
     "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
     "replaced": "{{name}} replaced {{file}} at the same time as you. Your version is kept as {{copy}}.",
     "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
+    "beside": "{{name}} also has a file named {{file}}. Theirs is kept as {{copy}}.",
+    "localCopy": "You changed {{files}} in {{name}} while you had no access to this project.",
+    "bringIn": "Bring changes in",
+    "keepSeparate": "Keep separate",
+    "broughtIn": "Your changes from {{name}} are in this project now.",
     "retry": "Retry",
     "dismiss": "Dismiss"
   }

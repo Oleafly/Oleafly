@@ -10,12 +10,16 @@ import { BOB, BOB_ID, projectMember, shareInfo } from "../tests/fixtures";
 const mocks = vi.hoisted(() => ({
   collabUploadRetry: vi.fn(),
   collabUploadDismiss: vi.fn(),
+  collabLocalCopyBringIn: vi.fn(),
+  collabLocalCopyDecline: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,
+  collabLocalCopyBringIn: mocks.collabLocalCopyBringIn,
+  collabLocalCopyDecline: mocks.collabLocalCopyDecline,
 }));
 vi.mock("@/store/files", async () => {
   const { create } = await import("zustand");
@@ -63,6 +67,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.collabUploadRetry.mockResolvedValue(undefined);
   mocks.collabUploadDismiss.mockResolvedValue(undefined);
+  mocks.collabLocalCopyBringIn.mockResolvedValue(undefined);
+  mocks.collabLocalCopyDecline.mockResolvedValue(undefined);
   useFilesStore.setState({ projectId: "paper" });
   useCollabLiveStore.setState({
     projectId: "paper",
@@ -73,7 +79,16 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useFileNotices.setState({ projectId: null, uploads: [], kept: [], retrying: false });
+  useFileNotices.setState({
+    projectId: null,
+    uploads: [],
+    kept: [],
+    retrying: false,
+    offer: null,
+    bringing: false,
+    offerFailure: null,
+    broughtIn: null,
+  });
   useCollabLiveStore.setState({ projectId: null, share: null, role: null, members: [] });
 });
 
@@ -121,5 +136,37 @@ describe("FileNoticesBanner", () => {
     ).toBeTruthy();
     await userEvent.click(screen.getAllByRole("button", { name: copy.dismiss })[0]);
     expect(useFileNotices.getState().kept.map((file) => file.id)).toEqual(["plan-id"]);
+  });
+
+  it("offers to bring in the changes made in the local copy and confirms once they are in", async () => {
+    const offer = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex", "figures/plot.png"] };
+    render(<FileNoticesBanner />);
+    act(() => useFileNotices.setState({ projectId: "paper", offer }));
+    expect(
+      screen.getByText(fill(copy.localCopy, { files: "main.tex and plot.png", name: "R4 Paper (local copy)" })),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: copy.bringIn }));
+    expect(mocks.collabLocalCopyBringIn).toHaveBeenCalledWith("paper", "paper-copy");
+    expect(screen.queryByRole("button", { name: copy.bringIn })).toBeNull();
+    expect(screen.getByText(fill(copy.broughtIn, { name: "R4 Paper (local copy)" }))).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: copy.dismiss }));
+    expect(screen.queryByText(fill(copy.broughtIn, { name: "R4 Paper (local copy)" }))).toBeNull();
+  });
+
+  it("keeps the local copy separate when the person says so", async () => {
+    const offer = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex"] };
+    render(<FileNoticesBanner />);
+    act(() => useFileNotices.setState({ projectId: "paper", offer }));
+    await userEvent.click(screen.getByRole("button", { name: copy.keepSeparate }));
+    expect(mocks.collabLocalCopyDecline).toHaveBeenCalledWith("paper", "paper-copy");
+    expect(screen.queryByRole("button", { name: copy.bringIn })).toBeNull();
+  });
+
+  it("tells the person whose file kept its name where the other person's file went", () => {
+    render(<FileNoticesBanner />);
+    show([], [kept({ id: "theirs-id", kind: "beside", path: "sections/plan.tex", copy: "sections/plan (from Bob Smith).tex" })]);
+    expect(
+      screen.getByText(fill(copy.beside, { name: "Bob Smith", file: "plan.tex", copy: "plan (from Bob Smith).tex" })),
+    ).toBeTruthy();
   });
 });

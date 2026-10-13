@@ -541,7 +541,7 @@ async fn patch_settings(
     auth.require(ServerAction::ChangeSettings)?;
     let change = json_body(body)?;
     let now = state.clock.now_ms();
-    let updated = state
+    let (updated, comments_switched) = state
         .db
         .call(move |conn| {
             let transaction = conn.transaction()?;
@@ -562,9 +562,14 @@ async fn patch_settings(
                 )?;
             }
             transaction.commit()?;
-            Ok(after)
+            Ok((after, before.comments_allowed != after.comments_allowed))
         })
         .await?;
+    if comments_switched {
+        for project in state.rooms.projects() {
+            crate::routes::projects::tell_comment_switches(&state, project).await;
+        }
+    }
     Ok(Json(updated))
 }
 

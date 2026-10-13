@@ -972,7 +972,9 @@ impl Session<'_> {
                 peer.leave_presence(project_id);
                 true
             }
-            ClientFrame::Hello { .. } => link.send(&unexpected_frame()).await,
+            ClientFrame::Hello { .. } | ClientFrame::Unknown => {
+                link.send(&unexpected_frame()).await
+            }
         }
     }
 

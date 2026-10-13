@@ -135,10 +135,10 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     } = seat;
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("project");
-    std::fs::create_dir_all(&root).unwrap();
+    tokio::fs::create_dir_all(&root).await.unwrap();
     let mut hashes = BTreeMap::new();
     for (path, text) in files {
-        std::fs::write(root.join(path), text).unwrap();
+        tokio::fs::write(root.join(path), text).await.unwrap();
         hashes.insert((*path).to_owned(), sha256_hex(text.as_bytes()));
     }
     let disk = DiskState {
@@ -164,7 +164,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     let (writer, writer_rx) = mpsc::unbounded_channel();
     let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
     let collab = dir.path().join("collab");
-    std::fs::create_dir_all(&collab).unwrap();
+    tokio::fs::create_dir_all(&collab).await.unwrap();
     let host = Arc::new(Recording::default());
     let active = Arc::new(Active {
         project_id: "uploads".to_owned(),

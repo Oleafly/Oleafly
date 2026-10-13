@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,11 @@ export interface AvatarPerson {
   name: string;
   imageUrl?: string | null;
   hue?: number;
+}
+
+export interface AvatarAction {
+  label: string;
+  run: () => void;
 }
 
 const BOX: Record<AvatarSize, string> = { xs: "size-4", sm: "size-5", base: "size-7", md: "size-8" };
@@ -113,6 +118,33 @@ export function Avatar({
   );
 }
 
+function ActionAvatar({
+  person,
+  size,
+  action,
+  label,
+}: Readonly<{ person: AvatarPerson; size: AvatarSize; action: AvatarAction; label: ReactNode }>) {
+  const describedBy = useId();
+  return (
+    <button
+      type="button"
+      aria-label={action.label}
+      aria-describedby={describedBy}
+      onClick={action.run}
+      className="group flex rounded-full"
+    >
+      <Avatar
+        person={person}
+        size={size}
+        className={cn(SEPARATOR[size], "transition-colors group-hover:border-primary/60 group-focus-visible:border-primary")}
+      />
+      <span id={describedBy} className="sr-only">
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export function AvatarStack({
   people,
   max = 4,
@@ -122,6 +154,7 @@ export function AvatarStack({
   renderLabel = renderTip,
   renderMoreTip,
   tipWide = false,
+  action,
 }: Readonly<{
   people: AvatarPerson[];
   max?: number;
@@ -131,6 +164,7 @@ export function AvatarStack({
   renderLabel?: (person: AvatarPerson) => ReactNode;
   renderMoreTip?: (hidden: AvatarPerson[]) => ReactNode;
   tipWide?: boolean;
+  action?: (person: AvatarPerson) => AvatarAction | null;
 }>) {
   const { t } = useTranslation(["common"]);
   const shown = people.slice(0, Math.max(0, max));
@@ -158,10 +192,14 @@ export function AvatarStack({
     <div data-slot="avatar-stack" className={cn("flex items-center", className)}>
       {shown.map((person, index) => {
         const overlap = cn("shrink-0 rounded-full", index > 0 && OVERLAP[size]);
-        const content = (
+        const label = renderLabel ? renderLabel(person) : person.name;
+        const go = action?.(person) ?? null;
+        const content = go ? (
+          <ActionAvatar key={person.id} person={person} size={size} action={go} label={label} />
+        ) : (
           <>
             <Avatar person={person} size={size} className={SEPARATOR[size]} />
-            <span className="sr-only">{renderLabel ? renderLabel(person) : person.name}</span>
+            <span className="sr-only">{label}</span>
           </>
         );
         return renderTip ? (

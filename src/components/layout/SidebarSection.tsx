@@ -55,6 +55,7 @@ export function SidebarPanelHeader({
 export function SidebarSection({
   id,
   title,
+  titleHint,
   icon,
   ariaLabel,
   ariaBusy,
@@ -72,6 +73,7 @@ export function SidebarSection({
 }: Readonly<{
   id: string;
   title: string;
+  titleHint?: string;
   icon?: ReactNode;
   ariaLabel?: string;
   ariaBusy?: boolean;
@@ -121,7 +123,7 @@ export function SidebarSection({
             <ChevronRight aria-hidden className="size-3 shrink-0" />
           )}
           {icon}
-          <span title={title} className="truncate">{title}</span>
+          <span title={titleHint ?? title} className="truncate">{title}</span>
           {typeof count === "number" ? (
             <output
               aria-label={countLabel}

@@ -1,8 +1,9 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::{Arc, PoisonError};
 use std::time::{Duration, Instant};
 
-use loro::{ContainerID, LoroDoc, ID};
+use loro::{ContainerID, ExportMode, Frontiers, LoroDoc, ID};
 use oleafly_collab_protocol::ids::SharedProjectId;
 use tokio::sync::Mutex;
 
@@ -97,12 +98,18 @@ impl CommentGuard {
             })?,
         };
         let (verdict, replay) = tokio::task::spawn_blocking(move || {
-            let verdict = judge(replay.doc(), &payload);
+            let before = replay.doc().oplog_frontiers();
+            let (verdict, intact) = judge(replay.doc(), &payload);
+            let replay = if intact {
+                Some(replay)
+            } else {
+                rewound(project, &replay, &before)
+            };
             (verdict, replay)
         })
         .await
         .map_err(|error| ServerError::Internal(format!("a comment check failed: {error}")))?;
-        if verdict == Verdict::Allowed {
+        if let Some(replay) = replay {
             *kept = Some(Kept { replay, seq });
         }
         Ok(verdict)
@@ -119,6 +126,16 @@ impl CommentGuard {
             *slot.kept.lock().await = None;
         }
     }
+}
+
+fn rewound(project: SharedProjectId, replay: &Replay, before: &Frontiers) -> Option<Replay> {
+    let bytes = replay
+        .doc()
+        .export(ExportMode::SnapshotAt {
+            version: Cow::Borrowed(before),
+        })
+        .ok()?;
+    Replay::start(project, &bytes)
 }
 
 async fn caught_up(
@@ -144,8 +161,18 @@ async fn caught_up(
     Ok(advanced.map(|replay| (replay, head)))
 }
 
-fn judge(doc: &LoroDoc, payload: &[u8]) -> Verdict {
-    let Ok(status) = doc.import(payload) else {
+fn judge(doc: &LoroDoc, payload: &[u8]) -> (Verdict, bool) {
+    let attached = peers::update_reach(payload)
+        .is_some_and(|reach| snapshots::builds_on(&reach, &doc.oplog_vv()));
+    if !attached {
+        return (Verdict::Unreadable, true);
+    }
+    let verdict = read_in(doc, payload);
+    (verdict, verdict == Verdict::Allowed)
+}
+
+fn read_in(doc: &LoroDoc, payload: &[u8]) -> Verdict {
+    let Ok(status) = snapshots::import_update(doc, payload) else {
         return Verdict::Unreadable;
     };
     if status.pending.is_some() {
@@ -218,7 +245,7 @@ mod tests {
     fn checked(base: &[u8], update: &[u8]) -> Verdict {
         let doc = LoroDoc::new();
         doc.import(base).unwrap();
-        judge(&doc, update)
+        judge(&doc, update).0
     }
 
     #[test]

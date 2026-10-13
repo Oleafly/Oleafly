@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 use oleafly_collab::doc::{NodeKind, NodeParent, Trashed};
 use oleafly_collab::live::LiveProject;
@@ -18,6 +18,8 @@ use super::{
 pub const LIVE_REMOVED_EVENT: &str = "collab-live-removed";
 const NOTICES_FILE: &str = "removed-notices.json";
 static NOTICES: Mutex<()> = Mutex::new(());
+static ANNOUNCED: LazyLock<Mutex<HashMap<PathBuf, BTreeSet<String>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +36,7 @@ pub struct RemovedFile {
 pub struct RemovedPayload {
     pub project_id: String,
     pub files: Vec<RemovedFile>,
+    pub restored: Vec<String>,
 }
 
 fn covers(parent: &str, path: &str) -> bool {
@@ -327,6 +330,7 @@ pub(super) fn removed_notices(
     (!files.is_empty()).then(|| RemovedPayload {
         project_id: project_id.to_owned(),
         files,
+        restored: Vec::new(),
     })
 }
 
@@ -368,14 +372,18 @@ pub(super) fn remember_lost(file: &Path, payload: &RemovedPayload) {
     keep_remembered(file, &notices);
 }
 
-fn forget_notice(file: &Path, id: &str) {
+fn forget_notices(file: &Path, ids: &BTreeSet<String>) {
     let _turn = guard(&NOTICES);
     let mut notices = remembered(file);
     let before = notices.len();
-    notices.retain(|known| known.id != id);
+    notices.retain(|known| !ids.contains(&known.id));
     if notices.len() != before {
         keep_remembered(file, &notices);
     }
+}
+
+fn forget_notice(file: &Path, id: &str) {
+    forget_notices(file, &BTreeSet::from([id.to_owned()]));
 }
 
 fn notices_in(state: &CollabState, project_id: &str) -> Result<PathBuf, CollabError> {
@@ -407,6 +415,61 @@ pub(crate) fn restored(project_id: &str, id: &str) {
 impl Active {
     pub(super) fn notices_file(&self) -> PathBuf {
         self.disk_file.with_file_name(NOTICES_FILE)
+    }
+
+    fn came_back(&self, previous: &Layout, told: Option<&RemovedPayload>) -> BTreeSet<String> {
+        let appeared: BTreeSet<String> = guard(&self.disk)
+            .layout
+            .keys()
+            .filter(|id| !previous.contains_key(*id))
+            .cloned()
+            .collect();
+        let mut announced = guard(&ANNOUNCED);
+        let known = announced.entry(self.root.clone()).or_default();
+        let mut back = BTreeSet::new();
+        if !appeared.is_empty() {
+            let saved: BTreeSet<String> = remembered(&self.notices_file())
+                .into_iter()
+                .map(|notice| notice.id)
+                .collect();
+            back = appeared
+                .into_iter()
+                .filter(|id| known.contains(id) || saved.contains(id))
+                .collect();
+            known.retain(|id| !back.contains(id));
+        }
+        if let Some(payload) = told {
+            known.extend(payload.files.iter().map(|file| file.id.clone()));
+        }
+        back
+    }
+
+    pub(super) fn announce_removed(&self, previous: &Layout, removed: &[String]) {
+        let told = if removed.is_empty() {
+            None
+        } else {
+            removed_notices(&self.project_id, &mut lock(&self.live), previous, removed)
+        };
+        let back = self.came_back(previous, told.as_ref());
+        if let Some(payload) = &told {
+            remember_lost(&self.notices_file(), payload);
+        }
+        if !back.is_empty() {
+            forget_notices(&self.notices_file(), &back);
+        }
+        let payload = match told {
+            Some(payload) => Some(payload),
+            None if !back.is_empty() => Some(RemovedPayload {
+                project_id: self.project_id.clone(),
+                files: Vec::new(),
+                restored: Vec::new(),
+            }),
+            None => None,
+        };
+        if let Some(mut payload) = payload {
+            payload.restored = back.into_iter().collect();
+            self.host.removed(payload);
+        }
     }
 
     fn note_own(&self, path: &str, present: bool) {
@@ -1382,5 +1445,73 @@ mod tests {
         assert_eq!(heard[0].files.len(), 1);
         assert_eq!(heard[0].files[0].id, plan);
         assert_eq!(heard[0].files[0].by.as_deref(), Some("acct-bob"));
+    }
+
+    #[test]
+    fn a_file_restored_by_a_third_person_clears_every_notice_about_its_delete() {
+        let mut bob = Peer::first(
+            "acct-bob",
+            &[("plan.tex", "p\n"), ("discussion.tex", "d\n")],
+        );
+        let mut alice = bob.join("acct-alice");
+        let mut carol = bob.join("acct-carol");
+        let plan = bob.id_of("plan.tex");
+        let discussion = bob.id_of("discussion.tex");
+        alice
+            .live
+            .local_text(&plan, "p\nwritten offline\n")
+            .unwrap();
+        let rig = rig(alice);
+        bob.delete("plan.tex");
+        bob.delete("discussion.tex");
+        rig.arrive(&bob);
+        rig.write_out();
+        let state = rig.state();
+        assert_eq!(lost_notices(&state, "moving").unwrap().len(), 1);
+        let told: Vec<String> = guard(&rig.host.0)[0]
+            .files
+            .iter()
+            .map(|file| file.id.clone())
+            .collect();
+        assert_eq!(told.len(), 2);
+        deliver(&bob, &mut carol);
+        trash_restore(&mut carol.live, &plan).unwrap();
+        trash_restore(&mut carol.live, &discussion).unwrap();
+        {
+            let mut live = lock(&rig.active.live);
+            let payload = carol
+                .live
+                .doc()
+                .export_since(&live.doc().version())
+                .unwrap();
+            assert!(live.import_update(2, &payload).unwrap());
+        }
+        rig.write_out();
+        assert!(rig.root.join("plan.tex").exists());
+        assert!(rig.root.join("discussion.tex").exists());
+        assert!(lost_notices(&state, "moving").unwrap().is_empty());
+        let heard = guard(&rig.host.0).clone();
+        assert_eq!(heard.len(), 2, "{heard:?}");
+        assert!(heard[1].files.is_empty());
+        let mut restored = heard[1].restored.clone();
+        restored.sort();
+        let mut expected = vec![plan, discussion];
+        expected.sort();
+        assert_eq!(restored, expected);
+    }
+
+    #[test]
+    fn a_file_someone_else_adds_is_not_announced_as_restored() {
+        let mut bob = Peer::first("acct-bob", &[("plan.tex", "p\n")]);
+        let alice = bob.join("acct-alice");
+        let rig = rig(alice);
+        bob.live
+            .doc_mut()
+            .add_node(None, "fresh.tex", NodeKind::Text, None, "f\n")
+            .unwrap();
+        rig.arrive(&bob);
+        rig.write_out();
+        assert!(rig.root.join("fresh.tex").exists());
+        assert!(guard(&rig.host.0).is_empty());
     }
 }

@@ -78,6 +78,7 @@ fn told(
             by: by.tokens.account_id,
             kind,
         }),
+        comments: None,
     })
 }
 
@@ -134,6 +135,7 @@ async fn the_removed_person_hears_who_removed_them() {
                 by: stage.bob.tokens.account_id,
                 kind: MemberChangeKind::Removed,
             }),
+            comments: None,
         })
     );
 }
