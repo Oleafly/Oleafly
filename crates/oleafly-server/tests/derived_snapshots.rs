@@ -613,12 +613,13 @@ async fn a_snapshot_of_many_people_typing_at_once_is_built_in_one_quick_pass() {
             build_after: 200,
             keep_updates: 2_000,
         });
+    let one_by_one = one_change_at_a_time(log.clone()).await;
     let started = std::time::Instant::now();
     assert_eq!(hinted(&stage, project, 400).await, Some(400));
     let built_in = started.elapsed();
     assert!(
-        built_in < std::time::Duration::from_secs(1),
-        "building the snapshot took {built_in:?}"
+        built_in * 3 < one_by_one,
+        "building the snapshot took {built_in:?}, importing the same changes one at a time took {one_by_one:?}"
     );
     let newest = download(&stage, "", project).await;
     assert_eq!(text_of(&newest.bytes().await.expect("body")), expected);
@@ -666,6 +667,21 @@ async fn changes_are_acknowledged_quickly_while_a_large_snapshot_is_built() {
         slowest < built_in / 3,
         "a change waited {slowest:?} for its acknowledgement while the snapshot was built in {built_in:?}"
     );
+}
+
+async fn one_change_at_a_time(log: Vec<Vec<u8>>) -> std::time::Duration {
+    tokio::task::spawn_blocking(move || {
+        let doc = LoroDoc::new();
+        doc.import(&first_snapshot())
+            .expect("the first snapshot loads");
+        let started = std::time::Instant::now();
+        for update in &log {
+            doc.import(update).expect("a logged change imports");
+        }
+        started.elapsed()
+    })
+    .await
+    .expect("the import finishes")
 }
 
 async fn hinted(stage: &Stage, project: SharedProjectId, seq: u64) -> Option<u64> {
