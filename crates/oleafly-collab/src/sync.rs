@@ -3027,6 +3027,19 @@ mod tests {
         };
         alice.handle.as_ref().unwrap().flush();
         until_event(&mut alice, |event| *event == LiveEvent::Acknowledged).await;
+        tokio::time::timeout(WAIT, async {
+            while lock(&bob.live)
+                .doc()
+                .comment_thread(&main, forged)
+                .ok()
+                .flatten()
+                .is_none()
+            {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("Bob received Alice's comments");
         for letter in ["x", "y"] {
             let typed = format!("{}{letter}", text(&bob, &main));
             lock(&bob.live).local_text(&main, &typed).unwrap();
