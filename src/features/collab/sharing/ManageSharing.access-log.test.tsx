@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -64,6 +64,24 @@ describe("ManageSharing access log switch", () => {
     expect(mocks.collabAccessLogSetEnabled).toHaveBeenLastCalledWith("grant", false);
     await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"));
     expect(useAccessLogSwitches.getState().byProject.grant).toEqual({ serverAllowed: true, enabled: false });
+  });
+
+  it("puts the icon of each setting to the left of its title", async () => {
+    mocks.collabProjectSummary.mockResolvedValue(projectSummary({ access_log: true, link_sharing: true }));
+    renderManage();
+    const rows: [string, string][] = [
+      [enCollab.manage.link.sharing, "svg.lucide-link-2"],
+      [enCollab.manage.comments.label, "svg.lucide-message-square"],
+      [accessLog.label, "svg.lucide-scroll-text"],
+    ];
+    for (const [label, selector] of rows) {
+      const toggle = await screen.findByRole("switch", { name: label });
+      const icon = toggle.querySelector(selector);
+      expect(icon, label).not.toBeNull();
+      const title = within(toggle).getByText(label);
+      expect(title.contains(icon), label).toBe(false);
+      expect((icon as Element).compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING, label).toBeTruthy();
+    }
   });
 
   it("is hidden when the server does not allow access logs", async () => {

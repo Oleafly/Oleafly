@@ -397,7 +397,9 @@
     "unifiedView": "Yhdistetty näkymä",
     "loading": "Ladataan vertailua…",
     "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun.",
-    "diskHeading": "Levyllä ↔ Omat muutoksesi"
+    "diskHeading": "Levyllä ↔ Omat muutoksesi",
+    "sharedReadOnly": "Jaetussa projektissa tämä vertailu on vain luettavissa. Muokkaa tiedostoa editorissa.",
+    "viewerReadOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä."
   },
   "hotkeys": {
     "title": "Pikanäppäimet",

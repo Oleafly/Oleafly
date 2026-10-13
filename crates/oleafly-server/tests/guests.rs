@@ -115,7 +115,17 @@ async fn invited(
     email: &str,
     role: ProjectRole,
 ) -> GuestInviteResult {
-    let response = invite(stage, &stage.bob, project, email, role).await;
+    invited_by(stage, &stage.bob, project, email, role).await
+}
+
+async fn invited_by(
+    stage: &Stage,
+    owner: &Person,
+    project: SharedProjectId,
+    email: &str,
+    role: ProjectRole,
+) -> GuestInviteResult {
+    let response = invite(stage, owner, project, email, role).await;
     assert_eq!(response.status(), StatusCode::CREATED);
     response.json().await.expect("invite result")
 }
@@ -159,12 +169,20 @@ async fn members_of(
 }
 
 async fn owner_list(stage: &Stage, project: SharedProjectId) -> ProjectGuestInvitations {
+    owner_list_of(stage, &stage.bob, project).await
+}
+
+async fn owner_list_of(
+    stage: &Stage,
+    owner: &Person,
+    project: SharedProjectId,
+) -> ProjectGuestInvitations {
     read(
         call(
             &stage.server,
             Method::GET,
             &invitations_path(project),
-            stage.bob.token(),
+            owner.token(),
             None,
         )
         .await,
@@ -451,9 +469,10 @@ async fn with_approval_required_an_invitation_waits_for_staff() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
     guests_on(stage, true).await;
-    let project = share_project(&stage.server, &stage.bob, "Reef survey").await;
-    let result = invited(
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let result = invited_by(
         stage,
+        &stage.alice,
         project.project_id,
         "dana@field.org",
         ProjectRole::Editor,
@@ -463,7 +482,7 @@ async fn with_approval_required_an_invitation_waits_for_staff() {
         result.invitation.status,
         GuestInvitationStatus::AwaitingApproval
     );
-    let list = owner_list(stage, project.project_id).await;
+    let list = owner_list_of(stage, &stage.alice, project.project_id).await;
     assert!(list.guests_enabled && list.approval_required);
     assert_eq!(list.invitations.len(), 1);
     assert_eq!(
@@ -488,7 +507,7 @@ async fn with_approval_required_an_invitation_waits_for_staff() {
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].email, "dana@field.org");
     assert_eq!(pending[0].project_title, "Reef survey");
-    assert_eq!(pending[0].invited_by.display_name, "Bob Smith");
+    assert_eq!(pending[0].invited_by.display_name, "Alice Chen");
     let approved: GuestInvitation =
         read(decide(stage, &stage.bob, &result.invitation.id, "approve").await).await;
     assert_eq!(approved.status, GuestInvitationStatus::Invited);
@@ -503,7 +522,7 @@ async fn with_approval_required_an_invitation_waits_for_staff() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_declined_invitation_never_admits() {
+async fn an_admins_own_invitation_is_approved_when_it_is_made() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
     guests_on(stage, true).await;
@@ -512,13 +531,48 @@ async fn a_declined_invitation_never_admits() {
         stage,
         project.project_id,
         "dana@field.org",
+        ProjectRole::Editor,
+    )
+    .await;
+    assert_eq!(result.invitation.status, GuestInvitationStatus::Invited);
+    let list = owner_list(stage, project.project_id).await;
+    assert_eq!(list.invitations[0].status, GuestInvitationStatus::Invited);
+    let pending: Vec<GuestInvitation> = read(staff_list(stage, &stage.bob).await).await;
+    assert!(pending
+        .iter()
+        .all(|open| open.status != GuestInvitationStatus::AwaitingApproval));
+    assert_eq!(
+        decide(stage, &stage.bob, &result.invitation.id, "approve")
+            .await
+            .status(),
+        StatusCode::CONFLICT
+    );
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("the guest the admin invited signs in");
+    assert_eq!(projects_of(stage, &dana).await[0].role, ProjectRole::Editor);
+    let kinds = security_event_kinds(&stage.server).await;
+    assert!(kinds.contains(&SecurityEventKind::GuestInvitationApproved));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_declined_invitation_never_admits() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let result = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
         ProjectRole::Viewer,
     )
     .await;
     let declined: GuestInvitation =
         read(decide(stage, &stage.bob, &result.invitation.id, "decline").await).await;
     assert_eq!(declined.status, GuestInvitationStatus::Declined);
-    let shown = owner_list(stage, project.project_id).await;
+    let shown = owner_list_of(stage, &stage.alice, project.project_id).await;
     assert_eq!(shown.invitations[0].status, GuestInvitationStatus::Declined);
     let pending: Vec<GuestInvitation> = read(staff_list(stage, &stage.bob).await).await;
     assert!(pending.is_empty());
@@ -541,9 +595,10 @@ async fn an_expired_invitation_never_admits_and_cannot_be_approved() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
     guests_on(stage, true).await;
-    let project = share_project(&stage.server, &stage.bob, "Reef survey").await;
-    let result = invited(
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let result = invited_by(
         stage,
+        &stage.alice,
         project.project_id,
         "dana@field.org",
         ProjectRole::Viewer,
@@ -569,9 +624,12 @@ async fn an_expired_invitation_never_admits_and_cannot_be_approved() {
         sign_in_as(stage, "dana-gh").await.err().as_deref(),
         Some("not_admitted")
     );
+    let owner = sign_in_as(stage, "github2")
+        .await
+        .expect("alice signs in again");
     let renewed = invite(
         stage,
-        &admin,
+        &owner,
         project.project_id,
         "dana@field.org",
         ProjectRole::Viewer,
@@ -817,10 +875,11 @@ async fn an_existing_guest_gets_a_newly_approved_project_without_signing_in_agai
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
     guests_on(stage, true).await;
-    let first = share_project(&stage.server, &stage.bob, "Reef survey").await;
-    let second = share_project(&stage.server, &stage.bob, "Field notes").await;
-    let one = invited(
+    let first = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let second = share_project(&stage.server, &stage.alice, "Field notes").await;
+    let one = invited_by(
         stage,
+        &stage.alice,
         first.project_id,
         "dana@field.org",
         ProjectRole::Viewer,
@@ -830,8 +889,9 @@ async fn an_existing_guest_gets_a_newly_approved_project_without_signing_in_agai
     let dana = sign_in_as(stage, "dana-gh")
         .await
         .expect("dana is admitted");
-    let two = invited(
+    let two = invited_by(
         stage,
+        &stage.alice,
         second.project_id,
         "dana@field.org",
         ProjectRole::Editor,
@@ -990,9 +1050,10 @@ async fn with_approval_the_email_goes_out_only_once_approved() {
     let guests = guest_stage(mail_config(&smtp)).await;
     let stage = &guests.stage;
     guests_on(stage, true).await;
-    let project = share_project(&stage.server, &stage.bob, "Reef survey").await;
-    let result = invited(
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let result = invited_by(
         stage,
+        &stage.alice,
         project.project_id,
         "dana@field.org",
         ProjectRole::Editor,
@@ -1005,8 +1066,9 @@ async fn with_approval_the_email_goes_out_only_once_approved() {
         .await;
     let mail = smtp.wait_for(1, WAIT).await;
     assert_eq!(mail[0].rcpt_to, ["dana@field.org"]);
-    let declined = invited(
+    let declined = invited_by(
         stage,
+        &stage.alice,
         project.project_id,
         "nobody@field.org",
         ProjectRole::Viewer,

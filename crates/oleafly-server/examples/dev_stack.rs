@@ -35,7 +35,11 @@ async fn main() {
     let data_dir = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "target/dev-stack".to_owned());
-    std::fs::create_dir_all(&data_dir).expect("create the data folder");
+    let folder = data_dir.clone();
+    tokio::task::spawn_blocking(move || std::fs::create_dir_all(folder))
+        .await
+        .expect("the folder task finishes")
+        .expect("create the data folder");
     let github = MockGithub::start_rotating_on(
         GITHUB,
         vec![

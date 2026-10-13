@@ -397,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Indlæser forskellen…",
     "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel.",
-    "diskHeading": "På disken ↔ Dine ændringer"
+    "diskHeading": "På disken ↔ Dine ændringer",
+    "sharedReadOnly": "I et delt projekt er forskellen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte projekt, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Tastaturgenveje",

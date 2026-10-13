@@ -404,7 +404,9 @@
     "unifiedView": "Vista unificata",
     "loading": "Caricamento del diff…",
     "previewTooLarge": "File troppo grande per l'anteprima di un diff.",
-    "diskHeading": "Su disco ↔ Le tue modifiche"
+    "diskHeading": "Su disco ↔ Le tue modifiche",
+    "sharedReadOnly": "In un progetto condiviso questo diff è di sola lettura. Modifica il file nell'editor.",
+    "viewerReadOnly": "Puoi vedere questo progetto condiviso, ma non modificarlo."
   },
   "hotkeys": {
     "title": "Scorciatoie da tastiera",

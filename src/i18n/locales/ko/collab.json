@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "열린 파일 없음",
-    "unknownPerson": "누군가"
+    "unknownPerson": "누군가",
+    "viewing": "{{path}} 보는 중",
+    "editing": "{{path}} 편집 중"
   },
   "tree": {
     "here": "이 파일을 열어 둔 사람: {{name}}",
@@ -563,7 +565,9 @@
     "away": "지금 여기 없음",
     "deleted": "최근 삭제한 항목",
     "deletedEmpty": "최근에 삭제된 항목이 없습니다.",
-    "accessLog": "접근 로그"
+    "accessLog": "접근 로그",
+    "status": "동기화 상태",
+    "waiting": "대기 중인 변경 사항: {{number}}"
   },
   "deleted": {
     "restore": "복원",
@@ -878,5 +882,11 @@
       "decline": "거절",
       "declineNamed": "{{email}} 거절"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} 님이 나를 뷰어로 변경했습니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "viewer": "이제 뷰어입니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "removedBy": "{{name}} 님이 이 프로젝트에서 나를 제거했습니다. 내 사본은 이 컴퓨터에 남고 더 이상 공유되지 않습니다.",
+    "removed": "이 프로젝트에서 제거되었습니다. 내 사본은 이 컴퓨터에 남고 더 이상 공유되지 않습니다."
   }
 }

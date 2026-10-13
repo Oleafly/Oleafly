@@ -963,6 +963,10 @@ impl LiveProject {
         Ok(())
     }
 
+    pub fn mark_dirty(&mut self, id: &str) {
+        self.disk.texts.insert(id.to_owned());
+    }
+
     pub fn take_disk_work(&mut self) -> DiskWork {
         std::mem::take(&mut self.disk)
     }

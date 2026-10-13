@@ -256,7 +256,7 @@ function LinkSharing({
             description={t(($) => $.collab.manage.link.sharingDescription, { server })}
             checked={summary.link_sharing}
             disabled={saving}
-            adornment={<Link2 aria-hidden className="size-4 text-muted-foreground" />}
+            icon={<Link2 aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
             onChange={(enabled) => void save(enabled, linkRole)}
           />
           {summary.link_sharing ? (
@@ -332,7 +332,7 @@ function CommentsSetting({
         }
         checked={enabled}
         disabled={saving || serverOff}
-        adornment={<MessageSquare aria-hidden className="size-4 text-muted-foreground" />}
+        icon={<MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
         onChange={(next) => void save(next)}
       />
       {error ? <InlineAlert>{error}</InlineAlert> : null}
@@ -383,7 +383,7 @@ function AccessLogSetting({
         description={t(($) => $.collab.manage.accessLog.description)}
         checked={enabled}
         disabled={saving}
-        adornment={<ScrollText aria-hidden className="size-4 text-muted-foreground" />}
+        icon={<ScrollText aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
         onChange={(next) => void save(next)}
       />
       {error ? <InlineAlert>{error}</InlineAlert> : null}

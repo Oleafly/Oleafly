@@ -200,8 +200,24 @@ async fn invite(
                 account,
                 SecurityEventKind::GuestInvited,
                 &created,
-                ip,
+                ip.clone(),
             )?;
+            let created = if created.status == GuestInvitationStatus::AwaitingApproval
+                && auth.require(ServerAction::ApproveGuests).is_ok()
+            {
+                let approved = guests::approve(&transaction, &created.id, account, now)?;
+                log(
+                    &transaction,
+                    now,
+                    account,
+                    SecurityEventKind::GuestInvitationApproved,
+                    &approved,
+                    ip,
+                )?;
+                approved
+            } else {
+                created
+            };
             let accepted = guests::accept_existing(&transaction, &created, max_members, now)?;
             let current = guests::get(&transaction, &created.id)?.ok_or(ServerError::NotFound)?;
             let wire = guests::to_wire(&transaction, &current, now)?;

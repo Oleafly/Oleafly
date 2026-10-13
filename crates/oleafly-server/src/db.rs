@@ -239,6 +239,76 @@ mod tests {
         assert_eq!(SCHEMA_VERSION, i64::try_from(MIGRATIONS.len()).unwrap());
     }
 
+    #[test]
+    fn every_update_in_a_migration_names_the_rows_it_changes() {
+        for (index, sql) in MIGRATIONS.iter().enumerate() {
+            for statement in sql.split(';') {
+                let words = statement
+                    .split_whitespace()
+                    .map(str::to_uppercase)
+                    .collect::<Vec<_>>();
+                if words.first().map(String::as_str) == Some("UPDATE") {
+                    assert!(
+                        words.iter().any(|word| word == "WHERE"),
+                        "migration {} changes every row: {}",
+                        index + 1,
+                        statement.trim()
+                    );
+                }
+            }
+        }
+    }
+
+    fn migrated_to(conn: &mut Connection, version: usize) {
+        for (index, sql) in MIGRATIONS.iter().enumerate().take(version) {
+            conn.execute_batch(sql).unwrap();
+            conn.execute_batch(&format!("PRAGMA user_version = {};", index + 1))
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn an_older_database_upgrades_with_every_grant_accepted_and_every_file_marked_used() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        migrated_to(&mut conn, 5);
+        conn.execute_batch(
+            "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES ('a1', 'Ada', 'member', 1, 1), ('a2', 'Bo', 'member', 1, 1);
+             INSERT INTO projects (id, owner_account, title, status, created_at) VALUES ('p1', 'a1', 'Thesis', 'active', 1);
+             INSERT INTO project_grants (project_id, account_id, role, granted_at) VALUES ('p1', 'a1', 'owner', 100), ('p1', 'a2', 'editor', 250);
+             INSERT INTO project_blobs (project_id, hash, size) VALUES ('p1', 'h1', 10), ('p1', 'h2', 20);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        assert_eq!(version(&conn), SCHEMA_VERSION);
+        let unaccepted: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_grants WHERE accepted_at IS NULL OR accepted_at != granted_at",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(unaccepted, 0);
+        let unused: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_blobs WHERE used_at <= 0",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(unused, 0);
+        assert_eq!(count(&conn, "project_blobs"), 2);
+    }
+
+    #[test]
+    fn a_new_database_migrates_with_no_rows_left_unfilled() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        migrate(&mut conn).unwrap();
+        assert_eq!(version(&conn), SCHEMA_VERSION);
+        assert_eq!(count(&conn, "project_grants"), 0);
+        assert_eq!(count(&conn, "project_blobs"), 0);
+    }
+
     #[tokio::test]
     async fn a_new_database_has_every_table_and_index() {
         let db = Db::open_in_memory().unwrap();

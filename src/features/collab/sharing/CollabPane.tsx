@@ -1,4 +1,14 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -26,9 +36,11 @@ import { useShallow } from "zustand/react/shallow";
 import { openCommentThread } from "@/components/collab/comments-rail";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
+import { SidebarSectionStack, type StackSection } from "@/components/layout/SidebarSectionStack";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabProjectMember } from "@/lib/tauri";
@@ -40,10 +52,11 @@ import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-st
 import { GuestBadge } from "../GuestBadge";
 import { collabPerson } from "../people";
 import { peerHue } from "../live/peer-hue";
-import { AccessLog } from "./AccessLog";
+import { AccessLog, useAccessLogShown } from "./AccessLog";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
 import { MergeReviewDialog } from "./MergeReviewDialog";
 import { RecentlyDeleted } from "./RecentlyDeleted";
+import { middleEllipsisPath } from "./middle-ellipsis";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
 import { syncState } from "./sync-state";
 
@@ -103,9 +116,14 @@ const People = memo(function People({
     (a, b) => Number(b.person.account_id === selfId) - Number(a.person.account_id === selfId),
   );
   const whereabouts = (accountId: string) => {
-    if (!here.has(accountId)) return t(($) => $.collab.pane.away);
+    if (!here.has(accountId)) return <span>{t(($) => $.collab.pane.away)}</span>;
     const path = here.get(accountId);
-    return path ? t(($) => $.collab.pane.hereIn, { path }) : t(($) => $.collab.pane.here);
+    if (!path) return <span>{t(($) => $.collab.pane.here)}</span>;
+    return (
+      <span title={t(($) => $.collab.pane.hereIn, { path })}>
+        {t(($) => $.collab.pane.hereIn, { path: middleEllipsisPath(path, PANE_PATH_CHARS) })}
+      </span>
+    );
   };
   return (
     <ul aria-label={title} className="space-y-0.5">
@@ -127,7 +145,7 @@ const People = memo(function People({
               </p>
               <p className="truncate text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.collab.projectRoles[member.role])}
-                {self ? null : ` · ${whereabouts(accountId)}`}
+                {self ? null : <> · {whereabouts(accountId)}</>}
               </p>
             </div>
           </li>
@@ -326,14 +344,72 @@ function useSectionOpen(projectId: string | null) {
   return [sectionOpen, setSectionOpen] as const;
 }
 
-export function CollabPane() {
+function SyncStatus() {
   const { t } = useTranslation(["collab"]);
+  const live = useCollabLiveStore(
+    useShallow((state) => ({
+      status: state.status,
+      pending: state.pending,
+      share: state.share,
+      role: state.role ?? state.share?.role ?? null,
+    })),
+  );
+  const state = syncState(live.status, live.pending);
+  const words = useSyncWords(state, live.pending);
+  const role = live.role;
+  return (
+    <Popover
+      openOnHover
+      closeOnClick={false}
+      align="right"
+      ariaLabel={words}
+      contentAriaLabel={t(($) => $.collab.pane.status)}
+      triggerClassName="size-6 p-0 hover:text-foreground [&_svg]:size-3.5"
+      trigger={<SyncStateIcon state={state} />}
+      className="w-64 p-3"
+    >
+      <div className="space-y-2 text-xs">
+        <p className="flex items-start gap-2 font-medium">
+          <SyncStateIcon state={state} className="mt-0.5 size-3.5" />
+          <span className="min-w-0 break-words">{words}</span>
+        </p>
+        {state === "signedOut" || state === "suspended" ? (
+          <PopoverClose asChild>
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={openCollaborationSettings}>
+              {t(($) => $.collab.activity.signIn)}
+            </Button>
+          </PopoverClose>
+        ) : null}
+        {live.share ? (
+          <div className="space-y-0.5 border-t pt-2 text-muted-foreground">
+            <p className="break-words font-medium text-foreground">
+              {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
+            </p>
+            <p className="select-text break-all">{live.share.server_url}</p>
+            {role ? <p>{t(($) => $.collab.manage.yourRole, { role: t(($) => $.collab.projectRoles[role]) })}</p> : null}
+            <p className="tabular-nums">{t(($) => $.collab.pane.waiting, { number: formatNumber(live.pending) })}</p>
+          </div>
+        ) : null}
+      </div>
+    </Popover>
+  );
+}
+
+const COLLAB_GROUP_ID = "sidebar-collab-sections-v1";
+const SECTION_OPEN = "h-full flex-1";
+const SECTION_SHUT = "shrink-0";
+const SECTION_SCROLL = "min-h-0 flex-1 overflow-y-auto px-2 py-1";
+
+type SectionKey = keyof typeof OPEN_SECTIONS;
+
+
+const PANE_PATH_CHARS = 34;
+export function CollabPane() {
+  const { t } = useTranslation(["collab", "workspace"]);
   const live = useCollabLiveStore(
     useShallow((state) => ({
       projectId: state.projectId,
       share: state.share,
-      status: state.status,
-      pending: state.pending,
       members: state.members,
     })),
   );
@@ -342,91 +418,111 @@ export function CollabPane() {
   const showTree = useSettingsStore((state) => state.showTree);
   const filesProjectId = useFilesStore((state) => state.projectId);
   const [sectionOpen, setSectionOpen] = useSectionOpen(filesProjectId);
-  const state = syncState(live.status, live.pending);
-  const words = useSyncWords(state, live.pending);
+  const accessLogShown = useAccessLogShown();
   const manage = t(($) => $.collab.pane.manage);
   const peopleTitle = t(($) => $.collab.pane.people);
   const activityTitle = t(($) => $.collab.pane.activity);
+  const deletedTitle = t(($) => $.collab.pane.deleted);
+  const accessLogTitle = t(($) => $.collab.pane.accessLog);
   const projectId = live.projectId;
+  const selfId = live.share?.account_id ?? null;
+  const resizeLabel = useCallback(
+    (first: string, second: string) => t(($) => $.workspace.explorer.resizeSections, { first, second }),
+    [t],
+  );
 
   useEffect(() => {
     if (showTree && unread) useCollabActivity.getState().markRead();
   }, [showTree, unread]);
 
+  const openFor = (key: SectionKey) => sectionOpen[key] ?? OPEN_SECTIONS[key];
+  const setOpen = (key: SectionKey, open: boolean) =>
+    setSectionOpen((value) => ((value[key] ?? OPEN_SECTIONS[key]) === open ? value : { ...value, [key]: open }));
+  const section = (key: SectionKey, id: string, title: string, handleId: string, body: (open: boolean, toggle: (open: boolean) => void) => ReactNode): StackSection => ({
+    id,
+    title,
+    handleId,
+    collapsed: !openFor(key),
+    onCollapsedChange: (collapsed) => setOpen(key, !collapsed),
+    render: (collapsed, toggle) => body(!collapsed, (open) => toggle(!open)),
+  });
+
+  const sections: StackSection[] = [];
+  if (live.members.length > 0) {
+    sections.push(
+      section("people", "collab-people-v", peopleTitle, "collab-people-resize", (open, onOpenChange) => (
+        <SidebarSection
+          id="collab-people"
+          title={peopleTitle}
+          icon={<Users aria-hidden className="size-3.5" />}
+          count={live.members.length}
+          open={open}
+          onOpenChange={onOpenChange}
+          className={open ? SECTION_OPEN : SECTION_SHUT}
+          contentClassName={SECTION_SCROLL}
+        >
+          <People title={peopleTitle} members={live.members} selfId={selfId} />
+        </SidebarSection>
+      )),
+    );
+  }
+  sections.push(
+    section("activity", "collab-activity-v", activityTitle, "collab-activity-resize", (open, onOpenChange) => (
+      <SidebarSection
+        id="collab-activity"
+        title={activityTitle}
+        icon={<Activity aria-hidden className="size-3.5" />}
+        count={entries.length}
+        open={open}
+        onOpenChange={onOpenChange}
+        className={open ? SECTION_OPEN : SECTION_SHUT}
+        contentClassName={SECTION_SCROLL}
+      >
+        <ActivityList title={activityTitle} entries={entries} />
+      </SidebarSection>
+    )),
+    section("deleted", "collab-deleted-v", deletedTitle, "collab-deleted-resize", (open, onOpenChange) => (
+      <RecentlyDeleted open={open} onOpenChange={onOpenChange} />
+    )),
+  );
+  if (accessLogShown) {
+    sections.push(
+      section("accessLog", "collab-access-log-v", accessLogTitle, "collab-access-log-resize", (open, onOpenChange) => (
+        <AccessLog open={open} onOpenChange={onOpenChange} />
+      )),
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="collab-pane">
       <SidebarPanelHeader icon={RadioTower} title={t(($) => $.collab.pane.title)}>
-        {live.share && projectId ? (
-          <Tooltip label={manage}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={manage}
-              className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => useShareDialog.getState().openFor(projectId)}
-            >
-              <Share2 aria-hidden className="size-3.5" />
-            </Button>
-          </Tooltip>
-        ) : null}
-      </SidebarPanelHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-0.5 border-b border-sidebar-border px-3 py-2 text-xs">
-          <div className="flex items-center gap-2">
-            <p className="flex min-w-0 flex-1 items-center gap-2 font-medium">
-              <SyncStateIcon state={state} className="size-3.5" />
-              <span>{words}</span>
-            </p>
-            {state === "signedOut" || state === "suspended" ? (
+        <span className="flex shrink-0 items-center gap-0.5">
+          <SyncStatus />
+          {live.share && projectId ? (
+            <Tooltip label={manage}>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="h-6 shrink-0 px-1.5 text-xs"
-                onClick={openCollaborationSettings}
+                size="icon"
+                aria-label={manage}
+                className="size-6 text-muted-foreground hover:text-foreground"
+                onClick={() => useShareDialog.getState().openFor(projectId)}
               >
-                {t(($) => $.collab.activity.signIn)}
+                <Share2 aria-hidden className="size-3.5" />
               </Button>
-            ) : null}
-          </div>
-          {live.share ? (
-            <p className="truncate text-muted-foreground">
-              {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
-            </p>
+            </Tooltip>
           ) : null}
-        </div>
-        {live.members.length > 0 ? (
-          <SidebarSection
-            id="collab-people"
-            title={peopleTitle}
-            icon={<Users aria-hidden className="size-3.5" />}
-            count={live.members.length}
-            open={sectionOpen.people}
-            onOpenChange={(open) => setSectionOpen((value) => ({ ...value, people: open }))}
-            contentClassName="px-2 py-1"
-          >
-            <People title={peopleTitle} members={live.members} selfId={live.share?.account_id ?? null} />
-          </SidebarSection>
-        ) : null}
-        <SidebarSection
-          id="collab-activity"
-          title={activityTitle}
-          icon={<Activity aria-hidden className="size-3.5" />}
-          count={entries.length}
-          open={sectionOpen.activity}
-          onOpenChange={(open) => setSectionOpen((value) => ({ ...value, activity: open }))}
-          contentClassName="px-2 py-1"
-        >
-          <ActivityList title={activityTitle} entries={entries} />
-        </SidebarSection>
-        <RecentlyDeleted
-          open={sectionOpen.deleted ?? false}
-          onOpenChange={(open) => setSectionOpen((value) => ({ ...value, deleted: open }))}
-        />
-        <AccessLog
-          open={sectionOpen.accessLog ?? false}
-          onOpenChange={(open) => setSectionOpen((value) => ({ ...value, accessLog: open }))}
+        </span>
+      </SidebarPanelHeader>
+      <div className="min-h-0 flex-1">
+        <SidebarSectionStack
+          groupId={COLLAB_GROUP_ID}
+          persist={false}
+          fillerId="collab-filler-v"
+          fillerHandleId="collab-filler-resize"
+          sections={sections}
+          resizeLabel={resizeLabel}
+          testId="collab-stack"
         />
       </div>
     </div>

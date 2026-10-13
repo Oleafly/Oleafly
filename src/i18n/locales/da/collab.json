@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Ingen fil åben",
-    "unknownPerson": "Nogen"
+    "unknownPerson": "Nogen",
+    "viewing": "Ser {{path}}",
+    "editing": "Redigerer {{path}}"
   },
   "tree": {
     "here": "{{name}} har denne fil åben",
@@ -563,7 +565,9 @@
     "away": "Ikke her lige nu",
     "deleted": "Slettet for nylig",
     "deletedEmpty": "Intet er slettet for nylig.",
-    "accessLog": "Adgangslog"
+    "accessLog": "Adgangslog",
+    "status": "Synkroniseringsstatus",
+    "waiting": "Ventende ændringer: {{number}}"
   },
   "deleted": {
     "restore": "Gendan",
@@ -878,5 +882,11 @@
       "decline": "Afvis",
       "declineNamed": "Afvis {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} har gjort dig til læser. Du kan læse projektet, men ikke redigere det.",
+    "viewer": "Du er nu læser. Du kan læse projektet, men ikke redigere det.",
+    "removedBy": "{{name}} fjernede dig fra dette projekt. Din kopi bliver på denne computer og deles ikke længere.",
+    "removed": "Du blev fjernet fra dette projekt. Din kopi bliver på denne computer og deles ikke længere."
   }
 }

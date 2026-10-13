@@ -1,6 +1,7 @@
 use crate::error::CollabError;
 use crate::secret_port::SecretPort;
 use oleafly_collab_protocol::crypto::{b64url_decode, b64url_encode};
+use oleafly_collab_protocol::ids::ServerId;
 use ring::rand::SystemRandom;
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use std::fmt;
@@ -11,16 +12,31 @@ pub struct DeviceKey {
     pair: Ed25519KeyPair,
 }
 
+pub fn server_key_account(server: ServerId) -> String {
+    format!("{DEVICE_KEY_ACCOUNT}:{server}")
+}
+
 impl DeviceKey {
     pub fn load_or_create(secrets: &dyn SecretPort) -> Result<DeviceKey, CollabError> {
-        if let Some(stored) = secrets.get(DEVICE_KEY_ACCOUNT)? {
-            return DeviceKey::from_stored(&stored);
+        match DeviceKey::load(secrets, DEVICE_KEY_ACCOUNT)? {
+            Some(key) => Ok(key),
+            None => DeviceKey::create(secrets, DEVICE_KEY_ACCOUNT),
         }
+    }
+
+    pub fn load(secrets: &dyn SecretPort, account: &str) -> Result<Option<DeviceKey>, CollabError> {
+        secrets
+            .get(account)?
+            .map(|stored| DeviceKey::from_stored(&stored))
+            .transpose()
+    }
+
+    pub fn create(secrets: &dyn SecretPort, account: &str) -> Result<DeviceKey, CollabError> {
         let document = Ed25519KeyPair::generate_pkcs8(&SystemRandom::new())
             .map_err(|_| CollabError::Crypto("failed to generate the device key".to_string()))?;
-        secrets.set(DEVICE_KEY_ACCOUNT, &b64url_encode(document.as_ref()))?;
+        secrets.set(account, &b64url_encode(document.as_ref()))?;
         let stored = secrets
-            .get(DEVICE_KEY_ACCOUNT)?
+            .get(account)?
             .ok_or_else(|| CollabError::Secret("the device key was not saved".to_string()))?;
         DeviceKey::from_stored(&stored)
     }

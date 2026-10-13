@@ -118,6 +118,73 @@ pub(crate) fn follow_browser(url: &str) -> Result<(), CollabError> {
     Ok(())
 }
 
+pub(crate) type Pages = Arc<std::sync::Mutex<Vec<String>>>;
+
+pub(crate) fn recording_browser(
+    pages: Pages,
+) -> impl Fn(&str) -> Result<(), CollabError> + Send + Sync {
+    move |url: &str| {
+        let url = url.to_string();
+        let pages = Arc::clone(&pages);
+        tokio::spawn(async move {
+            let Ok(client) = reqwest::Client::builder().no_proxy().build() else {
+                return;
+            };
+            if let Ok(response) = client.get(url).send().await {
+                if let Ok(page) = response.text().await {
+                    pages.lock().expect("pages").push(page);
+                }
+            }
+        });
+        Ok(())
+    }
+}
+
+pub(crate) async fn last_page(pages: &Pages) -> String {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Some(page) = pages.lock().expect("pages").last().cloned() {
+            return page;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "the browser never got a page"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+pub(crate) async fn bob_and_alice_server() -> (MockGithub, MockGithub, TestServer) {
+    let bob_github = MockGithub::start(vec![github_user(1, "bob")]).await;
+    let alice_github = MockGithub::start(vec![github_user(2, "alice")]).await;
+    let mut config = test_config();
+    config
+        .providers
+        .push(github_provider("github", &bob_github));
+    config
+        .providers
+        .push(github_provider("github2", &alice_github));
+    let server = TestServer::start(config).await;
+    (bob_github, alice_github, server)
+}
+
+pub(crate) async fn allow_alice(server: &TestServer, admin: &SessionTokens) {
+    super::ServerClient::new(server_url(server))
+        .expect("client")
+        .admin_add_allowlist(
+            &admin.access_token,
+            &oleafly_collab_protocol::admin::NewAllowlistEntry {
+                matcher: oleafly_collab_protocol::admin::AllowlistMatcher::ProviderLogin {
+                    provider: "github2".to_string(),
+                    login: "alice".to_string(),
+                },
+                role: ServerRole::Member,
+            },
+        )
+        .await
+        .expect("allowlist alice");
+}
+
 pub(crate) fn sign_in_request(server: &TestServer, setup_code: Option<String>) -> SignInRequest {
     SignInRequest {
         url: server_url(server),
@@ -237,31 +304,9 @@ pub(crate) async fn another_alice_device(pair: &Pair) -> Person {
 }
 
 pub(crate) async fn two_people() -> Pair {
-    let bob_github = MockGithub::start(vec![github_user(1, "bob")]).await;
-    let alice_github = MockGithub::start(vec![github_user(2, "alice")]).await;
-    let mut config = test_config();
-    config
-        .providers
-        .push(github_provider("github", &bob_github));
-    config
-        .providers
-        .push(github_provider("github2", &alice_github));
-    let server = TestServer::start(config).await;
+    let (bob_github, alice_github, server) = bob_and_alice_server().await;
     let (bob, server_id) = person(&server, "github", Some(server.setup_code())).await;
-    let client = super::ServerClient::new(server_url(&server)).expect("client");
-    client
-        .admin_add_allowlist(
-            &bob.tokens.access_token,
-            &oleafly_collab_protocol::admin::NewAllowlistEntry {
-                matcher: oleafly_collab_protocol::admin::AllowlistMatcher::ProviderLogin {
-                    provider: "github2".to_string(),
-                    login: "alice".to_string(),
-                },
-                role: ServerRole::Member,
-            },
-        )
-        .await
-        .expect("allowlist alice");
+    allow_alice(&server, &bob.tokens).await;
     let (alice, _) = person(&server, "github2", None).await;
     Pair {
         _providers: (bob_github, alice_github),

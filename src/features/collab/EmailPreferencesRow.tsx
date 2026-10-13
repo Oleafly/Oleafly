@@ -65,7 +65,7 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
         description={description()}
         checked={available && preferences.shared_with_you}
         disabled={!available || saving}
-        adornment={<Mail aria-hidden className="size-4 text-muted-foreground" />}
+        icon={<Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
         onChange={(value) => void change(value)}
       />
       {error ? <InlineAlert>{error}</InlineAlert> : null}

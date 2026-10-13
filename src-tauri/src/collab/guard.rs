@@ -83,10 +83,11 @@ impl MassChangeGuard {
             return self.lose_root(tracked_total);
         }
         self.regain_root();
+        let known = crate::collab::live::known_content(&self.project_id);
         let direct = if change.rescan {
             None
         } else {
-            direct_changes(&self.root, &change.paths, tracked.as_ref())
+            direct_changes(&self.root, &change.paths, tracked.as_ref(), &known)
         };
         let present = if direct.is_some() && tracked_total > 0 {
             Vec::new()
@@ -105,6 +106,7 @@ impl MassChangeGuard {
                 files
                     .iter()
                     .filter(|file| !crate::folder_watch::is_own_write(&self.root.join(file)))
+                    .filter(|file| !known.holds(&self.root, file))
                     .count()
             }
         };
@@ -177,11 +179,17 @@ impl MassChangeGuard {
     }
 }
 
-fn direct_changes(root: &Path, paths: &[String], tracked: Option<&FileIdMap>) -> Option<usize> {
+fn direct_changes(
+    root: &Path,
+    paths: &[String],
+    tracked: Option<&FileIdMap>,
+    known: &crate::collab::live::KnownContent,
+) -> Option<usize> {
     let tracked = tracked?;
     paths.iter().try_fold(0, |count, path| {
         match std::fs::symlink_metadata(root.join(path)) {
             Ok(metadata) if metadata.is_dir() => None,
+            Ok(_) if known.holds(root, path) => Some(count),
             Ok(_) => Some(count + 1),
             Err(_) if tracked.id_of(path).is_some() => Some(count + 1),
             Err(_) => None,
@@ -511,6 +519,112 @@ mod tests {
         assert_eq!(
             pauses.taken(),
             [paused("guard-rescan", 4, 12, PauseReason::MassChange)]
+        );
+    }
+
+    fn remember_written(project_id: &str, files: &[(&str, &str)]) {
+        let index = CollabPaths::new(crate::paths::collab_root().unwrap())
+            .materializer_index_file(project_id)
+            .unwrap();
+        std::fs::create_dir_all(index.parent().unwrap()).unwrap();
+        let written = crate::collab::disk::DiskState {
+            layout: Default::default(),
+            hashes: files
+                .iter()
+                .map(|(path, text)| {
+                    (
+                        (*path).to_owned(),
+                        crate::collab::disk::sha256_hex(text.as_bytes()),
+                    )
+                })
+                .collect(),
+        };
+        written.save(&index).unwrap();
+    }
+
+    #[test]
+    fn a_restore_that_rewrites_every_file_counts_only_the_files_whose_content_changed() {
+        let library = TempLibrary::new();
+        let names: Vec<String> = (0..23)
+            .map(|index| format!("chapters/c{index:02}.tex"))
+            .collect();
+        let texts: Vec<String> = names
+            .iter()
+            .map(|name| format!("text of {name}\n"))
+            .collect();
+        let files: Vec<(&str, &str)> = names
+            .iter()
+            .zip(&texts)
+            .map(|(name, text)| (name.as_str(), text.as_str()))
+            .collect();
+        let root = library.project("guard-restore", &files);
+        let tracked: Vec<&str> = names.iter().map(String::as_str).collect();
+        track("guard-restore", &tracked);
+        remember_written("guard-restore", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let named = MassChangeGuard::new("guard-restore", &root, pauses.clone());
+        let rescanned = MassChangeGuard::new("guard-restore", &root, pauses.clone());
+        let later = SystemTime::now() + Duration::from_secs(5);
+        for (name, text) in &files {
+            std::fs::write(root.join(name), text).unwrap();
+            set_modified(&root.join(name), later);
+        }
+        std::fs::write(root.join(names[4].as_str()), "the restored older text\n").unwrap();
+        set_modified(&root.join(names[4].as_str()), later);
+
+        let by_name = named.inspect(&change("guard-restore", &tracked));
+        let by_rescan = rescanned.inspect(&rescan("guard-restore"));
+
+        assert!(matches!(by_name, MassChangeVerdict::Apply), "{by_name:?}");
+        assert!(
+            matches!(by_rescan, MassChangeVerdict::Apply),
+            "{by_rescan:?}"
+        );
+        assert!(pauses.taken().is_empty());
+    }
+
+    #[test]
+    fn a_restore_that_really_changes_many_files_still_pauses() {
+        let library = TempLibrary::new();
+        let names: Vec<String> = (0..23)
+            .map(|index| format!("chapters/c{index:02}.tex"))
+            .collect();
+        let texts: Vec<String> = names
+            .iter()
+            .map(|name| format!("text of {name}\n"))
+            .collect();
+        let files: Vec<(&str, &str)> = names
+            .iter()
+            .zip(&texts)
+            .map(|(name, text)| (name.as_str(), text.as_str()))
+            .collect();
+        let root = library.project("guard-restore-many", &files);
+        let tracked: Vec<&str> = names.iter().map(String::as_str).collect();
+        track("guard-restore-many", &tracked);
+        remember_written("guard-restore-many", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let guard = MassChangeGuard::new("guard-restore-many", &root, pauses.clone());
+        for name in &names[..12] {
+            std::fs::write(root.join(name), "an older version\n").unwrap();
+        }
+
+        let verdict = guard.inspect(&change("guard-restore-many", &tracked));
+
+        assert!(matches!(
+            verdict,
+            MassChangeVerdict::Pause {
+                changed: 12,
+                total: 23
+            }
+        ));
+        assert_eq!(
+            pauses.taken(),
+            [paused(
+                "guard-restore-many",
+                12,
+                23,
+                PauseReason::MassChange
+            )]
         );
     }
 

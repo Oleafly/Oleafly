@@ -404,7 +404,9 @@
     "unifiedView": "Vista unificada",
     "loading": "Cargando la comparación…",
     "previewTooLarge": "El archivo es demasiado grande para ver una comparación.",
-    "diskHeading": "En disco ↔ Tus cambios"
+    "diskHeading": "En disco ↔ Tus cambios",
+    "sharedReadOnly": "En un proyecto compartido, esta comparación es de solo lectura. Edita el archivo en el editor.",
+    "viewerReadOnly": "Puedes ver este proyecto compartido, pero no editarlo."
   },
   "hotkeys": {
     "title": "Atajos de teclado",

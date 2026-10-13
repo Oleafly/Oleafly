@@ -19,6 +19,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::auth::devices;
+use crate::comment_guard::Verdict;
 use crate::error::ServerError;
 use crate::members;
 use crate::peers::{self, Bound};
@@ -26,6 +27,7 @@ use crate::projects;
 use crate::rate_limit::client_key;
 use crate::rooms::{self, Outbox, Queued, RoomMember};
 use crate::routes::ClientIp;
+use crate::settings;
 use crate::sockets::{LinkTiming, SocketControl};
 use crate::state::AppState;
 use crate::tokens::{random_token, resolve_access_token};
@@ -35,6 +37,7 @@ pub const MAX_FRAME_BYTES: usize = 12 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
+pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
 const BRIEF_SEND: Duration = Duration::from_secs(5);
 const TOO_LARGE: &str = "This change is too large to send.";
 
@@ -697,12 +700,98 @@ impl Peer<'_> {
         let Ok(stored) = serde_json::to_vec(&envelope) else {
             return stored_failed;
         };
+        let batch = envelope.batch_id;
+        let first = self
+            .append(
+                project,
+                envelope.clone(),
+                reach.clone(),
+                stored.clone(),
+                false,
+            )
+            .await;
+        let appended = match first {
+            Ok(Some(appended)) => Ok(appended),
+            Ok(None) => {
+                if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
+                    return refusal;
+                }
+                let checked = self.append(project, envelope, reach, stored, true).await;
+                if checked.is_err() {
+                    self.state.comment_guard.forget(project).await;
+                }
+                checked.and_then(|appended| {
+                    appended.ok_or_else(|| {
+                        ServerError::Internal("the comment check did not hold".to_string())
+                    })
+                })
+            }
+            Err(error) => Err(error),
+        };
+        match appended {
+            Ok(appended) => ServerFrame::Ack {
+                project_id: project,
+                batch_id: batch,
+                seq: appended.seq,
+            },
+            Err(ServerError::Forbidden | ServerError::NotFound) => {
+                frame_error(FrameErrorCode::Forbidden, "You can't edit this project.")
+            }
+            Err(ServerError::Unauthorized) => frame_error(
+                FrameErrorCode::Unauthorized,
+                "This update is not signed by this device.",
+            ),
+            Err(ServerError::BadRequest(_)) => {
+                frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
+            }
+            Err(_) => stored_failed,
+        }
+    }
+
+    async fn refuse_comment_change(
+        &self,
+        project: SharedProjectId,
+        envelope: &Envelope,
+    ) -> Option<ServerFrame> {
+        let verdict = self
+            .state
+            .comment_guard
+            .check(
+                &self.state.db,
+                &self.state.snapshots,
+                project,
+                envelope.payload.clone(),
+            )
+            .await;
+        match verdict {
+            Ok(Verdict::Allowed) => None,
+            Ok(Verdict::ChangesComments) => {
+                Some(frame_error(FrameErrorCode::Forbidden, COMMENTS_OFF))
+            }
+            Ok(Verdict::Unreadable) => Some(frame_error(
+                FrameErrorCode::BadFrame,
+                "This update is not valid.",
+            )),
+            Err(_) => Some(frame_error(
+                FrameErrorCode::Internal,
+                "The server could not store this change.",
+            )),
+        }
+    }
+
+    async fn append(
+        &self,
+        project: SharedProjectId,
+        envelope: Envelope,
+        reach: peers::Reach,
+        stored: Vec<u8>,
+        checked: bool,
+    ) -> Result<Option<projects::Appended>, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
         let rooms = std::sync::Arc::clone(&self.state.rooms);
         let connection = self.connection;
-        let appended = self
-            .state
+        self.state
             .db
             .call(move |conn| {
                 let transaction = conn.transaction()?;
@@ -714,6 +803,9 @@ impl Peer<'_> {
                     || !project_role_allows(role, ProjectAction::Edit)
                 {
                     return Err(ServerError::Forbidden);
+                }
+                if !checked && !comments_on(&transaction, &row)? {
+                    return Ok(None);
                 }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
@@ -746,27 +838,9 @@ impl Peer<'_> {
                         },
                     );
                 }
-                Ok(appended)
+                Ok(Some(appended))
             })
-            .await;
-        match appended {
-            Ok(appended) => ServerFrame::Ack {
-                project_id: project,
-                batch_id: batch,
-                seq: appended.seq,
-            },
-            Err(ServerError::Forbidden | ServerError::NotFound) => {
-                frame_error(FrameErrorCode::Forbidden, "You can't edit this project.")
-            }
-            Err(ServerError::Unauthorized) => frame_error(
-                FrameErrorCode::Unauthorized,
-                "This update is not signed by this device.",
-            ),
-            Err(ServerError::BadRequest(_)) => {
-                frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
-            }
-            Err(_) => stored_failed,
-        }
+            .await
     }
 
     pub(crate) fn presence(
@@ -929,6 +1003,13 @@ impl Session<'_> {
             }
         }
     }
+}
+
+fn comments_on(
+    conn: &rusqlite::Connection,
+    row: &projects::ProjectRow,
+) -> Result<bool, ServerError> {
+    Ok(row.comments_enabled && settings::load(conn)?.comments_allowed)
 }
 
 #[cfg(test)]

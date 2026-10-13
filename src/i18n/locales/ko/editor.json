@@ -390,7 +390,9 @@
     "unifiedView": "한 열로 보기",
     "loading": "diff를 불러오는 중…",
     "previewTooLarge": "파일이 너무 커서 diff를 미리 볼 수 없습니다.",
-    "diskHeading": "디스크 ↔ 내 편집"
+    "diskHeading": "디스크 ↔ 내 편집",
+    "sharedReadOnly": "공유 프로젝트에서는 이 diff가 읽기 전용입니다. 파일은 편집기에서 수정하세요.",
+    "viewerReadOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다."
   },
   "hotkeys": {
     "title": "키보드 단축키",

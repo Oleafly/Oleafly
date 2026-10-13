@@ -146,8 +146,7 @@ function AccessList({ projectId, title }: Readonly<{ projectId: string; title: s
   );
 }
 
-export function AccessLog({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
-  const { t } = useTranslation(["collab"]);
+export function useAccessLogShown(): boolean {
   const projectId = useCollabLiveStore((state) => state.projectId);
   const owner = useCollabLiveStore((state) => (state.role ?? state.share?.role) === "owner");
   const status = useAccessLogSwitches((state) => (projectId ? state.byProject[projectId] : undefined));
@@ -156,7 +155,15 @@ export function AccessLog({ open, onOpenChange }: Readonly<{ open: boolean; onOp
     if (owner && projectId) void useAccessLogSwitches.getState().load(projectId);
   }, [owner, projectId]);
 
-  if (!owner || !projectId || !status?.serverAllowed || !status.enabled) return null;
+  return owner && projectId !== null && status?.serverAllowed === true && status.enabled;
+}
+
+export function AccessLog({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
+  const { t } = useTranslation(["collab"]);
+  const projectId = useCollabLiveStore((state) => state.projectId);
+  const shown = useAccessLogShown();
+
+  if (!shown || !projectId) return null;
   const title = t(($) => $.collab.pane.accessLog);
   return (
     <SidebarSection
@@ -165,7 +172,8 @@ export function AccessLog({ open, onOpenChange }: Readonly<{ open: boolean; onOp
       icon={<ScrollText aria-hidden className="size-3.5" />}
       open={open}
       onOpenChange={onOpenChange}
-      contentClassName="space-y-1 px-2 py-1"
+      className={open ? "h-full flex-1" : "shrink-0"}
+      contentClassName="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-1"
     >
       <AccessList projectId={projectId} title={title} />
     </SidebarSection>

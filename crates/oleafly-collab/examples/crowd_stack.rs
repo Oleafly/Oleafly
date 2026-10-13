@@ -651,7 +651,11 @@ async fn main() {
             std::process::exit(2);
         }
     };
-    std::fs::create_dir_all(&options.data_dir).expect("create the data folder");
+    let folder = options.data_dir.clone();
+    tokio::task::spawn_blocking(move || std::fs::create_dir_all(folder))
+        .await
+        .expect("the folder task finishes")
+        .expect("create the data folder");
     let github = MockGithub::start_rotating_on(
         &options.github,
         vec![

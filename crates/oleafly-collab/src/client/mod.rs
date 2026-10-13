@@ -19,7 +19,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab_protocol::capabilities::{ProtocolRange, PROTOCOL_VERSION};
 
-pub use self::code_sign_in::{sign_in_with_code, CodeSignInRequest, SignInCode};
+pub use self::code_sign_in::{
+    sign_in_with_code, sign_in_with_code_as, CodeSignInRequest, SignInCode,
+};
 pub use self::diagnostics::{
     test_connection, test_connection_pinned, CheckId, CheckStatus, ConnectionCheck,
 };
@@ -28,7 +30,7 @@ pub(crate) use self::poll::{
     keep_polling, post_outbox, Outbox, PollChannel, PollOpen, PollRequest, PollTiming, Polled,
 };
 pub use self::session::{session_account, SessionManager};
-pub use self::sign_in::{sign_in, SignInRequest};
+pub use self::sign_in::{sign_in, sign_in_as, SignInRequest};
 pub use self::url::ServerUrl;
 pub(crate) use self::ws::Socket;
 pub use self::ws::{connect_socket, SocketConnection};

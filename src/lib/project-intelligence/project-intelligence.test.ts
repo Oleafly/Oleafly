@@ -1589,3 +1589,140 @@ describe("LaTeX graphics search paths", () => {
     expect(paperLogo).toMatchObject({ resolution: "resolved", targetFile: "paper/logo.png" });
   });
 });
+
+describe("LaTeX includes searched from the main document's folder", () => {
+  function includeEdge(value: ProjectIntelligenceSnapshot, fromFile: string, raw: string) {
+    return value.hierarchy.edges.find(
+      (edge) => edge.kind === "include" && edge.fromFile === fromFile && edge.rawTarget === raw,
+    );
+  }
+
+  function unresolved(value: ProjectIntelligenceSnapshot) {
+    return value.diagnostics.filter((diagnostic) => diagnostic.code === "unresolved-target");
+  }
+
+  it("resolves a nested \\input from the main document's folder, where LaTeX runs", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{sections/method}`,
+        "sections/method.tex": String.raw`\input{figures/arch.tex}`,
+        "figures/arch.tex": String.raw`\input{figures/parts/legend}`,
+      },
+      ["main.tex", "sections/method.tex", "figures/arch.tex", "figures/parts/legend.tex"],
+    );
+    expect(includeEdge(value, "sections/method.tex", "figures/arch.tex")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "figures/arch.tex",
+    });
+    expect(includeEdge(value, "figures/arch.tex", "figures/parts/legend")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "figures/parts/legend.tex",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("resolves an \\include in an included file from the main document's folder", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{sections/body}`,
+        "sections/body.tex": String.raw`\include{chapters/results}`,
+      },
+      ["main.tex", "sections/body.tex", "chapters/results.tex"],
+    );
+    expect(includeEdge(value, "sections/body.tex", "chapters/results")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "chapters/results.tex",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("still finds a file that exists only beside the including file", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{sections/method}`,
+        "sections/method.tex": String.raw`\input{parts/detail}`,
+      },
+      ["main.tex", "sections/method.tex", "sections/parts/detail.tex"],
+    );
+    expect(includeEdge(value, "sections/method.tex", "parts/detail")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "sections/parts/detail.tex",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("prefers the main document's folder when both folders have the file", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{sections/method}`,
+        "sections/method.tex": String.raw`\input{figures/arch}`,
+      },
+      ["main.tex", "sections/method.tex", "figures/arch.tex", "sections/figures/arch.tex"],
+    );
+    expect(includeEdge(value, "sections/method.tex", "figures/arch")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "figures/arch.tex",
+    });
+  });
+
+  it("searches a main document's own folder when it sits in a subfolder", () => {
+    const value = snapshot(
+      {
+        "paper/main.tex": String.raw`\input{sections/method}`,
+        "paper/sections/method.tex": String.raw`\input{figures/arch}`,
+      },
+      ["paper/main.tex", "paper/sections/method.tex", "paper/figures/arch.tex"],
+    );
+    expect(includeEdge(value, "paper/sections/method.tex", "figures/arch")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "paper/figures/arch.tex",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("resolves an \\input inside a \\subfile from the main document's folder", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\subfile{chapters/one}`,
+        "chapters/one.tex": String.raw`\input{figures/arch}`,
+      },
+      ["main.tex", "chapters/one.tex", "figures/arch.tex"],
+    );
+    expect(includeEdge(value, "chapters/one.tex", "figures/arch")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "figures/arch.tex",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("keeps a document that is its own root to its own folder", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{sections/method}`,
+        "sections/method.tex": "Method.",
+        "poster/poster.tex": String.raw`\input{parts/a}
+\input{figures/arch}`,
+      },
+      ["main.tex", "sections/method.tex", "poster/poster.tex", "poster/parts/a.tex", "parts/a.tex", "figures/arch.tex"],
+    );
+    expect(includeEdge(value, "poster/poster.tex", "parts/a")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "poster/parts/a.tex",
+    });
+    expect(includeEdge(value, "poster/poster.tex", "figures/arch")).toMatchObject({ resolution: "unresolved" });
+  });
+
+  it("leaves Typst includes relative to the including file", () => {
+    const value = snapshot(
+      {
+        "main.typ": '#include "chapters/a.typ"\n',
+        "chapters/a.typ": '#include "parts/b.typ"\n',
+      },
+      ["main.typ", "chapters/a.typ", "chapters/parts/b.typ", "parts/b.typ"],
+    );
+    expect(includeEdge(value, "chapters/a.typ", "parts/b.typ")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "chapters/parts/b.typ",
+    });
+  });
+});

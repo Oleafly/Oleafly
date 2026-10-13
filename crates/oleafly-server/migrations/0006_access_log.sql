@@ -2,7 +2,7 @@ ALTER TABLE projects ADD COLUMN access_log INTEGER NOT NULL DEFAULT 0 CHECK (acc
 
 ALTER TABLE project_grants ADD COLUMN accepted_at INTEGER;
 
-UPDATE project_grants SET accepted_at = granted_at;
+UPDATE project_grants SET accepted_at = granted_at WHERE accepted_at IS NULL;
 
 CREATE TABLE project_access_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

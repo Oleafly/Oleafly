@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab::{
-    sign_in, sign_in_with_code, test_connection_pinned, CodeSignInRequest, CollabError,
+    sign_in_as, sign_in_with_code_as, test_connection_pinned, CodeSignInRequest, CollabError,
     ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SignInCode, SignInRequest,
 };
 use oleafly_collab_protocol::admin::{
@@ -328,7 +328,7 @@ async fn end_session(
             }
         }
     }
-    keys.sessions.clear(server)
+    keys.sessions.sign_out(server)
 }
 
 pub(crate) fn note_session_end(
@@ -468,7 +468,7 @@ pub async fn sign_in_server(
     };
     let open = |target: &str| host.open_browser(target);
     let (manifest, tokens) = tokio::select! {
-        result = sign_in(request, &keys.key, &open, timeout) => result?,
+        result = sign_in_as(request, &keys.sessions, advertised.server_id, &open, timeout) => result?,
         _ = cancel => return Err(CollabError::SignInCancelled),
     };
     finish_sign_in(state, host, &url, pinned, manifest, tokens).await
@@ -530,7 +530,7 @@ pub async fn code_sign_in_server(
         setup_code,
     };
     let (manifest, tokens) = tokio::select! {
-        result = sign_in_with_code(request, &keys.key, show_code) => result?,
+        result = sign_in_with_code_as(request, &keys.sessions, advertised.server_id, show_code) => result?,
         _ = cancel => return Err(CollabError::SignInCancelled),
     };
     finish_sign_in(state, host, &url, pinned, manifest, tokens).await
@@ -600,7 +600,7 @@ pub async fn sign_out_device(
         .tokens(server)?
         .is_some_and(|tokens| tokens.device_id == device)
     {
-        keys.sessions.clear(server)?;
+        keys.sessions.sign_out(server)?;
         clear_account(state, server)?;
         host.server_changed(server);
     }
@@ -1466,6 +1466,14 @@ mod tests {
         let listed = list_servers(&state).expect("list");
         assert!(!listed[0].signed_in);
         assert!(listed[0].account.is_none());
+        let keys = state.keys().await.expect("keys");
+        assert_ne!(
+            keys.sessions
+                .device_key(added.server_id)
+                .expect("key")
+                .public_key(),
+            keys.key.public_key()
+        );
         remove_server(&state, &host, added.server_id)
             .await
             .expect("remove");

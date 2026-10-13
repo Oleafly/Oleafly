@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "未開啟檔案",
-    "unknownPerson": "某人"
+    "unknownPerson": "某人",
+    "viewing": "正在檢視 {{path}}",
+    "editing": "正在編輯 {{path}}"
   },
   "tree": {
     "here": "{{name}} 開啟了這個檔案",
@@ -563,7 +565,9 @@
     "away": "目前不在這個專案中",
     "deleted": "最近刪除",
     "deletedEmpty": "最近沒有刪除任何內容。",
-    "accessLog": "存取記錄"
+    "accessLog": "存取記錄",
+    "status": "同步狀態",
+    "waiting": "等待同步的變更：{{number}}"
   },
   "deleted": {
     "restore": "還原",
@@ -878,5 +882,11 @@
       "decline": "拒絕",
       "declineNamed": "拒絕 {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} 已將你設為檢視者。你可以閱讀這個專案，但不能編輯。",
+    "viewer": "你現在是檢視者。你可以閱讀這個專案，但不能編輯。",
+    "removedBy": "{{name}} 已將你移出這個專案。你的副本會保留在這台電腦上，不再分享。",
+    "removed": "你已被移出這個專案。你的副本會保留在這台電腦上，不再分享。"
   }
 }

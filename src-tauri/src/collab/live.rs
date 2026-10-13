@@ -27,7 +27,8 @@ use tokio::sync::oneshot;
 
 use super::commands::CollabCommandError;
 use super::disk::{
-    as_text, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex, DiskState,
+    as_text, crlf_only, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex,
+    with_line_endings, written_as, DiskState,
 };
 use super::state::CollabState;
 use crate::folder_watch::FolderChange;
@@ -36,6 +37,9 @@ pub mod write;
 
 mod sync_hold;
 pub(crate) use sync_hold::{announce, outside_change, root_returned, SyncDecision};
+
+#[cfg(test)]
+mod outside_tests;
 
 pub const LIVE_STATUS_EVENT: &str = "collab-live-status";
 pub const LIVE_ROLE_EVENT: &str = "collab-live-role";
@@ -301,6 +305,8 @@ struct LocalImport {
     blobs: Vec<(String, String, Vec<u8>)>,
     removed: Vec<String>,
     dirs: Vec<String>,
+    restamped: Vec<(String, String)>,
+    crlf: BTreeSet<String>,
 }
 
 impl LocalImport {
@@ -309,6 +315,7 @@ impl LocalImport {
             && self.blobs.is_empty()
             && self.removed.is_empty()
             && self.dirs.is_empty()
+            && self.restamped.is_empty()
     }
 }
 
@@ -377,10 +384,16 @@ fn read_local_changes(
                 if disk.hashes.get(&path) == Some(&hash) && known.is_some() {
                     continue;
                 }
-                match (as_text(&bytes), known) {
+                let text = as_text(&bytes);
+                if text.is_some() && crlf_only(&bytes) == Some(true) {
+                    import.crlf.insert(path.clone());
+                }
+                match (text, known) {
                     (Some(text), Some((id, NodeKind::Text, _))) => {
                         if live.doc().text(id)? != text {
                             import.texts.push((path, text, hash));
+                        } else {
+                            import.restamped.push((path, hash));
                         }
                     }
                     (Some(text), None) => import.texts.push((path, text, hash)),
@@ -431,15 +444,23 @@ fn writable(root: &Path, disk: &DiskState, path: &str) -> bool {
 }
 
 fn checked(root: &Path, disk: &DiskState, path: &str) -> Option<Option<super::disk::Stamp>> {
+    inspected(root, disk, path).map(|(stamp, _)| stamp)
+}
+
+fn inspected(
+    root: &Path,
+    disk: &DiskState,
+    path: &str,
+) -> Option<(Option<super::disk::Stamp>, Option<bool>)> {
     let target = safe_target(root, path)?;
     let stamp = super::disk::stamp_of(&target);
     match std::fs::read(&target) {
-        Err(_) => Some(None),
+        Err(_) => Some((None, None)),
         Ok(bytes) => disk
             .hashes
             .get(path)
             .is_some_and(|known| *known == sha256_hex(&bytes))
-            .then_some(stamp),
+            .then(|| (stamp, crlf_only(&bytes))),
     }
 }
 
@@ -464,12 +485,19 @@ impl WrittenTexts {
         self.0.get(path)?.back()
     }
 
-    fn closest(&self, path: &str, found: &str) -> Option<&String> {
+    fn kept(&self, path: &str) -> impl Iterator<Item = &String> {
         self.0
-            .get(path)?
-            .iter()
-            .rev()
-            .min_by_key(|candidate| differing_bytes(candidate, found))
+            .get(path)
+            .into_iter()
+            .flat_map(|kept| kept.iter().rev())
+    }
+
+    fn base_for(&self, path: &str, found: &str) -> Option<&String> {
+        let latest = self.latest(path)?;
+        if self.kept(path).any(|text| text == found) {
+            return Some(latest);
+        }
+        nearest(self.kept(path), found)
     }
 
     fn forget(&mut self, path: &str) {
@@ -483,21 +511,19 @@ impl WrittenTexts {
     }
 }
 
-fn differing_bytes(left: &str, right: &str) -> usize {
-    let prefix = left
-        .char_indices()
-        .zip(right.chars())
-        .find(|((_, a), b)| a != b)
-        .map_or(left.len().min(right.len()), |((at, _), _)| at);
-    let (left_rest, right_rest) = (&left[prefix..], &right[prefix..]);
-    let suffix: usize = left_rest
-        .chars()
-        .rev()
-        .zip(right_rest.chars().rev())
-        .take_while(|(a, b)| a == b)
-        .map(|(a, _)| a.len_utf8())
-        .sum();
-    left_rest.len() + right_rest.len() - 2 * suffix
+fn nearest<'a>(candidates: impl Iterator<Item = &'a String>, found: &str) -> Option<&'a String> {
+    let mut distinct: Vec<&'a String> = Vec::new();
+    for candidate in candidates {
+        if candidate == found {
+            return Some(candidate);
+        }
+        if !distinct.contains(&candidate) {
+            distinct.push(candidate);
+        }
+    }
+    distinct
+        .into_iter()
+        .min_by_key(|candidate| oleafly_collab::merge::distance(candidate, found))
 }
 
 fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> WrittenTexts {
@@ -518,7 +544,7 @@ fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> WrittenTe
             live.doc()
                 .text(id)
                 .ok()
-                .filter(|text| sha256_hex(text.as_bytes()) == *known)
+                .filter(|text| written_as(text, known))
         });
         if let Some(text) = text {
             bases.record(&placed.path, &text);
@@ -531,11 +557,7 @@ fn merged_onto(base: &str, disk: &str, current: &str) -> Option<TextOperation> {
     if base == current {
         return None;
     }
-    let from_disk = TextOperation::between(base, disk);
-    let from_doc = TextOperation::between(base, current);
-    TextOperation::transform(&from_disk, &from_doc)
-        .ok()
-        .map(|(after_doc, _)| after_doc)
+    oleafly_collab::merge::rebase(base, disk, current)
 }
 
 fn apply_local_import(
@@ -605,23 +627,28 @@ fn apply_local_import(
             Some((id, NodeKind::Text, _)) => {
                 let current = live.doc().text(&id)?;
                 let merged = bases
-                    .closest(&path, &text)
+                    .base_for(&path, &text)
                     .and_then(|base| merged_onto(base, &text, &current));
                 changed |= match merged {
                     Some(operation) => live.local_operation(&id, &operation)?,
                     None => live.local_text(&id, &text)?,
                 };
+                if live.doc().text(&id)? != text {
+                    live.mark_dirty(&id);
+                    changed = true;
+                }
             }
             Some((id, _, _)) => {
                 live.doc_mut().trash(&id)?;
                 let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
-                live.doc_mut().add_node(
+                let id = live.doc_mut().add_node(
                     parent.as_deref(),
                     name_of(&path),
                     NodeKind::Text,
                     None,
                     &text,
                 )?;
+                live.doc_mut().set_crlf(&id, import.crlf.contains(&path))?;
                 changed = true;
             }
             None => {
@@ -633,12 +660,18 @@ fn apply_local_import(
                     None,
                     &text,
                 )?;
+                live.doc_mut().set_crlf(&id, import.crlf.contains(&path))?;
                 placed.insert(path.clone(), (id, NodeKind::Text, None));
                 changed = true;
             }
         }
         bases.record(&path, &text);
         disk.hashes.insert(path, hash);
+    }
+    for (path, hash) in import.restamped {
+        if still(&path, &hash) {
+            disk.hashes.insert(path, hash);
+        }
     }
     let mut beside = Vec::new();
     for (path, hash, _) in import.blobs {
@@ -714,6 +747,7 @@ fn apply_to_disk(
     mut plan: materialize::DiskPlan,
     next: Layout,
     texts: &[(String, String)],
+    crlf: &BTreeSet<String>,
 ) -> Result<DiskPass, CollabError> {
     let mut conflicts: Vec<String> = Vec::new();
     let mut changed: BTreeSet<String> = BTreeSet::new();
@@ -762,11 +796,12 @@ fn apply_to_disk(
         }
     }
     for (path, text) in texts {
-        let Some(stamp) = checked(root, disk, path) else {
+        let Some((stamp, style)) = inspected(root, disk, path) else {
             conflicts.push(path.clone());
             continue;
         };
-        match super::disk::write_file_over(root, path, text.as_bytes(), stamp.as_ref())
+        let bytes = with_line_endings(text, style.unwrap_or_else(|| crlf.contains(path)));
+        match super::disk::write_file_over(root, path, &bytes, stamp.as_ref())
             .map_err(CollabError::Io)?
         {
             super::disk::WriteOutcome::ChangedOutside => {
@@ -778,8 +813,7 @@ fn apply_to_disk(
             }
             super::disk::WriteOutcome::Same => {}
         }
-        disk.hashes
-            .insert(path.clone(), sha256_hex(text.as_bytes()));
+        disk.hashes.insert(path.clone(), sha256_hex(&bytes));
         bases.record(path, text);
     }
     for id in &plan.written {
@@ -940,7 +974,7 @@ impl Active {
             return Ok(Vec::new());
         }
         let previous = guard(&self.disk).layout.clone();
-        let (work, next, mut texts) = {
+        let (work, next, mut texts, crlf) = {
             let mut live = lock(&self.live);
             let work = live.take_disk_work();
             if work.is_empty() {
@@ -957,12 +991,16 @@ impl Active {
                 }
             }
             let mut texts = Vec::new();
+            let mut crlf = BTreeSet::new();
             for id in ids {
                 if let Some(placed) = next.get(&id).filter(|placed| placed.kind == NodeKind::Text) {
                     texts.push((placed.path.clone(), live.doc().text(&id)?));
+                    if live.doc().crlf(&id) {
+                        crlf.insert(placed.path.clone());
+                    }
                 }
             }
-            (work, next, texts)
+            (work, next, texts, crlf)
         };
         self.persist().await?;
         let mut plan = materialize::plan(&previous, &next);
@@ -980,7 +1018,7 @@ impl Active {
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
-            apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts)?
+            apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts, &crlf)?
         };
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
@@ -1478,6 +1516,62 @@ pub fn presence_leave(project_id: &str) {
     }
 }
 
+pub(crate) struct KnownContent {
+    active: Option<Arc<Active>>,
+    hashes: std::collections::BTreeMap<String, String>,
+}
+
+pub(crate) fn known_content(project_id: &str) -> KnownContent {
+    if let Some(active) = active_for(project_id) {
+        let hashes = guard(&active.disk).hashes.clone();
+        return KnownContent {
+            active: Some(active),
+            hashes,
+        };
+    }
+    let hashes = crate::paths::collab_root()
+        .ok()
+        .and_then(|root| {
+            oleafly_collab::CollabPaths::new(root)
+                .materializer_index_file(project_id)
+                .ok()
+        })
+        .map(|file| DiskState::load(&file).hashes)
+        .unwrap_or_default();
+    KnownContent {
+        active: None,
+        hashes,
+    }
+}
+
+impl KnownContent {
+    pub(crate) fn holds(&self, root: &Path, path: &str) -> bool {
+        let Some(bytes) = safe_target(root, path).and_then(|target| std::fs::read(target).ok())
+        else {
+            return false;
+        };
+        if self
+            .hashes
+            .get(path)
+            .is_some_and(|known| *known == sha256_hex(&bytes))
+        {
+            return true;
+        }
+        let (Some(active), Some(text)) = (&self.active, as_text(&bytes)) else {
+            return false;
+        };
+        let live = lock(&active.live);
+        let Ok(nodes) = live.doc().nodes() else {
+            return false;
+        };
+        materialize::layout(&nodes)
+            .iter()
+            .find(|(_, placed)| placed.path == path && placed.kind == NodeKind::Text)
+            .and_then(|(id, _)| live.doc().text(id).ok())
+            .is_some_and(|shared| shared == text)
+    }
+}
+
 pub fn app_wrote(project_id: &str, path: &str) {
     if let Some(active) = active_for(project_id) {
         let paths = vec![path.to_owned()];
@@ -1505,7 +1599,7 @@ pub async fn forget(project_id: &str, paths: &oleafly_collab::CollabPaths) {
     stop(project_id).await;
     let _ = remove_binding(paths, project_id);
     if let Ok(dir) = paths.project_dir(project_id) {
-        let _ = std::fs::remove_dir_all(dir);
+        let _ = tokio::fs::remove_dir_all(dir).await;
     }
     super::registry::invalidate(project_id);
 }
@@ -1678,6 +1772,7 @@ mod tests {
             plan,
             next,
             &[],
+            &BTreeSet::new(),
         )
         .unwrap();
         assert_eq!(
@@ -1884,6 +1979,7 @@ mod tests {
             plan,
             next,
             &texts,
+            &BTreeSet::new(),
         )
         .unwrap();
         assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -1927,6 +2023,7 @@ mod tests {
             plan,
             next,
             &texts,
+            &BTreeSet::new(),
         )
         .unwrap();
         assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -1969,6 +2066,7 @@ mod tests {
             plan,
             next,
             &[],
+            &BTreeSet::new(),
         )
         .unwrap();
         assert!(!root.join("data").exists());

@@ -255,13 +255,14 @@ async fn request_link(
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
     let for_link = address.clone();
     let pending_id = pending.id.clone();
+    let limits = state.config.sign_in;
     let issued = state
         .db
         .call(move |conn| {
             if lockout(
                 conn,
                 &format!("email-link-ip:{}", client_key(&requester)),
-                email_link::LINKS_PER_IP,
+                limits.email_links_per_ip,
                 &requester,
                 "ip",
                 &ip,
@@ -269,7 +270,7 @@ async fn request_link(
             )? || lockout(
                 conn,
                 &format!("email-link:{for_link}"),
-                email_link::LINKS_PER_ADDRESS,
+                limits.email_links_per_address,
                 &for_link,
                 "address",
                 &ip,

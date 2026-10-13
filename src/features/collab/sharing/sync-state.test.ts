@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CollabLiveEndedReason, CollabLiveState, CollabLiveSyncState } from "@/lib/tauri";
-import { SYNC_STATES, syncState } from "./sync-state";
+import { heldStatus, SYNC_STATES, syncState } from "./sync-state";
 
 describe("syncState", () => {
   it.each<[CollabLiveState | null, number, (typeof SYNC_STATES)[number]]>([
@@ -28,5 +28,19 @@ describe("syncState", () => {
 
   it("names every state once", () => {
     expect(new Set(SYNC_STATES).size).toBe(SYNC_STATES.length);
+  });
+
+  it("keeps an offline status through a reconnect attempt and lets any other status through", () => {
+    const offline: CollabLiveSyncState = { state: "offline", retry_in_ms: 2000 };
+    const connecting: CollabLiveSyncState = { state: "connecting" };
+    const online: CollabLiveSyncState = { state: "online" };
+    const ended: CollabLiveSyncState = { state: "ended", reason: "removed" };
+    expect(heldStatus(offline, connecting)).toBe(offline);
+    expect(heldStatus(null, connecting)).toBe(connecting);
+    expect(heldStatus(online, connecting)).toBe(connecting);
+    expect(heldStatus(offline, online)).toBe(online);
+    expect(heldStatus(offline, ended)).toBe(ended);
+    const later: CollabLiveSyncState = { state: "offline", retry_in_ms: 5000 };
+    expect(heldStatus(offline, later)).toBe(later);
   });
 });

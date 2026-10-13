@@ -126,6 +126,19 @@ describe("Comments tab", () => {
     expect(screen.getByText(copy.detachedHint)).toBeInTheDocument();
   });
 
+  it("moves a thread to Detached as soon as its text is gone from the editor, before the server says so", () => {
+    show([later, conversation], { emptied: ["t-quick"] });
+    const list = screen.getByRole("list", { name: "intro.tex" });
+    expect(within(list).getAllByRole("article")).toHaveLength(1);
+    expect(list).toHaveTextContent("lazy");
+    const gone = screen.getByRole("list", { name: copy.detached });
+    expect(gone).toHaveTextContent("quick");
+    expect(screen.getByRole("button", { name: copy.detached })).toHaveTextContent("1");
+    act(() => useComments.setState({ emptied: [] }));
+    expect(screen.queryByRole("list", { name: copy.detached })).toBeNull();
+    expect(within(screen.getByRole("list", { name: "intro.tex" })).getAllByRole("article")).toHaveLength(2);
+  });
+
   it("hides resolved threads until the filter shows them", async () => {
     const user = userEvent.setup();
     show([conversation, resolved]);
@@ -389,5 +402,63 @@ describe("Comments tab", () => {
     await user.click(screen.getByRole("button", { name: copy.post }));
     const region = screen.getByRole("region", { name: copy.newLabel });
     await waitFor(() => expect(within(region).getByRole("alert")).toHaveTextContent(copy.refusals.offProject));
+  });
+});
+
+describe("quoted text", () => {
+  function measureQuotes(scroll: number, client: number) {
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.dataset.quoteText === undefined ? 0 : scroll;
+    });
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.dataset.quoteText === undefined ? 0 : client;
+    });
+  }
+
+  it("sits in a tinted block with a quote mark instead of a bar on the left", () => {
+    show([conversation]);
+    const jump = screen.getByRole("button", { name: "quick" });
+    const quote = jump.closest('[data-slot="comment-quote"]') as HTMLElement;
+    expect(quote).not.toBeNull();
+    expect(quote.className).not.toMatch(/border-l/);
+    expect(jump.className).not.toMatch(/border-l|italic/);
+    expect(quote).toHaveClass("rounded-md");
+    expect(quote.querySelector("svg.lucide-quote")).toHaveAttribute("aria-hidden", "true");
+    expect(jump.textContent).toBe("quick");
+  });
+
+  it("uses the same quote block for the text a new comment is about", () => {
+    show([], { draft: { path: "chapters/intro.tex", from: 10, to: 15, quote: "brown" } });
+    const region = screen.getByRole("region", { name: copy.newLabel });
+    const quote = region.querySelector('[data-slot="comment-quote"]') as HTMLElement;
+    expect(quote).toHaveTextContent("brown");
+    expect(quote.className).not.toMatch(/border-l/);
+    expect(region.querySelector(".border-l-2")).toBeNull();
+  });
+
+  it("clamps a long quote to three lines and offers to show all of it", async () => {
+    const long = "A sentence that runs on for a long time. ".repeat(12).trim();
+    const thread = commentThread("t-long", { from: 0, to: long.length }, {
+      anchor: { quote: long, range: { from: 0, to: long.length } },
+    });
+    measureQuotes(120, 48);
+    const user = userEvent.setup();
+    show([thread]);
+    const text = document.querySelector("[data-quote-text]") as HTMLElement;
+    expect(text).toHaveClass("line-clamp-3");
+    const more = within(card(long)).getByRole("button", { name: actions.showMore });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await user.click(more);
+    expect(text).not.toHaveClass("line-clamp-3");
+    const less = within(card(long)).getByRole("button", { name: actions.showLess });
+    expect(less).toHaveAttribute("aria-expanded", "true");
+    await user.click(less);
+    expect(text).toHaveClass("line-clamp-3");
+  });
+
+  it("offers no toggle for a quote that fits", () => {
+    measureQuotes(32, 48);
+    show([conversation]);
+    expect(within(card("quick")).queryByRole("button", { name: actions.showMore })).toBeNull();
   });
 });

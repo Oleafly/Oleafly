@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "No file open",
-    "unknownPerson": "Someone"
+    "unknownPerson": "Someone",
+    "viewing": "Viewing {{path}}",
+    "editing": "Editing {{path}}"
   },
   "tree": {
     "here": "{{name}} has this file open",
@@ -563,7 +565,9 @@
     "away": "Not here right now",
     "deleted": "Recently deleted",
     "deletedEmpty": "Nothing deleted recently.",
-    "accessLog": "Access log"
+    "accessLog": "Access log",
+    "status": "Sync status",
+    "waiting": "Changes waiting: {{number}}"
   },
   "deleted": {
     "restore": "Restore",
@@ -878,5 +882,11 @@
       "decline": "Decline",
       "declineNamed": "Decline {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} made you a viewer. You can read this project but not edit it.",
+    "viewer": "You're now a viewer. You can read this project but not edit it.",
+    "removedBy": "{{name}} removed you from this project. Your copy stays on this computer and is no longer shared.",
+    "removed": "You were removed from this project. Your copy stays on this computer and is no longer shared."
   }
 }

@@ -29,7 +29,7 @@ pub fn utf16_len(text: &str) -> usize {
     text.chars().map(char::len_utf16).sum()
 }
 
-fn split_utf16(text: &str, at: usize) -> Result<(&str, &str), OtError> {
+pub(crate) fn split_utf16(text: &str, at: usize) -> Result<(&str, &str), OtError> {
     let mut units = 0;
     for (index, character) in text.char_indices() {
         if units == at {

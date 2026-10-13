@@ -18,7 +18,7 @@ use tauri::Emitter;
 use super::commands::{
     authed, client_for, known, now_ms, parse_id, AppHost, CollabCommandError, CollabHost,
 };
-use super::disk::{as_text, scan_folder, sha256_hex, DiskState};
+use super::disk::{as_text, crlf_only, scan_folder, sha256_hex, with_line_endings, DiskState};
 use super::state::CollabState;
 
 pub const SHARE_PROGRESS_EVENT: &str = "collab-share-progress";
@@ -229,13 +229,14 @@ fn build_document(root: &Path, main_doc: &str, engine: &str) -> Result<Built, Co
         let parent = parent_id(&dirs, path);
         match as_text(&bytes) {
             Some(text) => {
-                doc.add_node(
+                let id = doc.add_node(
                     parent.as_deref(),
                     &name_of(path),
                     NodeKind::Text,
                     None,
                     &text,
                 )?;
+                doc.set_crlf(&id, crlf_only(&bytes) == Some(true))?;
             }
             None => {
                 doc.add_node(
@@ -325,7 +326,12 @@ pub async fn share_project(
         progress(index + 1);
     }
     client
-        .put_first_snapshot(&access, shared, built.doc.snapshot()?, &keys.key)
+        .put_first_snapshot(
+            &access,
+            shared,
+            built.doc.snapshot()?,
+            &*keys.sessions.device_key(server)?,
+        )
         .await?;
     client.commit_project(&access, shared).await?;
     let paths = state.paths()?;
@@ -422,7 +428,10 @@ pub async fn join_project(
     for (id, placed) in &layout {
         match placed.kind {
             NodeKind::Dir => dirs.push(placed.path.clone()),
-            NodeKind::Text => files.push((placed.path.clone(), doc.text(id)?.into_bytes())),
+            NodeKind::Text => files.push((
+                placed.path.clone(),
+                with_line_endings(&doc.text(id)?, doc.crlf(id)),
+            )),
             NodeKind::Blob => {
                 let Some(hash) = &placed.blob else { continue };
                 if !fetched.contains_key(hash) {
@@ -906,5 +915,27 @@ mod tests {
         assert_eq!(built.blobs.len(), 1);
         assert_eq!(built.doc.meta("engine").as_deref(), Some("tectonic"));
         assert_eq!(built.hashes.len(), 2);
+    }
+
+    #[test]
+    fn a_shared_crlf_file_is_lf_in_the_document_and_remembered_as_crlf() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::write(root.join("windows.tex"), "one\r\ntwo\r\n").unwrap();
+        std::fs::write(root.join("unix.tex"), "one\ntwo\n").unwrap();
+        let built = build_document(root, "windows.tex", "tectonic").unwrap();
+        let layout = materialize::layout(&built.doc.nodes().unwrap());
+        let id_of = |path: &str| {
+            layout
+                .iter()
+                .find(|(_, placed)| placed.path == path)
+                .unwrap()
+                .0
+                .clone()
+        };
+        let (windows, unix) = (id_of("windows.tex"), id_of("unix.tex"));
+        assert_eq!(built.doc.text(&windows).unwrap(), "one\ntwo\n");
+        assert!(built.doc.crlf(&windows));
+        assert!(!built.doc.crlf(&unix));
     }
 }

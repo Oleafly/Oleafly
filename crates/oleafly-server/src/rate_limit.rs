@@ -11,8 +11,6 @@ use crate::error::ServerError;
 use crate::routes::ClientIp;
 use crate::state::AppState;
 
-pub const SIGN_IN_BURST: u32 = 60;
-pub const SIGN_IN_PER_MINUTE: u32 = 60;
 pub const CONNECT_BURST: u32 = 300;
 pub const CONNECTS_PER_MINUTE: u32 = 600;
 pub const DEVICE_RECONNECT_BURST: u32 = 60;

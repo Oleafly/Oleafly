@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",
-    "unknownPerson": "Cineva"
+    "unknownPerson": "Cineva",
+    "viewing": "Vizualizează {{path}}",
+    "editing": "Editează {{path}}"
   },
   "tree": {
     "here": "{{name}} are acest fișier deschis",
@@ -563,7 +565,9 @@
     "away": "Nu este aici acum",
     "deleted": "Șterse recent",
     "deletedEmpty": "Nu s-a șters nimic în ultima vreme.",
-    "accessLog": "Jurnal de acces"
+    "accessLog": "Jurnal de acces",
+    "status": "Starea sincronizării",
+    "waiting": "Modificări în așteptare: {{number}}"
   },
   "deleted": {
     "restore": "Restaurează",
@@ -878,5 +882,11 @@
       "decline": "Refuză",
       "declineNamed": "Refuză {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} te-a făcut cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "removedBy": "{{name}} te-a eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată.",
+    "removed": "Ai fost eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată."
   }
 }

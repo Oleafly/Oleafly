@@ -2,6 +2,9 @@
 
 import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { EditorState, type Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { setEditorDocumentPath } from "@oleafly/editor";
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentsChanged, CollabCommentThread } from "@/lib/tauri";
 import { useCommentsRail } from "@/components/collab/comments-rail";
@@ -60,6 +63,7 @@ vi.mock("@/components/editor/cm/comments-slot", () => ({
   },
 }));
 
+import { commentSpansIn } from "./editor-comments";
 import {
   createThread,
   deleteMessage,
@@ -501,6 +505,59 @@ describe("comments for a shared project", () => {
     emit("collab-comments-changed", changed({ local: true }));
     await waitFor(() => expect(useComments.getState().threads[0].messages).toHaveLength(2));
     expect(useCommentsRail.getState().unread).toBe(false);
+  });
+
+  it("marks a thread whose text was deleted in the editor at once, then reloads the threads from the server", async () => {
+    mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", { from: 4, to: 9 })]));
+    start();
+    await loaded(1);
+    const extension = mocks.installed.mock.calls[0]?.[0] as Extension;
+    const view = new EditorView({
+      state: EditorState.create({ doc: "The quick brown fox", extensions: extension }),
+      parent: document.body,
+    });
+    try {
+      act(() => setEditorDocumentPath("intro.tex"));
+      await waitFor(() => expect(commentSpansIn(view.state)).toHaveLength(1));
+      mocks.collabCommentThreadList.mockClear();
+      mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", null)]));
+      act(() => view.dispatch({ changes: { from: 2, to: 12, insert: "" } }));
+      expect(useComments.getState().emptied).toEqual(["t1"]);
+      expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
+      await waitFor(() => expect(mocks.collabCommentThreadList).toHaveBeenCalledWith("paper", "intro.tex"), {
+        timeout: 3_000,
+      });
+      await waitFor(() => expect(useComments.getState().threads[0].anchor.range).toBeNull());
+      await waitFor(() => expect(useComments.getState().emptied).toEqual([]));
+      expect(useCommentsRail.getState().unread).toBe(false);
+    } finally {
+      view.destroy();
+      setEditorDocumentPath(null);
+    }
+  });
+
+  it("reloads once after typing inside a commented passage pauses, to show the new quote", async () => {
+    mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", { from: 4, to: 9 })]));
+    start();
+    await loaded(1);
+    const extension = mocks.installed.mock.calls[0]?.[0] as Extension;
+    const view = new EditorView({
+      state: EditorState.create({ doc: "The quick brown fox", extensions: extension }),
+      parent: document.body,
+    });
+    try {
+      act(() => setEditorDocumentPath("intro.tex"));
+      await waitFor(() => expect(commentSpansIn(view.state)).toHaveLength(1));
+      mocks.collabCommentThreadList.mockClear();
+      for (const at of [5, 6, 7]) act(() => view.dispatch({ changes: { from: at, insert: "x" } }));
+      act(() => view.dispatch({ changes: { from: 0, insert: "A " } }));
+      await waitFor(() => expect(mocks.collabCommentThreadList).toHaveBeenCalledTimes(1), { timeout: 3_000 });
+      await new Promise((resolve) => setTimeout(resolve, 1_200));
+      expect(mocks.collabCommentThreadList).toHaveBeenCalledTimes(1);
+    } finally {
+      view.destroy();
+      setEditorDocumentPath(null);
+    }
   });
 
   it("treats a message it could not verify as someone else's, even if it claims to be the person's", async () => {

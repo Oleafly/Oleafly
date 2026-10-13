@@ -5,6 +5,7 @@ import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspac
 import type { CollabSyncDecision } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
+import { AccessChangeBanner } from "./AccessChangeBanner";
 import { useSyncPauseStore } from "./sync-pause";
 
 function UnavailableBanner() {
@@ -57,4 +58,13 @@ export function SyncPauseBanner() {
   if (unavailable) return reachable ? <UnavailableBanner /> : null;
   if (changed === undefined) return null;
   return <DecisionBanner projectId={projectId} changed={changed} />;
+}
+
+export function CollabBanners() {
+  return (
+    <>
+      <AccessChangeBanner />
+      <SyncPauseBanner />
+    </>
+  );
 }

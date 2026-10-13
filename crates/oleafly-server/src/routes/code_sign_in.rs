@@ -109,17 +109,14 @@ async fn issue(
         setup_code_hash,
     };
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
+    let per_ip = state.config.sign_in.device_codes_per_ip;
     let issued = state
         .db
         .call(move |conn| {
             let key = format!("device-codes-ip:{}", client_key(&requester));
-            if let Throttle::LockedOut { first } = throttle::hit(
-                conn,
-                &key,
-                device_code::CODES_PER_IP,
-                device_code::WINDOW_MS,
-                now,
-            )? {
+            if let Throttle::LockedOut { first } =
+                throttle::hit(conn, &key, per_ip, device_code::WINDOW_MS, now)?
+            {
                 if first {
                     log_lockout(conn, &requester, "locked_out", &ip, now)?;
                 }

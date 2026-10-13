@@ -390,7 +390,9 @@
     "unifiedView": "统一视图",
     "loading": "正在加载差异…",
     "previewTooLarge": "文件过大，无法预览差异。",
-    "diskHeading": "磁盘上 ↔ 你的编辑"
+    "diskHeading": "磁盘上 ↔ 你的编辑",
+    "sharedReadOnly": "在共享项目中，此差异为只读。请在编辑器中编辑文件。",
+    "viewerReadOnly": "你可以查看这个共享项目，但不能编辑。"
   },
   "hotkeys": {
     "title": "键盘快捷键",

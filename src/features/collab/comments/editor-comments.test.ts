@@ -23,6 +23,7 @@ class Source implements EditorCommentsSource {
   state: CommentSnapshot = { path: "intro.tex", spans: [], selected: null, draft: null };
   readonly listeners = new Set<() => void>();
   readonly open = vi.fn();
+  readonly anchorsChanged = vi.fn();
 
   snapshot(): CommentSnapshot {
     return this.state;
@@ -245,6 +246,40 @@ describe("comment marks in the editor", () => {
     await tick();
     expect(tinted(view, ".cm-comment-active")).toEqual([]);
     expect(commentDraftIn(view.state)).toBeNull();
+  });
+
+  it("drops the gutter marker of a thread whose text was deleted", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick, lazy] };
+    const view = editor(source);
+    await tick();
+    expect(markerIds(view)).toEqual(["t-quick", "t-lazy"]);
+    typed(view, { from: 4, to: 9, insert: "" });
+    await tick();
+    expect(commentSpansIn(view.state)[0]).toMatchObject({ id: "t-quick", from: 4, to: 4 });
+    expect(commentLinesIn(view.state)).toEqual([3]);
+    expect(markerIds(view)).toEqual(["t-lazy"]);
+    received(view, { from: view.state.doc.toString().indexOf("lazy"), to: view.state.doc.toString().indexOf("lazy") + 4 });
+    await tick();
+    expect(commentLinesIn(view.state)).toEqual([]);
+    expect(markerIds(view)).toEqual([]);
+  });
+
+  it("tells the source when anchored text changes and which threads lost all their text", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick, lazy] };
+    const view = editor(source);
+    await tick();
+    source.anchorsChanged.mockClear();
+    typed(view, { from: view.state.doc.length, insert: " The end." });
+    expect(source.anchorsChanged).not.toHaveBeenCalled();
+    typed(view, { from: 6, insert: "i" });
+    expect(source.anchorsChanged).toHaveBeenLastCalledWith({ emptied: [], edited: true });
+    received(view, { from: 4, to: 10, insert: "" });
+    expect(source.anchorsChanged).toHaveBeenLastCalledWith({ emptied: ["t-quick"], edited: true });
+    source.set({ spans: [lazy] });
+    await tick();
+    expect(source.anchorsChanged).toHaveBeenLastCalledWith({ emptied: [], edited: false });
   });
 
   it("flashes a revealed thread briefly", async () => {

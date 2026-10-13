@@ -37,3 +37,10 @@ export function syncState(status: CollabLiveSyncState | null, pending: number): 
       return ENDED[status.reason];
   }
 }
+
+export function heldStatus(
+  previous: CollabLiveSyncState | null,
+  next: CollabLiveSyncState,
+): CollabLiveSyncState {
+  return next.state === "connecting" && previous?.state === "offline" ? previous : next;
+}

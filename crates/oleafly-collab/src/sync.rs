@@ -94,6 +94,14 @@ pub struct LiveLink {
     pub sessions: Arc<SessionManager>,
 }
 
+impl LiveLink {
+    fn signing_key(&self) -> Arc<DeviceKey> {
+        self.sessions
+            .device_key(self.server_id)
+            .unwrap_or_else(|_| Arc::clone(&self.key))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EndReason {
@@ -370,7 +378,7 @@ async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
         link.server_id,
         &access,
         link.device_id,
-        &link.key,
+        &link.signing_key(),
     )
     .await
     {
@@ -384,7 +392,7 @@ async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
                 link.server_id,
                 &access,
                 link.device_id,
-                &link.key,
+                &link.signing_key(),
             )
             .await
             .map(|connection| connection.into_socket())
@@ -508,13 +516,14 @@ impl PollWire {
         access: &str,
         since: u64,
     ) -> Result<crate::client::PollOpen, CollabError> {
+        let key = self.link.signing_key();
         self.link
             .client
             .open_poll(PollRequest {
                 server_id: self.link.server_id,
                 access_token: access,
                 device_id: self.link.device_id,
-                key: &self.link.key,
+                key: &key,
                 project: self.link.project,
                 since,
             })
@@ -645,7 +654,7 @@ fn envelope(link: &LiveLink, outgoing: &Outgoing) -> Envelope {
         payload: outgoing.payload.clone(),
         signature: Vec::new(),
     };
-    envelope.signature = link.key.sign(&envelope.signing_bytes()).to_vec();
+    envelope.signature = link.signing_key().sign(&envelope.signing_bytes()).to_vec();
     envelope
 }
 
@@ -957,7 +966,7 @@ async fn signature_trust(
     }
     if envelope.device_id == link.device_id {
         let own = verify_ed25519(
-            &link.key.public_key(),
+            &link.signing_key().public_key(),
             &envelope.signing_bytes(),
             &envelope.signature,
         );

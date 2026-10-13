@@ -53,6 +53,16 @@ describe("EmailPreferencesRow", () => {
     await waitFor(() => expect(toggle()).toHaveAttribute("aria-checked", "false"));
   });
 
+  it("puts the mail icon to the left of the title, like the share dialog settings", async () => {
+    mocks.collabEmailPreferences.mockResolvedValue(preferences());
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    const row = await screen.findByRole("switch", { name: copy.label });
+    const icon = row.querySelector("svg.lucide-mail") as Element;
+    const title = screen.getByText(copy.label);
+    expect(title.contains(icon)).toBe(false);
+    expect(icon.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("puts the switch back when saving fails", async () => {
     mocks.collabEmailPreferences.mockResolvedValue(preferences());
     mocks.collabSetEmailPreferences.mockRejectedValue(collabError("unreachable"));

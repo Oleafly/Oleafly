@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Nenhum arquivo aberto",
-    "unknownPerson": "Alguém"
+    "unknownPerson": "Alguém",
+    "viewing": "Vendo {{path}}",
+    "editing": "Editando {{path}}"
   },
   "tree": {
     "here": "{{name}} está com este arquivo aberto",
@@ -563,7 +565,9 @@
     "away": "Não está aqui agora",
     "deleted": "Excluídos recentemente",
     "deletedEmpty": "Nada foi excluído recentemente.",
-    "accessLog": "Registro de acesso"
+    "accessLog": "Registro de acesso",
+    "status": "Status da sincronização",
+    "waiting": "Alterações pendentes: {{number}}"
   },
   "deleted": {
     "restore": "Restaurar",
@@ -878,5 +882,11 @@
       "decline": "Recusar",
       "declineNamed": "Recusar {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} tornou você leitor. Você pode ler este projeto, mas não editá-lo.",
+    "viewer": "Agora você é leitor. Você pode ler este projeto, mas não editá-lo.",
+    "removedBy": "{{name}} removeu você deste projeto. A sua cópia continua neste computador e não é mais compartilhada.",
+    "removed": "Você foi removido deste projeto. A sua cópia continua neste computador e não é mais compartilhada."
   }
 }

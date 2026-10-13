@@ -14,6 +14,7 @@ import { collabErrorMessage } from "../errors";
 import { LoadFailed } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
 import { CommentComposer } from "./CommentComposer";
+import { CommentQuote } from "./CommentQuote";
 import {
   byDocument,
   canWriteComments,
@@ -92,6 +93,7 @@ export function CommentsPane() {
       focus: store.focus,
       showResolved: store.showResolved,
       draft: store.draft,
+      emptied: store.emptied,
     })),
   );
   const live = useCollabLiveStore(
@@ -116,8 +118,10 @@ export function CommentsPane() {
   );
   const ordered = useMemo(() => byDocument(state.threads), [state.threads]);
   const shown = ordered.filter((thread) => state.showResolved || thread.resolved === null);
-  const anchored = shown.filter((thread) => thread.anchor.range !== null);
-  const detached = shown.filter((thread) => thread.anchor.range === null);
+  const gone = useMemo(() => new Set(state.emptied), [state.emptied]);
+  const isDetached = (thread: CollabCommentThread) => thread.anchor.range === null || gone.has(thread.id);
+  const anchored = shown.filter((thread) => !isDetached(thread));
+  const detached = shown.filter(isDetached);
   const hiddenResolved = state.showResolved ? 0 : state.threads.length - shown.length;
   const filterLabel = state.showResolved
     ? t(($) => $.collab.comments.hideResolved)
@@ -225,9 +229,7 @@ export function CommentsPane() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {state.draft && canWrite ? (
           <section aria-label={newLabel} className="space-y-2 border-b border-sidebar-border px-3 py-2">
-            <p className="line-clamp-3 break-words border-l-2 border-amber-500/70 pl-2 text-xs italic text-muted-foreground">
-              {state.draft.quote}
-            </p>
+            <CommentQuote quote={state.draft.quote} />
             <CommentComposer
               key={`${state.draft.path}:${state.draft.from}:${state.draft.to}`}
               label={newLabel}

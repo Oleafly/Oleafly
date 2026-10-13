@@ -6,7 +6,7 @@ use axum::extract::ConnectInfo;
 use axum::http::{Method, Request, StatusCode};
 use oleafly_server::build_router;
 use oleafly_server::rate_limit::{RateLimiter, CONNECT_BURST};
-use oleafly_server::test_support::test_app;
+use oleafly_server::test_support::{test_app, test_app_with, test_config};
 use serde_json::Value;
 use tower::ServiceExt;
 
@@ -76,6 +76,50 @@ async fn sign_in_endpoints_refuse_a_flood_from_one_address() {
         .await
         .expect("response");
     assert_eq!(refilled.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn the_sign_in_request_limit_comes_from_the_server_settings() {
+    let mut config = test_config();
+    config.sign_in.requests_burst = 3;
+    config.sign_in.requests_per_minute = 3;
+    let app = test_app_with(config).await;
+    let router = build_router(app.state.clone());
+    for attempt in 0..3 {
+        let response = router
+            .clone()
+            .oneshot(request(Method::POST, "/auth/challenge", "203.0.113.7"))
+            .await
+            .expect("response");
+        assert_eq!(response.status(), StatusCode::OK, "attempt {attempt}");
+    }
+    let refused = router
+        .clone()
+        .oneshot(request(Method::POST, "/auth/challenge", "203.0.113.7"))
+        .await
+        .expect("response");
+    assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
+    app.clock.advance(20_000);
+    let refilled = router
+        .clone()
+        .oneshot(request(Method::POST, "/auth/challenge", "203.0.113.7"))
+        .await
+        .expect("response");
+    assert_eq!(refilled.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn fifty_people_behind_one_address_can_all_make_their_sign_in_requests() {
+    let app = test_app().await;
+    let router = build_router(app.state.clone());
+    for attempt in 0..50 * 6 {
+        let response = router
+            .clone()
+            .oneshot(request(Method::POST, "/auth/challenge", "203.0.113.7"))
+            .await
+            .expect("response");
+        assert_eq!(response.status(), StatusCode::OK, "request {attempt}");
+    }
 }
 
 #[tokio::test]
@@ -171,8 +215,24 @@ fn code_request(from: &str) -> Request<Body> {
 }
 
 #[tokio::test]
-async fn sign_in_codes_are_counted_per_ipv6_network() {
+async fn fifty_people_behind_one_address_each_get_a_sign_in_code() {
     let app = test_app().await;
+    let router = build_router(app.state.clone());
+    for index in 0..50 {
+        let response = router
+            .clone()
+            .oneshot(code_request("203.0.113.7"))
+            .await
+            .expect("response");
+        assert_eq!(response.status(), StatusCode::OK, "code {index}");
+    }
+}
+
+#[tokio::test]
+async fn sign_in_codes_are_counted_per_ipv6_network() {
+    let mut config = test_config();
+    config.sign_in.device_codes_per_ip = 20;
+    let app = test_app_with(config).await;
     let router = build_router(app.state.clone());
     for index in 0..20 {
         let response = router

@@ -411,7 +411,9 @@
     "unifiedView": "V jednom sloupci",
     "loading": "Načítá se porovnání…",
     "previewTooLarge": "Soubor je příliš velký na náhled rozdílů.",
-    "diskHeading": "Na disku ↔ Vaše úpravy"
+    "diskHeading": "Na disku ↔ Vaše úpravy",
+    "sharedReadOnly": "Ve sdíleném projektu je toto porovnání jen pro čtení. Soubor upravte v editoru.",
+    "viewerReadOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat."
   },
   "hotkeys": {
     "title": "Klávesové zkratky",

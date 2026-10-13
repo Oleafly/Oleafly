@@ -397,7 +397,9 @@
     "unifiedView": "Gecombineerde weergave",
     "loading": "Diff laden…",
     "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld.",
-    "diskHeading": "Op schijf ↔ Jouw wijzigingen"
+    "diskHeading": "Op schijf ↔ Jouw wijzigingen",
+    "sharedReadOnly": "In een gedeeld project is deze diff alleen-lezen. Bewerk het bestand in de editor.",
+    "viewerReadOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken."
   },
   "hotkeys": {
     "title": "Sneltoetsen",

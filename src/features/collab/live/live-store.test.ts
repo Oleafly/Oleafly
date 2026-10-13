@@ -75,6 +75,7 @@ vi.mock("@/store/files", async () => {
 import { collabProjectReadOnly } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { PEER_TTL_MS, peerPlaces, startCollabLive, useCollabLiveStore } from "./live-store";
+import { syncState } from "../sharing/sync-state";
 
 const PROJECT = "project-1";
 const OTHER = "project-2";
@@ -292,6 +293,49 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().merged).toBeNull();
   });
 
+  it("stays offline with the waiting count while reconnect attempts fail, until a connection succeeds", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const shown: string[] = [];
+    const send = (status: CollabLiveStatus["status"], pending: number) => {
+      emit<CollabLiveStatus>("status", { projectId: PROJECT, status, pending });
+      const state = useCollabLiveStore.getState();
+      shown.push(`${syncState(state.status, state.pending)}:${state.pending}`);
+    };
+    send({ state: "online" }, 0);
+    send({ state: "offline", retry_in_ms: 1_000 }, 0);
+    send({ state: "connecting" }, 0);
+    send({ state: "offline", retry_in_ms: 2_000 }, 3);
+    send({ state: "connecting" }, 3);
+    send({ state: "offline", retry_in_ms: 5_000 }, 4);
+    send({ state: "connecting" }, 4);
+    send({ state: "connecting" }, 5);
+    send({ state: "online" }, 5);
+    send({ state: "online" }, 0);
+    expect(shown).toEqual([
+      "upToDate:0",
+      "reconnecting:0",
+      "reconnecting:0",
+      "offline:3",
+      "offline:3",
+      "offline:4",
+      "offline:4",
+      "offline:5",
+      "syncing:5",
+      "upToDate:0",
+    ]);
+  });
+
+  it("shows syncing while the first connection is made", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "connecting" }, pending: 2 });
+    const state = useCollabLiveStore.getState();
+    expect(syncState(state.status, state.pending)).toBe("syncing");
+  });
+
   it("records a sign-in on a new device for the open project only", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -360,6 +404,85 @@ describe("collab live store", () => {
     await settle();
     expect(mocks.collabMembersList).not.toHaveBeenCalled();
     expect(useCollabLiveStore.getState().memberChange).toMatchObject({ name: "Alice Chen", byName: "Bob Jones" });
+  });
+
+  it("tells the person once who made them a viewer while they could edit", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "role_changed" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    const notice = useCollabLiveStore.getState().accessNotice;
+    expect(notice).toEqual({ kind: "viewer", byName: "Bob Jones" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBe(notice);
+    useCollabLiveStore.getState().dismissAccessNotice();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
+  });
+
+  it("leaves the name out when nothing says who changed the role, and drops the notice once editing is back", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "viewer", byName: "" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "editor" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
+  });
+
+  it("does not use an old change of someone else's role to name who changed this person's role", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const CAROL = "0192a0b0-0000-7000-8000-000000000003";
+    emit("members", { projectId: PROJECT, accountId: CAROL, by: BOB, kind: "role_changed" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "viewer", byName: "" });
+  });
+
+  it("tells the person once who removed them, and keeps the notice after the project turns local", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "removed" });
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "removed" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState()).toMatchObject({
+      share: null,
+      accessNotice: { kind: "removed", byName: "Bob Jones" },
+    });
+  });
+
+  it("says nothing about a removal the person made themselves by leaving", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    emit("members", { projectId: PROJECT, accountId: ALICE, by: ALICE, kind: "removed" });
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "removed" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
+  });
+
+  it("forgets the notice when another project opens", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).not.toBeNull();
+    openProject(OTHER);
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
 
   it("tracks peers with names from the member list and drops them when they leave", async () => {

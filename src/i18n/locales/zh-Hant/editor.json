@@ -390,7 +390,9 @@
     "unifiedView": "單欄檢視",
     "loading": "載入差異中…",
     "previewTooLarge": "檔案太大，無法預覽差異。",
-    "diskHeading": "磁碟上 ↔ 你的編輯"
+    "diskHeading": "磁碟上 ↔ 你的編輯",
+    "sharedReadOnly": "在分享的專案中，此差異為唯讀。請在編輯器中編輯檔案。",
+    "viewerReadOnly": "你可以檢視這個分享的專案，但不能編輯。"
   },
   "hotkeys": {
     "title": "鍵盤快捷鍵",

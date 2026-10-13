@@ -187,7 +187,8 @@ export function RecentlyDeleted({
       count={entries.length}
       open={open}
       onOpenChange={onOpenChange}
-      contentClassName="space-y-1 px-2 py-1"
+      className={open ? "h-full flex-1" : "shrink-0"}
+      contentClassName="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-1"
     >
       <DeletedList title={title} entries={entries} canRestore={canRestore} onRestore={onRestore} />
       {failure ? <InlineAlert>{failure}</InlineAlert> : null}

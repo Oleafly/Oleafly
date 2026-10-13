@@ -11,8 +11,8 @@ use serde::Serialize;
 use tokio::sync::oneshot;
 
 use super::{
-    active_for, by_path, differing_bytes, ensure_dir, guard, lock, merged_onto, name_of, parent_of,
-    Active, WriterSignal, WrittenTexts,
+    active_for, by_path, ensure_dir, guard, lock, merged_onto, name_of, nearest, parent_of, Active,
+    WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
 use crate::collab::disk::safe_target;
@@ -41,12 +41,8 @@ fn closest_base(
     path: &str,
     text: &str,
 ) -> Option<String> {
-    bases
-        .closest(path, text)
-        .into_iter()
-        .chain(reads.and_then(|reads| reads.closest(path, text)))
-        .min_by_key(|candidate| differing_bytes(candidate, text))
-        .cloned()
+    let read = reads.into_iter().flat_map(|reads| reads.kept(path));
+    nearest(bases.kept(path).chain(read), text).cloned()
 }
 
 type Placed = HashMap<String, (String, NodeKind, Option<String>)>;
@@ -485,6 +481,30 @@ mod tests {
         assert_eq!(
             bases.latest("main.tex").map(String::as_str),
             Some("ONE\ntwo\nthree\n")
+        );
+    }
+
+    #[test]
+    fn an_ai_write_the_document_already_holds_is_not_applied_twice() {
+        let dir = tempfile::tempdir().unwrap();
+        let read = "intro\nold line\noutro\n";
+        let rewritten = "intro\nAI REWRITE of the line\noutro\n";
+        let (mut live, main) = shared(read);
+        live.local_text(&main, "intro\nAI REWRITE of the line\noutro\ntyped later\n")
+            .unwrap();
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            Some(read),
+            rewritten,
+        )
+        .unwrap());
+        assert_eq!(
+            live.doc().text(&main).unwrap(),
+            "intro\nAI REWRITE of the line\noutro\ntyped later\n"
         );
     }
 

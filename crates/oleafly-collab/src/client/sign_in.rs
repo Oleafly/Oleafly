@@ -7,11 +7,12 @@ use oleafly_collab_protocol::capabilities::{
     negotiate, CapabilityManifest, ProtocolRange, ProviderKind,
 };
 use oleafly_collab_protocol::crypto::{b64url_encode, pkce_s256};
+use oleafly_collab_protocol::ids::ServerId;
 use ring::rand::{SecureRandom, SystemRandom};
 
 use super::loopback::{CallbackOutcome, LoopbackListener};
 use super::{client_protocol, ServerClient, ServerUrl};
-use crate::{CollabError, DeviceKey};
+use crate::{CollabError, DeviceKey, SessionManager};
 
 const VERIFIER_BYTES: usize = 32;
 const STATE_BYTES: usize = 16;
@@ -22,6 +23,25 @@ pub struct SignInRequest {
     pub device_name: String,
     pub platform: String,
     pub setup_code: Option<String>,
+}
+
+pub(crate) fn linked_to_another_account<T>(result: &Result<T, CollabError>) -> bool {
+    matches!(result, Err(CollabError::Api { code, .. }) if code == "device_in_use")
+}
+
+pub async fn sign_in_as(
+    request: SignInRequest,
+    sessions: &SessionManager,
+    server: ServerId,
+    open_browser: &(dyn Fn(&str) -> Result<(), CollabError> + Send + Sync),
+    timeout: Duration,
+) -> Result<(CapabilityManifest, SessionTokens), CollabError> {
+    let key = sessions.device_key(server)?;
+    let signed = sign_in(request, &key, open_browser, timeout).await;
+    if linked_to_another_account(&signed) {
+        sessions.renew_device_key(server)?;
+    }
+    signed
 }
 
 pub async fn sign_in(
@@ -77,12 +97,25 @@ pub async fn sign_in(
         setup_code: setup_code.filter(|_| manifest.needs_setup),
     };
     open_browser(client.auth_start_url(&query)?.as_str())?;
-    let code = match listener.wait(&state, timeout).await? {
-        CallbackOutcome::Code(code) => code,
+    let callback = listener.wait(&state, timeout).await?;
+    let code = match &callback.outcome {
+        CallbackOutcome::Code(code) => code.clone(),
         CallbackOutcome::Error { code, description } => {
-            return Err(callback_error(code, description));
+            return Err(callback_error(code.clone(), description.clone()));
         }
     };
+    let exchanged = exchange(&client, &manifest, key, code, verifier).await;
+    callback.answer(exchanged.as_ref().map(|_| ())).await;
+    Ok((manifest, exchanged?))
+}
+
+async fn exchange(
+    client: &ServerClient,
+    manifest: &CapabilityManifest,
+    key: &DeviceKey,
+    code: String,
+    verifier: String,
+) -> Result<SessionTokens, CollabError> {
     let challenge = client.challenge().await?;
     let message = challenge_message(
         ChallengePurpose::Token,
@@ -96,8 +129,7 @@ pub async fn sign_in(
         signature: key.sign_b64(&message),
         nonce: challenge.nonce,
     };
-    let tokens = client.exchange_token(&request).await?;
-    Ok((manifest, tokens))
+    client.exchange_token(&request).await
 }
 
 pub(crate) const EMAIL_LINK_WAIT: Duration = Duration::from_secs(16 * 60);
@@ -139,8 +171,9 @@ mod tests {
 
     use super::*;
     use crate::client::test_util::{
-        canned, device_key, follow_browser, github_server, github_user, http_response,
-        sample_manifest, seed, server_url, sign_in_request, LONG,
+        allow_alice, bob_and_alice_server, canned, device_key, follow_browser, github_server,
+        github_user, http_response, last_page, recording_browser, sample_manifest, seed,
+        server_url, sign_in_request, Pages, LONG,
     };
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -295,6 +328,125 @@ mod tests {
             result,
             Err(CollabError::ProtocolMismatch(VersionMismatch::ClientTooOld))
         ));
+    }
+
+    fn alice_request(server: &oleafly_server::test_support::TestServer) -> SignInRequest {
+        let mut request = sign_in_request(server, None);
+        request.provider_id = "github2".to_string();
+        request
+    }
+
+    async fn one_computer(
+        server: &oleafly_server::test_support::TestServer,
+    ) -> (crate::SessionManager, ServerClient, ServerId) {
+        let sessions = crate::SessionManager::new(
+            Arc::new(crate::MemorySecrets::default()),
+            Arc::new(device_key()),
+        );
+        let client = ServerClient::new(server_url(server)).expect("client");
+        let server_id = client.capabilities().await.expect("manifest").server_id;
+        (sessions, client, server_id)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_second_person_signs_in_on_the_same_computer_after_the_first_signs_out() {
+        let (_bob_github, _alice_github, server) = bob_and_alice_server().await;
+        let (sessions, client, server_id) = one_computer(&server).await;
+        let (_, bob) = sign_in_as(
+            sign_in_request(&server, Some(server.setup_code())),
+            &sessions,
+            server_id,
+            &follow_browser,
+            LONG,
+        )
+        .await
+        .expect("bob signs in");
+        allow_alice(&server, &bob).await;
+        sessions.store(server_id, &bob).expect("store");
+        client
+            .sign_out(&bob.access_token)
+            .await
+            .expect("the server signs bob out");
+        sessions.sign_out(server_id).expect("the app signs bob out");
+        let (_, alice) = sign_in_as(
+            alice_request(&server),
+            &sessions,
+            server_id,
+            &follow_browser,
+            LONG,
+        )
+        .await
+        .expect("alice signs in on the same computer");
+        assert_ne!(alice.account_id, bob.account_id);
+        assert_ne!(alice.device_id, bob.device_id);
+        sessions.store(server_id, &alice).expect("store");
+        let access = sessions
+            .force_refresh(server_id, &client)
+            .await
+            .expect("alice's session refreshes with this computer's new key");
+        assert!(client.me(&access).await.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_computer_linked_to_another_account_is_told_so_and_the_next_try_works() {
+        let (_bob_github, _alice_github, server) = bob_and_alice_server().await;
+        let (sessions, _client, server_id) = one_computer(&server).await;
+        let (_, bob) = sign_in_as(
+            sign_in_request(&server, Some(server.setup_code())),
+            &sessions,
+            server_id,
+            &follow_browser,
+            LONG,
+        )
+        .await
+        .expect("bob signs in");
+        allow_alice(&server, &bob).await;
+        let pages: Pages = Arc::default();
+        let refused = sign_in_as(
+            alice_request(&server),
+            &sessions,
+            server_id,
+            &recording_browser(Arc::clone(&pages)),
+            LONG,
+        )
+        .await;
+        assert!(
+            matches!(refused, Err(CollabError::Api { ref code, .. }) if code == "device_in_use"),
+            "{refused:?}"
+        );
+        let page = last_page(&pages).await;
+        assert!(!page.contains("You're signed in"), "{page}");
+        assert!(!page.contains("You&#39;re signed in"), "{page}");
+        assert!(
+            page.contains("<h1>This computer is linked to another account</h1>"),
+            "{page}"
+        );
+        let (_, alice) = sign_in_as(
+            alice_request(&server),
+            &sessions,
+            server_id,
+            &follow_browser,
+            LONG,
+        )
+        .await
+        .expect("the next try uses a new key for this computer");
+        assert_ne!(alice.device_id, bob.device_id);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_browser_says_signed_in_once_the_app_holds_its_session() {
+        let (_github, server) = github_server(vec![github_user(1, "carol")]).await;
+        let pages: Pages = Arc::default();
+        sign_in(
+            sign_in_request(&server, Some(server.setup_code())),
+            &device_key(),
+            &recording_browser(Arc::clone(&pages)),
+            LONG,
+        )
+        .await
+        .expect("sign in");
+        let page = last_page(&pages).await;
+        assert!(page.contains("<h1>You're signed in</h1>"), "{page}");
     }
 
     #[test]

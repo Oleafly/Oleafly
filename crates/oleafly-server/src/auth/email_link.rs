@@ -12,8 +12,6 @@ pub const ISSUER: &str = "oleafly-email-link";
 pub const LABEL: &str = "Email";
 pub const LINK_TTL_MS: i64 = 15 * 60 * 1000;
 pub const WINDOW_MS: i64 = 15 * 60 * 1000;
-pub const LINKS_PER_ADDRESS: u32 = 3;
-pub const LINKS_PER_IP: u32 = 10;
 pub const MAX_EMAIL_CHARS: usize = 254;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

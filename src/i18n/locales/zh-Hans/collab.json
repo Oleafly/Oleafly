@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "未打开文件",
-    "unknownPerson": "某人"
+    "unknownPerson": "某人",
+    "viewing": "正在查看 {{path}}",
+    "editing": "正在编辑 {{path}}"
   },
   "tree": {
     "here": "{{name}} 打开了此文件",
@@ -563,7 +565,9 @@
     "away": "当前不在此项目中",
     "deleted": "最近删除",
     "deletedEmpty": "最近没有删除任何内容。",
-    "accessLog": "访问日志"
+    "accessLog": "访问日志",
+    "status": "同步状态",
+    "waiting": "等待同步的更改：{{number}}"
   },
   "deleted": {
     "restore": "恢复",
@@ -878,5 +882,11 @@
       "decline": "拒绝",
       "declineNamed": "拒绝 {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} 已将你设为查看者。你可以阅读此项目，但不能编辑。",
+    "viewer": "你现在是查看者。你可以阅读此项目，但不能编辑。",
+    "removedBy": "{{name}} 已将你移出此项目。你的副本会保留在这台电脑上，不再共享。",
+    "removed": "你已被移出此项目。你的副本会保留在这台电脑上，不再共享。"
   }
 }

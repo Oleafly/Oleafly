@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
-    "unknownPerson": "Joku"
+    "unknownPerson": "Joku",
+    "viewing": "Katselee: {{path}}",
+    "editing": "Muokkaa: {{path}}"
   },
   "tree": {
     "here": "{{name}} on avannut tämän tiedoston",
@@ -563,7 +565,9 @@
     "away": "Ei nyt paikalla",
     "deleted": "Äskettäin poistetut",
     "deletedEmpty": "Mitään ei ole poistettu viime aikoina.",
-    "accessLog": "Käyttöloki"
+    "accessLog": "Käyttöloki",
+    "status": "Synkronoinnin tila",
+    "waiting": "Odottavia muutoksia: {{number}}"
   },
   "deleted": {
     "restore": "Palauta",
@@ -878,5 +882,11 @@
       "decline": "Hylkää",
       "declineNamed": "Hylkää {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} muutti sinut katselijaksi. Voit lukea projektia mutta et muokata sitä.",
+    "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
+    "removedBy": "{{name}} poisti sinut tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta.",
+    "removed": "Sinut poistettiin tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta."
   }
 }

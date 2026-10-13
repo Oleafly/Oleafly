@@ -13,7 +13,6 @@ pub const SLOW_DOWN_SECS: u64 = 5;
 pub const APPROVED_GRACE_MS: i64 = 2 * 60 * 1000;
 pub const KEEP_EXPIRED_MS: i64 = 60 * 60 * 1000;
 pub const WRONG_CODES_PER_IP: u32 = 10;
-pub const CODES_PER_IP: u32 = 20;
 pub const WINDOW_MS: i64 = 10 * 60 * 1000;
 pub const USER_CODE_ALPHABET: &[u8; 20] = b"BCDFGHJKLMNPQRSTVWXZ";
 pub const USER_CODE_LENGTH: usize = 8;

@@ -72,6 +72,11 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. | `200` |
 | `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
+| `OLEAFLY_SIGN_IN_BURST` | How many sign-in requests one network address can make in a burst. A sign-in takes about six, so the default covers 50 people at one address signing in at the same time. | `300` |
+| `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
+| `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
+| `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` | How many sign-in emails one email address can get in 15 minutes. It can't be more than `OLEAFLY_EMAIL_LINKS_PER_IP`. | `3` |
+| `OLEAFLY_DEVICE_CODES_PER_IP` | How many sign-in codes people at one network address can ask for in 10 minutes. Read [Sign in with a code](#sign-in-with-a-code). | `100` |
 | `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half the container's memory limit, or `1024` without a limit |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
 | `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. Set it to `2` when Cloudflare sits in front of your own proxy, such as Coolify's. It needs `OLEAFLY_BEHIND_PROXY=true`. | `1` |
@@ -384,7 +389,7 @@ Some proxies close a request that stays quiet for less than 30 seconds, nginx wi
 
 ### What `OLEAFLY_BEHIND_PROXY` changes
 
-The server notes a client address in two places: the security log, and the limits on how often one address can start a sign-in or open a live connection. Sign-ins from one address allow a burst of 60, then one a second. Live connections have their own, larger limit, so a whole class behind one address can reconnect at once after a restart and still sign in. Only connections that fail to prove their session use it up: a burst of 300, then ten a second. A connection that proves its session counts against its own device instead, which can reconnect 60 times in a burst, then once a second. The server also pings each live connection every 30 seconds. It closes a connection that leaves those pings unanswered for 90 seconds, and one that stops reading what the server sends.
+The server notes a client address in two places: the security log, and the limits on how often one address can start a sign-in or open a live connection. Sign-ins from one address allow a burst of 300, then two a second. Change these with `OLEAFLY_SIGN_IN_BURST` and `OLEAFLY_SIGN_IN_PER_MINUTE`. Live connections have their own, larger limit, so a whole class behind one address can reconnect at once after a restart and still sign in. Only connections that fail to prove their session use it up: a burst of 300, then ten a second. A connection that proves its session counts against its own device instead, which can reconnect 60 times in a burst, then once a second. The server also pings each live connection every 30 seconds. It closes a connection that leaves those pings unanswered for 90 seconds, and one that stops reading what the server sends.
 
 Without the setting, the server uses the address of whatever connected to it. Behind a proxy that is always the proxy, so everyone shares one limit and the security log shows only the proxy's address.
 
@@ -576,7 +581,7 @@ Your access rules still decide who gets in: an allowed list entry for that email
 
 Turning **Sign in by email** on also opens existing accounts to email links. A link signs in to the account that already has that address as a verified address. The server keeps every verified address a provider has reported for an account, not just the main one, and it keeps an address even after the person removes it from the provider. GitHub, for example, reports every verified address on the GitHub account. So anyone who can read mail at one of those addresses can sign in to that account by email. Before you turn it on, check that people still control every address on their accounts. If an address belongs to more than one account that can sign in, the link signs in to none of them, and your access rules decide whether it gets an account of its own. If the only account with that address is suspended or removed, the link is refused until you let that person back in, even when a domain rule covers the address.
 
-The server sends at most 3 links to one address and 10 links to one IP address in 15 minutes. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. Turning **Sign in by email** off stops links that were already sent.
+The server sends at most 3 links to one email address and 100 links to one IP address in 15 minutes, so a class of 50 at one address can all sign in. `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` and `OLEAFLY_EMAIL_LINKS_PER_IP` set these numbers. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. Turning **Sign in by email** off stops links that were already sent.
 
 ### Sign in with a code
 
@@ -588,7 +593,7 @@ When the browser can't get back to Oleafly after a sign-in, for example on a loc
 
 The sign-in has to finish in the browser where they typed the code. If someone else starts a sign-in and sends them the provider's sign-in page as a link, it doesn't sign anyone in. If they choose Email, they can open the emailed link on any device, but the page it opens asks for the code again. A link that someone else asked for is no use without the code on that person's computer.
 
-If they didn't start the sign-in, **Stop, this wasn't me** cancels the code. A code works once and stops working after 10 minutes, and only the copy of Oleafly that asked for it can finish the sign-in. One IP address can ask for 20 codes and type 10 wrong codes in 10 minutes, counting the code pages of emailed links. All IPv6 addresses in one `/64` network count as one address. After that it has to wait 10 minutes.
+If they didn't start the sign-in, **Stop, this wasn't me** cancels the code. A code works once and stops working after 10 minutes, and only the copy of Oleafly that asked for it can finish the sign-in. One IP address can ask for 100 codes and type 10 wrong codes in 10 minutes, counting the code pages of emailed links. That's enough for a class of 50 sharing one address, and `OLEAFLY_DEVICE_CODES_PER_IP` changes it. All IPv6 addresses in one `/64` network count as one address. After that it has to wait 10 minutes.
 
 ## Become the first admin
 
@@ -683,7 +688,7 @@ A guest is someone from outside your server, such as a coauthor at another unive
 
 ### Turn guests on
 
-Guests are off on a new server. An admin turns them on with **Allow guests** under **Settings** in the [admin console](#admin-console), or under **Server settings** in **Manage server**. **Approve guests first** is on by default, so an admin or maintainer approves each invitation before it works. Turn it off to let invitations work straight away.
+Guests are off on a new server. An admin turns them on with **Allow guests** under **Settings** in the [admin console](#admin-console), or under **Server settings** in **Manage server**. **Approve guests first** is on by default, so an admin or maintainer approves each invitation before it works. Turn it off to let invitations work straight away. When an admin or maintainer sends an invitation, it's approved at once.
 
 If you turn **Allow guests** off later, owners can't send new invitations and unused invitations stop working. Guests who already signed in keep their projects until an owner removes them or you remove them under **People**.
 

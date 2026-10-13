@@ -397,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Laster diffen…",
     "previewTooLarge": "Filen er for stor til å forhåndsvise en diff.",
-    "diskHeading": "På disken ↔ Dine endringer"
+    "diskHeading": "På disken ↔ Dine endringer",
+    "sharedReadOnly": "I et delt prosjekt er diffen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte prosjektet, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Hurtigtaster",

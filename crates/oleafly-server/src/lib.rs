@@ -3,6 +3,7 @@ pub mod auth;
 pub mod blobs;
 pub mod cli;
 pub mod clock;
+pub mod comment_guard;
 pub mod config;
 pub mod console;
 pub mod db;

@@ -29,6 +29,7 @@ export function SettingsToggleRow({
   ariaLabel,
   testId,
   adornment,
+  icon,
   disabled = false,
 }: Readonly<{
   label: string;
@@ -38,6 +39,7 @@ export function SettingsToggleRow({
   ariaLabel?: string;
   testId?: string;
   adornment?: ReactNode;
+  icon?: ReactNode;
   disabled?: boolean;
 }>) {
   return (
@@ -65,6 +67,7 @@ export function SettingsToggleRow({
       label={label}
       description={description}
       adornment={adornment}
+      icon={icon}
       control={<SettingsSwitchIndicator checked={checked} />}
     />
   );

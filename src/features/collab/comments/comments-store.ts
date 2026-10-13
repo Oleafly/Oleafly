@@ -37,6 +37,7 @@ import {
   revealComment,
   type CommentDraftRange,
   type CommentOpenedFrom,
+  type AnchorChange,
   type CommentSpan,
   type EditorCommentsSource,
 } from "./editor-comments";
@@ -54,6 +55,7 @@ export interface CommentsState {
   focus: number;
   showResolved: boolean;
   draft: CommentRequest | null;
+  emptied: readonly string[];
 }
 
 const RELOAD_DELAY_MS = 150;
@@ -62,6 +64,7 @@ const RETRY_REVEAL_MS = 120;
 const LIST_ATTEMPTS = 5;
 const CREATE_ATTEMPTS = 3;
 const CATCH_UP_MS = 250;
+const ANCHOR_RELOAD_MS = 800;
 
 function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "focus"> {
   return {
@@ -73,6 +76,7 @@ function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "
     error: null,
     selectedId: null,
     draft: null,
+    emptied: [],
   };
 }
 
@@ -290,13 +294,13 @@ async function load(path: string | null): Promise<CollabCommentThread[] | null> 
   const projectId = useComments.getState().projectId;
   const token = ++loadToken;
   if (!projectId || !path) {
-    useComments.setState({ path, threads: [], phase: "idle", error: null, selectedId: null });
+    useComments.setState({ path, threads: [], phase: "idle", error: null, selectedId: null, emptied: [] });
     return null;
   }
   if (useComments.getState().path === path) {
     if (useComments.getState().phase !== "ready") useComments.setState({ phase: "loading", error: null });
   } else {
-    useComments.setState({ path, threads: [], phase: "loading", error: null, selectedId: null });
+    useComments.setState({ path, threads: [], phase: "loading", error: null, selectedId: null, emptied: [] });
   }
   let listed: CollabCommentThread[] | null;
   try {
@@ -489,6 +493,12 @@ function noteMentions(payload: CollabCommentsChanged): void {
   }
 }
 
+let anchorListener: ((change: AnchorChange) => void) | null = null;
+
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
 const source: EditorCommentsSource = {
   snapshot: () => {
     const state = useComments.getState();
@@ -509,11 +519,13 @@ const source: EditorCommentsSource = {
     };
   },
   open: openCommentFromEditor,
+  anchorsChanged: (change) => anchorListener?.(change),
 };
 
 export function startComments(): () => void {
   let release: (() => void) | null = null;
   let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+  let anchorTimer: ReturnType<typeof setTimeout> | null = null;
   let statusToken = 0;
 
   const install = () => {
@@ -526,6 +538,8 @@ export function startComments(): () => void {
   const cancelReload = () => {
     if (reloadTimer !== null) clearTimeout(reloadTimer);
     reloadTimer = null;
+    if (anchorTimer !== null) clearTimeout(anchorTimer);
+    anchorTimer = null;
   };
 
   const syncRail = () => {
@@ -549,7 +563,15 @@ export function startComments(): () => void {
       uninstall();
       cancelReload();
       loadToken += 1;
-      useComments.setState({ path: null, threads: [], phase: "idle", error: null, selectedId: null, draft: null });
+      useComments.setState({
+        path: null,
+        threads: [],
+        phase: "idle",
+        error: null,
+        selectedId: null,
+        draft: null,
+        emptied: [],
+      });
     }
     syncRail();
   };
@@ -587,6 +609,18 @@ export function startComments(): () => void {
     const before = useComments.getState().threads;
     const after = await load(useComments.getState().path);
     if (!local && after && othersWrote(before, after, commentSelf())) noteUnseen();
+  };
+
+  anchorListener = ({ emptied, edited }) => {
+    const state = useComments.getState();
+    if (!commentsShown(state.status) || state.path === null) return;
+    if (!sameIds(state.emptied, emptied)) useComments.setState({ emptied: [...emptied] });
+    if (!edited) return;
+    if (anchorTimer !== null) clearTimeout(anchorTimer);
+    anchorTimer = setTimeout(() => {
+      anchorTimer = null;
+      if (reloadTimer === null) void reload(true);
+    }, ANCHOR_RELOAD_MS);
   };
 
   const onChanged = (payload: CollabCommentsChanged) => {
@@ -649,6 +683,7 @@ export function startComments(): () => void {
   openProject();
 
   return () => {
+    anchorListener = null;
     stopLive();
     stopFiles();
     stopRail();

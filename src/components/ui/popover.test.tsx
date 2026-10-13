@@ -71,6 +71,69 @@ describe("Popover", () => {
     expect(screen.queryByRole("dialog", { name: "Filters" })).toBeNull();
   });
 
+  it("opens on hover after a short wait, stays while the pointer is on it and closes once the pointer leaves", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover closeOnClick={false}>
+          {"Details text"}
+        </Popover>,
+      );
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+      act(() => vi.advanceTimersByTime(400));
+      const details = screen.getByRole("dialog", { name: "Details" });
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      expect(document.activeElement).not.toBe(details);
+      fireEvent.pointerLeave(trigger, { pointerType: "mouse" });
+      fireEvent.pointerEnter(details, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      fireEvent.pointerLeave(details, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a hovered popover open when its trigger is clicked and closes it on the next click", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover closeOnClick={false}>
+          {"Details text"}
+        </Popover>,
+      );
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      open("Status");
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      fireEvent.pointerLeave(trigger, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      open("Status");
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("opens a hover popover from the keyboard or a click without hovering first", () => {
+    render(
+      <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover closeOnClick={false}>
+        {"Details text"}
+      </Popover>,
+    );
+    open("Status");
+    expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+  });
+
   it("does not open while disabled and closes when it becomes disabled", () => {
     function Harness() {
       const [disabled, setDisabled] = useState(false);

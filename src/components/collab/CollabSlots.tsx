@@ -56,8 +56,8 @@ const comments = () => import("@/features/collab/comments");
 
 const CommentsPane = lazy(() => comments().then((module) => ({ default: module.CommentsPane })));
 const CommentsKeeper = lazy(() => comments().then((module) => ({ default: module.CommentsKeeper })));
-const SyncPauseBanner = lazy(() =>
-  import("@/features/collab/live/SyncPauseBanner").then((module) => ({ default: module.SyncPauseBanner })),
+const CollabBanners = lazy(() =>
+  import("@/features/collab/live/SyncPauseBanner").then((module) => ({ default: module.CollabBanners })),
 );
 
 export function useCollabReady(): boolean {
@@ -167,7 +167,7 @@ export function CollabTreePresenceSlot({ onChange }: Readonly<{ onChange: (marks
 export function CollabSyncPauseSlot() {
   return (
     <Gate>
-      <SyncPauseBanner />
+      <CollabBanners />
     </Gate>
   );
 }

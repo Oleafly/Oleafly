@@ -49,6 +49,34 @@ pub fn as_text(bytes: &[u8]) -> Option<String> {
         .map(|text| text.replace("\r\n", "\n"))
 }
 
+pub fn crlf_only(bytes: &[u8]) -> Option<bool> {
+    let mut lines = 0usize;
+    let mut crlf = 0usize;
+    for (index, byte) in bytes.iter().enumerate() {
+        if *byte == b'\n' {
+            lines += 1;
+            if index > 0 && bytes[index - 1] == b'\r' {
+                crlf += 1;
+            }
+        }
+    }
+    (lines > 0).then_some(crlf == lines)
+}
+
+pub fn written_as(text: &str, known: &str) -> bool {
+    sha256_hex(text.as_bytes()) == known || sha256_hex(&with_line_endings(text, true)) == known
+}
+
+pub fn with_line_endings(text: &str, crlf: bool) -> Vec<u8> {
+    if crlf {
+        text.replace("\r\n", "\n")
+            .replace('\n', "\r\n")
+            .into_bytes()
+    } else {
+        text.as_bytes().to_vec()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct IgnoreRule {
     pattern: String,
@@ -507,6 +535,22 @@ mod tests {
         assert_eq!(as_text(b"a\r\nb").as_deref(), Some("a\nb"));
         assert_eq!(as_text(b"\x89PNG\0"), None);
         assert_eq!(as_text(&[0xff, 0xfe]), None);
+    }
+
+    #[test]
+    fn a_file_counts_as_crlf_only_when_every_line_ends_that_way() {
+        assert_eq!(crlf_only(b"a\r\nb\r\n"), Some(true));
+        assert_eq!(crlf_only(b"a\r\nb"), Some(true));
+        assert_eq!(crlf_only(b"a\r\nb\n"), Some(false));
+        assert_eq!(crlf_only(b"a\nb\n"), Some(false));
+        assert_eq!(crlf_only(b"no line end"), None);
+        assert_eq!(crlf_only(b"\n"), Some(false));
+        assert_eq!(with_line_endings("a\nb\n", true), b"a\r\nb\r\n");
+        assert_eq!(with_line_endings("a\r\nb\n", true), b"a\r\nb\r\n");
+        assert_eq!(with_line_endings("a\nb\n", false), b"a\nb\n");
+        assert!(written_as("a\nb\n", &sha256_hex(b"a\r\nb\r\n")));
+        assert!(written_as("a\nb\n", &sha256_hex(b"a\nb\n")));
+        assert!(!written_as("a\nb\n", &sha256_hex(b"a\nc\n")));
     }
 
     #[test]

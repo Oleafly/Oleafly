@@ -22,6 +22,8 @@ const META: &str = "meta";
 const TEXT_PREFIX: &str = "text:";
 pub const TRASH_ID: &str = "~trash";
 const UPDATE_TIMEOUT_MS: f64 = 2_000.0;
+const LINE_ENDING: &str = "eol";
+const CRLF: &str = "crlf";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -368,6 +370,28 @@ impl ProjectDoc {
         Ok(())
     }
 
+    pub fn crlf(&self, id: &str) -> bool {
+        self.tree_id(id)
+            .ok()
+            .and_then(|node| self.tree.get_meta(node).ok())
+            .and_then(|meta| meta_string(&meta, LINE_ENDING))
+            .is_some_and(|value| value == CRLF)
+    }
+
+    pub fn set_crlf(&mut self, id: &str, crlf: bool) -> Result<bool, CollabError> {
+        if self.crlf(id) == crlf {
+            return Ok(false);
+        }
+        let meta = self.tree.get_meta(self.tree_id(id)?).map_err(doc_error)?;
+        if crlf {
+            meta.insert(LINE_ENDING, CRLF).map_err(doc_error)?;
+        } else {
+            meta.delete(LINE_ENDING).map_err(doc_error)?;
+        }
+        self.doc.commit();
+        Ok(true)
+    }
+
     pub fn move_to(&mut self, id: &str, parent: Option<&str>) -> Result<(), CollabError> {
         let node = self.tree_id(id)?;
         let parent = self.parent_of(parent)?;
@@ -627,6 +651,25 @@ mod tests {
         }
         out.extend_from_slice(&units[at..]);
         String::from_utf16(&out).unwrap()
+    }
+
+    #[test]
+    fn a_file_marked_as_crlf_keeps_the_mark_in_every_copy_until_it_is_cleared() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        assert!(!owner.crlf(&main));
+        assert!(owner.set_crlf(&main, true).unwrap());
+        assert!(!owner.set_crlf(&main, true).unwrap());
+        joiner
+            .import(&owner.export_since(&joiner.version()).unwrap())
+            .unwrap();
+        assert!(joiner.crlf(&main));
+        assert!(joiner.set_crlf(&main, false).unwrap());
+        owner
+            .import(&joiner.export_since(&owner.version()).unwrap())
+            .unwrap();
+        assert!(!owner.crlf(&main));
+        assert!(!owner.crlf("no-such-file"));
+        assert_eq!(owner.text(&main).unwrap(), "Hello world\n");
     }
 
     #[test]

@@ -119,14 +119,18 @@ export function AvatarStack({
   size = "sm",
   className,
   renderTip,
+  renderLabel = renderTip,
   renderMoreTip,
+  tipWide = false,
 }: Readonly<{
   people: AvatarPerson[];
   max?: number;
   size?: AvatarSize;
   className?: string;
   renderTip?: (person: AvatarPerson) => ReactNode;
+  renderLabel?: (person: AvatarPerson) => ReactNode;
   renderMoreTip?: (hidden: AvatarPerson[]) => ReactNode;
+  tipWide?: boolean;
 }>) {
   const { t } = useTranslation(["common"]);
   const shown = people.slice(0, Math.max(0, max));
@@ -157,11 +161,11 @@ export function AvatarStack({
         const content = (
           <>
             <Avatar person={person} size={size} className={SEPARATOR[size]} />
-            <span className="sr-only">{renderTip ? renderTip(person) : person.name}</span>
+            <span className="sr-only">{renderLabel ? renderLabel(person) : person.name}</span>
           </>
         );
         return renderTip ? (
-          <Tooltip key={person.id} label={renderTip(person)} className={overlap}>
+          <Tooltip key={person.id} label={renderTip(person)} wide={tipWide} className={overlap}>
             {content}
           </Tooltip>
         ) : (

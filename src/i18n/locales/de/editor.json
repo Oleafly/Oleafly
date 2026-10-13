@@ -397,7 +397,9 @@
     "unifiedView": "Zusammengeführte Ansicht",
     "loading": "Vergleich wird geladen…",
     "previewTooLarge": "Die Datei ist zu groß für eine Vergleichsvorschau.",
-    "diskHeading": "Auf dem Datenträger ↔ Ihre Änderungen"
+    "diskHeading": "Auf dem Datenträger ↔ Ihre Änderungen",
+    "sharedReadOnly": "In einem geteilten Projekt ist dieser Vergleich schreibgeschützt. Bearbeiten Sie die Datei im Editor.",
+    "viewerReadOnly": "Sie können dieses geteilte Projekt ansehen, aber nicht bearbeiten."
   },
   "hotkeys": {
     "title": "Tastenkürzel",

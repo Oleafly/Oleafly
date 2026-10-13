@@ -115,6 +115,6 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
     const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));
     const fresh = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
     if (fresh.length === 0) return;
-    set((state) => ({ servers: fresh.reduce(upsert, state.servers) }));
+    set((state) => ({ servers: fresh.reduce((servers, server) => upsert(servers, server), state.servers) }));
   },
 }));

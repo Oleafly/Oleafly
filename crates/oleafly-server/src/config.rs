@@ -10,6 +10,11 @@ use url::{Host, Url};
 pub const DEFAULT_DATA_DIR: &str = "/data";
 pub const DEFAULT_SERVER_NAME: &str = "Oleafly Server";
 pub const DEFAULT_POLL_HOLD_SECONDS: u64 = 25;
+pub const DEFAULT_SIGN_IN_BURST: u32 = 300;
+pub const DEFAULT_SIGN_IN_PER_MINUTE: u32 = 120;
+pub const DEFAULT_EMAIL_LINKS_PER_IP: u32 = 100;
+pub const DEFAULT_DEVICE_CODES_PER_IP: u32 = 100;
+pub const DEFAULT_EMAIL_LINKS_PER_ADDRESS: u32 = 3;
 pub const MAX_POLL_HOLD_SECONDS: u64 = 40;
 pub const MAX_PROXY_HOPS: u8 = 8;
 pub const MIN_SETUP_CODE_CHARS: usize = 12;
@@ -86,6 +91,27 @@ pub struct S3Config {
     pub secret_access_key: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SignInLimits {
+    pub requests_burst: u32,
+    pub requests_per_minute: u32,
+    pub email_links_per_ip: u32,
+    pub email_links_per_address: u32,
+    pub device_codes_per_ip: u32,
+}
+
+impl Default for SignInLimits {
+    fn default() -> SignInLimits {
+        SignInLimits {
+            requests_burst: DEFAULT_SIGN_IN_BURST,
+            requests_per_minute: DEFAULT_SIGN_IN_PER_MINUTE,
+            email_links_per_ip: DEFAULT_EMAIL_LINKS_PER_IP,
+            email_links_per_address: DEFAULT_EMAIL_LINKS_PER_ADDRESS,
+            device_codes_per_ip: DEFAULT_DEVICE_CODES_PER_IP,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ServerConfig {
     pub public_url: Url,
@@ -99,6 +125,7 @@ pub struct ServerConfig {
     pub mail_from: Option<String>,
     pub blob_store: BlobStoreConfig,
     pub limits: Limits,
+    pub sign_in: SignInLimits,
     pub behind_proxy: bool,
     pub proxy_hops: u8,
     pub log_level: String,
@@ -221,6 +248,7 @@ impl ServerConfig {
                 "OLEAFLY_MAX_FILE_MB cannot be larger than OLEAFLY_MAX_PROJECT_MB.",
             ));
         }
+        let sign_in = parse_sign_in_limits(&source)?;
         let behind_proxy = source.flag("OLEAFLY_BEHIND_PROXY", false)?;
         let proxy_hops = source.number("OLEAFLY_PROXY_HOPS", 1u8)?;
         if proxy_hops > MAX_PROXY_HOPS {
@@ -275,6 +303,7 @@ impl ServerConfig {
             mail_from,
             blob_store,
             limits,
+            sign_in,
             behind_proxy,
             proxy_hops,
             log_level,
@@ -645,6 +674,29 @@ fn parse_oidc(source: &Source<'_>, name: &str) -> Result<ProviderConfig, ConfigE
     })
 }
 
+fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError> {
+    let limits = SignInLimits {
+        requests_burst: source.number("OLEAFLY_SIGN_IN_BURST", DEFAULT_SIGN_IN_BURST)?,
+        requests_per_minute: source
+            .number("OLEAFLY_SIGN_IN_PER_MINUTE", DEFAULT_SIGN_IN_PER_MINUTE)?,
+        email_links_per_ip: source
+            .number("OLEAFLY_EMAIL_LINKS_PER_IP", DEFAULT_EMAIL_LINKS_PER_IP)?,
+        email_links_per_address: source.number(
+            "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
+            DEFAULT_EMAIL_LINKS_PER_ADDRESS,
+        )?,
+        device_codes_per_ip: source
+            .number("OLEAFLY_DEVICE_CODES_PER_IP", DEFAULT_DEVICE_CODES_PER_IP)?,
+    };
+    if limits.email_links_per_address > limits.email_links_per_ip {
+        return Err(ConfigError::new(
+            "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
+            "OLEAFLY_EMAIL_LINKS_PER_ADDRESS cannot be larger than OLEAFLY_EMAIL_LINKS_PER_IP.",
+        ));
+    }
+    Ok(limits)
+}
+
 fn check_email(smtp_url: Option<&str>, mail_from: Option<&str>) -> Result<(), ConfigError> {
     match (smtp_url, mail_from) {
         (None, None) => Ok(()),
@@ -898,6 +950,7 @@ impl fmt::Debug for ServerConfig {
                 "max_members_per_project",
                 &self.limits.max_members_per_project,
             )
+            .field("sign_in", &self.sign_in)
             .field("behind_proxy", &self.behind_proxy)
             .field("proxy_hops", &self.proxy_hops)
             .field("log_level", &self.log_level)
@@ -1006,6 +1059,81 @@ mod tests {
         assert_eq!(config.log_level, "info");
         assert_eq!(config.security_log_days, 365);
         assert_eq!(config.archive_days, 30);
+    }
+
+    #[test]
+    fn sign_in_limits_let_fifty_people_behind_one_address_sign_in_within_fifteen_minutes() {
+        let limits = load(&[BASE]).unwrap().sign_in;
+        assert_eq!(
+            limits,
+            SignInLimits {
+                requests_burst: 300,
+                requests_per_minute: 120,
+                email_links_per_ip: 100,
+                email_links_per_address: 3,
+                device_codes_per_ip: 100,
+            }
+        );
+        let people = 50u32;
+        let requests_each = 6u32;
+        assert!(people * requests_each <= limits.requests_burst);
+        assert!(people * 2 <= limits.email_links_per_ip);
+        assert!(limits.email_links_per_address <= 3);
+        assert!(people * 2 <= limits.device_codes_per_ip);
+    }
+
+    #[test]
+    fn sign_in_limits_can_be_set_and_must_be_whole_numbers_of_at_least_one() {
+        let limits = load(&[
+            BASE,
+            ("OLEAFLY_SIGN_IN_BURST", "500"),
+            ("OLEAFLY_SIGN_IN_PER_MINUTE", "250"),
+            ("OLEAFLY_EMAIL_LINKS_PER_IP", "400"),
+            ("OLEAFLY_EMAIL_LINKS_PER_ADDRESS", "5"),
+            ("OLEAFLY_DEVICE_CODES_PER_IP", "300"),
+        ])
+        .unwrap()
+        .sign_in;
+        assert_eq!(
+            limits,
+            SignInLimits {
+                requests_burst: 500,
+                requests_per_minute: 250,
+                email_links_per_ip: 400,
+                email_links_per_address: 5,
+                device_codes_per_ip: 300,
+            }
+        );
+        for variable in [
+            "OLEAFLY_SIGN_IN_BURST",
+            "OLEAFLY_SIGN_IN_PER_MINUTE",
+            "OLEAFLY_EMAIL_LINKS_PER_IP",
+            "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
+            "OLEAFLY_DEVICE_CODES_PER_IP",
+        ] {
+            for bad in ["0", "-3", "lots", "1.5"] {
+                let error = load_err(&[BASE, (variable, bad)]);
+                assert_eq!(error.variable, variable, "{variable}={bad}");
+                assert!(
+                    error.message.contains("whole number of at least 1"),
+                    "{}",
+                    error.message
+                );
+            }
+        }
+        let error = load_err(&[
+            BASE,
+            ("OLEAFLY_EMAIL_LINKS_PER_IP", "4"),
+            ("OLEAFLY_EMAIL_LINKS_PER_ADDRESS", "5"),
+        ]);
+        assert_eq!(error.variable, "OLEAFLY_EMAIL_LINKS_PER_ADDRESS");
+        assert!(
+            error
+                .message
+                .contains("cannot be larger than OLEAFLY_EMAIL_LINKS_PER_IP"),
+            "{}",
+            error.message
+        );
     }
 
     #[test]

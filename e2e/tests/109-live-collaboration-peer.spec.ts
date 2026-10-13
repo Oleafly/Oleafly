@@ -19,6 +19,7 @@ const STACK = process.env.OLEAFLY_E2E_COLLAB_STACK ?? "";
 const PROTOCOL = "e2e-peer ";
 const SHARE_DIALOG = '[data-testid="collab-share-dialog"]';
 const PANE = '[data-testid="collab-pane"]';
+const PANE_STATUS = `${PANE} header button[aria-haspopup="dialog"]`;
 const LINK_ROLE = `${SHARE_DIALOG} [aria-label="Role for people who open the link"]`;
 const APP_LIVE = "APP-LIVE-1";
 const PEER_LIVE = "PEER-LIVE-café";
@@ -165,8 +166,8 @@ async function waitForText(page: Page, selector: string, needles: string[], time
   }
 }
 
-async function paneText(page: Page): Promise<string> {
-  return page.evaluate<string>(`document.querySelector(${scriptValue(PANE)})?.innerText ?? ""`);
+async function paneStatus(page: Page): Promise<string> {
+  return page.evaluate<string>(`document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") ?? ""`);
 }
 
 async function openCollabPane(page: Page) {
@@ -190,7 +191,7 @@ async function openCollabPane(page: Page) {
 
 async function waitAppUpToDate(page: Page, timeoutMs = 30_000) {
   await openCollabPane(page);
-  await waitLong(page, `(document.querySelector(${scriptValue(PANE)})?.innerText ?? "").includes("Up to date")`, timeoutMs);
+  await waitLong(page, `document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") === "Up to date"`, timeoutMs);
 }
 
 async function expectConverged(page: Page, stack: CollabStack, contains: string[]) {
@@ -301,7 +302,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await typeInAppAfter(page, "\\author{}", `\n${APP_AWAY}`, 10);
       await waitAppUpToDate(page);
       await stack.request({ cmd: "offline", side: "app" });
-      await waitLong(page, `(document.querySelector(${scriptValue(PANE)})?.innerText ?? "").includes("Up to date") === false`, 30_000);
+      await waitLong(page, `document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") !== "Up to date"`, 30_000);
       await stack.request({ cmd: "online", side: "peer" });
       const settled = await stack.request({ cmd: "settle" });
       expect(settled.text).toContain(PEER_AWAY);
@@ -341,7 +342,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await page.click(`${SHARE_DIALOG} button[aria-label="Close"]`);
     });
 
-    expect(await paneText(page)).toContain("Up to date");
+    expect(await paneStatus(page)).toBe("Up to date");
     expect(reviewText, "the merge review names the person whose changes it merged").toContain(`${ready.peer}: `);
   } finally {
     await stack.stop();

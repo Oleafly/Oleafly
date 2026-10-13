@@ -411,7 +411,9 @@
     "unifiedView": "Widok jednolity",
     "loading": "Wczytywanie porównania…",
     "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania.",
-    "diskHeading": "Na dysku ↔ Twoje zmiany"
+    "diskHeading": "Na dysku ↔ Twoje zmiany",
+    "sharedReadOnly": "W udostępnionym projekcie to porównanie jest tylko do odczytu. Edytuj plik w edytorze.",
+    "viewerReadOnly": "Możesz przeglądać ten udostępniony projekt, ale nie możesz go edytować."
   },
   "hotkeys": {
     "title": "Skróty klawiaturowe",

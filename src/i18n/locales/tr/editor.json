@@ -397,7 +397,9 @@
     "unifiedView": "Birleşik görünüm",
     "loading": "Fark yükleniyor…",
     "previewTooLarge": "Dosya, fark önizlenemeyecek kadar büyük.",
-    "diskHeading": "Diskte ↔ Düzenlemeleriniz"
+    "diskHeading": "Diskte ↔ Düzenlemeleriniz",
+    "sharedReadOnly": "Paylaşılan bir projede bu fark salt okunurdur. Dosyayı düzenleyicide düzenleyin.",
+    "viewerReadOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz."
   },
   "hotkeys": {
     "title": "Klavye kısayolları",

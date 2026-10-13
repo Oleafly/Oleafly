@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { avatarHue } from "@/components/ui/avatar";
 import { useShareDialog } from "@/components/collab/share-dialog";
@@ -77,6 +78,7 @@ function feed(entries: (NewActivity & { count: number })[]) {
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  await loadNamespace("workspace");
 });
 
 beforeEach(() => {
@@ -111,11 +113,65 @@ function sectionToggle(name: string): HTMLElement {
 }
 
 describe("CollabPane", () => {
-  it("names the connection state and the server in its header", () => {
+  it("shows the sync state as an icon left of the Share button instead of a status block", () => {
     render(<CollabPane />);
-    expect(screen.getByRole("heading", { name: pane.title })).toBeInTheDocument();
-    expect(screen.getByText(enCollab.sync.upToDate)).toBeInTheDocument();
-    expect(screen.getByText(fill(enCollab.manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
+    const header = screen.getByRole("heading", { name: pane.title }).closest("header") as HTMLElement;
+    const status = within(header).getByRole("button", { name: enCollab.sync.upToDate });
+    const manage = within(header).getByRole("button", { name: pane.manage });
+    expect(status.compareDocumentPosition(manage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.querySelector("svg.lucide-cloud-check")).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.sync.upToDate)).toBeNull();
+    expect(screen.queryByText(fill(enCollab.manage.sharedOn, { server: "Smith Lab" }))).toBeNull();
+  });
+
+  it("opens the full status and the server details from the status icon", async () => {
+    useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 1000 }, pending: 4 });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const words = fill(enCollab.sync.offline, { number: "4" });
+    await user.click(screen.getByRole("button", { name: words }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(words);
+    expect(details).toHaveTextContent(fill(enCollab.manage.sharedOn, { server: "Smith Lab" }));
+    expect(details).toHaveTextContent("https://collab.uni.edu");
+    expect(details).toHaveTextContent(fill(enCollab.manage.yourRole, { role: enCollab.projectRoles.editor }));
+    expect(details).toHaveTextContent(fill(pane.waiting, { number: "4" }));
+  });
+
+  it("opens the status details when the pointer rests on the status icon", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CollabPane />);
+      const status = screen.getByRole("button", { name: enCollab.sync.upToDate });
+      fireEvent.pointerEnter(status, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: pane.status })).toHaveTextContent(
+        fill(enCollab.manage.sharedOn, { server: "Smith Lab" }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<[Pick<CollabLiveStoreState, "status" | "pending">, string, string, string]>([
+    [{ status: { state: "online" }, pending: 0 }, enCollab.sync.upToDate, "cloud-check", "text-muted-foreground"],
+    [{ status: { state: "online" }, pending: 2 }, enCollab.sync.syncing, "cloud-upload", "text-primary"],
+    [{ status: { state: "connecting" }, pending: 0 }, enCollab.sync.syncing, "cloud-upload", "text-primary"],
+    [
+      { status: { state: "offline", retry_in_ms: 1000 }, pending: 5 },
+      fill(enCollab.sync.offline, { number: "5" }),
+      "cloud-off",
+      "text-amber-600",
+    ],
+    [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 0 }, enCollab.sync.reconnecting, "refresh-cw", "text-amber-600"],
+    [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused, "circle-pause", "text-muted-foreground"],
+    [{ status: { state: "ended", reason: "access_ended" }, pending: 0 }, enCollab.sync.accessEnded, "ban", "text-destructive"],
+    [{ status: { state: "ended", reason: "signed_out" }, pending: 0 }, enCollab.sync.signedOut, "log-out", "text-destructive"],
+  ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
+    useCollabLiveStore.setState(live);
+    render(<CollabPane />);
+    const glyph = screen.getByRole("button", { name: words }).querySelector("svg");
+    expect(glyph).toHaveClass(`lucide-${icon}`, tone);
   });
 
   it("lists everyone with access, you first, with role and where they are", () => {
@@ -218,12 +274,13 @@ describe("CollabPane", () => {
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
-  it("offers Sign in next to the state line while the account is paused", async () => {
+  it("offers Sign in in the status details while the account is paused", async () => {
     useCollabLiveStore.setState({ status: { state: "ended", reason: "account_suspended" }, ended: "account_suspended" });
     const user = userEvent.setup();
     render(<CollabPane />);
-    const state = screen.getByText(enCollab.sync.suspended).closest("div") as HTMLElement;
-    await user.click(within(state).getByRole("button", { name: activity.signIn }));
+    await user.click(screen.getByRole("button", { name: enCollab.sync.suspended }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    await user.click(within(details).getByRole("button", { name: activity.signIn }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
@@ -305,7 +362,7 @@ describe("CollabPane", () => {
     useCollabLiveStore.setState({ share: null, status: { state: "ended", reason: "removed" }, ended: "removed", members: [] });
     feed([{ kind: "removed", at: NOW, count: 1 }]);
     render(<CollabPane />);
-    expect(screen.getByText(enCollab.sync.removed)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enCollab.sync.removed })).toBeInTheDocument();
     expect(screen.getByText(activity.removed)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: pane.manage })).toBeNull();
   });
@@ -410,21 +467,22 @@ describe("CollabPane", () => {
     ["removed", enCollab.sync.removed],
     ["archived", enCollab.sync.archived],
     ["signed_out", enCollab.sync.signedOut],
-  ])("keeps the ended state (%s) at the top of the pane with its sections still reachable", (reason, words) => {
+  ])("keeps the ended state (%s) in the header with its sections still reachable", (reason, words) => {
     useCollabLiveStore.setState({ share: null, status: { state: "ended", reason }, ended: reason, peers: {}, members: [] });
     render(<CollabPane />);
-    const header = screen.getByText(words).closest("div") as HTMLElement;
-    expect(header.querySelector("svg")).toBeInTheDocument();
+    const header = screen.getByRole("heading", { name: pane.title }).closest("header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: words }).querySelector("svg")).toBeInTheDocument();
     expect(screen.queryByTestId("collab-people")).toBeNull();
     expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("offers Sign in next to the state line while signed out", async () => {
+  it("offers Sign in in the status details while signed out", async () => {
     useCollabLiveStore.setState({ status: { state: "ended", reason: "signed_out" }, ended: "signed_out" });
     const user = userEvent.setup();
     render(<CollabPane />);
-    const state = screen.getByText(enCollab.sync.signedOut).closest("div") as HTMLElement;
-    await user.click(within(state).getByRole("button", { name: activity.signIn }));
+    await user.click(screen.getByRole("button", { name: enCollab.sync.signedOut }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    await user.click(within(details).getByRole("button", { name: activity.signIn }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
@@ -435,11 +493,49 @@ describe("CollabPane", () => {
     [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 0 }, enCollab.sync.reconnecting],
     [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused],
     [{ status: { state: "ended", reason: "access_ended" }, pending: 0 }, enCollab.sync.accessEnded],
-  ])("names the live state %j at the top of the pane without a Sign in button", (live, words) => {
+  ])("shows the live state %j in its details without a Sign in button", async (live, words) => {
     useCollabLiveStore.setState(live);
+    const user = userEvent.setup();
     render(<CollabPane />);
-    const state = screen.getByText(words).closest("div") as HTMLElement;
-    expect(within(state).queryByRole("button")).toBeNull();
+    await user.click(screen.getByRole("button", { name: words }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(words);
+    expect(within(details).queryByRole("button")).toBeNull();
+  });
+
+  it("lets each section scroll on its own, split and resized like the Explorer sections", () => {
+    feed(
+      Array.from({ length: 40 }, (_, index) => ({
+        kind: "joined" as const,
+        at: NOW - index * 1000,
+        accountId: CAROL_ID,
+        name: "Carol Diaz",
+        count: 1,
+      })),
+    );
+    render(<CollabPane />);
+    const stack = screen.getByTestId("collab-stack");
+    expect(stack.closest(".overflow-y-auto")).toBeNull();
+    for (const id of ["collab-people", "collab-activity", "collab-deleted"]) {
+      const section = screen.getByTestId(id);
+      expect(stack).toContainElement(section);
+      expect(section.closest("[data-panel]")).not.toBeNull();
+    }
+    expect(document.getElementById("collab-people-content")).toHaveClass("overflow-y-auto");
+    expect(document.getElementById("collab-activity-content")).toHaveClass("overflow-y-auto");
+    const resize = fill(enWorkspace.explorer.resizeSections, { first: pane.people, second: pane.activity });
+    expect(screen.getByRole("separator", { name: resize })).toBeInTheDocument();
+  });
+
+  it("keeps the file name whole when a person is in a file with a long path", () => {
+    const long = "chapters/part-one/section-three/subsection-alpha/very-long-file-name.tex";
+    useCollabLiveStore.setState({ peers: { bob: peer("bob", BOB_ID, long) } });
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
+    const where = within(rows[1]).getByTitle(fill(pane.hereIn, { path: long }));
+    expect(where.textContent).toContain("very-long-file-name.tex");
+    expect(where.textContent).toContain("…");
+    expect(where.textContent).not.toContain("section-three");
   });
 
   it("does not render again while people only move their cursors", () => {
@@ -467,7 +563,7 @@ describe("CollabPane", () => {
     expect(rows[1]).toHaveTextContent(fill(pane.hereIn, { path: "refs.bib" }));
   });
 
-  it("redraws only its state line when the sync state changes", () => {
+  it("redraws only its status icon when the sync state changes", () => {
     feed([
       { kind: "online", at: NOW - 1000, count: 1 },
       { kind: "joined", at: NOW - 2000, accountId: CAROL_ID, name: "Carol Diaz", count: 1 },
@@ -476,9 +572,9 @@ describe("CollabPane", () => {
     spies.relativeTime.mockClear();
     spies.person.mockClear();
     act(() => useCollabLiveStore.setState({ pending: 3 }));
-    expect(screen.getByText(enCollab.sync.syncing)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enCollab.sync.syncing })).toBeInTheDocument();
     act(() => useCollabLiveStore.setState({ pending: 0, status: { state: "online" } }));
-    expect(screen.getByText(enCollab.sync.upToDate)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enCollab.sync.upToDate })).toBeInTheDocument();
     expect(spies.relativeTime).not.toHaveBeenCalled();
     expect(spies.person).not.toHaveBeenCalled();
   });

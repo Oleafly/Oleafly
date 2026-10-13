@@ -10,7 +10,7 @@ use oleafly_collab::sync::LiveLink;
 use oleafly_collab::{evaluate, write_atomic, CollabError, MassChangeThreshold, MassChangeVerdict};
 use serde::{Deserialize, Serialize};
 
-use super::super::disk::{as_text, exists_exact, safe_target, sha256_hex, DiskState};
+use super::super::disk::{as_text, exists_exact, safe_target, sha256_hex, written_as, DiskState};
 use super::super::guard::{PauseReason, SyncPauseHost, SyncPaused};
 use super::{active_for, by_path, guard, lock, Active, LocalImport, WrittenTexts};
 use crate::folder_watch::FolderChange;
@@ -178,14 +178,7 @@ impl Hold {
 }
 
 fn rebase(base: &str, changed: &str, onto: &str) -> Option<TextOperation> {
-    let change = TextOperation::between(base, changed);
-    if base == onto {
-        return Some(change);
-    }
-    let other = TextOperation::between(base, onto);
-    TextOperation::transform(&change, &other)
-        .ok()
-        .map(|(after, _)| after)
+    oleafly_collab::merge::rebase(base, changed, onto)
 }
 
 fn read_text(root: &Path, path: &str) -> Option<String> {
@@ -201,7 +194,7 @@ fn recorded(bases: &WrittenTexts, disk: &DiskState, path: &str) -> Option<String
         .get(path)?
         .iter()
         .rev()
-        .find(|text| sha256_hex(text.as_bytes()) == *known)
+        .find(|text| written_as(text, known))
         .cloned()
 }
 
@@ -1353,6 +1346,50 @@ mod tests {
             );
             assert_eq!(rig.shared("a.tex").as_deref(), Some("changed"));
             assert_eq!(rig.on_disk("a.tex").as_deref(), Some("changed"));
+        });
+    }
+
+    #[test]
+    fn sending_a_restore_made_while_two_people_type_reverts_it_once_and_keeps_their_typing() {
+        run(async {
+            let checkpoint: String = (1..=12)
+                .map(|part| format!("Method part {part}. The text about step {part}.\n"))
+                .collect();
+            let edited = checkpoint.replace(
+                "The text about step 4.",
+                "Bob rewrote the sentence about step 4.",
+            );
+            let others: Vec<(String, String)> = (0..22)
+                .map(|index| (format!("f{index:02}.tex"), format!("file {index}\n")))
+                .collect();
+            let mut files: Vec<(&str, &str)> = vec![("method.tex", edited.as_str())];
+            files.extend(
+                others
+                    .iter()
+                    .map(|(path, text)| (path.as_str(), text.as_str())),
+            );
+            let rig = rig(&files).await;
+            for (path, text) in &others {
+                rig.write(path, text);
+            }
+            rig.write("method.tex", &checkpoint);
+            let every: Vec<&str> = files.iter().map(|(path, _)| *path).collect();
+            rig.outside(&every, pause_of(&every, every.len())).await;
+            let typed = edited
+                .replace("Method part 1. ", "Method part 1. alice typed. ")
+                .replace("Method part 7. ", "Method part 7. carol typed. ");
+            rig.remote("method.tex", &typed);
+            rig.write_out().await;
+            rig.active.decide(SyncDecision::Send).await.unwrap();
+            rig.write_out().await;
+            rig.stop();
+
+            let expected = checkpoint
+                .replace("Method part 1. ", "Method part 1. alice typed. ")
+                .replace("Method part 7. ", "Method part 7. carol typed. ");
+            assert_eq!(rig.shared("method.tex"), Some(expected.clone()));
+            assert_eq!(rig.on_disk("method.tex"), Some(expected));
+            assert_eq!(rig.shared("f03.tex").as_deref(), Some("file 3\n"));
         });
     }
 

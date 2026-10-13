@@ -28,6 +28,7 @@ import {
   type CollabShareInfo,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
 
 export interface LivePeer {
@@ -70,6 +71,11 @@ export interface LiveMemberChange extends CollabLiveMembers {
   byName: string;
 }
 
+export interface AccessNotice {
+  kind: "viewer" | "removed";
+  byName: string;
+}
+
 export interface CollabLiveStoreState {
   projectId: string | null;
   share: CollabShareInfo | null;
@@ -82,10 +88,12 @@ export interface CollabLiveStoreState {
   newDevice: CollabLiveNewDevice | null;
   memberChange: LiveMemberChange | null;
   ended: CollabLiveEndedReason | null;
+  accessNotice: AccessNotice | null;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
   dismissEnded: () => void;
+  dismissAccessNotice: () => void;
 }
 
 export interface LiveSession {
@@ -104,7 +112,7 @@ const PEER_SWEEP_MS = 1_000;
 
 type LiveData = Omit<
   CollabLiveStoreState,
-  "refreshShare" | "refreshMembers" | "dismissMerged" | "dismissEnded"
+  "refreshShare" | "refreshMembers" | "dismissMerged" | "dismissEnded" | "dismissAccessNotice"
 >;
 
 function emptyLive(projectId: string | null): LiveData {
@@ -120,6 +128,7 @@ function emptyLive(projectId: string | null): LiveData {
     newDevice: null,
     memberChange: null,
     ended: null,
+    accessNotice: null,
   };
 }
 
@@ -183,6 +192,7 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     },
     dismissMerged: () => set({ merged: null }),
     dismissEnded: () => set({ ended: null }),
+    dismissAccessNotice: () => set({ accessNotice: null }),
   }),
 );
 
@@ -212,6 +222,15 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   let disposed = false;
   let live: LiveRun | null = null;
   let askedAbout = new Set<string>();
+  let ownChange: Pick<CollabLiveMembers, "by" | "kind"> | null = null;
+
+  const takeOwnChange = (kind: CollabLiveMembers["kind"]): string => {
+    const change = ownChange;
+    ownChange = null;
+    return change?.kind === kind ? change.by : "";
+  };
+
+  const changedBy = (by: string): string => (by ? nameIn([store.getState().members], by) : "");
 
   const stopLive = () => {
     const run = live;
@@ -272,6 +291,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const openProject = (projectId: string | null) => {
     stopLive();
     askedAbout = new Set();
+    ownChange = null;
     store.setState(emptyLive(projectId));
     if (projectId) void store.getState().refreshShare();
   };
@@ -291,20 +311,35 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
-    store.setState({ status: payload.status, pending: payload.pending });
+    store.setState((state) => ({ status: heldStatus(state.status, payload.status), pending: payload.pending }));
     if (payload.status.state !== "ended" || payload.status.reason === "stopped") return;
     if (live?.projectId === payload.projectId) {
       live.release?.();
       live = null;
     }
-    store.setState({ ended: payload.status.reason, peers: {} });
+    const removedBy = payload.status.reason === "removed" ? takeOwnChange("removed") : "";
+    const self = store.getState().share?.account_id ?? null;
+    const notice: AccessNotice | null =
+      payload.status.reason === "removed" && (removedBy === "" || removedBy !== self)
+        ? { kind: "removed", byName: changedBy(removedBy) }
+        : store.getState().accessNotice;
+    store.setState({ ended: payload.status.reason, peers: {}, accessNotice: notice });
     void store.getState().refreshShare();
   };
 
   const onRole = (payload: CollabLiveRole) => {
     if (payload.projectId !== current()) return;
-    const changed = store.getState().role !== payload.role;
-    store.setState({ role: payload.role });
+    const state = store.getState();
+    const before = state.role;
+    const changed = before !== payload.role;
+    const by = takeOwnChange("role_changed");
+    let notice = state.accessNotice;
+    if (changed && before !== null && before !== "viewer" && payload.role === "viewer") {
+      notice = { kind: "viewer", byName: changedBy(by) };
+    } else if (changed && payload.role !== "viewer" && notice?.kind === "viewer") {
+      notice = null;
+    }
+    store.setState({ role: payload.role, accessNotice: notice });
     if (changed) void store.getState().refreshMembers();
   };
 
@@ -324,6 +359,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (payload.projectId !== current()) return;
     const state = store.getState();
     const before = state.members;
+    if (payload.accountId === state.share?.account_id) ownChange = { by: payload.by, kind: payload.kind };
     const settle = () => {
       if (store.getState().projectId !== payload.projectId) return;
       const lists = [store.getState().members, before];

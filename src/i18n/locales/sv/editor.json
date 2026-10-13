@@ -397,7 +397,9 @@
     "unifiedView": "Sammanslagen vy",
     "loading": "Läser in jämförelsen…",
     "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse.",
-    "diskHeading": "På disken ↔ Dina ändringar"
+    "diskHeading": "På disken ↔ Dina ändringar",
+    "sharedReadOnly": "I ett delat projekt är jämförelsen skrivskyddad. Redigera filen i redigeraren.",
+    "viewerReadOnly": "Du kan visa det här delade projektet men inte redigera det."
   },
   "hotkeys": {
     "title": "Kortkommandon",

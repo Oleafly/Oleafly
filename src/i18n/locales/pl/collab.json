@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Brak otwartego pliku",
-    "unknownPerson": "Ktoś"
+    "unknownPerson": "Ktoś",
+    "viewing": "Przegląda {{path}}",
+    "editing": "Edytuje {{path}}"
   },
   "tree": {
     "here": "{{name}} ma otwarty ten plik",
@@ -563,7 +565,9 @@
     "away": "Teraz poza projektem",
     "deleted": "Ostatnio usunięte",
     "deletedEmpty": "Ostatnio nic nie usunięto.",
-    "accessLog": "Dziennik dostępu"
+    "accessLog": "Dziennik dostępu",
+    "status": "Stan synchronizacji",
+    "waiting": "Oczekujące zmiany: {{number}}"
   },
   "deleted": {
     "restore": "Przywróć",
@@ -878,5 +882,11 @@
       "decline": "Odrzuć",
       "declineNamed": "Odrzuć {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "Użytkownik {{name}} zmienił Twoją rolę na przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
+    "viewer": "Masz teraz rolę przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
+    "removedBy": "Użytkownik {{name}} usunął Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana.",
+    "removed": "Usunięto Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana."
   }
 }

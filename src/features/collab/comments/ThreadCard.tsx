@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { InlineAlert } from "../feedback";
 import { peerHue } from "../live/peer-hue";
 import { CommentComposer } from "./CommentComposer";
+import { CommentQuote } from "./CommentQuote";
 import {
   deleteMessage,
   deleteThread,
@@ -285,16 +286,12 @@ export const ThreadCard = memo(function ThreadCard({
         )}
       >
         <div className="flex flex-wrap items-start gap-1">
-          <button
-            type="button"
-            data-thread-jump
+          <CommentQuote
+            quote={thread.anchor.quote}
             title={t(($) => $.collab.comments.showInEditor)}
-            onClick={() => selectThread(thread.id, { reveal: true })}
-            onKeyDown={moveFocus}
-            className="min-w-0 flex-1 rounded-sm border-l-2 border-amber-500/70 py-0.5 pl-2 text-left text-xs italic text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
-          >
-            <span className="line-clamp-3 break-words">{thread.anchor.quote}</span>
-          </button>
+            onJump={() => selectThread(thread.id, { reveal: true })}
+            onJumpKeyDown={moveFocus}
+          />
           {context.canWrite ? <ThreadActions thread={thread} self={context.self} /> : null}
         </div>
         {resolver ? (

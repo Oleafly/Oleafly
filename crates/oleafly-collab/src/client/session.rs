@@ -10,6 +10,7 @@ use reqwest::header::{HeaderMap, DATE};
 
 use super::http::{check_status, network_error};
 use super::{now_ms, ServerClient};
+use crate::device_key::server_key_account;
 use crate::{CollabError, DeviceKey, SecretPort};
 
 const REFRESH_MARGIN_MS: i64 = 60_000;
@@ -23,6 +24,7 @@ pub fn session_account(server: ServerId) -> String {
 pub struct SessionManager {
     secrets: Arc<dyn SecretPort>,
     key: Arc<DeviceKey>,
+    server_keys: Mutex<HashMap<ServerId, Arc<DeviceKey>>>,
     refresh: tokio::sync::Mutex<()>,
     server_clocks: Mutex<HashMap<ServerId, i64>>,
 }
@@ -32,9 +34,47 @@ impl SessionManager {
         SessionManager {
             secrets,
             key,
+            server_keys: Mutex::new(HashMap::new()),
             refresh: tokio::sync::Mutex::new(()),
             server_clocks: Mutex::new(HashMap::new()),
         }
+    }
+
+    pub fn device_key(&self, server: ServerId) -> Result<Arc<DeviceKey>, CollabError> {
+        if let Some(known) = self
+            .server_keys
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&server)
+        {
+            return Ok(Arc::clone(known));
+        }
+        let key = match DeviceKey::load(self.secrets.as_ref(), &server_key_account(server))? {
+            Some(own) => Arc::new(own),
+            None => Arc::clone(&self.key),
+        };
+        self.server_keys
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(server, Arc::clone(&key));
+        Ok(key)
+    }
+
+    pub fn renew_device_key(&self, server: ServerId) -> Result<Arc<DeviceKey>, CollabError> {
+        let key = Arc::new(DeviceKey::create(
+            self.secrets.as_ref(),
+            &server_key_account(server),
+        )?);
+        self.server_keys
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(server, Arc::clone(&key));
+        Ok(key)
+    }
+
+    pub fn sign_out(&self, server: ServerId) -> Result<(), CollabError> {
+        self.clear(server)?;
+        self.renew_device_key(server).map(|_| ())
     }
 
     fn server_now(&self, server: ServerId) -> i64 {
@@ -136,7 +176,7 @@ impl SessionManager {
         let request = RefreshRequest {
             refresh_token: tokens.refresh_token.clone(),
             device_id: tokens.device_id,
-            signature: self.key.sign_b64(&message),
+            signature: self.device_key(server)?.sign_b64(&message),
             nonce: challenge.nonce,
         };
         let (tokens, server_ms) = post_refresh(client, &request).await?;
@@ -243,6 +283,46 @@ mod tests {
             .get(&session_account(server))
             .expect("read")
             .is_none());
+    }
+
+    #[test]
+    fn signing_out_of_a_server_gives_the_next_sign_in_there_a_new_device_key() {
+        let secrets = Arc::new(MemorySecrets::default());
+        let shared = Arc::new(device_key());
+        let manager = SessionManager::new(secrets.clone(), Arc::clone(&shared));
+        let (server, other) = (ServerId::new_v7(), ServerId::new_v7());
+        assert_eq!(
+            manager.device_key(server).expect("key").public_key(),
+            shared.public_key()
+        );
+        manager.store(server, &tokens("access", 1)).expect("store");
+        manager.sign_out(server).expect("sign out");
+        assert!(manager.tokens(server).expect("read").is_none());
+        let fresh = manager.device_key(server).expect("key");
+        assert_ne!(fresh.public_key(), shared.public_key());
+        assert_eq!(
+            manager.device_key(other).expect("key").public_key(),
+            shared.public_key()
+        );
+        let after_restart = SessionManager::new(secrets, Arc::new(device_key()));
+        assert_eq!(
+            after_restart.device_key(server).expect("key").public_key(),
+            fresh.public_key()
+        );
+    }
+
+    #[test]
+    fn a_session_the_server_ended_keeps_its_device_key() {
+        let secrets = Arc::new(MemorySecrets::default());
+        let shared = Arc::new(device_key());
+        let manager = SessionManager::new(secrets, Arc::clone(&shared));
+        let server = ServerId::new_v7();
+        manager.store(server, &tokens("access", 1)).expect("store");
+        manager.clear(server).expect("clear");
+        assert_eq!(
+            manager.device_key(server).expect("key").public_key(),
+            shared.public_key()
+        );
     }
 
     #[tokio::test]

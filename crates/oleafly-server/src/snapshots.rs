@@ -1,10 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, PoisonError, RwLock};
 
 use axum::body::Bytes;
-use loro::{ExportMode, LoroDoc, LoroValue, ValueOrContainer};
+use loro::{ExportMode, LoroDoc, LoroValue, ValueOrContainer, VersionVector};
 use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use tokio::sync::Mutex;
@@ -360,6 +360,37 @@ impl Snapshots {
         db: &Db,
         project: SharedProjectId,
     ) -> Result<Option<HashSet<String>>, ServerError> {
+        let Some((replay, _)) = self.current(db, project).await? else {
+            return Ok(None);
+        };
+        Ok(Some(blocking(move || Ok(replay.files())).await?))
+    }
+
+    async fn replayed(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        base: Bytes,
+        after: u64,
+        through: u64,
+        bindings: &Arc<HashMap<u64, DeviceId>>,
+    ) -> Result<Replayed, ServerError> {
+        let Some(replay) = blocking(move || Ok(Replay::start(project, &base))).await? else {
+            return Ok(Replayed::Unreadable);
+        };
+        Ok(
+            match advance(db, project, replay, after, through, bindings).await? {
+                Some(replay) => Replayed::Ready(replay),
+                None => Replayed::Gap,
+            },
+        )
+    }
+
+    pub async fn current(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+    ) -> Result<Option<(Replay, u64)>, ServerError> {
         let (candidates, bindings, head) = db
             .call(move |conn| {
                 Ok((
@@ -387,7 +418,7 @@ impl Snapshots {
             let needed = read_cost(size, span.bytes);
             if needed > budget.memory_bytes {
                 tracing::info!(
-                    "Kept every file of project {project} because reading its document needs about {} MB and the server allows {} MB",
+                    "Did not read the document of project {project} because reading it needs about {} MB and the server allows {} MB",
                     megabytes(needed),
                     megabytes(budget.memory_bytes)
                 );
@@ -403,49 +434,12 @@ impl Snapshots {
                 .replayed(db, project, base, after, head, &bindings)
                 .await?
             {
-                Replayed::Ready(replay) => {
-                    return Ok(Some(blocking(move || Ok(replay.files())).await?));
-                }
+                Replayed::Ready(replay) => return Ok(Some((replay, head))),
                 Replayed::Gap => return Ok(None),
                 Replayed::Unreadable => {}
             }
         }
         Ok(None)
-    }
-
-    async fn replayed(
-        &self,
-        db: &Db,
-        project: SharedProjectId,
-        base: Bytes,
-        after: u64,
-        through: u64,
-        bindings: &Arc<HashMap<u64, DeviceId>>,
-    ) -> Result<Replayed, ServerError> {
-        let Some(mut replay) = blocking(move || Ok(Replay::start(project, &base))).await? else {
-            return Ok(Replayed::Unreadable);
-        };
-        let mut cursor = after;
-        while cursor < through {
-            let page = db
-                .call(move |conn| projects::logged_between(conn, project, cursor, through))
-                .await?;
-            let contiguous = page
-                .iter()
-                .zip(cursor + 1..)
-                .all(|(entry, expected)| entry.seq == expected);
-            let Some(last) = page.last().filter(|_| contiguous).map(|entry| entry.seq) else {
-                return Ok(Replayed::Gap);
-            };
-            cursor = last;
-            let known = Arc::clone(bindings);
-            replay = blocking(move || {
-                replay.apply(&page, &known);
-                Ok(replay)
-            })
-            .await?;
-        }
-        Ok(Replayed::Ready(replay))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -892,6 +886,59 @@ pub struct Replay {
     doc: LoroDoc,
 }
 
+pub async fn advance(
+    db: &Db,
+    project: SharedProjectId,
+    mut replay: Replay,
+    after: u64,
+    through: u64,
+    bindings: &Arc<HashMap<u64, DeviceId>>,
+) -> Result<Option<Replay>, ServerError> {
+    let mut cursor = after;
+    while cursor < through {
+        let page = db
+            .call(move |conn| projects::logged_between(conn, project, cursor, through))
+            .await?;
+        let contiguous = page
+            .iter()
+            .zip(cursor + 1..)
+            .all(|(entry, expected)| entry.seq == expected);
+        let Some(last) = page.last().filter(|_| contiguous).map(|entry| entry.seq) else {
+            return Ok(None);
+        };
+        cursor = last;
+        let known = Arc::clone(bindings);
+        replay = blocking(move || {
+            replay.apply(&page, &known);
+            Ok(replay)
+        })
+        .await?;
+    }
+    Ok(Some(replay))
+}
+
+fn heads_after(
+    mut heads: BTreeSet<peers::Span>,
+    deps: &BTreeSet<peers::Span>,
+    ends: &[peers::Span],
+) -> Option<BTreeSet<peers::Span>> {
+    let [(peer, end)] = ends else {
+        return None;
+    };
+    heads.retain(|head| !deps.contains(head) && !(head.0 == *peer && head.1 < *end));
+    heads.insert((*peer, end - 1));
+    Some(heads)
+}
+
+fn builds_on(reach: &peers::Reach, known: &VersionVector) -> bool {
+    let counter = |peer: &u64| known.get(peer).copied().unwrap_or(0);
+    reach
+        .starts
+        .iter()
+        .all(|(peer, start)| counter(peer) >= *start)
+        && reach.deps.iter().all(|(peer, at)| counter(peer) > *at)
+}
+
 impl Replay {
     pub fn start(project: SharedProjectId, base: &[u8]) -> Option<Replay> {
         peers::snapshot_reach(base)?;
@@ -901,6 +948,9 @@ impl Replay {
     }
 
     pub fn apply(&mut self, entries: &[LoggedUpdate], bindings: &HashMap<u64, DeviceId>) {
+        let mut known = self.doc.oplog_vv();
+        let mut waiting = Vec::new();
+        let mut heads = Some(self.heads());
         for entry in entries {
             let Ok(envelope) = serde_json::from_slice::<Envelope>(&entry.envelope) else {
                 continue;
@@ -911,7 +961,7 @@ impl Replay {
             let Some(reach) = peers::update_reach(&envelope.payload) else {
                 continue;
             };
-            let taken = peers::introduced(&reach.ends, &self.doc.oplog_vv())
+            let taken = peers::introduced(&reach.ends, &known)
                 .into_iter()
                 .any(|peer| {
                     bindings
@@ -921,8 +971,53 @@ impl Replay {
             if taken {
                 continue;
             }
-            let _ = self.doc.import(&envelope.payload);
+            if builds_on(&reach, &known) {
+                for (peer, end) in &reach.ends {
+                    if known.get(peer).copied().unwrap_or(0) < *end {
+                        known.insert(*peer, *end);
+                    }
+                }
+            }
+            let deps: BTreeSet<peers::Span> = reach.deps.iter().copied().collect();
+            if heads.as_ref() == Some(&deps) {
+                self.import_all(&mut waiting);
+                let current = self.heads();
+                if current == deps {
+                    let _ = self.doc.import(&envelope.payload);
+                    heads = Some(self.heads());
+                    continue;
+                }
+                heads = Some(current);
+            }
+            heads = heads.and_then(|heads| heads_after(heads, &deps, &reach.ends));
+            waiting.push(envelope.payload);
         }
+        self.import_all(&mut waiting);
+    }
+
+    fn heads(&self) -> BTreeSet<peers::Span> {
+        self.doc
+            .oplog_frontiers()
+            .iter()
+            .map(|id| (id.peer, id.counter))
+            .collect()
+    }
+
+    fn import_all(&self, waiting: &mut Vec<Vec<u8>>) {
+        if waiting.is_empty() {
+            return;
+        }
+        let before = self.doc.oplog_vv();
+        if self.doc.import_batch(waiting).is_err() && self.doc.oplog_vv() == before {
+            for payload in waiting.iter() {
+                let _ = self.doc.import(payload);
+            }
+        }
+        waiting.clear();
+    }
+
+    pub fn doc(&self) -> &LoroDoc {
+        &self.doc
     }
 
     pub fn finish(self) -> Option<Vec<u8>> {
@@ -1071,6 +1166,84 @@ mod tests {
         field.insert(field.len_unicode(), text).unwrap();
         doc.commit();
         doc.export(ExportMode::updates(&before)).unwrap()
+    }
+
+    #[test]
+    fn a_page_of_concurrent_changes_is_imported_in_a_pass_or_two_not_one_per_change() {
+        let project = SharedProjectId::new_v7();
+        let laptop = DeviceId::new_v7();
+        let base_doc = LoroDoc::new();
+        base_doc.set_peer_id(1).unwrap();
+        base_doc.get_text("text").insert(0, "Hello").unwrap();
+        base_doc.commit();
+        let base = base_doc.export(ExportMode::Snapshot).unwrap();
+        let writers: Vec<LoroDoc> = (0..3)
+            .map(|_| {
+                let doc = LoroDoc::new();
+                doc.import(&base).unwrap();
+                doc
+            })
+            .collect();
+        let mut entries = Vec::new();
+        for round in 0..30u64 {
+            let writer = &writers[usize::try_from(round % 3).unwrap()];
+            let peer = 10 + round % 3;
+            entries.push(logged(
+                round + 1,
+                project,
+                laptop,
+                typed(writer, peer, " x"),
+            ));
+        }
+        let mut replay = Replay::start(project, &base).expect("a replay");
+        let passes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = Arc::clone(&passes);
+        let _watching = replay.doc.subscribe_root(Arc::new(move |_| {
+            counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }));
+        replay.apply(&entries, &HashMap::new());
+        assert!(passes.load(std::sync::atomic::Ordering::SeqCst) <= 2);
+        let built = LoroDoc::new();
+        built.import(&replay.finish().unwrap()).unwrap();
+        let expected = LoroDoc::new();
+        expected.import(&base).unwrap();
+        for writer in &writers {
+            expected
+                .import(&writer.export(ExportMode::all_updates()).unwrap())
+                .unwrap();
+        }
+        assert_eq!(
+            built.get_text("text").to_string(),
+            expected.get_text("text").to_string()
+        );
+    }
+
+    #[test]
+    fn one_person_pasting_large_blocks_is_replayed_quickly() {
+        let project = SharedProjectId::new_v7();
+        let laptop = DeviceId::new_v7();
+        let writer = LoroDoc::new();
+        writer.set_peer_id(1).unwrap();
+        writer.get_text("text").insert(0, "Hello").unwrap();
+        writer.commit();
+        let base = writer.export(ExportMode::Snapshot).unwrap();
+        let block = "abcdefghijklmnopqrstuvwxyz".repeat(64 * 1024 / 26);
+        let entries: Vec<LoggedUpdate> = (0..22u64)
+            .map(|round| logged(round + 1, project, laptop, typed(&writer, 2, &block)))
+            .collect();
+        let started = std::time::Instant::now();
+        let built = replay(project, &base, &entries, &HashMap::new()).expect("a snapshot");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "replaying took {:?}",
+            started.elapsed()
+        );
+        let loaded = LoroDoc::new();
+        loaded.import(&built).unwrap();
+        assert_eq!(
+            loaded.get_text("text").to_string(),
+            writer.get_text("text").to_string()
+        );
     }
 
     #[test]

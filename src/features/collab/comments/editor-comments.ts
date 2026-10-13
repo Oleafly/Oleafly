@@ -16,6 +16,7 @@ import {
   GutterMarker,
   gutter,
   ViewPlugin,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { i18n } from "@/i18n";
@@ -41,11 +42,17 @@ export interface CommentSnapshot {
 
 export type CommentOpenedFrom = "marker" | "text";
 
+export interface AnchorChange {
+  emptied: readonly string[];
+  edited: boolean;
+}
+
 export interface EditorCommentsSource {
   snapshot(): CommentSnapshot;
   documentPath(): string | null;
   subscribe(listener: () => void): () => void;
   open(threadId: string, from: CommentOpenedFrom): void;
+  anchorsChanged?(change: AnchorChange): void;
 }
 
 const FLASH_MS = 1_200;
@@ -193,7 +200,7 @@ function marksOf(value: Omit<CommentField, "decorations" | "markers">): Decorati
 function markersOf(doc: Text, spans: readonly CommentSpan[]): RangeSet<GutterMarker> {
   const lines = new Map<number, string[]>();
   for (const span of spans) {
-    if (span.resolved) continue;
+    if (span.resolved || span.from === span.to) continue;
     const line = doc.lineAt(span.from).from;
     lines.set(line, [...(lines.get(line) ?? []), span.id]);
   }
@@ -233,6 +240,27 @@ function placed(
   });
 }
 
+function newlyEmptied(before: readonly CommentSpan[], after: readonly CommentSpan[]): boolean {
+  return after.some((span, index) => span.from === span.to && before[index]?.from !== before[index]?.to);
+}
+
+function emptiedIds(spans: readonly CommentSpan[]): string[] {
+  return spans.filter((span) => !span.resolved && span.from === span.to).map((span) => span.id);
+}
+
+function editedInside(spans: readonly CommentSpan[], changes: ChangeDesc): boolean {
+  let edited = false;
+  changes.iterChangedRanges((fromA, toA) => {
+    if (edited) return;
+    edited = spans.some((span) => !span.resolved && span.from < span.to && fromA < span.to && toA > span.from);
+  });
+  return edited;
+}
+
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
 const commentField = StateField.define<CommentField>({
   create: (state) =>
     build(state.doc, { spans: NO_SPANS, reported: new Map(), selected: null, flash: null, draft: null }),
@@ -263,6 +291,7 @@ const commentField = StateField.define<CommentField>({
     }
     if (changed) return build(doc, { spans, reported, selected, flash, draft });
     if (!mapped) return value;
+    const rebuild = linesChanged(transaction) || newlyEmptied(value.spans, spans);
     return {
       spans,
       reported,
@@ -270,7 +299,7 @@ const commentField = StateField.define<CommentField>({
       flash,
       draft,
       decorations: value.decorations.map(transaction.changes),
-      markers: linesChanged(transaction) ? markersOf(doc, spans) : value.markers.map(transaction.changes),
+      markers: rebuild ? markersOf(doc, spans) : value.markers.map(transaction.changes),
     };
   },
   provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
@@ -345,7 +374,18 @@ function commentSync(source: EditorCommentsSource): Extension {
     };
     const unsubscribe = source.subscribe(refresh);
     refresh();
+    let emptied: readonly string[] = [];
     return {
+      update: (update: ViewUpdate) => {
+        const before = update.startState.field(commentField).spans;
+        const after = update.state.field(commentField).spans;
+        if (before === after || !source.anchorsChanged) return;
+        const edited = update.docChanged && editedInside(before, update.changes);
+        const next = emptiedIds(after);
+        if (!edited && sameIds(emptied, next)) return;
+        emptied = next;
+        source.anchorsChanged({ emptied: next, edited });
+      },
       destroy: () => {
         destroyed = true;
         unsubscribe();

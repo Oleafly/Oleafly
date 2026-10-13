@@ -148,7 +148,7 @@ pub fn account_summary(
         server_role: role_from_str(&role)?,
         emails: query_strings(
             conn,
-            "SELECT email FROM account_emails WHERE account_id = ?1 ORDER BY email",
+            "SELECT email FROM account_emails WHERE account_id = ?1 ORDER BY email LIKE '%@users.noreply.%', email",
             [&id],
         )?,
         logins: query_strings(
@@ -804,6 +804,44 @@ mod tests {
         );
         assert_eq!(normalize_login("   "), None);
         assert_eq!(normalize_login("two words"), None);
+    }
+
+    #[tokio::test]
+    async fn a_person_is_shown_with_a_real_address_before_a_github_no_reply_one() {
+        with_db(|conn| {
+            let account = create_account(conn, "Prajwal", None, ServerRole::Admin, 10)?;
+            add_verified_emails(
+                conn,
+                account,
+                &[
+                    "53730619+prajwal-svm@users.noreply.github.com".to_string(),
+                    "prajwal@uni.edu".to_string(),
+                ],
+            )?;
+            let summary = account_summary(conn, account)?.expect("the account exists");
+            assert_eq!(
+                summary.emails,
+                [
+                    "prajwal@uni.edu",
+                    "53730619+prajwal-svm@users.noreply.github.com"
+                ]
+            );
+            let person = crate::projects::person(conn, account, true)?.expect("a person");
+            assert_eq!(person.email.as_deref(), Some("prajwal@uni.edu"));
+            let only_no_reply = create_account(conn, "Bo", None, ServerRole::Member, 11)?;
+            add_verified_emails(
+                conn,
+                only_no_reply,
+                &["9+bo@users.noreply.github.com".to_string()],
+            )?;
+            let person = crate::projects::person(conn, only_no_reply, true)?.expect("a person");
+            assert_eq!(
+                person.email.as_deref(),
+                Some("9+bo@users.noreply.github.com")
+            );
+            Ok(())
+        })
+        .await;
     }
 
     #[tokio::test]

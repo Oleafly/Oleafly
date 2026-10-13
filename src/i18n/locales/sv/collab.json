@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Ingen fil öppen",
-    "unknownPerson": "Någon"
+    "unknownPerson": "Någon",
+    "viewing": "Tittar på {{path}}",
+    "editing": "Redigerar {{path}}"
   },
   "tree": {
     "here": "{{name}} har den här filen öppen",
@@ -563,7 +565,9 @@
     "away": "Inte här just nu",
     "deleted": "Nyligen raderade",
     "deletedEmpty": "Inget har raderats nyligen.",
-    "accessLog": "Åtkomstlogg"
+    "accessLog": "Åtkomstlogg",
+    "status": "Synkroniseringsstatus",
+    "waiting": "Väntande ändringar: {{number}}"
   },
   "deleted": {
     "restore": "Återställ",
@@ -878,5 +882,11 @@
       "decline": "Avböj",
       "declineNamed": "Avböj {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} har gjort dig till läsare. Du kan läsa projektet men inte redigera det.",
+    "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
+    "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",
+    "removed": "Du har tagits bort från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre."
   }
 }

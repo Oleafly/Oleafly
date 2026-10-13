@@ -170,6 +170,30 @@ describe("AvatarStack", () => {
     expect(container.querySelector('[title="Alice Chen"]')).not.toBeNull();
   });
 
+  it("names each avatar for screen readers with a plain label and can show a wide tooltip", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <AvatarStack
+          people={people.slice(0, 2)}
+          tipWide
+          renderTip={(person) => <span data-testid="card">{`${person.name} card`}</span>}
+          renderLabel={(person) => `${person.name} label`}
+        />,
+      );
+      expect(screen.getByText("Alice Chen label")).toHaveClass("sr-only");
+      expect(screen.queryByTestId("card")).toBeNull();
+      const avatars = [...container.querySelectorAll('[data-slot="avatar"]')];
+      fireEvent.mouseEnter(avatars[0]?.parentElement as Element);
+      act(() => vi.advanceTimersByTime(400));
+      const tip = screen.getByRole("tooltip");
+      expect(tip).toHaveClass("max-w-xs");
+      expect(within(tip).getByTestId("card")).toHaveTextContent("Alice Chen card");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the app tooltip on each avatar and on the counter, outside any button", () => {
     vi.useFakeTimers();
     try {

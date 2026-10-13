@@ -28,6 +28,29 @@ pub(crate) struct LoopbackListener {
     pages: Pages,
 }
 
+pub(crate) struct Callback {
+    pub(crate) outcome: CallbackOutcome,
+    reply: Option<HeldReply>,
+}
+
+struct HeldReply {
+    stream: TcpStream,
+    pages: Pages,
+}
+
+impl Callback {
+    pub(crate) async fn answer(self, result: Result<(), &CollabError>) {
+        let Some(HeldReply { mut stream, pages }) = self.reply else {
+            return;
+        };
+        let page = match result {
+            Ok(()) => pages.signed_in(),
+            Err(error) => pages.not_finished(error),
+        };
+        respond(&mut stream, "200 OK", &page).await;
+    }
+}
+
 struct Pages {
     server: String,
     provider: String,
@@ -137,6 +160,15 @@ impl Pages {
                     Some("Go back to Oleafly and start signing in again."),
                 ),
             ),
+            "device_in_use" => (
+                "Linked to another account".to_string(),
+                Pages::card(
+                    Tone::Problem,
+                    "This computer is linked to another account",
+                    &format!("{server} has this computer on another person's account."),
+                    Some("Go back to Oleafly and sign in again. Your next try sets this computer up for you."),
+                ),
+            ),
             "unknown_provider" => (
                 "This sign-in option is off".to_string(),
                 Pages::card(
@@ -157,6 +189,15 @@ impl Pages {
             ),
         };
         self.page(&title, card)
+    }
+
+    fn not_finished(&self, error: &CollabError) -> String {
+        match error {
+            CollabError::NotAdmitted => self.refused("not_admitted", None),
+            CollabError::SignInCancelled => self.refused("sign_in_cancelled", None),
+            CollabError::Api { code, .. } => self.refused(code, None),
+            _ => self.unfinished(),
+        }
     }
 
     fn out_of_date(&self) -> String {
@@ -234,14 +275,26 @@ impl LoopbackListener {
         self,
         expected_state: &str,
         timeout: Duration,
-    ) -> Result<CallbackOutcome, CollabError> {
-        match tokio::time::timeout(timeout, self.serve(expected_state)).await {
-            Ok(outcome) => outcome,
-            Err(_) => Err(CollabError::SignInTimedOut),
-        }
+    ) -> Result<Callback, CollabError> {
+        let served = tokio::time::timeout(timeout, self.serve(expected_state)).await;
+        let LoopbackListener {
+            listener, pages, ..
+        } = self;
+        drop(listener);
+        let (outcome, held) = match served {
+            Ok(served) => served?,
+            Err(_) => return Err(CollabError::SignInTimedOut),
+        };
+        Ok(Callback {
+            outcome,
+            reply: held.map(|stream| HeldReply { stream, pages }),
+        })
     }
 
-    async fn serve(&self, expected_state: &str) -> Result<CallbackOutcome, CollabError> {
+    async fn serve(
+        &self,
+        expected_state: &str,
+    ) -> Result<(CallbackOutcome, Option<TcpStream>), CollabError> {
         loop {
             let (mut stream, _) = self
                 .listener
@@ -266,16 +319,16 @@ impl LoopbackListener {
                     .map(String::as_str)
                     .filter(|account| !account.is_empty());
                 respond(&mut stream, "200 OK", &self.pages.refused(code, account)).await;
-                return Ok(CallbackOutcome::Error {
-                    code: code.clone(),
-                    description: query.get("error_description").cloned(),
-                });
+                return Ok((
+                    CallbackOutcome::Error {
+                        code: code.clone(),
+                        description: query.get("error_description").cloned(),
+                    },
+                    None,
+                ));
             }
             return match query.get("code").filter(|code| !code.is_empty()) {
-                Some(code) => {
-                    respond(&mut stream, "200 OK", &self.pages.signed_in()).await;
-                    Ok(CallbackOutcome::Code(code.clone()))
-                }
+                Some(code) => Ok((CallbackOutcome::Code(code.clone()), Some(stream))),
                 None => {
                     respond(&mut stream, "400 Bad Request", &self.pages.unfinished()).await;
                     Err(CollabError::Unauthorized)
@@ -362,25 +415,84 @@ mod tests {
         let listener = LoopbackListener::bind().await.expect("bind");
         let port = port_of(&listener);
         let url = format!("{}?code=abc&state=s1", listener.redirect_uri());
-        let (outcome, response) =
-            tokio::join!(listener.wait("s1", Duration::from_secs(5)), get(url));
-        assert_eq!(
-            outcome.expect("outcome"),
-            CallbackOutcome::Code("abc".to_string())
-        );
+        let browser = tokio::spawn(get(url));
+        let callback = listener
+            .wait("s1", Duration::from_secs(5))
+            .await
+            .expect("callback");
+        assert_eq!(callback.outcome, CallbackOutcome::Code("abc".to_string()));
+        assert!(port_is_closed(port).await);
+        callback.answer(Ok(())).await;
+        let response = browser.await.expect("browser");
         assert_eq!(response.status(), reqwest::StatusCode::OK);
         assert!(response
             .text()
             .await
             .expect("body")
             .contains("<title>You&#39;re signed in</title>"));
-        assert!(port_is_closed(port).await);
+    }
+
+    async fn answered_page(
+        listener: LoopbackListener,
+        query: &str,
+        result: Result<(), &CollabError>,
+    ) -> String {
+        let url = format!("{}?{query}", listener.redirect_uri());
+        let browser = tokio::spawn(get(url));
+        if let Ok(callback) = listener.wait("s1", Duration::from_secs(5)).await {
+            callback.answer(result).await;
+        }
+        browser.await.expect("browser").text().await.expect("body")
     }
 
     async fn page_after(listener: LoopbackListener, query: &str) -> String {
-        let url = format!("{}?{query}", listener.redirect_uri());
-        let (_, response) = tokio::join!(listener.wait("s1", Duration::from_secs(5)), get(url));
-        response.text().await.expect("body")
+        answered_page(listener, query, Ok(())).await
+    }
+
+    #[tokio::test]
+    async fn the_browser_hears_nothing_until_the_app_has_its_session() {
+        let listener = lab().await;
+        let url = format!("{}?code=abc&state=s1", listener.redirect_uri());
+        let mut browser = tokio::spawn(get(url));
+        let callback = listener
+            .wait("s1", Duration::from_secs(5))
+            .await
+            .expect("callback");
+        assert!(
+            tokio::time::timeout(Duration::from_millis(300), &mut browser)
+                .await
+                .is_err(),
+            "the browser got a page before the token exchange finished"
+        );
+        callback.answer(Ok(())).await;
+        let page = browser.await.expect("browser").text().await.expect("body");
+        assert!(page.contains("<h1>You're signed in</h1>"), "{page}");
+    }
+
+    #[tokio::test]
+    async fn a_refused_token_exchange_shows_why_instead_of_signed_in() {
+        let refused = CollabError::Api {
+            status: 409,
+            code: "device_in_use".to_string(),
+            message: "This device is signed in to another account on this server.".to_string(),
+        };
+        let page = answered_page(lab().await, "code=abc&state=s1", Err(&refused)).await;
+        assert!(!page.contains("You're signed in"), "{page}");
+        assert!(page.contains("class=\"status problem\""), "{page}");
+        assert!(page.contains("<h1>This computer is linked to another account</h1>"));
+        assert!(page.contains("Oleafly Lab has this computer on another person's account."));
+        assert!(page.contains("Go back to Oleafly and sign in again."));
+        let unreachable = CollabError::Network("connection reset".to_string());
+        let page = answered_page(lab().await, "code=abc&state=s1", Err(&unreachable)).await;
+        assert!(!page.contains("You're signed in"), "{page}");
+        assert!(page.contains("<h1>Sign-in didn't finish</h1>"), "{page}");
+        let page = answered_page(
+            lab().await,
+            "code=abc&state=s1",
+            Err(&CollabError::NotAdmitted),
+        )
+        .await;
+        assert!(page.contains("didn't let you in"), "{page}");
     }
 
     async fn lab() -> LoopbackListener {
@@ -403,7 +515,7 @@ mod tests {
     async fn an_email_refusal_names_the_address_and_never_says_sign_out() {
         let page = page_after(
             lab_by_email().await,
-            "error=not_admitted&account=dave%40codehq.pro&state=s1",
+            "error=not_admitted&account=dave%40example.edu&state=s1",
         )
         .await;
         assert!(
@@ -411,7 +523,7 @@ mod tests {
             "{page}"
         );
         assert!(page.contains(
-            "You signed in with <strong>dave@codehq.pro</strong>, and that address isn't on this server's list."
+            "You signed in with <strong>dave@example.edu</strong>, and that address isn't on this server's list."
         ));
         assert!(page.contains("start again in Oleafly with an address they added"));
         assert!(!page.contains("sign out"));
@@ -503,7 +615,7 @@ mod tests {
         );
         let (outcome, _) = tokio::join!(listener.wait("s1", Duration::from_secs(5)), get(url));
         assert_eq!(
-            outcome.expect("outcome"),
+            outcome.expect("outcome").outcome,
             CallbackOutcome::Error {
                 code: "not_admitted".to_string(),
                 description: Some("nope".to_string()),
@@ -531,18 +643,19 @@ mod tests {
         let listener = LoopbackListener::bind().await.expect("bind");
         let base = format!("http://127.0.0.1:{}", port_of(&listener));
         let callback = format!("{}?code=xyz&state=s1", listener.redirect_uri());
-        let requests = async {
+        let requests = tokio::spawn(async move {
             let favicon = get(format!("{base}/favicon.ico")).await;
             let done = get(callback).await;
             (favicon.status(), done.status())
-        };
-        let (outcome, (favicon, done)) =
-            tokio::join!(listener.wait("s1", Duration::from_secs(5)), requests);
+        });
+        let outcome = listener
+            .wait("s1", Duration::from_secs(5))
+            .await
+            .expect("callback");
+        assert_eq!(outcome.outcome, CallbackOutcome::Code("xyz".to_string()));
+        outcome.answer(Ok(())).await;
+        let (favicon, done) = requests.await.expect("requests");
         assert_eq!(favicon, reqwest::StatusCode::NOT_FOUND);
         assert_eq!(done, reqwest::StatusCode::OK);
-        assert_eq!(
-            outcome.expect("outcome"),
-            CallbackOutcome::Code("xyz".to_string())
-        );
     }
 }

@@ -7,9 +7,9 @@ import { useSettingsStore } from "@/store/settings";
 const loaded = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/collab/live/SyncPauseBanner", () => ({
-  SyncPauseBanner: () => {
+  CollabBanners: () => {
     loaded();
-    return <span>{"sync pause banner"}</span>;
+    return <span>{"collaboration banners"}</span>;
   },
 }));
 
@@ -31,9 +31,9 @@ describe("sync pause slot", () => {
     expect(loaded).not.toHaveBeenCalled();
   });
 
-  it("loads the decision banner on demand when live collaboration is on", async () => {
+  it("loads the collaboration banners on demand when live collaboration is on", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     render(<CollabSyncPauseSlot />);
-    expect(await screen.findByText("sync pause banner")).toBeInTheDocument();
+    expect(await screen.findByText("collaboration banners")).toBeInTheDocument();
   });
 });

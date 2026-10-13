@@ -3,32 +3,73 @@ import { useTranslation } from "react-i18next";
 import { CopyPlus, Share2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useShareDialog } from "@/components/collab/share-dialog";
-import { AvatarStack } from "@/components/ui/avatar";
+import { Avatar, AvatarStack } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { isFolderProject } from "@/lib/library-projects";
 import { useFilesStore } from "@/store/files";
 import { peerPlaces, useCollabLiveStore } from "../live/live-store";
+import { GuestBadge } from "../GuestBadge";
 import { useCollabStore } from "../store";
 import { copyThenShare } from "./copy-then-share";
+import { middleEllipsisPath } from "./middle-ellipsis";
 import { presentPeople, type PresentPerson } from "./presence";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
 import { syncState, type SyncState } from "./sync-state";
 
-function PersonLines({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
+const TIP_PATH_CHARS = 30;
+const MORE_PATH_CHARS = 40;
+
+type Translate = ReturnType<typeof useTranslation<["collab"]>>["t"];
+
+function placeOf(entry: PresentPerson, t: Translate, path: string | null): string {
+  if (!path) return t(($) => $.collab.toolbar.noFile);
+  return entry.role === "editor" || entry.role === "owner"
+    ? t(($) => $.collab.toolbar.editing, { path })
+    : t(($) => $.collab.toolbar.viewing, { path });
+}
+
+function PersonTip({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
   const { t } = useTranslation(["collab"]);
   if (!entry) return null;
   const role = entry.role;
-  const kind = [role ? t(($) => $.collab.projectRoles[role]) : null, entry.guest ? t(($) => $.collab.guests.badge) : null]
-    .filter(Boolean)
-    .join(" · ");
+  const full = placeOf(entry, t, entry.path);
+  const shown = placeOf(entry, t, entry.path ? middleEllipsisPath(entry.path, TIP_PATH_CHARS) : null);
   return (
-    <span className="flex flex-col text-left">
-      <span className="font-medium">{entry.person.name}</span>
-      {kind ? <span>{kind}</span> : null}
-      <span className="text-muted-foreground">{entry.path ?? t(($) => $.collab.toolbar.noFile)}</span>
+    <span data-slot="person-tip" className="flex w-72 items-center gap-2.5 py-0.5 text-left">
+      <Avatar person={entry.person} size="md" />
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate text-sm font-semibold leading-tight text-foreground">{entry.person.name}</span>
+        <span className="flex min-w-0 items-center gap-1">
+          {role ? (
+            <Badge data-slot="role-badge" variant="muted" size="sm">
+              {t(($) => $.collab.projectRoles[role])}
+            </Badge>
+          ) : null}
+          {entry.guest ? <GuestBadge /> : null}
+        </span>
+        <span className="truncate leading-tight text-muted-foreground">
+          <span aria-hidden="true">{shown}</span>
+          <span className="sr-only">{full}</span>
+        </span>
+      </span>
     </span>
   );
+}
+
+function PersonLabel({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
+  const { t } = useTranslation(["collab"]);
+  if (!entry) return null;
+  const role = entry.role;
+  return [
+    entry.person.name,
+    role ? t(($) => $.collab.projectRoles[role]) : null,
+    entry.guest ? t(($) => $.collab.guests.badge) : null,
+    placeOf(entry, t, entry.path),
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function HiddenPerson({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
@@ -38,7 +79,7 @@ function HiddenPerson({ entry }: Readonly<{ entry: PresentPerson | undefined }>)
   const details = [
     role ? t(($) => $.collab.projectRoles[role]) : null,
     entry.guest ? t(($) => $.collab.guests.badge) : null,
-    entry.path ?? t(($) => $.collab.toolbar.noFile),
+    entry.path ? middleEllipsisPath(entry.path, MORE_PATH_CHARS) : t(($) => $.collab.toolbar.noFile),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -72,8 +113,10 @@ function PresentAvatars({ projectId }: Readonly<{ projectId: string }>) {
       <AvatarStack
         people={people.map((entry) => entry.person)}
         size="base"
-        className="px-0.5"
-        renderTip={(person) => <PersonLines entry={byId.get(person.id)} />}
+        className="cursor-pointer px-0.5"
+        tipWide
+        renderTip={(person) => <PersonTip entry={byId.get(person.id)} />}
+        renderLabel={(person) => <PersonLabel entry={byId.get(person.id)} />}
         renderMoreTip={(hidden) => (
           <span className="flex flex-col gap-1">
             {hidden.map((person) => (

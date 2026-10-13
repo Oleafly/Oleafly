@@ -10,8 +10,9 @@ use oleafly_collab_protocol::ids::ServerId;
 use serde::Serialize;
 
 use super::http::json;
+use super::sign_in::linked_to_another_account;
 use super::{client_protocol, now_ms, ServerClient, ServerUrl};
-use crate::{CollabError, DeviceKey};
+use crate::{CollabError, DeviceKey, SessionManager};
 
 pub struct CodeSignInRequest {
     pub url: ServerUrl,
@@ -125,6 +126,20 @@ async fn poll_once(
             nonce: challenge.nonce,
         })
         .await
+}
+
+pub async fn sign_in_with_code_as(
+    request: CodeSignInRequest,
+    sessions: &SessionManager,
+    server: ServerId,
+    show_code: &(dyn Fn(&SignInCode) -> Result<(), CollabError> + Send + Sync),
+) -> Result<(CapabilityManifest, SessionTokens), CollabError> {
+    let key = sessions.device_key(server)?;
+    let signed = sign_in_with_code(request, &key, show_code).await;
+    if linked_to_another_account(&signed) {
+        sessions.renew_device_key(server)?;
+    }
+    signed
 }
 
 pub async fn sign_in_with_code(

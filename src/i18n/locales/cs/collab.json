@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
-    "unknownPerson": "Někdo"
+    "unknownPerson": "Někdo",
+    "viewing": "Prohlíží {{path}}",
+    "editing": "Upravuje {{path}}"
   },
   "tree": {
     "here": "{{name}} má tento soubor otevřený",
@@ -563,7 +565,9 @@
     "away": "Teď tu není",
     "deleted": "Nedávno smazané",
     "deletedEmpty": "V poslední době nebylo nic smazáno.",
-    "accessLog": "Protokol přístupu"
+    "accessLog": "Protokol přístupu",
+    "status": "Stav synchronizace",
+    "waiting": "Čekající změny: {{number}}"
   },
   "deleted": {
     "restore": "Obnovit",
@@ -878,5 +882,11 @@
       "decline": "Odmítnout",
       "declineNamed": "Odmítnout {{email}}"
     }
+  },
+  "access": {
+    "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
+    "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
+    "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
+    "removed": "Byli jste odebráni z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená."
   }
 }

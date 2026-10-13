@@ -390,7 +390,9 @@
     "unifiedView": "1 列で表示",
     "loading": "差分を読み込み中…",
     "previewTooLarge": "ファイルが大きすぎるため、差分をプレビューできません。",
-    "diskHeading": "ディスク上 ↔ 自分の編集"
+    "diskHeading": "ディスク上 ↔ 自分の編集",
+    "sharedReadOnly": "共有プロジェクトでは、この差分は読み取り専用です。ファイルはエディターで編集してください。",
+    "viewerReadOnly": "この共有プロジェクトは閲覧できますが、編集はできません。"
   },
   "hotkeys": {
     "title": "キーボードショートカット",

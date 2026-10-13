@@ -397,7 +397,9 @@
     "unifiedView": "Unified view",
     "loading": "Loading diff…",
     "previewTooLarge": "File too large to preview a diff.",
-    "diskHeading": "On disk ↔ Your edits"
+    "diskHeading": "On disk ↔ Your edits",
+    "sharedReadOnly": "This diff is read-only in a shared project. Edit the file in the editor.",
+    "viewerReadOnly": "You can view this shared project but not edit it."
   },
   "hotkeys": {
     "title": "Keyboard Shortcuts",

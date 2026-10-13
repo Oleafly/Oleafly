@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Açık dosya yok",
-    "unknownPerson": "Biri"
+    "unknownPerson": "Biri",
+    "viewing": "Görüntülüyor: {{path}}",
+    "editing": "Düzenliyor: {{path}}"
   },
   "tree": {
     "here": "{{name}} şu anda bu dosyada",
@@ -563,7 +565,9 @@
     "away": "Şu anda burada değil",
     "deleted": "Son silinenler",
     "deletedEmpty": "Son zamanlarda hiçbir şey silinmedi.",
-    "accessLog": "Erişim günlüğü"
+    "accessLog": "Erişim günlüğü",
+    "status": "Eşitleme durumu",
+    "waiting": "Bekleyen değişiklikler: {{number}}"
   },
   "deleted": {
     "restore": "Geri yükle",
@@ -878,5 +882,11 @@
       "decline": "Reddet",
       "declineNamed": "{{email}} adresini reddet"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} sizi görüntüleyen yaptı. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
+    "viewer": "Artık görüntüleyensiniz. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
+    "removedBy": "{{name}} sizi bu projeden çıkardı. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz.",
+    "removed": "Bu projeden çıkarıldınız. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz."
   }
 }

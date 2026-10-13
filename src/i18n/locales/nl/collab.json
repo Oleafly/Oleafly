@@ -524,7 +524,9 @@
   },
   "toolbar": {
     "noFile": "Geen bestand open",
-    "unknownPerson": "Iemand"
+    "unknownPerson": "Iemand",
+    "viewing": "Bekijkt {{path}}",
+    "editing": "Bewerkt {{path}}"
   },
   "tree": {
     "here": "{{name}} heeft dit bestand open",
@@ -563,7 +565,9 @@
     "away": "Nu niet hier",
     "deleted": "Onlangs verwijderd",
     "deletedEmpty": "Er is de laatste tijd niets verwijderd.",
-    "accessLog": "Toegangslogboek"
+    "accessLog": "Toegangslogboek",
+    "status": "Synchronisatiestatus",
+    "waiting": "Wachtende wijzigingen: {{number}}"
   },
   "deleted": {
     "restore": "Herstellen",
@@ -878,5 +882,11 @@
       "decline": "Afwijzen",
       "declineNamed": "{{email}} afwijzen"
     }
+  },
+  "access": {
+    "viewerBy": "{{name}} heeft je lezer gemaakt. Je kunt dit project lezen, maar niet bewerken.",
+    "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
+    "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
+    "removed": "Je bent uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld."
   }
 }

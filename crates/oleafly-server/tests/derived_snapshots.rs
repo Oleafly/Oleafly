@@ -471,6 +471,202 @@ async fn append_changes(
         .expect("append changes");
 }
 
+async fn append_large_changes(stage: &Stage, doc: &LoroDoc, project: SharedProjectId, count: u64) {
+    let person = &stage.alice;
+    let (device, account) = (person.tokens.device_id, person.tokens.account_id);
+    let paragraph = "A paragraph that a lab keeps rewriting while the server builds. ".repeat(24);
+    let mut stored = Vec::new();
+    let mut state = 0x2545_F491_4F6C_DD1Du64;
+    for _ in 0..count {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        let before = doc.oplog_vv();
+        let field = doc.get_text("text");
+        let length = field.len_unicode();
+        let at = usize::try_from(state % (length as u64 + 1)).unwrap_or(0);
+        field.insert(at, &paragraph).expect("insert");
+        if length > 4_000 {
+            let from = usize::try_from((state >> 20) % (length as u64 - 2_000)).unwrap_or(0);
+            field.delete(from, 1_000).expect("delete");
+        }
+        doc.commit();
+        let update = doc.export(ExportMode::updates(&before)).expect("update");
+        let envelope = signed_by(person, &person.device, project, &update);
+        stored.push((
+            envelope.batch_id,
+            serde_json::to_vec(&envelope).expect("json"),
+            update,
+        ));
+    }
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            for (batch, envelope, update) in stored {
+                let reach = oleafly_server::peers::update_reach(&update).expect("a change");
+                oleafly_server::peers::bind(conn, project, device, account, &reach, 1)?;
+                projects::append_update(conn, project, batch, device, account, &envelope, 1)?;
+            }
+            Ok(())
+        })
+        .await
+        .expect("append changes");
+}
+
+fn next_random(state: &mut u64) -> u64 {
+    *state ^= *state << 13;
+    *state ^= *state >> 7;
+    *state ^= *state << 17;
+    *state
+}
+
+fn concurrent_lab_changes(rounds: usize) -> (String, Vec<Vec<u8>>) {
+    let writers: Vec<LoroDoc> = (0..6u64)
+        .map(|index| {
+            let doc = LoroDoc::new();
+            doc.import(&first_snapshot())
+                .expect("the first snapshot loads");
+            doc.set_peer_id(500 + index).expect("peer");
+            doc
+        })
+        .collect();
+    let mut state = 0x9E37_79B9_7F4A_7C15u64;
+    let mut log = Vec::new();
+    let mut unseen: Vec<Vec<Vec<u8>>> = vec![Vec::new(); writers.len()];
+    for round in 0..rounds {
+        let who = usize::try_from(next_random(&mut state) % 6).unwrap_or(0);
+        let doc = &writers[who];
+        let before = doc.oplog_vv();
+        let field = doc.get_text("text");
+        let length = field.len_unicode();
+        let at = usize::try_from(next_random(&mut state) % (length as u64 + 1)).unwrap_or(0);
+        field
+            .insert(
+                at,
+                "a line someone typed in the shared file\nand the next line\n",
+            )
+            .expect("insert");
+        if length > 20_000 {
+            let from =
+                usize::try_from(next_random(&mut state) % (length as u64 - 200)).unwrap_or(0);
+            field.delete(from, 90).expect("delete");
+        }
+        doc.commit();
+        let update = doc.export(ExportMode::updates(&before)).expect("update");
+        for (other, queue) in unseen.iter_mut().enumerate() {
+            if other != who {
+                queue.push(update.clone());
+            }
+        }
+        log.push(update);
+        if round % 8 == 0 {
+            let catching = usize::try_from(next_random(&mut state) % 6).unwrap_or(0);
+            let queued = std::mem::take(&mut unseen[catching]);
+            writers[catching].import_batch(&queued).expect("catch up");
+        }
+    }
+    let merged = LoroDoc::new();
+    merged.import(&first_snapshot()).expect("base");
+    merged.import_batch(&log).expect("everything");
+    (merged.get_text("text").to_string(), log)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_snapshot_of_many_people_typing_at_once_is_built_in_one_quick_pass() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let (expected, log) = concurrent_lab_changes(400);
+    let person = &stage.alice;
+    let (device, account) = (person.tokens.device_id, person.tokens.account_id);
+    let stored: Vec<_> = log
+        .iter()
+        .map(|update| {
+            let envelope = signed_by(person, &person.device, project, update);
+            (
+                envelope.batch_id,
+                serde_json::to_vec(&envelope).expect("json"),
+                update.clone(),
+            )
+        })
+        .collect();
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            for (batch, envelope, update) in stored {
+                let reach = oleafly_server::peers::update_reach(&update).expect("a change");
+                oleafly_server::peers::bind(conn, project, device, account, &reach, 1)?;
+                projects::append_update(conn, project, batch, device, account, &envelope, 1)?;
+            }
+            Ok(())
+        })
+        .await
+        .expect("append changes");
+    stage
+        .server
+        .state()
+        .snapshots
+        .set_policy(oleafly_server::snapshots::Policy {
+            build_after: 200,
+            keep_updates: 2_000,
+        });
+    let started = std::time::Instant::now();
+    assert_eq!(hinted(&stage, project, 400).await, Some(400));
+    let built_in = started.elapsed();
+    assert!(
+        built_in < std::time::Duration::from_secs(1),
+        "building the snapshot took {built_in:?}"
+    );
+    let newest = download(&stage, "", project).await;
+    assert_eq!(text_of(&newest.bytes().await.expect("body")), expected);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn changes_are_acknowledged_quickly_while_a_large_snapshot_is_built() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let doc = LoroDoc::new();
+    doc.import(&first_snapshot())
+        .expect("the first snapshot loads");
+    append_large_changes(&stage, &doc, project, 1_500).await;
+    let mut bob = Writer::open(&stage, &stage.bob, project).await;
+    let started = std::time::Instant::now();
+    let server = stage.server.url();
+    let token = stage.alice.token().to_owned();
+    let building = tokio::spawn(async move {
+        let response = reqwest::Client::new()
+            .put(format!(
+                "{server}/api/v1/projects/{project}/snapshot?seq=1500"
+            ))
+            .bearer_auth(token)
+            .send()
+            .await
+            .expect("hint");
+        (response.status(), started.elapsed())
+    });
+    let mut slowest = std::time::Duration::ZERO;
+    let mut during = 0u32;
+    while !building.is_finished() {
+        let sent = std::time::Instant::now();
+        bob.type_text(&stage.bob, project, " typing").await;
+        slowest = slowest.max(sent.elapsed());
+        during += 1;
+    }
+    let (status, built_in) = building.await.expect("the build finishes");
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(
+        during >= 3,
+        "the build took {built_in:?}, too short to overlap any change"
+    );
+    assert!(
+        slowest < built_in / 3,
+        "a change waited {slowest:?} for its acknowledgement while the snapshot was built in {built_in:?}"
+    );
+}
+
 async fn hinted(stage: &Stage, project: SharedProjectId, seq: u64) -> Option<u64> {
     let response = put_bytes(
         &stage.server,

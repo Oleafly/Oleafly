@@ -27,8 +27,14 @@ struct Setup {
 }
 
 async fn setup() -> Setup {
+    setup_with(|_| {}).await
+}
+
+async fn setup_with(change: impl FnOnce(&mut oleafly_server::config::ServerConfig)) -> Setup {
     let smtp = MockSmtp::start().await;
-    let server = TestServer::start(mail_config(&smtp)).await;
+    let mut config = mail_config(&smtp);
+    change(&mut config);
+    let server = TestServer::start(config).await;
     let admin = seed_member(server.app(), ServerRole::Admin).await;
     set_email_link(&server, true).await;
     Setup {
@@ -359,8 +365,44 @@ async fn links_are_limited_per_address_and_the_lockout_is_logged_once() {
 }
 
 #[tokio::test]
-async fn links_are_limited_per_address_of_the_requester() {
+async fn the_per_address_link_limit_comes_from_the_server_settings() {
+    let setup = setup_with(|config| config.sign_in.email_links_per_address = 2).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    let browser = Browser::new();
+    let start = browser.get(&attempt.start_url).await;
+    let mut statuses = Vec::new();
+    for _ in 0..3 {
+        statuses.push(
+            browser
+                .submit(&form(&start), &[("email", "ada@uni.edu")])
+                .await
+                .status,
+        );
+    }
+    assert_eq!(statuses, [200, 200, 429]);
+}
+
+#[tokio::test]
+async fn fifty_people_behind_one_address_each_get_a_sign_in_link() {
     let setup = setup().await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    let browser = Browser::new();
+    let start = browser.get(&attempt.start_url).await;
+    for index in 0..50 {
+        let email = format!("student{index}@uni.edu");
+        let page = browser
+            .submit(&form(&start), &[("email", email.as_str())])
+            .await;
+        assert_eq!(page.status, 200, "{email}: {}", page.body);
+    }
+    assert_eq!(wait_for_sign_in_emails(&setup.smtp, 50).await.len(), 50);
+}
+
+#[tokio::test]
+async fn links_are_limited_per_address_of_the_requester() {
+    let setup = setup_with(|config| config.sign_in.email_links_per_ip = 10).await;
     let device = TestDevice::generate();
     let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
     let browser = Browser::new();

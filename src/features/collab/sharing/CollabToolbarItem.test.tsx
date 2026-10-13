@@ -252,6 +252,101 @@ describe("CollabToolbarItem", () => {
     }
   });
 
+  it("shows the pointer whenever the mouse is over the avatars, the gaps between them or the counter", () => {
+    const names = ["Ann", "Ben", "Cat", "Dev", "Eli"];
+    const peers = Object.fromEntries(
+      names.map((name, index) => [
+        `d${index}`,
+        { ...peer(`d${index}`, `acc-${name}`, null), person: person({ account_id: `acc-${name}`, display_name: name }) },
+      ]),
+    );
+    liveShared({ state: "online" }, 0, peers);
+    const { container } = render(<CollabToolbarItem />);
+    const stack = container.querySelector('[data-slot="avatar-stack"]') as HTMLElement;
+    expect(stack).toHaveClass("cursor-pointer");
+    for (const element of stack.querySelectorAll("*")) {
+      expect(element.className.toString()).not.toMatch(/cursor-(default|auto|text)/);
+    }
+    expect(stack.querySelector('[data-slot="avatar-more"]')).not.toBeNull();
+  });
+
+  it("shows the avatar on the left, then the name, a role badge and what the person is doing", () => {
+    vi.useFakeTimers();
+    try {
+      liveShared({ state: "online" }, 0, {
+        alice: peer("alice", ALICE_ID, "intro.tex"),
+        carol: peer("carol", CAROL_ID, "chapters/methods.tex"),
+        bob: peer("bob", BOB_ID, null),
+      });
+      useCollabLiveStore.setState({ share: shareInfo({ account_id: "someone-else" }) });
+      const { container } = render(<CollabToolbarItem />);
+      const avatars = container.querySelectorAll('[data-slot="avatar-stack"] [data-slot="avatar"]');
+      expect(avatars).toHaveLength(3);
+      const alice = hover(avatars[0].parentElement as Element);
+      const card = alice.querySelector('[data-slot="person-tip"]') as HTMLElement;
+      expect(card).not.toBeNull();
+      expect(card.firstElementChild).toHaveAttribute("data-slot", "avatar");
+      const lines = [...(card.lastElementChild?.children ?? [])];
+      expect(lines).toHaveLength(3);
+      expect(lines[0]).toHaveTextContent(/^Alice Chen$/);
+      expect(lines[0]).toHaveClass("truncate", "text-sm");
+      expect(within(lines[1] as HTMLElement).getByText(enCollab.projectRoles.editor)).toHaveAttribute(
+        "data-slot",
+        "role-badge",
+      );
+      expect(lines[2]).toHaveTextContent(fill(toolbar.editing, { path: "intro.tex" }));
+      expect(lines[2]).toHaveClass("truncate");
+      fireEvent.mouseLeave(avatars[0].parentElement as Element);
+      const bob = hover(avatars[1].parentElement as Element);
+      expect(bob).toHaveTextContent("Bob Smith");
+      expect(bob).toHaveTextContent(enCollab.projectRoles.owner);
+      expect(bob).toHaveTextContent(toolbar.noFile);
+      fireEvent.mouseLeave(avatars[1].parentElement as Element);
+      const carol = hover(avatars[2].parentElement as Element);
+      expect(carol).toHaveTextContent(enCollab.projectRoles.viewer);
+      expect(carol).toHaveTextContent(fill(toolbar.viewing, { path: "chapters/methods.tex" }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("is wider than a plain tooltip and keeps the file name whole in a long path", () => {
+    vi.useFakeTimers();
+    try {
+      const path = "chapters/part-one/section-two/subsection/long-file-name.tex";
+      liveShared({ state: "online" }, 0, { alice: peer("alice", ALICE_ID, path) });
+      const { container } = render(<CollabToolbarItem />);
+      const avatar = container.querySelector('[data-slot="avatar"]') as HTMLElement;
+      const tip = hover(avatar.parentElement as Element);
+      expect(tip).toHaveClass("max-w-xs");
+      const card = tip.querySelector('[data-slot="person-tip"]') as HTMLElement;
+      expect(card).toHaveClass("w-72");
+      const place = card.lastElementChild?.children[2] as HTMLElement;
+      const shown = within(place).getByText((_, element) => element?.getAttribute("aria-hidden") === "true");
+      expect(shown).toHaveTextContent(fill(toolbar.editing, { path: "chapters/…/long-file-name.tex" }));
+      expect(place).toHaveTextContent(fill(toolbar.editing, { path }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ends a long name with an ellipsis instead of wrapping it", () => {
+    vi.useFakeTimers();
+    try {
+      const long = "Maximiliana Konstantinopoulou-Vanderberg";
+      liveShared({ state: "online" }, 0, {
+        d1: { ...peer("d1", "acc-long", "main.tex"), person: person({ account_id: "acc-long", display_name: long }) },
+      });
+      const { container } = render(<CollabToolbarItem />);
+      const avatar = container.querySelector('[data-slot="avatar"]') as HTMLElement;
+      const tip = hover(avatar.parentElement as Element);
+      const name = within(tip).getByText(long);
+      expect(name).toHaveClass("truncate");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("lists everyone the counter hides in its tooltip", () => {
     vi.useFakeTimers();
     try {

@@ -10,13 +10,14 @@ use rusqlite::{params, Connection};
 use crate::auth::ProviderRegistry;
 use crate::blobs::{cleanup, BlobStore};
 use crate::clock::Clock;
+use crate::comment_guard::CommentGuard;
 use crate::config::{normalize_setup_code, ServerConfig};
 use crate::db::{self, Db};
 use crate::error::ServerError;
 use crate::mail::{Mailer, RetryPolicy};
 use crate::members;
 use crate::polls::PollHub;
-use crate::rate_limit::{ConnectLimits, RateLimiter, SIGN_IN_BURST, SIGN_IN_PER_MINUTE};
+use crate::rate_limit::{ConnectLimits, RateLimiter};
 use crate::rooms::Rooms;
 use crate::security_log;
 use crate::snapshots::{Budget, Snapshots};
@@ -55,6 +56,7 @@ pub struct AppState {
     pub blobs: BlobStore,
     pub mailer: Mailer,
     pub snapshots: Snapshots,
+    pub comment_guard: CommentGuard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -66,15 +68,24 @@ pub struct MaintenanceReport {
     pub guest_invitations: usize,
 }
 
+fn open_database(data_dir: &std::path::Path) -> Result<Db, ServerError> {
+    std::fs::create_dir_all(data_dir).map_err(|error| {
+        ServerError::Internal(format!(
+            "could not create the data directory {}: {error}",
+            data_dir.display()
+        ))
+    })?;
+    Db::open(&data_dir.join(DATABASE_FILE))
+}
+
 impl AppState {
     pub async fn new(config: ServerConfig, clock: Arc<dyn Clock>) -> Result<AppState, ServerError> {
-        std::fs::create_dir_all(&config.data_dir).map_err(|error| {
-            ServerError::Internal(format!(
-                "could not create the data directory {}: {error}",
-                config.data_dir.display()
-            ))
-        })?;
-        let database = Db::open(&config.data_dir.join(DATABASE_FILE))?;
+        let data_dir = config.data_dir.clone();
+        let database = tokio::task::spawn_blocking(move || open_database(&data_dir))
+            .await
+            .map_err(|error| {
+                ServerError::Internal(format!("opening the database failed: {error}"))
+            })??;
         AppState::with_db(config, clock, database).await
     }
 
@@ -124,6 +135,10 @@ impl AppState {
         });
         snapshots.move_legacy_files(&database).await?;
         let polls = Arc::new(PollHub::with_hold(config.poll_hold));
+        let rate_limiter = Arc::new(RateLimiter::new(
+            config.sign_in.requests_burst,
+            config.sign_in.requests_per_minute,
+        ));
         Ok(AppState {
             config: Arc::new(config),
             db: database,
@@ -132,7 +147,7 @@ impl AppState {
             http,
             providers,
             sockets: Arc::new(SocketRegistry::new()),
-            rate_limiter: Arc::new(RateLimiter::new(SIGN_IN_BURST, SIGN_IN_PER_MINUTE)),
+            rate_limiter,
             connects: Arc::new(ConnectLimits::default()),
             join_limiter: Arc::new(RateLimiter::new(JOIN_BURST, JOIN_PER_MINUTE)),
             rooms: Arc::new(Rooms::new()),
@@ -141,6 +156,7 @@ impl AppState {
             blobs,
             mailer,
             snapshots,
+            comment_guard: CommentGuard::default(),
         })
     }
 

@@ -404,7 +404,9 @@
     "unifiedView": "Vizualizare unificată",
     "loading": "Se încarcă comparația…",
     "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație.",
-    "diskHeading": "Pe disc ↔ Modificările tale"
+    "diskHeading": "Pe disc ↔ Modificările tale",
+    "sharedReadOnly": "Într-un proiect partajat, această comparație este doar pentru citire. Editează fișierul în editor.",
+    "viewerReadOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita."
   },
   "hotkeys": {
     "title": "Scurtături de tastatură",

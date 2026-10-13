@@ -211,14 +211,7 @@ impl BlobStore {
         match self {
             BlobStore::Filesystem(store) => {
                 let path = store.snapshot_path(project, hash);
-                blocking(move || match fs::metadata(&path) {
-                    Ok(found) => Ok(Some(found.len())),
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-                    Err(error) => Err(ServerError::Internal(format!(
-                        "could not read a stored file: {error}"
-                    ))),
-                })
-                .await
+                blocking(move || file_size(&path)).await
             }
             BlobStore::S3(store) => store.snapshot_size(project, hash).await,
         }
@@ -235,14 +228,7 @@ impl BlobStore {
         match self {
             BlobStore::Filesystem(store) => {
                 let path = store.snapshot_path(project, hash);
-                blocking(move || {
-                    remove_file(&path)?;
-                    if let Some(folder) = path.parent() {
-                        let _ = fs::remove_dir(folder);
-                    }
-                    Ok(())
-                })
-                .await
+                blocking(move || remove_file_and_empty_folder(&path)).await
             }
             BlobStore::S3(store) => store.remove_snapshot(project, hash).await,
         }
@@ -307,6 +293,24 @@ fn read_file(path: &Path) -> Result<Option<Bytes>, ServerError> {
             "could not read a stored file: {error}"
         ))),
     }
+}
+
+fn file_size(path: &Path) -> Result<Option<u64>, ServerError> {
+    match fs::metadata(path) {
+        Ok(found) => Ok(Some(found.len())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(ServerError::Internal(format!(
+            "could not read a stored file: {error}"
+        ))),
+    }
+}
+
+fn remove_file_and_empty_folder(path: &Path) -> Result<(), ServerError> {
+    remove_file(path)?;
+    if let Some(folder) = path.parent() {
+        let _ = fs::remove_dir(folder);
+    }
+    Ok(())
 }
 
 fn remove_file(path: &Path) -> Result<(), ServerError> {
