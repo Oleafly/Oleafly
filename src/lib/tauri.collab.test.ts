@@ -50,8 +50,24 @@ describe("collaboration IPC contract", () => {
       { url: "https://uni.edu", providerId: "github", setupCode: "K7QX-2MPL" },
     ],
     ["collabServerSignInCancel", () => tauri.collabServerSignInCancel(), "collab_server_sign_in_cancel", undefined],
-    ["collabServerSignOut", () => tauri.collabServerSignOut(SERVER), "collab_server_sign_out", { serverId: SERVER }],
-    ["collabServerRemove", () => tauri.collabServerRemove(SERVER), "collab_server_remove", { serverId: SERVER }],
+    [
+      "collabServerSignOut",
+      () => tauri.collabServerSignOut(SERVER),
+      "collab_server_sign_out",
+      { serverId: SERVER, keepLocalCopy: false },
+    ],
+    [
+      "collabServerSignOut keeping local copies",
+      () => tauri.collabServerSignOut(SERVER, true),
+      "collab_server_sign_out",
+      { serverId: SERVER, keepLocalCopy: true },
+    ],
+    [
+      "collabServerRemove",
+      () => tauri.collabServerRemove(SERVER),
+      "collab_server_remove",
+      { serverId: SERVER, keepLocalCopy: false },
+    ],
     ["collabServerDevices", () => tauri.collabServerDevices(SERVER), "collab_server_devices", { serverId: SERVER }],
     [
       "collabServerSignOutDevice",

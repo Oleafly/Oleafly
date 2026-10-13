@@ -34,9 +34,9 @@ export class LiveSessions {
     const session: RemoteDocumentSession = new RemoteDocumentSession(path, text, {
       transport: this.options.transport,
       readOnly: this.options.readOnly,
-      onText: (next) => this.options.mirror(path, next),
+      onText: (next) => this.options.mirror(session.path, next),
       onPhase: (phase) => {
-        if (phase === "detached") this.detach(path, session);
+        if (phase === "detached") this.detach(session.path, session);
       },
     });
     this.sessions.set(path, session);
@@ -55,6 +55,39 @@ export class LiveSessions {
       clearTimeout(timer);
     }
     await write();
+  }
+
+  move(from: string, to: string): void {
+    const moved = (path: string) =>
+      path === from || path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : null;
+    const sessions = [...this.sessions.entries()];
+    const local = [...this.local];
+    for (const [path, session] of sessions) {
+      const next = moved(path);
+      if (next === null) continue;
+      this.sessions.delete(path);
+      this.sessions.get(next)?.close();
+      session.moveTo(next);
+      this.sessions.set(next, session);
+    }
+    for (const path of local) {
+      const next = moved(path);
+      if (next === null) continue;
+      this.local.delete(path);
+      this.local.add(next);
+    }
+  }
+
+  forget(path: string): void {
+    const covered = (known: string) => known === path || known.startsWith(`${path}/`);
+    for (const [known, session] of [...this.sessions.entries()]) {
+      if (!covered(known)) continue;
+      this.sessions.delete(known);
+      void session.settled().then(() => session.close());
+    }
+    for (const known of [...this.local]) {
+      if (covered(known)) this.local.delete(known);
+    }
   }
 
   close(): void {

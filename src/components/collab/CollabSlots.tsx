@@ -59,6 +59,9 @@ const CommentsKeeper = lazy(() => comments().then((module) => ({ default: module
 const CollabBanners = lazy(() =>
   import("@/features/collab/live/SyncPauseBanner").then((module) => ({ default: module.CollabBanners })),
 );
+const RemovedFileBanner = lazy(() =>
+  import("@/features/collab/live/RemovedFileBanner").then((module) => ({ default: module.RemovedFileBanner })),
+);
 
 export function useCollabReady(): boolean {
   const enabled = useSettingsStore((state) => state.liveCollaboration);
@@ -168,6 +171,14 @@ export function CollabSyncPauseSlot() {
   return (
     <Gate>
       <CollabBanners />
+    </Gate>
+  );
+}
+
+export function CollabRemovedFileSlot() {
+  return (
+    <Gate>
+      <RemovedFileBanner />
     </Gate>
   );
 }

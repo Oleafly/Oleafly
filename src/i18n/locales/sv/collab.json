@@ -41,6 +41,12 @@
         "description": "Oleafly loggar ut från den här servern och glömmer den. Projekt som redan finns på den här datorn ligger kvar där de är.",
         "confirm": "Ta bort servern"
       },
+      "unsent": {
+        "title": "Vissa ändringar har inte skickats än",
+        "description": "Delade projekt med ändringar som servern inte har än: {{count}}. Oleafly kan behålla en lokal kopia av varje projekt på den här datorn, eller så kan du förbli inloggad och försöka igen senare.",
+        "keep": "Behåll en lokal kopia",
+        "stay": "Förbli inloggad"
+      },
       "emails": {
         "label": "Mejla mig när någon delar ett projekt",
         "description": "Mejlet nämner projektet och har en länk för att öppna det.",
@@ -577,6 +583,11 @@
     "byYou": "Raderad av dig",
     "by": "Raderad av {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} raderade {{file}}.",
+    "yoursDeleted": "Dina ändringar i {{file}} finns under Nyligen raderade eftersom {{name}} raderade filen.",
+    "dismiss": "Stäng"
+  },
   "activity": {
     "welcomeEdit": "Delat av {{owner}} på {{server}}. Du kan redigera projektet.",
     "welcomeView": "Delat av {{owner}} på {{server}}. Du kan visa projektet.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Det gick inte att bekräfta vem som skrev detta",
     "unverifiedThread": "Kommentar från någon som Oleafly inte kunde bekräfta",
     "resolvedUnverified": "Löst av någon som Oleafly inte kunde bekräfta",
+    "notSent": {
+      "written": "Kommentarer är avstängda för det här projektet, så kommentarerna du skrev skickades inte.",
+      "changed": "Kommentarer är avstängda för det här projektet, så dina ändringar i kommentarer skickades inte.",
+      "show": "Visa det du skrev",
+      "hide": "Dölj det du skrev",
+      "copy": "Kopiera text",
+      "copyFailed": "Det gick inte att kopiera",
+      "list": "Kommentarer som inte skickades"
+    },
     "refusals": {
       "notLive": "Projektet är inte anslutet just nu. Försök igen när anslutningen är tillbaka.",
       "notYours": "Bara den som skrev kommentaren kan ändra den.",
@@ -888,5 +908,15 @@
     "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
     "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",
     "removed": "Du har tagits bort från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre."
+  },
+  "files": {
+    "waiting": "Väntar på att delas: {{files}}",
+    "failed": "Kunde inte delas: {{files}}",
+    "tooLarge": "{{file}} är {{size}}, mer än den här servern tillåter ({{limit}}). Filen finns bara kvar på den här datorn.",
+    "tooLargeUnknown": "{{file}} är större än den här servern tillåter. Filen finns bara kvar på den här datorn.",
+    "replaced": "{{name}} ersatte {{file}} samtidigt som du. Din version är sparad som {{copy}}.",
+    "added": "{{file}} heter nu {{copy}} eftersom {{name}} lade till en fil med samma namn.",
+    "retry": "Försök igen",
+    "dismiss": "Stäng"
   }
 }

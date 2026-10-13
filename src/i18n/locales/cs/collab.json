@@ -41,6 +41,12 @@
         "description": "Oleafly se z tohoto serveru odhlásí a zapomene ho. Projekty, které už jsou v tomto počítači, zůstanou tam, kde jsou.",
         "confirm": "Odebrat server"
       },
+      "unsent": {
+        "title": "Některé změny ještě nebyly odeslány",
+        "description": "Sdílené projekty se změnami, které server ještě nemá: {{count}}. Oleafly může každý z nich ponechat v tomto počítači jako místní kopii. Případně se neodhlašujte a zkuste to později.",
+        "keep": "Ponechat místní kopii",
+        "stay": "Neodhlašovat se"
+      },
       "emails": {
         "label": "Poslat mi e-mail, když se mnou někdo sdílí projekt",
         "description": "E-mail uvede název projektu a obsahuje odkaz, kterým ho otevřete.",
@@ -577,6 +583,11 @@
     "byYou": "Smazali jste vy",
     "by": "Smazal(a) {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} smazal(a) {{file}}.",
+    "yoursDeleted": "Vaše změny v {{file}} jsou v Nedávno smazaných, protože {{name}} soubor smazal(a).",
+    "dismiss": "Zavřít"
+  },
   "activity": {
     "welcomeEdit": "Sdílí {{owner}} na serveru {{server}}. Můžete upravovat.",
     "welcomeView": "Sdílí {{owner}} na serveru {{server}}. Můžete prohlížet.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Nepodařilo se ověřit, kdo to napsal",
     "unverifiedThread": "Komentář od někoho, koho Oleafly nemohl ověřit",
     "resolvedUnverified": "Vyřešil někdo, koho Oleafly nemohl ověřit",
+    "notSent": {
+      "written": "Komentáře jsou v tomto projektu vypnuté, takže komentáře, které jste napsali, se neodeslaly.",
+      "changed": "Komentáře jsou v tomto projektu vypnuté, takže se vaše změny komentářů neodeslaly.",
+      "show": "Zobrazit, co jste napsali",
+      "hide": "Skrýt, co jste napsali",
+      "copy": "Kopírovat text",
+      "copyFailed": "Kopírování se nezdařilo",
+      "list": "Komentáře, které se neodeslaly"
+    },
     "refusals": {
       "notLive": "Tento projekt teď není připojený. Zkuste to znovu, až se znovu připojí.",
       "notYours": "Tento komentář může změnit jen ten, kdo ho napsal.",
@@ -888,5 +908,15 @@
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
     "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
     "removed": "Byli jste odebráni z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená."
+  },
+  "files": {
+    "waiting": "Čeká na sdílení: {{files}}",
+    "failed": "Nepodařilo se sdílet: {{files}}",
+    "tooLarge": "{{file}} má {{size}}, což je víc, než tento server povoluje ({{limit}}). Zůstane jen v tomto počítači.",
+    "tooLargeUnknown": "{{file}} je větší, než tento server povoluje. Zůstane jen v tomto počítači.",
+    "replaced": "{{name}} nahradil(a) {{file}} ve stejnou chvíli jako vy. Vaše verze je uložena jako {{copy}}.",
+    "added": "{{file}} je teď {{copy}}, protože {{name}} přidal(a) soubor se stejným názvem.",
+    "retry": "Zkusit znovu",
+    "dismiss": "Zavřít"
   }
 }

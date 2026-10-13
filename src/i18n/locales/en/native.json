@@ -111,5 +111,8 @@
   "systemIntegration": {
     "openInOleafly": "Open in Oleafly",
     "openWithOleafly": "Open with Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (local copy)"
   }
 }

@@ -548,6 +548,79 @@ pub async fn sign_out_server(
     Ok(())
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnsentChoice {
+    Ask,
+    KeepLocalCopy,
+}
+
+impl UnsentChoice {
+    fn from_flag(keep_local_copy: Option<bool>) -> UnsentChoice {
+        if keep_local_copy.unwrap_or(false) {
+            UnsentChoice::KeepLocalCopy
+        } else {
+            UnsentChoice::Ask
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct SignOutOutcome {
+    pub signed_out: bool,
+    pub unsent: Vec<super::live::UnsentProject>,
+}
+
+async fn settle_unsent(
+    state: &CollabState,
+    server: ServerId,
+    choice: UnsentChoice,
+    wait: Duration,
+) -> Result<SignOutOutcome, CollabError> {
+    known(state, server)?;
+    let unsent = super::live::unsent_changes(state, server, wait).await?;
+    if !unsent.is_empty() {
+        if choice == UnsentChoice::Ask {
+            return Ok(SignOutOutcome {
+                signed_out: false,
+                unsent,
+            });
+        }
+        super::live::keep_local_copies(state, &unsent).await?;
+    }
+    Ok(SignOutOutcome {
+        signed_out: true,
+        unsent,
+    })
+}
+
+pub async fn sign_out_within(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    choice: UnsentChoice,
+    wait: Duration,
+) -> Result<SignOutOutcome, CollabError> {
+    let outcome = settle_unsent(state, server, choice, wait).await?;
+    if outcome.signed_out {
+        sign_out_server(state, host, server).await?;
+    }
+    Ok(outcome)
+}
+
+pub async fn remove_within(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    choice: UnsentChoice,
+    wait: Duration,
+) -> Result<SignOutOutcome, CollabError> {
+    let outcome = settle_unsent(state, server, choice, wait).await?;
+    if outcome.signed_out {
+        remove_server(state, host, server).await?;
+    }
+    Ok(outcome)
+}
+
 pub async fn remove_server(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -856,11 +929,18 @@ pub async fn collab_server_sign_out(
     app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     server_id: String,
-) -> Result<(), CollabCommandError> {
+    keep_local_copy: Option<bool>,
+) -> Result<SignOutOutcome, CollabCommandError> {
     let server = parse_id(&server_id, "server")?;
-    sign_out_server(state.inner(), &AppHost::new(app), server)
-        .await
-        .map_err(CollabCommandError::from)
+    sign_out_within(
+        state.inner(),
+        &AppHost::new(app),
+        server,
+        UnsentChoice::from_flag(keep_local_copy),
+        super::live::SIGN_OUT_WAIT,
+    )
+    .await
+    .map_err(CollabCommandError::from)
 }
 
 #[tauri::command]
@@ -868,11 +948,18 @@ pub async fn collab_server_remove(
     app: tauri::AppHandle,
     state: tauri::State<'_, CollabState>,
     server_id: String,
-) -> Result<(), CollabCommandError> {
+    keep_local_copy: Option<bool>,
+) -> Result<SignOutOutcome, CollabCommandError> {
     let server = parse_id(&server_id, "server")?;
-    remove_server(state.inner(), &AppHost::new(app), server)
-        .await
-        .map_err(CollabCommandError::from)
+    remove_within(
+        state.inner(),
+        &AppHost::new(app),
+        server,
+        UnsentChoice::from_flag(keep_local_copy),
+        super::live::SIGN_OUT_WAIT,
+    )
+    .await
+    .map_err(CollabCommandError::from)
 }
 
 #[tauri::command]

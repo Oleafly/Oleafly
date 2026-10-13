@@ -2444,38 +2444,42 @@ pub fn delete_file(
                         return Err(crate::folder_write::read_only(&path));
                     }
                 }
-                return crate::os_trash::move_to_trash(&p).map_err(|error| {
-                    if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
-                        return crate::folder_write::read_only(&path);
-                    }
-                    crate::app_error::AppError::new("project.trash_unavailable")
-                        .param("path", &path)
-                        .detail(error)
-                        .into()
+                return crate::collab::live::deleting(&project_id, &deleted_rel, || {
+                    crate::os_trash::move_to_trash(&p).map_err(|error| {
+                        if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
+                            return crate::folder_write::read_only(&path);
+                        }
+                        crate::app_error::AppError::new("project.trash_unavailable")
+                            .param("path", &path)
+                            .detail(error)
+                            .into()
+                    })
                 });
             }
-            if p.is_dir() {
-                std::fs::remove_dir_all(&p)
-            } else {
-                std::fs::remove_file(&p)
-            }
-            .map_err(|error| {
-                let fallback = |failure| format!("failed to delete {path}: {failure}");
-                let (Some(root), Some(folder)) = (root.as_deref(), folder) else {
-                    return fallback(crate::folder_write::WriteFailure::from(error));
-                };
-                folder.describe_with(
-                    error,
-                    |folder| {
-                        let entry = folder.refused_removal(&p)?;
-                        Some(if entry == p {
-                            path.clone()
-                        } else {
-                            rel_slash(root, &entry)
-                        })
-                    },
-                    fallback,
-                )
+            crate::collab::live::deleting(&project_id, &deleted_rel, || {
+                if p.is_dir() {
+                    std::fs::remove_dir_all(&p)
+                } else {
+                    std::fs::remove_file(&p)
+                }
+                .map_err(|error| {
+                    let fallback = |failure| format!("failed to delete {path}: {failure}");
+                    let (Some(root), Some(folder)) = (root.as_deref(), folder) else {
+                        return fallback(crate::folder_write::WriteFailure::from(error));
+                    };
+                    folder.describe_with(
+                        error,
+                        |folder| {
+                            let entry = folder.refused_removal(&p)?;
+                            Some(if entry == p {
+                                path.clone()
+                            } else {
+                                rel_slash(root, &entry)
+                            })
+                        },
+                        fallback,
+                    )
+                })
             })
         })
     })?;
@@ -2552,7 +2556,10 @@ pub(crate) fn rename_file_blocking(
     let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
     let admission = admit_mutation(
         &project_id,
-        vec![MutationScope::subtree(source_rel), destination_scope],
+        vec![
+            MutationScope::subtree(source_rel.clone()),
+            destination_scope,
+        ],
         expected_generation,
     )?;
     let strategy = conflict_strategy.unwrap_or_default();
@@ -2562,14 +2569,24 @@ pub(crate) fn rename_file_blocking(
             let meta = read_meta(&project_id)?;
             let src = resolve(&project_id, &from)?;
             let dst = resolve(&project_id, &to)?;
-            let result = rename_path_and_update_meta(
-                Some(&project_id),
-                &location,
-                &src,
-                &dst,
-                &destination_rel,
-                strategy,
-                meta,
+            let result = crate::collab::live::renaming(
+                &project_id,
+                &source_rel,
+                || {
+                    rename_path_and_update_meta(
+                        Some(&project_id),
+                        &location,
+                        &src,
+                        &dst,
+                        &destination_rel,
+                        strategy,
+                        meta,
+                    )
+                },
+                |result| match result {
+                    RenameFileResult::Renamed { path, .. } => Some(path.clone()),
+                    RenameFileResult::Conflict { .. } => None,
+                },
             )?;
             let changed = matches!(result, RenameFileResult::Renamed { .. });
             Ok((result, changed))
@@ -4304,7 +4321,10 @@ pub async fn rename_project(project_id: String, name: String) -> Result<ProjectM
         .map_err(|error| format!("project rename task failed: {error}"))?
 }
 
-fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMeta, String> {
+pub(crate) fn rename_project_blocking(
+    project_id: String,
+    name: String,
+) -> Result<ProjectMeta, String> {
     if crate::project_location::kind_of(&project_id)? == ProjectKind::Linked {
         return rename_linked_project(&project_id, name.trim());
     }
@@ -9730,6 +9750,36 @@ mod tests {
             &folder.join("figures")
         ));
         assert!(folder.join("main.tex").is_file());
+    }
+
+    #[test]
+    fn deleting_in_a_linked_shared_project_moves_the_file_to_recently_deleted_for_everyone() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let rig = crate::collab::live::write::rig::LiveRig::start(
+            &id,
+            &folder,
+            &[
+                ("main.tex", "\\documentclass{article}"),
+                ("notes.tex", "notes"),
+            ],
+        );
+        let live = rig.go_live();
+
+        let deleted = super::delete_file(id, "notes.tex".into(), None, None);
+        drop(live);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        deleted.unwrap();
+        assert!(!folder.join("notes.tex").exists());
+        assert!(crate::os_trash::test_support::trashed(
+            &folder.join("notes.tex")
+        ));
+        assert_eq!(rig.paths(), vec!["main.tex".to_owned()]);
+        assert_eq!(rig.trashed(), vec!["notes.tex".to_owned()]);
     }
 
     #[test]

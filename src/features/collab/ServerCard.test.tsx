@@ -29,10 +29,13 @@ const consoleMocks = vi.hoisted(() => ({ openAdminConsole: vi.fn() }));
 
 vi.mock("./console/open-console", () => consoleMocks);
 
+vi.mock("./live/removed-notices", () => ({ followLocalCopies: vi.fn(async () => {}) }));
+
 import { ServerCard } from "./ServerCard";
 import { useCollabStore } from "./store";
 
 const copy = enCollab.section;
+const UNSENT = { project_id: "r3-paper", name: "R3 Paper", changes: 3 };
 
 function Connected({ onSignIn, onManage }: Readonly<{ onSignIn: () => void; onManage: () => void }>) {
   const entry = useCollabStore((state) => state.servers[0]);
@@ -42,7 +45,7 @@ function Connected({ onSignIn, onManage }: Readonly<{ onSignIn: () => void; onMa
 function renderCard(entry: CollabServer = server()) {
   const onSignIn = vi.fn();
   const onManage = vi.fn();
-  useCollabStore.setState({ servers: [entry], status: "ready", loadError: null, pending: {} });
+  useCollabStore.setState({ servers: [entry], status: "ready", loadError: null, pending: {}, unsent: {} });
   render(<Connected onSignIn={onSignIn} onManage={onManage} />);
   return { onSignIn, onManage };
 }
@@ -76,11 +79,11 @@ describe("ServerCard", () => {
   });
 
   it("signs out and then offers to sign in again", async () => {
-    mocks.collabServerSignOut.mockResolvedValue(undefined);
+    mocks.collabServerSignOut.mockResolvedValue({ signed_out: true, unsent: [] });
     const user = userEvent.setup();
     const { onSignIn } = renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.signOut }));
-    expect(mocks.collabServerSignOut).toHaveBeenCalledWith(SERVER_ID);
+    expect(mocks.collabServerSignOut).toHaveBeenCalledWith(SERVER_ID, false);
     expect(await screen.findByText(copy.server.signedOut)).toBeInTheDocument();
     expect(screen.getByText(copy.server.signedOutHint)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: copy.server.signIn }));
@@ -140,15 +143,42 @@ describe("ServerCard", () => {
   });
 
   it("asks before removing a server, and removes it", async () => {
-    mocks.collabServerRemove.mockResolvedValue(undefined);
+    mocks.collabServerRemove.mockResolvedValue({ signed_out: true, unsent: [] });
     const user = userEvent.setup();
     renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.remove }));
     const dialog = screen.getByRole("alertdialog", { name: fill(copy.server.removeConfirm.title, { name: "Smith Lab" }) });
     expect(dialog).toHaveTextContent(copy.server.removeConfirm.description);
     await user.click(within(dialog).getByRole("button", { name: copy.server.removeConfirm.confirm }));
-    expect(mocks.collabServerRemove).toHaveBeenCalledWith(SERVER_ID);
+    expect(mocks.collabServerRemove).toHaveBeenCalledWith(SERVER_ID, false);
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Smith Lab" })).toBeNull());
+  });
+
+  it("asks before signing out while changes are waiting, and stays signed in when told to", async () => {
+    mocks.collabServerSignOut.mockResolvedValue({ signed_out: false, unsent: [UNSENT] });
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.signOut }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.server.unsent.title });
+    expect(dialog).toHaveTextContent(fill(copy.server.unsent.description, { count: "1" }));
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.stay}`) }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.collabServerSignOut).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+  });
+
+  it("keeps a local copy and signs out when the person chooses that", async () => {
+    mocks.collabServerSignOut
+      .mockResolvedValueOnce({ signed_out: false, unsent: [UNSENT] })
+      .mockResolvedValueOnce({ signed_out: true, unsent: [UNSENT] });
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.signOut }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.server.unsent.title });
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.keep}`) }));
+    expect(mocks.collabServerSignOut).toHaveBeenLastCalledWith(SERVER_ID, true);
+    expect(await screen.findByText(copy.server.signedOut)).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("keeps the server when you change your mind", async () => {

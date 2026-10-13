@@ -633,6 +633,7 @@ async fn changes_are_acknowledged_quickly_while_a_large_snapshot_is_built() {
         .expect("the first snapshot loads");
     append_large_changes(&stage, &doc, project, 1_500).await;
     let mut bob = Writer::open(&stage, &stage.bob, project).await;
+    bob.type_text(&stage.bob, project, " ready").await;
     let started = std::time::Instant::now();
     let server = stage.server.url();
     let token = stage.alice.token().to_owned();

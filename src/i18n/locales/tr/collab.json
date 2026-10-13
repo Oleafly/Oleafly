@@ -41,6 +41,12 @@
         "description": "Oleafly bu sunucudaki oturumu kapatır ve sunucuyu unutur. Bu bilgisayarda zaten bulunan projeler oldukları yerde kalır.",
         "confirm": "Sunucuyu kaldır"
       },
+      "unsent": {
+        "title": "Bazı değişiklikler henüz gönderilmedi",
+        "description": "Sunucunun henüz almadığı değişiklikleri olan paylaşılan projeler: {{count}}. Oleafly her birinin yerel kopyasını bu bilgisayarda saklayabilir ya da oturumunuzu açık tutup daha sonra yeniden deneyebilirsiniz.",
+        "keep": "Yerel kopyayı sakla",
+        "stay": "Oturumu açık tut"
+      },
       "emails": {
         "label": "Biri bir proje paylaştığında bana e-posta gönder",
         "description": "E-postada projenin adı ve onu açmak için bir bağlantı bulunur.",
@@ -577,6 +583,11 @@
     "byYou": "Siz sildiniz",
     "by": "Silen: {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}}, {{file}} dosyasını sildi.",
+    "yoursDeleted": "{{file}} dosyasındaki değişiklikleriniz Son silinenler içinde, çünkü {{name}} dosyayı sildi.",
+    "dismiss": "Kapat"
+  },
   "activity": {
     "welcomeEdit": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Düzenleyebilirsiniz.",
     "welcomeView": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Görüntüleyebilirsiniz.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Bunu kimin yazdığı doğrulanamadı",
     "unverifiedThread": "Oleafly'nin doğrulayamadığı birinden yorum",
     "resolvedUnverified": "Oleafly'nin doğrulayamadığı biri tarafından çözüldü",
+    "notSent": {
+      "written": "Bu projede yorumlar kapalı, bu yüzden yazdığınız yorumlar gönderilmedi.",
+      "changed": "Bu projede yorumlar kapalı, bu yüzden yorumlarda yaptığınız değişiklikler gönderilmedi.",
+      "show": "Yazdıklarınızı göster",
+      "hide": "Yazdıklarınızı gizle",
+      "copy": "Metni kopyala",
+      "copyFailed": "Kopyalanamadı",
+      "list": "Gönderilmeyen yorumlar"
+    },
     "refusals": {
       "notLive": "Bu proje şu anda bağlı değil. Bağlantı geri geldiğinde yeniden deneyin.",
       "notYours": "Bu yorumu yalnızca yazan kişi değiştirebilir.",
@@ -888,5 +908,15 @@
     "viewer": "Artık görüntüleyensiniz. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "removedBy": "{{name}} sizi bu projeden çıkardı. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz.",
     "removed": "Bu projeden çıkarıldınız. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz."
+  },
+  "files": {
+    "waiting": "Paylaşılmayı bekliyor: {{files}}",
+    "failed": "Paylaşılamadı: {{files}}",
+    "tooLarge": "{{file}} {{size}} boyutunda, bu sunucunun izin verdiğinden ({{limit}}) büyük. Yalnızca bu bilgisayarda kalır.",
+    "tooLargeUnknown": "{{file}} bu sunucunun izin verdiğinden büyük. Yalnızca bu bilgisayarda kalır.",
+    "replaced": "{{name}}, {{file}} dosyasını sizinle aynı anda değiştirdi. Sizin sürümünüz {{copy}} olarak saklandı.",
+    "added": "{{name}} aynı adda bir dosya eklediği için {{file}} artık {{copy}} adını taşıyor.",
+    "retry": "Yeniden dene",
+    "dismiss": "Kapat"
   }
 }

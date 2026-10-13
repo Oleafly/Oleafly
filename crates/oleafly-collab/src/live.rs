@@ -83,6 +83,8 @@ struct StoredState {
     confirmed: Vec<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     anchor: Option<BatchId>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    offline_edits: HashMap<String, BTreeMap<u64, i32>>,
 }
 
 struct Piece {
@@ -140,6 +142,8 @@ pub struct LiveProject {
     told_unsendable: bool,
     anchor: Option<BatchId>,
     numbered: BTreeMap<u64, BatchId>,
+    connected: bool,
+    offline_edits: HashMap<String, BTreeMap<u64, i32>>,
 }
 
 fn read_log(path: &Path) -> Vec<Vec<u8>> {
@@ -263,6 +267,8 @@ impl LiveProject {
             told_unsendable: false,
             anchor: None,
             numbered: BTreeMap::new(),
+            connected: false,
+            offline_edits: HashMap::new(),
         }
     }
 
@@ -284,6 +290,7 @@ impl LiveProject {
         let mut live = LiveProject::new(doc, state.last_seq, role);
         live.confirmed = decode_version(&state.confirmed)?;
         live.anchor = state.anchor;
+        live.offline_edits = state.offline_edits;
         live.persisted = Some(live.doc.version());
         live.log_records = records.len();
         live.devices = DeviceRegistry::load(&dir.join(DEVICES_FILE));
@@ -315,6 +322,7 @@ impl LiveProject {
             last_seq: self.last_seq,
             confirmed: self.confirmed.encode(),
             anchor: self.anchor,
+            offline_edits: self.offline_edits.clone(),
         };
         let state = to_json(&state)?;
         let devices = if self.devices_dirty {
@@ -500,7 +508,9 @@ impl LiveProject {
                     length: open.channel.length(),
                 };
                 let sink = Arc::clone(&open.sink);
+                let before = self.own_counter();
                 self.doc.apply_operation(id, &applied)?;
+                self.note_offline(id, before);
                 self.disk.texts.insert(id.to_owned());
                 sink(message);
                 Ok(())
@@ -826,7 +836,9 @@ impl LiveProject {
     }
 
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        let before = self.own_counter();
         let changes = self.doc.set_text(id, content)?;
+        self.note_offline(id, before);
         let changed = !changes.is_empty();
         self.route(changes, None)?;
         Ok(changed)
@@ -840,7 +852,9 @@ impl LiveProject {
         if operation.is_noop() {
             return Ok(false);
         }
+        let before = self.own_counter();
         self.doc.apply_operation(id, operation)?;
+        self.note_offline(id, before);
         self.disk.texts.insert(id.to_owned());
         let Some(open) = self.open.get_mut(id) else {
             return Ok(true);
@@ -913,6 +927,71 @@ impl LiveProject {
         self.outgoing = None;
     }
 
+    pub fn comments_refused(
+        &mut self,
+    ) -> Result<Option<Vec<crate::comments::UnsentComment>>, CollabError> {
+        self.refused();
+        let base = self.kept_base();
+        let old_peer = self.doc.peer_id();
+        let Some(unsent) = self.doc.without_comment_changes_after(&base)? else {
+            return Ok(None);
+        };
+        self.persisted = None;
+        self.keep_own_writer(old_peer);
+        self.move_offline_edits(old_peer, &base);
+        let open: Vec<String> = self.open.keys().cloned().collect();
+        for id in open {
+            let current = self.doc.text(&id).ok();
+            let differs = self
+                .open
+                .get(&id)
+                .is_some_and(|file| current.as_deref() != Some(file.channel.text()));
+            if differs {
+                self.reset_file(&id)?;
+            }
+        }
+        Ok(Some(unsent))
+    }
+
+    fn kept_base(&self) -> VersionVector {
+        let mut base = self.confirmed.clone();
+        for (peer, end) in self.doc.version().iter() {
+            if !self.sendable(*peer) {
+                base.set_end(ID::new(*peer, *end));
+            }
+        }
+        let loro = self.doc.loro();
+        loro.frontiers_to_vv(&loro.vv_to_frontiers(&base))
+            .unwrap_or(base)
+    }
+
+    fn move_offline_edits(&mut self, old: u64, base: &VersionVector) {
+        let kept = base.get(&old).copied().unwrap_or(0);
+        let (new, end) = (self.doc.peer_id(), self.own_counter());
+        for spans in self.offline_edits.values_mut() {
+            if spans.get(&old).is_some_and(|until| *until > kept) {
+                spans.remove(&old);
+                spans.insert(new, end);
+            }
+        }
+    }
+
+    fn keep_own_writer(&mut self, peer: u64) {
+        if self.confirmed.get(&peer).copied().unwrap_or(0) == 0 {
+            return;
+        }
+        if let Some(device) = self.device {
+            if self.devices.bind_peers(&[peer], device) {
+                self.devices_dirty = true;
+            }
+        }
+        if let Some(me) = self.doc.author_account() {
+            if self.doc.authors_mut().witness([peer], me) {
+                self.authors_dirty = true;
+            }
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn set_batch_limit(&mut self, bytes: usize) {
         self.batch_limit = bytes.max(1);
@@ -940,9 +1019,47 @@ impl LiveProject {
     }
 
     pub fn disconnected(&mut self) {
+        self.connected = false;
         if let Some(outgoing) = self.outgoing.as_mut() {
             outgoing.sent = false;
         }
+    }
+
+    pub fn mark_connected(&mut self) {
+        self.connected = true;
+    }
+
+    fn own_counter(&self) -> i32 {
+        self.doc
+            .version()
+            .get(&self.doc.peer_id())
+            .copied()
+            .unwrap_or(0)
+    }
+
+    fn note_offline(&mut self, id: &str, before: i32) {
+        if self.connected {
+            return;
+        }
+        let after = self.own_counter();
+        if after > before {
+            self.offline_edits
+                .entry(id.to_owned())
+                .or_default()
+                .insert(self.doc.peer_id(), after);
+        }
+    }
+
+    pub fn take_offline_loss(&mut self, id: &str) -> bool {
+        let Some(spans) = self.offline_edits.remove(id) else {
+            return false;
+        };
+        let Some(seen) = self.doc.trash_seen(id) else {
+            return false;
+        };
+        spans
+            .iter()
+            .any(|(peer, end)| seen.get(peer).copied().unwrap_or(0) < *end)
     }
 
     pub fn has_unsent(&self) -> bool {
@@ -1146,6 +1263,64 @@ mod tests {
             }
         );
         assert!(bob.has_unsent());
+    }
+
+    fn trashed_by(deleter: &mut LiveProject, id: &str, other: &mut LiveProject, seq: u64) {
+        deleter.doc_mut().trash(id).unwrap();
+        let sent = deleter.next_outgoing().unwrap().unwrap();
+        deleter.acknowledged(sent.batch, seq);
+        assert!(other.import_update(seq, &sent.payload).unwrap());
+    }
+
+    #[test]
+    fn an_edit_made_offline_to_a_file_someone_else_deleted_is_reported_once() {
+        let (mut bob, mut alice, main) = pair();
+        bob.mark_connected();
+        alice.mark_connected();
+        alice.disconnected();
+        let (sink, _seen) = recorder();
+        alice.open_file(&main, sink).unwrap();
+        alice
+            .editor_change(&main, 0, insert(3, " written offline", 3))
+            .unwrap();
+        trashed_by(&mut bob, &main, &mut alice, 1);
+        assert!(alice.take_offline_loss(&main));
+        assert!(!alice.take_offline_loss(&main));
+        assert_eq!(alice.doc().text(&main).unwrap(), "abc written offline");
+    }
+
+    #[test]
+    fn typing_while_connected_is_not_reported_as_an_offline_loss() {
+        let (mut bob, mut alice, main) = pair();
+        alice.mark_connected();
+        alice.local_text(&main, "abc typed online").unwrap();
+        trashed_by(&mut bob, &main, &mut alice, 1);
+        assert!(!alice.take_offline_loss(&main));
+    }
+
+    #[test]
+    fn an_offline_edit_the_deleter_had_already_received_is_not_reported() {
+        let (mut bob, mut alice, main) = pair();
+        alice.local_text(&main, "abc offline").unwrap();
+        let sent = alice.next_outgoing().unwrap().unwrap();
+        alice.acknowledged(sent.batch, 1);
+        assert!(bob.import_update(1, &sent.payload).unwrap());
+        trashed_by(&mut bob, &main, &mut alice, 2);
+        assert!(!alice.take_offline_loss(&main));
+    }
+
+    #[test]
+    fn an_offline_edit_lost_to_a_delete_is_still_reported_after_a_restart() {
+        let (mut bob, mut alice, main) = pair();
+        alice.local_text(&main, "abc written offline").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        alice.save(dir.path()).unwrap();
+        let mut restarted = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        trashed_by(&mut bob, &main, &mut restarted, 1);
+        assert!(restarted.take_offline_loss(&main));
+        restarted.save(dir.path()).unwrap();
+        let mut again = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert!(!again.take_offline_loss(&main));
     }
 
     #[test]
@@ -1643,5 +1818,246 @@ mod tests {
         let loaded = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
         assert_eq!(loaded.anchor(), Some(second.batch));
         assert!(loaded.diverged(2, Some(first.batch)));
+    }
+
+    fn unsent(
+        file: &str,
+        thread: oleafly_collab_protocol::ids::CommentId,
+        quote: &str,
+        body: &str,
+    ) -> crate::comments::UnsentComment {
+        crate::comments::UnsentComment {
+            file_id: file.to_owned(),
+            thread_id: thread,
+            quote: quote.to_owned(),
+            body: body.to_owned(),
+        }
+    }
+
+    fn deliver_without_comments(from: &mut LiveProject, to: &mut LiveProject) {
+        let mut seq = to.last_seq();
+        while let Some(outgoing) = from.next_outgoing().unwrap() {
+            seq += 1;
+            let before = to.doc().version();
+            assert!(to.import_update(seq, &outgoing.payload).unwrap());
+            assert!(
+                !crate::doc::changes_comments_after(to.doc().loro(), &before),
+                "batch {seq} still carried a comment change"
+            );
+            from.acknowledged(outgoing.batch, seq);
+        }
+    }
+
+    #[test]
+    fn a_refused_comment_is_dropped_and_the_typing_around_it_reaches_the_others_once() {
+        let (mut bob, mut alice, main) = pair();
+        let me = AccountId::new_v7();
+        type_at_end(&mut alice, &main, " one");
+        let thread = alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 3, me, 1, "written while off", &[])
+            .unwrap();
+        type_at_end(&mut alice, &main, " two");
+        let refused = alice.next_outgoing().unwrap().unwrap();
+        let dropped = alice
+            .comments_refused()
+            .unwrap()
+            .expect("the comment is dropped");
+        assert_eq!(
+            dropped,
+            vec![unsent(&main, thread.id, "abc", "written while off")]
+        );
+        assert_eq!(alice.doc().text(&main).unwrap(), "abc one two");
+        assert!(alice.doc().comment_threads(&main).unwrap().is_empty());
+        let again = alice
+            .next_outgoing()
+            .unwrap()
+            .expect("the typing goes out again");
+        assert_ne!(again.batch, refused.batch);
+        let before = bob.doc().version();
+        assert!(bob.import_update(1, &again.payload).unwrap());
+        assert!(!crate::doc::changes_comments_after(
+            bob.doc().loro(),
+            &before
+        ));
+        alice.acknowledged(again.batch, 1);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc one two");
+        assert!(bob.doc().comment_threads(&main).unwrap().is_empty());
+        assert!(!alice.has_unsent());
+        assert!(alice.next_outgoing().unwrap().is_none());
+    }
+
+    #[test]
+    fn comments_the_server_already_took_stay_when_later_comment_changes_are_refused() {
+        let (mut bob, mut alice, main) = pair();
+        let me = AccountId::new_v7();
+        let kept = alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 2, me, 1, "sent earlier", &[])
+            .unwrap();
+        let first = alice.next_outgoing().unwrap().unwrap();
+        assert!(bob.import_update(1, &first.payload).unwrap());
+        alice.acknowledged(first.batch, 1);
+        alice
+            .comment_doc()
+            .edit_comment(
+                &main,
+                kept.id,
+                kept.messages[0].id,
+                me,
+                2,
+                "sent earlier, then edited",
+                &[],
+            )
+            .unwrap();
+        alice
+            .comment_doc()
+            .reply_to_comment(&main, kept.id, me, 3, "a reply while off", &[])
+            .unwrap();
+        type_at_end(&mut alice, &main, " typed");
+        let fresh = alice
+            .comment_doc()
+            .create_comment_thread(&main, 1, 3, me, 4, "a new thread while off", &[])
+            .unwrap();
+        alice.next_outgoing().unwrap().unwrap();
+        let dropped = alice.comments_refused().unwrap().unwrap();
+        assert_eq!(
+            dropped,
+            vec![
+                unsent(&main, kept.id, "ab", "sent earlier, then edited"),
+                unsent(&main, kept.id, "ab", "a reply while off"),
+                unsent(&main, fresh.id, "bc", "a new thread while off"),
+            ]
+        );
+        deliver_without_comments(&mut alice, &mut bob);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc typed");
+        for live in [&alice, &bob] {
+            let threads = live.doc().comment_threads(&main).unwrap();
+            assert_eq!(threads.len(), 1);
+            assert_eq!(threads[0].id, kept.id);
+            assert_eq!(threads[0].messages.len(), 1);
+            assert_eq!(threads[0].messages[0].body, "sent earlier");
+        }
+    }
+
+    #[test]
+    fn files_added_renamed_and_deleted_beside_a_refused_comment_arrive_once() {
+        let (mut bob, mut alice, main) = pair();
+        let me = AccountId::new_v7();
+        let notes = {
+            let doc = alice.doc_mut();
+            let chapters = doc
+                .add_node(None, "chapters", NodeKind::Dir, None, "")
+                .unwrap();
+            let notes = doc
+                .add_node(Some(&chapters), "notes.tex", NodeKind::Text, None, "notes")
+                .unwrap();
+            let scratch = doc
+                .add_node(None, "scratch.tex", NodeKind::Text, None, "scratch")
+                .unwrap();
+            doc.rename(&main, "thesis.tex").unwrap();
+            doc.trash(&scratch).unwrap();
+            notes
+        };
+        alice
+            .comment_doc()
+            .create_comment_thread(&notes, 0, 5, me, 1, "on the new notes", &[])
+            .unwrap();
+        type_at_end(&mut alice, &notes, " more");
+        alice.next_outgoing().unwrap().unwrap();
+        assert_eq!(alice.comments_refused().unwrap().unwrap().len(), 1);
+        deliver_without_comments(&mut alice, &mut bob);
+        let sorted = |live: &LiveProject| {
+            let mut nodes = live.doc().nodes().unwrap();
+            nodes.sort_by(|left, right| left.id.cmp(&right.id));
+            nodes
+        };
+        assert_eq!(sorted(&bob), sorted(&alice));
+        assert_eq!(sorted(&bob).len(), 4);
+        assert_eq!(bob.doc().text(&notes).unwrap(), "notes more");
+        assert!(sorted(&bob)
+            .iter()
+            .any(|node| node.id == main && node.name == "thesis.tex"));
+    }
+
+    #[test]
+    fn an_open_editor_keeps_typing_through_the_rebuild_without_being_reset() {
+        let (mut bob, mut alice, main) = pair();
+        let (sink, seen) = recorder();
+        let (rev, _) = alice.open_file(&main, sink).unwrap();
+        alice
+            .editor_change(&main, rev, insert(3, " one", 3))
+            .unwrap();
+        alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 3, AccountId::new_v7(), 1, "while off", &[])
+            .unwrap();
+        alice.next_outgoing().unwrap().unwrap();
+        alice.comments_refused().unwrap().unwrap();
+        alice
+            .editor_change(&main, rev + 1, insert(7, " two", 7))
+            .unwrap();
+        assert!(
+            seen.lock()
+                .unwrap()
+                .iter()
+                .all(|message| matches!(message, DocMessage::Ack { .. })),
+            "{:?}",
+            seen.lock().unwrap()
+        );
+        deliver_without_comments(&mut alice, &mut bob);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc one two");
+    }
+
+    #[test]
+    fn the_rebuilt_document_replaces_the_saved_one_so_a_restart_does_not_bring_the_comment_back() {
+        let (mut bob, mut alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        alice.save(dir.path()).unwrap();
+        type_at_end(&mut alice, &main, " one");
+        alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 3, AccountId::new_v7(), 1, "while off", &[])
+            .unwrap();
+        alice.save(dir.path()).unwrap();
+        alice.next_outgoing().unwrap().unwrap();
+        alice.comments_refused().unwrap().unwrap();
+        alice.save(dir.path()).unwrap();
+        let mut restarted = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert!(restarted.doc().comment_threads(&main).unwrap().is_empty());
+        assert_eq!(restarted.doc().text(&main).unwrap(), "abc one");
+        deliver_without_comments(&mut restarted, &mut bob);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc one");
+    }
+
+    #[test]
+    fn an_offline_edit_carried_through_a_refused_comment_is_not_reported_lost_once_the_deleter_had_it(
+    ) {
+        let (mut bob, mut alice, main) = pair();
+        alice.local_text(&main, "abc offline").unwrap();
+        alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 3, AccountId::new_v7(), 1, "while off", &[])
+            .unwrap();
+        alice.next_outgoing().unwrap().unwrap();
+        alice.comments_refused().unwrap().unwrap();
+        deliver_without_comments(&mut alice, &mut bob);
+        trashed_by(&mut bob, &main, &mut alice, 2);
+        assert!(!alice.take_offline_loss(&main));
+    }
+
+    #[test]
+    fn a_refusal_with_no_comment_change_to_drop_only_drops_the_batch() {
+        let (_bob, mut alice, main) = pair();
+        type_at_end(&mut alice, &main, " one");
+        let first = alice.next_outgoing().unwrap().unwrap();
+        assert!(alice.comments_refused().unwrap().is_none());
+        let again = alice
+            .next_outgoing()
+            .unwrap()
+            .expect("the change is kept for a later try");
+        assert_ne!(again.batch, first.batch);
+        assert_eq!(again.payload, first.payload);
+        assert_eq!(alice.doc().text(&main).unwrap(), "abc one");
     }
 }

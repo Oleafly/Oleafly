@@ -41,6 +41,12 @@
         "description": "Oleafly 会退出此服务器的登录，并不再记住它。这台电脑上已有的项目会原样保留。",
         "confirm": "移除服务器"
       },
+      "unsent": {
+        "title": "有些更改还没有发送",
+        "description": "有尚未到达服务器的更改的共享项目：{{count}} 个。Oleafly 可以把每个项目作为本地副本保留在这台电脑上，你也可以保持登录，稍后再试。",
+        "keep": "保留本地副本",
+        "stay": "保持登录"
+      },
       "emails": {
         "label": "有人共享项目时给我发邮件",
         "description": "邮件会写明项目名称，并附有打开它的链接。",
@@ -577,6 +583,11 @@
     "byYou": "由你删除",
     "by": "由 {{name}} 删除"
   },
+  "removed": {
+    "deletedBy": "{{name}} 删除了 {{file}}。",
+    "yoursDeleted": "你对 {{file}} 的更改在“最近删除”中，因为 {{name}} 删除了它。",
+    "dismiss": "关闭"
+  },
   "activity": {
     "welcomeEdit": "由 {{server}} 上的 {{owner}} 共享。你可以编辑。",
     "welcomeView": "由 {{server}} 上的 {{owner}} 共享。你可以查看。",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "无法确认是谁写的",
     "unverifiedThread": "来自 Oleafly 无法确认身份的人的评论",
     "resolvedUnverified": "由 Oleafly 无法确认身份的人解决",
+    "notSent": {
+      "written": "此项目已关闭评论，所以你写的评论没有发送。",
+      "changed": "此项目已关闭评论，所以你对评论的更改没有发送。",
+      "show": "显示你写的内容",
+      "hide": "隐藏你写的内容",
+      "copy": "复制文本",
+      "copyFailed": "无法复制",
+      "list": "未发送的评论"
+    },
     "refusals": {
       "notLive": "此项目当前未连接。请在重新连接后再试。",
       "notYours": "只有写这条评论的人才能修改它。",
@@ -888,5 +908,15 @@
     "viewer": "你现在是查看者。你可以阅读此项目，但不能编辑。",
     "removedBy": "{{name}} 已将你移出此项目。你的副本会保留在这台电脑上，不再共享。",
     "removed": "你已被移出此项目。你的副本会保留在这台电脑上，不再共享。"
+  },
+  "files": {
+    "waiting": "等待共享：{{files}}",
+    "failed": "无法共享：{{files}}",
+    "tooLarge": "{{file}} 大小为 {{size}}，超过此服务器允许的上限（{{limit}}）。它只保留在这台电脑上。",
+    "tooLargeUnknown": "{{file}} 超过此服务器允许的大小。它只保留在这台电脑上。",
+    "replaced": "{{name}} 与你同时替换了 {{file}}。你的版本已保存为 {{copy}}。",
+    "added": "因为 {{name}} 添加了同名文件，{{file}} 现在是 {{copy}}。",
+    "retry": "重试",
+    "dismiss": "关闭"
   }
 }

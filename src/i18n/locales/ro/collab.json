@@ -41,6 +41,12 @@
         "description": "Oleafly se deconectează de la acest server și îl uită. Proiectele aflate deja pe acest computer rămân unde sunt.",
         "confirm": "Elimină serverul"
       },
+      "unsent": {
+        "title": "Unele modificări nu au fost trimise încă",
+        "description": "Proiecte partajate cu modificări pe care serverul nu le are încă: {{count}}. Oleafly poate păstra o copie locală a fiecăruia pe acest computer sau poți rămâne autentificat și încerca din nou mai târziu.",
+        "keep": "Păstrează o copie locală",
+        "stay": "Rămâi autentificat"
+      },
       "emails": {
         "label": "Trimite-mi un e-mail când cineva partajează un proiect",
         "description": "E-mailul numește proiectul și are un link pentru a-l deschide.",
@@ -577,6 +583,11 @@
     "byYou": "Șters de tine",
     "by": "Șters de {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} a șters {{file}}.",
+    "yoursDeleted": "Modificările tale din {{file}} sunt în Șterse recent, pentru că {{name}} a șters fișierul.",
+    "dismiss": "Închide"
+  },
   "activity": {
     "welcomeEdit": "Partajat de {{owner}} pe {{server}}. Poți edita.",
     "welcomeView": "Partajat de {{owner}} pe {{server}}. Poți vizualiza.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Nu s-a putut verifica cine a scris asta",
     "unverifiedThread": "Comentariu de la cineva pe care Oleafly nu l-a putut verifica",
     "resolvedUnverified": "Rezolvat de cineva pe care Oleafly nu l-a putut verifica",
+    "notSent": {
+      "written": "Comentariile sunt dezactivate pentru acest proiect, așa că comentariile pe care le-ai scris nu au fost trimise.",
+      "changed": "Comentariile sunt dezactivate pentru acest proiect, așa că modificările tale la comentarii nu au fost trimise.",
+      "show": "Arată ce ai scris",
+      "hide": "Ascunde ce ai scris",
+      "copy": "Copiază textul",
+      "copyFailed": "Nu s-a putut copia",
+      "list": "Comentarii care nu au fost trimise"
+    },
     "refusals": {
       "notLive": "Acest proiect nu este conectat acum. Încearcă din nou după ce se reconectează.",
       "notYours": "Doar persoana care a scris acest comentariu îl poate modifica.",
@@ -888,5 +908,15 @@
     "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
     "removedBy": "{{name}} te-a eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată.",
     "removed": "Ai fost eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată."
+  },
+  "files": {
+    "waiting": "Așteaptă să fie partajat: {{files}}",
+    "failed": "Nu s-a putut partaja: {{files}}",
+    "tooLarge": "{{file}} are {{size}}, mai mult decât permite acest server ({{limit}}). Rămâne doar pe acest computer.",
+    "tooLargeUnknown": "{{file}} este mai mare decât permite acest server. Rămâne doar pe acest computer.",
+    "replaced": "{{name}} a înlocuit {{file}} în același timp cu tine. Versiunea ta este păstrată ca {{copy}}.",
+    "added": "{{file}} se numește acum {{copy}}, pentru că {{name}} a adăugat un fișier cu același nume.",
+    "retry": "Reîncearcă",
+    "dismiss": "Închide"
   }
 }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::PoisonError;
 
 use oleafly_collab::comments::{
-    mentions_in, CommentChanges, CommentMember, CommentMessage, CommentThread,
+    mentions_in, CommentChanges, CommentMember, CommentMessage, CommentThread, UnsentComment,
 };
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
 use oleafly_collab::live::LiveProject;
@@ -22,6 +22,7 @@ use super::state::CollabState;
 
 pub const COMMENTS_CHANGED_EVENT: &str = "collab-comments-changed";
 pub const COMMENTS_STATUS_EVENT: &str = "collab-comments-status";
+pub const COMMENTS_NOT_SENT_EVENT: &str = "collab-comments-not-sent";
 const SWITCHES_FILE: &str = "comments.json";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -42,6 +43,23 @@ pub struct CommentsChangedPayload {
     pub paths: Vec<String>,
     pub mentioned: Vec<MentionedPayload>,
     pub local: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotSentComment {
+    pub file_id: String,
+    pub path: Option<String>,
+    pub thread_id: CommentId,
+    pub quote: String,
+    pub body: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentsNotSentPayload {
+    pub project_id: String,
+    pub comments: Vec<NotSentComment>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -428,6 +446,29 @@ pub(crate) fn announce(project_id: &str, live: &SharedLive, me: AccountId, host:
     host.comments_changed(payload_for(project_id, me, changes, &layout));
 }
 
+pub(crate) fn tell_not_sent(
+    project_id: &str,
+    live: &SharedLive,
+    unsent: Vec<UnsentComment>,
+    host: &dyn LiveHost,
+) {
+    let layout = layout_of(live.lock().unwrap_or_else(PoisonError::into_inner).doc());
+    let comments = unsent
+        .into_iter()
+        .map(|comment| NotSentComment {
+            path: path_in(&layout, &comment.file_id),
+            file_id: comment.file_id,
+            thread_id: comment.thread_id,
+            quote: comment.quote,
+            body: comment.body,
+        })
+        .collect();
+    host.comments_not_sent(CommentsNotSentPayload {
+        project_id: project_id.to_owned(),
+        comments,
+    });
+}
+
 pub async fn list_threads(
     state: &CollabState,
     project_id: &str,
@@ -715,7 +756,10 @@ mod tests {
     const TEXT: &str = "The quick brown fox jumps over the lazy dog.\n";
 
     #[derive(Default)]
-    struct HeardComments(Mutex<Vec<CommentsChangedPayload>>);
+    struct HeardComments(
+        Mutex<Vec<CommentsChangedPayload>>,
+        Mutex<Vec<CommentsNotSentPayload>>,
+    );
 
     impl HeardComments {
         fn taken(&self) -> Vec<CommentsChangedPayload> {
@@ -733,6 +777,9 @@ mod tests {
         fn new_device(&self, _: NewDevicePayload) {}
         fn comments_changed(&self, payload: CommentsChangedPayload) {
             self.0.lock().unwrap().push(payload);
+        }
+        fn comments_not_sent(&self, payload: CommentsNotSentPayload) {
+            self.1.lock().unwrap().push(payload);
         }
     }
 
@@ -1346,5 +1393,50 @@ mod tests {
         );
         let refused = write_comment(&state, "never-live", |_, _| Ok(())).unwrap_err();
         assert_eq!(command_error(refused).code, "comment_not_live");
+    }
+
+    #[test]
+    fn comments_the_server_refused_reach_the_app_once_with_their_file_paths() {
+        let (alice, _bob, intro) = sides();
+        let heard = HeardComments::default();
+        let thread = CommentId::new_v7();
+        let unsent = vec![
+            UnsentComment {
+                file_id: intro.clone(),
+                thread_id: thread,
+                quote: "quick".to_owned(),
+                body: "written while comments were off".to_owned(),
+            },
+            UnsentComment {
+                file_id: "no-such-file".to_owned(),
+                thread_id: thread,
+                quote: "lost".to_owned(),
+                body: "on a file that is gone".to_owned(),
+            },
+        ];
+        tell_not_sent("project-1", &alice.live, unsent, &heard);
+        assert_eq!(
+            heard.1.lock().unwrap().clone(),
+            vec![CommentsNotSentPayload {
+                project_id: "project-1".to_owned(),
+                comments: vec![
+                    NotSentComment {
+                        file_id: intro,
+                        path: Some("chapters/intro.tex".to_owned()),
+                        thread_id: thread,
+                        quote: "quick".to_owned(),
+                        body: "written while comments were off".to_owned(),
+                    },
+                    NotSentComment {
+                        file_id: "no-such-file".to_owned(),
+                        path: None,
+                        thread_id: thread,
+                        quote: "lost".to_owned(),
+                        body: "on a file that is gone".to_owned(),
+                    },
+                ],
+            }]
+        );
+        assert!(heard.taken().is_empty());
     }
 }

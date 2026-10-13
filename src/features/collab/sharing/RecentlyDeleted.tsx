@@ -10,6 +10,7 @@ import { collabTrashList, collabTrashRestore, type CollabTrashEntry } from "@/li
 import { collabErrorCode, collabErrorMessage } from "../errors";
 import { InlineAlert } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
+import { useRemovedNotices } from "../live/removed-notices";
 import { useLiveTree } from "./tree-version";
 
 const NONE: readonly CollabTrashEntry[] = [];
@@ -174,6 +175,7 @@ export function RecentlyDeleted({
         setFailure(collabErrorMessage(collabErrorCode(error)));
         return;
       }
+      useRemovedNotices.getState().forget(entry.id);
       await refresh();
     },
     [projectId, refresh],

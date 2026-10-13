@@ -72,6 +72,9 @@ vi.mock("./DiagramMainFileView", () => ({
 vi.mock("@/components/layout/WorkspaceControls", () => ({
   SidebarCollapseToggle: () => <div data-testid="sidebar-toggle" />,
 }));
+vi.mock("@/components/collab/CollabSlots", () => ({
+  CollabRemovedFileSlot: () => <div data-testid="collab-removed-slot" />,
+}));
 
 import { Editor } from "./Editor";
 
@@ -127,6 +130,15 @@ describe("Editor shell", () => {
     expect(screen.getByText(shell.noFileOpenTab)).toBeInTheDocument();
     expect(screen.getByText(shell.noFileOpen)).toBeInTheDocument();
     expect(screen.getByText(shell.noFileOpenHint)).toBeInTheDocument();
+  });
+
+  it("keeps the notice about files others deleted in the editor area, with or without an open file", () => {
+    const { unmount } = render(<Editor />);
+    expect(screen.getByTestId("collab-removed-slot")).toBeInTheDocument();
+    unmount();
+    openFile("chapters/intro.tex");
+    render(<Editor />);
+    expect(screen.getByTestId("collab-removed-slot")).toBeInTheDocument();
   });
 
   it("names each file tab, marks unsaved edits, and closes on request", () => {

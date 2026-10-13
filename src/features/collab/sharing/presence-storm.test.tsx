@@ -63,6 +63,8 @@ vi.mock("@/store/files", async () => {
       setContent: () => true,
       bumpDocVersion: () => {},
     })),
+    onPathsMoved: () => () => {},
+    onPathsDeleted: () => () => {},
   };
 });
 

@@ -11,16 +11,24 @@ const mocks = vi.hoisted(() => ({
   collabServerRefresh: vi.fn(),
 }));
 
+const copies = vi.hoisted(() => ({ followLocalCopies: vi.fn() }));
+
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
 
+vi.mock("./live/removed-notices", () => copies);
+
+const DONE = { signed_out: true, unsent: [] };
+const PAPER = { project_id: "r3-paper", name: "R3 Paper", changes: 4 };
+
 import { useCollabStore } from "./store";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {} });
+  copies.followLocalCopies.mockResolvedValue(undefined);
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {} });
 });
 
 describe("collab store", () => {
@@ -86,12 +94,12 @@ describe("collab store", () => {
 
   it("signs out once, clears the account and ignores a second click while busy", async () => {
     useCollabStore.setState({ servers: [server()], status: "ready" });
-    const pending = deferred<void>();
+    const pending = deferred<typeof DONE>();
     mocks.collabServerSignOut.mockReturnValueOnce(pending.promise);
     const first = useCollabStore.getState().signOut(SERVER_ID);
     expect(useCollabStore.getState().pending[SERVER_ID]).toBe("signOut");
     await expect(useCollabStore.getState().signOut(SERVER_ID)).resolves.toBeNull();
-    pending.resolve();
+    pending.resolve(DONE);
     await expect(first).resolves.toBeNull();
     expect(mocks.collabServerSignOut).toHaveBeenCalledTimes(1);
     expect(useCollabStore.getState().servers[0]).toMatchObject({ account: null, signed_in: false });
@@ -112,10 +120,58 @@ describe("collab store", () => {
     mocks.collabServerRemove.mockRejectedValueOnce(collabError("internal"));
     await expect(useCollabStore.getState().remove(SERVER_ID)).resolves.toBe("internal");
     expect(useCollabStore.getState().servers).toHaveLength(1);
-    mocks.collabServerRemove.mockResolvedValueOnce(undefined);
+    mocks.collabServerRemove.mockResolvedValueOnce(DONE);
     await expect(useCollabStore.getState().remove(SERVER_ID)).resolves.toBeNull();
-    expect(mocks.collabServerRemove).toHaveBeenLastCalledWith(SERVER_ID);
+    expect(mocks.collabServerRemove).toHaveBeenLastCalledWith(SERVER_ID, false);
     expect(useCollabStore.getState().servers).toEqual([]);
+  });
+
+  it("asks before signing out while a shared project still has changes the server lacks", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServerSignOut.mockResolvedValueOnce({ signed_out: false, unsent: [PAPER] });
+    await expect(useCollabStore.getState().signOut(SERVER_ID)).resolves.toBeNull();
+    expect(mocks.collabServerSignOut).toHaveBeenCalledWith(SERVER_ID, false);
+    expect(useCollabStore.getState().unsent[SERVER_ID]).toEqual({ action: "signOut", projects: [PAPER] });
+    expect(useCollabStore.getState().servers[0]?.signed_in).toBe(true);
+    expect(useCollabStore.getState().pending).toEqual({});
+  });
+
+  it("keeps a local copy and then signs out when the person chooses that", async () => {
+    useCollabStore.setState({
+      servers: [server()],
+      status: "ready",
+      unsent: { [SERVER_ID]: { action: "signOut", projects: [PAPER] } },
+    });
+    mocks.collabServerSignOut.mockResolvedValueOnce({ signed_out: true, unsent: [PAPER] });
+    await expect(useCollabStore.getState().keepLocalCopies(SERVER_ID)).resolves.toBeNull();
+    expect(mocks.collabServerSignOut).toHaveBeenCalledWith(SERVER_ID, true);
+    expect(useCollabStore.getState().unsent).toEqual({});
+    expect(useCollabStore.getState().servers[0]).toMatchObject({ account: null, signed_in: false });
+    expect(copies.followLocalCopies).toHaveBeenCalledWith(["r3-paper"]);
+  });
+
+  it("removes a server only after keeping a local copy when changes are waiting", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServerRemove.mockResolvedValueOnce({ signed_out: false, unsent: [PAPER] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    expect(useCollabStore.getState().servers).toHaveLength(1);
+    expect(useCollabStore.getState().unsent[SERVER_ID]?.action).toBe("remove");
+    mocks.collabServerRemove.mockResolvedValueOnce({ signed_out: true, unsent: [PAPER] });
+    await useCollabStore.getState().keepLocalCopies(SERVER_ID);
+    expect(mocks.collabServerRemove).toHaveBeenLastCalledWith(SERVER_ID, true);
+    expect(useCollabStore.getState().servers).toEqual([]);
+  });
+
+  it("stays signed in and forgets the question when the person chooses that", () => {
+    useCollabStore.setState({
+      servers: [server()],
+      status: "ready",
+      unsent: { [SERVER_ID]: { action: "signOut", projects: [PAPER] } },
+    });
+    useCollabStore.getState().stay(SERVER_ID);
+    expect(useCollabStore.getState().unsent).toEqual({});
+    expect(mocks.collabServerSignOut).not.toHaveBeenCalled();
+    expect(useCollabStore.getState().servers[0]?.signed_in).toBe(true);
   });
 
   it("asks each signed-in server for the current role and keeps the answer", async () => {

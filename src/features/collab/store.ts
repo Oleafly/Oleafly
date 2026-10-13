@@ -9,17 +9,26 @@ import {
   type CollabErrorCode,
   type CollabServer,
   type CollabSignInCode,
+  type CollabSignOut,
+  type CollabUnsentProject,
 } from "@/lib/tauri";
 import { collabErrorCode } from "./errors";
+import { followLocalCopies } from "./live/removed-notices";
 
 export type CollabServersStatus = "idle" | "loading" | "ready" | "failed";
 export type CollabServerAction = "signOut" | "remove";
+
+export interface UnsentWork {
+  action: CollabServerAction;
+  projects: readonly CollabUnsentProject[];
+}
 
 interface CollabStore {
   servers: CollabServer[];
   status: CollabServersStatus;
   loadError: CollabErrorCode | null;
   pending: Readonly<Record<string, CollabServerAction>>;
+  unsent: Readonly<Record<string, UnsentWork>>;
   load: () => Promise<void>;
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   signInWithCode: (
@@ -29,16 +38,15 @@ interface CollabStore {
   ) => Promise<CollabServer>;
   signOut: (serverId: string) => Promise<CollabErrorCode | null>;
   remove: (serverId: string) => Promise<CollabErrorCode | null>;
+  keepLocalCopies: (serverId: string) => Promise<CollabErrorCode | null>;
+  stay: (serverId: string) => void;
   refreshAccounts: () => Promise<void>;
 }
 
 let loadRequest = 0;
 
-function withoutKey(
-  pending: Readonly<Record<string, CollabServerAction>>,
-  serverId: string,
-): Record<string, CollabServerAction> {
-  return Object.fromEntries(Object.entries(pending).filter(([id]) => id !== serverId));
+function without<T>(entries: Readonly<Record<string, T>>, serverId: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(entries).filter(([id]) => id !== serverId));
 }
 
 function upsert(servers: readonly CollabServer[], next: CollabServer): CollabServer[] {
@@ -47,11 +55,54 @@ function upsert(servers: readonly CollabServer[], next: CollabServer): CollabSer
     : [...servers, next];
 }
 
+function ended(servers: readonly CollabServer[], serverId: string, action: CollabServerAction): CollabServer[] {
+  if (action === "remove") return servers.filter((entry) => entry.server_id !== serverId);
+  return servers.map((entry) => (entry.server_id === serverId ? { ...entry, account: null, signed_in: false } : entry));
+}
+
+async function end(
+  serverId: string,
+  action: CollabServerAction,
+  keepLocalCopy: boolean,
+): Promise<CollabErrorCode | null> {
+  const store = useCollabStore;
+  if (store.getState().pending[serverId]) return null;
+  store.setState((state) => ({
+    pending: { ...state.pending, [serverId]: action },
+    unsent: without(state.unsent, serverId),
+  }));
+  let outcome: CollabSignOut;
+  try {
+    outcome =
+      action === "remove"
+        ? await collabServerRemove(serverId, keepLocalCopy)
+        : await collabServerSignOut(serverId, keepLocalCopy);
+  } catch (error) {
+    store.setState((state) => ({ pending: without(state.pending, serverId) }));
+    return collabErrorCode(error);
+  }
+  if (!outcome.signed_out) {
+    store.setState((state) => ({
+      pending: without(state.pending, serverId),
+      unsent: { ...state.unsent, [serverId]: { action, projects: outcome.unsent } },
+    }));
+    return null;
+  }
+  loadRequest += 1;
+  store.setState((state) => ({
+    servers: ended(state.servers, serverId, action),
+    pending: without(state.pending, serverId),
+  }));
+  if (outcome.unsent.length > 0) void followLocalCopies(outcome.unsent.map((project) => project.project_id));
+  return null;
+}
+
 export const useCollabStore = create<CollabStore>((set, get) => ({
   servers: [],
   status: "idle",
   loadError: null,
   pending: {},
+  unsent: {},
   load: async () => {
     const request = ++loadRequest;
     set((state) => ({ status: state.status === "ready" ? "ready" : "loading", loadError: null }));
@@ -76,40 +127,14 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
     set((state) => ({ servers: upsert(state.servers, server), status: "ready", loadError: null }));
     return server;
   },
-  signOut: async (serverId) => {
-    if (get().pending[serverId]) return null;
-    set((state) => ({ pending: { ...state.pending, [serverId]: "signOut" } }));
-    try {
-      await collabServerSignOut(serverId);
-      loadRequest += 1;
-      set((state) => ({
-        servers: state.servers.map((entry) =>
-          entry.server_id === serverId ? { ...entry, account: null, signed_in: false } : entry,
-        ),
-        pending: withoutKey(state.pending, serverId),
-      }));
-      return null;
-    } catch (error) {
-      set((state) => ({ pending: withoutKey(state.pending, serverId) }));
-      return collabErrorCode(error);
-    }
+  signOut: (serverId) => end(serverId, "signOut", false),
+  remove: (serverId) => end(serverId, "remove", false),
+  keepLocalCopies: async (serverId) => {
+    const waiting = get().unsent[serverId];
+    if (!waiting) return null;
+    return end(serverId, waiting.action, true);
   },
-  remove: async (serverId) => {
-    if (get().pending[serverId]) return null;
-    set((state) => ({ pending: { ...state.pending, [serverId]: "remove" } }));
-    try {
-      await collabServerRemove(serverId);
-      loadRequest += 1;
-      set((state) => ({
-        servers: state.servers.filter((entry) => entry.server_id !== serverId),
-        pending: withoutKey(state.pending, serverId),
-      }));
-      return null;
-    } catch (error) {
-      set((state) => ({ pending: withoutKey(state.pending, serverId) }));
-      return collabErrorCode(error);
-    }
-  },
+  stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
   refreshAccounts: async () => {
     const signedIn = get().servers.filter((entry) => entry.signed_in);
     const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));

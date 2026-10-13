@@ -1,4 +1,4 @@
-use crate::frames::{ClientFrame, ServerFrame};
+use crate::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -7,7 +7,32 @@ pub const DEVICE_HEADER: &str = "x-oleafly-device";
 pub const NONCE_HEADER: &str = "x-oleafly-nonce";
 pub const SIGNATURE_HEADER: &str = "x-oleafly-signature";
 pub const PROTOCOL_HEADER: &str = "x-oleafly-protocol";
+pub const UNDERSTANDS_HEADER: &str = "x-oleafly-understands";
 pub const MAX_POSTED_FRAMES: usize = 64;
+
+pub fn understands_header(codes: &[FrameErrorCode]) -> String {
+    codes
+        .iter()
+        .filter_map(|code| match serde_json::to_value(code) {
+            Ok(serde_json::Value::String(name)) => Some(name),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+pub fn understood_codes(header: &str) -> Vec<FrameErrorCode> {
+    header
+        .split(',')
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .filter_map(|name| {
+            serde_json::from_value::<FrameErrorCode>(serde_json::Value::String(name.to_owned()))
+                .ok()
+        })
+        .filter(|code| *code != FrameErrorCode::Unknown)
+        .collect()
+}
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PollBatch {
@@ -85,6 +110,22 @@ mod tests {
         let replies: PollReplies =
             serde_json::from_value(json!({ "frames": [{ "type": "pong", "id": 1 }] })).unwrap();
         assert_eq!(replies.frames, vec![ServerFrame::Pong { id: 1 }]);
+    }
+
+    #[test]
+    fn the_error_codes_a_client_understands_travel_in_one_header() {
+        use crate::frames::FrameErrorCode;
+        let header = understands_header(&[FrameErrorCode::CommentsOff, FrameErrorCode::TooLarge]);
+        assert_eq!(header, "comments_off,too_large");
+        assert_eq!(
+            understood_codes(&header),
+            vec![FrameErrorCode::CommentsOff, FrameErrorCode::TooLarge]
+        );
+        assert_eq!(
+            understood_codes(" comments_off , from_the_future,,"),
+            vec![FrameErrorCode::CommentsOff]
+        );
+        assert!(understood_codes("").is_empty());
     }
 
     #[test]

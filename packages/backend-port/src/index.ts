@@ -1547,8 +1547,8 @@ export interface BackendPort {
   collabServerProbe: (url: string) => Promise<CollabCapabilities>;
   collabServerSignIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   collabServerSignInCancel: () => Promise<void>;
-  collabServerSignOut: (serverId: string) => Promise<void>;
-  collabServerRemove: (serverId: string) => Promise<void>;
+  collabServerSignOut: (serverId: string, keepLocalCopy?: boolean) => Promise<CollabSignOut>;
+  collabServerRemove: (serverId: string, keepLocalCopy?: boolean) => Promise<CollabSignOut>;
   collabServerDevices: (serverId: string) => Promise<CollabDevice[]>;
   collabServerSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
   collabServerTest: (url: string) => Promise<CollabConnectionCheck[]>;
@@ -1641,6 +1641,11 @@ export interface BackendPort {
   collabTrashList: (projectId: string) => Promise<CollabTrashEntry[]>;
   collabTrashRestore: (projectId: string, id: string) => Promise<void>;
   collabTreeClashes: (projectId: string) => Promise<CollabTreeClash[]>;
+  collabLiveRemovedList: (projectId: string) => Promise<CollabLiveRemovedFile[]>;
+  collabLiveRemovedDismiss: (projectId: string, id: string) => Promise<void>;
+  collabUploadList: (projectId: string) => Promise<CollabUploadFile[]>;
+  collabUploadRetry: (projectId: string) => Promise<void>;
+  collabUploadDismiss: (projectId: string, path: string) => Promise<void>;
 }
 
 export interface CollabTrashEntry {
@@ -1662,6 +1667,48 @@ export interface CollabLiveRenamed {
   before: string;
   ours: string;
   theirs: string;
+}
+export interface CollabUnsentProject {
+  project_id: string;
+  name: string;
+  changes: number;
+}
+export interface CollabSignOut {
+  signed_out: boolean;
+  unsent: CollabUnsentProject[];
+}
+export interface CollabLiveRemovedFile {
+  path: string;
+  id: string;
+  kind: "dir" | "text" | "blob";
+  by: string | null;
+  yours: boolean;
+}
+export interface CollabLiveRemoved {
+  projectId: string;
+  files: CollabLiveRemovedFile[];
+}
+export type CollabUploadState = "waiting" | "failed" | "too_large";
+export interface CollabUploadFile {
+  path: string;
+  state: CollabUploadState;
+  size: number;
+  limit: number | null;
+}
+export interface CollabLiveUploads {
+  projectId: string;
+  files: CollabUploadFile[];
+}
+export interface CollabLiveKeptFile {
+  id: string;
+  path: string;
+  copy: string;
+  kind: "replaced" | "added";
+  by: string | null;
+}
+export interface CollabLiveKept {
+  projectId: string;
+  files: CollabLiveKeptFile[];
 }
 
 export type CollabHealthStatus = "ok" | "warning" | "unknown";
@@ -1820,6 +1867,17 @@ export interface CollabCommentsStatus {
 export interface CollabCommentsStatusChanged {
     projectId: string;
     status: CollabCommentsStatus;
+}
+export interface CollabCommentNotSent {
+    fileId: string;
+    path: string | null;
+    threadId: string;
+    quote: string;
+    body: string;
+}
+export interface CollabCommentsNotSent {
+    projectId: string;
+    comments: CollabCommentNotSent[];
 }
 export interface CollabCommentMentioned {
     fileId: string;

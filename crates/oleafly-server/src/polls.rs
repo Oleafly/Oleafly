@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::crypto::sha256_b64url;
-use oleafly_collab_protocol::frames::ServerFrame;
+use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::poll::PollBatch;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -162,6 +162,7 @@ pub struct PollSession {
     pub(crate) account: AccountId,
     public_key: Vec<u8>,
     pub(crate) connection: u64,
+    understands: Vec<FrameErrorCode>,
     inbox: tokio::sync::Mutex<Inbox>,
     wake: watch::Sender<u64>,
     last: Mutex<Option<ServerFrame>>,
@@ -180,6 +181,7 @@ pub(crate) struct Opening {
     pub(crate) ticket: SocketTicket,
     pub(crate) frames: Outbox,
     pub(crate) outbound: Outbound,
+    pub(crate) understands: Vec<FrameErrorCode>,
 }
 
 pub(crate) fn channel() -> (Outbox, Outbound) {
@@ -203,6 +205,7 @@ impl PollSession {
             account: self.account,
             public_key: &self.public_key,
             connection: self.connection,
+            understands: &self.understands,
         }
     }
 
@@ -292,6 +295,7 @@ pub(crate) async fn start(
         ticket,
         frames,
         outbound,
+        understands,
     } = opening;
     let SocketTicket {
         id: connection,
@@ -309,6 +313,7 @@ pub(crate) async fn start(
         account,
         public_key,
         connection,
+        understands,
         inbox: tokio::sync::Mutex::new(Inbox {
             outbound,
             _open: frames,

@@ -41,6 +41,12 @@
         "description": "Oleafly signs out of this server and forgets it. Projects already on this computer stay where they are.",
         "confirm": "Remove server"
       },
+      "unsent": {
+        "title": "Some changes haven't been sent",
+        "description": "Shared projects with changes the server doesn't have yet: {{count}}. Oleafly can keep a local copy of each one on this computer, or you can stay signed in and try again later.",
+        "keep": "Keep a local copy",
+        "stay": "Stay signed in"
+      },
       "emails": {
         "label": "Email me when someone shares a project",
         "description": "The email names the project and has a link to open it.",
@@ -577,6 +583,11 @@
     "byYou": "Deleted by you",
     "by": "Deleted by {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} deleted {{file}}.",
+    "yoursDeleted": "Your changes to {{file}} are in Recently deleted because {{name}} deleted it.",
+    "dismiss": "Dismiss"
+  },
   "activity": {
     "welcomeEdit": "Shared by {{owner}} on {{server}}. You can edit.",
     "welcomeView": "Shared by {{owner}} on {{server}}. You can view.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Couldn't verify who wrote this",
     "unverifiedThread": "Comment from someone Oleafly couldn't verify",
     "resolvedUnverified": "Resolved by someone Oleafly couldn't verify",
+    "notSent": {
+      "written": "Comments are turned off for this project, so the comments you wrote weren't sent.",
+      "changed": "Comments are turned off for this project, so your comment changes weren't sent.",
+      "show": "Show what you wrote",
+      "hide": "Hide what you wrote",
+      "copy": "Copy text",
+      "copyFailed": "Couldn't copy",
+      "list": "Comments that weren't sent"
+    },
     "refusals": {
       "notLive": "This project isn't connected right now. Try again once it reconnects.",
       "notYours": "Only the person who wrote this comment can change it.",
@@ -888,5 +908,15 @@
     "viewer": "You're now a viewer. You can read this project but not edit it.",
     "removedBy": "{{name}} removed you from this project. Your copy stays on this computer and is no longer shared.",
     "removed": "You were removed from this project. Your copy stays on this computer and is no longer shared."
+  },
+  "files": {
+    "waiting": "Waiting to be shared: {{files}}",
+    "failed": "Couldn't be shared: {{files}}",
+    "tooLarge": "{{file}} is {{size}}, larger than this server allows ({{limit}}). It stays on this computer only.",
+    "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
+    "replaced": "{{name}} replaced {{file}} at the same time as you. Your version is kept as {{copy}}.",
+    "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
+    "retry": "Retry",
+    "dismiss": "Dismiss"
   }
 }

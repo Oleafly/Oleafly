@@ -41,6 +41,12 @@
         "description": "Oleafly meldt zich af bij deze server en vergeet hem. Projecten die al op deze computer staan, blijven waar ze zijn.",
         "confirm": "Server weghalen"
       },
+      "unsent": {
+        "title": "Sommige wijzigingen zijn nog niet verzonden",
+        "description": "Gedeelde projecten met wijzigingen die de server nog niet heeft: {{count}}. Oleafly kan van elk project een lokale kopie op deze computer bewaren, of je blijft aangemeld en probeert het later opnieuw.",
+        "keep": "Lokale kopie bewaren",
+        "stay": "Aangemeld blijven"
+      },
       "emails": {
         "label": "Mail me als iemand een project deelt",
         "description": "De e-mail noemt het project en bevat een link om het te openen.",
@@ -577,6 +583,11 @@
     "byYou": "Verwijderd door jou",
     "by": "Verwijderd door {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} heeft {{file}} verwijderd.",
+    "yoursDeleted": "Je wijzigingen in {{file}} staan bij Onlangs verwijderd, omdat {{name}} het bestand heeft verwijderd.",
+    "dismiss": "Sluiten"
+  },
   "activity": {
     "welcomeEdit": "Gedeeld door {{owner}} op {{server}}. Je kunt het bewerken.",
     "welcomeView": "Gedeeld door {{owner}} op {{server}}. Je kunt het bekijken.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Oleafly kon niet nagaan wie dit schreef",
     "unverifiedThread": "Opmerking van iemand die Oleafly niet kon verifiëren",
     "resolvedUnverified": "Opgelost door iemand die Oleafly niet kon verifiëren",
+    "notSent": {
+      "written": "Opmerkingen staan uit voor dit project, dus de opmerkingen die je schreef zijn niet verstuurd.",
+      "changed": "Opmerkingen staan uit voor dit project, dus je wijzigingen in opmerkingen zijn niet verstuurd.",
+      "show": "Toon wat je schreef",
+      "hide": "Verberg wat je schreef",
+      "copy": "Tekst kopiëren",
+      "copyFailed": "Kopiëren mislukt",
+      "list": "Opmerkingen die niet zijn verstuurd"
+    },
     "refusals": {
       "notLive": "Dit project is nu niet verbonden. Probeer het opnieuw zodra de verbinding terug is.",
       "notYours": "Alleen wie deze opmerking schreef, kan haar wijzigen.",
@@ -888,5 +908,15 @@
     "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
     "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
     "removed": "Je bent uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld."
+  },
+  "files": {
+    "waiting": "Wacht om gedeeld te worden: {{files}}",
+    "failed": "Kon niet worden gedeeld: {{files}}",
+    "tooLarge": "{{file}} is {{size}}, groter dan deze server toestaat ({{limit}}). Het bestand blijft alleen op deze computer.",
+    "tooLargeUnknown": "{{file}} is groter dan deze server toestaat. Het bestand blijft alleen op deze computer.",
+    "replaced": "{{name}} heeft {{file}} tegelijk met jou vervangen. Jouw versie is bewaard als {{copy}}.",
+    "added": "{{file}} heet nu {{copy}}, omdat {{name}} een bestand met dezelfde naam heeft toegevoegd.",
+    "retry": "Opnieuw proberen",
+    "dismiss": "Sluiten"
   }
 }

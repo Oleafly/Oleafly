@@ -111,5 +111,8 @@
   "systemIntegration": {
     "openInOleafly": "Otevřít v Oleafly",
     "openWithOleafly": "Otevřít v aplikaci Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (místní kopie)"
   }
 }

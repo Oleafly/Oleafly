@@ -89,6 +89,7 @@ async fn hello_from(
             server_id,
             &nonce,
         )),
+        understands: Vec::new(),
     };
     send_frame(&mut socket, &hello).await;
     let answer = next_frame(&mut socket)

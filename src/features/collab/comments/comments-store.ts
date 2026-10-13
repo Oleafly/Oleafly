@@ -642,6 +642,7 @@ export function startComments(): () => void {
 
   const stopLive = useCollabLiveStore.subscribe((live, previous) => {
     if (live.projectId !== previous.projectId || live.share !== previous.share) openProject();
+    if (live.commentsNotSent && live.commentsNotSent !== previous.commentsNotSent) void refreshStatus();
     if (live.role !== previous.role) {
       syncRail();
       void refreshStatus();

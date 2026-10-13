@@ -104,6 +104,41 @@ describe("LiveSessions", () => {
     expect(write).toHaveBeenCalledOnce();
   });
 
+  it("keeps one open document when its file or folder moves, with typing still in flight", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel));
+    const session = sessions.documentSession("sections/results.tex");
+    const other = sessions.documentSession("sections-old.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    sessions.move("sections", "parts");
+    expect(sessions.documentSession("parts/results.tex")).toBe(session);
+    expect(session?.path).toBe("parts/results.tex");
+    expect(sessions.documentSession("sections-old.tex")).toBe(other);
+    session?.applyLocal([{ from: 4, to: 4, insert: "?" }], session.version());
+    await flush();
+    expect(channel.opens).toHaveLength(2);
+    expect(channel.closes).toEqual([]);
+    expect(session?.text()).toBe("abc!?");
+  });
+
+  it("lets go of a deleted file's document only after its typing reached the shared project", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel));
+    const session = sessions.documentSession("sections/results.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    sessions.forget("sections");
+    await flush();
+    expect(session?.phase).toBe("open");
+    channel.drain();
+    await flush();
+    expect(channel.text).toBe("abc!");
+    expect(session?.phase).toBe("closed");
+    const fresh = sessions.documentSession("sections/results.tex");
+    expect(fresh).not.toBe(session);
+  });
+
   it("closes every file and opens nothing more once closed", async () => {
     const channel = new FakeChannel("abc");
     const sessions = new LiveSessions(options(channel));

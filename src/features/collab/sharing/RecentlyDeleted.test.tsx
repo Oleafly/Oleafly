@@ -7,6 +7,7 @@ import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabTrashEntry } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
+import { useRemovedNotices } from "../live/removed-notices";
 import { ALICE_ID, BOB, BOB_ID, collabError, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -133,6 +134,18 @@ describe("RecentlyDeleted", () => {
       expect(within(screen.getByRole("list", { name: enCollab.pane.deleted })).getAllByRole("listitem")).toHaveLength(2),
     );
     expect(screen.queryByText("intro.tex")).toBeNull();
+  });
+
+  it("clears the deleted-file notice of a file restored here", async () => {
+    useRemovedNotices.setState({
+      projectId: "grant",
+      notices: [{ id: "intro-id", path: "chapters/intro.tex", kind: "text", by: BOB_ID, yours: true }],
+    });
+    const user = userEvent.setup();
+    view();
+    await screen.findByRole("list", { name: enCollab.pane.deleted });
+    await user.click(screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "intro.tex" }) }));
+    await waitFor(() => expect(useRemovedNotices.getState().notices).toEqual([]));
   });
 
   it("says why a restore did not work", async () => {

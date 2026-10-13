@@ -41,6 +41,12 @@
         "description": "Oleafly meldet sich von diesem Server ab und vergisst ihn. Projekte, die schon auf diesem Computer liegen, bleiben, wo sie sind.",
         "confirm": "Server entfernen"
       },
+      "unsent": {
+        "title": "Einige Änderungen wurden noch nicht gesendet",
+        "description": "Geteilte Projekte mit Änderungen, die der Server noch nicht hat: {{count}}. Oleafly kann von jedem Projekt eine lokale Kopie auf diesem Computer behalten, oder Sie bleiben angemeldet und versuchen es später noch einmal.",
+        "keep": "Lokale Kopie behalten",
+        "stay": "Angemeldet bleiben"
+      },
       "emails": {
         "label": "Mir eine E-Mail schicken, wenn jemand ein Projekt teilt",
         "description": "Die E-Mail nennt das Projekt und enthält einen Link zum Öffnen.",
@@ -577,6 +583,11 @@
     "byYou": "Von dir gelöscht",
     "by": "Von {{name}} gelöscht"
   },
+  "removed": {
+    "deletedBy": "{{name}} hat {{file}} gelöscht.",
+    "yoursDeleted": "Deine Änderungen an {{file}} sind unter „Zuletzt gelöscht“, weil {{name}} die Datei gelöscht hat.",
+    "dismiss": "Ausblenden"
+  },
   "activity": {
     "welcomeEdit": "Geteilt von {{owner}} bei {{server}}. Sie können es bearbeiten.",
     "welcomeView": "Geteilt von {{owner}} bei {{server}}. Sie können es ansehen.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Oleafly konnte nicht prüfen, wer das geschrieben hat",
     "unverifiedThread": "Kommentar von jemandem, den Oleafly nicht prüfen konnte",
     "resolvedUnverified": "Erledigt von jemandem, den Oleafly nicht prüfen konnte",
+    "notSent": {
+      "written": "Kommentare sind für dieses Projekt ausgeschaltet, deshalb wurden Ihre Kommentare nicht gesendet.",
+      "changed": "Kommentare sind für dieses Projekt ausgeschaltet, deshalb wurden Ihre Änderungen an Kommentaren nicht gesendet.",
+      "show": "Geschriebenes anzeigen",
+      "hide": "Geschriebenes ausblenden",
+      "copy": "Text kopieren",
+      "copyFailed": "Kopieren fehlgeschlagen",
+      "list": "Nicht gesendete Kommentare"
+    },
     "refusals": {
       "notLive": "Dieses Projekt ist gerade nicht verbunden. Versuchen Sie es erneut, sobald die Verbindung wieder steht.",
       "notYours": "Nur die Person, die diesen Kommentar geschrieben hat, kann ihn ändern.",
@@ -888,5 +908,15 @@
     "viewer": "Sie sind jetzt Betrachter. Sie können dieses Projekt lesen, aber nicht bearbeiten.",
     "removedBy": "{{name}} hat Sie aus diesem Projekt entfernt. Ihre Kopie bleibt auf diesem Computer und wird nicht mehr geteilt.",
     "removed": "Sie wurden aus diesem Projekt entfernt. Ihre Kopie bleibt auf diesem Computer und wird nicht mehr geteilt."
+  },
+  "files": {
+    "waiting": "Wartet darauf, geteilt zu werden: {{files}}",
+    "failed": "Konnte nicht geteilt werden: {{files}}",
+    "tooLarge": "{{file}} ist {{size}} groß und damit größer, als dieser Server erlaubt ({{limit}}). Die Datei bleibt nur auf diesem Computer.",
+    "tooLargeUnknown": "{{file}} ist größer, als dieser Server erlaubt. Die Datei bleibt nur auf diesem Computer.",
+    "replaced": "{{name}} hat {{file}} gleichzeitig mit dir ersetzt. Deine Version ist als {{copy}} gespeichert.",
+    "added": "{{file}} heißt jetzt {{copy}}, weil {{name}} eine Datei mit demselben Namen hinzugefügt hat.",
+    "retry": "Erneut versuchen",
+    "dismiss": "Ausblenden"
   }
 }

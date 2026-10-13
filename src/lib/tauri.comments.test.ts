@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CollabCommentMember, CollabCommentsChanged, CollabCommentsStatusChanged } from "./tauri";
+import type {
+  CollabCommentMember,
+  CollabCommentsChanged,
+  CollabCommentsNotSent,
+  CollabCommentsStatusChanged,
+} from "./tauri";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -118,6 +123,22 @@ describe("comment events", () => {
       status: { serverAllowed: true, projectEnabled: false, canComment: false },
     };
     const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabCommentsStatusChanged }) => void;
+    handler({ payload });
+    expect(seen).toEqual([payload]);
+  });
+});
+
+describe("comments the server would not take", () => {
+  it("forwards the comments that were not sent with their text", async () => {
+    const seen: CollabCommentsNotSent[] = [];
+    await tauri.onCollabCommentsNotSent((payload) => seen.push(payload));
+    expect(tauri.COLLAB_COMMENTS_NOT_SENT_EVENT).toBe("collab-comments-not-sent");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-comments-not-sent", expect.any(Function));
+    const payload: CollabCommentsNotSent = {
+      projectId: "p",
+      comments: [{ fileId: FILE, path: "main.tex", threadId: THREAD, quote: "quick", body: "written while off" }],
+    };
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabCommentsNotSent }) => void;
     handler({ payload });
     expect(seen).toEqual([payload]);
   });

@@ -6,6 +6,8 @@ import type { CollabSyncDecision } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
 import { AccessChangeBanner } from "./AccessChangeBanner";
+import { CommentsNotSentBanner } from "./CommentsNotSentBanner";
+import { FileNoticesBanner } from "./FileNoticesBanner";
 import { useSyncPauseStore } from "./sync-pause";
 
 function UnavailableBanner() {
@@ -64,7 +66,9 @@ export function CollabBanners() {
   return (
     <>
       <AccessChangeBanner />
+      <CommentsNotSentBanner />
       <SyncPauseBanner />
+      <FileNoticesBanner />
     </>
   );
 }

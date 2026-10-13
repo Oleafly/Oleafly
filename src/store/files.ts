@@ -507,7 +507,11 @@ interface FilesStore {
     options?: OpenFileOptions,
   ) => boolean;
   applyExternalReload: (projectId: string, path: string, content: string) => boolean;
-  applyExternalDelete: (projectId: string, path: string) => boolean;
+  applyExternalDelete: (
+    projectId: string,
+    path: string,
+    options?: { leaveEmpty?: boolean },
+  ) => boolean;
   applyExternalRename: (projectId: string, from: string, to: string) => boolean;
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
@@ -531,12 +535,59 @@ const entryRenamed = createEmitter<[event: EntryRenamedEvent]>();
 
 export const onEntryRenamed = entryRenamed.subscribe;
 
+export interface PathsMovedEvent {
+  readonly projectId: string;
+  readonly from: string;
+  readonly to: string;
+}
+
+const pathsMoved = createEmitter<[event: PathsMovedEvent]>();
+
+export const onPathsMoved = pathsMoved.subscribe;
+
+export interface PathsDeletedEvent {
+  readonly projectId: string;
+  readonly path: string;
+}
+
+const pathsDeleted = createEmitter<[event: PathsDeletedEvent]>();
+
+export const onPathsDeleted = pathsDeleted.subscribe;
+
+function notifyPathsDeleted(event: PathsDeletedEvent): void {
+  try {
+    pathsDeleted.emit(event);
+  } catch (error) {
+    void logError("forget deleted paths", error);
+  }
+}
+
+function notifyPathsMoved(event: PathsMovedEvent): void {
+  if (event.from === event.to) return;
+  try {
+    pathsMoved.emit(event);
+  } catch (error) {
+    void logError("follow moved paths", error);
+  }
+}
+
 function notifyEntryRenamed(event: EntryRenamedEvent): void {
   try {
     entryRenamed.emit(event);
   } catch (error) {
     void logError("follow renamed entry", error);
   }
+}
+
+function activeAfterDelete(
+  activePath: string | null,
+  files: Record<string, FileState>,
+  openTabs: string[],
+  leaveEmpty: boolean,
+): string | null {
+  if (activePath && files[activePath]) return activePath;
+  if (leaveEmpty) return null;
+  return openTabs.at(-1) ?? null;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2093,6 +2144,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       deleted = true;
+      notifyPathsDeleted({ projectId, path });
       if (get().projectId !== projectId) return;
 
       set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
@@ -2137,6 +2189,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (conflictStrategy === "replace") {
       forgetDiskStateUnder(projectId, (p) => isWithin(p, to) && !isWithin(p, from));
     }
+    notifyPathsMoved({ projectId, from, to: destination });
     remapDiskState(projectId, remap);
     set((s) => {
       const files: Record<string, FileState> = {};
@@ -2505,8 +2558,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return true;
   },
 
-  applyExternalDelete: (projectId, path) => {
+  applyExternalDelete: (projectId, path, options) => {
     if (get().projectId !== projectId) return false;
+    notifyPathsDeleted({ projectId, path });
     void refreshMutationGeneration(projectId).catch(() => {});
     invalidateAllPendingFileOpens();
     const isDeletedPath = (candidate: string) =>
@@ -2533,7 +2587,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         tabOrder,
         openTabs,
         assistantTabs: keepAssistantTabs(s.assistantTabs, openTabs),
-        activePath: s.activePath && files[s.activePath] ? s.activePath : openTabs.at(-1) ?? null,
+        activePath: activeAfterDelete(s.activePath, files, openTabs, options?.leaveEmpty === true),
       };
     });
     for (const [preservedPath, file] of preserved) {
@@ -2584,6 +2638,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const remappedActivePath = (path: string | null) =>
       path?.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
     const renamedPending = [...pendingSaves].map(remap);
+    notifyPathsMoved({ projectId, from, to });
     remapDiskState(projectId, remap);
     pendingSaves.clear();
     for (const path of renamedPending) pendingSaves.add(path);

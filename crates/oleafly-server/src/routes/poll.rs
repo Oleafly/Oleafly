@@ -9,8 +9,8 @@ use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{DeviceId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
-    PollBatch, PollFrames, PollReplies, DEVICE_HEADER, MAX_POSTED_FRAMES, NONCE_HEADER,
-    POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
+    understood_codes, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, MAX_POSTED_FRAMES,
+    NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
 use serde::Deserialize;
 
@@ -135,6 +135,9 @@ async fn open(
         .ok_or(ServerError::Unauthorized)?;
     let echoed = header_text(headers, NONCE_HEADER).ok_or(ServerError::Unauthorized)?;
     let signature = header_text(headers, SIGNATURE_HEADER).ok_or(ServerError::Unauthorized)?;
+    let understands = header_text(headers, UNDERSTANDS_HEADER)
+        .map(|header| understood_codes(&header))
+        .unwrap_or_default();
     let now = state.clock.now_ms();
     let server_id = state.server_id;
     let proved = state
@@ -176,6 +179,7 @@ async fn open(
         account,
         public_key: &public_key,
         connection: ticket.id,
+        understands: &understands,
     };
     match peer.open(project, since, member).await {
         Opened::Refused(frame) => {
@@ -191,6 +195,7 @@ async fn open(
                 ticket,
                 frames,
                 outbound,
+                understands,
             };
             polls::start(state, opening, subscribed, since, head)
                 .await

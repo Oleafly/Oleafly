@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use loro::event::Diff;
+use loro::event::{Diff, DiffBatch};
 use loro::{
     ContainerID, EncodedBlobMode, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue,
     TextDelta, TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
@@ -24,6 +24,30 @@ pub const TRASH_ID: &str = "~trash";
 const UPDATE_TIMEOUT_MS: f64 = 2_000.0;
 const LINE_ENDING: &str = "eol";
 const CRLF: &str = "crlf";
+const BLOB_WAS: &str = "blob_was";
+const BLOB_BY: &str = "blob_by:";
+const STAGED_IMPORT_BYTES: usize = 64 * 1024;
+const STAGE_ATOMS: i32 = 16_384;
+
+struct Staged {
+    pieces: Vec<Vec<u8>>,
+    target: VersionVector,
+    arrived: Vec<(u64, i32)>,
+}
+
+fn export_spans(
+    doc: &LoroDoc,
+    spans: &std::collections::BTreeMap<u64, (i32, i32)>,
+) -> Option<Vec<u8>> {
+    let spans: Vec<loro::IdSpan> = spans
+        .iter()
+        .map(|(peer, (from, to))| loro::IdSpan::new(*peer, *from, *to))
+        .collect();
+    doc.export(ExportMode::UpdatesInRange {
+        spans: std::borrow::Cow::Owned(spans),
+    })
+    .ok()
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -261,6 +285,63 @@ impl ProjectDoc {
         ProjectDoc::wrap(self.doc.fork_at(&frontiers).map_err(doc_error)?)
     }
 
+    pub fn without_comment_changes_after(
+        &mut self,
+        base: &VersionVector,
+    ) -> Result<Option<Vec<crate::comments::UnsentComment>>, CollabError> {
+        if !self.doc.oplog_vv().includes_vv(base) {
+            return Err(CollabError::Corrupt(
+                "the shared project never had this version".to_owned(),
+            ));
+        }
+        if !changes_comments_after(&self.doc, base) {
+            return Ok(None);
+        }
+        let from = self.doc.vv_to_frontiers(base);
+        let to = self.doc.oplog_frontiers();
+        let mut kept = DiffBatch::default();
+        for (container, change) in self.doc.diff(&from, &to).map_err(doc_error)?.iter() {
+            if crate::comments::in_comments(&self.doc, container) {
+                continue;
+            }
+            kept.push(container.clone(), change.clone())
+                .map_err(|_| CollabError::Corrupt("a change was listed twice".to_owned()))?;
+        }
+        let fork = self.doc.fork_at(&from).map_err(doc_error)?;
+        fork.set_peer_id(fresh_peer()?).map_err(doc_error)?;
+        fork.apply_diff(kept).map_err(doc_error)?;
+        fork.commit();
+        let mut rebuilt = ProjectDoc::wrap(fork)?;
+        if !self.same_files_as(&rebuilt)? {
+            return Err(CollabError::Corrupt(
+                "the project changed while comments were taken out of it".to_owned(),
+            ));
+        }
+        let unsent = crate::comments::unsent_comments(self, &rebuilt);
+        rebuilt.log = std::mem::take(&mut self.log);
+        rebuilt.authors = std::mem::take(&mut self.authors);
+        *self = rebuilt;
+        Ok(Some(unsent))
+    }
+
+    fn same_files_as(&self, other: &ProjectDoc) -> Result<bool, CollabError> {
+        let sorted = |doc: &ProjectDoc| -> Result<Vec<FileNode>, CollabError> {
+            let mut nodes = doc.nodes()?;
+            nodes.sort_by(|left, right| left.id.cmp(&right.id));
+            Ok(nodes)
+        };
+        let nodes = sorted(self)?;
+        if nodes != sorted(other)? {
+            return Ok(false);
+        }
+        for node in nodes.iter().filter(|node| node.kind == NodeKind::Text) {
+            if self.text(&node.id)? != other.text(&node.id)? {
+                return Ok(false);
+            }
+        }
+        Ok(self.doc.get_map(META).get_deep_value() == other.doc.get_map(META).get_deep_value())
+    }
+
     fn reindex(&mut self) -> Result<(), CollabError> {
         let mut ids = HashMap::new();
         let mut trash: Option<TreeID> = None;
@@ -361,13 +442,43 @@ impl ProjectDoc {
 
     pub fn set_blob(&mut self, id: &str, hash: &str) -> Result<(), CollabError> {
         let node = self.tree_id(id)?;
-        self.tree
-            .get_meta(node)
-            .map_err(doc_error)?
-            .insert("blob", hash)
-            .map_err(doc_error)?;
+        let meta = self.tree.get_meta(node).map_err(doc_error)?;
+        let was = meta_string(&meta, "blob");
+        let setters: Vec<String> = meta
+            .keys()
+            .filter(|key| key.starts_with(BLOB_BY))
+            .map(|key| key.to_string())
+            .collect();
+        for key in setters {
+            meta.delete(&key).map_err(doc_error)?;
+        }
+        meta.insert("blob", hash).map_err(doc_error)?;
+        match was {
+            Some(was) => meta.insert(BLOB_WAS, was).map_err(doc_error)?,
+            None if meta.get(BLOB_WAS).is_some() => meta.delete(BLOB_WAS).map_err(doc_error)?,
+            None => {}
+        }
+        if let Some(account) = self.author_key() {
+            meta.insert(&format!("{BLOB_BY}{hash}"), account)
+                .map_err(doc_error)?;
+        }
         self.doc.commit();
         Ok(())
+    }
+
+    pub fn blob_was(&self, id: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, BLOB_WAS)
+    }
+
+    pub fn blob_setter(&self, id: &str, hash: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, &format!("{BLOB_BY}{hash}"))
+    }
+
+    pub fn author_of(&self, id: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, "author")
     }
 
     pub fn crlf(&self, id: &str) -> bool {
@@ -578,22 +689,122 @@ impl ProjectDoc {
     }
 
     pub fn import(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
-        let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error))?;
+        let staged = if bytes.len() >= STAGED_IMPORT_BYTES {
+            self.staged(bytes)
+        } else {
+            None
+        };
+        let (arrived, pending, changes) = match staged {
+            Some(staged) => {
+                let (_, changes) = self.recording(|doc| {
+                    for piece in &staged.pieces {
+                        doc.import(piece).map_err(doc_error)?;
+                    }
+                    if !doc.oplog_vv().includes_vv(&staged.target) {
+                        doc.import(bytes).map_err(doc_error)?;
+                    }
+                    Ok(())
+                })?;
+                (staged.arrived, false, changes)
+            }
+            None => {
+                let (status, changes) =
+                    self.recording(|doc| doc.import(bytes).map_err(doc_error))?;
+                let arrived = status
+                    .success
+                    .iter()
+                    .map(|(peer, (_, end))| (*peer, *end))
+                    .collect();
+                (arrived, status.pending.is_some(), changes)
+            }
+        };
         if changes.tree {
             self.reindex()?;
             self.log.tree_changed();
+        }
+        Ok(Imported {
+            changes,
+            arrived,
+            pending,
+        })
+    }
+
+    fn staged(&self, bytes: &[u8]) -> Option<Staged> {
+        if self.doc.oplog_vv().is_empty() {
+            return None;
+        }
+        let scratch = self.doc.fork();
+        scratch.detach();
+        let status = scratch.import(bytes).ok()?;
+        if status.pending.is_some() {
+            return None;
+        }
+        let known = self.doc.oplog_vv();
+        let target = scratch.oplog_vv();
+        let mut chunks: Vec<(u32, u64, i32, i32)> = Vec::new();
+        for (peer, end) in target.iter() {
+            let mut counter = known.get(peer).copied().unwrap_or(0);
+            while counter < *end {
+                let change = scratch.get_change(ID::new(*peer, counter))?;
+                let start = change.id.counter;
+                let change_end = start
+                    .saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX))
+                    .min(*end);
+                if change_end <= counter {
+                    return None;
+                }
+                while counter < change_end {
+                    let to = counter.saturating_add(STAGE_ATOMS).min(change_end);
+                    let lamport = change
+                        .lamport
+                        .saturating_add(u32::try_from(counter - start).unwrap_or(0));
+                    chunks.push((lamport, *peer, counter, to));
+                    counter = to;
+                }
+            }
+        }
+        chunks.sort_unstable();
+        let mut pieces = Vec::new();
+        let mut spans: std::collections::BTreeMap<u64, (i32, i32)> =
+            std::collections::BTreeMap::new();
+        let mut atoms = 0;
+        for (_, peer, from, to) in chunks {
+            let span = spans.entry(peer).or_insert((from, from));
+            span.1 = to;
+            atoms += to - from;
+            if atoms >= STAGE_ATOMS {
+                pieces.push(export_spans(&scratch, &std::mem::take(&mut spans))?);
+                atoms = 0;
+            }
+        }
+        if !spans.is_empty() {
+            pieces.push(export_spans(&scratch, &spans)?);
         }
         let arrived = status
             .success
             .iter()
             .map(|(peer, (_, end))| (*peer, *end))
             .collect();
-        Ok(Imported {
-            changes,
+        Some(Staged {
+            pieces,
+            target,
             arrived,
-            pending: status.pending.is_some(),
         })
     }
+}
+
+pub(crate) fn changes_comments_after(doc: &LoroDoc, base: &VersionVector) -> bool {
+    doc.oplog_vv().iter().any(|(peer, end)| {
+        let start = base.get(peer).copied().unwrap_or(0);
+        start < *end
+            && doc
+                .get_changed_containers_in(
+                    ID::new(*peer, start),
+                    usize::try_from(end - start).unwrap_or(0),
+                )
+                .iter()
+                .any(|container| crate::comments::in_comments(doc, container))
+    })
 }
 
 pub fn advance(version: &mut VersionVector, arrived: &[(u64, i32)]) {
@@ -737,6 +948,76 @@ mod tests {
         }
         assert_eq!(reader.text(&main).unwrap(), writer.text(&main).unwrap());
         assert_eq!(reader.nodes().unwrap(), writer.nodes().unwrap());
+    }
+
+    #[test]
+    fn a_large_update_from_two_people_reports_changes_that_rebuild_every_text() {
+        let (mut alice, mut bob, main) = shared_pair();
+        let mut carol = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+        let since = bob.version();
+        bob.apply_operation(&main, &{
+            let mut operation = TextOperation::default();
+            operation.insert("Bob: ").retain(12);
+            operation
+        })
+        .unwrap();
+        let big: String = (0..3_000)
+            .map(|line| format!("Ligne {line} — 日本語 🪸 data\n"))
+            .collect();
+        let refs = alice
+            .add_node(None, "refs.bib", NodeKind::Text, None, &big)
+            .unwrap();
+        alice
+            .apply_operation(&main, &{
+                let mut operation = TextOperation::default();
+                operation.retain(6).insert("Alice ").retain(6);
+                operation
+            })
+            .unwrap();
+        let paste: String = "carol pasted this line\n".repeat(2_000);
+        carol
+            .apply_operation(&main, &{
+                let mut operation = TextOperation::default();
+                operation.retain(12).insert(&paste);
+                operation
+            })
+            .unwrap();
+        alice
+            .import(&carol.export_since(&alice.version()).unwrap())
+            .unwrap();
+        let payload = alice.export_since(&since).unwrap();
+        assert!(payload.len() >= STAGED_IMPORT_BYTES);
+        let main_before = bob.text(&main).unwrap();
+        let imported = bob.import(&payload).unwrap();
+        let mut main_after = main_before.clone();
+        let mut refs_after = String::new();
+        for (id, deltas) in &imported.changes.texts {
+            let target = if id == &main {
+                &mut main_after
+            } else {
+                assert_eq!(id, &refs);
+                &mut refs_after
+            };
+            let operation = delta_to_operation(target, deltas).unwrap();
+            *target = applied(target, &operation);
+        }
+        assert_eq!(main_after, bob.text(&main).unwrap());
+        assert_eq!(refs_after, big);
+        assert!(imported.changes.tree);
+        assert!(!imported.pending);
+        let mut confirmed = since.clone();
+        advance(&mut confirmed, &imported.arrived);
+        assert!(confirmed.includes_vv(&alice.version()));
+        alice
+            .import(&bob.export_since(&alice.version()).unwrap())
+            .unwrap();
+        assert_eq!(bob.text(&main).unwrap(), alice.text(&main).unwrap());
+        assert_eq!(bob.text(&refs).unwrap(), big);
+        assert_eq!(bob.nodes().unwrap(), alice.nodes().unwrap());
+        assert!(bob
+            .text(&main)
+            .unwrap()
+            .starts_with("Bob: Hello Alice world"));
     }
 
     #[test]

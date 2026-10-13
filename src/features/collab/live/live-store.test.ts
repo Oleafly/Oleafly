@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  CollabCommentsNotSent,
   CollabLiveMerged,
   CollabLiveNewDevice,
   CollabLiveRole,
@@ -55,6 +56,7 @@ vi.mock("@/lib/tauri", () => ({
   onCollabLiveMembers: listener("members"),
   onCollabPresence: listener("presence"),
   onCollabPresenceLeft: listener("left"),
+  onCollabCommentsNotSent: listener("notSent"),
 }));
 
 vi.mock("@/store/files", async () => {
@@ -485,6 +487,26 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
 
+  it("keeps the comments the server would not take for the open project until they are dismissed", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const first = { fileId: "f1", path: "main.tex", threadId: "t1", quote: "quick", body: "written while off" };
+    const second = { fileId: "f1", path: "main.tex", threadId: "t2", quote: "fox", body: "and another" };
+    emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [first] });
+    emit<CollabCommentsNotSent>("notSent", { projectId: OTHER, comments: [second] });
+    expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first]);
+    emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [second] });
+    expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first, second]);
+    useCollabLiveStore.getState().dismissCommentsNotSent();
+    expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
+    emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [] });
+    expect(useCollabLiveStore.getState().commentsNotSent).toEqual([]);
+    openProject(OTHER);
+    await settle();
+    expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
+  });
+
   it("tracks peers with names from the member list and drops them when they leave", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -700,7 +722,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(7);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(8);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });

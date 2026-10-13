@@ -87,7 +87,7 @@ vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk }) },
 }));
 
-import { useFilesStore } from "@/store/files";
+import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   applyExternalFileChange,
@@ -341,6 +341,78 @@ describe("applyFolderChange", () => {
     const state = useFilesStore.getState();
     expect(state.openTabs).not.toContain("notes.tex");
     expect(state.files["notes.tex"]).toBeUndefined();
+  });
+
+  it("closes the file someone else deleted without switching the editor to another open file", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    await useFilesStore.getState().openFile("notes.tex");
+    expect(useFilesStore.getState().activePath).toBe("notes.tex");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toEqual(["references.bib"]);
+    expect(state.activePath).toBeNull();
+  });
+
+  it("keeps the file being edited when someone else deletes a different file", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+    await useFilesStore.getState().openFile("references.bib");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    expect(useFilesStore.getState().activePath).toBe("references.bib");
+  });
+
+  it("tells listeners that a file was deleted elsewhere", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+    const heard: string[] = [];
+    const stop = onPathsDeleted(({ projectId, path }) => {
+      if (projectId === "project") heard.push(path);
+    });
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+    stop();
+
+    expect(heard).toEqual(["notes.tex"]);
+  });
+
+  it("tells listeners that an open file moved before the editor follows it", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    const heard: { from: string; to: string; active: string | null }[] = [];
+    const stop = onPathsMoved(({ projectId, from, to }) => {
+      if (projectId === "project") heard.push({ from, to, active: useFilesStore.getState().activePath });
+    });
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["references.bib", "refs.bib"],
+      rescan: false,
+      structural: true,
+      renamed: [["references.bib", "refs.bib"]],
+    });
+    stop();
+
+    expect(heard).toEqual([{ from: "references.bib", to: "refs.bib", active: "references.bib" }]);
+    expect(useFilesStore.getState().activePath).toBe("refs.bib");
   });
 
   it("asks about an unsaved buffer whose file changed on disk", async () => {

@@ -86,6 +86,7 @@ fn hello(
             server_id,
             nonce,
         )),
+        understands: Vec::new(),
     }
 }
 
@@ -203,6 +204,7 @@ async fn a_token_from_another_device_is_refused() {
             server_id,
             &nonce,
         )),
+        understands: Vec::new(),
     };
     send_frame(&mut socket, &mixed).await;
     assert!(matches!(

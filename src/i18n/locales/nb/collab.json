@@ -41,6 +41,12 @@
         "description": "Oleafly logger ut av denne serveren og glemmer den. Prosjekter som allerede ligger på denne maskinen, blir der de er.",
         "confirm": "Fjern serveren"
       },
+      "unsent": {
+        "title": "Noen endringer er ikke sendt ennå",
+        "description": "Delte prosjekter med endringer serveren ikke har ennå: {{count}}. Oleafly kan beholde en lokal kopi av hvert prosjekt på denne maskinen, eller du kan forbli logget inn og prøve igjen senere.",
+        "keep": "Behold en lokal kopi",
+        "stay": "Forbli logget inn"
+      },
       "emails": {
         "label": "Send meg e-post når noen deler et prosjekt",
         "description": "E-posten nevner prosjektet og har en lenke for å åpne det.",
@@ -577,6 +583,11 @@
     "byYou": "Slettet av deg",
     "by": "Slettet av {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} slettet {{file}}.",
+    "yoursDeleted": "Endringene dine i {{file}} ligger under Nylig slettet fordi {{name}} slettet filen.",
+    "dismiss": "Lukk"
+  },
   "activity": {
     "welcomeEdit": "Delt av {{owner}} på {{server}}. Du kan redigere prosjektet.",
     "welcomeView": "Delt av {{owner}} på {{server}}. Du kan se prosjektet.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Kunne ikke bekrefte hvem som skrev dette",
     "unverifiedThread": "Kommentar fra noen Oleafly ikke kunne bekrefte",
     "resolvedUnverified": "Løst av noen Oleafly ikke kunne bekrefte",
+    "notSent": {
+      "written": "Kommentarer er slått av for dette prosjektet, så kommentarene du skrev, ble ikke sendt.",
+      "changed": "Kommentarer er slått av for dette prosjektet, så endringene dine i kommentarer ble ikke sendt.",
+      "show": "Vis det du skrev",
+      "hide": "Skjul det du skrev",
+      "copy": "Kopier tekst",
+      "copyFailed": "Kunne ikke kopiere",
+      "list": "Kommentarer som ikke ble sendt"
+    },
     "refusals": {
       "notLive": "Prosjektet er ikke tilkoblet akkurat nå. Prøv igjen når tilkoblingen er tilbake.",
       "notYours": "Bare personen som skrev kommentaren, kan endre den.",
@@ -888,5 +908,15 @@
     "viewer": "Du er nå leser. Du kan lese prosjektet, men ikke redigere det.",
     "removedBy": "{{name}} fjernet deg fra dette prosjektet. Kopien din blir på denne datamaskinen og deles ikke lenger.",
     "removed": "Du ble fjernet fra dette prosjektet. Kopien din blir på denne datamaskinen og deles ikke lenger."
+  },
+  "files": {
+    "waiting": "Venter på å bli delt: {{files}}",
+    "failed": "Kunne ikke deles: {{files}}",
+    "tooLarge": "{{file}} er på {{size}}, mer enn denne serveren tillater ({{limit}}). Filen blir bare på denne datamaskinen.",
+    "tooLargeUnknown": "{{file}} er større enn denne serveren tillater. Filen blir bare på denne datamaskinen.",
+    "replaced": "{{name}} erstattet {{file}} samtidig med deg. Versjonen din er lagret som {{copy}}.",
+    "added": "{{file}} heter nå {{copy}} fordi {{name}} la til en fil med samme navn.",
+    "retry": "Prøv på nytt",
+    "dismiss": "Lukk"
   }
 }

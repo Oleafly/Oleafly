@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use loro::{LoroMap, LoroValue, TreeID, TreeParentId, ValueOrContainer};
+use loro::{Frontiers, LoroMap, LoroValue, TreeID, TreeParentId, ValueOrContainer, VersionVector};
 use oleafly_collab_protocol::ids::AccountId;
 
 use super::{doc_error, meta_string, NodeKind, NodeParent, ProjectDoc};
@@ -127,6 +127,21 @@ impl ProjectDoc {
             .and_then(|author| author.account.parse().ok())
     }
 
+    pub fn author_key(&self) -> Option<&str> {
+        self.log
+            .author
+            .as_ref()
+            .map(|author| author.account.as_str())
+    }
+
+    pub fn author_name(&self) -> Option<&str> {
+        self.log
+            .author
+            .as_ref()
+            .map(|author| author.name.as_str())
+            .filter(|name| !name.is_empty())
+    }
+
     pub fn take_unsettled(&self) -> bool {
         self.log.unsettled.swap(false, Ordering::SeqCst)
     }
@@ -239,6 +254,15 @@ impl ProjectDoc {
         }
         self.doc.commit();
         Ok(())
+    }
+
+    pub fn trash_seen(&self, id: &str) -> Option<VersionVector> {
+        let node = *self.ids.get(id)?;
+        if self.alive(node) {
+            return None;
+        }
+        let moved = self.tree.get_last_move_id(&node)?;
+        self.doc.frontiers_to_vv(&Frontiers::from_id(moved))
     }
 
     pub fn lost_renames(&self) -> Vec<LostRename> {
@@ -436,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn a_restored_file_whose_name_was_taken_gets_a_suffix() {
+    fn a_restored_file_whose_name_was_taken_is_named_for_its_creator() {
         let (mut alice, _bob) = pair();
         let chapters = alice
             .add_node(None, "chapters", NodeKind::Dir, None, "")
@@ -451,8 +475,7 @@ mod tests {
         alice.restore(&old).unwrap();
         let placed = layout(&alice.nodes().unwrap());
         assert_eq!(placed[&new].path, "chapters/Intro.tex");
-        let short: String = old[old.len() - 6..].to_owned();
-        assert_eq!(placed[&old].path, format!("chapters/intro ({short}).tex"));
+        assert_eq!(placed[&old].path, "chapters/intro (from Alice Chen).tex");
     }
 
     #[test]
@@ -512,6 +535,34 @@ mod tests {
         assert!(alice.trashed().unwrap().is_empty());
         let reloaded = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
         assert_eq!(paths(&reloaded), paths(&alice));
+    }
+
+    #[test]
+    fn a_replaced_figure_remembers_what_it_replaced_and_who_put_each_version_in() {
+        let (mut alice, mut bob) = pair();
+        let plot = alice
+            .add_node(None, "plot.png", NodeKind::Blob, Some("h0"), "")
+            .unwrap();
+        sync(&alice, &mut bob);
+        alice.set_blob(&plot, "hA").unwrap();
+        bob.set_blob(&plot, "hB").unwrap();
+        exchange(&mut alice, &mut bob);
+        let current = layout(&alice.nodes().unwrap())[&plot].blob.clone().unwrap();
+        assert_eq!(
+            layout(&bob.nodes().unwrap())[&plot].blob,
+            Some(current.clone())
+        );
+        assert_eq!(alice.blob_was(&plot).as_deref(), Some("h0"));
+        assert_eq!(alice.blob_setter(&plot, "hA").as_deref(), Some(ALICE));
+        assert_eq!(alice.blob_setter(&plot, "hB").as_deref(), Some(BOB));
+        bob.set_blob(&plot, "hC").unwrap();
+        sync(&bob, &mut alice);
+        assert_eq!(alice.blob_was(&plot), Some(current));
+        assert_eq!(alice.blob_setter(&plot, "hC").as_deref(), Some(BOB));
+        assert_eq!(alice.blob_setter(&plot, "hA"), None);
+        assert_eq!(alice.blob_setter(&plot, "hB"), None);
+        assert_eq!(alice.author_of(&plot).as_deref(), Some(ALICE));
+        assert_eq!(bob.author_name(), Some("Bob Smith"));
     }
 
     #[test]

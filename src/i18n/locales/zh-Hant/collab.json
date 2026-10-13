@@ -41,6 +41,12 @@
         "description": "Oleafly 會登出這個伺服器，並且不再記住它。這台電腦上已有的專案會留在原處。",
         "confirm": "移除伺服器"
       },
+      "unsent": {
+        "title": "有些變更還沒有傳送",
+        "description": "有尚未送達伺服器之變更的共用專案：{{count}} 個。Oleafly 可以把每個專案當作本機副本保留在這台電腦上，你也可以保持登入，稍後再試。",
+        "keep": "保留本機副本",
+        "stay": "保持登入"
+      },
       "emails": {
         "label": "有人分享專案時寄郵件給我",
         "description": "郵件會寫明專案名稱，並附上開啟它的連結。",
@@ -577,6 +583,11 @@
     "byYou": "由你刪除",
     "by": "由 {{name}} 刪除"
   },
+  "removed": {
+    "deletedBy": "{{name}} 刪除了 {{file}}。",
+    "yoursDeleted": "你對 {{file}} 的變更在「最近刪除」中，因為 {{name}} 刪除了它。",
+    "dismiss": "關閉"
+  },
   "activity": {
     "welcomeEdit": "由 {{server}} 上的 {{owner}} 分享。你可以編輯。",
     "welcomeView": "由 {{server}} 上的 {{owner}} 分享。你可以檢視。",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "無法確認是誰寫的",
     "unverifiedThread": "來自 Oleafly 無法確認身分的人的評論",
     "resolvedUnverified": "由 Oleafly 無法確認身分的人解決",
+    "notSent": {
+      "written": "這個專案已關閉評論，所以你寫的評論沒有送出。",
+      "changed": "這個專案已關閉評論，所以你對評論的變更沒有送出。",
+      "show": "顯示你寫的內容",
+      "hide": "隱藏你寫的內容",
+      "copy": "複製文字",
+      "copyFailed": "無法複製",
+      "list": "未送出的評論"
+    },
     "refusals": {
       "notLive": "這個專案目前沒有連線。請在重新連線後再試一次。",
       "notYours": "只有寫這則評論的人才能修改它。",
@@ -888,5 +908,15 @@
     "viewer": "你現在是檢視者。你可以閱讀這個專案，但不能編輯。",
     "removedBy": "{{name}} 已將你移出這個專案。你的副本會保留在這台電腦上，不再分享。",
     "removed": "你已被移出這個專案。你的副本會保留在這台電腦上，不再分享。"
+  },
+  "files": {
+    "waiting": "等待分享：{{files}}",
+    "failed": "無法分享：{{files}}",
+    "tooLarge": "{{file}} 大小為 {{size}}，超過此伺服器允許的上限（{{limit}}）。它只會保留在這台電腦上。",
+    "tooLargeUnknown": "{{file}} 超過此伺服器允許的大小。它只會保留在這台電腦上。",
+    "replaced": "{{name}} 與你同時替換了 {{file}}。你的版本已儲存為 {{copy}}。",
+    "added": "因為 {{name}} 新增了同名檔案，{{file}} 現在是 {{copy}}。",
+    "retry": "重試",
+    "dismiss": "關閉"
   }
 }

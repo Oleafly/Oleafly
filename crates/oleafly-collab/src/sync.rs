@@ -168,6 +168,7 @@ pub enum LiveEvent {
         seq: u64,
     },
     Unsendable,
+    CommentsNotSent(Vec<crate::comments::UnsentComment>),
 }
 
 #[derive(Debug)]
@@ -682,6 +683,22 @@ async fn flush(
     Ok(())
 }
 
+fn refused_for(
+    project: &SharedLive,
+    code: FrameErrorCode,
+) -> Option<Vec<crate::comments::UnsentComment>> {
+    let mut live = lock(project);
+    if code == FrameErrorCode::CommentsOff {
+        if let Ok(Some(unsent)) = live.comments_refused() {
+            return Some(unsent);
+        }
+    }
+    live.refused();
+    None
+}
+
+pub const UNDERSTOOD_CODES: [FrameErrorCode; 1] = [FrameErrorCode::CommentsOff];
+
 async fn subscribe(
     link: &LiveLink,
     project: &SharedLive,
@@ -858,6 +875,7 @@ async fn serve_wire(
     let catching_up = {
         let mut live = lock(project);
         live.set_role(role);
+        live.mark_connected();
         let behind = live.last_seq() < head;
         if behind && live.last_seq() > 0 {
             live.begin_catch_up();
@@ -1122,8 +1140,13 @@ async fn online(
                             return retry;
                         }
                     }
-                    ServerFrame::Error { code: FrameErrorCode::Forbidden, .. } => {
-                        lock(project).refused();
+                    ServerFrame::Error { code: code @ (FrameErrorCode::Forbidden | FrameErrorCode::CommentsOff), .. } => {
+                        if let Some(unsent) = refused_for(project, code) {
+                            let _ = events.send(LiveEvent::CommentsNotSent(unsent));
+                            if flush(link, project, events, wire).await.is_err() {
+                                return retry;
+                            }
+                        }
                     }
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
@@ -2914,6 +2937,153 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn four_three_megabyte_files_added_at_once_reach_the_other_editor_over_long_poll() {
         four_big_files_reach_the_other_editor(true).await;
+    }
+
+    fn refusable(text: &str, comment: &str) -> (SharedLive, String) {
+        let mut doc = ProjectDoc::create().unwrap();
+        let main = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let mut live = LiveProject::new(doc, 0, ProjectRole::Editor);
+        live.local_text(&main, text).unwrap();
+        live.comment_doc()
+            .create_comment_thread(&main, 0, 3, AccountId::new_v7(), 1, comment, &[])
+            .unwrap();
+        live.next_outgoing().unwrap().unwrap();
+        (Arc::new(Mutex::new(live)), main)
+    }
+
+    #[test]
+    fn a_viewers_forbidden_refusal_drops_the_batch_keeps_every_change_and_tells_no_one() {
+        let (project, main) = refusable("abc typed", "kept here");
+        lock(&project).set_role(ProjectRole::Viewer);
+        assert_eq!(refused_for(&project, FrameErrorCode::Forbidden), None);
+        let mut live = lock(&project);
+        assert!(live.next_outgoing().unwrap().is_none());
+        assert_eq!(live.doc().text(&main).unwrap(), "abc typed");
+        assert_eq!(live.doc().comment_threads(&main).unwrap().len(), 1);
+        assert!(live.pending_changes() > 0);
+    }
+
+    #[test]
+    fn a_comments_off_refusal_drops_only_the_comment_and_names_what_was_written() {
+        let (project, main) = refusable("abc typed", "not sent");
+        let unsent =
+            refused_for(&project, FrameErrorCode::CommentsOff).expect("the comment was taken out");
+        assert_eq!(
+            unsent
+                .iter()
+                .map(|comment| comment.body.as_str())
+                .collect::<Vec<_>>(),
+            vec!["not sent"]
+        );
+        let mut live = lock(&project);
+        assert_eq!(live.doc().text(&main).unwrap(), "abc typed");
+        assert!(live.doc().comment_threads(&main).unwrap().is_empty());
+        assert!(live.next_outgoing().unwrap().is_some());
+    }
+
+    async fn turn_project_comments_off(pair: &Pair, project: SharedProjectId) {
+        let client = ServerClient::new(pair.url.clone()).unwrap();
+        client
+            .patch_project(
+                &pair.bob.tokens.access_token,
+                project,
+                &oleafly_collab_protocol::projects::ProjectPatch {
+                    comments_enabled: Some(false),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    async fn a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives(
+        blocked: bool,
+    ) {
+        let pair = two_people().await;
+        let (project, main, bob_live, alice_live) = shared(&pair).await;
+        turn_project_comments_off(&pair, project).await;
+        let proxy = proxy_for(&pair).await;
+        proxy.block_websockets(blocked);
+        let mut bob = side(bob_live, &main);
+        let mut alice = side(alice_live, &main);
+        append(&alice, &main, " one");
+        let thread = lock(&alice.live)
+            .comment_doc()
+            .create_comment_thread(
+                &main,
+                0,
+                3,
+                pair.alice.tokens.account_id,
+                1,
+                "written while comments were off",
+                &[],
+            )
+            .unwrap();
+        append(&alice, &main, " two");
+        start_with(
+            &mut bob,
+            link_via(&pair, &pair.bob, project, &proxy),
+            quick(),
+        );
+        start_with(
+            &mut alice,
+            link_via(&pair, &pair.alice, project, &proxy),
+            quick(),
+        );
+        let told = until_event(&mut alice, |event| {
+            matches!(event, LiveEvent::CommentsNotSent(_))
+        })
+        .await;
+        assert_eq!(
+            told,
+            LiveEvent::CommentsNotSent(vec![crate::comments::UnsentComment {
+                file_id: main.clone(),
+                thread_id: thread.id,
+                quote: "abc".to_owned(),
+                body: "written while comments were off".to_owned(),
+            }])
+        );
+        until_text(&bob, &main, "abc one two").await;
+        append(&alice, &main, " three");
+        flushed(&alice);
+        until_text(&bob, &main, "abc one two three").await;
+        acknowledged(&alice).await;
+        flushed(&alice);
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        while let Ok(event) = alice.events.try_recv() {
+            assert!(
+                !matches!(
+                    event,
+                    LiveEvent::CommentsNotSent(_) | LiveEvent::Status(LiveStatus::Offline { .. })
+                ),
+                "{event:?}"
+            );
+        }
+        assert!(!lock(&alice.live).has_unsent());
+        assert_eq!(text(&alice, &main), "abc one two three");
+        for person in [&alice, &bob] {
+            assert!(lock(&person.live)
+                .doc()
+                .comment_threads(&main)
+                .unwrap()
+                .is_empty());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives_over_a_socket(
+    ) {
+        a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives(false)
+            .await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives_over_long_poll(
+    ) {
+        a_comment_written_while_comments_are_off_is_dropped_and_every_edit_around_it_arrives(true)
+            .await;
     }
 
     #[tokio::test(flavor = "multi_thread")]

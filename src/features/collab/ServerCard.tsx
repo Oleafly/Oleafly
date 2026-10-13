@@ -31,6 +31,9 @@ export function ServerCard({
   const pending = useCollabStore((state) => state.pending[serverId] ?? null);
   const signOut = useCollabStore((state) => state.signOut);
   const remove = useCollabStore((state) => state.remove);
+  const unsent = useCollabStore((state) => state.unsent[serverId] ?? null);
+  const keepLocalCopies = useCollabStore((state) => state.keepLocalCopies);
+  const stay = useCollabStore((state) => state.stay);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { test, run: runTest } = useConnectionTest(server.url);
@@ -65,6 +68,14 @@ export function ServerCard({
     const code = await remove(serverId);
     if (code) setActionError(collabErrorMessage(code));
   };
+
+  const doKeepLocalCopies = async () => {
+    setActionError(null);
+    const code = await keepLocalCopies(serverId);
+    if (code) setActionError(collabErrorMessage(code));
+  };
+
+  const unsentCount = unsent?.projects.length ?? 0;
 
   return (
     <>
@@ -184,6 +195,15 @@ export function ServerCard({
         destructive
         onConfirm={() => void doRemove()}
         onCancel={() => setConfirmRemove(false)}
+      />
+      <ConfirmationDialog
+        open={unsent !== null}
+        title={t(($) => $.collab.section.server.unsent.title)}
+        description={t(($) => $.collab.section.server.unsent.description, { count: unsentCount })}
+        confirmLabel={t(($) => $.collab.section.server.unsent.keep)}
+        cancelLabel={t(($) => $.collab.section.server.unsent.stay)}
+        onConfirm={() => void doKeepLocalCopies()}
+        onCancel={() => stay(serverId)}
       />
     </>
   );

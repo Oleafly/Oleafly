@@ -6,6 +6,7 @@ import {
   collabLiveStop,
   collabMembersList,
   collabShareInfo,
+  onCollabCommentsNotSent,
   onCollabLiveMembers,
   onCollabLiveMerged,
   onCollabLiveNewDevice,
@@ -13,6 +14,8 @@ import {
   onCollabLiveStatus,
   onCollabPresence,
   onCollabPresenceLeft,
+  type CollabCommentNotSent,
+  type CollabCommentsNotSent,
   type CollabLiveEndedReason,
   type CollabLiveMembers,
   type CollabLiveMerged,
@@ -89,11 +92,13 @@ export interface CollabLiveStoreState {
   memberChange: LiveMemberChange | null;
   ended: CollabLiveEndedReason | null;
   accessNotice: AccessNotice | null;
+  commentsNotSent: CollabCommentNotSent[] | null;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
+  dismissCommentsNotSent: () => void;
 }
 
 export interface LiveSession {
@@ -112,7 +117,12 @@ const PEER_SWEEP_MS = 1_000;
 
 type LiveData = Omit<
   CollabLiveStoreState,
-  "refreshShare" | "refreshMembers" | "dismissMerged" | "dismissEnded" | "dismissAccessNotice"
+  | "refreshShare"
+  | "refreshMembers"
+  | "dismissMerged"
+  | "dismissEnded"
+  | "dismissAccessNotice"
+  | "dismissCommentsNotSent"
 >;
 
 function emptyLive(projectId: string | null): LiveData {
@@ -129,6 +139,7 @@ function emptyLive(projectId: string | null): LiveData {
     memberChange: null,
     ended: null,
     accessNotice: null,
+    commentsNotSent: null,
   };
 }
 
@@ -193,6 +204,7 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     dismissMerged: () => set({ merged: null }),
     dismissEnded: () => set({ ended: null }),
     dismissAccessNotice: () => set({ accessNotice: null }),
+    dismissCommentsNotSent: () => set({ commentsNotSent: null }),
   }),
 );
 
@@ -403,6 +415,11 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     });
   };
 
+  const onCommentsNotSent = (payload: CollabCommentsNotSent) => {
+    if (payload.projectId !== current()) return;
+    store.setState((state) => ({ commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments] }));
+  };
+
   const expirePeers = () => {
     const peers = store.getState().peers;
     const cutoff = Date.now() - PEER_TTL_MS;
@@ -419,6 +436,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabLiveMembers(onMembers),
     onCollabPresence(onPresence),
     onCollabPresenceLeft(onLeft),
+    onCollabCommentsNotSent(onCommentsNotSent),
   ].map((pending) =>
     pending.catch((error) => {
       void logError("collab live listen", error);

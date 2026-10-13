@@ -65,7 +65,7 @@ export function applyFolderChange(change: FolderChangePayload): void {
     useFilesStore.getState().applyExternalRename(change.projectId, from, to);
   }
   for (const path of change.deleted ?? []) {
-    useFilesStore.getState().applyExternalDelete(change.projectId, path);
+    useFilesStore.getState().applyExternalDelete(change.projectId, path, { leaveEmpty: true });
   }
   const files = useFilesStore.getState();
   const known = new Set(files.tree.map((entry) => entry.path));

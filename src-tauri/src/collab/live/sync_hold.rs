@@ -680,6 +680,7 @@ pub(super) async fn catch_up(
     }
     let failed = super::upload_blobs(link, &import.blobs).await;
     import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
+    super::moves::adopt_folder_moves(live, disk, bases, &mut import)?;
     super::apply_local_import(live, disk, bases, import, root)?;
     apply_kept_edits(dir, root, live, disk, bases, edits)?;
     Ok(())

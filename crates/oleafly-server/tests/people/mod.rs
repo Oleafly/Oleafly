@@ -6,7 +6,7 @@ use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, Session
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::crypto::b64url_decode;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
-use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
+use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{BatchId, SharedProjectId};
 use oleafly_collab_protocol::projects::{MemberGrant, NewProject, ProjectRole, ProjectSummary};
 use oleafly_collab_protocol::roles::ServerRole;
@@ -238,6 +238,14 @@ pub async fn send_frame(socket: &mut Socket, frame: &ClientFrame) {
 }
 
 pub async fn connect(server: &TestServer, person: &Person) -> Socket {
+    connect_understanding(server, person, Vec::new()).await
+}
+
+pub async fn connect_understanding(
+    server: &TestServer,
+    person: &Person,
+    understands: Vec<FrameErrorCode>,
+) -> Socket {
     let (mut socket, _) = connect_async(ws_url(server)).await.expect("connect");
     let Some(ServerFrame::Challenge { nonce, server_id }) = next_frame(&mut socket).await else {
         panic!("expected a challenge");
@@ -252,6 +260,7 @@ pub async fn connect(server: &TestServer, person: &Person) -> Socket {
             server_id,
             &nonce,
         )),
+        understands,
     };
     send_frame(&mut socket, &hello).await;
     assert!(matches!(

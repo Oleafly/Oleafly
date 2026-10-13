@@ -1695,10 +1695,10 @@ export const collabServerProbe = (url: string) =>
 export const collabServerSignIn = (url: string, providerId: string, setupCode?: string) =>
   invoke<CollabServer>("collab_server_sign_in", { url, providerId, setupCode: setupCode ?? null });
 export const collabServerSignInCancel = () => invoke<void>("collab_server_sign_in_cancel");
-export const collabServerSignOut = (serverId: string) =>
-  invoke<void>("collab_server_sign_out", { serverId });
-export const collabServerRemove = (serverId: string) =>
-  invoke<void>("collab_server_remove", { serverId });
+export const collabServerSignOut = (serverId: string, keepLocalCopy = false) =>
+  invoke<import("@oleafly/backend-port").CollabSignOut>("collab_server_sign_out", { serverId, keepLocalCopy });
+export const collabServerRemove = (serverId: string, keepLocalCopy = false) =>
+  invoke<import("@oleafly/backend-port").CollabSignOut>("collab_server_remove", { serverId, keepLocalCopy });
 export const collabServerDevices = (serverId: string) =>
   invoke<CollabDevice[]>("collab_server_devices", { serverId });
 export const collabServerSignOutDevice = (serverId: string, deviceId: string) =>
@@ -2109,6 +2109,46 @@ export function onCollabLiveRenamed(
   );
 }
 
+export const COLLAB_LIVE_REMOVED_EVENT = "collab-live-removed";
+
+export const collabLiveRemovedList = (projectId: string) =>
+  invoke<import("@oleafly/backend-port").CollabLiveRemovedFile[]>("collab_live_removed_list", { projectId });
+export const collabLiveRemovedDismiss = (projectId: string, id: string) =>
+  invoke<void>("collab_live_removed_dismiss", { projectId, id });
+
+export function onCollabLiveRemoved(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveRemoved) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveRemoved>(COLLAB_LIVE_REMOVED_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export const COLLAB_LIVE_UPLOADS_EVENT = "collab-live-uploads";
+export const COLLAB_LIVE_KEPT_EVENT = "collab-live-kept";
+
+export const collabUploadList = (projectId: string) =>
+  invoke<import("@oleafly/backend-port").CollabUploadFile[]>("collab_upload_list", { projectId });
+export const collabUploadRetry = (projectId: string) => invoke<void>("collab_upload_retry", { projectId });
+export const collabUploadDismiss = (projectId: string, path: string) =>
+  invoke<void>("collab_upload_dismiss", { projectId, path });
+
+export function onCollabLiveUploads(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveUploads) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveUploads>(COLLAB_LIVE_UPLOADS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export function onCollabLiveKept(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveKept) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveKept>(COLLAB_LIVE_KEPT_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
 import type {
   CollabAdminOverview,
   CollabAdminProject,
@@ -2158,6 +2198,7 @@ import type {
   CollabCommentMember,
   CollabCommentMessage,
   CollabCommentsChanged,
+  CollabCommentsNotSent,
   CollabCommentsStatus,
   CollabCommentsStatusChanged,
   CollabCommentThread,
@@ -2165,6 +2206,7 @@ import type {
 
 export const COLLAB_COMMENTS_CHANGED_EVENT = "collab-comments-changed";
 export const COLLAB_COMMENTS_STATUS_EVENT = "collab-comments-status";
+export const COLLAB_COMMENTS_NOT_SENT_EVENT = "collab-comments-not-sent";
 
 export const collabCommentsStatus = (projectId: string) =>
   invoke<CollabCommentsStatus>("collab_comments_status", { projectId });
@@ -2203,6 +2245,10 @@ export function onCollabCommentsStatus(
   handler: (payload: CollabCommentsStatusChanged) => void,
 ): Promise<UnlistenFn> {
   return listen<CollabCommentsStatusChanged>(COLLAB_COMMENTS_STATUS_EVENT, ({ payload }) => handler(payload));
+}
+
+export function onCollabCommentsNotSent(handler: (payload: CollabCommentsNotSent) => void): Promise<UnlistenFn> {
+  return listen<CollabCommentsNotSent>(COLLAB_COMMENTS_NOT_SENT_EVENT, ({ payload }) => handler(payload));
 }
 
 import type { CollabAccessLogPage, CollabAccessLogStatus } from "@oleafly/backend-port";
@@ -2244,7 +2290,7 @@ export const collabAdminGuestRevoke = (serverId: string, invitationId: string) =
 
 import type { CollabSignInCode } from "@oleafly/backend-port";
 
-export type { CollabSignInCode } from "@oleafly/backend-port";
+export type { CollabSignInCode, CollabSignOut, CollabUnsentProject } from "@oleafly/backend-port";
 
 export async function collabServerCodeSignIn(
   url: string,

@@ -148,19 +148,43 @@ fn credit(author: &str) -> String {
         .to_owned()
 }
 
-fn credited(name: &str, node: &FileNode, first: &FileNode) -> Option<String> {
-    if node.kind != NodeKind::Blob || node.blob == first.blob {
-        return None;
+const CREDIT_TRIES: usize = 99;
+
+pub fn named_for(name: &str, author: &str, number: usize) -> String {
+    let who = if number > 1 {
+        format!("{author} {number}")
+    } else {
+        author.to_owned()
+    };
+    match name.rfind('.') {
+        Some(dot) if dot > 0 => format!("{} (from {who}){}", &name[..dot], &name[dot..]),
+        _ => format!("{name} (from {who})"),
     }
-    let author = credit(node.author_name.as_deref()?);
+}
+
+pub fn credited_name(
+    name: &str,
+    author: &str,
+    id: &str,
+    mut free: impl FnMut(&str) -> bool,
+) -> Option<String> {
+    let author = credit(author);
     if author.is_empty() {
         return None;
     }
-    let named = match name.rfind('.') {
-        Some(dot) if dot > 0 => format!("{} (from {author}){}", &name[..dot], &name[dot..]),
-        _ => format!("{name} (from {author})"),
+    (1..=CREDIT_TRIES)
+        .map(|number| named_for(name, &author, number))
+        .find(|named| safe_name(named, id) == *named && free(named))
+}
+
+fn credited<'a>(node: &'a FileNode, first: &FileNode) -> Option<&'a str> {
+    let differs = match node.kind {
+        NodeKind::Blob => node.blob != first.blob,
+        NodeKind::Text => true,
+        NodeKind::Dir => false,
     };
-    (safe_name(&named, &node.id) == named).then_some(named)
+    differs.then_some(())?;
+    node.author_name.as_deref()
 }
 
 struct Naming<'a> {
@@ -186,8 +210,13 @@ fn naming<'a>(groups: &Groups<'a>) -> Naming<'a> {
                 names.insert(node.id.as_str(), name);
                 continue;
             }
-            let named = credited(&name, node, first)
-                .filter(|named| index > 0 && taken.insert((parent.clone(), fold(named))))
+            let named = credited(node, first)
+                .filter(|_| index > 0)
+                .and_then(|author| {
+                    credited_name(&name, author, &node.id, |named| {
+                        taken.insert((parent.clone(), fold(named)))
+                    })
+                })
                 .unwrap_or_else(|| suffixed(&name, &node.id));
             if !reserved {
                 clashes.push(Clash {
@@ -358,13 +387,52 @@ mod tests {
         let placed = layout(&nodes);
         assert_eq!(placed["a1"].path, "figs/plot.png");
         assert_eq!(placed["b2"].path, "figs/Plot (from Bob Smith).png");
-        assert_eq!(placed["c3"].path, "figs/plot (c3).png");
+        assert_eq!(placed["c3"].path, "figs/plot (from Bob Smith 2).png");
         assert_eq!(placed["d4"].path, "figs/plot (d4).png");
         assert_eq!(placed["f6"].path, "notes");
         assert_eq!(placed["g7"].path, "notes (from Dan Lee)");
         assert_eq!(placed["h8"].path, "notes (h8)");
         assert_eq!(placed["i9"].path, "notes (from Carol Diaz)");
         assert_eq!(placed["j0"].path, "notes (j0)");
+    }
+
+    fn written(id: &str, parent: NodeParent, name: &str, author: Option<&str>) -> FileNode {
+        FileNode {
+            author_name: author.map(str::to_owned),
+            ..node(id, parent, name, NodeKind::Text)
+        }
+    }
+
+    #[test]
+    fn a_same_name_file_is_named_for_the_person_who_added_it() {
+        let chapters = NodeParent::Node("d1".into());
+        let nodes = vec![
+            node("d1", NodeParent::Root, "chapters", NodeKind::Dir),
+            written("a1", chapters.clone(), "plan.tex", Some("Alice Chen")),
+            written("b2", chapters.clone(), "plan.tex", Some("Bob Smith")),
+            written("c3", chapters.clone(), "Plan.tex", Some("Bob Smith")),
+            written("d4", chapters.clone(), "plan.tex", None),
+            written("e5", chapters.clone(), "plan.tex", Some("  Dr. <Who>?  ")),
+            written("f6", chapters.clone(), "plan.tex", Some("CON")),
+            written("g7", chapters.clone(), "notes", Some("Alice Chen")),
+            written("h8", chapters.clone(), "notes", Some("Erin Quinn")),
+            written("i9", chapters, "plan.tex", Some(&"N".repeat(300))),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["a1"].path, "chapters/plan.tex");
+        assert_eq!(placed["b2"].path, "chapters/plan (from Bob Smith).tex");
+        assert_eq!(placed["c3"].path, "chapters/Plan (from Bob Smith 2).tex");
+        assert_eq!(placed["d4"].path, "chapters/plan (d4).tex");
+        assert_eq!(placed["e5"].path, "chapters/plan (from Dr. Who).tex");
+        assert_eq!(placed["f6"].path, "chapters/plan (from CON).tex");
+        assert_eq!(placed["g7"].path, "chapters/notes");
+        assert_eq!(placed["h8"].path, "chapters/notes (from Erin Quinn)");
+        assert_eq!(
+            placed["i9"].path,
+            format!("chapters/plan (from {}).tex", "N".repeat(40))
+        );
+        let clashed: Vec<String> = clashes(&nodes).into_iter().map(|clash| clash.id).collect();
+        assert_eq!(clashed, ["h8", "b2", "c3", "d4", "e5", "f6", "i9"]);
     }
 
     #[test]
@@ -376,7 +444,7 @@ mod tests {
         ];
         let placed = layout(&nodes);
         assert_eq!(placed["a1"].path, "plot.png");
-        assert_eq!(placed["b2"].path, "plot (b2).png");
+        assert_eq!(placed["b2"].path, "plot (from Bob 2).png");
         assert_eq!(placed["c3"].path, "plot (from Bob).png");
     }
 

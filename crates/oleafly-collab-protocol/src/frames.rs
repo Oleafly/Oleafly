@@ -15,6 +15,8 @@ pub enum ClientFrame {
         access_token: String,
         nonce: String,
         signature: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        understands: Vec<FrameErrorCode>,
     },
     Ping {
         id: u64,
@@ -48,6 +50,7 @@ impl fmt::Debug for ClientFrame {
                 access_token: _,
                 nonce,
                 signature,
+                understands,
             } => formatter
                 .debug_struct("Hello")
                 .field("protocol", protocol)
@@ -55,6 +58,7 @@ impl fmt::Debug for ClientFrame {
                 .field("access_token", &"[redacted]")
                 .field("nonce", nonce)
                 .field("signature", signature)
+                .field("understands", understands)
                 .finish(),
             ClientFrame::Ping { id } => formatter.debug_struct("Ping").field("id", id).finish(),
             ClientFrame::Subscribe {
@@ -184,6 +188,7 @@ pub enum FrameErrorCode {
     Forbidden,
     NotFound,
     TooLarge,
+    CommentsOff,
     #[serde(other)]
     Unknown,
 }
@@ -217,6 +222,7 @@ mod tests {
                 access_token: "at".to_string(),
                 nonce: "n".to_string(),
                 signature: "sig".to_string(),
+                understands: Vec::new(),
             },
             json!({
                 "type": "hello",
@@ -415,6 +421,7 @@ mod tests {
             access_token: "secret-access".to_string(),
             nonce: "n".to_string(),
             signature: "s".to_string(),
+            understands: Vec::new(),
         };
         let printed = format!("{hello:?}");
         assert!(!printed.contains("secret-access"), "{printed}");
@@ -631,5 +638,86 @@ mod tests {
         ] {
             assert_eq!(serde_json::to_value(code).unwrap(), json!(wire));
         }
+    }
+
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    enum EarlierErrorCode {
+        Forbidden,
+        #[serde(other)]
+        Unknown,
+    }
+
+    #[test]
+    fn a_comments_off_refusal_has_its_own_code_and_earlier_clients_read_it_as_unknown() {
+        let refusal = ServerFrame::Error {
+            code: FrameErrorCode::CommentsOff,
+            message: "m".to_string(),
+        };
+        let wire = json!({ "type": "error", "code": "comments_off", "message": "m" });
+        assert_server_wire(refusal, wire);
+        assert_eq!(
+            serde_json::from_value::<EarlierErrorCode>(json!("comments_off")).unwrap(),
+            EarlierErrorCode::Unknown
+        );
+    }
+
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    #[serde(tag = "type", rename_all = "snake_case")]
+    enum EarlierClientFrame {
+        Hello {
+            protocol: u32,
+            device_id: DeviceId,
+            access_token: String,
+            nonce: String,
+            signature: String,
+        },
+    }
+
+    #[test]
+    fn a_hello_can_name_the_error_codes_its_client_understands_and_earlier_servers_ignore_them() {
+        let hello = ClientFrame::Hello {
+            protocol: 1,
+            device_id: DEVICE.parse().unwrap(),
+            access_token: "at".to_string(),
+            nonce: "n".to_string(),
+            signature: "sig".to_string(),
+            understands: vec![FrameErrorCode::CommentsOff],
+        };
+        let wire = json!({
+            "type": "hello",
+            "protocol": 1,
+            "device_id": DEVICE,
+            "access_token": "at",
+            "nonce": "n",
+            "signature": "sig",
+            "understands": ["comments_off"]
+        });
+        assert_client_wire(hello, wire.clone());
+        assert_eq!(
+            serde_json::from_value::<EarlierClientFrame>(wire).unwrap(),
+            EarlierClientFrame::Hello {
+                protocol: 1,
+                device_id: DEVICE.parse().unwrap(),
+                access_token: "at".to_string(),
+                nonce: "n".to_string(),
+                signature: "sig".to_string(),
+            }
+        );
+        let from_a_later_client = serde_json::from_value::<ClientFrame>(json!({
+            "type": "hello",
+            "protocol": 1,
+            "device_id": DEVICE,
+            "access_token": "at",
+            "nonce": "n",
+            "signature": "sig",
+            "understands": ["comments_off", "a_code_from_the_future"]
+        }))
+        .unwrap();
+        assert!(matches!(
+            from_a_later_client,
+            ClientFrame::Hello { understands, .. }
+                if understands == vec![FrameErrorCode::CommentsOff, FrameErrorCode::Unknown]
+        ));
     }
 }

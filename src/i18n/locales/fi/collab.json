@@ -41,6 +41,12 @@
         "description": "Oleafly kirjautuu ulos tältä palvelimelta ja unohtaa sen. Tällä koneella jo olevat projektit pysyvät paikoillaan.",
         "confirm": "Poista palvelin"
       },
+      "unsent": {
+        "title": "Kaikkia muutoksia ei ole vielä lähetetty",
+        "description": "Jaetut projektit, joissa on muutoksia, joita palvelimella ei vielä ole: {{count}}. Oleafly voi säilyttää jokaisesta paikallisen kopion tällä koneella, tai voit pysyä kirjautuneena ja yrittää myöhemmin uudelleen.",
+        "keep": "Säilytä paikallinen kopio",
+        "stay": "Pysy kirjautuneena"
+      },
       "emails": {
         "label": "Lähetä minulle sähköpostia, kun joku jakaa projektin",
         "description": "Viestissä kerrotaan projektin nimi, ja siinä on linkki sen avaamiseen.",
@@ -577,6 +583,11 @@
     "byYou": "Sinä poistit",
     "by": "Poistaja: {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} poisti tiedoston {{file}}.",
+    "yoursDeleted": "Muutoksesi tiedostoon {{file}} ovat kohdassa Äskettäin poistetut, koska {{name}} poisti sen.",
+    "dismiss": "Sulje"
+  },
   "activity": {
     "welcomeEdit": "{{owner}} jakoi tämän palvelimella {{server}}. Voit muokata.",
     "welcomeView": "{{owner}} jakoi tämän palvelimella {{server}}. Voit katsella.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Kirjoittajaa ei voitu vahvistaa",
     "unverifiedThread": "Kommentti joltakulta, jota Oleafly ei voinut vahvistaa",
     "resolvedUnverified": "Ratkaissut joku, jota Oleafly ei voinut vahvistaa",
+    "notSent": {
+      "written": "Kommentit on poistettu käytöstä tässä projektissa, joten kirjoittamiasi kommentteja ei lähetetty.",
+      "changed": "Kommentit on poistettu käytöstä tässä projektissa, joten kommentteihin tekemiäsi muutoksia ei lähetetty.",
+      "show": "Näytä kirjoittamasi",
+      "hide": "Piilota kirjoittamasi",
+      "copy": "Kopioi teksti",
+      "copyFailed": "Kopiointi epäonnistui",
+      "list": "Lähettämättömät kommentit"
+    },
     "refusals": {
       "notLive": "Tämä projekti ei ole nyt yhteydessä. Yritä uudelleen, kun yhteys palaa.",
       "notYours": "Vain kommentin kirjoittaja voi muuttaa sitä.",
@@ -888,5 +908,15 @@
     "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
     "removedBy": "{{name}} poisti sinut tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta.",
     "removed": "Sinut poistettiin tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta."
+  },
+  "files": {
+    "waiting": "Odottaa jakamista: {{files}}",
+    "failed": "Jakaminen ei onnistunut: {{files}}",
+    "tooLarge": "{{file}} on {{size}}, enemmän kuin tämä palvelin sallii ({{limit}}). Tiedosto jää vain tälle tietokoneelle.",
+    "tooLargeUnknown": "{{file}} on suurempi kuin tämä palvelin sallii. Tiedosto jää vain tälle tietokoneelle.",
+    "replaced": "{{name}} korvasi tiedoston {{file}} samaan aikaan kuin sinä. Versiosi on tallessa nimellä {{copy}}.",
+    "added": "{{file}} on nyt {{copy}}, koska {{name}} lisäsi samannimisen tiedoston.",
+    "retry": "Yritä uudelleen",
+    "dismiss": "Sulje"
   }
 }

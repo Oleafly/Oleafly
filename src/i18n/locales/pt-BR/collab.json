@@ -41,6 +41,12 @@
         "description": "O Oleafly encerra a sessão neste servidor e o esquece. Os projetos que já estão neste computador continuam onde estão.",
         "confirm": "Remover servidor"
       },
+      "unsent": {
+        "title": "Algumas alterações ainda não foram enviadas",
+        "description": "Projetos compartilhados com alterações que o servidor ainda não tem: {{count}}. O Oleafly pode manter uma cópia local de cada um neste computador, ou você pode continuar conectado e tentar de novo mais tarde.",
+        "keep": "Manter uma cópia local",
+        "stay": "Continuar conectado"
+      },
       "emails": {
         "label": "Me avisar por e-mail quando alguém compartilhar um projeto",
         "description": "O e-mail diz qual é o projeto e traz um link para abri-lo.",
@@ -577,6 +583,11 @@
     "byYou": "Excluído por você",
     "by": "Excluído por {{name}}"
   },
+  "removed": {
+    "deletedBy": "{{name}} excluiu {{file}}.",
+    "yoursDeleted": "Suas alterações em {{file}} estão em Excluídos recentemente porque {{name}} excluiu o arquivo.",
+    "dismiss": "Dispensar"
+  },
   "activity": {
     "welcomeEdit": "Compartilhado por {{owner}} em {{server}}. Você pode editar.",
     "welcomeView": "Compartilhado por {{owner}} em {{server}}. Você pode visualizar.",
@@ -819,6 +830,15 @@
     "unverifiedAuthor": "Não foi possível verificar quem escreveu isto",
     "unverifiedThread": "Comentário de alguém que o Oleafly não conseguiu verificar",
     "resolvedUnverified": "Resolvido por alguém que o Oleafly não conseguiu verificar",
+    "notSent": {
+      "written": "Os comentários estão desativados neste projeto, então os comentários que você escreveu não foram enviados.",
+      "changed": "Os comentários estão desativados neste projeto, então suas alterações nos comentários não foram enviadas.",
+      "show": "Mostrar o que você escreveu",
+      "hide": "Ocultar o que você escreveu",
+      "copy": "Copiar texto",
+      "copyFailed": "Não foi possível copiar",
+      "list": "Comentários que não foram enviados"
+    },
     "refusals": {
       "notLive": "Este projeto não está conectado agora. Tente de novo quando ele se reconectar.",
       "notYours": "Só quem escreveu este comentário pode alterá-lo.",
@@ -888,5 +908,15 @@
     "viewer": "Agora você é leitor. Você pode ler este projeto, mas não editá-lo.",
     "removedBy": "{{name}} removeu você deste projeto. A sua cópia continua neste computador e não é mais compartilhada.",
     "removed": "Você foi removido deste projeto. A sua cópia continua neste computador e não é mais compartilhada."
+  },
+  "files": {
+    "waiting": "Aguardando compartilhamento: {{files}}",
+    "failed": "Não foi possível compartilhar: {{files}}",
+    "tooLarge": "{{file}} tem {{size}}, mais do que este servidor permite ({{limit}}). Ele fica só neste computador.",
+    "tooLargeUnknown": "{{file}} é maior do que este servidor permite. Ele fica só neste computador.",
+    "replaced": "{{name}} substituiu {{file}} ao mesmo tempo que você. A sua versão foi guardada como {{copy}}.",
+    "added": "{{file}} agora se chama {{copy}} porque {{name}} adicionou um arquivo com o mesmo nome.",
+    "retry": "Tentar novamente",
+    "dismiss": "Dispensar"
   }
 }

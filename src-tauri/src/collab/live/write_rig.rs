@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
@@ -14,13 +14,29 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::{mpsc, oneshot};
 
 use super::super::{
-    initial_bases, lock, writer_loop, Active, LiveHost, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal,
+    guard, initial_bases, lock, writer_loop, Active, LiveHost, MergedPayload, NewDevicePayload,
+    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal, ACTIVE,
 };
 use super::SharedDocument;
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
+
+static LIVE_TURN: Mutex<()> = Mutex::new(());
+
+pub(crate) fn live_turn() -> MutexGuard<'static, ()> {
+    LIVE_TURN.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+pub(crate) struct LiveNow {
+    _turn: MutexGuard<'static, ()>,
+}
+
+impl Drop for LiveNow {
+    fn drop(&mut self) {
+        *guard(&ACTIVE) = None;
+    }
+}
 
 struct Quiet;
 
@@ -165,6 +181,23 @@ impl LiveRig {
 
     pub(crate) fn set_role(&self, role: ProjectRole) {
         lock(&self.active.live).set_role(role);
+    }
+
+    pub(crate) fn go_live(&self) -> LiveNow {
+        let turn = live_turn();
+        *guard(&ACTIVE) = Some(Arc::clone(&self.active));
+        LiveNow { _turn: turn }
+    }
+
+    pub(crate) fn trashed(&self) -> Vec<String> {
+        let live = lock(&self.active.live);
+        let mut names: Vec<String> = crate::collab::tree::trash_list(&live)
+            .unwrap()
+            .into_iter()
+            .map(|entry| entry.name)
+            .collect();
+        names.sort();
+        names
     }
 
     pub(crate) fn settle(&self) {

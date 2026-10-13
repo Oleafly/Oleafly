@@ -8,8 +8,8 @@ use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
-    PollBatch, PollFrames, PollReplies, DEVICE_HEADER, MAX_POSTED_FRAMES, NONCE_HEADER,
-    POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
+    understands_header, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, MAX_POSTED_FRAMES,
+    NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
 use tokio::sync::{mpsc, Notify};
 
@@ -231,6 +231,10 @@ impl ServerClient {
                 .header(NONCE_HEADER, &nonce)
                 .header(SIGNATURE_HEADER, request.key.sign_b64(&message))
                 .header(PROTOCOL_HEADER, PROTOCOL_VERSION.to_string())
+                .header(
+                    UNDERSTANDS_HEADER,
+                    understands_header(&crate::sync::UNDERSTOOD_CODES),
+                )
                 .timeout(POLL_TIMEOUT),
         )
         .await?;

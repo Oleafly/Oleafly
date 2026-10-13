@@ -164,6 +164,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
         access_token,
         nonce: echoed,
         signature,
+        understands,
     } = hello
     else {
         return refuse(
@@ -204,6 +205,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
                         public_key,
                         connection: ticket.id,
                         signal: ticket.signal.clone(),
+                        understands,
                     };
                     let timing = state.sockets.timing();
                     let mut link = Link::new(&mut socket, &mut ticket.control, timing);
@@ -313,6 +315,7 @@ struct Session<'a> {
     public_key: Vec<u8>,
     connection: u64,
     signal: UnboundedSender<SocketControl>,
+    understands: Vec<FrameErrorCode>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -537,9 +540,18 @@ pub(crate) struct Peer<'a> {
     pub(crate) account: AccountId,
     pub(crate) public_key: &'a [u8],
     pub(crate) connection: u64,
+    pub(crate) understands: &'a [FrameErrorCode],
 }
 
 impl Peer<'_> {
+    fn code_for(&self, wanted: FrameErrorCode, fallback: FrameErrorCode) -> FrameErrorCode {
+        if self.understands.contains(&wanted) {
+            wanted
+        } else {
+            fallback
+        }
+    }
+
     pub(crate) async fn open(
         &self,
         project: SharedProjectId,
@@ -765,9 +777,10 @@ impl Peer<'_> {
             .await;
         match verdict {
             Ok(Verdict::Allowed) => None,
-            Ok(Verdict::ChangesComments) => {
-                Some(frame_error(FrameErrorCode::Forbidden, COMMENTS_OFF))
-            }
+            Ok(Verdict::ChangesComments) => Some(frame_error(
+                self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
+                COMMENTS_OFF,
+            )),
             Ok(Verdict::Unreadable) => Some(frame_error(
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
@@ -883,6 +896,7 @@ impl Session<'_> {
             account: self.account,
             public_key: &self.public_key,
             connection: self.connection,
+            understands: &self.understands,
         }
     }
 

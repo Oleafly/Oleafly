@@ -391,5 +391,15 @@
       "decline": "Button that refuses the guest invitation",
       "declineNamed": "Accessible label of the decline button. {{email}} is the invited address"
     }
+  },
+  "files": {
+    "waiting": "Banner in a shared project. {{files}} is a list of file names, for example plot.png and map.png, that could not be sent yet because the connection is down or the server did not answer. They are sent automatically later.",
+    "failed": "Banner in a shared project. {{files}} is a list of file names that the app stopped trying to send after several failed tries. A Retry button follows.",
+    "tooLarge": "Banner. {{file}} is a file name, {{size}} its size and {{limit}} the largest file the server accepts, both like 60 MB. The file is not shared with anyone.",
+    "tooLargeUnknown": "Same as tooLarge when the server's limit is not known.",
+    "replaced": "Banner. {{name}} is another person, {{file}} a figure both of you replaced at the same moment, {{copy}} the new file name that keeps this person's version, like plot (from Bob Smith).png.",
+    "added": "Banner. Two people added a file with the same name. {{file}} is the name, {{copy}} the new name this file got on this computer, {{name}} the other person.",
+    "retry": "Button that tries again to send the files listed in the banner",
+    "dismiss": "Accessible label of the close button on one banner row"
   }
 }

@@ -223,6 +223,15 @@ impl CommentEvents {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsentComment {
+    pub file_id: String,
+    pub thread_id: CommentId,
+    pub quote: String,
+    pub body: String,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CommentChanges {
     pub files: BTreeSet<String>,
@@ -237,6 +246,16 @@ impl CommentChanges {
 
 fn is_comments_root(id: &ContainerID) -> bool {
     matches!(id, ContainerID::Root { name, .. } if name.as_str() == COMMENTS)
+}
+
+pub(crate) fn in_comments(doc: &LoroDoc, container: &ContainerID) -> bool {
+    match container {
+        ContainerID::Root { .. } => is_comments_root(container),
+        ContainerID::Normal { .. } => doc
+            .get_path_to_container(container)
+            .and_then(|path| path.into_iter().next())
+            .is_some_and(|(root, _)| is_comments_root(&root)),
+    }
 }
 
 fn split_key(key: &str) -> Option<(String, String)> {
@@ -598,6 +617,52 @@ fn write_message(
 struct FoundMessage {
     map: LoroMap,
     message: CommentMessage,
+}
+
+pub(crate) fn unsent_comments(before: &ProjectDoc, after: &ProjectDoc) -> Vec<UnsentComment> {
+    let mut keys = Vec::new();
+    before.loro().get_map(COMMENTS).for_each(|key, _| {
+        if let Some(found) = split_key(key) {
+            keys.push(found);
+        }
+    });
+    let mut threads: Vec<CommentThread> = keys
+        .into_iter()
+        .filter_map(|(file, thread)| {
+            let id: CommentId = thread.parse().ok()?;
+            before.comment_thread(&file, id).ok().flatten()
+        })
+        .collect();
+    threads.sort_by(|left, right| {
+        (&left.file_id, left.created_at, left.id).cmp(&(&right.file_id, right.created_at, right.id))
+    });
+    let mut unsent = Vec::new();
+    for thread in threads {
+        let kept: HashMap<CommentId, String> = after
+            .comment_thread(&thread.file_id, thread.id)
+            .ok()
+            .flatten()
+            .map(|found| {
+                found
+                    .messages
+                    .into_iter()
+                    .map(|message| (message.id, message.body))
+                    .collect()
+            })
+            .unwrap_or_default();
+        for message in thread.messages.iter().filter(|message| !message.deleted) {
+            if kept.get(&message.id) == Some(&message.body) {
+                continue;
+            }
+            unsent.push(UnsentComment {
+                file_id: thread.file_id.clone(),
+                thread_id: thread.id,
+                quote: thread.anchor.quote.clone(),
+                body: message.body.clone(),
+            });
+        }
+    }
+    unsent
 }
 
 impl ProjectDoc {

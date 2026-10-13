@@ -177,7 +177,26 @@ pub async fn collab_trash_restore(
     id: String,
 ) -> Result<(), CollabCommandError> {
     super::live::edit_live(&project_id, |live| trash_restore(live, &id))
-        .map_err(CollabCommandError::from)
+        .map_err(CollabCommandError::from)?;
+    super::live::restored(&project_id, &id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn collab_live_removed_list(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+) -> Result<Vec<super::live::RemovedFile>, CollabCommandError> {
+    super::live::lost_notices(state.inner(), &project_id).map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_live_removed_dismiss(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+    id: String,
+) -> Result<(), CollabCommandError> {
+    super::live::dismiss_notice(state.inner(), &project_id, &id).map_err(CollabCommandError::from)
 }
 
 #[tauri::command]

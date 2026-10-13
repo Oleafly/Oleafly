@@ -35,8 +35,18 @@ use crate::folder_watch::FolderChange;
 
 pub mod write;
 
+mod kept;
+mod local_copy;
+mod moves;
 mod sync_hold;
+mod unsent;
+pub mod uploads;
+pub(crate) use moves::{
+    deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile, RemovedPayload,
+    LIVE_REMOVED_EVENT,
+};
 pub(crate) use sync_hold::{announce, outside_change, root_returned, SyncDecision};
+pub(crate) use unsent::{keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT};
 
 #[cfg(test)]
 mod outside_tests;
@@ -153,8 +163,12 @@ pub trait LiveHost: Send + Sync + 'static {
     fn new_device(&self, payload: NewDevicePayload);
     fn renamed(&self, _payload: super::tree::RenamedPayload) {}
     fn comments_changed(&self, _payload: super::comments::CommentsChangedPayload) {}
+    fn comments_not_sent(&self, _payload: super::comments::CommentsNotSentPayload) {}
     fn members(&self, _payload: MembersPayload) {}
     fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
+    fn removed(&self, _payload: RemovedPayload) {}
+    fn kept(&self, _payload: kept::KeptPayload) {}
+    fn uploads(&self, _payload: uploads::UploadsPayload) {}
 }
 
 pub struct AppLiveHost {
@@ -208,8 +222,26 @@ impl LiveHost for AppLiveHost {
             .emit(super::comments::COMMENTS_CHANGED_EVENT, payload);
     }
 
+    fn comments_not_sent(&self, payload: super::comments::CommentsNotSentPayload) {
+        let _ = self
+            .app
+            .emit(super::comments::COMMENTS_NOT_SENT_EVENT, payload);
+    }
+
     fn members(&self, payload: MembersPayload) {
         let _ = self.app.emit(LIVE_MEMBERS_EVENT, payload);
+    }
+
+    fn removed(&self, payload: RemovedPayload) {
+        let _ = self.app.emit(LIVE_REMOVED_EVENT, payload);
+    }
+
+    fn kept(&self, payload: kept::KeptPayload) {
+        let _ = self.app.emit(kept::LIVE_KEPT_EVENT, payload);
+    }
+
+    fn uploads(&self, payload: uploads::UploadsPayload) {
+        let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
     }
 
     fn session_ended(&self, server: ServerId, reason: SessionEndReason) {
@@ -755,10 +787,14 @@ fn apply_to_disk(
     let mut renamed: Vec<(String, String)> = Vec::new();
     let mut gone: Vec<String> = Vec::new();
     let mut aliased = Vec::new();
+    let before = &disk.layout;
     plan.removed.retain(|path| {
         match next
-            .values()
-            .find(|placed| super::disk::same_file(root, path, &placed.path))
+            .iter()
+            .find(|(id, placed)| {
+                !before.contains_key(*id) && super::disk::same_file(root, path, &placed.path)
+            })
+            .map(|(_, placed)| placed)
         {
             Some(placed) => {
                 aliased.push((path.clone(), placed.path.clone()));
@@ -770,6 +806,10 @@ fn apply_to_disk(
     plan.moved.extend(aliased);
     plan.moved
         .sort_by_key(|(from, _)| from.matches('/').count());
+    let first = moves::remove_files_first(root, disk, bases, &mut plan.removed);
+    conflicts.extend(first.conflicts);
+    changed.extend(first.gone.iter().cloned());
+    gone.extend(first.gone);
     for (from, to) in &plan.moved {
         let moved = super::disk::move_path(root, from, to)
             || (!super::disk::exists_exact(root, from) && super::disk::exists_exact(root, to));
@@ -796,6 +836,10 @@ fn apply_to_disk(
         }
     }
     for (path, text) in texts {
+        if moves::deleted_here(root, disk, path) {
+            conflicts.push(path.clone());
+            continue;
+        }
         let Some((stamp, style)) = inspected(root, disk, path) else {
             conflicts.push(path.clone());
             continue;
@@ -824,6 +868,8 @@ fn apply_to_disk(
                     .is_some_and(|bytes| sha256_hex(&bytes) == *hash);
                 if on_disk {
                     disk.hashes.insert(placed.path.clone(), hash.clone());
+                } else if moves::deleted_here(root, disk, &placed.path) {
+                    conflicts.push(placed.path.clone());
                 } else if let Some(stamp) = checked(root, disk, &placed.path) {
                     blobs.push((placed.path.clone(), hash.clone(), stamp));
                 } else {
@@ -863,30 +909,7 @@ fn apply_to_disk(
 }
 
 async fn upload_blobs(link: &LiveLink, blobs: &[(String, String, Vec<u8>)]) -> BTreeSet<String> {
-    let mut failed = BTreeSet::new();
-    if blobs.is_empty() {
-        return failed;
-    }
-    let Ok(access) = link
-        .sessions
-        .access_token(link.server_id, &link.client)
-        .await
-    else {
-        return blobs.iter().map(|(_, hash, _)| hash.clone()).collect();
-    };
-    let mut sent = BTreeSet::new();
-    for (_, hash, bytes) in blobs {
-        if sent.insert(hash.clone())
-            && link
-                .client
-                .put_blob(&access, link.project, hash, bytes.clone())
-                .await
-                .is_err()
-        {
-            failed.insert(hash.clone());
-        }
-    }
-    failed
+    uploads::send(link, blobs, false).await
 }
 
 impl Active {
@@ -943,12 +966,14 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        let failed = upload_blobs(&self.link, &import.blobs).await;
+        let failed = uploads::send(&self.link, &import.blobs, self.online()).await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
+        self.announce_uploads();
         let changed = {
             let mut disk = guard(&self.disk);
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
+            moves::adopt_folder_moves(&mut live, &mut disk, &mut bases, &mut import)?;
             let imported =
                 apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?;
             let kept = sync_hold::apply_kept_edits(
@@ -973,14 +998,29 @@ impl Active {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
-        let previous = guard(&self.disk).layout.clone();
-        let (work, next, mut texts, crlf) = {
+        let (mut previous, hashes) = {
+            let disk = guard(&self.disk);
+            (disk.layout.clone(), disk.hashes.clone())
+        };
+        let (work, next, mut texts, crlf, kept, copied) = {
             let mut live = lock(&self.live);
             let work = live.take_disk_work();
             if work.is_empty() {
                 return Ok(Vec::new());
             }
-            let next = materialize::layout(&live.doc().nodes()?);
+            let lost = if work.tree {
+                kept::keep_lost_figures(&mut live, &mut previous, &hashes)?
+            } else {
+                Vec::new()
+            };
+            let copied = !lost.is_empty();
+            let nodes = live.doc().nodes()?;
+            let next = materialize::layout(&nodes);
+            let kept = if work.tree {
+                kept::notices(&live, &nodes, &previous, &next, lost)
+            } else {
+                Vec::new()
+            };
             let mut ids: BTreeSet<String> = work.texts.clone();
             for (id, placed) in &next {
                 let moved_or_new = previous
@@ -1000,8 +1040,12 @@ impl Active {
                     }
                 }
             }
-            (work, next, texts, crlf)
+            (work, next, texts, crlf, kept, copied)
         };
+        if copied {
+            self.handle.flush();
+            self.refresh_pending();
+        }
         self.persist().await?;
         let mut plan = materialize::plan(&previous, &next);
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
@@ -1022,6 +1066,24 @@ impl Active {
         };
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
+        if !kept.is_empty() {
+            self.host.kept(kept::KeptPayload {
+                project_id: self.project_id.clone(),
+                files: kept,
+            });
+        }
+        if !removed.is_empty() {
+            let notices = moves::removed_notices(
+                &self.project_id,
+                &mut lock(&self.live),
+                &previous,
+                &removed,
+            );
+            if let Some(payload) = notices {
+                moves::remember_lost(&self.notices_file(), &payload);
+                self.host.removed(payload);
+            }
+        }
         let mut missing = false;
         if !blobs.is_empty() {
             let access = self
@@ -1081,6 +1143,7 @@ impl Active {
     fn detach(&self, paths: &oleafly_collab::CollabPaths) {
         let _ = remove_binding(paths, &self.project_id);
         super::registry::invalidate(&self.project_id);
+        local_copy::name_local_copy(&self.project_id);
     }
 }
 
@@ -1186,7 +1249,11 @@ async fn pump(
                         *slot = None;
                     }
                 }
+                let online = status == LiveStatus::Online;
                 active.emit_status(status);
+                if online {
+                    active.reconnected();
+                }
             }
             LiveEvent::Role(role) => {
                 if let Ok(Some(mut binding)) = load_binding(&paths, &active.project_id) {
@@ -1271,6 +1338,19 @@ async fn pump(
                     active.project_id
                 ));
             }
+            LiveEvent::CommentsNotSent(unsent) => {
+                let _ = crate::project::append_app_log(format!(
+                    "Live collaboration left {} comment change(s) out of project {}: comments are turned off there",
+                    unsent.len(),
+                    active.project_id
+                ));
+                super::comments::tell_not_sent(
+                    &active.project_id,
+                    &active.live,
+                    unsent,
+                    active.host.as_ref(),
+                );
+            }
         }
     }
 }
@@ -1304,6 +1384,7 @@ pub async fn start(
             if reason == SessionEndReason::AccessEnded {
                 let _ = remove_binding(&paths, project_id);
                 super::registry::invalidate(project_id);
+                local_copy::name_local_copy(project_id);
             }
             host.status(StatusPayload {
                 project_id: project_id.to_owned(),
@@ -1369,6 +1450,8 @@ pub async fn start(
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Arc::clone(&active));
+    uploads::attach(&active);
+    active.announce_uploads();
     Ok(LiveInfo {
         role,
         account_id: tokens.account_id,
@@ -1883,6 +1966,7 @@ mod tests {
     fn starting_live_again_for_a_live_project_answers() {
         let (done, outcome) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
+            let _turn = write::rig::live_turn();
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()

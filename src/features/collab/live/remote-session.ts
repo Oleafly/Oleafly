@@ -18,7 +18,7 @@ export interface RemoteSessionOptions {
 }
 
 export class RemoteDocumentSession implements DocumentSession {
-  readonly path: string;
+  private place: string;
   private content: string;
   private localVersion = 0;
   private serverRev = 0;
@@ -34,10 +34,18 @@ export class RemoteDocumentSession implements DocumentSession {
   private readonly options: RemoteSessionOptions;
 
   constructor(path: string, text: string, options: RemoteSessionOptions) {
-    this.path = path;
+    this.place = path;
     this.content = text;
     this.base = text;
     this.options = options;
+  }
+
+  get path(): string {
+    return this.place;
+  }
+
+  moveTo(path: string): void {
+    this.place = path;
   }
 
   get phase(): RemoteSessionPhase {

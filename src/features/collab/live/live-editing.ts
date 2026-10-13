@@ -10,7 +10,7 @@ import {
   collabPresenceLeave,
   collabPresenceSet,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
@@ -114,6 +114,12 @@ export function startLiveEditing(live: LiveSession): () => void {
       if (files.activePath === path) files.bumpDocVersion();
     },
   });
+  const stopMoves = onPathsMoved((moved) => {
+    if (moved.projectId === projectId) sessions.move(moved.from, moved.to);
+  });
+  const stopDeletes = onPathsDeleted((deleted) => {
+    if (deleted.projectId === projectId) sessions.forget(deleted.path);
+  });
   const uninstallPort = installCollabEditorPort({
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
@@ -146,6 +152,8 @@ export function startLiveEditing(live: LiveSession): () => void {
     unsubscribeVisibility();
     unsubscribeRole();
     releaseCursors();
+    stopMoves();
+    stopDeletes();
     uninstallPort();
     sessions.close();
     useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });

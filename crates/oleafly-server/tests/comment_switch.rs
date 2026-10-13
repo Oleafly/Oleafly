@@ -2,12 +2,20 @@ mod people;
 
 use loro::{ExportMode, LoroDoc, LoroMap};
 use oleafly_collab_protocol::admin::RuntimeSettingsPatch;
+use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
+use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
+use oleafly_collab_protocol::frames::ClientFrame;
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::poll::{
+    understands_header, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER,
+    POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
+};
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_server::test_support::challenge_nonce;
 use people::{
-    call, connect, first_snapshot, grant, next_frame, raw_envelope, send_update, share_project,
-    stage, subscribe, Person, Socket, Stage,
+    call, connect, connect_understanding, first_snapshot, grant, next_frame, raw_envelope,
+    send_update, share_project, stage, subscribe, Person, Socket, Stage,
 };
 use reqwest::{Method, StatusCode};
 use serde_json::json;
@@ -22,11 +30,25 @@ struct Writer {
 
 impl Writer {
     async fn open(stage: &Stage, person: &Person, project: SharedProjectId, peer: u64) -> Writer {
+        Writer::open_understanding(stage, person, project, peer, Vec::new()).await
+    }
+
+    async fn open_understanding(
+        stage: &Stage,
+        person: &Person,
+        project: SharedProjectId,
+        peer: u64,
+        understands: Vec<FrameErrorCode>,
+    ) -> Writer {
         let doc = LoroDoc::new();
         doc.import(&first_snapshot())
             .expect("the first snapshot loads");
         doc.set_peer_id(peer).expect("peer");
-        let mut socket = connect(&stage.server, person).await;
+        let mut socket = if understands.is_empty() {
+            connect(&stage.server, person).await
+        } else {
+            connect_understanding(&stage.server, person, understands).await
+        };
         assert!(matches!(
             subscribe(&mut socket, project, 0).await,
             ServerFrame::Subscribed { .. }
@@ -212,5 +234,125 @@ async fn with_comments_off_for_the_whole_server_a_new_thread_is_refused() {
     assert!(
         matches!(stored, ServerFrame::Ack { seq: 2, .. }),
         "{stored:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_socket_client_that_understands_the_comments_off_code_is_refused_with_it() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_project_comments(&stage, project, false).await;
+    let mut commenter = Writer::open_understanding(
+        &stage,
+        &stage.alice,
+        project,
+        41,
+        vec![FrameErrorCode::CommentsOff],
+    )
+    .await;
+    let refused = commenter.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(
+            &refused,
+            ServerFrame::Error { code: FrameErrorCode::CommentsOff, message } if message == COMMENTS_OFF
+        ),
+        "{refused:?}"
+    );
+}
+
+struct LongPoll {
+    url: String,
+    key: String,
+}
+
+async fn open_long_poll(
+    stage: &Stage,
+    person: &Person,
+    project: SharedProjectId,
+    understands: &[FrameErrorCode],
+) -> LongPoll {
+    let server = &stage.server;
+    let nonce = challenge_nonce(server).await;
+    let signature = person.device.sign_b64(&challenge_message(
+        ChallengePurpose::Socket,
+        server.state().server_id,
+        &nonce,
+    ));
+    let mut request = reqwest::Client::new()
+        .get(format!("{}/api/v1/projects/{project}/poll", server.url()))
+        .query(&[("since", "0")])
+        .bearer_auth(person.token())
+        .header(DEVICE_HEADER, person.tokens.device_id.to_string())
+        .header(NONCE_HEADER, nonce)
+        .header(SIGNATURE_HEADER, signature)
+        .header(PROTOCOL_HEADER, PROTOCOL_VERSION.to_string());
+    if !understands.is_empty() {
+        request = request.header(UNDERSTANDS_HEADER, understands_header(understands));
+    }
+    let response = request.send().await.expect("open request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let batch: PollBatch = response.json().await.expect("poll batch");
+    LongPoll {
+        url: format!("{}/api/v1/projects/{project}/frames", server.url()),
+        key: batch.key.expect("an open session"),
+    }
+}
+
+async fn post_comment(
+    poll: &LongPoll,
+    person: &Person,
+    project: SharedProjectId,
+) -> Vec<ServerFrame> {
+    let doc = LoroDoc::new();
+    doc.import(&first_snapshot())
+        .expect("the first snapshot loads");
+    doc.set_peer_id(51).expect("peer");
+    let before = doc.oplog_vv();
+    add_thread(&doc);
+    doc.commit();
+    let update = doc.export(ExportMode::updates(&before)).expect("update");
+    let envelope = raw_envelope(person, project, &update);
+    let response = reqwest::Client::new()
+        .post(&poll.url)
+        .header(POLL_KEY_HEADER, &poll.key)
+        .json(&PollFrames {
+            frames: vec![ClientFrame::Update {
+                project_id: project,
+                envelope,
+            }],
+        })
+        .send()
+        .await
+        .expect("frames request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let replies: PollReplies = response.json().await.expect("replies");
+    replies.frames
+}
+
+#[tokio::test]
+async fn over_long_poll_only_a_client_that_names_the_comments_off_code_gets_it() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_server_comments(&stage, false).await;
+    let knows = open_long_poll(
+        &stage,
+        &stage.alice,
+        project,
+        &[FrameErrorCode::CommentsOff],
+    )
+    .await;
+    let replies = post_comment(&knows, &stage.alice, project).await;
+    assert!(
+        matches!(
+            replies.as_slice(),
+            [ServerFrame::Error { code: FrameErrorCode::CommentsOff, message }] if message == COMMENTS_OFF
+        ),
+        "{replies:?}"
+    );
+    let earlier = open_long_poll(&stage, &stage.alice, project, &[]).await;
+    let replies = post_comment(&earlier, &stage.alice, project).await;
+    assert!(
+        matches!(replies.as_slice(), [reply] if refused_for_comments(reply)),
+        "{replies:?}"
     );
 }

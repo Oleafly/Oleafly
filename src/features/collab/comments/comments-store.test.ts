@@ -187,6 +187,22 @@ describe("comments for a shared project", () => {
     expect(mocks.collabCommentDelete).not.toHaveBeenCalled();
   });
 
+  it("asks again whether comments are on when the server would not take some, and stops offering writing", async () => {
+    start();
+    await waitFor(() => expect(useCommentsRail.getState()).toMatchObject({ visible: true, canCompose: true }));
+    expect(mocks.collabCommentsStatus).toHaveBeenCalledTimes(1);
+    mocks.collabCommentsStatus.mockResolvedValue(commentsStatus({ projectEnabled: false, canComment: false }));
+    act(() =>
+      useCollabLiveStore.setState({
+        commentsNotSent: [{ fileId: INTRO_FILE, path: "intro.tex", threadId: "t1", quote: "The", body: "late" }],
+      }),
+    );
+    await waitFor(() => expect(useCommentsRail.getState()).toMatchObject({ visible: false, canCompose: false }));
+    expect(mocks.collabCommentsStatus).toHaveBeenCalledTimes(2);
+    act(() => useCollabLiveStore.getState().dismissCommentsNotSent());
+    expect(mocks.collabCommentsStatus).toHaveBeenCalledTimes(2);
+  });
+
   it("lets viewers read threads but never offers them writing", async () => {
     useCollabLiveStore.setState({ role: "viewer" });
     mocks.collabCommentsStatus.mockResolvedValue(commentsStatus({ canComment: false }));

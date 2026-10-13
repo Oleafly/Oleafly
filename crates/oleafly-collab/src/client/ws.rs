@@ -55,6 +55,7 @@ pub async fn connect_socket(
         access_token: access_token.to_string(),
         signature: key.sign_b64(&message),
         nonce,
+        understands: crate::sync::UNDERSTOOD_CODES.to_vec(),
     };
     send_frame(&mut socket, &hello).await?;
     match next_frame(&mut socket).await? {
@@ -222,6 +223,7 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
                 FrameErrorCode::RateLimited => (429, "rate_limited"),
                 FrameErrorCode::BadFrame => (400, "bad_frame"),
                 FrameErrorCode::Forbidden => (403, "forbidden"),
+                FrameErrorCode::CommentsOff => (403, "comments_off"),
                 FrameErrorCode::NotFound => (404, "not_found"),
                 FrameErrorCode::TooLarge => (413, "too_large"),
                 FrameErrorCode::Internal

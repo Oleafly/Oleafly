@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   documentPath: null as string | null,
   documentListeners: new Set<() => void>(),
   cursorSource: null as null | RemoteCursorSource,
+  pathMoves: new Set<(event: { projectId: string; from: string; to: string }) => void>(),
+  pathDeletes: new Set<(event: { projectId: string; path: string }) => void>(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -75,7 +77,17 @@ vi.mock("@/store/files", async () => {
     }),
     bumpDocVersion: vi.fn(() => store.setState((state) => ({ docVersion: state.docVersion + 1 }))),
   }));
-  return { useFilesStore: store };
+  return {
+    useFilesStore: store,
+    onPathsMoved: (listener: (event: { projectId: string; from: string; to: string }) => void) => {
+      mocks.pathMoves.add(listener);
+      return () => mocks.pathMoves.delete(listener);
+    },
+    onPathsDeleted: (listener: (event: { projectId: string; path: string }) => void) => {
+      mocks.pathDeletes.add(listener);
+      return () => mocks.pathDeletes.delete(listener);
+    },
+  };
 });
 
 import { useFilesStore } from "@/store/files";
@@ -143,6 +155,40 @@ describe("live editing", () => {
     expect(mocks.collabDocOpen).toHaveBeenCalledWith(PROJECT, "main.tex", expect.any(Function));
     useFilesStore.setState({ projectId: "other" });
     expect(collabDocumentSession("main.tex")).toBeNull();
+  });
+
+  it("keeps the same shared document open when its file is renamed, here or by someone else", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    session?.applyLocal([{ from: 6, to: 6, insert: "!" }], session.version());
+    for (const listener of mocks.pathMoves) listener({ projectId: PROJECT, from: "main.tex", to: "thesis.tex" });
+    useFilesStore.setState((state) => ({
+      activePath: "thesis.tex",
+      files: { "thesis.tex": state.files["main.tex"] },
+    }));
+    expect(collabDocumentSession("thesis.tex")).toBe(session);
+    session?.applyLocal([{ from: 7, to: 7, insert: "?" }], session.version());
+    await settle();
+    expect(mocks.collabDocOpen).toHaveBeenCalledTimes(1);
+    expect(mocks.collabDocClose).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["thesis.tex"]?.content).toBe("shared!?");
+    release?.();
+    release = null;
+    expect(mocks.pathMoves.size).toBe(0);
+  });
+
+  it("opens a fresh shared document for a path whose file was deleted", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    for (const listener of mocks.pathDeletes) listener({ projectId: PROJECT, path: "main.tex" });
+    await settle();
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex");
+    expect(collabDocumentSession("main.tex")).not.toBe(session);
+    release?.();
+    release = null;
+    expect(mocks.pathDeletes.size).toBe(0);
   });
 
   it("sends editor changes and keeps the files store current without marking it unsaved", async () => {

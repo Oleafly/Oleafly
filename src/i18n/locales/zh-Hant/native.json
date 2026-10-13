@@ -111,5 +111,8 @@
   "systemIntegration": {
     "openInOleafly": "在 Oleafly 中開啟",
     "openWithOleafly": "以 Oleafly 開啟"
+  },
+  "collab": {
+    "localCopy": "{{name}}（本機副本）"
   }
 }
