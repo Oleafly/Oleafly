@@ -11,6 +11,6 @@
     "./testing": "./src/testing.ts"
   },
   "devDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.3"
   }
 }
