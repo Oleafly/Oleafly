@@ -7,6 +7,7 @@ pub const OPEN_LINK_EVENT: &str = "collab-open-link";
 pub const SCHEME: &str = "oleafly";
 const MAX_LINK_LENGTH: usize = 2_048;
 const MAX_PENDING: usize = 16;
+const HOSTS: [&str; 2] = ["open", "server"];
 
 static PENDING: LazyLock<Mutex<Vec<String>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
@@ -25,10 +26,11 @@ fn cleaned(text: &str) -> Option<&str> {
         link
     };
     let scheme = link.get(..SCHEME.len())?;
-    let rest = link.get(SCHEME.len()..)?;
+    let place = link.get(SCHEME.len()..)?.strip_prefix("://")?;
+    let host = place.split(['/', '?', '#']).next()?;
     (link.len() <= MAX_LINK_LENGTH
         && scheme.eq_ignore_ascii_case(SCHEME)
-        && rest.starts_with("://"))
+        && HOSTS.iter().any(|known| host.eq_ignore_ascii_case(known)))
     .then_some(link)
 }
 
@@ -130,6 +132,22 @@ mod tests {
             Some("oleafly://open?n=39")
         );
         assert!(take().is_empty());
+    }
+
+    #[test]
+    fn template_links_are_left_to_the_template_handler() {
+        assert!(!is_link("oleafly://template/academic-writing/ieee"));
+        assert!(!is_link("OLEAFLY://Template/a/b"));
+        assert!(!is_link("oleafly://nonsense"));
+        assert!(is_link("OLEAFLY://Open?server=x"));
+        assert!(is_link("oleafly://open/?server=x"));
+        assert!(is_link("oleafly://server/add?url=https%3A%2F%2Funi.edu"));
+        assert!(is_link("oleafly://server/remove?url=x"));
+        assert!(is_link("\"oleafly://open?server=x\""));
+        assert_eq!(
+            links_in(["oleafly://template/a/b", "oleafly://open?server=x"]),
+            ["oleafly://open?server=x"]
+        );
     }
 
     const PROJECT: &str = "01920000-0000-7000-8000-0000000000aa";

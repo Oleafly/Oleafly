@@ -1371,7 +1371,6 @@
     "captionAria": "Legenda tabelului",
     "preview": "Previzualizare",
     "output": "Rezultat LaTeX",
-    "copiedSource": "Sursa LaTeX a fost copiată",
     "booktabsHint": "Necesită <code>\\usepackage{booktabs}</code> în preambulul tău."
   },
   "review": {

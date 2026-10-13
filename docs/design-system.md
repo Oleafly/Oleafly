@@ -85,6 +85,16 @@ keyboard handling and the warnings. Highlighted words inside a text field,
 like the skill and mention chips in the assistant composer, take the classes
 in `ui/inline-token.ts`.
 
+Code, config, commands and any other text a reader may want to copy go in a
+`CodeBlock` from `ui/code-block.tsx`. It brings the copy button, which sits in
+the top right corner of the block and shows when the pointer is over the
+block or keyboard focus is inside it, and stays visible on touch screens.
+`code` is the text that gets copied, children (when given) are what the block
+shows, such as highlighted tokens, and `preClassName` adjusts the block's
+size and colors. A block that isn't a `<pre>`, like a rendered diagram, wraps
+its content in `CopyableBlock` from `ui/copyable-block.tsx`. Logs, error output and
+plain text previews stay as a plain `<pre>`.
+
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
 
@@ -131,12 +141,13 @@ The guards read the source files and fail when a known copy shows up.
 `src/styles/no-outline-utilities.test.ts` fails on any ring or outline
 utility in `src/` or `packages/`.
 
-`src/styles/design-system.test.ts` fails on three things: a `Loader2` or
+`src/styles/design-system.test.ts` fails on four things: a `Loader2` or
 `LoaderCircle` with `animate-spin` outside `Spinner`, the settings row class
-cluster outside `SettingsRow`, and a hand-written pill (a borderless
-`rounded-full` with small text and a tint) outside the kit. A pill that no
-`Badge` variant can express goes in that file's allowlist, with the reason
-next to it.
+cluster outside `SettingsRow`, a hand-written pill (a borderless
+`rounded-full` with small text and a tint) outside the kit, and a `<pre>` in
+a file that doesn't use `CodeBlock`. A pill that no `Badge` variant can
+express, or a `<pre>` that shows logs or plain text rather than code, goes in
+that file's allowlist, with the reason next to it.
 
 `src/components/layout/SidebarSection.test.tsx` checks that every panel
 registered in `src/contributions/tabs.tsx` renders `SidebarPanelHeader`, and

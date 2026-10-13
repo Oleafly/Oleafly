@@ -1450,5 +1450,57 @@
     "send": "Trimite",
     "keepLocal": "Păstrează local",
     "unavailable": "Folderul proiectului nu este disponibil, așa că sincronizarea e în pauză. Pornește din nou când folderul revine."
+  },
+  "overleafSync": {
+    "button": "Sincronizare cu Overleaf",
+    "title": "Sincronizează cu Overleaf",
+    "cancel": "Anulează",
+    "more_one": "și încă {{count}} fișier",
+    "more_few": "și încă {{count}} fișiere",
+    "more_other": "și încă {{count}} de fișiere",
+    "status": {
+      "notLinked": "Nesincronizat încă cu Overleaf.",
+      "linking": "Se asociază cu Overleaf",
+      "syncing": "Se sincronizează cu Overleaf",
+      "needsToken": "Adaugă tokenul tău Git pentru Overleaf ca să sincronizezi.",
+      "never": "Nesincronizat încă.",
+      "justNow": "adineauri",
+      "synced": "Sincronizat {{time}}.",
+      "conflicts_one": "{{count}} fișier s-a schimbat pe ambele părți. Alege ce versiune păstrezi.",
+      "conflicts_few": "{{count}} fișiere s-au schimbat pe ambele părți. Alege ce versiuni păstrezi.",
+      "conflicts_other": "{{count}} de fișiere s-au schimbat pe ambele părți. Alege ce versiuni păstrezi."
+    },
+    "actions": {
+      "keepInSync": "Păstrează sincronizat cu Overleaf",
+      "syncNow": "Sincronizează acum",
+      "auto": "Sincronizează automat",
+      "resolve": "Alege versiunile",
+      "unlink": "Oprește sincronizarea",
+      "addToken": "Adaugă token Git",
+      "changeToken": "Schimbă tokenul Git"
+    },
+    "token": {
+      "title": "Adaugă tokenul tău Git pentru Overleaf",
+      "description": "Oleafly sincronizează prin integrarea Git din Overleaf. Creează un token la Integrare Git în setările contului tău Overleaf, apoi lipește-l aici. Rămâne criptat pe acest computer.",
+      "openSettings": "Deschide setările contului Overleaf",
+      "label": "Token Git",
+      "note": "Integrarea Git necesită ca proprietarul proiectului să aibă un plan Overleaf plătit sau universitar.",
+      "save": "Salvează și sincronizează"
+    },
+    "choice": {
+      "title": "Ce versiune trebuie să rămână?",
+      "description": "Aceste fișiere diferă aici și în Overleaf. Fișierele care există doar pe o parte sunt păstrate pe ambele, deci nu se șterge nimic.",
+      "mine": "Folosește versiunile mele",
+      "theirs": "Folosește versiunile din Overleaf"
+    },
+    "conflicts": {
+      "title": "Alege versiunile",
+      "description": "Aceste fișiere s-au schimbat de la ultima sincronizare atât aici, cât și în Overleaf. Alege pentru fiecare versiunea pe care o păstrezi. Nu se schimbă nimic până nu aplici alegerea.",
+      "mine": "A mea",
+      "theirs": "Din Overleaf",
+      "allMine": "Păstrează toate versiunile mele",
+      "allTheirs": "Folosește toate versiunile din Overleaf",
+      "apply": "Aplică și sincronizează"
+    }
   }
 }

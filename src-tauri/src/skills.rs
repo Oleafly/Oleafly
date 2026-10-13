@@ -460,12 +460,15 @@ fn split_frontmatter(markdown: &str) -> Result<(String, String), SkillValidation
     Ok((frontmatter.join("\n"), lines.collect::<Vec<_>>().join("\n")))
 }
 
-fn yaml_field<'a>(mapping: &'a serde_yaml::Mapping, field: &str) -> Option<&'a serde_yaml::Value> {
-    mapping.get(serde_yaml::Value::String(field.to_string()))
+fn yaml_field<'a>(
+    mapping: &'a serde_norway::Mapping,
+    field: &str,
+) -> Option<&'a serde_norway::Value> {
+    mapping.get(serde_norway::Value::String(field.to_string()))
 }
 
 fn required_frontmatter_field(
-    mapping: &serde_yaml::Mapping,
+    mapping: &serde_norway::Mapping,
     field: &str,
     missing_code: SkillValidationCode,
     invalid_code: SkillValidationCode,
@@ -477,7 +480,7 @@ fn required_frontmatter_field(
             format!("SKILL.md is missing the front matter field \"{field}\"."),
         ));
     };
-    let serde_yaml::Value::String(value) = value else {
+    let serde_norway::Value::String(value) = value else {
         return Err(validation_error(
             invalid_code,
             format!("SKILL.md field \"{field}\" must be a non-empty string."),
@@ -495,28 +498,28 @@ fn required_frontmatter_field(
     Ok(value.to_string())
 }
 
-fn scalar_text(value: &serde_yaml::Value) -> Option<String> {
+fn scalar_text(value: &serde_norway::Value) -> Option<String> {
     match value {
-        serde_yaml::Value::String(text) => Some(text.trim().to_string()),
-        serde_yaml::Value::Number(number) => Some(number.to_string()),
-        serde_yaml::Value::Bool(flag) => Some(flag.to_string()),
+        serde_norway::Value::String(text) => Some(text.trim().to_string()),
+        serde_norway::Value::Number(number) => Some(number.to_string()),
+        serde_norway::Value::Bool(flag) => Some(flag.to_string()),
         _ => None,
     }
 }
 
-fn optional_text(mapping: &serde_yaml::Mapping, field: &str) -> Option<String> {
+fn optional_text(mapping: &serde_norway::Mapping, field: &str) -> Option<String> {
     yaml_field(mapping, field)
         .and_then(scalar_text)
         .map(|text| text.replace(['\r', '\n'], " ").trim().to_string())
         .filter(|text| !text.is_empty() && text.chars().count() <= MAX_FRONTMATTER_VALUE_CHARS)
 }
 
-fn optional_text_list(mapping: &serde_yaml::Mapping, field: &str) -> Vec<String> {
+fn optional_text_list(mapping: &serde_norway::Mapping, field: &str) -> Vec<String> {
     let Some(value) = yaml_field(mapping, field) else {
         return Vec::new();
     };
     let items: Vec<String> = match value {
-        serde_yaml::Value::Sequence(items) => items.iter().filter_map(scalar_text).collect(),
+        serde_norway::Value::Sequence(items) => items.iter().filter_map(scalar_text).collect(),
         other => scalar_text(other)
             .map(|text| {
                 text.split([',', ' ', '\t', '\r', '\n'])
@@ -541,13 +544,13 @@ fn parse_skill_markdown(markdown: &str) -> Result<SkillDocument, SkillValidation
         ));
     }
     let (frontmatter, instructions) = split_frontmatter(markdown)?;
-    let value: serde_yaml::Value = serde_yaml::from_str(&frontmatter).map_err(|error| {
+    let value: serde_norway::Value = serde_norway::from_str(&frontmatter).map_err(|error| {
         validation_error(
             SkillValidationCode::InvalidFrontmatter,
             format!("SKILL.md front matter could not be parsed: {error}"),
         )
     })?;
-    let serde_yaml::Value::Mapping(mapping) = value else {
+    let serde_norway::Value::Mapping(mapping) = value else {
         return Err(validation_error(
             SkillValidationCode::InvalidFrontmatter,
             "SKILL.md front matter must be a YAML mapping.",
@@ -575,11 +578,11 @@ fn parse_skill_markdown(markdown: &str) -> Result<SkillDocument, SkillValidation
         ));
     }
     let metadata = yaml_field(&mapping, "metadata")
-        .and_then(serde_yaml::Value::as_mapping)
+        .and_then(serde_norway::Value::as_mapping)
         .cloned()
         .unwrap_or_default();
     let oleafly = yaml_field(&metadata, "oleafly")
-        .and_then(serde_yaml::Value::as_mapping)
+        .and_then(serde_norway::Value::as_mapping)
         .cloned()
         .unwrap_or_default();
     Ok(SkillDocument {
@@ -670,17 +673,17 @@ fn recover_skill_fields(markdown: &str, id: &str) -> (String, String, String) {
     let Ok((frontmatter, body)) = split_frontmatter(markdown) else {
         return (id.to_string(), String::new(), markdown.trim().to_string());
     };
-    let mapping = serde_yaml::from_str::<serde_yaml::Value>(&frontmatter)
+    let mapping = serde_norway::from_str::<serde_norway::Value>(&frontmatter)
         .ok()
         .and_then(|value| match value {
-            serde_yaml::Value::Mapping(mapping) => Some(mapping),
+            serde_norway::Value::Mapping(mapping) => Some(mapping),
             _ => None,
         });
     let string_field = |field: &str| {
         mapping
             .as_ref()
             .and_then(|mapping| yaml_field(mapping, field))
-            .and_then(serde_yaml::Value::as_str)
+            .and_then(serde_norway::Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(str::to_string)
@@ -1300,24 +1303,29 @@ fn render_skill_markdown(
     description: &str,
     instructions: &str,
 ) -> Result<String, String> {
-    render_skill_markdown_with_mapping(serde_yaml::Mapping::new(), name, description, instructions)
+    render_skill_markdown_with_mapping(
+        serde_norway::Mapping::new(),
+        name,
+        description,
+        instructions,
+    )
 }
 
 fn render_skill_markdown_with_mapping(
-    mut mapping: serde_yaml::Mapping,
+    mut mapping: serde_norway::Mapping,
     name: &str,
     description: &str,
     instructions: &str,
 ) -> Result<String, String> {
     mapping.insert(
-        serde_yaml::Value::String("name".into()),
-        serde_yaml::Value::String(name.into()),
+        serde_norway::Value::String("name".into()),
+        serde_norway::Value::String(name.into()),
     );
     mapping.insert(
-        serde_yaml::Value::String("description".into()),
-        serde_yaml::Value::String(description.into()),
+        serde_norway::Value::String("description".into()),
+        serde_norway::Value::String(description.into()),
     );
-    let yaml = serde_yaml::to_string(&mapping)
+    let yaml = serde_norway::to_string(&mapping)
         .map_err(|error| format!("Could not encode SKILL.md front matter: {error}"))?;
     let markdown = format!(
         "---\n{}---\n\n{}\n",
@@ -1615,7 +1623,9 @@ pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRec
     let mapping = read_skill_markdown(&directory)
         .ok()
         .and_then(|markdown| split_frontmatter(&markdown).ok())
-        .and_then(|(frontmatter, _)| serde_yaml::from_str::<serde_yaml::Value>(&frontmatter).ok())
+        .and_then(|(frontmatter, _)| {
+            serde_norway::from_str::<serde_norway::Value>(&frontmatter).ok()
+        })
         .and_then(|value| value.as_mapping().cloned())
         .unwrap_or_default();
     let markdown = render_skill_markdown_with_mapping(
@@ -3205,17 +3215,17 @@ mod tests {
         assert_eq!(updated.tier, SkillTier::Vendored);
         let markdown = std::fs::read_to_string(directory.join("SKILL.md")).unwrap();
         let (frontmatter, _) = split_frontmatter(&markdown).unwrap();
-        let value: serde_yaml::Value = serde_yaml::from_str(&frontmatter).unwrap();
+        let value: serde_norway::Value = serde_norway::from_str(&frontmatter).unwrap();
         let mapping = value.as_mapping().unwrap();
         assert_eq!(
-            yaml_field(mapping, "license").and_then(serde_yaml::Value::as_str),
+            yaml_field(mapping, "license").and_then(serde_norway::Value::as_str),
             Some("MIT")
         );
         assert_eq!(
             yaml_field(mapping, "metadata")
-                .and_then(serde_yaml::Value::as_mapping)
+                .and_then(serde_norway::Value::as_mapping)
                 .and_then(|metadata| yaml_field(metadata, "owner"))
-                .and_then(serde_yaml::Value::as_str),
+                .and_then(serde_norway::Value::as_str),
             Some("user")
         );
     }

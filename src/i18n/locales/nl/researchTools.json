@@ -1360,7 +1360,6 @@
     "captionAria": "Tabelbijschrift",
     "preview": "Voorbeeld",
     "output": "LaTeX-uitvoer",
-    "copiedSource": "LaTeX-broncode gekopieerd",
     "booktabsHint": "Vereist <code>\\usepackage{booktabs}</code> in je preambule."
   },
   "review": {

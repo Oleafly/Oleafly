@@ -33,6 +33,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settings", "language"],
     ["settings", "systemIntegration"],
     ["settings", "shellCommand"],
+    ["settingsFile"],
     keywords("general"),
   ],
   appearance: [
@@ -56,6 +57,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
   integrations: [
     ["settings", "integrations", "actions"],
     ["settings", "integrations", "alphaxiv"],
+    ["settings", "integrations", "overleaf"],
     ["settings", "integrations", "zotero"],
     ["settings", "github"],
     ["settings", "citations"],

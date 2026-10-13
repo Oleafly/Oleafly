@@ -1005,7 +1005,6 @@
   },
   "cite": {
     "apa": "Tutéž referenci ve stylu APA najdete pod Cite this repository na GitHubu",
-    "copyBibtex": "Kopírovat BibTeX",
     "description": "Oleafly je zdarma a s otevřeným zdrojovým kódem a takový zůstane, když se o něm bude vědět. Pokud vám pomohl s článkem, jediný záznam ve vaší bibliografii poví dalšímu badateli, odkud ten nástroj je. Zkopírujte jej, vložte do svého souboru .bib a citujte klíč <citeKey>oleafly</citeKey>.",
     "title": "Citujte Oleafly ve svém článku"
   },
@@ -1092,11 +1091,59 @@
       "fontRemoveFailed": "Písmo se nepodařilo odebrat.",
       "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
       "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
-      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat."
+      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat.",
+      "templateDownloadFailed": "Šablonu se nepodařilo stáhnout.",
+      "packsRefreshFailed": "Nové balíčky se nepodařilo zkontrolovat."
     },
     "typstFonts": {
       "heading": "Písma pro Typst",
       "tooltip": "Bezplatná písma, která vyžaduje mnoho šablon Typst. Po stažení je může použít každý projekt Typst, kromě projektu, který vypíná systémová písma."
+    },
+    "packs": {
+      "browse": "Procházet",
+      "back": "Zpět na balíčky",
+      "count_one": "{{count}} šablona",
+      "count_few": "{{count}} šablony",
+      "count_many": "{{count}} šablony",
+      "count_other": "{{count}} šablon",
+      "installedCount": "Nainstalováno {{installed}} z {{total}}",
+      "downloadPack": "Stáhnout balíček",
+      "refresh": "Zkontrolovat nové balíčky",
+      "searchPacks": "Hledat balíčky",
+      "searchTemplates": "Hledat šablony",
+      "noPacks": "Žádné balíčky neodpovídají",
+      "noTemplates": "Žádné šablony neodpovídají",
+      "loading": "Načítání šablon",
+      "loadFailed": "Tento balíček se nepodařilo načíst.",
+      "retry": "Zkusit znovu",
+      "installed": "Nainstalováno",
+      "engineFilter": "Engine",
+      "kindFilter": "Druh",
+      "languageFilter": "Jazyk",
+      "allEngines": "Všechny enginy",
+      "allKinds": "Všechny druhy",
+      "allLanguages": "Všechny jazyky",
+      "groups": {
+        "curated": "Vybrané",
+        "community": "Komunita",
+        "typst": "Typst",
+        "university": "Univerzity"
+      },
+      "preview": {
+        "image": "První strana šablony {{name}}",
+        "previous": "Předchozí šablona",
+        "next": "Další šablona",
+        "engine": "Engine",
+        "license": "Licence",
+        "kind": "Druh",
+        "languages": "Jazyky",
+        "country": "Země",
+        "institution": "Instituce",
+        "originalSource": "Původní zdroj",
+        "getTemplate": "Získat šablonu",
+        "useTemplate": "Použít šablonu",
+        "getAndCreate": "Získat a vytvořit projekt"
+      }
     }
   },
   "engine": {
@@ -1407,6 +1454,22 @@
         "heading": "Účet zotero.org",
         "description": "Účet použijte, když v tomto počítači neběží Zotero. Načtou se i skupinové knihovny."
       }
+    },
+    "overleaf": {
+      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity a udržujte je synchronizované. Oleafly uchovává přihlášení i token Git v tomto počítači zašifrované.",
+      "signedInAs": "Přihlášeno jako {{email}} na {{server}}",
+      "signedIn": "Přihlášeno na {{server}}",
+      "signOut": "Odhlásit se",
+      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "gitTitle": "Token Git pro synchronizaci",
+      "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
+      "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
+      "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
+      "gitPlanNote": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
+      "gitLabel": "Token Git z Overleafu",
+      "gitSave": "Uložit",
+      "gitRemove": "Odebrat",
+      "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token."
     }
   },
   "language": {

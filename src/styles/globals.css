@@ -2059,6 +2059,13 @@ textarea,
   -webkit-user-select: text;
   user-select: text;
 }
+:root[data-overleaf-import-transition]::view-transition-group(*),
+:root[data-overleaf-import-transition]::view-transition-old(*),
+:root[data-overleaf-import-transition]::view-transition-new(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
 button {
   -webkit-user-select: none;
   user-select: none;

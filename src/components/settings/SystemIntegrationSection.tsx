@@ -47,6 +47,17 @@ const STATE_TONE: Record<SystemIntegrationState, BadgeVariant> = {
   needs_attention: "warning",
 };
 
+const SELF_REPAIRING: ReadonlySet<SystemIntegrationAttention> = new Set(["outdated", "moved"]);
+
+function repairsOnItsOwn(item: SystemIntegrationItem): boolean {
+  return (
+    !item.packaged &&
+    item.state === "needs_attention" &&
+    item.attention !== null &&
+    SELF_REPAIRING.has(item.attention)
+  );
+}
+
 const ACTION =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
 
@@ -204,6 +215,10 @@ function IntegrationRow({
   );
 }
 
+function isSystemIntegrationItem(value: unknown, id: SystemIntegrationItemId): value is SystemIntegrationItem {
+  return typeof value === "object" && value !== null && "id" in value && value.id === id && "state" in value;
+}
+
 function isSystemIntegrationStatus(value: unknown): value is SystemIntegrationStatus {
   return (
     typeof value === "object" &&
@@ -266,12 +281,13 @@ export function SystemIntegrationSection({
     };
   }, [awaitingQuickActions, load]);
 
-  const change = useCallback(async (id: SystemIntegrationItemId, next: Change) => {
+  const change = useCallback(async (id: SystemIntegrationItemId, next: Change, quiet = false) => {
     revision.current += 1;
     setBusy((current) => ({ ...current, [id]: next }));
     setFailures((current) => ({ ...current, [id]: undefined }));
     try {
-      const item = await setSystemIntegration(id, next === "install");
+      const item: unknown = await setSystemIntegration(id, next === "install");
+      if (!isSystemIntegrationItem(item, id)) throw new Error("unexpected file manager integration item");
       setStatus((current) =>
         current
           ? {
@@ -282,12 +298,21 @@ export function SystemIntegrationSection({
       );
     } catch (error) {
       void logError(`${next} the ${id} file manager integration`, error);
-      setFailures((current) => ({ ...current, [id]: next }));
+      if (!quiet) setFailures((current) => ({ ...current, [id]: next }));
     } finally {
       revision.current += 1;
       setBusy((current) => ({ ...current, [id]: undefined }));
     }
   }, []);
+
+  const autoRepaired = useRef(new Set<SystemIntegrationItemId>());
+  useEffect(() => {
+    for (const item of status?.items ?? []) {
+      if (!repairsOnItsOwn(item) || autoRepaired.current.has(item.id)) continue;
+      autoRepaired.current.add(item.id);
+      void change(item.id, "install", true);
+    }
+  }, [status, change]);
 
   if (status?.items.length === 0 && !shellCommandRow) return null;
 

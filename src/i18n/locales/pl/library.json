@@ -139,7 +139,8 @@
       "document": "dokument",
       "image": "obraz",
       "diagram": "diagram",
-      "external": "zewnętrzny"
+      "external": "zewnętrzny",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "Podgląd PDF: {{name}}",
@@ -183,12 +184,32 @@
       "failed": "Nie udało się rozgałęzić projektu."
     },
     "deleteDialog": {
-      "title": "Przenieść „{{name}}” do Kosza?",
+      "title": "Przenieść „<name>{{name}}</name>” do Kosza?",
       "fallbackName": "projekt",
       "description": "Projekt zniknie z biblioteki, ale pozostanie dostępny w sekcji Przechowywanie danych do czasu przywrócenia lub trwałego usunięcia.",
       "confirm": "Przenieś do Kosza",
       "moved": "Przeniesiono \"{{name}}\" do Kosza.",
       "failed": "Nie udało się usunąć \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Usuń {{count}} zaznaczony projekt",
+      "button_few": "Usuń {{count}} zaznaczone projekty",
+      "button_many": "Usuń {{count}} zaznaczonych projektów",
+      "button_other": "Usuń {{count}} zaznaczonego projektu",
+      "title_one": "Przenieść {{count}} projekt do Kosza?",
+      "title_few": "Przenieść {{count}} projekty do Kosza?",
+      "title_many": "Przenieść {{count}} projektów do Kosza?",
+      "title_other": "Przenieść {{count}} projektu do Kosza?",
+      "description": "Projekty znikną z biblioteki, ale pozostaną dostępne w sekcji Przechowywanie danych do czasu przywrócenia lub trwałego usunięcia.",
+      "folderNote": "Foldery otwarte na miejscu tylko znikną z Oleafly. Ich pliki zostają na miejscu.",
+      "done_one": "Usunięto {{count}} projekt z biblioteki.",
+      "done_few": "Usunięto {{count}} projekty z biblioteki.",
+      "done_many": "Usunięto {{count}} projektów z biblioteki.",
+      "done_other": "Usunięto {{count}} projektu z biblioteki.",
+      "failed_one": "Nie udało się usunąć {{count}} projektu.",
+      "failed_few": "Nie udało się usunąć {{count}} projektów.",
+      "failed_many": "Nie udało się usunąć {{count}} projektów.",
+      "failed_other": "Nie udało się usunąć {{count}} projektu."
     }
   },
   "newProject": {
@@ -295,6 +316,74 @@
       "connect": "Połącz GitHub w Ustawieniach",
       "repositoriesFailed": "Nie udało się wczytać repozytoriów.",
       "repositoriesRetry": "Nie udało się wczytać repozytoriów. Spróbuj ponownie"
+    },
+    "overleaf": {
+      "cardDescription": "Wybierz projekty ze swojego konta Overleaf",
+      "title": "Importuj z Overleaf",
+      "description": "Wybierz projekty do przeniesienia. Każdy zachowuje swoje pliki, kompilator i plik główny.",
+      "checking": "Sprawdzanie logowania do Overleaf",
+      "loading": "Wczytywanie projektów z Overleaf",
+      "loadFailed": "Oleafly nie mógł wczytać projektów z Overleaf.",
+      "signInPrompt": "Zaloguj się do Overleaf, aby zobaczyć swoje projekty. Otworzy się okno logowania, które zamknie się samo po zalogowaniu.",
+      "signingIn": "Dokończ logowanie do Overleaf w otwartym oknie.",
+      "passkeyHint": "Jeśli klucz dostępu nie działa w oknie logowania, wybierz tam inną opcję, na przykład hasło lub potwierdzenie na telefonie.",
+      "expired": "Sesja Overleaf wygasła. Zaloguj się ponownie, aby zobaczyć swoje projekty.",
+      "signIn": "Zaloguj się do Overleaf",
+      "signInWindowTitle": "Zaloguj się do Overleaf",
+      "server": "Serwer: {{server}}",
+      "serverLabel": "Adres serwera Overleaf",
+      "useDifferentServer": "Użyj innego serwera",
+      "useDefaultServer": "Użyj overleaf.com",
+      "saveServer": "Użyj tego serwera",
+      "signedInAs": "Zalogowano jako {{email}}",
+      "signedIn": "Zalogowano do Overleaf",
+      "signOut": "Wyloguj się",
+      "searchLabel": "Szukaj projektów Overleaf",
+      "searchPlaceholder_one": "Przeszukaj {{count}} projekt",
+      "searchPlaceholder_few": "Przeszukaj {{count}} projekty",
+      "searchPlaceholder_many": "Przeszukaj {{count}} projektów",
+      "searchPlaceholder_other": "Przeszukaj {{count}} projektu",
+      "filterLabel": "Pokaż projekty",
+      "filter": {
+        "all": "Wszystkie",
+        "owned": "Twoje",
+        "shared": "Udostępnione Tobie"
+      },
+      "empty": "To konto Overleaf nie ma jeszcze żadnych projektów.",
+      "noMatches": "Żaden projekt nie pasuje do wyszukiwania.",
+      "selectAll": "Zaznacz wszystko",
+      "clearSelection": "Wyczyść zaznaczenie",
+      "selectProject": "Zaznacz {{name}}",
+      "selected_one": "Zaznaczono {{count}} projekt",
+      "selected_few": "Zaznaczono {{count}} projekty",
+      "selected_many": "Zaznaczono {{count}} projektów",
+      "selected_other": "Zaznaczono {{count}} projektu",
+      "import_one": "Importuj {{count}} projekt",
+      "import_few": "Importuj {{count}} projekty",
+      "import_many": "Importuj {{count}} projektów",
+      "import_other": "Importuj {{count}} projektu",
+      "imported": "Zaimportowano",
+      "open": "Otwórz",
+      "ownedByYou": "Twój",
+      "owner": "Właściciel: {{name}}",
+      "archived": "Zarchiwizowany",
+      "notCarried": "Komentarze, śledzone zmiany, czat i historia zostają w Overleaf.",
+      "importingProjects": "Importowanie projektów",
+      "done": "Gotowe",
+      "doneSummary_one": "Zaimportowano {{count}} projekt.",
+      "doneSummary_few": "Zaimportowano {{count}} projekty.",
+      "doneSummary_many": "Zaimportowano {{count}} projektów.",
+      "doneSummary_other": "Zaimportowano {{count}} projektu.",
+      "failedSummary_one": "Nie udało się zaimportować {{count}} projektu.",
+      "failedSummary_few": "Nie udało się zaimportować {{count}} projektów.",
+      "failedSummary_many": "Nie udało się zaimportować {{count}} projektów.",
+      "failedSummary_other": "Nie udało się zaimportować {{count}} projektu.",
+      "progress": {
+        "queued": "Oczekuje",
+        "downloading": "Pobieranie {{percent}}%",
+        "downloadingUnknown": "Pobieranie",
+        "importing": "Przygotowywanie"
+      }
     }
   },
   "pdfImport": {
@@ -561,7 +650,7 @@
       "remove": "Usuń z Oleafly"
     },
     "remove": {
-      "title": "Usunąć „{{name}}” z Oleafly?",
+      "title": "Usunąć „<name>{{name}}</name>” z Oleafly?",
       "description": "Twoje pliki zostają na miejscu. Oleafly usuwa swoje pliki kompilacji dla tego folderu i resetuje jego zaufanie, zgody i powiązane foldery. Otwórz folder ponownie w ciągu 30 dni, aby odzyskać jego czaty i historię. Resztę trzeba będzie skonfigurować od nowa.",
       "confirm": "Usuń z Oleafly",
       "done": "Usunięto „{{name}}” z Oleafly. Pliki nadal są w folderze.",

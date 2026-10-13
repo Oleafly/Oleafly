@@ -1360,7 +1360,6 @@
     "captionAria": "Tabellens bildtext",
     "preview": "Förhandsvisning",
     "output": "LaTeX-utdata",
-    "copiedSource": "Kopierade LaTeX-källan",
     "booktabsHint": "Kräver <code>\\usepackage{booktabs}</code> i din ingress."
   },
   "review": {

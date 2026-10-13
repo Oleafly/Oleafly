@@ -1416,5 +1416,55 @@
     "send": "Lähetä",
     "keepLocal": "Pidä paikallisena",
     "unavailable": "Projektikansio ei ole käytettävissä, joten synkronointi on keskeytetty. Se jatkuu, kun kansio on taas käytettävissä."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkronointi",
+    "title": "Synkronoi Overleafin kanssa",
+    "cancel": "Peruuta",
+    "more_one": "ja {{count}} muu tiedosto",
+    "more_other": "ja {{count}} muuta tiedostoa",
+    "status": {
+      "notLinked": "Ei vielä synkronoitu Overleafin kanssa.",
+      "linking": "Yhdistetään Overleafiin",
+      "syncing": "Synkronoidaan Overleafin kanssa",
+      "needsToken": "Lisää Overleafin Git-tokeni, jotta voit synkronoida.",
+      "never": "Ei vielä synkronoitu.",
+      "justNow": "juuri äsken",
+      "synced": "Synkronoitu {{time}}.",
+      "conflicts_one": "{{count}} tiedosto muuttui molemmilla puolilla. Valitse, kumpi versio säilytetään.",
+      "conflicts_other": "{{count}} tiedostoa muuttui molemmilla puolilla. Valitse, mitkä versiot säilytetään."
+    },
+    "actions": {
+      "keepInSync": "Pidä synkronoituna Overleafin kanssa",
+      "syncNow": "Synkronoi nyt",
+      "auto": "Synkronoi automaattisesti",
+      "resolve": "Valitse versiot",
+      "unlink": "Lopeta synkronointi",
+      "addToken": "Lisää Git-tokeni",
+      "changeToken": "Vaihda Git-tokeni"
+    },
+    "token": {
+      "title": "Lisää Overleafin Git-tokeni",
+      "description": "Oleafly synkronoi Overleafin Git-integraation kautta. Luo tokeni Overleafin tiliasetusten kohdassa Git-integraatio ja liitä se tähän. Se säilyy salattuna tällä koneella.",
+      "openSettings": "Avaa Overleafin tiliasetukset",
+      "label": "Git-tokeni",
+      "note": "Git-integraatio vaatii, että projektin omistajalla on maksullinen tai yliopiston Overleaf-tilaus.",
+      "save": "Tallenna ja synkronoi"
+    },
+    "choice": {
+      "title": "Kumpi versio jää voimaan?",
+      "description": "Nämä tiedostot eroavat täällä ja Overleafissa. Tiedostot, jotka ovat vain toisella puolella, säilytetään molemmilla, joten mitään ei poisteta.",
+      "mine": "Käytä omia versioitani",
+      "theirs": "Käytä Overleafin versioita"
+    },
+    "conflicts": {
+      "title": "Valitse versiot",
+      "description": "Nämä tiedostot ovat muuttuneet sekä täällä että Overleafissa edellisen synkronoinnin jälkeen. Valitse kullekin säilytettävä versio. Mikään ei muutu, ennen kuin otat valinnat käyttöön.",
+      "mine": "Oma",
+      "theirs": "Overleafin",
+      "allMine": "Pidä kaikki omat",
+      "allTheirs": "Käytä kaikkia Overleafin",
+      "apply": "Käytä ja synkronoi"
+    }
   }
 }

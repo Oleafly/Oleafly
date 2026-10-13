@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Dieselbe Literaturangabe in APA steht hinter Cite this repository auf GitHub",
-    "copyBibtex": "BibTeX kopieren",
     "description": "Oleafly ist kostenlos und quelloffen, und das bleibt es, wenn Menschen davon wissen. Wenn es einem Aufsatz geholfen hat, zeigt ein Eintrag in Ihrem Literaturverzeichnis der nächsten Forscherin, woher das Werkzeug kam. Kopieren Sie ihn, fügen Sie ihn in Ihre .bib-Datei ein und zitieren Sie den Schlüssel <citeKey>oleafly</citeKey>.",
     "title": "Oleafly in Ihrem Aufsatz zitieren"
   },
@@ -1082,11 +1081,57 @@
       "fontRemoveFailed": "Die Schrift konnte nicht entfernt werden.",
       "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
       "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
-      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden."
+      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden.",
+      "templateDownloadFailed": "Die Vorlage konnte nicht heruntergeladen werden.",
+      "packsRefreshFailed": "Es konnte nicht nach neuen Paketen gesucht werden."
     },
     "typstFonts": {
       "heading": "Schriften für Typst",
       "tooltip": "Kostenlose Schriften, die viele Typst-Vorlagen verlangen. Nach dem Herunterladen kann jedes Typst-Projekt sie nutzen, außer einem Projekt, das Systemschriften abschaltet."
+    },
+    "packs": {
+      "browse": "Durchsuchen",
+      "back": "Zurück zu den Paketen",
+      "count_one": "{{count}} Vorlage",
+      "count_other": "{{count}} Vorlagen",
+      "installedCount": "{{installed}} von {{total}} installiert",
+      "downloadPack": "Paket herunterladen",
+      "refresh": "Nach neuen Paketen suchen",
+      "searchPacks": "Pakete durchsuchen",
+      "searchTemplates": "Vorlagen durchsuchen",
+      "noPacks": "Keine passenden Pakete",
+      "noTemplates": "Keine passenden Vorlagen",
+      "loading": "Vorlagen werden geladen",
+      "loadFailed": "Dieses Paket konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "installed": "Installiert",
+      "engineFilter": "Engine",
+      "kindFilter": "Art",
+      "languageFilter": "Sprache",
+      "allEngines": "Alle Engines",
+      "allKinds": "Alle Arten",
+      "allLanguages": "Alle Sprachen",
+      "groups": {
+        "curated": "Kuratiert",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Universitäten"
+      },
+      "preview": {
+        "image": "Erste Seite von {{name}}",
+        "previous": "Vorherige Vorlage",
+        "next": "Nächste Vorlage",
+        "engine": "Engine",
+        "license": "Lizenz",
+        "kind": "Art",
+        "languages": "Sprachen",
+        "country": "Land",
+        "institution": "Einrichtung",
+        "originalSource": "Originalquelle",
+        "getTemplate": "Diese Vorlage holen",
+        "useTemplate": "Diese Vorlage verwenden",
+        "getAndCreate": "Holen und Projekt erstellen"
+      }
     }
   },
   "engine": {
@@ -1377,6 +1422,22 @@
         "heading": "Konto bei zotero.org",
         "description": "Nutzen Sie Ihr Konto, wenn Zotero auf diesem Computer nicht geöffnet ist. Gruppenbibliotheken sind ebenfalls dabei."
       }
+    },
+    "overleaf": {
+      "description": "Übernehmen Sie Projekte aus Ihrem Overleaf-Konto oder vom Overleaf-Server Ihrer Hochschule und halten Sie sie synchron. Oleafly speichert die Anmeldung und das Git-Token verschlüsselt auf diesem Computer.",
+      "signedInAs": "Angemeldet als {{email}} auf {{server}}",
+      "signedIn": "Angemeldet auf {{server}}",
+      "signOut": "Abmelden",
+      "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden.",
+      "gitTitle": "Git-Token für die Synchronisierung",
+      "gitSaved": "Ein Git-Token ist gespeichert. Verknüpfte Projekte bleiben mit Overleaf synchron.",
+      "gitMissing": "Noch kein Git-Token. Erstellen Sie eines in Ihren Overleaf-Kontoeinstellungen unter Git-Integration, um Projekte zu synchronisieren.",
+      "gitOpenSettings": "Overleaf-Kontoeinstellungen öffnen",
+      "gitPlanNote": "Die Git-Integration setzt beim Eigentümer des Projekts einen kostenpflichtigen Overleaf-Tarif oder einen Hochschultarif voraus.",
+      "gitLabel": "Overleaf-Git-Token",
+      "gitSave": "Speichern",
+      "gitRemove": "Entfernen",
+      "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben."
     }
   },
   "language": {

@@ -312,7 +312,9 @@
       "closeAgent": "关闭辅助代理。",
       "runCommand": "在项目文件夹中运行 shell 命令，限时两分钟。",
       "computerUse": "在助手的浏览器窗口中打开网页。",
-      "toggleTheme": "在浅色和深色模式之间切换。"
+      "toggleTheme": "在浅色和深色模式之间切换。",
+      "listOverleafProjects": "列出你的 Overleaf 项目，必要时先登录。",
+      "importOverleafProjects": "将 Overleaf 项目连同其编译器和主文件设置导入你的库。"
     },
     "disableAll": "全部禁用",
     "emptyContext": "此上下文中没有可用的工具。",

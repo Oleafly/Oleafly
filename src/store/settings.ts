@@ -484,7 +484,7 @@ function ls(k: string, fb: string): string {
   }
 }
 
-const LAYOUT_PRESETS: LayoutPreset[] = [
+export const LAYOUT_PRESETS: readonly LayoutPreset[] = [
   "editor-preview-ai",
   "editor-preview",
   "editor-ai",
@@ -500,7 +500,7 @@ const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
 };
 
 function readDefaultView(raw: string): LayoutPreset {
-  if ((LAYOUT_PRESETS as string[]).includes(raw)) return raw as LayoutPreset;
+  if ((LAYOUT_PRESETS as readonly string[]).includes(raw)) return raw as LayoutPreset;
   return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-only";
 }
 function readEditorTheme(raw: string): EditorThemeId {
@@ -1268,10 +1268,14 @@ const PREF_DEFAULTS = {
 
 type PrefKey = keyof typeof PREF_DEFAULTS;
 
+export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
+
+export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
+
 // What each Settings section's Reset button restores, mapped to the storage key
 // that persists it (null: kept for the session only). The reset and
 // sectionDiffersFromDefaults both read this map, so they cannot drift apart.
-const SECTION_SETTINGS = {
+export const SECTION_SETTINGS = {
   general: {
     uiLocalePreference: "oleafly.locale",
     spellcheck: "oleafly.spellcheck",
@@ -1363,7 +1367,7 @@ function sectionEntries(section: SettingsSection): [PrefKey, string | null][] {
 }
 
 // Same encoding the individual setters write: flags as "1"/"0", lists as JSON.
-function storedDefault(value: unknown): string {
+export function storedDefault(value: unknown): string {
   if (typeof value === "boolean") return value ? "1" : "0";
   return typeof value === "string" ? value : JSON.stringify(value);
 }

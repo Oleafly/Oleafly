@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "The same reference in APA is behind Cite this repository on GitHub",
-    "copyBibtex": "Copy BibTeX",
     "description": "Oleafly is free and open source, and it stays that way when people know it exists. If it helped a paper along, one entry in your bibliography tells the next researcher where the tool came from. Copy it, paste it into your .bib file, and cite the key <citeKey>oleafly</citeKey>.",
     "title": "Cite Oleafly in your paper"
   },
@@ -1082,11 +1081,57 @@
       "fontRemoveFailed": "Couldn't remove the font.",
       "packDownloadFailed": "Couldn't download the template pack.",
       "packsDownloadFailed": "Couldn't download the template packs.",
-      "packRemoveFailed": "Couldn't remove the template pack."
+      "packRemoveFailed": "Couldn't remove the template pack.",
+      "templateDownloadFailed": "Couldn't download the template.",
+      "packsRefreshFailed": "Couldn't check for new packs."
     },
     "typstFonts": {
       "heading": "Fonts for Typst",
       "tooltip": "Free fonts that many Typst templates ask for. Once downloaded, every Typst project can use them, except a project that turns system fonts off."
+    },
+    "packs": {
+      "browse": "Browse",
+      "back": "Back to packs",
+      "count_one": "{{count}} template",
+      "count_other": "{{count}} templates",
+      "installedCount": "{{installed}} of {{total}} installed",
+      "downloadPack": "Download pack",
+      "refresh": "Check for new packs",
+      "searchPacks": "Search packs",
+      "searchTemplates": "Search templates",
+      "noPacks": "No packs match",
+      "noTemplates": "No templates match",
+      "loading": "Loading templates",
+      "loadFailed": "Couldn't load this pack.",
+      "retry": "Try again",
+      "installed": "Installed",
+      "engineFilter": "Engine",
+      "kindFilter": "Kind",
+      "languageFilter": "Language",
+      "allEngines": "All engines",
+      "allKinds": "All kinds",
+      "allLanguages": "All languages",
+      "groups": {
+        "curated": "Curated",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "University"
+      },
+      "preview": {
+        "image": "First page of {{name}}",
+        "previous": "Previous template",
+        "next": "Next template",
+        "engine": "Engine",
+        "license": "License",
+        "kind": "Kind",
+        "languages": "Languages",
+        "country": "Country",
+        "institution": "Institution",
+        "originalSource": "Original source",
+        "getTemplate": "Get this template",
+        "useTemplate": "Use this template",
+        "getAndCreate": "Get and create project"
+      }
     }
   },
   "engine": {
@@ -1377,6 +1422,22 @@
         "heading": "zotero.org account",
         "description": "Use your account when Zotero isn't open on this computer. Group libraries come along too."
       }
+    },
+    "overleaf": {
+      "description": "Bring projects over from your Overleaf account or your university's Overleaf server, and keep them in sync. Oleafly keeps the sign-in and the Git token encrypted on this computer.",
+      "signedInAs": "Signed in as {{email}} on {{server}}",
+      "signedIn": "Signed in on {{server}}",
+      "signOut": "Sign out",
+      "signOutFailed": "Oleafly could not sign out of Overleaf.",
+      "gitTitle": "Git token for sync",
+      "gitSaved": "A Git token is saved. Projects you link stay in sync with Overleaf.",
+      "gitMissing": "No Git token yet. Create one under Git integration in your Overleaf account settings to sync projects.",
+      "gitOpenSettings": "Open Overleaf account settings",
+      "gitPlanNote": "Git integration needs a paid or university Overleaf plan for the project's owner.",
+      "gitLabel": "Overleaf Git token",
+      "gitSave": "Save",
+      "gitRemove": "Remove",
+      "gitFailed": "Oleafly could not save the Git token. Check that you pasted the whole token."
     }
   },
   "language": {

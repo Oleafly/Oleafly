@@ -94,6 +94,7 @@ describe("TypstBibliographyStylePicker", () => {
       expect(mocks.setContent).toHaveBeenCalledWith(
         "main.typ",
         '#bibliography("refs.bib", style: "nlm-citation-sequence")',
+        { bumpVersion: false },
       ),
     );
     expect(mocks.saveFile).toHaveBeenCalledWith("main.typ");

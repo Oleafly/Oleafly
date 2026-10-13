@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "同じ文献の APA 形式は、GitHub の「Cite this repository」から確認できます",
-    "copyBibtex": "BibTeX をコピー",
     "description": "Oleafly は無料でオープンソースです。それを続けられるのは、存在が知られているからです。論文づくりの役に立ったなら、参考文献の 1 項目が、次の研究者にこのツールの出どころを伝えてくれます。コピーして .bib ファイルに貼り付け、キー <citeKey>oleafly</citeKey> で引用してください。",
     "title": "論文で Oleafly を引用する"
   },
@@ -1077,11 +1076,56 @@
       "fontRemoveFailed": "フォントを削除できませんでした。",
       "packDownloadFailed": "テンプレートパックをダウンロードできませんでした。",
       "packsDownloadFailed": "テンプレートパックをダウンロードできませんでした。",
-      "packRemoveFailed": "テンプレートパックを削除できませんでした。"
+      "packRemoveFailed": "テンプレートパックを削除できませんでした。",
+      "templateDownloadFailed": "テンプレートをダウンロードできませんでした。",
+      "packsRefreshFailed": "新しいパックを確認できませんでした。"
     },
     "typstFonts": {
       "heading": "Typst 用フォント",
       "tooltip": "多くの Typst テンプレートが使う無料フォントです。ダウンロードすると、システムフォントを無効にしたプロジェクトを除き、すべての Typst プロジェクトで使えます。"
+    },
+    "packs": {
+      "browse": "見る",
+      "back": "パック一覧に戻る",
+      "count_other": "{{count}} 件のテンプレート",
+      "installedCount": "{{total}} 件中 {{installed}} 件をインストール済み",
+      "downloadPack": "パックをダウンロード",
+      "refresh": "新しいパックを確認",
+      "searchPacks": "パックを検索",
+      "searchTemplates": "テンプレートを検索",
+      "noPacks": "一致するパックはありません",
+      "noTemplates": "一致するテンプレートはありません",
+      "loading": "テンプレートを読み込み中",
+      "loadFailed": "このパックを読み込めませんでした。",
+      "retry": "再試行",
+      "installed": "インストール済み",
+      "engineFilter": "エンジン",
+      "kindFilter": "種類",
+      "languageFilter": "言語",
+      "allEngines": "すべてのエンジン",
+      "allKinds": "すべての種類",
+      "allLanguages": "すべての言語",
+      "groups": {
+        "curated": "厳選",
+        "community": "コミュニティ",
+        "typst": "Typst",
+        "university": "大学"
+      },
+      "preview": {
+        "image": "{{name}} の 1 ページ目",
+        "previous": "前のテンプレート",
+        "next": "次のテンプレート",
+        "engine": "エンジン",
+        "license": "ライセンス",
+        "kind": "種類",
+        "languages": "言語",
+        "country": "国",
+        "institution": "機関",
+        "originalSource": "元のソース",
+        "getTemplate": "このテンプレートを入手",
+        "useTemplate": "このテンプレートを使う",
+        "getAndCreate": "入手してプロジェクトを作成"
+      }
     }
   },
   "engine": {
@@ -1362,6 +1406,22 @@
         "heading": "zotero.org アカウント",
         "description": "このコンピュータで Zotero を開いていないときは、アカウントを使います。グループのライブラリも対象になります。"
       }
+    },
+    "overleaf": {
+      "description": "Overleaf アカウントや大学の Overleaf サーバーからプロジェクトを取り込み、同期した状態に保ちます。Oleafly はサインイン情報と Git トークンをこのコンピュータに暗号化して保存します。",
+      "signedInAs": "{{server}} に {{email}} でサインイン中",
+      "signedIn": "{{server}} にサインイン中",
+      "signOut": "サインアウト",
+      "signOutFailed": "Oleafly は Overleaf からサインアウトできませんでした。",
+      "gitTitle": "同期用の Git トークン",
+      "gitSaved": "Git トークンが保存されています。リンクしたプロジェクトは Overleaf と同期されます。",
+      "gitMissing": "Git トークンはまだありません。プロジェクトを同期するには、Overleaf のアカウント設定の「Git 連携」でトークンを作成してください。",
+      "gitOpenSettings": "Overleaf のアカウント設定を開く",
+      "gitPlanNote": "Git 連携を使うには、プロジェクトのオーナーが Overleaf の有料プランか大学のプランに加入している必要があります。",
+      "gitLabel": "Overleaf の Git トークン",
+      "gitSave": "保存",
+      "gitRemove": "削除",
+      "gitFailed": "Oleafly は Git トークンを保存できませんでした。トークン全体を貼り付けたか確認してください。"
     }
   },
   "language": {

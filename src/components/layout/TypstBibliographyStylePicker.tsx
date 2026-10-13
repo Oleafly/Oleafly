@@ -40,7 +40,9 @@ function currentSource(projectId: string, path: string): Promise<string> {
 async function writeSource(projectId: string, path: string, content: string, base: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
-    if (!files.setContent(path, content)) throw new Error(`${path} is read-only`);
+    if (!files.setContent(path, content, { bumpVersion: files.activePath === path })) {
+      throw new Error(`${path} is read-only`);
+    }
     await useFilesStore.getState().saveFile(path);
     return;
   }

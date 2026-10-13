@@ -143,12 +143,12 @@ describe("citeOleafly", () => {
     useFilesStore.setState({ files: { "extra.bib": { content: "" } } } as never);
     const outcome = await citeOleafly({ path: "extra.bib" });
     expect(outcome.kind).toBe("added");
-    expect(setContent).toHaveBeenCalledWith("extra.bib", `${oleaflyBibtex("0.4.0")}\n`);
+    expect(setContent).toHaveBeenCalledWith("extra.bib", `${oleaflyBibtex("0.4.0")}\n`, { bumpVersion: false });
     expect(saveFile).toHaveBeenCalledWith("extra.bib");
     expect(writeProjectFile).not.toHaveBeenCalled();
     if (outcome.kind !== "added") throw new Error("unreachable");
     await outcome.undo();
-    expect(setContent).toHaveBeenLastCalledWith("extra.bib", "");
+    expect(setContent).toHaveBeenLastCalledWith("extra.bib", "", { bumpVersion: false });
     expect(saveFile).toHaveBeenCalledTimes(2);
   });
 });

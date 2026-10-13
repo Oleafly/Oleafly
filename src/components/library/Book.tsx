@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -90,6 +90,8 @@ export function Book({
   onPreviewRequest,
   onPreviewCancel,
   dimmed = false,
+  pressed,
+  badge,
 }: Readonly<{
   title: string;
   color?: string;
@@ -101,7 +103,7 @@ export function Book({
   kind?: string;
   variant?: Variant;
   width?: number;
-  onClick?: () => void;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   openLabel?: string;
   starred?: boolean;
   onStarToggle?: () => void;
@@ -110,6 +112,8 @@ export function Book({
   onPreviewRequest?: () => void;
   onPreviewCancel?: () => void;
   dimmed?: boolean;
+  pressed?: boolean;
+  badge?: ReactNode;
 }>) {
   const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
@@ -141,6 +145,7 @@ export function Book({
         type="button"
         tabIndex={0}
         aria-label={openLabel ?? t(($) => $.library.projects.open, { name: title })}
+        aria-pressed={pressed}
         onClick={onClick}
         onMouseEnter={onPreviewRequest}
         onMouseLeave={onPreviewCancel}
@@ -213,6 +218,8 @@ export function Book({
               </div>
             )}
 
+            {badge ? <div className="pointer-events-none absolute right-1.5 top-1.5 z-20 flex">{badge}</div> : null}
+
             <div className="pointer-events-none absolute inset-0 rounded-md border border-black/10" />
           </div>
         </div>
@@ -220,7 +227,7 @@ export function Book({
       </button>
       {onStarToggle && (
         <div
-          className="absolute right-2 top-2 z-20 flex items-center gap-0.5"
+          className={cn("absolute top-2 z-20 flex items-center gap-0.5", badge ? "right-7" : "right-2")}
           style={{ color: ink }}
         >
           {(

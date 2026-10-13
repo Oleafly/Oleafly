@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef, ComponentType, ReactNode } from "react";
+import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 import type { TemplatesTranslator } from "./messages";
 
 // A structural subset of the host's richer manifest type; extra fields pass
@@ -27,6 +27,23 @@ export interface TemplatesHost {
   logError(scope: string, e: unknown): void;
 }
 
+export interface TemplatesRowWindow {
+  readonly start: number;
+  readonly end: number;
+  readonly paddingTop: number;
+  readonly paddingBottom: number;
+}
+
+export type TemplatesRowWindowHook = (
+  options: Readonly<{
+    count: number;
+    listRef: RefObject<HTMLElement | null>;
+    scrollRef?: RefObject<HTMLElement | null>;
+    overscan?: number;
+    unmeasuredCount?: number;
+  }>,
+) => TemplatesRowWindow;
+
 export interface TemplatesKit {
   Input: ComponentType<ComponentPropsWithRef<"input">>;
   Button: ComponentType<{
@@ -48,5 +65,6 @@ export interface TemplatesKit {
     "aria-label"?: string;
     "data-testid"?: string;
   }>;
+  useRowWindow: TemplatesRowWindowHook;
   t: TemplatesTranslator;
 }

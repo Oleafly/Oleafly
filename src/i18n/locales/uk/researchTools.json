@@ -1382,7 +1382,6 @@
     "captionAria": "Підпис таблиці",
     "preview": "Перегляд",
     "output": "Результат LaTeX",
-    "copiedSource": "Код LaTeX скопійовано",
     "booktabsHint": "Потребує <code>\\usepackage{booktabs}</code> у вашій преамбулі."
   },
   "review": {

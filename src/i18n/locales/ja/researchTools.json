@@ -1349,7 +1349,6 @@
     "captionAria": "表のキャプション",
     "preview": "プレビュー",
     "output": "LaTeX の出力",
-    "copiedSource": "LaTeX のソースをコピーしました",
     "booktabsHint": "プリアンブルに <code>\\usepackage{booktabs}</code> が必要です。"
   },
   "review": {

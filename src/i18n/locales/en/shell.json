@@ -1416,5 +1416,55 @@
     "send": "Send",
     "keepLocal": "Keep local",
     "unavailable": "The project folder is unavailable, so syncing is paused. It starts again when the folder is back."
+  },
+  "overleafSync": {
+    "button": "Overleaf sync",
+    "title": "Sync with Overleaf",
+    "cancel": "Cancel",
+    "more_one": "and {{count}} more file",
+    "more_other": "and {{count}} more files",
+    "status": {
+      "notLinked": "Not synced with Overleaf yet.",
+      "linking": "Linking to Overleaf",
+      "syncing": "Syncing with Overleaf",
+      "needsToken": "Add your Overleaf Git token to sync.",
+      "never": "Not synced yet.",
+      "justNow": "just now",
+      "synced": "Synced {{time}}.",
+      "conflicts_one": "{{count}} file changed on both sides. Choose which version to keep.",
+      "conflicts_other": "{{count}} files changed on both sides. Choose which versions to keep."
+    },
+    "actions": {
+      "keepInSync": "Keep in sync with Overleaf",
+      "syncNow": "Sync now",
+      "auto": "Sync automatically",
+      "resolve": "Choose versions",
+      "unlink": "Stop syncing",
+      "addToken": "Add Git token",
+      "changeToken": "Change Git token"
+    },
+    "token": {
+      "title": "Add your Overleaf Git token",
+      "description": "Oleafly syncs through Overleaf's Git integration. Create a token under Git integration in your Overleaf account settings, then paste it here. It stays encrypted on this computer.",
+      "openSettings": "Open Overleaf account settings",
+      "label": "Git token",
+      "note": "Git integration needs a paid or university Overleaf plan for the project's owner.",
+      "save": "Save and sync"
+    },
+    "choice": {
+      "title": "Which version should win?",
+      "description": "These files are different here and on Overleaf. Files that exist on only one side are kept on both, so nothing is deleted.",
+      "mine": "Use my versions",
+      "theirs": "Use Overleaf's versions"
+    },
+    "conflicts": {
+      "title": "Choose versions",
+      "description": "These files changed both here and on Overleaf since the last sync. Pick the version to keep for each one. Nothing changes until you apply.",
+      "mine": "Mine",
+      "theirs": "Overleaf's",
+      "allMine": "Keep all of mine",
+      "allTheirs": "Use all of Overleaf's",
+      "apply": "Apply and sync"
+    }
   }
 }

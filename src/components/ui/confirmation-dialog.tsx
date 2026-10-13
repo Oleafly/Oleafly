@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { type ReactNode, useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -6,7 +6,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 
 interface ConfirmationDialogProps {
   open: boolean;
-  title: string;
+  title: ReactNode;
   description: string;
   confirmLabel: string;
   cancelLabel?: string;

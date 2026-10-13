@@ -319,7 +319,9 @@
       "closeAgent": "Stänger en hjälpagent.",
       "runCommand": "Kör ett shell-kommando i projektmappen, med en gräns på två minuter.",
       "computerUse": "Öppnar en webbsida i assistentens webbläsarfönster.",
-      "toggleTheme": "Växlar mellan ljust och mörkt läge."
+      "toggleTheme": "Växlar mellan ljust och mörkt läge.",
+      "listOverleafProjects": "Listar dina Overleaf-projekt och loggar in först vid behov.",
+      "importOverleafProjects": "Importerar Overleaf-projekt till ditt bibliotek, med kompilator och huvudfil."
     },
     "disableAll": "Stäng av alla",
     "emptyContext": "Inga verktyg är tillgängliga i det här sammanhanget.",

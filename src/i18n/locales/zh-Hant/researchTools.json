@@ -1349,7 +1349,6 @@
     "captionAria": "表格圖說",
     "preview": "預覽",
     "output": "LaTeX 輸出",
-    "copiedSource": "已複製 LaTeX 原始碼",
     "booktabsHint": "需要在前導區加入 <code>\\usepackage{booktabs}</code>。"
   },
   "review": {

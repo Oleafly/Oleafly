@@ -478,7 +478,7 @@ describe("remove from Oleafly", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.folder.menu.remove }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(enLibrary.folder.remove.title.replace("{{name}}", "Thesis")),
+      within(dialog).getByRole("heading", { name: enLibrary.folder.remove.title.replace("<name>{{name}}</name>", "Thesis") }),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(enLibrary.folder.remove.description)).toBeInTheDocument();
 

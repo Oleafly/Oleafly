@@ -89,22 +89,52 @@ describe("SystemIntegrationSection", () => {
     expect(row).toHaveTextContent(copy.state.installed);
   });
 
-  it("shows why a quick action needs attention and repairs it", async () => {
+  it("repairs an outdated quick action on its own, once", async () => {
     mocks.status.mockResolvedValue(
       status("macos", [item("quick_action", "needs_attention", { attention: "outdated" })]),
     );
     mocks.set.mockResolvedValue(item("quick_action", "installed"));
+    render(<SystemIntegrationSection />);
+
+    const row = await screen.findByTestId("system-integration-quick_action");
+    await waitFor(() => expect(row).toHaveTextContent(copy.state.installed));
+    expect(mocks.set).toHaveBeenCalledExactlyOnceWith("quick_action", true);
+    expect(row).not.toHaveTextContent(copy.attention.outdated);
+    expect(within(row).queryByRole("alert")).toBeNull();
+  });
+
+  it("repairs a quick action that points to a moved copy on its own", async () => {
+    mocks.status.mockResolvedValue(
+      status("macos", [item("quick_action", "needs_attention", { attention: "moved" })]),
+    );
+    mocks.set.mockResolvedValue(item("quick_action", "installed"));
+    render(<SystemIntegrationSection />);
+
+    const row = await screen.findByTestId("system-integration-quick_action");
+    await waitFor(() => expect(row).toHaveTextContent(copy.state.installed));
+    expect(mocks.set).toHaveBeenCalledExactlyOnceWith("quick_action", true);
+  });
+
+  it("keeps the attention message quietly when the automatic repair fails, and Repair still works", async () => {
+    mocks.status.mockResolvedValue(
+      status("macos", [item("quick_action", "needs_attention", { attention: "outdated" })]),
+    );
+    mocks.set.mockRejectedValueOnce(new Error("blocked"));
     const user = userEvent.setup();
     render(<SystemIntegrationSection />);
 
     const row = await screen.findByTestId("system-integration-quick_action");
+    await waitFor(() => expect(mocks.set).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(within(row).getByRole("button", { name: copy.actions.repair })).toBeEnabled());
     expect(row).toHaveTextContent(copy.state.needsAttention);
     expect(row).toHaveTextContent(copy.attention.outdated);
-    expect(within(row).getByRole("button", { name: enCommon.actions.remove })).toBeEnabled();
+    expect(within(row).queryByRole("alert")).toBeNull();
+    expect(mocks.logError).toHaveBeenCalled();
 
+    mocks.set.mockResolvedValueOnce(item("quick_action", "installed"));
     await user.click(within(row).getByRole("button", { name: copy.actions.repair }));
 
-    expect(mocks.set).toHaveBeenCalledWith("quick_action", true);
+    expect(mocks.set).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(row).not.toHaveTextContent(copy.attention.outdated));
   });
 
@@ -155,6 +185,7 @@ describe("SystemIntegrationSection", () => {
     const row = await screen.findByTestId("system-integration-explorer_menu");
     expect(row).toHaveTextContent(copy.attention.elsewhere);
     expect(within(row).getByRole("switch")).toHaveAttribute("aria-checked", "true");
+    expect(mocks.set).not.toHaveBeenCalled();
 
     await user.click(within(row).getByRole("button", { name: copy.actions.repair }));
 

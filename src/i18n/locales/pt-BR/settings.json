@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "A mesma referência em APA está em Cite this repository, no GitHub",
-    "copyBibtex": "Copiar o BibTeX",
     "description": "O Oleafly é livre e de código aberto, e continua assim quando as pessoas sabem que ele existe. Se ele ajudou em um artigo, uma entrada na sua bibliografia mostra ao próximo pesquisador de onde veio a ferramenta. Copie, cole no seu arquivo .bib e cite a chave <citeKey>oleafly</citeKey>.",
     "title": "Cite o Oleafly no seu artigo"
   },
@@ -1087,11 +1086,58 @@
       "fontRemoveFailed": "Não foi possível remover a fonte.",
       "packDownloadFailed": "Não foi possível baixar o pacote de modelos.",
       "packsDownloadFailed": "Não foi possível baixar os pacotes de modelos.",
-      "packRemoveFailed": "Não foi possível remover o pacote de modelos."
+      "packRemoveFailed": "Não foi possível remover o pacote de modelos.",
+      "templateDownloadFailed": "Não foi possível baixar o modelo.",
+      "packsRefreshFailed": "Não foi possível procurar novos pacotes."
     },
     "typstFonts": {
       "heading": "Fontes para Typst",
       "tooltip": "Fontes gratuitas que muitos modelos Typst pedem. Depois de baixadas, qualquer projeto Typst pode usá-las, exceto um projeto que desativa as fontes do sistema."
+    },
+    "packs": {
+      "browse": "Explorar",
+      "back": "Voltar aos pacotes",
+      "count_one": "{{count}} modelo",
+      "count_many": "{{count}} modelos",
+      "count_other": "{{count}} modelos",
+      "installedCount": "{{installed}} de {{total}} instalados",
+      "downloadPack": "Baixar pacote",
+      "refresh": "Procurar novos pacotes",
+      "searchPacks": "Buscar pacotes",
+      "searchTemplates": "Buscar modelos",
+      "noPacks": "Nenhum pacote encontrado",
+      "noTemplates": "Nenhum modelo encontrado",
+      "loading": "Carregando modelos",
+      "loadFailed": "Não foi possível carregar este pacote.",
+      "retry": "Tentar de novo",
+      "installed": "Instalado",
+      "engineFilter": "Motor",
+      "kindFilter": "Tipo",
+      "languageFilter": "Idioma",
+      "allEngines": "Todos os motores",
+      "allKinds": "Todos os tipos",
+      "allLanguages": "Todos os idiomas",
+      "groups": {
+        "curated": "Selecionados",
+        "community": "Comunidade",
+        "typst": "Typst",
+        "university": "Universidades"
+      },
+      "preview": {
+        "image": "Primeira página de {{name}}",
+        "previous": "Modelo anterior",
+        "next": "Próximo modelo",
+        "engine": "Motor",
+        "license": "Licença",
+        "kind": "Tipo",
+        "languages": "Idiomas",
+        "country": "País",
+        "institution": "Instituição",
+        "originalSource": "Fonte original",
+        "getTemplate": "Obter este modelo",
+        "useTemplate": "Usar este modelo",
+        "getAndCreate": "Obter e criar projeto"
+      }
     }
   },
   "engine": {
@@ -1392,6 +1438,22 @@
         "heading": "Conta do zotero.org",
         "description": "Use sua conta quando o Zotero não estiver aberto neste computador. As bibliotecas de grupo também vêm junto."
       }
+    },
+    "overleaf": {
+      "description": "Traga projetos da sua conta do Overleaf ou do servidor Overleaf da sua universidade e mantenha tudo sincronizado. O Oleafly guarda o login e o token Git criptografados neste computador.",
+      "signedInAs": "Conectado como {{email}} em {{server}}",
+      "signedIn": "Conectado em {{server}}",
+      "signOut": "Sair",
+      "signOutFailed": "O Oleafly não conseguiu sair do Overleaf.",
+      "gitTitle": "Token Git para sincronização",
+      "gitSaved": "Há um token Git salvo. Os projetos que você vincular ficam sincronizados com o Overleaf.",
+      "gitMissing": "Nenhum token Git ainda. Crie um em Integração com Git nas configurações da sua conta do Overleaf para sincronizar projetos.",
+      "gitOpenSettings": "Abrir configurações da conta do Overleaf",
+      "gitPlanNote": "A integração com Git exige um plano pago ou universitário do Overleaf para o dono do projeto.",
+      "gitLabel": "Token Git do Overleaf",
+      "gitSave": "Salvar",
+      "gitRemove": "Remover",
+      "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro."
     }
   },
   "language": {

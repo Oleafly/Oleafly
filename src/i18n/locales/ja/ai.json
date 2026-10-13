@@ -312,7 +312,9 @@
       "closeAgent": "補助エージェントを終了します。",
       "runCommand": "プロジェクトフォルダで shell コマンドを実行します。制限時間は 2 分です。",
       "computerUse": "アシスタントのブラウザウィンドウでウェブページを開きます。",
-      "toggleTheme": "ライトモードとダークモードを切り替えます。"
+      "toggleTheme": "ライトモードとダークモードを切り替えます。",
+      "listOverleafProjects": "Overleaf のプロジェクトを一覧表示します。必要に応じて先にサインインします。",
+      "importOverleafProjects": "Overleaf のプロジェクトを、コンパイラとメインファイルの設定ごとライブラリに読み込みます。"
     },
     "disableAll": "すべて無効にする",
     "emptyContext": "この場面で使えるツールはありません。",

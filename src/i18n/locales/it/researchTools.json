@@ -1371,7 +1371,6 @@
     "captionAria": "Didascalia della tabella",
     "preview": "Anteprima",
     "output": "Output LaTeX",
-    "copiedSource": "Sorgente LaTeX copiato",
     "booktabsHint": "Richiede <code>\\usepackage{booktabs}</code> nel preambolo."
   },
   "review": {

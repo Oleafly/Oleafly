@@ -1349,7 +1349,6 @@
     "captionAria": "표 캡션",
     "preview": "미리보기",
     "output": "LaTeX 출력",
-    "copiedSource": "LaTeX 소스를 복사했습니다",
     "booktabsHint": "프리앰블에 <code>\\usepackage{booktabs}</code>가 필요합니다."
   },
   "review": {

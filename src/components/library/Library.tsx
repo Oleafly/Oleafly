@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   BookmarkX,
   Clock3,
   FolderInput,
-  LayoutGrid,
-  List,
   SearchX,
   SlidersHorizontal,
   X,
@@ -59,6 +57,7 @@ import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
+import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
   DEFAULT_BOOK_COLOR,
@@ -113,8 +112,11 @@ import { FolderUnavailableDialog } from "@/components/library/FolderUnavailableD
 import { copyIntoLibrary } from "@/store/copy-into-library";
 import { useLibraryAvailabilityStore } from "@/store/library-availability";
 import { formatNumber } from "@/lib/intl";
-import { projectDateTime } from "@/lib/project-format";
+import { projectDateTime, shortProjectName } from "@/lib/project-format";
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
+import { useMarqueeSelection } from "@/components/library/marquee-selection";
+import { useWindowDragHoverGuard } from "@/components/library/window-drag-guard";
+import { useLibrarySelectionStore } from "@/store/library-selection";
 import { LibraryStartChoices } from "@/components/library/LibraryStartChoices";
 import { OpenFolderButton } from "@/components/library/OpenFolderButton";
 import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
@@ -122,6 +124,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
+const DIALOG_NAME_CLASS = "[overflow-wrap:anywhere]";
 const THUMBNAIL_SCROLL_SETTLE_MS = 160;
 // In-flight keys so a second hover during a load does not start a parallel job.
 const thumbInflight = new Set<string>();
@@ -146,6 +149,23 @@ function cacheThumbnail(key: string, png: string) {
     const oldest = thumbCache.keys().next().value;
     if (oldest) thumbCache.delete(oldest);
   }
+}
+
+const BulkDeleteButton = lazy(() =>
+  import("@/components/library/BulkDeleteButton").then((module) => ({ default: module.BulkDeleteButton })),
+);
+
+function BulkDeleteSlot({
+  projects,
+  className,
+}: Readonly<{ projects: readonly ProjectInfo[]; className?: string }>) {
+  const active = useLibrarySelectionStore((state) => state.ids.size > 0);
+  if (!active) return null;
+  return (
+    <Suspense fallback={null}>
+      <BulkDeleteButton projects={projects} className={className} />
+    </Suspense>
+  );
 }
 
 function FilterSelect({
@@ -226,6 +246,8 @@ export function Library() {
   const [query, setQuery] = useState("");
   const scrollRef = useScrollTopOnChange(query);
   useOverlayScrollbar(scrollRef);
+  useMarqueeSelection(scrollRef, page === "library" && projects.length > 0);
+  useWindowDragHoverGuard(scrollRef, page === "library");
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
   const [previewProject, setPreviewProject] = useState<ProjectInfo | null>(null);
@@ -561,6 +583,14 @@ export function Library() {
   };
 
   useEffect(() => {
+    useLibrarySelectionStore.getState().retain(new Set(visibleProjects.map((project) => project.id)));
+  }, [visibleProjects]);
+
+  useEffect(() => {
+    if (page !== "library") useLibrarySelectionStore.getState().clear();
+  }, [page]);
+
+  useEffect(() => {
     const scroller = scrollRef.current;
     if (page !== "library" || !scroller) return;
     const onScroll = () => {
@@ -634,36 +664,11 @@ export function Library() {
   const renderLayoutSwitcher = () => (
     <div data-tauri-drag-region className="flex min-w-max items-center">
       {projects.length > 0 ? (
-        <fieldset
-          aria-label={t(($) => $.library.home.layoutGroup)}
-          className={cn(
-            HOME_CHROME_SURFACE,
-            "flex items-center rounded-xl p-1",
-            (isWindows || isLinux) && "mr-3",
-          )}
-        >
-          {([
-            { mode: "list", label: t(($) => $.library.home.listView), icon: List },
-            { mode: "grid", label: t(($) => $.library.home.gridView), icon: LayoutGrid },
-          ] as const).map(({ mode, label, icon: Icon }) => (
-            <Tooltip key={mode} label={label} side="bottom">
-              <button
-                type="button"
-                onClick={() => setProjectLayout(mode)}
-                aria-label={label}
-                aria-pressed={projectLayout === mode}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:bg-accent/60 focus-visible:text-foreground",
-                  projectLayout === mode
-                    ? "bg-accent text-foreground"
-                    : "hover:text-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-4" />
-              </button>
-            </Tooltip>
-          ))}
-        </fieldset>
+        <LayoutToggle
+          value={projectLayout}
+          onChange={setProjectLayout}
+          className={cn(HOME_CHROME_SURFACE, (isWindows || isLinux) && "mr-3")}
+        />
       ) : null}
       <WindowControls />
     </div>
@@ -1019,6 +1024,7 @@ export function Library() {
         />
       </div>
     ) : null}
+    {projects.length > 0 ? <BulkDeleteSlot projects={projects} className="order-3" /> : null}
     {projects.length > 0 && (
       <Tooltip label={t(($) => $.library.home.advancedFilters)} className="order-1">
           <Popover
@@ -1279,10 +1285,16 @@ export function Library() {
       )}
       <ConfirmationDialog
         open={deleteTarget !== null}
-        title={t(($) => $.library.projects.deleteDialog.title, {
-          name:
-            deleteTarget?.name ?? t(($) => $.library.projects.deleteDialog.fallbackName),
-        })}
+        title={
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.projects.deleteDialog.title}
+            values={{
+              name: shortProjectName(deleteTarget?.name ?? t(($) => $.library.projects.deleteDialog.fallbackName)),
+            }}
+            components={{ name: <span title={deleteTarget?.name} className={DIALOG_NAME_CLASS} /> }}
+          />
+        }
         description={t(($) => $.library.projects.deleteDialog.description)}
         confirmLabel={t(($) => $.library.projects.deleteDialog.confirm)}
         destructive
@@ -1291,7 +1303,14 @@ export function Library() {
       />
       <ConfirmationDialog
         open={removeTarget !== null}
-        title={t(($) => $.library.folder.remove.title, { name: removeTarget?.name ?? "" })}
+        title={
+          <Trans
+            ns="library"
+            i18nKey={($) => $.library.folder.remove.title}
+            values={{ name: shortProjectName(removeTarget?.name ?? "") }}
+            components={{ name: <span title={removeTarget?.name} className={DIALOG_NAME_CLASS} /> }}
+          />
+        }
         description={t(($) => $.library.folder.remove.description)}
         confirmLabel={t(($) => $.library.folder.remove.confirm)}
         onCancel={() => setRemoveTarget(null)}

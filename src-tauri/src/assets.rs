@@ -243,7 +243,7 @@ async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
     Ok(())
 }
 
-fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
+pub(crate) fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
     let Some(expected) = expected else {
         return true;
     };

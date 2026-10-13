@@ -8,6 +8,7 @@ import { listTemplates, type TemplateInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { useTourStore } from "@/store/tours";
+import { clearTemplateRequest, useTemplateRequestStore } from "@/store/template-request";
 import { finishHomeTourAfterProjectCreation } from "@/lib/tours/coordinator";
 
 // Mounted at the app root so it can be opened from anywhere (Library, the
@@ -18,6 +19,7 @@ export function GlobalNewProject() {
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const createFromTemplate = useFilesStore((s) => s.createFromTemplate);
   const homeTourActive = useTourStore((state) => state.activeTourId === "home");
+  const requestedTemplateId = useTemplateRequestStore((s) => s.requestedTemplateId);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
 
@@ -34,6 +36,17 @@ export function GlobalNewProject() {
         .catch((e) => void logError("load templates", e));
     }
   }, [open, templates.length]);
+
+  useEffect(() => {
+    if (!requestedTemplateId) return;
+    void listTemplates()
+      .then(setTemplates)
+      .catch((e) => void logError("load templates", e));
+  }, [requestedTemplateId]);
+
+  useEffect(() => {
+    if (!open) clearTemplateRequest();
+  }, [open]);
 
   const create = async (rawName: string, templateId: string, color: string) => {
     setCreating(true);
@@ -93,6 +106,7 @@ export function GlobalNewProject() {
       busy={creating}
       allowEnterSubmit={!homeTourActive}
       allowClose={!homeTourActive}
+      initialTemplateId={requestedTemplateId}
       onClose={() => {
         if (!homeTourActive) setOpen(false);
       }}

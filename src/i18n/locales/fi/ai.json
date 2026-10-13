@@ -319,7 +319,9 @@
       "closeAgent": "Sulje apuagentti.",
       "runCommand": "Suorita shell-komento projektikansiossa, kahden minuutin rajalla.",
       "computerUse": "Avaa verkkosivu avustajan selainikkunassa.",
-      "toggleTheme": "Vaihda vaalean ja tumman tilan välillä."
+      "toggleTheme": "Vaihda vaalean ja tumman tilan välillä.",
+      "listOverleafProjects": "Listaa Overleaf-projektisi ja kirjaudu tarvittaessa ensin sisään.",
+      "importOverleafProjects": "Tuo Overleaf-projekteja kirjastoosi kääntäjineen ja päätiedostoineen."
     },
     "disableAll": "Poista kaikki käytöstä",
     "emptyContext": "Tässä yhteydessä ei ole käytettävissä työkaluja.",

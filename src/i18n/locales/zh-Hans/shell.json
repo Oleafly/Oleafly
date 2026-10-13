@@ -1382,5 +1382,53 @@
     "send": "发送",
     "keepLocal": "保留在本地",
     "unavailable": "项目文件夹不可用，同步已暂停。文件夹恢复后会自动继续。"
+  },
+  "overleafSync": {
+    "button": "Overleaf 同步",
+    "title": "与 Overleaf 同步",
+    "cancel": "取消",
+    "more_other": "以及另外 {{count}} 个文件",
+    "status": {
+      "notLinked": "尚未与 Overleaf 同步。",
+      "linking": "正在关联 Overleaf",
+      "syncing": "正在与 Overleaf 同步",
+      "needsToken": "添加你的 Overleaf Git 令牌即可同步。",
+      "never": "尚未同步。",
+      "justNow": "刚刚",
+      "synced": "上次同步：{{time}}。",
+      "conflicts_other": "{{count}} 个文件在两边都有更改。请选择要保留的版本。"
+    },
+    "actions": {
+      "keepInSync": "与 Overleaf 保持同步",
+      "syncNow": "立即同步",
+      "auto": "自动同步",
+      "resolve": "选择版本",
+      "unlink": "停止同步",
+      "addToken": "添加 Git 令牌",
+      "changeToken": "更换 Git 令牌"
+    },
+    "token": {
+      "title": "添加你的 Overleaf Git 令牌",
+      "description": "Oleafly 通过 Overleaf 的 Git 集成进行同步。请在 Overleaf 账户设置的“Git 集成”中创建令牌，然后粘贴到这里。令牌会加密保存在这台电脑上。",
+      "openSettings": "打开 Overleaf 账户设置",
+      "label": "Git 令牌",
+      "note": "使用 Git 集成需要项目所有者订阅 Overleaf 付费方案或大学方案。",
+      "save": "保存并同步"
+    },
+    "choice": {
+      "title": "保留哪个版本？",
+      "description": "这些文件在本地和 Overleaf 上的内容不同。只存在于一边的文件会在两边都保留，因此不会删除任何内容。",
+      "mine": "使用我的版本",
+      "theirs": "使用 Overleaf 的版本"
+    },
+    "conflicts": {
+      "title": "选择版本",
+      "description": "自上次同步以来，这些文件在本地和 Overleaf 上都有更改。请为每个文件选择要保留的版本。在你应用之前，不会有任何更改。",
+      "mine": "我的",
+      "theirs": "Overleaf 的",
+      "allMine": "全部保留我的",
+      "allTheirs": "全部使用 Overleaf 的",
+      "apply": "应用并同步"
+    }
   }
 }

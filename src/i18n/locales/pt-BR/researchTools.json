@@ -1371,7 +1371,6 @@
     "captionAria": "Legenda da tabela",
     "preview": "Prévia",
     "output": "Saída em LaTeX",
-    "copiedSource": "Código LaTeX copiado",
     "booktabsHint": "Precisa de <code>\\usepackage{booktabs}</code> no seu preâmbulo."
   },
   "review": {

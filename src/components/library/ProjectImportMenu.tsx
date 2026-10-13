@@ -64,6 +64,7 @@ export function ProjectImportMenu({
   const [arxivOpen, setArxivOpen] = useState(false);
   const [sharedLinkOpen, setSharedLinkOpen] = useState(false);
   const collab = useCollabLibraryKit();
+  const [overleafOpen, setOverleafOpen] = useState(false);
   const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
@@ -295,6 +296,7 @@ export function ProjectImportMenu({
         })}
         <DropdownMenuLabel>{t(($) => $.library.import.menu.cloud)}</DropdownMenuLabel>
         <DropdownMenuItem data-testid="import-arxiv" onSelect={() => setArxivOpen(true)}>{t(($) => $.library.import.arxivPaper)}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="import-overleaf" onSelect={() => setOverleafOpen(true)}>{"Overleaf"}</DropdownMenuItem>
         {collab ? (
           <DropdownMenuItem data-testid="import-shared-link" onSelect={() => setSharedLinkOpen(true)}>
             {collab.openLink}
@@ -309,6 +311,7 @@ export function ProjectImportMenu({
       </DropdownMenuContent>
     </DropdownMenu>
     <ProjectImportDialog open={arxivOpen} initialView="arxiv" onClose={() => setArxivOpen(false)} onImported={onImportSelected} />
+    <ProjectImportDialog open={overleafOpen} initialView="overleaf" onClose={() => setOverleafOpen(false)} onImported={onImportSelected} />
     <OpenLinkDialogSlot open={sharedLinkOpen} onClose={() => setSharedLinkOpen(false)} />
     </>
   );

@@ -32,7 +32,9 @@ function linkedBibliographyMessage(path: string): string {
 async function writeBibliography(projectId: string, path: string, content: string, base: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
-    if (!files.setContent(path, content)) throw new Error(linkedBibliographyMessage(path));
+    if (!files.setContent(path, content, { bumpVersion: files.activePath === path })) {
+      throw new Error(linkedBibliographyMessage(path));
+    }
     await useFilesStore.getState().saveFile(path);
     return;
   }

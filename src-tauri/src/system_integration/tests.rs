@@ -1008,17 +1008,12 @@ fn desktop_template_rendered(exec: &str) -> String {
         .as_str()
         .unwrap_or(env!("CARGO_PKG_DESCRIPTION"))
         .to_string();
-    let mime_type = installer_schemes(tauri::utils::platform::Target::Linux)
-        .iter()
-        .map(|scheme| format!("x-scheme-handler/{scheme}"))
-        .collect::<Vec<_>>()
-        .join(";");
     let mut out = String::new();
     let mut skipping = false;
     for line in template.lines() {
         match line {
             "{{#if comment}}" => {}
-            "{{#if mime_type}}" => skipping = mime_type.is_empty(),
+            "{{#if mime_type}}" => skipping = true,
             "{{/if}}" => skipping = false,
             _ if skipping => {}
             _ => {
@@ -1028,8 +1023,7 @@ fn desktop_template_rendered(exec: &str) -> String {
                         .replace("{{comment}}", &comment)
                         .replace("{{exec}}", exec)
                         .replace("{{icon}}", exec)
-                        .replace("{{name}}", &name)
-                        .replace("{{mime_type}}", &mime_type),
+                        .replace("{{name}}", &name),
                 );
                 out.push('\n');
             }
@@ -1041,7 +1035,7 @@ fn desktop_template_rendered(exec: &str) -> String {
 #[test]
 fn packaged_linux_launchers_run_the_installed_binary_with_every_folder() {
     let template = include_str!("../../linux/main.desktop");
-    assert!(template.contains("\nExec=/usr/bin/{{exec}} %U\n"));
+    assert!(template.contains("\nExec=/usr/bin/{{exec}} %F\n"));
     assert!(!template.contains("inode/directory"));
     let linux = config(include_str!("../../tauri.linux.conf.json"));
     for format in ["deb", "rpm"] {
@@ -1051,7 +1045,7 @@ fn packaged_linux_launchers_run_the_installed_binary_with_every_folder() {
         );
     }
     let rendered = desktop_template_rendered(LINUX_BINARY);
-    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %U\n"));
+    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %F\n"));
     assert!(rendered.contains("\nName=Oleafly\n"));
 }
 
@@ -1063,40 +1057,10 @@ fn the_appimage_launcher_runs_its_own_binary_by_name() {
         "linux/appimage.desktop"
     );
     let expected = desktop_template_rendered(LINUX_BINARY).replace(
-        "\nExec=/usr/bin/oleafly-desktop %U\n",
-        "\nExec=oleafly-desktop %U\n",
+        "\nExec=/usr/bin/oleafly-desktop %F\n",
+        "\nExec=oleafly-desktop %F\n",
     );
     assert_eq!(include_str!("../../linux/appimage.desktop"), expected);
-}
-
-#[test]
-fn every_linux_package_hands_app_links_to_the_app() {
-    use tauri::utils::platform::Target;
-    assert_eq!(
-        installer_schemes(Target::Linux),
-        [crate::collab::links::SCHEME]
-    );
-    let handler = format!(
-        "\nMimeType=x-scheme-handler/{};\n",
-        crate::collab::links::SCHEME
-    );
-    let rendered = desktop_template_rendered(LINUX_BINARY);
-    assert!(rendered.contains(&handler), "{rendered}");
-    assert!(rendered.contains("\nExec=/usr/bin/oleafly-desktop %U\n"));
-    let appimage = include_str!("../../linux/appimage.desktop");
-    assert!(appimage.contains(&handler), "{appimage}");
-    assert!(appimage.contains("\nExec=oleafly-desktop %U\n"));
-    let linux = merged_config(Target::Linux);
-    for format in ["deb", "rpm"] {
-        assert_eq!(
-            linux["bundle"]["linux"][format]["desktopTemplate"], "linux/main.desktop",
-            "{format}"
-        );
-    }
-    assert_eq!(
-        linux["bundle"]["linux"]["appimage"]["files"]["/usr/share/applications/Oleafly.desktop"],
-        "linux/appimage.desktop"
-    );
 }
 
 #[test]
@@ -1120,26 +1084,6 @@ fn both_windows_installers_register_app_links() {
                 .is_some_and(|list| list.contains(&(*format).into()))),
         "{targets}"
     );
-}
-
-#[test]
-fn macos_registers_app_links_through_its_info_plist_alone() {
-    use tauri::utils::platform::Target;
-    assert!(installer_schemes(Target::MacOS).is_empty());
-    let plist = plist::Value::from_reader_xml(include_str!("../../Info.plist").as_bytes()).unwrap();
-    let schemes: Vec<&str> = plist
-        .as_dictionary()
-        .and_then(|dict| dict.get("CFBundleURLTypes"))
-        .and_then(plist::Value::as_array)
-        .unwrap()
-        .iter()
-        .filter_map(plist::Value::as_dictionary)
-        .filter_map(|kind| kind.get("CFBundleURLSchemes"))
-        .filter_map(plist::Value::as_array)
-        .flatten()
-        .filter_map(plist::Value::as_string)
-        .collect();
-    assert_eq!(schemes, [crate::collab::links::SCHEME]);
 }
 
 #[test]
@@ -1181,7 +1125,12 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "linux/com.oleafly.app.metainfo.xml",
             "{format}"
         );
-        assert_eq!(files.as_object().unwrap().len(), 4, "{format}");
+        assert_eq!(
+            files["/usr/share/applications/oleafly-url-handler.desktop"],
+            "linux/oleafly-url-handler.desktop",
+            "{format}"
+        );
+        assert_eq!(files.as_object().unwrap().len(), 5, "{format}");
     }
 }
 

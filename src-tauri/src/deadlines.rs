@@ -30,9 +30,9 @@ struct CcfRank {
 #[derive(Deserialize, Default)]
 struct CcfTimeline {
     #[serde(default)]
-    abstract_deadline: Option<serde_yaml::Value>,
+    abstract_deadline: Option<serde_norway::Value>,
     #[serde(default)]
-    deadline: Option<serde_yaml::Value>,
+    deadline: Option<serde_norway::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -87,9 +87,9 @@ struct Venue {
     place: String,
 }
 
-fn yaml_time(v: &Option<serde_yaml::Value>) -> Option<String> {
+fn yaml_time(v: &Option<serde_norway::Value>) -> Option<String> {
     let s = match v {
-        Some(serde_yaml::Value::String(s)) => s.trim().to_string(),
+        Some(serde_norway::Value::String(s)) => s.trim().to_string(),
         _ => return None,
     };
     if s.is_empty() || s.eq_ignore_ascii_case("tbd") {
@@ -100,7 +100,7 @@ fn yaml_time(v: &Option<serde_yaml::Value>) -> Option<String> {
 
 pub(crate) fn normalize(yaml: &str, generated_at: String) -> Result<String, String> {
     let entries: Vec<CcfEntry> =
-        serde_yaml::from_str(yaml).map_err(|e| format!("invalid deadlines yaml: {e}"))?;
+        serde_norway::from_str(yaml).map_err(|e| format!("invalid deadlines yaml: {e}"))?;
     let mut venues: Vec<Venue> = Vec::new();
     for entry in entries {
         let Some(conf) = entry.confs.iter().max_by_key(|c| c.year) else {

@@ -98,6 +98,22 @@ describe("i18n runtime", () => {
     expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
   });
 
+  it("loads every lazy namespace in English and in each language the app switches to", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    const { LAZY_NAMESPACES } = await import("./resources");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    for (const namespace of LAZY_NAMESPACES) {
+      expect(i18n.hasResourceBundle("en", namespace), namespace).toBe(false);
+      await loadNamespace(namespace);
+      expect(i18n.hasResourceBundle("en", namespace), namespace).toBe(true);
+    }
+    await applyLocale("de");
+    for (const namespace of LAZY_NAMESPACES) {
+      expect(i18n.hasResourceBundle("de", namespace), namespace).toBe(true);
+    }
+    expect(i18n.getResource("de", "settingsFile", "export")).toBeTypeOf("string");
+  });
+
   it("loads the language being switched to when the namespace is asked for during the switch", async () => {
     const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
     await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });

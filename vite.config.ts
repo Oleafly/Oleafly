@@ -32,7 +32,7 @@ const staticE2eClient = (): Plugin => ({
 export const LEGAL_COMMENT_PATTERN =
   /^!|@preserve|@license|@cc_on/i;
 
-const LAZY_LOCALE_NAMESPACES = new Set(["collab"]);
+const LAZY_LOCALE_NAMESPACES = new Set(["collab", "settingsFile"]);
 
 export function localeChunk(id: string): string | undefined {
   const match = /\/src\/i18n\/locales\/([^/]+)\/([^/?]*?)(?:\.json)?(?:\?|$)/.exec(id);

@@ -1371,7 +1371,6 @@
     "captionAria": "Légende du tableau",
     "preview": "Aperçu",
     "output": "Sortie LaTeX",
-    "copiedSource": "Source LaTeX copié",
     "booktabsHint": "Nécessite <code>\\usepackage{booktabs}</code> dans votre préambule."
   },
   "review": {

@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "La misma referencia en APA está detrás de Cite this repository en GitHub",
-    "copyBibtex": "Copiar el BibTeX",
     "description": "Oleafly es gratuito y de código abierto, y sigue así mientras la gente sepa que existe. Si te ayudó con un artículo, una entrada en tu bibliografía le dice a quien venga después de dónde salió la herramienta. Cópiala, pégala en tu archivo .bib y cita la clave <citeKey>oleafly</citeKey>.",
     "title": "Cita Oleafly en tu artículo"
   },
@@ -1087,11 +1086,58 @@
       "fontRemoveFailed": "No se pudo quitar la tipografía.",
       "packDownloadFailed": "No se pudo descargar el pack de plantillas.",
       "packsDownloadFailed": "No se pudieron descargar los packs de plantillas.",
-      "packRemoveFailed": "No se pudo quitar el pack de plantillas."
+      "packRemoveFailed": "No se pudo quitar el pack de plantillas.",
+      "templateDownloadFailed": "No se pudo descargar la plantilla.",
+      "packsRefreshFailed": "No se pudieron buscar packs nuevos."
     },
     "typstFonts": {
       "heading": "Fuentes para Typst",
       "tooltip": "Fuentes gratuitas que piden muchas plantillas de Typst. Una vez descargadas, cualquier proyecto de Typst puede usarlas, salvo uno que desactive las fuentes del sistema."
+    },
+    "packs": {
+      "browse": "Explorar",
+      "back": "Volver a los packs",
+      "count_one": "{{count}} plantilla",
+      "count_many": "{{count}} plantillas",
+      "count_other": "{{count}} plantillas",
+      "installedCount": "{{installed}} de {{total}} instaladas",
+      "downloadPack": "Descargar pack",
+      "refresh": "Buscar packs nuevos",
+      "searchPacks": "Buscar packs",
+      "searchTemplates": "Buscar plantillas",
+      "noPacks": "Ningún pack coincide",
+      "noTemplates": "Ninguna plantilla coincide",
+      "loading": "Cargando plantillas",
+      "loadFailed": "No se pudo cargar este pack.",
+      "retry": "Reintentar",
+      "installed": "Instalada",
+      "engineFilter": "Motor",
+      "kindFilter": "Tipo",
+      "languageFilter": "Idioma",
+      "allEngines": "Todos los motores",
+      "allKinds": "Todos los tipos",
+      "allLanguages": "Todos los idiomas",
+      "groups": {
+        "curated": "Seleccionados",
+        "community": "Comunidad",
+        "typst": "Typst",
+        "university": "Universidades"
+      },
+      "preview": {
+        "image": "Primera página de {{name}}",
+        "previous": "Plantilla anterior",
+        "next": "Plantilla siguiente",
+        "engine": "Motor",
+        "license": "Licencia",
+        "kind": "Tipo",
+        "languages": "Idiomas",
+        "country": "País",
+        "institution": "Institución",
+        "originalSource": "Fuente original",
+        "getTemplate": "Obtener esta plantilla",
+        "useTemplate": "Usar esta plantilla",
+        "getAndCreate": "Obtener y crear proyecto"
+      }
     }
   },
   "engine": {
@@ -1392,6 +1438,22 @@
         "heading": "Cuenta de zotero.org",
         "description": "Usa tu cuenta cuando Zotero no esté abierto en este equipo. También se incluyen las bibliotecas de grupo."
       }
+    },
+    "overleaf": {
+      "description": "Trae proyectos de tu cuenta de Overleaf o del servidor Overleaf de tu universidad y mantenlos sincronizados. Oleafly guarda la sesión y el token de Git cifrados en este equipo.",
+      "signedInAs": "Sesión iniciada como {{email}} en {{server}}",
+      "signedIn": "Sesión iniciada en {{server}}",
+      "signOut": "Cerrar sesión",
+      "signOutFailed": "Oleafly no pudo cerrar la sesión de Overleaf.",
+      "gitTitle": "Token de Git para sincronizar",
+      "gitSaved": "Hay un token de Git guardado. Los proyectos que vincules se mantienen sincronizados con Overleaf.",
+      "gitMissing": "Todavía no hay ningún token de Git. Crea uno en la sección Integración con Git de la configuración de tu cuenta de Overleaf para sincronizar proyectos.",
+      "gitOpenSettings": "Abrir la configuración de la cuenta de Overleaf",
+      "gitPlanNote": "La integración con Git requiere que el propietario del proyecto tenga un plan de Overleaf de pago o universitario.",
+      "gitLabel": "Token de Git de Overleaf",
+      "gitSave": "Guardar",
+      "gitRemove": "Quitar",
+      "gitFailed": "Oleafly no pudo guardar el token de Git. Comprueba que pegaste el token completo."
     }
   },
   "language": {

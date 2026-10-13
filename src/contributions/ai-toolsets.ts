@@ -1,6 +1,7 @@
 import { registerAiToolset } from "@oleafly/registry";
 import { createFigureTools, createOleaflyTools, type ConfirmFn } from "@/lib/ai-tools";
 import { createResearchAiTools } from "@/lib/research-tools";
+import { createOverleafAiTools } from "@/lib/overleaf-ai-tools";
 
 let registered = false;
 
@@ -30,5 +31,11 @@ export function registerAiToolsets() {
     mode: "chat",
     source: { kind: "project" },
     create: (opts: { confirm?: ConfirmFn }) => createResearchAiTools(opts),
+  });
+  registerAiToolset({
+    id: "overleaf-tools",
+    mode: "chat",
+    source: { kind: "project" },
+    create: (opts: { confirm?: ConfirmFn }) => createOverleafAiTools(opts),
   });
 }

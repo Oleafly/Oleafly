@@ -134,3 +134,20 @@ describe("project collection windowing", () => {
     expect(screen.getByTestId("project-grid")).not.toHaveClass("gap-y-14");
   });
 });
+
+describe("project kind label", () => {
+  it("names Overleaf for projects imported from it", () => {
+    const projects = [project(1), { ...project(2), imported_from: "overleaf" }];
+    function Grid() {
+      const scrollRef = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={scrollRef}>
+          <ProjectGrid projects={projects} data={data} scrollRef={scrollRef} />
+        </div>
+      );
+    }
+    render(<Grid />);
+    expect(screen.getByText("Overleaf")).toBeInTheDocument();
+    expect(screen.getAllByText("document")).toHaveLength(1);
+  });
+});

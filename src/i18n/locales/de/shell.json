@@ -1416,5 +1416,55 @@
     "send": "Senden",
     "keepLocal": "Lokal behalten",
     "unavailable": "Der Projektordner ist nicht verfügbar, daher ist die Synchronisierung angehalten. Sie läuft wieder, sobald der Ordner zurück ist."
+  },
+  "overleafSync": {
+    "button": "Overleaf-Synchronisierung",
+    "title": "Mit Overleaf synchronisieren",
+    "cancel": "Abbrechen",
+    "more_one": "und {{count}} weitere Datei",
+    "more_other": "und {{count}} weitere Dateien",
+    "status": {
+      "notLinked": "Noch nicht mit Overleaf synchronisiert.",
+      "linking": "Wird mit Overleaf verknüpft",
+      "syncing": "Wird mit Overleaf synchronisiert",
+      "needsToken": "Fügen Sie Ihr Overleaf-Git-Token hinzu, um zu synchronisieren.",
+      "never": "Noch nicht synchronisiert.",
+      "justNow": "gerade eben",
+      "synced": "Synchronisiert {{time}}.",
+      "conflicts_one": "{{count}} Datei wurde auf beiden Seiten geändert. Wählen Sie, welche Version bleibt.",
+      "conflicts_other": "{{count}} Dateien wurden auf beiden Seiten geändert. Wählen Sie, welche Versionen bleiben."
+    },
+    "actions": {
+      "keepInSync": "Mit Overleaf synchron halten",
+      "syncNow": "Jetzt synchronisieren",
+      "auto": "Automatisch synchronisieren",
+      "resolve": "Versionen wählen",
+      "unlink": "Synchronisierung beenden",
+      "addToken": "Git-Token hinzufügen",
+      "changeToken": "Git-Token ändern"
+    },
+    "token": {
+      "title": "Overleaf-Git-Token hinzufügen",
+      "description": "Oleafly synchronisiert über die Git-Integration von Overleaf. Erstellen Sie in Ihren Overleaf-Kontoeinstellungen unter Git-Integration ein Token und fügen Sie es hier ein. Es bleibt verschlüsselt auf diesem Computer.",
+      "openSettings": "Overleaf-Kontoeinstellungen öffnen",
+      "label": "Git-Token",
+      "note": "Die Git-Integration setzt beim Eigentümer des Projekts einen kostenpflichtigen Overleaf-Tarif oder einen Hochschultarif voraus.",
+      "save": "Speichern und synchronisieren"
+    },
+    "choice": {
+      "title": "Welche Version soll gelten?",
+      "description": "Diese Dateien unterscheiden sich hier und in Overleaf. Dateien, die es nur auf einer Seite gibt, bleiben auf beiden Seiten erhalten, es wird also nichts gelöscht.",
+      "mine": "Meine Versionen verwenden",
+      "theirs": "Versionen von Overleaf verwenden"
+    },
+    "conflicts": {
+      "title": "Versionen wählen",
+      "description": "Diese Dateien wurden seit der letzten Synchronisierung hier und in Overleaf geändert. Wählen Sie für jede Datei die Version, die bleiben soll. Erst wenn Sie übernehmen, ändert sich etwas.",
+      "mine": "Meine",
+      "theirs": "Overleaf",
+      "allMine": "Alle meine Versionen behalten",
+      "allTheirs": "Alle Versionen von Overleaf verwenden",
+      "apply": "Übernehmen und synchronisieren"
+    }
   }
 }

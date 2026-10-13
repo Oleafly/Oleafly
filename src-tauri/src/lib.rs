@@ -40,6 +40,7 @@ mod connectors;
 mod conversion;
 mod cua_policy;
 mod deadlines;
+mod deep_link;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
@@ -72,6 +73,7 @@ mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
+mod overleaf;
 mod pandoc_citations;
 mod paths;
 mod proc;
@@ -101,6 +103,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod settings_file;
 mod shell_command;
 mod single_instance;
 mod skills;
@@ -302,6 +305,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     });
     crate::collab::links::remember(crate::collab::links::links_in(std::env::args_os().skip(1)));
     crate::open_request::start(app.handle());
+    crate::deep_link::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
@@ -364,10 +368,14 @@ pub fn run() {
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
     }
+    if deep_link::enabled_for_this_launch() {
+        builder = builder.plugin(tauri_plugin_deep_link::init());
+    }
     builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
+            deep_link::on_page_load(webview, payload);
         })
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
@@ -468,6 +476,7 @@ pub fn run() {
         .manage(native_drop::NativeDropState::default())
         .manage(zotero::commands::ZoteroState::default())
         .manage(collab::state::CollabState::for_app())
+        .manage(deep_link::LinkInbox::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -588,6 +597,7 @@ pub fn run() {
             open_request::open_folder_request,
             open_request::pick_open_folder,
             open_request::debug_inject_open_request,
+            deep_link::template_link_ready,
             system_integration::system_integration_status,
             system_integration::system_integration_set,
             system_integration::claim_quick_action_offer,
@@ -805,6 +815,7 @@ pub fn run() {
             project::read_file_base64,
             project::read_picked_file_base64,
             project::pick_table_import_file,
+            settings_file::pick_settings_file,
             project::register_picked_file_for_e2e,
             project::append_app_log,
             project::read_app_log,
@@ -882,6 +893,20 @@ pub fn run() {
             project::set_default_latex_engine,
             project::project_tex_status,
             project::import_overleaf_project,
+            overleaf::overleaf_status,
+            overleaf::overleaf_sign_in,
+            overleaf::overleaf_sign_out,
+            overleaf::overleaf_list_projects,
+            overleaf::overleaf_import_projects,
+            overleaf::overleaf_sync_status,
+            overleaf::overleaf_sync_link,
+            overleaf::overleaf_sync_now,
+            overleaf::overleaf_sync_check,
+            overleaf::overleaf_sync_unlink,
+            overleaf::overleaf_sync_set_auto,
+            overleaf::overleaf_git_token_status,
+            overleaf::overleaf_git_token_set,
+            overleaf::overleaf_git_token_clear,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,
@@ -924,7 +949,9 @@ pub fn run() {
             dictionaries::read_dictionary,
             template_packs::list_template_packs,
             template_packs::refresh_pack_catalog,
+            template_packs::pack_index,
             template_packs::install_template_pack,
+            template_packs::install_pack_template,
             template_packs::remove_template_pack,
             templates::save_custom_template,
             templates::delete_custom_template,

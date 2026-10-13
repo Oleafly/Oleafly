@@ -995,7 +995,6 @@
   },
   "cite": {
     "apa": "Aynı kaynağın APA biçimi GitHub'daki Cite this repository bölümünde",
-    "copyBibtex": "BibTeX'i kopyala",
     "description": "Oleafly ücretsiz ve açık kaynaklıdır ve insanlar varlığından haberdar oldukça öyle kalır. Bir makalenize yardımı dokunduysa kaynakçanızdaki tek bir kayıt, bir sonraki araştırmacıya bu aracın nereden geldiğini anlatır. Kopyalayın, .bib dosyanıza yapıştırın ve <citeKey>oleafly</citeKey> anahtarıyla atıf verin.",
     "title": "Makalenizde Oleafly'ye atıf verin"
   },
@@ -1082,11 +1081,57 @@
       "fontRemoveFailed": "Yazı tipi kaldırılamadı.",
       "packDownloadFailed": "Şablon paketi indirilemedi.",
       "packsDownloadFailed": "Şablon paketleri indirilemedi.",
-      "packRemoveFailed": "Şablon paketi kaldırılamadı."
+      "packRemoveFailed": "Şablon paketi kaldırılamadı.",
+      "templateDownloadFailed": "Şablon indirilemedi.",
+      "packsRefreshFailed": "Yeni paketler denetlenemedi."
     },
     "typstFonts": {
       "heading": "Typst için yazı tipleri",
       "tooltip": "Birçok Typst şablonunun istediği ücretsiz yazı tipleri. İndirildikten sonra sistem yazı tiplerini kapatan bir proje dışında her Typst projesi bunları kullanabilir."
+    },
+    "packs": {
+      "browse": "Göz at",
+      "back": "Paketlere dön",
+      "count_one": "{{count}} şablon",
+      "count_other": "{{count}} şablon",
+      "installedCount": "{{total}} şablondan {{installed}} tanesi yüklü",
+      "downloadPack": "Paketi indir",
+      "refresh": "Yeni paketleri denetle",
+      "searchPacks": "Paketlerde ara",
+      "searchTemplates": "Şablonlarda ara",
+      "noPacks": "Eşleşen paket yok",
+      "noTemplates": "Eşleşen şablon yok",
+      "loading": "Şablonlar yükleniyor",
+      "loadFailed": "Bu paket yüklenemedi.",
+      "retry": "Yeniden dene",
+      "installed": "Yüklü",
+      "engineFilter": "Motor",
+      "kindFilter": "Tür",
+      "languageFilter": "Dil",
+      "allEngines": "Tüm motorlar",
+      "allKinds": "Tüm türler",
+      "allLanguages": "Tüm diller",
+      "groups": {
+        "curated": "Seçkin",
+        "community": "Topluluk",
+        "typst": "Typst",
+        "university": "Üniversiteler"
+      },
+      "preview": {
+        "image": "{{name}} ilk sayfası",
+        "previous": "Önceki şablon",
+        "next": "Sonraki şablon",
+        "engine": "Motor",
+        "license": "Lisans",
+        "kind": "Tür",
+        "languages": "Diller",
+        "country": "Ülke",
+        "institution": "Kurum",
+        "originalSource": "Özgün kaynak",
+        "getTemplate": "Bu şablonu al",
+        "useTemplate": "Bu şablonu kullan",
+        "getAndCreate": "Al ve proje oluştur"
+      }
     }
   },
   "engine": {
@@ -1377,6 +1422,22 @@
         "heading": "zotero.org hesabı",
         "description": "Zotero bu bilgisayarda açık değilken hesabınızı kullanın. Grup kitaplıkları da dahil edilir."
       }
+    },
+    "overleaf": {
+      "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın ve bunları eşitlenmiş tutun. Oleafly oturum bilgisini ve Git belirtecini bu bilgisayarda şifreli olarak saklar.",
+      "signedInAs": "{{server}} üzerinde {{email}} olarak oturum açıldı",
+      "signedIn": "{{server}} üzerinde oturum açıldı",
+      "signOut": "Oturumu kapat",
+      "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "gitTitle": "Eşitleme için Git belirteci",
+      "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
+      "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
+      "gitOpenSettings": "Overleaf hesap ayarlarını aç",
+      "gitPlanNote": "Git entegrasyonu için projenin sahibinin ücretli ya da üniversite Overleaf planına sahip olması gerekir.",
+      "gitLabel": "Overleaf Git belirteci",
+      "gitSave": "Kaydet",
+      "gitRemove": "Kaldır",
+      "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
     }
   },
   "language": {

@@ -9,6 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Template packs can be browsed before you download them. Settings >
+  Downloads > Templates now shows each pack with a few page previews, and
+  opening a pack shows every template in it with a preview of its first
+  page, its engine and its licence. Open any template for a larger preview
+  and its details, then download the whole pack or just that template, and
+  start a new project from it straight away. Long packs load only the
+  previews on screen, and the New Project gallery does the same, so a pack
+  with hundreds of templates opens and scrolls quickly. When templates in a
+  pack ship the same font or other large file, it downloads once and they
+  share it.
+- Open in Oleafly links. The Open in Oleafly button on oleafly.com/templates
+  opens that template in the app, whether Oleafly is running or not: you land
+  on its preview in Settings > Downloads > Templates, and Get and create
+  project downloads it and starts a new project from it. A link never
+  downloads anything by itself. Only `oleafly://template/<pack>/<template>`
+  links are accepted, and the rest are ignored.
+- Import projects straight from your online LaTeX account. Import a project
+  has a new card for it: sign in once in the window that opens, and it closes
+  by itself when you're in. Your projects then appear as books or a list, with
+  search and a filter for yours and shared ones. Pick one or many and they
+  come over with their files, compiler and main file, ready to compile here.
+  Import moves your picks into their own view that shows each project's
+  progress, and Done closes it. Projects you already imported can't be
+  picked again.
+  A university's own server works too. The sign-in is kept encrypted on your
+  computer, and Settings > Integrations shows it and signs you out. The
+  assistant can list and import these projects for you as well.
+- Keep an imported project in sync with its online copy. With a Git token
+  from your online account, the sync button in the toolbar sends your changes
+  up and brings your co-authors' changes down, on its own every few minutes
+  or when you click Sync now. Edits to different places merge by themselves.
+  When the same lines changed on both sides, nothing changes until you pick
+  which version to keep for each file. Linking never deletes a file, and
+  Oleafly's own project files are never uploaded.
+- Select several projects in the library at once. Command-click (Ctrl-click
+  on Windows and Linux) selects a project instead of opening it, and dragging
+  across empty space selects every project the box touches. A trash button
+  next to Import then moves the selection to the Recycle Bin once you
+  confirm. Folders you opened in place only leave Oleafly, and their files
+  stay where they are. Esc or a click on empty space clears the selection.
+- Export your settings to a file and import them on another computer, or hand
+  one file to a whole class so everyone's Oleafly looks and works the same.
+  Settings > General has an Application Settings card under Terminal command.
+  Export saves a readable JSON file laid out like the Settings window, from
+  General through each Appearance tab to Shortcuts, and View settings JSON
+  shows that file, read-only, as you change things. Font sizes, themes,
+  colors, shortcuts, custom words, AI instructions and personas all come
+  along. API keys, accounts, integrations and agents never do. Import checks
+  every value first: a switch has to be true or false (1 and 0, or "on" and
+  "off", work too), a size has to fall in the range the setting allows, and a
+  color has to look like #2563eb. If anything is off, nothing changes and the
+  card lists what to fix. A good file replaces only the settings it lists, all
+  at once. Shortcuts you never changed are saved as "default", so a file made
+  on a Mac works on Windows and Linux.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its
@@ -41,6 +95,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Auto, Chinese documents that use the `ctex` classes, the `ctex` package
   or `xeCJK` compile with XeLaTeX instead of pdfLaTeX, and documents that use
   LuaTeX-ja (the `ltjs` classes or `luatexja`) compile with LuaLaTeX.
+- Code blocks have a copy button in their top right corner that shows when
+  you point at the block. That covers the assistant's answers, release notes,
+  the MCP setup snippets, the citation for Oleafly, the add-citation preview,
+  the table generator, template sources and agent definitions. The separate
+  Copy buttons next to some of them are gone.
+- Appearance > Files keeps Hide files from file tree folded until you open it,
+  and the Zen mode settings now come before it.
+- The Finder Quick Action and the file manager menus repair themselves once
+  when Settings finds them out of date or pointing to a copy of Oleafly that
+  moved. If that doesn't work, the row shows the same message and Repair
+  button as before. A menu that opens another installed copy is left for you
+  to decide.
 
 ### Fixed
 
@@ -75,6 +141,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   offline from the files earlier versions downloaded. If any compiler
   crashes again, the compile log now ends with a line that says so,
   instead of stopping mid-line with no reason.
+- Citation changes to the file open in the editor are no longer lost.
+  Adding a citation, importing references or citing Oleafly while the `.bib`
+  file was open saved the new entries, but the editor kept the old text, and
+  the next keystroke wrote it back over them. In a Typst or Markdown project,
+  adding a citation while the main document was open also dropped the
+  bibliography line it added there. The editor now shows these changes as
+  they happen.
+- Apply to document under Accessible export in Preflight, and Citation style
+  in References for a Typst project, changed the file open in the editor
+  without updating the editor, so the next keystroke undid the change. The
+  editor now shows the new text right away.
 
 ## [0.4.6] - 2026-10-09
 

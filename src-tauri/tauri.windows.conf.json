@@ -3,12 +3,5 @@
     "resources": {
       "binaries/vcruntime140.dll": "vcruntime140.dll"
     }
-  },
-  "plugins": {
-    "deep-link": {
-      "desktop": {
-        "schemes": ["oleafly"]
-      }
-    }
   }
 }

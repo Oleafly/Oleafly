@@ -21,7 +21,15 @@ fn default_engine_kind() -> String {
 
 /// Files that live in a template folder for the gallery's benefit and must NOT
 /// be copied into a freshly-created project.
-const META_FILES: &[&str] = &["template.json", "preview.png", "LICENSE"];
+const META_FILES: &[&str] = &[
+    "template.json",
+    "preview.png",
+    "preview.webp",
+    "SOURCE.json",
+    "LICENSE",
+];
+const PREVIEW_FILES: &[(&str, &str)] =
+    &[("preview.png", "image/png"), ("preview.webp", "image/webp")];
 
 /// Cap recursion on template copies (templates are shallow; this is a backstop).
 const MAX_COPY_DEPTH: usize = 16;
@@ -314,7 +322,9 @@ fn list_templates_blocking(app: &AppHandle) -> Vec<TemplateInfo> {
     items
         .into_iter()
         .map(|(m, dir, source)| {
-            let has_preview = dir.join("preview.png").is_file();
+            let has_preview = PREVIEW_FILES
+                .iter()
+                .any(|(name, _)| dir.join(name).is_file());
             to_info(app, m, has_preview, source)
         })
         .collect()
@@ -438,15 +448,21 @@ pub async fn template_preview(
 }
 
 fn template_preview_blocking(app: &AppHandle, template_id: &str) -> Result<Option<String>, String> {
+    preview_data_uri(&template_dir(app, template_id)?)
+}
+
+fn preview_data_uri(dir: &Path) -> Result<Option<String>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
-    let dir = template_dir(app, template_id)?;
-    let png = dir.join("preview.png");
-    if !png.is_file() {
+    let Some((path, mime)) = PREVIEW_FILES
+        .iter()
+        .map(|(name, mime)| (dir.join(name), mime))
+        .find(|(path, _)| path.is_file())
+    else {
         return Ok(None);
-    }
-    let bytes = std::fs::read(&png).map_err(|e| e.to_string())?;
+    };
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
     Ok(Some(format!(
-        "data:image/png;base64,{}",
+        "data:{mime};base64,{}",
         STANDARD.encode(&bytes)
     )))
 }
@@ -710,6 +726,69 @@ mod tests {
                 "{id} was not compiled: {compiled:?}"
             );
         }
+    }
+
+    #[test]
+    fn preview_serves_png_first_then_webp_with_the_right_mime() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(preview_data_uri(dir.path()).unwrap(), None);
+        std::fs::write(dir.path().join("preview.webp"), b"RIFF").unwrap();
+        let webp = preview_data_uri(dir.path()).unwrap().unwrap();
+        assert!(webp.starts_with("data:image/webp;base64,"), "{webp}");
+        std::fs::write(dir.path().join("preview.png"), b"PNG").unwrap();
+        let png = preview_data_uri(dir.path()).unwrap().unwrap();
+        assert!(png.starts_with("data:image/png;base64,"), "{png}");
+    }
+
+    #[test]
+    fn pack_previews_and_provenance_stay_out_of_new_projects() {
+        let base = tempfile::tempdir().unwrap();
+        let src = base.path().join("src");
+        let dest = base.path().join("dest");
+        std::fs::create_dir_all(src.join("assets")).unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+        for name in [
+            "template.json",
+            "preview.png",
+            "preview.webp",
+            "SOURCE.json",
+            "LICENSE",
+            "main.tex",
+        ] {
+            std::fs::write(src.join(name), "x").unwrap();
+        }
+        std::fs::write(src.join("assets").join("preview.webp"), "x").unwrap();
+        copy_tree(&src, &dest, 0).unwrap();
+        assert!(dest.join("main.tex").is_file());
+        assert!(dest.join("assets").join("preview.webp").is_file());
+        for name in [
+            "template.json",
+            "preview.png",
+            "preview.webp",
+            "SOURCE.json",
+            "LICENSE",
+        ] {
+            assert!(!dest.join(name).exists(), "{name} was copied");
+        }
+    }
+
+    #[test]
+    fn a_webp_preview_counts_as_a_preview_in_the_listing() {
+        let base = tempfile::tempdir().unwrap();
+        let dir = base.path().join("pack-tpl");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("template.json"),
+            r#"{"id":"pack-tpl","name":"Pack template"}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.join("main.tex"), "\\documentclass{article}").unwrap();
+        std::fs::write(dir.join("preview.webp"), "RIFF").unwrap();
+        let listed = list_templates_in_roots(&[(base.path().to_path_buf(), "pack")]);
+        assert_eq!(listed.len(), 1);
+        assert!(PREVIEW_FILES
+            .iter()
+            .any(|(name, _)| listed[0].1.join(name).is_file()));
     }
 
     #[test]

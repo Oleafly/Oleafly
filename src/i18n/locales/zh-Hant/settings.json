@@ -990,7 +990,6 @@
   },
   "cite": {
     "apa": "同一筆參考文獻的 APA 格式，放在 GitHub 的 Cite this repository 裡",
-    "copyBibtex": "複製 BibTeX",
     "description": "Oleafly 是免費且開放原始碼的，而它能一直如此，靠的是有人知道它的存在。如果它幫上了一篇論文，參考文獻裡的一則條目就能讓下一位研究者知道這個工具從何而來。複製它，貼進你的 .bib 檔案，並引用 <citeKey>oleafly</citeKey> 這個鍵。",
     "title": "在論文中引用 Oleafly"
   },
@@ -1077,11 +1076,56 @@
       "fontRemoveFailed": "無法移除字型。",
       "packDownloadFailed": "無法下載範本包。",
       "packsDownloadFailed": "無法下載這些範本包。",
-      "packRemoveFailed": "無法移除範本包。"
+      "packRemoveFailed": "無法移除範本包。",
+      "templateDownloadFailed": "無法下載範本。",
+      "packsRefreshFailed": "無法檢查新的範本包。"
     },
     "typstFonts": {
       "heading": "Typst 字型",
       "tooltip": "許多 Typst 範本需要的免費字型。下載後，除了關閉系統字型的專案以外，所有 Typst 專案都能使用。"
+    },
+    "packs": {
+      "browse": "瀏覽",
+      "back": "返回範本包",
+      "count_other": "{{count}} 個範本",
+      "installedCount": "已安裝 {{installed}}/{{total}}",
+      "downloadPack": "下載範本包",
+      "refresh": "檢查新的範本包",
+      "searchPacks": "搜尋範本包",
+      "searchTemplates": "搜尋範本",
+      "noPacks": "沒有相符的範本包",
+      "noTemplates": "沒有相符的範本",
+      "loading": "正在載入範本",
+      "loadFailed": "無法載入此範本包。",
+      "retry": "重試",
+      "installed": "已安裝",
+      "engineFilter": "引擎",
+      "kindFilter": "類型",
+      "languageFilter": "語言",
+      "allEngines": "所有引擎",
+      "allKinds": "所有類型",
+      "allLanguages": "所有語言",
+      "groups": {
+        "curated": "精選",
+        "community": "社群",
+        "typst": "Typst",
+        "university": "大學"
+      },
+      "preview": {
+        "image": "{{name}} 的第一頁",
+        "previous": "上一個範本",
+        "next": "下一個範本",
+        "engine": "引擎",
+        "license": "授權",
+        "kind": "類型",
+        "languages": "語言",
+        "country": "國家或地區",
+        "institution": "機構",
+        "originalSource": "原始來源",
+        "getTemplate": "取得此範本",
+        "useTemplate": "使用此範本",
+        "getAndCreate": "取得並建立專案"
+      }
     }
   },
   "engine": {
@@ -1362,6 +1406,22 @@
         "heading": "zotero.org 帳號",
         "description": "當這台電腦上沒有開啟 Zotero 時，就使用你的帳號。群組文獻庫也會一併納入。"
       }
+    },
+    "overleaf": {
+      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案，並保持同步。Oleafly 會在這台電腦上加密保存登入資訊和 Git 權杖。",
+      "signedInAs": "已在 {{server}} 上以 {{email}} 的身分登入",
+      "signedIn": "已在 {{server}} 上登入",
+      "signOut": "登出",
+      "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "gitTitle": "用於同步的 Git 權杖",
+      "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
+      "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
+      "gitOpenSettings": "開啟 Overleaf 帳號設定",
+      "gitPlanNote": "使用 Git 整合需要專案擁有者訂閱 Overleaf 付費方案或學校方案。",
+      "gitLabel": "Overleaf Git 權杖",
+      "gitSave": "儲存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
     }
   },
   "language": {

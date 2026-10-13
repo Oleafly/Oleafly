@@ -1382,7 +1382,6 @@
     "captionAria": "Popisek tabulky",
     "preview": "Náhled",
     "output": "Výstup v LaTeXu",
-    "copiedSource": "Zdroj v LaTeXu zkopírován",
     "booktabsHint": "Vyžaduje <code>\\usepackage{booktabs}</code> ve vaší preambuli."
   },
   "review": {

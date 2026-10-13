@@ -319,7 +319,9 @@
       "closeAgent": "Bir yardımcı ajanı kapatır.",
       "runCommand": "Proje klasöründe iki dakikalık sınırla bir shell komutu çalıştırır.",
       "computerUse": "Asistanın tarayıcı penceresinde bir web sayfası açar.",
-      "toggleTheme": "Açık ve koyu kip arasında geçiş yapar."
+      "toggleTheme": "Açık ve koyu kip arasında geçiş yapar.",
+      "listOverleafProjects": "Overleaf projelerinizi listeler, gerekirse önce oturum açar.",
+      "importOverleafProjects": "Overleaf projelerini derleyicileri ve ana dosyalarıyla birlikte kitaplığınıza aktarır."
     },
     "disableAll": "Tümünü kapat",
     "emptyContext": "Bu bağlamda kullanılabilir araç yok.",

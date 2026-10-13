@@ -312,7 +312,9 @@
       "closeAgent": "關閉輔助代理程式。",
       "runCommand": "在專案資料夾中執行 shell 指令，限時兩分鐘。",
       "computerUse": "在助理的瀏覽器視窗中開啟網頁。",
-      "toggleTheme": "在淺色與深色模式之間切換。"
+      "toggleTheme": "在淺色與深色模式之間切換。",
+      "listOverleafProjects": "列出你的 Overleaf 專案，必要時先登入。",
+      "importOverleafProjects": "將 Overleaf 專案連同編譯器和主要檔案設定匯入你的專案庫。"
     },
     "disableAll": "全部停用",
     "emptyContext": "這個情境中沒有可用的工具。",

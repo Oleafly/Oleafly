@@ -45,6 +45,10 @@ vi.mock("@/lib/native-file-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/overleaf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/overleaf")>()),
+  overleafStatus: vi.fn(async () => ({ server: "https://www.overleaf.com", signedIn: false, email: null })),
+}));
 vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { error: vi.fn(), success: vi.fn() } }));
 
 import {
@@ -71,6 +75,7 @@ const LOCAL_CARDS = [
 const CLOUD_CARDS = [
   ["project-import-arxiv", CHOICE_ART.importArxiv, "arXiv paper", "Download a paper's LaTeX source by its arXiv id."],
   ["project-import-github", CHOICE_ART.importGithub, "GitHub", "Pick from the repositories you can reach."],
+  ["project-import-overleaf", CHOICE_ART.importOverleaf, "Overleaf", "Pick projects from your Overleaf account"],
 ] as const;
 const ALL_CARDS = [...LOCAL_CARDS, ...CLOUD_CARDS];
 
@@ -115,6 +120,17 @@ describe("ProjectImportDialog", () => {
         expect.objectContaining({ full_name: "oleafly/paper" }),
       ),
     );
+  });
+
+  it("opens the Overleaf step from its card and from the menu's initial view", async () => {
+    const { unmount } = render(<ProjectImportDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("project-import-overleaf"));
+    expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("project-import-dialog")).toHaveTextContent("Import from Overleaf");
+    unmount();
+
+    render(<ProjectImportDialog open initialView="overleaf" onClose={vi.fn()} />);
+    expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
   });
 
   it("returns from the GitHub step to the sources", async () => {

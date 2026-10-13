@@ -34,6 +34,7 @@ import {
   type ResearchStarter,
 } from "@/lib/research-workspace";
 import { Spinner } from "@/components/ui/spinner";
+import { CodeBlock } from "@/components/ui/code-block";
 
 const ENGINES: { value: ResearchDocumentEngine; label: string }[] = [
   { value: "latex", label: "LaTeX" },
@@ -303,18 +304,18 @@ export function ResearchProjectSetup({
     }
   };
 
-  const previewPane = () =>
-    preview && selectedPreviewPath ? (
-      <pre data-select-all-scope className="select-text whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
-        <HighlightedCode
-          language={previewLanguage(selectedPreviewPath)}
-          source={
-            preview.files.find((file) => file.path === selectedPreviewPath)
-              ?.content ?? ""
-          }
-        />
-      </pre>
-    ) : null;
+  const previewPane = () => {
+    if (!preview || !selectedPreviewPath) return null;
+    const source = preview.files.find((file) => file.path === selectedPreviewPath)?.content ?? "";
+    return (
+      <CodeBlock
+        code={source}
+        preClassName="overflow-visible whitespace-pre-wrap break-words rounded-none border-0 bg-transparent px-4 py-3 pr-10 font-sans text-xs"
+      >
+        <HighlightedCode language={previewLanguage(selectedPreviewPath)} source={source} />
+      </CodeBlock>
+    );
+  };
 
   const previewTree = () =>
     !preview ? (

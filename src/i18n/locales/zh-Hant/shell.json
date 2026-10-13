@@ -1382,5 +1382,53 @@
     "send": "傳送",
     "keepLocal": "保留在本機",
     "unavailable": "專案資料夾無法使用，同步已暫停。資料夾恢復後會自動繼續。"
+  },
+  "overleafSync": {
+    "button": "Overleaf 同步",
+    "title": "與 Overleaf 同步",
+    "cancel": "取消",
+    "more_other": "以及另外 {{count}} 個檔案",
+    "status": {
+      "notLinked": "尚未與 Overleaf 同步。",
+      "linking": "正在連結 Overleaf",
+      "syncing": "正在與 Overleaf 同步",
+      "needsToken": "新增你的 Overleaf Git 權杖即可同步。",
+      "never": "尚未同步。",
+      "justNow": "剛剛",
+      "synced": "上次同步：{{time}}。",
+      "conflicts_other": "{{count}} 個檔案在兩邊都有變更。請選擇要保留的版本。"
+    },
+    "actions": {
+      "keepInSync": "與 Overleaf 保持同步",
+      "syncNow": "立即同步",
+      "auto": "自動同步",
+      "resolve": "選擇版本",
+      "unlink": "停止同步",
+      "addToken": "新增 Git 權杖",
+      "changeToken": "更換 Git 權杖"
+    },
+    "token": {
+      "title": "新增你的 Overleaf Git 權杖",
+      "description": "Oleafly 透過 Overleaf 的 Git 整合進行同步。請在 Overleaf 帳號設定的「Git 整合」中建立權杖，再貼到這裡。權杖會加密保存在這台電腦上。",
+      "openSettings": "開啟 Overleaf 帳號設定",
+      "label": "Git 權杖",
+      "note": "使用 Git 整合需要專案擁有者訂閱 Overleaf 付費方案或學校方案。",
+      "save": "儲存並同步"
+    },
+    "choice": {
+      "title": "要保留哪個版本？",
+      "description": "這些檔案在本機和 Overleaf 上的內容不同。只存在於一邊的檔案會在兩邊都保留，因此不會刪除任何內容。",
+      "mine": "使用我的版本",
+      "theirs": "使用 Overleaf 的版本"
+    },
+    "conflicts": {
+      "title": "選擇版本",
+      "description": "自上次同步以來，這些檔案在本機和 Overleaf 上都有變更。請為每個檔案選擇要保留的版本。在你套用之前，不會有任何變更。",
+      "mine": "我的",
+      "theirs": "Overleaf 的",
+      "allMine": "全部保留我的",
+      "allTheirs": "全部使用 Overleaf 的",
+      "apply": "套用並同步"
+    }
   }
 }

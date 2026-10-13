@@ -1484,5 +1484,59 @@
     "send": "Wyślij",
     "keepLocal": "Zachowaj lokalnie",
     "unavailable": "Folder projektu jest niedostępny, więc synchronizacja jest wstrzymana. Wznowi się, gdy folder wróci."
+  },
+  "overleafSync": {
+    "button": "Synchronizacja z Overleaf",
+    "title": "Synchronizuj z Overleaf",
+    "cancel": "Anuluj",
+    "more_one": "i jeszcze {{count}} plik",
+    "more_few": "i jeszcze {{count}} pliki",
+    "more_many": "i jeszcze {{count}} plików",
+    "more_other": "i jeszcze {{count}} pliku",
+    "status": {
+      "notLinked": "Jeszcze nie zsynchronizowano z Overleaf.",
+      "linking": "Łączenie z Overleaf",
+      "syncing": "Synchronizowanie z Overleaf",
+      "needsToken": "Dodaj token Git z Overleaf, aby synchronizować.",
+      "never": "Jeszcze nie zsynchronizowano.",
+      "justNow": "przed chwilą",
+      "synced": "Zsynchronizowano {{time}}.",
+      "conflicts_one": "{{count}} plik zmienił się po obu stronach. Wybierz, którą wersję zachować.",
+      "conflicts_few": "{{count}} pliki zmieniły się po obu stronach. Wybierz, które wersje zachować.",
+      "conflicts_many": "{{count}} plików zmieniło się po obu stronach. Wybierz, które wersje zachować.",
+      "conflicts_other": "{{count}} pliku zmieniło się po obu stronach. Wybierz, które wersje zachować."
+    },
+    "actions": {
+      "keepInSync": "Synchronizuj na bieżąco z Overleaf",
+      "syncNow": "Synchronizuj teraz",
+      "auto": "Synchronizuj automatycznie",
+      "resolve": "Wybierz wersje",
+      "unlink": "Zatrzymaj synchronizację",
+      "addToken": "Dodaj token Git",
+      "changeToken": "Zmień token Git"
+    },
+    "token": {
+      "title": "Dodaj token Git z Overleaf",
+      "description": "Oleafly synchronizuje przez integrację z Git w Overleaf. Utwórz token w sekcji Integracja z Git w ustawieniach konta Overleaf, a potem wklej go tutaj. Pozostanie zaszyfrowany na tym komputerze.",
+      "openSettings": "Otwórz ustawienia konta Overleaf",
+      "label": "Token Git",
+      "note": "Integracja z Git wymaga, aby właściciel projektu miał płatny lub uczelniany plan Overleaf.",
+      "save": "Zapisz i synchronizuj"
+    },
+    "choice": {
+      "title": "Która wersja ma zostać?",
+      "description": "Te pliki różnią się tutaj i w Overleaf. Pliki, które istnieją tylko po jednej stronie, zostają zachowane po obu stronach, więc nic nie zostanie usunięte.",
+      "mine": "Użyj moich wersji",
+      "theirs": "Użyj wersji z Overleaf"
+    },
+    "conflicts": {
+      "title": "Wybierz wersje",
+      "description": "Te pliki zmieniły się od ostatniej synchronizacji zarówno tutaj, jak i w Overleaf. Dla każdego wybierz wersję do zachowania. Nic się nie zmieni, dopóki nie zastosujesz wyboru.",
+      "mine": "Moja",
+      "theirs": "Z Overleaf",
+      "allMine": "Zachowaj wszystkie moje",
+      "allTheirs": "Użyj wszystkich z Overleaf",
+      "apply": "Zastosuj i synchronizuj"
+    }
   }
 }

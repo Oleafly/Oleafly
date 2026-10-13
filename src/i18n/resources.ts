@@ -66,6 +66,7 @@ export const englishResources: Record<string, Catalog> = {
 
 const lazyEnglishCatalogs: Readonly<Record<string, () => Promise<Catalog>>> = {
   collab: () => import("./locales/en/collab.json").then((module) => module.default),
+  settingsFile: () => import("./locales/en/settingsFile.json").then((module) => module.default),
 };
 
 export const LAZY_NAMESPACES: readonly string[] = Object.keys(lazyEnglishCatalogs).sort(compareCodePoints);

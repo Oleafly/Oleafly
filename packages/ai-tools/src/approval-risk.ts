@@ -49,6 +49,7 @@ const WRITE_TOOLS = new Set([
   "delete_file",
   "set_main_doc",
   "insert_figure",
+  "import_overleaf_projects",
   // computer_use gates per-action in its own executor (read-only auto,
   // navigate/click/type confirmed), so the tool itself is not a blanket write.
   "computer_use",
@@ -57,6 +58,7 @@ const WRITE_TOOLS = new Set([
 const NETWORK_TOOLS = new Set([
   "literature_search",
   "verify_citation",
+  "list_overleaf_projects",
 ]);
 
 const READ_ONLY_TOOLS = new Set([
@@ -81,6 +83,7 @@ const READ_ONLY_TOOLS = new Set([
   "list_agents",
   "literature_search",
   "verify_citation",
+  "list_overleaf_projects",
 ]);
 
 export const PLAN_MODE_TOOL_ERROR =

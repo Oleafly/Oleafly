@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Oleafly
+Exec=/usr/bin/oleafly-desktop %u
+Icon=oleafly-desktop
+StartupWMClass=oleafly-desktop
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/oleafly;

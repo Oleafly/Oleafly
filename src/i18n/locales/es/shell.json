@@ -1450,5 +1450,57 @@
     "send": "Enviar",
     "keepLocal": "Mantener en local",
     "unavailable": "La carpeta del proyecto no está disponible, así que la sincronización está en pausa. Se reanuda cuando la carpeta vuelva."
+  },
+  "overleafSync": {
+    "button": "Sincronización con Overleaf",
+    "title": "Sincronizar con Overleaf",
+    "cancel": "Cancelar",
+    "more_one": "y {{count}} archivo más",
+    "more_many": "y {{count}} archivos más",
+    "more_other": "y {{count}} archivos más",
+    "status": {
+      "notLinked": "Todavía no se ha sincronizado con Overleaf.",
+      "linking": "Vinculando con Overleaf",
+      "syncing": "Sincronizando con Overleaf",
+      "needsToken": "Añade tu token de Git de Overleaf para sincronizar.",
+      "never": "Todavía no se ha sincronizado.",
+      "justNow": "hace un momento",
+      "synced": "Sincronizado {{time}}.",
+      "conflicts_one": "{{count}} archivo cambió en ambos lados. Elige qué versión conservar.",
+      "conflicts_many": "{{count}} archivos cambiaron en ambos lados. Elige qué versiones conservar.",
+      "conflicts_other": "{{count}} archivos cambiaron en ambos lados. Elige qué versiones conservar."
+    },
+    "actions": {
+      "keepInSync": "Mantener sincronizado con Overleaf",
+      "syncNow": "Sincronizar ahora",
+      "auto": "Sincronizar automáticamente",
+      "resolve": "Elegir versiones",
+      "unlink": "Dejar de sincronizar",
+      "addToken": "Añadir token de Git",
+      "changeToken": "Cambiar token de Git"
+    },
+    "token": {
+      "title": "Añade tu token de Git de Overleaf",
+      "description": "Oleafly sincroniza mediante la integración con Git de Overleaf. Crea un token en la sección Integración con Git de la configuración de tu cuenta de Overleaf y pégalo aquí. Se guarda cifrado en este equipo.",
+      "openSettings": "Abrir la configuración de la cuenta de Overleaf",
+      "label": "Token de Git",
+      "note": "La integración con Git requiere que el propietario del proyecto tenga un plan de Overleaf de pago o universitario.",
+      "save": "Guardar y sincronizar"
+    },
+    "choice": {
+      "title": "¿Qué versión debe prevalecer?",
+      "description": "Estos archivos son distintos aquí y en Overleaf. Los archivos que solo existen en un lado se conservan en ambos, así que no se borra nada.",
+      "mine": "Usar mis versiones",
+      "theirs": "Usar las versiones de Overleaf"
+    },
+    "conflicts": {
+      "title": "Elegir versiones",
+      "description": "Estos archivos cambiaron aquí y en Overleaf desde la última sincronización. Elige qué versión conservar de cada uno. No cambia nada hasta que apliques tu elección.",
+      "mine": "La mía",
+      "theirs": "La de Overleaf",
+      "allMine": "Conservar todas las mías",
+      "allTheirs": "Usar todas las de Overleaf",
+      "apply": "Aplicar y sincronizar"
+    }
   }
 }

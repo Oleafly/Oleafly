@@ -1371,7 +1371,6 @@
     "captionAria": "Pie de la tabla",
     "preview": "Vista previa",
     "output": "Salida en LaTeX",
-    "copiedSource": "Se copió el código LaTeX",
     "booktabsHint": "Necesita <code>\\usepackage{booktabs}</code> en tu preámbulo."
   },
   "review": {

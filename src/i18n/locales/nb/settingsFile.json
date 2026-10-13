@@ -1,0 +1,57 @@
+{
+  "title": "Programinnstillinger",
+  "description": "Lagre innstillingene dine i en JSON-fil, eller last inn en fil som noen har delt med deg. API-nøkler, kontoer, integrasjoner og agenter blir aldri tatt med.",
+  "export": "Eksporter",
+  "import": "Importer",
+  "view": {
+    "label": "Vis JSON for innstillingene",
+    "summary": "Skrivebeskyttet forhåndsvisning av filen som eksporten lagrer.",
+    "loading": "Leser innstillingene dine",
+    "failed": "Kunne ikke lese innstillingene dine."
+  },
+  "dialog": {
+    "pickTitle": "Importer innstillinger",
+    "filterName": "Oleafly-innstillinger"
+  },
+  "toast": {
+    "exported": "{{name}} er eksportert til disken",
+    "exportFailed": "Kunne ikke lagre innstillingsfilen.",
+    "readFailed": "Kunne ikke åpne filen.",
+    "imported": "Innstillingene er importert.",
+    "unchanged": "Innstillingene dine samsvarer allerede med {{name}}.",
+    "applyFailed": "Noen innstillinger kunne ikke lagres. Prøv å importere på nytt."
+  },
+  "confirm": {
+    "title": "Vil du erstatte innstillingene dine?",
+    "description": "Innstillingene fra {{name}} erstatter dine. Alt filen ikke inneholder, forblir som det er.",
+    "changes": "Innstillinger som endres: {{count}}",
+    "ignored": "Ikke gjenkjent, så de hoppes over:",
+    "action": "Importer"
+  },
+  "error": {
+    "title": "{{name}} ble ikke importert",
+    "notJson": "Filen er ikke gyldig JSON.",
+    "notSettings": "Dette er ikke en innstillingsfil fra Oleafly.",
+    "invalid": "Innstillingskonfigurasjonen du prøvde å importere, er ugyldig. Rett disse feilene, og prøv å importere på nytt:",
+    "more": "+{{count}} til"
+  },
+  "valueErrors": {
+    "boolean": "må være true eller false",
+    "oneOf": "må være én av disse verdiene: {{values}}",
+    "range": "må være et tall fra {{min}} til {{max}}",
+    "wholeRange": "må være et heltall fra {{min}} til {{max}}",
+    "wholeRangeStep": "må være et heltall fra {{min}} til {{max}}, i trinn på {{step}}",
+    "hexColor": "må være en farge som #2563eb",
+    "hexColorOrEmpty": "må være en farge som #2563eb, eller \"\" for å bruke fargen fra temaet",
+    "text": "må være tekst på maks {{max}} tegn",
+    "webAddress": "må være en nettadresse som begynner med http:// eller https://",
+    "list": "må være en liste med maks {{max}} elementer",
+    "listItem": "er ikke et tillatt element",
+    "duplicate": "står der to ganger",
+    "object": "må være en gruppe innstillinger i krøllparenteser",
+    "unknownKey": "er ikke en innstilling Oleafly kjenner til",
+    "dictionaryLocale": "må være en ordbokskode som en_US",
+    "shortcut": "må være en hurtigtast som Mod-Shift-k, eller \"default\"",
+    "editorKey": "må være en tast som Mod-d, \"\" for ingen, eller \"default\""
+  }
+}

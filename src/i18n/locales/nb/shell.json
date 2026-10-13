@@ -1416,5 +1416,55 @@
     "send": "Send",
     "keepLocal": "Behold lokalt",
     "unavailable": "Prosjektmappen er ikke tilgjengelig, så synkroniseringen er satt på pause. Den starter igjen når mappen er tilbake."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkronisering",
+    "title": "Synkroniser med Overleaf",
+    "cancel": "Avbryt",
+    "more_one": "og {{count}} fil til",
+    "more_other": "og {{count}} filer til",
+    "status": {
+      "notLinked": "Ikke synkronisert med Overleaf ennå.",
+      "linking": "Kobler til Overleaf",
+      "syncing": "Synkroniserer med Overleaf",
+      "needsToken": "Legg til Git-tokenet ditt fra Overleaf for å synkronisere.",
+      "never": "Ikke synkronisert ennå.",
+      "justNow": "nå nettopp",
+      "synced": "Synkronisert {{time}}.",
+      "conflicts_one": "{{count}} fil er endret begge steder. Velg hvilken versjon du vil beholde.",
+      "conflicts_other": "{{count}} filer er endret begge steder. Velg hvilke versjoner du vil beholde."
+    },
+    "actions": {
+      "keepInSync": "Hold synkronisert med Overleaf",
+      "syncNow": "Synkroniser nå",
+      "auto": "Synkroniser automatisk",
+      "resolve": "Velg versjoner",
+      "unlink": "Slutt å synkronisere",
+      "addToken": "Legg til Git-token",
+      "changeToken": "Bytt Git-token"
+    },
+    "token": {
+      "title": "Legg til Git-tokenet ditt fra Overleaf",
+      "description": "Oleafly synkroniserer via Git-integrasjonen i Overleaf. Opprett et token under Git-integrasjon i kontoinnstillingene dine på Overleaf, og lim det inn her. Det forblir kryptert på denne datamaskinen.",
+      "openSettings": "Åpne kontoinnstillingene på Overleaf",
+      "label": "Git-token",
+      "note": "Git-integrasjon krever at eieren av prosjektet har et betalt abonnement eller et universitetsabonnement hos Overleaf.",
+      "save": "Lagre og synkroniser"
+    },
+    "choice": {
+      "title": "Hvilken versjon skal gjelde?",
+      "description": "Disse filene er forskjellige her og på Overleaf. Filer som bare finnes på én side, beholdes på begge, så ingenting blir slettet.",
+      "mine": "Bruk mine versjoner",
+      "theirs": "Bruk versjonene fra Overleaf"
+    },
+    "conflicts": {
+      "title": "Velg versjoner",
+      "description": "Disse filene er endret både her og på Overleaf siden forrige synkronisering. Velg hvilken versjon du vil beholde for hver fil. Ingenting endres før du bruker valget.",
+      "mine": "Min",
+      "theirs": "Overleafs",
+      "allMine": "Behold alle mine",
+      "allTheirs": "Bruk alle fra Overleaf",
+      "apply": "Bruk og synkroniser"
+    }
   }
 }

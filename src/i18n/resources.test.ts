@@ -25,7 +25,7 @@ describe("English resources", () => {
   });
 
   it("keeps lazy namespaces out of the startup catalogs", () => {
-    expect(LAZY_NAMESPACES).toEqual(["collab"]);
+    expect(LAZY_NAMESPACES).toEqual(["collab", "settingsFile"]);
     for (const namespace of LAZY_NAMESPACES) {
       expect(englishResources[namespace]).toBeUndefined();
     }

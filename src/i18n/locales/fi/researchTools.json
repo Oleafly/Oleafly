@@ -1360,7 +1360,6 @@
     "captionAria": "Taulukkoteksti",
     "preview": "Esikatselu",
     "output": "LaTeX-tuloste",
-    "copiedSource": "LaTeX-lähdekoodi kopioitiin",
     "booktabsHint": "Vaatii esittelyosaan komennon <code>\\usepackage{booktabs}</code>."
   },
   "review": {

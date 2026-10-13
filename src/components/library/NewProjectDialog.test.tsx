@@ -221,6 +221,16 @@ describe("NewProjectDialog flow", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("skips the starting-point chooser for a template asked for by id", async () => {
+    renderDialog(true, { initialTemplateId: "tpl-1" });
+    expect(await screen.findByTestId("templates-core")).toBeInTheDocument();
+    expect(screen.queryByTestId("project-kind-chooser")).not.toBeInTheDocument();
+    expect(core.props).toMatchObject({ initialTemplateId: "tpl-1" });
+    expect(typeof (core.props as unknown as { kit: { useRowWindow: unknown } }).kit.useRowWindow).toBe(
+      "function",
+    );
+  });
+
   it("stays inert when it mounts already open, then arms on close", async () => {
     const { rerender } = render(dialog(true));
     expect(

@@ -1450,5 +1450,57 @@
     "send": "Envoyer",
     "keepLocal": "Garder en local",
     "unavailable": "Le dossier du projet n'est pas disponible, la synchronisation est donc en pause. Elle reprendra quand le dossier sera de retour."
+  },
+  "overleafSync": {
+    "button": "Synchronisation Overleaf",
+    "title": "Synchroniser avec Overleaf",
+    "cancel": "Annuler",
+    "more_one": "et {{count}} autre fichier",
+    "more_many": "et {{count}} autres fichiers",
+    "more_other": "et {{count}} autres fichiers",
+    "status": {
+      "notLinked": "Pas encore synchronisé avec Overleaf.",
+      "linking": "Liaison avec Overleaf",
+      "syncing": "Synchronisation avec Overleaf",
+      "needsToken": "Ajoutez votre jeton Git Overleaf pour synchroniser.",
+      "never": "Aucune synchronisation pour l'instant.",
+      "justNow": "à l'instant",
+      "synced": "Synchronisé {{time}}.",
+      "conflicts_one": "{{count}} fichier a changé des deux côtés. Choisissez la version à garder.",
+      "conflicts_many": "{{count}} fichiers ont changé des deux côtés. Choisissez les versions à garder.",
+      "conflicts_other": "{{count}} fichiers ont changé des deux côtés. Choisissez les versions à garder."
+    },
+    "actions": {
+      "keepInSync": "Garder synchronisé avec Overleaf",
+      "syncNow": "Synchroniser maintenant",
+      "auto": "Synchroniser automatiquement",
+      "resolve": "Choisir les versions",
+      "unlink": "Arrêter la synchronisation",
+      "addToken": "Ajouter un jeton Git",
+      "changeToken": "Changer de jeton Git"
+    },
+    "token": {
+      "title": "Ajoutez votre jeton Git Overleaf",
+      "description": "Oleafly synchronise via l'intégration Git d'Overleaf. Créez un jeton dans la section Intégration Git des paramètres de votre compte Overleaf, puis collez-le ici. Il reste chiffré sur cet ordinateur.",
+      "openSettings": "Ouvrir les paramètres du compte Overleaf",
+      "label": "Jeton Git",
+      "note": "L'intégration Git nécessite un abonnement Overleaf payant ou universitaire pour le propriétaire du projet.",
+      "save": "Enregistrer et synchroniser"
+    },
+    "choice": {
+      "title": "Quelle version doit l'emporter ?",
+      "description": "Ces fichiers sont différents ici et sur Overleaf. Les fichiers présents d'un seul côté sont conservés des deux côtés, donc rien n'est supprimé.",
+      "mine": "Utiliser mes versions",
+      "theirs": "Utiliser les versions d'Overleaf"
+    },
+    "conflicts": {
+      "title": "Choisir les versions",
+      "description": "Ces fichiers ont changé ici et sur Overleaf depuis la dernière synchronisation. Choisissez la version à garder pour chacun. Rien ne change tant que vous n'avez pas appliqué votre choix.",
+      "mine": "La mienne",
+      "theirs": "Celle d'Overleaf",
+      "allMine": "Garder toutes les miennes",
+      "allTheirs": "Prendre toutes celles d'Overleaf",
+      "apply": "Appliquer et synchroniser"
+    }
   }
 }

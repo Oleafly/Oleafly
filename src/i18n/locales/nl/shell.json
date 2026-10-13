@@ -1416,5 +1416,55 @@
     "send": "Versturen",
     "keepLocal": "Lokaal houden",
     "unavailable": "De projectmap is niet beschikbaar, dus synchroniseren is gepauzeerd. Het gaat weer verder zodra de map terug is."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synchronisatie",
+    "title": "Synchroniseren met Overleaf",
+    "cancel": "Annuleren",
+    "more_one": "en nog {{count}} bestand",
+    "more_other": "en nog {{count}} bestanden",
+    "status": {
+      "notLinked": "Nog niet gesynchroniseerd met Overleaf.",
+      "linking": "Koppelen aan Overleaf",
+      "syncing": "Synchroniseren met Overleaf",
+      "needsToken": "Voeg je Git-token van Overleaf toe om te synchroniseren.",
+      "never": "Nog niet gesynchroniseerd.",
+      "justNow": "zojuist",
+      "synced": "Laatste synchronisatie: {{time}}.",
+      "conflicts_one": "{{count}} bestand is aan beide kanten gewijzigd. Kies welke versie je wilt houden.",
+      "conflicts_other": "{{count}} bestanden zijn aan beide kanten gewijzigd. Kies welke versies je wilt houden."
+    },
+    "actions": {
+      "keepInSync": "Gesynchroniseerd houden met Overleaf",
+      "syncNow": "Nu synchroniseren",
+      "auto": "Automatisch synchroniseren",
+      "resolve": "Versies kiezen",
+      "unlink": "Synchroniseren stoppen",
+      "addToken": "Git-token toevoegen",
+      "changeToken": "Git-token wijzigen"
+    },
+    "token": {
+      "title": "Voeg je Git-token van Overleaf toe",
+      "description": "Oleafly synchroniseert via de Git-integratie van Overleaf. Maak een token aan onder Git-integratie in je Overleaf-accountinstellingen en plak het hier. Het blijft versleuteld op deze computer.",
+      "openSettings": "Overleaf-accountinstellingen openen",
+      "label": "Git-token",
+      "note": "Voor Git-integratie heeft de eigenaar van het project een betaald Overleaf-abonnement of een universiteitsabonnement nodig.",
+      "save": "Opslaan en synchroniseren"
+    },
+    "choice": {
+      "title": "Welke versie moet blijven?",
+      "description": "Deze bestanden verschillen hier en in Overleaf. Bestanden die maar aan één kant bestaan, blijven aan beide kanten bewaard, dus er wordt niets verwijderd.",
+      "mine": "Mijn versies gebruiken",
+      "theirs": "Versies van Overleaf gebruiken"
+    },
+    "conflicts": {
+      "title": "Versies kiezen",
+      "description": "Deze bestanden zijn sinds de laatste synchronisatie zowel hier als in Overleaf gewijzigd. Kies per bestand welke versie je wilt houden. Er verandert pas iets als je je keuze toepast.",
+      "mine": "Mijn versie",
+      "theirs": "Van Overleaf",
+      "allMine": "Al mijn versies houden",
+      "allTheirs": "Alle versies van Overleaf gebruiken",
+      "apply": "Toepassen en synchroniseren"
+    }
   }
 }

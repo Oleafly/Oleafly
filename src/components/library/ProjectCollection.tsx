@@ -50,6 +50,8 @@ import { projectModifiedLabel } from "@/lib/project-format";
 import type { ProjectInfo } from "@/lib/tauri";
 import { cn, isMac, isWindows } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
+import { LIBRARY_ITEM, LIBRARY_ITEM_LOCKED } from "@/components/library/marquee-selection";
+import { isSelectionModifier, useLibrarySelectionStore } from "@/store/library-selection";
 
 type LibraryTranslate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 
@@ -71,6 +73,7 @@ export type ProjectCollabCopy = Readonly<{ kind: string; share: string; copyAndS
 function projectTypeLabel(t: LibraryTranslate, project: ProjectInfo, collab: ProjectCollabCopy | null): string {
   if (isFolderProject(project)) return t(($) => $.library.projects.kind.external);
   if (collab && project.shared) return collab.kind;
+  if (project.imported_from === "overleaf") return t(($) => $.library.projects.kind.overleaf);
   return projectKindLabel(t, project.kind);
 }
 
@@ -316,6 +319,28 @@ function ProjectMenuItems({
   );
 }
 
+const SELECTED_BADGE = <CheckBadge className="size-[1.125rem] shadow-sm [&_svg]:size-2.5" />;
+
+function openOrSelect(
+  event: Readonly<{ metaKey: boolean; ctrlKey: boolean }>,
+  project: ProjectInfo,
+  actions: ProjectCardActions,
+): void {
+  if (!isSelectionModifier(event)) {
+    actions.open(project);
+    return;
+  }
+  if (!project.recovery_pending) useLibrarySelectionStore.getState().toggle(project.id);
+}
+
+function selectionItem(project: ProjectInfo, selected: boolean) {
+  return {
+    [LIBRARY_ITEM]: project.id,
+    [LIBRARY_ITEM_LOCKED]: project.recovery_pending ? "" : undefined,
+    "data-selected": selected ? "true" : undefined,
+  };
+}
+
 export type ProjectCardData = Readonly<{
   colorOf: (project: ProjectInfo) => string;
   folderStateOf: (project: ProjectInfo) => UnavailableFolder | null;
@@ -340,6 +365,63 @@ type CardProps = Readonly<{
   collab: ProjectCollabCopy | null;
 }>;
 
+function GridCardMenu({
+  project: p,
+  color,
+  reachable,
+  actions,
+  collab,
+}: Readonly<{
+  project: ProjectInfo;
+  color: string;
+  reachable: boolean;
+  actions: ProjectCardActions;
+  collab: ProjectCollabCopy | null;
+}>) {
+  const { t } = useTranslation(["common", "library"]);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t(($) => $.library.projects.actions, { name: p.name })}
+          onClick={(event) => event.stopPropagation()}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+        >
+          <Info className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <ProjectMenuItems
+          project={p}
+          color={color}
+          reachable={reachable}
+          kit={DROPDOWN_MENU_KIT}
+          actions={actions}
+          collab={collab}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function gridPreviewProps(
+  p: ProjectInfo,
+  folderState: UnavailableFolder | null,
+  hoverPreview: boolean,
+  thumb: string | null | undefined,
+  actions: ProjectCardActions,
+) {
+  if (p.recovery_pending || folderState) {
+    return { onPreviewRequest: undefined, onPreviewCancel: undefined, preview: undefined };
+  }
+  return {
+    onPreviewRequest: () => actions.requestThumbnail(p),
+    onPreviewCancel: () => actions.releaseThumbnail(p),
+    preview: hoverPreview ? thumb : undefined,
+  };
+}
+
 const ProjectGridCard = memo(function ProjectGridCard({
   project: p,
   color,
@@ -353,6 +435,7 @@ const ProjectGridCard = memo(function ProjectGridCard({
   lastRow,
 }: CardProps & Readonly<{ lastRow: boolean }>) {
   const { t } = useTranslation(["common", "library"]);
+  const selected = useLibrarySelectionStore((state) => state.ids.has(p.id));
   const labels = projectCardLabels(t, p, updatedAt, collab);
   return (
     <ContextMenu>
@@ -361,6 +444,7 @@ const ProjectGridCard = memo(function ProjectGridCard({
           {...{ [ROW_WINDOW_ITEM]: "" }}
           className={cn("flex justify-center", !lastRow && "pb-14 xl:pb-16")}
         >
+          <div {...selectionItem(p, selected)}>
           <Book
             title={p.name}
             color={color}
@@ -373,39 +457,22 @@ const ProjectGridCard = memo(function ProjectGridCard({
             starred={starred}
             onStarToggle={p.recovery_pending ? undefined : () => actions.toggleFavorite(p.id)}
             menu={
-              p.recovery_pending ? null : <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t(($) => $.library.projects.actions, { name: p.name })}
-                    onClick={(event) => event.stopPropagation()}
-                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                  >
-                    <Info className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  <ProjectMenuItems
-                    project={p}
-                    color={color}
-                    reachable={folderState === null}
-                    kit={DROPDOWN_MENU_KIT}
-                    actions={actions}
-                    collab={collab}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              p.recovery_pending ? null : (
+                <GridCardMenu
+                  project={p}
+                  color={color}
+                  reachable={folderState === null}
+                  actions={actions}
+                  collab={collab}
+                />
+              )
             }
-            onClick={() => actions.open(p)}
-            onPreviewRequest={
-              p.recovery_pending || folderState ? undefined : () => actions.requestThumbnail(p)
-            }
-            onPreviewCancel={
-              p.recovery_pending || folderState ? undefined : () => actions.releaseThumbnail(p)
-            }
-            preview={!p.recovery_pending && !folderState && hoverPreview ? thumb : undefined}
+            onClick={(event) => openOrSelect(event, p, actions)}
+            {...gridPreviewProps(p, folderState, hoverPreview, thumb, actions)}
             width={180}
+            badge={selected ? SELECTED_BADGE : undefined}
           />
+          </div>
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
@@ -421,6 +488,29 @@ const ProjectGridCard = memo(function ProjectGridCard({
     </ContextMenu>
   );
 });
+
+function RowThumbnail({
+  color,
+  faded,
+  thumb,
+  selected,
+}: Readonly<{ color: string; faded: boolean; thumb: string | null | undefined; selected: boolean }>) {
+  return (
+    <span className="relative shrink-0">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative block h-12 w-9 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
+          faded && "opacity-60 grayscale",
+        )}
+        style={{ backgroundColor: color }}
+      >
+        {thumb ? <img src={thumb} alt="" draggable={false} className="size-full object-cover object-top" /> : null}
+      </span>
+      {selected ? <CheckBadge className="absolute -right-1.5 -top-1.5 shadow-sm" /> : null}
+    </span>
+  );
+}
 
 type ActiveIdStore = Readonly<{
   get: () => string | null;
@@ -470,6 +560,7 @@ const ProjectListRow = memo(function ProjectListRow({
     previewing: ActiveIdStore;
   }>) {
   const { t } = useTranslation(["common", "library"]);
+  const selected = useLibrarySelectionStore((state) => state.ids.has(p.id));
   const previewing = useSyncExternalStore(
     previewStore.subscribe,
     () => previewStore.get() === p.id,
@@ -492,35 +583,28 @@ const ProjectListRow = memo(function ProjectListRow({
       <ContextMenuTrigger asChild>
         <div
           {...{ [ROW_WINDOW_ITEM]: "" }}
-          className="group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4"
+          {...selectionItem(p, selected)}
+          className={cn(
+            "group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4",
+            selected && "bg-primary/10 hover:bg-primary/15",
+          )}
         >
           <button
             type="button"
             aria-label={projectOpenLabel(t, p)}
-            onClick={() => actions.open(p)}
+            onClick={(event) => openOrSelect(event, p, actions)}
             onMouseEnter={startPreview}
             onMouseLeave={endPreview}
             onFocus={startPreview}
             onBlur={endPreview}
             className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:bg-accent/60"
           >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm",
-                folderState && "opacity-60 grayscale",
-              )}
-              style={{ backgroundColor: color }}
-            >
-              {hoverPreview && !recoveryPending && previewing && thumb ? (
-                <img
-                  src={thumb}
-                  alt=""
-                  draggable={false}
-                  className="size-full object-cover object-top"
-                />
-              ) : null}
-            </span>
+            <RowThumbnail
+              color={color}
+              faded={folderState !== null}
+              thumb={hoverPreview && !recoveryPending && previewing ? thumb : null}
+              selected={selected}
+            />
             <span className="min-w-0">
               <span className="block truncate text-sm font-medium text-foreground">
                 {p.name}

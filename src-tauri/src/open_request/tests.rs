@@ -168,6 +168,38 @@ fn urls_that_are_not_plain_local_folders_are_refused() {
 }
 
 #[test]
+fn a_launch_that_carries_an_oleafly_link_opens_no_folder() {
+    let cwd = Path::new("/home/me");
+    for args in [
+        vec!["oleafly://template/academic-writing/ieee"],
+        vec!["OLEAFLY://template/a/b"],
+        vec!["oleafly://open?path=/srv/x"],
+        vec!["oleafly:template"],
+        vec!["oleafly://template/a/b\"", "--open-folder", "/srv/thesis"],
+        vec!["/srv/thesis", "oleafly://template/a/b"],
+        vec!["--open-folder=/srv/thesis", "--", "oleafly://x"],
+    ] {
+        assert!(
+            parse_argv(&argv(&args), Some(cwd), UNIX).is_empty(),
+            "{args:?}"
+        );
+        #[cfg(unix)]
+        assert!(
+            parse_argv(&argv(&args), Some(cwd), MAC).is_empty(),
+            "{args:?}"
+        );
+    }
+    let (targets, guard) =
+        launch_targets_from(&argv(&["oleafly://template/a/b"]), Some(cwd), None, UNIX);
+    assert!(targets.is_empty());
+    assert_eq!(guard, None);
+    assert_eq!(
+        parse_argv(&argv(&["/srv/oleafly:notes"]), Some(cwd), UNIX).len(),
+        1
+    );
+}
+
+#[test]
 fn the_windows_drive_root_quote_artifact_is_repaired() {
     assert_eq!(repair_drive_quote("D:\""), "D:\\");
     assert_eq!(repair_drive_quote("d:\""), "d:\\");

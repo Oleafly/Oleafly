@@ -1000,7 +1000,6 @@
   },
   "cite": {
     "apa": "Aceeași referință în stil APA se află în spatele opțiunii Cite this repository de pe GitHub",
-    "copyBibtex": "Copiază BibTeX",
     "description": "Oleafly este gratuit și open source și rămâne așa atât timp cât lumea știe că există. Dacă ți-a ajutat o lucrare, o singură intrare în bibliografia ta îi spune următorului cercetător de unde vine instrumentul. Copiaz-o, lipește-o în fișierul tău .bib și citează cheia <citeKey>oleafly</citeKey>.",
     "title": "Citează Oleafly în lucrarea ta"
   },
@@ -1087,11 +1086,58 @@
       "fontRemoveFailed": "Fontul nu a putut fi eliminat.",
       "packDownloadFailed": "Pachetul de șabloane nu a putut fi descărcat.",
       "packsDownloadFailed": "Pachetele de șabloane nu au putut fi descărcate.",
-      "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat."
+      "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat.",
+      "templateDownloadFailed": "Șablonul nu a putut fi descărcat.",
+      "packsRefreshFailed": "Nu s-au putut căuta pachete noi."
     },
     "typstFonts": {
       "heading": "Fonturi pentru Typst",
       "tooltip": "Fonturi gratuite pe care le cer multe șabloane Typst. După descărcare, orice proiect Typst le poate folosi, mai puțin un proiect care dezactivează fonturile sistemului."
+    },
+    "packs": {
+      "browse": "Răsfoiește",
+      "back": "Înapoi la pachete",
+      "count_one": "{{count}} șablon",
+      "count_few": "{{count}} șabloane",
+      "count_other": "{{count}} de șabloane",
+      "installedCount": "{{installed}} din {{total}} instalate",
+      "downloadPack": "Descarcă pachetul",
+      "refresh": "Caută pachete noi",
+      "searchPacks": "Caută pachete",
+      "searchTemplates": "Caută șabloane",
+      "noPacks": "Niciun pachet nu se potrivește",
+      "noTemplates": "Niciun șablon nu se potrivește",
+      "loading": "Se încarcă șabloanele",
+      "loadFailed": "Pachetul nu a putut fi încărcat.",
+      "retry": "Încearcă din nou",
+      "installed": "Instalat",
+      "engineFilter": "Motor",
+      "kindFilter": "Tip",
+      "languageFilter": "Limbă",
+      "allEngines": "Toate motoarele",
+      "allKinds": "Toate tipurile",
+      "allLanguages": "Toate limbile",
+      "groups": {
+        "curated": "Selectate",
+        "community": "Comunitate",
+        "typst": "Typst",
+        "university": "Universități"
+      },
+      "preview": {
+        "image": "Prima pagină din {{name}}",
+        "previous": "Șablonul anterior",
+        "next": "Șablonul următor",
+        "engine": "Motor",
+        "license": "Licență",
+        "kind": "Tip",
+        "languages": "Limbi",
+        "country": "Țară",
+        "institution": "Instituție",
+        "originalSource": "Sursa originală",
+        "getTemplate": "Obține acest șablon",
+        "useTemplate": "Folosește acest șablon",
+        "getAndCreate": "Obține și creează proiectul"
+      }
     }
   },
   "engine": {
@@ -1392,6 +1438,22 @@
         "heading": "Contul zotero.org",
         "description": "Folosește contul când Zotero nu este deschis pe acest computer. Sunt incluse și bibliotecile de grup."
       }
+    },
+    "overleaf": {
+      "description": "Adu proiecte din contul tău Overleaf sau de pe serverul Overleaf al universității tale și păstrează-le sincronizate. Oleafly păstrează autentificarea și tokenul Git criptate pe acest computer.",
+      "signedInAs": "Autentificat ca {{email}} pe {{server}}",
+      "signedIn": "Autentificat pe {{server}}",
+      "signOut": "Deconectează-te",
+      "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
+      "gitTitle": "Token Git pentru sincronizare",
+      "gitSaved": "Un token Git este salvat. Proiectele pe care le asociezi rămân sincronizate cu Overleaf.",
+      "gitMissing": "Niciun token Git încă. Creează unul la Integrare Git în setările contului tău Overleaf ca să sincronizezi proiecte.",
+      "gitOpenSettings": "Deschide setările contului Overleaf",
+      "gitPlanNote": "Integrarea Git necesită ca proprietarul proiectului să aibă un plan Overleaf plătit sau universitar.",
+      "gitLabel": "Token Git pentru Overleaf",
+      "gitSave": "Salvează",
+      "gitRemove": "Elimină",
+      "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul."
     }
   },
   "language": {
