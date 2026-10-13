@@ -64,6 +64,8 @@ type LabelKey =
 
 const SIGN_IN_KINDS: ReadonlySet<string> = new Set(["setup_completed", "sign_in", "sign_in_refused", "device_added"]);
 
+const DEVICE_KINDS: ReadonlySet<string> = new Set(["device_added", "device_signed_out", "refresh_reuse_detected"]);
+
 const INVITATION_KINDS: ReadonlySet<string> = new Set([
   "guest_invited",
   "guest_invitation_approved",
@@ -254,6 +256,7 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
       const domain = text(detail, "domain");
       if (domain) return domain;
     }
+    if (DEVICE_KINDS.has(event.kind)) return text(detail, "name") ? null : (event.device_name ?? null);
     const target = event.target;
     if (target === null) return null;
     const aboutProject = isProjectKind(event.kind) && !Object.hasOwn(detail, "project");

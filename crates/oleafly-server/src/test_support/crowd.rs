@@ -131,6 +131,7 @@ pub async fn grant_project_role(
             &ServerFrame::AccessChanged {
                 project_id: project,
                 role: Some(role),
+                change: None,
             },
         );
     }

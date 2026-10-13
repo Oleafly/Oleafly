@@ -15,7 +15,9 @@ use oleafly_collab::sync::{
 use oleafly_collab::{
     load_binding, remove_binding, save_binding, CollabError, ServerClient, ServerUrl,
 };
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::auth::SessionEndReason;
+use oleafly_collab_protocol::frames::MemberChangeKind;
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use serde::Serialize;
 use tauri::ipc::Channel;
@@ -41,6 +43,7 @@ pub const LIVE_MERGED_EVENT: &str = "collab-live-merged";
 pub const PRESENCE_EVENT: &str = "collab-presence";
 pub const PRESENCE_LEFT_EVENT: &str = "collab-presence-left";
 pub const LIVE_NEW_DEVICE_EVENT: &str = "collab-live-new-device";
+pub const LIVE_MEMBERS_EVENT: &str = "collab-live-members";
 const WRITE_DEBOUNCE: Duration = Duration::from_millis(120);
 const BLOB_RETRY: Duration = Duration::from_secs(3);
 
@@ -95,6 +98,15 @@ pub struct NewDevicePayload {
     pub device_id: DeviceId,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MembersPayload {
+    pub project_id: String,
+    pub account_id: AccountId,
+    pub by: AccountId,
+    pub kind: MemberChangeKind,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PresencePayload {
@@ -137,6 +149,8 @@ pub trait LiveHost: Send + Sync + 'static {
     fn new_device(&self, payload: NewDevicePayload);
     fn renamed(&self, _payload: super::tree::RenamedPayload) {}
     fn comments_changed(&self, _payload: super::comments::CommentsChangedPayload) {}
+    fn members(&self, _payload: MembersPayload) {}
+    fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
 }
 
 pub struct AppLiveHost {
@@ -188,6 +202,17 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(super::comments::COMMENTS_CHANGED_EVENT, payload);
+    }
+
+    fn members(&self, payload: MembersPayload) {
+        let _ = self.app.emit(LIVE_MEMBERS_EVENT, payload);
+    }
+
+    fn session_ended(&self, server: ServerId, reason: SessionEndReason) {
+        use tauri::Manager;
+        let state = self.app.state::<CollabState>();
+        let host = super::commands::AppHost::new(self.app.clone());
+        let _ = super::commands::note_session_end(state.inner(), &host, server, reason);
     }
 }
 
@@ -1106,8 +1131,14 @@ async fn pump(
                 if let Some(reason) = ended {
                     let _ = active.write_out().await;
                     active.save_now();
-                    if matches!(reason, EndReason::Removed | EndReason::Archived) {
+                    if matches!(
+                        reason,
+                        EndReason::Removed | EndReason::Archived | EndReason::AccessEnded
+                    ) {
                         active.detach(&paths);
+                    }
+                    if let Some(session) = reason.session() {
+                        active.host.session_ended(active.link.server_id, session);
                     }
                     let mut slot = guard(&ACTIVE);
                     if slot
@@ -1166,6 +1197,12 @@ async fn pump(
                     device_id,
                 })
             }
+            LiveEvent::Members(change) => active.host.members(MembersPayload {
+                project_id: active.project_id.clone(),
+                account_id: change.account_id,
+                by: change.by,
+                kind: change.kind,
+            }),
             LiveEvent::Merged(report) => {
                 if active.quiet_merge.swap(false, Ordering::SeqCst) {
                     continue;
@@ -1223,12 +1260,24 @@ pub async fn start(
     stop_any().await;
     let paths = state.paths()?.clone();
     let binding = load_binding(&paths, project_id)?.ok_or_else(not_live)?;
-    let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
     let keys = state.keys().await?;
-    let tokens = keys
-        .sessions
-        .tokens(binding.server_id)?
-        .ok_or(CollabError::Unauthorized)?;
+    let Some(tokens) = keys.sessions.tokens(binding.server_id)? else {
+        if let Some(reason) = state.registry()?.ended(binding.server_id) {
+            if reason == SessionEndReason::AccessEnded {
+                let _ = remove_binding(&paths, project_id);
+                super::registry::invalidate(project_id);
+            }
+            host.status(StatusPayload {
+                project_id: project_id.to_owned(),
+                status: LiveStatus::Ended {
+                    reason: EndReason::of_session(Some(reason)),
+                },
+                pending: 0,
+            });
+        }
+        return Err(CollabError::Unauthorized);
+    };
+    let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
     let client = Arc::new(ServerClient::new(ServerUrl::parse(&binding.server_url)?)?);
     let link = LiveLink {
         client,
@@ -1552,6 +1601,7 @@ pub async fn collab_presence_leave(project_id: String) -> Result<(), CollabComma
 mod tests {
     use super::*;
     use oleafly_collab::doc::ProjectDoc;
+    use oleafly_collab_protocol::frames::MemberChange;
 
     fn project(root: &Path) -> (LiveProject, DiskState, String) {
         let mut doc = ProjectDoc::create().unwrap();
@@ -2031,6 +2081,199 @@ mod tests {
         fn new_device(&self, payload: NewDevicePayload) {
             guard(&self.new_devices).push(payload);
         }
+    }
+
+    #[derive(Default)]
+    struct EndingHost {
+        statuses: Mutex<Vec<StatusPayload>>,
+        members: Mutex<Vec<MembersPayload>>,
+        ended: Mutex<Vec<(ServerId, SessionEndReason)>>,
+    }
+
+    impl LiveHost for EndingHost {
+        fn status(&self, payload: StatusPayload) {
+            guard(&self.statuses).push(payload);
+        }
+        fn role(&self, _: RolePayload) {}
+        fn merged(&self, _: MergedPayload) {}
+        fn presence(&self, _: PresencePayload) {}
+        fn presence_left(&self, _: PresenceLeftPayload) {}
+        fn folder_changed(&self, _: FolderChange) {}
+        fn new_device(&self, _: NewDevicePayload) {}
+        fn members(&self, payload: MembersPayload) {
+            guard(&self.members).push(payload);
+        }
+        fn session_ended(&self, server: ServerId, reason: SessionEndReason) {
+            guard(&self.ended).push((server, reason));
+        }
+    }
+
+    fn binding_on(server: ServerId) -> oleafly_collab::ShareBinding {
+        oleafly_collab::ShareBinding {
+            server_url: "http://127.0.0.1:9".to_owned(),
+            server_id: server,
+            shared_project_id: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+            role: ProjectRole::Editor,
+            created_at: 1,
+        }
+    }
+
+    fn ended_with(statuses: &[StatusPayload]) -> Vec<(String, LiveStatus)> {
+        statuses
+            .iter()
+            .map(|payload| (payload.project_id.clone(), payload.status.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let state = CollabState::new(
+                oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let keys = state.keys().await.unwrap();
+            let server = ServerId::new_v7();
+            let paths = state.paths().unwrap().clone();
+            save_binding(&paths, "ending", &binding_on(server)).unwrap();
+            let link = LiveLink {
+                client: Arc::new(
+                    ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+                ),
+                server_id: server,
+                project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                device_id: DeviceId::new_v7(),
+                key: Arc::clone(&keys.key),
+                sessions: Arc::clone(&keys.sessions),
+            };
+            let root = dir.path().join("project");
+            std::fs::create_dir_all(&root).unwrap();
+            let (live, disk, _main) = project(&root);
+            let shared: SharedLive = Arc::new(Mutex::new(live));
+            let (unused, _unused) = mpsc::unbounded_channel();
+            let (writer, _writer) = mpsc::unbounded_channel();
+            let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+            let host = Arc::new(EndingHost::default());
+            let active = Arc::new(Active {
+                project_id: "ending".to_owned(),
+                root,
+                document_dir: dir.path().join("document"),
+                disk_file: dir.path().join("disk.json"),
+                live: shared,
+                handle,
+                link,
+                disk: Mutex::new(disk),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                account_id: AccountId::new_v7(),
+                quiet_merge: AtomicBool::new(false),
+                waiting: AtomicBool::new(false),
+                last_status: Mutex::new(LiveStatus::Connecting),
+                bases: Mutex::new(WrittenTexts::default()),
+            });
+            let (events, receiver) = mpsc::unbounded_channel();
+            let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
+            let (carol, owner) = (AccountId::new_v7(), AccountId::new_v7());
+            events
+                .send(LiveEvent::Members(MemberChange {
+                    account_id: carol,
+                    by: owner,
+                    kind: MemberChangeKind::Removed,
+                }))
+                .unwrap();
+            events
+                .send(LiveEvent::Status(LiveStatus::Ended {
+                    reason: EndReason::AccessEnded,
+                }))
+                .unwrap();
+            drop(events);
+            pumping.await.unwrap();
+            active.handle.stop();
+            assert_eq!(
+                *guard(&host.members),
+                vec![MembersPayload {
+                    project_id: "ending".to_owned(),
+                    account_id: carol,
+                    by: owner,
+                    kind: MemberChangeKind::Removed,
+                }]
+            );
+            assert_eq!(
+                *guard(&host.ended),
+                vec![(server, SessionEndReason::AccessEnded)]
+            );
+            assert!(load_binding(&paths, "ending").unwrap().is_none());
+        });
+    }
+
+    #[test]
+    fn opening_a_project_after_its_session_ended_says_why() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let state = CollabState::new(
+                oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let paths = state.paths().unwrap().clone();
+            let (paused, gone, plain) =
+                (ServerId::new_v7(), ServerId::new_v7(), ServerId::new_v7());
+            for (project, server) in [("paused", paused), ("gone", gone), ("plain", plain)] {
+                save_binding(&paths, project, &binding_on(server)).unwrap();
+            }
+            state
+                .update_registry(|registry| {
+                    for server in [paused, gone, plain] {
+                        registry.upsert(oleafly_collab::ServerEntry {
+                            server_id: server,
+                            url: "http://127.0.0.1:9".to_owned(),
+                            name: "Smith Lab".to_owned(),
+                            icon_url: None,
+                            account: None,
+                            added_at: 1,
+                        });
+                    }
+                    registry.set_ended(paused, Some(SessionEndReason::AccountSuspended));
+                    registry.set_ended(gone, Some(SessionEndReason::AccessEnded));
+                })
+                .unwrap();
+            let host = Arc::new(EndingHost::default());
+            for project in ["paused", "gone", "plain"] {
+                let started = start(&state, Arc::clone(&host) as Arc<dyn LiveHost>, project).await;
+                assert!(
+                    matches!(started, Err(CollabError::Unauthorized)),
+                    "{project}"
+                );
+            }
+            assert_eq!(
+                ended_with(&guard(&host.statuses)),
+                vec![
+                    (
+                        "paused".to_owned(),
+                        LiveStatus::Ended {
+                            reason: EndReason::AccountSuspended
+                        }
+                    ),
+                    (
+                        "gone".to_owned(),
+                        LiveStatus::Ended {
+                            reason: EndReason::AccessEnded
+                        }
+                    ),
+                ]
+            );
+            assert!(load_binding(&paths, "paused").unwrap().is_some());
+            assert!(load_binding(&paths, "gone").unwrap().is_none());
+            assert!(load_binding(&paths, "plain").unwrap().is_some());
+        });
     }
 
     #[test]

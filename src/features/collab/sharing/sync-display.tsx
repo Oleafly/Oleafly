@@ -1,6 +1,17 @@
 import type { ComponentType, SVGProps } from "react";
 import { useTranslation } from "react-i18next";
-import { Archive, CirclePause, CloudCheck, CloudOff, CloudUpload, LogOut, RefreshCw, UserX } from "lucide-react";
+import {
+  Archive,
+  Ban,
+  CirclePause,
+  CloudCheck,
+  CloudOff,
+  CloudUpload,
+  LogOut,
+  RefreshCw,
+  UserLock,
+  UserX,
+} from "lucide-react";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import type { SyncState } from "./sync-state";
@@ -13,6 +24,8 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   offline: CloudOff,
   reconnecting: RefreshCw,
   signedOut: LogOut,
+  suspended: UserLock,
+  accessEnded: Ban,
   removed: UserX,
   archived: Archive,
   paused: CirclePause,
@@ -24,6 +37,8 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   offline: "text-amber-600 dark:text-amber-400",
   reconnecting: "text-amber-600 dark:text-amber-400",
   signedOut: "text-destructive",
+  suspended: "text-destructive",
+  accessEnded: "text-destructive",
   removed: "text-destructive",
   archived: "text-muted-foreground",
   paused: "text-muted-foreground",

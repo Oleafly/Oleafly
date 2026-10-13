@@ -24,13 +24,13 @@ use crate::auth::{
 use crate::error::ServerError;
 use crate::mail::notify;
 use crate::members;
+use crate::routes::sign_in_pages::{self, Tone};
 use crate::routes::{code_sign_in, email_sign_in, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::{setup_code_hash, AppState};
 use crate::tokens::random_token;
 
-const EXPIRED: &str = "This sign-in has expired. Start again in Oleafly.";
 const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Oleafly.";
 
 pub fn router() -> Router<AppState> {
@@ -178,8 +178,14 @@ async fn start(
     headers: HeaderMap,
     Query(query): Query<AuthStartQuery>,
 ) -> Result<Response, ServerError> {
-    let redirect = loopback_redirect(&query.redirect_uri)
-        .ok_or(ServerError::Auth(AuthErrorCode::InvalidRedirect))?;
+    let Some(redirect) = loopback_redirect(&query.redirect_uri) else {
+        return Ok(sign_in_pages::message(
+            StatusCode::BAD_REQUEST,
+            Tone::Problem,
+            "This sign-in link doesn't work",
+            "It doesn't lead back to Oleafly. Start signing in again from Oleafly.",
+        ));
+    };
     if !well_formed(&query) {
         return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
     }
@@ -282,14 +288,16 @@ async fn callback(
 ) -> Result<Response, ServerError> {
     let now = state.clock.now_ms();
     let Some(pending_id) = query.state else {
-        return Err(ServerError::BadRequest(EXPIRED.to_owned()));
+        return Ok(sign_in_already_over());
     };
-    let pending = state
+    let Some(pending) = state
         .db
         .call(move |conn| pending::take(conn, &pending_id, now))
         .await?
         .filter(|pending| pending.provider_id == provider_id)
-        .ok_or_else(|| ServerError::BadRequest(EXPIRED.to_owned()))?;
+    else {
+        return Ok(sign_in_already_over());
+    };
     if pending.device_authorization.is_some()
         && !browser_binding::holds(&headers, &state.config, &pending.code_challenge)
     {
@@ -334,6 +342,15 @@ pub(crate) enum Finish {
     DeviceGone,
 }
 
+fn sign_in_already_over() -> Response {
+    sign_in_pages::message(
+        StatusCode::BAD_REQUEST,
+        Tone::Notice,
+        "This sign-in already finished or expired",
+        "If Oleafly says you're signed in, you're all set. Otherwise go back to Oleafly and start signing in again.",
+    )
+}
+
 pub(crate) fn conclude(
     state: &AppState,
     pending: &PendingSignIn,
@@ -342,7 +359,7 @@ pub(crate) fn conclude(
     conclude_naming(state, pending, outcome, None)
 }
 
-fn conclude_naming(
+pub(crate) fn conclude_naming(
     state: &AppState,
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
@@ -571,8 +588,7 @@ fn rotate_session(
         return Err(ServerError::Auth(AuthErrorCode::ExpiredNonce));
     }
     let tx = conn.transaction().map_err(db_error)?;
-    let Some(device) = devices::find(&tx, request.device_id)?.filter(|device| !device.revoked)
-    else {
+    let Some(device) = devices::find(&tx, request.device_id)? else {
         return Ok(RefreshResult::Invalid);
     };
     let signed = devices::signature_valid(
@@ -582,13 +598,16 @@ fn rotate_session(
         &request.nonce,
         &request.signature,
     );
+    if !signed && device.revoked {
+        return Ok(RefreshResult::Invalid);
+    }
     if !signed {
         return Err(ServerError::Auth(AuthErrorCode::InvalidSignature));
     }
-    if !matches!(
-        members::account_status(&tx, device.account_id)?,
-        Some(MemberStatus::Active)
-    ) {
+    if let Some(reason) = members::session_end_reason(&tx, device.account_id)? {
+        return Err(ServerError::SessionEnded(reason));
+    }
+    if device.revoked {
         return Ok(RefreshResult::Invalid);
     }
     let result = match refresh::rotate(&tx, &request.refresh_token, request.device_id, now)? {

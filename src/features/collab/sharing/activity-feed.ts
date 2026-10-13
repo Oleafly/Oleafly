@@ -49,6 +49,51 @@ function welcome(state: CollabLiveStoreState, at: number): NewActivity | null {
   return { kind: "welcome", at, owner, server: state.share.server_name, role };
 }
 
+function isGuest(state: CollabLiveStoreState): boolean {
+  const selfId = state.share?.account_id ?? null;
+  return state.members.some((member) => member.person.account_id === selfId && member.person.guest === true);
+}
+
+function memberEntry(state: CollabLiveStoreState, at: number): NewActivity | null {
+  const change = state.memberChange;
+  const selfId = state.share?.account_id ?? null;
+  if (!change || change.accountId === selfId) return null;
+  if (change.kind !== "added" && change.kind !== "removed") return null;
+  return {
+    kind: change.kind === "added" ? "memberAdded" : "memberRemoved",
+    at,
+    accountId: change.accountId,
+    byAccountId: change.by,
+    name: change.name,
+    by: change.byName,
+    byYou: change.by === selfId,
+  };
+}
+
+function removedBy(state: CollabLiveStoreState): string | undefined {
+  const change = state.memberChange;
+  const selfId = state.share?.account_id ?? null;
+  if (change?.kind !== "removed" || change.accountId !== selfId || change.by === selfId) return undefined;
+  return change.byName || undefined;
+}
+
+function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number): NewActivity | null {
+  switch (state.ended) {
+    case "signed_out":
+      return { kind: "signedOut", at, server: memory.server };
+    case "account_suspended":
+      return { kind: "suspended", at, server: memory.server };
+    case "access_ended":
+      return { kind: "accessEnded", at, server: memory.server, guest: isGuest(state) };
+    case "removed":
+      return { kind: "removed", at, by: removedBy(state) };
+    case "archived":
+      return { kind: "archived", at };
+    default:
+      return null;
+  }
+}
+
 function sharingChanged(state: CollabLiveStoreState, previous: CollabLiveStoreState | null): boolean {
   return (
     previous === null ||
@@ -87,9 +132,13 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
   if (previous.share && previous.role && state.role && previous.role !== state.role) {
     found.push({ kind: "role", at, role: state.role });
   }
+  if (state.memberChange && state.memberChange !== previous.memberChange) {
+    const entry = memberEntry(state, at);
+    if (entry) found.push(entry);
+  }
   if (state.ended && state.ended !== previous.ended) {
-    if (state.ended === "signed_out") found.push({ kind: "signedOut", at, server: memory.server });
-    else if (state.ended === "removed" || state.ended === "archived") found.push({ kind: state.ended, at });
+    const entry = endedEntry(state, memory, at);
+    if (entry) found.push(entry);
   }
   if (!state.ended && after !== "ended") {
     const was = presentAccounts(previous);

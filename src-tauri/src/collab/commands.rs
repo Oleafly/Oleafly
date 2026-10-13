@@ -10,7 +10,9 @@ use oleafly_collab_protocol::admin::{
     AllowlistEntry, DomainRule, MemberPatch, MemberSummary, NewAllowlistEntry, NewDomainRule, Page,
     RuntimeSettings, RuntimeSettingsPatch, SecurityEvent,
 };
-use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary, SessionTokens};
+use oleafly_collab_protocol::auth::{
+    AccountSummary, DeviceSummary, SessionEndReason, SessionTokens,
+};
 use oleafly_collab_protocol::capabilities::{
     negotiate, CapabilityManifest, ProtocolRange, VersionMismatch, PROTOCOL_VERSION,
 };
@@ -50,7 +52,9 @@ impl From<CollabError> for CollabCommandError {
             CollabError::NotAdmitted => ("not_admitted", String::new()),
             CollabError::SignInCancelled => ("sign_in_cancelled", String::new()),
             CollabError::SignInTimedOut => ("sign_in_timed_out", String::new()),
-            CollabError::Unauthorized => ("unauthorized", String::new()),
+            CollabError::Unauthorized | CollabError::SessionEnded(_) => {
+                ("unauthorized", String::new())
+            }
             CollabError::ServerChanged { expected, found } => {
                 ("server_changed", format!("{expected} {found}"))
             }
@@ -90,6 +94,7 @@ pub struct CollabServer {
     pub account: Option<AccountSummary>,
     pub added_at: i64,
     pub signed_in: bool,
+    pub ended: Option<SessionEndReason>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -224,6 +229,15 @@ pub(crate) fn known(state: &CollabState, server: ServerId) -> Result<ServerEntry
 }
 
 fn to_dto(state: &CollabState, entry: &ServerEntry) -> Result<CollabServer, CollabError> {
+    let ended = state.registry()?.ended(entry.server_id);
+    dto(state, entry, ended)
+}
+
+fn dto(
+    state: &CollabState,
+    entry: &ServerEntry,
+    ended: Option<SessionEndReason>,
+) -> Result<CollabServer, CollabError> {
     Ok(CollabServer {
         server_id: entry.server_id,
         url: entry.url.clone(),
@@ -232,6 +246,7 @@ fn to_dto(state: &CollabState, entry: &ServerEntry) -> Result<CollabServer, Coll
         account: entry.account.clone(),
         added_at: entry.added_at,
         signed_in: state.has_session(entry.server_id)?,
+        ended,
     })
 }
 
@@ -316,12 +331,30 @@ async fn end_session(
     keys.sessions.clear(server)
 }
 
+pub(crate) fn note_session_end(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    reason: SessionEndReason,
+) -> Result<(), CollabError> {
+    state.update_registry(|registry| registry.set_ended(server, Some(reason)))?;
+    host.server_changed(server);
+    Ok(())
+}
+
 async fn settle_revocation(
     state: &CollabState,
     host: &dyn CollabHost,
     server: ServerId,
     error: CollabError,
 ) -> CollabError {
+    if let CollabError::SessionEnded(reason) = error {
+        if let Ok(keys) = state.keys().await {
+            let _ = keys.sessions.clear(server);
+        }
+        let _ = note_session_end(state, host, server, reason);
+        return error;
+    }
     if matches!(error, CollabError::Unauthorized) {
         if let Ok(keys) = state.keys().await {
             let _ = keys.sessions.clear(server);
@@ -381,11 +414,11 @@ pub(crate) fn parse_id<T: std::str::FromStr>(
 }
 
 pub fn list_servers(state: &CollabState) -> Result<Vec<CollabServer>, CollabError> {
-    state
-        .registry()?
+    let registry = state.registry()?;
+    registry
         .list()
         .iter()
-        .map(|entry| to_dto(state, entry))
+        .map(|entry| dto(state, entry, registry.ended(entry.server_id)))
         .collect()
 }
 
@@ -469,6 +502,7 @@ async fn finish_sign_in(
             account: Some(account),
             added_at,
         });
+        registry.set_ended(server, None);
     })?;
     host.server_changed(server);
     host.signed_in();
@@ -1339,6 +1373,14 @@ mod tests {
                 "duplicate_server",
             ),
             (api(409, "device_in_use"), "device_in_use"),
+            (
+                CollabError::SessionEnded(SessionEndReason::AccountSuspended),
+                "unauthorized",
+            ),
+            (
+                CollabError::SessionEnded(SessionEndReason::AccessEnded),
+                "unauthorized",
+            ),
         ];
         for (error, expected) in cases {
             assert_eq!(CollabCommandError::from(error).code, expected);
@@ -1454,6 +1496,88 @@ mod tests {
         assert!(matches!(result, Err(CollabError::Unauthorized)));
         assert!(!list_servers(&state).expect("list")[0].signed_in);
         assert_eq!(host.changed(), vec![added.server_id; 2]);
+    }
+
+    async fn set_status(server: &TestServer, account: AccountId, status: &'static str) {
+        server
+            .state()
+            .db
+            .call(move |conn| {
+                conn.execute(
+                    "UPDATE accounts SET status = ?2 WHERE id = ?1",
+                    [account.to_string(), status.to_string()],
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("status stored");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_paused_account_is_remembered_with_its_reason_until_the_next_sign_in() {
+        let (_github, server) = github_server().await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = signed_in(&state, &host, &server).await;
+        assert_eq!(added.ended, None);
+        let account = added.account.as_ref().expect("account").account_id;
+        set_status(&server, account, "suspended").await;
+        let result = server_devices(&state, &host, added.server_id).await;
+        assert_eq!(
+            result.err(),
+            Some(CollabError::SessionEnded(
+                SessionEndReason::AccountSuspended
+            ))
+        );
+        let listed = list_servers(&state).expect("list");
+        assert!(!listed[0].signed_in);
+        assert_eq!(listed[0].ended, Some(SessionEndReason::AccountSuspended));
+        assert_eq!(
+            listed[0].account.as_ref().map(|kept| kept.account_id),
+            Some(account)
+        );
+        assert_eq!(host.changed(), vec![added.server_id; 2]);
+        set_status(&server, account, "active").await;
+        let back = sign_in_server(
+            &state,
+            &host,
+            &server.url(),
+            "github".to_string(),
+            None,
+            LONG,
+        )
+        .await
+        .expect("signs in again");
+        assert!(back.signed_in);
+        assert_eq!(back.ended, None);
+        assert_eq!(list_servers(&state).expect("list")[0].ended, None);
+    }
+
+    #[test]
+    fn a_session_end_heard_live_is_remembered_and_announced() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let server = ServerId::new_v7();
+        state
+            .update_registry(|registry| {
+                registry.upsert(ServerEntry {
+                    server_id: server,
+                    url: "https://collab.uni.edu".to_string(),
+                    name: "Smith Lab".to_string(),
+                    icon_url: None,
+                    account: None,
+                    added_at: 1,
+                })
+            })
+            .expect("registry");
+        note_session_end(&state, &host, server, SessionEndReason::AccessEnded).expect("noted");
+        assert_eq!(
+            list_servers(&state).expect("list")[0].ended,
+            Some(SessionEndReason::AccessEnded)
+        );
+        assert_eq!(host.changed(), vec![server]);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

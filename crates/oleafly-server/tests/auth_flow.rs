@@ -4,10 +4,9 @@ use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::db;
 use oleafly_server::members;
 use oleafly_server::test_support::{
-    allowlist, api_error_code, app_callback, follow_to_app, github_provider, no_redirect_client,
-    oidc_provider, security_event_kinds, seed_member, test_config, MockGithub, MockGithubUser,
-    MockOidc, MockOidcUser, SignInAttempt, TestDevice, TestServer, TEST_REDIRECT_URI,
-    TEST_SETUP_CODE,
+    allowlist, app_callback, follow_to_app, github_provider, no_redirect_client, oidc_provider,
+    security_event_kinds, seed_member, test_config, MockGithub, MockGithubUser, MockOidc,
+    MockOidcUser, SignInAttempt, TestDevice, TestServer, TEST_REDIRECT_URI, TEST_SETUP_CODE,
 };
 use reqwest::StatusCode;
 use serde_json::json;
@@ -182,6 +181,58 @@ async fn a_finished_sign_in_never_names_the_account_in_the_address() {
     assert!(!landing.query_pairs().any(|(key, _)| key == "account"));
 }
 
+async fn browser_page(url: String) -> (StatusCode, String, String) {
+    let response = no_redirect_client().get(url).send().await.expect("request");
+    let status = response.status();
+    let kind = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_owned();
+    (status, kind, response.text().await.expect("body"))
+}
+
+#[tokio::test]
+async fn a_used_or_unknown_sign_in_return_shows_a_page_not_an_error_object() {
+    let (server, _github) = server_for(carol()).await;
+    let (status, kind, body) = browser_page(format!(
+        "{}/auth/callback/github?state=never-issued&code=abc",
+        server.url()
+    ))
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(kind.starts_with("text/html"), "{kind}");
+    assert!(body.contains("<div class=\"brand\">"), "{body}");
+    assert!(body.contains("This sign-in already finished or expired"));
+    assert!(!body.contains("\"code\":"));
+}
+
+#[tokio::test]
+async fn a_sign_in_start_that_cannot_return_to_oleafly_shows_a_page() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, None);
+    let mut start = attempt.start_url.clone();
+    let pairs: Vec<(String, String)> = start
+        .query_pairs()
+        .map(|(key, value)| {
+            let value = if key == "redirect_uri" {
+                "https://elsewhere.example/callback".to_owned()
+            } else {
+                value.into_owned()
+            };
+            (key.into_owned(), value)
+        })
+        .collect();
+    start.query_pairs_mut().clear().extend_pairs(pairs);
+    let (status, kind, body) = browser_page(start.to_string()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(kind.starts_with("text/html"), "{kind}");
+    assert!(body.contains("<div class=\"brand\">"), "{body}");
+    assert!(body.contains("lead back to Oleafly"), "{body}");
+}
+
 #[tokio::test]
 async fn an_allowlisted_handle_is_admitted() {
     let (server, _github) = server_for(carol()).await;
@@ -233,7 +284,11 @@ async fn redirects_must_go_to_the_loopback_callback() {
             response.status()
         );
         assert!(response.headers().get(reqwest::header::LOCATION).is_none());
-        assert_eq!(api_error_code(response).await, "invalid_redirect");
+        assert!(response
+            .text()
+            .await
+            .expect("page")
+            .contains("lead back to Oleafly"));
     }
 }
 

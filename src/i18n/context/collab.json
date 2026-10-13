@@ -15,7 +15,12 @@
       "emails": {
         "label": "Switch on a server card. Turns on or off this person's own emails about projects other people share with them.",
         "noMail": "Shared with you is a section of the library. Use the same words as that section."
-      }
+      },
+      "paused": "Badge on a server card when an admin has suspended this person's account. Short, like Signed out.",
+      "noAccess": "Badge on a server card when this person's account was removed from the server. Short, like Signed out.",
+      "pausedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
+      "endedHint": "Under the server name when this person was removed from the server. {{server}} is the server's name. There is no Sign in button.",
+      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more."
     },
     "devices": {
       "current": "Badge on the row for the computer the person is using right now"
@@ -192,7 +197,9 @@
     }
   },
   "sync": {
-    "offline": "Status text. The number of local changes that have not reached the server yet comes after the colon, so no plural form is needed."
+    "offline": "Status text. The number of local changes that have not reached the server yet comes after the colon, so no plural form is needed.",
+    "suspended": "Short status of a shared project when an admin suspended this person's account.",
+    "accessEnded": "Short status of a shared project when this person no longer has access to the server."
   },
   "tree": {
     "clash": "Tooltip on a small badge in the file tree. Two files in a shared project had the same name, so this one was saved on disk under a different name. {{other}} is the path of the file that kept the name, {{name}} is the shared name."
@@ -221,13 +228,24 @@
   },
   "activity": {
     "mergedFile": "One file and the number of changes merged into it.",
-    "repeated": "Shown under an entry that happened several times in a row, such as the connection dropping and coming back. The count comes after the colon so no plural form is needed.",
     "newDevice": "Quiet entry in a shared project's activity list when a collaborator, or this person, starts using another computer with the same account. {{name}} is the person's display name.",
     "review": "Button on a merged changes entry. It opens a read-only window showing who changed which file while this person was offline.",
     "renamed": "Activity entry when two people renamed the same file at nearly the same time and the other person's name was kept. {{name}} is that person, {{before}} the earlier file name, {{theirs}} the name that was kept, {{ours}} the name the reader chose.",
     "mentioned": "Entry in the Activity list. {{name}} is a person, {{path}} is a file in the project, for example chapters/intro.tex.",
     "mentionedHere": "Same entry when the file is not known.",
-    "showComment": "Button on that entry that opens the comment where the person was mentioned."
+    "showComment": "Button on that entry that opens the comment where the person was mentioned.",
+    "rejoined": "Entry for a person who closed the project and then opened it again. {{name}} is the person.",
+    "visited": "Entry for a person who opened the project and then closed it, folded into one line. {{name}} is the person.",
+    "removedBy": "Entry when someone removed this person from the shared project. {{name}} is the person who did it.",
+    "suspended": "Entry when an admin suspended this person's account. {{server}} is the server's name. A Sign in button follows.",
+    "accessEnded": "Entry when this person was removed from the whole server. {{server}} is the server's name.",
+    "accessEndedGuest": "Same entry for a guest whose access ended because no shared project on the server includes them any more.",
+    "memberAdded": "Entry when one person added another to the project. {{by}} did it, {{name}} was added.",
+    "memberAddedByYou": "Entry when the reader added {{name}} to the project.",
+    "memberJoined": "Entry when {{name}} joined on their own by opening the project's link.",
+    "memberRemoved": "Entry when one person removed another from the project. {{by}} did it, {{name}} was removed.",
+    "memberRemovedByYou": "Entry when the reader removed {{name}} from the project.",
+    "memberLeft": "Entry when {{name}} left the shared project on their own."
   },
   "mergeReview": {
     "title": "Title of the read-only window listing changes from others that arrived while this person was offline",

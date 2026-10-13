@@ -174,6 +174,33 @@ impl AuthErrorCode {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionEndReason {
+    AccountSuspended,
+    AccessEnded,
+    #[serde(other)]
+    Unknown,
+}
+
+impl SessionEndReason {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SessionEndReason::AccountSuspended => "account_suspended",
+            SessionEndReason::AccessEnded => "access_ended",
+            SessionEndReason::Unknown => "unknown",
+        }
+    }
+
+    pub fn from_code(code: &str) -> Option<SessionEndReason> {
+        match code {
+            "account_suspended" => Some(SessionEndReason::AccountSuspended),
+            "access_ended" => Some(SessionEndReason::AccessEnded),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiError {
     pub code: String,
@@ -418,6 +445,35 @@ mod tests {
             assert_eq!(code.as_str(), name);
             assert_eq!(serde_json::to_value(code).unwrap(), name);
         }
+    }
+
+    #[test]
+    fn session_end_reasons_use_their_wire_codes() {
+        for (reason, code) in [
+            (SessionEndReason::AccountSuspended, "account_suspended"),
+            (SessionEndReason::AccessEnded, "access_ended"),
+        ] {
+            assert_eq!(reason.as_str(), code);
+            assert_eq!(serde_json::to_value(reason).unwrap(), code);
+            assert_eq!(
+                serde_json::from_value::<SessionEndReason>(serde_json::json!(code)).unwrap(),
+                reason
+            );
+            assert_eq!(SessionEndReason::from_code(code), Some(reason));
+        }
+        assert_eq!(SessionEndReason::from_code("revoked"), None);
+        assert_eq!(SessionEndReason::from_code("unknown"), None);
+        assert_eq!(
+            serde_json::from_value::<SessionEndReason>(serde_json::json!("account_deleted"))
+                .unwrap(),
+            SessionEndReason::Unknown
+        );
+        let error: ApiError =
+            serde_json::from_str(r#"{"code":"access_ended","message":"gone"}"#).unwrap();
+        assert_eq!(
+            SessionEndReason::from_code(&error.code),
+            Some(SessionEndReason::AccessEnded)
+        );
     }
 
     #[test]

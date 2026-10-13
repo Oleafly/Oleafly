@@ -4,7 +4,9 @@ mod support;
 use std::time::Duration;
 
 use oleafly_collab_protocol::admin::{MemberStatus, RuntimeSettingsPatch, SecurityEventKind};
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::capabilities::CapabilityManifest;
+use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::guests::{
     GuestInvitation, GuestInvitationStatus, GuestInviteResult, ProjectGuestInvitations,
 };
@@ -18,10 +20,10 @@ use oleafly_server::config::ServerConfig;
 use oleafly_server::members;
 use oleafly_server::state::DAY_MS;
 use oleafly_server::test_support::{
-    github_provider, mail_config, security_event_kinds, sign_in, test_config, MockGithub,
-    MockGithubUser, MockSmtp, TestDevice,
+    github_provider, mail_config, refresh_session, security_event_kinds, sign_in, test_config,
+    MockGithub, MockGithubUser, MockSmtp, TestDevice,
 };
-use people::{call, read, share_project, stage_with, Person, Stage};
+use people::{call, connect, next_frame, read, share_project, stage_with, Person, Stage};
 use reqwest::{Method, StatusCode};
 use serde_json::json;
 
@@ -763,6 +765,51 @@ async fn removing_a_guests_last_project_ends_their_admission() {
         .expect("a new invitation admits again");
     assert_eq!(back.tokens.account_id, dana.tokens.account_id);
     assert_eq!(status_of(stage, &back).await, Some(MemberStatus::Active));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_guest_removed_from_their_last_project_is_told_their_access_ended() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, false).await;
+    let project = share_project(&stage.server, &stage.bob, "Reef survey").await;
+    invited(
+        stage,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("dana is admitted");
+    let mut socket = connect(&stage.server, &dana).await;
+    let removed = call(
+        &stage.server,
+        Method::DELETE,
+        &format!(
+            "/api/v1/projects/{}/members/{}",
+            project.project_id, dana.tokens.account_id
+        ),
+        stage.bob.token(),
+        None,
+    )
+    .await;
+    assert_eq!(removed.status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        next_frame(&mut socket).await,
+        Some(ServerFrame::SessionRevoked {
+            reason: Some(SessionEndReason::AccessEnded)
+        })
+    );
+    let refreshed = refresh_session(
+        &stage.server,
+        &dana.device,
+        dana.tokens.device_id,
+        &dana.tokens.refresh_token,
+    )
+    .await;
+    assert_eq!(refreshed.err().as_deref(), Some("access_ended"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

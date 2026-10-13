@@ -157,11 +157,74 @@ describe("CollabPane", () => {
     const rows = within(list).getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent(fill(activity.joined, { name: "Carol Diaz" }));
     expect(rows[1]).toHaveTextContent(activity.online);
-    expect(rows[1]).toHaveTextContent(fill(activity.repeated, { number: "3" }));
+    expect(rows[1]).not.toHaveTextContent("3");
     expect(rows[1].querySelector("time")).toHaveTextContent("2 minutes ago");
     expect(rows[2]).toHaveTextContent(fill(activity.role, { role: enCollab.projectRoles.viewer }));
     expect(rows[3]).toHaveTextContent(fill(activity.welcomeEdit, { owner: "Bob Smith", server: "Smith Lab" }));
-    expect(rows[0]).not.toHaveTextContent(fill(activity.repeated, { number: "1" }));
+  });
+
+  it("says plainly when someone came and went more than once", () => {
+    feed([
+      { kind: "left", at: NOW, accountId: CAROL_ID, name: "Carol Diaz", count: 2 },
+      { kind: "joined", at: NOW - 1000, accountId: BOB_ID, name: "Bob Smith", count: 3 },
+      { kind: "left", at: NOW - 2000, accountId: ALICE_ID, name: "Alice Chen", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.visited, { name: "Carol Diaz" }));
+    expect(rows[1]).toHaveTextContent(fill(activity.rejoined, { name: "Bob Smith" }));
+    expect(rows[2]).toHaveTextContent(fill(activity.left, { name: "Alice Chen" }));
+  });
+
+  it("says who added or removed whom, and when someone joined or left on their own", () => {
+    const base = { at: NOW, count: 1, byYou: false };
+    feed([
+      { ...base, kind: "memberAdded", accountId: CAROL_ID, byAccountId: BOB_ID, name: "Carol Diaz", by: "Bob Smith" },
+      { ...base, kind: "memberAdded", accountId: CAROL_ID, byAccountId: ALICE_ID, name: "Carol Diaz", by: "Alice Chen", byYou: true },
+      { ...base, kind: "memberAdded", accountId: CAROL_ID, byAccountId: CAROL_ID, name: "Carol Diaz", by: "Carol Diaz" },
+      { ...base, kind: "memberRemoved", accountId: CAROL_ID, byAccountId: BOB_ID, name: "Carol Diaz", by: "Bob Smith" },
+      { ...base, kind: "memberRemoved", accountId: CAROL_ID, byAccountId: ALICE_ID, name: "Carol Diaz", by: "Alice Chen", byYou: true },
+      { ...base, kind: "memberRemoved", accountId: CAROL_ID, byAccountId: CAROL_ID, name: "Carol Diaz", by: "Carol Diaz" },
+      { ...base, kind: "memberRemoved", accountId: CAROL_ID, byAccountId: BOB_ID, name: "", by: "" },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.memberAdded, { by: "Bob Smith", name: "Carol Diaz" }));
+    expect(rows[1]).toHaveTextContent(fill(activity.memberAddedByYou, { name: "Carol Diaz" }));
+    expect(rows[2]).toHaveTextContent(fill(activity.memberJoined, { name: "Carol Diaz" }));
+    expect(rows[3]).toHaveTextContent(fill(activity.memberRemoved, { by: "Bob Smith", name: "Carol Diaz" }));
+    expect(rows[4]).toHaveTextContent(fill(activity.memberRemovedByYou, { name: "Carol Diaz" }));
+    expect(rows[5]).toHaveTextContent(fill(activity.memberLeft, { name: "Carol Diaz" }));
+    const someone = enCollab.toolbar.unknownPerson;
+    expect(rows[6]).toHaveTextContent(fill(activity.memberRemoved, { by: someone, name: someone }));
+  });
+
+  it("explains a paused account with Sign in, and ended access without it", async () => {
+    feed([
+      { kind: "suspended", at: NOW, server: "Smith Lab", count: 1 },
+      { kind: "accessEnded", at: NOW - 1000, server: "Smith Lab", guest: false, count: 1 },
+      { kind: "accessEnded", at: NOW - 2000, server: "Smith Lab", guest: true, count: 1 },
+      { kind: "removed", at: NOW - 3000, by: "Bob Smith", count: 1 },
+    ]);
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.suspended, { server: "Smith Lab" }));
+    expect(rows[1]).toHaveTextContent(fill(activity.accessEnded, { server: "Smith Lab" }));
+    expect(rows[2]).toHaveTextContent(fill(activity.accessEndedGuest, { server: "Smith Lab" }));
+    expect(rows[3]).toHaveTextContent(fill(activity.removedBy, { name: "Bob Smith" }));
+    for (const row of rows.slice(1)) expect(within(row).queryByRole("button")).toBeNull();
+    await user.click(within(rows[0]).getByRole("button", { name: activity.signIn }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
+  });
+
+  it("offers Sign in next to the state line while the account is paused", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "account_suspended" }, ended: "account_suspended" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const state = screen.getByText(enCollab.sync.suspended).closest("div") as HTMLElement;
+    await user.click(within(state).getByRole("button", { name: activity.signIn }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
   it("lists merged files on request and offers sign in when signed out", async () => {
@@ -371,6 +434,7 @@ describe("CollabPane", () => {
     [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 5 }, fill(enCollab.sync.offline, { number: "5" })],
     [{ status: { state: "offline", retry_in_ms: 1000 }, pending: 0 }, enCollab.sync.reconnecting],
     [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused],
+    [{ status: { state: "ended", reason: "access_ended" }, pending: 0 }, enCollab.sync.accessEnded],
   ])("names the live state %j at the top of the pane without a Sign in button", (live, words) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);

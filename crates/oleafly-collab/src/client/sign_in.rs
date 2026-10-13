@@ -60,9 +60,10 @@ pub async fn sign_in(
         });
     };
     let timeout = wait_for(kind, timeout);
-    let listener = LoopbackListener::bind()
-        .await?
-        .describing(&manifest.name, &provider_label);
+    let listener =
+        LoopbackListener::bind()
+            .await?
+            .describing(&manifest.name, &provider_label, kind);
     let verifier = random_b64url(VERIFIER_BYTES)?;
     let state = random_b64url(STATE_BYTES)?;
     let query = AuthStartQuery {

@@ -185,6 +185,8 @@ pub struct SecurityEvent {
     pub detail: serde_json::Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_name: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -199,6 +201,30 @@ mod tests {
     use serde_json::json;
 
     const ACCOUNT: &str = "01920000-0000-7000-8000-000000000002";
+
+    #[test]
+    fn a_security_event_may_name_its_device() {
+        let wire = json!({
+            "id": 7,
+            "at": 1,
+            "actor": ACCOUNT,
+            "kind": "device_added",
+            "target": "01920000-0000-7000-8000-000000000003",
+            "ip": null,
+            "detail": {}
+        });
+        let earlier: SecurityEvent = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(earlier.device_name, None);
+        assert_eq!(serde_json::to_value(&earlier).unwrap(), wire);
+        let named = SecurityEvent {
+            device_name: Some("Lab PC".to_string()),
+            ..earlier
+        };
+        assert_eq!(
+            serde_json::to_value(&named).unwrap()["device_name"],
+            "Lab PC"
+        );
+    }
 
     #[test]
     fn runtime_settings_default_to_the_documented_values() {

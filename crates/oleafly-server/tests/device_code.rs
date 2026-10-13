@@ -512,6 +512,31 @@ fn link_in(email: &CapturedEmail) -> Url {
 }
 
 #[tokio::test]
+async fn a_stranger_who_signs_in_by_email_hears_which_address_was_turned_away() {
+    let smtp = MockSmtp::start().await;
+    let setup = email_setup(&smtp).await;
+    let device = TestDevice::generate();
+    let code = request_code(&setup.server, &device, None)
+        .await
+        .expect("a code");
+    ask_for_email(&Browser::new(), &code, "dave@else.where").await;
+    let email = sign_in_email(&smtp).await;
+    let phone = Browser::new();
+    let confirm = phone.get(&link_in(&email)).await;
+    let refused = phone
+        .submit(&form(&confirm), &[("user_code", code.user_code.as_str())])
+        .await;
+    assert_eq!(refused.status, 403, "{}", refused.body);
+    let text = text_of(&refused);
+    assert!(
+        text.contains("You signed in with dave@else.where"),
+        "{text}"
+    );
+    assert!(!text.contains("sign out"), "{text}");
+    assert!(!text.contains("to Email"), "{text}");
+}
+
+#[tokio::test]
 async fn a_code_sign_in_can_finish_with_an_emailed_link_opened_anywhere() {
     let smtp = MockSmtp::start().await;
     let setup = email_setup(&smtp).await;

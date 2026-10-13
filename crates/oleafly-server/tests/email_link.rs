@@ -309,6 +309,12 @@ async fn a_person_the_server_does_not_admit_learns_nothing_more_than_anyone_else
         app_callback(&back, &unknown_attempt.state),
         Err("not_admitted".to_owned())
     );
+    assert_eq!(
+        back.query_pairs()
+            .find(|(key, _)| key == "account")
+            .map(|(_, value)| value.into_owned()),
+        Some("eve@else.where".to_owned())
+    );
     let refused = security_events(&setup.server)
         .await
         .into_iter()

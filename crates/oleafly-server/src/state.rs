@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::sha256_b64url;
 use oleafly_collab_protocol::ids::{DeviceId, ServerId};
 use ring::rand::{SecureRandom, SystemRandom};
@@ -144,6 +145,22 @@ impl AppState {
     }
 
     pub async fn revoke_device(&self, device: DeviceId) -> Result<(), ServerError> {
+        self.sign_out_device(device, None).await
+    }
+
+    pub async fn end_device_session(
+        &self,
+        device: DeviceId,
+        reason: SessionEndReason,
+    ) -> Result<(), ServerError> {
+        self.sign_out_device(device, Some(reason)).await
+    }
+
+    async fn sign_out_device(
+        &self,
+        device: DeviceId,
+        reason: Option<SessionEndReason>,
+    ) -> Result<(), ServerError> {
         let now = self.clock.now_ms();
         self.db
             .call(move |conn| {
@@ -161,7 +178,7 @@ impl AppState {
                 Ok(())
             })
             .await?;
-        self.sockets.revoke(device);
+        self.sockets.revoke(device, reason);
         Ok(())
     }
 

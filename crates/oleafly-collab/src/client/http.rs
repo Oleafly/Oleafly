@@ -7,7 +7,7 @@ use oleafly_collab_protocol::admin::{
 };
 use oleafly_collab_protocol::auth::{
     AccountSummary, ApiError, AuthStartQuery, ChallengeResponse, DeviceSummary, RefreshRequest,
-    SessionTokens, TokenRequest,
+    SessionEndReason, SessionTokens, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
 use oleafly_collab_protocol::email::{
@@ -797,11 +797,14 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
             message: location,
         });
     }
-    if status == StatusCode::UNAUTHORIZED {
-        return Err(CollabError::Unauthorized);
-    }
     let numeric = status.as_u16();
     let body = response.bytes().await.unwrap_or_default();
+    if status == StatusCode::UNAUTHORIZED {
+        let ended = serde_json::from_slice::<ApiError>(&body)
+            .ok()
+            .and_then(|error| SessionEndReason::from_code(&error.code));
+        return Err(ended.map_or(CollabError::Unauthorized, CollabError::SessionEnded));
+    }
     Err(match serde_json::from_slice::<ApiError>(&body) {
         Ok(error) => CollabError::Api {
             status: numeric,
@@ -1291,5 +1294,34 @@ mod tests {
             Err(CollabError::Api { status: 409, ref code, ref message })
                 if code == "conflict" && message == "already listed"
         ));
+    }
+
+    #[tokio::test]
+    async fn a_401_that_says_why_the_session_ended_keeps_the_reason() {
+        for (code, expected) in [
+            (
+                "account_suspended",
+                CollabError::SessionEnded(SessionEndReason::AccountSuspended),
+            ),
+            (
+                "access_ended",
+                CollabError::SessionEnded(SessionEndReason::AccessEnded),
+            ),
+            ("revoked", CollabError::Unauthorized),
+        ] {
+            let response = http_response(
+                "401 Unauthorized",
+                &[("Content-Type", "application/json")],
+                &format!("{{\"code\":\"{code}\",\"message\":\"m\"}}"),
+            );
+            let client = ServerClient::new(canned(response).await).expect("client");
+            assert_eq!(client.me("token").await.err(), Some(expected), "{code}");
+        }
+        let bare = http_response("401 Unauthorized", &[], "");
+        let client = ServerClient::new(canned(bare).await).expect("client");
+        assert_eq!(
+            client.me("token").await.err(),
+            Some(CollabError::Unauthorized)
+        );
     }
 }

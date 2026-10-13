@@ -678,16 +678,29 @@ pub(crate) fn finished_naming(
             "Start signing in again in Oleafly to get a new code.",
         ),
         Err(AuthErrorCode::NotAdmitted) => {
+            let by_email = pending.provider_id == email_link::PROVIDER_ID;
             let provider = provider_label(state, &pending.provider_id);
             let who = account
                 .map(|account| {
-                    format!(
-                        "<p>You signed in to {} as <strong>{}</strong>.</p>",
-                        escape(&provider),
-                        escape(account)
-                    )
+                    if by_email {
+                        format!("<p>You signed in with <strong>{}</strong>.</p>", escape(account))
+                    } else {
+                        format!(
+                            "<p>You signed in to {} as <strong>{}</strong>.</p>",
+                            escape(&provider),
+                            escape(account)
+                        )
+                    }
                 })
                 .unwrap_or_default();
+            let advice = if by_email {
+                "To use a different address, start again in Oleafly with one the admin added."
+                    .to_owned()
+            } else {
+                format!(
+                    "To use a different account, sign out of {provider} in this browser, then start again in Oleafly."
+                )
+            };
             sign_in_pages::render(
                 StatusCode::FORBIDDEN,
                 "You can't sign in here yet",
@@ -696,9 +709,7 @@ pub(crate) fn finished_naming(
                     status(Tone::Problem),
                     heading("You can't sign in here yet"),
                     paragraph(&ServerError::Auth(AuthErrorCode::NotAdmitted).public_message()),
-                    next(&format!(
-                        "To use a different account, sign out of {provider} in this browser, then start again in Oleafly."
-                    )),
+                    next(&advice),
                 ),
                 None,
             )

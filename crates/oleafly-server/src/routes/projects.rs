@@ -6,8 +6,9 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use oleafly_collab_protocol::admin::{RuntimeSettings, SecurityEventKind};
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
-use oleafly_collab_protocol::frames::ServerFrame;
+use oleafly_collab_protocol::frames::{MemberChange, MemberChangeKind, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
     project_role_allows, MemberGrant, NewProject, PersonSummary, ProjectAction, ProjectDevice,
@@ -509,12 +510,12 @@ async fn join_by_link(
     let device = auth.device_id;
     let now = state.clock.now_ms();
     let limit = state.config.limits.max_members_per_project;
-    let joined = state
+    let (joined, newly) = state
         .db
         .call(move |conn| {
             let (row, member) = by_link(conn, project, account, ip.clone(), now, limit)?;
             if let Some(role) = member {
-                return projects::summary(conn, &row, role);
+                return Ok((projects::summary(conn, &row, role)?, false));
             }
             projects::grant(conn, project, account, row.link_role, row.owner, now)?;
             access_log::quietly(access_log::joined_by_link(
@@ -531,9 +532,17 @@ async fn join_by_link(
                     json!({ "role": projects::role_to_str(row.link_role), "via": "link" }),
                 ),
             )?;
-            projects::summary(conn, &row, row.link_role)
+            Ok((projects::summary(conn, &row, row.link_role)?, true))
         })
         .await?;
+    if newly {
+        let change = MemberChange {
+            account_id: account,
+            by: account,
+            kind: MemberChangeKind::Added,
+        };
+        tell_members(&state, project, change).await;
+    }
     Ok(Json(joined))
 }
 
@@ -883,7 +892,7 @@ async fn grant_member(
     let server_role = auth.role;
     let limit = state.config.limits.max_members_per_project;
     let now = state.clock.now_ms();
-    let (granted, newly_added) = state
+    let (granted, existing) = state
         .db
         .call(move |conn| {
             let (row, actor_role) = access(conn, project, account)?;
@@ -936,22 +945,76 @@ async fn grant_member(
                     role,
                     granted_at: now,
                 },
-                existing.is_none(),
+                existing,
             ))
         })
         .await?;
+    let change = (existing != Some(role)).then_some(MemberChange {
+        account_id: target,
+        by: account,
+        kind: if existing.is_none() {
+            MemberChangeKind::Added
+        } else {
+            MemberChangeKind::RoleChanged
+        },
+    });
     state.rooms.notify_account(
         project,
         target,
         &ServerFrame::AccessChanged {
             project_id: project,
             role: Some(role),
+            change,
         },
     );
-    if newly_added {
+    if let Some(change) = change {
+        tell_members(&state, project, change).await;
+    }
+    if existing.is_none() {
         notify::shared_with_you(&state, project, target, account, role);
     }
     Ok(Json(granted))
+}
+
+async fn tell_members(state: &AppState, project: SharedProjectId, change: MemberChange) {
+    let accounts: Vec<AccountId> = state
+        .rooms
+        .accounts(project)
+        .into_iter()
+        .filter(|account| *account != change.account_id)
+        .collect();
+    if accounts.is_empty() {
+        return;
+    }
+    let roles = state
+        .db
+        .call(move |conn| {
+            accounts
+                .into_iter()
+                .map(|account| Ok((account, projects::role_of(conn, project, account)?)))
+                .collect::<Result<Vec<_>, ServerError>>()
+        })
+        .await;
+    let roles = match roles {
+        Ok(roles) => roles,
+        Err(error) => {
+            tracing::warn!("could not tell a project's members that its people changed: {error}");
+            return;
+        }
+    };
+    for (account, role) in roles {
+        if let Some(role) = role {
+            state.rooms.notify_account(
+                project,
+                account,
+                &ServerFrame::AccessChanged {
+                    project_id: project,
+                    role: Some(role),
+                    change: Some(change),
+                },
+            );
+        }
+    }
 }
 
 async fn remove_member(
@@ -999,11 +1062,19 @@ async fn remove_member(
         })
         .await?;
     for device in signed_out {
-        state.revoke_device(device).await?;
+        state
+            .end_device_session(device, SessionEndReason::AccessEnded)
+            .await?;
     }
+    let change = MemberChange {
+        account_id: target,
+        by: account,
+        kind: MemberChangeKind::Removed,
+    };
     let frame = ServerFrame::AccessChanged {
         project_id: project,
         role: None,
+        change: Some(change),
     };
     for member in state.rooms.remove_account(project, target) {
         crate::rooms::deliver(&member, frame.clone());
@@ -1016,6 +1087,7 @@ async fn remove_member(
             },
         );
     }
+    tell_members(&state, project, change).await;
     Ok(StatusCode::NO_CONTENT)
 }
 

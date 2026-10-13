@@ -5,6 +5,7 @@ use ::url::Url;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::page::{document, escape, status, Tone};
 
 use crate::CollabError;
@@ -30,6 +31,7 @@ pub(crate) struct LoopbackListener {
 struct Pages {
     server: String,
     provider: String,
+    by_email: bool,
 }
 
 impl Pages {
@@ -61,6 +63,24 @@ impl Pages {
         let server = escape(&self.server);
         let provider = escape(&self.provider);
         let (title, card) = match code {
+            "not_admitted" if self.by_email => {
+                let reason = match account {
+                    Some(account) => format!(
+                        "You signed in with <strong>{}</strong>, and that address isn't on this server's list.",
+                        escape(account)
+                    ),
+                    None => "That email address isn't on this server's list.".to_string(),
+                };
+                (
+                    format!("Not allowed on {}", self.server),
+                    Pages::card(
+                        Tone::Problem,
+                        &format!("{server} didn't let you in"),
+                        &reason,
+                        Some("Ask the server's admin to add it, or start again in Oleafly with an address they added."),
+                    ),
+                )
+            }
             "not_admitted" => {
                 let reason = match account {
                     Some(account) => format!(
@@ -187,14 +207,21 @@ impl LoopbackListener {
             pages: Pages {
                 server: "the server".to_string(),
                 provider: "your sign-in provider".to_string(),
+                by_email: false,
             },
         })
     }
 
-    pub(crate) fn describing(mut self, server: &str, provider: &str) -> LoopbackListener {
+    pub(crate) fn describing(
+        mut self,
+        server: &str,
+        provider: &str,
+        kind: ProviderKind,
+    ) -> LoopbackListener {
         self.pages = Pages {
             server: server.to_string(),
             provider: provider.to_string(),
+            by_email: kind == ProviderKind::EmailLink,
         };
         self
     }
@@ -357,10 +384,38 @@ mod tests {
     }
 
     async fn lab() -> LoopbackListener {
-        LoopbackListener::bind()
-            .await
-            .expect("bind")
-            .describing("Oleafly Lab", "GitHub")
+        LoopbackListener::bind().await.expect("bind").describing(
+            "Oleafly Lab",
+            "GitHub",
+            ProviderKind::Github,
+        )
+    }
+
+    async fn lab_by_email() -> LoopbackListener {
+        LoopbackListener::bind().await.expect("bind").describing(
+            "Oleafly Lab",
+            "Email",
+            ProviderKind::EmailLink,
+        )
+    }
+
+    #[tokio::test]
+    async fn an_email_refusal_names_the_address_and_never_says_sign_out() {
+        let page = page_after(
+            lab_by_email().await,
+            "error=not_admitted&account=dave%40codehq.pro&state=s1",
+        )
+        .await;
+        assert!(
+            page.contains("<h1>Oleafly Lab didn't let you in</h1>"),
+            "{page}"
+        );
+        assert!(page.contains(
+            "You signed in with <strong>dave@codehq.pro</strong>, and that address isn't on this server's list."
+        ));
+        assert!(page.contains("start again in Oleafly with an address they added"));
+        assert!(!page.contains("sign out"));
+        assert!(!page.contains("Email account"));
     }
 
     #[tokio::test]

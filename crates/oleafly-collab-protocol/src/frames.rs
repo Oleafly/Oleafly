@@ -1,3 +1,4 @@
+use crate::auth::SessionEndReason;
 use crate::envelope::Envelope;
 use crate::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
 use crate::projects::PresenceState;
@@ -108,7 +109,10 @@ pub enum ServerFrame {
         code: FrameErrorCode,
         message: String,
     },
-    SessionRevoked,
+    SessionRevoked {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<SessionEndReason>,
+    },
     Subscribed {
         project_id: SharedProjectId,
         role: ProjectRole,
@@ -144,10 +148,29 @@ pub enum ServerFrame {
     AccessChanged {
         project_id: SharedProjectId,
         role: Option<ProjectRole>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        change: Option<MemberChange>,
     },
     ProjectArchived {
         project_id: SharedProjectId,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemberChange {
+    pub account_id: AccountId,
+    pub by: AccountId,
+    pub kind: MemberChangeKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MemberChangeKind {
+    Added,
+    Removed,
+    RoleChanged,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -168,6 +191,7 @@ pub enum FrameErrorCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::SessionEndReason;
     use serde_json::{json, Value};
 
     const SERVER: &str = "01920000-0000-7000-8000-000000000001";
@@ -237,10 +261,87 @@ mod tests {
             json!({ "type": "error", "code": "protocol_mismatch", "message": "update" }),
         );
         assert_server_wire(
-            ServerFrame::SessionRevoked,
+            ServerFrame::SessionRevoked { reason: None },
             json!({ "type": "session_revoked" }),
         );
     }
+
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    #[serde(tag = "type", rename_all = "snake_case")]
+    enum EarlierServerFrame {
+        SessionRevoked,
+        AccessChanged {
+            project_id: SharedProjectId,
+            role: Option<ProjectRole>,
+        },
+    }
+
+    #[test]
+    fn a_revoked_session_can_say_why_and_earlier_clients_still_read_it() {
+        let suspended = ServerFrame::SessionRevoked {
+            reason: Some(SessionEndReason::AccountSuspended),
+        };
+        let wire = json!({ "type": "session_revoked", "reason": "account_suspended" });
+        assert_server_wire(suspended, wire.clone());
+        assert_eq!(
+            serde_json::from_value::<EarlierServerFrame>(wire).unwrap(),
+            EarlierServerFrame::SessionRevoked
+        );
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({ "type": "session_revoked" })).unwrap(),
+            ServerFrame::SessionRevoked { reason: None }
+        );
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(
+                json!({ "type": "session_revoked", "reason": "account_deleted" })
+            )
+            .unwrap(),
+            ServerFrame::SessionRevoked {
+                reason: Some(SessionEndReason::Unknown)
+            }
+        );
+    }
+
+    #[test]
+    fn an_access_change_can_name_who_changed_whom_and_earlier_clients_ignore_it() {
+        let change = MemberChange {
+            account_id: DEVICE_OWNER.parse().unwrap(),
+            by: ACCOUNT.parse().unwrap(),
+            kind: MemberChangeKind::Removed,
+        };
+        let frame = ServerFrame::AccessChanged {
+            project_id: PROJECT.parse().unwrap(),
+            role: Some(ProjectRole::Editor),
+            change: Some(change),
+        };
+        let wire = json!({
+            "type": "access_changed",
+            "project_id": PROJECT,
+            "role": "editor",
+            "change": { "account_id": DEVICE_OWNER, "by": ACCOUNT, "kind": "removed" }
+        });
+        assert_server_wire(frame, wire.clone());
+        assert_eq!(
+            serde_json::from_value::<EarlierServerFrame>(wire).unwrap(),
+            EarlierServerFrame::AccessChanged {
+                project_id: PROJECT.parse().unwrap(),
+                role: Some(ProjectRole::Editor),
+            }
+        );
+        for (kind, name) in [
+            (MemberChangeKind::Added, "added"),
+            (MemberChangeKind::Removed, "removed"),
+            (MemberChangeKind::RoleChanged, "role_changed"),
+        ] {
+            assert_eq!(serde_json::to_value(kind).unwrap(), name);
+        }
+        assert_eq!(
+            serde_json::from_value::<MemberChangeKind>(json!("transferred")).unwrap(),
+            MemberChangeKind::Unknown
+        );
+    }
+
+    const DEVICE_OWNER: &str = "01920000-0000-7000-8000-000000000004";
 
     #[test]
     fn frame_error_codes_use_snake_case_and_read_new_codes_as_unknown() {
@@ -463,6 +564,7 @@ mod tests {
             ServerFrame::AccessChanged {
                 project_id: PROJECT.parse().unwrap(),
                 role: None,
+                change: None,
             },
             json!({ "type": "access_changed", "project_id": PROJECT, "role": null }),
         );

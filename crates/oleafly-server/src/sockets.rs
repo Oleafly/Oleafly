@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::ids::DeviceId;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
@@ -10,7 +11,7 @@ pub const MAX_SOCKETS_PER_DEVICE: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SocketControl {
-    Revoked,
+    Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
 }
@@ -134,11 +135,11 @@ impl SocketRegistry {
         }
     }
 
-    pub fn revoke(&self, device: DeviceId) -> usize {
+    pub fn revoke(&self, device: DeviceId, reason: Option<SessionEndReason>) -> usize {
         let removed = self.lock().remove(&device).unwrap_or_default();
         removed
             .iter()
-            .filter(|entry| entry.sender.send(SocketControl::Revoked).is_ok())
+            .filter(|entry| entry.sender.send(SocketControl::Revoked(reason)).is_ok())
             .count()
     }
 
@@ -164,13 +165,36 @@ mod tests {
         let mut second = registry.register(device);
         let mut unrelated = registry.register(other);
         assert_eq!(registry.count(device), 2);
-        assert_eq!(registry.revoke(device), 2);
-        assert_eq!(first.control.recv().await, Some(SocketControl::Revoked));
-        assert_eq!(second.control.recv().await, Some(SocketControl::Revoked));
+        assert_eq!(registry.revoke(device, None), 2);
+        assert_eq!(
+            first.control.recv().await,
+            Some(SocketControl::Revoked(None))
+        );
+        assert_eq!(
+            second.control.recv().await,
+            Some(SocketControl::Revoked(None))
+        );
         assert!(first.control.try_recv().is_err());
         assert_eq!(registry.count(device), 0);
         assert_eq!(registry.count(other), 1);
         assert!(unrelated.control.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn a_revocation_carries_why_the_session_ended() {
+        let registry = SocketRegistry::new();
+        let device = DeviceId::new_v7();
+        let mut ticket = registry.register(device);
+        assert_eq!(
+            registry.revoke(device, Some(SessionEndReason::AccountSuspended)),
+            1
+        );
+        assert_eq!(
+            ticket.control.recv().await,
+            Some(SocketControl::Revoked(Some(
+                SessionEndReason::AccountSuspended
+            )))
+        );
     }
 
     #[test]
@@ -193,7 +217,7 @@ mod tests {
         assert!(admitted[1].control.try_recv().is_err());
         assert!(waiting.control.try_recv().is_err());
         assert_eq!(registry.count(device), MAX_SOCKETS_PER_DEVICE + 1);
-        assert_eq!(registry.revoke(device), MAX_SOCKETS_PER_DEVICE + 1);
+        assert_eq!(registry.revoke(device, None), MAX_SOCKETS_PER_DEVICE + 1);
     }
 
     #[test]
@@ -221,6 +245,6 @@ mod tests {
         assert_eq!(first.device, device);
         registry.unregister(device, first.id);
         assert_eq!(registry.count(device), 1);
-        assert_eq!(registry.revoke(device), 1);
+        assert_eq!(registry.revoke(device, None), 1);
     }
 }

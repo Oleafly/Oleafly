@@ -1,6 +1,8 @@
 mod people;
 
-use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
+use oleafly_collab_protocol::frames::{
+    ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
+};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_server::test_support::TestDevice;
 use people::{
@@ -236,7 +238,12 @@ async fn removing_someone_tells_them_and_the_room() {
         next_frame(&mut alice).await,
         Some(ServerFrame::AccessChanged {
             project_id: project,
-            role: None
+            role: None,
+            change: Some(MemberChange {
+                account_id: stage.alice.tokens.account_id,
+                by: stage.bob.tokens.account_id,
+                kind: MemberChangeKind::Removed,
+            })
         })
     );
     assert_eq!(
@@ -274,7 +281,12 @@ async fn a_new_role_reaches_the_person_while_they_are_connected() {
         next_frame(&mut alice).await,
         Some(ServerFrame::AccessChanged {
             project_id: project,
-            role: Some(ProjectRole::Viewer)
+            role: Some(ProjectRole::Viewer),
+            change: Some(MemberChange {
+                account_id: stage.alice.tokens.account_id,
+                by: stage.bob.tokens.account_id,
+                kind: MemberChangeKind::RoleChanged,
+            })
         })
     );
 }

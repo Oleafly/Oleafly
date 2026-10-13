@@ -193,6 +193,33 @@ async fn revoked_devices_and_suspended_accounts_are_unauthorized() {
 }
 
 #[tokio::test]
+async fn a_live_token_of_an_inactive_account_says_why_it_no_longer_works() {
+    let app = test_app().await;
+    let router = probe(app.state.clone());
+    for (status, code) in [
+        ("suspended", "account_suspended"),
+        ("removed", "access_ended"),
+    ] {
+        let member = seed_member(&app, ServerRole::Member).await;
+        let account = member.account_id;
+        app.state
+            .db
+            .call(move |conn| {
+                conn.execute(
+                    "UPDATE accounts SET status = ?2 WHERE id = ?1",
+                    [account.to_string(), status.to_string()],
+                )?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+        let reply = support::send_get(&router, "/probe", Some(&member.access_token)).await;
+        assert_eq!(reply.status, StatusCode::UNAUTHORIZED, "{status}");
+        assert_eq!(reply.body["code"], code, "{status}");
+    }
+}
+
+#[tokio::test]
 async fn require_follows_the_role_table() {
     let app = test_app().await;
     let router = probe(app.state.clone());

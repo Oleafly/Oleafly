@@ -52,6 +52,7 @@ vi.mock("@/lib/tauri", () => ({
   onCollabLiveRole: listener("role"),
   onCollabLiveMerged: listener("merged"),
   onCollabLiveNewDevice: listener("newDevice"),
+  onCollabLiveMembers: listener("members"),
   onCollabPresence: listener("presence"),
   onCollabPresenceLeft: listener("left"),
 }));
@@ -317,6 +318,50 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().members[0]).toMatchObject({ role: "viewer" });
   });
 
+  it("reloads the people list and names who changed whom when someone is added or removed", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const CAROL = "0192a0b0-0000-7000-8000-000000000003";
+    mocks.collabMembersList.mockClear();
+    mocks.collabMembersList.mockResolvedValueOnce([
+      member(ALICE, "Alice Chen"),
+      member(BOB, "Bob Jones"),
+      member(CAROL, "Carol Diaz"),
+    ]);
+    emit("members", { projectId: PROJECT, accountId: CAROL, by: BOB, kind: "added" });
+    await settle();
+    expect(mocks.collabMembersList).toHaveBeenCalledWith(PROJECT);
+    expect(useCollabLiveStore.getState().members).toHaveLength(3);
+    expect(useCollabLiveStore.getState().memberChange).toEqual({
+      projectId: PROJECT,
+      accountId: CAROL,
+      by: BOB,
+      kind: "added",
+      name: "Carol Diaz",
+      byName: "Bob Jones",
+    });
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen"), member(BOB, "Bob Jones")]);
+    emit("members", { projectId: PROJECT, accountId: CAROL, by: BOB, kind: "removed" });
+    await settle();
+    expect(useCollabLiveStore.getState().members).toHaveLength(2);
+    expect(useCollabLiveStore.getState().memberChange).toMatchObject({ kind: "removed", name: "Carol Diaz" });
+    emit("members", { projectId: OTHER, accountId: CAROL, by: BOB, kind: "added" });
+    await settle();
+    expect(useCollabLiveStore.getState().memberChange).toMatchObject({ kind: "removed" });
+  });
+
+  it("names who removed this person without asking the server for a list it can no longer read", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabMembersList.mockClear();
+    emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "removed" });
+    await settle();
+    expect(mocks.collabMembersList).not.toHaveBeenCalled();
+    expect(useCollabLiveStore.getState().memberChange).toMatchObject({ name: "Alice Chen", byName: "Bob Jones" });
+  });
+
   it("tracks peers with names from the member list and drops them when they leave", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -532,7 +577,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(6);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(7);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });

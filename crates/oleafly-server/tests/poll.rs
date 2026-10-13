@@ -8,9 +8,11 @@ use std::time::{Duration, Instant};
 use axum::body::Body;
 use axum::extract::ConnectInfo;
 use axum::http::{Method as HttpMethod, Request, StatusCode as HttpStatus};
-use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
+use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, SessionEndReason};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
-use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
+use oleafly_collab_protocol::frames::{
+    ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
+};
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::poll::{
     PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER,
@@ -676,9 +678,39 @@ async fn signing_the_device_out_ends_its_long_poll() {
         .status(),
         StatusCode::NO_CONTENT
     );
-    assert_eq!(alice.next().await, ServerFrame::SessionRevoked);
+    assert_eq!(
+        alice.next().await,
+        ServerFrame::SessionRevoked { reason: None }
+    );
     assert_eq!(alice.status().await, StatusCode::NOT_FOUND);
     assert_eq!(stage.server.state().polls.count(), 0);
+}
+
+#[tokio::test]
+async fn suspending_someone_tells_their_long_poll_why() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut alice = opened(&stage.server, &stage.alice, project).await;
+    let path = format!("/api/v1/admin/members/{}", stage.alice.tokens.account_id);
+    assert_eq!(
+        call(
+            &stage.server,
+            Method::PATCH,
+            &path,
+            stage.bob.token(),
+            Some(serde_json::json!({ "status": "suspended" }))
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        alice.next().await,
+        ServerFrame::SessionRevoked {
+            reason: Some(SessionEndReason::AccountSuspended)
+        }
+    );
 }
 
 #[tokio::test]
@@ -709,7 +741,12 @@ async fn removing_someone_tells_their_long_poll_and_the_room() {
         alice.next().await,
         ServerFrame::AccessChanged {
             project_id: project,
-            role: None
+            role: None,
+            change: Some(MemberChange {
+                account_id: stage.alice.tokens.account_id,
+                by: stage.bob.tokens.account_id,
+                kind: MemberChangeKind::Removed,
+            })
         }
     );
     assert_eq!(
@@ -749,7 +786,12 @@ async fn a_new_role_and_stopping_sharing_reach_a_long_poll() {
         alice.next().await,
         ServerFrame::AccessChanged {
             project_id: project,
-            role: Some(ProjectRole::Viewer)
+            role: Some(ProjectRole::Viewer),
+            change: Some(MemberChange {
+                account_id: stage.alice.tokens.account_id,
+                by: stage.bob.tokens.account_id,
+                kind: MemberChangeKind::RoleChanged,
+            })
         }
     );
     let path = format!("/api/v1/projects/{project}/archive");

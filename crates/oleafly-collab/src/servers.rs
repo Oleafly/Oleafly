@@ -1,4 +1,6 @@
-use oleafly_collab_protocol::auth::AccountSummary;
+use std::collections::BTreeMap;
+
+use oleafly_collab_protocol::auth::{AccountSummary, SessionEndReason};
 use oleafly_collab_protocol::ids::ServerId;
 use serde::{Deserialize, Serialize};
 
@@ -19,18 +21,23 @@ pub struct ServerEntry {
 #[derive(Clone, Debug, Default)]
 pub struct ServerRegistry {
     servers: Vec<ServerEntry>,
+    ended: BTreeMap<ServerId, SessionEndReason>,
 }
 
 #[derive(Deserialize)]
 struct RegistryFile {
     version: u32,
     servers: Vec<ServerEntry>,
+    #[serde(default)]
+    ended: BTreeMap<ServerId, SessionEndReason>,
 }
 
 #[derive(Serialize)]
 struct RegistryFileRef<'a> {
     version: u32,
     servers: &'a [ServerEntry],
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    ended: &'a BTreeMap<ServerId, SessionEndReason>,
 }
 
 impl ServerRegistry {
@@ -56,6 +63,7 @@ impl ServerRegistry {
         }
         Ok(ServerRegistry {
             servers: file.servers,
+            ended: file.ended,
         })
     }
 
@@ -65,6 +73,7 @@ impl ServerRegistry {
         let file = RegistryFileRef {
             version: REGISTRY_VERSION,
             servers: &self.servers,
+            ended: &self.ended,
         };
         let bytes = serde_json::to_vec_pretty(&file)
             .map_err(|error| CollabError::Corrupt(error.to_string()))?;
@@ -90,7 +99,23 @@ impl ServerRegistry {
         }
     }
 
+    pub fn ended(&self, id: ServerId) -> Option<SessionEndReason> {
+        self.ended.get(&id).copied()
+    }
+
+    pub fn set_ended(&mut self, id: ServerId, reason: Option<SessionEndReason>) {
+        match reason {
+            Some(reason) if self.get(id).is_some() => {
+                self.ended.insert(id, reason);
+            }
+            _ => {
+                self.ended.remove(&id);
+            }
+        }
+    }
+
     pub fn remove(&mut self, id: ServerId) -> Option<ServerEntry> {
+        self.ended.remove(&id);
         let index = self
             .servers
             .iter()
@@ -101,6 +126,7 @@ impl ServerRegistry {
 
 #[cfg(test)]
 mod tests {
+    use oleafly_collab_protocol::auth::SessionEndReason;
     use oleafly_collab_protocol::ids::AccountId;
     use oleafly_collab_protocol::roles::ServerRole;
 
@@ -198,6 +224,58 @@ mod tests {
             saved.server_id.to_string()
         );
         assert_eq!(value["servers"][0]["name"], "smith-lab");
+    }
+
+    #[test]
+    fn a_server_remembers_why_its_session_ended_until_told_otherwise() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let paths = paths(&dir);
+        let paused = entry("smith-lab");
+        let other = entry("jones-lab");
+        let mut registry = ServerRegistry::default();
+        registry.upsert(paused.clone());
+        registry.upsert(other.clone());
+        registry.set_ended(paused.server_id, Some(SessionEndReason::AccountSuspended));
+        registry.save(&paths).expect("save");
+        let mut loaded = ServerRegistry::load(&paths).expect("load");
+        assert_eq!(
+            loaded.ended(paused.server_id),
+            Some(SessionEndReason::AccountSuspended)
+        );
+        assert_eq!(loaded.ended(other.server_id), None);
+        loaded.upsert(paused.clone());
+        assert_eq!(
+            loaded.ended(paused.server_id),
+            Some(SessionEndReason::AccountSuspended)
+        );
+        loaded.set_ended(paused.server_id, None);
+        assert_eq!(loaded.ended(paused.server_id), None);
+        loaded.set_ended(paused.server_id, Some(SessionEndReason::AccessEnded));
+        loaded.remove(paused.server_id);
+        loaded.upsert(paused.clone());
+        assert_eq!(loaded.ended(paused.server_id), None);
+        loaded.set_ended(ServerId::new_v7(), Some(SessionEndReason::AccessEnded));
+        assert_eq!(loaded.list().len(), 2);
+    }
+
+    #[test]
+    fn an_earlier_app_still_reads_a_list_that_names_ended_sessions() {
+        #[derive(serde::Deserialize)]
+        struct EarlierFile {
+            version: u32,
+            servers: Vec<ServerEntry>,
+        }
+        let dir = tempfile::tempdir().expect("tempdir");
+        let paths = paths(&dir);
+        let paused = entry("smith-lab");
+        let mut registry = ServerRegistry::default();
+        registry.upsert(paused.clone());
+        registry.set_ended(paused.server_id, Some(SessionEndReason::AccessEnded));
+        registry.save(&paths).expect("save");
+        let text = std::fs::read_to_string(paths.servers_file()).expect("read");
+        let earlier: EarlierFile = serde_json::from_str(&text).expect("an earlier app reads it");
+        assert_eq!(earlier.version, 1);
+        assert_eq!(earlier.servers.len(), 1);
     }
 
     #[test]

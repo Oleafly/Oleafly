@@ -67,18 +67,37 @@ async fn send_test(
     if to.is_empty() {
         return Err(ServerError::BadRequest(NO_ADDRESS.to_string()));
     }
-    let content = messages::test_message(&state.config.server_name);
-    let outcome = state
-        .mailer
-        .send_now(OutgoingEmail::new(EmailKind::Test, to.clone(), content))
-        .await;
-    if let Err(error) = &outcome {
-        tracing::warn!("The test email failed: {error}");
+    let mut sending = tokio::task::JoinSet::new();
+    for (index, address) in to.iter().cloned().enumerate() {
+        let mailer = state.mailer.clone();
+        let content = messages::test_message(&state.config.server_name);
+        sending.spawn(async move {
+            let email = OutgoingEmail::new(EmailKind::Test, vec![address.clone()], content);
+            (index, address, mailer.send_now(email).await)
+        });
+    }
+    let mut outcomes = sending.join_all().await;
+    outcomes.sort_by_key(|(index, _, _)| *index);
+    let several = outcomes.len() > 1;
+    let mut sent_to = Vec::new();
+    let mut failures = Vec::new();
+    for (_, address, outcome) in outcomes {
+        match outcome {
+            Ok(()) => sent_to.push(address),
+            Err(error) => {
+                tracing::warn!("The test email failed: {error}");
+                failures.push(if several {
+                    format!("{address}: {error}")
+                } else {
+                    error
+                });
+            }
+        }
     }
     Ok(Json(EmailTestResult {
-        sent_to: to,
-        delivered: outcome.is_ok(),
-        error: outcome.err(),
+        sent_to,
+        delivered: failures.is_empty(),
+        error: (!failures.is_empty()).then(|| failures.join("\n")),
     }))
 }
 

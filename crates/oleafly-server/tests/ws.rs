@@ -245,7 +245,7 @@ async fn signing_a_device_out_closes_its_socket() {
     assert_eq!(status, StatusCode::NO_CONTENT);
     assert_eq!(
         next_frame(&mut socket).await,
-        Some(ServerFrame::SessionRevoked)
+        Some(ServerFrame::SessionRevoked { reason: None })
     );
     assert_eq!(next_frame(&mut socket).await, None);
     assert_eq!(server.state().sockets.count(laptop_tokens.device_id), 0);
@@ -276,7 +276,7 @@ async fn signing_out_closes_my_own_socket() {
     assert_eq!(status, StatusCode::NO_CONTENT);
     assert_eq!(
         next_frame(&mut socket).await,
-        Some(ServerFrame::SessionRevoked)
+        Some(ServerFrame::SessionRevoked { reason: None })
     );
     assert_eq!(next_frame(&mut socket).await, None);
 }

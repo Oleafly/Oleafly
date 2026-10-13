@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
+use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, SessionEndReason};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
@@ -200,7 +200,11 @@ pub(crate) async fn read_frame(socket: &mut Socket) -> Result<ServerFrame, Colla
 
 pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
     match frame {
-        ServerFrame::SessionRevoked
+        ServerFrame::SessionRevoked {
+            reason:
+                Some(reason @ (SessionEndReason::AccountSuspended | SessionEndReason::AccessEnded)),
+        } => CollabError::SessionEnded(reason),
+        ServerFrame::SessionRevoked { .. }
         | ServerFrame::Error {
             code: FrameErrorCode::Unauthorized,
             ..
@@ -327,5 +331,25 @@ mod tests {
             Err(CollabError::ServerChanged { expected: e, found: f })
                 if e == expected && f == signed.manifest.server_id
         ));
+    }
+
+    #[test]
+    fn a_revoked_session_that_says_why_keeps_the_reason() {
+        assert_eq!(
+            frame_error(ServerFrame::SessionRevoked {
+                reason: Some(SessionEndReason::AccessEnded)
+            }),
+            CollabError::SessionEnded(SessionEndReason::AccessEnded)
+        );
+        assert_eq!(
+            frame_error(ServerFrame::SessionRevoked { reason: None }),
+            CollabError::Unauthorized
+        );
+        assert_eq!(
+            frame_error(ServerFrame::SessionRevoked {
+                reason: Some(SessionEndReason::Unknown)
+            }),
+            CollabError::Unauthorized
+        );
     }
 }

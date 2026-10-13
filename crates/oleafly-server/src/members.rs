@@ -2,7 +2,7 @@ use oleafly_collab_protocol::admin::{
     AllowlistEntry, AllowlistMatcher, DomainRule, MemberStatus, MemberSummary, NewAllowlistEntry,
     NewDomainRule,
 };
-use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary};
+use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary, SessionEndReason};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use oleafly_collab_protocol::roles::ServerRole;
 use rusqlite::{params, Connection, OptionalExtension, Params, Row};
@@ -171,6 +171,17 @@ pub fn account_status(
         )
         .optional()?;
     status.as_deref().map(status_from_str).transpose()
+}
+
+pub fn session_end_reason(
+    conn: &Connection,
+    account: AccountId,
+) -> Result<Option<SessionEndReason>, ServerError> {
+    Ok(match account_status(conn, account)? {
+        Some(MemberStatus::Active) => None,
+        Some(MemberStatus::Suspended) => Some(SessionEndReason::AccountSuspended),
+        Some(MemberStatus::Removed) | None => Some(SessionEndReason::AccessEnded),
+    })
 }
 
 pub fn account_role(
@@ -1046,6 +1057,30 @@ mod tests {
                 remove_account(conn, AccountId::new_v7(), 6),
                 Err(ServerError::NotFound)
             ));
+            Ok(())
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn an_inactive_account_has_a_reason_its_sessions_ended() {
+        with_db(|conn| {
+            let ada = create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+            assert_eq!(session_end_reason(conn, ada)?, None);
+            set_status(conn, ada, &MemberStatus::Suspended, 2)?;
+            assert_eq!(
+                session_end_reason(conn, ada)?,
+                Some(SessionEndReason::AccountSuspended)
+            );
+            remove_account(conn, ada, 3)?;
+            assert_eq!(
+                session_end_reason(conn, ada)?,
+                Some(SessionEndReason::AccessEnded)
+            );
+            assert_eq!(
+                session_end_reason(conn, AccountId::new_v7())?,
+                Some(SessionEndReason::AccessEnded)
+            );
             Ok(())
         })
         .await;

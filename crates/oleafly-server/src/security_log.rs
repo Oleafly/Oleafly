@@ -113,6 +113,7 @@ struct RawEvent {
     ip: Option<String>,
     detail: String,
     project_title: Option<String>,
+    device_name: Option<String>,
 }
 
 pub fn page(
@@ -132,9 +133,11 @@ pub fn page(
             })?,
     };
     let mut statement = conn.prepare(
-        "SELECT s.id, s.at, s.actor, s.kind, s.target, s.ip, s.detail, p.title FROM security_log s \
+        "SELECT s.id, s.at, s.actor, s.kind, s.target, s.ip, s.detail, p.title, d.name FROM security_log s \
          LEFT JOIN projects p ON p.id = COALESCE(\
          CASE WHEN json_valid(s.detail) THEN json_extract(s.detail, '$.project') END, s.target) \
+         LEFT JOIN devices d ON d.id = s.target \
+         AND s.kind IN ('device_added', 'device_signed_out', 'refresh_reuse_detected') \
          WHERE s.id < ?1 ORDER BY s.id DESC LIMIT ?2",
     )?;
     let rows = statement
@@ -148,6 +151,7 @@ pub fn page(
                 ip: row.get(5)?,
                 detail: row.get(6)?,
                 project_title: row.get(7)?,
+                device_name: row.get(8)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -176,6 +180,7 @@ fn event_from_raw(raw: RawEvent) -> Result<SecurityEvent, ServerError> {
         ip: raw.ip,
         detail: serde_json::from_str(&raw.detail).unwrap_or(serde_json::Value::Null),
         project_title: raw.project_title,
+        device_name: raw.device_name,
     })
 }
 
@@ -283,6 +288,54 @@ mod tests {
         }
         assert!(kind_from_str("kind_from_a_later_server").is_none());
         assert_eq!(kind_to_str(&SecurityEventKind::Unknown), "unknown");
+    }
+
+    #[tokio::test]
+    async fn device_events_carry_the_name_of_their_device() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let account = crate::members::create_account(
+                    conn,
+                    "Ada",
+                    None,
+                    oleafly_collab_protocol::roles::ServerRole::Member,
+                    1,
+                )?;
+                let device = oleafly_collab_protocol::ids::DeviceId::new_v7();
+                conn.execute(
+                    "INSERT INTO devices (id, account_id, public_key, name, platform, created_at) VALUES (?1, ?2, 'key', 'Ada''s MacBook', 'macos', 1)",
+                    params![device.to_string(), account.to_string()],
+                )?;
+                for kind in [
+                    SecurityEventKind::DeviceAdded,
+                    SecurityEventKind::DeviceSignedOut,
+                    SecurityEventKind::RefreshReuseDetected,
+                    SecurityEventKind::SignIn,
+                ] {
+                    record(
+                        conn,
+                        2,
+                        NewSecurityEvent {
+                            actor: Some(account),
+                            kind,
+                            target: Some(device.to_string()),
+                            ip: None,
+                            detail: json!({}),
+                        },
+                    )?;
+                }
+                let names: Vec<Option<String>> = page(conn, None, 10)?
+                    .items
+                    .into_iter()
+                    .map(|item| item.device_name)
+                    .collect();
+                let named = Some("Ada's MacBook".to_string());
+                assert_eq!(names, [None, named.clone(), named.clone(), named]);
+                Ok(())
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]

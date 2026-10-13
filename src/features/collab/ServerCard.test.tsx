@@ -94,6 +94,42 @@ describe("ServerCard", () => {
     expect(mocks.collabServerDevices).not.toHaveBeenCalled();
   });
 
+  it("says an admin paused the account and still offers Sign in", async () => {
+    const user = userEvent.setup();
+    const { onSignIn } = renderCard(server({ signed_in: false, ended: "account_suspended" }));
+    expect(screen.getByText(copy.server.paused)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.pausedHint, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(screen.queryByText(copy.server.signedOutHint)).toBeNull();
+    expect(screen.queryByText(copy.server.signedOut)).toBeNull();
+    await user.click(screen.getByRole("button", { name: copy.server.signIn }));
+    expect(onSignIn).toHaveBeenCalled();
+  });
+
+  it("says access to the server ended and still lets someone who was added back sign in", async () => {
+    const user = userEvent.setup();
+    const { onSignIn } = renderCard(server({ signed_in: false, ended: "access_ended" }));
+    expect(screen.getByText(copy.server.noAccess)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.endedHint, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(copy.server.endedHint).toContain("If an admin adds you back, sign in again.");
+    expect(copy.server.endedGuestHint).toContain("If you're invited again, sign in again.");
+    await user.click(screen.getByRole("button", { name: copy.server.signIn }));
+    expect(onSignIn).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: copy.server.remove })).toBeInTheDocument();
+  });
+
+  it("tells a former guest their access ended because they are in no shared project there", () => {
+    renderCard(
+      server({ signed_in: false, ended: "access_ended", account: account({ server_role: "guest" }) }),
+    );
+    expect(screen.getByText(fill(copy.server.endedGuestHint, { server: "Smith Lab" }))).toBeInTheDocument();
+  });
+
+  it("ignores an old reason once this computer is signed in again", () => {
+    renderCard(server({ signed_in: true, ended: "account_suspended" }));
+    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.queryByText(copy.server.paused)).toBeNull();
+  });
+
   it("says why sign-out failed and stays signed in", async () => {
     mocks.collabServerSignOut.mockRejectedValue(collabError("unreachable"));
     const user = userEvent.setup();

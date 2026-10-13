@@ -1,4 +1,4 @@
-import type { CollabLiveEndReason, CollabLiveState } from "@/lib/tauri";
+import type { CollabLiveEndedReason, CollabLiveSyncState } from "@/lib/tauri";
 
 export const SYNC_STATES = [
   "upToDate",
@@ -6,6 +6,8 @@ export const SYNC_STATES = [
   "offline",
   "reconnecting",
   "signedOut",
+  "suspended",
+  "accessEnded",
   "removed",
   "archived",
   "paused",
@@ -13,14 +15,16 @@ export const SYNC_STATES = [
 
 export type SyncState = (typeof SYNC_STATES)[number];
 
-const ENDED: Readonly<Record<CollabLiveEndReason, SyncState>> = {
+const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
   removed: "removed",
   archived: "archived",
   signed_out: "signedOut",
   stopped: "paused",
+  account_suspended: "suspended",
+  access_ended: "accessEnded",
 };
 
-export function syncState(status: CollabLiveState | null, pending: number): SyncState {
+export function syncState(status: CollabLiveSyncState | null, pending: number): SyncState {
   if (status === null) return "syncing";
   switch (status.state) {
     case "connecting":

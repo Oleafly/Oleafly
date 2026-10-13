@@ -246,6 +246,18 @@ impl Rooms {
         }
     }
 
+    pub fn accounts(&self, project: SharedProjectId) -> Vec<AccountId> {
+        let mut accounts: Vec<AccountId> = Vec::new();
+        if let Some(room) = self.lock().get(&project) {
+            for entry in room {
+                if !accounts.contains(&entry.account) {
+                    accounts.push(entry.account);
+                }
+            }
+        }
+        accounts
+    }
+
     pub fn remove_account(&self, project: SharedProjectId, account: AccountId) -> Vec<RoomMember> {
         let mut rooms = self.lock();
         let Some(room) = rooms.get_mut(&project) else {
@@ -466,6 +478,26 @@ mod tests {
         assert_eq!(rooms.occupancy(), (2, 2));
         rooms.close_room(first);
         assert_eq!(rooms.occupancy(), (1, 1));
+    }
+
+    #[test]
+    fn a_room_lists_each_account_in_it_once() {
+        let rooms = Rooms::new();
+        let project = SharedProjectId::new_v7();
+        assert!(rooms.accounts(project).is_empty());
+        let alice = AccountId::new_v7();
+        let bob = AccountId::new_v7();
+        let (laptop, _a, _ac) = member(1, alice, 4);
+        let (desktop, _b, _bc) = member(2, alice, 4);
+        let (other, _c, _cc) = member(3, bob, 4);
+        rooms.join(project, laptop);
+        rooms.join(project, desktop);
+        rooms.join(project, other);
+        rooms.join(
+            SharedProjectId::new_v7(),
+            member(4, AccountId::new_v7(), 4).0,
+        );
+        assert_eq!(rooms.accounts(project), vec![alice, bob]);
     }
 
     #[test]

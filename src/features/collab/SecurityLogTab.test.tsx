@@ -420,6 +420,25 @@ describe("SecurityLogTab", () => {
     expect(items[2]).toHaveTextContent(copy.kinds.projectSettingsChanged);
   });
 
+  it("names the device in device events instead of showing its id", async () => {
+    const laptop = "01a131fa-d22e-7000-8000-00000000abcd";
+    mocks.collabAdminSecurityLog.mockResolvedValueOnce({
+      items: [
+        securityEvent({ id: 1, kind: "device_added", target: laptop, device_name: "Prajwals-MacBook-Pro", detail: { name: "Prajwals-MacBook-Pro" } }),
+        securityEvent({ id: 2, kind: "device_signed_out", target: laptop, device_name: "Prajwals-MacBook-Pro", detail: { by: "self" } }),
+        securityEvent({ id: 3, kind: "refresh_reuse_detected", target: laptop, detail: { family: "f" } }),
+      ],
+      next_cursor: null,
+    });
+    render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    const items = await screen.findAllByRole("listitem");
+    for (const item of items) expect(item).not.toHaveTextContent(laptop);
+    expect(items[0]).toHaveTextContent(fill(copy.details.device, { name: "Prajwals-MacBook-Pro" }));
+    expect(items[0]).not.toHaveTextContent(fill(copy.target, { target: "Prajwals-MacBook-Pro" }));
+    expect(items[1]).toHaveTextContent(fill(copy.target, { target: "Prajwals-MacBook-Pro" }));
+    expect(items[2].textContent).not.toMatch(/·\s*On\s/);
+  });
+
   it("says when the log is empty", async () => {
     mocks.collabAdminSecurityLog.mockResolvedValue({ items: [], next_cursor: null });
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);

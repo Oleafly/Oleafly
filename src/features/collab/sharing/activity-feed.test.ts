@@ -208,6 +208,84 @@ describe("startCollabActivity", () => {
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "signedOut", server: "Smith Lab" });
   });
 
+  it("says an admin paused the account, naming the server", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      status: { state: "ended", reason: "account_suspended" },
+      ended: "account_suspended",
+    });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "suspended", server: "Smith Lab" });
+  });
+
+  it("says access to the server ended, and knows when this person was a guest", () => {
+    joined();
+    useCollabLiveStore.setState({
+      members: [projectMember(BOB, "owner"), projectMember(person({ guest: true }), "editor")],
+    });
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      status: { state: "ended", reason: "access_ended" },
+      ended: "access_ended",
+      peers: {},
+    });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({
+      kind: "accessEnded",
+      server: "Smith Lab",
+      guest: true,
+    });
+  });
+
+  it("records who added and removed whom, but not a role change or this person's own arrival", () => {
+    joined("owner");
+    useCollabLiveStore.setState({ memberChange: null });
+    stop = startCollabActivity();
+    const change = { projectId: "grant", by: BOB_ID, byName: "Bob Smith" };
+    useCollabLiveStore.setState({
+      memberChange: { ...change, accountId: CAROL_ID, kind: "added", name: "Carol Diaz" },
+    });
+    useCollabLiveStore.setState({
+      memberChange: { ...change, accountId: CAROL_ID, kind: "role_changed", name: "Carol Diaz" },
+    });
+    useCollabLiveStore.setState({
+      memberChange: { ...change, accountId: BOB_ID, kind: "added", name: "Bob Smith" },
+    });
+    useCollabLiveStore.setState({
+      memberChange: {
+        projectId: "grant",
+        accountId: CAROL_ID,
+        by: ALICE_ID,
+        byName: "Alice Chen",
+        kind: "removed",
+        name: "Carol Diaz",
+      },
+    });
+    expect(useCollabActivity.getState().entries.slice(0, 2)).toMatchObject([
+      { kind: "memberRemoved", accountId: CAROL_ID, byAccountId: ALICE_ID, name: "Carol Diaz", by: "Alice Chen", byYou: false },
+      { kind: "memberAdded", accountId: CAROL_ID, byAccountId: BOB_ID, name: "Carol Diaz", by: "Bob Smith", byYou: true },
+    ]);
+    expect(kinds()).toHaveLength(2);
+  });
+
+  it("names who removed this person when the project stops syncing for them", () => {
+    joined();
+    useCollabLiveStore.setState({ memberChange: null });
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      memberChange: {
+        projectId: "grant",
+        accountId: ALICE_ID,
+        by: BOB_ID,
+        byName: "Bob Smith",
+        kind: "removed",
+        name: "Alice Chen",
+      },
+    });
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "removed" }, ended: "removed", peers: {} });
+    expect(kinds()).toEqual(["removed", "welcome"]);
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "removed", by: "Bob Smith" });
+  });
+
   it("starts a fresh feed for another project and hides the rail when nothing is shared", () => {
     joined("owner");
     stop = startCollabActivity();

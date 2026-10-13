@@ -108,6 +108,10 @@ impl SessionManager {
                     self.store(server, &fresh)?;
                     return Ok(fresh.access_token);
                 }
+                Err(CollabError::SessionEnded(reason)) => {
+                    self.clear(server)?;
+                    return Err(CollabError::SessionEnded(reason));
+                }
                 Err(error) if is_revocation(&error) => {
                     self.clear(server)?;
                     return Err(CollabError::Unauthorized);
@@ -377,6 +381,39 @@ mod tests {
         ));
         assert!(secrets
             .get(&session_account(server))
+            .expect("read")
+            .is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_refresh_for_a_suspended_account_says_so_and_clears_the_session() {
+        let pair = crate::client::test_util::two_people().await;
+        let client = ServerClient::new(pair.url.clone()).expect("client");
+        client
+            .admin_patch_member(
+                &pair.bob.tokens.access_token,
+                pair.alice.tokens.account_id,
+                &oleafly_collab_protocol::admin::MemberPatch {
+                    role: None,
+                    status: Some(oleafly_collab_protocol::admin::MemberStatus::Suspended),
+                },
+            )
+            .await
+            .expect("suspend alice");
+        assert_eq!(
+            pair.alice
+                .sessions
+                .force_refresh(pair.server_id, &client)
+                .await
+                .err(),
+            Some(CollabError::SessionEnded(
+                oleafly_collab_protocol::auth::SessionEndReason::AccountSuspended
+            ))
+        );
+        assert!(pair
+            .alice
+            .sessions
+            .tokens(pair.server_id)
             .expect("read")
             .is_none());
     }

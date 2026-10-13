@@ -356,7 +356,7 @@ async fn keep(
         let check = (idle / 4).clamp(Duration::from_millis(20), Duration::from_secs(5));
         tokio::select! {
             signal = control.recv() => match signal {
-                Some(SocketControl::Revoked) => end(&state, &session, Some(ServerFrame::SessionRevoked)),
+                Some(SocketControl::Revoked(reason)) => end(&state, &session, Some(ServerFrame::SessionRevoked { reason })),
                 Some(SocketControl::Overloaded | SocketControl::Replaced) | None => {
                     close(&state, &session);
                     return;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CollabLiveState } from "@/lib/tauri";
+import type { CollabLiveEndedReason, CollabLiveState, CollabLiveSyncState } from "@/lib/tauri";
 import { SYNC_STATES, syncState } from "./sync-state";
 
 describe("syncState", () => {
@@ -16,6 +16,14 @@ describe("syncState", () => {
     [null, 0, "syncing"],
   ])("reads %j with %i waiting as %s", (status, pending, expected) => {
     expect(syncState(status, pending)).toBe(expected);
+  });
+
+  it.each<[CollabLiveEndedReason, (typeof SYNC_STATES)[number]]>([
+    ["account_suspended", "suspended"],
+    ["access_ended", "accessEnded"],
+  ])("reads a session that ended with %s as %s", (reason, expected) => {
+    const status: CollabLiveSyncState = { state: "ended", reason };
+    expect(syncState(status, 0)).toBe(expected);
   });
 
   it("names every state once", () => {

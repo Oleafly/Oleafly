@@ -6,7 +6,7 @@ use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::admin::MemberStatus;
-use oleafly_collab_protocol::auth::ChallengePurpose;
+use oleafly_collab_protocol::auth::{ChallengePurpose, SessionEndReason};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
@@ -315,7 +315,7 @@ struct Session<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Ending {
     Closed,
-    Revoked,
+    Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
     Stalled,
@@ -326,7 +326,7 @@ enum Ending {
 impl Ending {
     fn from_signal(signal: Option<SocketControl>) -> Ending {
         match signal {
-            Some(SocketControl::Revoked) => Ending::Revoked,
+            Some(SocketControl::Revoked(reason)) => Ending::Revoked(reason),
             Some(SocketControl::Overloaded) => Ending::Overloaded,
             Some(SocketControl::Replaced) => Ending::Replaced,
             None => Ending::Closed,
@@ -413,8 +413,8 @@ impl<'a> Link<'a> {
 
     async fn finish(&mut self, ending: Ending, device: DeviceId) {
         match ending {
-            Ending::Revoked => {
-                if send(self.socket, &ServerFrame::SessionRevoked).await {
+            Ending::Revoked(reason) => {
+                if send(self.socket, &ServerFrame::SessionRevoked { reason }).await {
                     close(self.socket, close_code::POLICY, "Session revoked.").await;
                 }
             }

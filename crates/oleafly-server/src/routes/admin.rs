@@ -8,7 +8,7 @@ use oleafly_collab_protocol::admin::{
     NewAllowlistEntry, NewDomainRule, Page, RuntimeSettings, RuntimeSettingsPatch, SecurityEvent,
     SecurityEventKind,
 };
-use oleafly_collab_protocol::auth::DeviceSummary;
+use oleafly_collab_protocol::auth::{DeviceSummary, SessionEndReason};
 use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use oleafly_collab_protocol::roles::{ServerAction, ServerRole};
@@ -158,7 +158,9 @@ async fn patch_member(
         .call(move |conn| apply_member_patch(conn, auth, target, &change, ip, now))
         .await?;
     for device in signed_out {
-        state.revoke_device(device).await?;
+        state
+            .end_device_session(device, SessionEndReason::AccountSuspended)
+            .await?;
     }
     Ok(Json(summary))
 }
@@ -293,7 +295,9 @@ async fn remove_member(
         })
         .await?;
     for device in signed_out {
-        state.revoke_device(device).await?;
+        state
+            .end_device_session(device, SessionEndReason::AccessEnded)
+            .await?;
     }
     Ok(StatusCode::NO_CONTENT)
 }

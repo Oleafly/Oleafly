@@ -524,6 +524,54 @@ async fn the_test_email_goes_to_the_admin_and_reports_the_result() {
 }
 
 #[tokio::test]
+async fn the_test_email_goes_to_each_address_on_its_own() {
+    let smtp = MockSmtp::start().await;
+    let app = test_app_with(mail_config(&smtp)).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    give_email(&app, &admin, "admin@uni.edu").await;
+    give_email(&app, &admin, "admin@home.org").await;
+    let result: EmailTestResult = parse(expect_status(
+        support::send_post(&app.router, TEST, token(&admin), json!({})).await,
+        StatusCode::OK,
+    ));
+    assert_eq!(
+        result,
+        EmailTestResult {
+            sent_to: vec!["admin@home.org".to_string(), "admin@uni.edu".to_string()],
+            delivered: true,
+            error: None,
+        }
+    );
+    let mut recipients: Vec<Vec<String>> = smtp
+        .messages()
+        .into_iter()
+        .map(|message| message.rcpt_to)
+        .collect();
+    recipients.sort();
+    assert_eq!(
+        recipients,
+        [
+            vec!["admin@home.org".to_string()],
+            vec!["admin@uni.edu".to_string()]
+        ]
+    );
+    smtp.fail_next(1, MockSmtpFault::RejectMail);
+    let partly: EmailTestResult = parse(expect_status(
+        support::send_post(&app.router, TEST, token(&admin), json!({})).await,
+        StatusCode::OK,
+    ));
+    assert!(!partly.delivered);
+    assert_eq!(partly.sent_to.len(), 1);
+    let refused = ["admin@home.org", "admin@uni.edu"]
+        .into_iter()
+        .find(|address| !partly.sent_to.iter().any(|sent| sent == address))
+        .expect("one address was refused");
+    let error = partly.error.expect("the refusal is explained");
+    assert!(error.contains(refused), "{error}");
+    assert!(error.contains("451"), "{error}");
+}
+
+#[tokio::test]
 async fn email_status_is_for_staff_and_never_shows_the_password() {
     let smtp = MockSmtp::start().await;
     let app = test_app_with(mail_config(&smtp)).await;

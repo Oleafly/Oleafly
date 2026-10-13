@@ -109,7 +109,8 @@ pub fn authenticate(
             device_id: access.device_id,
             role: members::role_from_str(&role)?,
         }),
-        _ => Err(ServerError::Unauthorized),
+        _ => Err(members::session_end_reason(conn, access.account_id)?
+            .map_or(ServerError::Unauthorized, ServerError::SessionEnded)),
     }
 }
 

@@ -2278,3 +2278,21 @@ export function isCollabCommentError(value: unknown): value is CollabCommentErro
 
 export const collabLinkPreview = (serverId: string, sharedProjectId: string) =>
   invoke<CollabProjectSummary>("collab_link_preview", { serverId, sharedProjectId });
+
+export type {
+  CollabLiveEndedReason,
+  CollabLiveSyncState,
+  CollabLiveMembers,
+  CollabMemberChangeKind,
+  CollabSessionEnd,
+} from "@oleafly/backend-port";
+
+export const COLLAB_LIVE_MEMBERS_EVENT = "collab-live-members";
+
+export function onCollabLiveMembers(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveMembers) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveMembers>(COLLAB_LIVE_MEMBERS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}

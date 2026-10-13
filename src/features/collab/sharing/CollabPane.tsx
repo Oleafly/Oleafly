@@ -4,6 +4,7 @@ import {
   Activity,
   Archive,
   AtSign,
+  Ban,
   CloudCheck,
   CloudOff,
   GitMerge,
@@ -13,8 +14,11 @@ import {
   RadioTower,
   Share2,
   UserCog,
+  UserLock,
   UserMinus,
   UserPlus,
+  UserRoundMinus,
+  UserRoundPlus,
   Users,
   UserX,
 } from "lucide-react";
@@ -56,6 +60,10 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   removed: UserX,
   archived: Archive,
   signedOut: LogOut,
+  suspended: UserLock,
+  accessEnded: Ban,
+  memberAdded: UserRoundPlus,
+  memberRemoved: UserRoundMinus,
   newDevice: MonitorSmartphone,
   renamed: PencilLine,
   mentioned: AtSign,
@@ -129,6 +137,22 @@ const People = memo(function People({
   );
 });
 
+type MemberEntry = Extract<ActivityEntry, { kind: "memberAdded" | "memberRemoved" }>;
+
+function memberText(entry: MemberEntry, t: ReturnType<typeof useTranslation<["collab"]>>["t"], unknown: string) {
+  const name = entry.name || unknown;
+  const by = entry.by || unknown;
+  const own = entry.accountId === entry.byAccountId;
+  if (entry.kind === "memberAdded") {
+    if (entry.byYou) return t(($) => $.collab.activity.memberAddedByYou, { name });
+    if (own) return t(($) => $.collab.activity.memberJoined, { name });
+    return t(($) => $.collab.activity.memberAdded, { by, name });
+  }
+  if (entry.byYou) return t(($) => $.collab.activity.memberRemovedByYou, { name });
+  if (own) return t(($) => $.collab.activity.memberLeft, { name });
+  return t(($) => $.collab.activity.memberRemoved, { by, name });
+}
+
 function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["collab"]>>["t"], unknown: string) {
   switch (entry.kind) {
     case "welcome":
@@ -136,9 +160,13 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
         ? t(($) => $.collab.activity.welcomeEdit, { owner: entry.owner, server: entry.server })
         : t(($) => $.collab.activity.welcomeView, { owner: entry.owner, server: entry.server });
     case "joined":
-      return t(($) => $.collab.activity.joined, { name: entry.name || unknown });
+      return entry.count > 1
+        ? t(($) => $.collab.activity.rejoined, { name: entry.name || unknown })
+        : t(($) => $.collab.activity.joined, { name: entry.name || unknown });
     case "left":
-      return t(($) => $.collab.activity.left, { name: entry.name || unknown });
+      return entry.count > 1
+        ? t(($) => $.collab.activity.visited, { name: entry.name || unknown })
+        : t(($) => $.collab.activity.left, { name: entry.name || unknown });
     case "offline":
       return t(($) => $.collab.sync.offline, { number: formatNumber(entry.pending) });
     case "online":
@@ -152,11 +180,22 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.role, { role: t(($) => $.collab.projectRoles[role]) });
     }
     case "removed":
-      return t(($) => $.collab.activity.removed);
+      return entry.by
+        ? t(($) => $.collab.activity.removedBy, { name: entry.by })
+        : t(($) => $.collab.activity.removed);
     case "archived":
       return t(($) => $.collab.activity.archived);
     case "signedOut":
       return t(($) => $.collab.activity.signedOut, { server: entry.server });
+    case "suspended":
+      return t(($) => $.collab.activity.suspended, { server: entry.server });
+    case "accessEnded":
+      return entry.guest
+        ? t(($) => $.collab.activity.accessEndedGuest, { server: entry.server })
+        : t(($) => $.collab.activity.accessEnded, { server: entry.server });
+    case "memberAdded":
+    case "memberRemoved":
+      return memberText(entry, t, unknown);
     case "newDevice":
       return t(($) => $.collab.activity.newDevice, { name: entry.name || unknown });
     case "renamed":
@@ -184,11 +223,6 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
       <Glyph aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="select-text">{entryText(entry, t, t(($) => $.collab.toolbar.unknownPerson))}</p>
-        {entry.count > 1 ? (
-          <p className="text-muted-foreground">
-            {t(($) => $.collab.activity.repeated, { number: formatNumber(entry.count) })}
-          </p>
-        ) : null}
         {entry.kind === "merged" && open ? (
           <ul className="space-y-0.5 font-mono text-muted-foreground">
             {entry.files.map((file) => (
@@ -225,7 +259,7 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               {t(($) => $.collab.activity.review)}
             </Button>
           ) : null}
-          {entry.kind === "signedOut" ? (
+          {entry.kind === "signedOut" || entry.kind === "suspended" ? (
             <Button
               type="button"
               variant="ghost"
@@ -344,7 +378,7 @@ export function CollabPane() {
               <SyncStateIcon state={state} className="size-3.5" />
               <span>{words}</span>
             </p>
-            {state === "signedOut" ? (
+            {state === "signedOut" || state === "suspended" ? (
               <Button
                 type="button"
                 variant="ghost"

@@ -3,7 +3,7 @@ use std::fmt;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use oleafly_collab_protocol::auth::{ApiError, AuthErrorCode};
+use oleafly_collab_protocol::auth::{ApiError, AuthErrorCode, SessionEndReason};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerError {
@@ -15,6 +15,7 @@ pub enum ServerError {
     DeviceInUse,
     RateLimited,
     Auth(AuthErrorCode),
+    SessionEnded(SessionEndReason),
     Internal(String),
 }
 
@@ -28,6 +29,7 @@ impl ServerError {
             ServerError::Conflict(_) | ServerError::DeviceInUse => StatusCode::CONFLICT,
             ServerError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             ServerError::Auth(code) => auth_status(code),
+            ServerError::SessionEnded(_) => StatusCode::UNAUTHORIZED,
             ServerError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -42,6 +44,7 @@ impl ServerError {
             ServerError::DeviceInUse => "device_in_use",
             ServerError::RateLimited => "rate_limited",
             ServerError::Auth(code) => auth_code_name(code),
+            ServerError::SessionEnded(reason) => reason.as_str(),
             ServerError::Internal(_) => "internal",
         }
     }
@@ -57,6 +60,7 @@ impl ServerError {
             }
             ServerError::RateLimited => "Too many requests. Try again in a minute.".to_string(),
             ServerError::Auth(code) => auth_message(code).to_string(),
+            ServerError::SessionEnded(reason) => session_end_message(*reason).to_string(),
             ServerError::Internal(_) => {
                 "Something went wrong on the server. Try again later.".to_string()
             }
@@ -117,6 +121,15 @@ fn auth_message(code: &AuthErrorCode) -> &'static str {
     }
 }
 
+fn session_end_message(reason: SessionEndReason) -> &'static str {
+    match reason {
+        SessionEndReason::AccountSuspended => "An admin paused your account on this server.",
+        SessionEndReason::AccessEnded | SessionEndReason::Unknown => {
+            "You no longer have access to this server."
+        }
+    }
+}
+
 impl fmt::Display for ServerError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -150,6 +163,7 @@ impl IntoResponse for ServerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oleafly_collab_protocol::auth::SessionEndReason;
     use serde_json::Value;
 
     #[test]
@@ -265,6 +279,31 @@ mod tests {
                 "{}",
                 error.code()
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_session_that_ended_says_why_with_a_401() {
+        for (reason, code, message) in [
+            (
+                SessionEndReason::AccountSuspended,
+                "account_suspended",
+                "An admin paused your account on this server.",
+            ),
+            (
+                SessionEndReason::AccessEnded,
+                "access_ended",
+                "You no longer have access to this server.",
+            ),
+        ] {
+            let response = ServerError::SessionEnded(reason).into_response();
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+            let bytes = axum::body::to_bytes(response.into_body(), 4096)
+                .await
+                .unwrap();
+            let body: Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(body["code"], code);
+            assert_eq!(body["message"], message);
         }
     }
 

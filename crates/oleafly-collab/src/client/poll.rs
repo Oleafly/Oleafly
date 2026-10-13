@@ -157,7 +157,11 @@ pub(crate) async fn keep_polling(
                 tokio::time::sleep(timing.retry).await;
                 continue;
             }
-            Err(error @ (CollabError::Api { status: 404, .. } | CollabError::Unauthorized)) => {
+            Err(
+                error @ (CollabError::Api { status: 404, .. }
+                | CollabError::Unauthorized
+                | CollabError::SessionEnded(_)),
+            ) => {
                 let _ = frames.send(Err(error)).await;
                 return;
             }

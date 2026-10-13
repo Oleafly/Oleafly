@@ -1,3 +1,4 @@
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::capabilities::VersionMismatch;
 use oleafly_collab_protocol::ids::ServerId;
 
@@ -33,6 +34,8 @@ pub enum CollabError {
     NotAdmitted,
     #[error("the session is no longer authorized")]
     Unauthorized,
+    #[error("the session ended: {}", .0.as_str())]
+    SessionEnded(SessionEndReason),
     #[error(
         "the server at this address is now a different server: expected {expected}, found {found}"
     )]
@@ -77,6 +80,18 @@ mod tests {
         assert_ne!(error, CollabError::Corrupt("file-ids.json".to_string()));
         let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(CollabError::Unauthorized);
         assert_eq!(boxed.to_string(), "the session is no longer authorized");
+    }
+
+    #[test]
+    fn an_ended_session_names_its_reason() {
+        assert_eq!(
+            CollabError::SessionEnded(SessionEndReason::AccountSuspended).to_string(),
+            "the session ended: account_suspended"
+        );
+        assert_ne!(
+            CollabError::SessionEnded(SessionEndReason::AccessEnded),
+            CollabError::Unauthorized
+        );
     }
 
     #[test]

@@ -1951,3 +1951,22 @@ export interface CollabSecurityEvent {
 export interface BackendPort {
   collabLinkPreview: (serverId: string, sharedProjectId: string) => Promise<CollabProjectSummary>;
 }
+
+export type CollabSessionEnd = "account_suspended" | "access_ended";
+export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd;
+export type CollabLiveSyncState =
+    | Exclude<CollabLiveState, { state: "ended" }>
+    | { state: "ended"; reason: CollabLiveEndedReason };
+export interface CollabServer {
+    ended?: CollabSessionEnd | null;
+}
+export interface CollabSecurityEvent {
+    device_name?: string | null;
+}
+export type CollabMemberChangeKind = "added" | "removed" | "role_changed" | "unknown";
+export interface CollabLiveMembers {
+    projectId: string;
+    accountId: string;
+    by: string;
+    kind: CollabMemberChangeKind;
+}

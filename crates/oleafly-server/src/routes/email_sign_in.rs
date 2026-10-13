@@ -16,7 +16,9 @@ use crate::error::ServerError;
 use crate::mail::{deliverable, messages, EmailKind, OutgoingEmail};
 use crate::members;
 use crate::rate_limit::client_key;
-use crate::routes::auth::{complete_sign_in, conclude, email_link_available, Finish};
+use crate::routes::auth::{
+    complete_sign_in, conclude, conclude_naming, email_link_available, Finish,
+};
 use crate::routes::code_sign_in::{self, TypedCode};
 use crate::routes::sign_in_pages::{self, device_label, Field, Input};
 use crate::routes::ClientIp;
@@ -491,11 +493,11 @@ async fn use_link(
                 max_members,
                 now,
             )?;
-            Ok(Ok((pending, finished)))
+            Ok(Ok((pending, finished, email)))
         })
         .await?;
     match outcome {
-        Ok((pending, finished)) => conclude(&state, &pending, finished),
+        Ok((pending, finished, email)) => conclude_naming(&state, &pending, finished, Some(&email)),
         Err(Used::Link(link)) => Ok(link_problem(&link)),
         Err(Used::Gone) => Ok(sign_in_expired()),
         Err(Used::CodeGone(pending)) => conclude(&state, &pending, Ok(Finish::DeviceGone)),

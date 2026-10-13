@@ -6,17 +6,19 @@ import {
   collabLiveStop,
   collabMembersList,
   collabShareInfo,
+  onCollabLiveMembers,
   onCollabLiveMerged,
   onCollabLiveNewDevice,
   onCollabLiveRole,
   onCollabLiveStatus,
   onCollabPresence,
   onCollabPresenceLeft,
-  type CollabLiveEndReason,
+  type CollabLiveEndedReason,
+  type CollabLiveMembers,
   type CollabLiveMerged,
   type CollabLiveNewDevice,
   type CollabLiveRole,
-  type CollabLiveState,
+  type CollabLiveSyncState,
   type CollabLiveStatus,
   type CollabPerson,
   type CollabPresence,
@@ -63,17 +65,23 @@ export function peerPlaces(peers: PeerPlaces): PeerPlaces {
   return places;
 }
 
+export interface LiveMemberChange extends CollabLiveMembers {
+  name: string;
+  byName: string;
+}
+
 export interface CollabLiveStoreState {
   projectId: string | null;
   share: CollabShareInfo | null;
   role: CollabProjectRole | null;
-  status: CollabLiveState | null;
+  status: CollabLiveSyncState | null;
   pending: number;
   peers: Record<string, LivePeer>;
   members: CollabProjectMember[];
   merged: CollabLiveMerged | null;
   newDevice: CollabLiveNewDevice | null;
-  ended: CollabLiveEndReason | null;
+  memberChange: LiveMemberChange | null;
+  ended: CollabLiveEndedReason | null;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
@@ -110,12 +118,21 @@ function emptyLive(projectId: string | null): LiveData {
     members: [],
     merged: null,
     newDevice: null,
+    memberChange: null,
     ended: null,
   };
 }
 
 function personFor(members: readonly CollabProjectMember[], accountId: string): CollabPerson | null {
   return members.find((member) => member.person.account_id === accountId)?.person ?? null;
+}
+
+function nameIn(lists: readonly (readonly CollabProjectMember[])[], accountId: string): string {
+  for (const members of lists) {
+    const found = personFor(members, accountId);
+    if (found) return found.display_name;
+  }
+  return "";
 }
 
 function withPeople(
@@ -303,6 +320,24 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     learnAbout([payload.accountId]);
   };
 
+  const onMembers = (payload: CollabLiveMembers) => {
+    if (payload.projectId !== current()) return;
+    const state = store.getState();
+    const before = state.members;
+    const settle = () => {
+      if (store.getState().projectId !== payload.projectId) return;
+      const lists = [store.getState().members, before];
+      store.setState({
+        memberChange: { ...payload, name: nameIn(lists, payload.accountId), byName: nameIn(lists, payload.by) },
+      });
+    };
+    if (payload.kind === "removed" && payload.accountId === state.share?.account_id) {
+      settle();
+      return;
+    }
+    void state.refreshMembers().then(settle);
+  };
+
   const onPresence = (payload: CollabPresence) => {
     if (payload.projectId !== current() || payload.deviceId === live?.deviceId) return;
     store.setState((state) => ({
@@ -345,6 +380,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabLiveRole(onRole),
     onCollabLiveMerged(onMerged),
     onCollabLiveNewDevice(onNewDevice),
+    onCollabLiveMembers(onMembers),
     onCollabPresence(onPresence),
     onCollabPresenceLeft(onLeft),
   ].map((pending) =>

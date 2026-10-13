@@ -36,6 +36,22 @@ export function ServerCard({
   const { test, run: runTest } = useConnectionTest(server.url);
   const account = server.signed_in ? server.account : null;
   const role = toServerRole(account?.server_role);
+  const ended = server.signed_in ? null : (server.ended ?? null);
+  const formerGuest = server.account?.server_role === "guest";
+
+  const signedOutBadge = () => {
+    if (ended === "account_suspended") return t(($) => $.collab.section.server.paused);
+    if (ended === "access_ended") return t(($) => $.collab.section.server.noAccess);
+    return t(($) => $.collab.section.server.signedOut);
+  };
+
+  const signedOutHint = () => {
+    const values = { server: server.name };
+    if (ended === "account_suspended") return t(($) => $.collab.section.server.pausedHint, values);
+    if (ended === "access_ended" && formerGuest) return t(($) => $.collab.section.server.endedGuestHint, values);
+    if (ended === "access_ended") return t(($) => $.collab.section.server.endedHint, values);
+    return t(($) => $.collab.section.server.signedOutHint);
+  };
 
   const doSignOut = async () => {
     setActionError(null);
@@ -67,7 +83,7 @@ export function ServerCard({
               </Badge>
             ) : (
               <Badge variant="muted" size="sm">
-                {t(($) => $.collab.section.server.signedOut)}
+                {signedOutBadge()}
               </Badge>
             )}
           </>
@@ -89,7 +105,7 @@ export function ServerCard({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">{t(($) => $.collab.section.server.signedOutHint)}</p>
+          <p className="text-xs text-muted-foreground">{signedOutHint()}</p>
         )}
         <div className="flex flex-wrap items-center gap-2">
           {account ? (
@@ -103,12 +119,13 @@ export function ServerCard({
               {pending === "signOut" ? <Spinner /> : <LogOut aria-hidden />}
               {t(($) => $.collab.section.server.signOut)}
             </Button>
-          ) : (
+          ) : null}
+          {!account ? (
             <Button type="button" size="sm" disabled={pending !== null} onClick={onSignIn}>
               <LogIn aria-hidden />
               {t(($) => $.collab.section.server.signIn)}
             </Button>
-          )}
+          ) : null}
           <Button
             type="button"
             variant="outline"

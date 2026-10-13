@@ -37,8 +37,19 @@ export type NewActivity =
       messageId: string;
     }
   | { kind: "role"; at: number; role: CollabProjectRole }
-  | { kind: "removed" | "archived"; at: number }
-  | { kind: "signedOut"; at: number; server: string };
+  | { kind: "removed"; at: number; by?: string }
+  | { kind: "archived"; at: number }
+  | { kind: "signedOut" | "suspended"; at: number; server: string }
+  | { kind: "accessEnded"; at: number; server: string; guest: boolean }
+  | {
+      kind: "memberAdded" | "memberRemoved";
+      at: number;
+      accountId: string;
+      byAccountId: string;
+      name: string;
+      by: string;
+      byYou: boolean;
+    };
 
 export type ActivityEntry = NewActivity & { id: string; count: number };
 

@@ -4,9 +4,10 @@ use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
+use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::verify_ed25519;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
-use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
+use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, MemberChange, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use ring::rand::{SecureRandom, SystemRandom};
@@ -100,6 +101,29 @@ pub enum EndReason {
     Archived,
     SignedOut,
     Stopped,
+    AccountSuspended,
+    AccessEnded,
+}
+
+impl EndReason {
+    pub fn of_session(reason: Option<SessionEndReason>) -> EndReason {
+        match reason {
+            Some(SessionEndReason::AccountSuspended) => EndReason::AccountSuspended,
+            Some(SessionEndReason::AccessEnded) => EndReason::AccessEnded,
+            Some(SessionEndReason::Unknown) | None => EndReason::SignedOut,
+        }
+    }
+
+    pub fn session(self) -> Option<SessionEndReason> {
+        match self {
+            EndReason::AccountSuspended => Some(SessionEndReason::AccountSuspended),
+            EndReason::AccessEnded => Some(SessionEndReason::AccessEnded),
+            EndReason::Removed
+            | EndReason::Archived
+            | EndReason::SignedOut
+            | EndReason::Stopped => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -124,6 +148,7 @@ pub enum LiveEvent {
     PresenceLeft {
         device_id: DeviceId,
     },
+    Members(MemberChange),
     Merged(MergeReport),
     Acknowledged,
     NewDevice {
@@ -266,6 +291,9 @@ async fn run(
                     serve(&link, &project, &events, &mut commands, wire, None).await
                 }
                 Err(CollabError::Unauthorized) => Exit::End(EndReason::SignedOut),
+                Err(CollabError::SessionEnded(reason)) => {
+                    Exit::End(EndReason::of_session(Some(reason)))
+                }
                 Err(error) => {
                     if looks_blocked(&error) && answers_https(&link).await {
                         refused += 1;
@@ -301,6 +329,9 @@ async fn run(
         lock(&project).disconnected();
         match exit {
             Exit::End(reason) => {
+                if reason.session().is_some() {
+                    let _ = link.sessions.clear(link.server_id);
+                }
                 let _ = events.send(LiveEvent::Status(LiveStatus::Ended { reason }));
                 return;
             }
@@ -708,7 +739,9 @@ async fn subscribe(
                     ..
                 } => return Ok(Err(EndReason::Removed)),
                 ServerFrame::ProjectArchived { .. } => return Ok(Err(EndReason::Archived)),
-                ServerFrame::SessionRevoked => return Ok(Err(EndReason::SignedOut)),
+                ServerFrame::SessionRevoked { reason } => {
+                    return Ok(Err(EndReason::of_session(reason)))
+                }
                 ServerFrame::Error { message, .. } => return Err(CollabError::Network(message)),
                 _ => {}
             }
@@ -805,6 +838,9 @@ async fn serve_wire(
         Ok(Ok(subscribed)) => subscribed,
         Ok(Err(reason)) => return Exit::End(reason),
         Err(CollabError::Unauthorized) => return Exit::End(EndReason::SignedOut),
+        Err(CollabError::SessionEnded(reason)) => {
+            return Exit::End(EndReason::of_session(Some(reason)))
+        }
         Err(_) => return Exit::Retry(Reached::Never),
     };
     if !lock(project).peers_vouched() {
@@ -1059,13 +1095,18 @@ async fn online(
                     ServerFrame::PresenceLeft { device_id, .. } => {
                         let _ = events.send(LiveEvent::PresenceLeft { device_id });
                     }
-                    ServerFrame::AccessChanged { role: Some(role), .. } => {
+                    ServerFrame::AccessChanged { role, change, .. } => {
+                        if let Some(change) = change {
+                            let _ = events.send(LiveEvent::Members(change));
+                        }
+                        let Some(role) = role else {
+                            return Exit::End(EndReason::Removed);
+                        };
                         lock(project).set_role(role);
                         let _ = events.send(LiveEvent::Role(role));
                     }
-                    ServerFrame::AccessChanged { role: None, .. } => return Exit::End(EndReason::Removed),
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
-                    ServerFrame::SessionRevoked => return Exit::End(EndReason::SignedOut),
+                    ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
                     ServerFrame::Error { code: FrameErrorCode::TooLarge, .. } => {
                         lock(project).too_large();
                         if flush(link, project, events, wire).await.is_err() {
@@ -1126,6 +1167,7 @@ async fn online(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oleafly_collab_protocol::frames::MemberChangeKind;
 
     #[test]
     fn only_the_change_that_lands_on_the_interval_uploads_a_snapshot() {
@@ -2245,6 +2287,181 @@ mod tests {
                 "blocked: {blocked}"
             );
         }
+    }
+
+    async fn suspend(pair: &Pair, status: oleafly_collab_protocol::admin::MemberStatus) {
+        ServerClient::new(pair.url.clone())
+            .unwrap()
+            .admin_patch_member(
+                &pair.bob.tokens.access_token,
+                pair.alice.tokens.account_id,
+                &oleafly_collab_protocol::admin::MemberPatch {
+                    role: None,
+                    status: Some(status),
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn suspension_and_removal_from_the_server_end_live_sync_with_their_reason() {
+        for blocked in [false, true] {
+            let suspended = ended_after(blocked, |pair, _| {
+                Box::pin(suspend(
+                    pair,
+                    oleafly_collab_protocol::admin::MemberStatus::Suspended,
+                ))
+            })
+            .await;
+            assert_eq!(
+                suspended,
+                LiveEvent::Status(LiveStatus::Ended {
+                    reason: EndReason::AccountSuspended
+                }),
+                "blocked: {blocked}"
+            );
+            let ended = ended_after(blocked, |pair, _| {
+                Box::pin(async move {
+                    ServerClient::new(pair.url.clone())
+                        .unwrap()
+                        .admin_remove_member(
+                            &pair.bob.tokens.access_token,
+                            pair.alice.tokens.account_id,
+                        )
+                        .await
+                        .unwrap();
+                })
+            })
+            .await;
+            assert_eq!(
+                ended,
+                LiveEvent::Status(LiveStatus::Ended {
+                    reason: EndReason::AccessEnded
+                }),
+                "blocked: {blocked}"
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_suspension_heard_live_forgets_the_saved_session() {
+        let pair = two_people().await;
+        let (project, main, _bob_live, alice_live) = shared(&pair).await;
+        let mut alice = side(alice_live, &main);
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut alice, LiveStatus::Online).await;
+        suspend(
+            &pair,
+            oleafly_collab_protocol::admin::MemberStatus::Suspended,
+        )
+        .await;
+        until_status(
+            &mut alice,
+            LiveStatus::Ended {
+                reason: EndReason::AccountSuspended,
+            },
+        )
+        .await;
+        assert!(pair
+            .alice
+            .sessions
+            .tokens(pair.server_id)
+            .unwrap()
+            .is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_suspension_while_away_is_named_on_the_next_connection() {
+        let pair = two_people().await;
+        let (project, main, _bob_live, alice_live) = shared(&pair).await;
+        suspend(
+            &pair,
+            oleafly_collab_protocol::admin::MemberStatus::Suspended,
+        )
+        .await;
+        let mut alice = side(alice_live, &main);
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(
+            &mut alice,
+            LiveStatus::Ended {
+                reason: EndReason::AccountSuspended,
+            },
+        )
+        .await;
+        assert!(pair
+            .alice
+            .sessions
+            .tokens(pair.server_id)
+            .unwrap()
+            .is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_people_who_stay_hear_who_removed_whom() {
+        let pair = two_people().await;
+        let (project, main, bob_live, _alice_live) = shared(&pair).await;
+        let mut bob = side(bob_live, &main);
+        start(&mut bob, link(&pair, &pair.bob, project));
+        until_status(&mut bob, LiveStatus::Online).await;
+        ServerClient::new(pair.url.clone())
+            .unwrap()
+            .remove_member(
+                &pair.bob.tokens.access_token,
+                project,
+                pair.alice.tokens.account_id,
+            )
+            .await
+            .unwrap();
+        let heard = until_event(&mut bob, |event| matches!(event, LiveEvent::Members(_))).await;
+        assert_eq!(
+            heard,
+            LiveEvent::Members(MemberChange {
+                account_id: pair.alice.tokens.account_id,
+                by: pair.bob.tokens.account_id,
+                kind: MemberChangeKind::Removed,
+            })
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_removed_person_hears_who_removed_them_before_sync_ends() {
+        let pair = two_people().await;
+        let (project, main, _bob_live, alice_live) = shared(&pair).await;
+        let mut alice = side(alice_live, &main);
+        start(&mut alice, link(&pair, &pair.alice, project));
+        until_status(&mut alice, LiveStatus::Online).await;
+        ServerClient::new(pair.url.clone())
+            .unwrap()
+            .remove_member(
+                &pair.bob.tokens.access_token,
+                project,
+                pair.alice.tokens.account_id,
+            )
+            .await
+            .unwrap();
+        let heard = until_event(&mut alice, |event| {
+            matches!(
+                event,
+                LiveEvent::Members(_) | LiveEvent::Status(LiveStatus::Ended { .. })
+            )
+        })
+        .await;
+        assert_eq!(
+            heard,
+            LiveEvent::Members(MemberChange {
+                account_id: pair.alice.tokens.account_id,
+                by: pair.bob.tokens.account_id,
+                kind: MemberChangeKind::Removed,
+            })
+        );
+        until_status(
+            &mut alice,
+            LiveStatus::Ended {
+                reason: EndReason::Removed,
+            },
+        )
+        .await;
     }
 
     #[tokio::test(flavor = "multi_thread")]
