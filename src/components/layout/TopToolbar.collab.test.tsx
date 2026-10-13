@@ -33,6 +33,8 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
+const LAZY = { timeout: 5_000 };
+
 function peer(deviceId: string, accountId: string): LivePeer {
   return { deviceId, accountId, person: null, path: null, cursor: null, anchor: null, seenAt: Date.now(), hue: 40 };
 }
@@ -90,8 +92,8 @@ describe("TopToolbar collaboration items", () => {
   it("keeps the avatars left of Recompile and puts Share right after version history", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     const view = renderToolbar();
-    const share = await screen.findByRole("button", { name: enCollab.share.button });
-    await waitFor(() => expect(view.container.querySelector('[data-toolbar-item="collab"]')).not.toBeNull());
+    const share = await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
+    await waitFor(() => expect(view.container.querySelector('[data-toolbar-item="collab"]')).not.toBeNull(), LAZY);
     const items = toolbarItems(view.container);
     expect(items.slice(0, items.indexOf("history") + 2)).toEqual(["collab", "compile", "export", "fork", "history", "share"]);
     const collab = view.container.querySelector('[data-toolbar-item="collab"]');
@@ -109,7 +111,7 @@ describe("TopToolbar collaboration items", () => {
   it("has no sync state button", async () => {
     useSettingsStore.setState({ liveCollaboration: true });
     renderToolbar();
-    await screen.findByRole("button", { name: enCollab.share.button });
+    await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
     for (const words of Object.values(enCollab.sync)) expect(screen.queryByRole("button", { name: words })).toBeNull();
     expect(document.querySelector("svg.lucide-cloud-check")).toBeNull();
   });
@@ -118,7 +120,7 @@ describe("TopToolbar collaboration items", () => {
     useSettingsStore.setState({ liveCollaboration: true });
     useCollabLiveStore.setState({ share: null, status: null, peers: {}, members: [] });
     const view = renderToolbar();
-    await screen.findByRole("button", { name: enCollab.share.button });
+    await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
     const items = toolbarItems(view.container);
     expect(items).not.toContain("collab");
     expect(items[items.indexOf("history") + 1]).toBe("share");

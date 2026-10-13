@@ -128,7 +128,7 @@ liblzma = { version = "=0.4.8", default-features = false, features = ["static"] 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 # E2E automation bridge (Playwright socket server); never in release builds.
-e2e-testing = ["dep:tauri-plugin-playwright"]
+e2e-testing = ["dep:tauri-plugin-playwright", "oleafly-collab/e2e-hooks"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

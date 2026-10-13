@@ -135,7 +135,14 @@ pub(crate) async fn connect_tcp(target: &::url::Url) -> Result<TcpStream, Collab
     let port = target
         .port_or_known_default()
         .ok_or_else(|| CollabError::Network("the address has no port".to_string()))?;
-    match tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect((host.as_str(), port))).await {
+    let attempt = async {
+        #[cfg(feature = "e2e-hooks")]
+        if let Some(address) = super::e2e_route::route_for(&host) {
+            return TcpStream::connect(address).await;
+        }
+        TcpStream::connect((host.as_str(), port)).await
+    };
+    match tokio::time::timeout(CONNECT_TIMEOUT, attempt).await {
         Ok(Ok(stream)) => Ok(stream),
         Ok(Err(error)) => Err(CollabError::Network(error.to_string())),
         Err(_) => Err(CollabError::Network(

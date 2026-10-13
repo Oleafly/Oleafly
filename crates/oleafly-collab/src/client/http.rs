@@ -747,6 +747,13 @@ pub(crate) fn build_http(
     } else {
         builder.https_only(true)
     };
+    #[cfg(feature = "e2e-hooks")]
+    let builder = match url.endpoint("").host_str().and_then(|host| {
+        super::e2e_route::route_for(host).map(|address| (host.to_owned(), address))
+    }) {
+        Some((host, address)) => builder.no_proxy().resolve(&host, address),
+        None => builder,
+    };
     builder.build()
 }
 

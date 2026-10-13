@@ -1464,6 +1464,7 @@ mod tests {
             loop {
                 if text(&bob, &main) == "offline abc online"
                     && text(&alice, &main) == text(&bob, &main)
+                    && !lock(&alice.live).has_unsent()
                 {
                     return;
                 }
@@ -1471,8 +1472,7 @@ mod tests {
             }
         })
         .await
-        .expect("both sides converged");
-        assert!(!lock(&alice.live).has_unsent());
+        .expect("both sides converged and the offline edit was acknowledged");
     }
 
     #[tokio::test(flavor = "multi_thread")]

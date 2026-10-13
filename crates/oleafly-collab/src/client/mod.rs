@@ -2,6 +2,8 @@ mod access_log;
 mod admin_console;
 mod code_sign_in;
 mod diagnostics;
+#[cfg(feature = "e2e-hooks")]
+pub mod e2e_route;
 mod guests;
 mod http;
 mod loopback;

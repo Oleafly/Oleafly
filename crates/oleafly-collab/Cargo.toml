@@ -24,6 +24,9 @@ tokio-tungstenite = { version = "0.30", default-features = false, features = ["r
 url = "2.5"
 webpki-roots = "1"
 
+[features]
+e2e-hooks = []
+
 [dev-dependencies]
 oleafly-server = { path = "../oleafly-server", features = ["test-support"] }
 tempfile = { workspace = true }
