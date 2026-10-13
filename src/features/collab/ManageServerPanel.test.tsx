@@ -1,22 +1,25 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import type { CollabCapabilities } from "@/lib/tauri";
 import {
   SERVER_ID,
   account,
   capabilities,
   collabError,
+  deferred,
   fill,
   member,
   runtimeSettings,
   server,
   signedOutServer,
 } from "./tests/fixtures";
+import { allowRadixSelect } from "./tests/select";
 
 const mocks = vi.hoisted(() => ({
   collabAdminMembers: vi.fn(),
@@ -52,6 +55,7 @@ const admin = enCollab.admin;
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  allowRadixSelect();
 });
 
 beforeEach(() => {
@@ -121,6 +125,57 @@ describe("ManageServerPanel", () => {
   it("renders nothing for someone who is not signed in", () => {
     const { container } = render(<ManageServerPanel server={signedOutServer()} onBack={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows no tabs to a signed-in member", async () => {
+    render(<ManageServerPanel server={server()} onBack={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: fill(admin.title, { name: "Smith Lab" }) })).toBeInTheDocument();
+    await waitFor(() => expect(mocks.collabServerProbe).toHaveBeenCalled());
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+  });
+
+  it("offers no sign-in names on the allowed list when the server cannot be asked how people sign in", async () => {
+    mocks.collabServerProbe.mockRejectedValue(collabError("unreachable"));
+    const user = userEvent.setup();
+    render(<ManageServerPanel server={server({ account: account({ server_role: "admin" }) })} onBack={vi.fn()} />);
+    await user.click(screen.getByRole("tab", { name: admin.tabs.allowlist }));
+    await screen.findByText(admin.allowlist.empty);
+    await user.click(screen.getByRole("combobox", { name: admin.allowlist.matchLabel }));
+    expect(await screen.findByRole("option", { name: admin.allowlist.match.login })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("uses the sign-in options of the server now shown when an older answer comes back late", async () => {
+    const slow = deferred<CollabCapabilities>();
+    const failing = deferred<CollabCapabilities>();
+    mocks.collabServerProbe
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce(capabilities());
+    const user = userEvent.setup();
+    const adminAccount = account({ server_role: "admin" });
+    const { rerender } = render(
+      <ManageServerPanel server={server({ url: "https://old.uni.edu", account: adminAccount })} onBack={vi.fn()} />,
+    );
+    rerender(
+      <ManageServerPanel server={server({ url: "https://down.uni.edu", account: adminAccount })} onBack={vi.fn()} />,
+    );
+    rerender(<ManageServerPanel server={server({ account: adminAccount })} onBack={vi.fn()} />);
+    await waitFor(() => expect(mocks.collabServerProbe).toHaveBeenLastCalledWith("https://collab.uni.edu"));
+    await act(async () => {
+      slow.resolve(capabilities({ providers: [] }));
+      failing.reject(collabError("unreachable"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    await user.click(screen.getByRole("tab", { name: admin.tabs.allowlist }));
+    await screen.findByText(admin.allowlist.empty);
+    await user.click(screen.getByRole("combobox", { name: admin.allowlist.matchLabel }));
+    expect(await screen.findByRole("option", { name: admin.allowlist.match.login })).not.toHaveAttribute(
+      "aria-disabled",
+    );
   });
 });
 

@@ -6,7 +6,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { SERVER_ID, account, collabError, fill, server, signedOutServer } from "../tests/fixtures";
+import type { CollabServer } from "@/lib/tauri";
+import { SERVER_ID, account, collabError, deferred, fill, server, signedOutServer } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabServersList: vi.fn(),
@@ -132,6 +133,36 @@ describe("AdminConsoleWindow", () => {
     expect(screen.getByText(enCollab.errors.internal)).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
+  });
+
+  it("refuses a signed-in server that names no account", async () => {
+    const nobody = server({ account: null });
+    mocks.collabServersList.mockResolvedValue([nobody]);
+    mocks.collabServerRefresh.mockResolvedValue(nobody);
+    render(<AdminConsoleWindow search={SEARCH} />);
+    expect(await screen.findByText(copy.refusedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(/Console for/)).toBeNull();
+  });
+
+  it("shows the server the window now points at when an older lookup comes back late", async () => {
+    const slow = deferred<CollabServer[]>();
+    const failing = deferred<CollabServer[]>();
+    mocks.collabServersList
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce([ADMIN]);
+    const { rerender } = render(<AdminConsoleWindow search="?view=admin&server=server-a" />);
+    rerender(<AdminConsoleWindow search="?view=admin&server=server-b" />);
+    rerender(<AdminConsoleWindow search={SEARCH} />);
+    expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
+    await act(async () => {
+      slow.resolve([]);
+      failing.reject(collabError("internal"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(screen.getByText("Console for Smith Lab as admin")).toBeInTheDocument();
+    expect(screen.queryByText(copy.unknownTitle)).toBeNull();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
   });
 
   it("reads the server from the window address by default", async () => {

@@ -88,6 +88,14 @@ describe("RemovedFileBanner", () => {
     expect(screen.getByText(fill(copy.yoursDeleted, { name: "Bob Smith", file: "plan.tex" }))).toBeTruthy();
   });
 
+  it("says someone deleted the file when the server did not say who", () => {
+    render(<RemovedFileBanner />);
+    show(notice({ by: null }));
+    expect(
+      screen.getByText(fill(copy.deletedBy, { name: enCollab.toolbar.unknownPerson, file: "results.tex" })),
+    ).toBeTruthy();
+  });
+
   it("lets a viewer dismiss the notice but not restore the file", async () => {
     useCollabLiveStore.setState({ role: "viewer" });
     render(<RemovedFileBanner />);

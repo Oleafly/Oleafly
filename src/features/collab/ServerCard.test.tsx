@@ -181,6 +181,37 @@ describe("ServerCard", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
+  it("says why a server could not be removed and keeps it", async () => {
+    mocks.collabServerRemove.mockRejectedValue(collabError("internal"));
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.remove }));
+    await user.click(screen.getByRole("button", { name: copy.server.removeConfirm.confirm }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.internal);
+    expect(screen.getByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
+  });
+
+  it("says why signing out with a local copy failed and stays signed in", async () => {
+    mocks.collabServerSignOut
+      .mockResolvedValueOnce({ signed_out: false, unsent: [UNSENT] })
+      .mockRejectedValueOnce(collabError("unreachable"));
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.signOut }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.server.unsent.title });
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.keep}`) }));
+    expect(mocks.collabServerSignOut).toHaveBeenLastCalledWith(SERVER_ID, true);
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+  });
+
+  it("shows no role and no Manage server for a role this version does not know", () => {
+    renderCard(server({ account: account({ server_role: "auditor" as never }) }));
+    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.queryByText(/auditor/)).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.server.manage })).toBeNull();
+  });
+
   it("keeps the server when you change your mind", async () => {
     const user = userEvent.setup();
     renderCard();

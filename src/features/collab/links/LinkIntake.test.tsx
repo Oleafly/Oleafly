@@ -322,6 +322,19 @@ describe("LinkIntake", () => {
     expect(screen.queryByRole("heading", { name: enCollab.addServer.title })).not.toBeInTheDocument();
   });
 
+  it("keeps the Add server step open until the new server is signed in", async () => {
+    useCollabStore.setState({ servers: [] });
+    mocks.collabJoinProject.mockResolvedValue("local-7");
+    deliver([OPEN]);
+    await screen.findByRole("heading", { name: enCollab.addServer.title });
+    act(() => useCollabStore.setState({ servers: [signedOutServer()] }));
+    await sleep(50);
+    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: enCollab.addServer.title })).toBeInTheDocument();
+    act(() => useCollabStore.setState({ servers: [server()] }));
+    await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-7"));
+  });
+
   it("stops quietly when the person closes the Add server step", async () => {
     useCollabStore.setState({ servers: [] });
     const user = userEvent.setup();

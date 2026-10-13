@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CollabDocOpened } from "@/lib/tauri";
 import { LiveSessions, type LiveSessionsOptions } from "./live-sessions";
+import type { RemoteSessionTransport } from "./remote-session";
 import { FakeChannel } from "./tests/fake-channel";
 
 async function flush(): Promise<void> {
@@ -150,3 +151,79 @@ describe("LiveSessions", () => {
     expect(sessions.documentSession("main.tex")).toBeNull();
   });
 });
+
+describe("LiveSessions with files kept local", () => {
+  function unshared(detached = vi.fn()) {
+    const open = vi.fn(async (): Promise<CollabDocOpened | null> => null);
+    const sessions = new LiveSessions({
+      transport: { open, change: vi.fn(), close: vi.fn() },
+      readOnly: () => false,
+      initialText: () => "local",
+      mirror: vi.fn(),
+      detached,
+    });
+    return { sessions, open, detached };
+  }
+
+  it("keeps a local file local when it moves, and only that file", async () => {
+    const { sessions, open } = unshared();
+    sessions.documentSession("notes/a.txt");
+    sessions.documentSession("todo.txt");
+    await flush();
+    sessions.move("notes", "archive");
+    expect(sessions.documentSession("archive/a.txt")).toBeNull();
+    expect(sessions.documentSession("todo.txt")).toBeNull();
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(sessions.documentSession("notes/a.txt")).not.toBeNull();
+    expect(open).toHaveBeenCalledTimes(3);
+  });
+
+  it("forgets only the deleted path, local or shared", async () => {
+    const channel = new FakeChannel("abc");
+    const local = new Set(["notes/a.txt", "todo.txt"]);
+    const transport = channel.transport();
+    const open: RemoteSessionTransport["open"] = (path, onMessage) =>
+      local.has(path) ? Promise.resolve(null) : transport.open(path, onMessage);
+    const sessions = new LiveSessions(options(channel, { transport: { ...transport, open } }));
+    sessions.documentSession("notes/a.txt");
+    sessions.documentSession("todo.txt");
+    const kept = sessions.documentSession("main.tex");
+    const gone = sessions.documentSession("notes/b.tex");
+    await flush();
+    sessions.forget("notes");
+    await flush();
+    expect(gone?.phase).toBe("closed");
+    expect(kept?.phase).toBe("open");
+    expect(sessions.documentSession("main.tex")).toBe(kept);
+    expect(sessions.documentSession("todo.txt")).toBeNull();
+    local.delete("notes/a.txt");
+    const fresh = sessions.documentSession("notes/a.txt");
+    expect(fresh).not.toBeNull();
+    await flush();
+    expect(fresh?.phase).toBe("open");
+  });
+
+  it("does not hand back a deleted file whose document then turns out not to be shared", async () => {
+    let fail: (error: Error) => void = () => {};
+    const open = vi.fn(async (): Promise<CollabDocOpened | null> => null);
+    open.mockResolvedValueOnce({ file_id: "notes", rev: 0, text: "abc" });
+    const detached = vi.fn();
+    const sessions = new LiveSessions({
+      transport: { open, change: () => new Promise<void>((_, reject) => (fail = reject)), close: vi.fn() },
+      readOnly: () => false,
+      initialText: () => "abc",
+      mirror: vi.fn(),
+      detached,
+    });
+    const session = sessions.documentSession("notes.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    sessions.forget("notes.tex");
+    fail(new Error("gone"));
+    await flush();
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(detached).not.toHaveBeenCalled();
+    expect(session?.phase).toBe("closed");
+  });
+});
+

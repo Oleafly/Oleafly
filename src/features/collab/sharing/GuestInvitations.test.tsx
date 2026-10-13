@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDate } from "@/lib/intl";
-import { BOB, CAROL, collabError, fill, projectMember, projectSummary, shareInfo } from "../tests/fixtures";
+import type { CollabProjectGuestInvitations } from "@/lib/tauri";
+import { BOB, CAROL, collabError, deferred, fill, projectMember, projectSummary, shareInfo } from "../tests/fixtures";
 import { ADD_LINK, invitation, inviteResult, projectInvitations } from "../tests/guest-fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -131,6 +132,25 @@ describe("inviting a guest from the share dialog", () => {
     await waitFor(() => expect(mocks.collabMembersList).toHaveBeenCalledTimes(2));
   });
 
+  it("tells the owner to send the link once an admin approves when the server does not send email", async () => {
+    mocks.collabGuestInvite.mockResolvedValue(
+      inviteResult({ invitation: invitation({ status: "awaiting_approval" }), emailed: false }),
+    );
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(
+      await screen.findByText(fill(guests.sent.sendLinkAfterApproval, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(fill(guests.sent.linkLabel, { server: "Smith Lab" }))).toHaveValue(ADD_LINK);
+  });
+
+  it("explains any other failed invitation with the server's reason", async () => {
+    mocks.collabGuestInvite.mockRejectedValue(collabError("server"));
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.server);
+  });
+
   it("explains a duplicate invitation and the hourly limit in plain words", async () => {
     mocks.collabGuestInvite.mockRejectedValueOnce(collabError("conflict"));
     mocks.collabGuestInvite.mockRejectedValueOnce(collabError("rate_limited"));
@@ -199,5 +219,96 @@ describe("the owner's invitation list", () => {
     const rows = within(people).getAllByRole("listitem");
     expect(within(rows[0]).queryByText(guests.badge)).toBeNull();
     expect(within(rows[1]).getByText(guests.badge)).toBeInTheDocument();
+  });
+
+  it("leaves out invitations that were accepted, withdrawn or ran out", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [
+          invitation({ id: "a", email: "dana@field.org", status: "accepted" }),
+          invitation({ id: "b", email: "eve@field.org", status: "invited" }),
+          invitation({ id: "c", email: "finn@field.org", status: "revoked" }),
+          invitation({ id: "d", email: "gail@field.org", status: "expired" }),
+        ],
+      }),
+    );
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(list).getByText("eve@field.org")).toBeInTheDocument();
+  });
+
+  it("shows nothing when every invitation is finished", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ invitations: [invitation({ status: "accepted" })] }),
+    );
+    renderManage();
+    await waitFor(() => expect(mocks.collabGuestInvitations).toHaveBeenCalledWith("grant"));
+    expect(await screen.findByRole("list", { name: enCollab.manage.people })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: guests.list.title })).toBeNull();
+  });
+
+  it("keeps the newer project's invitations when the older project's list answers late", async () => {
+    const stale = deferred<CollabProjectGuestInvitations>();
+    mocks.collabGuestInvitations.mockImplementation((projectId: string) =>
+      projectId === "grant"
+        ? stale.promise
+        : Promise.resolve(projectInvitations({ invitations: [invitation({ id: "e", email: "eve@field.org" })] })),
+    );
+    const view = renderManage();
+    await waitFor(() => expect(mocks.collabGuestInvitations).toHaveBeenCalledWith("grant"));
+    view.rerender(<ManageSharing projectId="thesis" name="Thesis" share={shareInfo({ project_id: "thesis" })} />);
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await act(async () => stale.resolve(projectInvitations({ invitations: [invitation()] })));
+    expect(within(list).getByText("eve@field.org")).toBeInTheDocument();
+    expect(within(list).queryByText(EMAIL)).toBeNull();
+  });
+
+  it("confirms when an invitation link was copied", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ sends_email: false, invitations: [invitation()] }),
+    );
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await user.click(within(list).getByRole("button", { name: enCollab.manage.link.copy }));
+    expect(writeText).toHaveBeenCalledWith(ADD_LINK);
+    const copied = await within(list).findByRole("button", { name: enCollab.manage.link.copied });
+    expect(copied.querySelector("svg.lucide-check")).not.toBeNull();
+  });
+
+  it("says when an invitation link could not be copied", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ sends_email: false, invitations: [invitation()] }),
+    );
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {
+      throw new Error("denied");
+    });
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await user.click(within(list).getByRole("button", { name: enCollab.manage.link.copy }));
+    const failed = await within(list).findByRole("button", { name: enCollab.manage.link.copyFailed });
+    expect(failed.querySelector("svg.lucide-copy")).not.toBeNull();
+  });
+
+  it("keeps an invitation and says why on its row when it cannot be withdrawn", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [invitation(), invitation({ id: "invitation-2", email: "eve@field.org" })],
+      }),
+    );
+    mocks.collabGuestInvitationRevoke.mockRejectedValue(collabError("forbidden"));
+    const user = userEvent.setup();
+    renderManage();
+    await user.click(await screen.findByRole("button", { name: fill(guests.list.withdrawNamed, { email: EMAIL }) }));
+    const rows = within(screen.getByRole("list", { name: guests.list.title })).getAllByRole("listitem");
+    expect(await within(rows[0]).findByRole("alert")).toHaveTextContent(enCollab.errors.forbidden);
+    expect(within(rows[1]).queryByRole("alert")).toBeNull();
+    expect(within(rows[0]).getByRole("button", { name: fill(guests.list.withdrawNamed, { email: EMAIL }) }))
+      .toBeEnabled();
   });
 });

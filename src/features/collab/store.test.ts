@@ -174,6 +174,33 @@ describe("collab store", () => {
     expect(useCollabStore.getState().servers[0]?.signed_in).toBe(true);
   });
 
+  it("ignores a failure from a load that a newer load replaced", async () => {
+    const first = deferred<CollabServer[]>();
+    mocks.collabServersList.mockReturnValueOnce(first.promise).mockResolvedValueOnce([server()]);
+    const stale = useCollabStore.getState().load();
+    await useCollabStore.getState().load();
+    first.reject(collabError("unreachable"));
+    await stale;
+    expect(useCollabStore.getState()).toMatchObject({ servers: [server()], status: "ready", loadError: null });
+  });
+
+  it("signs out of one server and leaves the others as they were", async () => {
+    const other = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), other], status: "ready" });
+    mocks.collabServerSignOut.mockResolvedValueOnce(DONE);
+    await useCollabStore.getState().signOut(SERVER_ID);
+    expect(useCollabStore.getState().servers[0]).toMatchObject({ account: null, signed_in: false });
+    expect(useCollabStore.getState().servers[1]).toBe(other);
+  });
+
+  it("does nothing when asked to keep local copies with no question waiting", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    await expect(useCollabStore.getState().keepLocalCopies(SERVER_ID)).resolves.toBeNull();
+    expect(mocks.collabServerSignOut).not.toHaveBeenCalled();
+    expect(mocks.collabServerRemove).not.toHaveBeenCalled();
+    expect(useCollabStore.getState().servers[0]?.signed_in).toBe(true);
+  });
+
   it("asks each signed-in server for the current role and keeps the answer", async () => {
     const offline = signedOutServer({ server_id: "0192a0b0-0000-7000-8000-0000000000b2" });
     useCollabStore.setState({ servers: [server(), offline], status: "ready" });

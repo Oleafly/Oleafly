@@ -187,3 +187,56 @@ describe("goToPerson", () => {
     expect(mocks.scroll).not.toHaveBeenCalled();
   });
 });
+
+describe("goToPerson edges", () => {
+  it("goes to the device used last when it is listed first", async () => {
+    place(bob("b.tex", lineStart(6), "bob-desktop", NOW), bob("a.tex", lineStart(5), "bob-laptop", NOW - 5_000));
+    await goToPerson(BOB_ID);
+    expect(mocks.open.mock.lastCall?.[0]).toMatchObject({ path: "b.tex" });
+  });
+
+  it("scrolls to the reported cursor in an editor that does not draw carets", async () => {
+    const plain = new EditorView({ state: EditorState.create({ doc: DOC }), parent: document.body });
+    setEditorView(plain);
+    try {
+      const at = lineStart(12);
+      place(bob("main.tex", at));
+      expect(await goToPerson(BOB_ID)).toBe(true);
+      expect(mocks.scroll).toHaveBeenLastCalledWith(plain, at);
+    } finally {
+      setEditorView(view);
+      plain.destroy();
+    }
+  });
+
+  it("gives up an earlier jump when another one starts", async () => {
+    place(bob("a.tex", lineStart(10)), {
+      deviceId: "carol-laptop",
+      accountId: CAROL_ID,
+      person: null,
+      path: "c.tex",
+      cursor: lineStart(20),
+      anchor: lineStart(20),
+      seenAt: NOW,
+      hue: 90,
+    });
+    let finish: (opened: boolean) => void = () => {};
+    mocks.open.mockImplementationOnce(
+      (target: ProjectLocation) =>
+        new Promise<boolean>((resolve) => {
+          finish = (opened) => {
+            setEditorDocumentPath(target.path);
+            resolve(opened);
+          };
+        }),
+    );
+    const toBob = goToPerson(BOB_ID);
+    expect(await goToPerson(CAROL_ID)).toBe(true);
+    finish(true);
+    expect(await toBob).toBe(false);
+    expect(mocks.open).toHaveBeenCalledTimes(2);
+    expect(mocks.scroll).toHaveBeenCalledOnce();
+    expect(mocks.scroll).toHaveBeenLastCalledWith(view, lineStart(20));
+  });
+});
+

@@ -357,4 +357,81 @@ describe("startCollabActivity", () => {
       getItem.mockRestore();
     }
   });
+
+  it("greets the project when the stored list of greeted projects is damaged", () => {
+    localStorage.setItem(WELCOMED_KEY, JSON.stringify({ grant: true }));
+    joined();
+    stop = startCollabActivity();
+    expect(kinds()).toEqual(["welcome"]);
+    expect(JSON.parse(localStorage.getItem(WELCOMED_KEY) ?? "null")).toEqual(["grant"]);
+  });
+
+  it("records a visitor it cannot name with an empty name", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ peers: { dan: peer("dan", "acc-dan") } });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "joined", accountId: "acc-dan", name: "" });
+  });
+
+  it("says access ended without calling the person a guest once their share is gone", () => {
+    joined();
+    useCollabLiveStore.setState({
+      members: [projectMember(BOB, "owner"), projectMember(person({ guest: true }), "editor")],
+    });
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      share: null,
+      role: null,
+      status: { state: "ended", reason: "access_ended" },
+      ended: "access_ended",
+      peers: {},
+    });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({
+      kind: "accessEnded",
+      server: "Smith Lab",
+      guest: false,
+    });
+  });
+
+  it("records who added someone while this person's share is not loaded", () => {
+    joined("owner");
+    useCollabLiveStore.setState({ memberChange: null });
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      share: null,
+      memberChange: {
+        projectId: "grant",
+        accountId: CAROL_ID,
+        by: BOB_ID,
+        byName: "Bob Smith",
+        kind: "added",
+        name: "Carol Diaz",
+      },
+    });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({
+      kind: "memberAdded",
+      accountId: CAROL_ID,
+      by: "Bob Smith",
+      byYou: false,
+    });
+  });
+
+  it("leaves out who removed this person when their name is not known", () => {
+    joined();
+    useCollabLiveStore.setState({ memberChange: null });
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({
+      memberChange: { projectId: "grant", accountId: ALICE_ID, by: BOB_ID, byName: "", kind: "removed", name: "Alice Chen" },
+    });
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "removed" }, ended: "removed", peers: {} });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "removed" });
+    expect(useCollabActivity.getState().entries[0]).not.toHaveProperty("by", expect.anything());
+  });
+
+  it("adds nothing when the owner stops sharing", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "stopped" }, ended: "stopped", peers: {} });
+    expect(kinds()).toEqual([]);
+  });
 });

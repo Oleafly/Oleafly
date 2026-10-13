@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import type { CollabGuestInvitation } from "@/lib/tauri";
 import type { ServerRole } from "./roles";
-import { ALICE_ID, BOB_ID, SERVER_ID, collabError, fill, member } from "./tests/fixtures";
+import { ALICE_ID, BOB_ID, SERVER_ID, collabError, deferred, fill, member } from "./tests/fixtures";
 import { invitation } from "./tests/guest-fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -127,6 +128,43 @@ describe("Pending guests in Manage server, People", () => {
     expect(screen.queryByText(guests.pending.title)).toBeNull();
     expect(screen.queryByRole("button", { name: enCommon.actions.retry })).toBeNull();
     expect(screen.getByText("Alice Chen")).toBeInTheDocument();
+  });
+
+  it("does not look for invitations when the person cannot approve guests", async () => {
+    renderTab("member");
+    expect(screen.getByText("Gus Guest")).toBeInTheDocument();
+    await act(async () => {});
+    expect(mocks.collabAdminGuestInvitations).not.toHaveBeenCalled();
+    expect(screen.queryByText(guests.pending.title)).toBeNull();
+  });
+
+  it("lists the invitations of the server now in view when an older answer comes back late", async () => {
+    const slow = deferred<CollabGuestInvitation[]>();
+    const failing = deferred<CollabGuestInvitation[]>();
+    mocks.collabAdminGuestInvitations
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce([EVE]);
+    const props = {
+      actor: "admin" as const,
+      selfId: ALICE_ID,
+      members: [member({ server_role: "admin" })],
+      loadError: null,
+      onRetry: () => undefined,
+      onMembersChange: () => undefined,
+    };
+    const { rerender } = render(<MembersTab serverId="server-a" {...props} />);
+    rerender(<MembersTab serverId="server-b" {...props} />);
+    rerender(<MembersTab serverId={SERVER_ID} {...props} />);
+    const list = await screen.findByRole("list", { name: guests.pending.title });
+    await act(async () => {
+      slow.resolve([DANA, EVE]);
+      failing.reject(collabError("unreachable"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText("dana@field.org")).toBeNull();
+    expect(screen.getByText("eve@field.org")).toBeInTheDocument();
   });
 
   it("marks guest accounts in the member list", async () => {

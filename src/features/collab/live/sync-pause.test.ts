@@ -82,6 +82,24 @@ describe("sync pause", () => {
     expect(useSyncPauseStore.getState().deciding).toBeNull();
   });
 
+  it("takes one decision at a time", async () => {
+    await started();
+    paused();
+    paused({ projectId: "thesis", changed: 4 });
+    let finish: () => void = () => {};
+    mocks.collabSyncDecide.mockReturnValueOnce(new Promise<void>((resolve) => (finish = resolve)));
+
+    const first = useSyncPauseStore.getState().decide("paper", "send");
+    await useSyncPauseStore.getState().decide("thesis", "keep_local");
+    expect(useSyncPauseStore.getState().deciding).toEqual({ projectId: "paper", decision: "send" });
+    finish();
+    await first;
+
+    expect(mocks.collabSyncDecide.mock.calls).toEqual([["paper", "send"]]);
+    expect(useSyncPauseStore.getState().waiting).toEqual({ thesis: 4 });
+    expect(useSyncPauseStore.getState().deciding).toBeNull();
+  });
+
   it("keeps the question when the decision could not be applied", async () => {
     await started();
     paused();

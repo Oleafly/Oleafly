@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { ALICE_ID, BOB_ID, SERVER_ID, collabError, fill, member, securityEvent } from "./tests/fixtures";
+import { ALICE_ID, BOB_ID, SERVER_ID, collabError, deferred, fill, member, securityEvent } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabAdminSecurityLog: vi.fn(),
@@ -437,6 +437,57 @@ describe("SecurityLogTab", () => {
     expect(items[0]).not.toHaveTextContent(fill(copy.target, { target: "Prajwals-MacBook-Pro" }));
     expect(items[1]).toHaveTextContent(fill(copy.target, { target: "Prajwals-MacBook-Pro" }));
     expect(items[2].textContent).not.toMatch(/·\s*On\s/);
+  });
+
+  it("falls back to plain words and the raw target when an entry lacks the usual details", async () => {
+    mocks.collabAdminSecurityLog.mockResolvedValueOnce({
+      items: [
+        securityEvent({ id: 1, kind: "project_access_changed", target: "share-9", detail: {} }),
+        securityEvent({
+          id: 2,
+          kind: "settings_changed",
+          detail: { guests_enabled: { from: "off", to: "on" }, directory_visible: null },
+        }),
+        securityEvent({
+          id: 3,
+          kind: "allowlist_added",
+          target: "entry-3",
+          detail: { kind: "provider_login", login: "octocat" },
+        }),
+        securityEvent({ id: 4, kind: "domain_rule_removed", target: "rule-4", detail: { role: "member" } }),
+      ],
+      next_cursor: null,
+    });
+    render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    const items = await screen.findAllByRole("listitem");
+    expect(items[0]).toHaveTextContent(`Alice Chen · ${copy.kinds.projectAccessChanged}`);
+    expect(items[0]).toHaveTextContent(fill(copy.target, { target: "share-9" }));
+    expect(items[1]).toHaveTextContent(copy.kinds.settingsChanged);
+    expect(items[1].querySelectorAll("p")).toHaveLength(2);
+    expect(items[2]).toHaveTextContent(fill(copy.target, { target: "entry-3" }));
+    expect(items[2]).not.toHaveTextContent("octocat");
+    expect(items[3]).toHaveTextContent(fill(copy.target, { target: "rule-4" }));
+  });
+
+  it("shows the log of the server now in view when an older answer comes back late", async () => {
+    const slow = deferred<{ items: ReturnType<typeof securityEvent>[]; next_cursor: string | null }>();
+    const failing = deferred<{ items: ReturnType<typeof securityEvent>[]; next_cursor: string | null }>();
+    mocks.collabAdminSecurityLog
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce({ items: [securityEvent()], next_cursor: null });
+    const { rerender } = render(<SecurityLogTab serverId="server-a" members={members} />);
+    rerender(<SecurityLogTab serverId="server-b" members={members} />);
+    rerender(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    expect(await screen.findAllByRole("listitem")).toHaveLength(1);
+    await act(async () => {
+      slow.resolve({ items: [securityEvent({ id: 7 }), securityEvent({ id: 8 })], next_cursor: "older" });
+      failing.reject(collabError("forbidden"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.loadMore })).toBeNull();
   });
 
   it("says when the log is empty", async () => {

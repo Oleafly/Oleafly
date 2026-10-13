@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -79,5 +79,15 @@ describe("OpenLinkDialog", () => {
     render(<OpenLinkDialog onClose={onClose} />);
     await user.type(screen.getByRole("textbox", { name: copy.label }), `${LINK}{Enter}`);
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+  });
+
+  it("never asks the server about a blank link, even if the form is sent", () => {
+    render(<OpenLinkDialog onClose={onClose} />);
+    const field = screen.getByRole("textbox", { name: copy.label });
+    fireEvent.change(field, { target: { value: "   " } });
+    expect(screen.getByRole("button", { name: copy.open })).toBeDisabled();
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    expect(mocks.collabOpenLink).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

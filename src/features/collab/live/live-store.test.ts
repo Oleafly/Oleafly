@@ -726,3 +726,156 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });
+
+describe("collab live store edges", () => {
+  it("keeps a peer's name when a newer member list no longer has them", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: null, cursor: null, anchor: null });
+    expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
+    mocks.collabMembersList.mockResolvedValueOnce([member(ALICE, "Alice Chen")]);
+    await useCollabLiveStore.getState().refreshMembers();
+    expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
+  });
+
+  it("asks nothing about sharing while no project is open", async () => {
+    stop = startCollabLive();
+    await settle();
+    await useCollabLiveStore.getState().refreshShare();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
+  });
+
+  it("keeps only the newest answer about sharing", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    let answerOld: (value: CollabShareInfo | null) => void = () => {};
+    mocks.collabShareInfo.mockReturnValueOnce(new Promise((resolve) => (answerOld = resolve)));
+    mocks.collabShareInfo.mockResolvedValueOnce(share({ server_name: "Newer Lab" }));
+    const older = useCollabLiveStore.getState().refreshShare();
+    await useCollabLiveStore.getState().refreshShare();
+    answerOld(share({ server_name: "Older Lab" }));
+    await older;
+    expect(useCollabLiveStore.getState().share?.server_name).toBe("Newer Lab");
+  });
+
+  it("does not go live for a project that closed while its files were saved", async () => {
+    let saved: () => void = () => {};
+    vi.mocked(useFilesStore.getState().saveAllDirty).mockImplementationOnce(
+      () => new Promise<void>((resolve) => (saved = resolve)),
+    );
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    openProject(null);
+    await settle();
+    saved();
+    await settle();
+    expect(mocks.collabLiveStart).not.toHaveBeenCalled();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("does not retry going live for a project that closed while the first try failed", async () => {
+    vi.useFakeTimers();
+    let fail: (error: Error) => void = () => {};
+    mocks.collabLiveStart.mockReturnValueOnce(new Promise((_, reject) => (fail = reject)));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    openProject(null);
+    await settle();
+    fail(new Error("busy"));
+    await settle();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
+  });
+
+  it("does not retry going live once the session has ended", async () => {
+    vi.useFakeTimers();
+    mocks.collabLiveStart.mockRejectedValueOnce(new Error("busy"));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "archived" }, pending: 0 });
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
+    expect(useCollabLiveStore.getState()).toMatchObject({ ended: "archived", accessNotice: null });
+  });
+
+  it("still says this person was removed after an earlier ending, without a name", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    mocks.collabShareInfo.mockResolvedValue(null);
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "signed_out" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState()).toMatchObject({ ended: "signed_out", share: null, accessNotice: null });
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "removed" }, pending: 0 });
+    await settle();
+    expect(useCollabLiveStore.getState()).toMatchObject({
+      ended: "removed",
+      accessNotice: { kind: "removed", byName: "" },
+    });
+  });
+
+  it("names nobody for a change to the people list that lands after another project opened", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    let answer: (members: CollabProjectMember[]) => void = () => {};
+    mocks.collabMembersList.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    emit("members", { projectId: PROJECT, accountId: BOB, by: ALICE, kind: "added" });
+    mocks.collabShareInfo.mockResolvedValue(null);
+    openProject(OTHER);
+    answer([member(ALICE, "Alice Chen"), member(BOB, "Bob Jones")]);
+    await settle();
+    expect(useCollabLiveStore.getState()).toMatchObject({ projectId: OTHER, memberChange: null, members: [] });
+  });
+
+  it("colours a peer who shows up before the sharing details arrive", async () => {
+    let answer: (value: CollabShareInfo | null) => void = () => {};
+    mocks.collabShareInfo.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: "main.tex", cursor: 1, anchor: 1 });
+    expect(useCollabLiveStore.getState().peers.d.hue).toBe(peerHue(BOB, null));
+    answer(share());
+    await settle();
+  });
+
+  it("ignores someone leaving who was never here", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("presence", { projectId: PROJECT, deviceId: "d", accountId: BOB, path: null, cursor: null, anchor: null });
+    const peers = useCollabLiveStore.getState().peers;
+    emit<CollabPresenceLeft>("left", { projectId: PROJECT, deviceId: "nobody" });
+    emit<CollabPresenceLeft>("left", { projectId: OTHER, deviceId: "d" });
+    expect(useCollabLiveStore.getState().peers).toBe(peers);
+  });
+
+  it("keeps the live session when the open project only changes its active file", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    useFilesStore.setState({ activePath: "main.tex" });
+    await settle();
+    expect(mocks.collabShareInfo).toHaveBeenCalledOnce();
+    expect(mocks.collabLiveStop).not.toHaveBeenCalled();
+  });
+
+  it("stops only once when the lifecycle ends twice", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    stop();
+    stop();
+    await settle();
+    expect(mocks.collabLiveStop).toHaveBeenCalledOnce();
+    expect(mocks.unlisten).toHaveBeenCalledTimes(8);
+  });
+});
+

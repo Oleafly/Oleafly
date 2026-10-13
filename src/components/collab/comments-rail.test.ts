@@ -68,6 +68,22 @@ describe("starting a comment from the editor", () => {
     expect(useSettingsStore.getState().railTab).toBe("files");
   });
 
+  it("offers nothing while no file is open", () => {
+    useFilesStore.setState({ activePath: null });
+    expect(commentTarget(editor(4, 15))).toBeNull();
+    expect(requestComment(editor(4, 15))).toBe(false);
+  });
+
+  it("still shows the thread in the Comments tab when its file cannot be opened", async () => {
+    openFile.mockRejectedValueOnce(new Error("gone"));
+    useSettingsStore.setState({ showTree: true });
+    openCommentThread("deleted.tex", "thread-9");
+    expect(openFile).toHaveBeenCalledWith("deleted.tex");
+    expect(useCommentsRail.getState().reveal).toEqual({ path: "deleted.tex", threadId: "thread-9" });
+    expect(useSettingsStore.getState()).toMatchObject({ railTab: "comments", showTree: true });
+    await Promise.resolve();
+  });
+
   it("opens another file and its thread in the Comments tab", () => {
     openCommentThread("refs.tex", "thread-1");
     expect(openFile).toHaveBeenCalledWith("refs.tex");

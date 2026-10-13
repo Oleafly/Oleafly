@@ -12,10 +12,11 @@ import { avatarHue } from "@/components/ui/avatar";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { resetSidebarViewState } from "@/store/sidebar-view-state";
+import { resetSidebarViewState, writeSidebarView } from "@/store/sidebar-view-state";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { peerHue } from "../live/peer-hue";
 import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, fill, person, projectMember, shareInfo } from "../tests/fixtures";
+import { useAccessLogSwitches } from "./access-log-store";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
 const spies = vi.hoisted(() => ({
@@ -34,6 +35,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabTrashList: vi.fn(async () => []),
   collabTrashRestore: vi.fn(async () => undefined),
+  collabAccessLogStatus: vi.fn(async () => ({ serverAllowed: true, enabled: true })),
+  collabAccessLogPage: vi.fn(async () => ({ items: [], next_cursor: null })),
 }));
 
 vi.mock("./MergeReviewDialog", () => ({
@@ -95,6 +98,7 @@ beforeAll(async () => {
 beforeEach(() => {
   localStorage.clear();
   resetSidebarViewState();
+  useAccessLogSwitches.setState({ byProject: {} });
   useFilesStore.setState({ projectId: "grant" });
   useSettingsStore.setState({ railTab: "collab", showTree: true });
   useShareDialog.setState({ projectId: null, fromCopy: false });
@@ -703,6 +707,70 @@ describe("CollabPane", () => {
     expect(screen.getByRole("button", { name: enCollab.sync.upToDate })).toBeInTheDocument();
     expect(spies.relativeTime).not.toHaveBeenCalled();
     expect(spies.person).not.toHaveBeenCalled();
+  });
+
+  it("keeps the file of someone open on two devices when the second is in no file", () => {
+    useCollabLiveStore.setState({
+      peers: {
+        bob: peer("bob", BOB_ID, "main.tex"),
+        bobLaptop: peer("bobLaptop", BOB_ID, null),
+        mine: peer("mine", ALICE_ID, "intro.tex"),
+      },
+    });
+    render(<CollabPane />);
+    const people = screen.getByRole("list", { name: pane.people });
+    expect(within(people).getAllByRole("listitem")[1]).toHaveTextContent(fill(pane.hereIn, { path: "main.tex" }));
+    expect(
+      within(people).getByRole("button", { name: fill(enCollab.toolbar.goTo, { name: "Bob Smith" }) }),
+    ).toBeInTheDocument();
+  });
+
+  it("welcomes a viewer with what they can do", () => {
+    feed([{ kind: "welcome", at: NOW, owner: "Bob Smith", server: "Smith Lab", role: "viewer", count: 1 }]);
+    render(<CollabPane />);
+    expect(screen.getByText(fill(activity.welcomeView, { owner: "Bob Smith", server: "Smith Lab" }))).toBeInTheDocument();
+  });
+
+  it("says someone when an entry does not know the person's name", () => {
+    const base = { accountId: CAROL_ID, name: "" };
+    feed([
+      { ...base, kind: "joined", at: NOW, count: 2 },
+      { ...base, kind: "left", at: NOW - 1000, count: 1 },
+      { ...base, kind: "left", at: NOW - 2000, count: 3 },
+      { ...base, kind: "joined", at: NOW - 3000, count: 1 },
+      { ...base, kind: "newDevice", at: NOW - 4000, count: 1 },
+      { ...base, kind: "mentioned", at: NOW - 5000, path: "intro.tex", threadId: "t1", messageId: "m1", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const someone = enCollab.toolbar.unknownPerson;
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.rejoined, { name: someone }));
+    expect(rows[1]).toHaveTextContent(fill(activity.left, { name: someone }));
+    expect(rows[2]).toHaveTextContent(fill(activity.visited, { name: someone }));
+    expect(rows[3]).toHaveTextContent(fill(activity.joined, { name: someone }));
+    expect(rows[4]).toHaveTextContent(fill(activity.newDevice, { name: someone }));
+    expect(rows[5]).toHaveTextContent(fill(activity.mentioned, { name: someone, path: "intro.tex" }));
+  });
+
+  it("adds the access log after Recently deleted for an owner who turned it on", async () => {
+    useCollabLiveStore.setState({ share: shareInfo({ role: "owner", account_id: BOB_ID }), role: "owner" });
+    useAccessLogSwitches.setState({ byProject: { grant: { serverAllowed: true, enabled: true } } });
+    render(<CollabPane />);
+    const log = await screen.findByTestId("collab-access-log");
+    expect(screen.getByTestId("collab-deleted").compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(sectionToggle(pane.accessLog)).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens sections an older saved view did not record at their usual state", () => {
+    writeSidebarView("grant", "collab", { sectionOpen: { people: false, activity: true } });
+    render(<CollabPane />);
+    expect(sectionToggle(pane.people)).toHaveAttribute("aria-expanded", "false");
+    expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+    const deleted = sectionToggle(pane.deleted);
+    expect(deleted).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(deleted);
+    expect(deleted).toHaveAttribute("aria-expanded", "true");
   });
 
   it("draws a new activity entry without redrawing the ones already shown", () => {

@@ -323,6 +323,79 @@ describe("live editing", () => {
   });
 });
 
+describe("live editing edges", () => {
+  it("binds nothing for a file the files store has not loaded", async () => {
+    start();
+    expect(collabDocumentSession("missing.tex")).toBeNull();
+    await settle();
+    expect(mocks.collabDocOpen).not.toHaveBeenCalled();
+  });
+
+  it("hands typing done before the server said no back to the files store", async () => {
+    start();
+    useFilesStore.setState({ activePath: "main.tex" });
+    const version = useFilesStore.getState().docVersion;
+    const session = collabDocumentSession("excluded.log");
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    await settle();
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!");
+    expect(useFilesStore.getState().docVersion).toBe(version);
+  });
+
+  it("leaves the files store alone when the server says no after another project opened", async () => {
+    start();
+    useFilesStore.setState({ activePath: "excluded.log" });
+    const session = collabDocumentSession("excluded.log");
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    useFilesStore.setState({ projectId: "other" });
+    const version = useFilesStore.getState().docVersion;
+    await settle();
+    expect(useFilesStore.getState().setContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().docVersion).toBe(version);
+  });
+
+  it("ignores renames and deletes in other projects", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    for (const listener of mocks.pathMoves) listener({ projectId: "other", from: "main.tex", to: "thesis.tex" });
+    for (const listener of mocks.pathDeletes) listener({ projectId: "other", path: "main.tex" });
+    await settle();
+    expect(collabDocumentSession("main.tex")).toBe(session);
+    expect(session?.path).toBe("main.tex");
+    expect(mocks.collabDocClose).not.toHaveBeenCalled();
+  });
+
+  it("shares no file while the files store shows another project", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    start();
+    await settle();
+    useFilesStore.setState({ projectId: "other", activePath: "notes.tex" });
+    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, null, null, null);
+  });
+
+  it("does not share the cursor again for an unrelated setting", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    start();
+    await settle();
+    mocks.view = { state: { selection: { main: { head: 6, anchor: 6 } } } };
+    const fontSize = useSettingsStore.getState().editorFontSize;
+    useSettingsStore.setState({ editorFontSize: fontSize + 2 });
+    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
+    await settle();
+    useSettingsStore.setState({ editorFontSize: fontSize });
+    expect(mocks.collabPresenceSet).toHaveBeenCalledOnce();
+    useSettingsStore.setState({ collabPresence: "file" });
+    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "main.tex", null, null);
+  });
+});
+
 describe("remote cursor source", () => {
   function peer(deviceId: string, path: string | null, cursor: number | null): LivePeer {
     return { deviceId, accountId: deviceId, person: null, path, cursor, anchor: cursor, seenAt: Date.now(), hue: 30 };
@@ -343,6 +416,7 @@ describe("remote cursor source", () => {
     listener.mockClear();
     place(peer("bob", "main.tex", 4));
     expect(listener).toHaveBeenCalledTimes(1);
+    useCollabLiveStore.setState({ pending: 3 });
     place(peer("bob", "main.tex", 4));
     place(peer("bob", "main.tex", 4), peer("carol", "intro.tex", 1));
     place(peer("bob", "main.tex", 4), peer("carol", "intro.tex", 9));

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { SERVER_ID, collabError, runtimeSettings } from "./tests/fixtures";
+import type { CollabRuntimeSettings } from "@/lib/tauri";
+import { SERVER_ID, collabError, deferred, runtimeSettings } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabAdminSettings: vi.fn(),
@@ -120,5 +121,28 @@ describe("RuntimeSettingsTab", () => {
     render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
     expect(await screen.findByText(enCollab.admin.loadFailed)).toBeInTheDocument();
     expect(screen.getByText(enCollab.errors.unauthorized)).toBeInTheDocument();
+  });
+
+  it("shows the settings of the server now in view when an older answer comes back late", async () => {
+    const slow = deferred<CollabRuntimeSettings>();
+    const failing = deferred<CollabRuntimeSettings>();
+    mocks.collabAdminSettings
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce(runtimeSettings({ directory_visible: false }));
+    const { rerender } = render(<RuntimeSettingsTab serverId="server-a" actor="admin" />);
+    rerender(<RuntimeSettingsTab serverId="server-b" actor="admin" />);
+    rerender(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
+    expect(await screen.findByRole("switch", { name: copy.directoryVisible.label })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    await act(async () => {
+      slow.resolve(runtimeSettings({ directory_visible: true }));
+      failing.reject(collabError("forbidden"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(toggle("directory_visible")).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

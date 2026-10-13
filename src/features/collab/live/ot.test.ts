@@ -177,3 +177,45 @@ describe("edits and operations", () => {
     }
   });
 });
+
+describe("operations that cannot be built or combined", () => {
+  it("refuses negative or fractional counts", () => {
+    expect(() => new TextOperation().retain(-1)).toThrow(expect.objectContaining({ code: "invalid" }));
+    expect(() => new TextOperation().delete(1.5)).toThrow(expect.objectContaining({ code: "invalid" }));
+    expect(() => new TextOperation().retain(Number.NaN)).toThrow(OtError);
+  });
+
+  it("refuses to compose a change that would cut an inserted character in two", () => {
+    const insertEmoji = op((o) => o.insert("😀"));
+    const splitIt = op((o) => o.retain(1).insert("x").retain(1));
+    expect(() => insertEmoji.compose(splitIt)).toThrow(expect.objectContaining({ code: "splits_character" }));
+  });
+
+  it("refuses operations whose steps do not match their declared lengths", () => {
+    const short = op((o) => o.retain(2));
+    short.targetLength = 3;
+    expect(() => short.compose(op((o) => o.retain(3)))).toThrow(expect.objectContaining({ code: "incompatible" }));
+    const narrow = op((o) => o.retain(2));
+    narrow.baseLength = 3;
+    expect(() => TextOperation.transform(narrow, op((o) => o.retain(3)))).toThrow(
+      expect.objectContaining({ code: "incompatible" }),
+    );
+  });
+
+  it("refuses edits at fractional offsets", () => {
+    expect(() => operationFromEdits("abc", [{ from: 1.5, to: 2, insert: "" }])).toThrow(/whole numbers/);
+    expect(() => operationFromEdits("abc", [{ from: 1, to: Number.POSITIVE_INFINITY, insert: "" }])).toThrow(
+      /whole numbers/,
+    );
+  });
+
+  it("keeps a replacement from ending inside a character that shares its second half", () => {
+    const smile = String.fromCodePoint(0x1f600);
+    const other = String.fromCodePoint(0x10600);
+    expect(smile.charCodeAt(1)).toBe(other.charCodeAt(1));
+    const operation = replacementOperation(`x${smile}`, `x${other}`);
+    expect(operation.toWire()).toEqual([1, other, -2]);
+    expect(operation.apply(`x${smile}`)).toBe(`x${other}`);
+  });
+});
+

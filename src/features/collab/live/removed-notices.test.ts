@@ -57,9 +57,9 @@ vi.mock("@/store/files", async () => {
 });
 
 import { useFilesStore } from "@/store/files";
-import { libraryProject } from "../tests/fixtures";
+import { deferred, libraryProject, person, projectMember } from "../tests/fixtures";
 import { useCollabLiveStore } from "./live-store";
-import { startRemovedNotices, useRemovedNotices } from "./removed-notices";
+import { followLocalCopies, startRemovedNotices, useRemovedNotices } from "./removed-notices";
 
 const BOB = "acct-bob";
 
@@ -252,5 +252,156 @@ describe("a project that became a local copy", () => {
     useCollabLiveStore.setState({ ended: "signed_out" });
     await settle();
     expect(mocks.refreshProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("restoring and dismissing removed files", () => {
+  it("brings back a folder without reopening anything", async () => {
+    useFilesStore.setState({ openTabs: ["sections/results.tex"] });
+    removed(file({ path: "sections", id: "sections-id", kind: "dir" }));
+    await useRemovedNotices.getState().restore("sections-id");
+    expect(mocks.collabTrashRestore).toHaveBeenCalledWith("paper", "sections-id");
+    expect(useRemovedNotices.getState().notices).toEqual([]);
+    expect(mocks.collabLiveFlush).not.toHaveBeenCalled();
+    expect(mocks.openFile).not.toHaveBeenCalled();
+  });
+
+  it("does not reopen the file when another project opened while the change was saved", async () => {
+    removed(file());
+    mocks.collabLiveFlush.mockImplementationOnce(async () => {
+      useFilesStore.setState({ projectId: "other" });
+    });
+    await useRemovedNotices.getState().restore("results-id");
+    expect(mocks.refreshTree).not.toHaveBeenCalled();
+    expect(mocks.openFile).not.toHaveBeenCalled();
+  });
+
+  it("does not reopen the file when another project opened while the file list reloaded", async () => {
+    removed(file());
+    mocks.refreshTree.mockImplementationOnce(async () => {
+      useFilesStore.setState({ projectId: "other", tree: [{ path: "sections/results.tex", is_dir: false }] });
+      return true;
+    });
+    await useRemovedNotices.getState().restore("results-id");
+    expect(mocks.openFile).not.toHaveBeenCalled();
+  });
+
+  it("restores one file at a time and ignores a notice it does not have", async () => {
+    removed(file(), file({ path: "ai2.tex", id: "ai2-id" }));
+    const first = deferred<undefined>();
+    mocks.collabTrashRestore.mockReturnValueOnce(first.promise);
+    const restoring = useRemovedNotices.getState().restore("results-id");
+    expect(useRemovedNotices.getState().restoring).toBe("results-id");
+    await useRemovedNotices.getState().restore("ai2-id");
+    await useRemovedNotices.getState().restore("missing-id");
+    expect(mocks.collabTrashRestore).toHaveBeenCalledExactlyOnceWith("paper", "results-id");
+    first.resolve(undefined);
+    await restoring;
+    expect(useRemovedNotices.getState().notices.map((notice) => notice.id)).toEqual(["ai2-id"]);
+  });
+
+  it("drops the reason a restore failed along with the notice when it is dismissed", async () => {
+    removed(file(), file({ path: "ai2.tex", id: "ai2-id" }));
+    mocks.collabTrashRestore.mockRejectedValueOnce({ code: "forbidden", message: "no" });
+    await useRemovedNotices.getState().restore("results-id");
+    useRemovedNotices.getState().dismiss("ai2-id");
+    expect(useRemovedNotices.getState().failure).toEqual({ id: "results-id", code: "forbidden" });
+    useRemovedNotices.getState().dismiss("results-id");
+    expect(useRemovedNotices.getState()).toMatchObject({ notices: [], failure: null });
+  });
+
+  it("drops the reason a restore failed when someone else brings the file back", async () => {
+    removed(file(), file({ path: "ai2.tex", id: "ai2-id" }));
+    mocks.collabTrashRestore.mockRejectedValueOnce({ code: "forbidden", message: "no" });
+    await useRemovedNotices.getState().restore("results-id");
+    restoredElsewhere("ai2-id");
+    expect(useRemovedNotices.getState().failure).toEqual({ id: "results-id", code: "forbidden" });
+    restoredElsewhere("results-id");
+    expect(useRemovedNotices.getState()).toMatchObject({ notices: [], failure: null });
+  });
+
+  it("forgets a notice without telling the app when no project is open", async () => {
+    stop();
+    stop = () => {};
+    useRemovedNotices.setState({ notices: [{ id: "plan-id", path: "plan.tex", kind: "text", by: BOB, yours: true }] });
+    useRemovedNotices.getState().dismiss("plan-id");
+    await settle();
+    expect(useRemovedNotices.getState().notices).toEqual([]);
+    expect(mocks.collabLiveRemovedDismiss).not.toHaveBeenCalled();
+  });
+
+  it("ignores a file brought back after the notices stopped", () => {
+    removed(file());
+    stop();
+    stop = () => {};
+    const before = useRemovedNotices.getState();
+    restoredElsewhere("results-id");
+    expect(useRemovedNotices.getState()).toBe(before);
+    expect(before).toMatchObject({ projectId: null, notices: [] });
+  });
+
+  it("asks for the people list only when the person who deleted the file is new to it", () => {
+    const original = useCollabLiveStore.getState().refreshMembers;
+    const refreshMembers = vi.fn(async () => {});
+    useCollabLiveStore.setState({ refreshMembers, members: [projectMember(person({ account_id: BOB }))] });
+    try {
+      removed(file());
+      expect(refreshMembers).not.toHaveBeenCalled();
+      removed(file({ path: "ai2.tex", id: "ai2-id", by: null }));
+      expect(refreshMembers).not.toHaveBeenCalled();
+      removed(file({ path: "ai2.tex", id: "ai2-id", by: "acct-carol" }));
+      expect(refreshMembers).toHaveBeenCalledOnce();
+      expect(useRemovedNotices.getState().notices.map((notice) => notice.id)).toEqual(["ai2-id", "results-id"]);
+    } finally {
+      useCollabLiveStore.setState({ refreshMembers: original, members: [] });
+    }
+  });
+
+  it("looks up nothing when the project closes", async () => {
+    removed(file());
+    mocks.collabLiveRemovedList.mockClear();
+    useFilesStore.setState({ projectId: null });
+    await settle();
+    expect(mocks.collabLiveRemovedList).not.toHaveBeenCalled();
+    expect(useRemovedNotices.getState()).toMatchObject({ projectId: null, notices: [] });
+  });
+});
+
+describe("following a local copy", () => {
+  it("leaves the open project alone when a different one became a local copy", async () => {
+    mocks.refreshProjects.mockImplementation(async () => {
+      useFilesStore.setState({ projects: [libraryProject({ id: "paper", name: "R3 Paper (local copy)" })] });
+    });
+    await followLocalCopies(["thesis"]);
+    expect(mocks.refreshProjects).toHaveBeenCalledOnce();
+    expect(useFilesStore.getState().projectName).toBe("R3 Paper");
+    useFilesStore.setState({ projectId: null });
+    await followLocalCopies(["paper"]);
+    expect(useFilesStore.getState().projectName).toBe("R3 Paper");
+  });
+
+  it("keeps the name when the library has no newer one", async () => {
+    await followLocalCopies(["paper"]);
+    expect(useFilesStore.getState().projectName).toBe("R3 Paper");
+    mocks.refreshProjects.mockImplementation(async () => {
+      useFilesStore.setState({ projects: [libraryProject({ id: "paper", name: "R3 Paper" })] });
+    });
+    await followLocalCopies(["paper"]);
+    expect(useFilesStore.getState().projectName).toBe("R3 Paper");
+  });
+
+  it("reloads the sharing details only for the project live editing follows", async () => {
+    const original = useCollabLiveStore.getState().refreshShare;
+    const refreshShare = vi.fn(async () => {});
+    useCollabLiveStore.setState({ refreshShare, projectId: "thesis" });
+    try {
+      await followLocalCopies(["paper"]);
+      expect(refreshShare).not.toHaveBeenCalled();
+      useCollabLiveStore.setState({ projectId: "paper" });
+      await followLocalCopies(["paper"]);
+      expect(refreshShare).toHaveBeenCalledOnce();
+    } finally {
+      useCollabLiveStore.setState({ refreshShare: original });
+    }
   });
 });

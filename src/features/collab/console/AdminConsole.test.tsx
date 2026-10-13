@@ -1,12 +1,26 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { SERVER_ID, account, check, collabError, fill, member, runtimeSettings, server } from "../tests/fixtures";
-import { overview, projectsPage } from "./tests/fixtures";
+import { formatRelativeTimeFrom } from "@/lib/intl";
+import {
+  ALICE_ID,
+  SERVER_ID,
+  account,
+  check,
+  collabError,
+  deferred,
+  fill,
+  member,
+  runtimeSettings,
+  securityEvent,
+  server,
+} from "../tests/fixtures";
+import { allowRadixSelect } from "../tests/select";
+import { DAY, NOW, adminProject, overview, projectsPage } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabAdminOverview: vi.fn(),
@@ -37,6 +51,7 @@ const ADMIN = server({ account: account({ server_role: "admin" }) });
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  allowRadixSelect();
 });
 
 beforeEach(() => {
@@ -166,6 +181,66 @@ describe("AdminConsole", () => {
     expect(navItem("overview")).toHaveAttribute("aria-current", "page");
     await user.keyboard("a");
     expect(navItem("overview")).toHaveFocus();
+  });
+
+  it("marks nobody as you when the server lists no account for this computer", async () => {
+    const user = userEvent.setup();
+    render(<AdminConsole server={server({ account: null })} actor="admin" />);
+    await user.click(navItem("people"));
+    const alice = await screen.findByTestId(`collab-member-${ALICE_ID}`);
+    expect(alice).toHaveTextContent("Alice Chen");
+    expect(within(alice).queryByText(enCollab.admin.members.you)).toBeNull();
+  });
+
+  it("offers no sign-in names on the allowed list before the overview has loaded", async () => {
+    mocks.collabAdminOverview.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    await user.click(navItem("access"));
+    await screen.findByText(enCollab.admin.allowlist.empty);
+    await user.click(screen.getByRole("combobox", { name: enCollab.admin.allowlist.matchLabel }));
+    expect(await screen.findByRole("option", { name: enCollab.admin.allowlist.match.login })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("lists projects against this computer's clock and promises no deletion date before the overview loads", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(NOW + DAY);
+      mocks.collabAdminOverview.mockReturnValue(new Promise(() => undefined));
+      mocks.collabAdminProjects.mockResolvedValue(projectsPage([adminProject()]));
+      const user = userEvent.setup();
+      render(<AdminConsole server={ADMIN} actor="admin" />);
+      await user.click(navItem("projects"));
+      expect(
+        await screen.findByText(formatRelativeTimeFrom(adminProject().last_activity_at, NOW + DAY)),
+      ).toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: fill(copy.projects.archiveNamed, { title: "Grant proposal" }) }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(copy.projects.archiveConfirm.descriptionLater);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("names people in the log once the member list arrives", async () => {
+    const people = deferred<ReturnType<typeof member>[]>();
+    mocks.collabAdminMembers.mockReturnValue(people.promise);
+    mocks.collabAdminSecurityLog.mockResolvedValue({ items: [securityEvent()], next_cursor: null });
+    const user = userEvent.setup();
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    await user.click(navItem("log"));
+    const [entry] = await screen.findAllByRole("listitem");
+    expect(entry).toHaveTextContent(enCollab.admin.log.unknownAccount);
+    await act(async () => {
+      people.resolve([member({ server_role: "admin" })]);
+      await people.promise;
+    });
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(`Alice Chen · ${enCollab.admin.log.kinds.signIn}`);
   });
 
   it("follows the overview's links to email and settings", async () => {

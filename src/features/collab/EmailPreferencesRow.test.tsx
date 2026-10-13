@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -138,6 +138,19 @@ describe("EmailPreferencesRow", () => {
     await screen.findByRole("switch", { name: copy.label });
     expect(screen.queryByRole("switch", { name: copy.mentionsLabel })).toBeNull();
     expect(screen.queryByText(copy.mentionsDescription)).toBeNull();
+  });
+
+  it("ignores a late failure from the server it showed before", async () => {
+    let failEarlier: (reason: unknown) => void = () => undefined;
+    mocks.collabEmailPreferences
+      .mockReturnValueOnce(new Promise((_resolve, reject) => (failEarlier = reject)))
+      .mockResolvedValue(preferences());
+    const view = render(<EmailPreferencesRow serverId="server-old" />);
+    view.rerender(<EmailPreferencesRow serverId={SERVER_ID} />);
+    await screen.findByRole("switch", { name: copy.label });
+    await act(async () => failEarlier(collabError("unreachable")));
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
   });
 
   it("says so quietly when the setting cannot load", async () => {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { StrictMode } from "react";
 import { act, render, screen } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -50,6 +51,18 @@ describe("CollaborationSection and Add to Oleafly links", () => {
     render(<CollaborationSection />);
     await act(async () => {});
     expect(screen.queryByRole("heading", { name: enCollab.addServer.title })).not.toBeInTheDocument();
+  });
+
+  it("opens the dialog once with the link's address when effects run twice in development", async () => {
+    useAddServerRequest.getState().ask(ADDRESS);
+    render(
+      <StrictMode>
+        <CollaborationSection />
+      </StrictMode>,
+    );
+    expect(await screen.findByRole("textbox", { name: enCollab.addServer.addressLabel })).toHaveValue(ADDRESS);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(useAddServerRequest.getState().url).toBeNull();
   });
 
   it("opens the dialog when a link asks while the section is already showing", async () => {

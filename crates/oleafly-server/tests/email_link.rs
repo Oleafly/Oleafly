@@ -282,12 +282,17 @@ async fn a_newer_link_replaces_the_older_one() {
     browser
         .submit(&form(&start), &[("email", "ada@uni.edu")])
         .await;
+    let older = link_in(&latest_email(&setup.smtp, 1).await);
     browser
         .submit(&form(&start), &[("email", "ada@uni.edu")])
         .await;
-    let newest = link_in(&latest_email(&setup.smtp, 2).await);
-    let older = link_in(&sign_in_emails(&setup.smtp)[0]);
-    assert_ne!(older, newest);
+    let both = wait_for_sign_in_emails(&setup.smtp, 2).await;
+    assert_eq!(both.len(), 2, "expected 2 sign-in emails");
+    let newest = both
+        .iter()
+        .map(link_in)
+        .find(|link| *link != older)
+        .expect("the second email carries a new link");
     let refused = open_link(&browser, &older).await;
     assert_eq!(refused.status, 400);
     landing(&open_link(&browser, &newest).await);

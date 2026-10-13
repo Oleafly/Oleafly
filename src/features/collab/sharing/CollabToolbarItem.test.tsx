@@ -139,6 +139,13 @@ describe("CollabShareButton", () => {
     for (const words of Object.values(sync)) expect(screen.queryByRole("button", { name: words })).toBeNull();
   });
 
+  it("draws nothing while no project is open", () => {
+    useFilesStore.setState({ projectId: null });
+    const { container } = render(<CollabShareButton />);
+    expect(container).toBeEmptyDOMElement();
+    expect(mocks.collabServersList).not.toHaveBeenCalled();
+  });
+
   it("keeps the plain Share tooltip while the project is not shared", () => {
     vi.useFakeTimers();
     try {
@@ -378,6 +385,37 @@ describe("CollabToolbarItem", () => {
       expect(rows).toHaveLength(2);
       expect(rows[0]).toHaveTextContent(/^Eli.*Eli\.tex$/);
       expect(rows[0]).toHaveClass("whitespace-nowrap");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("marks a guest among the people the counter hides", () => {
+    vi.useFakeTimers();
+    try {
+      const names = ["Ann", "Ben", "Cat", "Dev", "Eli", "Fay"];
+      const peers = Object.fromEntries(
+        names.map((name, index) => [
+          `d${index}`,
+          { ...peer(`d${index}`, `acc-${name}`, `${name}.tex`), person: person({ account_id: `acc-${name}`, display_name: name }) },
+        ]),
+      );
+      liveShared({ state: "online" }, 0, peers);
+      useCollabLiveStore.setState({
+        members: [
+          projectMember(BOB, "owner"),
+          projectMember(person({ account_id: "acc-Fay", display_name: "Fay", guest: true }), "viewer"),
+        ],
+      });
+      const { container } = render(<CollabToolbarItem />);
+      const more = container.querySelector('[data-slot="avatar-more"]') as HTMLElement;
+      const tip = hover(more.parentElement as Element);
+      const rows = [...tip.querySelectorAll('[data-slot="hidden-person"]')];
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveTextContent(/^EliEli\.tex$/);
+      expect(rows[1]).toHaveTextContent(
+        `Fay${enCollab.projectRoles.viewer} · ${enCollab.guests.badge} · Fay.tex`,
+      );
     } finally {
       vi.useRealTimers();
     }

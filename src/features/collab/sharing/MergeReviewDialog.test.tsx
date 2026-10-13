@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { useCollabLiveStore } from "../live/live-store";
-import { BOB, BOB_ID, CAROL_ID, collabError, fill, person, projectMember } from "../tests/fixtures";
+import type { CollabMergeReviewFile } from "@/lib/tauri";
+import { BOB, BOB_ID, CAROL_ID, collabError, deferred, fill, person, projectMember } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({ collabMergeReview: vi.fn() }));
 
@@ -98,5 +99,53 @@ describe("MergeReviewDialog", () => {
     mocks.collabMergeReview.mockRejectedValue(collabError("internal", "gone"));
     render(<MergeReviewDialog projectId="grant" entry={entry} onClose={onClose} />);
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.failed);
+  });
+
+  it("asks for the merge with empty versions and leaves out people when none were recorded", async () => {
+    mocks.collabMergeReview.mockResolvedValue([]);
+    render(<MergeReviewDialog projectId="grant" entry={{ files: entry.files, authors: [] }} onClose={onClose} />);
+    expect(await screen.findByText(copy.noText)).toBeInTheDocument();
+    expect(mocks.collabMergeReview).toHaveBeenCalledWith("grant", "", "");
+    expect(screen.queryByRole("list", { name: copy.people })).toBeNull();
+    expect(screen.queryByText(copy.people)).toBeNull();
+  });
+
+  it("marks a file the merge removed and counts no changes for a file the entry did not list", async () => {
+    mocks.collabMergeReview.mockResolvedValue([{ path: "old.tex", before: "gone text", after: null }]);
+    render(<MergeReviewDialog projectId="grant" entry={entry} onClose={onClose} />);
+    const files = await screen.findByRole("list", { name: copy.files });
+    expect(within(files).getByText(fill(enCollab.activity.mergedFile, { path: "old.tex", number: "0" }))).toBeInTheDocument();
+    expect(within(files).getByText(copy.removedFile)).toBeInTheDocument();
+    expect(within(files).queryByText(copy.newFile)).toBeNull();
+    expect(within(files).getByTestId("diff")).toHaveTextContent("gone text|");
+  });
+
+  it("shows the merge it was last asked for when an earlier review answers late", async () => {
+    const stale = deferred<CollabMergeReviewFile[]>();
+    mocks.collabMergeReview.mockImplementation((_project: string, before: string) =>
+      before === "before-mark" ? stale.promise : Promise.resolve([{ path: "next.tex", before: "a", after: "b" }]),
+    );
+    const view = render(<MergeReviewDialog projectId="grant" entry={entry} onClose={onClose} />);
+    const next = { ...entry, review: { before: "next-before", after: "next-after" } };
+    view.rerender(<MergeReviewDialog projectId="grant" entry={next} onClose={onClose} />);
+    expect(await screen.findByTestId("diff")).toHaveAttribute("data-path", "next.tex");
+    await act(async () => stale.resolve([{ path: "main.tex", before: "old", after: "new" }]));
+    expect(screen.getAllByTestId("diff").map((diff) => diff.dataset.path)).toEqual(["next.tex"]);
+  });
+
+  it("does not report a failure from a review it no longer shows", async () => {
+    const stale = deferred<CollabMergeReviewFile[]>();
+    mocks.collabMergeReview.mockImplementation((_project: string, before: string) =>
+      before === "before-mark" ? stale.promise : Promise.resolve([{ path: "next.tex", before: "a", after: "b" }]),
+    );
+    const view = render(<MergeReviewDialog projectId="grant" entry={entry} onClose={onClose} />);
+    await waitFor(() => expect(mocks.collabMergeReview).toHaveBeenCalledTimes(1));
+    view.rerender(
+      <MergeReviewDialog projectId="grant" entry={{ ...entry, review: { before: "b2", after: "a2" } }} onClose={onClose} />,
+    );
+    expect(await screen.findByTestId("diff")).toBeInTheDocument();
+    await act(async () => stale.reject(collabError("internal")));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByTestId("diff")).toHaveAttribute("data-path", "next.tex");
   });
 });

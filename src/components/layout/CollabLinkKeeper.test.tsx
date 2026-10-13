@@ -85,6 +85,22 @@ describe("CollabLinkKeeper", () => {
     expect(mocks.unlisten).toHaveBeenCalledOnce();
   });
 
+  it("lets go of a listener that starts after the app root already unmounted, and drains nothing", async () => {
+    let listening: (unlisten: () => void) => void = () => undefined;
+    mocks.onCollabOpenLink.mockReturnValue(new Promise((resolve) => (listening = resolve)));
+    const view = render(<CollabLinkKeeper />);
+    view.unmount();
+    await act(async () => listening(mocks.unlisten));
+    expect(mocks.unlisten).toHaveBeenCalledOnce();
+    expect(mocks.collabPendingLinks).not.toHaveBeenCalled();
+  });
+
+  it("still drains the waiting links when it cannot listen for new ones", async () => {
+    mocks.onCollabOpenLink.mockRejectedValue(new Error("no event bridge"));
+    render(<CollabLinkKeeper />);
+    await waitFor(() => expect(mocks.collabPendingLinks).toHaveBeenCalledOnce());
+  });
+
   it("stays off outside the desktop app", async () => {
     mocks.tauri = false;
     render(<CollabLinkKeeper />);

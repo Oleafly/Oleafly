@@ -275,3 +275,222 @@ describe("RemoteDocumentSession", () => {
     }
   });
 });
+
+describe("RemoteDocumentSession recovery", () => {
+  function scripted(...answers: CollabDocOpened[]) {
+    const listeners: ((message: CollabDocMessage) => void)[] = [];
+    const transport = {
+      open: vi.fn((_path: string, onMessage: (message: CollabDocMessage) => void) => {
+        listeners.push(onMessage);
+        return Promise.resolve<CollabDocOpened>(answers.shift() ?? { file_id: "again", rev: 9, text: "fresh" });
+      }),
+      change: vi.fn<RemoteSessionTransport["change"]>(),
+      close: vi.fn(),
+    };
+    return { transport, listeners };
+  }
+
+  it("ignores an empty edit", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, onText } = await opened(channel);
+    onText.mockClear();
+    session.applyLocal([], session.version());
+    expect(session.version()).toBe(0);
+    expect(channel.sent).toEqual([]);
+    expect(onText).not.toHaveBeenCalled();
+  });
+
+  it("sends all the typing done while opening as one change", async () => {
+    const channel = new FakeChannel("abc");
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    const transport = channel.transport();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: {
+        ...transport,
+        open: (path, onMessage) =>
+          new Promise((resolve) => {
+            release = resolve;
+            void transport.open(path, onMessage);
+          }),
+      },
+    });
+    const editor = new Editor(session);
+    const opening = session.open();
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 0, to: 0, insert: ">" }]);
+    release({ file_id: "file-0", rev: channel.rev, text: channel.text });
+    await opening;
+    expect(channel.sent).toEqual([{ client: "file-0", rev: 0, op: [">", 3, "d"] }]);
+    channel.drain();
+    expect(channel.text).toBe(">abcd");
+  });
+
+  it("sends nothing for typing while opening that the shared text already has", async () => {
+    const channel = new FakeChannel("ac");
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    const transport = channel.transport();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: {
+        ...transport,
+        open: (path, onMessage) =>
+          new Promise((resolve) => {
+            release = resolve;
+            void transport.open(path, onMessage);
+          }),
+      },
+    });
+    const editor = new Editor(session);
+    const opening = session.open();
+    editor.type([{ from: 1, to: 2, insert: "" }]);
+    release({ file_id: "file-0", rev: channel.rev, text: channel.text });
+    await opening;
+    expect(channel.sent).toEqual([]);
+    expect(session.text()).toBe("ac");
+    expect(session.synchronized).toBe(true);
+  });
+
+  it("stays closed once closed", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, id } = await opened(channel);
+    session.close();
+    session.close();
+    await session.open();
+    expect(channel.closes).toEqual([id]);
+    expect(channel.opens).toHaveLength(1);
+    expect(session.phase).toBe("closed");
+  });
+
+  it("closes nothing when it was closed while a file that is not shared was opening", async () => {
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    const close = vi.fn();
+    const session = new RemoteDocumentSession("notes.txt", "local", {
+      transport: { open: () => new Promise((resolve) => (release = resolve)), change: vi.fn(), close },
+    });
+    const opening = session.open();
+    session.close();
+    release(null);
+    await opening;
+    expect(close).not.toHaveBeenCalled();
+    expect(session.phase).toBe("closed");
+  });
+
+  it("closes a file that finished opening after the session was closed, and is settled at once", async () => {
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    const close = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: { open: () => new Promise((resolve) => (release = resolve)), change: vi.fn(), close },
+    });
+    const opening = session.open();
+    session.close();
+    release({ file_id: "late", rev: 0, text: "abc" });
+    await opening;
+    expect(close).toHaveBeenCalledExactlyOnceWith("late");
+    let settled = false;
+    void session.settled().then(() => (settled = true));
+    await flush();
+    expect(settled).toBe(true);
+  });
+
+  it("ignores messages from a document it has opened again since", async () => {
+    const { transport, listeners } = scripted(
+      { file_id: "first", rev: 0, text: "abc" },
+      { file_id: "second", rev: 0, text: "abc" },
+    );
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport });
+    await session.open();
+    await session.open();
+    listeners[0]({ kind: "remote", rev: 1, op: ["x", 3], length: 4 });
+    expect(session.text()).toBe("abc");
+    listeners[1]({ kind: "remote", rev: 1, op: ["x", 3], length: 4 });
+    expect(session.text()).toBe("xabc");
+  });
+
+  it("stops replaying queued messages once one of them makes it reopen", async () => {
+    let release: (value: CollabDocOpened | null) => void = () => {};
+    let deliver: (message: CollabDocMessage) => void = () => {};
+    const open = vi.fn((_path: string, onMessage: (message: CollabDocMessage) => void) => {
+      if (open.mock.calls.length > 1) return Promise.resolve({ file_id: "again", rev: 9, text: "fresh" });
+      deliver = onMessage;
+      return new Promise<CollabDocOpened | null>((resolve) => (release = resolve));
+    });
+    const close = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "", { transport: { open, change: vi.fn(), close } });
+    const opening = session.open();
+    deliver({ kind: "remote", rev: 3, op: [3, "b"], length: 99 });
+    deliver({ kind: "ack", rev: 4, length: 4 });
+    release({ file_id: "first", rev: 2, text: "xya" });
+    await opening;
+    await flush();
+    expect(close).toHaveBeenCalledExactlyOnceWith("first");
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(session.text()).toBe("fresh");
+    expect(session.phase).toBe("open");
+  });
+
+  it("reopens on a confirmation it was not waiting for", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, id } = await opened(channel);
+    channel.clients.get(id)?.outbox.push({ kind: "ack", rev: 1, length: 3 });
+    channel.deliverOne(id);
+    await flush();
+    expect(channel.closes).toEqual([id]);
+    expect(channel.opens).toHaveLength(2);
+    expect(session.phase).toBe("open");
+  });
+
+  it("reopens when a confirmed change leaves the length out of step", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    channel.inbox.length = 0;
+    channel.clients.get(id)?.outbox.push({ kind: "ack", rev: 1, length: 99 });
+    channel.deliverOne(id);
+    await flush();
+    expect(channel.closes).toEqual([id]);
+    expect(channel.opens).toHaveLength(2);
+    expect(session.text()).toBe("abc");
+  });
+
+  it("reopens when sending a change fails", async () => {
+    const { transport } = scripted(
+      { file_id: "first", rev: 0, text: "abc" },
+      { file_id: "second", rev: 1, text: "abcd" },
+    );
+    transport.change.mockRejectedValueOnce(new Error("gone"));
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport });
+    const editor = new Editor(session);
+    await session.open();
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    await flush();
+    expect(transport.close).toHaveBeenCalledWith("first");
+    expect(transport.open).toHaveBeenCalledTimes(2);
+    expect(session.text()).toBe("abcd");
+    expect(editor.doc).toBe("abcd");
+  });
+
+  it("stays closed when a change sent before closing fails afterwards", async () => {
+    const { transport } = scripted({ file_id: "first", rev: 0, text: "abc" });
+    let fail: (error: Error) => void = () => {};
+    transport.change.mockReturnValueOnce(new Promise<void>((_, reject) => (fail = reject)));
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport });
+    await session.open();
+    session.applyLocal([{ from: 3, to: 3, insert: "d" }], session.version());
+    session.close();
+    fail(new Error("gone"));
+    await flush();
+    expect(transport.open).toHaveBeenCalledOnce();
+    expect(session.phase).toBe("closed");
+  });
+
+  it("stays closed when a listener closes it while a bad change arrives", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, id } = await opened(channel);
+    session.subscribe(() => session.close());
+    channel.clients.get(id)?.outbox.push({ kind: "remote", rev: 1, op: [3, "!"], length: 99 });
+    channel.deliverOne(id);
+    await flush();
+    expect(channel.opens).toHaveLength(1);
+    expect(session.phase).toBe("closed");
+  });
+});
+

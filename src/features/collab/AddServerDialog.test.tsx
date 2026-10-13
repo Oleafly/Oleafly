@@ -4,8 +4,9 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import type { CollabServer, CollabSignInCode } from "@/lib/tauri";
+import type { CollabCapabilities, CollabServer, CollabSignInCode } from "@/lib/tauri";
 import { COLLAB_ERROR_CODES, collabErrorMessage } from "./errors";
 import { account, capabilities, collabError, deferred, fill, server } from "./tests/fixtures";
 
@@ -89,6 +90,7 @@ describe("normalizeServerAddress", () => {
     );
     expect(normalizeServerAddress(" OLEAFLY://server/add/?url=collab.uni.edu ")).toBe("https://collab.uni.edu");
     expect(normalizeServerAddress("oleafly://server/add?url=")).toBe("oleafly://server/add?url=");
+    expect(normalizeServerAddress("oleafly://server/add?name=lab")).toBe("oleafly://server/add?name=lab");
   });
 });
 
@@ -406,5 +408,114 @@ describe("AddServerDialog", () => {
     await user.click(await screen.findByRole("button", { name: copy.done }));
     expect(onClose).toHaveBeenCalled();
     expect(mocks.collabServerSignInCancel).not.toHaveBeenCalled();
+  });
+
+  it("copies the code or the address and marks only the one copied", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    codeSignInShowing(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await screen.findByText("BCDF-GHJK");
+    const [addressCopy, codeCopy] = screen.getAllByRole("button", { name: enCommon.actions.copy });
+    await user.click(codeCopy);
+    expect(await navigator.clipboard.readText()).toBe("BCDF-GHJK");
+    expect(codeCopy).toHaveAccessibleName(enCommon.actions.copied);
+    expect(addressCopy).toHaveAccessibleName(enCommon.actions.copy);
+    await user.click(addressCopy);
+    expect(await navigator.clipboard.readText()).toBe("https://collab.uni.edu/auth/device");
+    expect(addressCopy).toHaveAccessibleName(enCommon.actions.copied);
+    expect(codeCopy).toHaveAccessibleName(enCommon.actions.copy);
+  });
+
+  it("does not check an address of only spaces handed in by a link", () => {
+    renderDialog("   ");
+    expect(mocks.collabServerProbe).not.toHaveBeenCalled();
+    expectHeader(copy.title, copy.description);
+    expect(screen.getByRole("button", { name: copy.continue })).toBeDisabled();
+  });
+
+  it("keeps the newest address when an older check comes back late", async () => {
+    const slow = deferred<CollabCapabilities>();
+    const failing = deferred<CollabCapabilities>();
+    mocks.collabServerProbe.mockImplementation((url: string) => {
+      if (url === "https://old.uni.edu") return slow.promise;
+      if (url === "https://down.uni.edu") return failing.promise;
+      return Promise.resolve(capabilities());
+    });
+    const onClose = vi.fn();
+    const { rerender } = render(<AddServerDialog open initialUrl="https://old.uni.edu" onClose={onClose} />);
+    rerender(<AddServerDialog open initialUrl="https://down.uni.edu" onClose={onClose} />);
+    rerender(<AddServerDialog open initialUrl="https://collab.uni.edu" onClose={onClose} />);
+    await screen.findByRole("button", { name: github });
+    await act(async () => {
+      slow.resolve(capabilities({ name: "Old Lab" }));
+      failing.reject(collabError("unreachable"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expectHeader(fill(copy.serverTitle, { server: "Smith Lab" }), copy.serverDescription);
+    expect(screen.queryByText("Old Lab")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("stays on the sign-in options when a cancelled browser sign-in finishes anyway", async () => {
+    const pending = deferred<CollabServer>();
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    mocks.collabServerSignIn.mockReturnValue(pending.promise);
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: github }));
+    await user.click(screen.getByRole("button", { name: copy.cancel }));
+    await act(async () => {
+      pending.resolve(server());
+      await pending.promise;
+    });
+    expect(screen.getByRole("button", { name: github })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: copy.done })).toBeNull();
+  });
+
+  it("drops a cancelled code sign-in, whatever it reports later", async () => {
+    const codes: Array<(code: CollabSignInCode) => void> = [];
+    const first = deferred<CollabServer>();
+    const second = deferred<CollabServer>();
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    mocks.collabServerCodeSignIn
+      .mockImplementationOnce((_url: string, _setup: string | undefined, onCode: (code: CollabSignInCode) => void) => {
+        codes.push(onCode);
+        return first.promise;
+      })
+      .mockImplementationOnce(() => second.promise);
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    expect(screen.getByText(copy.codeRequesting)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: copy.cancel }));
+    await act(async () => {
+      codes[0]?.(shownCode);
+      first.resolve(server());
+      await first.promise;
+    });
+    expect(screen.queryByText("BCDF-GHJK")).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.done })).toBeNull();
+    await user.click(screen.getByRole("button", { name: copy.codeSignIn }));
+    await user.click(screen.getByRole("button", { name: copy.cancel }));
+    await act(async () => {
+      second.reject(collabError("sign_in_timed_out"));
+      await second.promise.catch(() => undefined);
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: github })).toBeEnabled();
+  });
+
+  it("names the server when the sign-in comes back without an account", async () => {
+    await signInAs(server({ account: null }));
+    expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneDescription, { name: "Smith Lab" }));
+    expect(document.querySelector('[data-slot="avatar"]')).toBeNull();
+  });
+
+  it("leaves out the account line when the account has no address or sign-in name", async () => {
+    await signInAs(server({ account: account({ emails: [], logins: [] }) }));
+    expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneDescription, { name: "Alice Chen" }));
+    expect(document.querySelector('[data-slot="avatar"]')).toBeNull();
   });
 });

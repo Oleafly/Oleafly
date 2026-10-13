@@ -134,6 +134,78 @@ describe("Popover", () => {
     expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
   });
 
+  it("ignores touch hovers and forgets a pending hover when the popover goes away", () => {
+    vi.useFakeTimers();
+    try {
+      const onOpenChange = vi.fn();
+      const view = render(
+        <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover onOpenChange={onOpenChange}>
+          {"Details text"}
+        </Popover>,
+      );
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "touch" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      view.unmount();
+      act(() => vi.advanceTimersByTime(400));
+      expect(onOpenChange).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays open when the pointer comes back to the trigger of a clicked-open popover", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover closeOnClick={false}>
+          {"Details text"}
+        </Popover>,
+      );
+      open("Status");
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      fireEvent.pointerLeave(trigger, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("closes a hovered popover at once when it becomes disabled while the pointer is leaving", () => {
+    vi.useFakeTimers();
+    try {
+      function Harness() {
+        const [disabled, setDisabled] = useState(false);
+        return (
+          <>
+            <button type="button" onClick={() => setDisabled(true)}>
+              {"Disable"}
+            </button>
+            <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover disabled={disabled}>
+              {"Details text"}
+            </Popover>
+          </>
+        );
+      }
+      render(<Harness />);
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      fireEvent.pointerLeave(trigger, { pointerType: "mouse" });
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not open while disabled and closes when it becomes disabled", () => {
     function Harness() {
       const [disabled, setDisabled] = useState(false);

@@ -69,6 +69,26 @@ describe("writing through the shared document", () => {
   });
 });
 
+describe("what a failed shared write reports", () => {
+  beforeEach(() => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+  });
+
+  it("falls back to the failure's code when it carries no message", async () => {
+    mocks.collabWriteText.mockRejectedValue({ code: "conflict", message: "" });
+    const failure = await writeSharedText("paper", "main.tex", "new").catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toBe("conflict");
+  });
+
+  it("passes on a failure with neither message nor code, or a plain string, unchanged", async () => {
+    const bare = { detail: 4 };
+    mocks.collabWriteText.mockRejectedValueOnce(bare).mockRejectedValueOnce("offline");
+    await expect(writeSharedText("paper", "main.tex", "new")).rejects.toBe(bare);
+    await expect(writeSharedText("paper", "main.tex", "new")).rejects.toBe("offline");
+  });
+});
+
 describe("the base a writer hands to writeProjectFile", () => {
   it("is passed only for a live project, so other projects keep their exact call", () => {
     expect(sharedBaseOption("paper", "old")).toEqual([]);

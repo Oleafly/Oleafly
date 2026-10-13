@@ -199,6 +199,29 @@ describe("MembersTab", () => {
     expect(await within(rowOf(BOB_ID)).findByText(enCollab.section.devices.empty)).toBeInTheDocument();
   });
 
+  it("hides a member's devices again on a second click", async () => {
+    mocks.collabAdminMemberDevices.mockResolvedValue([device({ device_id: "d-7", name: "Bob's laptop" })]);
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob]} />);
+    const toggle = within(rowOf(BOB_ID)).getByRole("button", { name: copy.devices });
+    await user.click(toggle);
+    expect(await within(rowOf(BOB_ID)).findByTestId("collab-device-d-7")).toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(rowOf(BOB_ID)).queryByTestId("collab-device-d-7")).toBeNull();
+    expect(
+      within(rowOf(BOB_ID)).queryByRole("heading", { name: fill(copy.devicesTitle, { name: "Bob Smith" }) }),
+    ).toBeNull();
+  });
+
+  it("shows a role this version does not know as the server wrote it, without a picker", () => {
+    const later = member({ ...bob.account, server_role: "auditor" as never });
+    render(<Harness actor="admin" initial={[alice, later]} />);
+    expect(within(rowOf(BOB_ID)).getByText("auditor")).toBeInTheDocument();
+    expect(within(rowOf(BOB_ID)).queryByRole("combobox")).toBeNull();
+    expect(within(rowOf(BOB_ID)).queryByRole("button", { name: copy.suspend })).toBeNull();
+  });
+
   it("shows a removed account without any actions", () => {
     render(<Harness actor="admin" initial={[member(bob.account, "removed")]} />);
     expect(rowOf(BOB_ID)).toHaveTextContent(copy.removed);

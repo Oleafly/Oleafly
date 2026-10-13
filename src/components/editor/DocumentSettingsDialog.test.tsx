@@ -398,6 +398,27 @@ describe("DocumentSettingsDialog failures and storage", () => {
 });
 
 describe("DocumentSettingsDialog in a live shared project", () => {
+  it("shows a viewer the build variants without any way to change them", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+    try {
+      editorWith(MAIN);
+      mocks.options.mockResolvedValue({
+        fontPaths: [],
+        systemFonts: true,
+        reproducible: false,
+        inputs: {},
+        variants: { final: { draft: "false" } },
+      });
+      render(<DocumentSettingsDialog onClose={vi.fn()} />);
+      const section = await screen.findByTestId("document-settings-variants");
+      expect(within(section).getByText(enEditor.sharedSettingsViewer)).toBeInTheDocument();
+      expect(await within(section).findByLabelText(enEditor.typstVariants.name)).toBeDisabled();
+      expect(within(section).getByRole("button", { name: enEditor.typstVariants.add })).toBeDisabled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
   it("merges the settings into a closed main file from the text it read", async () => {
     useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
     try {

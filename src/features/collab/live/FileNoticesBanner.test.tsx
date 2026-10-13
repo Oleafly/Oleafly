@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabLiveKeptFile, CollabUploadFile } from "@/lib/tauri";
-import { BOB, BOB_ID, projectMember, shareInfo } from "../tests/fixtures";
+import { BOB, BOB_ID, collabError, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabUploadRetry: vi.fn(),
@@ -150,6 +150,17 @@ describe("FileNoticesBanner", () => {
     expect(screen.queryByRole("button", { name: copy.bringIn })).toBeNull();
     expect(screen.getByText(fill(copy.broughtIn, { name: "R4 Paper (local copy)" }))).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: copy.dismiss }));
+    expect(screen.queryByText(fill(copy.broughtIn, { name: "R4 Paper (local copy)" }))).toBeNull();
+  });
+
+  it("explains why the local copy's changes could not be brought in and keeps the offer", async () => {
+    mocks.collabLocalCopyBringIn.mockRejectedValue(collabError("unreachable"));
+    const offer = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex"] };
+    render(<FileNoticesBanner />);
+    act(() => useFileNotices.setState({ projectId: "paper", offer }));
+    await userEvent.click(screen.getByRole("button", { name: copy.bringIn }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(screen.getByRole("button", { name: copy.bringIn })).toBeEnabled();
     expect(screen.queryByText(fill(copy.broughtIn, { name: "R4 Paper (local copy)" }))).toBeNull();
   });
 

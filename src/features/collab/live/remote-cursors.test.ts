@@ -160,3 +160,63 @@ describe("remote cursors", () => {
     expect(view.contentDOM.querySelector(".cm-remote-flash")).toBeNull();
   });
 });
+
+describe("remote cursor edges", () => {
+  it("never places a caret inside a character or at a position that is not a number", async () => {
+    const source = new Source();
+    source.list = [
+      { id: "mid", name: null, hue: 10, head: 2, anchor: 2 },
+      { id: "nan", name: null, hue: 20, head: Number.NaN, anchor: Number.POSITIVE_INFINITY },
+    ];
+    const view = editor(source, "a😀b");
+    await tick();
+    expect(remoteCursorsIn(view.state)).toEqual([
+      { id: "mid", name: null, hue: 10, head: 1, anchor: 1 },
+      { id: "nan", name: null, hue: 20, head: 0, anchor: 0 },
+    ]);
+  });
+
+  it("draws once for several quick updates and not at all once the editor is gone", async () => {
+    const source = new Source();
+    const view = editor(source);
+    await tick();
+    const dispatch = vi.spyOn(view, "dispatch");
+    source.set([bob]);
+    source.set([{ ...bob, head: 3 }]);
+    await tick();
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(remoteCursorsIn(view.state)).toEqual([{ ...bob, head: 3 }]);
+    source.set([]);
+    view.destroy();
+    await tick();
+    expect(dispatch).toHaveBeenCalledOnce();
+  });
+
+  it("has no carets to show or tint in an editor without them", () => {
+    const view = new EditorView({ state: EditorState.create({ doc: "plain" }), parent: document.body });
+    views.push(view);
+    expect(remoteCursorsIn(view.state)).toEqual([]);
+    expect(flashRemoteCursor(view, bob.id)).toBe(false);
+  });
+
+  it("keeps the newer tint when an older one runs out", async () => {
+    vi.useFakeTimers();
+    try {
+      const source = new Source();
+      const carol: RemoteCursor = { id: "device-carol", name: null, hue: 280, head: 14, anchor: 14 };
+      source.list = [{ ...bob, name: null, head: 1, anchor: 1 }, carol];
+      const view = editor(source, "first line\nsecond line\nthird line");
+      await tick();
+      flashRemoteCursor(view, bob.id);
+      vi.advanceTimersByTime(REMOTE_FLASH_MS / 2);
+      flashRemoteCursor(view, carol.id);
+      vi.advanceTimersByTime(REMOTE_FLASH_MS / 2);
+      expect(view.contentDOM.querySelector(".cm-remote-flash")?.textContent).toBe("second line");
+      vi.advanceTimersByTime(REMOTE_FLASH_MS / 2);
+      expect(view.contentDOM.querySelector(".cm-remote-flash")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+

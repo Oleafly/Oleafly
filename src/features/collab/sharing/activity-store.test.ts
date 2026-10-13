@@ -115,4 +115,24 @@ describe("useCollabActivity", () => {
     useCollabActivity.getState().add(entry("online", 1));
     expect(useCollabActivity.getState().entries).toEqual([]);
   });
+
+  it("reads a stored feed without entries as empty but keeps its unread mark", () => {
+    localStorage.setItem(activityKey("grant"), JSON.stringify({ entries: "broken", unread: true }));
+    useCollabActivity.getState().open("grant");
+    expect(useCollabActivity.getState()).toMatchObject({ projectId: "grant", entries: [], unread: true });
+  });
+
+  it("clears the unread mark without a project and stores nothing", () => {
+    useCollabActivity.setState({ projectId: null, entries: [], unread: true });
+    useCollabActivity.getState().markRead();
+    expect(useCollabActivity.getState().unread).toBe(false);
+    expect(localStorage.length).toBe(0);
+  });
+
+  it("closes the feed when no project is open", () => {
+    useCollabActivity.getState().open("grant");
+    useCollabActivity.getState().add(entry("online", 1));
+    useCollabActivity.getState().open(null);
+    expect(useCollabActivity.getState()).toEqual(expect.objectContaining({ projectId: null, entries: [], unread: false }));
+  });
 });

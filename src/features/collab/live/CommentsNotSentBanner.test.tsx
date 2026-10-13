@@ -88,6 +88,19 @@ describe("CommentsNotSentBanner", () => {
     expect(await screen.findByRole("button", { name: enCommon.actions.copied })).toBeInTheDocument();
   });
 
+  it("says so on the button when the comments could not be copied", async () => {
+    useCollabLiveStore.setState({ commentsNotSent: written });
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {
+      throw new Error("clipboard blocked");
+    });
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<CommentsNotSentBanner />);
+    await user.click(screen.getByRole("button", { name: copy.copy }));
+    expect(await screen.findByRole("button", { name: copy.copyFailed })).toBeInTheDocument();
+    expect(toasts.toast.error).not.toHaveBeenCalled();
+  });
+
   it("quotes every line of a quote that spans lines", () => {
     expect(notSentText([{ fileId: "f", path: "a.tex", threadId: "t", quote: "one\ntwo", body: "note" }])).toBe(
       "a.tex\n> one\n> two\nnote",

@@ -39,6 +39,17 @@ describe("matching project members", () => {
     expect(matchMembers(MEMBERS, "Bob ", "alice").map((member) => member.displayName)).toEqual(["Bob Smith"]);
     expect(matchMembers(MEMBERS, "Carol Diaz ", "alice")).toEqual([]);
   });
+
+  it("matches inside names and logins, and members without a login by name only", () => {
+    const dana: CollabCommentMember = { accountId: "dana", displayName: "Dana Ito", login: null };
+    expect(matchMembers([...MEMBERS, dana], "mit", null).map((member) => member.displayName)).toEqual(["Bob Smith"]);
+    expect(matchMembers([...MEMBERS, dana], "-ch", null).map((member) => member.displayName)).toEqual(["Alice Chen"]);
+    expect(matchMembers([...MEMBERS, dana], "it", null).map((member) => member.displayName)).toEqual([
+      "Dana Ito",
+      "Bob Smith",
+    ]);
+    expect(matchMembers([dana, { ...BOB, displayName: "  " }], "", null)).toEqual([dana]);
+  });
 });
 
 describe("inserting a mention", () => {
@@ -67,5 +78,15 @@ describe("showing mentions in a comment", () => {
       { text: "Mail a@Bob Smith or @Bobby or @dave", mention: false },
     ]);
     expect(mentionSegments("Plain text", [])).toEqual([{ text: "Plain text", mention: false }]);
+  });
+
+  it("marks a mention at the very start and skips a name that runs on into a longer word", () => {
+    const dana: CollabCommentMember = { accountId: "dana", displayName: "Dana", login: null };
+    expect(mentionSegments("@Dana see @carolyn and @carol", [dana, CAROL])).toEqual([
+      { text: "@Dana", mention: true },
+      { text: " see @carolyn and ", mention: false },
+      { text: "@carol", mention: true },
+    ]);
+    expect(mentionSegments("", [dana])).toEqual([{ text: "", mention: false }]);
   });
 });

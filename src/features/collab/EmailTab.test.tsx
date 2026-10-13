@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabEmailStatus } from "@/lib/tauri";
-import { SERVER_ID, account, collabError, fill, server } from "./tests/fixtures";
+import { SERVER_ID, account, collabError, deferred, fill, server } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabAdminEmailStatus: vi.fn(),
@@ -177,5 +177,66 @@ describe("EmailTab", () => {
     expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText(copy.on.title)).toBeInTheDocument();
+  });
+
+  it("says when the link could not be copied", async () => {
+    mocks.collabAdminEmailStatus.mockResolvedValue(status({ configured: false, from: null }));
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {
+      throw new Error("denied");
+    });
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<EmailTab server={adminServer()} actor="admin" />);
+    await user.click(await screen.findByRole("button", { name: enCollab.manage.link.copy }));
+    expect(writeText).toHaveBeenCalledWith(ADD_LINK);
+    expect(await screen.findByRole("button", { name: enCollab.manage.link.copyFailed })).toBeInTheDocument();
+  });
+
+  it("leaves out the sender when the server does not name one", async () => {
+    mocks.collabAdminEmailStatus.mockResolvedValue(status({ from: null }));
+    render(<EmailTab server={adminServer()} actor="admin" />);
+    const state = await screen.findByTestId("collab-email-state");
+    expect(state).toHaveTextContent(copy.on.title);
+    expect(state.querySelectorAll("p")).toHaveLength(1);
+  });
+
+  it("shows only the refusal when the mail server gave no reason", async () => {
+    mocks.collabAdminEmailStatus.mockResolvedValue(status());
+    mocks.collabAdminEmailTest.mockResolvedValue({ sent_to: ["alice@uni.edu"], delivered: false, error: null });
+    const user = userEvent.setup();
+    render(<EmailTab server={adminServer()} actor="admin" />);
+    await user.click(await screen.findByRole("button", { name: copy.test.send }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(copy.test.failed);
+    expect(alert.querySelector("span")).toBeNull();
+  });
+
+  it("has nowhere to send a test when the server lists no account", async () => {
+    mocks.collabAdminEmailStatus.mockResolvedValue(status());
+    render(<EmailTab server={server({ account: null })} actor="admin" />);
+    expect(await screen.findByText(copy.test.noAddress)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.test.send })).toBeDisabled();
+  });
+
+  it("shows the email state of the server now in view when an older answer comes back late", async () => {
+    const slow = deferred<CollabEmailStatus>();
+    const failing = deferred<CollabEmailStatus>();
+    mocks.collabAdminEmailStatus
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce(status());
+    const { rerender } = render(<EmailTab server={adminServer()} actor="admin" />);
+    rerender(<EmailTab server={server({ server_id: "server-b", account: adminServer().account })} actor="admin" />);
+    rerender(<EmailTab server={server({ server_id: "server-c", account: adminServer().account })} actor="admin" />);
+    expect(await screen.findByText(copy.on.title)).toBeInTheDocument();
+    await act(async () => {
+      slow.resolve(status({ configured: false, from: null }));
+      failing.reject(collabError("unreachable"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(screen.getByText(copy.on.title)).toBeInTheDocument();
+    expect(screen.queryByText(copy.off.title)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.collabAdminEmailStatus).toHaveBeenLastCalledWith("server-c");
   });
 });

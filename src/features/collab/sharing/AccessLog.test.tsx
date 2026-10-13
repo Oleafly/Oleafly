@@ -206,6 +206,50 @@ describe("AccessLog", () => {
     expect(within(list).getByRole("listitem")).toHaveTextContent(fill(copy.opened, { name: "Bob Smith" }));
   });
 
+  it("says someone used the project when it cannot tell who or how", async () => {
+    mocks.collabAccessLogPage.mockResolvedValue(
+      page([entry({ id: 2, kind: "unknown" }), entry({ id: 1, person: person({ display_name: "" }) })]),
+    );
+    view();
+    const rows = within(await screen.findByRole("list", { name: title })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(copy.unknown, { name: "Alice Chen" }));
+    expect(rows[1]).toHaveTextContent(fill(copy.opened, { name: enCollab.toolbar.unknownPerson }));
+  });
+
+  it("keeps the open list on the new project when the old project's page answers late", async () => {
+    useAccessLogSwitches.setState({ byProject: { thesis: { serverAllowed: true, enabled: true } } });
+    let answer: (value: CollabAccessLogPage) => void = () => undefined;
+    mocks.collabAccessLogPage.mockImplementation((projectId: string) =>
+      projectId === "grant"
+        ? new Promise<CollabAccessLogPage>((resolve) => (answer = resolve))
+        : Promise.resolve(page([])),
+    );
+    view();
+    await waitFor(() => expect(mocks.collabAccessLogPage).toHaveBeenCalledWith("grant", null));
+    act(() => useCollabLiveStore.setState({ projectId: "thesis" }));
+    expect(await screen.findByText(copy.empty)).toBeInTheDocument();
+    await act(async () => answer(page([entry()])));
+    expect(screen.getByText(copy.empty)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: title })).toBeNull();
+  });
+
+  it("keeps the open list on the new project when the old project's page fails late", async () => {
+    useAccessLogSwitches.setState({ byProject: { thesis: { serverAllowed: true, enabled: true } } });
+    let fail: (error: unknown) => void = () => undefined;
+    mocks.collabAccessLogPage.mockImplementation((projectId: string) =>
+      projectId === "grant"
+        ? new Promise<CollabAccessLogPage>((_resolve, reject) => (fail = reject))
+        : Promise.resolve(page([entry({ person: BOB })])),
+    );
+    view();
+    await waitFor(() => expect(mocks.collabAccessLogPage).toHaveBeenCalledWith("grant", null));
+    act(() => useCollabLiveStore.setState({ projectId: "thesis" }));
+    const list = await screen.findByRole("list", { name: title });
+    await act(async () => fail(collabError("unreachable")));
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+    expect(within(list).getByRole("listitem")).toHaveTextContent(fill(copy.opened, { name: "Bob Smith" }));
+  });
+
   it("drops a page that arrives after the project changed", async () => {
     let answer: (value: CollabAccessLogPage) => void = () => undefined;
     mocks.collabAccessLogPage.mockImplementationOnce(

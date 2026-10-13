@@ -52,7 +52,9 @@ vi.mock("@/store/files", async () => {
 });
 
 import { useFilesStore } from "@/store/files";
+import { deferred, person, projectMember } from "../tests/fixtures";
 import { startFileNotices, useFileNotices } from "./file-notices";
+import { useCollabLiveStore } from "./live-store";
 
 function upload(overrides: Partial<CollabUploadFile> = {}): CollabUploadFile {
   return { path: "figures/plot.png", state: "waiting", size: 2048, limit: null, ...overrides };
@@ -181,5 +183,128 @@ describe("changes made in a local copy", () => {
     useFilesStore.setState({ projectId: "thesis" });
     await settle();
     expect(useFileNotices.getState()).toMatchObject({ projectId: "thesis", offer: null, broughtIn: null });
+  });
+});
+
+describe("guards on file notices", () => {
+  const OFFER = { copyId: "paper-copy", name: "R4 Paper (local copy)", files: ["main.tex"] };
+
+  it("retries once while a retry is running and settles back when it fails", async () => {
+    const running = deferred<undefined>();
+    mocks.collabUploadRetry.mockReturnValueOnce(running.promise);
+    const first = useFileNotices.getState().retry();
+    expect(useFileNotices.getState().retrying).toBe(true);
+    await useFileNotices.getState().retry();
+    expect(mocks.collabUploadRetry).toHaveBeenCalledOnce();
+    running.reject(new Error("offline"));
+    await first;
+    expect(useFileNotices.getState().retrying).toBe(false);
+  });
+
+  it("does nothing with no project open", async () => {
+    stop();
+    stop = () => {};
+    useFileNotices.setState({ uploads: [upload()], offer: OFFER });
+    await useFileNotices.getState().retry();
+    useFileNotices.getState().dismissUpload("figures/plot.png");
+    await useFileNotices.getState().bringIn();
+    useFileNotices.getState().keepSeparate();
+    expect(mocks.collabUploadRetry).not.toHaveBeenCalled();
+    expect(mocks.collabUploadDismiss).not.toHaveBeenCalled();
+    expect(mocks.collabLocalCopyBringIn).not.toHaveBeenCalled();
+    expect(mocks.collabLocalCopyDecline).not.toHaveBeenCalled();
+    expect(useFileNotices.getState().uploads).toHaveLength(1);
+  });
+
+  it("has nothing to bring in or keep separate without an offer", async () => {
+    await useFileNotices.getState().bringIn();
+    useFileNotices.getState().keepSeparate();
+    expect(mocks.collabLocalCopyBringIn).not.toHaveBeenCalled();
+    expect(mocks.collabLocalCopyDecline).not.toHaveBeenCalled();
+  });
+
+  it("brings changes in once and cannot be kept separate halfway through", async () => {
+    useFileNotices.setState({ offer: OFFER });
+    const bringing = deferred<undefined>();
+    mocks.collabLocalCopyBringIn.mockReturnValueOnce(bringing.promise);
+    const first = useFileNotices.getState().bringIn();
+    await useFileNotices.getState().bringIn();
+    useFileNotices.getState().keepSeparate();
+    expect(mocks.collabLocalCopyBringIn).toHaveBeenCalledOnce();
+    expect(mocks.collabLocalCopyDecline).not.toHaveBeenCalled();
+    expect(useFileNotices.getState().offer).toEqual(OFFER);
+    bringing.resolve(undefined);
+    await first;
+    expect(useFileNotices.getState()).toMatchObject({ offer: null, bringing: false, broughtIn: OFFER.name });
+  });
+
+  it("says nothing in the next project when bringing changes in finishes there", async () => {
+    useFileNotices.setState({ offer: OFFER });
+    const done = deferred<undefined>();
+    mocks.collabLocalCopyBringIn.mockReturnValueOnce(done.promise);
+    const bringing = useFileNotices.getState().bringIn();
+    useFilesStore.setState({ projectId: "thesis" });
+    done.resolve(undefined);
+    await bringing;
+    expect(useFileNotices.getState()).toMatchObject({ projectId: "thesis", broughtIn: null, bringing: false });
+  });
+
+  it("shows no failure in the next project when bringing changes in fails there", async () => {
+    useFileNotices.setState({ offer: OFFER });
+    const done = deferred<undefined>();
+    mocks.collabLocalCopyBringIn.mockReturnValueOnce(done.promise);
+    const bringing = useFileNotices.getState().bringIn();
+    useFilesStore.setState({ projectId: "thesis" });
+    done.reject({ code: "not_found", message: "gone" });
+    await bringing;
+    expect(useFileNotices.getState()).toMatchObject({ projectId: "thesis", offerFailure: null, bringing: false });
+  });
+
+  it("asks for the people list only when a copy names someone new", () => {
+    const original = useCollabLiveStore.getState().refreshMembers;
+    const refreshMembers = vi.fn(async () => {});
+    useCollabLiveStore.setState({ refreshMembers, members: [projectMember(person({ account_id: "acct-alice" }))] });
+    try {
+      mocks.keptHandler?.({ projectId: "paper", files: [kept()] });
+      mocks.keptHandler?.({ projectId: "paper", files: [kept({ id: "nobody-id", by: null })] });
+      expect(refreshMembers).not.toHaveBeenCalled();
+      mocks.keptHandler?.({ projectId: "paper", files: [kept({ id: "carol-id", by: "acct-carol" })] });
+      expect(refreshMembers).toHaveBeenCalledOnce();
+      expect(useFileNotices.getState().kept.map((file) => file.id)).toEqual(["carol-id", "nobody-id", "copy-id"]);
+    } finally {
+      useCollabLiveStore.setState({ refreshMembers: original, members: [] });
+    }
+  });
+
+  it("looks nothing up when the project closes", async () => {
+    mocks.collabUploadList.mockClear();
+    mocks.collabLocalCopyOffer.mockClear();
+    useFilesStore.setState({ projectId: null });
+    await settle();
+    expect(mocks.collabUploadList).not.toHaveBeenCalled();
+    expect(mocks.collabLocalCopyOffer).not.toHaveBeenCalled();
+    expect(useFileNotices.getState()).toMatchObject({ projectId: null, uploads: [], kept: [], offer: null });
+  });
+
+  it("drops figures and offers that arrive after another project opened", async () => {
+    const uploads = deferred<CollabUploadFile[]>();
+    const offer = deferred<typeof OFFER | null>();
+    mocks.collabUploadList.mockReturnValueOnce(uploads.promise);
+    mocks.collabLocalCopyOffer.mockReturnValueOnce(offer.promise);
+    useFilesStore.setState({ projectId: "thesis" });
+    useFilesStore.setState({ projectId: "paper" });
+    uploads.resolve([upload({ state: "failed" })]);
+    offer.resolve(OFFER);
+    await settle();
+    expect(useFileNotices.getState()).toMatchObject({ projectId: "paper", uploads: [], offer: null });
+  });
+
+  it("does not look again when something else about the open project changes", async () => {
+    mocks.collabUploadList.mockClear();
+    mocks.uploadsHandler?.({ projectId: "paper", files: [upload()] });
+    useFilesStore.setState({ projectId: "paper" });
+    await settle();
+    expect(mocks.collabUploadList).not.toHaveBeenCalled();
+    expect(useFileNotices.getState().uploads).toEqual([upload()]);
   });
 });

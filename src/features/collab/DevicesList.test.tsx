@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -8,7 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDate } from "@/lib/intl";
 import { DevicesList } from "./DevicesList";
-import { collabError, device, fill } from "./tests/fixtures";
+import { collabError, deferred, device, fill } from "./tests/fixtures";
 
 const devices = enCollab.section.devices;
 const members = enCollab.admin.members;
@@ -91,5 +91,34 @@ describe("DevicesList", () => {
     await user.click(within(dialog).getByRole("button", { name: members.deviceSignOutConfirm.confirm }));
     expect(signOut).toHaveBeenCalledWith("d-9");
     expect(await screen.findByText(devices.empty)).toBeInTheDocument();
+  });
+
+  it("uses the member wording when someone else's devices cannot be loaded", async () => {
+    load.mockRejectedValueOnce(collabError("forbidden"));
+    render(<DevicesList variant="member" ownerName="Bob Smith" load={load} signOut={signOut} />);
+    expect(await screen.findByText(members.devicesLoadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(devices.loadFailed)).toBeNull();
+    expect(screen.getByText(enCollab.errors.forbidden)).toBeInTheDocument();
+  });
+
+  it("shows a platform this version does not know as the server wrote it", async () => {
+    load.mockResolvedValue([device({ device_id: "d-5", name: "Lab server", platform: "freebsd" })]);
+    render(<DevicesList variant="own" load={load} signOut={signOut} />);
+    expect(await screen.findByTestId("collab-device-d-5")).toHaveTextContent("freebsd");
+  });
+
+  it("ignores a failure from a list that was already closed", async () => {
+    const slow = deferred<ReturnType<typeof device>[]>();
+    const first = vi.fn(() => slow.promise);
+    load.mockResolvedValue([laptop]);
+    const { rerender } = render(<DevicesList key="bob" variant="member" ownerName="Bob" load={first} signOut={signOut} />);
+    rerender(<DevicesList key="carol" variant="member" ownerName="Carol" load={load} signOut={signOut} />);
+    expect(await screen.findByTestId("collab-device-d-1")).toBeInTheDocument();
+    await act(async () => {
+      slow.reject(collabError("forbidden"));
+      await slow.promise.catch(() => undefined);
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByTestId("collab-device-d-1")).toBeInTheDocument();
   });
 });

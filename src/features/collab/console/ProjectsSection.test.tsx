@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -228,6 +228,81 @@ describe("ProjectsSection", () => {
     expect(await screen.findByText(enCollab.errors.forbidden)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+  });
+
+  it("ignores a failure for a filter that is no longer current", async () => {
+    const late = deferred<ReturnType<typeof projectsPage>>();
+    mocks.collabAdminProjects.mockReturnValueOnce(late.promise).mockResolvedValueOnce(projectsPage([THESIS]));
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(screen.getByRole("button", { name: copy.filter.active }));
+    expect(await screen.findByText("Thesis")).toBeInTheDocument();
+    await act(async () => {
+      late.reject(collabError("forbidden"));
+      await late.promise.catch(() => undefined);
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Thesis")).toBeInTheDocument();
+  });
+
+  it("drops a page of older projects that arrives after the list failed to load", async () => {
+    const more = deferred<ReturnType<typeof projectsPage>>();
+    mocks.collabAdminProjects
+      .mockResolvedValueOnce(projectsPage([GRANT], { next_cursor: "1", total: 2 }))
+      .mockReturnValueOnce(more.promise)
+      .mockRejectedValueOnce(collabError("forbidden"));
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: copy.loadMore }));
+    await user.click(screen.getByRole("button", { name: copy.filter.archived }));
+    expect(await screen.findByText(enCollab.errors.forbidden)).toBeInTheDocument();
+    await act(async () => {
+      more.resolve(projectsPage([THESIS], { total: 2 }));
+      await more.promise;
+    });
+    expect(screen.queryByText("Thesis")).not.toBeInTheDocument();
+    expect(screen.getByText(enCollab.admin.loadFailed)).toBeInTheDocument();
+  });
+
+  it("drops an archived project that comes back after the list failed to load", async () => {
+    const archived = deferred<ReturnType<typeof adminProject>>();
+    mocks.collabAdminProjects
+      .mockResolvedValueOnce(projectsPage([GRANT]))
+      .mockRejectedValueOnce(collabError("forbidden"));
+    mocks.collabAdminArchiveProject.mockReturnValue(archived.promise);
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(
+      await screen.findByRole("button", { name: fill(copy.archiveNamed, { title: "Grant proposal" }) }),
+    );
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.archiveConfirm.confirm }));
+    await user.click(screen.getByRole("button", { name: copy.filter.pending }));
+    expect(await screen.findByText(enCollab.errors.forbidden)).toBeInTheDocument();
+    await act(async () => {
+      archived.resolve({ ...GRANT, status: "archived", archived_at: NOW });
+      await archived.promise;
+    });
+    expect(screen.queryByText("Grant proposal")).not.toBeInTheDocument();
+    expect(screen.getByText(enCollab.admin.loadFailed)).toBeInTheDocument();
+  });
+
+  it("flips the activity order from newest first to oldest first", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Grant proposal");
+    await user.click(screen.getByRole("button", { name: fill(copy.sortBy, { column: copy.columns.activity }) }));
+    await waitFor(() => expect(lastQuery()).toEqual({ ...FIRST_QUERY, order: "asc" }));
+    expect(screen.getByRole("columnheader", { name: copy.columns.activity })).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("leaves the size empty for an admin when the server does not know it", async () => {
+    mocks.collabAdminProjects.mockResolvedValue(projectsPage([{ ...GRANT, size_bytes: null }]));
+    renderSection();
+    await screen.findByText("Grant proposal");
+    expect(screen.getByRole("columnheader", { name: copy.columns.size })).toBeInTheDocument();
+    const cells = within(row(GRANT)).getAllByRole("cell");
+    expect(cells[3]).toBeEmptyDOMElement();
+    expect(cells[2]).toHaveTextContent("3");
   });
 
   it("ignores an answer for a search that is no longer current", async () => {

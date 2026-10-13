@@ -619,3 +619,70 @@ describe("quoted text", () => {
     expect(within(card("quick")).queryByRole("button", { name: actions.showMore })).toBeNull();
   });
 });
+
+describe("people who left and loads that failed", () => {
+  it("names a writer, creator and resolver who are no longer members as an unknown person", () => {
+    const LEFT = "0192a0b0-0000-7000-8000-0000000000ff";
+    const orphan = commentThread("t-left", { from: 16, to: 19 }, {
+      anchor: { quote: "fox", range: { from: 16, to: 19 } },
+      createdBy: LEFT,
+      messages: [commentMessage("m-left", LEFT, "Old note")],
+      resolved: { by: LEFT, at: AT, verified: true },
+    });
+    show([orphan], { showResolved: true });
+    const article = card("fox");
+    expect(article).toHaveTextContent("Old note");
+    expect(within(article).getAllByText(enCollab.toolbar.unknownPerson).length).toBeGreaterThan(0);
+    expect(article).not.toHaveTextContent("Bob Smith");
+  });
+
+  it("explains why the person's own message could not be deleted", async () => {
+    const user = userEvent.setup();
+    mocks.collabCommentDelete.mockRejectedValue({ code: "comment_message_deleted", message: "" });
+    show([conversation]);
+    openMenu(card("quick"), copy.messageActions);
+    await user.click(await screen.findByRole("menuitem", { name: actions.delete }));
+    await waitFor(() => expect(within(card("quick")).getByRole("alert")).toHaveTextContent(copy.refusals.messageDeleted));
+    expect(card("quick")).toHaveTextContent("Yes, I checked @Bob Smith");
+  });
+
+  it("shows why another file's comments did not load and loads them again on retry", async () => {
+    const user = userEvent.setup();
+    mocks.collabCommentThreadList.mockReturnValue(new Promise(() => undefined));
+    show([conversation], {
+      counts: [
+        { path: "appendix/refs.tex", open: 1, resolved: 0 },
+        { path: "appendix/notes.tex", open: 2, resolved: 0 },
+        { path: "chapters/intro.tex", open: 1, resolved: 0 },
+      ],
+      elsewhere: {
+        "appendix/refs.tex": { phase: "failed", error: "unreachable", threads: [] },
+        "appendix/notes.tex": { phase: "failed", error: null, threads: [] },
+      },
+    });
+    expect(screen.getAllByText(copy.loadFailed)).toHaveLength(2);
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.internal)).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: actions.retry })[0]);
+    expect(mocks.collabCommentThreadList).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText(copy.loadFailed)).toHaveLength(1);
+  });
+
+  it("says something went wrong when the open file failed to load without a reason", () => {
+    show([conversation], { phase: "failed", error: null });
+    expect(screen.getByText(copy.loadFailed)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.internal)).toBeInTheDocument();
+  });
+
+  it("folds the open file's threads away and back from its header", async () => {
+    const user = userEvent.setup();
+    show([conversation]);
+    const header = screen.getByRole("button", { name: "intro.tex" });
+    await user.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("list", { name: "intro.tex" })).toBeNull();
+    await user.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("list", { name: "intro.tex" })).toBeInTheDocument();
+  });
+});

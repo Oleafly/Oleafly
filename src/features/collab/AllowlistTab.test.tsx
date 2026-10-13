@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { ALICE_ID, SERVER_ID, allowlistEntry, capabilities, collabError, fill } from "./tests/fixtures";
+import type { CollabAllowlistEntry } from "@/lib/tauri";
+import { ALICE_ID, SERVER_ID, allowlistEntry, capabilities, collabError, deferred, fill } from "./tests/fixtures";
 import { allowRadixSelect, chooseOption } from "./tests/select";
 
 const mocks = vi.hoisted(() => ({
@@ -150,5 +151,113 @@ describe("AllowlistTab", () => {
     expect(screen.getByText(enCollab.errors.forbidden)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText(copy.empty)).toBeInTheDocument();
+  });
+
+  it("shows only the list of the server in view when an older answer comes back late", async () => {
+    const slow = deferred<CollabAllowlistEntry[]>();
+    const failing = deferred<CollabAllowlistEntry[]>();
+    mocks.collabAdminAllowlist
+      .mockReturnValueOnce(slow.promise)
+      .mockReturnValueOnce(failing.promise)
+      .mockResolvedValueOnce([allowlistEntry()]);
+    const { rerender } = render(<AllowlistTab serverId="server-a" actor="admin" providers={providers} />);
+    rerender(<AllowlistTab serverId="server-b" actor="admin" providers={providers} />);
+    rerender(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    expect(await screen.findByText("dan@uni.edu")).toBeInTheDocument();
+    await act(async () => {
+      slow.resolve([allowlistEntry({ id: "old", matcher: { kind: "email", email: "old@uni.edu" } })]);
+      failing.reject(collabError("forbidden"));
+      await Promise.allSettled([slow.promise, failing.promise]);
+    });
+    expect(screen.queryByText("old@uni.edu")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("offers sign-in names only when the server signs people in with GitHub", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(
+      <AllowlistTab
+        serverId={SERVER_ID}
+        actor="admin"
+        providers={[{ id: "uni", kind: "oidc", label: "University login" }]}
+      />,
+    );
+    await screen.findByText(copy.empty);
+    await user.click(screen.getByRole("combobox", { name: copy.matchLabel }));
+    expect(await screen.findByRole("option", { name: copy.match.login })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("option", { name: copy.match.email })).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("names the sign-in option by its id when the server no longer lists it", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([
+      allowlistEntry({ matcher: { kind: "provider_login", provider: "gitlab", login: "achen" } }),
+    ]);
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    expect(await screen.findByText(fill(copy.loginEntry, { login: "achen", provider: "gitlab" }))).toBeInTheDocument();
+  });
+
+  it("shows a role this version does not know as the server wrote it", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([allowlistEntry({ role: "auditor" as never })]);
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    const [entry] = await screen.findAllByRole("listitem");
+    expect(entry).toHaveTextContent("auditor");
+  });
+
+  it("goes back to email addresses after choosing sign-in names", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await screen.findByText(copy.empty);
+    await chooseOption(user, copy.matchLabel, copy.match.login);
+    expect(screen.getByRole("textbox", { name: copy.match.login })).toHaveAttribute(
+      "placeholder",
+      copy.loginPlaceholder,
+    );
+    await chooseOption(user, copy.matchLabel, copy.match.email);
+    expect(screen.getByRole("textbox", { name: copy.match.email })).toHaveAttribute(
+      "placeholder",
+      copy.emailPlaceholder,
+    );
+    expect(screen.queryByRole("combobox", { name: copy.providerLabel })).toBeNull();
+  });
+
+  it("sends nothing when the form is submitted with only spaces", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await screen.findByText(copy.empty);
+    await user.type(screen.getByRole("textbox", { name: copy.match.email }), "   ");
+    const add = screen.getByRole("button", { name: copy.add });
+    expect(add).toBeDisabled();
+    fireEvent.submit(add.closest("form") as HTMLFormElement);
+    expect(mocks.collabAdminAddAllowlist).not.toHaveBeenCalled();
+  });
+
+  it("adds an entry while the list is still loading", async () => {
+    mocks.collabAdminAllowlist.mockReturnValue(new Promise(() => undefined));
+    mocks.collabAdminAddAllowlist.mockResolvedValue(
+      allowlistEntry({ id: "allow-9", matcher: { kind: "email", email: "erin@uni.edu" } }),
+    );
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    expect(screen.getByText(copy.loading)).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: copy.match.email }), "erin@uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(await screen.findByText("erin@uni.edu")).toBeInTheDocument();
+    expect(screen.queryByText(copy.loading)).toBeNull();
+  });
+
+  it("keeps an entry and says why it could not be removed", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([allowlistEntry()]);
+    mocks.collabAdminRemoveAllowlist.mockRejectedValue(collabError("forbidden"));
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    const remove = await screen.findByRole("button", { name: fill(copy.removeNamed, { entry: "dan@uni.edu" }) });
+    await user.click(remove);
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.forbidden);
+    expect(screen.getByText("dan@uni.edu")).toBeInTheDocument();
+    expect(remove).toBeEnabled();
   });
 });

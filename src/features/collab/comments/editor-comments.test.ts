@@ -223,6 +223,31 @@ describe("comment marks in the editor", () => {
     expect(source.open).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores modified clicks, clicks on plain text and clicks on the gutter away from a marker", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    const mark = view.contentDOM.querySelector(".cm-comment-range");
+    for (const modifier of [{ shiftKey: true }, { altKey: true }, { metaKey: true }, { ctrlKey: true }, { button: 1 }]) {
+      mark?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0, ...modifier }));
+    }
+    view.contentDOM.querySelector(".cm-line")?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    view.dom
+      .querySelector(".cm-comment-gutter .cm-gutterElement:not(:has(.cm-comment-marker))")
+      ?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+    expect(source.open).not.toHaveBeenCalled();
+  });
+
+  it("puts a thread with an unreadable position at the start of the document", async () => {
+    const source = new Source();
+    const view = editor(source);
+    await tick();
+    source.set({ spans: [{ id: "odd", from: Number.NaN, to: 3.7, resolved: false }] });
+    await tick();
+    expect(commentSpansIn(view.state)).toEqual([{ id: "odd", from: 0, to: 3, resolved: false }]);
+  });
+
   it("does not open a thread when text inside it is being selected", async () => {
     const source = new Source();
     source.state = { ...source.state, spans: [quick] };

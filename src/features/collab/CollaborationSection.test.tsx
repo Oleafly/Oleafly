@@ -129,6 +129,20 @@ describe("CollaborationSection", () => {
     expect(await screen.findByTestId("collaboration-section")).toBeInTheDocument();
   });
 
+  it("goes back to the server list when the managed server goes away", async () => {
+    mocks.collabServersList.mockResolvedValue([server({ account: account({ server_role: "admin" }) })]);
+    mocks.collabAdminMembers.mockResolvedValue([]);
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    const user = userEvent.setup();
+    render(<CollaborationSection />);
+    await user.click(await screen.findByRole("button", { name: copy.server.manage }));
+    expect(await screen.findByTestId("collab-manage-server")).toBeInTheDocument();
+    act(() => useCollabStore.setState({ servers: [] }));
+    expect(await screen.findByTestId("collaboration-section")).toBeInTheDocument();
+    expect(screen.queryByTestId("collab-manage-server")).toBeNull();
+    expect(screen.getByText(copy.servers.empty.title)).toBeInTheDocument();
+  });
+
   it("checks each signed-in server's current role when it opens", async () => {
     mocks.collabServersList.mockResolvedValue([server({ account: account({ server_role: "member" }) })]);
     mocks.collabServerRefresh.mockResolvedValue(server({ account: account({ server_role: "maintainer" }) }));
