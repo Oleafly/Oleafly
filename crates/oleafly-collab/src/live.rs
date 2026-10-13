@@ -144,6 +144,7 @@ pub struct LiveProject {
     seen: BTreeSet<u64>,
     persisted: Option<VersionVector>,
     log_records: usize,
+    doc_replacements: u64,
     saving: Arc<Mutex<()>>,
     devices: DeviceRegistry,
     devices_dirty: bool,
@@ -209,6 +210,7 @@ pub struct PendingSave {
     dir: PathBuf,
     document: SavedDocument,
     version: VersionVector,
+    doc_replacements: u64,
     state: Vec<u8>,
     devices: Option<Vec<u8>>,
     authors: Option<Vec<u8>>,
@@ -269,6 +271,7 @@ impl LiveProject {
             seen: BTreeSet::new(),
             persisted: None,
             log_records: 0,
+            doc_replacements: 0,
             saving: Arc::default(),
             devices: DeviceRegistry::default(),
             devices_dirty: false,
@@ -359,6 +362,7 @@ impl LiveProject {
             dir: dir.to_path_buf(),
             document,
             version: self.doc.version(),
+            doc_replacements: self.doc_replacements,
             state,
             devices,
             authors,
@@ -375,6 +379,10 @@ impl LiveProject {
             self.authors_dirty |= pending.authors.is_some();
             return Err(error);
         }
+        if pending.doc_replacements != self.doc_replacements {
+            self.forget_saved_document();
+            return Ok(());
+        }
         match pending.document {
             SavedDocument::Unchanged => {}
             SavedDocument::Appended(_) => self.log_records += 1,
@@ -382,6 +390,11 @@ impl LiveProject {
         }
         self.persisted = Some(pending.version);
         Ok(())
+    }
+
+    fn forget_saved_document(&mut self) {
+        self.persisted = None;
+        self.log_records = 0;
     }
 
     pub fn exists(dir: &Path) -> bool {
@@ -450,6 +463,12 @@ impl LiveProject {
         }
         let vouched = listed.iter().map(|bound| (bound.peer, bound.account_id));
         if self.doc.authors_mut().vouch(vouched) {
+            self.authors_dirty = true;
+        }
+    }
+
+    pub fn await_writers(&mut self, awaiting: bool) {
+        if self.doc.authors_mut().await_vouch(awaiting) {
             self.authors_dirty = true;
         }
     }
@@ -1025,7 +1044,8 @@ impl LiveProject {
         let Some(unsent) = self.doc.without_comment_changes_after(&base)? else {
             return Ok(None);
         };
-        self.persisted = None;
+        self.doc_replacements += 1;
+        self.forget_saved_document();
         self.keep_own_writer(old_peer);
         self.move_offline_edits(old_peer, &base);
         let open: Vec<String> = self.open.keys().cloned().collect();
@@ -1516,6 +1536,67 @@ mod tests {
     }
 
     #[test]
+    fn a_comment_signed_as_someone_else_stays_unverified_when_it_arrives_in_one_batch_with_theirs()
+    {
+        let (mut bob, mut alice, main) = pair();
+        let initial = bob.doc().snapshot().unwrap();
+        let (alice_account, bob_account) = (AccountId::new_v7(), AccountId::new_v7());
+        let (alice_device, bob_device) = (DeviceId::new_v7(), DeviceId::new_v7());
+        let doc = alice.comment_doc();
+        let honest = doc
+            .create_comment_thread(&main, 0, 1, alice_account, 1, "Mine", &[])
+            .unwrap();
+        let forged = doc
+            .create_comment_thread(&main, 1, 2, bob_account, 2, "Pretending to be Bob", &[])
+            .unwrap();
+        let commented = alice.next_outgoing().unwrap().unwrap();
+        assert!(bob
+            .import_signed(
+                1,
+                &commented.payload,
+                Some(alice_device),
+                Some(alice_account)
+            )
+            .unwrap());
+        let mut typed = Vec::new();
+        for (seq, text) in [(2, "abcx"), (3, "abcxy")] {
+            bob.local_text(&main, text).unwrap();
+            let outgoing = bob.next_outgoing().unwrap().unwrap();
+            bob.acknowledged(outgoing.batch, seq);
+            typed.push((seq, outgoing.payload));
+        }
+        let mut late =
+            LiveProject::new(ProjectDoc::load(&initial).unwrap(), 0, ProjectRole::Editor);
+        let mut arrivals = vec![Arrival {
+            seq: 1,
+            payload: commented.payload.clone(),
+            device: Some(alice_device),
+            author: Some(alice_account),
+        }];
+        arrivals.extend(typed.into_iter().map(|(seq, payload)| Arrival {
+            seq,
+            payload,
+            device: Some(bob_device),
+            author: Some(bob_account),
+        }));
+
+        assert_eq!(late.import_arrivals(arrivals).unwrap(), 3);
+
+        let seen = |id| late.doc().comment_thread(&main, id).unwrap().unwrap();
+        assert!(seen(honest.id).verified);
+        assert!(!seen(forged.id).verified);
+        assert!(!seen(forged.id).messages[0].verified);
+        assert_eq!(
+            late.devices().device_of_peer(alice.doc().peer_id()),
+            Some(alice_device)
+        );
+        assert_eq!(
+            late.devices().device_of_peer(bob.doc().peer_id()),
+            Some(bob_device)
+        );
+    }
+
+    #[test]
     fn a_catch_up_that_brings_nothing_reports_nothing() {
         let (_bob, mut alice, _main) = pair();
         alice.begin_catch_up();
@@ -1594,6 +1675,36 @@ mod tests {
         operation.retain(current.encode_utf16().count());
         operation.insert(text);
         live.local_operation(id, &operation).unwrap();
+    }
+
+    #[test]
+    fn a_comment_refused_while_a_save_is_being_written_does_not_come_back_from_disk() {
+        let (_bob, mut alice, main) = pair();
+        alice.set_device(DeviceId::new_v7());
+        let dir = tempfile::tempdir().unwrap();
+        alice.save(dir.path()).unwrap();
+        type_at_end(&mut alice, &main, " offline");
+        alice
+            .comment_doc()
+            .create_comment_thread(&main, 0, 3, AccountId::new_v7(), 1, "Not sent", &[])
+            .unwrap();
+        alice.save(dir.path()).unwrap();
+
+        let pending = alice.begin_save(dir.path()).unwrap();
+        assert!(alice.comments_refused().unwrap().is_some());
+        let written = pending.write();
+        alice.end_save(pending, written).unwrap();
+        alice.save(dir.path()).unwrap();
+
+        let reloaded = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert!(reloaded.doc().comment_threads(&main).unwrap().is_empty());
+        assert!(reloaded
+            .doc()
+            .loro()
+            .get_map(crate::comments::COMMENTS)
+            .is_empty());
+        assert_eq!(reloaded.doc().text(&main).unwrap(), "abc offline");
+        assert_eq!(reloaded.doc().version(), alice.doc().version());
     }
 
     #[test]

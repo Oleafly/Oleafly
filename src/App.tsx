@@ -358,6 +358,10 @@ function loadMcpBridge(): Promise<() => void> {
   return import("@/lib/mcp-bridge").then((m) => m.startMcpBridge());
 }
 
+function loadStuckWindowRestore(): Promise<() => void> {
+  return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
+}
+
 const SIDEBAR_DEFAULT_PX = 340;
 
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
@@ -587,6 +591,10 @@ function AppContent() {
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(
+    native ? loadStuckWindowRestore : null,
+    "reopen the work after a stuck window reload",
+  );
   useTauriSubscription(
     native ? startDefaultLatexEngineSync : null,
     "sync the default compile engine",

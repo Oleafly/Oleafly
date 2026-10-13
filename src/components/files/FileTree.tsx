@@ -76,6 +76,7 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { cn, isWindows } from "@/lib/utils";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
@@ -334,8 +335,10 @@ export function FileTree({
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const noMainDocument = useFilesStore(mainDocumentMissing);
   const linkedFolder = useFilesStore((s) => isLinkedHome(s.manifestHome));
+  const sharedViewer = useCollabSettingsLocked(projectId);
   let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
   if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
+  if (sharedViewer) mainExtensions = EMPTY_EXTENSIONS;
 
   const loading = useFilesStore((s) => s.loading);
   const [peerMarks, setPeerMarks] = useState<PeerMarks>(NO_PEERS);

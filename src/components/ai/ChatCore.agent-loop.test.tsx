@@ -2057,6 +2057,45 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Not changed"));
   });
 
+  it.each(["ask-for-approval", "approve-for-me", "full-access"] as const)(
+    "denies an explicit rule without ToolConfirm in %s mode",
+    async (mode) => {
+      const { rendered, result } = await beginApprovalCall(mode, "run_command", {
+        run_command: "deny",
+      });
+
+      await expect(result).resolves.toEqual({ approved: false });
+      expect(mocks.approvalsList).toHaveBeenCalledWith(useFilesStore.getState().projectId);
+      expect(rendered.queryByRole("alertdialog", { name: "Confirm command" })).toBeNull();
+      await act(async () => finishRun(0, "Denied"));
+    },
+  );
+
+  it("ignores an allow rule outside Custom mode", async () => {
+    const { rendered, result } = await beginApprovalCall("approve-for-me", "write_file", {
+      write_file: "allow",
+    });
+
+    await waitFor(() =>
+      expect(rendered.getByRole("alertdialog", { name: "Confirm AI edit" })).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+    await expect(result).resolves.toEqual({ approved: false });
+    await act(async () => finishRun(0, "Not changed"));
+  });
+
+  it("aborts a Full access run when project approval rules cannot be loaded", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("full-access");
+    mocks.approvalsList.mockRejectedValue(new Error("unreadable approvals"));
+    const rendered = await renderChat();
+
+    submit(rendered, "Search the literature");
+
+    await waitFor(() => expect(mocks.approvalsList).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.runAgentHarness).not.toHaveBeenCalled();
+  });
+
   it("aborts a Custom run when project approval rules cannot be loaded", async () => {
     mocks.approvalsModeGet.mockResolvedValue("custom");
     mocks.approvalsList.mockRejectedValue(new Error("unreadable approvals"));

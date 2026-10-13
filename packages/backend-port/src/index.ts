@@ -1668,6 +1668,17 @@ export interface CollabLiveRenamed {
   ours: string;
   theirs: string;
 }
+export type CollabSettingNotice =
+  | { kind: "mainDocument"; path: string }
+  | { kind: "compiler"; engine: string; flavor: string | null }
+  | { kind: "spellingLanguage"; locale: string | null }
+  | { kind: "typstVersion"; version: string | null }
+  | { kind: "typstOptions" };
+export interface CollabLiveSettings {
+  projectId: string;
+  accountId: string | null;
+  changes: CollabSettingNotice[];
+}
 export interface CollabUnsentProject {
   project_id: string;
   name: string;
@@ -1801,11 +1812,13 @@ export interface CollabEmailTestResult {
 }
 export interface CollabEmailPreferences {
     shared_with_you: boolean;
+    mentions?: boolean | null;
     mail_configured: boolean;
     notifications: boolean;
 }
 export interface CollabEmailPreferencesPatch {
     shared_with_you?: boolean | null;
+    mentions?: boolean | null;
 }
 export interface BackendPort {
   collabAdminEmailStatus: (serverId: string) => Promise<CollabEmailStatus>;
@@ -2035,6 +2048,7 @@ export interface CollabCommentError {
 export interface BackendPort {
   collabCommentThreadList: (projectId: string, path: string) => Promise<CollabCommentThreadList>;
   collabCommentCounts: (projectId: string) => Promise<CollabCommentCount[]>;
+  collabCommentFilePath: (projectId: string, fileId: string) => Promise<string | null>;
   collabCommentCreate: (projectId: string, path: string, from: number, to: number, rev: number | null, body: string, members: CollabCommentMember[]) => Promise<CollabCommentThread>;
 }
 

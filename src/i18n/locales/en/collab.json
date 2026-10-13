@@ -50,6 +50,8 @@
       "emails": {
         "label": "Email me when someone shares a project",
         "description": "The email names the project and has a link to open it.",
+        "mentionsLabel": "Email me when someone mentions me in a comment",
+        "mentionsDescription": "The email quotes the comment and has a link to open it.",
         "noMail": "This server doesn't send email. Projects shared with you still show up in your library under Shared with you.",
         "paused": "The server's admin has turned off email for everyone.",
         "loadFailed": "Oleafly couldn't load your email settings."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} renamed {{before}} to {{theirs}} after you named it {{ours}}",
     "mentioned": "{{name}} mentioned you in a comment on {{path}}",
     "mentionedHere": "{{name}} mentioned you in a comment",
-    "showComment": "Show comment"
+    "showComment": "Show comment",
+    "settings": {
+      "mainDocument": "{{name}} made {{path}} the main document",
+      "compiler": "{{name}} set the compiler to {{compiler}}",
+      "spellingLanguage": "{{name}} set the spelling language to {{language}}",
+      "spellingCleared": "{{name}} cleared the project's spelling language",
+      "typstVersion": "{{name}} set the Typst version to {{version}}",
+      "typstDefault": "{{name}} set the Typst version back to the default",
+      "typstOptions": "{{name}} changed the Typst options",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Auto",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Changes merged while you were away",

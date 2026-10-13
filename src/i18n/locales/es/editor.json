@@ -1518,5 +1518,6 @@
     "keyInvalid": "Los nombres de valor no pueden estar vacíos ni contener un signo igual.",
     "keyTaken": "Una variante no puede definir el mismo nombre dos veces.",
     "saveFailed": "No se pudieron guardar las variantes."
-  }
+  },
+  "sharedSettingsViewer": "Los lectores no pueden cambiar esto en un proyecto compartido."
 }

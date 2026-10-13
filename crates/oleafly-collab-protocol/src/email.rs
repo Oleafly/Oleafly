@@ -29,6 +29,8 @@ pub struct EmailTestResult {
 pub struct EmailPreferences {
     #[serde(default = "on")]
     pub shared_with_you: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mentions: Option<bool>,
     #[serde(default)]
     pub mail_configured: bool,
     #[serde(default)]
@@ -43,6 +45,8 @@ fn on() -> bool {
 pub struct EmailPreferencesPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shared_with_you: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mentions: Option<bool>,
 }
 
 #[cfg(test)]
@@ -75,6 +79,30 @@ mod tests {
     }
 
     #[test]
+    fn an_older_server_has_no_mention_setting_and_a_newer_one_names_it() {
+        let older: EmailPreferences =
+            serde_json::from_value(json!({ "shared_with_you": true })).unwrap();
+        assert_eq!(older.mentions, None);
+        let newer: EmailPreferences = serde_json::from_value(
+            json!({ "shared_with_you": true, "mentions": false, "mail_configured": true }),
+        )
+        .unwrap();
+        assert_eq!(newer.mentions, Some(false));
+        assert_eq!(
+            serde_json::to_value(newer).unwrap()["mentions"],
+            json!(false)
+        );
+        assert_eq!(
+            serde_json::to_value(EmailPreferencesPatch {
+                mentions: Some(false),
+                ..EmailPreferencesPatch::default()
+            })
+            .unwrap(),
+            json!({ "mentions": false })
+        );
+    }
+
+    #[test]
     fn a_patch_sends_only_what_changes_and_status_round_trips() {
         assert_eq!(
             serde_json::to_value(EmailPreferencesPatch::default()).unwrap(),
@@ -82,7 +110,8 @@ mod tests {
         );
         assert_eq!(
             serde_json::to_value(EmailPreferencesPatch {
-                shared_with_you: Some(false)
+                shared_with_you: Some(false),
+                ..EmailPreferencesPatch::default()
             })
             .unwrap(),
             json!({ "shared_with_you": false })

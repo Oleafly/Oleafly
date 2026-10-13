@@ -1497,5 +1497,6 @@
     "keyInvalid": "Wertnamen dürfen nicht leer sein und kein Gleichheitszeichen enthalten.",
     "keyTaken": "Eine Variante kann denselben Namen nicht zweimal setzen.",
     "saveFailed": "Die Varianten konnten nicht gespeichert werden."
-  }
+  },
+  "sharedSettingsViewer": "Betrachter können das in einem geteilten Projekt nicht ändern."
 }

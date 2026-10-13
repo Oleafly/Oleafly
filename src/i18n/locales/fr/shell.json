@@ -447,7 +447,8 @@
       "title": "Variante (ce projet)",
       "help": "Une variante passe ses propres valeurs à sys.inputs, par exemple pour une version brouillon ou définitive. La variante choisie reste sur cet ordinateur. Ajoutez ou modifiez des variantes dans les Réglages du document.",
       "none": "Aucune variante"
-    }
+    },
+    "sharedViewer": "Les lecteurs ne peuvent pas modifier ces paramètres dans un projet partagé."
   },
   "datePicker": {
     "placeholder": "Choisir une date"

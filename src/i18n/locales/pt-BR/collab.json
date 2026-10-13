@@ -50,6 +50,8 @@
       "emails": {
         "label": "Me avisar por e-mail quando alguém compartilhar um projeto",
         "description": "O e-mail diz qual é o projeto e traz um link para abri-lo.",
+        "mentionsLabel": "Me avisar por e-mail quando alguém me mencionar em um comentário",
+        "mentionsDescription": "O e-mail cita o comentário e traz um link para abri-lo.",
         "noMail": "Este servidor não envia e-mails. Projetos compartilhados com você continuam aparecendo na sua biblioteca em Compartilhados com você.",
         "paused": "O administrador do servidor desativou o e-mail para todos.",
         "loadFailed": "O Oleafly não conseguiu carregar suas configurações de e-mail."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} renomeou {{before}} para {{theirs}} depois que você o chamou de {{ours}}",
     "mentioned": "{{name}} mencionou você em um comentário em {{path}}",
     "mentionedHere": "{{name}} mencionou você em um comentário",
-    "showComment": "Ver comentário"
+    "showComment": "Ver comentário",
+    "settings": {
+      "mainDocument": "{{name}} definiu {{path}} como documento principal",
+      "compiler": "{{name}} mudou o compilador para {{compiler}}",
+      "spellingLanguage": "{{name}} mudou o idioma da verificação ortográfica para {{language}}",
+      "spellingCleared": "{{name}} removeu o idioma da verificação ortográfica do projeto",
+      "typstVersion": "{{name}} mudou a versão do Typst para {{version}}",
+      "typstDefault": "{{name}} voltou a versão do Typst para a padrão",
+      "typstOptions": "{{name}} alterou as opções do Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automático",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Alterações mescladas enquanto você estava fora",

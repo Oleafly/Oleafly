@@ -1476,5 +1476,6 @@
     "keyInvalid": "值名称不能为空，也不能包含等号。",
     "keyTaken": "同一变体不能两次设置同一名称。",
     "saveFailed": "无法保存变体。"
-  }
+  },
+  "sharedSettingsViewer": "在共享项目中，查看者无法更改此项。"
 }

@@ -45,6 +45,11 @@
       "message": "Accesul complet permite asistentului să ruleze comenzi shell și să modifice fișiere fără să ceară aprobare de fiecare dată. Activezi accesul complet?",
       "confirm": "Activează accesul complet"
     },
+    "sharedShellEscape": {
+      "title": "Permiți comenzi externe în acest proiect partajat?",
+      "message": "Oricine poate edita acest proiect ar putea apoi să ruleze programe pe acest computer când compilezi. Permite asta doar dacă ai încredere în toți cei din proiect.",
+      "confirm": "Permite pe acest computer"
+    },
     "cookieImport": {
       "title": "Confirmă importul de cookie-uri",
       "messageHost": "Imporți cookie-urile pentru {{hostname}} din profilul „{{profile}}” al {{browser}} în browserul integrat Oleafly? Cookie-urile importate te pot autentifica pe site-uri.",

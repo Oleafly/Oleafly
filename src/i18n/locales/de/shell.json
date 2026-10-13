@@ -445,7 +445,8 @@
       "title": "Variante (dieses Projekt)",
       "help": "Eine Variante übergibt eigene Werte an sys.inputs, etwa für einen Entwurf oder eine druckfertige Fassung. Die gewählte Variante bleibt auf diesem Rechner. Varianten fügen Sie in den Dokumenteinstellungen hinzu oder bearbeiten sie dort.",
       "none": "Keine Variante"
-    }
+    },
+    "sharedViewer": "Betrachter können diese Einstellungen in einem geteilten Projekt nicht ändern."
   },
   "datePicker": {
     "placeholder": "Datum wählen"

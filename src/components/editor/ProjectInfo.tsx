@@ -32,6 +32,7 @@ import { notifyError } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { folderIsReadOnly, useFolderAccessStore } from "@/store/folder-access";
 import type { SyncService } from "@/lib/tauri";
@@ -333,6 +334,7 @@ function ProjectSpellLanguage() {
   const projectLocale = useFilesStore((state) => state.projectDictionaryLocale);
   const sharedInFolder = useFilesStore((state) => state.manifestHome === "folder");
   const readOnlyFolder = useFolderAccessStore((state) => folderIsReadOnly(state, projectId));
+  const sharedViewer = useCollabSettingsLocked(projectId);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const entries = useDictionaryCatalog();
   const [busy, setBusy] = useState(false);
@@ -367,12 +369,13 @@ function ProjectSpellLanguage() {
 
   const uiLocale = currentLocale();
   const chosen = projectLocale ? normalizeDictionaryLocale(projectLocale) : null;
-  const locked = sharedInFolder && readOnlyFolder;
+  const locked = (sharedInFolder && readOnlyFolder) || sharedViewer;
   const usable = entries.filter(
     (entry) => entry.state !== "available" || entry.id === chosen,
   );
   let hint: string;
-  if (locked) hint = t(($) => $.editor.projectInfo.spellLanguageReadOnly);
+  if (sharedViewer) hint = t(($) => $.editor.sharedSettingsViewer);
+  else if (locked) hint = t(($) => $.editor.projectInfo.spellLanguageReadOnly);
   else if (sharedInFolder) hint = t(($) => $.editor.projectInfo.spellLanguageFolderHint);
   else hint = t(($) => $.editor.projectInfo.spellLanguageHint);
 

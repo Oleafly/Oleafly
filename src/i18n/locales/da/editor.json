@@ -1497,5 +1497,6 @@
     "keyInvalid": "Navne på værdier må ikke være tomme eller indeholde et lighedstegn.",
     "keyTaken": "En variant kan ikke angive det samme navn to gange.",
     "saveFailed": "Varianterne kunne ikke gemmes."
-  }
+  },
+  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt."
 }

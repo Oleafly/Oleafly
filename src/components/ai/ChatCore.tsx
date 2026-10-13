@@ -2125,7 +2125,7 @@ export function ChatCore() {
     }
 
     projectApprovalsRef.current = {};
-    if (projectId && runApprovalMode === "custom") {
+    if (projectId) {
       try {
         projectApprovalsRef.current = await approvalsList(projectId);
       } catch {

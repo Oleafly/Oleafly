@@ -50,6 +50,8 @@
       "emails": {
         "label": "有人共享项目时给我发邮件",
         "description": "邮件会写明项目名称，并附有打开它的链接。",
+        "mentionsLabel": "有人在评论中提到我时给我发邮件",
+        "mentionsDescription": "邮件会引用这条评论，并附有打开它的链接。",
         "noMail": "此服务器不发送电子邮件。与你共享的项目仍会显示在你的库中的“与你共享的项目”里。",
         "paused": "服务器管理员已为所有人关闭电子邮件。",
         "loadFailed": "Oleafly 无法加载你的邮件设置。"
@@ -622,7 +624,27 @@
     "renamed": "你将它命名为 {{ours}} 之后，{{name}} 把 {{before}} 重命名为 {{theirs}}",
     "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
     "mentionedHere": "{{name}} 在评论中提及了你",
-    "showComment": "查看评论"
+    "showComment": "查看评论",
+    "settings": {
+      "mainDocument": "{{name}} 将 {{path}} 设为主文档",
+      "compiler": "{{name}} 将编译器设为 {{compiler}}",
+      "spellingLanguage": "{{name}} 将拼写检查语言设为 {{language}}",
+      "spellingCleared": "{{name}} 清除了项目的拼写检查语言",
+      "typstVersion": "{{name}} 将 Typst 版本设为 {{version}}",
+      "typstDefault": "{{name}} 将 Typst 版本恢复为默认",
+      "typstOptions": "{{name}} 更改了 Typst 选项",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "自动",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "你离开期间合并的更改",

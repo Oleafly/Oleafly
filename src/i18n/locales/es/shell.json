@@ -447,7 +447,8 @@
       "title": "Variante (este proyecto)",
       "help": "Una variante pasa sus propios valores a sys.inputs, como una versión de borrador o la definitiva. La variante que elijas se queda en este equipo. Añade o edita variantes en Ajustes del documento.",
       "none": "Sin variante"
-    }
+    },
+    "sharedViewer": "Los lectores no pueden cambiar estos ajustes en un proyecto compartido."
   },
   "datePicker": {
     "placeholder": "Elige una fecha"

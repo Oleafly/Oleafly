@@ -445,7 +445,8 @@
       "title": "Variant (dit project)",
       "help": "Een variant geeft eigen waarden door aan sys.inputs, bijvoorbeeld voor een concept of een drukklare versie. De gekozen variant blijft op deze computer. Varianten voeg je toe of bewerk je in Documentinstellingen.",
       "none": "Geen variant"
-    }
+    },
+    "sharedViewer": "Lezers kunnen deze instellingen in een gedeeld project niet wijzigen."
   },
   "datePicker": {
     "placeholder": "Kies een datum"

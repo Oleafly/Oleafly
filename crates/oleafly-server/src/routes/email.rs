@@ -108,6 +108,7 @@ fn preferences_of(
 ) -> Result<EmailPreferences, ServerError> {
     Ok(EmailPreferences {
         shared_with_you: preferences::shared_with_you(conn, account)?,
+        mentions: Some(preferences::mentions(conn, account)?),
         mail_configured: state.mailer.is_configured(),
         notifications: settings::load(conn)?.email_notifications,
     })
@@ -140,6 +141,9 @@ async fn change_preferences(
         .call(move |conn| {
             if let Some(enabled) = change.shared_with_you {
                 preferences::set_shared_with_you(conn, account, enabled, now)?;
+            }
+            if let Some(enabled) = change.mentions {
+                preferences::set_mentions(conn, account, enabled, now)?;
             }
             preferences_of(conn, &writer, account)
         })

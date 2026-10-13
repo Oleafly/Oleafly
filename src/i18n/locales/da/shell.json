@@ -445,7 +445,8 @@
       "title": "Variant (dette projekt)",
       "help": "En variant sender sine egne værdier til sys.inputs, for eksempel til et udkast eller en trykklar udgave. Den valgte variant bliver på denne computer. Tilføj eller rediger varianter under Dokumentindstillinger.",
       "none": "Ingen variant"
-    }
+    },
+    "sharedViewer": "Læsere kan ikke ændre disse indstillinger i et delt projekt."
   },
   "datePicker": {
     "placeholder": "Vælg en dato"

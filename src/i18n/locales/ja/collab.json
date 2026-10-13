@@ -50,6 +50,8 @@
       "emails": {
         "label": "プロジェクトが共有されたらメールで知らせる",
         "description": "メールにはプロジェクト名と、開くためのリンクが入っています。",
+        "mentionsLabel": "コメントでメンションされたらメールで知らせる",
+        "mentionsDescription": "メールにはコメントの引用と、開くためのリンクが入っています。",
         "noMail": "このサーバーはメールを送りません。共有されたプロジェクトは、ライブラリの「あなたと共有されたプロジェクト」に引き続き表示されます。",
         "paused": "サーバーの管理者が全員へのメールをオフにしています。",
         "loadFailed": "Oleafly はメールの設定を読み込めませんでした。"
@@ -622,7 +624,27 @@
     "renamed": "あなたが {{ours}} という名前にした後、{{name}} が {{before}} を {{theirs}} に変更しました",
     "mentioned": "{{name}} が {{path}} のコメントであなたをメンションしました",
     "mentionedHere": "{{name}} がコメントであなたをメンションしました",
-    "showComment": "コメントを表示"
+    "showComment": "コメントを表示",
+    "settings": {
+      "mainDocument": "{{name}} が {{path}} をメイン文書にしました",
+      "compiler": "{{name}} がコンパイラを {{compiler}} に設定しました",
+      "spellingLanguage": "{{name}} がスペルチェックの言語を {{language}} に設定しました",
+      "spellingCleared": "{{name}} がプロジェクトのスペルチェックの言語を解除しました",
+      "typstVersion": "{{name}} が Typst のバージョンを {{version}} に設定しました",
+      "typstDefault": "{{name}} が Typst のバージョンを既定に戻しました",
+      "typstOptions": "{{name}} が Typst のオプションを変更しました",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "自動",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "不在中に取り込んだ変更",

@@ -51,6 +51,14 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      - name: Test the installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd deploy/server && shellcheck --shell=sh install.sh tests/*.sh tests/stubs/*)
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" ubuntu:24.04 sh /src/tests/installer-test.sh
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" -e INSTALLER_SHELL=bash ubuntu:24.04 sh /src/tests/installer-test.sh
+
       - name: Work out the version and image tags
         id: version
         shell: bash
@@ -193,7 +201,56 @@ jobs:
             cp LICENSE deploy/server/oleafly-server.service "dist/stage/$stem/"
             tar -czf "dist/release/$stem.tar.gz" -C dist/stage "$stem"
           done
-          (cd dist/release && sha256sum -- *.tar.gz > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Stamp the installer and Compose files
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE: ${{ steps.version.outputs.image }}
+        run: |
+          set -euo pipefail
+          source=deploy/server
+          out=dist/release
+          mkdir -p "$out"
+          for file in install.sh docker-compose.yml Caddyfile .env.example litestream.yml; do
+            if [ ! -s "$source/$file" ]; then
+              echo "::error file=$source/$file::missing or empty"
+              exit 1
+            fi
+          done
+          stamped="installer_version=${VERSION}"
+          sed "s/^installer_version=unreleased\$/${stamped}/" "$source/install.sh" > "$out/install.sh"
+          if [ "$(grep -cxF "$stamped" "$out/install.sh" || true)" != 1 ]; then
+            echo "::error file=$source/install.sh::expected exactly one line 'installer_version=unreleased' to stamp with ${VERSION}"
+            exit 1
+          fi
+          sed -E "s#^([[:space:]]*image:[[:space:]]*)ghcr\.io/oleafly/oleafly-server:[^[:space:]]+[[:space:]]*\$#\1${IMAGE}:${VERSION}#" "$source/docker-compose.yml" > "$out/docker-compose.yml"
+          images="$(awk '$1 == "image:" && $2 ~ /\/oleafly-server:/ { print $2 }' "$out/docker-compose.yml")"
+          if [ "$images" != "${IMAGE}:${VERSION}" ]; then
+            echo "::error file=$source/docker-compose.yml::expected one oleafly-server image line to become ${IMAGE}:${VERSION}, got '${images}'"
+            exit 1
+          fi
+          cp "$source/Caddyfile" "$out/Caddyfile"
+          cp "$source/.env.example" "$out/env.example"
+          cp "$source/litestream.yml" "$out/litestream.yml"
+          chmod 0755 "$out/install.sh"
+          chmod 0644 "$out/docker-compose.yml" "$out/Caddyfile" "$out/env.example" "$out/litestream.yml"
+          sh -n "$out/install.sh"
+          check="$(mktemp -d)"
+          cp "$out/docker-compose.yml" "$out/Caddyfile" "$out/litestream.yml" "$check/"
+          cp "$out/env.example" "$check/.env"
+          (cd "$check" && docker compose config --quiet)
+          rm -rf "$check"
+          echo "install.sh: ${stamped}"
+          echo "docker-compose.yml: ${images}"
+
+      - name: Write SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/release
+          sha256sum -- *.tar.gz install.sh docker-compose.yml Caddyfile env.example litestream.yml > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Log in to GitHub Container Registry
         if: steps.version.outputs.publish == 'true'
@@ -245,7 +302,13 @@ jobs:
         if: steps.version.outputs.publish == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: dist/release/*.tar.gz
+          subject-path: |
+            dist/release/*.tar.gz
+            dist/release/install.sh
+            dist/release/docker-compose.yml
+            dist/release/Caddyfile
+            dist/release/env.example
+            dist/release/litestream.yml
 
       - name: Upload the release archives
         uses: actions/upload-artifact@v7
@@ -311,9 +374,23 @@ jobs:
         run: |
           set -euo pipefail
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            notes="$(mktemp)"
+            {
+              echo "Draft. Oleafly Server $VERSION."
+              echo
+              echo "To install it on a Linux machine with Docker, run:"
+              echo
+              echo '```sh'
+              echo "curl -fsSL https://oleafly.com/server/install.sh | sudo sh"
+              echo '```'
+              echo
+              echo "The installer and its files are attached: install.sh, docker-compose.yml, Caddyfile, env.example and litestream.yml. So is the server as a single static program for x86-64 and ARM Linux. SHA256SUMS checks every download."
+              echo
+              echo "The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps: https://oleafly.com/docs/collaboration/server/"
+            } > "$notes"
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
               --title "Oleafly Server $VERSION" \
-              --notes "Draft. Oleafly Server $VERSION as a single static program for x86-64 and ARM Linux, with a SHA256SUMS file to check the downloads. The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps are in docs/collaboration-server.md."
+              --notes-file "$notes"
           fi
           gh release upload "$TAG" archives/* --repo "$GITHUB_REPOSITORY" --clobber
           echo "Draft release ready. Publishing it is a separate, deliberate step."

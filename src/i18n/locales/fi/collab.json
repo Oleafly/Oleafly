@@ -50,6 +50,8 @@
       "emails": {
         "label": "Lähetä minulle sähköpostia, kun joku jakaa projektin",
         "description": "Viestissä kerrotaan projektin nimi, ja siinä on linkki sen avaamiseen.",
+        "mentionsLabel": "Lähetä minulle sähköpostia, kun joku mainitsee minut kommentissa",
+        "mentionsDescription": "Viestissä lainataan kommenttia, ja siinä on linkki sen avaamiseen.",
         "noMail": "Tämä palvelin ei lähetä sähköpostia. Kanssasi jaetut projektit näkyvät silti kirjastossasi kohdassa Kanssasi jaetut.",
         "paused": "Palvelimen ylläpitäjä on poistanut sähköpostin käytöstä kaikilta.",
         "loadFailed": "Oleafly ei voinut ladata sähköpostiasetuksiasi."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} nimesi tiedoston {{before}} uudelleen nimelle {{theirs}}, kun olit jo antanut sille nimen {{ours}}",
     "mentioned": "{{name}} mainitsi sinut kommentissa tiedostossa {{path}}",
     "mentionedHere": "{{name}} mainitsi sinut kommentissa",
-    "showComment": "Näytä kommentti"
+    "showComment": "Näytä kommentti",
+    "settings": {
+      "mainDocument": "{{name}} asetti tiedoston {{path}} päädokumentiksi",
+      "compiler": "{{name}} vaihtoi kääntäjäksi {{compiler}}",
+      "spellingLanguage": "{{name}} vaihtoi oikoluvun kieleksi {{language}}",
+      "spellingCleared": "{{name}} poisti projektin oikoluvun kielen",
+      "typstVersion": "{{name}} vaihtoi Typst-versioksi {{version}}",
+      "typstDefault": "{{name}} palautti Typst-version oletukseksi",
+      "typstOptions": "{{name}} muutti Typst-asetuksia",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automaattinen",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Poissaolosi aikana yhdistetyt muutokset",

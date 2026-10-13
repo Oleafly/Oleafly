@@ -1497,5 +1497,6 @@
     "keyInvalid": "Verdinavn kan ikke være tomme eller inneholde likhetstegn.",
     "keyTaken": "En variant kan ikke sette samme navn to ganger.",
     "saveFailed": "Kunne ikke lagre variantene."
-  }
+  },
+  "sharedSettingsViewer": "Lesere kan ikke endre dette i et delt prosjekt."
 }

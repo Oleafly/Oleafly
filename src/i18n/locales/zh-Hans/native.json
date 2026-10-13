@@ -45,6 +45,11 @@
       "message": "完全访问权限允许助手运行 shell 命令和编辑文件，无需每次请求批准。要启用完全访问权限吗？",
       "confirm": "启用完全访问权限"
     },
+    "sharedShellEscape": {
+      "title": "要在这个共享项目中允许外部命令吗？",
+      "message": "允许后，任何能编辑此项目的人都可以在你编译时，在这台电脑上运行程序。只有在你信任项目中的每个人时才允许。",
+      "confirm": "在这台电脑上允许"
+    },
     "cookieImport": {
       "title": "确认导入 Cookie",
       "messageHost": "要将 {{browser}} 配置文件“{{profile}}”中 {{hostname}} 的 Cookie 导入 Oleafly 的内置浏览器吗？导入的 Cookie 可能会让你自动登录网站。",

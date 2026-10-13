@@ -50,6 +50,8 @@
       "emails": {
         "label": "Send meg e-post når noen deler et prosjekt",
         "description": "E-posten nevner prosjektet og har en lenke for å åpne det.",
+        "mentionsLabel": "Send meg e-post når noen nevner meg i en kommentar",
+        "mentionsDescription": "E-posten siterer kommentaren og har en lenke for å åpne den.",
         "noMail": "Denne serveren sender ikke e-post. Prosjekter som deles med deg, vises fortsatt i biblioteket ditt under Delt med deg.",
         "paused": "Serverens administrator har slått av e-post for alle.",
         "loadFailed": "Oleafly kunne ikke laste e-postinnstillingene dine."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} ga {{before}} nytt navn til {{theirs}} etter at du hadde kalt den {{ours}}",
     "mentioned": "{{name}} nevnte deg i en kommentar i {{path}}",
     "mentionedHere": "{{name}} nevnte deg i en kommentar",
-    "showComment": "Vis kommentar"
+    "showComment": "Vis kommentar",
+    "settings": {
+      "mainDocument": "{{name}} gjorde {{path}} til hoveddokument",
+      "compiler": "{{name}} satte kompilatoren til {{compiler}}",
+      "spellingLanguage": "{{name}} satte språket for stavekontroll til {{language}}",
+      "spellingCleared": "{{name}} fjernet prosjektets språk for stavekontroll",
+      "typstVersion": "{{name}} satte Typst-versjonen til {{version}}",
+      "typstDefault": "{{name}} satte Typst-versjonen tilbake til standard",
+      "typstOptions": "{{name}} endret Typst-innstillingene",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automatisk",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Endringer slått sammen mens du var borte",

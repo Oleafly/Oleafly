@@ -109,6 +109,8 @@ pub struct Authorship {
     peers: BTreeMap<u64, Witness>,
     #[serde(default)]
     vouched: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    awaiting: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -128,16 +130,30 @@ impl Authorship {
     }
 
     fn checking(&self) -> bool {
-        self.vouched || !self.peers.is_empty()
+        self.vouched || self.awaiting || !self.peers.is_empty()
+    }
+
+    pub fn await_vouch(&mut self, awaiting: bool) -> bool {
+        let changed = self.awaiting != awaiting;
+        self.awaiting = awaiting;
+        changed
     }
 
     pub fn vouch(&mut self, listed: impl IntoIterator<Item = (u64, AccountId)>) -> bool {
-        let mut changed = !self.vouched;
+        let mut changed = !self.vouched || self.awaiting;
         self.vouched = true;
+        self.awaiting = false;
         for (peer, account) in listed {
             changed |= self.witness([peer], account);
         }
         changed
+    }
+
+    pub fn account_of(&self, peer: u64) -> Option<AccountId> {
+        match self.peers.get(&peer) {
+            Some(Witness::Account(account)) => Some(*account),
+            _ => None,
+        }
     }
 
     pub fn witness(&mut self, peers: impl IntoIterator<Item = u64>, account: AccountId) -> bool {

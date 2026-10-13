@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Vollzugriff",
-        "description": "Werkzeugaktionen ohne Nachfrage ausführen."
+        "description": "Werkzeugaktionen ohne Nachfrage ausführen, außer bei Werkzeugen, die eine Deny-Regel sperrt."
       },
       "custom": {
         "label": "Eigene Regeln (approvals.toml)",

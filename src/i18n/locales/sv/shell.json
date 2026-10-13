@@ -445,7 +445,8 @@
       "title": "Variant (det här projektet)",
       "help": "En variant skickar egna värden till sys.inputs, till exempel för ett utkast eller en tryckfärdig version. Den valda varianten stannar på den här datorn. Lägg till eller redigera varianter under Dokumentinställningar.",
       "none": "Ingen variant"
-    }
+    },
+    "sharedViewer": "Läsare kan inte ändra de här inställningarna i ett delat projekt."
   },
   "datePicker": {
     "placeholder": "Välj ett datum"

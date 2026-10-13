@@ -13,6 +13,8 @@ use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 /// `crate::project::resolve_in_project`.
 pub use crate::sandbox::resolve_in_project;
 
+pub(crate) mod shared_shell_escape;
+
 const DEFAULT_MAIN_TEX: &str = "\\documentclass[11pt]{article}\n\
 \\usepackage[T1]{fontenc}\n\
 \\usepackage{hyperref}\n\
@@ -267,7 +269,12 @@ struct ShellEscapeTrustRecord {
     version: u8,
     project_id: String,
     project_identity: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    shared_project: Option<String>,
 }
+
+const SHELL_ESCAPE_NEEDS_LATEXMK: &str =
+    "shell escape can only be enabled for the system TeX (latexmk) engine";
 
 fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
     paths::validate_project_id(project_id)?;
@@ -362,36 +369,54 @@ fn trust_record_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+fn shell_escape_trust_record(project_id: &str) -> Result<Option<ShellEscapeTrustRecord>, String> {
     let expected_identity = shell_escape_project_identity(project_id)?;
     let path = shell_escape_trust_path(project_id)?;
     let metadata = match std::fs::symlink_metadata(&path) {
         Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(format!("failed to inspect local shell trust: {error}")),
     };
     if !metadata.is_file()
         || metadata.file_type().is_symlink()
         || trust_record_is_reparse_point(&metadata)
     {
-        return Ok(false);
+        return Ok(None);
     }
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| format!("failed to read local shell trust: {e}"))?;
     let record: ShellEscapeTrustRecord = match serde_json::from_str(&raw) {
         Ok(record) => record,
-        Err(_) => return Ok(false),
+        Err(_) => return Ok(None),
     };
-    Ok(record.version == SHELL_ESCAPE_TRUST_VERSION
+    let valid = record.version == SHELL_ESCAPE_TRUST_VERSION
         && record.project_id == project_id
-        && record.project_identity == expected_identity)
+        && record.project_identity == expected_identity;
+    Ok(valid.then_some(record))
 }
 
+pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+    Ok(shell_escape_trust_record(project_id)?.is_some())
+}
+
+pub(crate) fn shell_escape_shared_project(project_id: &str) -> Result<Option<String>, String> {
+    Ok(shell_escape_trust_record(project_id)?.and_then(|record| record.shared_project))
+}
+
+#[cfg(test)]
 pub(crate) fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
+    write_shell_escape_trust_for(project_id, None)
+}
+
+fn write_shell_escape_trust_for(
+    project_id: &str,
+    shared_project: Option<&str>,
+) -> Result<(), String> {
     let record = ShellEscapeTrustRecord {
         version: SHELL_ESCAPE_TRUST_VERSION,
         project_id: project_id.to_string(),
         project_identity: shell_escape_project_identity(project_id)?,
+        shared_project: shared_project.map(str::to_owned),
     };
     let path = shell_escape_trust_path(project_id)?;
     if let Ok(metadata) = std::fs::symlink_metadata(&path) {
@@ -814,6 +839,32 @@ enum MetaWrite<'a> {
 const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
 const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor", "typst"];
 const DICTIONARY_FIELDS: &[&str] = &["dictionary_locale"];
+const SHARED_SETTING_FIELDS: &[&str] = &[
+    "main_doc",
+    "engine",
+    "tex_flavor",
+    "typst",
+    "dictionary_locale",
+];
+
+pub(crate) fn follow_shared_settings<T>(
+    project_id: &str,
+    follow: impl FnOnce(&mut ProjectMeta) -> Result<(T, bool), String>,
+) -> Result<(T, Option<ProjectMeta>), String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        let before = meta.engine.clone();
+        let (outcome, changed) = follow(&mut meta)?;
+        if !changed {
+            return Ok((outcome, None));
+        }
+        if before == "latexmk" && meta.engine != "latexmk" {
+            revoke_shell_escape_trust(project_id)?;
+        }
+        write_chosen_meta(project_id, &meta, SHARED_SETTING_FIELDS)?;
+        Ok((outcome, Some(read_meta(project_id)?)))
+    })
+}
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     write_chosen_meta(project_id, meta, &[])
@@ -3607,6 +3658,7 @@ pub async fn set_main_doc(
     project_id: String,
     main_doc: String,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let meta = set_main_doc_synchronized(&state, project_id.clone(), main_doc).await?;
     let _ = publish_project_state_changed(
         &app,
@@ -3617,6 +3669,7 @@ pub async fn set_main_doc(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3746,6 +3799,7 @@ pub async fn set_project_engine(
     engine: String,
     flavor: Option<String>,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let meta = set_project_engine_unlocked(&project_id, &engine, flavor.as_deref())?;
     let _ = publish_project_state_changed(
@@ -3757,6 +3811,7 @@ pub async fn set_project_engine(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3847,6 +3902,7 @@ pub async fn set_project_dictionary_locale(
     project_id: String,
     locale: Option<String>,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let locale = validate_dictionary_locale(&app, locale.as_deref())?;
     store_dictionary_locale(
         &app,
@@ -3864,6 +3920,9 @@ pub async fn reset_project_dictionary_locale_on_device(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
 ) -> Result<ProjectMeta, String> {
+    if crate::collab::registry::is_shared(&project_id) {
+        return read_meta(&project_id);
+    }
     store_dictionary_locale(&app, &state, project_id, None, MetaWrite::Device).await
 }
 
@@ -3889,6 +3948,7 @@ async fn store_dictionary_locale(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3929,8 +3989,13 @@ pub async fn set_project_shell_escape(
     project_id: String,
     allow_shell_escape: bool,
 ) -> Result<ProjectMeta, String> {
-    let _guard = state.compile_lock.lock().await;
-    let meta = set_project_shell_escape_unlocked(&project_id, allow_shell_escape)?;
+    let meta = shared_shell_escape::change(
+        &project_id,
+        allow_shell_escape,
+        shared_shell_escape::ask(app.clone()),
+        &state.compile_lock,
+    )
+    .await?;
     let _ = publish_project_state_changed(
         &app,
         &state,
@@ -3946,6 +4011,7 @@ pub async fn set_project_shell_escape(
 fn set_project_shell_escape_unlocked(
     project_id: &str,
     allow_shell_escape: bool,
+    shared_project: Option<&str>,
 ) -> Result<ProjectMeta, String> {
     if allow_shell_escape {
         crate::trust::require_trusted(project_id, crate::trust::Capability::ShellEscape)?;
@@ -3953,12 +4019,10 @@ fn set_project_shell_escape_unlocked(
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
         if allow_shell_escape && meta.engine != "latexmk" {
-            return Err(
-                "shell escape can only be enabled for the system TeX (latexmk) engine".into(),
-            );
+            return Err(SHELL_ESCAPE_NEEDS_LATEXMK.into());
         }
         if allow_shell_escape {
-            write_shell_escape_trust(project_id)?;
+            write_shell_escape_trust_for(project_id, shared_project)?;
         } else {
             revoke_shell_escape_trust(project_id)?;
         }
@@ -3970,7 +4034,10 @@ fn set_project_shell_escape_unlocked(
 /// Normalize the per-project compiler choice. "auto" and empty mean
 /// auto-detect; an explicit compiler is only meaningful on latexmk, and
 /// switching to any other engine always clears it.
-fn validate_tex_flavor(engine: &str, flavor: Option<&str>) -> Result<Option<String>, String> {
+pub(crate) fn validate_tex_flavor(
+    engine: &str,
+    flavor: Option<&str>,
+) -> Result<Option<String>, String> {
     match flavor.map(str::trim) {
         None | Some("") | Some("auto") => Ok(None),
         Some(value) if crate::document_engine::LatexmkFlavor::parse(value).is_some() => {
@@ -4173,7 +4240,10 @@ fn prune_build_metadata(dir: &Path, keep: usize) {
     }
 }
 
-fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
+pub(crate) fn engine_for_main_document(
+    current_engine: &str,
+    main_doc: &str,
+) -> Result<String, String> {
     let current_is_typst = matches!(
         current_engine.trim().to_ascii_lowercase().as_str(),
         "typst" | "typ"
@@ -11199,7 +11269,7 @@ mod tests {
             },
         )
         .unwrap();
-        super::set_project_shell_escape_unlocked(project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(project_id, true, None).unwrap();
         let trusted = super::read_compile_meta(project_id, "main.tex").unwrap();
         assert_eq!(trusted.engine, "latexmk");
         assert!(trusted.allow_shell_escape);
@@ -11213,11 +11283,11 @@ mod tests {
             .err()
             .unwrap();
         assert!(engine.contains("\"code\":\"trust.system_tex\""), "{engine}");
-        let shell = super::set_project_shell_escape_unlocked(project_id, true)
+        let shell = super::set_project_shell_escape_unlocked(project_id, true, None)
             .err()
             .unwrap();
         assert!(shell.contains("\"code\":\"trust.shell_escape\""), "{shell}");
-        assert!(super::set_project_shell_escape_unlocked(project_id, false).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(project_id, false, None).is_ok());
         drop(restricted);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
@@ -12296,7 +12366,7 @@ mod tests {
         )
         .unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let trust_path = super::shell_escape_trust_path(&project_id).unwrap();
         assert!(trust_path.is_file());
 
@@ -15746,7 +15816,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source_id = super::create_blank_project("Original Paper".to_string()).unwrap();
         super::set_project_engine_unlocked(&source_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&source_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&source_id, true, None).unwrap();
         let source_policy: oleafly_core::CheckpointPolicy =
             serde_json::from_value(serde_json::json!({
                 "mode": "engine_dependencies",
@@ -15807,7 +15877,7 @@ mod tests {
         .unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
 
-        let trusted = super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        let trusted = super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(trusted.allow_shell_escape);
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
@@ -15827,8 +15897,8 @@ mod tests {
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
-        assert!(super::set_project_shell_escape_unlocked(&project_id, true).is_ok());
-        assert!(super::set_project_shell_escape_unlocked(&project_id, false).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(&project_id, true, None).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(&project_id, false, None).is_ok());
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
@@ -15923,7 +15993,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let project_id = super::create_blank_project("Git Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let state = Arc::new(crate::state::AppState::default());
 
         let compile_guard = state.compile_lock.lock().await;
@@ -15972,7 +16042,7 @@ mod tests {
         assert!(!changed_back.project.allow_shell_escape);
 
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let before_failure = super::project_mutation_generation(project_id.clone()).unwrap();
         let failed = super::mutate_project_worktree(
             &state,
@@ -16043,7 +16113,7 @@ mod tests {
             ))
             .unwrap();
             super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-            super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+            super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
             let project = crate::paths::project_dir(&project_id).unwrap();
             let manifest = br#"{"name":"Unreconciled","main_doc":"main.tex","engine":"latexmk"}"#;
             std::fs::write(project.join("project.json"), manifest).unwrap();
@@ -16168,7 +16238,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let project_id = super::create_blank_project("Rename Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
         super::rename_file_blocking(
@@ -16248,7 +16318,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let project_id = super::create_blank_project("Original".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
         let projects = crate::paths::projects_root().unwrap();

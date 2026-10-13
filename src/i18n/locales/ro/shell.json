@@ -447,7 +447,8 @@
       "title": "Variantă (acest proiect)",
       "help": "O variantă transmite propriile valori către sys.inputs, de exemplu pentru o versiune de ciornă sau una finală. Varianta aleasă rămâne pe acest computer. Adaugă sau editează variante în Setările documentului.",
       "none": "Fără variantă"
-    }
+    },
+    "sharedViewer": "Cititorii nu pot modifica aceste setări într-un proiect partajat."
   },
   "datePicker": {
     "placeholder": "Alege o dată"

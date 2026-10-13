@@ -219,3 +219,55 @@ async fn a_child_without_a_permission_route_is_declined_instead_of_stalling() {
         .any(|event| event.kind == "permission_resolved" && event.data["outcome"] == "cancelled"));
     runtime.close(&id).await.unwrap();
 }
+
+#[test]
+fn full_access_auto_allows_a_child_only_without_a_run_command_deny() {
+    use crate::acp::PermissionDelegate;
+    use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
+    let root = tempfile::tempdir().unwrap();
+    set_mode(root.path(), "full-open", ApprovalMode::FullAccess).unwrap();
+    set_mode(root.path(), "full-denied", ApprovalMode::FullAccess).unwrap();
+    set_decision(
+        root.path(),
+        "full-denied",
+        "run_command",
+        Some(ToolDecision::Deny),
+    )
+    .unwrap();
+    set_mode(root.path(), "approve", ApprovalMode::ApproveForMe).unwrap();
+    set_decision(
+        root.path(),
+        "approve",
+        "run_command",
+        Some(ToolDecision::Allow),
+    )
+    .unwrap();
+
+    assert_eq!(
+        super::permission_delegate_for(root.path(), "full-open"),
+        PermissionDelegate::AutoAllow
+    );
+    assert_eq!(
+        super::permission_delegate_for(root.path(), "full-denied"),
+        PermissionDelegate::ParentChat
+    );
+    assert_eq!(
+        super::permission_delegate_for(root.path(), "approve"),
+        PermissionDelegate::ParentChat
+    );
+}
+
+#[test]
+fn an_unreadable_approvals_file_routes_child_permissions_to_the_parent_chat() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(
+        root.path().join("approvals.toml"),
+        "[\"$approval_modes\"]\nproj = \"full-access\"\n[proj\n",
+    )
+    .unwrap();
+
+    assert_eq!(
+        super::permission_delegate_for(root.path(), "proj"),
+        crate::acp::PermissionDelegate::ParentChat
+    );
+}

@@ -119,15 +119,12 @@ pub fn policy_for(
 ) -> Result<(ApprovalMode, Option<ToolDecision>), String> {
     let approvals = read_file(root)?;
     let mode = approvals.mode_for(project_id);
-    let decision = (mode == ApprovalMode::Custom)
-        .then(|| {
-            approvals
-                .decisions
-                .get(project_id)
-                .and_then(|decisions| decisions.get(tool))
-                .copied()
-        })
-        .flatten();
+    let decision = approvals
+        .decisions
+        .get(project_id)
+        .and_then(|decisions| decisions.get(tool))
+        .copied()
+        .filter(|decision| *decision == ToolDecision::Deny || mode == ApprovalMode::Custom);
     Ok((mode, decision))
 }
 
@@ -461,13 +458,59 @@ write_file = "allow"
             decision_for(&root, "proj", "run_command"),
             Some(ToolDecision::Deny)
         );
-        assert_eq!(effective_decision_for(&root, "proj", "run_command"), None);
+        assert_eq!(
+            effective_decision_for(&root, "proj", "run_command"),
+            Some(ToolDecision::Deny)
+        );
 
         set_mode(&root, "proj", ApprovalMode::Custom).unwrap();
         assert_eq!(
             effective_decision_for(&root, "proj", "run_command"),
             Some(ToolDecision::Deny)
         );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn deny_rules_apply_in_every_mode_and_allow_rules_only_in_custom() {
+        let root = temp_root("deny-every-mode");
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        set_decision(&root, "proj", "write_file", Some(ToolDecision::Allow)).unwrap();
+
+        for mode in [
+            ApprovalMode::AskForApproval,
+            ApprovalMode::ApproveForMe,
+            ApprovalMode::FullAccess,
+            ApprovalMode::Custom,
+        ] {
+            set_mode(&root, "proj", mode).unwrap();
+            let allow = (mode == ApprovalMode::Custom).then_some(ToolDecision::Allow);
+            assert_eq!(
+                policy_for(&root, "proj", "run_command").unwrap(),
+                (mode, Some(ToolDecision::Deny)),
+                "{mode:?}"
+            );
+            assert_eq!(
+                effective_decision_for(&root, "proj", "run_command"),
+                Some(ToolDecision::Deny),
+                "{mode:?}"
+            );
+            assert_eq!(
+                policy_for(&root, "proj", "write_file").unwrap(),
+                (mode, allow),
+                "{mode:?}"
+            );
+            assert_eq!(
+                effective_decision_for(&root, "proj", "write_file"),
+                allow,
+                "{mode:?}"
+            );
+            assert_eq!(
+                policy_for(&root, "proj", "compile").unwrap(),
+                (mode, None),
+                "{mode:?}"
+            );
+        }
         std::fs::remove_dir_all(&root).ok();
     }
 

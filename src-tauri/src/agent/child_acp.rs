@@ -107,17 +107,9 @@ impl AcpChild {
     }
 
     fn permission_delegate(&self) -> crate::acp::PermissionDelegate {
-        let mode = crate::paths::oleafly_root()
-            .ok()
-            .and_then(|root| {
-                crate::approvals::policy_for(&root, &self.project_id, "run_command").ok()
-            })
-            .map(|(mode, _)| mode);
-        if mode == Some(crate::approvals::ApprovalMode::FullAccess) {
-            crate::acp::PermissionDelegate::AutoAllow
-        } else {
-            crate::acp::PermissionDelegate::ParentChat
-        }
+        crate::paths::oleafly_root().map_or(crate::acp::PermissionDelegate::ParentChat, |root| {
+            permission_delegate_for(&root, &self.project_id)
+        })
     }
 
     async fn ready_session(&self) -> Result<String, String> {
@@ -209,6 +201,18 @@ impl AcpChild {
         if let Some(bridge) = bridge {
             bridge.shutdown().await;
         }
+    }
+}
+
+fn permission_delegate_for(
+    root: &std::path::Path,
+    project_id: &str,
+) -> crate::acp::PermissionDelegate {
+    match crate::approvals::policy_for(root, project_id, "run_command") {
+        Ok((crate::approvals::ApprovalMode::FullAccess, None)) => {
+            crate::acp::PermissionDelegate::AutoAllow
+        }
+        _ => crate::acp::PermissionDelegate::ParentChat,
     }
 }
 

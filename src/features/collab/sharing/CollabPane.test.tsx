@@ -488,6 +488,45 @@ describe("CollabPane", () => {
     );
   });
 
+  it("says who changed a shared compile setting and what it is now", () => {
+    const setting = (change: Extract<NewActivity, { kind: "setting" }>["change"], name = "Bob Smith"): ActivityEntry => ({
+      kind: "setting",
+      at: NOW,
+      accountId: name ? BOB_ID : null,
+      name,
+      change,
+      id: crypto.randomUUID(),
+      count: 1,
+    });
+    feed([
+      setting({ kind: "compiler", engine: "latexmk", flavor: "xelatex" }),
+      setting({ kind: "mainDocument", path: "chapters/intro.tex" }),
+      setting({ kind: "compiler", engine: "xetex", flavor: null }),
+      setting({ kind: "compiler", engine: "latexmk", flavor: null }),
+      setting({ kind: "spellingLanguage", locale: "fr_FR" }),
+      setting({ kind: "spellingLanguage", locale: null }),
+      setting({ kind: "typstVersion", version: "0.13.1" }),
+      setting({ kind: "typstVersion", version: null }),
+      setting({ kind: "typstOptions" }, ""),
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    const said = activity.settings;
+    const names = said.compilers;
+    expect(rows[0]).toHaveTextContent(fill(said.compiler, { name: "Bob Smith", compiler: names.xelatex }));
+    expect(rows[0].querySelector("svg.lucide-sliders-horizontal")).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent(fill(said.mainDocument, { name: "Bob Smith", path: "chapters/intro.tex" }));
+    expect(rows[2]).toHaveTextContent(fill(said.compiler, { name: "Bob Smith", compiler: names.tectonic }));
+    expect(rows[3]).toHaveTextContent(fill(said.compiler, { name: "Bob Smith", compiler: names.auto }));
+    expect(rows[4]).toHaveTextContent(fill(said.spellingLanguage, { name: "Bob Smith", language: "French (France)" }));
+    expect(rows[5]).toHaveTextContent(fill(said.spellingCleared, { name: "Bob Smith" }));
+    expect(rows[6]).toHaveTextContent(fill(said.typstVersion, { name: "Bob Smith", version: "0.13.1" }));
+    expect(rows[7]).toHaveTextContent(fill(said.typstDefault, { name: "Bob Smith" }));
+    expect(rows[8]).toHaveTextContent(fill(said.typstOptions, { name: enCollab.toolbar.unknownPerson }));
+    expect(activity.settings.compiler).toBe("{{name}} set the compiler to {{compiler}}");
+    expect(fill(said.mainDocument, { name: "Alice", path: "intro.tex" })).toBe("Alice made intro.tex the main document");
+  });
+
   it("collapses and reopens each section from its header", () => {
     render(<CollabPane />);
     const peopleToggle = sectionToggle(pane.people);

@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useSettingsStore } from "@/store/settings";
-import type { CollabLiveRenamed } from "@/lib/tauri";
+import { useToastStore } from "@/store/toast";
+import type { CollabLiveRenamed, CollabLiveSettings } from "@/lib/tauri";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
 import { ALICE_ID, BOB, BOB_ID, CAROL_ID, person, projectMember, shareInfo } from "../tests/fixtures";
 const renamed = vi.hoisted(() => ({
   handler: null as ((payload: CollabLiveRenamed) => void) | null,
+  unlisten: vi.fn(),
+}));
+
+const settings = vi.hoisted(() => ({
+  handler: null as ((payload: CollabLiveSettings) => void) | null,
   unlisten: vi.fn(),
 }));
 
@@ -14,6 +20,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   onCollabLiveRenamed: vi.fn(async (handler: (payload: CollabLiveRenamed) => void) => {
     renamed.handler = handler;
     return renamed.unlisten;
+  }),
+  onCollabLiveSettings: vi.fn(async (handler: (payload: CollabLiveSettings) => void) => {
+    settings.handler = handler;
+    return settings.unlisten;
   }),
 }));
 
@@ -188,6 +198,29 @@ describe("startCollabActivity", () => {
     expect(useCollabRail.getState().unread).toBe(true);
     stop();
     expect(renamed.unlisten).toHaveBeenCalled();
+  });
+
+  it("names who changed a shared compile setting, without a toast", async () => {
+    useToastStore.getState().reset();
+    joined();
+    stop = startCollabActivity();
+    await vi.waitFor(() => expect(settings.handler).not.toBeNull());
+    useCollabActivity.getState().markRead();
+    const compiler = { kind: "compiler", engine: "latexmk", flavor: "xelatex" } as const;
+    const main = { kind: "mainDocument", path: "intro.tex" } as const;
+    settings.handler?.({ projectId: "thesis", accountId: BOB_ID, changes: [compiler] });
+    expect(kinds()).toEqual(["welcome"]);
+    settings.handler?.({ projectId: "grant", accountId: BOB_ID, changes: [main, compiler] });
+    settings.handler?.({ projectId: "grant", accountId: null, changes: [{ kind: "typstOptions" }] });
+    expect(useCollabActivity.getState().entries.slice(0, 3)).toMatchObject([
+      { kind: "setting", accountId: null, name: "", change: { kind: "typstOptions" } },
+      { kind: "setting", accountId: BOB_ID, name: "Bob Smith", change: compiler },
+      { kind: "setting", accountId: BOB_ID, name: "Bob Smith", change: main },
+    ]);
+    expect(useCollabRail.getState().unread).toBe(true);
+    expect(useToastStore.getState().toasts).toEqual([]);
+    stop();
+    expect(settings.unlisten).toHaveBeenCalled();
   });
 
   it("keeps the feed working when it cannot listen for renames", async () => {

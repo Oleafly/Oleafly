@@ -50,6 +50,8 @@
       "emails": {
         "label": "Trimite-mi un e-mail când cineva partajează un proiect",
         "description": "E-mailul numește proiectul și are un link pentru a-l deschide.",
+        "mentionsLabel": "Trimite-mi un e-mail când cineva mă menționează într-un comentariu",
+        "mentionsDescription": "E-mailul citează comentariul și are un link pentru a-l deschide.",
         "noMail": "Acest server nu trimite e-mailuri. Proiectele partajate cu tine apar în continuare în biblioteca ta, la Partajate cu tine.",
         "paused": "Administratorul serverului a dezactivat e-mailul pentru toată lumea.",
         "loadFailed": "Oleafly nu a putut încărca setările tale de e-mail."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} a redenumit {{before}} în {{theirs}} după ce i-ai dat numele {{ours}}",
     "mentioned": "{{name}} te-a menționat într-un comentariu din {{path}}",
     "mentionedHere": "{{name}} te-a menționat într-un comentariu",
-    "showComment": "Arată comentariul"
+    "showComment": "Arată comentariul",
+    "settings": {
+      "mainDocument": "{{name}} a setat {{path}} ca document principal",
+      "compiler": "{{name}} a setat compilatorul la {{compiler}}",
+      "spellingLanguage": "{{name}} a setat limba verificării ortografice la {{language}}",
+      "spellingCleared": "{{name}} a eliminat limba verificării ortografice a proiectului",
+      "typstVersion": "{{name}} a setat versiunea Typst la {{version}}",
+      "typstDefault": "{{name}} a readus versiunea Typst la cea implicită",
+      "typstOptions": "{{name}} a modificat opțiunile Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automat",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Modificări îmbinate cât ai lipsit",

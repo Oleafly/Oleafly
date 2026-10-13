@@ -50,6 +50,8 @@
       "emails": {
         "label": "Poslat mi e-mail, když se mnou někdo sdílí projekt",
         "description": "E-mail uvede název projektu a obsahuje odkaz, kterým ho otevřete.",
+        "mentionsLabel": "Poslat mi e-mail, když mě někdo zmíní v komentáři",
+        "mentionsDescription": "E-mail cituje komentář a obsahuje odkaz, kterým ho otevřete.",
         "noMail": "Tento server neposílá e-maily. Projekty sdílené s vámi se dál zobrazují ve vaší knihovně v části Sdíleno s vámi.",
         "paused": "Administrátor serveru vypnul e-maily pro všechny.",
         "loadFailed": "Oleafly nemohl načíst vaše nastavení e-mailu."
@@ -622,7 +624,27 @@
     "renamed": "Uživatel {{name}} přejmenoval {{before}} na {{theirs}} poté, co jste soubor pojmenovali {{ours}}",
     "mentioned": "Zmínka od {{name}} v komentáři v souboru {{path}}",
     "mentionedHere": "Zmínka od {{name}} v komentáři",
-    "showComment": "Zobrazit komentář"
+    "showComment": "Zobrazit komentář",
+    "settings": {
+      "mainDocument": "Uživatel {{name}} nastavil {{path}} jako hlavní dokument",
+      "compiler": "Uživatel {{name}} nastavil překladač na {{compiler}}",
+      "spellingLanguage": "Uživatel {{name}} nastavil jazyk kontroly pravopisu na {{language}}",
+      "spellingCleared": "Uživatel {{name}} zrušil jazyk kontroly pravopisu projektu",
+      "typstVersion": "Uživatel {{name}} nastavil verzi Typst na {{version}}",
+      "typstDefault": "Uživatel {{name}} vrátil verzi Typst na výchozí",
+      "typstOptions": "Uživatel {{name}} změnil možnosti Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automaticky",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Změny sloučené během vaší nepřítomnosti",

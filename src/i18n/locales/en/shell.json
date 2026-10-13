@@ -445,7 +445,8 @@
       "title": "Variant (this project)",
       "help": "A variant passes its own values to sys.inputs, such as a draft or a camera-ready build. The variant you pick stays on this computer. Add or edit variants in Document settings.",
       "none": "No variant"
-    }
+    },
+    "sharedViewer": "Viewers can't change these settings in a shared project."
   },
   "datePicker": {
     "placeholder": "Pick a date"

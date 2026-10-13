@@ -455,11 +455,23 @@ impl ProjectDoc {
 
     pub fn set_blob(&mut self, id: &str, hash: &str) -> Result<(), CollabError> {
         let node = self.tree_id(id)?;
+        let seen = meta_string(&self.tree.get_meta(node).map_err(doc_error)?, "blob");
+        self.put_blob(id, hash, seen)
+    }
+
+    pub fn replace_blob(&mut self, id: &str, seen: &str, hash: &str) -> Result<(), CollabError> {
+        self.put_blob(id, hash, Some(seen.to_owned()))
+    }
+
+    fn put_blob(&mut self, id: &str, hash: &str, was: Option<String>) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
         let meta = self.tree.get_meta(node).map_err(doc_error)?;
-        let was = meta_string(&meta, "blob");
+        let unseen = meta_string(&meta, "blob")
+            .filter(|current| Some(current) != was.as_ref())
+            .map(|current| format!("{BLOB_BY}{current}"));
         let setters: Vec<String> = meta
             .keys()
-            .filter(|key| key.starts_with(BLOB_BY))
+            .filter(|key| key.starts_with(BLOB_BY) && Some(key.as_str()) != unseen.as_deref())
             .map(|key| key.to_string())
             .collect();
         for key in setters {

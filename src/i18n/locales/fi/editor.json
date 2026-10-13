@@ -1497,5 +1497,6 @@
     "keyInvalid": "Arvon nimi ei voi olla tyhjä eikä sisältää yhtäsuuruusmerkkiä.",
     "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
     "saveFailed": "Muunnelmia ei voitu tallentaa."
-  }
+  },
+  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa."
 }

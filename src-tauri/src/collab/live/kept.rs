@@ -894,4 +894,184 @@ mod tests {
             assert!(arrived.kept().is_empty());
         });
     }
+
+    struct Figure {
+        active: Arc<Active>,
+        host: Arc<Recording>,
+        root: PathBuf,
+        bytes: [u8; 3],
+    }
+
+    impl Figure {
+        async fn start(dir: &Path, owner: &ProjectDoc, who: (&str, &str, u8)) -> Figure {
+            let (account, name, mark) = who;
+            let place = dir.join(account);
+            let root = place.join("project");
+            std::fs::create_dir_all(root.join("figs")).unwrap();
+            let first = [0x89, b'P', 0];
+            std::fs::write(root.join("figs/plot.png"), first).unwrap();
+            let doc = signed(owner, account, name);
+            let disk = disk_of(&doc, &[("figs/plot.png", &first)]);
+            let host = Arc::new(Recording::default());
+            let active = active_for_bob(
+                &place,
+                &root,
+                LiveProject::new(doc, 0, ProjectRole::Editor),
+                disk,
+                Arc::clone(&host),
+            )
+            .await;
+            Figure {
+                active,
+                host,
+                root,
+                bytes: [0x89, b'P', mark],
+            }
+        }
+
+        fn replace_on_disk(&self) {
+            std::fs::write(self.root.join("figs/plot.png"), self.bytes).unwrap();
+            let only = ["figs/plot.png".to_owned()];
+            let snapshot = guard(&self.active.disk).clone();
+            let import = {
+                let live = lock(&self.active.live);
+                super::super::read_local_changes(&self.root, &snapshot, &live, Some(&only)).unwrap()
+            };
+            let mut disk = guard(&self.active.disk);
+            let mut live = lock(&self.active.live);
+            let mut bases = guard(&self.active.bases);
+            assert!(super::super::apply_local_import(
+                &mut live, &mut disk, &mut bases, import, &self.root
+            )
+            .unwrap());
+        }
+
+        fn hash(&self) -> String {
+            sha256_hex(&self.bytes)
+        }
+
+        fn blobs(&self) -> BTreeMap<String, Option<String>> {
+            placed_blobs(lock(&self.active.live).doc())
+        }
+
+        fn told(&self) -> Vec<KeptFile> {
+            self.host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.clone())
+                .collect()
+        }
+    }
+
+    fn deliver(from: &Figure, to: &Figure, seq: u64, with: Vec<Vec<u8>>) {
+        let known = lock(&to.active.live).doc().version();
+        let payload = lock(&from.active.live).doc().export_since(&known).unwrap();
+        let arrivals = with
+            .into_iter()
+            .chain([payload])
+            .enumerate()
+            .map(|(index, payload)| oleafly_collab::live::Arrival {
+                seq: seq + index as u64,
+                payload,
+                device: None,
+                author: None,
+            })
+            .collect();
+        lock(&to.active.live).import_arrivals(arrivals).unwrap();
+    }
+
+    async fn settle(alice: &Figure, bob: &Figure) {
+        for (seq, (from, to)) in [(alice, bob), (bob, alice), (alice, bob), (bob, alice)]
+            .into_iter()
+            .enumerate()
+        {
+            deliver(from, to, 100 + 10 * seq as u64, Vec::new());
+            to.active.write_out().await.unwrap();
+        }
+    }
+
+    fn both_versions_survive(alice: &Figure, bob: &Figure) {
+        let everywhere = alice.blobs();
+        assert_eq!(everywhere, bob.blobs());
+        let shown = everywhere.get("figs/plot.png").cloned().flatten();
+        let (winner, loser, name) = if shown == Some(bob.hash()) {
+            (bob, alice, "Alice Chen")
+        } else {
+            (alice, bob, "Bob Smith")
+        };
+        let copy = format!("figs/plot (from {name}).png");
+        let mut expected = BTreeMap::new();
+        expected.insert("figs/plot.png".to_owned(), Some(winner.hash()));
+        expected.insert(copy.clone(), Some(loser.hash()));
+        assert_eq!(everywhere, expected);
+        assert_eq!(std::fs::read(loser.root.join(&copy)).unwrap(), loser.bytes);
+        let told = loser.told();
+        assert!(
+            told.iter().any(|file| file.kind == KeptKind::Replaced
+                && file.path == "figs/plot.png"
+                && file.copy == copy),
+            "{told:?}"
+        );
+    }
+
+    fn owner_of_one_figure() -> ProjectDoc {
+        let mut owner = ProjectDoc::create().unwrap();
+        owner.set_author(ALICE, "Alice Chen");
+        let figs = owner
+            .add_node(None, "figs", NodeKind::Dir, None, "")
+            .unwrap();
+        owner
+            .add_node(
+                Some(&figs),
+                "plot.png",
+                NodeKind::Blob,
+                Some(&sha256_hex(&[0x89, b'P', 0])),
+                "",
+            )
+            .unwrap();
+        owner
+    }
+
+    #[test]
+    fn a_figure_replaced_here_while_another_replacement_was_on_its_way_keeps_both_everywhere() {
+        run(async {
+            let dir = tempfile::tempdir().unwrap();
+            let owner = owner_of_one_figure();
+            let alice = Figure::start(dir.path(), &owner, (ALICE, "Alice Chen", 1)).await;
+            let bob = Figure::start(dir.path(), &owner, (BOB, "Bob Smith", 2)).await;
+            alice.replace_on_disk();
+            deliver(&alice, &bob, 1, Vec::new());
+            bob.replace_on_disk();
+            settle(&alice, &bob).await;
+            alice.active.handle.stop();
+            bob.active.handle.stop();
+            both_versions_survive(&alice, &bob);
+        });
+    }
+
+    #[test]
+    fn a_figure_both_people_replaced_offline_keeps_both_when_their_changes_arrive_together() {
+        run(async {
+            let dir = tempfile::tempdir().unwrap();
+            let owner = owner_of_one_figure();
+            let alice = Figure::start(dir.path(), &owner, (ALICE, "Alice Chen", 1)).await;
+            let bob = Figure::start(dir.path(), &owner, (BOB, "Bob Smith", 2)).await;
+            alice.replace_on_disk();
+            bob.replace_on_disk();
+            let mut typing = signed(&owner, "acct-carol", "Carol Diaz");
+            let since = typing.version();
+            busy(&mut typing);
+            let other = typing.export_since(&since).unwrap();
+            deliver(&alice, &bob, 1, vec![other.clone()]);
+            deliver(&bob, &alice, 1, vec![other]);
+            alice.active.write_out().await.unwrap();
+            bob.active.write_out().await.unwrap();
+            settle(&alice, &bob).await;
+            alice.active.handle.stop();
+            bob.active.handle.stop();
+            both_versions_survive(&alice, &bob);
+        });
+    }
 }

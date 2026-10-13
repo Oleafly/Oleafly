@@ -50,6 +50,8 @@
       "emails": {
         "label": "누군가 프로젝트를 공유하면 이메일로 알려 주기",
         "description": "이메일에는 프로젝트 이름과 여는 링크가 들어 있습니다.",
+        "mentionsLabel": "누군가 댓글에서 나를 멘션하면 이메일로 알려 주기",
+        "mentionsDescription": "이메일에는 댓글 내용과 여는 링크가 들어 있습니다.",
         "noMail": "이 서버는 이메일을 보내지 않습니다. 공유받은 프로젝트는 라이브러리의 나와 공유된 프로젝트에 계속 표시됩니다.",
         "paused": "서버 관리자가 모든 사람의 이메일을 껐습니다.",
         "loadFailed": "Oleafly가 이메일 설정을 불러오지 못했습니다."
@@ -622,7 +624,27 @@
     "renamed": "내가 {{ours}}(으)로 이름을 바꾼 뒤 {{name}} 님이 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다",
     "mentioned": "{{name}} 님이 {{path}}의 댓글에서 회원님을 멘션했습니다",
     "mentionedHere": "{{name}} 님이 댓글에서 회원님을 멘션했습니다",
-    "showComment": "댓글 보기"
+    "showComment": "댓글 보기",
+    "settings": {
+      "mainDocument": "{{name}} 님이 {{path}}을(를) 주 문서로 지정했습니다",
+      "compiler": "{{name}} 님이 컴파일러를 {{compiler}}(으)로 설정했습니다",
+      "spellingLanguage": "{{name}} 님이 맞춤법 검사 언어를 {{language}}(으)로 설정했습니다",
+      "spellingCleared": "{{name}} 님이 프로젝트의 맞춤법 검사 언어를 해제했습니다",
+      "typstVersion": "{{name}} 님이 Typst 버전을 {{version}}(으)로 설정했습니다",
+      "typstDefault": "{{name}} 님이 Typst 버전을 기본값으로 되돌렸습니다",
+      "typstOptions": "{{name}} 님이 Typst 옵션을 변경했습니다",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "자동",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "자리를 비운 동안 병합된 변경 사항",

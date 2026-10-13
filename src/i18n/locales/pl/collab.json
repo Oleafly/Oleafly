@@ -50,6 +50,8 @@
       "emails": {
         "label": "Wyślij mi e-mail, gdy ktoś udostępni projekt",
         "description": "E-mail podaje nazwę projektu i zawiera link do jego otwarcia.",
+        "mentionsLabel": "Wyślij mi e-mail, gdy ktoś wspomni o mnie w komentarzu",
+        "mentionsDescription": "E-mail cytuje komentarz i zawiera link do jego otwarcia.",
         "noMail": "Ten serwer nie wysyła e-maili. Projekty udostępnione Tobie nadal widać w bibliotece w sekcji Udostępnione Tobie.",
         "paused": "Administrator serwera wyłączył e-maile dla wszystkich.",
         "loadFailed": "Oleafly nie mógł wczytać Twoich ustawień e-mail."
@@ -622,7 +624,27 @@
     "renamed": "Użytkownik {{name}} zmienił nazwę {{before}} na {{theirs}} po tym, jak nazwałeś plik {{ours}}",
     "mentioned": "{{name}} oznacza Cię w komentarzu w pliku {{path}}",
     "mentionedHere": "{{name}} oznacza Cię w komentarzu",
-    "showComment": "Pokaż komentarz"
+    "showComment": "Pokaż komentarz",
+    "settings": {
+      "mainDocument": "Użytkownik {{name}} ustawił {{path}} jako dokument główny",
+      "compiler": "Użytkownik {{name}} ustawił kompilator na {{compiler}}",
+      "spellingLanguage": "Użytkownik {{name}} ustawił język sprawdzania pisowni na {{language}}",
+      "spellingCleared": "Użytkownik {{name}} usunął język sprawdzania pisowni projektu",
+      "typstVersion": "Użytkownik {{name}} ustawił wersję Typst na {{version}}",
+      "typstDefault": "Użytkownik {{name}} przywrócił domyślną wersję Typst",
+      "typstOptions": "Użytkownik {{name}} zmienił opcje Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automatycznie",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Zmiany scalone podczas Twojej nieobecności",

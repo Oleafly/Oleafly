@@ -1267,6 +1267,7 @@ mod tests {
                 &member.access_token,
                 &EmailPreferencesPatch {
                     shared_with_you: Some(false),
+                    ..EmailPreferencesPatch::default()
                 },
             )
             .await

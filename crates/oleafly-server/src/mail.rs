@@ -187,6 +187,7 @@ pub enum EmailKind {
     Test,
     GuestInvitation,
     SignInLink,
+    Mention,
 }
 
 impl EmailKind {
@@ -202,6 +203,7 @@ impl EmailKind {
             EmailKind::Test => "test",
             EmailKind::GuestInvitation => "guest invitation",
             EmailKind::SignInLink => "sign-in link",
+            EmailKind::Mention => "mention",
         }
     }
 }

@@ -378,6 +378,7 @@ pub fn run() {
             deep_link::on_page_load(webview, payload);
         })
         .manage(language_service::LanguageServiceState::default())
+        .manage(web_process::RestoreAfterReload::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
         .plugin(acp::lifecycle_plugin())
@@ -393,7 +394,10 @@ pub fn run() {
     // of the main, preview and update windows (issue #169).
     #[cfg(target_os = "macos")]
     {
-        builder = builder.plugin(webview_frame::plugin());
+        builder = builder
+            .plugin(webview_frame::plugin())
+            .plugin(web_process::plugin())
+            .on_web_content_process_terminate(web_process::on_web_content_process_terminate);
     }
     #[cfg(windows)]
     {
@@ -619,6 +623,10 @@ pub fn run() {
             trust::debug_answer_next_confirmation,
             #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
             webview_frame::debug_webview_frame,
+            #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
+            web_process::macos_wk::debug_freeze_webview,
+            web_process::web_process_note_location,
+            web_process::web_process_take_restore,
             folder_status::project_folder_status,
             skills::skills_list,
             skills::skills_add,
@@ -783,6 +791,7 @@ pub fn run() {
             collab::comments::collab_comments_set_enabled,
             collab::comments::collab_comment_thread_list,
             collab::comments::collab_comment_counts,
+            collab::comments::collab_comment_file_path,
             collab::comments::collab_comment_create,
             collab::comments::collab_comment_reply,
             collab::comments::collab_comment_edit,

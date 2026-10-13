@@ -445,7 +445,8 @@
       "title": "Varyant (bu proje)",
       "help": "Bir varyant, taslak veya baskıya hazır derleme gibi kendi değerlerini sys.inputs içine aktarır. Seçtiğiniz varyant bu bilgisayarda kalır. Varyantları Belge ayarlarında ekleyin veya düzenleyin.",
       "none": "Varyant yok"
-    }
+    },
+    "sharedViewer": "Paylaşılan bir projede görüntüleyenler bu ayarları değiştiremez."
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"

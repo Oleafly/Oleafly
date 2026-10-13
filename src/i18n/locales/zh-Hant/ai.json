@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "完整存取權",
-        "description": "執行工具動作時不要求核准。"
+        "description": "執行工具動作時不詢問，被拒絕規則封鎖的工具除外。"
       },
       "custom": {
         "label": "自訂（approvals.toml）",

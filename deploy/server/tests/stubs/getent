@@ -1,0 +1,4 @@
+#!/bin/sh
+printf 'getent %s\n' "$*" >>/stub/log
+[ -f /stub/state/dns ] || exit 2
+awk '{ print $1 "      STREAM " FILENAME }' /stub/state/dns

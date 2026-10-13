@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Acces complet",
-        "description": "Rulează acțiunile instrumentelor fără să ceară aprobare."
+        "description": "Rulează acțiunile instrumentelor fără să întrebe, cu excepția celor blocate de o regulă de refuz."
       },
       "custom": {
         "label": "Personalizat (approvals.toml)",

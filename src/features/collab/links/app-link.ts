@@ -1,8 +1,13 @@
 import { normalizeServerAddress } from "../AddServerDialog";
 
+export interface CommentTarget {
+  fileId: string;
+  threadId: string;
+}
+
 export type AppLink =
   | { kind: "addServer"; url: string }
-  | { kind: "openProject"; server: string; project: string; link: string }
+  | { kind: "openProject"; server: string; project: string; link: string; comment?: CommentTarget }
   | { kind: "malformed"; link: string };
 
 const PROJECT_ID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;
@@ -29,6 +34,13 @@ function parameter(url: URL, name: string): string {
   return url.searchParams.get(name)?.trim() ?? "";
 }
 
+function commentIn(url: URL): CommentTarget | null {
+  const fileId = parameter(url, "file");
+  const threadId = parameter(url, "thread");
+  if (!PROJECT_ID.test(fileId) || !PROJECT_ID.test(threadId)) return null;
+  return { fileId: fileId.toLowerCase(), threadId: threadId.toLowerCase() };
+}
+
 export function parseAppLink(raw: string): AppLink {
   const link = raw.trim();
   const malformed: AppLink = { kind: "malformed", link };
@@ -48,7 +60,9 @@ export function parseAppLink(raw: string): AppLink {
     const server = parameter(url, "server");
     const project = parameter(url, "project");
     if (serverKey(server) === null || !PROJECT_ID.test(project)) return malformed;
-    return { kind: "openProject", server, project: project.toLowerCase(), link };
+    const comment = commentIn(url);
+    const opened: AppLink = { kind: "openProject", server, project: project.toLowerCase(), link };
+    return comment ? { ...opened, comment } : opened;
   }
   return malformed;
 }
@@ -58,7 +72,9 @@ export function linkKey(link: AppLink): string {
     case "addServer":
       return `add ${serverKey(link.url)}`;
     case "openProject":
-      return `open ${serverKey(link.server)} ${link.project}`;
+      return link.comment
+        ? `open ${serverKey(link.server)} ${link.project} ${link.comment.fileId} ${link.comment.threadId}`
+        : `open ${serverKey(link.server)} ${link.project}`;
     case "malformed":
       return `other ${link.link}`;
   }

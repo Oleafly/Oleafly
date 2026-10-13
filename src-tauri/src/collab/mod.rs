@@ -11,6 +11,7 @@ pub mod live;
 pub mod registry;
 pub mod review;
 pub mod secrets_adapter;
+pub mod settings;
 pub mod share;
 pub mod state;
 #[cfg(test)]

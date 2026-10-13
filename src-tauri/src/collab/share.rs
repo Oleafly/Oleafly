@@ -203,7 +203,7 @@ struct Built {
     hashes: BTreeMap<String, String>,
 }
 
-fn build_document(root: &Path, main_doc: &str, engine: &str) -> Result<Built, CollabError> {
+fn build_document(root: &Path, meta: &crate::project::ProjectMeta) -> Result<Built, CollabError> {
     let scan = scan_folder(root).map_err(CollabError::Io)?;
     let mut doc = ProjectDoc::create()?;
     let mut dirs: HashMap<String, String> = HashMap::new();
@@ -251,8 +251,9 @@ fn build_document(root: &Path, main_doc: &str, engine: &str) -> Result<Built, Co
         }
         hashes.insert(path.clone(), hash);
     }
-    doc.set_meta("main_doc", main_doc)?;
-    doc.set_meta("engine", engine)?;
+    doc.set_meta("main_doc", &meta.main_doc)?;
+    doc.set_meta("engine", &meta.engine)?;
+    super::settings::seed(&mut doc, meta)?;
     Ok(Built { doc, blobs, hashes })
 }
 
@@ -290,11 +291,10 @@ pub async fn share_project(
         meta.name.trim().chars().take(200).collect()
     };
     let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
-    let (main_doc, engine) = (meta.main_doc.clone(), meta.engine.clone());
-    let built =
-        tauri::async_runtime::spawn_blocking(move || build_document(&root, &main_doc, &engine))
-            .await
-            .map_err(io)??;
+    let seeded = meta.clone();
+    let built = tauri::async_runtime::spawn_blocking(move || build_document(&root, &seeded))
+        .await
+        .map_err(io)??;
     let entry = known(state, server)?;
     let created = authed(state, host, server, |client, access| {
         let title = title.clone();
@@ -336,6 +336,7 @@ pub async fn share_project(
     client.commit_project(&access, shared).await?;
     let paths = state.paths()?;
     let layout = materialize::layout(&built.doc.nodes()?);
+    let shared_settings = built.doc.settings();
     let mut live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
     live.save(&paths.document_dir(project_id)?)?;
     DiskState {
@@ -350,6 +351,13 @@ pub async fn share_project(
         role: ProjectRole::Owner,
         created_at: now_ms(),
     };
+    super::settings::remember(
+        &super::settings::base_file(paths, project_id)?,
+        &super::settings::Base {
+            local: shared_settings.clone(),
+            shared: shared_settings,
+        },
+    )?;
     save_binding(paths, project_id, &binding)?;
     super::registry::invalidate(project_id);
     if meta.allow_shell_escape {
@@ -455,12 +463,7 @@ pub async fn join_project(
     let mut meta: crate::project::ProjectMeta =
         serde_json::from_str("{}").map_err(|error| CollabError::Corrupt(error.to_string()))?;
     meta.name = summary.title.clone();
-    if let Some(main_doc) = doc.meta("main_doc").filter(|main| !main.is_empty()) {
-        meta.main_doc = main_doc;
-    }
-    if let Some(engine) = doc.meta("engine").filter(|engine| !engine.is_empty()) {
-        meta.engine = engine;
-    }
+    let settings_base = super::settings::joined(&doc, &mut meta)?;
     let local_id = tauri::async_runtime::spawn_blocking(move || {
         crate::project::create_library_project_with(|_, staging| {
             for dir in &dirs {
@@ -497,6 +500,10 @@ pub async fn join_project(
     }
     live.save(&paths.document_dir(&local_id)?)?;
     DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
+    super::settings::remember(
+        &super::settings::base_file(&paths, &local_id)?,
+        &settings_base,
+    )?;
     save_binding(
         &paths,
         &local_id,
@@ -860,6 +867,7 @@ pub async fn collab_link_preview(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oleafly_collab::settings::Setting;
 
     #[test]
     fn links_from_the_landing_page_and_the_app_scheme_parse() {
@@ -900,7 +908,15 @@ mod tests {
         std::fs::write(root.join("main.tex"), "Hello\r\n").unwrap();
         std::fs::write(root.join("figs/plot.png"), [0x89, b'P', 0, 1]).unwrap();
         std::fs::write(root.join("project.json"), "{}").unwrap();
-        let built = build_document(root, "main.tex", "tectonic").unwrap();
+        let built = build_document(
+            root,
+            &crate::project::ProjectMeta {
+                main_doc: "main.tex".into(),
+                engine: "tectonic".into(),
+                ..crate::project::ProjectMeta::default()
+            },
+        )
+        .unwrap();
         let layout = materialize::layout(&built.doc.nodes().unwrap());
         let paths: Vec<&str> = layout.values().map(|placed| placed.path.as_str()).collect();
         assert!(paths.contains(&"figs/plot.png"));
@@ -914,6 +930,9 @@ mod tests {
         assert_eq!(built.doc.text(main).unwrap(), "Hello\n");
         assert_eq!(built.blobs.len(), 1);
         assert_eq!(built.doc.meta("engine").as_deref(), Some("tectonic"));
+        let shared = built.doc.settings();
+        assert_eq!(shared[&Setting::Engine], "tectonic");
+        assert_eq!(&shared[&Setting::MainDoc], main);
         assert_eq!(built.hashes.len(), 2);
     }
 
@@ -923,7 +942,15 @@ mod tests {
         let root = dir.path();
         std::fs::write(root.join("windows.tex"), "one\r\ntwo\r\n").unwrap();
         std::fs::write(root.join("unix.tex"), "one\ntwo\n").unwrap();
-        let built = build_document(root, "windows.tex", "tectonic").unwrap();
+        let built = build_document(
+            root,
+            &crate::project::ProjectMeta {
+                main_doc: "windows.tex".into(),
+                engine: "tectonic".into(),
+                ..crate::project::ProjectMeta::default()
+            },
+        )
+        .unwrap();
         let layout = materialize::layout(&built.doc.nodes().unwrap());
         let id_of = |path: &str| {
             layout

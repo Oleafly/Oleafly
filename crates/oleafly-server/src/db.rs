@@ -8,10 +8,10 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 10;
+pub const SCHEMA_VERSION: i64 = 11;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 10] = [
+const MIGRATIONS: [&str; 11] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -22,6 +22,7 @@ const MIGRATIONS: [&str; 10] = [
     include_str!("../migrations/0008_sign_in_links.sql"),
     include_str!("../migrations/0009_peer_bindings.sql"),
     include_str!("../migrations/0010_storage_cleanup.sql"),
+    include_str!("../migrations/0011_mention_emails.sql"),
 ];
 
 #[derive(Clone)]
@@ -148,7 +149,7 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 28] = [
+    const TABLES: [&str; 30] = [
         "access_tokens",
         "account_emails",
         "accounts",
@@ -161,6 +162,8 @@ mod tests {
         "email_preferences",
         "guest_invitations",
         "identities",
+        "mention_emails",
+        "mention_scans",
         "nonces",
         "pending_auth",
         "pending_removals",
@@ -179,7 +182,7 @@ mod tests {
         "sign_in_throttle",
     ];
 
-    const INDEXES: [&str; 29] = [
+    const INDEXES: [&str; 30] = [
         "access_tokens_device",
         "access_tokens_expires",
         "account_emails_email",
@@ -195,6 +198,7 @@ mod tests {
         "guest_invitations_open",
         "guest_invitations_project",
         "identities_account",
+        "mention_emails_waiting",
         "nonces_expires",
         "pending_auth_expires",
         "project_access_log_device",

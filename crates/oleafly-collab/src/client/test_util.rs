@@ -329,3 +329,102 @@ pub(crate) fn noise(length: usize, seed: u64) -> String {
         })
         .collect()
 }
+
+pub(crate) struct PathProxy {
+    pub(crate) url: ServerUrl,
+    answer: Arc<std::sync::Mutex<Option<&'static str>>>,
+    answered: Arc<std::sync::atomic::AtomicUsize>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl PathProxy {
+    pub(crate) async fn start(upstream: &str, path: &'static str) -> PathProxy {
+        let upstream = upstream.trim_start_matches("http://").to_owned();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        let answer: Arc<std::sync::Mutex<Option<&'static str>>> = Arc::default();
+        let answered: Arc<std::sync::atomic::AtomicUsize> = Arc::default();
+        let (shared, count) = (Arc::clone(&answer), Arc::clone(&answered));
+        let task = tokio::spawn(async move {
+            while let Ok((client, _)) = listener.accept().await {
+                let fixed = *shared
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let count = Arc::clone(&count);
+                tokio::spawn(answer_or_forward(
+                    client,
+                    upstream.clone(),
+                    path,
+                    fixed,
+                    count,
+                ));
+            }
+        });
+        PathProxy {
+            url: ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("proxy address"),
+            answer,
+            answered,
+            task,
+        }
+    }
+
+    pub(crate) fn answered(&self) -> usize {
+        self.answered.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    pub(crate) fn answer(&self, status: Option<&'static str>) {
+        *self
+            .answer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = status;
+    }
+}
+
+impl Drop for PathProxy {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+async fn answer_or_forward(
+    mut client: tokio::net::TcpStream,
+    upstream: String,
+    path: &'static str,
+    fixed: Option<&'static str>,
+    answered: Arc<std::sync::atomic::AtomicUsize>,
+) {
+    let mut head = Vec::new();
+    let mut chunk = [0u8; 8192];
+    let end = loop {
+        if let Some(end) = head.windows(4).position(|window| window == b"\r\n\r\n") {
+            break end;
+        }
+        match client.read(&mut chunk).await {
+            Ok(0) | Err(_) => return,
+            Ok(read) => head.extend_from_slice(&chunk[..read]),
+        }
+    };
+    let text = String::from_utf8_lossy(&head[..end]).to_string();
+    let target = text.split_whitespace().nth(1).unwrap_or_default();
+    if let Some(status) = fixed.filter(|_| target.contains(path)) {
+        answered.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let _ = client
+            .write_all(http_response(status, &[], "").as_bytes())
+            .await;
+        let _ = client.shutdown().await;
+        return;
+    }
+    let Ok(mut server) = tokio::net::TcpStream::connect(&upstream).await else {
+        return;
+    };
+    let upgrade = text.to_ascii_lowercase().contains("upgrade: websocket");
+    let mut request = head[..end].to_vec();
+    if !upgrade {
+        request.extend_from_slice(b"\r\nConnection: close");
+    }
+    request.extend_from_slice(&head[end..]);
+    if server.write_all(&request).await.is_err() {
+        return;
+    }
+    let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+}

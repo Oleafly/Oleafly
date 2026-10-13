@@ -16,6 +16,7 @@ use crate::db::{self, Db};
 use crate::error::ServerError;
 use crate::mail::{Mailer, RetryPolicy};
 use crate::members;
+use crate::mentions::Mentions;
 use crate::polls::PollHub;
 use crate::rate_limit::{ConnectLimits, RateLimiter};
 use crate::rooms::Rooms;
@@ -57,6 +58,7 @@ pub struct AppState {
     pub mailer: Mailer,
     pub snapshots: Snapshots,
     pub comment_guard: CommentGuard,
+    pub mentions: Mentions,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -157,6 +159,7 @@ impl AppState {
             mailer,
             snapshots,
             comment_guard: CommentGuard::default(),
+            mentions: Mentions::default(),
         })
     }
 

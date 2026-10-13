@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mail } from "lucide-react";
+import { AtSign, Mail } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { collabEmailPreferences, collabSetEmailPreferences, type CollabEmailPreferences } from "@/lib/tauri";
 import { collabErrorCode, collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
+
+type Choice = "shared_with_you" | "mentions";
 
 export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>) {
   const { t } = useTranslation(["collab"]);
@@ -41,14 +43,15 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
     return t(($) => $.collab.section.server.emails.description);
   };
 
-  const change = async (value: boolean) => {
+  const change = async (choice: Choice, value: boolean) => {
     if (saving) return;
     const previous = preferences;
-    setPreferences({ ...preferences, shared_with_you: value });
+    setPreferences({ ...preferences, [choice]: value });
     setSaving(true);
     setError(null);
     try {
-      setPreferences(await collabSetEmailPreferences(serverId, { shared_with_you: value }));
+      const patch = choice === "mentions" ? { mentions: value } : { shared_with_you: value };
+      setPreferences(await collabSetEmailPreferences(serverId, patch));
     } catch (failure) {
       setPreferences(previous);
       setError(collabErrorMessage(collabErrorCode(failure)));
@@ -66,8 +69,19 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
         checked={available && preferences.shared_with_you}
         disabled={!available || saving}
         icon={<Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
-        onChange={(value) => void change(value)}
+        onChange={(value) => void change("shared_with_you", value)}
       />
+      {typeof preferences.mentions === "boolean" ? (
+        <SettingsToggleRow
+          testId="collab-mention-emails"
+          label={t(($) => $.collab.section.server.emails.mentionsLabel)}
+          description={t(($) => $.collab.section.server.emails.mentionsDescription)}
+          checked={available && preferences.mentions}
+          disabled={!available || saving}
+          icon={<AtSign aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+          onChange={(value) => void change("mentions", value)}
+        />
+      ) : null}
       {error ? <InlineAlert>{error}</InlineAlert> : null}
     </div>
   );

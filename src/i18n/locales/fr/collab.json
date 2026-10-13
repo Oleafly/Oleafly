@@ -50,6 +50,8 @@
       "emails": {
         "label": "M'envoyer un courriel quand quelqu'un partage un projet",
         "description": "Le courriel indique le projet et contient un lien pour l'ouvrir.",
+        "mentionsLabel": "M'envoyer un courriel quand quelqu'un me mentionne dans un commentaire",
+        "mentionsDescription": "Le courriel cite le commentaire et contient un lien pour l'ouvrir.",
         "noMail": "Ce serveur n'envoie pas de courriels. Les projets partagés avec vous apparaissent toujours dans votre bibliothèque, sous Partagés avec vous.",
         "paused": "L'administrateur du serveur a désactivé le courriel pour tout le monde.",
         "loadFailed": "Oleafly n'a pas pu charger vos paramètres de courriel."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} a renommé {{before}} en {{theirs}} après que vous l'avez nommé {{ours}}",
     "mentioned": "{{name}} vous a mentionné dans un commentaire sur {{path}}",
     "mentionedHere": "{{name}} vous a mentionné dans un commentaire",
-    "showComment": "Voir le commentaire"
+    "showComment": "Voir le commentaire",
+    "settings": {
+      "mainDocument": "{{name}} a défini {{path}} comme document principal",
+      "compiler": "{{name}} a choisi le compilateur {{compiler}}",
+      "spellingLanguage": "{{name}} a choisi {{language}} comme langue de correction orthographique",
+      "spellingCleared": "{{name}} a retiré la langue de correction orthographique du projet",
+      "typstVersion": "{{name}} a choisi la version {{version}} de Typst",
+      "typstDefault": "{{name}} a remis la version de Typst par défaut",
+      "typstOptions": "{{name}} a modifié les options de Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Auto",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Modifications fusionnées pendant votre absence",

@@ -50,6 +50,8 @@
       "emails": {
         "label": "Biri bir proje paylaştığında bana e-posta gönder",
         "description": "E-postada projenin adı ve onu açmak için bir bağlantı bulunur.",
+        "mentionsLabel": "Biri bir yorumda benden bahsettiğinde bana e-posta gönder",
+        "mentionsDescription": "E-postada yorumun alıntısı ve onu açmak için bir bağlantı bulunur.",
         "noMail": "Bu sunucu e-posta göndermez. Sizinle paylaşılan projeler kitaplığınızda Sizinle paylaşılanlar altında görünmeye devam eder.",
         "paused": "Sunucunun yöneticisi e-postayı herkes için kapattı.",
         "loadFailed": "Oleafly e-posta ayarlarınızı yükleyemedi."
@@ -622,7 +624,27 @@
     "renamed": "Siz {{ours}} adını verdikten sonra {{name}}, {{before}} dosyasının adını {{theirs}} olarak değiştirdi",
     "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",
     "mentionedHere": "{{name}} bir yorumda sizden bahsetti",
-    "showComment": "Yorumu göster"
+    "showComment": "Yorumu göster",
+    "settings": {
+      "mainDocument": "{{name}}, {{path}} dosyasını ana belge yaptı",
+      "compiler": "{{name}}, derleyiciyi {{compiler}} olarak ayarladı",
+      "spellingLanguage": "{{name}}, yazım denetimi dilini {{language}} olarak ayarladı",
+      "spellingCleared": "{{name}}, projenin yazım denetimi dilini kaldırdı",
+      "typstVersion": "{{name}}, Typst sürümünü {{version}} olarak ayarladı",
+      "typstDefault": "{{name}}, Typst sürümünü varsayılana döndürdü",
+      "typstOptions": "{{name}}, Typst seçeneklerini değiştirdi",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Otomatik",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Siz yokken birleştirilen değişiklikler",

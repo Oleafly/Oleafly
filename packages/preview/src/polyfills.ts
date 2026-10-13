@@ -9,6 +9,8 @@
 //
 // Imported first in `main.tsx` so it runs before pdf.js loads.
 
+import { isWebKit } from "./worker-decompression";
+
 type Ctor = { prototype: { getOrInsert?: unknown; getOrInsertComputed?: unknown } };
 
 export function installGetOrInsert(ctor: Ctor | undefined) {
@@ -547,17 +549,19 @@ installArrayChangeByCopy(typeof Array !== "undefined" ? Array : undefined);
 // "undefined is not a function (near '...of readableStream...')" on macOS/iOS,
 // even though canvas rendering (which uses getReader directly) works. This breaks
 // Preflight, which extracts PDF text. Define the async iterator if it is missing.
-(() => {
-  const RS = (globalThis as unknown as { ReadableStream?: { prototype: Record<PropertyKey, unknown> } })
-    .ReadableStream;
+export function installReadableStreamAsyncIterator(
+  RS: { prototype: Record<PropertyKey, unknown> } | undefined,
+  userAgent: string,
+) {
   if (!RS || typeof RS.prototype[Symbol.asyncIterator] === "function") return;
+  const releaseFinishedStreams = !isWebKit(userAgent);
   function asyncIterator(this: ReadableStream, opts?: { preventCancel?: boolean }) {
     const preventCancel = opts?.preventCancel ?? false;
     const reader = this.getReader();
     return {
       async next() {
         const result = await reader.read();
-        if (result.done) reader.releaseLock();
+        if (result.done && releaseFinishedStreams) reader.releaseLock();
         return result;
       },
       return(value?: unknown) {
@@ -566,7 +570,7 @@ installArrayChangeByCopy(typeof Array !== "undefined" ? Array : undefined);
           return Promise.resolve({ value, done: true });
         }
         const cancelled = reader.cancel(value);
-        reader.releaseLock();
+        if (releaseFinishedStreams) reader.releaseLock();
         return cancelled.then(() => ({ value, done: true }));
       },
       [Symbol.asyncIterator]() {
@@ -586,7 +590,12 @@ installArrayChangeByCopy(typeof Array !== "undefined" ? Array : undefined);
       configurable: true,
     });
   }
-})();
+}
+
+installReadableStreamAsyncIterator(
+  (globalThis as unknown as { ReadableStream?: { prototype: Record<PropertyKey, unknown> } }).ReadableStream,
+  globalThis.navigator?.userAgent ?? "",
+);
 
 type FontFaceLike = {
   readonly status: string;

@@ -14,6 +14,7 @@ pub mod ot;
 pub mod paths;
 pub mod review;
 pub mod secret_port;
+pub mod settings;
 
 pub use binding::{load_binding, remove_binding, save_binding, ShareBinding};
 pub use device_key::{server_key_account, DeviceKey, DEVICE_KEY_ACCOUNT};

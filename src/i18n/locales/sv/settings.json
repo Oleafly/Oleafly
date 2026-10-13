@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Godkännandeläget Anpassad läser den här filen. Den ligger i ~/.oleafly/approvals.toml och gäller alla projekt på den här enheten.",
+        "description": "Filen ligger i ~/.oleafly/approvals.toml och gäller alla projekt på den här enheten. Deny-regler blockerar ett verktyg i alla godkännandelägen. Allow-regler gäller bara i läget Anpassad.",
         "discard": "Släng ändringarna",
         "emptyFile": "Filen är tom än så länge.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Den första tabellen, <modesTable>[\"$approval_modes\"]</modesTable>, anger godkännandeläget per projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Ett projekt som inte listas använder Godkänn åt mig.",
           "openProject": "Det öppna projektet, {{name}}, har id <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-id är mappnamnen under ~/.oleafly/projects.",
-          "rules": "Sedan en tabell per projekt-id, med en regel per verktyg: <allow>\"allow\"</allow> kör verktyget utan att fråga, och <deny>\"deny\"</deny> vägrar det. Deny-regler följs i alla lägen, medan allow-regler gäller i läget Anpassad, och för run_command hoppar de även över frågan i de andra lägena.",
+          "rules": "Sedan en tabell per projekt-id, med en regel per verktyg: <allow>\"allow\"</allow> kör verktyget utan att fråga, och <deny>\"deny\"</deny> vägrar det. Deny-regler följs i alla lägen, även Fullständig åtkomst. Allow-regler gäller bara i läget Anpassad.",
           "toolNames": "Verktygsnamn du kan använda: <names>{{names}}</names> och alla MCP-verktyg med sitt fullständiga namn ur listan Verktyg."
         },
         "helpToggle": "Så fungerar filen",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Alltid tillåtet",
         "denied": "Alltid nekat",
-        "description": "Sparade regler för {{name}}. De gäller när godkännandeläget är Anpassad. Ta bort en regel för att använda standardpolicyn för risk för det verktyget.",
+        "description": "Sparade regler för {{name}}. Nekade verktyg förblir blockerade i alla godkännandelägen. Tillåtna verktyg hoppar över frågan bara i läget Anpassad. Ta bort en regel för att använda standardpolicyn för risk för det verktyget.",
         "empty": "Inga sparade regler än. Använd \"Alltid i det här projektet\" i en godkännandefråga för att lägga till en.",
         "removeRule": "Ta bort regeln för {{tool}}",
         "thisProject": "det här projektet",

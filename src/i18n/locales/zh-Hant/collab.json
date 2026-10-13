@@ -50,6 +50,8 @@
       "emails": {
         "label": "有人分享專案時寄郵件給我",
         "description": "郵件會寫明專案名稱，並附上開啟它的連結。",
+        "mentionsLabel": "有人在評論中提及我時寄郵件給我",
+        "mentionsDescription": "郵件會引用這則評論，並附上開啟它的連結。",
         "noMail": "此伺服器不寄送電子郵件。與你分享的專案仍會顯示在你的專案庫的「與你分享的專案」中。",
         "paused": "伺服器管理員已為所有人關閉電子郵件。",
         "loadFailed": "Oleafly 無法載入你的郵件設定。"
@@ -622,7 +624,27 @@
     "renamed": "你將它命名為 {{ours}} 之後，{{name}} 把 {{before}} 重新命名為 {{theirs}}",
     "mentioned": "{{name}} 在 {{path}} 的評論中提及了你",
     "mentionedHere": "{{name}} 在評論中提及了你",
-    "showComment": "查看評論"
+    "showComment": "查看評論",
+    "settings": {
+      "mainDocument": "{{name}} 將 {{path}} 設為主要文件",
+      "compiler": "{{name}} 將編譯器設為 {{compiler}}",
+      "spellingLanguage": "{{name}} 將拼字檢查語言設為 {{language}}",
+      "spellingCleared": "{{name}} 清除了專案的拼字檢查語言",
+      "typstVersion": "{{name}} 將 Typst 版本設為 {{version}}",
+      "typstDefault": "{{name}} 將 Typst 版本還原為預設",
+      "typstOptions": "{{name}} 變更了 Typst 選項",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "自動",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "你離開期間合併的變更",

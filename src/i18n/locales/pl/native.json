@@ -45,6 +45,11 @@
       "message": "Pełny dostęp pozwala asystentowi uruchamiać polecenia shell i edytować pliki bez pytania o zgodę za każdym razem. Włączyć pełny dostęp?",
       "confirm": "Włącz pełny dostęp"
     },
+    "sharedShellEscape": {
+      "title": "Zezwolić na polecenia zewnętrzne w tym udostępnionym projekcie?",
+      "message": "Każdy, kto może edytować ten projekt, będzie mógł wtedy uruchamiać programy na tym komputerze, gdy kompilujesz. Zezwól na to tylko wtedy, gdy ufasz wszystkim osobom w projekcie.",
+      "confirm": "Zezwól na tym komputerze"
+    },
     "cookieImport": {
       "title": "Potwierdź import plików cookie",
       "messageHost": "Zaimportować pliki cookie witryny {{hostname}} z profilu \"{{profile}}\" przeglądarki {{browser}} do wbudowanej przeglądarki Oleafly? Zaimportowane pliki cookie mogą automatycznie logować do witryn.",

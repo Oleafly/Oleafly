@@ -38,6 +38,7 @@ pub mod write;
 mod kept;
 pub mod local_copy;
 mod moves;
+mod settings;
 mod sync_hold;
 mod unsent;
 pub mod uploads;
@@ -170,6 +171,10 @@ pub trait LiveHost: Send + Sync + 'static {
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
+    fn settings_changed(&self, _applied: super::settings::Applied) {}
+    fn app(&self) -> Option<tauri::AppHandle> {
+        None
+    }
 }
 
 pub struct AppLiveHost {
@@ -249,6 +254,29 @@ impl LiveHost for AppLiveHost {
 
     fn uploads(&self, payload: uploads::UploadsPayload) {
         let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
+    }
+
+    fn settings_changed(&self, applied: super::settings::Applied) {
+        use tauri::Manager;
+        let state = self.app.try_state::<crate::state::AppState>();
+        if let (Some(meta), Some(state)) = (applied.meta, state) {
+            let _ = crate::project::publish_project_state_changed(
+                &self.app,
+                state.inner(),
+                &applied.project_id,
+                meta,
+                "collab-settings-changed",
+                false,
+                crate::project::project_mutation_generation(applied.project_id.clone()).ok(),
+            );
+        }
+        for payload in applied.notices {
+            let _ = self.app.emit(super::settings::LIVE_SETTINGS_EVENT, payload);
+        }
+    }
+
+    fn app(&self) -> Option<tauri::AppHandle> {
+        Some(self.app.clone())
     }
 
     fn session_ended(&self, server: ServerId, reason: SessionEndReason) {
@@ -606,7 +634,8 @@ fn apply_local_import(
     import: LocalImport,
     root: &Path,
 ) -> Result<bool, CollabError> {
-    let mut placed = by_path(&materialize::layout(&live.doc().nodes()?));
+    let before = materialize::layout(&live.doc().nodes()?);
+    let mut placed = by_path(&before);
     let mut changed = false;
     let still = |path: &str, hash: &str| {
         safe_target(root, path)
@@ -742,7 +771,8 @@ fn apply_local_import(
         }
         match placed.get(&path).cloned() {
             Some((id, NodeKind::Blob, _)) if disk.hashes.contains_key(&path) => {
-                live.doc_mut().set_blob(&id, &hash)?
+                let seen = disk.hashes.get(&path).cloned().unwrap_or_default();
+                live.doc_mut().replace_blob(&id, &seen, &hash)?
             }
             Some((theirs, NodeKind::Blob, _)) => {
                 let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
@@ -788,10 +818,20 @@ fn apply_local_import(
         }
     }
     if changed {
-        disk.layout = materialize::layout(&live.doc().nodes()?);
+        let after = materialize::layout(&live.doc().nodes()?);
+        record_local_change(&mut disk.layout, &before, &after);
         super::tree::keep_beside(&mut disk.layout, beside);
     }
     Ok(changed)
+}
+
+fn record_local_change(written: &mut Layout, before: &Layout, after: &Layout) {
+    written.retain(|id, _| !before.contains_key(id) || after.contains_key(id));
+    for (id, placed) in after {
+        if before.get(id) != Some(placed) {
+            written.insert(id.clone(), placed.clone());
+        }
+    }
 }
 
 struct DiskPass {
@@ -1157,6 +1197,11 @@ impl Active {
                 deleted: removed,
             });
         }
+        if work.tree {
+            if let Some(active) = active_for(&self.project_id) {
+                settings::schedule(&active);
+            }
+        }
         Ok(conflicts)
     }
 
@@ -1481,6 +1526,7 @@ pub async fn start(
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Arc::clone(&active));
+    settings::schedule(&active);
     uploads::attach(&active);
     active.announce_uploads();
     Ok(LiveInfo {
@@ -1949,6 +1995,74 @@ mod tests {
         )
         .unwrap();
         assert!(!paths_of(&live).contains(&"new.tex".to_owned()));
+    }
+
+    fn with_notes(root: &Path) -> (LiveProject, DiskState, String) {
+        let (mut live, mut disk, _main) = project(root);
+        let notes = live
+            .doc_mut()
+            .add_node(None, "notes.tex", NodeKind::Text, None, "notes")
+            .unwrap();
+        std::fs::write(root.join("notes.tex"), "notes").unwrap();
+        disk.hashes
+            .insert("notes.tex".to_owned(), sha256_hex(b"notes"));
+        disk.layout = materialize::layout(&live.doc().nodes().unwrap());
+        live.take_disk_work();
+        (live, disk, notes)
+    }
+
+    fn edit_main_then_write_out(live: &mut LiveProject, disk: &mut DiskState, root: &Path) {
+        std::fs::write(root.join("main.tex"), "abcd").unwrap();
+        let only = ["main.tex".to_owned()];
+        let import = read_local_changes(root, disk, live, Some(&only)).unwrap();
+        let mut bases = WrittenTexts::default();
+        assert!(apply_local_import(live, disk, &mut bases, import, root).unwrap());
+        let next = materialize::layout(&live.doc().nodes().unwrap());
+        let plan = materialize::plan(&disk.layout, &next);
+        apply_to_disk(root, disk, &mut bases, plan, next, &[], &BTreeSet::new()).unwrap();
+    }
+
+    fn rescan(live: &mut LiveProject, disk: &mut DiskState, root: &Path) {
+        let import = read_local_changes(root, disk, live, None).unwrap();
+        apply_local_import(live, disk, &mut WrittenTexts::default(), import, root).unwrap();
+    }
+
+    #[test]
+    fn a_file_deleted_elsewhere_is_removed_here_even_when_a_local_edit_is_taken_in_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, notes) = with_notes(root);
+        let mut alice = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+        alice.trash(&notes).unwrap();
+        let update = alice.export_since(&live.doc().version()).unwrap();
+        assert!(live.import_update(1, &update).unwrap());
+
+        edit_main_then_write_out(&mut live, &mut disk, root);
+
+        assert!(!root.join("notes.tex").exists());
+        rescan(&mut live, &mut disk, root);
+        assert_eq!(paths_of(&live), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn a_file_renamed_elsewhere_moves_here_even_when_a_local_edit_is_taken_in_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let (mut live, mut disk, notes) = with_notes(root);
+        let mut alice = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+        alice.rename(&notes, "renamed.tex").unwrap();
+        let update = alice.export_since(&live.doc().version()).unwrap();
+        assert!(live.import_update(1, &update).unwrap());
+
+        edit_main_then_write_out(&mut live, &mut disk, root);
+
+        assert!(!root.join("notes.tex").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.join("renamed.tex")).unwrap(),
+            "notes"
+        );
+        rescan(&mut live, &mut disk, root);
+        assert_eq!(paths_of(&live), vec!["main.tex", "renamed.tex"]);
     }
 
     #[test]

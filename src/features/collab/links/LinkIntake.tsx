@@ -22,6 +22,7 @@ import { useCollabStore } from "../store";
 import { useAddServerRequest } from "./add-server-request";
 import { linkKey, parseAppLink, sameServer, type AppLink } from "./app-link";
 import { JoinLinkDialog } from "./JoinLinkDialog";
+import { openLinkedComment } from "./open-comment";
 
 const DUPLICATE_WINDOW_MS = 5_000;
 const READY_POLL_MS = 250;
@@ -232,7 +233,10 @@ function createFlow(ui: FlowUi) {
         if ("localId" in outcome) await openLocal(outcome.localId);
         return outcome;
       });
-      if ("localId" in reached) return;
+      if ("localId" in reached) {
+        if (link.comment) void openLinkedComment(reached.localId, link.comment);
+        return;
+      }
       if ("preview" in reached) {
         agreed = await askToJoin(current, reached.preview);
         if (!agreed) return;

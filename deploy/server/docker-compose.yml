@@ -2,9 +2,7 @@ name: oleafly-server
 
 services:
   oleafly-server:
-    build:
-      context: ../..
-      dockerfile: crates/oleafly-server/Dockerfile
+    image: ghcr.io/oleafly/oleafly-server:0.1
     restart: unless-stopped
     env_file: .env
     environment:

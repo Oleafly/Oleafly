@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Fuld adgang",
-        "description": "Kør værktøjshandlinger uden at spørge om godkendelse."
+        "description": "Kør værktøjshandlinger uden at spørge, undtagen værktøjer som en deny-regel blokerer."
       },
       "custom": {
         "label": "Egne regler (approvals.toml)",

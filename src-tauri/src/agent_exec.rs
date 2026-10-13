@@ -1181,6 +1181,58 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
+    async fn a_deny_rule_refuses_run_command_under_full_access() {
+        let root = test_root("full-access-deny");
+        crate::approvals::set_mode(&root, "proj", crate::approvals::ApprovalMode::FullAccess)
+            .unwrap();
+        crate::approvals::set_decision(
+            &root,
+            "proj",
+            "run_command",
+            Some(crate::approvals::ToolDecision::Deny),
+        )
+        .unwrap();
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let run_id = "external:00000000-0000-4000-8000-00000000000c";
+        state.register_external_owner(run_id).unwrap();
+        let command = if cfg!(windows) {
+            "type nul > full-access-denied-marker"
+        } else {
+            "touch full-access-denied-marker"
+        };
+
+        let minted = authorize_approved(
+            &state,
+            &agent_state,
+            exec_request(&root, &cwd, command, run_id),
+        );
+        let approvals_are_empty = state.registry.lock().unwrap().approvals.is_empty();
+        let token = state.authorize("proj", command, run_id).unwrap();
+        let ran = execute_command_for_owner(
+            &agent_state,
+            &state,
+            exec_request(&root, &cwd, command, run_id),
+            &token,
+        )
+        .await;
+        let marker_exists = cwd.join("full-access-denied-marker").exists();
+
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(
+            minted.err().as_deref(),
+            Some("run_command is denied for this project")
+        );
+        assert!(approvals_are_empty);
+        assert_eq!(
+            ran.err().as_deref(),
+            Some("run_command is denied for this project")
+        );
+        assert!(!marker_exists);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
     async fn custom_allow_mints_a_token() {
         let root = test_root("custom-allow-token");
         crate::approvals::set_decision(

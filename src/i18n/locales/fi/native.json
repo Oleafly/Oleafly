@@ -45,6 +45,11 @@
       "message": "Täydellä käyttöoikeudella avustaja voi ajaa shell-komentoja ja muokata tiedostoja pyytämättä lupaa joka kerta erikseen. Otetaanko täysi käyttöoikeus käyttöön?",
       "confirm": "Ota täysi käyttöoikeus käyttöön"
     },
+    "sharedShellEscape": {
+      "title": "Sallitaanko ulkoiset komennot tässä jaetussa projektissa?",
+      "message": "Silloin kuka tahansa, joka voi muokata projektia, voi suorittaa ohjelmia tällä koneella, kun käännät sen. Salli tämä vain, jos luotat kaikkiin projektin jäseniin.",
+      "confirm": "Salli tällä koneella"
+    },
     "cookieImport": {
       "title": "Vahvista cookieiden tuonti",
       "messageHost": "Tuodaanko selaimen {{browser}} profiilista \"{{profile}}\" sivuston {{hostname}} cookiet Oleaflyn sisäiseen selaimeen? Tuodut cookiet voivat kirjata sinut sisään sivustoille.",

@@ -45,6 +45,11 @@
       "message": "Úplný přístup dovolí asistentovi spouštět příkazy shell a upravovat soubory, aniž by pokaždé žádal o schválení. Povolit úplný přístup?",
       "confirm": "Povolit úplný přístup"
     },
+    "sharedShellEscape": {
+      "title": "Povolit externí příkazy v tomto sdíleném projektu?",
+      "message": "Kdokoli, kdo může tento projekt upravovat, pak bude moci při vaší kompilaci spouštět programy v tomto počítači. Povolte to jen tehdy, pokud důvěřujete všem v projektu.",
+      "confirm": "Povolit v tomto počítači"
+    },
     "cookieImport": {
       "title": "Potvrdit import cookies",
       "messageHost": "Importovat cookies pro {{hostname}} z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",

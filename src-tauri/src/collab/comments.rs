@@ -562,6 +562,29 @@ pub async fn count_comments(
     .map_err(io)?
 }
 
+pub async fn comment_file_path(
+    state: &CollabState,
+    project_id: &str,
+    file_id: &str,
+) -> Result<Option<String>, CollabError> {
+    let wanted = file_id.to_owned();
+    if let Some(found) =
+        super::live::read_live(project_id, |live| path_in(&layout_of(live.doc()), &wanted))
+    {
+        return Ok(found);
+    }
+    let paths = state.paths()?;
+    load_binding(paths, project_id)?.ok_or_else(not_shared)?;
+    let dir = paths.document_dir(project_id)?;
+    let file_id = file_id.to_owned();
+    tokio::task::spawn_blocking(move || {
+        let saved = LiveProject::load(&dir, ProjectRole::Viewer)?;
+        Ok(path_in(&layout_of(saved.doc()), &file_id))
+    })
+    .await
+    .map_err(io)?
+}
+
 pub async fn comments_status(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -683,6 +706,17 @@ pub async fn collab_comment_counts(
     project_id: String,
 ) -> Result<Vec<CommentCount>, CollabCommandError> {
     count_comments(state.inner(), &project_id)
+        .await
+        .map_err(CollabCommandError::from)
+}
+
+#[tauri::command]
+pub async fn collab_comment_file_path(
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+    file_id: String,
+) -> Result<Option<String>, CollabCommandError> {
+    comment_file_path(state.inner(), &project_id, &file_id)
         .await
         .map_err(CollabCommandError::from)
 }
@@ -1384,6 +1418,71 @@ mod tests {
                 vec![("chapters/intro.tex", 1, 1), ("refs.tex", 2, 0)]
             );
             assert!(count_comments(&state, "never-shared").await.is_err());
+        });
+    }
+
+    #[test]
+    fn a_link_to_a_comment_finds_its_file_on_this_disk_by_the_shared_file_id() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let dir = tempfile::tempdir().unwrap();
+            let paths = CollabPaths::new(dir.path().join("collab"));
+            let state = crate::collab::state::CollabState::new(
+                paths.clone(),
+                Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+            );
+            let mut doc = ProjectDoc::create().unwrap();
+            let chapters = doc
+                .add_node(None, "chapters", NodeKind::Dir, None, "")
+                .unwrap();
+            let intro = doc
+                .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, TEXT)
+                .unwrap();
+            let old = doc
+                .add_node(None, "old.tex", NodeKind::Text, None, TEXT)
+                .unwrap();
+            doc.rename(&chapters, "parts").unwrap();
+            doc.trash(&old).unwrap();
+            let mut live = LiveProject::new(doc, 0, ProjectRole::Editor);
+            live.save(&paths.document_dir("saved-paths").unwrap())
+                .unwrap();
+            oleafly_collab::save_binding(
+                &paths,
+                "saved-paths",
+                &oleafly_collab::ShareBinding {
+                    server_url: "https://collab.test".to_owned(),
+                    server_id: oleafly_collab_protocol::ids::ServerId::new_v7(),
+                    shared_project_id: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+                    role: ProjectRole::Editor,
+                    created_at: 0,
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                comment_file_path(&state, "saved-paths", &intro)
+                    .await
+                    .unwrap()
+                    .as_deref(),
+                Some("parts/intro.tex")
+            );
+            assert_eq!(
+                comment_file_path(&state, "saved-paths", &old)
+                    .await
+                    .unwrap(),
+                None
+            );
+            assert_eq!(
+                comment_file_path(&state, "saved-paths", "no-such-file")
+                    .await
+                    .unwrap(),
+                None
+            );
+            assert!(comment_file_path(&state, "never-shared", &intro)
+                .await
+                .is_err());
         });
     }
 

@@ -1539,5 +1539,6 @@
     "keyInvalid": "Nazwy wartości nie mogą być puste ani zawierać znaku równości.",
     "keyTaken": "Wariant nie może ustawić tej samej nazwy dwa razy.",
     "saveFailed": "Nie udało się zapisać wariantów."
-  }
+  },
+  "sharedSettingsViewer": "Przeglądający nie mogą tego zmieniać we współdzielonym projekcie."
 }

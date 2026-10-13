@@ -32,13 +32,16 @@ where
     });
 }
 
-fn verified_emails(conn: &Connection, account: AccountId) -> Result<Vec<String>, ServerError> {
+pub(crate) fn verified_emails(
+    conn: &Connection,
+    account: AccountId,
+) -> Result<Vec<String>, ServerError> {
     Ok(members::account_summary(conn, account)?
         .map(|summary| deliverable(&summary.emails))
         .unwrap_or_default())
 }
 
-fn is_active(conn: &Connection, account: AccountId) -> Result<bool, ServerError> {
+pub(crate) fn is_active(conn: &Connection, account: AccountId) -> Result<bool, ServerError> {
     Ok(matches!(
         members::account_status(conn, account)?,
         Some(MemberStatus::Active)

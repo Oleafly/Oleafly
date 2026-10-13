@@ -1518,5 +1518,6 @@
     "keyInvalid": "Numele valorilor nu pot fi goale și nici nu pot conține semnul egal.",
     "keyTaken": "O variantă nu poate seta același nume de două ori.",
     "saveFailed": "Variantele nu au putut fi salvate."
-  }
+  },
+  "sharedSettingsViewer": "Cititorii nu pot modifica asta într-un proiect partajat."
 }

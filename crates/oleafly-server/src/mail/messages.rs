@@ -5,9 +5,25 @@ use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::roles::{ProjectRole, ServerRole};
 use url::Url;
 
-use crate::routes::landing::{open_link, DOWNLOAD_URL};
+use crate::routes::landing::{comment_link, open_link, DOWNLOAD_URL};
 
 const MAX_SUBJECT_PART: usize = 80;
+const MAX_PATH: usize = 200;
+const MAX_QUOTE: usize = 200;
+const MAX_COMMENT: usize = 500;
+pub const MAX_LISTED_MENTIONS: usize = 20;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mention {
+    pub project: SharedProjectId,
+    pub file_id: String,
+    pub thread_id: String,
+    pub author: String,
+    pub title: String,
+    pub path: Option<String>,
+    pub quote: String,
+    pub body: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Content {
@@ -364,6 +380,86 @@ pub fn sign_in_link(server_name: &str, link: &str, same_device: bool) -> Content
     content(heading, &blocks)
 }
 
+fn mention_details(mention: &Mention) -> Block {
+    let mut rows = Vec::new();
+    if let Some(path) = mention
+        .path
+        .as_deref()
+        .filter(|path| !path.trim().is_empty())
+    {
+        rows.push(("File", one_line(path, MAX_PATH)));
+    }
+    let quote = one_line(&mention.quote, MAX_QUOTE);
+    if !quote.is_empty() {
+        rows.push(("Text", format!("\"{quote}\"")));
+    }
+    rows.push(("Comment", one_line(&mention.body, MAX_COMMENT)));
+    Block::Details(rows)
+}
+
+fn mention_button(public_url: &Url, mention: &Mention) -> Block {
+    Block::Button {
+        label: "Open in Oleafly",
+        href: comment_link(
+            public_url,
+            mention.project,
+            &mention.file_id,
+            &mention.thread_id,
+        ),
+    }
+}
+
+pub fn mentioned_you(server_name: &str, public_url: &Url, mentions: &[Mention]) -> Content {
+    let server = one_line(server_name, MAX_SUBJECT_PART);
+    let footer = Block::Footer(format!(
+        "Don't want these emails? In Oleafly, go to Settings > Collaboration, open {server} and turn off emails about mentions."
+    ));
+    if let [mention] = mentions {
+        let author = one_line(&mention.author, MAX_SUBJECT_PART);
+        let title = one_line(&mention.title, MAX_SUBJECT_PART);
+        let heading = format!("{author} mentioned you in \"{title}\"");
+        return content(
+            heading.clone(),
+            &[
+                Block::Heading(heading),
+                Block::Paragraph(format!("{author} mentioned you in a comment on {server}.")),
+                mention_details(mention),
+                mention_button(public_url, mention),
+                Block::Paragraph(
+                    "If the button doesn't open Oleafly, open this page in your browser:"
+                        .to_string(),
+                ),
+                Block::Address(landing_page(public_url, mention.project)),
+                footer,
+            ],
+        );
+    }
+    let heading = format!("{} comments mention you", mentions.len());
+    let mut blocks = vec![
+        Block::Heading(heading.clone()),
+        Block::Paragraph(format!(
+            "People mentioned you in these comments on {server}."
+        )),
+    ];
+    for mention in mentions.iter().take(MAX_LISTED_MENTIONS) {
+        blocks.push(Block::Paragraph(format!(
+            "{} in \"{}\":",
+            one_line(&mention.author, MAX_SUBJECT_PART),
+            one_line(&mention.title, MAX_SUBJECT_PART)
+        )));
+        blocks.push(mention_details(mention));
+        blocks.push(mention_button(public_url, mention));
+    }
+    let hidden = mentions.len().saturating_sub(MAX_LISTED_MENTIONS);
+    if hidden > 0 {
+        blocks.push(Block::Paragraph(format!(
+            "There are {hidden} more. Open Oleafly to read them."
+        )));
+    }
+    blocks.push(footer);
+    content(heading, &blocks)
+}
+
 pub fn test_message(server_name: &str) -> Content {
     let server = one_line(server_name, MAX_SUBJECT_PART);
     let heading = format!("Test email from {server}");
@@ -585,6 +681,111 @@ mod tests {
         assert!(!anywhere.text.contains("where you started signing in"));
         assert!(!anywhere.text.contains("Device:"), "{}", anywhere.text);
         assert!(!anywhere.html.contains("<table"), "{}", anywhere.html);
+    }
+
+    fn mention(author: &str, title: &str, path: Option<&str>, body: &str) -> Mention {
+        Mention {
+            project: PROJECT.parse().unwrap(),
+            file_id: "01920000-0000-7000-8000-0000000000f1".to_string(),
+            thread_id: "01920000-0000-7000-8000-0000000000c1".to_string(),
+            author: author.to_string(),
+            title: title.to_string(),
+            path: path.map(str::to_string),
+            quote: "the brown fox".to_string(),
+            body: body.to_string(),
+        }
+    }
+
+    #[test]
+    fn one_mention_names_who_the_project_file_text_comment_and_opens_the_comment() {
+        let message = mentioned_you(
+            "Smith Lab",
+            &url(),
+            &[mention(
+                "Ada Lovelace",
+                "Reef survey",
+                Some("chapters/intro.tex"),
+                "@Bob which fox?",
+            )],
+        );
+        assert_eq!(
+            message.subject,
+            "Ada Lovelace mentioned you in \"Reef survey\""
+        );
+        let text = &message.text;
+        assert!(
+            text.contains("Ada Lovelace mentioned you in a comment on Smith Lab."),
+            "{text}"
+        );
+        assert!(text.contains("File: chapters/intro.tex"), "{text}");
+        assert!(text.contains("Text: \"the brown fox\""), "{text}");
+        assert!(text.contains("Comment: @Bob which fox?"), "{text}");
+        assert!(text.contains(&format!(
+            "oleafly://open?server=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly&project={PROJECT}&file=01920000-0000-7000-8000-0000000000f1&thread=01920000-0000-7000-8000-0000000000c1"
+        )), "{text}");
+        assert!(text.contains(&format!("https://www.cs.uni.edu/oleafly/p/{PROJECT}")));
+        assert!(text.contains(
+            "Don't want these emails? In Oleafly, go to Settings > Collaboration, open Smith Lab and turn off emails about mentions."
+        ));
+        assert!(message.html.contains(">Open in Oleafly</a>"));
+        assert!(!text.contains('\u{2014}') && !text.contains(';'), "{text}");
+    }
+
+    #[test]
+    fn a_long_comment_is_trimmed_and_text_from_people_is_escaped() {
+        let message = mentioned_you(
+            "Lab",
+            &url(),
+            &[mention(
+                "Eve\r\nBcc: x@y.z",
+                "<b>x</b>",
+                None,
+                &format!("<script>{}</script>", "word ".repeat(400)),
+            )],
+        );
+        assert!(!message.subject.contains(['\r', '\n']));
+        assert!(!message.html.contains("<script>"));
+        assert!(!message.html.contains("<b>x</b>"));
+        assert!(!message.text.contains("File:"), "{}", message.text);
+        let comment = message
+            .text
+            .lines()
+            .find(|line| line.starts_with("Comment: "))
+            .unwrap();
+        assert!(comment.chars().count() < 520, "{comment}");
+        assert!(comment.ends_with('\u{2026}'), "{comment}");
+    }
+
+    #[test]
+    fn several_mentions_arrive_as_one_list_with_a_link_for_each() {
+        let message = mentioned_you(
+            "Smith Lab",
+            &url(),
+            &[
+                mention("Ada Lovelace", "Reef survey", Some("intro.tex"), "@Bob one"),
+                mention("Carol Diaz", "Thesis", Some("main.tex"), "@Bob two"),
+            ],
+        );
+        assert_eq!(message.subject, "2 comments mention you");
+        let text = &message.text;
+        assert!(
+            text.contains("People mentioned you in these comments on Smith Lab."),
+            "{text}"
+        );
+        assert!(text.contains("Ada Lovelace in \"Reef survey\":"), "{text}");
+        assert!(text.contains("Carol Diaz in \"Thesis\":"), "{text}");
+        assert!(text.contains("Comment: @Bob one"));
+        assert!(text.contains("Comment: @Bob two"));
+        assert_eq!(text.matches("&thread=").count(), 2, "{text}");
+        let many: Vec<Mention> = (0..25)
+            .map(|index| mention("Ada", "Reef", None, &format!("@Bob {index}")))
+            .collect();
+        let long = mentioned_you("Smith Lab", &url(), &many);
+        assert_eq!(long.subject, "25 comments mention you");
+        assert_eq!(long.text.matches("&thread=").count(), 20);
+        assert!(long
+            .text
+            .contains("There are 5 more. Open Oleafly to read them."));
     }
 
     #[test]

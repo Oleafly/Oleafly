@@ -50,6 +50,8 @@
       "emails": {
         "label": "Mail me als iemand een project deelt",
         "description": "De e-mail noemt het project en bevat een link om het te openen.",
+        "mentionsLabel": "Mail me als iemand me noemt in een opmerking",
+        "mentionsDescription": "De e-mail citeert de opmerking en bevat een link om die te openen.",
         "noMail": "Deze server verstuurt geen e-mail. Projecten die met je gedeeld zijn, staan nog steeds in je bibliotheek onder Met jou gedeeld.",
         "paused": "De beheerder van de server heeft e-mail voor iedereen uitgezet.",
         "loadFailed": "Oleafly kon je e-mailinstellingen niet laden."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} heeft {{before}} hernoemd naar {{theirs}} nadat jij het {{ours}} had genoemd",
     "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
     "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
-    "showComment": "Opmerking tonen"
+    "showComment": "Opmerking tonen",
+    "settings": {
+      "mainDocument": "{{name}} heeft {{path}} het hoofddocument gemaakt",
+      "compiler": "{{name}} heeft de compiler op {{compiler}} gezet",
+      "spellingLanguage": "{{name}} heeft de taal voor de spellingcontrole op {{language}} gezet",
+      "spellingCleared": "{{name}} heeft de taal voor de spellingcontrole van het project gewist",
+      "typstVersion": "{{name}} heeft de Typst-versie op {{version}} gezet",
+      "typstDefault": "{{name}} heeft de Typst-versie teruggezet naar de standaard",
+      "typstOptions": "{{name}} heeft de Typst-opties gewijzigd",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automatisch",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Wijzigingen samengevoegd terwijl je weg was",

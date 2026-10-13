@@ -1497,5 +1497,6 @@
     "keyInvalid": "Namen van waarden mogen niet leeg zijn en geen isgelijkteken bevatten.",
     "keyTaken": "Een variant kan dezelfde naam niet twee keer instellen.",
     "saveFailed": "Kon de varianten niet opslaan."
-  }
+  },
+  "sharedSettingsViewer": "Lezers kunnen dit in een gedeeld project niet wijzigen."
 }

@@ -48,7 +48,7 @@ import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
-import { decodeAppError } from "@/lib/app-error";
+import { decodeAppError, SHELL_ESCAPE_DECLINED } from "@/lib/app-error";
 import { SaveFlushError, type SaveFailure } from "@/store/save-flush-error";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading, releaseIdleProofreadingWorker } from "@/lib/proofreading/client";
@@ -2885,7 +2885,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }));
     } catch (error) {
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
-      void logError(allow ? "allow external TeX commands" : "block external TeX commands", error);
+      if (decodeAppError(error)?.code !== SHELL_ESCAPE_DECLINED) {
+        void logError(allow ? "allow external TeX commands" : "block external TeX commands", error);
+      }
       throw error;
     }
   },

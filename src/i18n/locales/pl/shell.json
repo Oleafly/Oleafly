@@ -449,7 +449,8 @@
       "title": "Wariant (ten projekt)",
       "help": "Wariant przekazuje własne wartości do sys.inputs, na przykład dla szkicu albo wersji do druku. Wybrany wariant zostaje na tym komputerze. Warianty dodasz lub zmienisz w Ustawieniach dokumentu.",
       "none": "Brak wariantu"
-    }
+    },
+    "sharedViewer": "Przeglądający nie mogą zmieniać tych ustawień we współdzielonym projekcie."
   },
   "datePicker": {
     "placeholder": "Wybierz datę"

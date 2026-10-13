@@ -49,6 +49,12 @@ describe("comment IPC contract", () => {
     ],
     ["collabCommentCounts", () => tauri.collabCommentCounts("p"), "collab_comment_counts", { projectId: "p" }],
     [
+      "collabCommentFilePath",
+      () => tauri.collabCommentFilePath("p", FILE),
+      "collab_comment_file_path",
+      { projectId: "p", fileId: FILE },
+    ],
+    [
       "collabCommentCreate",
       () => tauri.collabCommentCreate("p", "main.tex", 4, 9, 7, "Why?", members),
       "collab_comment_create",
@@ -183,7 +189,7 @@ describe("comment command drift", () => {
   const camel = (name: string) => name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
   it("gives every comment command a wrapper and a contract entry", () => {
-    expect(registered).toHaveLength(11);
+    expect(registered).toHaveLength(12);
     const wrappers = read("./tauri.ts");
     const contract = read("../../packages/backend-port/src/index.ts");
     for (const name of registered) {

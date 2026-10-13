@@ -1539,5 +1539,6 @@
     "keyInvalid": "Názvy hodnot nesmějí být prázdné ani obsahovat rovnítko.",
     "keyTaken": "Varianta nemůže nastavit stejný název dvakrát.",
     "saveFailed": "Varianty se nepodařilo uložit."
-  }
+  },
+  "sharedSettingsViewer": "Čtenáři ve sdíleném projektu toto nastavení nemohou měnit."
 }

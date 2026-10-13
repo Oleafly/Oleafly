@@ -50,6 +50,8 @@
       "emails": {
         "label": "Mir eine E-Mail schicken, wenn jemand ein Projekt teilt",
         "description": "Die E-Mail nennt das Projekt und enthält einen Link zum Öffnen.",
+        "mentionsLabel": "Mir eine E-Mail schicken, wenn mich jemand in einem Kommentar erwähnt",
+        "mentionsDescription": "Die E-Mail zitiert den Kommentar und enthält einen Link zum Öffnen.",
         "noMail": "Dieser Server verschickt keine E-Mails. Mit Ihnen geteilte Projekte erscheinen trotzdem in Ihrer Bibliothek unter Mit Ihnen geteilt.",
         "paused": "Der Admin des Servers hat E-Mails für alle ausgeschaltet.",
         "loadFailed": "Oleafly konnte Ihre E-Mail-Einstellungen nicht laden."
@@ -622,7 +624,27 @@
     "renamed": "{{name}} hat {{before}} in {{theirs}} umbenannt, nachdem du die Datei {{ours}} genannt hattest",
     "mentioned": "{{name}} hat Sie in einem Kommentar in {{path}} erwähnt",
     "mentionedHere": "{{name}} hat Sie in einem Kommentar erwähnt",
-    "showComment": "Kommentar anzeigen"
+    "showComment": "Kommentar anzeigen",
+    "settings": {
+      "mainDocument": "{{name}} hat {{path}} zum Hauptdokument gemacht",
+      "compiler": "{{name}} hat den Compiler auf {{compiler}} gestellt",
+      "spellingLanguage": "{{name}} hat die Sprache der Rechtschreibprüfung auf {{language}} gestellt",
+      "spellingCleared": "{{name}} hat die Sprache der Rechtschreibprüfung des Projekts entfernt",
+      "typstVersion": "{{name}} hat die Typst-Version auf {{version}} gestellt",
+      "typstDefault": "{{name}} hat die Typst-Version auf den Standard zurückgesetzt",
+      "typstOptions": "{{name}} hat die Typst-Optionen geändert",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Auto",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Während Ihrer Abwesenheit zusammengeführte Änderungen",

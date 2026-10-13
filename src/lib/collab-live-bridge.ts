@@ -56,3 +56,14 @@ export function collabVisualReadOnly(projectId: string | null): boolean {
 export function useCollabVisualReadOnly(projectId: string | null): boolean {
   return useCollabEditorGate((gate) => visualReadOnly(gate, projectId));
 }
+
+const settingsLocked = (gate: CollabEditorGate, projectId: string | null) =>
+  projectId !== null && gate.projectId === projectId && gate.viewer;
+
+export function collabSettingsLocked(projectId: string | null): boolean {
+  return settingsLocked(useCollabEditorGate.getState(), projectId);
+}
+
+export function useCollabSettingsLocked(projectId: string | null): boolean {
+  return useCollabEditorGate((gate) => settingsLocked(gate, projectId));
+}

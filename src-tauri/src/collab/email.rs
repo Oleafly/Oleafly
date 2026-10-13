@@ -187,17 +187,33 @@ mod tests {
         assert_eq!(smtp.wait_for(1, Duration::from_secs(10)).await.len(), 1);
         let preferences = email_preferences(&state, &host, id).await.expect("read");
         assert!(preferences.shared_with_you);
+        assert_eq!(preferences.mentions, Some(true));
         let changed = set_email_preferences(
             &state,
             &host,
             id,
             EmailPreferencesPatch {
                 shared_with_you: Some(false),
+                ..EmailPreferencesPatch::default()
             },
         )
         .await
         .expect("change");
         assert!(!changed.shared_with_you);
+        assert_eq!(changed.mentions, Some(true));
+        let quiet = set_email_preferences(
+            &state,
+            &host,
+            id,
+            EmailPreferencesPatch {
+                mentions: Some(false),
+                ..EmailPreferencesPatch::default()
+            },
+        )
+        .await
+        .expect("change mentions");
+        assert_eq!(quiet.mentions, Some(false));
+        assert!(!quiet.shared_with_you);
         assert!(
             !email_preferences(&state, &host, id)
                 .await

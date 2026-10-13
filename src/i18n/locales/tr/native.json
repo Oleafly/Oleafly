@@ -45,6 +45,11 @@
       "message": "Tam erişim, asistanın her seferinde onay istemeden shell komutları çalıştırmasına ve dosyaları düzenlemesine izin verir. Tam erişim etkinleştirilsin mi?",
       "confirm": "Tam erişimi etkinleştir"
     },
+    "sharedShellEscape": {
+      "title": "Bu paylaşılan projede dış komutlara izin verilsin mi?",
+      "message": "Bu projeyi düzenleyebilen herkes, siz derleme yaptığınızda bu bilgisayarda program çalıştırabilir. Buna yalnızca projedeki herkese güveniyorsanız izin verin.",
+      "confirm": "Bu bilgisayarda izin ver"
+    },
     "cookieImport": {
       "title": "Cookie içe aktarmayı onaylayın",
       "messageHost": "{{hostname}} için cookie'ler, {{browser}} tarayıcısının \"{{profile}}\" profilinden Oleafly'nin uygulama içi tarayıcısına aktarılsın mı? Aktarılan cookie'ler sizi web sitelerinde oturum açmış duruma getirebilir.",

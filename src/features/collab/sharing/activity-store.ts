@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CollabProjectRole } from "@/lib/tauri";
+import type { CollabProjectRole, CollabSettingNotice } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 
 export const ACTIVITY_CAP = 200;
@@ -36,6 +36,7 @@ export type NewActivity =
       threadId: string;
       messageId: string;
     }
+  | { kind: "setting"; at: number; accountId: string | null; name: string; change: CollabSettingNotice }
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed"; at: number; by?: string }
   | { kind: "archived"; at: number }

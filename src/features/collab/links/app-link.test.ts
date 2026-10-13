@@ -3,6 +3,8 @@ import { linkKey, parseAppLink, sameServer } from "./app-link";
 
 const PROJECT = "01920000-0000-7000-8000-0000000000aa";
 const OPEN = `oleafly://open?server=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly&project=${PROJECT}`;
+const FILE = "01920000-0000-7000-8000-0000000000f1";
+const THREAD = "01920000-0000-7000-8000-0000000000c1";
 
 describe("parseAppLink", () => {
   it("reads the server address out of an Add to Oleafly link", () => {
@@ -30,6 +32,35 @@ describe("parseAppLink", () => {
       project: PROJECT,
       link: shouted,
     });
+  });
+
+  it("reads the file and thread out of a link to a comment", () => {
+    const link = `${OPEN}&file=${FILE}&thread=${THREAD}`;
+    expect(parseAppLink(link)).toEqual({
+      kind: "openProject",
+      server: "https://www.cs.uni.edu/oleafly",
+      project: PROJECT,
+      link,
+      comment: { fileId: FILE, threadId: THREAD },
+    });
+  });
+
+  it("opens just the project when the comment part of a link is broken", () => {
+    for (const tail of [
+      `&thread=${THREAD}`,
+      `&file=${FILE}`,
+      `&file=${FILE}&thread=not-a-thread`,
+      `&file=..%2Fsecret&thread=${THREAD}`,
+    ]) {
+      const parsed = parseAppLink(`${OPEN}${tail}`);
+      expect(parsed, tail).toEqual({
+        kind: "openProject",
+        server: "https://www.cs.uni.edu/oleafly",
+        project: PROJECT,
+        link: `${OPEN}${tail}`,
+      });
+      expect(parsed, tail).not.toHaveProperty("comment");
+    }
   });
 
   it("calls everything else malformed", () => {
@@ -68,6 +99,8 @@ describe("linkKey", () => {
     const other = "01920000-0000-7000-8000-0000000000bb";
     const keys = [
       OPEN,
+      `${OPEN}&file=${FILE}&thread=${THREAD}`,
+      `${OPEN}&file=${FILE}&thread=${other}`,
       OPEN.replace(PROJECT, other),
       OPEN.replace("www.cs.uni.edu", "lab.uni.edu"),
       "oleafly://server/add?url=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly",

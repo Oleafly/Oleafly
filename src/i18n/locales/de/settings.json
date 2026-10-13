@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Der Freigabemodus Eigene Regeln liest diese Datei. Sie liegt unter ~/.oleafly/approvals.toml und gilt für jedes Projekt auf diesem Gerät.",
+        "description": "Die Datei liegt unter ~/.oleafly/approvals.toml und gilt für jedes Projekt auf diesem Gerät. Deny-Regeln sperren ein Werkzeug in jedem Freigabemodus. Allow-Regeln greifen nur im Modus Eigene Regeln.",
         "discard": "Änderungen verwerfen",
         "emptyFile": "Die Datei ist bislang leer.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Die erste Tabelle, <modesTable>[\"$approval_modes\"]</modesTable>, legt den Freigabemodus je Projekt fest: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> oder <custom>\"custom\"</custom>. Ein nicht aufgeführtes Projekt nutzt Für mich freigeben.",
           "openProject": "Das geöffnete Projekt, {{name}}, hat die ID <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-IDs sind die Ordnernamen unter ~/.oleafly/projects.",
-          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus. Allow-Regeln greifen im Modus Eigene Regeln, und bei run_command überspringen sie die Nachfrage auch in den anderen Modi.",
+          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus, auch bei Vollzugriff. Allow-Regeln greifen nur im Modus Eigene Regeln.",
           "toolNames": "Werkzeugnamen, die Sie verwenden können: <names>{{names}}</names> sowie jedes MCP-Werkzeug unter seinem vollen Namen aus der Liste Werkzeuge."
         },
         "helpToggle": "Wie die Datei funktioniert",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Immer erlaubt",
         "denied": "Immer verweigert",
-        "description": "Gespeicherte Regeln für {{name}}. Sie gelten, wenn der Freigabemodus Eigene Regeln ist. Entfernen Sie eine Regel, um für dieses Werkzeug wieder die übliche Risikobewertung zu nutzen.",
+        "description": "Gespeicherte Regeln für {{name}}. Verweigerte Werkzeuge bleiben in jedem Freigabemodus gesperrt. Erlaubte Werkzeuge überspringen die Nachfrage nur im Modus Eigene Regeln. Entfernen Sie eine Regel, um für dieses Werkzeug wieder die übliche Risikobewertung zu nutzen.",
         "empty": "Noch keine gespeicherten Regeln. Nutzen Sie „Immer in diesem Projekt“ auf einer Freigabeanfrage, um eine anzulegen.",
         "removeRule": "Regel für {{tool}} entfernen",
         "thisProject": "dieses Projekt",

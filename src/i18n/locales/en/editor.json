@@ -1497,5 +1497,6 @@
     "keyInvalid": "Value names can't be empty or contain an equals sign.",
     "keyTaken": "A variant can't set the same name twice.",
     "saveFailed": "Could not save the variants."
-  }
+  },
+  "sharedSettingsViewer": "Viewers can't change this in a shared project."
 }

@@ -445,7 +445,8 @@
       "title": "Muunnelma (tämä projekti)",
       "help": "Muunnelma välittää omat arvonsa kohteeseen sys.inputs, esimerkiksi luonnosta tai lopullista painoversiota varten. Valitsemasi muunnelma säilyy tällä tietokoneella. Lisää tai muokkaa muunnelmia kohdassa Dokumentin asetukset.",
       "none": "Ei muunnelmaa"
-    }
+    },
+    "sharedViewer": "Katselijat eivät voi muuttaa näitä asetuksia jaetussa projektissa."
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"

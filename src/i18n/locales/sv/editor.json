@@ -1497,5 +1497,6 @@
     "keyInvalid": "Värdenamn får inte vara tomma eller innehålla ett likhetstecken.",
     "keyTaken": "En variant kan inte ange samma namn två gånger.",
     "saveFailed": "Det gick inte att spara varianterna."
-  }
+  },
+  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt."
 }

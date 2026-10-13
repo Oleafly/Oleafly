@@ -2109,6 +2109,16 @@ export function onCollabLiveRenamed(
   );
 }
 
+export const COLLAB_LIVE_SETTINGS_EVENT = "collab-live-settings";
+
+export function onCollabLiveSettings(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveSettings) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveSettings>(COLLAB_LIVE_SETTINGS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
 export const COLLAB_LIVE_REMOVED_EVENT = "collab-live-removed";
 
 export const collabLiveRemovedList = (projectId: string) =>
@@ -2320,6 +2330,8 @@ export const collabCommentThreadList = (projectId: string, path: string) =>
   invoke<CollabCommentThreadList>("collab_comment_thread_list", { projectId, path });
 export const collabCommentCounts = (projectId: string) =>
   invoke<CollabCommentCount[]>("collab_comment_counts", { projectId });
+export const collabCommentFilePath = (projectId: string, fileId: string) =>
+  invoke<string | null>("collab_comment_file_path", { projectId, fileId });
 export const collabCommentCreate = (
   projectId: string,
   path: string,

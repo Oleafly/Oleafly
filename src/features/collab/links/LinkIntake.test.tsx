@@ -19,6 +19,7 @@ import {
 } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
+  collabCommentFilePath: vi.fn(),
   collabJoinProject: vi.fn(),
   collabLinkPreview: vi.fn(),
   collabOpenLink: vi.fn(),
@@ -32,6 +33,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...mocks,
 }));
 
+import { useCommentsRail } from "@/components/collab/comments-rail";
+import { useComments } from "../comments/comments-store";
 import { useCollabStore } from "../store";
 import { useAddServerRequest } from "./add-server-request";
 import { LinkIntake } from "./LinkIntake";
@@ -41,6 +44,9 @@ const ADDRESS = "https://collab.uni.edu";
 const OPEN = `oleafly://open?server=https%3A%2F%2Fcollab.uni.edu&project=${PROJECT}`;
 const OPEN_SLASHED = `oleafly://open/?server=https%3A%2F%2Fcollab.uni.edu%2F&project=${PROJECT}`;
 const ADD = "oleafly://server/add?url=https%3A%2F%2Fcollab.uni.edu";
+const FILE = "01920000-0000-7000-8000-0000000000f1";
+const THREAD = "01920000-0000-7000-8000-0000000000c1";
+const COMMENT = `${OPEN}&file=${FILE}&thread=${THREAD}`;
 const copy = enCollab.links;
 const PREVIEW = projectSummary({
   project_id: PROJECT,
@@ -51,7 +57,8 @@ const PREVIEW = projectSummary({
   link_role: "editor",
 });
 const refreshProjects = vi.fn(async () => undefined);
-const openProject = vi.fn(async () => undefined);
+const openProject = vi.fn(async (_id: string) => undefined);
+const openFile = vi.fn(async (_path: string) => undefined);
 const onTaken = vi.fn();
 
 function deliver(links: readonly string[]) {
@@ -73,7 +80,17 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   useSettingsStore.setState({ liveCollaboration: true, settingsOpen: false, settingsInitialSection: "general" });
-  useFilesStore.setState({ projectsLoaded: true, loading: false, projectId: null, refreshProjects, openProject });
+  useFilesStore.setState({
+    projectsLoaded: true,
+    loading: false,
+    projectId: null,
+    activePath: null,
+    refreshProjects,
+    openProject,
+    openFile,
+  });
+  useComments.setState({ projectId: null });
+  useCommentsRail.setState({ reveal: null });
   useCollabStore.setState({ servers: [server()], status: "ready", loadError: null, pending: {} });
   useAddServerRequest.setState({ url: null });
   mocks.collabServerProbe.mockReturnValue(deferred().promise);
@@ -100,6 +117,47 @@ describe("LinkIntake", () => {
     expect(mocks.collabOpenLink).not.toHaveBeenCalled();
     expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog", { name: copy.confirm.title })).not.toBeInTheDocument();
+  });
+
+  it("opens the comment a link points at once the project is open", async () => {
+    mocks.collabJoinProject.mockResolvedValue("local-1");
+    mocks.collabCommentFilePath.mockResolvedValue("chapters/intro.tex");
+    openProject.mockImplementationOnce(async (id: string) => {
+      useComments.setState({ projectId: id });
+    });
+    deliver([COMMENT]);
+    await waitFor(() =>
+      expect(useCommentsRail.getState().reveal).toEqual({ path: "chapters/intro.tex", threadId: THREAD }),
+    );
+    expect(openProject).toHaveBeenCalledWith("local-1");
+    expect(mocks.collabCommentFilePath).toHaveBeenCalledWith("local-1", FILE);
+    expect(openFile).toHaveBeenCalledWith("chapters/intro.tex");
+  });
+
+  it("waits for the comments of the opened project before showing the comment", async () => {
+    mocks.collabJoinProject.mockResolvedValue("local-1");
+    mocks.collabCommentFilePath.mockResolvedValue("chapters/intro.tex");
+    deliver([COMMENT]);
+    await waitFor(() => expect(mocks.collabCommentFilePath).toHaveBeenCalledWith("local-1", FILE));
+    await sleep(100);
+    expect(useCommentsRail.getState().reveal).toBeNull();
+    act(() => useComments.setState({ projectId: "local-1" }));
+    await waitFor(() =>
+      expect(useCommentsRail.getState().reveal).toEqual({ path: "chapters/intro.tex", threadId: THREAD }),
+    );
+  });
+
+  it("opens just the project when the commented file is gone", async () => {
+    mocks.collabJoinProject.mockResolvedValue("local-1");
+    mocks.collabCommentFilePath.mockResolvedValue(null);
+    useComments.setState({ projectId: "local-1" });
+    deliver([COMMENT]);
+    await waitFor(() => expect(mocks.collabCommentFilePath).toHaveBeenCalledWith("local-1", FILE));
+    await sleep(50);
+    expect(openProject).toHaveBeenCalledWith("local-1");
+    expect(useCommentsRail.getState().reveal).toBeNull();
+    expect(openFile).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("collab-link-notice")).not.toBeInTheDocument();
   });
 
   it("opens a project already in the library while signed out without asking to sign in", async () => {

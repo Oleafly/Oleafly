@@ -1,0 +1,68 @@
+#!/bin/sh
+state=/stub/state
+url=
+out=
+family=
+printf 'curl %s\n' "$*" >>/stub/log
+while [ $# -gt 0 ]; do
+	case $1 in
+		-o)
+			out=$2
+			shift
+			;;
+		--resolve | --cacert | --max-time | --retry | --connect-timeout | --proto | --proto-redir) shift ;;
+		-4) family=4 ;;
+		-6) family=6 ;;
+		-*) ;;
+		*) url=$1 ;;
+	esac
+	shift
+done
+emit() {
+	if [ -n "$out" ]; then
+		cat >"$out"
+	else
+		cat
+	fi
+}
+serve_file() {
+	[ -f "$1" ] || {
+		echo "curl: (22) The requested URL returned error: 404" >&2
+		exit 22
+	}
+	emit <"$1"
+}
+case $url in
+	https://get.docker.com)
+		[ -f "$state/get-docker-unreachable" ] && exit 6
+		serve_file /stub/get-docker.sh
+		;;
+	https://ifconfig.me/ip)
+		[ -f "$state/public-ip$family" ] || exit 7
+		emit <"$state/public-ip$family"
+		;;
+	https://github.com/Oleafly/oleafly-server/releases/download/*)
+		rest=${url#https://github.com/Oleafly/oleafly-server/releases/download/}
+		serve_file "/stub/releases/$rest"
+		;;
+	https://github.com/Oleafly/oleafly-server/releases/latest/download/*)
+		serve_file "/stub/releases/latest/${url##*/}"
+		;;
+	file://*) serve_file "${url#file://}" ;;
+	https://*/healthz)
+		[ -f "$state/https-ok" ] || exit 7
+		echo '{"status":"ok"}' | emit
+		;;
+	https://*/.well-known/oleafly-server)
+		[ -f "$state/https-ok" ] || exit 7
+		if [ -f "$state/has-admin" ]; then
+			echo '{"server_id":"srv_1","needs_setup":false}' | emit
+		else
+			echo '{"server_id":"srv_1","needs_setup":true}' | emit
+		fi
+		;;
+	*)
+		echo "curl stub: no answer for $url" >&2
+		exit 6
+		;;
+esac

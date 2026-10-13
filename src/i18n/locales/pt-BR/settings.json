@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "O modo de aprovação Personalizado lê este arquivo. Ele fica em ~/.oleafly/approvals.toml e vale para todos os projetos deste dispositivo.",
+        "description": "O arquivo fica em ~/.oleafly/approvals.toml e vale para todos os projetos deste dispositivo. As regras deny bloqueiam uma ferramenta em todos os modos de aprovação. As regras allow só valem no modo Personalizado.",
         "discard": "Descartar as mudanças",
         "emptyFile": "O arquivo está vazio até agora.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "A primeira tabela, <modesTable>[\"$approval_modes\"]</modesTable>, define o modo de aprovação por projeto: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> ou <custom>\"custom\"</custom>. Um projeto que não estiver listado usa Aprovar por mim.",
           "openProject": "O projeto aberto, {{name}}, tem o id <projectId>{{id}}</projectId>.",
           "projectIds": "Os ids de projeto são os nomes das pastas em ~/.oleafly/projects.",
-          "rules": "Depois vem uma tabela por id de projeto, com uma regra por ferramenta: <allow>\"allow\"</allow> executa a ferramenta sem perguntar e <deny>\"deny\"</deny> recusa. As regras deny valem em todos os modos. As regras allow valem no modo Personalizado e, no caso de run_command, também pulam a pergunta nos outros modos.",
+          "rules": "Depois vem uma tabela por id de projeto, com uma regra por ferramenta: <allow>\"allow\"</allow> executa a ferramenta sem perguntar e <deny>\"deny\"</deny> recusa. As regras deny valem em todos os modos, inclusive Acesso total. As regras allow só valem no modo Personalizado.",
           "toolNames": "Nomes de ferramenta que você pode usar: <names>{{names}}</names> e qualquer ferramenta MCP pelo nome completo dela na lista de Ferramentas."
         },
         "helpToggle": "Como o arquivo funciona",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Sempre permitida",
         "denied": "Sempre negada",
-        "description": "Regras salvas de {{name}}. Elas valem quando o modo de aprovação é Personalizado. Remova uma regra para voltar à política de risco padrão daquela ferramenta.",
+        "description": "Regras salvas de {{name}}. Ferramentas negadas continuam bloqueadas em todos os modos de aprovação. Ferramentas permitidas só pulam a pergunta no modo Personalizado. Remova uma regra para voltar à política de risco padrão daquela ferramenta.",
         "empty": "Ainda não há regras salvas. Use \"Sempre neste projeto\" em um pedido de aprovação para criar uma.",
         "removeRule": "Remover a regra de {{tool}}",
         "thisProject": "este projeto",

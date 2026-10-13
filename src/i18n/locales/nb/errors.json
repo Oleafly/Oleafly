@@ -36,7 +36,8 @@
     "not_removable": "Bare mapper som er åpnet der de ligger, kan fjernes fra Oleafly.",
     "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Stasjonen har kanskje ingen papirkurv.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flytt eller gi den nytt navn først.",
-    "folder_read_only": "Oleafly kan ikke gjøre denne endringen fordi {{name}} eller mappen den ligger i, er skrivebeskyttet. Kopier mappen du åpnet, til biblioteket og rediger den der."
+    "folder_read_only": "Oleafly kan ikke gjøre denne endringen fordi {{name}} eller mappen den ligger i, er skrivebeskyttet. Kopier mappen du åpnet, til biblioteket og rediger den der.",
+    "shared_settings_viewer": "Lesere kan ikke endre innstillingene for et delt prosjekt."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."

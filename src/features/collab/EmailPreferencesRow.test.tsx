@@ -23,11 +23,15 @@ import { EmailPreferencesRow } from "./EmailPreferencesRow";
 const copy = enCollab.section.server.emails;
 
 function preferences(overrides: Partial<CollabEmailPreferences> = {}): CollabEmailPreferences {
-  return { shared_with_you: true, mail_configured: true, notifications: true, ...overrides };
+  return { shared_with_you: true, mentions: true, mail_configured: true, notifications: true, ...overrides };
 }
 
 function toggle(): HTMLElement {
   return screen.getByRole("switch", { name: copy.label });
+}
+
+function mentionsToggle(): HTMLElement {
+  return screen.getByRole("switch", { name: copy.mentionsLabel });
 }
 
 beforeAll(async () => {
@@ -89,6 +93,51 @@ describe("EmailPreferencesRow", () => {
     render(<EmailPreferencesRow serverId={SERVER_ID} />);
     expect(await screen.findByText(copy.paused)).toBeInTheDocument();
     expect(toggle()).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("lets a person turn off emails about mentions, right under the share setting", async () => {
+    mocks.collabEmailPreferences.mockResolvedValue(preferences());
+    mocks.collabSetEmailPreferences.mockResolvedValue(preferences({ mentions: false }));
+    const user = userEvent.setup();
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    await screen.findByRole("switch", { name: copy.mentionsLabel });
+    expect(screen.getByText(copy.mentionsDescription)).toBeInTheDocument();
+    expect(toggle().compareDocumentPosition(mentionsToggle()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mentionsToggle()).toHaveAttribute("aria-checked", "true");
+    await user.click(mentionsToggle());
+    expect(mocks.collabSetEmailPreferences).toHaveBeenCalledWith(SERVER_ID, { mentions: false });
+    await waitFor(() => expect(mentionsToggle()).toHaveAttribute("aria-checked", "false"));
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("puts the mentions switch back when saving fails", async () => {
+    mocks.collabEmailPreferences.mockResolvedValue(preferences());
+    mocks.collabSetEmailPreferences.mockRejectedValue(collabError("unreachable"));
+    const user = userEvent.setup();
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    await user.click(await screen.findByRole("switch", { name: copy.mentionsLabel }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(mentionsToggle()).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("turns the mentions switch off with the rest when the server sends no email", async () => {
+    mocks.collabEmailPreferences.mockResolvedValue(preferences({ mail_configured: false }));
+    const user = userEvent.setup();
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    await screen.findByRole("switch", { name: copy.mentionsLabel });
+    expect(mentionsToggle()).toHaveAttribute("aria-disabled", "true");
+    expect(mentionsToggle()).toHaveAttribute("aria-checked", "false");
+    await user.click(mentionsToggle());
+    expect(mocks.collabSetEmailPreferences).not.toHaveBeenCalled();
+  });
+
+  it("leaves out the mentions switch for a server that does not send mention emails", async () => {
+    const older: CollabEmailPreferences = { shared_with_you: true, mail_configured: true, notifications: true };
+    mocks.collabEmailPreferences.mockResolvedValue(older);
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    await screen.findByRole("switch", { name: copy.label });
+    expect(screen.queryByRole("switch", { name: copy.mentionsLabel })).toBeNull();
+    expect(screen.queryByText(copy.mentionsDescription)).toBeNull();
   });
 
   it("says so quietly when the setting cannot load", async () => {

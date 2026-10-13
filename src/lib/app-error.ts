@@ -4,6 +4,7 @@ import { displayText } from "@/lib/display-path";
 export const APP_ERROR_PREFIX = "@oleafly/error:";
 export const PROJECT_NOT_FOUND = "project.not_found";
 export const PROJECT_LINKED_NOT_RECYCLABLE = "project.linked_not_recyclable";
+export const SHELL_ESCAPE_DECLINED = "project.shell_escape_declined";
 
 const dynamic = i18n as unknown as {
   t(key: string, params?: Record<string, unknown>): string;

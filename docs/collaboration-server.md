@@ -38,12 +38,13 @@ Then pick how to run it:
 
 | Option | When to use it |
 | --- | --- |
+| [One command](#install-with-one-command) | A Linux machine of your own with a public address. The installer asks a few questions and sets up Docker Compose for you. |
 | [Docker Compose](#docker-compose) | Any machine with Docker. Caddy gets the HTTPS certificate for you. |
 | [Coolify](#coolify) | You already run a Coolify server. |
 | [Render](#render) or [Railway](#railway) | You'd rather pay a hosting service than look after a machine. |
 | [Linux without Docker](#linux-without-docker) | A university virtual machine where you can't use Docker. |
 
-The server runs on x86-64 and ARM machines. Each release is published as a container image, `ghcr.io/oleafly/oleafly-server`, and as a single Linux program on the [releases page](https://github.com/Oleafly/Oleafly/releases).
+The server runs on x86-64 and ARM machines. Each release is published as a container image, `ghcr.io/oleafly/oleafly-server`, and as a single Linux program on the [releases page](https://github.com/Oleafly/Oleafly/releases). The installer and its Compose files are also on the releases page of [Oleafly/oleafly-server](https://github.com/Oleafly/oleafly-server/releases).
 
 ## Settings
 
@@ -120,29 +121,75 @@ Every change records which internal writer ids it adds text under. The server ti
 
 If a setting is missing or malformed, the server doesn't start and says which one. If the bucket refuses a request, that upload or download fails and the server log shows what the bucket said, such as `403 Forbidden (AccessDenied)`. A server error, a timeout or a dropped connection is different: the server tries the request up to three times, with a short random pause in between. A download gives up when the bucket hasn't started answering after 10 seconds, or when the whole object takes longer than 30 seconds plus one second for every 256 KB. If the server can't delete an object, it writes that down and tries again at each maintenance pass, every 6 hours, so an outage doesn't leave objects behind.
 
+## Install with one command
+
+On a Linux machine with a public address, one command does the [Docker Compose](#docker-compose) setup for you:
+
+```sh
+curl -fsSL https://oleafly.com/server/install.sh | sudo sh
+```
+
+Point your domain's DNS record at the machine first. The installer then:
+
+1. Checks that the machine runs Linux on x86-64 or ARM and that ports 80 and 443 are free.
+2. Uses Docker if it's there. If it isn't, it asks before it installs Docker with Docker's own script from `get.docker.com`.
+3. Asks for the domain, the server's name and a sign-in provider. It shows the callback address for GitHub or OpenID Connect before it asks for the client ID, so you can create the app while it waits. It can also set up [email](#email) and a [bucket for files](#files-in-a-bucket).
+4. Checks that the domain points to this machine. If it doesn't yet, the installer says so and carries on, and Caddy keeps trying to get the certificate. To find the machine's public address, it may ask `ifconfig.me`.
+5. Downloads the release's `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `.env.example` into `/opt/oleafly-server`, and checks each one against the release's `SHA256SUMS`.
+6. Writes your settings to `/opt/oleafly-server/.env`, which only root can read, then pulls the server image and starts it.
+7. Waits until `https://<your domain>/healthz` answers, then prints the setup code and the next steps.
+
+Sign-in by email link is off until an admin turns it on, so the first admin signs in with GitHub or OpenID Connect. Email set up by the installer works for invitations and alerts straight away.
+
+Run it again at any time. When `/opt/oleafly-server/.env` exists, the installer keeps it, replaces only the files that come with a release, and starts the server again.
+
+These commands work on a server the installer set up:
+
+| Command | What it does |
+| --- | --- |
+| `curl -fsSL https://oleafly.com/server/install.sh \| sudo sh -s update` | Gets the newest release's files and image, keeps `.env`, restarts the server and waits until it's ready. It never moves to an older release. |
+| `sudo sh /opt/oleafly-server/install.sh status` | Shows the version, the containers and whether HTTPS answers. |
+| `sudo sh /opt/oleafly-server/install.sh uninstall` | Stops and removes the containers. The data stays unless you type `delete` when it asks. |
+| `sh install.sh --help` | Lists every option and setting. |
+
+The files that come with a release are replaced on each update. Put your own changes in `docker-compose.override.yml` next to them, which the installer never touches.
+
+To install without questions, for example from a provisioning script, pass `--yes` and give the settings as environment variables. They have the same names as in `.env`:
+
+```sh
+curl -fsSL https://oleafly.com/server/install.sh -o install.sh
+sudo env OLEAFLY_DOMAIN=collab.example.org OLEAFLY_SERVER_NAME='Smith Lab' \
+  OLEAFLY_GITHUB_CLIENT_ID=Ov23liExampleClientId OLEAFLY_GITHUB_CLIENT_SECRET=example-client-secret \
+  sh install.sh --yes
+```
+
+With `--yes`, the installer stops if Docker is missing, unless you also set `OLEAFLY_INSTALL_DOCKER=yes`. Set `OLEAFLY_DIR` to install somewhere other than `/opt/oleafly-server`. Values on a command line can end up in your shell history, so keep the client secret in your provisioning tool's secret store instead.
+
 ## Docker Compose
 
 This setup runs two containers. `oleafly-server` is the server, and only other containers can reach it. `caddy` gets a certificate from Let's Encrypt, serves HTTPS on ports 80 and 443, and passes requests to the server, WebSocket connections included.
 
 1. Install Docker Engine and the Compose plugin by following [Docker's instructions](https://docs.docker.com/engine/install/).
 2. Point your domain's DNS record at the machine. Open TCP ports 80 and 443 and UDP port 443 in any firewall in front of it. Caddy needs port 80 to get the certificate.
-3. Get the files and make your settings file:
+3. Get the files of the newest release, check them, and make your settings file. Run these as root, for example after `sudo -i`:
 
    ```sh
-   git clone https://github.com/Oleafly/Oleafly.git
-   cd Oleafly/deploy/server
-   cp .env.example .env
+   mkdir -p /opt/oleafly-server && cd /opt/oleafly-server
+   base=https://github.com/Oleafly/oleafly-server/releases/latest/download
+   for file in docker-compose.yml Caddyfile litestream.yml env.example SHA256SUMS; do curl -fLO "$base/$file"; done
+   sha256sum --check --ignore-missing SHA256SUMS
+   mv env.example .env
    chmod 600 .env
    ```
 
 4. Edit `.env`. Set `OLEAFLY_DOMAIN` to your domain without `https://`, set `OLEAFLY_SERVER_NAME`, and fill in at least one [sign-in provider](#sign-in-providers). Leave the provider lines you don't use empty.
-5. Build and start:
+5. Start it:
 
    ```sh
-   docker compose up -d --build
+   docker compose up -d
    ```
 
-   The first build compiles the server and takes several minutes.
+   Docker downloads the server image for that release. To build the server from source instead, clone the Oleafly repository and run `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` in its `deploy/server` folder. The first build compiles the server and takes several minutes.
 6. Check that it answers. This prints `200`:
 
    ```sh
@@ -496,7 +543,7 @@ If the machine has no public address, for example a computer in your lab behind 
 2. Start only the server. Caddy isn't needed here:
 
    ```sh
-   docker compose up -d --build oleafly-server
+   docker compose up -d oleafly-server
    ```
 
 3. In the Cloudflare dashboard, go to **Networking › Tunnels**, select **Create Tunnel**, give it a name, and select **Create Tunnel** again. Copy the token from the install command it shows.
@@ -514,7 +561,7 @@ On a machine without Docker, install `cloudflared` from [Cloudflare's package re
 
 Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
 
-When you update the server later, name the service so Caddy stays off: `docker compose up -d --build oleafly-server`.
+When you update the server later, name the service so Caddy stays off: `docker compose pull oleafly-server && docker compose up -d oleafly-server`. The one-command installer always starts Caddy, so use these steps for a tunnel instead.
 
 ## Sign-in providers
 
@@ -658,13 +705,15 @@ A relay on the same private network can skip TLS too, when you ask for it. Add `
 
 ### What the server sends
 
-There are five kinds of email, each as plain text with a simple HTML version. Email to someone who already has an account goes only to their verified addresses, and GitHub's noreply addresses are always skipped.
+There are six kinds of email, each as plain text with a simple HTML version. Email to someone who already has an account goes only to their verified addresses, and GitHub's noreply addresses are always skipped.
 
 Adding someone to the allowed list by email address sends that address the server's name, an Add to Oleafly link and the plain server address to type under Add server. Adding someone by GitHub user name or through a domain rule sends nothing, because the server has no address for them yet.
 
 When a project owner adds someone to a project, that person gets the project title, who shared it, their role and a link that opens the project in Oleafly. The email also has the project's web page, for when the link doesn't open the app. Changing someone's role later sends nothing. Each person can turn these emails off on the server's card in Settings > Collaboration.
 
 A sign-in on another device sends the account the device name, its system and the time in the server's time zone, with a reminder to sign that device out under Settings > Collaboration if it wasn't them. Set `TZ`, for example `TZ=Europe/Berlin`, to choose the time zone. A new account's first device gets no email.
+
+When someone mentions a project member in a comment or a reply, that person gets an email with who mentioned them, the project, the file, the text the comment is on and the comment itself, plus a link that opens the comment in Oleafly. The server waits a minute before sending, so several mentions of the same person in that minute arrive as one email. Nobody is emailed about mentioning themselves, and people who have left the project get nothing. A comment written offline sends its email once it reaches the server, and the same comment arriving again never sends a second one. Each person can turn these emails off on the server's card in Settings > Collaboration.
 
 A [guest invitation](#guests) goes to the invited address with the project title, who invited them, an Add to Oleafly link and the address to sign in with. When approval is on, it goes out once the invitation is approved.
 
@@ -680,7 +729,7 @@ When email is off, the tab shows the Add to Oleafly link and the server address 
 
 ### When the mail server is down
 
-Sending never holds up the action behind it. The server keeps emails in a queue in memory and tries again after 30 seconds, 2 minutes, 10 minutes, 30 minutes and 2 hours. Each failed try is a warning in the server log, and the Email tab shows the latest failure. If the last try fails too, the server logs an error and drops that email. Emails still waiting when the server restarts are lost.
+Sending never holds up the action behind it. The server keeps emails in a queue in memory and tries again after 30 seconds, 2 minutes, 10 minutes, 30 minutes and 2 hours. Each failed try is a warning in the server log, and the Email tab shows the latest failure. If the last try fails too, the server logs an error and drops that email. Emails still waiting when the server restarts are lost. Mention emails still inside their one-minute wait are kept in the database, so a restart doesn't lose those.
 
 ## Guests
 
@@ -722,10 +771,10 @@ What a full backup needs depends on where files are stored. With files on disk (
 
 Back up regularly and keep the copies private, since they hold every project. Your settings, such as `.env`, aren't in the data folder, so keep a copy of them as well.
 
-With Docker Compose, the server stops for a few seconds while you copy the volume. Oleafly reconnects by itself.
+With Docker Compose, the server stops for a few seconds while you copy the volume. Oleafly reconnects by itself. The commands below run in the folder with `docker-compose.yml`, which is `/opt/oleafly-server` if you used the installer.
 
 ```sh
-cd Oleafly/deploy/server
+cd /opt/oleafly-server
 docker compose stop oleafly-server
 docker run --rm -v oleafly-server_oleafly-data:/data:ro -v "$PWD":/backup debian:13.7-slim tar -C /data -czf /backup/oleafly-data-$(date +%F).tar.gz .
 docker compose start oleafly-server
@@ -748,7 +797,7 @@ On Coolify, the volume's name starts with the resource's ID. Find it with `docke
 A backup you have never restored is only a hope. This drill starts a second copy of the server from a backup, leaves the running one alone, and checks that both are the same server. Use the date of your own archive in place of `2026-10-11`.
 
 ```sh
-cd Oleafly/deploy/server
+cd /opt/oleafly-server
 docker volume create oleafly-restore-drill
 docker run --rm -v oleafly-restore-drill:/data -v "$PWD":/backup:ro debian:13.7-slim tar -C /data -xzf /backup/oleafly-data-2026-10-11.tar.gz
 docker run -d --name oleafly-restore-drill -v oleafly-restore-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid "$(docker compose images -q oleafly-server)"
@@ -768,7 +817,7 @@ docker volume rm oleafly-restore-drill
 To restore for real with Docker Compose, stop the server, replace the volume's contents with the archive, and start it again:
 
 ```sh
-cd Oleafly/deploy/server
+cd /opt/oleafly-server
 docker compose stop oleafly-server
 docker run --rm -v oleafly-server_oleafly-data:/data -v "$PWD":/backup:ro debian:13.7-slim sh -c 'find /data -mindepth 1 -delete && tar -C /data -xzf /backup/oleafly-data-2026-10-11.tar.gz'
 docker compose start oleafly-server
@@ -822,7 +871,7 @@ Litestream takes a full copy once a day and keeps a week of copies and the chang
 This drill restores the database from the bucket into a scratch volume, starts a second copy of the server on it and checks that both are the same server. The running server isn't touched.
 
 ```sh
-cd Oleafly/deploy/server
+cd /opt/oleafly-server
 docker run --rm -v oleafly-litestream-drill:/data "$(docker compose images -q oleafly-server)" --version
 docker compose run --rm --no-deps -v oleafly-litestream-drill:/restore litestream restore -config /etc/litestream.yml -o /restore/oleafly-server.sqlite3 /data/oleafly-server.sqlite3
 docker run -d --name oleafly-litestream-drill -v oleafly-litestream-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid "$(docker compose images -q oleafly-server)"
@@ -842,7 +891,7 @@ docker volume rm oleafly-litestream-drill
 When the database file is damaged or gone but the rest of the data folder is fine, stop the server and Litestream, remove what's left of the database, restore it and start again:
 
 ```sh
-cd Oleafly/deploy/server
+cd /opt/oleafly-server
 docker compose stop oleafly-server litestream
 docker run --rm -v oleafly-server_oleafly-data:/data debian:13.7-slim rm -rf /data/oleafly-server.sqlite3 /data/oleafly-server.sqlite3-wal /data/oleafly-server.sqlite3-shm /data/.oleafly-server.sqlite3-litestream
 docker compose run --rm --no-deps litestream restore -config /etc/litestream.yml /data/oleafly-server.sqlite3
@@ -859,7 +908,8 @@ Back up first. The server updates its database the first time a new version star
 
 Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
 
-- Docker Compose: run `git pull` in the `Oleafly` folder, then `docker compose up -d --build` in `deploy/server`.
+- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`.
+- Docker Compose: download the new release's `docker-compose.yml` and `SHA256SUMS` as in [Docker Compose](#docker-compose), check them, then run `docker compose pull && docker compose up -d`. If you build from source, run `git pull` in the `Oleafly` folder and repeat the build command.
 - Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
 - Render: open the service and start a manual deploy, which pulls the image again.
 - Railway: deploy the service again from its menu. For images on GitHub's registry, Railway can also update the image by itself.

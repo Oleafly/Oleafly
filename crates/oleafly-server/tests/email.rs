@@ -291,6 +291,7 @@ async fn a_person_can_turn_off_emails_about_shared_projects() {
         preferences,
         EmailPreferences {
             shared_with_you: true,
+            mentions: Some(true),
             mail_configured: true,
             notifications: true,
         }
@@ -341,6 +342,43 @@ async fn a_person_can_turn_off_emails_about_shared_projects() {
         .await
         .unwrap();
     assert_eq!(signed_out.status(), reqwest::StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn a_person_can_turn_off_emails_about_mentions_without_touching_share_emails() {
+    let smtp = MockSmtp::start().await;
+    let stage = stage_with(mail_config(&smtp)).await;
+    let (server, alice) = (&stage.server, &stage.alice);
+    let before: EmailPreferences = call(server, Method::GET, PREFERENCES, alice.token(), None)
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(before.mentions, Some(true));
+    let changed = call(
+        server,
+        Method::PATCH,
+        PREFERENCES,
+        alice.token(),
+        Some(json!({ "mentions": false })),
+    )
+    .await;
+    assert_eq!(changed.status(), reqwest::StatusCode::OK);
+    let changed: EmailPreferences = changed.json().await.unwrap();
+    assert_eq!(changed.mentions, Some(false));
+    assert!(changed.shared_with_you);
+    let again: EmailPreferences = call(server, Method::GET, PREFERENCES, alice.token(), None)
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(again.mentions, Some(false));
+    let bobs: EmailPreferences = call(server, Method::GET, PREFERENCES, stage.bob.token(), None)
+        .await
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(bobs.mentions, Some(true));
 }
 
 #[tokio::test]

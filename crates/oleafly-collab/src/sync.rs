@@ -39,6 +39,7 @@ const JITTER_FLOOR_MS: u64 = 100;
 const STEADY_AFTER: Duration = Duration::from_secs(10);
 const READY_BURST: u32 = 64;
 const BACKLOG_BATCH: usize = 256;
+const WRITERS_RETRY_MS: [u64; 6] = [500, 1_000, 2_000, 5_000, 10_000, 30_000];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Reached {
@@ -290,6 +291,7 @@ async fn run(
     options: TransportOptions,
 ) {
     lock(&project).set_device(link.device_id);
+    let retry = WriterRetry::default();
     let mut attempt = 0usize;
     let mut transport = Transport::Socket;
     let mut refused = 0u32;
@@ -301,7 +303,7 @@ async fn run(
                 Ok(socket) => {
                     refused = 0;
                     let wire = Wire::socket(socket);
-                    serve(&link, &project, &events, &mut commands, wire, None).await
+                    serve(&link, &project, &events, &mut commands, wire, None, &retry).await
                 }
                 Err(CollabError::Unauthorized) => Exit::End(EndReason::SignedOut),
                 Err(CollabError::SessionEnded(reason)) => {
@@ -323,7 +325,8 @@ async fn run(
             Transport::Poll => {
                 let wire = Wire::poll(&link);
                 let probe = Some(options.retry_socket_every);
-                let exit = serve(&link, &project, &events, &mut commands, wire, probe).await;
+                let exit =
+                    serve(&link, &project, &events, &mut commands, wire, probe, &retry).await;
                 match exit {
                     Exit::Switch => transport = Transport::Socket,
                     Exit::Retry(Reached::Never) => {
@@ -708,6 +711,7 @@ async fn subscribe(
     project: &SharedLive,
     events: &UnboundedSender<LiveEvent>,
     wire: &mut Wire,
+    retry: &WriterRetry,
 ) -> Result<Result<(ProjectRole, u64), EndReason>, CollabError> {
     let mut rebased = false;
     for _ in 0..4 {
@@ -732,7 +736,7 @@ async fn subscribe(
                 } => {
                     if !rebased && lock(project).diverged(head_seq, since_batch) {
                         rebased = true;
-                        resync(link, project, events).await?;
+                        resync(link, project, events, retry).await?;
                         break;
                     }
                     return Ok(Ok((role, head_seq)));
@@ -750,17 +754,22 @@ async fn subscribe(
                         &pinned,
                     )
                     .await?;
-                    {
+                    let writers = listed_peers(link).await;
+                    let unlisted = {
                         let mut live = lock(project);
                         if let Some(listed) = verified.listed {
                             live.pin_devices(listed);
                         }
+                        let unlisted = admit_writers(&mut live, writers);
                         if live.last_seq() > 0 {
                             live.begin_catch_up();
                         }
                         live.import_snapshot(verified.seq, &verified.bytes)?;
+                        unlisted
+                    };
+                    if unlisted {
+                        retry_writers(link, project, events, retry);
                     }
-                    seed_peers(link, project).await;
                     let _ = events.send(LiveEvent::Changed);
                     break;
                 }
@@ -786,6 +795,7 @@ async fn resync(
     link: &LiveLink,
     project: &SharedLive,
     events: &UnboundedSender<LiveEvent>,
+    retry: &WriterRetry,
 ) -> Result<(), CollabError> {
     let access = link
         .sessions
@@ -794,14 +804,19 @@ async fn resync(
     let pinned = lock(project).devices().clone();
     let verified =
         crate::snapshots::fetch_verified(&link.client, &access, link.project, &pinned).await?;
-    {
+    let writers = listed_peers(link).await;
+    let unlisted = {
         let mut live = lock(project);
         if let Some(listed) = verified.listed {
             live.pin_devices(listed);
         }
+        let unlisted = admit_writers(&mut live, writers);
         live.rebase(verified.seq, &verified.bytes)?;
+        unlisted
+    };
+    if unlisted {
+        retry_writers(link, project, events, retry);
     }
-    seed_peers(link, project).await;
     let _ = events.send(LiveEvent::Changed);
     Ok(())
 }
@@ -830,17 +845,82 @@ fn hint_snapshot(link: &LiveLink, project: &SharedLive) {
     });
 }
 
-async fn seed_peers(link: &LiveLink, project: &SharedLive) {
+enum Writers {
+    Listed(Vec<oleafly_collab_protocol::snapshots::ProjectPeer>),
+    Unlisted,
+    Unreachable,
+}
+
+async fn listed_peers(link: &LiveLink) -> Writers {
     let Ok(access) = link
         .sessions
         .access_token(link.server_id, &link.client)
         .await
     else {
-        return;
+        return Writers::Unreachable;
     };
-    if let Ok(listed) = link.client.project_peers(&access, link.project).await {
-        lock(project).pin_peers(listed);
+    match link.client.project_peers(&access, link.project).await {
+        Ok(listed) => Writers::Listed(listed),
+        Err(CollabError::Api { status: 404, .. }) => Writers::Unlisted,
+        Err(_) => Writers::Unreachable,
     }
+}
+
+fn admit_writers(live: &mut LiveProject, writers: Writers) -> bool {
+    match writers {
+        Writers::Listed(listed) => live.pin_peers(listed),
+        Writers::Unlisted => live.await_writers(false),
+        Writers::Unreachable => {
+            live.await_writers(true);
+            return true;
+        }
+    }
+    false
+}
+
+#[derive(Default)]
+struct WriterRetry(Mutex<Option<JoinHandle<()>>>);
+
+impl WriterRetry {
+    fn replace(&self, task: JoinHandle<()>) {
+        let mut slot = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(earlier) = slot.replace(task) {
+            earlier.abort();
+        }
+    }
+}
+
+impl Drop for WriterRetry {
+    fn drop(&mut self) {
+        let slot = self.0.get_mut().unwrap_or_else(PoisonError::into_inner);
+        if let Some(task) = slot.take() {
+            task.abort();
+        }
+    }
+}
+
+fn retry_writers(
+    link: &LiveLink,
+    project: &SharedLive,
+    events: &UnboundedSender<LiveEvent>,
+    retry: &WriterRetry,
+) {
+    let (link, project, events) = (link.clone(), Arc::clone(project), events.clone());
+    retry.replace(tokio::spawn(async move {
+        for wait in WRITERS_RETRY_MS {
+            tokio::time::sleep(Duration::from_millis(wait)).await;
+            let writers = listed_peers(&link).await;
+            if !admit_writers(&mut lock(&project), writers) {
+                let _ = events.send(LiveEvent::Changed);
+                return;
+            }
+        }
+    }));
+}
+
+async fn seed_peers(link: &LiveLink, project: &SharedLive) {
+    let writers = listed_peers(link).await;
+    admit_writers(&mut lock(project), writers);
 }
 
 async fn serve(
@@ -850,8 +930,9 @@ async fn serve(
     commands: &mut UnboundedReceiver<LiveCommand>,
     mut wire: Wire,
     probe: Option<Duration>,
+    retry: &WriterRetry,
 ) -> Exit {
-    let exit = serve_wire(link, project, events, commands, &mut wire, probe).await;
+    let exit = serve_wire(link, project, events, commands, &mut wire, probe, retry).await;
     wire.close().await;
     exit
 }
@@ -863,8 +944,9 @@ async fn serve_wire(
     commands: &mut UnboundedReceiver<LiveCommand>,
     wire: &mut Wire,
     probe: Option<Duration>,
+    retry: &WriterRetry,
 ) -> Exit {
-    let (role, head) = match subscribe(link, project, events, wire).await {
+    let (role, head) = match subscribe(link, project, events, wire, retry).await {
         Ok(Ok(subscribed)) => subscribed,
         Ok(Err(reason)) => return Exit::End(reason),
         Err(CollabError::Unauthorized) => return Exit::End(EndReason::SignedOut),
@@ -2909,16 +2991,25 @@ mod tests {
         assert_eq!(lock(&alice.live).last_seq(), 3);
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    async fn a_late_joiner_sees_comment_authors_as_verified_only_when_the_server_vouches() {
-        let pair = two_people().await;
-        snapshot_often(&pair);
-        let (project, main, bob_live, alice_live) = shared(&pair).await;
+    struct LateJoin {
+        project: SharedProjectId,
+        main: String,
+        honest: oleafly_collab_protocol::ids::CommentId,
+        forged: oleafly_collab_protocol::ids::CommentId,
+        initial: Vec<u8>,
+        typed: String,
+        tablet: Person,
+        _writers: (Side, Side),
+    }
+
+    async fn comments_then_a_snapshot(pair: &Pair) -> LateJoin {
+        snapshot_often(pair);
+        let (project, main, bob_live, alice_live) = shared(pair).await;
         let initial = bob_live.doc().snapshot().unwrap();
         let mut bob = side(bob_live, &main);
         let mut alice = side(alice_live, &main);
-        start(&mut bob, link(&pair, &pair.bob, project));
-        start(&mut alice, link(&pair, &pair.alice, project));
+        start(&mut bob, link(pair, &pair.bob, project));
+        start(&mut alice, link(pair, &pair.alice, project));
         until_status(&mut bob, LiveStatus::Online).await;
         until_status(&mut alice, LiveStatus::Online).await;
         let (alice_account, bob_account) =
@@ -2952,45 +3043,136 @@ mod tests {
             .snapshot_hint(&pair.bob.tokens.access_token, project, head)
             .await
             .unwrap();
-        let tablet = another_alice_device(&pair).await;
+        let tablet = another_alice_device(pair).await;
         let (seq, _) = client
             .get_snapshot(&tablet.tokens.access_token, project)
             .await
             .unwrap();
         assert_eq!(seq, head);
-        let mut late = side(
-            LiveProject::new(ProjectDoc::load(&initial).unwrap(), 0, ProjectRole::Editor),
-            &main,
-        );
-        start(&mut late, link(&pair, &tablet, project));
-        until_text(&late, &main, &text(&bob, &main)).await;
-        tokio::time::timeout(WAIT, async {
-            while lock(&late.live)
+        LateJoin {
+            project,
+            typed: text(&bob, &main),
+            main,
+            honest,
+            forged,
+            initial,
+            tablet,
+            _writers: (alice, bob),
+        }
+    }
+
+    impl LateJoin {
+        fn joiner(&self) -> Side {
+            side(
+                LiveProject::new(
+                    ProjectDoc::load(&self.initial).unwrap(),
+                    0,
+                    ProjectRole::Editor,
+                ),
+                &self.main,
+            )
+        }
+
+        fn thread(
+            &self,
+            late: &Side,
+            id: oleafly_collab_protocol::ids::CommentId,
+        ) -> Option<crate::comments::CommentThread> {
+            lock(&late.live)
                 .doc()
-                .comment_thread(&main, honest)
+                .comment_thread(&self.main, id)
                 .ok()
                 .flatten()
-                .is_none()
-            {
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
-        })
-        .await
-        .expect("the comments arrived");
-        let seen_honest = lock(&late.live)
-            .doc()
-            .comment_thread(&main, honest)
-            .unwrap()
-            .unwrap();
-        let seen_forged = lock(&late.live)
-            .doc()
-            .comment_thread(&main, forged)
-            .unwrap()
-            .unwrap();
+        }
+
+        async fn first_sight(&self, late: &Side) -> crate::comments::CommentThread {
+            tokio::time::timeout(WAIT, async {
+                loop {
+                    if let Some(thread) = self.thread(late, self.forged) {
+                        return thread;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("the comments arrived")
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_late_joiner_sees_comment_authors_as_verified_only_when_the_server_vouches() {
+        let pair = two_people().await;
+        let join = comments_then_a_snapshot(&pair).await;
+        let mut late = join.joiner();
+        start(&mut late, link(&pair, &join.tablet, join.project));
+        let first_sight = join.first_sight(&late).await;
+        assert!(!first_sight.verified);
+        assert!(!first_sight.messages[0].verified);
+        until_text(&late, &join.main, &join.typed).await;
+        let seen_honest = join.thread(&late, join.honest).unwrap();
+        let seen_forged = join.thread(&late, join.forged).unwrap();
         assert!(seen_honest.verified);
         assert!(seen_honest.messages[0].verified);
         assert!(!seen_forged.verified);
         assert!(!seen_forged.messages[0].verified);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn comments_stay_unverified_while_the_writer_list_cannot_be_fetched_and_verify_once_it_arrives(
+    ) {
+        let pair = two_people().await;
+        let join = comments_then_a_snapshot(&pair).await;
+        let proxy = crate::client::test_util::PathProxy::start(&pair._server.url(), "/peers").await;
+        proxy.answer(Some("503 Service Unavailable"));
+        let mut through = link(&pair, &join.tablet, join.project);
+        through.client = Arc::new(ServerClient::new(proxy.url.clone()).unwrap());
+        let mut late = join.joiner();
+        start(&mut late, through);
+        assert!(!join.first_sight(&late).await.verified);
+        until_text(&late, &join.main, &join.typed).await;
+        assert!(!join.thread(&late, join.honest).unwrap().verified);
+        assert!(!join.thread(&late, join.forged).unwrap().verified);
+        proxy.answer(None);
+        until(|| {
+            join.thread(&late, join.honest)
+                .is_some_and(|thread| thread.verified)
+        })
+        .await;
+        assert!(!join.thread(&late, join.forged).unwrap().verified);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn asking_again_for_the_writer_list_stops_when_live_sync_stops() {
+        let pair = two_people().await;
+        let join = comments_then_a_snapshot(&pair).await;
+        let proxy = crate::client::test_util::PathProxy::start(&pair._server.url(), "/peers").await;
+        proxy.answer(Some("503 Service Unavailable"));
+        let mut through = link(&pair, &join.tablet, join.project);
+        through.client = Arc::new(ServerClient::new(proxy.url.clone()).unwrap());
+        let mut late = join.joiner();
+        start(&mut late, through);
+        join.first_sight(&late).await;
+        until(|| proxy.answered() >= 2).await;
+        late.handle.take().unwrap().stopped().await;
+        let asked = proxy.answered();
+        tokio::time::sleep(Duration::from_millis(3_500)).await;
+        assert_eq!(proxy.answered(), asked);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_server_without_the_writer_list_still_shows_comments_as_it_did_before() {
+        let pair = two_people().await;
+        let join = comments_then_a_snapshot(&pair).await;
+        let proxy = crate::client::test_util::PathProxy::start(&pair._server.url(), "/peers").await;
+        proxy.answer(Some("404 Not Found"));
+        let mut through = link(&pair, &join.tablet, join.project);
+        through.client = Arc::new(ServerClient::new(proxy.url.clone()).unwrap());
+        let mut late = join.joiner();
+        start(&mut late, through);
+        join.first_sight(&late).await;
+        until_text(&late, &join.main, &join.typed).await;
+        assert!(join.thread(&late, join.honest).unwrap().verified);
+        assert!(!lock(&late.live).peers_vouched());
     }
 
     #[tokio::test(flavor = "multi_thread")]

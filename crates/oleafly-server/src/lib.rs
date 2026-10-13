@@ -12,6 +12,7 @@ pub mod guests;
 pub mod healthcheck;
 pub mod mail;
 pub mod members;
+pub mod mentions;
 pub mod peers;
 pub mod polls;
 pub mod projects;
@@ -100,6 +101,7 @@ pub async fn serve_on<F>(
 where
     F: Future<Output = ()> + Send + 'static,
 {
+    mentions::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let polls = Arc::clone(&state.polls);
     let app = build_router(state).into_make_service_with_connect_info::<SocketAddr>();

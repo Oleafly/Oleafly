@@ -1476,5 +1476,6 @@
     "keyInvalid": "值名稱不可空白，也不可包含等號。",
     "keyTaken": "同一個變體不能設定同一個名稱兩次。",
     "saveFailed": "無法儲存變體。"
-  }
+  },
+  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。"
 }

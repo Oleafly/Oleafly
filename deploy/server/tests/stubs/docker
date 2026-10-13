@@ -1,0 +1,78 @@
+#!/bin/sh
+state=/stub/state
+printf 'docker %s\n' "$*" >>/stub/log
+if [ ! -f "$state/docker-running" ]; then
+	echo 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?' >&2
+	exit 1
+fi
+container_state() {
+	if [ -f "$state/container-state" ]; then
+		cat "$state/container-state"
+	else
+		echo 'running healthy 0'
+	fi
+}
+case $1 in
+	info) exit 0 ;;
+	version) echo 27.3.1 ;;
+	inspect)
+		case $3 in
+			*RestartCount*) container_state ;;
+			*) container_state | awk '{ print $1 " " $2 }' ;;
+		esac
+		;;
+	volume)
+		[ "$2" = inspect ] && echo /var/lib/docker/volumes/oleafly-server_oleafly-data/_data
+		;;
+	compose)
+		shift
+		if [ -f "$state/compose-missing" ]; then
+			echo "docker: 'compose' is not a docker command." >&2
+			exit 1
+		fi
+		case $1 in
+			version) echo 2.29.7 ;;
+			pull)
+				if [ -f "$state/pull-fails" ]; then
+					echo 'Error response from daemon: pull access denied' >&2
+					exit 1
+				fi
+				pwd >"$state/compose-dir"
+				sed -n 's/^[[:space:]]*image:[[:space:]]*//p' docker-compose.yml >>"$state/pulled"
+				;;
+			up)
+				pwd >"$state/compose-dir"
+				env >"$state/compose-env"
+				id -u >"$state/compose-uid"
+				sed -n 's/^[[:space:]]*image:[[:space:]]*\(.*oleafly-server.*\)$/\1/p' docker-compose.yml >"$state/running-image"
+				touch "$state/up"
+				;;
+			ps)
+				case $2 in
+					-q) [ -f "$state/up" ] && echo 4f1c2d3e5a6b ;;
+					*)
+						if [ -f "$state/up" ]; then
+							echo 'caddy: Up 2 minutes'
+							echo 'oleafly-server: Up 2 minutes (healthy)'
+						fi
+						;;
+				esac
+				;;
+			logs)
+				if [ -f "$state/server-log" ]; then
+					cat "$state/server-log"
+				else
+					echo '2026-10-13T17:00:00.000000Z  INFO Setup code: ABCD-EFGH-JKMN-PQRS. This server has no admin yet. Enter the code in Oleafly when you add the server. It works once.'
+				fi
+				;;
+			exec) echo '-----BEGIN CERTIFICATE-----' ;;
+			down)
+				rm -f "$state/up"
+				case "$*" in
+					*--volumes*) touch "$state/volumes-removed" ;;
+				esac
+				touch "$state/down"
+				;;
+		esac
+		;;
+esac

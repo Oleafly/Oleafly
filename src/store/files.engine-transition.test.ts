@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { supportsFigureTools, LATEX_ENGINE } from "@/lib/document-engine";
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 
 const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
@@ -1647,6 +1648,26 @@ describe("project engine transition", () => {
 
     expect(mocks.resetCompile).toHaveBeenCalledOnce();
     expect(useFilesStore.getState().engine.allow_shell_escape).toBe(true);
+  });
+
+  it("keeps shell escape off and logs nothing when the person cancels the shared project warning", async () => {
+    const declined = `${APP_ERROR_PREFIX}${JSON.stringify({
+      code: "project.shell_escape_declined",
+      params: {},
+      detail: null,
+    })}`;
+    mocks.setProjectShellEscapeCmd.mockRejectedValue(declined);
+    useFilesStore.setState({
+      projectId: "project",
+      engine: { ...LATEX_ENGINE, id: "latexmk", allow_shell_escape: false },
+      engineLoaded: true,
+    });
+
+    await expect(useFilesStore.getState().setShellEscape(true)).rejects.toBe(declined);
+
+    expect(mocks.logError).not.toHaveBeenCalled();
+    expect(mocks.resetCompile).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().engine.allow_shell_escape).toBe(false);
   });
 });
 

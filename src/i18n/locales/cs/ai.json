@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Úplný přístup",
-        "description": "Spouštět akce nástrojů bez žádosti o schválení."
+        "description": "Spouštět akce nástrojů bez ptaní, kromě nástrojů blokovaných pravidlem deny."
       },
       "custom": {
         "label": "Vlastní (approvals.toml)",

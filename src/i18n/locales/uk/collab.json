@@ -50,6 +50,8 @@
       "emails": {
         "label": "Повідомляти мене листом, коли хтось ділиться проєктом",
         "description": "У листі вказано проєкт і є посилання, щоб його відкрити.",
+        "mentionsLabel": "Повідомляти мене листом, коли мене згадують у коментарі",
+        "mentionsDescription": "У листі наведено коментар і є посилання, щоб його відкрити.",
         "noMail": "Цей сервер не надсилає листів. Проєкти, до яких вам надали доступ, і далі видно в бібліотеці в розділі Доступні вам.",
         "paused": "Адміністратор сервера вимкнув пошту для всіх.",
         "loadFailed": "Oleafly не вдалося завантажити ваші налаштування пошти."
@@ -622,7 +624,27 @@
     "renamed": "Користувач {{name}} перейменував {{before}} на {{theirs}} після того, як ви назвали файл {{ours}}",
     "mentioned": "{{name}} згадує вас у коментарі до {{path}}",
     "mentionedHere": "{{name}} згадує вас у коментарі",
-    "showComment": "Показати коментар"
+    "showComment": "Показати коментар",
+    "settings": {
+      "mainDocument": "Користувач {{name}} зробив {{path}} головним документом",
+      "compiler": "Користувач {{name}} вибрав компілятор {{compiler}}",
+      "spellingLanguage": "Користувач {{name}} вибрав мову перевірки орфографії {{language}}",
+      "spellingCleared": "Користувач {{name}} скинув мову перевірки орфографії проєкту",
+      "typstVersion": "Користувач {{name}} вибрав версію Typst {{version}}",
+      "typstDefault": "Користувач {{name}} повернув типову версію Typst",
+      "typstOptions": "Користувач {{name}} змінив параметри Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Авто",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
   },
   "mergeReview": {
     "title": "Зміни, об’єднані за вашої відсутності",

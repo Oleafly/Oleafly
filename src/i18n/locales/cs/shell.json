@@ -449,7 +449,8 @@
       "title": "Varianta (tento projekt)",
       "help": "Varianta předává do sys.inputs vlastní hodnoty, například pro koncept nebo finální verzi do tisku. Vybraná varianta zůstává v tomto počítači. Varianty přidáte nebo upravíte v Nastavení dokumentu.",
       "none": "Bez varianty"
-    }
+    },
+    "sharedViewer": "Čtenáři ve sdíleném projektu nemohou tato nastavení měnit."
   },
   "datePicker": {
     "placeholder": "Vyberte datum"

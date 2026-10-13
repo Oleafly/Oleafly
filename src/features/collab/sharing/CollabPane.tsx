@@ -24,6 +24,7 @@ import {
   PencilLine,
   RadioTower,
   Share2,
+  SlidersHorizontal,
   UserCog,
   UserLock,
   UserMinus,
@@ -58,6 +59,7 @@ import { AccessLog, useAccessLogShown } from "./AccessLog";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
 import { MergeReviewDialog } from "./MergeReviewDialog";
 import { RecentlyDeleted } from "./RecentlyDeleted";
+import { settingActivityText } from "./setting-activity";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
 import { syncState } from "./sync-state";
@@ -82,6 +84,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   newDevice: MonitorSmartphone,
   renamed: PencilLine,
   mentioned: AtSign,
+  setting: SlidersHorizontal,
 };
 
 const TICK_MS = 60_000;
@@ -276,6 +279,8 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return entry.path
         ? t(($) => $.collab.activity.mentioned, { name: entry.name || unknown, path: entry.path })
         : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
+    case "setting":
+      return settingActivityText(entry.change, entry.name || unknown, t);
   }
 }
 

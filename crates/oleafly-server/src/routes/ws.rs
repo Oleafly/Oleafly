@@ -22,6 +22,7 @@ use crate::auth::devices;
 use crate::comment_guard::Verdict;
 use crate::error::ServerError;
 use crate::members;
+use crate::mentions;
 use crate::peers::{self, Bound};
 use crate::projects;
 use crate::rate_limit::client_key;
@@ -702,9 +703,17 @@ impl Peer<'_> {
             "The server could not store this change.",
         );
         let payload = envelope.payload.clone();
-        let reach = match tokio::task::spawn_blocking(move || peers::update_reach(&payload)).await {
-            Ok(Some(reach)) => reach,
-            Ok(None) => {
+        let mail = self.state.mailer.is_configured();
+        let read = tokio::task::spawn_blocking(move || {
+            (
+                peers::update_reach(&payload),
+                mail && mentions::may_mention(&payload),
+            )
+        })
+        .await;
+        let (reach, mention) = match read {
+            Ok((Some(reach), mention)) => (reach, mention),
+            Ok((None, _)) => {
                 return frame_error(FrameErrorCode::BadFrame, "This update is not valid.");
             }
             Err(_) => return stored_failed,
@@ -720,6 +729,7 @@ impl Peer<'_> {
                 reach.clone(),
                 stored.clone(),
                 false,
+                mention,
             )
             .await;
         let appended = match first {
@@ -728,7 +738,9 @@ impl Peer<'_> {
                 if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
                     return refusal;
                 }
-                let checked = self.append(project, envelope, reach, stored, true).await;
+                let checked = self
+                    .append(project, envelope, reach, stored, true, mention)
+                    .await;
                 if checked.is_err() {
                     self.state.comment_guard.forget(project).await;
                 }
@@ -741,11 +753,16 @@ impl Peer<'_> {
             Err(error) => Err(error),
         };
         match appended {
-            Ok(appended) => ServerFrame::Ack {
-                project_id: project,
-                batch_id: batch,
-                seq: appended.seq,
-            },
+            Ok(appended) => {
+                if mention && !appended.duplicate {
+                    self.state.mentions.wake(self.state, project);
+                }
+                ServerFrame::Ack {
+                    project_id: project,
+                    batch_id: batch,
+                    seq: appended.seq,
+                }
+            }
             Err(ServerError::Forbidden | ServerError::NotFound) => {
                 frame_error(FrameErrorCode::Forbidden, "You can't edit this project.")
             }
@@ -799,6 +816,7 @@ impl Peer<'_> {
         reach: peers::Reach,
         stored: Vec<u8>,
         checked: bool,
+        mention: bool,
     ) -> Result<Option<projects::Appended>, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
@@ -838,6 +856,9 @@ impl Peer<'_> {
                     &stored,
                     now,
                 )?;
+                if mention && !appended.duplicate {
+                    mentions::queue(&transaction, project, appended.seq, &reach)?;
+                }
                 transaction.commit()?;
                 if !appended.duplicate {
                     rooms.publish(
