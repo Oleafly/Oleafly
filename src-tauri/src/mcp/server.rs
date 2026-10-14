@@ -460,9 +460,9 @@ use request::mcp_post;
 #[cfg(test)]
 use request::{
     authorized, bounded_activity_tool_name, collect_body_limited,
-    collect_body_limited_with_timeout, constant_time_eq, effective_policy, forward_route,
-    host_allowed, json_tool_error, linked_exposure_refusal, origin_allowed,
-    tool_disabled_by_read_only, tool_route, ToolRoute,
+    collect_body_limited_with_timeout, constant_time_eq, denied_by_rules, effective_policy,
+    forward_route, host_allowed, json_tool_error, linked_exposure_refusal, origin_allowed,
+    tool_disabled_by_read_only, tool_route, ToolRoute, DENIED_BY_RULES,
 };
 #[path = "server_lifecycle.rs"]
 mod lifecycle;

@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => ({
     mcpRegisterTools: vi.fn(async () => {}),
     mcpStatus: vi.fn(async () => ({ running: false, port: null, url: null, enabled: false })),
     mcpSetActiveProject: vi.fn(async () => {}),
-    mcpToolResult: vi.fn(async () => {}),
+    mcpToolResult: vi.fn(async (_callId: number, _result: unknown, _session: number) => {}),
     appendAppLog: vi.fn(async () => {}),
     readProjectBytes: vi.fn(),
     writeProjectBytes: vi.fn(),
@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
     agentExecCwd: vi.fn(async () => "/library/projects/proj"),
     agentExecAuthorize: vi.fn(async () => "approval-token"),
     agentExec: vi.fn(),
+    approvalsList: vi.fn(async (_projectId: string): Promise<Record<string, string>> => ({})),
   },
   filesState: {
     projectId: "proj" as string | null,
@@ -670,5 +671,84 @@ describe("MCP tool calls that throw", () => {
       summary:
         "Oleafly can't make this change because notes.tex or its folder is read-only. Copy the folder you opened into your library and edit it there.",
     });
+  });
+});
+
+describe("MCP tool calls and the project's deny rules", () => {
+  const callTool = async (name: string, args: Record<string, unknown>) => {
+    vi.resetModules();
+    vi.stubGlobal("window", {
+      setInterval: vi.fn(() => 1),
+      clearInterval: vi.fn(),
+      addEventListener: vi.fn(),
+    });
+    const bridge = await import("@/lib/mcp-bridge");
+    await bridge.startMcpBridge();
+    mocks.api.mcpToolResult.mockClear();
+    mocks.events.get("mcp:tool-call")?.({
+      payload: { callId: 9, epoch: 1, rendererSession: 41, name, arguments: args },
+    });
+    await vi.waitFor(() => expect(mocks.api.mcpToolResult).toHaveBeenCalledTimes(1));
+    return { bridge, result: mocks.api.mcpToolResult.mock.calls[0][1] };
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    mocks.api.approvalsList.mockReset().mockResolvedValue({});
+    mocks.api.getConfig.mockReset().mockResolvedValue({
+      mcp_enabled: false,
+      mcp_port: 5323,
+      mcp_read_only: false,
+      mcp_approval_policy: "ask",
+    });
+  });
+
+  it("refuses a denied tool without asking or running it, even when the policy trusts the client", async () => {
+    mocks.api.getConfig.mockResolvedValue({
+      mcp_enabled: true,
+      mcp_port: 5323,
+      mcp_read_only: false,
+      mcp_approval_policy: "trust",
+    });
+    mocks.api.approvalsList.mockResolvedValue({ delete_file: "deny" });
+    mocks.api.deleteFile.mockClear();
+
+    const { bridge, result } = await callTool("delete_file", { path: "chapters/one.tex" });
+
+    expect(mocks.api.approvalsList).toHaveBeenCalledWith("proj");
+    expect(mocks.api.deleteFile).not.toHaveBeenCalled();
+    expect(result).toEqual(
+      bridge.toMcpResult({ error: "This tool is denied for this project in approvals.toml." }, []),
+    );
+  });
+
+  it("refuses tools while the rules can't be read", async () => {
+    mocks.api.approvalsList.mockRejectedValue(new Error("failed to parse approvals"));
+    mocks.api.readFileContent.mockClear();
+
+    const { result } = await callTool("read_file", { path: "main.tex" });
+
+    expect(mocks.api.readFileContent).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ isError: true });
+    expect(JSON.stringify(result)).toContain("couldn't read the approval rules");
+  });
+
+  it("runs a tool that no deny rule names", async () => {
+    mocks.api.approvalsList.mockResolvedValue({ delete_file: "deny", read_file: "allow" });
+    mocks.api.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}");
+
+    await callTool("read_file", { path: "main.tex" });
+
+    expect(mocks.api.readFileContent).toHaveBeenCalled();
+  });
+
+  it("checks no rules when no project is open", async () => {
+    mocks.filesState.projectId = null;
+    try {
+      await callTool("list_skills", {});
+      expect(mocks.api.approvalsList).not.toHaveBeenCalled();
+    } finally {
+      mocks.filesState.projectId = "proj";
+    }
   });
 });
