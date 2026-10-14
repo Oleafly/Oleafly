@@ -21,6 +21,11 @@ use crate::{write_atomic, CollabError};
 
 pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
+// Counted across every LiveProject in the process: each live start builds a
+// new one, and a late close from an earlier start must never match an editor
+// channel opened since.
+static NEXT_SESSION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
 const DOC_FILE: &str = "doc.bin";
 const STATE_FILE: &str = "sync.json";
 const LOG_FILE: &str = "doc.log";
@@ -177,7 +182,6 @@ pub struct LiveProject {
     confirmed: VersionVector,
     outgoing: Option<Outgoing>,
     open: HashMap<String, OpenFile>,
-    sessions: u64,
     disk: DiskWork,
     role: ProjectRole,
     received: u64,
@@ -365,7 +369,6 @@ impl LiveProject {
             confirmed,
             outgoing: None,
             open: HashMap::new(),
-            sessions: 0,
             disk: DiskWork::default(),
             role,
             received: 0,
@@ -621,8 +624,7 @@ impl LiveProject {
             .map_or(0, |rev| rev + 1);
         let channel = EditorChannel::starting_at(text.clone(), start);
         let rev = channel.rev();
-        self.sessions += 1;
-        let session = self.sessions;
+        let session = NEXT_SESSION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.open.insert(
             id.to_owned(),
             OpenFile {
@@ -2269,6 +2271,23 @@ mod tests {
         assert!(bob.close_file(&main, newer.session));
         assert!(!bob.is_open(&main));
         assert!(!bob.close_file(&main, newer.session));
+    }
+
+    #[test]
+    fn a_close_from_an_earlier_live_start_never_closes_a_channel_opened_since() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let mut first = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        let mut second = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        let (sink, _seen) = recorder();
+        let earlier = first.open_file(&main, Arc::clone(&sink)).unwrap();
+        let newer = second.open_file(&main, sink).unwrap();
+        assert_ne!(earlier.session, newer.session);
+        assert!(!second.close_file(&main, earlier.session));
+        assert!(second.is_open(&main));
+        assert!(second.close_file(&main, newer.session));
+        assert!(first.close_file(&main, earlier.session));
     }
 
     #[test]
