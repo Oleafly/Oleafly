@@ -11,6 +11,11 @@ issues_url=https://github.com/Oleafly/oleafly-server/issues
 docker_script_commit=ada7a567e59b3935bd601bb21e422da50e80e376
 docker_script_sha256=2b102d809152ea157a59f171319f489d971273b2d26dd7e9a6d1d737ce89289d
 docker_script_url=https://raw.githubusercontent.com/docker/docker-install/$docker_script_commit/install.sh
+# The Compose plugin release the printed steps download, with the checksums
+# from that release's .sha256 files.
+compose_plugin_version=v5.5.1
+compose_plugin_sha256_x86_64=db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
+compose_plugin_sha256_aarch64=732e3a84c1a0f67256ce80bc2598a24546b10ca05f9faa97efceb1171ece2ef7
 
 dir=${OLEAFLY_DIR:-/opt/oleafly-server}
 data_volume=oleafly-server_oleafly-data
@@ -37,6 +42,8 @@ latest_checked=0
 container_before=
 restarts_before=0
 rollback=
+ipv6_on=0
+stopped_for_backup=0
 
 print_help() {
 	cat <<EOF
@@ -442,13 +449,17 @@ package_manager() {
 
 compose_plugin_steps() {
 	case $(uname -m) in
-		aarch64 | arm64) compose_asset=docker-compose-linux-aarch64 ;;
-		*) compose_asset=docker-compose-linux-x86_64 ;;
+		aarch64 | arm64)
+			compose_asset=docker-compose-linux-aarch64
+			compose_sha256=$compose_plugin_sha256_aarch64
+			;;
+		*)
+			compose_asset=docker-compose-linux-x86_64
+			compose_sha256=$compose_plugin_sha256_x86_64
+			;;
 	esac
-	compose_base=https://github.com/docker/compose/releases/latest/download
-	printf '%s\n' "  curl -fLO $compose_base/$compose_asset" \
-		"  curl -fLO $compose_base/$compose_asset.sha256" \
-		"  sha256sum -c $compose_asset.sha256" \
+	printf '%s\n' "  curl -fLO https://github.com/docker/compose/releases/download/$compose_plugin_version/$compose_asset" \
+		"  echo '$compose_sha256  $compose_asset' | sha256sum -c" \
 		"  sudo install -D -m 755 $compose_asset /usr/local/lib/docker/cli-plugins/docker-compose"
 }
 
@@ -623,14 +634,16 @@ download_release() {
 	item "Oleafly Server $release_version. All files match SHA256SUMS."
 }
 
+# Stops at the first file it can't write, so the caller can say what to do.
+# set -e doesn't stop a function its caller tests with if or ||.
 place_release_files() {
-	as_root mkdir -p "$dir"
-	as_root chmod 755 "$dir"
+	as_root mkdir -p "$dir" || return 1
+	as_root chmod 755 "$dir" || return 1
 	for file in docker-compose.yml Caddyfile litestream.yml; do
-		as_root install -m 644 "$tmp/release/$file" "$dir/$file"
+		as_root install -m 644 "$tmp/release/$file" "$dir/$file" || return 1
 	done
-	as_root install -m 644 "$tmp/release/env.example" "$dir/.env.example"
-	as_root install -m 755 "$tmp/release/install.sh" "$dir/install.sh"
+	as_root install -m 644 "$tmp/release/env.example" "$dir/.env.example" || return 1
+	as_root install -m 755 "$tmp/release/install.sh" "$dir/install.sh" || return 1
 }
 
 check_not_older() {
@@ -1123,13 +1136,17 @@ host_has_ipv6() {
 }
 
 read_ipv6() {
-	[ -z "${OLEAFLY_IPV6:-}" ] || return 0
+	if [ -n "${OLEAFLY_IPV6:-}" ]; then
+		[ "$(lower "$OLEAFLY_IPV6")" != true ] || ipv6_on=1
+		return 0
+	fi
 	host_has_ipv6 || return 0
 	case ${engine%%.*} in
 		'' | *[!0-9]*) return 0 ;;
 	esac
 	if [ "${engine%%.*}" -ge 27 ]; then
 		add_setting OLEAFLY_IPV6 true
+		ipv6_on=1
 	fi
 }
 
@@ -1160,6 +1177,7 @@ collect_settings() {
 	item "Sign-in: $(sign_in_summary)"
 	item "Email: $email_summary"
 	item "Files: $files_summary"
+	[ "$ipv6_on" = 0 ] || item "IPv6: On"
 	if [ "$noninteractive" = 0 ]; then
 		confirm "  Go ahead? [Y/n] " y || fail "Stopped. Nothing was changed."
 	fi
@@ -1201,7 +1219,12 @@ caddy_image_in() {
 
 pull_images() {
 	item "Downloading the container images. This can take a minute."
-	if compose --project-directory "$dir" -f "$1" pull --quiet >"$tmp/compose.log" 2>&1; then
+	# Naming a file with -f stops Compose from reading the admin's
+	# docker-compose.override.yml by itself, so name that file too: an image
+	# it swaps in is pulled before anything stops.
+	override=
+	[ ! -f "$dir/docker-compose.override.yml" ] || override=$dir/docker-compose.override.yml
+	if compose --project-directory "$dir" -f "$1" ${override:+-f "$override"} pull --quiet >"$tmp/compose.log" 2>&1; then
 		return 0
 	fi
 	tail -n 20 "$tmp/compose.log" >&2
@@ -1222,6 +1245,10 @@ start_server() {
 	fi
 	if ! compose up -d --remove-orphans >"$tmp/compose.log" 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
+		ipv6=$(read_env_value OLEAFLY_IPV6) || ipv6=
+		if [ "$(lower "$ipv6")" = true ] && grep -Eqi 'ip6tables|ipv6|address pool' "$tmp/compose.log"; then
+			fail "Docker couldn't start the containers. Its message is above." "Docker couldn't set up IPv6 for the server's network. Set OLEAFLY_IPV6=false in $dir/.env, then run the installer again." ${rollback:+"$rollback"}
+		fi
 		fail "Docker couldn't start the containers. Its message is above." "Fix the problem, then run the installer again." ${rollback:+"$rollback"}
 	fi
 }
@@ -1304,6 +1331,7 @@ back_up_data() {
   sudo cp docker-compose.yml.previous docker-compose.yml
   sudo cp install.sh.previous install.sh
   sudo docker compose up -d"
+	stopped_for_backup=1
 }
 
 https_get() {
@@ -1404,7 +1432,17 @@ refresh_install() {
 	if [ -n "$before" ] && [ "$before" != "$release_version" ]; then
 		back_up_data
 	fi
-	place_release_files
+	if ! place_release_files; then
+		if [ "$stopped_for_backup" = 1 ]; then
+			if compose start >/dev/null 2>&1; then
+				again="The server runs $before again."
+			else
+				again="Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start"
+			fi
+			fail "Couldn't put the new release's files in $dir. Its message is above." "$again" "$rollback"
+		fi
+		fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
+	fi
 	heading "Starting the server"
 	start_server
 	wait_for_server
@@ -1466,7 +1504,7 @@ cmd_install() {
 	download_release
 	collect_settings
 	heading "Installing"
-	place_release_files
+	place_release_files || fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
 	write_env
 	heading "Starting the server"
 	pull_images "$dir/docker-compose.yml"

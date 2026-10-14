@@ -16,6 +16,9 @@ docker_pin=$(sed -n 's/^docker_script_commit=//p' "$src/install.sh")
 docker_pin_sha256=$(sed -n 's/^docker_script_sha256=//p' "$src/install.sh")
 docker_pin_url=https://raw.githubusercontent.com/docker/docker-install/$docker_pin/install.sh
 docker_stub_sha256=
+compose_pin=$(sed -n 's/^compose_plugin_version=//p' "$src/install.sh")
+compose_pin_x86_64=$(sed -n 's/^compose_plugin_sha256_x86_64=//p' "$src/install.sh")
+compose_pin_aarch64=$(sed -n 's/^compose_plugin_sha256_aarch64=//p' "$src/install.sh")
 
 . "$src/tests/lib.sh"
 
@@ -37,7 +40,7 @@ make_release() {
 setup_stubs() {
 	rm -rf /stub
 	mkdir -p /stub/bin /stub/late /stub/releases
-	for tool in curl systemctl service getent hostname ss sleep ip; do
+	for tool in curl systemctl service getent hostname ss sleep ip install; do
 		cp "$src/tests/stubs/$tool" "/stub/bin/$tool"
 	done
 	cp "$src/tests/stubs/docker" /stub/bin/docker.real
@@ -891,6 +894,38 @@ expect "the way back restores the archive" out_has "find /data -mindepth 1 -dele
 expect "the way back restores the compose file" out_has 'sudo cp docker-compose.yml.previous docker-compose.yml'
 finish
 
+begin "a release file that can't be written after the copy starts the old server again"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+echo Caddyfile >/stub/state/install-fails
+: >/stub/log
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 1
+expect "the data was copied first" log_order 'compose stop' 'docker run --rm -v oleafly-server_oleafly-data:/data:ro'
+expect "the old server was started again" log_order 'docker run --rm -v oleafly-server_oleafly-data:/data:ro' 'compose start'
+expect "the server is up" [ -f /stub/state/up ]
+expect "no new version was started" log_lacks 'compose up'
+expect "it says which version runs" out_has 'The server runs 0.1.0 again.'
+expect "the way back is named" out_has 'To go back to 0.1.0 with the data from before this update, run:'
+rm -rf "$install_dir"
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+expect "a new install stops with a reason" [ "$status" = 1 ]
+expect "a new install says what failed" out_has "Couldn't put the release files in $install_dir."
+finish
+
+begin "an update also pulls the images docker-compose.override.yml names"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+printf 'services:\n  caddy:\n    image: example.org/caddy-with-plugins:2.11.7\n' >"$install_dir/docker-compose.override.yml"
+: >/stub/log
+: >/stub/state/pulled
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 0
+expect "the override is read with the release file" log_has "-f $install_dir/docker-compose.override.yml pull"
+expect "its image was pulled before the update" grep -qx 'example.org/caddy-with-plugins:2.11.7' /stub/state/pulled
+expect "the release's server image was pulled too" grep -qx 'ghcr.io/oleafly/oleafly-server:0.1.1' /stub/state/pulled
+finish
+
 begin "a failed copy before an update keeps the running release"
 all_good
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
@@ -948,7 +983,8 @@ expect_status 1
 expect "the distribution is named" out_has "Docker's install script doesn't support Amazon Linux 2023.8.20250915."
 expect "Amazon's package is used" out_has 'install -y docker'
 expect "Docker is turned on" out_has 'sudo systemctl enable --now docker'
-expect "the Compose plugin comes with its checksum" out_has 'sha256sum -c docker-compose-linux-'
+expect "the Compose plugin comes from the pinned release" out_has "releases/download/$compose_pin/docker-compose-linux-x86_64"
+expect "the plugin is checked against the pinned checksum" out_has "echo '$compose_pin_x86_64  docker-compose-linux-x86_64' | sha256sum -c"
 expect "the plugin goes where Docker finds it" out_has '/usr/local/lib/docker/cli-plugins/docker-compose'
 expect "Docker's script isn't offered" out_lacks 'Install Docker now?'
 expect "Docker's script wasn't downloaded" log_lacks 'docker-install'
@@ -991,7 +1027,7 @@ touch /stub/state/compose-missing
 os_release debian '' 12 'Debian GNU/Linux 12 (bookworm)'
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect "Debian 12 stops" [ "$status" = 1 ]
-expect "Debian 12 gets the plugin from Docker's releases" out_has 'sha256sum -c docker-compose-linux-'
+expect "Debian 12 gets the plugin from Docker's releases" out_has "releases/download/$compose_pin/docker-compose-linux-"
 expect "Debian 12 isn't offered a package it doesn't have" out_lacks 'apt-get install'
 os_release debian '' 13 'Debian GNU/Linux 13 (trixie)'
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
@@ -1186,14 +1222,30 @@ printf '%s\n' '00000000000000000000000000000001 01 80 10 80       lo' '20010db80
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect_status 0
 expect "IPv6 is on" env_has 'OLEAFLY_IPV6=true'
+expect "the summary says so" out_line '  IPv6: On'
 rm -rf "$install_dir"
 echo 26.1.5 >/stub/state/docker-version
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect "older Docker keeps IPv6 off" env_has 'OLEAFLY_IPV6='
+expect "the summary doesn't mention IPv6" out_lacks 'IPv6: On'
 rm -rf "$install_dir" /stub/state/docker-version
 default_sys
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect "a machine without a public IPv6 address keeps it off" env_has 'OLEAFLY_IPV6='
+finish
+
+begin "a network that can't get IPv6 says how to turn IPv6 off"
+all_good
+printf '%s\n' '20010db8000000000000000000000010 02 40 00 00     eth0' >/stub/sys/proc/net/if_inet6
+echo 'Error response from daemon: could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network' >/stub/state/up-fails
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+expect_status 1
+expect "it says how to turn IPv6 off" out_has "Set OLEAFLY_IPV6=false in $install_dir/.env, then run the installer again."
+rm -rf "$install_dir"
+echo 'Error response from daemon: driver failed programming external connectivity: Bind for 0.0.0.0:443 failed: port is already allocated' >/stub/state/up-fails
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+expect_status 1
+expect "another failure doesn't blame IPv6" out_lacks 'OLEAFLY_IPV6=false'
 finish
 
 begin "the pinned commit of Docker's script has the checksum install.sh expects"
@@ -1205,6 +1257,18 @@ curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o /stub/docker-install.sh "$doc
 status=$?
 expect_status 0
 expect "the download has the pinned checksum" [ "$(sha256sum /stub/docker-install.sh | awk '{ print $1 }')" = "$docker_pin_sha256" ]
+finish
+
+begin "the pinned Compose plugin release has the checksums install.sh expects"
+expect "the version is a release tag, got '$compose_pin'" sh -c "printf '%s\n' '$compose_pin' | grep -Eqx 'v[0-9]+[.][0-9]+[.][0-9]+'"
+command -v curl >/dev/null 2>&1 || install_packages curl ca-certificates
+for pair in "x86_64 $compose_pin_x86_64" "aarch64 $compose_pin_aarch64"; do
+	arch=${pair%% *}
+	pinned=${pair#* }
+	expect "the $arch checksum is a SHA-256, got '$pinned'" sh -c "printf '%s\n' '$pinned' | grep -Eqx '[0-9a-f]{64}'"
+	published=$(curl -fsSL --proto '=https' --tlsv1.2 --retry 3 "https://github.com/docker/compose/releases/download/$compose_pin/docker-compose-linux-$arch.sha256" 2>"$out" | awk '{ print $1 }')
+	expect "the $arch checksum matches the release's .sha256, got '$published'" [ "$published" = "$pinned" ]
+done
 finish
 
 printf '\n%s passed, %s failed\n' "$passed" "$failed"

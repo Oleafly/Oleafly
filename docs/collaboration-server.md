@@ -222,7 +222,7 @@ Your data lives in the Docker volume `oleafly-server_oleafly-data`. Caddy keeps 
 
 Docker opens ports 80 and 443 itself, even when a host firewall such as `ufw` is on. That is what you want for Caddy. Don't add a `ports:` entry to the `oleafly-server` service. If you need to reach the server from the machine itself, publish it as `127.0.0.1:8080:8080` so it stays off the network.
 
-If your domain has an AAAA record, set `OLEAFLY_IPV6=true` in `.env`. Without it, Docker hands every visitor who comes in over IPv6 to Caddy from one internal address, so the security log shows that address for all of them and they share one sign-in limit. It needs Docker 27 or newer and a public IPv6 address on the machine, and the one-command installer turns it on when both are there. With an older Docker, give the domain only an A record. If you change the setting later, run `docker compose down` and then `docker compose up -d`, so Docker creates the network again.
+If your domain has an AAAA record, set `OLEAFLY_IPV6=true` in `.env`. Without it, Docker hands every visitor who comes in over IPv6 to Caddy from one internal address, so the security log shows that address for all of them and they share one sign-in limit. It needs Docker 27 or newer and a public IPv6 address on the machine, and the one-command installer turns it on when both are there. With an older Docker, give the domain only an A record. If you change the setting later, run `docker compose down` and then `docker compose up -d`, so Docker creates the network again. If the installer says Docker couldn't set up IPv6 for the network, set `OLEAFLY_IPV6=false` in `.env` and run the installer again.
 
 If you change the `Caddyfile`, run `docker compose up -d --force-recreate caddy`.
 

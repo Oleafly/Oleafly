@@ -68,11 +68,11 @@ case $1 in
 			echo "docker: 'compose' is not a docker command." >&2
 			exit 1
 		fi
-		file=docker-compose.yml
+		files=
 		while [ $# -gt 0 ]; do
 			case $1 in
 				-f)
-					file=$2
+					files="$files $2"
 					shift 2
 					;;
 				--project-directory) shift 2 ;;
@@ -88,9 +88,15 @@ case $1 in
 					exit 1
 				fi
 				pwd >"$state/compose-dir"
-				sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$file" >>"$state/pulled"
+				for file in ${files:-docker-compose.yml}; do
+					sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$file" >>"$state/pulled"
+				done
 				;;
 			up)
+				if [ -f "$state/up-fails" ]; then
+					cat "$state/up-fails" >&2
+					exit 1
+				fi
 				pwd >"$state/compose-dir"
 				env >"$state/compose-env"
 				id -u >"$state/compose-uid"
