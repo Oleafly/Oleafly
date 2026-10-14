@@ -158,7 +158,7 @@
     "serverTitle": "登入 {{server}}",
     "serverDescription": "誰可以加入由這個伺服器決定。請選擇登入方式。",
     "setupTitle": "設定 {{server}}",
-    "setupDescription": "還沒有人登入過這個伺服器。請輸入伺服器記錄中的設定碼。第一個使用這組設定碼登入的人會成為伺服器的管理員。",
+    "setupDescription": "還沒有人設定過這個伺服器。如果伺服器是你安裝的，請輸入安裝程式顯示給你的設定碼。設定碼也在伺服器記錄中。第一個使用這組設定碼登入的人會成為伺服器的管理員。如果不是你安裝的，請先請管理伺服器的人完成設定。",
     "setupCodeLabel": "設定碼",
     "signInDescription": "你的瀏覽器會開啟，讓你在那裡登入。Oleafly 不會看到你的密碼。",
     "continueWith": "使用 {{provider}} 繼續",

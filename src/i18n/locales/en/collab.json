@@ -158,7 +158,7 @@
     "serverTitle": "Sign in to {{server}}",
     "serverDescription": "This server decides who can join. Choose a way to sign in.",
     "setupTitle": "Set up {{server}}",
-    "setupDescription": "Nobody has signed in here yet. Enter the setup code from the server's log. Whoever signs in first with the code becomes the server's admin.",
+    "setupDescription": "Nobody has set up this server yet. If you installed it, enter the setup code the installer showed you. It's also in the server's log. The first person to sign in with the code becomes the server's admin. If you didn't install it, ask the person who runs it to finish setup first.",
     "setupCodeLabel": "Setup code",
     "signInDescription": "Your browser opens so you can sign in there. Oleafly never sees your password.",
     "continueWith": "Continue with {{provider}}",

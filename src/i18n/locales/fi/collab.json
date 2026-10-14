@@ -158,7 +158,7 @@
     "serverTitle": "Kirjaudu palvelimelle {{server}}",
     "serverDescription": "Tämä palvelin päättää, kuka voi liittyä. Valitse, miten kirjaudut.",
     "setupTitle": "Ota palvelin {{server}} käyttöön",
-    "setupDescription": "Kukaan ei ole vielä kirjautunut tänne. Anna käyttöönottokoodi palvelimen lokista. Ensimmäisenä koodilla kirjautuvasta tulee palvelimen ylläpitäjä.",
+    "setupDescription": "Kukaan ei ole vielä ottanut tätä palvelinta käyttöön. Jos asensit sen, anna käyttöönottokoodi, jonka asennusohjelma näytti sinulle. Se löytyy myös palvelimen lokista. Ensimmäisenä koodilla kirjautuvasta tulee palvelimen ylläpitäjä. Jos et asentanut sitä, pyydä palvelinta ylläpitävää henkilöä viemään käyttöönotto ensin loppuun.",
     "setupCodeLabel": "Käyttöönottokoodi",
     "signInDescription": "Selain avautuu, jotta voit kirjautua siellä. Oleafly ei koskaan näe salasanaasi.",
     "continueWith": "Jatka palvelulla {{provider}}",

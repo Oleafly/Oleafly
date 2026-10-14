@@ -158,7 +158,7 @@
     "serverTitle": "Logga in på {{server}}",
     "serverDescription": "Den här servern bestämmer vem som får vara med. Välj hur du vill logga in.",
     "setupTitle": "Konfigurera {{server}}",
-    "setupDescription": "Ingen har loggat in här än. Ange konfigurationskoden från serverns logg. Den som först loggar in med koden blir serverns administratör.",
+    "setupDescription": "Ingen har konfigurerat den här servern än. Om du installerade den anger du konfigurationskoden som installationsprogrammet visade dig. Den finns också i serverns logg. Den som först loggar in med koden blir serverns administratör. Om du inte installerade den ber du den som driver servern att slutföra konfigurationen först.",
     "setupCodeLabel": "Konfigurationskod",
     "signInDescription": "Din webbläsare öppnas så att du kan logga in där. Oleafly ser aldrig ditt lösenord.",
     "continueWith": "Fortsätt med {{provider}}",

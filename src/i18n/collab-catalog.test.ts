@@ -145,6 +145,13 @@ describe("collab catalog", () => {
     for (const [key, value] of flat) expect(value, key).not.toMatch(/paused your account|allowed list|Account paused/u);
   });
 
+  it("says where the setup code comes from, and what to do when the server isn't yours", () => {
+    const setup = collab.addServer.setupDescription;
+    expect(setup).toMatch(/the installer showed you/u);
+    expect(setup).toMatch(/server's log/u);
+    expect(setup).toMatch(/If you didn't install it, ask the person who runs it/u);
+  });
+
   it("only explains keys the catalog has", () => {
     for (const key of flattenCatalog(context).keys()) {
       expect(flat.has(key), key).toBe(true);

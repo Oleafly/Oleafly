@@ -158,7 +158,7 @@
     "serverTitle": "Accedi a {{server}}",
     "serverDescription": "Questo server decide chi può unirsi. Scegli come accedere.",
     "setupTitle": "Configura {{server}}",
-    "setupDescription": "Nessuno ha ancora eseguito l'accesso qui. Inserisci il codice di configurazione che trovi nel log del server. Chi accede per primo con il codice diventa l'amministratore del server.",
+    "setupDescription": "Nessuno ha ancora configurato questo server. Se l'hai installato tu, inserisci il codice di configurazione che ti ha mostrato il programma di installazione. Lo trovi anche nel log del server. Chi accede per primo con il codice diventa l'amministratore del server. Se non l'hai installato tu, chiedi a chi lo gestisce di completare prima la configurazione.",
     "setupCodeLabel": "Codice di configurazione",
     "signInDescription": "Si apre il browser per farti accedere. Oleafly non vede mai la tua password.",
     "continueWith": "Continua con {{provider}}",

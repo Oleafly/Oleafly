@@ -158,7 +158,7 @@
     "serverTitle": "{{server}} sunucusunda oturum açın",
     "serverDescription": "Kimlerin katılabileceğine bu sunucu karar verir. Nasıl oturum açacağınızı seçin.",
     "setupTitle": "{{server}} sunucusunu kurun",
-    "setupDescription": "Burada henüz kimse oturum açmadı. Sunucunun günlüğündeki kurulum kodunu girin. Bu kodla ilk oturum açan kişi sunucunun yöneticisi olur.",
+    "setupDescription": "Bu sunucuyu henüz kimse kurmadı. Sunucuyu siz yüklediyseniz yükleyicinin size gösterdiği kurulum kodunu girin. Kod sunucunun günlüğünde de yer alır. Bu kodla ilk oturum açan kişi sunucunun yöneticisi olur. Siz yüklemediyseniz sunucuyu yöneten kişiden önce kurulumu tamamlamasını isteyin.",
     "setupCodeLabel": "Kurulum kodu",
     "signInDescription": "Oturum açabilmeniz için tarayıcınız açılır. Oleafly parolanızı hiçbir zaman görmez.",
     "continueWith": "{{provider}} ile devam et",

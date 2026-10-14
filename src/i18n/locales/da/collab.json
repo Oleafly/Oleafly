@@ -158,7 +158,7 @@
     "serverTitle": "Log ind på {{server}}",
     "serverDescription": "Denne server bestemmer, hvem der kan være med. Vælg, hvordan du vil logge ind.",
     "setupTitle": "Sæt {{server}} op",
-    "setupDescription": "Ingen har logget ind her endnu. Indtast opsætningskoden fra serverens log. Den, der først logger ind med koden, bliver serverens administrator.",
+    "setupDescription": "Ingen har sat serveren op endnu. Har du installeret den, så indtast den opsætningskode, installationsprogrammet viste dig. Den står også i serverens log. Den, der først logger ind med koden, bliver serverens administrator. Har du ikke installeret den, så bed den, der driver serveren, om at gøre opsætningen færdig først.",
     "setupCodeLabel": "Opsætningskode",
     "signInDescription": "Din browser åbnes, så du kan logge ind der. Oleafly ser aldrig din adgangskode.",
     "continueWith": "Fortsæt med {{provider}}",

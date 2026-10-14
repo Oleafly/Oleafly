@@ -158,7 +158,7 @@
     "serverTitle": "Zaloguj się do serwera {{server}}",
     "serverDescription": "Ten serwer decyduje, kto może dołączyć. Wybierz sposób logowania.",
     "setupTitle": "Skonfiguruj serwer {{server}}",
-    "setupDescription": "Nikt jeszcze się tu nie zalogował. Wpisz kod konfiguracyjny z dziennika serwera. Kto pierwszy zaloguje się z tym kodem, zostanie administratorem serwera.",
+    "setupDescription": "Nikt jeszcze nie skonfigurował tego serwera. Jeśli to Ty go instalowałeś, wpisz kod konfiguracyjny pokazany przez instalator. Znajdziesz go też w dzienniku serwera. Kto pierwszy zaloguje się z tym kodem, zostanie administratorem serwera. Jeśli go nie instalowałeś, poproś osobę, która nim zarządza, żeby najpierw dokończyła konfigurację.",
     "setupCodeLabel": "Kod konfiguracyjny",
     "signInDescription": "Otworzy się Twoja przeglądarka, w której się zalogujesz. Oleafly nigdy nie widzi Twojego hasła.",
     "continueWith": "Kontynuuj przez {{provider}}",

@@ -158,7 +158,7 @@
     "serverTitle": "Fazer login em {{server}}",
     "serverDescription": "Este servidor decide quem pode entrar. Escolha como fazer login.",
     "setupTitle": "Configurar {{server}}",
-    "setupDescription": "Ninguém fez login aqui ainda. Digite o código de configuração que aparece no log do servidor. Quem fizer login primeiro com o código se torna o administrador do servidor.",
+    "setupDescription": "Ninguém configurou este servidor ainda. Se foi você quem o instalou, digite o código de configuração que o instalador mostrou. Ele também aparece no log do servidor. Quem fizer login primeiro com o código se torna o administrador do servidor. Se não foi você quem o instalou, peça à pessoa que cuida dele para concluir a configuração primeiro.",
     "setupCodeLabel": "Código de configuração",
     "signInDescription": "O seu navegador abre para você fazer login nele. O Oleafly nunca vê a sua senha.",
     "continueWith": "Continuar com {{provider}}",

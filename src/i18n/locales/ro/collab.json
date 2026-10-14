@@ -158,7 +158,7 @@
     "serverTitle": "Autentifică-te pe {{server}}",
     "serverDescription": "Acest server decide cine se poate alătura. Alege cum te autentifici.",
     "setupTitle": "Configurează {{server}}",
-    "setupDescription": "Nimeni nu s-a autentificat încă aici. Introdu codul de configurare din jurnalul serverului. Prima persoană care se autentifică cu acest cod devine administratorul serverului.",
+    "setupDescription": "Nimeni nu a configurat încă acest server. Dacă l-ai instalat tu, introdu codul de configurare pe care ți l-a arătat programul de instalare. Îl găsești și în jurnalul serverului. Prima persoană care se autentifică cu acest cod devine administratorul serverului. Dacă nu l-ai instalat tu, cere-i persoanei care îl administrează să termine mai întâi configurarea.",
     "setupCodeLabel": "Cod de configurare",
     "signInDescription": "Browserul tău se deschide ca să te autentifici acolo. Oleafly nu îți vede niciodată parola.",
     "continueWith": "Continuă cu {{provider}}",

@@ -158,7 +158,7 @@
     "serverTitle": "Aanmelden bij {{server}}",
     "serverDescription": "Deze server bepaalt wie mag meedoen. Kies hoe je je wilt aanmelden.",
     "setupTitle": "{{server}} instellen",
-    "setupDescription": "Hier heeft zich nog niemand aangemeld. Vul de installatiecode uit het logboek van de server in. Wie zich als eerste met de code aanmeldt, wordt beheerder van de server.",
+    "setupDescription": "Niemand heeft deze server nog ingesteld. Heb je hem zelf geïnstalleerd, vul dan de installatiecode in die het installatieprogramma je liet zien. Die staat ook in het logboek van de server. Wie zich als eerste met de code aanmeldt, wordt beheerder van de server. Heb je hem niet geïnstalleerd, vraag dan degene die de server beheert om eerst de installatie af te ronden.",
     "setupCodeLabel": "Installatiecode",
     "signInDescription": "Je browser opent zodat je je daar kunt aanmelden. Oleafly ziet je wachtwoord nooit.",
     "continueWith": "Doorgaan met {{provider}}",

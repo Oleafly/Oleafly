@@ -158,7 +158,7 @@
     "serverTitle": "Bei {{server}} anmelden",
     "serverDescription": "Dieser Server entscheidet, wer beitreten kann. Wählen Sie, wie Sie sich anmelden möchten.",
     "setupTitle": "{{server}} einrichten",
-    "setupDescription": "Hier hat sich noch niemand angemeldet. Geben Sie den Einrichtungscode aus dem Protokoll des Servers ein. Wer sich als Erstes mit dem Code anmeldet, wird Admin des Servers.",
+    "setupDescription": "Diesen Server hat noch niemand eingerichtet. Wenn Sie ihn installiert haben, geben Sie den Einrichtungscode ein, den Ihnen das Installationsprogramm angezeigt hat. Er steht auch im Protokoll des Servers. Wer sich als Erstes mit dem Code anmeldet, wird Admin des Servers. Wenn Sie ihn nicht installiert haben, bitten Sie die Person, die ihn betreibt, zuerst die Einrichtung abzuschließen.",
     "setupCodeLabel": "Einrichtungscode",
     "signInDescription": "Ihr Browser öffnet sich, damit Sie sich dort anmelden können. Oleafly sieht Ihr Passwort nie.",
     "continueWith": "Weiter mit {{provider}}",

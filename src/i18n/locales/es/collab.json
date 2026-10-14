@@ -158,7 +158,7 @@
     "serverTitle": "Iniciar sesión en {{server}}",
     "serverDescription": "Este servidor decide quién puede unirse. Elige cómo iniciar sesión.",
     "setupTitle": "Configurar {{server}}",
-    "setupDescription": "Todavía no ha iniciado sesión nadie aquí. Escribe el código de configuración que aparece en el registro del servidor. Quien inicie sesión primero con el código pasa a ser el administrador del servidor.",
+    "setupDescription": "Nadie ha configurado este servidor todavía. Si lo instalaste tú, escribe el código de configuración que te mostró el instalador. También aparece en el registro del servidor. Quien inicie sesión primero con el código pasa a ser el administrador del servidor. Si no lo instalaste, pide a la persona que lo gestiona que termine primero la configuración.",
     "setupCodeLabel": "Código de configuración",
     "signInDescription": "Se abre tu navegador para que inicies sesión allí. Oleafly nunca ve tu contraseña.",
     "continueWith": "Continuar con {{provider}}",

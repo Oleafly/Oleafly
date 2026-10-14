@@ -158,7 +158,7 @@
     "serverTitle": "Přihlášení k serveru {{server}}",
     "serverDescription": "O tom, kdo se může připojit, rozhoduje tento server. Vyberte způsob přihlášení.",
     "setupTitle": "Nastavení serveru {{server}}",
-    "setupDescription": "Zatím se tu nikdo nepřihlásil. Zadejte kód pro nastavení z logu serveru. Kdo se s tímto kódem přihlásí jako první, stane se administrátorem serveru.",
+    "setupDescription": "Tento server ještě nikdo nenastavil. Pokud jste ho instalovali vy, zadejte kód pro nastavení, který vám ukázal instalační program. Najdete ho také v logu serveru. Kdo se s tímto kódem přihlásí jako první, stane se administrátorem serveru. Pokud jste ho neinstalovali, požádejte toho, kdo server spravuje, aby nastavení nejdřív dokončil.",
     "setupCodeLabel": "Kód pro nastavení",
     "signInDescription": "Otevře se váš prohlížeč, abyste se mohli přihlásit tam. Oleafly vaše heslo nikdy nevidí.",
     "continueWith": "Pokračovat přes {{provider}}",
