@@ -130,7 +130,7 @@ impl Active {
 
     pub(super) fn save_now(&self) {
         let _ = save_shared(&self.live, &self.document_dir);
-        let _ = guard(&self.disk).save(&self.disk_file);
+        let _ = self.save_index(&guard(&self.disk));
     }
 
     pub(super) async fn persist(&self) -> Result<(), CollabError> {

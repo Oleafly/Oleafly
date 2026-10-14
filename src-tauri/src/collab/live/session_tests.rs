@@ -1106,6 +1106,26 @@ fn typing_reaches_the_disk_while_the_shared_document_cannot_be_saved() {
 }
 
 #[test]
+fn an_index_saved_outside_a_pass_is_never_taken_for_the_one_a_pass_would_write() {
+    let (_dir, _root, _host, rig) = watched_rig("index-books", &[("main.tex", "abc")]);
+    let active = rig.active();
+    lock(&active.live).mark_all_dirty().unwrap();
+    rig.settle();
+    let on_disk = || crate::collab::disk::DiskState::load(&active.disk_file).hashes;
+    let passed = guard(&active.disk).hashes.clone();
+    assert_eq!(on_disk(), passed);
+    guard(&active.disk)
+        .hashes
+        .insert("extra.tex".to_owned(), "1234".to_owned());
+    active.save_now();
+    assert!(on_disk().contains_key("extra.tex"));
+    guard(&active.disk).hashes.remove("extra.tex");
+    lock(&active.live).mark_all_dirty().unwrap();
+    rig.settle();
+    assert_eq!(on_disk(), passed);
+}
+
+#[test]
 fn reading_a_folder_for_an_import_leaves_the_shared_document_free() {
     let (_dir, root, _host, rig) = watched_rig("lock-free", &[("main.tex", "abc")]);
     std::fs::create_dir_all(root.join("figs")).unwrap();

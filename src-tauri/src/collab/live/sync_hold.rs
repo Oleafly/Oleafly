@@ -365,7 +365,7 @@ impl Active {
             }
             hold.pending = None;
             hold.save(&dir)?;
-            disk.save(&self.disk_file)?;
+            self.save_index(&disk)?;
             live.mark_all_dirty()?;
         }
         self.kick();

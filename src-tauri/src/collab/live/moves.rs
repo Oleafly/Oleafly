@@ -484,7 +484,7 @@ impl Active {
     }
 
     fn settle_structure(&self) {
-        let _ = guard(&self.disk).save(&self.disk_file);
+        let _ = self.save_index(&guard(&self.disk));
         self.handle.flush();
         self.kick();
         self.refresh_pending();

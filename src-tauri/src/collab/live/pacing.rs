@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oleafly_collab::materialize::Layout;
+use oleafly_collab::CollabError;
 
 use super::session::{guard, lock, Active, WriterSignal};
 use super::unwritten::backoff;
@@ -147,15 +148,26 @@ impl Active {
         if self.paced(|pace| pace.index.as_deref() == Some(fingerprint.as_str())) {
             return;
         }
-        if oleafly_collab::write_atomic(&self.disk_file, &json).is_ok() {
-            self.paced(|pace| {
-                pace.index = Some(fingerprint);
-                #[cfg(test)]
-                {
-                    pace.counted.indexes += 1;
-                }
-            });
-        }
+        let _ = self.write_index(&json, fingerprint);
+    }
+
+    pub(super) fn save_index(&self, disk: &DiskState) -> Result<(), CollabError> {
+        let json =
+            serde_json::to_vec(disk).map_err(|error| CollabError::Corrupt(error.to_string()))?;
+        let fingerprint = sha256_hex(&json);
+        self.write_index(&json, fingerprint)
+    }
+
+    fn write_index(&self, json: &[u8], fingerprint: String) -> Result<(), CollabError> {
+        oleafly_collab::write_atomic(&self.disk_file, json)?;
+        self.paced(|pace| {
+            pace.index = Some(fingerprint);
+            #[cfg(test)]
+            {
+                pace.counted.indexes += 1;
+            }
+        });
+        Ok(())
     }
 
     fn come_back_in(&self, delay: Duration) {
