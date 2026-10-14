@@ -15,7 +15,7 @@ use crate::removals;
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::{AppState, DAY_MS};
-use crate::tokens::random_token;
+use crate::tokens::{self, random_token};
 
 pub const INVITATION_DAYS: i64 = 14;
 pub const INVITATIONS_PER_HOUR: i64 = 20;
@@ -550,6 +550,9 @@ pub fn end_if_no_access(
     }
     let devices = members::account_devices(conn, account)?;
     members::remove_account(conn, account, now)?;
+    for device in &devices {
+        tokens::sign_out_device(conn, *device, now)?;
+    }
     security_log::record(
         conn,
         now,
@@ -656,7 +659,46 @@ async fn prepare_invitation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::clock::Clock;
     use crate::db::Db;
+    use crate::test_support::{seed_member, test_app};
+
+    #[tokio::test]
+    async fn a_guest_left_without_projects_has_no_live_device_or_token_once_the_change_is_made() {
+        let app = test_app().await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let guest = seed_member(&app, ServerRole::Guest).await;
+        let (target, device, by, now) = (
+            guest.account_id,
+            guest.device_id,
+            owner.account_id,
+            app.clock.now_ms(),
+        );
+        let left = app
+            .state
+            .db
+            .call(move |conn| {
+                crate::auth::refresh::issue_session(conn, target, device, now)?;
+                let signed_out = end_if_no_access(conn, target, by, None, now)?;
+                assert_eq!(signed_out, [device]);
+                let id = target.to_string();
+                let count = |sql: &str| -> Result<i64, ServerError> {
+                    Ok(conn.query_row(sql, [&id], |row| row.get(0))?)
+                };
+                Ok((
+                    count(
+                        "SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked_at IS NULL",
+                    )?,
+                    count("SELECT COUNT(*) FROM access_tokens WHERE account_id = ?1")?,
+                    count(
+                        "SELECT COUNT(*) FROM refresh_tokens WHERE account_id = ?1 AND revoked_at IS NULL",
+                    )?,
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(left, (0, 0, 0));
+    }
 
     #[tokio::test]
     async fn an_invitation_with_a_role_a_guest_cannot_have_stores_nothing() {
