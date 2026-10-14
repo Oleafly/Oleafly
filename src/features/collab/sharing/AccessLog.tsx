@@ -8,7 +8,7 @@ import { LoadingState } from "@/components/ui/empty";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import { collabAccessLogPage, type CollabAccessEntry } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
 import { collabPerson } from "../people";
@@ -88,7 +88,7 @@ function AccessList({ projectId, title }: Readonly<{ projectId: string; title: s
         }));
       } catch (error) {
         if (latest.current !== projectId) return;
-        const message = collabErrorMessage(collabErrorCode(error));
+        const message = collabErrorText(error);
         if (cursor === null) setLoadError(message);
         else setMoreError(message);
       } finally {

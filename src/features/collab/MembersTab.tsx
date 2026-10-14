@@ -16,7 +16,7 @@ import {
   type CollabMemberStatus,
 } from "@/lib/tauri";
 import { DevicesList } from "./DevicesList";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { GuestBadge } from "./GuestBadge";
 import { PendingGuests } from "./PendingGuests";
@@ -79,7 +79,7 @@ export function MembersTab({
     try {
       await action();
     } catch (error) {
-      setRowError({ accountId, message: collabErrorMessage(collabErrorCode(error), "members") });
+      setRowError({ accountId, message: collabErrorText(error, "members") });
     } finally {
       setBusyId(null);
     }

@@ -7,7 +7,7 @@ import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCapabilities, CollabServer, CollabSignInCode } from "@/lib/tauri";
-import { COLLAB_ERROR_CODES, collabErrorMessage } from "./errors";
+import { COLLAB_ERROR_CODES, collabErrorText } from "./errors";
 import { account, capabilities, collabError, deferred, fill, server } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -176,7 +176,7 @@ describe("AddServerDialog", () => {
     for (const code of COLLAB_ERROR_CODES) {
       mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));
       await user.click(screen.getByRole("button", { name: copy.continue }));
-      expect(await screen.findByRole("alert")).toHaveTextContent(collabErrorMessage(code));
+      expect(await screen.findByRole("alert")).toHaveTextContent(collabErrorText(collabError(code)));
     }
   });
 

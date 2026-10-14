@@ -14,7 +14,7 @@ import {
   type CollabSharedWithMe,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { collabPerson } from "../people";
 import { useCollabStore } from "../store";
@@ -73,7 +73,7 @@ export function SharedWithYou() {
       await files.refreshProjects();
       await files.openProject(localId);
     } catch (error_) {
-      setError({ key, message: collabErrorMessage(collabErrorCode(error_)) });
+      setError({ key, message: collabErrorText(error_) });
     } finally {
       setOpening(null);
     }

@@ -15,7 +15,7 @@ import {
   type CollabGuestInviteResult,
   type CollabProjectGuestInvitations,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { GuestBadge } from "../GuestBadge";
 import type { GrantableRole } from "./ProjectRolePicker";
@@ -83,7 +83,7 @@ function inviteError(error: unknown, t: ReturnType<typeof useTranslation<["colla
   const code = collabErrorCode(error);
   if (code === "conflict") return t(($) => $.collab.guests.invite.duplicate);
   if (code === "rate_limited") return t(($) => $.collab.guests.invite.tooMany);
-  return collabErrorMessage(code);
+  return collabErrorText(error);
 }
 
 export interface InviteOutcome {
@@ -223,7 +223,7 @@ export function GuestInvitationList({
       await collabGuestInvitationRevoke(projectId, entry.id);
       onWithdrawn(entry.id);
     } catch (error_) {
-      setRowError({ id: entry.id, message: collabErrorMessage(collabErrorCode(error_)) });
+      setRowError({ id: entry.id, message: collabErrorText(error_) });
     } finally {
       setBusyId(null);
     }

@@ -9,7 +9,7 @@ import {
   type CollabRuntimeSettings,
   type CollabRuntimeSettingsPatch,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { serverRoleAllows, type ServerRole } from "./roles";
 
@@ -61,7 +61,7 @@ export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: str
         if (active) setSettings(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -83,7 +83,7 @@ export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: str
       setSettings(await collabAdminPatchSettings(serverId, patch));
     } catch (error) {
       setSettings(previous);
-      setSaveError(collabErrorMessage(collabErrorCode(error)));
+      setSaveError(collabErrorText(error));
     } finally {
       setSaving(false);
     }

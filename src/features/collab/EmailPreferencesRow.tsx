@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AtSign, Mail } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { collabEmailPreferences, collabSetEmailPreferences, type CollabEmailPreferences } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
 
 type Choice = "shared_with_you" | "mentions";
@@ -54,7 +54,7 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
       setPreferences(await collabSetEmailPreferences(serverId, patch));
     } catch (error_) {
       setPreferences(previous);
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }

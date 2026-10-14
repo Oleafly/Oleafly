@@ -13,7 +13,7 @@ import {
   type CollabDomainRule,
   type CollabNewDomainRule,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
 import { toServerRole, type ServerRole } from "./roles";
@@ -46,7 +46,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
         if (active) setRules(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -66,7 +66,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
       setRules((current) => [...(current ?? []), created]);
       setDomain("");
     } catch (error) {
-      setFormError(collabErrorMessage(collabErrorCode(error), "domains"));
+      setFormError(collabErrorText(error, "domains"));
     } finally {
       setSaving(false);
     }
@@ -79,7 +79,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
       await collabAdminRemoveDomainRule(serverId, rule.id);
       setRules((current) => current?.filter((item) => item.id !== rule.id) ?? null);
     } catch (error) {
-      setRowError(collabErrorMessage(collabErrorCode(error), "domains"));
+      setRowError(collabErrorText(error, "domains"));
     } finally {
       setBusyId(null);
     }

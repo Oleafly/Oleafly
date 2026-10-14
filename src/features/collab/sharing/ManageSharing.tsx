@@ -28,7 +28,7 @@ import {
   type CollabProjectSummary,
   type CollabShareInfo,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
 import { useAccessLogSwitches } from "./access-log-store";
@@ -108,7 +108,7 @@ function AddPeople({
           if (active) setSearch({ kind: "done", people });
         },
         (error_: unknown) => {
-          if (active) setSearch({ kind: "failed", message: collabErrorMessage(collabErrorCode(error_)) });
+          if (active) setSearch({ kind: "failed", message: collabErrorText(error_) });
         },
       );
     }, SEARCH_DELAY_MS);
@@ -125,7 +125,7 @@ function AddPeople({
       onAdded(await collabMemberSet(projectId, person.account_id, role));
       setQuery("");
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setAdding(null);
     }
@@ -231,7 +231,7 @@ function LinkSharing({
     try {
       onSummary(await collabLinkSharingSet(projectId, enabled, role));
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -315,7 +315,7 @@ function CommentsSetting({
     try {
       onSummary(await collabCommentsSetEnabled(projectId, next));
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -370,7 +370,7 @@ function AccessLogSetting({
       onSummary(updated);
       useAccessLogSwitches.getState().set(projectId, { serverAllowed: true, enabled: updated.access_log ?? next });
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -433,7 +433,7 @@ export function ManageSharing({
         setMembers(ownerFirst(nextMembers));
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -449,7 +449,7 @@ export function ManageSharing({
       await action();
       syncMembersChange(projectId);
     } catch (error) {
-      setRowError({ accountId, message: collabErrorMessage(collabErrorCode(error)) });
+      setRowError({ accountId, message: collabErrorText(error) });
     } finally {
       setBusyId(null);
     }
@@ -479,7 +479,7 @@ export function ManageSharing({
       if (isOwner) await collabStopSharing(projectId);
       else await collabLeaveProject(projectId);
     } catch (error) {
-      setEndError(collabErrorMessage(collabErrorCode(error)));
+      setEndError(collabErrorText(error));
       setEndBusy(false);
       return;
     }

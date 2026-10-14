@@ -1,6 +1,6 @@
 import { i18n } from "@/i18n";
 import { isCollabCommentError, type CollabCommentErrorCode } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 
 const REFUSALS: Readonly<Record<CollabCommentErrorCode, () => string>> = {
   comment_not_live: () => i18n.t(($) => $.collab.comments.refusals.notLive),
@@ -17,5 +17,5 @@ const REFUSALS: Readonly<Record<CollabCommentErrorCode, () => string>> = {
 
 export function commentFailure(error: unknown): string {
   if (isCollabCommentError(error)) return REFUSALS[error.code]();
-  return collabErrorMessage(collabErrorCode(error));
+  return collabErrorText(error);
 }

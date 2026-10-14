@@ -12,7 +12,7 @@ import {
   collabAdminGuestRevoke,
   type CollabGuestInvitation,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
 import { GuestBadge } from "./GuestBadge";
 
@@ -52,7 +52,7 @@ export function PendingGuests({ serverId }: Readonly<{ serverId: string }>) {
         return current.filter((item) => item.id !== entry.id);
       });
     } catch (error) {
-      setRowError({ id: entry.id, message: collabErrorMessage(collabErrorCode(error)) });
+      setRowError({ id: entry.id, message: collabErrorText(error) });
     } finally {
       setBusyId(null);
     }

@@ -22,7 +22,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabStore } from "../store";
 import { syncShareChange } from "./after-change";
@@ -179,7 +179,7 @@ function ShareStep({
         if (active) setCheck({ kind: "ready", check: result });
       },
       (error: unknown) => {
-        if (active) setCheck({ kind: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+        if (active) setCheck({ kind: "failed", message: collabErrorText(error) });
       },
     );
     return () => {
@@ -204,7 +204,7 @@ function ShareStep({
       });
       shared = await collabShareProject(projectId, chosenId);
     } catch (error) {
-      setUpload({ kind: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+      setUpload({ kind: "failed", message: collabErrorText(error) });
       return;
     } finally {
       unlisten?.();
@@ -321,7 +321,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
         if (active) setShare(info);
       },
       (error: unknown) => {
-        if (active) setShareError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setShareError(collabErrorText(error));
       },
     );
     return () => {

@@ -164,6 +164,9 @@ describe("collaboration IPC helpers", () => {
   it("recognises the structured command error", () => {
     expect(tauri.isCollabCommandError({ code: "not_admitted", message: "" })).toBe(true);
     expect(tauri.isCollabCommandError({ code: "server_changed", message: "a b" })).toBe(true);
+    for (const code of ["invalid", "project_full", "not_a_link", "signed_out", "server_removed", "turned_off"]) {
+      expect(tauri.isCollabCommandError({ code, message: "" }), code).toBe(true);
+    }
     expect(tauri.isCollabCommandError({ code: "teapot", message: "" })).toBe(false);
     expect(tauri.isCollabCommandError({ code: "server" })).toBe(false);
     expect(tauri.isCollabCommandError("unreachable")).toBe(false);

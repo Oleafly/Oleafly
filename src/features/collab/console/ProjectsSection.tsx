@@ -24,7 +24,7 @@ import {
   type CollabProjectStatus,
   type CollabSortOrder,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson } from "../people";
 import { serverRoleAllows, type ServerRole } from "../roles";
@@ -124,7 +124,7 @@ export function ProjectsSection({
         if (active) setList({ status: "ready", items: page.items, next: page.next_cursor, total: page.total });
       },
       (error: unknown) => {
-        if (active) setList({ status: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+        if (active) setList({ status: "failed", message: collabErrorText(error) });
       },
     );
     return () => {
@@ -144,7 +144,7 @@ export function ProjectsSection({
           : current,
       );
     } catch (error) {
-      setMoreError(collabErrorMessage(collabErrorCode(error)));
+      setMoreError(collabErrorText(error));
     } finally {
       setLoadingMore(false);
     }
@@ -171,7 +171,7 @@ export function ProjectsSection({
           : await collabAdminUnarchiveProject(serverId, project.project_id),
       );
     } catch (error) {
-      setRowError({ id: project.project_id, message: collabErrorMessage(collabErrorCode(error)) });
+      setRowError({ id: project.project_id, message: collabErrorText(error) });
     } finally {
       setBusyId(null);
     }

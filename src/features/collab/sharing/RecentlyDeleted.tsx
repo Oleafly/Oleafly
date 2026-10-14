@@ -8,7 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { collabTrashList, collabTrashRestore, type CollabTrashEntry } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
@@ -175,7 +175,7 @@ export function RecentlyDeleted({
       try {
         await collabTrashRestore(projectId, entry.id);
       } catch (error) {
-        setFailure(collabErrorMessage(collabErrorCode(error)));
+        setFailure(collabErrorText(error));
         return;
       }
       useRemovedNotices.getState().forget(entry.id);

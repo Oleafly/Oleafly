@@ -1146,7 +1146,25 @@ export type CollabErrorCode =
     | "duplicate_server"
     | "device_in_use"
     | "server_unknown"
-    | "too_large";
+    | "too_large"
+    | "invalid"
+    | "invalid_domain"
+    | "invalid_email"
+    | "invalid_login"
+    | "guests_off"
+    | "link_sharing_off"
+    | "access_log_off"
+    | "last_admin"
+    | "duplicate_entry"
+    | "already_member"
+    | "project_not_shared"
+    | "project_full"
+    | "not_a_link"
+    | "signed_out"
+    | "server_removed"
+    | "share_in_progress"
+    | "cancelled"
+    | "turned_off";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;

@@ -11,7 +11,7 @@ import {
   type CollabSecurityEvent,
   type CollabSecurityLogKind,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { toServerRole } from "./roles";
 import { RUNTIME_SETTING_COPY } from "./RuntimeSettingsTab";
@@ -320,7 +320,7 @@ export function SecurityLogTab({
         setCursor(page.next_cursor ?? null);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -337,7 +337,7 @@ export function SecurityLogTab({
       setEvents((current) => [...(current ?? []), ...page.items]);
       setCursor(page.next_cursor ?? null);
     } catch (error) {
-      setMoreError(collabErrorMessage(collabErrorCode(error)));
+      setMoreError(collabErrorText(error));
     } finally {
       setLoadingMore(false);
     }

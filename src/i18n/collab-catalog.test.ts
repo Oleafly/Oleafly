@@ -24,6 +24,23 @@ const ERROR_CODES = [
   "device_in_use",
   "server_unknown",
   "too_large",
+  "invalid",
+  "invalid_domain",
+  "invalid_email",
+  "invalid_login",
+  "guests_off",
+  "link_sharing_off",
+  "access_log_off",
+  "last_admin",
+  "duplicate_entry",
+  "already_member",
+  "project_not_shared",
+  "project_full",
+  "not_a_link",
+  "signed_out",
+  "server_removed",
+  "share_in_progress",
+  "cancelled",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];

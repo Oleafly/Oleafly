@@ -11,7 +11,7 @@ import {
   type CollabServer,
   type CollabServerChanged,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorText } from "../errors";
 import { LoadFailed } from "../feedback";
 import { canManageServer, toServerRole } from "../roles";
 import { AdminConsole } from "./AdminConsole";
@@ -50,7 +50,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
         if (active) setState({ status: "ready", server });
       },
       (error: unknown) => {
-        if (active) setState({ status: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+        if (active) setState({ status: "failed", message: collabErrorText(error) });
       },
     );
     return () => {
@@ -62,7 +62,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
     if (payload.serverId !== serverId) return;
     collabServersList().then(
       (listed) => setState({ status: "ready", server: find(listed, serverId) }),
-      (error: unknown) => setState({ status: "failed", message: collabErrorMessage(collabErrorCode(error)) }),
+      (error: unknown) => setState({ status: "failed", message: collabErrorText(error) }),
     );
   });
 

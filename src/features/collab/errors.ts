@@ -22,6 +22,24 @@ export const COLLAB_ERROR_CODES = [
   "device_in_use",
   "server_unknown",
   "too_large",
+  "invalid",
+  "invalid_domain",
+  "invalid_email",
+  "invalid_login",
+  "guests_off",
+  "link_sharing_off",
+  "access_log_off",
+  "last_admin",
+  "duplicate_entry",
+  "already_member",
+  "project_not_shared",
+  "project_full",
+  "not_a_link",
+  "signed_out",
+  "server_removed",
+  "share_in_progress",
+  "cancelled",
+  "turned_off",
 ] as const satisfies readonly CollabErrorCode[];
 
 type UnlistedCode = Exclude<CollabErrorCode, (typeof COLLAB_ERROR_CODES)[number]>;
@@ -41,6 +59,18 @@ export function collabErrorCode(error: unknown): CollabErrorCode {
 }
 
 export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorContext): string {
-  if (code === "conflict" && context) return CONFLICT_MESSAGES[context]();
+  // The switch's own message already lives with the app's other errors.
+  if (code === "turned_off") return i18n.t(($) => $.errors.collab.turned_off);
+  if (context && (code === "conflict" || (code === "duplicate_entry" && context !== "members"))) {
+    return CONFLICT_MESSAGES[context]();
+  }
   return i18n.t(($) => $.collab.errors[code]);
+}
+
+// A refusal the server has no code for comes back as `invalid` with the
+// server's own sentence, which says more than any general wording could.
+export function collabErrorText(error: unknown, context?: CollabErrorContext): string {
+  const code = collabErrorCode(error);
+  if (code === "invalid" && isCollabCommandError(error) && error.message.trim()) return error.message.trim();
+  return collabErrorMessage(code, context);
 }

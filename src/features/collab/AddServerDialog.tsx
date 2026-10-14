@@ -25,7 +25,7 @@ import {
   type CollabServer,
   type CollabSignInCode,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorCode, collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
 import { accountDetail, accountPerson } from "./people";
 import { canManageServer, serverRoleAllows, toServerRole } from "./roles";
@@ -130,7 +130,7 @@ export function AddServerDialog({
       setStep({ kind: "server", url, capabilities });
     } catch (error_) {
       if (current !== attempt.current) return;
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
       setStep({ kind: "address" });
     }
   }, []);
@@ -170,7 +170,7 @@ export function AddServerDialog({
       setStep({ kind: "done", server });
     } catch (error_) {
       if (current !== attempt.current) return;
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
       setStep({ kind: "server", url, capabilities });
     }
   };
