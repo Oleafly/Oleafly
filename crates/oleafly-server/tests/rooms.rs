@@ -7,7 +7,7 @@ use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_server::test_support::{test_config, TestDevice};
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, stage_with, subscribe, Stage,
+    signed_by, stage, stage_with, subscribe, told_of_removal, Stage,
 };
 use reqwest::{Method, StatusCode};
 
@@ -248,11 +248,23 @@ async fn removing_someone_tells_them_and_the_room() {
         })
     );
     assert_eq!(
-        next_frame(&mut bob).await,
-        Some(ServerFrame::PresenceLeft {
-            project_id: project,
-            device_id: stage.alice.tokens.device_id
-        })
+        told_of_removal(&mut bob).await,
+        vec![
+            ServerFrame::AccessChanged {
+                project_id: project,
+                role: Some(ProjectRole::Owner),
+                change: Some(MemberChange {
+                    account_id: stage.alice.tokens.account_id,
+                    by: stage.bob.tokens.account_id,
+                    kind: MemberChangeKind::Removed,
+                }),
+                comments: None,
+            },
+            ServerFrame::PresenceLeft {
+                project_id: project,
+                device_id: stage.alice.tokens.device_id
+            },
+        ]
     );
     send_update(&mut alice, &envelope(&stage.alice, project, b"after")).await;
     assert!(matches!(

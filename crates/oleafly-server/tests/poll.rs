@@ -28,8 +28,8 @@ use oleafly_server::test_support::{
 use oleafly_server::transfers::UploadTiming;
 use people::{
     beside, call, connect, envelope, grant, large_change, longest_stall, next_frame, put_bytes,
-    seeded, send_frame, send_update, share_project, signed_by, stage, subscribe, Person, Stage,
-    LONGEST_STALL,
+    seeded, send_frame, send_update, share_project, signed_by, stage, subscribe, told_of_removal,
+    Person, Stage, LONGEST_STALL,
 };
 use reqwest::{Method, StatusCode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -784,11 +784,23 @@ async fn removing_someone_tells_their_long_poll_and_the_room() {
         }
     );
     assert_eq!(
-        next_frame(&mut bob).await,
-        Some(ServerFrame::PresenceLeft {
-            project_id: project,
-            device_id: stage.alice.tokens.device_id
-        })
+        told_of_removal(&mut bob).await,
+        vec![
+            ServerFrame::AccessChanged {
+                project_id: project,
+                role: Some(ProjectRole::Owner),
+                change: Some(MemberChange {
+                    account_id: stage.alice.tokens.account_id,
+                    by: stage.bob.tokens.account_id,
+                    kind: MemberChangeKind::Removed,
+                }),
+                comments: None,
+            },
+            ServerFrame::PresenceLeft {
+                project_id: project,
+                device_id: stage.alice.tokens.device_id
+            },
+        ]
     );
     assert!(matches!(
         alice

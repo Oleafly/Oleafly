@@ -412,3 +412,15 @@ pub async fn longest_stall(socket: &mut Socket, done: &AtomicBool) -> Duration {
     }
     slowest
 }
+
+// Cursor and leave frames wait beside the edit queue and go out when no
+// other frame is waiting, so after a removal the room's access change can
+// arrive before the leave. Reads both, access change first.
+pub async fn told_of_removal(socket: &mut Socket) -> Vec<ServerFrame> {
+    let mut told = vec![
+        next_frame(socket).await.expect("a frame about the removal"),
+        next_frame(socket).await.expect("a frame about the removal"),
+    ];
+    told.sort_by_key(|frame| matches!(frame, ServerFrame::PresenceLeft { .. }));
+    told
+}
