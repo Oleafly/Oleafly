@@ -173,6 +173,8 @@ fn lock(project: &SharedLive) -> MutexGuard<'_, LiveProject> {
 pub struct TransportOptions {
     pub fallback_after: u32,
     pub retry_socket_every: Duration,
+    pub ping_every: Duration,
+    pub quiet_for: Duration,
 }
 
 impl Default for TransportOptions {
@@ -180,6 +182,8 @@ impl Default for TransportOptions {
         TransportOptions {
             fallback_after: 2,
             retry_socket_every: Duration::from_secs(60),
+            ping_every: Duration::from_secs(20),
+            quiet_for: Duration::from_secs(30),
         }
     }
 }

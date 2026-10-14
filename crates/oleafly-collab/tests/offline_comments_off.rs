@@ -193,6 +193,7 @@ impl Room {
             TransportOptions {
                 fallback_after: 2,
                 retry_socket_every: Duration::from_secs(60),
+                ..TransportOptions::default()
             },
         );
         Side {

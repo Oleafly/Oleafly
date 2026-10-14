@@ -3,7 +3,7 @@ use std::time::Duration;
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use super::online::serve;
+use super::online::{serve, Pace};
 use super::wire::{connect, Wire};
 use super::writers::WriterRetry;
 use super::{
@@ -95,6 +95,11 @@ pub(super) async fn run(
     let mut transport = Transport::Socket;
     let mut refused = 0u32;
     let limit = options.fallback_after.max(1);
+    let pace = |probe| Pace {
+        probe,
+        ping_every: options.ping_every,
+        quiet_for: options.quiet_for,
+    };
     loop {
         let _ = events.send(LiveEvent::Status(LiveStatus::Connecting));
         let exit = match transport {
@@ -102,7 +107,16 @@ pub(super) async fn run(
                 Ok(socket) => {
                     refused = 0;
                     let wire = Wire::socket(socket);
-                    serve(&link, &project, &events, &mut commands, wire, None, &retry).await
+                    serve(
+                        &link,
+                        &project,
+                        &events,
+                        &mut commands,
+                        wire,
+                        pace(None),
+                        &retry,
+                    )
+                    .await
                 }
                 Err(CollabError::Unauthorized) => Exit::End(EndReason::SignedOut),
                 Err(CollabError::SessionEnded(reason)) => {
@@ -123,7 +137,7 @@ pub(super) async fn run(
             },
             Transport::Poll => {
                 let wire = Wire::poll(&link);
-                let probe = Some(options.retry_socket_every);
+                let probe = pace(Some(options.retry_socket_every));
                 let exit =
                     serve(&link, &project, &events, &mut commands, wire, probe, &retry).await;
                 match exit {

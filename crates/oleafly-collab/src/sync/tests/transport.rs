@@ -245,6 +245,7 @@ async fn the_fallback_moves_back_to_the_socket_once_websockets_get_through() {
     let options = TransportOptions {
         fallback_after: 2,
         retry_socket_every: Duration::from_millis(300),
+        ..TransportOptions::default()
     };
     start_with(&mut bob, link(&pair, &pair.bob, project), quick());
     start_with(

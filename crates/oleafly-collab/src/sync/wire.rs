@@ -17,6 +17,7 @@ use crate::client::{
 use crate::CollabError;
 
 const POLL_QUEUE: usize = 64;
+const SOCKET_QUEUE: usize = 64;
 const CLOSE_WITHIN: Duration = Duration::from_secs(2);
 
 pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
@@ -63,8 +64,9 @@ fn refused_after_refresh(error: CollabError) -> CollabError {
 
 pub(super) enum Wire {
     Socket {
-        sink: SplitSink<Socket, Message>,
         stream: SplitStream<Socket>,
+        writing: mpsc::Sender<Message>,
+        writer: Option<JoinHandle<()>>,
     },
     Poll(Box<PollWire>),
 }
@@ -73,10 +75,27 @@ fn connection_closed() -> CollabError {
     CollabError::Network("the server closed the connection".to_owned())
 }
 
+// Frames go out from their own task, so a long upload on a slow link never
+// stops the session from reading what the server sends or from stopping.
+async fn write_out(mut sink: SplitSink<Socket, Message>, mut writing: mpsc::Receiver<Message>) {
+    while let Some(message) = writing.recv().await {
+        let closing = matches!(message, Message::Close(_));
+        if sink.send(message).await.is_err() || closing {
+            return;
+        }
+    }
+    let _ = sink.close().await;
+}
+
 impl Wire {
     pub(super) fn socket(socket: Socket) -> Wire {
         let (sink, stream) = socket.split();
-        Wire::Socket { sink, stream }
+        let (writing, queued) = mpsc::channel(SOCKET_QUEUE);
+        Wire::Socket {
+            stream,
+            writing,
+            writer: Some(tokio::spawn(write_out(sink, queued))),
+        }
     }
 
     pub(super) fn poll(link: &LiveLink) -> Wire {
@@ -93,12 +112,24 @@ impl Wire {
 
     pub(super) async fn send(&mut self, frame: &ClientFrame) -> Result<(), CollabError> {
         match self {
-            Wire::Socket { sink, .. } => {
+            Wire::Socket { writing, .. } => {
                 let text = serde_json::to_string(frame)
                     .map_err(|error| CollabError::Network(error.to_string()))?;
-                sink.send(Message::text(text))
-                    .await
-                    .map_err(|error| CollabError::Network(error.to_string()))
+                match writing.try_send(Message::text(text)) {
+                    Ok(()) => Ok(()),
+                    Err(mpsc::error::TrySendError::Full(_))
+                        if matches!(
+                            frame,
+                            ClientFrame::Ping { .. } | ClientFrame::Presence { .. }
+                        ) =>
+                    {
+                        Ok(())
+                    }
+                    Err(mpsc::error::TrySendError::Full(_)) => Err(CollabError::Network(
+                        "the connection stopped taking data".to_owned(),
+                    )),
+                    Err(mpsc::error::TrySendError::Closed(_)) => Err(connection_closed()),
+                }
             }
             Wire::Poll(poll) => poll.send(frame).await,
         }
@@ -125,10 +156,32 @@ impl Wire {
 
     pub(super) async fn close(&mut self) {
         match self {
-            Wire::Socket { sink, .. } => {
-                let _ = sink.close().await;
+            Wire::Socket {
+                writing, writer, ..
+            } => {
+                let _ = writing.try_send(Message::Close(None));
+                if let Some(mut writer) = writer.take() {
+                    if tokio::time::timeout(CLOSE_WITHIN, &mut writer)
+                        .await
+                        .is_err()
+                    {
+                        writer.abort();
+                    }
+                }
             }
             Wire::Poll(poll) => poll.close().await,
+        }
+    }
+}
+
+impl Drop for Wire {
+    fn drop(&mut self) {
+        if let Wire::Socket {
+            writer: Some(writer),
+            ..
+        } = self
+        {
+            writer.abort();
         }
     }
 }

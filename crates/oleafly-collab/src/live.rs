@@ -28,6 +28,10 @@ const DEVICES_FILE: &str = "devices.json";
 const AUTHORS_FILE: &str = "authors.json";
 const LOG_LIMIT: usize = 500;
 pub const BATCH_BYTES: usize = 4 * 1024 * 1024;
+// Several changes go out in pieces of about this size, so even a slow link
+// carries each one in seconds. One change that cannot be split may still be
+// as large as BATCH_BYTES.
+const PIECE_BYTES: usize = 512 * 1024;
 const SMALLEST_BATCH_BYTES: usize = 16 * 1024;
 
 struct OpenFile {
@@ -49,6 +53,7 @@ pub struct Outgoing {
     pub payload: Vec<u8>,
     version: VersionVector,
     sent: bool,
+    sent_at: std::time::Instant,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -1138,6 +1143,7 @@ impl LiveProject {
                 return Ok(None);
             }
             outgoing.sent = true;
+            outgoing.sent_at = std::time::Instant::now();
             return Ok(Some(outgoing.clone()));
         }
         if !self.can_edit() || self.unsendable {
@@ -1148,23 +1154,25 @@ impl LiveProject {
         if total == 0 {
             return Ok(None);
         }
-        let mut atoms = total.min(self.batch_limit.saturating_mul(2)).max(1);
+        let target = self.batch_limit.min(PIECE_BYTES);
+        let mut atoms = total.min(target.saturating_mul(2)).max(1);
         let (mut payload, mut version) = self.export_prefix(&ready, atoms)?;
-        while payload.len() > self.batch_limit {
-            if atoms == 1 {
-                self.unsendable = true;
-                return Ok(None);
-            }
-            let wanted = (self.batch_limit as u128 * 9 / 10).max(1);
+        while payload.len() > target && atoms > 1 {
+            let wanted = (target as u128 * 9 / 10).max(1);
             let scaled = atoms as u128 * wanted / payload.len().max(1) as u128;
             atoms = usize::try_from(scaled).unwrap_or(1).clamp(1, atoms - 1);
             (payload, version) = self.export_prefix(&ready, atoms)?;
+        }
+        if payload.len() > self.batch_limit {
+            self.unsendable = true;
+            return Ok(None);
         }
         let outgoing = Outgoing {
             batch: BatchId::new_v7(),
             payload,
             version,
             sent: true,
+            sent_at: std::time::Instant::now(),
         };
         self.outgoing = Some(outgoing.clone());
         Ok(Some(outgoing))
@@ -1186,6 +1194,13 @@ impl LiveProject {
 
     pub fn refused(&mut self) {
         self.outgoing = None;
+    }
+
+    pub fn in_flight(&self) -> Option<(usize, std::time::Instant)> {
+        self.outgoing
+            .as_ref()
+            .filter(|outgoing| outgoing.sent)
+            .map(|outgoing| (outgoing.payload.len(), outgoing.sent_at))
     }
 
     pub fn comments_refused(
@@ -2332,6 +2347,30 @@ mod tests {
         assert_eq!(alice.doc().text(&main).unwrap(), big);
         assert!(!bob.has_unsent());
         assert_eq!(bob.pending_changes(), 0);
+    }
+
+    #[test]
+    fn a_large_paste_goes_out_in_pieces_a_slow_link_can_carry_and_one_large_value_still_fits() {
+        let (mut bob, mut alice, main) = pair();
+        let big = noise(2 * 1024 * 1024, 11);
+        bob.local_text(&main, &big).unwrap();
+        let batches = deliver_all(&mut bob, &mut alice, PIECE_BYTES);
+        assert!(batches >= 4, "only {batches} batches");
+        assert_eq!(alice.doc().text(&main).unwrap(), big);
+        let value = noise(1024 * 1024, 12);
+        bob.comment_doc()
+            .loro()
+            .get_map("large_value")
+            .insert("value", value.as_str())
+            .unwrap();
+        bob.comment_doc().loro().commit();
+        let whole = bob
+            .next_outgoing()
+            .unwrap()
+            .expect("a value that cannot be split still goes out");
+        assert!(whole.payload.len() > PIECE_BYTES);
+        assert!(whole.payload.len() <= BATCH_BYTES);
+        assert!(!bob.take_unsendable());
     }
 
     #[test]

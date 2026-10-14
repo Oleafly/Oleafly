@@ -12,12 +12,30 @@ use super::trust::Refreshed;
 use super::wire::{probe_socket, Probe, Wire};
 use super::writers::{seed_peers, WriterRetry};
 use super::{lock, EndReason, LiveCommand, LiveEvent, LiveLink, LiveStatus, SharedLive};
+use crate::client::upload_allowance;
 use crate::live::Outgoing;
 use crate::CollabError;
 
-const PING_EVERY: Duration = Duration::from_secs(20);
-const PONG_WITHIN: Duration = Duration::from_secs(30);
 const READY_BURST: u32 = 64;
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Pace {
+    pub(super) probe: Option<Duration>,
+    pub(super) ping_every: Duration,
+    pub(super) quiet_for: Duration,
+}
+
+// The server owes an answer within `quiet_for`. A change still on its way up
+// adds the time a slow but working link needs to carry it, counted from when
+// it went out, so a large change on a slow link is not cut off and sent again.
+fn too_quiet(heard: Duration, in_flight: Option<(usize, Duration)>, quiet_for: Duration) -> bool {
+    match in_flight {
+        Some((bytes, sent)) => {
+            heard.min(sent) > quiet_for + upload_allowance(bytes.saturating_mul(4) / 3)
+        }
+        None => heard > quiet_for,
+    }
+}
 
 fn envelope(link: &LiveLink, outgoing: &Outgoing) -> Envelope {
     let mut envelope = Envelope {
@@ -78,10 +96,10 @@ pub(super) async fn serve(
     events: &UnboundedSender<LiveEvent>,
     commands: &mut UnboundedReceiver<LiveCommand>,
     mut wire: Wire,
-    probe: Option<Duration>,
+    pace: Pace,
     retry: &WriterRetry,
 ) -> Exit {
-    let exit = serve_wire(link, project, events, commands, &mut wire, probe, retry).await;
+    let exit = serve_wire(link, project, events, commands, &mut wire, pace, retry).await;
     wire.close().await;
     exit
 }
@@ -92,7 +110,7 @@ async fn serve_wire(
     events: &UnboundedSender<LiveEvent>,
     commands: &mut UnboundedReceiver<LiveCommand>,
     wire: &mut Wire,
-    probe: Option<Duration>,
+    pace: Pace,
     retry: &WriterRetry,
 ) -> Exit {
     let (role, head) = match subscribe(link, project, events, wire, retry).await {
@@ -123,7 +141,7 @@ async fn serve_wire(
     let _ = events.send(LiveEvent::Role(role));
     let _ = events.send(LiveEvent::Status(LiveStatus::Online));
     let started = tokio::time::Instant::now();
-    match online(link, project, events, commands, wire, catching_up, probe).await {
+    match online(link, project, events, commands, wire, catching_up, pace).await {
         Exit::Retry(_) => Exit::Retry(Reached::after(started.elapsed())),
         other => other,
     }
@@ -142,21 +160,21 @@ async fn online(
     commands: &mut UnboundedReceiver<LiveCommand>,
     wire: &mut Wire,
     mut catching_up: Option<u64>,
-    probe: Option<Duration>,
+    pace: Pace,
 ) -> Exit {
     let retry = Exit::Retry(Reached::Briefly);
     if flush(link, project, events, wire).await.is_err() {
         return retry;
     }
     let (found_tx, mut found) = mpsc::channel::<()>(1);
-    let _probe = probe.map(|every| {
+    let _probe = pace.probe.map(|every| {
         Probe(tokio::spawn(probe_socket(
             link.clone(),
             every,
             found_tx.clone(),
         )))
     });
-    let mut ping = tokio::time::interval(PING_EVERY);
+    let mut ping = tokio::time::interval(pace.ping_every);
     ping.tick().await;
     let mut ping_id = 0u64;
     let mut last_heard = tokio::time::Instant::now();
@@ -286,7 +304,10 @@ async fn online(
             Some(()) = found.recv() => return Exit::Switch,
             _ = ping.tick() => {
                 burst = 0;
-                if last_heard.elapsed() > PONG_WITHIN {
+                let in_flight = lock(project)
+                    .in_flight()
+                    .map(|(bytes, sent)| (bytes, sent.elapsed()));
+                if too_quiet(last_heard.elapsed(), in_flight, pace.quiet_for) {
                     return retry;
                 }
                 ping_id += 1;
@@ -296,5 +317,33 @@ async fn online(
             }
             () = std::future::ready(()), if burst >= READY_BURST => burst = 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_change_on_its_way_up_extends_the_quiet_window_by_what_a_slow_link_needs() {
+        let quiet = Duration::from_secs(30);
+        assert!(!too_quiet(Duration::from_secs(29), None, quiet));
+        assert!(too_quiet(Duration::from_secs(31), None, quiet));
+        let half_a_megabyte = 512 * 1024;
+        let carried = Duration::from_secs(30) + upload_allowance(half_a_megabyte * 4 / 3);
+        assert!(carried > Duration::from_secs(70));
+        let long_ago = Duration::from_secs(600);
+        let sent = |ago: Duration| Some((half_a_megabyte, ago));
+        assert!(!too_quiet(long_ago, sent(Duration::from_secs(60)), quiet));
+        assert!(too_quiet(
+            long_ago,
+            sent(carried + Duration::from_secs(1)),
+            quiet
+        ));
+        assert!(!too_quiet(
+            Duration::from_secs(5),
+            sent(Duration::from_secs(600)),
+            quiet
+        ));
     }
 }

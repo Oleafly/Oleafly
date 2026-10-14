@@ -5,7 +5,7 @@ use std::time::Duration;
 use ::url::Url;
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
-use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
+use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
     understands_header, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, MAX_POSTED_FRAMES,
@@ -14,7 +14,7 @@ use oleafly_collab_protocol::poll::{
 use tokio::sync::{mpsc, Notify};
 
 use super::http::{check_status, network_error};
-use super::ServerClient;
+use super::{upload_allowance, ServerClient};
 use crate::{CollabError, DeviceKey};
 
 const POLL_TIMEOUT: Duration = Duration::from_secs(45);
@@ -116,6 +116,17 @@ pub(crate) async fn post_outbox(
                 if !answered.is_empty() {
                     let _ = replies.send(Ok(answered)).await;
                 }
+            }
+            Err(CollabError::Api {
+                status: 413,
+                message,
+                ..
+            }) => {
+                let refused = ServerFrame::Error {
+                    code: FrameErrorCode::TooLarge,
+                    message,
+                };
+                let _ = replies.send(Ok(vec![refused])).await;
             }
             Err(error) => {
                 let _ = replies.send(Err(error)).await;
@@ -322,12 +333,13 @@ impl PollChannel {
         &self,
         frames: Vec<ClientFrame>,
     ) -> Result<Vec<ServerFrame>, CollabError> {
+        let posting: usize = frames.iter().map(posted_bytes).sum();
         let (status, body) = answer_within(
             self.http
                 .post(self.frames.clone())
                 .header(POLL_KEY_HEADER, &self.key)
                 .json(&PollFrames { frames })
-                .timeout(POST_TIMEOUT),
+                .timeout(POST_TIMEOUT + upload_allowance(posting)),
             ANSWER_BYTES,
         )
         .await?;
@@ -525,6 +537,61 @@ mod tests {
             .await
             .expect("a small answer");
         assert_eq!((status, body.len()), (200, 1000));
+    }
+
+    #[tokio::test]
+    async fn a_post_a_proxy_refuses_as_too_large_reads_like_the_servers_own_refusal() {
+        let (url, _) = crate::client::test_util::routed(|_| {
+            vec![(
+                "/frames",
+                vec![crate::client::test_util::http_response(
+                    "413 Payload Too Large",
+                    &[],
+                    "",
+                )],
+            )]
+        })
+        .await;
+        let channel = PollChannel {
+            http: reqwest::Client::builder()
+                .no_proxy()
+                .build()
+                .expect("client"),
+            poll: url.endpoint("poll"),
+            frames: url.endpoint("frames"),
+            key: "key".to_owned(),
+        };
+        let outbox = Arc::new(Outbox::default());
+        let (sender, mut replies) = mpsc::channel(4);
+        let posting = tokio::spawn(post_outbox(channel, Arc::clone(&outbox), sender));
+        let project = SharedProjectId::new_v7();
+        for _ in 0..2 {
+            outbox.push(update(project, 64 * 1024));
+            let reply = tokio::time::timeout(Duration::from_secs(10), replies.recv())
+                .await
+                .expect("an answer")
+                .expect("the outbox is still sending");
+            assert!(
+                matches!(
+                    reply.as_deref(),
+                    Ok([ServerFrame::Error {
+                        code: FrameErrorCode::TooLarge,
+                        ..
+                    }])
+                ),
+                "{reply:?}"
+            );
+        }
+        assert!(!posting.is_finished());
+        posting.abort();
+    }
+
+    #[test]
+    fn a_large_post_gets_the_time_a_slow_link_needs() {
+        let small = POST_TIMEOUT + upload_allowance(256);
+        let large = POST_TIMEOUT + upload_allowance(8 * 1024 * 1024);
+        assert!(small < POST_TIMEOUT + Duration::from_secs(1));
+        assert_eq!(large, POST_TIMEOUT + Duration::from_secs(512));
     }
 
     #[tokio::test(flavor = "multi_thread")]
