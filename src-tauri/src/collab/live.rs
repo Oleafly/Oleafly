@@ -25,7 +25,7 @@ pub(super) use editor::{comment_live, edit_live, read_live};
 pub use host::LiveHost;
 pub use lifecycle::{forget, stop, stop_running_session};
 pub use local_events::{app_wrote, folder_changed};
-pub(crate) use local_events::{known_content, KnownContent};
+pub(crate) use local_events::{known_content, shared_files, KnownContent};
 pub(crate) use moves::{deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile};
 pub use session::{active_for, note_fresh_join, Active};
 pub(crate) use sync_hold::{outside_change, root_returned};

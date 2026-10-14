@@ -1,6 +1,5 @@
 use crate::collab::guard::{SyncPauseHost, SyncPaused, SyncResumed};
 use oleafly_collab::binding::{save_binding, ShareBinding};
-use oleafly_collab::file_ids::FileIdMap;
 use oleafly_collab::paths::CollabPaths;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::roles::ProjectRole;
@@ -289,12 +288,19 @@ impl Relay {
 
 pub(crate) fn track(project_id: &str, files: &[&str]) {
     let file = CollabPaths::new(crate::paths::collab_root().unwrap())
-        .file_ids_file(project_id)
+        .materializer_index_file(project_id)
         .unwrap();
     std::fs::create_dir_all(file.parent().unwrap()).unwrap();
-    let mut map = FileIdMap::load(&file).unwrap();
+    let mut disk = crate::collab::disk::DiskState::load(&file);
     for relative in files {
-        map.ensure(relative).unwrap();
+        disk.layout.insert(
+            format!("tracked-{relative}"),
+            oleafly_collab::materialize::Placed {
+                path: (*relative).to_owned(),
+                kind: oleafly_collab::doc::NodeKind::Text,
+                blob: None,
+            },
+        );
     }
-    map.save(&file).unwrap();
+    disk.save(&file).unwrap();
 }

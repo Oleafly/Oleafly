@@ -12,7 +12,7 @@ use super::session::io;
 use super::{kept, uploads};
 use crate::collab::disk::{
     as_text, crlf_only, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex,
-    DiskState,
+    DiskState, ShareRules,
 };
 
 pub(super) fn parent_of(path: &str) -> Option<&str> {
@@ -67,6 +67,7 @@ pub(super) fn read_local_changes(
         Some(paths) => named_candidates(root, &placed, paths),
         None => every_candidate(root, &placed)?,
     };
+    let rules = ShareRules::load(root);
     let mut import = LocalImport::default();
     for path in candidates {
         if path.is_empty() || excluded_name(&path) {
@@ -76,6 +77,9 @@ pub(super) fn read_local_changes(
             continue;
         };
         let known = placed.get(&path);
+        if known.is_none() && rules.leaves_out(&path, target.is_dir()) {
+            continue;
+        }
         let present = if exists_exact(root, &path) {
             std::fs::symlink_metadata(&target)
         } else {

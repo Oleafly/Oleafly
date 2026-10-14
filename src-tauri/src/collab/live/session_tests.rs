@@ -916,3 +916,34 @@ fn a_file_in_a_folder_that_refuses_writes_is_retried_reported_and_written_once_i
     assert_eq!(std::fs::read_to_string(locked.join("a.tex")).unwrap(), "A");
     assert_eq!(host.told(), Some(Vec::new()));
 }
+
+#[test]
+fn files_the_project_leaves_out_never_enter_the_shared_tree_but_shared_ones_keep_syncing() {
+    let (_dir, root, _host, rig) =
+        watched_rig("ignored", &[("main.tex", "abc"), ("old.aux", "kept")]);
+    std::fs::write(root.join(".gitignore"), "*.aux\nbuild/\n").unwrap();
+    std::fs::create_dir_all(root.join("build")).unwrap();
+    for (path, text) in [
+        ("main.aux", "aux"),
+        (".main.tex.swp", "swap"),
+        ("main.tex~", "backup"),
+        ("#main.tex#", "autosave"),
+        ("build/main.log", "log"),
+        ("notes.tex", "notes"),
+        ("old.aux", "kept and changed"),
+    ] {
+        std::fs::write(root.join(path), text).unwrap();
+    }
+    rig.import(&[
+        "main.aux",
+        ".main.tex.swp",
+        "main.tex~",
+        "#main.tex#",
+        "build",
+        "build/main.log",
+        "notes.tex",
+        "old.aux",
+    ]);
+    assert_eq!(rig.paths(), ["main.tex", "notes.tex", "old.aux"]);
+    assert_eq!(rig.text("old.aux").as_deref(), Some("kept and changed"));
+}

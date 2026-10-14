@@ -15,6 +15,18 @@ pub(crate) struct KnownContent {
     hashes: std::collections::BTreeMap<String, String>,
 }
 
+fn saved_disk(project_id: &str) -> DiskState {
+    crate::paths::collab_root()
+        .ok()
+        .and_then(|root| {
+            oleafly_collab::CollabPaths::new(root)
+                .materializer_index_file(project_id)
+                .ok()
+        })
+        .map(|file| DiskState::load(&file))
+        .unwrap_or_default()
+}
+
 pub(crate) fn known_content(project_id: &str) -> KnownContent {
     if let Some(active) = active_for(project_id) {
         let hashes = guard(&active.disk).hashes.clone();
@@ -23,18 +35,28 @@ pub(crate) fn known_content(project_id: &str) -> KnownContent {
             hashes,
         };
     }
-    let hashes = crate::paths::collab_root()
-        .ok()
-        .and_then(|root| {
-            oleafly_collab::CollabPaths::new(root)
-                .materializer_index_file(project_id)
-                .ok()
-        })
-        .map(|file| DiskState::load(&file).hashes)
-        .unwrap_or_default();
     KnownContent {
         active: None,
-        hashes,
+        hashes: saved_disk(project_id).hashes,
+    }
+}
+
+pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<String> {
+    let files = |disk: &DiskState| {
+        disk.hashes
+            .keys()
+            .cloned()
+            .chain(
+                disk.layout
+                    .values()
+                    .filter(|placed| placed.kind != NodeKind::Dir)
+                    .map(|placed| placed.path.clone()),
+            )
+            .collect()
+    };
+    match active_for(project_id) {
+        Some(active) => files(&guard(&active.disk)),
+        None => files(&saved_disk(project_id)),
     }
 }
 

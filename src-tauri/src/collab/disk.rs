@@ -128,6 +128,44 @@ fn glob(pattern: &[u8], text: &[u8]) -> bool {
     }
 }
 
+pub fn scratch_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    [".swp", ".swo", ".swx"]
+        .iter()
+        .any(|swap| lower.ends_with(swap))
+        || name.ends_with('~')
+        || (name.len() > 1 && name.starts_with('#') && name.ends_with('#'))
+        || name.starts_with(".#")
+        || (name.starts_with(".~lock.") && name.ends_with('#'))
+        || name.starts_with("~$")
+        || name == "4913"
+        || crate::checkpoint_capture::is_oleafly_owned(name)
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ShareRules(Vec<IgnoreRule>);
+
+impl ShareRules {
+    pub fn load(root: &Path) -> ShareRules {
+        ShareRules(
+            std::fs::read_to_string(root.join(".gitignore"))
+                .map(|text| parse_gitignore(&text))
+                .unwrap_or_default(),
+        )
+    }
+
+    fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
+        scratch_name(name) || ignored(&self.0, relative, is_dir)
+    }
+
+    pub fn leaves_out(&self, relative: &str, is_dir: bool) -> bool {
+        let segments: Vec<&str> = relative.split('/').collect();
+        let name = segments.last().copied().unwrap_or(relative);
+        self.skips(name, relative, is_dir)
+            || (1..segments.len()).any(|end| ignored(&self.0, &segments[..end].join("/"), true))
+    }
+}
+
 fn ignored(rules: &[IgnoreRule], relative: &str, is_dir: bool) -> bool {
     let name = relative.rsplit('/').next().unwrap_or(relative);
     rules.iter().any(|rule| {
@@ -174,9 +212,7 @@ pub fn excluded_name(relative: &str) -> bool {
 }
 
 pub fn scan_folder(root: &Path) -> Result<Scan, String> {
-    let rules = std::fs::read_to_string(root.join(".gitignore"))
-        .map(|text| parse_gitignore(&text))
-        .unwrap_or_default();
+    let rules = ShareRules::load(root);
     let mut scan = Scan::default();
     walk(root, "", &rules, &mut scan, 0)?;
     scan.files.sort();
@@ -188,7 +224,7 @@ pub fn scan_folder(root: &Path) -> Result<Scan, String> {
 fn walk(
     root: &Path,
     relative: &str,
-    rules: &[IgnoreRule],
+    rules: &ShareRules,
     scan: &mut Scan,
     depth: usize,
 ) -> Result<(), String> {
@@ -229,7 +265,10 @@ fn walk(
             }
             continue;
         }
-        if ignored(rules, &child, kind.is_dir()) {
+        if rules.skips(&name, &child, kind.is_dir()) {
+            if crate::checkpoint_capture::is_oleafly_owned(&name) {
+                continue;
+            }
             scan.excluded.push(if kind.is_dir() {
                 format!("{child}/")
             } else {
@@ -528,6 +567,36 @@ mod tests {
                 scan.excluded
             );
         }
+    }
+
+    #[test]
+    fn editor_and_oleafly_scratch_files_are_never_shared() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(root, "main.tex", "x");
+        write(root, ".gitignore", "*.aux\nbuild/\n");
+        for scratch in [
+            ".main.tex.swp",
+            "main.tex~",
+            "#main.tex#",
+            ".~lock.notes.odt#",
+            "~$report.docx",
+            "4913",
+            ".main.tex.oleafly-1-2-3.tmp",
+            ".oleafly-rename-abc",
+        ] {
+            write(root, scratch, "scratch");
+        }
+        let scan = scan_folder(root).unwrap();
+        let files: Vec<&str> = scan.files.iter().map(|(path, _)| path.as_str()).collect();
+        assert_eq!(files, vec![".gitignore", "main.tex"]);
+        assert!(!scan.excluded.iter().any(|path| path.contains("oleafly")));
+        let rules = ShareRules::load(root);
+        assert!(rules.leaves_out("main.aux", false));
+        assert!(rules.leaves_out("build/out/main.log", false));
+        assert!(rules.leaves_out("chapters/.intro.tex.swp", false));
+        assert!(!rules.leaves_out("chapters/intro.tex", false));
+        assert!(!rules.leaves_out("builder/main.tex", false));
     }
 
     #[test]

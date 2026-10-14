@@ -158,7 +158,7 @@ pub(crate) fn relevant_path(root: &Path, path: &Path) -> Option<String> {
     }
     if last.eq_ignore_ascii_case(".git")
         || last.eq_ignore_ascii_case(".DS_Store")
-        || crate::checkpoint_capture::is_oleafly_owned(last)
+        || crate::collab::disk::scratch_name(last)
         || is_replace_file_scratch(last)
     {
         return None;
@@ -695,6 +695,12 @@ mod tests {
             ("build/main.pdf", None),
             ("_minted-main/x.pyg", None),
             (".DS_Store", None),
+            (".main.tex.swp", None),
+            ("chapters/main.tex~", None),
+            ("#main.tex#", None),
+            (".~lock.notes.odt#", None),
+            ("~$report.docx", None),
+            ("4913", None),
         ] {
             assert_eq!(
                 relevant_path(root, &root.join(path)).as_deref(),

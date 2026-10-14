@@ -238,6 +238,11 @@ impl LiveRig {
         names
     }
 
+    pub(crate) fn import(&self, paths: &[&str]) {
+        let paths = paths.iter().map(|path| (*path).to_owned()).collect();
+        tauri::async_runtime::block_on(self.active.import_paths(Some(paths))).unwrap();
+    }
+
     pub(crate) fn settle(&self) {
         let (done, wait) = oneshot::channel();
         let _ = self.active.writer.send(WriterSignal::Flush(done));
