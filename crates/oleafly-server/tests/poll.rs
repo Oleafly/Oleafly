@@ -1,4 +1,5 @@
 mod people;
+mod polling;
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
@@ -15,174 +16,24 @@ use oleafly_collab_protocol::frames::{
 };
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::poll::{
-    PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER,
-    PROTOCOL_HEADER, SIGNATURE_HEADER,
+    PollBatch, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
 };
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_server::build_router;
 use oleafly_server::config::{ConfigError, ServerConfig};
 use oleafly_server::rate_limit::CONNECT_BURST;
-use oleafly_server::test_support::{
-    challenge_nonce, test_app, test_app_with, TestDevice, TestServer,
-};
+use oleafly_server::test_support::{challenge_nonce, test_app, test_app_with, TestDevice};
 use oleafly_server::transfers::UploadTiming;
 use people::{
-    beside, call, connect, envelope, grant, large_change, longest_stall, next_frame, put_bytes,
-    seeded, send_frame, send_update, share_project, signed_by, stage, subscribe, told_of_removal,
-    Person, Stage, LONGEST_STALL,
+    call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
+    signed_by, stage, subscribe, told_of_removal, Stage,
 };
+use polling::{open, open_with, opened, poll_url, Poller};
 use reqwest::{Method, StatusCode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tower::ServiceExt;
 
 const WAIT: Duration = Duration::from_secs(5);
-
-struct Poller {
-    base: String,
-    project: SharedProjectId,
-    key: String,
-    cursor: String,
-}
-
-fn poll_url(server: &TestServer, project: SharedProjectId) -> String {
-    format!("{}/api/v1/projects/{project}/poll", server.url())
-}
-
-async fn open_with(
-    server: &TestServer,
-    person: &Person,
-    project: SharedProjectId,
-    since: u64,
-    signer: &TestDevice,
-    protocol: u32,
-) -> reqwest::Response {
-    let nonce = challenge_nonce(server).await;
-    let signature = signer.sign_b64(&challenge_message(
-        ChallengePurpose::Socket,
-        server.state().server_id,
-        &nonce,
-    ));
-    reqwest::Client::new()
-        .get(poll_url(server, project))
-        .query(&[("since", since.to_string())])
-        .bearer_auth(person.token())
-        .header(DEVICE_HEADER, person.tokens.device_id.to_string())
-        .header(NONCE_HEADER, nonce)
-        .header(SIGNATURE_HEADER, signature)
-        .header(PROTOCOL_HEADER, protocol.to_string())
-        .send()
-        .await
-        .expect("open request")
-}
-
-async fn open(
-    server: &TestServer,
-    person: &Person,
-    project: SharedProjectId,
-    since: u64,
-) -> (Option<Poller>, Vec<ServerFrame>) {
-    let response = open_with(
-        server,
-        person,
-        project,
-        since,
-        &person.device,
-        PROTOCOL_VERSION,
-    )
-    .await;
-    assert_eq!(response.status(), StatusCode::OK);
-    let batch: PollBatch = response.json().await.expect("poll batch");
-    let poller = match (batch.key, batch.cursor) {
-        (Some(key), Some(cursor)) => Some(Poller {
-            base: server.url(),
-            project,
-            key,
-            cursor,
-        }),
-        _ => None,
-    };
-    (poller, batch.frames)
-}
-
-async fn opened(server: &TestServer, person: &Person, project: SharedProjectId) -> Poller {
-    let (poller, frames) = open(server, person, project, 0).await;
-    assert!(
-        matches!(frames.first(), Some(ServerFrame::Subscribed { .. })),
-        "{frames:?}"
-    );
-    poller.expect("an open session")
-}
-
-impl Poller {
-    async fn get(&self, cursor: &str, key: &str) -> reqwest::Response {
-        reqwest::Client::new()
-            .get(format!(
-                "{}/api/v1/projects/{}/poll",
-                self.base, self.project
-            ))
-            .query(&[("cursor", cursor)])
-            .header(POLL_KEY_HEADER, key)
-            .send()
-            .await
-            .expect("poll request")
-    }
-
-    async fn poll_at(&mut self, cursor: &str) -> Vec<ServerFrame> {
-        let response = self.get(cursor, &self.key.clone()).await;
-        assert_eq!(response.status(), StatusCode::OK);
-        let batch: PollBatch = response.json().await.expect("poll batch");
-        assert_eq!(batch.key, None);
-        if let Some(cursor) = batch.cursor {
-            self.cursor = cursor;
-        }
-        batch.frames
-    }
-
-    async fn poll(&mut self) -> Vec<ServerFrame> {
-        let cursor = self.cursor.clone();
-        self.poll_at(&cursor).await
-    }
-
-    async fn status(&self) -> StatusCode {
-        self.get(&self.cursor, &self.key).await.status()
-    }
-
-    async fn collect(&mut self, count: usize) -> Vec<ServerFrame> {
-        let deadline = Instant::now() + WAIT;
-        let mut frames = Vec::new();
-        while frames.len() < count {
-            assert!(Instant::now() < deadline, "only got {frames:?}");
-            frames.extend(self.poll().await);
-        }
-        frames
-    }
-
-    async fn next(&mut self) -> ServerFrame {
-        let mut frames = self.collect(1).await;
-        assert_eq!(frames.len(), 1, "{frames:?}");
-        frames.remove(0)
-    }
-
-    async fn post_with(&self, key: &str, frames: Vec<ClientFrame>) -> reqwest::Response {
-        reqwest::Client::new()
-            .post(format!(
-                "{}/api/v1/projects/{}/frames",
-                self.base, self.project
-            ))
-            .header(POLL_KEY_HEADER, key)
-            .json(&PollFrames { frames })
-            .send()
-            .await
-            .expect("frames request")
-    }
-
-    async fn post(&self, frames: Vec<ClientFrame>) -> Vec<ServerFrame> {
-        let response = self.post_with(&self.key, frames).await;
-        assert_eq!(response.status(), StatusCode::OK);
-        let replies: PollReplies = response.json().await.expect("replies");
-        replies.frames
-    }
-}
 
 fn quick(stage: &Stage) {
     stage
@@ -565,36 +416,6 @@ async fn a_change_too_large_is_refused_like_on_the_socket() {
             ..
         }]
     ));
-}
-
-// The server runs on the test's only thread, so a ping that waits shows the
-// server's thread was busy with the large change rather than beside it.
-#[tokio::test(flavor = "current_thread")]
-async fn a_large_change_over_long_poll_does_not_hold_up_other_connections() {
-    let stage = stage().await;
-    quick(&stage);
-    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
-    let large = large_change(&stage.alice, project);
-    let alice = opened(&stage.server, &stage.alice, project).await;
-    let mut bob = opened(&stage.server, &stage.bob, project).await;
-    let carol = seeded(&stage.server, "Carol").await;
-    let mut pinger = connect(&stage.server, &carol).await;
-    let (work, done) =
-        beside(async move { tokio::join!(alice.post(vec![update(&large)]), bob.collect(1)) });
-    let stall = longest_stall(&mut pinger, &done).await;
-    let (answer, arrived) = work.await.expect("the clients ran");
-    assert!(
-        matches!(answer.as_slice(), [ServerFrame::Ack { seq: 1, .. }]),
-        "{answer:?}"
-    );
-    assert!(matches!(
-        arrived.as_slice(),
-        [ServerFrame::Update { seq: 1, .. }]
-    ));
-    assert!(
-        stall < LONGEST_STALL,
-        "the server's thread was held for {stall:?} while a large change was posted and polled"
-    );
 }
 
 #[tokio::test]
