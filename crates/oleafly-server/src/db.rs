@@ -8,10 +8,10 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 11;
+pub const SCHEMA_VERSION: i64 = 12;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 11] = [
+const MIGRATIONS: [&str; 12] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -23,6 +23,7 @@ const MIGRATIONS: [&str; 11] = [
     include_str!("../migrations/0009_peer_bindings.sql"),
     include_str!("../migrations/0010_storage_cleanup.sql"),
     include_str!("../migrations/0011_mention_emails.sql"),
+    include_str!("../migrations/0012_s1_sign_in.sql"),
 ];
 
 #[derive(Clone)]

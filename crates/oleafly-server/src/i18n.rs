@@ -76,6 +76,7 @@ keys! {
     CodeLockedBody => "code.locked_body",
     CodeAsked => "code.asked",
     CodeOnlyIfYou => "code.only_if_you",
+    CodeOtherNetwork => "code.other_network",
     CodeNoProviders => "code.no_providers",
     CodeDeny => "code.deny",
     CodeStoppedTitle => "code.stopped_title",

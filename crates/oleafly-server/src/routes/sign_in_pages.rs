@@ -5,7 +5,7 @@ use oleafly_collab_protocol::page::{document_in, status};
 
 use crate::auth::email_link;
 use crate::i18n::{Key, Locale};
-use crate::mail::messages::{escape, platform_label};
+use crate::mail::messages::{escape, one_line, platform_label};
 
 pub use oleafly_collab_protocol::page::Tone;
 
@@ -78,8 +78,14 @@ pub fn form(
     html
 }
 
+pub const DEVICE_NAME_CHARS: usize = 40;
+
 pub fn device_label(name: &str, platform: &str) -> String {
-    format!("{name} ({})", platform_label(platform))
+    format!(
+        "{} ({})",
+        one_line(name, DEVICE_NAME_CHARS),
+        platform_label(platform)
+    )
 }
 
 pub fn provider_button(locale: Locale, provider: &ProviderInfo) -> String {
@@ -268,6 +274,17 @@ mod tests {
         );
         assert!(text.contains(&escape(german.text(Key::CodeStoppedTitle))));
         assert!(!text.contains("Sign-in stopped"), "{text}");
+    }
+
+    #[test]
+    fn a_device_is_named_on_one_short_line() {
+        assert_eq!(device_label("Lab PC", "linux"), "Lab PC (Linux)");
+        let long = "Confirm your Oleafly access before Friday or lose your projects";
+        let label = device_label(long, "macos");
+        assert!(label.ends_with(" (macOS)"), "{label}");
+        let name = label.trim_end_matches(" (macOS)");
+        assert!(name.chars().count() <= DEVICE_NAME_CHARS, "{label}");
+        assert_eq!(device_label("Lab\nPC", "windows"), "Lab PC (Windows)");
     }
 
     #[test]

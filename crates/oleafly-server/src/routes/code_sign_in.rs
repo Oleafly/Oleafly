@@ -62,10 +62,12 @@ fn verification_uri(state: &AppState) -> String {
     state.config.endpoint("/auth/device").to_string()
 }
 
+const PLATFORMS: [&str; 3] = ["macos", "windows", "linux"];
+
 fn well_formed(request: &DeviceCodeRequest) -> bool {
     let key = b64url_decode(&request.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
     let name = !request.device_name.trim().is_empty() && request.device_name.chars().count() <= 100;
-    let platform = !request.platform.trim().is_empty() && request.platform.chars().count() <= 40;
+    let platform = PLATFORMS.contains(&request.platform.trim().to_ascii_lowercase().as_str());
     key && name && platform
 }
 
@@ -106,8 +108,9 @@ async fn issue(
     let new = NewAuthorization {
         device_public_key: request.device_public_key.clone(),
         device_name: request.device_name.trim().to_string(),
-        platform: request.platform.trim().to_string(),
+        platform: request.platform.trim().to_ascii_lowercase(),
         setup_code_hash,
+        requested_from: ip.as_deref().map(client_key),
     };
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
     let per_ip = state.config.sign_in.device_codes_per_ip;
@@ -454,6 +457,7 @@ async fn check(
     headers: HeaderMap,
     Form(form): Form<CodeForm>,
 ) -> Result<Response, ServerError> {
+    let here = ip.as_deref().map(client_key);
     let authorization = match found_or_page(locale, &state, ip, &headers, &form).await? {
         Ok(authorization) => authorization,
         Err(page) => return Ok(page),
@@ -465,6 +469,9 @@ async fn check(
         &locale.fill(Key::CodeAsked, &[("device", &device)]),
     ));
     body.push_str(&sign_in_pages::code(&user_code));
+    if from_another_network(authorization.requested_from.as_deref(), here.as_deref()) {
+        body.push_str(&sign_in_pages::error(locale.text(Key::CodeOtherNetwork)));
+    }
     body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeOnlyIfYou)));
     let runtime_email = email_link_available(&state).await?;
     let providers = email_link::with_email_link(state.providers.infos(), runtime_email);
@@ -516,6 +523,10 @@ async fn check(
         &body,
         None,
     ))
+}
+
+fn from_another_network(requested_from: Option<&str>, here: Option<&str>) -> bool {
+    matches!((requested_from, here), (Some(from), Some(here)) if from != here)
 }
 
 fn see_other(location: &str) -> Response {
@@ -792,6 +803,20 @@ mod tests {
             .await
             .unwrap();
         String::from_utf8_lossy(&body).into_owned()
+    }
+
+    #[test]
+    fn only_two_different_known_networks_count_as_another_network() {
+        assert!(from_another_network(
+            Some("198.51.100.1"),
+            Some("203.0.113.1")
+        ));
+        assert!(!from_another_network(
+            Some("198.51.100.1"),
+            Some("198.51.100.1")
+        ));
+        assert!(!from_another_network(None, Some("203.0.113.1")));
+        assert!(!from_another_network(Some("198.51.100.1"), None));
     }
 
     #[tokio::test]
