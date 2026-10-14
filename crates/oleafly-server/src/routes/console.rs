@@ -54,10 +54,11 @@ async fn overview(
         BlobStoreConfig::Filesystem => FilesLocation::Disk,
         BlobStoreConfig::S3(_) => FilesLocation::S3,
     };
+    let now = state.clock.now_ms();
     let (mut counts, storage, runtime) = state
         .db
         .call(move |conn| {
-            let counts = console::counts(conn)?;
+            let counts = console::counts(conn, now)?;
             let storage = if storage_visible {
                 Some(console::storage(conn, location)?)
             } else {
