@@ -870,14 +870,66 @@ function settleCompileNotices(projectId: string): void {
   if (!packageInstallsRunning.has(projectId)) dismissOwnedToast(missingPackageToasts, projectId);
 }
 
-export async function saveAllForCompile(): Promise<void> {
+async function saveAllDirtyRetryingConflicts(): Promise<void> {
   try {
     await useFilesStore.getState().saveAllDirty();
   } catch (error) {
     if (!String(error).includes(MUTATION_CONFLICT)) throw error;
     await useFilesStore.getState().saveAllDirty();
   }
+}
+
+// The files a build of mainDoc reads, from the project graph: the main
+// document, what it includes or imports, and the bibliographies and assets
+// those name. Null without a graph for this project, so every file counts.
+function filesTheCompileReads(projectId: string | null, mainDoc: string): Set<string> | null {
+  const graph = useIndexStore.getState().intelligenceState?.data;
+  if (!graph || !projectId || graph.identity.projectId !== projectId) return null;
+  const reads = new Set([mainDoc]);
+  const pending = [mainDoc];
+  for (let from = pending.pop(); from !== undefined; from = pending.pop()) {
+    for (const edge of graph.hierarchy.edges) {
+      if (edge.fromFile !== from) continue;
+      for (const target of edge.targetFile ? [edge.targetFile] : edge.candidateFiles) {
+        if (reads.has(target)) continue;
+        reads.add(target);
+        if (edge.kind === "include" || edge.kind === "import") pending.push(target);
+      }
+    }
+  }
+  return reads;
+}
+
+function saveFailureStopsCompile(error: unknown, projectId: string | null, mainDoc: string): boolean {
+  if (!(error instanceof SaveFlushError) || codedSaveFailure(error) !== null) return true;
+  const reads = filesTheCompileReads(projectId, mainDoc);
+  return reads === null || error.failures.some((failure) => reads.has(failure.path));
+}
+
+// Saves every open file. A file the build doesn't read that can't be saved,
+// such as notes changed on disk by a sync client, gets the usual save notice
+// and doesn't stop the compile. Anything else stops it.
+export async function saveAllForCompile(
+  options: { readonly mainDoc?: string; readonly explicit?: boolean } = {},
+): Promise<void> {
+  const files = useFilesStore.getState();
+  try {
+    await saveAllDirtyRetryingConflicts();
+  } catch (error) {
+    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc)) throw error;
+    reportCompileSaveFailure("save before compile", useFilesStore.getState(), error, options.explicit);
+  }
   await collabCompileBarrier(useFilesStore.getState().projectId);
+}
+
+export function compileSaveFailureReason(error: unknown): string {
+  if (!(error instanceof SaveFlushError)) {
+    return i18n.t(($) => $.core.compile.saveFailedOther, { reason: describeError(error) });
+  }
+  const path = error.failures[0].path;
+  return error.failures.length > 1
+    ? i18n.t(($) => $.core.compile.saveFailedSeveral, { path })
+    : i18n.t(($) => $.core.compile.saveFailed, { path });
 }
 
 export function clearFolderPause(): void {
@@ -889,18 +941,27 @@ export function clearFolderPause(): void {
   );
 }
 
+// Each failed file is reported under its own path with its own reason, so
+// one file's "changed on disk" never marks another file as changed.
 export function reportCompileSaveFailure(
   scope: string,
   files: ReturnType<typeof useFilesStore.getState>,
   error: unknown,
   explicit = false,
 ): void {
-  const path = error instanceof SaveFlushError ? error.failures[0].path : files.activePath;
-  if (files.projectId && path && projectFolderAvailable(files.projectId)) {
-    reportFileSaveFailure(scope, files.projectId, path, codedSaveFailure(error) ?? error, explicit);
-  } else {
+  const projectId = files.projectId;
+  if (!projectId || !projectFolderAvailable(projectId)) {
     void logError(scope, error);
+    return;
   }
+  if (error instanceof SaveFlushError) {
+    for (const failure of error.failures) {
+      reportFileSaveFailure(scope, projectId, failure.path, failure.reason, explicit);
+    }
+    return;
+  }
+  if (files.activePath) reportFileSaveFailure(scope, projectId, files.activePath, error, explicit);
+  else void logError(scope, error);
 }
 
 export function stopOutdatedAutomaticCompile(editedAt: number, now = Date.now()): boolean {
@@ -1103,7 +1164,7 @@ function folderLostDuringSave(projectId: string, error: unknown): boolean {
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
   if (formatsBeforeCompileSave(ctx)) await formatActiveFileBeforeCompileSave();
   try {
-    await saveAllForCompile();
+    await saveAllForCompile({ mainDoc: ctx.mainDoc, explicit: ctx.origin === "explicit" });
   } catch (e) {
     if (ctx.capturedProjectId && folderLostDuringSave(ctx.capturedProjectId, e)) {
       setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
@@ -1113,7 +1174,7 @@ async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> 
     ctx.set({
       status: "error",
       phase: "idle",
-      failureReason: `The document could not be saved before compiling: ${String(e)}`,
+      failureReason: compileSaveFailureReason(e),
       lastAttemptIdentity: gateAttemptIdentity(ctx),
     });
     ctx.abortIntent();

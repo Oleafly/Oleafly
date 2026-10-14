@@ -69,7 +69,10 @@
       "localNotFound": "El paquete local {{spec}} no está instalado. Ponlo en la carpeta de paquetes de Typst de Oleafly o en la carpeta typst-packages del proyecto.",
       "versionMissing": "Este paquete no tiene la versión {{version}}. La más reciente es {{latest}}.",
       "versionMissingNoLatest": "Este paquete no tiene la versión {{version}}. Revisa la versión en la importación."
-    }
+    },
+    "saveFailed": "No se pudo guardar {{path}}, así que Oleafly no compiló. Revisa ese archivo y vuelve a compilar.",
+    "saveFailedSeveral": "No se pudieron guardar {{path}} y otros archivos, así que Oleafly no compiló. Revisa esos archivos y vuelve a compilar.",
+    "saveFailedOther": "No se pudo guardar el documento, así que Oleafly no compiló. {{reason}}"
   },
   "developer": {
     "actions": {

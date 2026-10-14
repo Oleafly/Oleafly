@@ -69,7 +69,10 @@
       "localNotFound": "Yerel {{spec}} paketi kurulu değil. Paketi Oleafly'nin Typst paketleri klasörüne veya projenin typst-packages klasörüne koyun.",
       "versionMissing": "Bu paketin {{version}} sürümü yok. En yeni sürüm {{latest}}.",
       "versionMissingNoLatest": "Bu paketin {{version}} sürümü yok. İçe aktarmadaki sürümü denetleyin."
-    }
+    },
+    "saveFailed": "{{path}} kaydedilemediği için Oleafly derleme yapmadı. Bu dosyayı kontrol edin, sonra yeniden derleyin.",
+    "saveFailedSeveral": "{{path}} ve diğer dosyalar kaydedilemediği için Oleafly derleme yapmadı. Bu dosyaları kontrol edin, sonra yeniden derleyin.",
+    "saveFailedOther": "Belge kaydedilemediği için Oleafly derleme yapmadı. {{reason}}"
   },
   "developer": {
     "actions": {

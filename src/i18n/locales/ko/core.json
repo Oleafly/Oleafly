@@ -69,7 +69,10 @@
       "localNotFound": "로컬 패키지 {{spec}}이(가) 설치되어 있지 않습니다. Oleafly의 Typst 패키지 폴더나 프로젝트의 typst-packages 폴더에 넣으세요.",
       "versionMissing": "이 패키지에는 {{version}} 버전이 없습니다. 최신 버전은 {{latest}}입니다.",
       "versionMissingNoLatest": "이 패키지에는 {{version}} 버전이 없습니다. import 문의 버전을 확인하세요."
-    }
+    },
+    "saveFailed": "{{path}}을(를) 저장하지 못해 Oleafly가 컴파일하지 않았습니다. 그 파일을 확인한 다음 다시 컴파일하세요.",
+    "saveFailedSeveral": "{{path}} 및 다른 파일을 저장하지 못해 Oleafly가 컴파일하지 않았습니다. 그 파일들을 확인한 다음 다시 컴파일하세요.",
+    "saveFailedOther": "문서를 저장하지 못해 Oleafly가 컴파일하지 않았습니다. {{reason}}"
   },
   "developer": {
     "actions": {

@@ -69,7 +69,10 @@
       "localNotFound": "Il pacchetto locale {{spec}} non è installato. Mettilo nella cartella dei pacchetti Typst di Oleafly o nella cartella typst-packages del progetto.",
       "versionMissing": "Questo pacchetto non ha la versione {{version}}. La più recente è {{latest}}.",
       "versionMissingNoLatest": "Questo pacchetto non ha la versione {{version}}. Controlla la versione nell'import."
-    }
+    },
+    "saveFailed": "Non è stato possibile salvare {{path}}, quindi Oleafly non ha compilato. Controlla quel file, poi compila di nuovo.",
+    "saveFailedSeveral": "Non è stato possibile salvare {{path}} e altri file, quindi Oleafly non ha compilato. Controlla quei file, poi compila di nuovo.",
+    "saveFailedOther": "Non è stato possibile salvare il documento, quindi Oleafly non ha compilato. {{reason}}"
   },
   "developer": {
     "actions": {

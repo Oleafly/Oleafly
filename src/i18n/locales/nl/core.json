@@ -69,7 +69,10 @@
       "localNotFound": "Het lokale pakket {{spec}} is niet geïnstalleerd. Zet het in de Typst-pakkettenmap van Oleafly of in de map typst-packages van het project.",
       "versionMissing": "Dit pakket heeft geen versie {{version}}. De nieuwste versie is {{latest}}.",
       "versionMissingNoLatest": "Dit pakket heeft geen versie {{version}}. Controleer de versie in de import."
-    }
+    },
+    "saveFailed": "{{path}} kon niet worden opgeslagen, dus Oleafly heeft niet gecompileerd. Controleer dat bestand en compileer dan opnieuw.",
+    "saveFailedSeveral": "{{path}} en andere bestanden konden niet worden opgeslagen, dus Oleafly heeft niet gecompileerd. Controleer die bestanden en compileer dan opnieuw.",
+    "saveFailedOther": "Het document kon niet worden opgeslagen, dus Oleafly heeft niet gecompileerd. {{reason}}"
   },
   "developer": {
     "actions": {

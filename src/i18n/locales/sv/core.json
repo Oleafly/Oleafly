@@ -69,7 +69,10 @@
       "localNotFound": "Det lokala paketet {{spec}} är inte installerat. Lägg det i Oleaflys mapp för Typst-paket eller i projektets mapp typst-packages.",
       "versionMissing": "Det här paketet har ingen version {{version}}. Den senaste versionen är {{latest}}.",
       "versionMissingNoLatest": "Det här paketet har ingen version {{version}}. Kontrollera versionen i importen."
-    }
+    },
+    "saveFailed": "{{path}} kunde inte sparas, så Oleafly kompilerade inte. Kontrollera filen och kompilera sedan igen.",
+    "saveFailedSeveral": "{{path}} och andra filer kunde inte sparas, så Oleafly kompilerade inte. Kontrollera filerna och kompilera sedan igen.",
+    "saveFailedOther": "Dokumentet kunde inte sparas, så Oleafly kompilerade inte. {{reason}}"
   },
   "developer": {
     "actions": {

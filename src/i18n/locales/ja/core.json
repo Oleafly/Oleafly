@@ -69,7 +69,10 @@
       "localNotFound": "ローカルパッケージ {{spec}} がインストールされていません。Oleafly の Typst パッケージフォルダか、プロジェクトの typst-packages フォルダに置いてください。",
       "versionMissing": "このパッケージにバージョン {{version}} はありません。最新のバージョンは {{latest}} です。",
       "versionMissingNoLatest": "このパッケージにバージョン {{version}} はありません。import 文のバージョンを確認してください。"
-    }
+    },
+    "saveFailed": "{{path}} を保存できなかったため、Oleafly はコンパイルしませんでした。そのファイルを確認してから、もう一度コンパイルしてください。",
+    "saveFailedSeveral": "{{path}} とほかのファイルを保存できなかったため、Oleafly はコンパイルしませんでした。それらのファイルを確認してから、もう一度コンパイルしてください。",
+    "saveFailedOther": "文書を保存できなかったため、Oleafly はコンパイルしませんでした。{{reason}}"
   },
   "developer": {
     "actions": {
