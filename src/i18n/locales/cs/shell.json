@@ -1539,5 +1539,9 @@
       "allTheirs": "Použít všechny z Overleafu",
       "apply": "Použít a synchronizovat"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly toto okno znovu načetlo, protože 30 sekund nereagovalo. Změny provedené těsně předtím se možná neuložily.",
+    "reloadedAgain": "Oleafly toto okno znovu načetlo, protože opět přestalo reagovat. Váš projekt tentokrát neotevřelo pro případ, že problém způsobuje něco v něm."
   }
 }

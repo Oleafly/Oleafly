@@ -1467,5 +1467,9 @@
       "allTheirs": "Brug alle Overleafs",
       "apply": "Anvend og synkroniser"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly genindlæste dette vindue, fordi det ikke svarede i 30 sekunder. Ændringer, du lavede lige før, er måske ikke gemt.",
+    "reloadedAgain": "Oleafly genindlæste dette vindue igen, fordi det holdt op med at svare. Dit projekt blev ikke åbnet igen, hvis nu noget i det var årsagen."
   }
 }

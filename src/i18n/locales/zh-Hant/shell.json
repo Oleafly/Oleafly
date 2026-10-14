@@ -1431,5 +1431,9 @@
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "套用並同步"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "此視窗 30 秒沒有回應，Oleafly 已重新載入它。在此之前剛做的變更可能沒有儲存。",
+    "reloadedAgain": "此視窗再次停止回應，Oleafly 又重新載入了它。由於問題可能出在你的專案裡，這次沒有重新開啟專案。"
   }
 }

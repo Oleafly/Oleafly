@@ -1503,5 +1503,9 @@
       "allTheirs": "Folosește toate versiunile din Overleaf",
       "apply": "Aplică și sincronizează"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly a reîncărcat această fereastră pentru că nu a răspuns timp de 30 de secunde. Este posibil ca modificările făcute chiar înainte să nu fi fost salvate.",
+    "reloadedAgain": "Oleafly a reîncărcat din nou această fereastră pentru că a încetat iar să răspundă. Proiectul tău nu a fost redeschis, în caz că ceva din el a cauzat problema."
   }
 }

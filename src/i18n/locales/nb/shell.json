@@ -1467,5 +1467,9 @@
       "allTheirs": "Bruk alle fra Overleaf",
       "apply": "Bruk og synkroniser"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly lastet inn dette vinduet på nytt fordi det ikke svarte på 30 sekunder. Endringer du gjorde rett før, er kanskje ikke lagret.",
+    "reloadedAgain": "Oleafly lastet inn dette vinduet på nytt igjen fordi det sluttet å svare. Prosjektet ditt ble ikke åpnet igjen, i tilfelle noe i det var årsaken."
   }
 }
