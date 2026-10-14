@@ -7,6 +7,7 @@ import {
   collabServerSignOut,
   collabServersList,
   type CollabErrorCode,
+  type CollabDetachedProject,
   type CollabServer,
   type CollabSignInCode,
   type CollabSignOut,
@@ -23,12 +24,19 @@ export interface UnsentWork {
   projects: readonly CollabUnsentProject[];
 }
 
+// The shared projects a removed server left behind as ordinary projects.
+export interface DetachedNotice {
+  server: string;
+  projects: readonly CollabDetachedProject[];
+}
+
 interface CollabStore {
   servers: CollabServer[];
   status: CollabServersStatus;
   loadError: CollabErrorCode | null;
   pending: Readonly<Record<string, CollabServerAction>>;
   unsent: Readonly<Record<string, UnsentWork>>;
+  detached: DetachedNotice | null;
   load: () => Promise<void>;
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   signInWithCode: (
@@ -40,6 +48,7 @@ interface CollabStore {
   remove: (serverId: string) => Promise<CollabErrorCode | null>;
   keepLocalCopies: (serverId: string) => Promise<CollabErrorCode | null>;
   stay: (serverId: string) => void;
+  dismissDetached: () => void;
   refreshAccounts: () => Promise<void>;
 }
 
@@ -67,6 +76,7 @@ async function end(
 ): Promise<CollabErrorCode | null> {
   const store = useCollabStore;
   if (store.getState().pending[serverId]) return null;
+  const serverName = store.getState().servers.find((entry) => entry.server_id === serverId)?.name ?? "";
   store.setState((state) => ({
     pending: { ...state.pending, [serverId]: action },
     unsent: without(state.unsent, serverId),
@@ -89,11 +99,14 @@ async function end(
     return null;
   }
   loadRequest += 1;
+  const detached = outcome.detached ?? [];
   store.setState((state) => ({
     servers: ended(state.servers, serverId, action),
     pending: without(state.pending, serverId),
+    detached: detached.length > 0 ? { server: serverName, projects: detached } : state.detached,
   }));
-  if (outcome.unsent.length > 0) void followLocalCopies(outcome.unsent.map((project) => project.project_id));
+  const local = [...outcome.unsent, ...detached].map((project) => project.project_id);
+  if (local.length > 0) void followLocalCopies(local);
   return null;
 }
 
@@ -103,6 +116,7 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   loadError: null,
   pending: {},
   unsent: {},
+  detached: null,
   load: async () => {
     const request = ++loadRequest;
     set((state) => ({ status: state.status === "ready" ? "ready" : "loading", loadError: null }));
@@ -135,6 +149,7 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
     return end(serverId, waiting.action, true);
   },
   stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
+  dismissDetached: () => set({ detached: null }),
   refreshAccounts: async () => {
     const signedIn = get().servers.filter((entry) => entry.signed_in);
     const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));

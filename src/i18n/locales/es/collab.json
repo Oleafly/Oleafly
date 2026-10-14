@@ -38,9 +38,10 @@
       "test": "Probar la conexión",
       "removeConfirm": {
         "title": "¿Quitar {{name}}?",
-        "description": "Oleafly cierra la sesión en este servidor y lo olvida. Los proyectos que ya están en este equipo se quedan donde están.",
+        "description": "Oleafly cierra la sesión en {{name}} y lo olvida. Los proyectos compartidos de {{name}} dejan de sincronizarse y se quedan en este equipo como proyectos normales.",
         "confirm": "Quitar el servidor"
       },
+      "detached": "Estos proyectos compartidos de {{server}} dejaron de sincronizarse. Se quedan en este equipo como proyectos normales.",
       "unsent": {
         "title": "Algunos cambios aún no se han enviado",
         "description": "Proyectos compartidos con cambios que el servidor aún no tiene: {{count}}. Oleafly puede guardar una copia local de cada uno en este equipo, o puedes seguir con la sesión iniciada e intentarlo más tarde.",

@@ -38,9 +38,10 @@
       "test": "测试连接",
       "removeConfirm": {
         "title": "要移除 {{name}} 吗？",
-        "description": "Oleafly 会退出此服务器的登录，并不再记住它。这台电脑上已有的项目会原样保留。",
+        "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，并作为普通项目保留在这台电脑上。",
         "confirm": "移除服务器"
       },
+      "detached": "这些来自 {{server}} 的共享项目已停止同步。它们会作为普通项目保留在这台电脑上。",
       "unsent": {
         "title": "有些更改还没有发送",
         "description": "有尚未到达服务器的更改的共享项目：{{count}} 个。Oleafly 可以把每个项目作为本地副本保留在这台电脑上，你也可以保持登录，稍后再试。",

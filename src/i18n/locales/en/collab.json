@@ -38,9 +38,10 @@
       "test": "Test connection",
       "removeConfirm": {
         "title": "Remove {{name}}?",
-        "description": "Oleafly signs out of this server and forgets it. Projects already on this computer stay where they are.",
+        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects.",
         "confirm": "Remove server"
       },
+      "detached": "These shared projects from {{server}} stopped syncing. They stay on this computer as ordinary projects.",
       "unsent": {
         "title": "Some changes haven't been sent",
         "description": "Shared projects with changes the server doesn't have yet: {{count}}. Oleafly can keep a local copy of each one on this computer, or you can stay signed in and try again later.",

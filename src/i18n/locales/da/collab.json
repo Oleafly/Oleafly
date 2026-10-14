@@ -38,9 +38,10 @@
       "test": "Test forbindelsen",
       "removeConfirm": {
         "title": "Vil du fjerne {{name}}?",
-        "description": "Oleafly logger ud af denne server og glemmer den. Projekter, der allerede ligger på denne computer, bliver, hvor de er.",
+        "description": "Oleafly logger ud af {{name}} og glemmer den. Delte projekter fra {{name}} holder op med at synkronisere og bliver på denne computer som almindelige projekter.",
         "confirm": "Fjern serveren"
       },
+      "detached": "Disse delte projekter fra {{server}} er holdt op med at synkronisere. De bliver på denne computer som almindelige projekter.",
       "unsent": {
         "title": "Nogle ændringer er ikke sendt endnu",
         "description": "Delte projekter med ændringer, som serveren ikke har endnu: {{count}}. Oleafly kan beholde en lokal kopi af hvert projekt på denne computer, eller du kan forblive logget ind og prøve igen senere.",

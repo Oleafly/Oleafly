@@ -20,7 +20,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 
 vi.mock("./live/removed-notices", () => copies);
 
-const DONE = { signed_out: true, unsent: [] };
+const DONE = { signed_out: true, unsent: [], detached: [] };
 const PAPER = { project_id: "r3-paper", name: "R3 Paper", changes: 4 };
 
 import { useCollabStore } from "./store";
@@ -28,7 +28,7 @@ import { useCollabStore } from "./store";
 beforeEach(() => {
   vi.clearAllMocks();
   copies.followLocalCopies.mockResolvedValue(undefined);
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {} });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {}, detached: null });
 });
 
 describe("collab store", () => {
@@ -124,6 +124,27 @@ describe("collab store", () => {
     await expect(useCollabStore.getState().remove(SERVER_ID)).resolves.toBeNull();
     expect(mocks.collabServerRemove).toHaveBeenLastCalledWith(SERVER_ID, false);
     expect(useCollabStore.getState().servers).toEqual([]);
+  });
+
+  it("names the shared projects a removed server left as ordinary projects, until dismissed", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    const thesis = { project_id: "thesis", name: "Thesis" };
+    mocks.collabServerRemove.mockResolvedValueOnce({ ...DONE, detached: [thesis] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    expect(useCollabStore.getState().detached).toEqual({ server: server().name, projects: [thesis] });
+    expect(copies.followLocalCopies).toHaveBeenCalledWith(["thesis"]);
+    useCollabStore.getState().dismissDetached();
+    expect(useCollabStore.getState().detached).toBeNull();
+  });
+
+  it("names nothing after a sign-out, or after a remove that left no projects", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServerSignOut.mockResolvedValueOnce(DONE);
+    await useCollabStore.getState().signOut(SERVER_ID);
+    mocks.collabServerRemove.mockResolvedValueOnce({ signed_out: true, unsent: [] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    expect(useCollabStore.getState().detached).toBeNull();
+    expect(copies.followLocalCopies).not.toHaveBeenCalled();
   });
 
   it("asks before signing out while a shared project still has changes the server lacks", async () => {

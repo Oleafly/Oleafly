@@ -202,7 +202,7 @@ export function ServerCard({
       <ConfirmationDialog
         open={confirmRemove}
         title={t(($) => $.collab.section.server.removeConfirm.title, { name: server.name })}
-        description={t(($) => $.collab.section.server.removeConfirm.description)}
+        description={t(($) => $.collab.section.server.removeConfirm.description, { name: server.name })}
         confirmLabel={t(($) => $.collab.section.server.removeConfirm.confirm)}
         destructive
         onConfirm={() => void doRemove()}

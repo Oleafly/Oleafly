@@ -38,9 +38,10 @@
       "test": "Verifica la connessione",
       "removeConfirm": {
         "title": "Vuoi rimuovere il server {{name}}?",
-        "description": "Oleafly esce da questo server e lo dimentica. I progetti già presenti su questo computer restano dove sono.",
+        "description": "Oleafly esce da {{name}} e lo dimentica. I progetti condivisi di {{name}} smettono di sincronizzarsi e restano su questo computer come progetti normali.",
         "confirm": "Rimuovi il server"
       },
+      "detached": "Questi progetti condivisi di {{server}} non si sincronizzano più. Restano su questo computer come progetti normali.",
       "unsent": {
         "title": "Alcune modifiche non sono ancora state inviate",
         "description": "Progetti condivisi con modifiche che il server non ha ancora: {{count}}. Oleafly può tenere una copia locale di ciascuno su questo computer, oppure puoi restare connesso e riprovare più tardi.",

@@ -1709,9 +1709,16 @@ export interface CollabUnsentProject {
   name: string;
   changes: number;
 }
+export interface CollabDetachedProject {
+  project_id: string;
+  name: string;
+}
 export interface CollabSignOut {
   signed_out: boolean;
   unsent: CollabUnsentProject[];
+  // Projects that stopped syncing because their server was removed. They stay
+  // on this computer as ordinary projects. Always empty after a sign-out.
+  detached: CollabDetachedProject[];
 }
 export interface CollabLiveRemovedFile {
   path: string;

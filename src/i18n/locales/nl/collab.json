@@ -38,9 +38,10 @@
       "test": "Verbinding testen",
       "removeConfirm": {
         "title": "{{name}} weghalen?",
-        "description": "Oleafly meldt zich af bij deze server en vergeet hem. Projecten die al op deze computer staan, blijven waar ze zijn.",
+        "description": "Oleafly meldt zich af bij {{name}} en vergeet deze server. Gedeelde projecten van {{name}} synchroniseren niet meer en blijven op deze computer als gewone projecten.",
         "confirm": "Server weghalen"
       },
+      "detached": "Deze gedeelde projecten van {{server}} synchroniseren niet meer. Ze blijven op deze computer als gewone projecten.",
       "unsent": {
         "title": "Sommige wijzigingen zijn nog niet verzonden",
         "description": "Gedeelde projecten met wijzigingen die de server nog niet heeft: {{count}}. Oleafly kan van elk project een lokale kopie op deze computer bewaren, of je blijft aangemeld en probeert het later opnieuw.",

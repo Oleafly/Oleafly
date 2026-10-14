@@ -17,6 +17,30 @@ import { canManageServer, toServerRole } from "./roles";
 import { ServerCard } from "./ServerCard";
 import { useCollabStore } from "./store";
 
+// After Remove, the shared projects that server held stay as ordinary
+// projects. Name them, so nobody wonders where their sync went.
+function DetachedProjects() {
+  const { t } = useTranslation(["collab", "common"]);
+  const detached = useCollabStore((state) => state.detached);
+  const dismiss = useCollabStore((state) => state.dismissDetached);
+  if (!detached) return null;
+  return (
+    <div role="status" className="space-y-2 rounded-lg border bg-card px-3 py-2.5 text-xs">
+      <p>{t(($) => $.collab.section.server.detached, { server: detached.server })}</p>
+      <ul className="max-h-28 select-text space-y-0.5 overflow-y-auto font-medium">
+        {detached.projects.map((project) => (
+          <li key={project.project_id} className="truncate">
+            {project.name}
+          </li>
+        ))}
+      </ul>
+      <Button type="button" variant="outline" size="sm" onClick={dismiss}>
+        {t(($) => $.common.actions.ok)}
+      </Button>
+    </div>
+  );
+}
+
 function PresenceChoice() {
   const { t } = useTranslation(["collab"]);
   const id = useId();
@@ -125,6 +149,7 @@ export function CollaborationSection() {
           onRetry={() => void load()}
         />
       ) : null}
+      <DetachedProjects />
       {renderServers()}
       <PresenceChoice />
       <AddServerDialog open={adding !== null} initialUrl={adding?.url ?? null} onClose={() => setAdding(null)} />

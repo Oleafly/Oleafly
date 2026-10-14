@@ -38,9 +38,10 @@
       "test": "Bağlantıyı test et",
       "removeConfirm": {
         "title": "{{name}} kaldırılsın mı?",
-        "description": "Oleafly bu sunucudaki oturumu kapatır ve sunucuyu unutur. Bu bilgisayarda zaten bulunan projeler oldukları yerde kalır.",
+        "description": "Oleafly, {{name}} sunucusundaki oturumu kapatır ve sunucuyu unutur. {{name}} sunucusundaki paylaşılan projeler eşitlenmeyi bırakır ve bu bilgisayarda sıradan projeler olarak kalır.",
         "confirm": "Sunucuyu kaldır"
       },
+      "detached": "{{server}} sunucusundaki bu paylaşılan projeler artık eşitlenmiyor. Bu bilgisayarda sıradan projeler olarak kalır.",
       "unsent": {
         "title": "Bazı değişiklikler henüz gönderilmedi",
         "description": "Sunucunun henüz almadığı değişiklikleri olan paylaşılan projeler: {{count}}. Oleafly her birinin yerel kopyasını bu bilgisayarda saklayabilir ya da oturumunuzu açık tutup daha sonra yeniden deneyebilirsiniz.",

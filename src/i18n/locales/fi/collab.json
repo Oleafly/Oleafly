@@ -38,9 +38,10 @@
       "test": "Testaa yhteys",
       "removeConfirm": {
         "title": "Poistetaanko {{name}}?",
-        "description": "Oleafly kirjautuu ulos tältä palvelimelta ja unohtaa sen. Tällä koneella jo olevat projektit pysyvät paikoillaan.",
+        "description": "Oleafly kirjautuu ulos palvelimelta {{name}} ja unohtaa sen. Palvelimen {{name}} jaetut projektit lakkaavat synkronoitumasta ja pysyvät tällä koneella tavallisina projekteina.",
         "confirm": "Poista palvelin"
       },
+      "detached": "Nämä palvelimen {{server}} jaetut projektit eivät enää synkronoidu. Ne pysyvät tällä koneella tavallisina projekteina.",
       "unsent": {
         "title": "Kaikkia muutoksia ei ole vielä lähetetty",
         "description": "Jaetut projektit, joissa on muutoksia, joita palvelimella ei vielä ole: {{count}}. Oleafly voi säilyttää jokaisesta paikallisen kopion tällä koneella, tai voit pysyä kirjautuneena ja yrittää myöhemmin uudelleen.",

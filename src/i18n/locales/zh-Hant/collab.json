@@ -38,9 +38,10 @@
       "test": "測試連線",
       "removeConfirm": {
         "title": "要移除 {{name}} 嗎？",
-        "description": "Oleafly 會登出這個伺服器，並且不再記住它。這台電腦上已有的專案會留在原處。",
+        "description": "Oleafly 會登出 {{name}} 並忘記這個伺服器。來自 {{name}} 的分享專案會停止同步，並以一般專案的形式留在這台電腦上。",
         "confirm": "移除伺服器"
       },
+      "detached": "這些來自 {{server}} 的分享專案已停止同步。它們會以一般專案的形式留在這台電腦上。",
       "unsent": {
         "title": "有些變更還沒有傳送",
         "description": "有尚未送達伺服器之變更的共用專案：{{count}} 個。Oleafly 可以把每個專案當作本機副本保留在這台電腦上，你也可以保持登入，稍後再試。",

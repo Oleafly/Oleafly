@@ -43,7 +43,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {} });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, detached: null });
   mocks.collabServerDevices.mockResolvedValue([]);
   mocks.collabServerRefresh.mockImplementation(async (serverId: string) =>
     useCollabStore.getState().servers.find((entry) => entry.server_id === serverId),
@@ -67,6 +67,29 @@ describe("CollaborationSection", () => {
     expect(screen.getByRole("heading", { name: "Jones Lab" })).toBeInTheDocument();
     expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
     expect(screen.getByText(copy.server.signedOut)).toBeInTheDocument();
+  });
+
+  it("names the shared projects a removed server left behind as ordinary projects", async () => {
+    mocks.collabServersList.mockResolvedValue([server()]);
+    mocks.collabServerRemove.mockResolvedValue({
+      signed_out: true,
+      unsent: [],
+      detached: [
+        { project_id: "thesis", name: "Thesis" },
+        { project_id: "grant", name: "Grant proposal" },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<CollaborationSection />);
+    await user.click(await screen.findByRole("button", { name: copy.server.remove }));
+    await user.click(screen.getByRole("button", { name: copy.server.removeConfirm.confirm }));
+
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(copy.server.detached.replace("{{server}}", "Smith Lab"));
+    expect(within(notice).getByText("Thesis")).toBeInTheDocument();
+    expect(within(notice).getByText("Grant proposal")).toBeInTheDocument();
+    await user.click(within(notice).getByRole("button", { name: enCommon.actions.ok }));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("shows what to do when there are no servers", async () => {

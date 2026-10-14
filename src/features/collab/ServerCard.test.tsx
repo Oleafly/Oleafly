@@ -148,7 +148,8 @@ describe("ServerCard", () => {
     renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.remove }));
     const dialog = screen.getByRole("alertdialog", { name: fill(copy.server.removeConfirm.title, { name: "Smith Lab" }) });
-    expect(dialog).toHaveTextContent(copy.server.removeConfirm.description);
+    expect(dialog).toHaveTextContent(fill(copy.server.removeConfirm.description, { name: "Smith Lab" }));
+    expect(dialog).toHaveTextContent("Shared projects from Smith Lab stop syncing");
     await user.click(within(dialog).getByRole("button", { name: copy.server.removeConfirm.confirm }));
     expect(mocks.collabServerRemove).toHaveBeenCalledWith(SERVER_ID, false);
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Smith Lab" })).toBeNull());

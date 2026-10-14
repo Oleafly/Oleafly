@@ -38,9 +38,10 @@
       "test": "Tester la connexion",
       "removeConfirm": {
         "title": "Retirer {{name}} ?",
-        "description": "Oleafly se déconnecte de ce serveur et l'oublie. Les projets déjà présents sur cet ordinateur restent où ils sont.",
+        "description": "Oleafly se déconnecte de {{name}} et l'oublie. Les projets partagés de {{name}} cessent de se synchroniser et restent sur cet ordinateur comme des projets ordinaires.",
         "confirm": "Retirer le serveur"
       },
+      "detached": "Ces projets partagés de {{server}} ne se synchronisent plus. Ils restent sur cet ordinateur comme des projets ordinaires.",
       "unsent": {
         "title": "Certaines modifications n'ont pas encore été envoyées",
         "description": "Projets partagés avec des modifications que le serveur n'a pas encore : {{count}}. Oleafly peut garder une copie locale de chacun sur cet ordinateur, ou vous pouvez rester connecté et réessayer plus tard.",
