@@ -15,9 +15,12 @@ pub struct Placed {
 pub type Layout = BTreeMap<String, Placed>;
 
 const RESERVED_TOP: [&str; 3] = [".oleafly", ".git", ".DS_Store"];
-const WINDOWS_RESERVED: [&str; 22] = [
-    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+// Windows treats these as devices with or without an extension, including
+// the forms with superscript digits.
+const WINDOWS_RESERVED: [&str; 30] = [
+    "con", "prn", "aux", "nul", "com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7",
+    "com8", "com9", "com¹", "com²", "com³", "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6",
+    "lpt7", "lpt8", "lpt9", "lpt¹", "lpt²", "lpt³",
 ];
 
 pub fn short_alias(name: &str) -> bool {
@@ -627,6 +630,10 @@ mod tests {
             ".Oleafly",
             "GIT~1",
             "draft~2.tex",
+            "COM\u{b9}.txt",
+            "lpt\u{b3}",
+            "COM0.tex",
+            "lpt0",
         ] {
             assert!(
                 safe_name(bad, "0123456789").starts_with("unnamed-"),
