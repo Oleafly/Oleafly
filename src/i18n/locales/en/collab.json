@@ -499,7 +499,8 @@
     "preparing": "Getting the project ready…",
     "uploading": "Uploading figures and other files: {{done}} of {{total}}",
     "saving": "Saving the project on the server…",
-    "failed": "Sharing didn't finish, so nothing was shared."
+    "failed": "Sharing didn't finish, so nothing was shared.",
+    "trustAgain": "Now that other people can edit this project, Oleafly asks you again before running its tools on this computer."
   },
   "manage": {
     "sharedOn": "Shared on {{server}}",

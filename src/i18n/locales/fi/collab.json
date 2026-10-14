@@ -499,7 +499,8 @@
     "preparing": "Valmistellaan projektia…",
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
-    "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu."
+    "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
+    "trustAgain": "Koska muutkin voivat nyt muokata tätä projektia, Oleafly kysyy sinulta uudelleen ennen kuin se ajaa projektin työkaluja tällä koneella."
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",

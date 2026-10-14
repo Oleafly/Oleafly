@@ -499,7 +499,8 @@
     "preparing": "Het project wordt voorbereid…",
     "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
     "saving": "Het project wordt op de server opgeslagen…",
-    "failed": "Het delen is niet afgerond, dus er is niets gedeeld."
+    "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
+    "trustAgain": "Nu anderen dit project kunnen bewerken, vraagt Oleafly het je opnieuw voordat het de hulpmiddelen ervan op deze computer uitvoert."
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",

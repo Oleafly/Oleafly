@@ -499,7 +499,8 @@
     "preparing": "Preparazione del progetto…",
     "uploading": "Caricamento di figure e altri file: {{done}} di {{total}}",
     "saving": "Salvataggio del progetto sul server…",
-    "failed": "La condivisione non è stata completata, quindi non è stato condiviso nulla."
+    "failed": "La condivisione non è stata completata, quindi non è stato condiviso nulla.",
+    "trustAgain": "Ora che altre persone possono modificare questo progetto, Oleafly ti chiede di nuovo prima di eseguirne gli strumenti su questo computer."
   },
   "manage": {
     "sharedOn": "Condiviso su {{server}}",

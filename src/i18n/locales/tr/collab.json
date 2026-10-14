@@ -499,7 +499,8 @@
     "preparing": "Proje hazırlanıyor…",
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
-    "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı."
+    "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
+    "trustAgain": "Artık başkaları da bu projeyi düzenleyebildiği için Oleafly, projenin araçlarını bu bilgisayarda çalıştırmadan önce size yeniden sorar."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",

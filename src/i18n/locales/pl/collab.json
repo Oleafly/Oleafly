@@ -499,7 +499,8 @@
     "preparing": "Przygotowywanie projektu…",
     "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
     "saving": "Zapisywanie projektu na serwerze…",
-    "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono."
+    "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono.",
+    "trustAgain": "Teraz, gdy inni mogą edytować ten projekt, Oleafly zapyta Cię ponownie, zanim uruchomi jego narzędzia na tym komputerze."
   },
   "manage": {
     "sharedOn": "Udostępniono na serwerze {{server}}",

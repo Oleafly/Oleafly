@@ -499,7 +499,8 @@
     "preparing": "Förbereder projektet…",
     "uploading": "Laddar upp figurer och andra filer: {{done}} av {{total}}",
     "saving": "Sparar projektet på servern…",
-    "failed": "Delningen slutfördes inte, så inget delades."
+    "failed": "Delningen slutfördes inte, så inget delades.",
+    "trustAgain": "Nu när andra kan redigera projektet frågar Oleafly dig igen innan projektets verktyg körs på den här datorn."
   },
   "manage": {
     "sharedOn": "Delat på {{server}}",

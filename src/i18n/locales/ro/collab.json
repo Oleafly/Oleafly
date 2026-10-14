@@ -499,7 +499,8 @@
     "preparing": "Se pregătește proiectul…",
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
     "saving": "Se salvează proiectul pe server…",
-    "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic."
+    "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
+    "trustAgain": "Acum că și alții pot edita acest proiect, Oleafly te întreabă din nou înainte să-i ruleze instrumentele pe acest computer."
   },
   "manage": {
     "sharedOn": "Partajat pe {{server}}",

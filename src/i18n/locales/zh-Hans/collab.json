@@ -499,7 +499,8 @@
     "preparing": "正在准备项目…",
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
     "saving": "正在把项目保存到服务器…",
-    "failed": "共享未完成，因此没有共享任何内容。"
+    "failed": "共享未完成，因此没有共享任何内容。",
+    "trustAgain": "现在其他人也能编辑这个项目了，Oleafly 在这台电脑上运行它的工具前会再次征求你的同意。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",

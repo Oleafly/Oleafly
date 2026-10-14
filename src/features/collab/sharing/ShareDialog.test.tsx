@@ -137,6 +137,7 @@ describe("ShareDialog before sharing", () => {
     finish(shareInfo());
     expect(await screen.findByText(fill(manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(await screen.findByRole("textbox", { name: manage.add.label })).toBeInTheDocument();
+    expect(screen.getByTestId("collab-share-trust")).toHaveTextContent(share.trustAgain);
     expect(refreshProjects).toHaveBeenCalled();
     expect(refreshShare).toHaveBeenCalled();
     expect(unlistenProgress).toHaveBeenCalled();
@@ -284,6 +285,7 @@ describe("ShareDialog once shared", () => {
     expect(rows[0]).toHaveTextContent(manage.you);
     expect(rows[0]).toHaveTextContent(roles.owner);
     expect(rows[1]).toHaveTextContent("alice@uni.edu");
+    expect(screen.queryByTestId("collab-share-trust")).toBeNull();
 
     await chooseOption(user, fill(manage.roleLabel, { name: "Alice Chen" }), roles.viewer);
     expect(mocks.collabMemberSet).toHaveBeenCalledWith("grant", alice.person.account_id, "viewer");

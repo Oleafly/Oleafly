@@ -499,7 +499,8 @@
     "preparing": "Préparation du projet…",
     "uploading": "Envoi des figures et autres fichiers : {{done}} sur {{total}}",
     "saving": "Enregistrement du projet sur le serveur…",
-    "failed": "Le partage n'a pas abouti, rien n'a donc été partagé."
+    "failed": "Le partage n'a pas abouti, rien n'a donc été partagé.",
+    "trustAgain": "Maintenant que d'autres personnes peuvent modifier ce projet, Oleafly vous redemande avant d'exécuter ses outils sur cet ordinateur."
   },
   "manage": {
     "sharedOn": "Partagé sur {{server}}",

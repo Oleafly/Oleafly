@@ -499,7 +499,8 @@
     "preparing": "Připravuje se projekt…",
     "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
     "saving": "Projekt se ukládá na server…",
-    "failed": "Sdílení se nedokončilo, takže se nic nesdílelo."
+    "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
+    "trustAgain": "Teď když tento projekt mohou upravovat i další lidé, Oleafly se vás před spuštěním jeho nástrojů v tomto počítači znovu zeptá."
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",

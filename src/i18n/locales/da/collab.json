@@ -499,7 +499,8 @@
     "preparing": "Gør projektet klar…",
     "uploading": "Uploader figurer og andre filer: {{done}} af {{total}}",
     "saving": "Gemmer projektet på serveren…",
-    "failed": "Delingen blev ikke færdig, så intet blev delt."
+    "failed": "Delingen blev ikke færdig, så intet blev delt.",
+    "trustAgain": "Nu hvor andre kan redigere projektet, spørger Oleafly dig igen, før projektets værktøjer køres på denne computer."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",

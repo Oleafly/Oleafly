@@ -332,6 +332,8 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const serversStatus = useCollabStore((state) => state.status);
   const loadServers = useCollabStore((state) => state.load);
   const [share, setShare] = useState<CollabShareInfo | null | undefined>(undefined);
+  // Set once this dialog shared the project, for the note about trust.
+  const [justShared, setJustShared] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareRequest, setShareRequest] = useState(0);
   const name = project?.name ?? "";
@@ -372,11 +374,32 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
       );
     }
     if (share === undefined) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
-    if (share) return <ManageSharing projectId={projectId} name={name} share={share} />;
+    if (share) {
+      return (
+        <>
+          {justShared ? (
+            <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-foreground" data-testid="collab-share-trust">
+              {t(($) => $.collab.share.trustAgain)}
+            </p>
+          ) : null}
+          <ManageSharing projectId={projectId} name={name} share={share} />
+        </>
+      );
+    }
     if (!serversKnown) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
     if (signedIn.length === 0) return <NoServers />;
     if (project && isFolderProject(project)) return <CopyStep projectId={projectId} name={name} />;
-    return <ShareStep projectId={projectId} servers={signedIn} fromCopy={fromCopy} onShared={setShare} />;
+    return (
+      <ShareStep
+        projectId={projectId}
+        servers={signedIn}
+        fromCopy={fromCopy}
+        onShared={(shared) => {
+          setJustShared(true);
+          setShare(shared);
+        }}
+      />
+    );
   };
 
   return (

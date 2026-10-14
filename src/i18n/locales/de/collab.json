@@ -499,7 +499,8 @@
     "preparing": "Das Projekt wird vorbereitet…",
     "uploading": "Abbildungen und andere Dateien werden hochgeladen: {{done}} von {{total}}",
     "saving": "Das Projekt wird auf dem Server gespeichert…",
-    "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt."
+    "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt.",
+    "trustAgain": "Da jetzt auch andere dieses Projekt bearbeiten können, fragt Oleafly Sie erneut, bevor es seine Werkzeuge auf diesem Computer ausführt."
   },
   "manage": {
     "sharedOn": "Geteilt über {{server}}",

@@ -499,7 +499,8 @@
     "preparing": "Preparando o projeto…",
     "uploading": "Enviando figuras e outros arquivos: {{done}} de {{total}}",
     "saving": "Salvando o projeto no servidor…",
-    "failed": "O compartilhamento não terminou, então nada foi compartilhado."
+    "failed": "O compartilhamento não terminou, então nada foi compartilhado.",
+    "trustAgain": "Agora que outras pessoas podem editar este projeto, o Oleafly pergunta de novo antes de executar as ferramentas dele neste computador."
   },
   "manage": {
     "sharedOn": "Compartilhado em {{server}}",

@@ -499,7 +499,8 @@
     "preparing": "正在準備專案…",
     "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
     "saving": "正在把專案儲存到伺服器…",
-    "failed": "分享未完成，因此沒有分享任何內容。"
+    "failed": "分享未完成，因此沒有分享任何內容。",
+    "trustAgain": "現在其他人也能編輯這個專案了，Oleafly 在這台電腦上執行它的工具前會再次徵求你的同意。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",
