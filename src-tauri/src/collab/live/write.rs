@@ -19,9 +19,11 @@ use crate::collab::disk::safe_target;
 
 const WRITE_SETTLE: Duration = Duration::from_secs(10);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct WriteOutcome {
     pub handled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 static READS: LazyLock<Mutex<HashMap<String, WrittenTexts>>> =
@@ -186,13 +188,19 @@ pub async fn write_text(
     text: &str,
 ) -> Result<WriteOutcome, CollabError> {
     let Some(active) = active_for(project_id) else {
-        return Ok(WriteOutcome { handled: false });
+        return Ok(WriteOutcome {
+            handled: false,
+            reason: None,
+        });
     };
     let handled = active.write_text(path, base, text).await?;
     if handled {
         crate::agent_turns::note_app_write(project_id, path);
     }
-    Ok(WriteOutcome { handled })
+    Ok(WriteOutcome {
+        handled,
+        reason: None,
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -714,7 +722,29 @@ mod tests {
                 "x",
             ))
             .unwrap();
-        assert_eq!(outcome, WriteOutcome { handled: false });
+        assert_eq!(
+            outcome,
+            WriteOutcome {
+                handled: false,
+                reason: None,
+            }
+        );
+        assert_eq!(
+            serde_json::to_value(&outcome).unwrap(),
+            serde_json::json!({ "handled": false })
+        );
+    }
+
+    #[test]
+    fn a_refused_write_carries_its_reason_on_the_wire() {
+        let refused = WriteOutcome {
+            handled: false,
+            reason: Some("read_only".to_owned()),
+        };
+        assert_eq!(
+            serde_json::to_value(&refused).unwrap(),
+            serde_json::json!({ "handled": false, "reason": "read_only" })
+        );
     }
 
     struct QuietHost;

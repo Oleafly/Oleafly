@@ -569,6 +569,7 @@ mod tests {
             SignOutOutcome {
                 signed_out: true,
                 unsent: Vec::new(),
+                detached: Vec::new(),
             }
         );
         assert!(!lab.waiting());

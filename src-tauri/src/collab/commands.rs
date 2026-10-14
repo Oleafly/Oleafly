@@ -568,6 +568,13 @@ impl UnsentChoice {
 pub struct SignOutOutcome {
     pub signed_out: bool,
     pub unsent: Vec<super::live::UnsentProject>,
+    pub detached: Vec<DetachedProject>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DetachedProject {
+    pub project_id: String,
+    pub name: String,
 }
 
 async fn settle_unsent(
@@ -583,6 +590,7 @@ async fn settle_unsent(
             return Ok(SignOutOutcome {
                 signed_out: false,
                 unsent,
+                detached: Vec::new(),
             });
         }
         super::live::keep_local_copies(state, &unsent).await?;
@@ -590,6 +598,7 @@ async fn settle_unsent(
     Ok(SignOutOutcome {
         signed_out: true,
         unsent,
+        detached: Vec::new(),
     })
 }
 
@@ -1523,6 +1532,26 @@ mod tests {
             .await
             .expect_err("refused");
         assert_eq!(CollabCommandError::from(error).code, "unreachable");
+    }
+
+    #[test]
+    fn a_sign_out_outcome_lists_detached_projects_in_snake_case() {
+        let outcome = SignOutOutcome {
+            signed_out: true,
+            unsent: Vec::new(),
+            detached: vec![DetachedProject {
+                project_id: "p1".to_owned(),
+                name: "Thesis".to_owned(),
+            }],
+        };
+        assert_eq!(
+            serde_json::to_value(&outcome).unwrap(),
+            serde_json::json!({
+                "signed_out": true,
+                "unsent": [],
+                "detached": [{ "project_id": "p1", "name": "Thesis" }]
+            })
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
