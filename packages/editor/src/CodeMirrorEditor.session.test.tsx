@@ -166,6 +166,64 @@ function listeners(session: LocalDocumentSession): () => number {
   return () => live;
 }
 
+// Records what reaches the session and in what state, like a shared session
+// that holds typing while an input method composes.
+class HoldingSession extends LocalDocumentSession {
+  readonly calls: string[] = [];
+  holding = false;
+
+  override applyLocal(edits: Utf16Edit[], baseVersion: number): void {
+    super.applyLocal(edits, baseVersion);
+    this.calls.push(`${this.holding ? "held" : "sent"} ${this.text()}`);
+  }
+
+  holdLocal(): void {
+    this.holding = true;
+  }
+
+  releaseLocal(): void {
+    if (this.holding) this.calls.push(`release ${this.text()}`);
+    this.holding = false;
+  }
+}
+
+describe("an editor composing with an input method", () => {
+  it("holds the session's typing while composing and releases it once, with the committed text", async () => {
+    const session = new HoldingSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    let composing = true;
+    Object.defineProperty(view(), "compositionStarted", { configurable: true, get: () => composing });
+    await act(async () => view().dispatch({ changes: { from: 2, insert: "n" } }));
+    await act(async () => view().dispatch({ changes: { from: 2, to: 3, insert: "ni" } }));
+    await act(async () => view().dispatch({ changes: { from: 2, to: 4, insert: "nihao" } }));
+    expect(session.calls).toEqual(["held abn", "held abni", "held abnihao"]);
+    composing = false;
+    await act(async () => view().dispatch({ changes: { from: 2, to: 7, insert: "你好" } }));
+    expect(session.calls).toEqual(["held abn", "held abni", "held abnihao", "held ab你好", "release ab你好"]);
+    await act(async () => view().dispatch({ changes: { from: 4, insert: "!" } }));
+    expect(session.calls.at(-1)).toBe("sent ab你好!");
+  });
+
+  it("releases typing when a composition ends without a last change", async () => {
+    const session = new HoldingSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    let composing = true;
+    Object.defineProperty(view(), "compositionStarted", { configurable: true, get: () => composing });
+    await act(async () => view().dispatch({ changes: { from: 2, insert: "k" } }));
+    expect(session.holding).toBe(true);
+    composing = false;
+    vi.useFakeTimers();
+    try {
+      view().contentDOM.dispatchEvent(new Event("compositionend", { bubbles: true }));
+      vi.runAllTimers();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(session.holding).toBe(false);
+    expect(session.calls.at(-1)).toBe("release abk");
+  });
+});
+
 describe("an editor bound to a document session", () => {
   it("sends minimal local edits and applies remote edits without feedback", async () => {
     const session = new LocalDocumentSession("main.tex", "hello");

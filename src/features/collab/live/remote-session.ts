@@ -45,6 +45,8 @@ export class RemoteDocumentSession implements DocumentSession {
   private buffer: TextOperation | null = null;
   // Unsent typing went out again after a reset and hasn't been confirmed yet.
   private resent = false;
+  // An input method is composing: typing collects in `buffer` until it ends.
+  private holding = false;
   private generation = 0;
   private current: RemoteSessionPhase = "opening";
   private readonly listeners = new Set<(change: RemoteChange) => void>();
@@ -118,12 +120,25 @@ export class RemoteDocumentSession implements DocumentSession {
     this.options.onText?.(this.content);
     if (this.current === "opening") {
       this.pending = this.pending ? this.pending.compose(operation) : operation;
-    } else if (this.outstanding === null) {
+    } else if (this.outstanding === null && !this.holding) {
       this.outstanding = operation;
       this.send(operation);
     } else {
       this.buffer = this.buffer ? this.buffer.compose(operation) : operation;
     }
+  }
+
+  holdLocal(): void {
+    this.holding = true;
+  }
+
+  releaseLocal(): void {
+    if (!this.holding) return;
+    this.holding = false;
+    if (this.current !== "open" || this.outstanding !== null || this.buffer === null) return;
+    this.outstanding = this.buffer;
+    this.buffer = null;
+    this.send(this.outstanding);
   }
 
   async open(): Promise<void> {
@@ -218,11 +233,18 @@ export class RemoteDocumentSession implements DocumentSession {
     } catch {
       return false;
     }
-    if (!mine.isNoop()) {
-      this.outstanding = mine;
-      this.send(mine);
-    }
+    if (!mine.isNoop()) this.queue(mine);
     return true;
+  }
+
+  // Sends typing now, or keeps it while an input method is composing.
+  private queue(operation: TextOperation): void {
+    if (this.holding) {
+      this.buffer = this.buffer ? this.buffer.compose(operation) : operation;
+      return;
+    }
+    this.outstanding = operation;
+    this.send(operation);
   }
 
   private receive(message: CollabDocMessage): void {
@@ -244,8 +266,8 @@ export class RemoteDocumentSession implements DocumentSession {
     this.serverRev = rev;
     this.confirmed = confirmed;
     this.resent = false;
-    this.outstanding = this.buffer;
-    this.buffer = null;
+    this.outstanding = this.holding ? null : this.buffer;
+    if (!this.holding) this.buffer = null;
     if (!this.checkLength(length)) return;
     if (this.outstanding) {
       this.send(this.outstanding);
@@ -300,8 +322,7 @@ export class RemoteDocumentSession implements DocumentSession {
       return;
     }
     this.resent = true;
-    this.outstanding = mine;
-    this.send(mine);
+    this.queue(mine);
   }
 
   // `length` is the shared text's length after the message, which is what

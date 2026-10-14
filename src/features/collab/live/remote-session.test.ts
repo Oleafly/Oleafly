@@ -84,6 +84,42 @@ describe("RemoteDocumentSession", () => {
     expect(session.synchronized).toBe(true);
   });
 
+  it("sends only the committed text of an input method composition, as one change", async () => {
+    const channel = new FakeChannel("ab");
+    const { session, editor, id } = await opened(channel);
+    session.holdLocal();
+    editor.type([{ from: 2, to: 2, insert: "n" }]);
+    editor.type([{ from: 2, to: 3, insert: "ni" }]);
+    editor.type([{ from: 2, to: 4, insert: "nih" }]);
+    editor.type([{ from: 2, to: 5, insert: "你好" }]);
+    expect(channel.sent).toEqual([]);
+    expect(session.text()).toBe("ab你好");
+    expect(session.synchronized).toBe(false);
+    session.releaseLocal();
+    expect(channel.sent).toEqual([{ client: id, rev: 0, op: [2, "你好"] }]);
+    channel.drain();
+    expect(channel.text).toBe("ab你好");
+    expect(session.synchronized).toBe(true);
+  });
+
+  it("keeps a composition waiting through an answer to earlier typing and remote changes", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "!" }]);
+    session.holdLocal();
+    editor.type([{ from: 0, to: 0, insert: "k" }]);
+    channel.remote(insertAt(1, "X", 3));
+    channel.drain();
+    expect(channel.sent).toEqual([{ client: id, rev: 0, op: [3, "!"] }]);
+    editor.type([{ from: 0, to: 1, insert: "か" }]);
+    expect(channel.sent).toHaveLength(1);
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.text).toBe("かaXbc!");
+    expect(editor.doc).toBe(channel.text);
+    expect(session.synchronized).toBe(true);
+  });
+
   it("moves a remote change past its own pending changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

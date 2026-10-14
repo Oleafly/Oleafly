@@ -304,6 +304,9 @@ class EditorSessions {
   sendLocal(view: EditorView, transactions: readonly Transaction[]): boolean {
     const session = this.current;
     if (!session) return false;
+    // Text an input method is still composing goes to the session but waits
+    // there, so collaborators only see the characters that are committed.
+    if (view.compositionStarted) session.holdLocal?.();
     for (const transaction of transactions) {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
         continue;
@@ -322,7 +325,14 @@ class EditorSessions {
       this.currentVersion = session.version();
     }
     this.keepAligned(view, session, false);
+    if (!view.compositionStarted) session.releaseLocal?.();
     return true;
+  }
+
+  // A composition can end without a last change, for example when it is
+  // cancelled, so the editor checks again once it has ended.
+  compositionEnded(view: EditorView): void {
+    if (!view.compositionStarted) this.current?.releaseLocal?.();
   }
 
   // Every local edit is sent with the editor's offsets, so the editor must
@@ -337,6 +347,8 @@ class EditorSessions {
 
   release(backgroundPath: string | null): void {
     const session = this.current;
+    // Nothing composes into a file the editor no longer shows.
+    session?.releaseLocal?.();
     this.stopCurrent?.();
     this.stopCurrent = null;
     this.current = null;
@@ -1030,7 +1042,13 @@ export function CodeMirrorEditor({
             ? spellLintExtensions({ spell: spellcheck, harper })
             : []
         ),
+        EditorView.domEventHandlers({
+          compositionend: (_event, view) => {
+            setTimeout(() => sessionsRef.current.compositionEnded(view), 0);
+          },
+        }),
         EditorView.updateListener.of((vu) => {
+          if (!vu.docChanged) sessionsRef.current.compositionEnded(vu.view);
           if (vu.docChanged && !sessionsRef.current.sendLocal(vu.view, vu.transactions) && !suppressSyncRef.current) {
             const path = host.getActivePath();
             if (path) host.setContent(path, vu.state.doc.toString());
