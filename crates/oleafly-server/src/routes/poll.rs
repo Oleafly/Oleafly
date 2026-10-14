@@ -21,7 +21,8 @@ use crate::rate_limit::client_key;
 use crate::rooms::RoomMember;
 use crate::routes::meta::spoken_protocol;
 use crate::routes::ws::{
-    bearer_token, frame_error, proves_device, unexpected_frame, Opened, Peer, MAX_FRAME_BYTES,
+    bearer_token, frame_error, proves_device, unexpected_frame, CursorGate, Opened, Peer,
+    MAX_FRAME_BYTES,
 };
 use crate::routes::{path_id, ClientIp};
 use crate::state::AppState;
@@ -169,6 +170,7 @@ async fn open(
         frames: frames.clone(),
         control: ticket.signal.clone(),
     };
+    let cursors = CursorGate::new();
     let peer = Peer {
         state,
         device,
@@ -176,6 +178,7 @@ async fn open(
         public_key: &public_key,
         connection: ticket.id,
         understands: &understands,
+        cursors: &cursors,
     };
     match peer.open(project, since, member).await {
         Opened::Refused(frame) => {

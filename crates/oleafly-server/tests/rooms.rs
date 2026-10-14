@@ -434,3 +434,65 @@ async fn a_compacted_log_asks_for_the_snapshot_first() {
         Some(ServerFrame::Update { seq: 3, .. })
     ));
 }
+
+#[tokio::test]
+async fn a_flood_of_cursor_updates_is_thinned_and_never_pushes_anyone_off() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut bob, project, 0).await;
+    subscribe(&mut alice, project, 0).await;
+    let started = tokio::time::Instant::now();
+    for cursor in 0..5_000u32 {
+        send_frame(
+            &mut alice,
+            &ClientFrame::Presence {
+                project_id: project,
+                state: PresenceState {
+                    file_id: Some("main".to_owned()),
+                    cursor: Some(cursor),
+                    anchor: None,
+                },
+            },
+        )
+        .await;
+    }
+    send_frame(&mut alice, &ClientFrame::Ping { id: 1 }).await;
+    loop {
+        match next_frame(&mut alice).await {
+            Some(ServerFrame::Pong { id: 1 }) => break,
+            Some(ServerFrame::Presence { .. } | ServerFrame::PresenceLeft { .. }) => {}
+            other => panic!("expected a pong, got {other:?}"),
+        }
+    }
+    let flooding = started.elapsed();
+    send_update(&mut bob, &envelope(&stage.bob, project, b"after the flood")).await;
+    let mut forwarded = 0u32;
+    loop {
+        match next_frame(&mut bob).await {
+            Some(ServerFrame::Ack { .. }) => break,
+            Some(ServerFrame::Presence { .. }) => forwarded += 1,
+            Some(ServerFrame::PresenceLeft { .. }) => {}
+            other => panic!("bob was pushed off or got {other:?}"),
+        }
+    }
+    let allowed = 20.0 + 10.0 * flooding.as_secs_f64() + 1.0;
+    assert!(
+        f64::from(forwarded) <= allowed,
+        "{forwarded} of 5000 cursor updates reached Bob in {flooding:?}"
+    );
+    let mut viewer = connect(&stage.server, &stage.alice).await;
+    assert!(matches!(
+        subscribe(&mut viewer, project, 0).await,
+        ServerFrame::Subscribed { .. }
+    ));
+    assert_eq!(
+        stage
+            .server
+            .state()
+            .sockets
+            .count(stage.bob.tokens.device_id),
+        1
+    );
+}

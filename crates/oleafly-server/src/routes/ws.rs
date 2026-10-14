@@ -246,6 +246,7 @@ async fn run(
                         connection: ticket.id,
                         signal: ticket.signal.clone(),
                         understands,
+                        cursors: CursorGate::new(),
                     };
                     let timing = state.sockets.timing();
                     let mut link = Link::new(&mut socket, &mut ticket.control, timing);
@@ -356,6 +357,7 @@ struct Session<'a> {
     connection: u64,
     signal: UnboundedSender<SocketControl>,
     understands: Vec<FrameErrorCode>,
+    cursors: CursorGate,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -581,6 +583,39 @@ pub(crate) struct Peer<'a> {
     pub(crate) public_key: &'a [u8],
     pub(crate) connection: u64,
     pub(crate) understands: &'a [FrameErrorCode],
+    pub(crate) cursors: &'a CursorGate,
+}
+
+// The app sends a cursor position at most every 150 ms, so a connection
+// gets 10 a second with a burst of 20, and the rest are dropped.
+const CURSORS_PER_SECOND: f64 = 10.0;
+const CURSOR_BURST: f64 = 20.0;
+
+pub(crate) struct CursorGate {
+    budget: std::sync::Mutex<(f64, Instant)>,
+}
+
+impl CursorGate {
+    pub(crate) fn new() -> CursorGate {
+        CursorGate {
+            budget: std::sync::Mutex::new((CURSOR_BURST, Instant::now())),
+        }
+    }
+
+    fn allow(&self) -> bool {
+        let mut budget = self
+            .budget
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let now = Instant::now();
+        let refilled = now.duration_since(budget.1).as_secs_f64() * CURSORS_PER_SECOND;
+        *budget = ((budget.0 + refilled).min(CURSOR_BURST), now);
+        if budget.0 < 1.0 {
+            return false;
+        }
+        budget.0 -= 1.0;
+        true
+    }
 }
 
 impl Peer<'_> {
@@ -680,7 +715,7 @@ impl Peer<'_> {
     }
 
     pub(crate) fn leave_presence(&self, project: SharedProjectId) {
-        if self.state.rooms.is_member(project, self.connection) {
+        if self.state.rooms.is_member(project, self.connection) && self.cursors.allow() {
             self.state.rooms.broadcast(
                 project,
                 Some(self.connection),
@@ -946,6 +981,9 @@ impl Peer<'_> {
                 "This presence update is not valid.",
             ));
         }
+        if !self.cursors.allow() {
+            return None;
+        }
         self.state.rooms.broadcast(
             project,
             Some(self.connection),
@@ -969,6 +1007,7 @@ impl Session<'_> {
             public_key: &self.public_key,
             connection: self.connection,
             understands: &self.understands,
+            cursors: &self.cursors,
         }
     }
 

@@ -13,7 +13,7 @@ use tokio::time::Instant;
 
 use crate::error::ServerError;
 use crate::rooms::{self, Outbound, Outbox};
-use crate::routes::ws::{backlog_page, leave_rooms, Peer, OUTBOUND_CAPACITY};
+use crate::routes::ws::{backlog_page, leave_rooms, CursorGate, Peer, OUTBOUND_CAPACITY};
 use crate::sockets::{SocketControl, SocketTicket};
 use crate::state::AppState;
 use crate::tokens::random_token;
@@ -170,6 +170,7 @@ pub struct PollSession {
     closed: AtomicBool,
     active: AtomicUsize,
     seen: Mutex<Instant>,
+    cursors: CursorGate,
     _signal: UnboundedSender<SocketControl>,
 }
 
@@ -206,6 +207,7 @@ impl PollSession {
             public_key: &self.public_key,
             connection: self.connection,
             understands: &self.understands,
+            cursors: &self.cursors,
         }
     }
 
@@ -327,6 +329,7 @@ pub(crate) async fn start(
         closed: AtomicBool::new(false),
         active: AtomicUsize::new(0),
         seen: Mutex::new(Instant::now()),
+        cursors: CursorGate::new(),
         _signal: signal,
     });
     if !state.polls.insert(&session) {

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
@@ -7,6 +7,7 @@ use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
 use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
+use tokio::sync::Notify;
 
 use crate::sockets::SocketControl;
 
@@ -53,28 +54,64 @@ pub fn frame_size(frame: &ServerFrame) -> usize {
     }
 }
 
+type PresenceKey = (SharedProjectId, DeviceId);
+
+// Cursor positions wait beside the edit queue rather than in it: only the
+// latest one per device is kept, so a burst of them never fills the queue
+// that edits need, and they go out whenever no edit is waiting.
+#[derive(Default)]
+struct LatestPresence {
+    frames: HashMap<PresenceKey, Arc<Queued>>,
+    order: VecDeque<PresenceKey>,
+}
+
+fn presence_key(frame: &ServerFrame) -> Option<PresenceKey> {
+    match frame {
+        ServerFrame::Presence {
+            project_id,
+            device_id,
+            ..
+        }
+        | ServerFrame::PresenceLeft {
+            project_id,
+            device_id,
+        } => Some((*project_id, *device_id)),
+        _ => None,
+    }
+}
+
 #[derive(Clone)]
 pub struct Outbox {
     frames: Sender<Arc<Queued>>,
     queued: Arc<AtomicUsize>,
+    presence: Arc<Mutex<LatestPresence>>,
+    waiting: Arc<Notify>,
 }
 
 pub struct Outbound {
     frames: Receiver<Arc<Queued>>,
     queued: Arc<AtomicUsize>,
+    presence: Arc<Mutex<LatestPresence>>,
+    waiting: Arc<Notify>,
 }
 
 pub fn outbox(capacity: usize) -> (Outbox, Outbound) {
     let (frames, received) = mpsc::channel(capacity);
     let queued = Arc::new(AtomicUsize::new(0));
+    let presence = Arc::new(Mutex::new(LatestPresence::default()));
+    let waiting = Arc::new(Notify::new());
     (
         Outbox {
             frames,
             queued: Arc::clone(&queued),
+            presence: Arc::clone(&presence),
+            waiting: Arc::clone(&waiting),
         },
         Outbound {
             frames: received,
             queued,
+            presence,
+            waiting,
         },
     )
 }
@@ -87,6 +124,18 @@ enum Offered {
 
 impl Outbox {
     fn offer(&self, item: Arc<Queued>) -> Offered {
+        if let Some(key) = presence_key(item.frame()) {
+            if self.frames.is_closed() {
+                return Offered::Gone;
+            }
+            let mut latest = self.presence.lock().unwrap_or_else(PoisonError::into_inner);
+            if latest.frames.insert(key, item).is_none() {
+                latest.order.push_back(key);
+            }
+            drop(latest);
+            self.waiting.notify_one();
+            return Offered::Taken;
+        }
         let size = item.size();
         let reserved = self
             .queued
@@ -116,15 +165,45 @@ impl Outbox {
 
 impl Outbound {
     pub async fn recv_shared(&mut self) -> Option<Arc<Queued>> {
-        let item = self.frames.recv().await?;
-        self.release(&item);
-        Some(item)
+        loop {
+            match self.try_recv_shared() {
+                Ok(item) => return Some(item),
+                Err(TryRecvError::Disconnected) => return None,
+                Err(TryRecvError::Empty) => {}
+            }
+            tokio::select! {
+                item = self.frames.recv() => {
+                    return match item {
+                        Some(item) => {
+                            self.release(&item);
+                            Some(item)
+                        }
+                        None => self.take_presence(),
+                    };
+                }
+                () = self.waiting.notified() => {}
+            }
+        }
     }
 
     pub fn try_recv_shared(&mut self) -> Result<Arc<Queued>, TryRecvError> {
-        let item = self.frames.try_recv()?;
-        self.release(&item);
-        Ok(item)
+        match self.frames.try_recv() {
+            Ok(item) => {
+                self.release(&item);
+                Ok(item)
+            }
+            Err(error) => self.take_presence().ok_or(error),
+        }
+    }
+
+    fn take_presence(&mut self) -> Option<Arc<Queued>> {
+        let mut latest = self.presence.lock().unwrap_or_else(PoisonError::into_inner);
+        while let Some(key) = latest.order.pop_front() {
+            if let Some(item) = latest.frames.remove(&key) {
+                return Some(item);
+            }
+        }
+        None
     }
 
     pub async fn recv(&mut self) -> Option<ServerFrame> {
@@ -313,10 +392,8 @@ pub fn deliver(member: &RoomMember, frame: ServerFrame) {
 }
 
 fn offer(member: &RoomMember, item: Arc<Queued>) {
-    let presence = matches!(item.frame(), ServerFrame::Presence { .. });
     match member.frames.offer(item) {
         Offered::Taken | Offered::Gone => {}
-        Offered::Full if presence => {}
         Offered::Full => {
             let _ = member.control.send(SocketControl::Overloaded);
         }
@@ -465,6 +542,71 @@ mod tests {
         rooms.broadcast(project, None, &here);
         rooms.broadcast(project, None, &here);
         assert!(controls.try_recv().is_err());
+    }
+
+    fn here(project: SharedProjectId, device: DeviceId, cursor: u32) -> ServerFrame {
+        ServerFrame::Presence {
+            project_id: project,
+            device_id: device,
+            account_id: AccountId::new_v7(),
+            state: oleafly_collab_protocol::projects::PresenceState {
+                file_id: Some("main".to_owned()),
+                cursor: Some(cursor),
+                anchor: None,
+            },
+        }
+    }
+
+    #[test]
+    fn a_queue_full_of_cursor_updates_still_takes_an_edit() {
+        let rooms = Rooms::new();
+        let project = SharedProjectId::new_v7();
+        let (slow, mut frames, mut controls) = member(1, AccountId::new_v7(), 512);
+        rooms.join(project, slow);
+        for cursor in 0..512 {
+            rooms.broadcast(project, None, &here(project, DeviceId::new_v7(), cursor));
+        }
+        rooms.broadcast(project, None, &update_of(project, 1024));
+        assert!(controls.try_recv().is_err());
+        assert!(matches!(frames.try_recv(), Ok(ServerFrame::Update { .. })));
+        let mut cursors = 0;
+        while let Ok(frame) = frames.try_recv() {
+            assert!(matches!(frame, ServerFrame::Presence { .. }));
+            cursors += 1;
+        }
+        assert_eq!(cursors, 512);
+    }
+
+    #[tokio::test]
+    async fn only_the_latest_cursor_of_each_device_waits_to_be_sent() {
+        let rooms = Rooms::new();
+        let project = SharedProjectId::new_v7();
+        let (slow, mut frames, _controls) = member(1, AccountId::new_v7(), 8);
+        rooms.join(project, slow);
+        let (typist, other) = (DeviceId::new_v7(), DeviceId::new_v7());
+        for cursor in 0..1_000 {
+            rooms.broadcast(project, None, &here(project, typist, cursor));
+        }
+        rooms.broadcast(project, None, &here(project, other, 5));
+        rooms.broadcast(
+            project,
+            None,
+            &ServerFrame::PresenceLeft {
+                project_id: project,
+                device_id: other,
+            },
+        );
+        let first = frames.recv().await.expect("a cursor");
+        assert!(matches!(
+            first,
+            ServerFrame::Presence { device_id, state, .. } if device_id == typist && state.cursor == Some(999)
+        ));
+        let second = frames.recv().await.expect("the leave");
+        assert!(matches!(
+            second,
+            ServerFrame::PresenceLeft { device_id, .. } if device_id == other
+        ));
+        assert!(frames.try_recv().is_err());
     }
 
     #[test]
