@@ -880,10 +880,14 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
     let numeric = status.as_u16();
     let body = response.bytes().await.unwrap_or_default();
     if status == StatusCode::UNAUTHORIZED {
-        let ended = serde_json::from_slice::<ApiError>(&body)
-            .ok()
-            .and_then(|error| SessionEndReason::from_code(&error.code));
-        return Err(ended.map_or(CollabError::Unauthorized, CollabError::SessionEnded));
+        return Err(match serde_json::from_slice::<ApiError>(&body) {
+            Ok(error) => unauthorized(error),
+            Err(_) => CollabError::Network(
+                "a 401 came back without the server's own error, so something in front of the \
+                 server turned the request away"
+                    .to_owned(),
+            ),
+        });
     }
     Err(match serde_json::from_slice::<ApiError>(&body) {
         Ok(error) => CollabError::Api {
@@ -897,6 +901,31 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
             message: String::from_utf8_lossy(&body).chars().take(200).collect(),
         },
     })
+}
+
+// The 401 codes that mean the session is gone and the person has to sign in
+// again. Any other 401 the server explains, such as a sign-in check that
+// expired while the laptop slept, keeps its code so the caller can try
+// again.
+pub(crate) const SESSION_GONE: [&str; 4] = [
+    "unauthorized",
+    "revoked",
+    "refresh_reused",
+    "invalid_signature",
+];
+
+pub(crate) fn unauthorized(error: ApiError) -> CollabError {
+    if let Some(reason) = SessionEndReason::from_code(&error.code) {
+        return CollabError::SessionEnded(reason);
+    }
+    if SESSION_GONE.contains(&error.code.as_str()) {
+        return CollabError::Unauthorized;
+    }
+    CollabError::Api {
+        status: 401,
+        code: error.code,
+        message: error.message,
+    }
 }
 
 pub(crate) fn network_error(error: reqwest::Error) -> CollabError {
@@ -1461,6 +1490,16 @@ mod tests {
                 CollabError::SessionEnded(SessionEndReason::AccessEnded),
             ),
             ("revoked", CollabError::Unauthorized),
+            ("refresh_reused", CollabError::Unauthorized),
+            ("unauthorized", CollabError::Unauthorized),
+            (
+                "expired_nonce",
+                CollabError::Api {
+                    status: 401,
+                    code: "expired_nonce".to_owned(),
+                    message: "m".to_owned(),
+                },
+            ),
         ] {
             let response = http_response(
                 "401 Unauthorized",
@@ -1472,9 +1511,9 @@ mod tests {
         }
         let bare = http_response("401 Unauthorized", &[], "");
         let client = ServerClient::new(canned(bare).await).expect("client");
-        assert_eq!(
+        assert!(matches!(
             client.me("token").await.err(),
-            Some(CollabError::Unauthorized)
-        );
+            Some(CollabError::Network(_))
+        ));
     }
 }

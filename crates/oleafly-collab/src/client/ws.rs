@@ -387,10 +387,7 @@ fn ws_error(error: WsError) -> CollabError {
                 .as_deref()
                 .and_then(|body| serde_json::from_slice::<ApiError>(body).ok());
             match said {
-                Some(error) if status == 401 => match SessionEndReason::from_code(&error.code) {
-                    Some(reason) => CollabError::SessionEnded(reason),
-                    None => CollabError::Unauthorized,
-                },
+                Some(error) if status == 401 => super::http::unauthorized(error),
                 _ => CollabError::Api {
                     status,
                     code: "websocket_refused".to_string(),
