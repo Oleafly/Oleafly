@@ -97,22 +97,44 @@ fn seq_to(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
+// A savepoint works whether or not the caller already holds a transaction,
+// and undoes every statement of `work` if one of them fails.
+fn all_or_nothing<T>(
+    conn: &Connection,
+    name: &str,
+    work: impl FnOnce(&Connection) -> Result<T, ServerError>,
+) -> Result<T, ServerError> {
+    conn.execute_batch(&format!("SAVEPOINT {name}"))?;
+    match work(conn) {
+        Ok(value) => {
+            conn.execute_batch(&format!("RELEASE {name}"))?;
+            Ok(value)
+        }
+        Err(error) => {
+            let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
+            Err(error)
+        }
+    }
+}
+
 pub fn create_pending(
     conn: &Connection,
     owner: AccountId,
     title: &str,
     now: i64,
 ) -> Result<SharedProjectId, ServerError> {
-    let id = SharedProjectId::new_v7();
-    conn.execute(
-        "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, ?3, 'pending', ?4)",
-        params![id.to_string(), owner.to_string(), title, now],
-    )?;
-    conn.execute(
-        "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, 'owner', ?3, ?2)",
-        params![id.to_string(), owner.to_string(), now],
-    )?;
-    Ok(id)
+    all_or_nothing(conn, "create_project", |conn| {
+        let id = SharedProjectId::new_v7();
+        conn.execute(
+            "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, ?3, 'pending', ?4)",
+            params![id.to_string(), owner.to_string(), title, now],
+        )?;
+        conn.execute(
+            "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, 'owner', ?3, ?2)",
+            params![id.to_string(), owner.to_string(), now],
+        )?;
+        Ok(id)
+    })
 }
 
 pub fn project_row(

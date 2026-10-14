@@ -254,6 +254,8 @@ async fn update(
     let updated = state
         .db
         .call(move |conn| {
+            let transaction = conn.transaction()?;
+            let conn = &*transaction;
             let (_, role) = access(conn, project, account)?;
             require(role, ProjectAction::ChangeLinkSharing)?;
             if patch.link_sharing == Some(true) && !settings::load(conn)?.link_sharing_allowed {
@@ -313,7 +315,9 @@ async fn update(
                 )?;
             }
             let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
-            projects::summary(conn, &row, role)
+            let summary = projects::summary(conn, &row, role)?;
+            transaction.commit()?;
+            Ok(summary)
         })
         .await?;
     if comments_switched {
@@ -584,12 +588,24 @@ async fn join_by_link(
             if let Some(role) = member {
                 return Ok((projects::summary(conn, &row, role)?, false));
             }
-            projects::grant(conn, project, account, row.link_role, row.owner, now)?;
+            let transaction = conn.transaction()?;
+            projects::grant(
+                &transaction,
+                project,
+                account,
+                row.link_role,
+                row.owner,
+                now,
+            )?;
             access_log::quietly(access_log::joined_by_link(
-                conn, now, project, account, device,
+                &transaction,
+                now,
+                project,
+                account,
+                device,
             ));
             security_log::record(
-                conn,
+                &transaction,
                 now,
                 event(
                     account,
@@ -599,7 +615,9 @@ async fn join_by_link(
                     json!({ "role": projects::role_to_str(row.link_role), "via": "link" }),
                 ),
             )?;
-            Ok((projects::summary(conn, &row, row.link_role)?, true))
+            let summary = projects::summary(&transaction, &row, row.link_role)?;
+            transaction.commit()?;
+            Ok((summary, true))
         })
         .await?;
     if newly {
@@ -1041,6 +1059,8 @@ async fn grant_member(
     let (granted, existing) = state
         .db
         .call(move |conn| {
+            let transaction = conn.transaction()?;
+            let conn = &*transaction;
             let (row, actor_role) = access(conn, project, account)?;
             require(actor_role, ProjectAction::ManageMembers)?;
             if row.status != ProjectStatus::Active {
@@ -1084,6 +1104,7 @@ async fn grant_member(
             )?;
             let emails = sees_emails(server_role, &settings::load(conn)?);
             let person = projects::person(conn, target, emails)?.ok_or(ServerError::NotFound)?;
+            transaction.commit()?;
             Ok((
                 ProjectMember {
                     person,
@@ -1373,6 +1394,99 @@ mod tests {
             let response = app.router.clone().oneshot(request).await.expect("response");
             assert_eq!(response.status(), StatusCode::OK, "{path}");
         }
+    }
+
+    async fn refuse_inserts_into(app: &TestApp, table: &'static str) {
+        app.state
+            .db
+            .call(move |conn| {
+                conn.execute_batch(&format!(
+                    "CREATE TRIGGER refuse_{table} BEFORE INSERT ON {table} BEGIN SELECT RAISE(ABORT, 'refused'); END;"
+                ))?;
+                Ok(())
+            })
+            .await
+            .expect("trigger");
+    }
+
+    #[tokio::test]
+    async fn a_change_whose_security_log_entry_fails_leaves_nothing_behind() {
+        let app = test_app_with(test_config()).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let other = seed_member(&app, ServerRole::Member).await;
+        let active = project(&app, &owner, true).await;
+        refuse_inserts_into(&app, "security_log").await;
+        let add = format!("/api/v1/projects/{active}/members/{}", other.account_id);
+        let (status, _) = refusal(
+            &app,
+            Method::PUT,
+            &add,
+            &owner.access_token,
+            json!({ "role": "editor" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let patch = format!("/api/v1/projects/{active}");
+        let (status, _) = refusal(
+            &app,
+            Method::PATCH,
+            &patch,
+            &owner.access_token,
+            json!({ "link_sharing": true, "title": "Renamed" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = ProjectPatch {
+                    link_sharing: Some(true),
+                    ..ProjectPatch::default()
+                };
+                projects::apply_patch(conn, active, &patch)
+            })
+            .await
+            .expect("link sharing on");
+        let join = format!("/api/v1/projects/{active}/join");
+        let (status, _) = refusal(&app, Method::POST, &join, &other.access_token, json!({})).await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let other_account = other.account_id;
+        let (role, row) = app
+            .state
+            .db
+            .call(move |conn| {
+                Ok((
+                    projects::role_of(conn, active, other_account)?,
+                    projects::project_row(conn, active)?,
+                ))
+            })
+            .await
+            .expect("read back");
+        assert_eq!(role, None);
+        assert_eq!(row.expect("the project").title, "Thesis");
+    }
+
+    #[tokio::test]
+    async fn a_project_whose_owner_grant_fails_is_not_created() {
+        let app = test_app_with(test_config()).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        refuse_inserts_into(&app, "project_grants").await;
+        let (status, _) = refusal(
+            &app,
+            Method::POST,
+            "/api/v1/projects",
+            &owner.access_token,
+            json!({ "title": "Thesis" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let left: i64 = app
+            .state
+            .db
+            .call(|conn| Ok(conn.query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))?))
+            .await
+            .expect("count");
+        assert_eq!(left, 0);
     }
 
     #[tokio::test]
