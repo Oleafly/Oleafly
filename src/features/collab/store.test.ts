@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   collabServerSignOut: vi.fn(),
   collabServerRemove: vi.fn(),
   collabServerRefresh: vi.fn(),
+  onCollabServerChanged: vi.fn(),
 }));
 
 const copies = vi.hoisted(() => ({ followLocalCopies: vi.fn() }));
@@ -23,12 +24,47 @@ vi.mock("./live/removed-notices", () => copies);
 const DONE = { signed_out: true, unsent: [], detached: [] };
 const PAPER = { project_id: "r3-paper", name: "R3 Paper", changes: 4 };
 
-import { useCollabStore } from "./store";
+import { useCollabStore, watchServers } from "./store";
 
 beforeEach(() => {
   vi.clearAllMocks();
   copies.followLocalCopies.mockResolvedValue(undefined);
   useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {}, detached: null });
+});
+
+describe("watching for server changes", () => {
+  it("reloads a list that was loaded whenever a server changes, with one listener for every watcher", async () => {
+    let changed: () => void = () => undefined;
+    const unlisten = vi.fn();
+    mocks.onCollabServerChanged.mockImplementation(async (handler: () => void) => {
+      changed = handler;
+      return unlisten;
+    });
+    const first = watchServers();
+    const second = watchServers();
+    expect(mocks.onCollabServerChanged).toHaveBeenCalledTimes(1);
+    changed();
+    expect(mocks.collabServersList).not.toHaveBeenCalled();
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServersList.mockResolvedValue([signedOutServer()]);
+    changed();
+    await vi.waitFor(() => expect(useCollabStore.getState().servers[0]?.signed_in).toBe(false));
+    first();
+    first();
+    expect(unlisten).not.toHaveBeenCalled();
+    second();
+    await vi.waitFor(() => expect(unlisten).toHaveBeenCalledTimes(1));
+  });
+
+  it("lets go of a listener that starts after the last watcher left", async () => {
+    let started: (unlisten: () => void) => void = () => undefined;
+    mocks.onCollabServerChanged.mockReturnValue(new Promise((resolve) => (started = resolve)));
+    const stop = watchServers();
+    stop();
+    const unlisten = vi.fn();
+    started(unlisten);
+    await vi.waitFor(() => expect(unlisten).toHaveBeenCalledTimes(1));
+  });
 });
 
 describe("collab store", () => {

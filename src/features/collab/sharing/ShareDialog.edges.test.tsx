@@ -9,6 +9,7 @@ import { loadNamespace } from "@/i18n";
 import type { CollabServer, CollabShareCheck, CollabShareInfo } from "@/lib/tauri";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabStore } from "../store";
 import {
@@ -158,6 +159,23 @@ describe("ShareDialog checking the project", () => {
     expect(await screen.findByText(fill(share.disclosure, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(mocks.collabShareCheck).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: share.start })).toBeEnabled();
+  });
+
+  it("offers Collaboration settings when the check finds the session has ended", async () => {
+    mocks.collabShareCheck.mockRejectedValue(collabError("unauthorized"));
+    const user = userEvent.setup();
+    openDialog();
+    expect(await screen.findByText(share.checkFailed)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.unauthorized)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: share.openSettings }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
+  });
+
+  it("offers only Retry when the check failed for another reason", async () => {
+    mocks.collabShareCheck.mockRejectedValue(collabError("unreachable"));
+    openDialog();
+    expect(await screen.findByText(share.checkFailed)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: share.openSettings })).toBeNull();
   });
 
   it("shows an empty progress bar while sharing a project with no files", async () => {

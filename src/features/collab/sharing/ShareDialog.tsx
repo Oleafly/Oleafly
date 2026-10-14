@@ -32,7 +32,7 @@ import { ManageSharing } from "./ManageSharing";
 type CheckState =
   | { kind: "checking" }
   | { kind: "ready"; check: CollabShareCheck }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string; signedOut: boolean };
 
 type UploadState =
   | { kind: "idle" }
@@ -179,7 +179,13 @@ function ShareStep({
         if (active) setCheck({ kind: "ready", check: result });
       },
       (error: unknown) => {
-        if (active) setCheck({ kind: "failed", message: collabErrorText(error) });
+        if (!active) return;
+        const code = collabErrorCode(error);
+        setCheck({
+          kind: "failed",
+          message: collabErrorText(error),
+          signedOut: code === "unauthorized" || code === "signed_out",
+        });
       },
     );
     return () => {
@@ -225,11 +231,18 @@ function ShareStep({
     }
     if (check.kind === "failed") {
       return (
-        <LoadFailed
-          message={t(($) => $.collab.share.checkFailed)}
-          reason={check.message}
-          onRetry={() => setCheckRequest((count) => count + 1)}
-        />
+        <div className="space-y-3">
+          <LoadFailed
+            message={t(($) => $.collab.share.checkFailed)}
+            reason={check.message}
+            onRetry={() => setCheckRequest((count) => count + 1)}
+          />
+          {check.signedOut ? (
+            <Button type="button" variant="outline" size="sm" onClick={openCollaborationSettings}>
+              {t(($) => $.collab.share.openSettings)}
+            </Button>
+          ) : null}
+        </div>
       );
     }
     return <CheckSummary check={check.check} server={server.name} />;

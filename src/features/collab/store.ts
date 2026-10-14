@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { logError } from "@/lib/log";
 import {
   collabServerCodeSignIn,
   collabServerRefresh,
@@ -6,6 +7,7 @@ import {
   collabServerSignIn,
   collabServerSignOut,
   collabServersList,
+  onCollabServerChanged,
   type CollabErrorCode,
   type CollabDetachedProject,
   type CollabServer,
@@ -108,6 +110,41 @@ async function end(
   const local = [...outcome.unsent, ...detached].map((project) => project.project_id);
   if (local.length > 0) void followLocalCopies(local);
   return null;
+}
+
+// One listener reloads the list whenever the backend says a server changed,
+// for as long as anything watches. Without it, a session that ended while
+// Settings was closed still looks signed in everywhere else.
+let watchers = 0;
+let listening: { stop: (() => void) | null; released: boolean } | null = null;
+
+export function watchServers(): () => void {
+  watchers += 1;
+  if (watchers === 1) {
+    const current = { stop: null as (() => void) | null, released: false };
+    listening = current;
+    onCollabServerChanged(() => {
+      if (useCollabStore.getState().status !== "idle") void useCollabStore.getState().load();
+    }).then(
+      (unlisten) => {
+        if (current.released) unlisten();
+        else current.stop = unlisten;
+      },
+      (error: unknown) => {
+        void logError("collab server listener", error);
+      },
+    );
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    watchers -= 1;
+    if (watchers > 0 || !listening) return;
+    listening.released = true;
+    listening.stop?.();
+    listening = null;
+  };
 }
 
 export const useCollabStore = create<CollabStore>((set, get) => ({

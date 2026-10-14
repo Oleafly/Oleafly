@@ -5,8 +5,6 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useTauriEvent } from "@/hooks/use-tauri-event";
-import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { COLLAB_PRESENCE_OPTIONS, type CollabPresence, useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "./AddServerDialog";
 import { collabErrorMessage } from "./errors";
@@ -15,7 +13,7 @@ import { useAddServerRequest } from "./links/add-server-request";
 import { ManageServerPanel } from "./ManageServerPanel";
 import { canManageServer, toServerRole } from "./roles";
 import { ServerCard } from "./ServerCard";
-import { useCollabStore } from "./store";
+import { useCollabStore, watchServers } from "./store";
 
 // After Remove, the shared projects that server held stay as ordinary
 // projects. Name them, so nobody wonders where their sync went.
@@ -93,9 +91,7 @@ export function CollaborationSection() {
     if (url !== null) setAdding({ url });
   }, [requestedUrl]);
 
-  useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => {
-    void load();
-  });
+  useEffect(() => watchServers(), []);
 
   const managed = managing === null ? null : (servers.find((entry) => entry.server_id === managing) ?? null);
   if (managed?.signed_in && canManageServer(toServerRole(managed.account?.server_role))) {
