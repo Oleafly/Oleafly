@@ -602,7 +602,6 @@
       "label": "Proje bağlantısı",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Aç",
-      "serverUnknown": "{{server}} henüz sunucu listenizde değil. Sunucuyu Ayarlar'daki İş Birliği bölümünden ekleyin, ardından bağlantıyı yeniden açın.",
       "noAccess": "Bu projeye erişiminiz yok. Projenin sahibine danışın."
     }
   },

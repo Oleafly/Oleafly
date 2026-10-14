@@ -21,6 +21,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   onCollabOpenLink: mocks.onCollabOpenLink,
 }));
 
+import { useLinkInbox } from "@/components/collab/link-inbox";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { CollabLinkKeeper } from "./CollabLinkKeeper";
@@ -76,6 +77,14 @@ describe("CollabLinkKeeper", () => {
     mocks.collabPendingLinks.mockResolvedValueOnce([OPEN]);
     await act(async () => mocks.handler?.());
     expect(await screen.findByText(enCollab.links.turnedOff, {}, { timeout: 5_000 })).toBeInTheDocument();
+  });
+
+  it("hands links pasted inside the app to the link intake too, and empties the paste box", async () => {
+    render(<CollabLinkKeeper />);
+    await waitFor(() => expect(mocks.collabPendingLinks).toHaveBeenCalledOnce());
+    act(() => useLinkInbox.getState().add(OPEN));
+    expect(await screen.findByText(enCollab.links.turnedOff, {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(useLinkInbox.getState().links).toEqual([]);
   });
 
   it("stops listening when the app root unmounts", async () => {

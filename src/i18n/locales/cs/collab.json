@@ -602,7 +602,6 @@
       "label": "Odkaz na projekt",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Otevřít",
-      "serverUnknown": "Server {{server}} zatím není ve vašem seznamu serverů. Přidejte ho v Nastavení v sekci Spolupráce a pak odkaz otevřete znovu.",
       "noAccess": "K tomuto projektu nemáte přístup. Požádejte jeho vlastníka."
     }
   },

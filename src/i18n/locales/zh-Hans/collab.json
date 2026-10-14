@@ -602,7 +602,6 @@
       "label": "项目链接",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "打开",
-      "serverUnknown": "{{server}} 还不在你的服务器列表中。请在协作设置中添加它，然后重新打开链接。",
       "noAccess": "你没有此项目的访问权限。请联系项目所有者。"
     }
   },

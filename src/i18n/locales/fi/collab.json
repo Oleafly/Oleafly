@@ -602,7 +602,6 @@
       "label": "Projektin linkki",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Avaa",
-      "serverUnknown": "Palvelin {{server}} ei ole vielä palvelinlistallasi. Lisää se Yhteistyö-asetuksissa ja avaa linkki sitten uudelleen.",
       "noAccess": "Sinulla ei ole pääsyä tähän projektiin. Pyydä pääsyä projektin omistajalta."
     }
   },

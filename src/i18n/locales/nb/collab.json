@@ -602,7 +602,6 @@
       "label": "Prosjektlenke",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Åpne",
-      "serverUnknown": "{{server}} står ikke på serverlisten din ennå. Legg den til i samarbeidsinnstillingene, og åpne lenken på nytt.",
       "noAccess": "Du har ikke tilgang til dette prosjektet. Spør eieren."
     }
   },

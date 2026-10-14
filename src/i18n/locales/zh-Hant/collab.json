@@ -602,7 +602,6 @@
       "label": "專案連結",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "開啟",
-      "serverUnknown": "{{server}} 尚未在你的伺服器清單中。請在協作設定中新增它，然後再次開啟連結。",
       "noAccess": "你沒有這個專案的存取權。請聯絡專案擁有者。"
     }
   },

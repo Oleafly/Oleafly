@@ -602,7 +602,6 @@
       "label": "Link do projektu",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Otwórz",
-      "serverUnknown": "Serwera {{server}} nie ma jeszcze na Twojej liście serwerów. Dodaj go w Ustawieniach w sekcji Współpraca, a potem otwórz link ponownie.",
       "noAccess": "Nie masz dostępu do tego projektu. Poproś o niego właściciela projektu."
     }
   },

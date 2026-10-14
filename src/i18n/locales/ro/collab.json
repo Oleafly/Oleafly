@@ -602,7 +602,6 @@
       "label": "Linkul proiectului",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Deschide",
-      "serverUnknown": "{{server}} nu este încă în lista ta de servere. Adaugă-l în setările de Colaborare, apoi deschide din nou linkul.",
       "noAccess": "Nu ai acces la acest proiect. Cere-i acces proprietarului."
     }
   },

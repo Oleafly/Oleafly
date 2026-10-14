@@ -602,7 +602,6 @@
       "label": "Projektlänk",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Öppna",
-      "serverUnknown": "{{server}} finns inte i din lista över servrar än. Lägg till den i samarbetsinställningarna och öppna sedan länken igen.",
       "noAccess": "Du har inte åtkomst till det här projektet. Fråga projektets ägare."
     }
   },

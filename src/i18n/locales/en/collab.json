@@ -602,7 +602,6 @@
       "label": "Project link",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Open",
-      "serverUnknown": "{{server}} isn't on your list of servers yet. Add it in Collaboration settings, then open the link again.",
       "noAccess": "You don't have access to this project. Ask its owner."
     }
   },

@@ -602,7 +602,6 @@
       "label": "프로젝트 링크",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "열기",
-      "serverUnknown": "{{server}}은(는) 아직 서버 목록에 없습니다. 공동 작업 설정에서 추가한 다음 링크를 다시 여세요.",
       "noAccess": "이 프로젝트에 접근할 권한이 없습니다. 프로젝트 소유자에게 요청하세요."
     }
   },
