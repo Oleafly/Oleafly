@@ -11,6 +11,7 @@ mod lifecycle;
 pub mod local_copy;
 mod local_events;
 mod moves;
+mod pacing;
 mod payloads;
 mod pump;
 mod session;

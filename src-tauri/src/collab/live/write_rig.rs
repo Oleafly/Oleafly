@@ -238,6 +238,14 @@ impl LiveRig {
         names
     }
 
+    pub(crate) fn kick(&self) {
+        self.active.kick();
+    }
+
+    pub(in crate::collab::live) fn counted(&self) -> super::super::pacing::Counted {
+        self.active.counted()
+    }
+
     pub(crate) fn shared_live(&self) -> SharedLive {
         Arc::clone(&self.active.live)
     }

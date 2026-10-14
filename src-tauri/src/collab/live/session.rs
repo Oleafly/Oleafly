@@ -184,6 +184,10 @@ impl Active {
     }
 
     pub(super) async fn write_out(&self) -> Result<Vec<String>, CollabError> {
+        self.write_out_paced(true).await
+    }
+
+    pub(super) async fn write_out_paced(&self, urgent: bool) -> Result<Vec<String>, CollabError> {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
@@ -200,15 +204,23 @@ impl Active {
             copied,
         }) = self.take_outgoing(&mut previous, &hashes)?
         else {
+            if self.save_owed() && self.save_due(urgent) {
+                self.persist().await?;
+            }
             return Ok(Vec::new());
         };
         if copied {
             self.handle.flush();
             self.refresh_pending();
         }
-        self.persist().await?;
+        if self.save_due(urgent) {
+            self.persist().await?;
+        }
         let mut plan = materialize::plan(&previous, &next);
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
+        if !urgent {
+            self.hold_back_typing(&next, &mut texts);
+        }
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
@@ -247,9 +259,10 @@ impl Active {
         };
         self.fetch_blobs(blobs, &mut conflicts, &mut changed, &mut settled)
             .await;
+        self.note_written(&written);
         let layout = {
             let disk = guard(&self.disk);
-            let _ = disk.save(&self.disk_file);
+            self.save_index_if_changed(&disk);
             disk.layout.clone()
         };
         settled.conflicts.clone_from(&conflicts);
@@ -417,7 +430,7 @@ pub(super) async fn writer_loop(
         let Some(active) = active.upgrade() else {
             return;
         };
-        if let Ok(conflicts) = active.write_out().await {
+        if let Ok(conflicts) = active.write_out_paced(!waiters.is_empty()).await {
             if !conflicts.is_empty() {
                 let _ = active.import_paths(Some(conflicts)).await;
             }

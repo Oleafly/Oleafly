@@ -1087,3 +1087,29 @@ fn opening_a_project_takes_in_local_text_at_once_and_leaves_new_figures_for_late
             .collect();
     assert!(!shared.contains(&"figs/new.png".to_owned()), "{shared:?}");
 }
+
+#[test]
+fn typing_saves_the_document_and_writes_the_file_about_once_a_second() {
+    let (_dir, root, _host, rig) = watched_rig("paced", &[("main.tex", "abc")]);
+    let (main, rev) = rig.open("main.tex");
+    let keys: Vec<char> = ('a'..='z').chain('a'..='n').collect();
+    let started = std::time::Instant::now();
+    for (at, key) in keys.iter().enumerate() {
+        rig.typed(&main, rev + at as u64, &key.to_string());
+        rig.kick();
+        std::thread::sleep(Duration::from_millis(30));
+    }
+    let elapsed = started.elapsed();
+    rig.settle();
+    let typed: String = keys.iter().collect();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        format!("abc{typed}")
+    );
+    let counted = rig.counted();
+    let bound = elapsed.as_secs() as usize + 3;
+    assert!(counted.saves <= bound, "{counted:?} in {elapsed:?}");
+    assert!(counted.writes <= bound, "{counted:?} in {elapsed:?}");
+    assert!(counted.indexes <= bound, "{counted:?} in {elapsed:?}");
+    assert_eq!(rig.saved_text("main.tex"), Some(format!("abc{typed}")));
+}
