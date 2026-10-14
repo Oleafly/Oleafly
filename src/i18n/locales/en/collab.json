@@ -591,6 +591,7 @@
     "flag": "Shared",
     "sharedWithYou": {
       "title": "Shared with you",
+      "loadFailed": "Oleafly couldn't check for projects shared with you.",
       "from": "{{owner}} on {{server}}",
       "open": "Open",
       "openNamed": "Open {{name}}"
@@ -617,6 +618,7 @@
     "away": "Not here right now",
     "deleted": "Recently deleted",
     "deletedEmpty": "Nothing deleted recently.",
+    "deletedLoadFailed": "Oleafly couldn't load the recently deleted files.",
     "accessLog": "Access log",
     "status": "Sync status",
     "waiting": "Changes waiting: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Pending guests",
       "description": "Project owners invited these people as guests. A guest sees only the projects they're invited to and can't share them.",
+      "loadFailed": "Oleafly couldn't load the guest invitations waiting for approval.",
       "invitedBy": "{{inviter}} invited them to {{project}}",
       "approve": "Approve",
       "approveNamed": "Approve {{email}}",

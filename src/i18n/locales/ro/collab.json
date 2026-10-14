@@ -591,6 +591,7 @@
     "flag": "Partajat",
     "sharedWithYou": {
       "title": "Partajate cu tine",
+      "loadFailed": "Oleafly nu a putut verifica proiectele partajate cu tine.",
       "from": "{{owner}} pe {{server}}",
       "open": "Deschide",
       "openNamed": "Deschide {{name}}"
@@ -617,6 +618,7 @@
     "away": "Nu este aici acum",
     "deleted": "Șterse recent",
     "deletedEmpty": "Nu s-a șters nimic în ultima vreme.",
+    "deletedLoadFailed": "Oleafly nu a putut încărca fișierele șterse recent.",
     "accessLog": "Jurnal de acces",
     "status": "Starea sincronizării",
     "waiting": "Modificări în așteptare: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Invitați în așteptare",
       "description": "Proprietarii de proiecte au invitat aceste persoane ca invitați. Un invitat vede doar proiectele la care e invitat și nu le poate partaja.",
+      "loadFailed": "Oleafly nu a putut încărca invitațiile pentru invitați care așteaptă aprobarea.",
       "invitedBy": "{{inviter}} i-a invitat la {{project}}",
       "approve": "Aprobă",
       "approveNamed": "Aprobă {{email}}",

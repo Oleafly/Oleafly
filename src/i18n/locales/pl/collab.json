@@ -591,6 +591,7 @@
     "flag": "Udostępniony",
     "sharedWithYou": {
       "title": "Udostępnione Tobie",
+      "loadFailed": "Oleafly nie mógł sprawdzić, jakie projekty Ci udostępniono.",
       "from": "{{owner}} na serwerze {{server}}",
       "open": "Otwórz",
       "openNamed": "Otwórz {{name}}"
@@ -617,6 +618,7 @@
     "away": "Teraz poza projektem",
     "deleted": "Ostatnio usunięte",
     "deletedEmpty": "Ostatnio nic nie usunięto.",
+    "deletedLoadFailed": "Oleafly nie mógł wczytać ostatnio usuniętych plików.",
     "accessLog": "Dziennik dostępu",
     "status": "Stan synchronizacji",
     "waiting": "Oczekujące zmiany: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Oczekujący goście",
       "description": "Właściciele projektów zaprosili te osoby jako gości. Gość widzi tylko projekty, do których go zaproszono, i nie może ich udostępniać.",
+      "loadFailed": "Oleafly nie mógł wczytać zaproszeń gości czekających na zatwierdzenie.",
       "invitedBy": "{{inviter}} zaprasza do projektu {{project}}",
       "approve": "Zatwierdź",
       "approveNamed": "Zatwierdź {{email}}",

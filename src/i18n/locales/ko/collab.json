@@ -591,6 +591,7 @@
     "flag": "공유됨",
     "sharedWithYou": {
       "title": "나와 공유된 프로젝트",
+      "loadFailed": "Oleafly가 나와 공유된 프로젝트를 확인하지 못했습니다.",
       "from": "{{server}}의 {{owner}}",
       "open": "열기",
       "openNamed": "{{name}} 열기"
@@ -617,6 +618,7 @@
     "away": "지금 여기 없음",
     "deleted": "최근 삭제한 항목",
     "deletedEmpty": "최근에 삭제된 항목이 없습니다.",
+    "deletedLoadFailed": "Oleafly가 최근 삭제한 파일을 불러오지 못했습니다.",
     "accessLog": "접근 로그",
     "status": "동기화 상태",
     "waiting": "대기 중인 변경 사항: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "대기 중인 게스트",
       "description": "프로젝트 소유자가 이 사람들을 게스트로 초대했습니다. 게스트는 초대받은 프로젝트만 볼 수 있고 공유할 수 없습니다.",
+      "loadFailed": "Oleafly가 승인을 기다리는 게스트 초대를 불러오지 못했습니다.",
       "invitedBy": "{{inviter}} 님이 {{project}}에 초대했습니다",
       "approve": "승인",
       "approveNamed": "{{email}} 승인",

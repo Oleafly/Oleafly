@@ -591,6 +591,7 @@
     "flag": "Compartilhado",
     "sharedWithYou": {
       "title": "Compartilhados com você",
+      "loadFailed": "O Oleafly não conseguiu verificar os projetos compartilhados com você.",
       "from": "{{owner}} em {{server}}",
       "open": "Abrir",
       "openNamed": "Abrir {{name}}"
@@ -617,6 +618,7 @@
     "away": "Não está aqui agora",
     "deleted": "Excluídos recentemente",
     "deletedEmpty": "Nada foi excluído recentemente.",
+    "deletedLoadFailed": "O Oleafly não conseguiu carregar os arquivos excluídos recentemente.",
     "accessLog": "Registro de acesso",
     "status": "Status da sincronização",
     "waiting": "Alterações pendentes: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Convidados pendentes",
       "description": "Donos de projetos convidaram estas pessoas como convidadas. Um convidado vê só os projetos para os quais foi convidado e não pode compartilhá-los.",
+      "loadFailed": "O Oleafly não conseguiu carregar os convites de convidados que aguardam aprovação.",
       "invitedBy": "{{inviter}} convidou para {{project}}",
       "approve": "Aprovar",
       "approveNamed": "Aprovar {{email}}",

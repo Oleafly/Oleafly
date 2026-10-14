@@ -10,7 +10,7 @@ import { logError } from "@/lib/log";
 import { collabTrashList, collabTrashRestore, type CollabTrashEntry } from "@/lib/tauri";
 import { useBusyRows } from "../busy-rows";
 import { collabErrorCode, collabErrorText } from "../errors";
-import { InlineAlert } from "../feedback";
+import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
 import { isReadOnlyProjectRole } from "../roles";
@@ -23,15 +23,22 @@ function sameEntries(left: readonly CollabTrashEntry[], right: readonly CollabTr
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function useTrash(): readonly [readonly CollabTrashEntry[], () => Promise<void>, string | null] {
+interface TrashState {
+  projectId: string | null;
+  entries: readonly CollabTrashEntry[];
+  // Why the last read failed. A list read earlier stays on screen.
+  failure: string | null;
+}
+
+function useTrash(): readonly [readonly CollabTrashEntry[], () => Promise<void>, string | null, string | null] {
   const tree = useLiveTree();
   const projectId = tree?.projectId ?? null;
-  const [state, setState] = useState<{ projectId: string | null; entries: readonly CollabTrashEntry[] }>({
-    projectId: null,
-    entries: NONE,
-  });
+  const [state, setState] = useState<TrashState>({ projectId: null, entries: NONE, failure: null });
   const latest = useRef(projectId);
   latest.current = projectId;
+  // What is on screen, so an answer that changes nothing doesn't redraw.
+  const shown = useRef(state);
+  shown.current = state;
   const request = useRef(0);
   const refresh = useCallback(async () => {
     if (!tree) return;
@@ -42,18 +49,28 @@ function useTrash(): readonly [readonly CollabTrashEntry[], () => Promise<void>,
       entries = await collabTrashList(projectId);
     } catch (error) {
       void logError("collab trash list", error);
+      if (ticket !== request.current || latest.current !== projectId) return;
+      const failure = collabErrorText(error);
+      const current = shown.current;
+      if (current.projectId === projectId && current.failure === failure) return;
+      setState(current.projectId === projectId ? { ...current, failure } : { projectId, entries: NONE, failure });
       return;
     }
     if (ticket !== request.current || latest.current !== projectId) return;
-    setState((current) =>
-      current.projectId === projectId && sameEntries(current.entries, entries) ? current : { projectId, entries },
-    );
+    const current = shown.current;
+    // An empty answer looks the same for any project.
+    const same =
+      current.failure === null &&
+      sameEntries(current.entries, entries) &&
+      (current.projectId === projectId || entries.length === 0);
+    if (!same) setState({ projectId, entries, failure: null });
   }, [tree]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
   const entries = state.projectId === projectId ? state.entries : NONE;
-  return [entries, refresh, projectId] as const;
+  const failure = state.projectId === projectId ? state.failure : null;
+  return [entries, refresh, projectId, failure] as const;
 }
 
 const DeletedRow = memo(function DeletedRow({
@@ -172,7 +189,7 @@ export function RecentlyDeleted({
   onOpenChange,
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const { t } = useTranslation(["collab"]);
-  const [entries, refresh, projectId] = useTrash();
+  const [entries, refresh, projectId, loadFailure] = useTrash();
   const canRestore = useCollabLiveStore((state) => !isReadOnlyProjectRole(state.role ?? state.share?.role ?? "viewer"));
   const [failure, setFailure] = useState<string | null>(null);
   const rows = useBusyRows();
@@ -212,7 +229,15 @@ export function RecentlyDeleted({
       className={open ? "h-full flex-1" : "shrink-0"}
       contentClassName="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-1"
     >
-      <DeletedList title={title} entries={entries} canRestore={canRestore} busy={rows.busy} onRestore={onRestore} />
+      {loadFailure !== null && entries.length === 0 ? (
+        <LoadFailed
+          message={t(($) => $.collab.pane.deletedLoadFailed)}
+          reason={loadFailure}
+          onRetry={() => void refresh()}
+        />
+      ) : (
+        <DeletedList title={title} entries={entries} canRestore={canRestore} busy={rows.busy} onRestore={onRestore} />
+      )}
       {failure ? <InlineAlert>{failure}</InlineAlert> : null}
     </SidebarSection>
   );

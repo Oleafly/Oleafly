@@ -591,6 +591,7 @@
     "flag": "已共享",
     "sharedWithYou": {
       "title": "与你共享的项目",
+      "loadFailed": "Oleafly 无法检查与你共享的项目。",
       "from": "{{server}} 上的 {{owner}}",
       "open": "打开",
       "openNamed": "打开 {{name}}"
@@ -617,6 +618,7 @@
     "away": "当前不在此项目中",
     "deleted": "最近删除",
     "deletedEmpty": "最近没有删除任何内容。",
+    "deletedLoadFailed": "Oleafly 无法加载最近删除的文件。",
     "accessLog": "访问日志",
     "status": "同步状态",
     "waiting": "等待同步的更改：{{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "待处理的访客",
       "description": "项目所有者将这些人邀请为访客。访客只能看到受邀的项目，且不能共享这些项目。",
+      "loadFailed": "Oleafly 无法加载等待批准的访客邀请。",
       "invitedBy": "{{inviter}} 邀请他们加入 {{project}}",
       "approve": "批准",
       "approveNamed": "批准 {{email}}",

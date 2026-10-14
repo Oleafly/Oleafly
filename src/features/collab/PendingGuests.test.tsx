@@ -29,7 +29,7 @@ const guests = enCollab.guests;
 const DANA = invitation({ id: "dana", email: "dana@field.org", status: "awaiting_approval", role: "editor" });
 const EVE = invitation({ id: "eve", email: "eve@field.org", status: "invited" });
 
-function renderTab(actor: ServerRole = "admin") {
+function renderTab(actor: ServerRole = "admin", loadError: string | null = null) {
   const guest = member({
     account_id: BOB_ID,
     display_name: "Gus Guest",
@@ -43,7 +43,7 @@ function renderTab(actor: ServerRole = "admin") {
       actor={actor}
       selfId={ALICE_ID}
       members={[member({ server_role: "admin" }), guest]}
-      loadError={null}
+      loadError={loadError}
       onRetry={() => undefined}
       onMembersChange={() => undefined}
     />,
@@ -121,13 +121,25 @@ describe("Pending guests in Manage server, People", () => {
     expect(screen.queryByText(guests.pending.title)).toBeNull();
   });
 
-  it("adds no second error next to the member list when it cannot be loaded", async () => {
+  it("explains invitations that can't be loaded and loads them again on Retry", async () => {
     mocks.collabAdminGuestInvitations.mockRejectedValueOnce(collabError("unreachable"));
+    const user = userEvent.setup();
     renderTab();
-    await waitFor(() => expect(mocks.collabAdminGuestInvitations).toHaveBeenCalled());
-    expect(screen.queryByText(guests.pending.title)).toBeNull();
-    expect(screen.queryByRole("button", { name: enCommon.actions.retry })).toBeNull();
+    expect(await screen.findByText(guests.pending.loadFailed)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: guests.pending.title })).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
     expect(screen.getByText("Alice Chen")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(await screen.findByText("dana@field.org")).toBeInTheDocument();
+    expect(screen.queryByText(guests.pending.loadFailed)).toBeNull();
+  });
+
+  it("adds no second error when the member list itself failed", async () => {
+    renderTab("admin", enCollab.errors.unreachable);
+    await act(async () => {});
+    expect(mocks.collabAdminGuestInvitations).not.toHaveBeenCalled();
+    expect(screen.queryByText(guests.pending.title)).toBeNull();
+    expect(screen.getAllByRole("button", { name: enCommon.actions.retry })).toHaveLength(1);
   });
 
   it("does not look for invitations when the person cannot approve guests", async () => {

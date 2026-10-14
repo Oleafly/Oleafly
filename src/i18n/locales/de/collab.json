@@ -591,6 +591,7 @@
     "flag": "Geteilt",
     "sharedWithYou": {
       "title": "Mit Ihnen geteilt",
+      "loadFailed": "Oleafly konnte nicht nachsehen, welche Projekte mit Ihnen geteilt wurden.",
       "from": "{{owner}} bei {{server}}",
       "open": "Öffnen",
       "openNamed": "{{name}} öffnen"
@@ -617,6 +618,7 @@
     "away": "Gerade nicht hier",
     "deleted": "Zuletzt gelöscht",
     "deletedEmpty": "In letzter Zeit wurde nichts gelöscht.",
+    "deletedLoadFailed": "Oleafly konnte die zuletzt gelöschten Dateien nicht laden.",
     "accessLog": "Zugriffsprotokoll",
     "status": "Synchronisierungsstatus",
     "waiting": "Wartende Änderungen: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Wartende Gäste",
       "description": "Projektinhaber haben diese Personen als Gäste eingeladen. Ein Gast sieht nur die Projekte, zu denen er eingeladen ist, und kann sie nicht teilen.",
+      "loadFailed": "Oleafly konnte die Gasteinladungen, die auf Freigabe warten, nicht laden.",
       "invitedBy": "{{inviter}} hat sie zu {{project}} eingeladen",
       "approve": "Freigeben",
       "approveNamed": "{{email}} freigeben",

@@ -591,6 +591,7 @@
     "flag": "Paylaşılan",
     "sharedWithYou": {
       "title": "Sizinle paylaşılanlar",
+      "loadFailed": "Oleafly sizinle paylaşılan projeleri denetleyemedi.",
       "from": "{{server}} sunucusunda {{owner}}",
       "open": "Aç",
       "openNamed": "{{name}} projesini aç"
@@ -617,6 +618,7 @@
     "away": "Şu anda burada değil",
     "deleted": "Son silinenler",
     "deletedEmpty": "Son zamanlarda hiçbir şey silinmedi.",
+    "deletedLoadFailed": "Oleafly son silinen dosyaları yükleyemedi.",
     "accessLog": "Erişim günlüğü",
     "status": "Eşitleme durumu",
     "waiting": "Bekleyen değişiklikler: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Bekleyen konuklar",
       "description": "Proje sahipleri bu kişileri konuk olarak davet etti. Konuklar yalnızca davet edildikleri projeleri görür ve onları paylaşamaz.",
+      "loadFailed": "Oleafly onay bekleyen konuk davetlerini yükleyemedi.",
       "invitedBy": "{{inviter}}, {{project}} projesine davet etti",
       "approve": "Onayla",
       "approveNamed": "{{email}} adresini onayla",

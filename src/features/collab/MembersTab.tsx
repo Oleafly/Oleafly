@@ -222,7 +222,7 @@ export function MembersTab({
 
   return (
     <div className="space-y-2">
-      {serverRoleAllows(actor, "approveGuests") ? <PendingGuests serverId={serverId} /> : null}
+      {serverRoleAllows(actor, "approveGuests") && !loadError ? <PendingGuests serverId={serverId} /> : null}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <p>{t(($) => $.collab.admin.members.description)}</p>

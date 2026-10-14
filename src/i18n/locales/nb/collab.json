@@ -591,6 +591,7 @@
     "flag": "Delt",
     "sharedWithYou": {
       "title": "Delt med deg",
+      "loadFailed": "Oleafly kunne ikke se etter prosjekter som er delt med deg.",
       "from": "{{owner}} på {{server}}",
       "open": "Åpne",
       "openNamed": "Åpne {{name}}"
@@ -617,6 +618,7 @@
     "away": "Ikke her akkurat nå",
     "deleted": "Nylig slettet",
     "deletedEmpty": "Ingenting er slettet nylig.",
+    "deletedLoadFailed": "Oleafly kunne ikke laste filene som er slettet nylig.",
     "accessLog": "Tilgangslogg",
     "status": "Synkroniseringsstatus",
     "waiting": "Ventende endringer: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Ventende gjester",
       "description": "Prosjekteiere har invitert disse personene som gjester. En gjest ser bare prosjektene den er invitert til, og kan ikke dele dem.",
+      "loadFailed": "Oleafly kunne ikke laste gjesteinvitasjonene som venter på godkjenning.",
       "invitedBy": "{{inviter}} inviterte dem til {{project}}",
       "approve": "Godkjenn",
       "approveNamed": "Godkjenn {{email}}",

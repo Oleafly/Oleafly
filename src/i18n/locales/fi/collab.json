@@ -591,6 +591,7 @@
     "flag": "Jaettu",
     "sharedWithYou": {
       "title": "Kanssasi jaetut",
+      "loadFailed": "Oleafly ei voinut tarkistaa, mitä projekteja kanssasi on jaettu.",
       "from": "{{owner}} palvelimella {{server}}",
       "open": "Avaa",
       "openNamed": "Avaa {{name}}"
@@ -617,6 +618,7 @@
     "away": "Ei nyt paikalla",
     "deleted": "Äskettäin poistetut",
     "deletedEmpty": "Mitään ei ole poistettu viime aikoina.",
+    "deletedLoadFailed": "Oleafly ei voinut ladata äskettäin poistettuja tiedostoja.",
     "accessLog": "Käyttöloki",
     "status": "Synkronoinnin tila",
     "waiting": "Odottavia muutoksia: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Odottavat vieraat",
       "description": "Projektien omistajat ovat kutsuneet nämä ihmiset vieraiksi. Vieras näkee vain projektit, joihin hänet on kutsuttu, eikä voi jakaa niitä.",
+      "loadFailed": "Oleafly ei voinut ladata hyväksyntää odottavia vieraskutsuja.",
       "invitedBy": "{{inviter}} kutsui heidät projektiin {{project}}",
       "approve": "Hyväksy",
       "approveNamed": "Hyväksy {{email}}",

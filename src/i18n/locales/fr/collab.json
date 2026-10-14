@@ -591,6 +591,7 @@
     "flag": "Partagé",
     "sharedWithYou": {
       "title": "Partagés avec vous",
+      "loadFailed": "Oleafly n'a pas pu vérifier les projets partagés avec vous.",
       "from": "{{owner}} sur {{server}}",
       "open": "Ouvrir",
       "openNamed": "Ouvrir {{name}}"
@@ -617,6 +618,7 @@
     "away": "Pas ici en ce moment",
     "deleted": "Supprimés récemment",
     "deletedEmpty": "Rien n'a été supprimé récemment.",
+    "deletedLoadFailed": "Oleafly n'a pas pu charger les fichiers supprimés récemment.",
     "accessLog": "Journal d'accès",
     "status": "État de la synchronisation",
     "waiting": "Modifications en attente : {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Invités en attente",
       "description": "Des propriétaires de projets ont invité ces personnes comme invités. Un invité ne voit que les projets auxquels il est invité et ne peut pas les partager.",
+      "loadFailed": "Oleafly n'a pas pu charger les invitations d'invités en attente d'approbation.",
       "invitedBy": "{{inviter}} les a invités sur {{project}}",
       "approve": "Approuver",
       "approveNamed": "Approuver {{email}}",

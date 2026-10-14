@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -175,11 +176,34 @@ describe("SharedWithYou", () => {
     expect(openProject).not.toHaveBeenCalled();
   });
 
-  it("shows nothing when nothing is shared or the list cannot load", async () => {
-    mocks.collabSharedWithMe.mockRejectedValue(collabError("unreachable"));
+  it("shows nothing when nothing is shared", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([]);
     const { container } = render(<SharedWithYou />);
     await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("explains a list that can't be checked and checks again on Retry", async () => {
+    mocks.collabSharedWithMe.mockRejectedValueOnce(collabError("unreachable")).mockResolvedValue([sharedWithMe()]);
+    const user = userEvent.setup();
+    render(<SharedWithYou />);
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+  });
+
+  it("keeps the projects it found when a later check fails", async () => {
+    mocks.collabSharedWithMe.mockResolvedValueOnce([sharedWithMe()]).mockRejectedValue(collabError("unreachable"));
+    render(<SharedWithYou />);
+    expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Grant proposal")).toBeInTheDocument();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
   });
 
   it("refreshes once after a burst of server changes, and when a server is added or signs in or out", async () => {

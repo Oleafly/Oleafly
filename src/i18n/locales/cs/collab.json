@@ -591,6 +591,7 @@
     "flag": "Sdílený",
     "sharedWithYou": {
       "title": "Sdíleno s vámi",
+      "loadFailed": "Oleafly nemohl zjistit, jaké projekty s vámi někdo sdílí.",
       "from": "{{owner}} na serveru {{server}}",
       "open": "Otevřít",
       "openNamed": "Otevřít {{name}}"
@@ -617,6 +618,7 @@
     "away": "Teď tu není",
     "deleted": "Nedávno smazané",
     "deletedEmpty": "V poslední době nebylo nic smazáno.",
+    "deletedLoadFailed": "Oleafly nemohl načíst nedávno smazané soubory.",
     "accessLog": "Protokol přístupu",
     "status": "Stav synchronizace",
     "waiting": "Čekající změny: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Čekající hosté",
       "description": "Vlastníci projektů pozvali tyto lidi jako hosty. Host vidí jen projekty, do kterých je pozvaný, a nemůže je sdílet.",
+      "loadFailed": "Oleafly nemohl načíst pozvánky hostů, které čekají na schválení.",
       "invitedBy": "{{inviter}} je pozval do projektu {{project}}",
       "approve": "Schválit",
       "approveNamed": "Schválit {{email}}",

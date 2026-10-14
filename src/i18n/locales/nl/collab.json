@@ -591,6 +591,7 @@
     "flag": "Gedeeld",
     "sharedWithYou": {
       "title": "Met jou gedeeld",
+      "loadFailed": "Oleafly kon niet nagaan welke projecten met je zijn gedeeld.",
       "from": "{{owner}} op {{server}}",
       "open": "Openen",
       "openNamed": "{{name}} openen"
@@ -617,6 +618,7 @@
     "away": "Nu niet hier",
     "deleted": "Onlangs verwijderd",
     "deletedEmpty": "Er is de laatste tijd niets verwijderd.",
+    "deletedLoadFailed": "Oleafly kon de onlangs verwijderde bestanden niet laden.",
     "accessLog": "Toegangslogboek",
     "status": "Synchronisatiestatus",
     "waiting": "Wachtende wijzigingen: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Wachtende gasten",
       "description": "Projecteigenaren hebben deze mensen als gast uitgenodigd. Een gast ziet alleen de projecten waarvoor die is uitgenodigd en kan ze niet delen.",
+      "loadFailed": "Oleafly kon de gastuitnodigingen die op goedkeuring wachten niet laden.",
       "invitedBy": "{{inviter}} heeft ze uitgenodigd voor {{project}}",
       "approve": "Goedkeuren",
       "approveNamed": "{{email}} goedkeuren",

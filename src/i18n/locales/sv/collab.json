@@ -591,6 +591,7 @@
     "flag": "Delat",
     "sharedWithYou": {
       "title": "Delat med dig",
+      "loadFailed": "Oleafly kunde inte se efter vilka projekt som delats med dig.",
       "from": "{{owner}} på {{server}}",
       "open": "Öppna",
       "openNamed": "Öppna {{name}}"
@@ -617,6 +618,7 @@
     "away": "Inte här just nu",
     "deleted": "Nyligen raderade",
     "deletedEmpty": "Inget har raderats nyligen.",
+    "deletedLoadFailed": "Oleafly kunde inte läsa in de nyligen raderade filerna.",
     "accessLog": "Åtkomstlogg",
     "status": "Synkroniseringsstatus",
     "waiting": "Väntande ändringar: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "Väntande gäster",
       "description": "Projektägare har bjudit in de här personerna som gäster. En gäst ser bara de projekt den är inbjuden till och kan inte dela dem.",
+      "loadFailed": "Oleafly kunde inte läsa in gästinbjudningarna som väntar på godkännande.",
       "invitedBy": "{{inviter}} bjöd in dem till {{project}}",
       "approve": "Godkänn",
       "approveNamed": "Godkänn {{email}}",

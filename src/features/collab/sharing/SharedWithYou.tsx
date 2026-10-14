@@ -16,7 +16,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode, collabErrorText } from "../errors";
-import { InlineAlert } from "../feedback";
+import { InlineAlert, LoadFailed } from "../feedback";
 import { JoinProgress } from "../links/JoinProgress";
 import { collabPerson } from "../people";
 import { useCollabStore } from "../store";
@@ -45,6 +45,7 @@ export function SharedWithYou() {
   const titleId = useId();
   const servers = useCollabStore((state) => serversKey(state.servers));
   const [items, setItems] = useState<CollabSharedWithMe[]>([]);
+  const [failure, setFailure] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState<{ key: string; message: string } | null>(null);
@@ -82,10 +83,13 @@ export function SharedWithYou() {
     void servers;
     collabSharedWithMe().then(
       (next) => {
-        if (active) setItems(next.filter((item) => item.local_project_id === null));
+        if (!active) return;
+        setItems(next.filter((item) => item.local_project_id === null));
+        setFailure(null);
       },
       (error_: unknown) => {
         void logError("collab shared with me", error_);
+        if (active) setFailure(collabErrorText(error_));
       },
     );
     return () => {
@@ -110,6 +114,20 @@ export function SharedWithYou() {
     }
   };
 
+  if (items.length === 0 && failure !== null) {
+    return (
+      <section aria-labelledby={titleId} className="mb-5 space-y-2" data-testid="collab-shared-with-you">
+        <h2 id={titleId} className="text-sm font-semibold">
+          {t(($) => $.collab.library.sharedWithYou.title)}
+        </h2>
+        <LoadFailed
+          message={t(($) => $.collab.library.sharedWithYou.loadFailed)}
+          reason={failure}
+          onRetry={() => setRequest((count) => count + 1)}
+        />
+      </section>
+    );
+  }
   if (items.length === 0) return null;
 
   return (

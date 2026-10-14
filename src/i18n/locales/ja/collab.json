@@ -591,6 +591,7 @@
     "flag": "共有中",
     "sharedWithYou": {
       "title": "あなたと共有されたプロジェクト",
+      "loadFailed": "Oleafly はあなたと共有されたプロジェクトを確認できませんでした。",
       "from": "{{server}} の {{owner}}",
       "open": "開く",
       "openNamed": "{{name}} を開く"
@@ -617,6 +618,7 @@
     "away": "現在ここにはいません",
     "deleted": "最近削除した項目",
     "deletedEmpty": "最近削除されたものはありません。",
+    "deletedLoadFailed": "Oleafly は最近削除したファイルを読み込めませんでした。",
     "accessLog": "アクセスログ",
     "status": "同期の状態",
     "waiting": "未送信の変更: {{number}}"
@@ -980,6 +982,7 @@
     "pending": {
       "title": "保留中のゲスト",
       "description": "プロジェクトの所有者がこれらの人をゲストとして招待しました。ゲストは招待されたプロジェクトだけを見ることができ、共有はできません。",
+      "loadFailed": "Oleafly は承認待ちのゲストの招待を読み込めませんでした。",
       "invitedBy": "{{inviter}} が {{project}} に招待しました",
       "approve": "承認",
       "approveNamed": "{{email}} を承認",

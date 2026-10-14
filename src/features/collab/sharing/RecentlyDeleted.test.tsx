@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDateTime } from "@/lib/intl";
 import type { CollabTrashEntry } from "@/lib/tauri";
@@ -262,6 +263,18 @@ describe("RecentlyDeleted", () => {
     await waitFor(() => expect(mocks.collabTrashList).toHaveBeenCalledWith("thesis"));
     await act(async () => answer(LISTED));
     expect(screen.getByText(enCollab.pane.deletedEmpty)).toBeInTheDocument();
+  });
+
+  it("explains a list that can't be read instead of calling it empty, and reads it again on Retry", async () => {
+    mocks.collabTrashList.mockRejectedValueOnce(collabError("unreachable"));
+    const user = userEvent.setup();
+    view();
+    expect(await screen.findByText(enCollab.pane.deletedLoadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.pane.deletedEmpty)).toBeNull();
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(await screen.findByText("intro.tex")).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.pane.deletedLoadFailed)).toBeNull();
   });
 
   it("keeps the list when reading it fails", async () => {

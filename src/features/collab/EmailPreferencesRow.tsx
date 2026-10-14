@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AtSign, Mail } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { Button } from "@/components/ui/button";
 import { collabEmailPreferences, collabSetEmailPreferences, type CollabEmailPreferences } from "@/lib/tauri";
 import { collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
@@ -9,14 +10,16 @@ import { InlineAlert } from "./feedback";
 type Choice = "shared_with_you" | "mentions";
 
 export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>) {
-  const { t } = useTranslation(["collab"]);
+  const { t } = useTranslation(["collab", "common"]);
   const [preferences, setPreferences] = useState<CollabEmailPreferences | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [request, setRequest] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    void request;
     setLoadFailed(false);
     collabEmailPreferences(serverId).then(
       (next) => {
@@ -29,10 +32,17 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
     return () => {
       active = false;
     };
-  }, [serverId]);
+  }, [serverId, request]);
 
   if (loadFailed) {
-    return <p className="text-xs text-muted-foreground">{t(($) => $.collab.section.server.emails.loadFailed)}</p>;
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-muted-foreground">{t(($) => $.collab.section.server.emails.loadFailed)}</p>
+        <Button type="button" variant="outline" size="xs" onClick={() => setRequest((count) => count + 1)}>
+          {t(($) => $.common.actions.retry)}
+        </Button>
+      </div>
+    );
   }
   if (!preferences) return null;
 
