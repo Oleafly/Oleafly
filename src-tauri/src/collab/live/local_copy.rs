@@ -664,6 +664,7 @@ mod tests {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(WrittenTexts::default()),
+                upkeep: Default::default(),
             });
             let (events, receiver) = mpsc::unbounded_channel();
             let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths));
@@ -768,6 +769,7 @@ mod tests {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(bases),
+            upkeep: Default::default(),
         })
     }
 

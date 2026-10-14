@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oleafly_collab::materialize::Layout;
@@ -10,12 +11,12 @@ use crate::collab::disk::{sha256_hex, DiskState};
 const PACE: Duration = Duration::from_secs(1);
 
 #[derive(Default)]
-struct Pace {
+pub(super) struct Pace {
     saved: Option<Instant>,
     owed: bool,
     written: HashMap<String, Instant>,
     index: Option<String>,
-    timer: bool,
+    timer: Arc<AtomicBool>,
     #[cfg(test)]
     counted: Counted,
 }
@@ -28,11 +29,9 @@ pub(super) struct Counted {
     pub(super) writes: usize,
 }
 
-static PACES: LazyLock<Mutex<HashMap<String, Pace>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-
 impl Active {
     fn paced<T>(&self, work: impl FnOnce(&mut Pace) -> T) -> T {
-        work(guard(&PACES).entry(self.project_id.clone()).or_default())
+        work(&mut guard(&self.upkeep.pace))
     }
 
     pub(super) fn save_owed(&self) -> bool {
@@ -130,16 +129,14 @@ impl Active {
     }
 
     fn come_back_later(&self) {
-        if self.paced(|pace| std::mem::replace(&mut pace.timer, true)) {
+        let timer = self.paced(|pace| Arc::clone(&pace.timer));
+        if timer.swap(true, Ordering::SeqCst) {
             return;
         }
         let writer = self.writer.clone();
-        let project_id = self.project_id.clone();
         tauri::async_runtime::spawn(async move {
             tokio::time::sleep(PACE).await;
-            if let Some(pace) = guard(&PACES).get_mut(&project_id) {
-                pace.timer = false;
-            }
+            timer.store(false, Ordering::SeqCst);
             let _ = writer.send(WriterSignal::Kick);
         });
     }

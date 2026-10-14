@@ -956,6 +956,7 @@ mod tests {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(bases),
+                upkeep: Default::default(),
             });
             tokio::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             let created = tokio::time::timeout(

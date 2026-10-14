@@ -126,6 +126,7 @@ pub async fn start(
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
         bases: Mutex::new(bases),
+        upkeep: Default::default(),
     });
     lock(&shared).mark_all_dirty()?;
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));

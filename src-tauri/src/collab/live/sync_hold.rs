@@ -901,6 +901,7 @@ mod tests {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(bases),
+            upkeep: Default::default(),
         });
         Rig {
             dir,

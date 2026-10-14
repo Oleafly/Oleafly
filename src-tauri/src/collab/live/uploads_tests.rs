@@ -182,6 +182,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
         bases: Mutex::new(bases),
+        upkeep: Default::default(),
     });
     attach(&active);
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));

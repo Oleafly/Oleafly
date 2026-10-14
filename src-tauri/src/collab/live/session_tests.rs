@@ -88,6 +88,7 @@ fn starting_live_again_for_a_live_project_answers() {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(WrittenTexts::default()),
+                upkeep: Default::default(),
             });
             *guard(&ACTIVE) = Some(Arc::clone(&active));
             let again = start(&state, Arc::new(SilentHost), "already-live").await;
@@ -220,6 +221,7 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
@@ -376,6 +378,7 @@ fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks(
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -481,6 +484,7 @@ fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -609,6 +613,7 @@ fn the_pump_announces_comments_that_arrive_from_others() {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -706,6 +711,7 @@ fn blocked_save() -> BlockedSave {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
         });
         (active, (events_rx, writer_rx))
     });
@@ -879,6 +885,64 @@ fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_
         std::fs::read_to_string(root.join("table.tex")).unwrap(),
         "T"
     );
+}
+
+fn fail_main(rig: &write::rig::LiveRig, times: usize) {
+    let active = rig.active();
+    let layout = guard(&active.disk).layout.clone();
+    for _ in 0..times {
+        active.settle_unwritten(
+            &layout,
+            super::unwritten::Settled {
+                failed: vec![(
+                    "main.tex".to_owned(),
+                    super::unwritten::UnwrittenReason::Locked,
+                )],
+                ..Default::default()
+            },
+        );
+    }
+}
+
+#[test]
+fn a_file_that_keeps_failing_is_tried_again_on_every_pass() {
+    let (_dir, _root, _host, rig) = watched_rig("still-failing", &[("main.tex", "abc")]);
+    let active = rig.active();
+    let main = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "main.tex")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    let _ = lock(&active.live).take_disk_work();
+    for attempt in 1..=10 {
+        fail_main(&rig, 1);
+        let work = lock(&active.live).take_disk_work();
+        assert!(
+            work.texts.contains(&main),
+            "attempt {attempt} was not retried"
+        );
+    }
+}
+
+#[test]
+fn a_new_session_starts_without_the_failures_of_the_last_one() {
+    let told = |host: &Watching| {
+        guard(&host.unwritten)
+            .iter()
+            .map(|payload| payload.files.len())
+            .collect::<Vec<_>>()
+    };
+    {
+        let (_dir, _root, host, rig) = watched_rig("fresh-books", &[("main.tex", "abc")]);
+        fail_main(&rig, 3);
+        assert_eq!(told(&host), vec![1]);
+    }
+    let (_dir, _root, host, rig) = watched_rig("fresh-books", &[("main.tex", "abc")]);
+    fail_main(&rig, 1);
+    assert_eq!(told(&host), Vec::<usize>::new());
+    fail_main(&rig, 1);
+    assert_eq!(told(&host), vec![1]);
 }
 
 #[cfg(unix)]

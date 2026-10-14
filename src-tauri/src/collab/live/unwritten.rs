@@ -1,5 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::{LazyLock, Mutex};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use oleafly_collab::materialize::Layout;
@@ -10,7 +11,6 @@ use super::session::{guard, lock, Active, WriterSignal};
 pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
 const FIRST_RETRY: Duration = Duration::from_secs(2);
 const LONGEST_RETRY: Duration = Duration::from_secs(60);
-const RETRIES: u32 = 6;
 const TELL_AFTER: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -37,14 +37,11 @@ pub struct UnwrittenPayload {
 }
 
 #[derive(Default)]
-struct Failing {
+pub(super) struct Failing {
     attempts: BTreeMap<String, (u32, Option<UnwrittenReason>)>,
     told: Vec<UnwrittenFile>,
-    timer: bool,
+    timer: Arc<AtomicBool>,
 }
-
-static FAILING: LazyLock<Mutex<HashMap<String, Failing>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(windows)]
 fn reason_of_code(code: i32) -> UnwrittenReason {
@@ -88,9 +85,9 @@ pub(super) struct Settled {
 
 impl Active {
     pub(super) fn settle_unwritten(&self, layout: &Layout, settled: Settled) {
-        let (retry, payload, delay) = {
-            let mut all = guard(&FAILING);
-            let failing = all.entry(self.project_id.clone()).or_default();
+        let (retry, payload, delay, timer) = {
+            let mut held = guard(&self.upkeep.failing);
+            let failing = &mut *held;
             let present: BTreeSet<&str> =
                 layout.values().map(|placed| placed.path.as_str()).collect();
             failing
@@ -104,13 +101,11 @@ impl Active {
             let mut retry = BTreeSet::new();
             for (path, reason) in failed.chain(conflicts) {
                 let entry = failing.attempts.entry(path.clone()).or_insert((0, None));
-                entry.0 += 1;
+                entry.0 = entry.0.saturating_add(1);
                 if reason.is_some() {
                     entry.1 = reason;
                 }
-                if entry.0 <= RETRIES {
-                    retry.insert(path);
-                }
+                retry.insert(path);
             }
             let told: Vec<UnwrittenFile> = failing
                 .attempts
@@ -133,9 +128,10 @@ impl Active {
                 .filter_map(|path| failing.attempts.get(path))
                 .map(|(attempts, _)| *attempts)
                 .max();
-            let delay = most.filter(|_| !failing.timer).map(backoff);
-            failing.timer |= delay.is_some();
-            (retry, payload, delay)
+            let delay = most
+                .map(backoff)
+                .filter(|_| !failing.timer.swap(true, Ordering::SeqCst));
+            (retry, payload, delay, Arc::clone(&failing.timer))
         };
         if !retry.is_empty() {
             let mut live = lock(&self.live);
@@ -156,12 +152,9 @@ impl Active {
         }
         if let Some(delay) = delay {
             let writer = self.writer.clone();
-            let project_id = self.project_id.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(delay).await;
-                if let Some(failing) = guard(&FAILING).get_mut(&project_id) {
-                    failing.timer = false;
-                }
+                timer.store(false, Ordering::SeqCst);
                 let _ = writer.send(WriterSignal::Kick);
             });
         }

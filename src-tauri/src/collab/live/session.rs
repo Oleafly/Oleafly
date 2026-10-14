@@ -57,6 +57,13 @@ pub struct Active {
     pub(super) waiting: AtomicBool,
     pub(super) last_status: Mutex<LiveStatus>,
     pub(super) bases: Mutex<WrittenTexts>,
+    pub(super) upkeep: Upkeep,
+}
+
+#[derive(Default)]
+pub(super) struct Upkeep {
+    pub(super) pace: Mutex<super::pacing::Pace>,
+    pub(super) failing: Mutex<super::unwritten::Failing>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));

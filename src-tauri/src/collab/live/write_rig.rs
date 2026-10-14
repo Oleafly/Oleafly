@@ -124,6 +124,7 @@ impl LiveRig {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(bases),
+                upkeep: Default::default(),
             });
             tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             active
@@ -137,6 +138,10 @@ impl LiveRig {
 
     pub(crate) fn document(&self) -> SharedDocument {
         SharedDocument(Arc::clone(&self.active))
+    }
+
+    pub(in crate::collab::live) fn active(&self) -> Arc<Active> {
+        Arc::clone(&self.active)
     }
 
     fn id_of(&self, path: &str) -> Option<String> {
