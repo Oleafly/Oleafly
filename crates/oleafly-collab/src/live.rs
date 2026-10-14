@@ -1117,6 +1117,12 @@ impl LiveProject {
         })
     }
 
+    // The project as the server holds it, as far as this copy knows: every
+    // change the server confirmed and none of the ones still to send.
+    pub fn confirmed_doc(&self) -> Result<ProjectDoc, CollabError> {
+        self.doc.at_version(&self.confirmed)
+    }
+
     pub fn pending_changes(&self) -> u64 {
         self.unsent()
             .iter()
@@ -1834,6 +1840,27 @@ mod tests {
         restarted.save(dir.path()).unwrap();
         let mut later = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
         assert!(later.next_outgoing().unwrap().is_none());
+    }
+
+    #[test]
+    fn the_confirmed_document_leaves_out_changes_not_yet_acknowledged() {
+        let (mut bob, _alice, main) = pair();
+        type_at_end(&mut bob, &main, " sent");
+        let sent = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(sent.batch, 1);
+        type_at_end(&mut bob, &main, " unsent");
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc sent unsent");
+        assert_eq!(
+            bob.confirmed_doc().unwrap().text(&main).unwrap(),
+            "abc sent"
+        );
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let reopened = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(
+            reopened.confirmed_doc().unwrap().text(&main).unwrap(),
+            "abc sent"
+        );
     }
 
     #[test]
