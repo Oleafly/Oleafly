@@ -100,6 +100,7 @@ keys! {
     EmailTypeCode => "email.type_code",
     EmailOnlyIfYou => "email.only_if_you",
     EmailFinish => "email.finish",
+    EmailWrongDevice => "email.wrong_device",
     PageExpiredTitle => "email.page_expired_title",
     PageExpiredBody => "email.page_expired_body",
     SignInExpiredTitle => "email.sign_in_expired_title",

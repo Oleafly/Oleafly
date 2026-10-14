@@ -36,6 +36,7 @@ pub struct Browser {
     cookies: Mutex<BTreeMap<String, String>>,
     language: Option<String>,
     address: Option<String>,
+    agent: Option<String>,
 }
 
 impl Default for Browser {
@@ -51,6 +52,14 @@ impl Browser {
             cookies: Mutex::new(BTreeMap::new()),
             language: None,
             address: None,
+            agent: None,
+        }
+    }
+
+    pub fn with_user_agent(agent: &str) -> Browser {
+        Browser {
+            agent: Some(agent.to_owned()),
+            ..Browser::new()
         }
     }
 
@@ -126,6 +135,9 @@ impl Browser {
         if let Some(address) = &self.address {
             request = request.header("x-forwarded-for", address);
         }
+        if let Some(agent) = &self.agent {
+            request = request.header(reqwest::header::USER_AGENT, agent);
+        }
         let response = request.send().await.expect("get");
         self.finish(url.clone(), response).await
     }
@@ -140,6 +152,9 @@ impl Browser {
         }
         if let Some(address) = &self.address {
             request = request.header("x-forwarded-for", address);
+        }
+        if let Some(agent) = &self.agent {
+            request = request.header(reqwest::header::USER_AGENT, agent);
         }
         let response = request.send().await.expect("post");
         self.finish(url.clone(), response).await

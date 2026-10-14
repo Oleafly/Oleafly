@@ -678,3 +678,50 @@ async fn an_address_held_only_by_former_accounts_opens_no_new_account_through_a_
     );
     assert_eq!(account_count(&setup.server).await, accounts + 1);
 }
+
+const IPHONE: &str = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+
+#[tokio::test]
+async fn a_link_opened_on_a_phone_says_to_use_the_computer_and_stays_usable() {
+    let setup = setup().await;
+    admit(&setup, "ada@uni.edu").await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    let computer = Browser::new();
+    ask_for_link(&computer, &attempt, "ada@uni.edu").await;
+    let link = link_in(&latest_email(&setup.smtp, 1).await);
+    let phone = Browser::with_user_agent(IPHONE);
+    let opened = phone.get(&link).await;
+    assert_eq!(opened.status, 200, "{}", opened.body);
+    let text = text_of(&opened);
+    assert!(
+        text.contains("so it can't finish on a phone or tablet"),
+        "{text}"
+    );
+    assert!(text.contains("Test laptop (macOS)"), "{text}");
+    assert!(!opened.body.contains("<form"), "{}", opened.body);
+    let finished = open_link(&computer, &link).await;
+    let back = landing(&finished);
+    let code = app_callback(&back, &attempt.state).expect("a sign-in code");
+    assert!(redeem(&setup.server, &device, &code, &attempt.verifier)
+        .await
+        .is_ok());
+}
+
+#[tokio::test]
+async fn the_link_page_on_the_computer_says_it_works_only_there() {
+    let setup = setup().await;
+    admit(&setup, "ada@uni.edu").await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    let computer = Browser::new();
+    ask_for_link(&computer, &attempt, "ada@uni.edu").await;
+    let link = link_in(&latest_email(&setup.smtp, 1).await);
+    let confirm = computer.get(&link).await;
+    let text = text_of(&confirm);
+    assert!(
+        text.contains("This link works only on that computer."),
+        "{text}"
+    );
+    assert!(confirm.body.contains("<form"), "{}", confirm.body);
+}
