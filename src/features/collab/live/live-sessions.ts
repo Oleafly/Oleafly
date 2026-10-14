@@ -8,6 +8,9 @@ export interface LiveSessionsOptions {
   mirror(path: string, text: string): void;
   detached(path: string, text: string, edited: boolean): void;
   discarded?(path: string, reason: DiscardReason): void;
+  // Whether a tab still shows the file. A file whose tab closed and opened
+  // again before its typing was confirmed keeps its session.
+  shown?(path: string): boolean;
   settleTimeoutMs?: number;
 }
 
@@ -94,6 +97,20 @@ export class LiveSessions {
     for (const known of this.local) {
       if (covered(known)) this.local.delete(known);
     }
+  }
+
+  // The tab for `path` closed. Once the shared document has every change,
+  // the session closes, so a file nobody shows no longer costs a copy of
+  // its text and a round of work for every remote edit. Opening the file
+  // again starts a fresh session from the shared text.
+  release(path: string): void {
+    const session = this.sessions.get(path);
+    if (!session) return;
+    void session.settled().then(() => {
+      if (this.sessions.get(session.path) !== session || this.options.shown?.(session.path)) return;
+      this.sessions.delete(session.path);
+      session.close();
+    });
   }
 
   close(): void {

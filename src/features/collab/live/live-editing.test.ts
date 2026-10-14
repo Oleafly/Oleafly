@@ -69,6 +69,7 @@ vi.mock("@/store/files", async () => {
   const store = create(() => ({
     projectId: null as string | null,
     activePath: null as string | null,
+    openTabs: [] as string[],
     files: {} as Record<string, { content: string; dirty: boolean }>,
     docVersion: 0,
     setContent: vi.fn((path: string, content: string) => {
@@ -132,6 +133,7 @@ beforeEach(() => {
   useFilesStore.setState({
     projectId: PROJECT,
     activePath: "main.tex",
+    openTabs: ["main.tex"],
     files: { "main.tex": { content: "shared", dirty: false }, "excluded.log": { content: "log", dirty: false } },
     docVersion: 0,
   });
@@ -189,6 +191,22 @@ describe("live editing", () => {
     release?.();
     release = null;
     expect(mocks.pathDeletes.size).toBe(0);
+  });
+
+  it("closes the shared document of a tab that closes, and only that one", async () => {
+    useFilesStore.setState((state) => ({
+      openTabs: ["main.tex", "intro.tex"],
+      files: { ...state.files, "intro.tex": { content: "shared", dirty: false } },
+    }));
+    start();
+    collabDocumentSession("main.tex");
+    const intro = collabDocumentSession("intro.tex");
+    await settle();
+    useFilesStore.setState({ openTabs: ["main.tex"] });
+    await settle();
+    expect(mocks.collabDocClose).toHaveBeenCalledTimes(1);
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-intro.tex", 1);
+    expect(collabDocumentSession("intro.tex")).not.toBe(intro);
   });
 
   it("sends editor changes and keeps the files store current without marking it unsaved", async () => {

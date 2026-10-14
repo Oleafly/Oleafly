@@ -118,6 +118,10 @@ export function startLiveEditing(live: LiveSession): () => void {
       if (edited) files.setContent(path, text, { unsaved: true });
       if (files.activePath === path) files.bumpDocVersion();
     },
+    shown: (path) => {
+      const files = useFilesStore.getState();
+      return files.projectId === projectId && (files.openTabs.includes(path) || files.activePath === path);
+    },
     discarded: (path, reason) => {
       toast.info(
         reason === "read_only"
@@ -152,6 +156,12 @@ export function startLiveEditing(live: LiveSession): () => void {
   const unsubscribeActive = useFilesStore.subscribe((state, previous) => {
     if (state.activePath !== previous.activePath) presence.schedule();
   });
+  const unsubscribeTabs = useFilesStore.subscribe((state, previous) => {
+    if (state.openTabs === previous.openTabs || state.projectId !== projectId) return;
+    for (const path of previous.openTabs) {
+      if (!state.openTabs.includes(path)) sessions.release(path);
+    }
+  });
   const unsubscribeVisibility = useSettingsStore.subscribe((state, previous) => {
     if (state.collabPresence !== previous.collabPresence) presence.schedule();
   });
@@ -162,6 +172,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   return () => {
     presence.dispose();
     unsubscribeActive();
+    unsubscribeTabs();
     unsubscribeVisibility();
     unsubscribeRole();
     releaseCursors();

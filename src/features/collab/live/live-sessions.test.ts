@@ -175,6 +175,47 @@ describe("LiveSessions", () => {
     expect(fresh).not.toBe(session);
   });
 
+  it("closes a file's document when its tab closes, once its typing reached the shared project", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel, { shown: () => false }));
+    const quiet = sessions.documentSession("intro.tex");
+    const typed = sessions.documentSession("results.tex");
+    const kept = sessions.documentSession("main.tex");
+    await flush();
+    typed?.applyLocal([{ from: 3, to: 3, insert: "!" }], typed.version());
+    sessions.release("intro.tex");
+    sessions.release("results.tex");
+    await flush();
+    expect(channel.opens).toHaveLength(3);
+    expect(channel.closes).toEqual([channel.opens[0]]);
+    expect(quiet?.phase).toBe("closed");
+    expect(typed?.phase).toBe("open");
+    channel.drain();
+    await flush();
+    expect(channel.text).toBe("abc!");
+    expect(channel.closes).toEqual([channel.opens[0], channel.opens[1]]);
+    expect(kept?.phase).toBe("open");
+    expect(sessions.holds("intro.tex")).toBe(false);
+    const fresh = sessions.documentSession("intro.tex");
+    expect(fresh).not.toBe(quiet);
+    expect(fresh).not.toBeNull();
+  });
+
+  it("keeps the document of a file whose tab opened again before its typing was confirmed", async () => {
+    const channel = new FakeChannel("abc");
+    let shown = false;
+    const sessions = new LiveSessions(options(channel, { shown: () => shown }));
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    sessions.release("main.tex");
+    shown = true;
+    channel.drain();
+    await flush();
+    expect(channel.closes).toEqual([]);
+    expect(sessions.documentSession("main.tex")).toBe(session);
+  });
+
   it("holds only the files it has a shared document for, without opening one to check", async () => {
     const channel = new FakeChannel("abc");
     const sessions = new LiveSessions(options(channel));
