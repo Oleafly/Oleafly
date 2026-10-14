@@ -647,6 +647,8 @@
     "newDevice": "Nouvelle connexion de {{name}} depuis un autre appareil",
     "review": "Examiner",
     "renamed": "{{name}} a renommé {{before}} en {{theirs}} après que vous l'avez nommé {{ours}}",
+    "skipped": "Une modification de {{name}} n'a pas pu être lue et a été ignorée.",
+    "skippedUnknown": "Une modification d'une autre personne n'a pas pu être lue et a été ignorée.",
     "mentioned": "{{name}} vous a mentionné dans un commentaire sur {{path}}",
     "mentionedHere": "{{name}} vous a mentionné dans un commentaire",
     "showComment": "Voir le commentaire",

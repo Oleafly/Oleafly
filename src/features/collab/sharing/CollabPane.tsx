@@ -28,6 +28,7 @@ import {
   ServerCog,
   Share2,
   SlidersHorizontal,
+  TriangleAlert,
   UserCog,
   UserLock,
   UserMinus,
@@ -94,6 +95,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   renamed: PencilLine,
   mentioned: AtSign,
   setting: SlidersHorizontal,
+  skipped: TriangleAlert,
 };
 
 const TICK_MS = 60_000;
@@ -296,6 +298,10 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
         : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
     case "setting":
       return settingActivityText(entry.change, entry.name || unknown, t);
+    case "skipped":
+      return entry.name
+        ? t(($) => $.collab.activity.skipped, { name: entry.name })
+        : t(($) => $.collab.activity.skippedUnknown);
   }
 }
 

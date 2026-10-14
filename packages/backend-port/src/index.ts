@@ -1693,6 +1693,13 @@ export interface CollabLiveRenamed {
   ours: string;
   theirs: string;
 }
+// A change the app couldn't import, even on its own, so it was skipped and
+// syncing went on. `deviceId` names the device that made it when known.
+export interface CollabChangeSkipped {
+  projectId: string;
+  seq: number;
+  deviceId: string | null;
+}
 export type CollabSettingNotice =
   | { kind: "mainDocument"; path: string }
   | { kind: "compiler"; engine: string; flavor: string | null }

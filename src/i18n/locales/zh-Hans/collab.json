@@ -647,6 +647,8 @@
     "newDevice": "{{name}} 在新设备上登录了",
     "review": "查看",
     "renamed": "你将它命名为 {{ours}} 之后，{{name}} 把 {{before}} 重命名为 {{theirs}}",
+    "skipped": "无法读取来自 {{name}} 的一项更改，已跳过。",
+    "skippedUnknown": "无法读取来自某人的一项更改，已跳过。",
     "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
     "mentionedHere": "{{name}} 在评论中提及了你",
     "showComment": "查看评论",

@@ -647,6 +647,8 @@
     "newDevice": "{{name}} 在新裝置上登入了",
     "review": "檢視",
     "renamed": "你將它命名為 {{ours}} 之後，{{name}} 把 {{before}} 重新命名為 {{theirs}}",
+    "skipped": "無法讀取來自 {{name}} 的一項變更，已略過。",
+    "skippedUnknown": "無法讀取來自某人的一項變更，已略過。",
     "mentioned": "{{name}} 在 {{path}} 的評論中提及了你",
     "mentionedHere": "{{name}} 在評論中提及了你",
     "showComment": "查看評論",

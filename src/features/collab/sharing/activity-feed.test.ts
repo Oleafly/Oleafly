@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useSettingsStore } from "@/store/settings";
 import { useToastStore } from "@/store/toast";
-import type { CollabLiveRenamed, CollabLiveSettings } from "@/lib/tauri";
+import type { CollabChangeSkipped, CollabLiveRenamed, CollabLiveSettings } from "@/lib/tauri";
 import { useCollabLiveStore, type LivePeer } from "../live/live-store";
 import { ALICE_ID, BOB, BOB_ID, CAROL_ID, person, projectMember, shareInfo } from "../tests/fixtures";
 const renamed = vi.hoisted(() => ({
@@ -15,6 +15,11 @@ const settings = vi.hoisted(() => ({
   unlisten: vi.fn(),
 }));
 
+const skipped = vi.hoisted(() => ({
+  handler: null as ((payload: CollabChangeSkipped) => void) | null,
+  unlisten: vi.fn(),
+}));
+
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   onCollabLiveRenamed: vi.fn(async (handler: (payload: CollabLiveRenamed) => void) => {
@@ -24,6 +29,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   onCollabLiveSettings: vi.fn(async (handler: (payload: CollabLiveSettings) => void) => {
     settings.handler = handler;
     return settings.unlisten;
+  }),
+  onCollabChangeSkipped: vi.fn(async (handler: (payload: CollabChangeSkipped) => void) => {
+    skipped.handler = handler;
+    return skipped.unlisten;
   }),
 }));
 
@@ -178,6 +187,29 @@ describe("startCollabActivity", () => {
     useCollabLiveStore.setState({ newDevice: { projectId: "grant", accountId: CAROL_ID, deviceId: "phone" } });
     expect(kinds().slice(0, 2)).toEqual(["newDevice", "newDevice"]);
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ accountId: CAROL_ID, name: "" });
+  });
+
+  it("notes quietly, without a rail dot, a change it had to skip, naming who made it when known", async () => {
+    joined();
+    useCollabLiveStore.setState({ peers: { "bob-laptop": peer("bob-laptop", BOB_ID) } });
+    stop = startCollabActivity();
+    await vi.waitFor(() => expect(skipped.handler).not.toBeNull());
+    useCollabActivity.getState().markRead();
+
+    skipped.handler?.({ projectId: "thesis", seq: 7, deviceId: "bob-laptop" });
+    expect(kinds()).not.toContain("skipped");
+
+    skipped.handler?.({ projectId: "grant", seq: 7, deviceId: "bob-laptop" });
+    skipped.handler?.({ projectId: "grant", seq: 8, deviceId: "bob-laptop" });
+    skipped.handler?.({ projectId: "grant", seq: 9, deviceId: null });
+    expect(useCollabActivity.getState().entries.slice(0, 2)).toMatchObject([
+      { kind: "skipped", deviceId: null, name: "", count: 1 },
+      { kind: "skipped", deviceId: "bob-laptop", name: "Bob Smith", count: 2 },
+    ]);
+    expect(useCollabActivity.getState().unread).toBe(false);
+    expect(useCollabRail.getState().unread).toBe(false);
+    stop();
+    expect(skipped.unlisten).toHaveBeenCalled();
   });
 
   it("notes quietly, with a rail dot, when someone else's name for a file wins over yours", async () => {

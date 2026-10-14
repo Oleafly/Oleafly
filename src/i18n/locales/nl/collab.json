@@ -647,6 +647,8 @@
     "newDevice": "{{name}} heeft zich aangemeld op een nieuw apparaat",
     "review": "Bekijken",
     "renamed": "{{name}} heeft {{before}} hernoemd naar {{theirs}} nadat jij het {{ours}} had genoemd",
+    "skipped": "Een wijziging van {{name}} kon niet worden gelezen en is overgeslagen.",
+    "skippedUnknown": "Een wijziging van iemand kon niet worden gelezen en is overgeslagen.",
     "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
     "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
     "showComment": "Opmerking tonen",

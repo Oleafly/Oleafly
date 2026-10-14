@@ -541,6 +541,18 @@ describe("CollabPane", () => {
     );
   });
 
+  it("says whose change it couldn't read, or that it was someone's", () => {
+    feed([
+      { kind: "skipped", at: NOW, deviceId: "bob-laptop", name: "Bob Smith", count: 1 },
+      { kind: "skipped", at: NOW - 1000, deviceId: null, name: "", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.skipped, { name: "Bob Smith" }));
+    expect(rows[0].querySelector("svg.lucide-triangle-alert")).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent(activity.skippedUnknown);
+  });
+
   it("says who changed a shared compile setting and what it is now", () => {
     const setting = (change: Extract<NewActivity, { kind: "setting" }>["change"], name = "Bob Smith"): ActivityEntry => ({
       kind: "setting",

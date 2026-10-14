@@ -647,6 +647,8 @@
     "newDevice": "{{name}} s-a conectat pe un dispozitiv nou",
     "review": "Examinează",
     "renamed": "{{name}} a redenumit {{before}} în {{theirs}} după ce i-ai dat numele {{ours}}",
+    "skipped": "O modificare de la {{name}} nu a putut fi citită și a fost omisă.",
+    "skippedUnknown": "O modificare de la cineva nu a putut fi citită și a fost omisă.",
     "mentioned": "{{name}} te-a menționat într-un comentariu din {{path}}",
     "mentionedHere": "{{name}} te-a menționat într-un comentariu",
     "showComment": "Arată comentariul",

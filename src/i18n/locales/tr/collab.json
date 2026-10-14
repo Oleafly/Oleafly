@@ -647,6 +647,8 @@
     "newDevice": "{{name}} yeni bir cihazda oturum açtı",
     "review": "İncele",
     "renamed": "Siz {{ours}} adını verdikten sonra {{name}}, {{before}} dosyasının adını {{theirs}} olarak değiştirdi",
+    "skipped": "{{name}} tarafından yapılan bir değişiklik okunamadığı için atlandı.",
+    "skippedUnknown": "Birinin yaptığı bir değişiklik okunamadığı için atlandı.",
     "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",
     "mentionedHere": "{{name}} bir yorumda sizden bahsetti",
     "showComment": "Yorumu göster",

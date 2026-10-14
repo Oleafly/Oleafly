@@ -647,6 +647,8 @@
     "newDevice": "{{name}} inició sesión en un dispositivo nuevo",
     "review": "Revisar",
     "renamed": "{{name}} cambió el nombre de {{before}} a {{theirs}} después de que tú lo llamaras {{ours}}",
+    "skipped": "No se pudo leer un cambio de {{name}} y se omitió.",
+    "skippedUnknown": "No se pudo leer un cambio de alguien y se omitió.",
     "mentioned": "{{name}} te mencionó en un comentario en {{path}}",
     "mentionedHere": "{{name}} te mencionó en un comentario",
     "showComment": "Ver comentario",

@@ -647,6 +647,8 @@
     "newDevice": "{{name}} hat sich auf einem neuen Gerät angemeldet",
     "review": "Ansehen",
     "renamed": "{{name}} hat {{before}} in {{theirs}} umbenannt, nachdem du die Datei {{ours}} genannt hattest",
+    "skipped": "Eine Änderung von {{name}} konnte nicht gelesen werden und wurde übersprungen.",
+    "skippedUnknown": "Eine Änderung von jemandem konnte nicht gelesen werden und wurde übersprungen.",
     "mentioned": "{{name}} hat Sie in einem Kommentar in {{path}} erwähnt",
     "mentionedHere": "{{name}} hat Sie in einem Kommentar erwähnt",
     "showComment": "Kommentar anzeigen",

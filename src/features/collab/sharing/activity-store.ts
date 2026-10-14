@@ -37,6 +37,7 @@ export type NewActivity =
       messageId: string;
     }
   | { kind: "setting"; at: number; accountId: string | null; name: string; change: CollabSettingNotice }
+  | { kind: "skipped"; at: number; deviceId: string | null; name: string }
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed"; at: number; by?: string }
   | { kind: "archived"; at: number }
@@ -68,7 +69,7 @@ interface ActivityState {
   entries: ActivityEntry[];
   unread: boolean;
   open: (projectId: string | null) => void;
-  add: (entry: NewActivity) => void;
+  add: (entry: NewActivity, options?: { quiet?: boolean }) => void;
   setPending: (pending: number) => void;
   markRead: () => void;
 }
@@ -87,6 +88,7 @@ function presence(entry: NewActivity | undefined): string | null {
 
 function foldsInto(previous: ActivityEntry | undefined, next: NewActivity): boolean {
   if (connection(previous) && connection(next)) return true;
+  if (previous?.kind === "skipped" && next.kind === "skipped") return previous.deviceId === next.deviceId;
   const person = presence(next);
   return person !== null && presence(previous) === person;
 }
@@ -133,11 +135,11 @@ export const useCollabActivity = create<ActivityState>((set, get) => ({
     if (get().projectId === projectId) return;
     set(projectId ? { projectId, ...load(projectId) } : { projectId: null, entries: [], unread: false });
   },
-  add: (entry) => {
+  add: (entry, options) => {
     const { projectId, entries } = get();
     if (!projectId) return;
     const next = pushActivity(entries, entry);
-    const unread = get().unread || !paneOpen();
+    const unread = get().unread || (!options?.quiet && !paneOpen());
     set({ entries: next, unread });
     save(projectId, next, unread);
   },

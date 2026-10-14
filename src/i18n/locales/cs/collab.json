@@ -647,6 +647,8 @@
     "newDevice": "Uživatel {{name}} se přihlásil na novém zařízení",
     "review": "Zkontrolovat",
     "renamed": "Uživatel {{name}} přejmenoval {{before}} na {{theirs}} poté, co jste soubor pojmenovali {{ours}}",
+    "skipped": "Změnu od uživatele {{name}} se nepodařilo přečíst, a tak byla přeskočena.",
+    "skippedUnknown": "Změnu od někoho se nepodařilo přečíst, a tak byla přeskočena.",
     "mentioned": "Zmínka od {{name}} v komentáři v souboru {{path}}",
     "mentionedHere": "Zmínka od {{name}} v komentáři",
     "showComment": "Zobrazit komentář",

@@ -2152,6 +2152,16 @@ export function onCollabLiveRenamed(
   );
 }
 
+export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
+
+export function onCollabChangeSkipped(
+  handler: (payload: import("@oleafly/backend-port").CollabChangeSkipped) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabChangeSkipped>(COLLAB_CHANGE_SKIPPED_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
 export const COLLAB_LIVE_SETTINGS_EVENT = "collab-live-settings";
 
 export function onCollabLiveSettings(
