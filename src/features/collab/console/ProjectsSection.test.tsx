@@ -305,6 +305,46 @@ describe("ProjectsSection", () => {
     expect(cells[2]).toHaveTextContent("3");
   });
 
+  it("never adds a page from the previous filter to the new list", async () => {
+    const more = deferred<ReturnType<typeof projectsPage>>();
+    mocks.collabAdminProjects
+      .mockResolvedValueOnce(projectsPage([GRANT], { next_cursor: "1", total: 2 }))
+      .mockReturnValueOnce(more.promise)
+      .mockResolvedValueOnce(projectsPage([OLD], { total: 1 }));
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: copy.loadMore }));
+    await user.click(screen.getByRole("button", { name: copy.filter.archived }));
+    expect(await screen.findByText("Old notes")).toBeInTheDocument();
+    await act(async () => {
+      more.resolve(projectsPage([THESIS], { next_cursor: "2", total: 2 }));
+      await more.promise;
+    });
+    expect(screen.queryByText("Thesis")).not.toBeInTheDocument();
+    expect(screen.getByText(fill(copy.count, { shown: "1", total: "1" }))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.loadMore })).not.toBeInTheDocument();
+  });
+
+  it("shows that a new search is loading while the earlier results stay on screen", async () => {
+    const searching = deferred<ReturnType<typeof projectsPage>>();
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Grant proposal");
+    expect(screen.queryByText(copy.loading)).not.toBeInTheDocument();
+    mocks.collabAdminProjects.mockReturnValueOnce(searching.promise);
+    await user.type(screen.getByRole("searchbox", { name: copy.searchLabel }), "thes");
+    expect(await screen.findByText(copy.loading)).toBeInTheDocument();
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Grant proposal")).toBeInTheDocument();
+    await act(async () => {
+      searching.resolve(projectsPage([THESIS]));
+      await searching.promise;
+    });
+    expect(screen.queryByText(copy.loading)).not.toBeInTheDocument();
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByText("Grant proposal")).not.toBeInTheDocument();
+  });
+
   it("ignores an answer for a search that is no longer current", async () => {
     const late = deferred<ReturnType<typeof projectsPage>>();
     mocks.collabAdminProjects.mockReturnValueOnce(late.promise).mockResolvedValueOnce(projectsPage([THESIS]));
