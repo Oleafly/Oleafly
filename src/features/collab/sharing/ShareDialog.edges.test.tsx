@@ -178,14 +178,46 @@ describe("ShareDialog checking the project", () => {
     expect(screen.queryByRole("button", { name: share.openSettings })).toBeNull();
   });
 
-  it("shows an empty progress bar while sharing a project with no files", async () => {
-    mocks.collabShareCheck.mockResolvedValue(shareCheck({ file_count: 0, total_bytes: 0 }));
+  it("shows activity, not 0 of 0, while sharing a project with nothing to count", async () => {
+    let progress: (payload: { projectId: string; done: number; total: number }) => void = () => undefined;
+    mocks.onCollabShareProgress.mockImplementation(async (handler: typeof progress) => {
+      progress = handler;
+      return () => undefined;
+    });
+    mocks.collabShareCheck.mockResolvedValue(shareCheck({ file_count: 4, total_bytes: 2048 }));
     mocks.collabShareProject.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
     openDialog();
     await user.click(await screen.findByRole("button", { name: share.start }));
-    expect(await screen.findByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
-    expect(screen.getByText(fill(share.uploading, { done: "0", total: "0" }))).toBeInTheDocument();
+    const bar = await screen.findByRole("progressbar");
+    expect(bar).toHaveAttribute("data-state", "indeterminate");
+    expect(bar).not.toHaveAttribute("aria-valuenow");
+    expect(screen.getByText(share.preparing)).toBeInTheDocument();
+    await waitFor(() => expect(mocks.onCollabShareProgress).toHaveBeenCalled());
+    act(() => progress({ projectId: "grant", done: 0, total: 0 }));
+    expect(screen.getByText(share.saving)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-state", "indeterminate");
+    expect(screen.queryByText(fill(share.uploading, { done: "0", total: "0" }))).toBeNull();
+  });
+
+  it("counts figures while they upload, then says the project is being saved", async () => {
+    let progress: (payload: { projectId: string; done: number; total: number }) => void = () => undefined;
+    mocks.onCollabShareProgress.mockImplementation(async (handler: typeof progress) => {
+      progress = handler;
+      return () => undefined;
+    });
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    mocks.collabShareProject.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    openDialog();
+    await user.click(await screen.findByRole("button", { name: share.start }));
+    await waitFor(() => expect(mocks.onCollabShareProgress).toHaveBeenCalled());
+    act(() => progress({ projectId: "grant", done: 1, total: 4 }));
+    expect(screen.getByText(fill(share.uploading, { done: "1", total: "4" }))).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    act(() => progress({ projectId: "grant", done: 4, total: 4 }));
+    expect(screen.getByText(share.saving)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-state", "indeterminate");
   });
 });
 

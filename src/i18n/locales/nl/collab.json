@@ -494,7 +494,9 @@
     "renamed": "Sommige namen werken niet op elke computer. Anderen krijgen deze bestanden onder een iets andere naam.",
     "excluded": "Niet gedeeld: buildbestanden, Oleafly-instellingen en Git-geschiedenis.",
     "start": "Delen",
-    "uploading": "Bestanden uploaden: {{done}} van {{total}}",
+    "preparing": "Het project wordt voorbereid…",
+    "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
+    "saving": "Het project wordt op de server opgeslagen…",
     "failed": "Het delen is niet afgerond, dus er is niets gedeeld."
   },
   "manage": {

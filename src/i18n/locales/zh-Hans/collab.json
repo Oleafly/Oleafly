@@ -494,7 +494,9 @@
     "renamed": "有些名称并非在所有电脑上都可用。其他人收到的这些文件，名称会略有不同。",
     "excluded": "不会共享：构建输出、Oleafly 设置和 Git 历史。",
     "start": "共享",
-    "uploading": "正在上传文件：{{done}}/{{total}}",
+    "preparing": "正在准备项目…",
+    "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
+    "saving": "正在把项目保存到服务器…",
     "failed": "共享未完成，因此没有共享任何内容。"
   },
   "manage": {

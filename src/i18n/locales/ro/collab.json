@@ -494,7 +494,9 @@
     "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
     "excluded": "Nu se partajează: fișierele de compilare, setările Oleafly și istoricul Git.",
     "start": "Partajează",
-    "uploading": "Se încarcă fișierele: {{done}} din {{total}}",
+    "preparing": "Se pregătește proiectul…",
+    "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
+    "saving": "Se salvează proiectul pe server…",
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic."
   },
   "manage": {

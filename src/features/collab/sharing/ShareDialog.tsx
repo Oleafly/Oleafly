@@ -36,7 +36,7 @@ type CheckState =
 
 type UploadState =
   | { kind: "idle" }
-  | { kind: "sharing"; done: number; total: number }
+  | { kind: "sharing"; done: number; total: number; reported: boolean }
   | { kind: "failed"; message: string; elsewhere: boolean };
 
 function openCollaborationSettings() {
@@ -199,14 +199,14 @@ function ShareStep({
 
   const start = async () => {
     if (!ready || blocked || sharing) return;
-    setUpload({ kind: "sharing", done: 0, total: ready.file_count });
+    setUpload({ kind: "sharing", done: 0, total: 0, reported: false });
     useShareDialog.getState().setSharing(true);
     let unlisten: (() => void) | null = null;
     let shared: CollabShareInfo;
     try {
       unlisten = await onCollabShareProgress((progress) => {
         if (progress.projectId === projectId) {
-          setUpload({ kind: "sharing", done: progress.done, total: progress.total });
+          setUpload({ kind: "sharing", done: progress.done, total: progress.total, reported: true });
         }
       });
       shared = await collabShareProject(projectId, chosenId);
@@ -250,16 +250,23 @@ function ShareStep({
 
   const renderUpload = () => {
     if (upload.kind === "sharing") {
-      const percent = upload.total > 0 ? (upload.done / upload.total) * 100 : 0;
+      // The backend counts only figures and other non-text files. Before its
+      // first report, and once they are all up and the project itself is
+      // being saved, there is nothing to count, so the bar just shows activity.
+      const counting = upload.reported && upload.total > 0 && upload.done < upload.total;
+      let phase = t(($) => $.collab.share.preparing);
+      if (counting) {
+        phase = t(($) => $.collab.share.uploading, {
+          done: formatNumber(upload.done),
+          total: formatNumber(upload.total),
+        });
+      } else if (upload.reported) {
+        phase = t(($) => $.collab.share.saving);
+      }
       return (
         <div className="space-y-1.5">
-          <Progress value={percent} />
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.collab.share.uploading, {
-              done: formatNumber(upload.done),
-              total: formatNumber(upload.total),
-            })}
-          </p>
+          <Progress value={counting ? (upload.done / upload.total) * 100 : 0} indeterminate={!counting} />
+          <p className="text-xs text-muted-foreground">{phase}</p>
         </div>
       );
     }

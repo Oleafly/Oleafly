@@ -494,7 +494,9 @@
     "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
     "excluded": "Nesdílí se: výstup sestavení, nastavení Oleafly a historie Gitu.",
     "start": "Sdílet",
-    "uploading": "Nahrávání souborů: {{done}} z {{total}}",
+    "preparing": "Připravuje se projekt…",
+    "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
+    "saving": "Projekt se ukládá na server…",
     "failed": "Sdílení se nedokončilo, takže se nic nesdílelo."
   },
   "manage": {

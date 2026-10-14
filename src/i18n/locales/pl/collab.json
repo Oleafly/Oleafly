@@ -494,7 +494,9 @@
     "renamed": "Niektóre nazwy nie działają na każdym komputerze. Inne osoby otrzymają te pliki pod nieco zmienioną nazwą.",
     "excluded": "Nie są udostępniane: wyniki kompilacji, ustawienia Oleafly i historia Git.",
     "start": "Udostępnij",
-    "uploading": "Przesyłanie plików: {{done}} z {{total}}",
+    "preparing": "Przygotowywanie projektu…",
+    "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
+    "saving": "Zapisywanie projektu na serwerze…",
     "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono."
   },
   "manage": {

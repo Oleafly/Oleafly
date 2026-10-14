@@ -494,7 +494,9 @@
     "renamed": "Noen navn fungerer ikke på alle maskiner. Andre får disse filene under et litt annet navn.",
     "excluded": "Deles ikke: byggefiler, Oleafly-innstillinger og Git-historikk.",
     "start": "Del",
-    "uploading": "Laster opp filer: {{done}} av {{total}}",
+    "preparing": "Gjør prosjektet klart…",
+    "uploading": "Laster opp figurer og andre filer: {{done}} av {{total}}",
+    "saving": "Lagrer prosjektet på serveren…",
     "failed": "Delingen ble ikke fullført, så ingenting ble delt."
   },
   "manage": {

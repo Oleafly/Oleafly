@@ -494,7 +494,9 @@
     "renamed": "Algunos nombres no funcionan en todos los equipos. Las demás personas reciben estos archivos con un nombre un poco distinto.",
     "excluded": "No se comparten: los archivos de compilación, los ajustes de Oleafly y el historial de Git.",
     "start": "Compartir",
-    "uploading": "Subiendo archivos: {{done}} de {{total}}",
+    "preparing": "Preparando el proyecto…",
+    "uploading": "Subiendo figuras y otros archivos: {{done}} de {{total}}",
+    "saving": "Guardando el proyecto en el servidor…",
     "failed": "No se terminó de compartir, así que no se compartió nada."
   },
   "manage": {

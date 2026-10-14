@@ -494,7 +494,9 @@
     "renamed": "Bazı adlar her bilgisayarda çalışmaz. Diğer kişiler bu dosyaları biraz farklı bir adla alır.",
     "excluded": "Paylaşılmayanlar: derleme çıktısı, Oleafly ayarları ve Git geçmişi.",
     "start": "Paylaş",
-    "uploading": "Dosyalar yükleniyor: {{done}} / {{total}}",
+    "preparing": "Proje hazırlanıyor…",
+    "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
+    "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı."
   },
   "manage": {

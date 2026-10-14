@@ -494,7 +494,9 @@
     "renamed": "Kaikki nimet eivät toimi jokaisella koneella. Muut saavat nämä tiedostot hieman eri nimellä.",
     "excluded": "Ei jaeta: käännöstulosteet, Oleafly-asetukset ja Git-historia.",
     "start": "Jaa",
-    "uploading": "Lähetetään tiedostoja: {{done}}/{{total}}",
+    "preparing": "Valmistellaan projektia…",
+    "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
+    "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu."
   },
   "manage": {

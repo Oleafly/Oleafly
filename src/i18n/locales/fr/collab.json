@@ -494,7 +494,9 @@
     "renamed": "Certains noms ne fonctionnent pas sur tous les ordinateurs. Les autres personnes reçoivent ces fichiers sous un nom légèrement différent.",
     "excluded": "Non partagés : fichiers de compilation, paramètres d'Oleafly et historique Git.",
     "start": "Partager",
-    "uploading": "Envoi des fichiers : {{done}} sur {{total}}",
+    "preparing": "Préparation du projet…",
+    "uploading": "Envoi des figures et autres fichiers : {{done}} sur {{total}}",
+    "saving": "Enregistrement du projet sur le serveur…",
     "failed": "Le partage n'a pas abouti, rien n'a donc été partagé."
   },
   "manage": {

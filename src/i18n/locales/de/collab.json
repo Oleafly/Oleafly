@@ -494,7 +494,9 @@
     "renamed": "Manche Namen funktionieren nicht auf jedem Computer. Andere erhalten diese Dateien unter einem leicht geänderten Namen.",
     "excluded": "Nicht geteilt: Ausgabedateien, Oleafly-Einstellungen und Git-Verlauf.",
     "start": "Teilen",
-    "uploading": "Dateien werden hochgeladen: {{done}} von {{total}}",
+    "preparing": "Das Projekt wird vorbereitet…",
+    "uploading": "Abbildungen und andere Dateien werden hochgeladen: {{done}} von {{total}}",
+    "saving": "Das Projekt wird auf dem Server gespeichert…",
     "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt."
   },
   "manage": {
