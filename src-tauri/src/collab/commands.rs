@@ -69,14 +69,37 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
+const PASSED_THROUGH: [&str; 20] = [
+    "not_admitted",
+    "setup_code_invalid",
+    "device_in_use",
+    "server_unknown",
+    "invalid_domain",
+    "invalid_email",
+    "invalid_login",
+    "guests_off",
+    "link_sharing_off",
+    "access_log_off",
+    "last_admin",
+    "duplicate_entry",
+    "already_member",
+    "project_not_shared",
+    "project_full",
+    "not_a_link",
+    "signed_out",
+    "server_removed",
+    "share_in_progress",
+    "cancelled",
+];
+
 fn api_code(status: u16, code: &str) -> &'static str {
+    if let Some(known) = PASSED_THROUGH.iter().find(|known| **known == code) {
+        return known;
+    }
     match (code, status) {
-        ("not_admitted", _) => "not_admitted",
-        ("setup_code_invalid", _) => "setup_code_invalid",
-        ("device_in_use", _) => "device_in_use",
-        ("server_unknown", _) => "server_unknown",
         ("too_large", _) | (_, 413) => "too_large",
         ("rate_limited", _) | (_, 429) => "rate_limited",
+        (_, 400) => "invalid",
         (_, 401) => "unauthorized",
         (_, 403) => "forbidden",
         (_, 404) => "not_found",
@@ -210,6 +233,14 @@ pub(crate) fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or(0)
+}
+
+pub(crate) fn signed_out() -> CollabError {
+    CollabError::Api {
+        status: 401,
+        code: "signed_out".to_string(),
+        message: "sign in to this project's server to keep working on it together".to_string(),
+    }
 }
 
 fn unknown_server() -> CollabError {
@@ -623,9 +654,9 @@ pub async fn remove_within(
     choice: UnsentChoice,
     wait: Duration,
 ) -> Result<SignOutOutcome, CollabError> {
-    let outcome = settle_unsent(state, server, choice, wait).await?;
+    let mut outcome = settle_unsent(state, server, choice, wait).await?;
     if outcome.signed_out {
-        remove_server(state, host, server).await?;
+        outcome.detached = remove_server(state, host, server).await?;
     }
     Ok(outcome)
 }
@@ -634,12 +665,13 @@ pub async fn remove_server(
     state: &CollabState,
     host: &dyn CollabHost,
     server: ServerId,
-) -> Result<(), CollabError> {
+) -> Result<Vec<DetachedProject>, CollabError> {
     let entry = known(state, server)?;
+    let detached = super::live::detach_projects(state, server).await?;
     end_session(state, server, &entry).await?;
     state.update_registry(|registry| registry.remove(server))?;
     host.server_changed(server);
-    Ok(())
+    Ok(detached)
 }
 
 pub async fn refresh_account(
@@ -1449,7 +1481,6 @@ mod tests {
             (api(400, "setup_code_invalid"), "setup_code_invalid"),
             (api(400, "not_admitted"), "not_admitted"),
             (api(502, "http_502"), "server"),
-            (api(400, "bad_request"), "server"),
             (CollabError::Io("disk".to_string()), "internal"),
             (CollabError::Corrupt("json".to_string()), "internal"),
             (CollabError::Secret("store".to_string()), "internal"),
@@ -1489,6 +1520,88 @@ mod tests {
             CollabCommandError::from(api(409, "conflict")).message,
             "conflict message"
         );
+    }
+
+    const NEW_CODES: [(u16, &str); 19] = [
+        (400, "invalid_domain"),
+        (400, "invalid_email"),
+        (400, "invalid_login"),
+        (409, "guests_off"),
+        (409, "link_sharing_off"),
+        (409, "access_log_off"),
+        (409, "last_admin"),
+        (409, "duplicate_entry"),
+        (409, "already_member"),
+        (409, "project_not_shared"),
+        (409, "project_full"),
+        (400, "not_a_link"),
+        (401, "signed_out"),
+        (404, "server_removed"),
+        (409, "share_in_progress"),
+        (409, "cancelled"),
+        (400, "setup_code_invalid"),
+        (409, "device_in_use"),
+        (404, "server_unknown"),
+    ];
+
+    #[test]
+    fn refusals_people_can_cause_keep_their_code_and_other_bad_requests_read_as_invalid() {
+        for (status, code) in NEW_CODES {
+            assert_eq!(
+                CollabCommandError::from(api(status, code)),
+                CollabCommandError {
+                    code,
+                    message: format!("{code} message"),
+                },
+            );
+        }
+        let invalid = CollabCommandError::from(CollabError::Api {
+            status: 400,
+            code: "bad_request".to_string(),
+            message: "That isn't a domain name. Use a form like cs.example.edu.".to_string(),
+        });
+        assert_eq!(invalid.code, "invalid");
+        assert_eq!(
+            invalid.message,
+            "That isn't a domain name. Use a form like cs.example.edu."
+        );
+        assert_eq!(
+            CollabCommandError::from(api(400, "anything")).code,
+            "invalid"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(409, "conflict")).code,
+            "conflict"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(413, "anything")).code,
+            "too_large"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(500, "anything")).code,
+            "server"
+        );
+    }
+
+    #[test]
+    #[ignore = "needs the frontend's CollabErrorCode additions from contracts C-5, C-7, C-11, C-12 and C-13; run once both sides are merged"]
+    fn every_code_added_for_refusals_is_one_the_frontend_knows() {
+        let contract = include_str!("../../../packages/backend-port/src/index.ts");
+        let start = contract
+            .find("export type CollabErrorCode =")
+            .expect("CollabErrorCode in backend-port");
+        let end = start + contract[start..].find(';').expect("end of CollabErrorCode");
+        let union = &contract[start..end];
+        let codes = NEW_CODES
+            .iter()
+            .map(|(_, code)| *code)
+            .chain(["invalid", "turned_off"]);
+        for code in codes {
+            assert!(
+                union.contains(&format!("\"{code}\"")),
+                "{code} is missing from CollabErrorCode"
+            );
+        }
     }
 
     #[test]

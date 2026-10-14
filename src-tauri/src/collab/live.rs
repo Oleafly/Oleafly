@@ -28,7 +28,9 @@ pub(crate) use local_events::{known_content, KnownContent};
 pub(crate) use moves::{deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile};
 pub use session::{active_for, note_fresh_join, Active};
 pub(crate) use sync_hold::{outside_change, root_returned};
-pub(crate) use unsent::{keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT};
+pub(crate) use unsent::{
+    detach_projects, keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT,
+};
 
 use bases::{merged_onto, nearest, WrittenTexts};
 use disk_pass::{checked, writable};

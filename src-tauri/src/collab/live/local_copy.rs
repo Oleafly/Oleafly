@@ -6,7 +6,7 @@ use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
 use oleafly_collab::{load_binding, write_atomic, CollabError, CollabPaths, ShareBinding};
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
-use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction};
+use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, ProjectRole};
 use serde::{Deserialize, Serialize};
 
 use super::super::commands::CollabCommandError;
@@ -114,6 +114,23 @@ pub(super) fn keep_origin(paths: &CollabPaths, project_id: &str, doc: &ProjectDo
         let _ = crate::project::append_app_log(format!(
             "Live collaboration could not keep what {project_id} looked like when it became a local copy: {error}"
         ));
+    }
+}
+
+pub(super) fn keep_stored_origin(paths: &CollabPaths, project_id: &str, role: ProjectRole) {
+    let Ok(dir) = paths.document_dir(project_id) else {
+        return;
+    };
+    if !LiveProject::exists(&dir) {
+        return;
+    }
+    match LiveProject::load(&dir, role) {
+        Ok(live) => keep_origin(paths, project_id, live.doc()),
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not read {project_id} to keep it as a local copy: {error}"
+            ));
+        }
     }
 }
 

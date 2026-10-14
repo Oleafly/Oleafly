@@ -7,7 +7,7 @@ use std::time::Duration;
 use oleafly_collab::doc::ProjectDoc;
 use oleafly_collab::live::{LiveProject, MergeReport};
 use oleafly_collab::sync::{spawn_live, EndReason, LiveEvent, LiveLink, LiveStatus, SharedLive};
-use oleafly_collab::{load_binding, save_binding, CollabError, ServerClient, ServerUrl};
+use oleafly_collab::{load_binding, save_binding, ServerClient, ServerUrl};
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::frames::{MemberChange, MemberChangeKind};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
@@ -269,8 +269,18 @@ fn opening_a_project_after_its_session_ended_says_why() {
             Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
         );
         let paths = state.paths().unwrap().clone();
-        let (paused, gone, plain) = (ServerId::new_v7(), ServerId::new_v7(), ServerId::new_v7());
-        for (project, server) in [("paused", paused), ("gone", gone), ("plain", plain)] {
+        let (paused, gone, plain, removed) = (
+            ServerId::new_v7(),
+            ServerId::new_v7(),
+            ServerId::new_v7(),
+            ServerId::new_v7(),
+        );
+        for (project, server) in [
+            ("paused", paused),
+            ("gone", gone),
+            ("plain", plain),
+            ("removed", removed),
+        ] {
             save_binding(&paths, project, &binding_on(server)).unwrap();
         }
         state
@@ -290,33 +300,32 @@ fn opening_a_project_after_its_session_ended_says_why() {
             })
             .unwrap();
         let host = Arc::new(EndingHost::default());
-        for project in ["paused", "gone", "plain"] {
+        for (project, code) in [
+            ("paused", "signed_out"),
+            ("gone", "signed_out"),
+            ("plain", "signed_out"),
+            ("removed", "server_removed"),
+        ] {
             let started = start(&state, Arc::clone(&host) as Arc<dyn LiveHost>, project).await;
-            assert!(
-                matches!(started, Err(CollabError::Unauthorized)),
-                "{project}"
+            let refused = crate::collab::commands::CollabCommandError::from(
+                started.expect_err("a project without a session never goes live"),
             );
+            assert_eq!(refused.code, code, "{project}");
         }
+        let ended = |reason| LiveStatus::Ended { reason };
         assert_eq!(
             ended_with(&guard(&host.statuses)),
             vec![
-                (
-                    "paused".to_owned(),
-                    LiveStatus::Ended {
-                        reason: EndReason::AccountSuspended
-                    }
-                ),
-                (
-                    "gone".to_owned(),
-                    LiveStatus::Ended {
-                        reason: EndReason::AccessEnded
-                    }
-                ),
+                ("paused".to_owned(), ended(EndReason::AccountSuspended)),
+                ("gone".to_owned(), ended(EndReason::AccessEnded)),
+                ("plain".to_owned(), ended(EndReason::SignedOut)),
+                ("removed".to_owned(), ended(EndReason::SignedOut)),
             ]
         );
         assert!(load_binding(&paths, "paused").unwrap().is_some());
         assert!(load_binding(&paths, "gone").unwrap().is_none());
         assert!(load_binding(&paths, "plain").unwrap().is_some());
+        assert!(load_binding(&paths, "removed").unwrap().is_some());
     });
 }
 

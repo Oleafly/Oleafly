@@ -18,8 +18,17 @@ use super::session::{
     LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
+use crate::collab::commands::signed_out;
 use crate::collab::disk::DiskState;
 use crate::collab::state::CollabState;
+
+fn server_removed() -> CollabError {
+    CollabError::Api {
+        status: 404,
+        code: "server_removed".to_owned(),
+        message: "this project's server is no longer in the list".to_owned(),
+    }
+}
 
 pub async fn start(
     state: &CollabState,
@@ -46,21 +55,25 @@ pub async fn start(
     let binding = load_binding(&paths, project_id)?.ok_or_else(not_live)?;
     let keys = state.keys().await?;
     let Some(tokens) = keys.sessions.tokens(binding.server_id)? else {
-        if let Some(reason) = state.registry()?.ended(binding.server_id) {
-            if reason == SessionEndReason::AccessEnded {
-                let _ = remove_binding(&paths, project_id);
-                crate::collab::registry::invalidate(project_id);
-                local_copy::name_local_copy(project_id);
-            }
-            host.status(StatusPayload {
-                project_id: project_id.to_owned(),
-                status: LiveStatus::Ended {
-                    reason: EndReason::of_session(Some(reason)),
-                },
-                pending: 0,
-            });
+        let registry = state.registry()?;
+        let ended = registry.ended(binding.server_id);
+        if ended == Some(SessionEndReason::AccessEnded) {
+            let _ = remove_binding(&paths, project_id);
+            crate::collab::registry::invalidate(project_id);
+            local_copy::name_local_copy(project_id);
         }
-        return Err(CollabError::Unauthorized);
+        host.status(StatusPayload {
+            project_id: project_id.to_owned(),
+            status: LiveStatus::Ended {
+                reason: EndReason::of_session(ended),
+            },
+            pending: 0,
+        });
+        return Err(if registry.get(binding.server_id).is_some() {
+            signed_out()
+        } else {
+            server_removed()
+        });
     };
     let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
     let client = Arc::new(ServerClient::new(ServerUrl::parse(&binding.server_url)?)?);

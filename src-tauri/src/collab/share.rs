@@ -525,7 +525,7 @@ fn admit_writers(live: &mut LiveProject, listed: Result<Vec<ProjectPeer>, Collab
 }
 
 fn parse_link(link: &str) -> Result<(String, SharedProjectId), CollabError> {
-    let invalid = || api(400, "not_found", "this is not a shared project link");
+    let invalid = || api(400, "not_a_link", "this is not a shared project link");
     let url = tauri::Url::parse(link.trim()).map_err(|_| invalid())?;
     if url.scheme() == "oleafly" {
         let pairs: HashMap<String, String> = url.query_pairs().into_owned().collect();
@@ -783,6 +783,34 @@ pub async fn collab_stop_sharing(
     Ok(())
 }
 
+pub async fn leave_project(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    project_id: &str,
+) -> Result<(), CollabError> {
+    let paths = state.paths()?.clone();
+    let binding = binding_of(&paths, project_id)?;
+    let Some(entry) = state.registry()?.get(binding.server_id).cloned() else {
+        super::live::forget(project_id, &paths).await;
+        return Ok(());
+    };
+    let account = entry
+        .account
+        .map(|account| account.account_id)
+        .filter(|_| state.has_session(binding.server_id).unwrap_or(false))
+        .ok_or_else(super::commands::signed_out)?;
+    let removed = with_binding(state, host, project_id, |client, access, shared| {
+        Box::pin(async move { client.remove_member(access, shared, account).await })
+    })
+    .await;
+    match removed {
+        Ok(()) | Err(CollabError::Api { status: 404, .. }) => {}
+        Err(error) => return Err(error),
+    }
+    super::live::forget(project_id, &paths).await;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn collab_leave_project(
     app: tauri::AppHandle,
@@ -790,27 +818,9 @@ pub async fn collab_leave_project(
     project_id: String,
 ) -> Result<(), CollabCommandError> {
     let host = AppHost::new(app);
-    let account = share_info(state.inner(), &project_id)
-        .map_err(CollabCommandError::from)?
-        .and_then(|info| info.account_id)
-        .ok_or_else(|| {
-            CollabCommandError::from(api(404, "not_found", "this project is not shared"))
-        })?;
-    let removed = with_binding(
-        state.inner(),
-        &host,
-        &project_id,
-        |client, access, shared| {
-            Box::pin(async move { client.remove_member(access, shared, account).await })
-        },
-    )
-    .await;
-    match removed {
-        Ok(()) | Err(CollabError::Api { status: 404, .. }) => {}
-        Err(error) => return Err(CollabCommandError::from(error)),
-    }
-    forget_local(&project_id).await;
-    Ok(())
+    leave_project(state.inner(), &host, &project_id)
+        .await
+        .map_err(CollabCommandError::from)
 }
 
 #[tauri::command]
@@ -887,8 +897,88 @@ mod tests {
             .unwrap(),
             ("https://uni.edu".to_owned(), id)
         );
-        assert!(parse_link("https://uni.edu/p/not-an-id").is_err());
-        assert!(parse_link("hello").is_err());
+        for typo in [
+            "https://uni.edu/p/not-an-id",
+            "hello",
+            "https://uni.edu/oleafly/p/",
+            "oleafly://open?server=https%3A%2F%2Funi.edu",
+        ] {
+            let refused = CollabCommandError::from(parse_link(typo).expect_err(typo));
+            assert_eq!(refused.code, "not_a_link", "{typo}");
+        }
+    }
+
+    struct NoBrowser;
+
+    impl CollabHost for NoBrowser {
+        fn open_browser(&self, _: &str) -> Result<(), CollabError> {
+            Ok(())
+        }
+        fn server_changed(&self, _: ServerId) {}
+        fn signed_in(&self) {}
+        fn device_name(&self) -> String {
+            "Test Mac".to_owned()
+        }
+        fn platform(&self) -> String {
+            "macos".to_owned()
+        }
+    }
+
+    fn bound_state(dir: &tempfile::TempDir, server: ServerId, listed: bool) -> CollabState {
+        let state = CollabState::new(
+            CollabPaths::new(dir.path().join("collab")),
+            Arc::new(oleafly_collab::MemorySecrets::default()),
+        );
+        save_binding(
+            state.paths().unwrap(),
+            "left-paper",
+            &ShareBinding {
+                server_url: "http://127.0.0.1:9".to_owned(),
+                server_id: server,
+                shared_project_id: SharedProjectId::new_v7(),
+                role: ProjectRole::Editor,
+                created_at: 1,
+            },
+        )
+        .unwrap();
+        if listed {
+            state
+                .update_registry(|registry| {
+                    registry.upsert(oleafly_collab::ServerEntry {
+                        server_id: server,
+                        url: "http://127.0.0.1:9".to_owned(),
+                        name: "Smith Lab".to_owned(),
+                        icon_url: None,
+                        account: None,
+                        added_at: 1,
+                    })
+                })
+                .unwrap();
+        }
+        state
+    }
+
+    #[test]
+    fn leaving_a_project_whose_server_was_removed_lets_go_of_it_here() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = bound_state(&dir, ServerId::new_v7(), false);
+        tauri::async_runtime::block_on(leave_project(&state, &NoBrowser, "left-paper")).unwrap();
+        assert!(load_binding(state.paths().unwrap(), "left-paper")
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn leaving_while_signed_out_asks_to_sign_in_and_keeps_the_project_shared() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = bound_state(&dir, ServerId::new_v7(), true);
+        let refused =
+            tauri::async_runtime::block_on(leave_project(&state, &NoBrowser, "left-paper"))
+                .expect_err("nobody is signed in");
+        assert_eq!(CollabCommandError::from(refused).code, "signed_out");
+        assert!(load_binding(state.paths().unwrap(), "left-paper")
+            .unwrap()
+            .is_some());
     }
 
     #[test]
