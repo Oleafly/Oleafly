@@ -7,7 +7,7 @@ use oleafly_collab_protocol::admin::{
 };
 use oleafly_collab_protocol::auth::{
     AccountSummary, ApiError, AuthStartQuery, ChallengeResponse, DeviceSummary, RefreshRequest,
-    SessionEndReason, SessionTokens, TokenRequest,
+    SessionEndReason, SessionTokens, SetupClaimRequest, SetupClaimResponse, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
 use oleafly_collab_protocol::email::{
@@ -98,6 +98,18 @@ impl ServerClient {
 
     pub async fn challenge(&self) -> Result<ChallengeResponse, CollabError> {
         json(self.http.post(self.url.endpoint("auth/challenge"))).await
+    }
+
+    pub async fn setup_claim(
+        &self,
+        request: &SetupClaimRequest,
+    ) -> Result<SetupClaimResponse, CollabError> {
+        json(
+            self.http
+                .post(self.url.endpoint("auth/setup-claim"))
+                .json(request),
+        )
+        .await
     }
 
     pub async fn exchange_token(

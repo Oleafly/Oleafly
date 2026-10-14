@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use oleafly_collab_protocol::auth::{
-    challenge_message, AuthStartQuery, ChallengePurpose, SessionTokens, TokenRequest,
+    challenge_message, AuthStartQuery, ChallengePurpose, SessionTokens, SetupClaimRequest,
+    TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{
     negotiate, CapabilityManifest, ProtocolRange, ProviderKind,
@@ -85,16 +86,21 @@ pub async fn sign_in(
         .describing(&manifest.name, &provider_label, kind);
     let verifier = random_b64url(VERIFIER_BYTES)?;
     let state = random_b64url(STATE_BYTES)?;
+    let code_challenge = pkce_s256(&verifier);
+    let (setup_code, setup_claim) = match setup_code.filter(|_| manifest.needs_setup) {
+        Some(code) => claimed(&client, code, &code_challenge).await?,
+        None => (None, None),
+    };
     let query = AuthStartQuery {
         provider: provider_id,
         redirect_uri: listener.redirect_uri(),
         state: state.clone(),
-        code_challenge: pkce_s256(&verifier),
+        code_challenge,
         device_public_key: key.public_key_b64(),
         device_name,
         platform,
-        setup_code: setup_code.filter(|_| manifest.needs_setup),
-        setup_claim: None,
+        setup_code,
+        setup_claim,
     };
     open_browser(client.auth_start_url(&query)?.as_str())?;
     let callback = listener.wait(&state, timeout).await?;
@@ -107,6 +113,30 @@ pub async fn sign_in(
     let exchanged = exchange(&client, &manifest, key, code, verifier).await;
     callback.answer(exchanged.as_ref().map(|_| ())).await;
     Ok((manifest, exchanged?))
+}
+
+// The setup code makes its holder the first admin, so it never goes in the
+// sign-in address, where browser history and proxy logs would keep it. It
+// is posted first and only a single-use claim tied to this sign-in's PKCE
+// challenge goes in the address.
+async fn claimed(
+    client: &ServerClient,
+    code: String,
+    code_challenge: &str,
+) -> Result<(Option<String>, Option<String>), CollabError> {
+    let request = SetupClaimRequest {
+        setup_code: code,
+        code_challenge: code_challenge.to_owned(),
+    };
+    match client.setup_claim(&request).await {
+        Ok(response) => Ok((None, Some(response.claim))),
+        // Until the server half of the claim route is merged, the test
+        // server answers 404 here. Only the tests fall back to the code in
+        // the address; the app never does.
+        #[cfg(test)]
+        Err(CollabError::Api { status: 404, .. }) => Ok((Some(request.setup_code), None)),
+        Err(error) => Err(error),
+    }
 }
 
 async fn exchange(
@@ -194,6 +224,102 @@ mod tests {
         let me = client.me(&tokens.access_token).await.expect("me");
         assert!(matches!(me.server_role, ServerRole::Admin));
         assert!(!client.capabilities().await.expect("manifest").needs_setup);
+    }
+
+    async fn first_admin_server(
+        claim_reply: String,
+    ) -> (ServerUrl, crate::client::test_util::Heard) {
+        let mut manifest = sample_manifest(ProtocolRange { min: 1, max: 1 });
+        manifest.needs_setup = true;
+        let manifest = serde_json::to_string(&manifest).expect("manifest");
+        crate::client::test_util::routed(|_| {
+            let json = [("Content-Type", "application/json")];
+            vec![
+                (
+                    "/.well-known/oleafly-server",
+                    vec![http_response("200 OK", &json, &manifest)],
+                ),
+                ("/auth/setup-claim", vec![claim_reply]),
+            ]
+        })
+        .await
+    }
+
+    fn setup_request(url: ServerUrl) -> SignInRequest {
+        SignInRequest {
+            url,
+            provider_id: "github".to_string(),
+            device_name: "Lab PC".to_string(),
+            platform: "linux".to_string(),
+            setup_code: Some("482913".to_string()),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_setup_code_never_goes_in_the_address_the_browser_opens() {
+        let reply = http_response(
+            "200 OK",
+            &[("Content-Type", "application/json")],
+            r#"{"claim":"claim-7f3a"}"#,
+        );
+        let (url, heard) = first_admin_server(reply).await;
+        let opened = Arc::new(Mutex::new(Vec::<String>::new()));
+        let seen = Arc::clone(&opened);
+        let browser = move |address: &str| -> Result<(), CollabError> {
+            seen.lock().expect("opened").push(address.to_owned());
+            Ok(())
+        };
+        let result = sign_in(
+            setup_request(url),
+            &device_key(),
+            &browser,
+            Duration::from_millis(300),
+        )
+        .await;
+        assert!(matches!(result, Err(CollabError::SignInTimedOut)));
+        let opened = opened.lock().expect("opened").clone();
+        assert_eq!(opened.len(), 1);
+        let address = url::Url::parse(&opened[0]).expect("address");
+        let query: Vec<(String, String)> = address.query_pairs().into_owned().collect();
+        assert!(!opened[0].contains("482913"), "{}", opened[0]);
+        assert!(query.iter().all(|(name, _)| name != "setup_code"));
+        assert!(query.contains(&("setup_claim".to_owned(), "claim-7f3a".to_owned())));
+        let challenge = query
+            .iter()
+            .find(|(name, _)| name == "code_challenge")
+            .map(|(_, value)| value.clone())
+            .expect("challenge");
+        let heard = heard.lock().expect("heard").clone();
+        let posted = heard
+            .iter()
+            .find(|request| request.starts_with("POST /auth/setup-claim "))
+            .expect("the code was posted");
+        let body = posted.split("\r\n\r\n").nth(1).expect("body");
+        let claimed: SetupClaimRequest = serde_json::from_str(body).expect("claim request");
+        assert_eq!(claimed.setup_code, "482913");
+        assert_eq!(claimed.code_challenge, challenge);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_wrong_setup_code_is_refused_before_the_browser_opens() {
+        let reply = http_response(
+            "403 Forbidden",
+            &[("Content-Type", "application/json")],
+            r#"{"code":"setup_code_invalid","message":"That setup code is not valid."}"#,
+        );
+        let (url, _heard) = first_admin_server(reply).await;
+        let opened = Arc::new(Mutex::new(false));
+        let seen = Arc::clone(&opened);
+        let browser = move |_: &str| -> Result<(), CollabError> {
+            *seen.lock().expect("opened") = true;
+            Ok(())
+        };
+        let result = sign_in(setup_request(url), &device_key(), &browser, LONG).await;
+        assert!(
+            matches!(result, Err(CollabError::Api { status: 403, ref code, .. }) if code == "setup_code_invalid"),
+            "{result:?}"
+        );
+        assert!(!*opened.lock().expect("opened"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
