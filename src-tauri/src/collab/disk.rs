@@ -414,19 +414,40 @@ fn inside_app_folder(root: &Path, folder: &Path) -> bool {
     })
 }
 
+// APFS and HFS+ treat names that differ only in Unicode normalization as one
+// name; NTFS and the Linux file systems do not.
+fn spelled_alike(on_disk: &str, wanted: &str) -> bool {
+    on_disk == wanted
+        || (cfg!(target_os = "macos")
+            && unicode_normalization::UnicodeNormalization::nfc(on_disk)
+                .eq(unicode_normalization::UnicodeNormalization::nfc(wanted)))
+}
+
+fn same_name_here(first: &str, second: &str) -> bool {
+    if cfg!(target_os = "macos") {
+        oleafly_history::portable_fold(first) == oleafly_history::portable_fold(second)
+    } else {
+        first.to_lowercase() == second.to_lowercase()
+    }
+}
+
 pub fn exists_exact(root: &Path, relative: &str) -> bool {
     let mut folder = root.to_path_buf();
     for part in relative.split('/') {
         let Ok(entries) = std::fs::read_dir(&folder) else {
             return false;
         };
-        let found = entries
-            .filter_map(Result::ok)
-            .any(|entry| entry.file_name().to_str() == Some(part));
-        if !found {
+        let found = entries.filter_map(Result::ok).find_map(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .filter(|name| spelled_alike(name, part))
+                .map(str::to_owned)
+        });
+        let Some(name) = found else {
             return false;
-        }
-        folder.push(part);
+        };
+        folder.push(name);
     }
     true
 }
@@ -452,7 +473,7 @@ fn same_entry(first: &Path, second: &Path) -> bool {
 }
 
 pub fn same_file(root: &Path, first: &str, second: &str) -> bool {
-    if first == second || first.to_lowercase() != second.to_lowercase() {
+    if first == second || !same_name_here(first, second) {
         return false;
     }
     match (safe_target(root, first), safe_target(root, second)) {
@@ -468,7 +489,7 @@ pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
     if !exists_exact(root, from) {
         return false;
     }
-    let case_only = from.to_lowercase() == to.to_lowercase() && same_entry(&source, &target);
+    let case_only = same_name_here(from, to) && same_entry(&source, &target);
     if target.exists() && !case_only {
         return false;
     }
@@ -699,6 +720,22 @@ mod tests {
         assert!(!exists_exact(root, "Main.tex"));
         write(root, "other.tex", "y");
         assert!(!move_path(root, "main.tex", "other.tex"));
+    }
+
+    #[test]
+    fn names_that_differ_only_in_unicode_normalization_follow_the_file_system() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let decomposed = "figures/Gro\u{0308}\u{00df}e.png";
+        let composed = "figures/Gr\u{00f6}\u{00df}e.png";
+        write(root, decomposed, "plot");
+        assert!(exists_exact(root, decomposed));
+        assert_eq!(exists_exact(root, composed), cfg!(target_os = "macos"));
+        assert_eq!(
+            same_file(root, decomposed, composed),
+            cfg!(target_os = "macos")
+        );
+        assert!(!exists_exact(root, "figures/gro\u{0308}\u{00df}e.png"));
     }
 
     #[test]
