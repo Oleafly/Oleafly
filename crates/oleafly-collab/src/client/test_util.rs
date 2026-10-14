@@ -499,6 +499,36 @@ pub(crate) async fn two_people() -> Pair {
     }
 }
 
+// A copy that keeps only the history after its current state, and a change
+// someone made from an earlier state. The change reads like any other but
+// the copy cannot take it in: the shape of a change from a modified client
+// or one that hits a Loro bug.
+pub(crate) fn trimmed_and_unreadable(doc: &crate::doc::ProjectDoc) -> (Vec<u8>, Vec<u8>) {
+    let loro = doc.loro();
+    let trimmed = loro
+        .export(loro::ExportMode::shallow_snapshot(&loro.oplog_frontiers()))
+        .expect("a trimmed copy");
+    let first_writer = *loro
+        .oplog_vv()
+        .iter()
+        .next()
+        .expect("the document has a history")
+        .0;
+    let earliest = loro::Frontiers::from_id(loro::ID::new(first_writer, 0));
+    let writer = loro.fork_at(&earliest).expect("an early copy");
+    writer.set_peer_id(u64::MAX >> 3).expect("a writer id");
+    let since = writer.oplog_vv();
+    writer
+        .get_map("meta")
+        .insert("written_early", true)
+        .expect("a change");
+    writer.commit();
+    let update = writer
+        .export(loro::ExportMode::updates(&since))
+        .expect("the change");
+    (trimmed, update)
+}
+
 pub(crate) fn noise(length: usize, seed: u64) -> String {
     let mut state = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
     (0..length)

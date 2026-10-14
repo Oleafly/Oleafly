@@ -114,8 +114,30 @@ pub struct Imported {
     pub pending: bool,
 }
 
+#[derive(Debug)]
+pub(crate) struct ImportFailure {
+    pub(crate) kept: Imported,
+    pub(crate) error: CollabError,
+}
+
+fn arrived_in(status: &loro::ImportStatus) -> Vec<(u64, i32)> {
+    status
+        .success
+        .iter()
+        .map(|(peer, (_, end))| (*peer, *end))
+        .collect()
+}
+
+fn grown(before: &VersionVector, after: &VersionVector) -> Vec<(u64, i32)> {
+    after
+        .iter()
+        .filter(|(peer, end)| before.get(peer).copied().unwrap_or(0) < **end)
+        .map(|(peer, end)| (*peer, *end))
+        .collect()
+}
+
 impl Imported {
-    fn absorb(&mut self, later: Imported) {
+    pub(crate) fn absorb(&mut self, later: Imported) {
         self.changes.texts.extend(later.changes.texts);
         self.changes.tree |= later.changes.tree;
         self.changes.comments.extend(later.changes.comments);
@@ -587,21 +609,24 @@ impl ProjectDoc {
             timeout_ms: Some(UPDATE_TIMEOUT_MS),
             use_refined_diff: true,
         };
-        let (_, changes) = self.recording(|doc| {
+        let (done, changes) = self.recording(|doc| {
             if text.update(content, options).is_err() {
                 let length = text.len_utf16();
                 text.splice_utf16(0, length, content).map_err(doc_error)?;
             }
             doc.commit();
             Ok(())
-        })?;
+        });
+        done?;
         Ok(changes)
     }
 
+    // The changes are kept even when the work fails, because a batch import
+    // applies every update it can before it reports the one that failed.
     fn recording<T>(
         &self,
         work: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
-    ) -> Result<(T, DocChanges), CollabError> {
+    ) -> (Result<T, CollabError>, DocChanges) {
         self.doc.commit();
         {
             let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
@@ -612,7 +637,7 @@ impl ProjectDoc {
         let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
         recorder.on = false;
         let changes = std::mem::take(&mut recorder.changes);
-        Ok((outcome?, changes))
+        (outcome, changes)
     }
 
     pub fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
@@ -738,20 +763,42 @@ impl ProjectDoc {
     }
 
     pub fn import_all(&mut self, payloads: &[&[u8]]) -> Result<Imported, CollabError> {
+        self.import_keeping(payloads)
+            .map_err(|failure| failure.error)
+    }
+
+    pub(crate) fn import_keeping(
+        &mut self,
+        payloads: &[&[u8]],
+    ) -> Result<Imported, Box<ImportFailure>> {
         let mut imported = Imported::default();
         let mut together: Vec<Vec<u8>> = Vec::new();
+        let mut failed = None;
         for payload in payloads {
-            if payload.len() >= STAGED_IMPORT_BYTES {
-                self.import_together(std::mem::take(&mut together), &mut imported)?;
-                let alone = self.import_one(payload)?;
-                imported.absorb(alone);
-            } else {
+            if payload.len() < STAGED_IMPORT_BYTES {
                 together.push(payload.to_vec());
+                continue;
+            }
+            let earlier = std::mem::take(&mut together);
+            if let Err(error) = self
+                .import_together(earlier, &mut imported)
+                .and_then(|()| self.import_one(payload, &mut imported))
+            {
+                failed = Some(error);
+                break;
             }
         }
-        self.import_together(together, &mut imported)?;
-        self.compact_for_new_writers()?;
-        Ok(imported)
+        if failed.is_none() {
+            failed = self.import_together(together, &mut imported).err();
+        }
+        let compacted = self.compact_for_new_writers();
+        match failed.map_or(compacted, Err) {
+            Ok(()) => Ok(imported),
+            Err(error) => Err(Box::new(ImportFailure {
+                kept: imported,
+                error,
+            })),
+        }
     }
 
     fn import_together(
@@ -762,22 +809,35 @@ impl ProjectDoc {
         if payloads.is_empty() {
             return Ok(());
         }
+        let before = self.doc.oplog_vv();
         let (status, changes) =
-            self.recording(|doc| doc.import_batch(&payloads).map_err(doc_error))?;
-        if changes.tree {
+            self.recording(|doc| doc.import_batch(&payloads).map_err(doc_error));
+        let status = status.map(|status| (arrived_in(&status), status.pending.is_some()));
+        self.keep(imported, &before, status, changes)
+    }
+
+    fn keep(
+        &mut self,
+        imported: &mut Imported,
+        before: &VersionVector,
+        status: Result<(Vec<(u64, i32)>, bool), CollabError>,
+        changes: DocChanges,
+    ) -> Result<(), CollabError> {
+        let tree = changes.tree;
+        let (arrived, pending, failed) = match status {
+            Ok((arrived, pending)) => (arrived, pending, None),
+            Err(error) => (grown(before, &self.doc.oplog_vv()), false, Some(error)),
+        };
+        imported.absorb(Imported {
+            changes,
+            arrived,
+            pending,
+        });
+        if tree {
             self.reindex()?;
             self.log.tree_changed();
         }
-        imported.absorb(Imported {
-            changes,
-            arrived: status
-                .success
-                .iter()
-                .map(|(peer, (_, end))| (*peer, *end))
-                .collect(),
-            pending: status.pending.is_some(),
-        });
-        Ok(())
+        failed.map_or(Ok(()), Err)
     }
 
     fn compact_for_new_writers(&mut self) -> Result<(), CollabError> {
@@ -793,15 +853,11 @@ impl ProjectDoc {
         Ok(())
     }
 
-    fn import_one(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
-        let staged = if bytes.len() >= STAGED_IMPORT_BYTES {
-            self.staged(bytes)
-        } else {
-            None
-        };
-        let (arrived, pending, changes) = match staged {
+    fn import_one(&mut self, bytes: &[u8], imported: &mut Imported) -> Result<(), CollabError> {
+        let before = self.doc.oplog_vv();
+        let (status, changes) = match self.staged(bytes) {
             Some(staged) => {
-                let (_, changes) = self.recording(|doc| {
+                let (done, changes) = self.recording(|doc| {
                     for piece in &staged.pieces {
                         doc.import(piece).map_err(doc_error)?;
                     }
@@ -809,29 +865,16 @@ impl ProjectDoc {
                         doc.import(bytes).map_err(doc_error)?;
                     }
                     Ok(())
-                })?;
-                (staged.arrived, false, changes)
+                });
+                (done.map(|()| (staged.arrived, false)), changes)
             }
             None => {
-                let (status, changes) =
-                    self.recording(|doc| doc.import(bytes).map_err(doc_error))?;
-                let arrived = status
-                    .success
-                    .iter()
-                    .map(|(peer, (_, end))| (*peer, *end))
-                    .collect();
-                (arrived, status.pending.is_some(), changes)
+                let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error));
+                let status = status.map(|status| (arrived_in(&status), status.pending.is_some()));
+                (status, changes)
             }
         };
-        if changes.tree {
-            self.reindex()?;
-            self.log.tree_changed();
-        }
-        Ok(Imported {
-            changes,
-            arrived,
-            pending,
-        })
+        self.keep(imported, &before, status, changes)
     }
 
     fn staged(&self, bytes: &[u8]) -> Option<Staged> {

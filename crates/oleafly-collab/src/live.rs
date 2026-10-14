@@ -197,6 +197,7 @@ pub struct LiveProject {
     offline_edits: HashMap<String, BTreeMap<u64, i32>>,
     repaired: bool,
     resync_needed: bool,
+    unreadable: Vec<(u64, Option<DeviceId>)>,
 }
 
 struct ChangeLog {
@@ -384,6 +385,7 @@ impl LiveProject {
             offline_edits: HashMap::new(),
             repaired: false,
             resync_needed: false,
+            unreadable: Vec::new(),
         }
     }
 
@@ -667,7 +669,9 @@ impl LiveProject {
                 };
                 let sink = Arc::clone(&open.sink);
                 let before = self.own_counter();
-                self.doc.apply_operation(id, &applied)?;
+                if self.doc.apply_operation(id, &applied).is_err() {
+                    return self.reset_file(id);
+                }
                 self.note_offline(id, before);
                 self.disk.texts.insert(id.to_owned());
                 sink(message);
@@ -837,11 +841,28 @@ impl LiveProject {
         if fresh.is_empty() {
             return Ok(0);
         }
-        let payloads: Vec<&[u8]> = fresh
-            .iter()
-            .map(|received| received.arrival.payload.as_slice())
-            .collect();
-        let imported = self.doc.import_all(&payloads)?;
+        let (imported, unreadable) = {
+            let payloads: Vec<&[u8]> = fresh
+                .iter()
+                .map(|received| received.arrival.payload.as_slice())
+                .collect();
+            match self.doc.import_keeping(&payloads) {
+                Ok(imported) => (imported, BTreeSet::new()),
+                Err(failure) => self.import_each(&payloads, failure.kept),
+            }
+        };
+        let mut readable = Vec::with_capacity(fresh.len());
+        for (index, received) in fresh.into_iter().enumerate() {
+            if unreadable.contains(&index) {
+                self.unreadable
+                    .push((received.arrival.seq, received.arrival.device));
+                self.mark_seen(received.arrival.seq);
+                self.received += 1;
+            } else {
+                readable.push(received);
+            }
+        }
+        let fresh = readable;
         self.witness_arrivals(&fresh);
         advance(&mut self.confirmed, &imported.arrived);
         for received in &fresh {
@@ -864,6 +885,31 @@ impl LiveProject {
             }
         }
         Ok(fresh.len())
+    }
+
+    // A batch import stops at the first update it cannot read, after taking
+    // in the others. Each one is tried again alone so the unreadable ones
+    // are found, skipped and reported, and the rest still count.
+    fn import_each(
+        &mut self,
+        payloads: &[&[u8]],
+        mut kept: crate::doc::Imported,
+    ) -> (crate::doc::Imported, BTreeSet<usize>) {
+        let mut unreadable = BTreeSet::new();
+        for (index, payload) in payloads.iter().enumerate() {
+            match self.doc.import_keeping(&[*payload]) {
+                Ok(alone) => kept.absorb(alone),
+                Err(failure) => {
+                    kept.absorb(failure.kept);
+                    unreadable.insert(index);
+                }
+            }
+        }
+        (kept, unreadable)
+    }
+
+    pub fn take_unreadable(&mut self) -> Vec<(u64, Option<DeviceId>)> {
+        std::mem::take(&mut self.unreadable)
     }
 
     fn is_repeated(&self, seq: u64, fresh: &[Received]) -> bool {
@@ -1701,6 +1747,83 @@ mod tests {
             late.devices().device_of_peer(bob.doc().peer_id()),
             Some(bob_device)
         );
+    }
+
+    fn skipped_beside(unreadable: Option<&[u8]>) {
+        let (mut bob, alice, main) = pair();
+        let (trimmed, early) = crate::client::test_util::trimmed_and_unreadable(alice.doc());
+        let broken = unreadable.map_or(early, <[u8]>::to_vec);
+        let mut alice =
+            LiveProject::new(ProjectDoc::load(&trimmed).unwrap(), 0, ProjectRole::Editor);
+        let (sink, seen) = recorder();
+        alice.open_file(&main, sink).unwrap();
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 1);
+        bob.local_text(&main, "abcde").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        let carol_device = DeviceId::new_v7();
+        let arrival = |seq: u64, payload: &[u8], device: Option<DeviceId>| Arrival {
+            seq,
+            payload: payload.to_vec(),
+            device,
+            author: None,
+        };
+        let taken = alice
+            .import_arrivals(vec![
+                arrival(1, &first.payload, None),
+                arrival(2, &broken, Some(carol_device)),
+                arrival(3, &second.payload, None),
+            ])
+            .unwrap();
+        assert_eq!(taken, 2);
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcde");
+        assert_eq!(alice.last_seq(), 3);
+        assert_eq!(alice.received(), 3);
+        assert_eq!(alice.take_unreadable(), vec![(2, Some(carol_device))]);
+        assert!(alice.take_unreadable().is_empty());
+        assert!(seen
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|message| matches!(message, DocMessage::Remote { .. })));
+        let rev = alice.editor_rev(&main).unwrap();
+        alice.editor_change(&main, rev, insert(5, "!", 5)).unwrap();
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcde!");
+        assert!(matches!(
+            seen.lock().unwrap().last(),
+            Some(DocMessage::Ack { length: 6, .. })
+        ));
+    }
+
+    #[test]
+    fn an_update_that_cannot_be_imported_is_skipped_and_the_rest_of_its_batch_reaches_the_editor() {
+        skipped_beside(None);
+        skipped_beside(Some(b"not a change at all"));
+    }
+
+    #[test]
+    fn an_editor_change_the_document_cannot_take_resets_the_editor_instead_of_failing() {
+        let (mut bob, _alice, main) = pair();
+        let (sink, seen) = recorder();
+        let rev = bob.open_file(&main, sink).unwrap().rev;
+        bob.comment_doc()
+            .text_of(&main)
+            .unwrap()
+            .insert_utf16(0, "zz")
+            .unwrap();
+        bob.comment_doc().loro().commit();
+        bob.editor_change(&main, rev, insert(3, "d", 3)).unwrap();
+        assert_eq!(
+            seen.lock().unwrap().last(),
+            Some(&DocMessage::Reset {
+                rev: rev + 2,
+                text: "zzabc".to_owned()
+            })
+        );
+        bob.editor_change(&main, rev + 2, insert(5, "d", 5))
+            .unwrap();
+        assert_eq!(bob.doc().text(&main).unwrap(), "zzabcd");
     }
 
     #[test]

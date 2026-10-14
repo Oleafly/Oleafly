@@ -318,6 +318,57 @@ async fn a_relayed_resend_from_an_honest_editor_still_converges() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn an_update_that_cannot_be_imported_is_reported_once_and_syncing_goes_on() {
+    let pair = two_people().await;
+    let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+    let (trimmed, broken) = crate::client::test_util::trimmed_and_unreadable(bob_live.doc());
+    let bob_live = LiveProject::new(ProjectDoc::load(&trimmed).unwrap(), 0, ProjectRole::Owner);
+    store_on_server(
+        &pair,
+        &pair.alice,
+        signed_envelope(&pair.alice, project, broken),
+    )
+    .await;
+    alice_live.local_text(&main, "abcX").unwrap();
+    let honest = alice_live.next_outgoing().unwrap().unwrap().payload;
+    store_on_server(
+        &pair,
+        &pair.alice,
+        signed_envelope(&pair.alice, project, honest),
+    )
+    .await;
+    let mut bob = side(bob_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_text(&bob, &main, "abcX").await;
+    assert_eq!(lock(&bob.live).last_seq(), 2);
+    append(&bob, &main, "!");
+    flushed(&bob);
+    until(|| !lock(&bob.live).has_unsent()).await;
+    let mut heard = Vec::new();
+    while let Ok(event) = bob.events.try_recv() {
+        heard.push(event);
+    }
+    let skipped: Vec<&LiveEvent> = heard
+        .iter()
+        .filter(|event| matches!(event, LiveEvent::Unreadable { .. }))
+        .collect();
+    assert_eq!(
+        skipped,
+        vec![&LiveEvent::Unreadable {
+            seq: 1,
+            device_id: Some(pair.alice.tokens.device_id),
+        }]
+    );
+    assert!(
+        !heard.iter().any(|event| matches!(
+            event,
+            LiveEvent::Status(LiveStatus::Offline { .. } | LiveStatus::Ended { .. })
+        )),
+        "{heard:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn an_update_in_a_mode_this_build_cannot_read_is_skipped_without_calling_it_forged() {
     let pair = two_people().await;
     let (project, main, bob_live, mut alice_live) = shared(&pair).await;
@@ -336,8 +387,19 @@ async fn an_update_in_a_mode_this_build_cannot_read_is_skipped_without_calling_i
     start(&mut bob, link(&pair, &pair.bob, project));
     until_text(&bob, &main, "abcX").await;
     assert_eq!(lock(&bob.live).last_seq(), 2);
+    let mut skipped = Vec::new();
     while let Ok(event) = bob.events.try_recv() {
         assert!(!matches!(event, LiveEvent::Untrusted { .. }), "{event:?}");
+        if matches!(event, LiveEvent::Unreadable { .. }) {
+            skipped.push(event);
+        }
     }
+    assert_eq!(
+        skipped,
+        vec![LiveEvent::Unreadable {
+            seq: 1,
+            device_id: Some(pair.alice.tokens.device_id),
+        }]
+    );
     assert!(!bob.handle.as_ref().unwrap().is_finished());
 }
