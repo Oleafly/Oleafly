@@ -546,7 +546,10 @@
     "removed": "Acces eliminat",
     "archived": "Partajare oprită",
     "paused": "Întrerupt",
-    "serverRemoved": "Server eliminat"
+    "serverRemoved": "Server eliminat",
+    "clientTooOld": "Oleafly trebuie actualizat",
+    "serverTooOld": "Serverul trebuie actualizat",
+    "serverChanged": "Alt server"
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",
@@ -628,6 +631,9 @@
     "archived": "Proprietarul a oprit partajarea acestui proiect. Copia ta rămâne aici ca proiect obișnuit.",
     "signedOut": "Ești deconectat de la {{server}}, așa că acest proiect nu se sincronizează. Modificările tale rămân pe acest computer.",
     "suspended": "Un administrator ți-a pus contul pe pauză pe {{server}}. Modificările tale rămân pe acest computer. Te poți autentifica din nou după ce contul este reactivat.",
+    "clientTooOld": "Actualizează Oleafly ca să lucrezi în continuare pe {{server}}. Modificările tale rămân pe acest computer.",
+    "serverTooOld": "{{server}} trebuie actualizat ca să funcționeze cu această versiune de Oleafly. Întreabă persoana care îl administrează. Modificările tale rămân pe acest computer.",
+    "serverChanged": "Adresa {{server}} duce acum la alt server. Elimină-l din setările de Colaborare și adaugă-l din nou. Modificările tale rămân pe acest computer.",
     "accessEnded": "Nu mai ai acces la {{server}}. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "accessEndedGuest": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "signIn": "Autentifică-te",

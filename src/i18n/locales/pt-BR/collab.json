@@ -546,7 +546,10 @@
     "removed": "Acesso removido",
     "archived": "Compartilhamento encerrado",
     "paused": "Pausado",
-    "serverRemoved": "Servidor removido"
+    "serverRemoved": "Servidor removido",
+    "clientTooOld": "O Oleafly precisa ser atualizado",
+    "serverTooOld": "O servidor precisa ser atualizado",
+    "serverChanged": "Outro servidor"
   },
   "toolbar": {
     "noFile": "Nenhum arquivo aberto",
@@ -628,6 +631,9 @@
     "archived": "O proprietário parou de compartilhar este projeto. A sua cópia continua aqui como um projeto comum.",
     "signedOut": "Você está desconectado de {{server}}, então este projeto não está sincronizando. As suas alterações ficam neste computador.",
     "suspended": "Um administrador pausou a sua conta em {{server}}. As suas alterações ficam neste computador. Você poderá entrar de novo quando ela for reativada.",
+    "clientTooOld": "Atualize o Oleafly para continuar trabalhando em {{server}}. As suas alterações ficam neste computador.",
+    "serverTooOld": "{{server}} precisa ser atualizado para funcionar com esta versão do Oleafly. Fale com quem administra o servidor. As suas alterações ficam neste computador.",
+    "serverChanged": "O endereço de {{server}} agora leva a outro servidor. Remova-o nas configurações de Colaboração e adicione-o de novo. As suas alterações ficam neste computador.",
     "accessEnded": "Você não tem mais acesso a {{server}}. A sua cópia fica neste computador como um projeto comum.",
     "accessEndedGuest": "Você não tem mais acesso a {{server}} porque não participa de nenhum dos projetos compartilhados dele. A sua cópia fica neste computador como um projeto comum.",
     "signIn": "Fazer login",

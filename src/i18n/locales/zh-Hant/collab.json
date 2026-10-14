@@ -546,7 +546,10 @@
     "removed": "存取權已移除",
     "archived": "分享已停止",
     "paused": "已暫停",
-    "serverRemoved": "伺服器已移除"
+    "serverRemoved": "伺服器已移除",
+    "clientTooOld": "Oleafly 需要更新",
+    "serverTooOld": "伺服器需要更新",
+    "serverChanged": "其他伺服器"
   },
   "toolbar": {
     "noFile": "未開啟檔案",
@@ -628,6 +631,9 @@
     "archived": "擁有者已停止分享這個專案。你的副本會以一般專案的形式留在這裡。",
     "signedOut": "你已登出 {{server}}，因此這個專案沒有同步。你的變更會留在這台電腦上。",
     "suspended": "管理員已暫停你在 {{server}} 上的帳號。你的變更會留在這台電腦上。帳號恢復後，你可以重新登入。",
+    "clientTooOld": "請更新 Oleafly，才能繼續在 {{server}} 上工作。你的變更會留在這台電腦上。",
+    "serverTooOld": "{{server}} 需要更新後才能搭配這個版本的 Oleafly 使用。請聯絡伺服器的管理者。你的變更會留在這台電腦上。",
+    "serverChanged": "{{server}} 的位址現在指向另一個伺服器。請在協作設定中移除它，然後重新新增。你的變更會留在這台電腦上。",
     "accessEnded": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。",
     "accessEndedGuest": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。",
     "signIn": "登入",

@@ -546,7 +546,10 @@
     "removed": "Toegang ingetrokken",
     "archived": "Delen gestopt",
     "paused": "Gepauzeerd",
-    "serverRemoved": "Server weggehaald"
+    "serverRemoved": "Server weggehaald",
+    "clientTooOld": "Oleafly moet worden bijgewerkt",
+    "serverTooOld": "Server moet worden bijgewerkt",
+    "serverChanged": "Andere server"
   },
   "toolbar": {
     "noFile": "Geen bestand open",
@@ -628,6 +631,9 @@
     "archived": "De eigenaar deelt dit project niet meer. Je kopie blijft hier als gewoon project staan.",
     "signedOut": "Je bent afgemeld bij {{server}}, dus dit project synchroniseert niet. Je wijzigingen blijven op deze computer.",
     "suspended": "Een beheerder heeft je account op {{server}} gepauzeerd. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra het weer is ingeschakeld.",
+    "clientTooOld": "Werk Oleafly bij om verder te werken op {{server}}. Je wijzigingen blijven op deze computer.",
+    "serverTooOld": "{{server}} moet worden bijgewerkt voordat hij werkt met deze versie van Oleafly. Vraag het aan wie hem beheert. Je wijzigingen blijven op deze computer.",
+    "serverChanged": "Het adres van {{server}} wijst nu naar een andere server. Haal hem weg in de samenwerkingsinstellingen en voeg hem opnieuw toe. Je wijzigingen blijven op deze computer.",
     "accessEnded": "Je hebt geen toegang meer tot {{server}}. Je kopie blijft op deze computer als gewoon project.",
     "accessEndedGuest": "Je hebt geen toegang meer tot {{server}} omdat je in geen van de gedeelde projecten daar zit. Je kopie blijft op deze computer als gewoon project.",
     "signIn": "Aanmelden",

@@ -241,6 +241,17 @@ describe("startCollabActivity", () => {
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "signedOut", server: "Smith Lab" });
   });
 
+  it.each([
+    ["client_too_old", "clientTooOld"],
+    ["server_too_old", "serverTooOld"],
+    ["server_changed", "serverChanged"],
+  ] as const)("names the server when syncing stops with %s", (reason, kind) => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ status: { state: "ended", reason }, ended: reason });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind, server: "Smith Lab" });
+  });
+
   it("says an admin paused the account, naming the server", () => {
     joined("owner");
     stop = startCollabActivity();

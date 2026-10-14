@@ -16,6 +16,7 @@ import {
   Archive,
   AtSign,
   Ban,
+  CircleArrowUp,
   CloudCheck,
   CloudOff,
   GitMerge,
@@ -23,6 +24,8 @@ import {
   MonitorSmartphone,
   PencilLine,
   RadioTower,
+  Replace,
+  ServerCog,
   Share2,
   SlidersHorizontal,
   UserCog,
@@ -46,6 +49,7 @@ import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { collabLeaveProject, type CollabProjectMember } from "@/lib/tauri";
+import { openUpdateWindow } from "@/lib/updater";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -64,7 +68,7 @@ import { RecentlyDeleted } from "./RecentlyDeleted";
 import { settingActivityText } from "./setting-activity";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
-import { syncState } from "./sync-state";
+import { syncState, type SyncState } from "./sync-state";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -81,6 +85,9 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   signedOut: LogOut,
   suspended: UserLock,
   accessEnded: Ban,
+  clientTooOld: CircleArrowUp,
+  serverTooOld: ServerCog,
+  serverChanged: Replace,
   memberAdded: UserRoundPlus,
   memberRemoved: UserRoundMinus,
   newDevice: MonitorSmartphone,
@@ -261,6 +268,12 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.signedOut, { server: entry.server });
     case "suspended":
       return t(($) => $.collab.activity.suspended, { server: entry.server });
+    case "clientTooOld":
+      return t(($) => $.collab.activity.clientTooOld, { server: entry.server });
+    case "serverTooOld":
+      return t(($) => $.collab.activity.serverTooOld, { server: entry.server });
+    case "serverChanged":
+      return t(($) => $.collab.activity.serverChanged, { server: entry.server });
     case "accessEnded":
       return entry.guest
         ? t(($) => $.collab.activity.accessEndedGuest, { server: entry.server })
@@ -286,8 +299,12 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
   }
 }
 
+function checkForUpdates() {
+  void openUpdateWindow({ manual: true });
+}
+
 const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: ActivityEntry; now: number }>) {
-  const { t } = useTranslation(["collab"]);
+  const { t } = useTranslation(["collab", "shell"]);
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const projectId = useCollabActivity((state) => state.projectId);
@@ -342,6 +359,22 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               onClick={openCollaborationSettings}
             >
               {t(($) => $.collab.activity.signIn)}
+            </Button>
+          ) : null}
+          {entry.kind === "clientTooOld" ? (
+            <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={checkForUpdates}>
+              {t(($) => $.shell.updateChecker.check)}
+            </Button>
+          ) : null}
+          {entry.kind === "serverChanged" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={openCollaborationSettings}
+            >
+              {t(($) => $.collab.share.openSettings)}
             </Button>
           ) : null}
           {entry.kind === "mentioned" && entry.path ? (
@@ -436,6 +469,40 @@ function ServerRemovedActions({ projectId }: Readonly<{ projectId: string }>) {
   );
 }
 
+// Why syncing stopped for good, and what the person can do about it.
+function EndedDetails({ state, server }: Readonly<{ state: SyncState; server: string }>) {
+  const { t } = useTranslation(["collab", "shell"]);
+  const button = "h-7 text-xs";
+  if (state === "clientTooOld") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.clientTooOld, { server })}</p>
+        <PopoverClose asChild>
+          <Button type="button" variant="outline" size="sm" className={button} onClick={checkForUpdates}>
+            {t(($) => $.shell.updateChecker.check)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
+  }
+  if (state === "serverTooOld") {
+    return <p className="text-muted-foreground">{t(($) => $.collab.activity.serverTooOld, { server })}</p>;
+  }
+  if (state === "serverChanged") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.serverChanged, { server })}</p>
+        <PopoverClose asChild>
+          <Button type="button" variant="outline" size="sm" className={button} onClick={openCollaborationSettings}>
+            {t(($) => $.collab.share.openSettings)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
+  }
+  return null;
+}
+
 function SyncStatus() {
   const { t } = useTranslation(["collab"]);
   const live = useCollabLiveStore(
@@ -473,6 +540,7 @@ function SyncStatus() {
           </PopoverClose>
         ) : null}
         {state === "serverRemoved" && live.share ? <ServerRemovedActions projectId={live.share.project_id} /> : null}
+        <EndedDetails state={state} server={live.share?.server_name ?? ""} />
         {live.share ? (
           <div className="space-y-0.5 border-t pt-2 text-muted-foreground">
             {live.share.server_name ? (

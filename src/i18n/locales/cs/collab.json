@@ -546,7 +546,10 @@
     "removed": "Přístup odebrán",
     "archived": "Sdílení ukončeno",
     "paused": "Pozastaveno",
-    "serverRemoved": "Server odebrán"
+    "serverRemoved": "Server odebrán",
+    "clientTooOld": "Oleafly potřebuje aktualizaci",
+    "serverTooOld": "Server potřebuje aktualizaci",
+    "serverChanged": "Jiný server"
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
@@ -628,6 +631,9 @@
     "archived": "Vlastník přestal tento projekt sdílet. Vaše kopie tu zůstane jako běžný projekt.",
     "signedOut": "Jste odhlášeni ze serveru {{server}}, takže se tento projekt nesynchronizuje. Vaše změny zůstanou v tomto počítači.",
     "suspended": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Až bude účet znovu aktivní, můžete se přihlásit.",
+    "clientTooOld": "Aktualizujte Oleafly, abyste mohli dál pracovat na serveru {{server}}. Vaše změny zůstanou v tomto počítači.",
+    "serverTooOld": "Server {{server}} potřebuje aktualizaci, aby fungoval s touto verzí Oleafly. Požádejte toho, kdo ho spravuje. Vaše změny zůstanou v tomto počítači.",
+    "serverChanged": "Adresa serveru {{server}} teď vede na jiný server. Odeberte ho v nastavení spolupráce a přidejte ho znovu. Vaše změny zůstanou v tomto počítači.",
     "accessEnded": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "accessEndedGuest": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "signIn": "Přihlásit se",

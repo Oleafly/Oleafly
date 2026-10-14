@@ -546,7 +546,10 @@
     "removed": "Adgang fjernet",
     "archived": "Deling stoppet",
     "paused": "På pause",
-    "serverRemoved": "Server fjernet"
+    "serverRemoved": "Server fjernet",
+    "clientTooOld": "Oleafly skal opdateres",
+    "serverTooOld": "Serveren skal opdateres",
+    "serverChanged": "En anden server"
   },
   "toolbar": {
     "noFile": "Ingen fil åben",
@@ -628,6 +631,9 @@
     "archived": "Ejeren er holdt op med at dele dette projekt. Din kopi bliver her som et almindeligt projekt.",
     "signedOut": "Du er logget ud af {{server}}, så dette projekt synkroniseres ikke. Dine ændringer bliver på denne computer.",
     "suspended": "En administrator har sat din konto på {{server}} på pause. Dine ændringer bliver på denne computer. Du kan logge ind igen, når den er slået til igen.",
+    "clientTooOld": "Opdater Oleafly for at fortsætte arbejdet på {{server}}. Dine ændringer bliver på denne computer.",
+    "serverTooOld": "{{server}} skal opdateres, før den virker med denne version af Oleafly. Spørg den, der driver den. Dine ændringer bliver på denne computer.",
+    "serverChanged": "Adressen på {{server}} peger nu på en anden server. Fjern den i samarbejdsindstillingerne, og tilføj den igen. Dine ændringer bliver på denne computer.",
     "accessEnded": "Du har ikke længere adgang til {{server}}. Din kopi bliver på denne computer som et almindeligt projekt.",
     "accessEndedGuest": "Du har ikke længere adgang til {{server}}, fordi du ikke er med i nogen af de delte projekter der. Din kopi bliver på denne computer som et almindeligt projekt.",
     "signIn": "Log ind",

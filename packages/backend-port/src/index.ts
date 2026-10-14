@@ -1218,7 +1218,14 @@ export interface CollabShareProgress {
     done: number;
     total: number;
 }
-export type CollabLiveEndReason = "removed" | "archived" | "signed_out" | "stopped";
+export type CollabLiveEndReason =
+    | "removed"
+    | "archived"
+    | "signed_out"
+    | "stopped"
+    | "client_too_old"
+    | "server_too_old"
+    | "server_changed";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }

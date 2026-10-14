@@ -546,7 +546,10 @@
     "removed": "Erişim kaldırıldı",
     "archived": "Paylaşım durduruldu",
     "paused": "Duraklatıldı",
-    "serverRemoved": "Sunucu kaldırıldı"
+    "serverRemoved": "Sunucu kaldırıldı",
+    "clientTooOld": "Oleafly güncellenmeli",
+    "serverTooOld": "Sunucu güncellenmeli",
+    "serverChanged": "Farklı sunucu"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",
@@ -628,6 +631,9 @@
     "archived": "Proje sahibi bu projeyi paylaşmayı durdurdu. Kopyanız burada sıradan bir proje olarak kalır.",
     "signedOut": "{{server}} sunucusundaki oturumunuz kapalı, bu yüzden bu proje eşitlenmiyor. Değişiklikleriniz bu bilgisayarda kalır.",
     "suspended": "Bir yönetici {{server}} sunucusundaki hesabınızı duraklattı. Değişiklikleriniz bu bilgisayarda kalır. Hesabınız yeniden açıldığında tekrar oturum açabilirsiniz.",
+    "clientTooOld": "{{server}} sunucusunda çalışmaya devam etmek için Oleafly'yi güncelleyin. Değişiklikleriniz bu bilgisayarda kalır.",
+    "serverTooOld": "{{server}} sunucusunun bu Oleafly sürümüyle çalışması için güncellenmesi gerekiyor. Sunucuyu yöneten kişiye danışın. Değişiklikleriniz bu bilgisayarda kalır.",
+    "serverChanged": "{{server}} adresi artık farklı bir sunucuyu gösteriyor. Sunucuyu Ayarlar'daki İş Birliği bölümünden kaldırıp yeniden ekleyin. Değişiklikleriniz bu bilgisayarda kalır.",
     "accessEnded": "{{server}} sunucusuna artık erişiminiz yok. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "accessEndedGuest": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "signIn": "Oturum aç",

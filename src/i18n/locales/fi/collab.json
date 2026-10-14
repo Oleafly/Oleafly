@@ -546,7 +546,10 @@
     "removed": "Pääsy poistettu",
     "archived": "Jakaminen lopetettu",
     "paused": "Tauolla",
-    "serverRemoved": "Palvelin poistettu"
+    "serverRemoved": "Palvelin poistettu",
+    "clientTooOld": "Oleafly tarvitsee päivityksen",
+    "serverTooOld": "Palvelin tarvitsee päivityksen",
+    "serverChanged": "Eri palvelin"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
@@ -628,6 +631,9 @@
     "archived": "Omistaja lopetti tämän projektin jakamisen. Kopiosi jää tänne tavallisena projektina.",
     "signedOut": "Olet kirjautunut ulos palvelimelta {{server}}, joten tämä projekti ei synkronoidu. Muutoksesi pysyvät tällä koneella.",
     "suspended": "Ylläpitäjä keskeytti tilisi palvelimella {{server}}. Muutoksesi pysyvät tällä koneella. Voit kirjautua uudelleen, kun tili on taas käytössä.",
+    "clientTooOld": "Päivitä Oleafly, jotta voit jatkaa työtä palvelimella {{server}}. Muutoksesi pysyvät tällä koneella.",
+    "serverTooOld": "Palvelin {{server}} tarvitsee päivityksen, ennen kuin se toimii tämän Oleafly-version kanssa. Kysy sen ylläpitäjältä. Muutoksesi pysyvät tällä koneella.",
+    "serverChanged": "Palvelimen {{server}} osoite vie nyt toiselle palvelimelle. Poista se Yhteistyö-asetuksista ja lisää se uudelleen. Muutoksesi pysyvät tällä koneella.",
     "accessEnded": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "accessEndedGuest": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "signIn": "Kirjaudu sisään",

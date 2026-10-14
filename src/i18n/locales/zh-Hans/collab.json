@@ -546,7 +546,10 @@
     "removed": "访问权限已移除",
     "archived": "共享已停止",
     "paused": "已暂停",
-    "serverRemoved": "服务器已移除"
+    "serverRemoved": "服务器已移除",
+    "clientTooOld": "Oleafly 需要更新",
+    "serverTooOld": "服务器需要更新",
+    "serverChanged": "其他服务器"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -628,6 +631,9 @@
     "archived": "所有者已停止共享此项目。你的副本会作为普通项目保留在这里。",
     "signedOut": "你已退出 {{server}} 的登录，因此此项目没有同步。你的更改会保留在这台电脑上。",
     "suspended": "管理员暂停了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。账户恢复后，你可以重新登录。",
+    "clientTooOld": "请更新 Oleafly，才能继续在 {{server}} 上工作。你的更改会保留在这台电脑上。",
+    "serverTooOld": "{{server}} 需要更新后才能与此版本的 Oleafly 配合使用。请联系服务器的运行者。你的更改会保留在这台电脑上。",
+    "serverChanged": "{{server}} 的地址现在指向另一台服务器。请在协作设置中移除它，然后重新添加。你的更改会保留在这台电脑上。",
     "accessEnded": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。",
     "accessEndedGuest": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。",
     "signIn": "登录",

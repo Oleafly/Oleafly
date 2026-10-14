@@ -95,6 +95,12 @@ function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number)
       return { kind: "removed", at, by: removedBy(state) };
     case "archived":
       return { kind: "archived", at };
+    case "client_too_old":
+      return { kind: "clientTooOld", at, server: memory.server };
+    case "server_too_old":
+      return { kind: "serverTooOld", at, server: memory.server };
+    case "server_changed":
+      return { kind: "serverChanged", at, server: memory.server };
     default:
       return null;
   }

@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDateTime } from "@/lib/intl";
@@ -20,6 +21,7 @@ import { useAccessLogSwitches } from "./access-log-store";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
 const spies = vi.hoisted(() => ({
+  openUpdateWindow: vi.fn(async () => undefined),
   collabLeaveProject: vi.fn(async () => undefined),
   collabShareInfo: vi.fn(async () => null),
   relativeTime: vi.fn(),
@@ -42,6 +44,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   collabLeaveProject: spies.collabLeaveProject,
   collabShareInfo: spies.collabShareInfo,
 }));
+
+vi.mock("@/lib/updater", () => ({ openUpdateWindow: spies.openUpdateWindow }));
 
 vi.mock("./MergeReviewDialog", () => ({
   MergeReviewDialog: (props: { projectId: string; entry: unknown; onClose: () => void }) => {
@@ -97,6 +101,7 @@ function feed(entries: (NewActivity & { count: number })[]) {
 beforeAll(async () => {
   await loadNamespace("collab");
   await loadNamespace("workspace");
+  await loadNamespace("shell");
 });
 
 beforeEach(() => {
@@ -193,6 +198,14 @@ describe("CollabPane", () => {
       "server-off",
       "text-destructive",
     ],
+    [
+      { status: { state: "ended", reason: "client_too_old" }, pending: 0 },
+      enCollab.sync.clientTooOld,
+      "circle-arrow-up",
+      "text-destructive",
+    ],
+    [{ status: { state: "ended", reason: "server_too_old" }, pending: 0 }, enCollab.sync.serverTooOld, "server-cog", "text-destructive"],
+    [{ status: { state: "ended", reason: "server_changed" }, pending: 0 }, enCollab.sync.serverChanged, "replace", "text-destructive"],
   ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);
@@ -642,6 +655,39 @@ describe("CollabPane", () => {
     const details = screen.getByRole("dialog", { name: pane.status });
     await user.click(within(details).getByRole("button", { name: enCollab.section.server.unsent.keep }));
     expect(await within(details).findByRole("alert")).toHaveTextContent("That project is busy.");
+  });
+
+  it("asks for an Oleafly update when the server needs a newer app", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "client_too_old" }, ended: "client_too_old" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.clientTooOld }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.clientTooOld, { server: "Smith Lab" }));
+    expect(within(details).queryByRole("button", { name: activity.signIn })).toBeNull();
+    await user.click(within(details).getByRole("button", { name: enShell.updateChecker.check }));
+    expect(spies.openUpdateWindow).toHaveBeenCalledWith({ manual: true });
+  });
+
+  it("says the server needs an update and offers nothing it can't do", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_too_old" }, ended: "server_too_old" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverTooOld }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.serverTooOld, { server: "Smith Lab" }));
+    expect(within(details).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("sends the person to Collaboration settings when the address points at a different server", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_changed" }, ended: "server_changed" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverChanged }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.serverChanged, { server: "Smith Lab" }));
+    await user.click(within(details).getByRole("button", { name: enCollab.share.openSettings }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
   it("offers Sign in in the status details while signed out", async () => {
