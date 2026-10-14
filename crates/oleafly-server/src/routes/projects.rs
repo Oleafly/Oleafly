@@ -33,7 +33,7 @@ use crate::members;
 use crate::peers;
 use crate::projects::{self, ProjectRow};
 use crate::removals;
-use crate::routes::{json_body, path_id, read_body_within, Authenticated, ClientIp};
+use crate::routes::{json_body, path_id, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::snapshots::{Signed, Upload};
@@ -626,7 +626,7 @@ async fn put_blob(
             Ok(())
         })
         .await?;
-    let Some(body) = read_body_within(body, limit).await? else {
+    let Some(body) = state.transfers.read_body(body, &headers, limit).await? else {
         return Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
             state.config.limits.max_file_mb
@@ -737,7 +737,11 @@ async fn put_snapshot(
             Ok((first, public_key))
         })
         .await?;
-    let bytes = read_body_within(body, limit).await?.ok_or_else(too_large)?;
+    let bytes = state
+        .transfers
+        .read_body(body, &headers, limit)
+        .await?
+        .ok_or_else(too_large)?;
     let now = state.clock.now_ms();
     let held = if first {
         if bytes.is_empty() {

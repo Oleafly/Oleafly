@@ -25,11 +25,13 @@ use oleafly_server::rate_limit::CONNECT_BURST;
 use oleafly_server::test_support::{
     challenge_nonce, test_app, test_app_with, TestDevice, TestServer,
 };
+use oleafly_server::transfers::UploadTiming;
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
     signed_by, stage, subscribe, Person, Stage,
 };
 use reqwest::{Method, StatusCode};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tower::ServiceExt;
 
 const WAIT: Duration = Duration::from_secs(5);
@@ -1037,6 +1039,44 @@ async fn requests_without_the_session_key_find_nothing() {
         cursor: alice.cursor.clone(),
     };
     assert_eq!(wrong_project.status().await, StatusCode::NOT_FOUND);
+    assert_eq!(alice.status().await, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn posted_frames_whose_body_stops_arriving_end_after_the_upload_time() {
+    let stage = stage().await;
+    quick(&stage);
+    stage.server.state().transfers.set_timing(UploadTiming {
+        grace: Duration::from_millis(500),
+        min_rate: u64::MAX,
+    });
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    let address = stage.server.url().trim_start_matches("http://").to_owned();
+    let mut stream = tokio::net::TcpStream::connect(&address)
+        .await
+        .expect("connect");
+    let head = format!(
+        "POST /api/v1/projects/{project}/frames HTTP/1.1\r\nHost: {address}\r\n{POLL_KEY_HEADER}: {}\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{{\"frames\":[",
+        alice.key
+    );
+    stream
+        .write_all(head.as_bytes())
+        .await
+        .expect("send the head");
+    let started = Instant::now();
+    let mut answer = vec![0u8; 512];
+    let read = tokio::time::timeout(WAIT, stream.read(&mut answer))
+        .await
+        .expect("the stalled post was answered")
+        .expect("read the answer");
+    let answer = String::from_utf8_lossy(&answer[..read]).into_owned();
+    assert!(answer.starts_with("HTTP/1.1 400"), "{answer}");
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "{:?}",
+        started.elapsed()
+    );
     assert_eq!(alice.status().await, StatusCode::OK);
 }
 

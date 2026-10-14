@@ -24,6 +24,7 @@ use crate::security_log;
 use crate::snapshots::{Budget, Snapshots};
 use crate::sockets::SocketRegistry;
 use crate::tokens;
+use crate::transfers::Transfers;
 
 pub const DATABASE_FILE: &str = "oleafly-server.sqlite3";
 pub const SETUP_LOG_PREFIX: &str = "Setup code: ";
@@ -59,6 +60,7 @@ pub struct AppState {
     pub snapshots: Snapshots,
     pub comment_guard: CommentGuard,
     pub mentions: Mentions,
+    pub transfers: Transfers,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -160,6 +162,7 @@ impl AppState {
             snapshots,
             comment_guard: CommentGuard::default(),
             mentions: Mentions::default(),
+            transfers: Transfers::default(),
         })
     }
 

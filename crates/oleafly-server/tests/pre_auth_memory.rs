@@ -1,10 +1,15 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use std::time::Duration;
+
 use futures_util::{SinkExt, StreamExt};
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
+use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::test_support::{seed_member, socket_request, test_config, TestServer};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::{Error, Message};
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
@@ -136,5 +141,54 @@ async fn padded_first_frames_are_refused_without_parsing_them() {
     assert!(
         rise < 8 * frame,
         "four padded {frame} byte frames peaked at {rise} bytes of heap"
+    );
+}
+
+async fn status_line(stream: &mut TcpStream) -> String {
+    let mut seen = Vec::new();
+    let mut byte = [0u8; 1];
+    while !seen.ends_with(b"\r\n") {
+        match stream.read(&mut byte).await {
+            Ok(1) => seen.push(byte[0]),
+            _ => break,
+        }
+    }
+    String::from_utf8_lossy(&seen).trim().to_owned()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn posted_frames_without_a_poll_key_are_refused_before_the_body_arrives() {
+    let _one = ONE_AT_A_TIME.lock().await;
+    let server = TestServer::start(test_config()).await;
+    let address = server.url().trim_start_matches("http://").to_owned();
+    let start = measure_from_now();
+    let mut held = Vec::new();
+    for attempt in 0..20 {
+        let mut stream = TcpStream::connect(&address).await.expect("connect");
+        let head = format!(
+            "POST /api/v1/projects/{}/frames HTTP/1.1\r\nHost: {address}\r\nContent-Type: application/json\r\nContent-Length: 12000000\r\n\r\n",
+            SharedProjectId::new_v7()
+        );
+        stream
+            .write_all(head.as_bytes())
+            .await
+            .expect("send the head");
+        stream
+            .write_all(&[b' '; 1024])
+            .await
+            .expect("send the first kilobyte");
+        let status = tokio::time::timeout(Duration::from_secs(2), status_line(&mut stream))
+            .await
+            .unwrap_or_else(|_| panic!("attempt {attempt} waited for the rest of the body"));
+        assert!(
+            status.starts_with("HTTP/1.1 404"),
+            "attempt {attempt}: {status}"
+        );
+        held.push(stream);
+    }
+    let rise = rise_since(start);
+    assert!(
+        rise < 4 * MIB,
+        "twenty posts declaring 12 MB each took {rise} bytes of heap"
     );
 }

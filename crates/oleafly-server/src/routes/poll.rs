@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use axum::extract::rejection::{JsonRejection, PathRejection, QueryRejection};
-use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::body::Body;
+use axum::extract::rejection::{PathRejection, QueryRejection};
+use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -19,17 +20,19 @@ use crate::error::ServerError;
 use crate::polls::{self, Opening, PollSession};
 use crate::rate_limit::client_key;
 use crate::rooms::RoomMember;
-use crate::routes::ws::{bearer_token, frame_error, proves_device, unexpected_frame, Opened, Peer};
-use crate::routes::{json_body, path_id, ClientIp};
+use crate::routes::ws::{
+    bearer_token, frame_error, proves_device, unexpected_frame, Opened, Peer, MAX_FRAME_BYTES,
+};
+use crate::routes::{path_id, ClientIp};
 use crate::state::AppState;
+
+const TOO_MUCH: &str = "These changes are too large to send.";
+const NOT_FRAMES: &str = "These frames are not valid.";
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/v1/projects/{project}/poll", get(poll))
-        .route(
-            "/api/v1/projects/{project}/frames",
-            post(frames).route_layer(DefaultBodyLimit::max(crate::routes::ws::MAX_FRAME_BYTES)),
-        )
+        .route("/api/v1/projects/{project}/frames", post(frames))
 }
 
 #[derive(Deserialize)]
@@ -197,12 +200,25 @@ async fn open(
     }
 }
 
+fn posted_frames(bytes: &[u8]) -> Result<Vec<ClientFrame>, ServerError> {
+    let too_many = format!("Send at most {MAX_POSTED_FRAMES} frames at a time.");
+    PollFrames::from_json(bytes)
+        .map(|posted| posted.frames)
+        .map_err(|error| {
+            ServerError::BadRequest(if error.to_string().starts_with(&too_many) {
+                too_many
+            } else {
+                NOT_FRAMES.to_owned()
+            })
+        })
+}
+
 async fn frames(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
     headers: HeaderMap,
     path: Result<Path<String>, PathRejection>,
-    body: Result<Json<PollFrames>, JsonRejection>,
+    body: Body,
 ) -> Result<Json<PollReplies>, ServerError> {
     let project: SharedProjectId = path_id(path)?;
     let session = session_for(&state, ip, &headers, project)?;
@@ -210,12 +226,12 @@ async fn frames(
     if session.is_ended() {
         return Err(ServerError::NotFound);
     }
-    let posted = json_body(body)?.frames;
-    if posted.len() > MAX_POSTED_FRAMES {
-        return Err(ServerError::BadRequest(format!(
-            "Send at most {MAX_POSTED_FRAMES} frames at a time."
-        )));
-    }
+    let bytes = state
+        .transfers
+        .read_body(body, &headers, MAX_FRAME_BYTES as u64)
+        .await?
+        .ok_or_else(|| ServerError::BadRequest(TOO_MUCH.to_owned()))?;
+    let posted = posted_frames(&bytes)?;
     let peer = session.peer(&state);
     let mut replies = Vec::new();
     for frame in posted {
@@ -241,4 +257,40 @@ async fn frames(
         }
     }
     Ok(Json(PollReplies { frames: replies }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refused_posts_keep_the_routes_own_words() {
+        let ping = r#"{"type":"ping","id":1}"#;
+        let too_many = format!(
+            r#"{{"frames":[{}]}}"#,
+            vec![ping; MAX_POSTED_FRAMES + 1].join(",")
+        );
+        assert_eq!(
+            posted_frames(too_many.as_bytes()),
+            Err(ServerError::BadRequest(format!(
+                "Send at most {MAX_POSTED_FRAMES} frames at a time."
+            )))
+        );
+        for broken in [
+            r#"{"frames":[{"type":"ping"}]}"#,
+            r#"{"frames":[1]}"#,
+            "not json",
+            "{}",
+        ] {
+            assert_eq!(
+                posted_frames(broken.as_bytes()),
+                Err(ServerError::BadRequest(NOT_FRAMES.to_owned())),
+                "{broken}"
+            );
+        }
+        assert_eq!(
+            posted_frames(format!(r#"{{"frames":[{ping}]}}"#).as_bytes()),
+            Ok(vec![ClientFrame::Ping { id: 1 }])
+        );
+    }
 }

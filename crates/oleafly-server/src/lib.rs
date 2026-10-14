@@ -29,6 +29,7 @@ pub mod state;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 pub mod tokens;
+pub mod transfers;
 
 use std::future::Future;
 use std::net::SocketAddr;
