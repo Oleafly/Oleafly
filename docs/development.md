@@ -369,11 +369,11 @@ Read `soak.log` once a day:
 
 - The server's RSS should level off after the first hour. A trend that keeps
   rising is a leak.
-- The database should level off too. Clients upload a snapshot every 1,000
-  changes and the server keeps only the updates after its second-newest
-  snapshot, so the update log stays a few thousand rows long. The blob store
-  holds two snapshots per project under `blobs/snapshots/` (or the bucket's
-  `snapshots/` prefix).
+- The database should level off too. Every 1,000 changes a client asks the
+  server to build a snapshot, and the server builds it itself from the
+  previous one. It keeps at least the last 2,000 updates, so the update log
+  stays a few thousand rows long. The blob store holds a few snapshots per
+  project under `blobs/snapshots/` (or the bucket's `snapshots/` prefix).
 - Files grow by the figures added and nothing else.
 - p95 and p99 should stay where they were on the first day.
 - Reconnects should match the number of network cuts, and the problems count
