@@ -2142,6 +2142,20 @@ impl<S: CloudStore> Round<'_, S> {
     }
 }
 
+fn refresh_local_skips(project: &mut ProjectState, captured: &Capture) {
+    let mut skipped = captured.skipped.clone();
+    skipped.extend(
+        project
+            .skipped_files
+            .iter()
+            .filter(|file| matches!(file.reason.as_str(), "downloadFailed" | "uploadFailed"))
+            .cloned(),
+    );
+    project.skipped = skipped.len();
+    skipped.truncate(MAX_LISTED_SKIPS);
+    project.skipped_files = skipped;
+}
+
 fn pending_from(deletions: &[&Planned]) -> Vec<PendingDelete> {
     deletions
         .iter()
@@ -2370,6 +2384,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
     };
     if round.quiet(&captured).await? {
         round.outcome.unchanged = true;
+        refresh_local_skips(&mut round.project, &captured);
         round.outcome.skipped = round.project.skipped;
         return Ok(round.finish_early(&clock));
     }

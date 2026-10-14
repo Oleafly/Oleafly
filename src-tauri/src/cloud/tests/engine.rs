@@ -1551,6 +1551,26 @@ async fn unchanged_settings_check_the_revision_instead_of_downloading() {
     assert_eq!(store.with(|inner| inner.calls) - calls, 1);
 }
 
+#[cfg(unix)]
+#[tokio::test]
+async fn a_skipped_file_added_without_other_changes_is_still_listed() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    desk.sync(&store, cloud).await;
+    assert!(desk.project.skipped_files.is_empty());
+    std::os::unix::fs::symlink(desk.root().join("main.tex"), desk.root().join("alias.tex"))
+        .unwrap();
+    let quiet = desk.sync(&store, cloud).await;
+    assert!(quiet.outcome.unchanged);
+    assert_eq!(quiet.outcome.skipped, 1);
+    assert_eq!(desk.project.skipped_files[0].path, "alias.tex");
+    std::fs::remove_file(desk.root().join("alias.tex")).unwrap();
+    desk.sync(&store, cloud).await;
+    assert!(desk.project.skipped_files.is_empty());
+}
+
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_new_name_that_differs_only_by_case_never_replaces_the_synced_file() {
