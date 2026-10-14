@@ -10,6 +10,7 @@ rust-version = "1.89"
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 httpdate = "1"
+hyper-util = { version = "0.1.20", default-features = false, features = ["client-proxy", "client-proxy-system"] }
 loro = "=1.16.2"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }

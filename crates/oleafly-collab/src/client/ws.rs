@@ -1,7 +1,10 @@
+use std::collections::VecDeque;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
+use hyper_util::client::proxy::matcher::{Intercept, Matcher};
 use oleafly_collab_protocol::auth::{
     challenge_message, ApiError, ChallengePurpose, SessionEndReason,
 };
@@ -11,6 +14,7 @@ use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
 use rustls::pki_types::CertificateDer;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http;
 use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
@@ -149,6 +153,9 @@ pub(crate) async fn open_socket(
     }
 }
 
+// Connects the way the HTTPS client does: through the proxy the system or
+// HTTPS_PROXY names (with a CONNECT tunnel, honouring NO_PROXY), and racing
+// the server's addresses so a dead IPv6 route falls back to IPv4 quickly.
 pub(crate) async fn connect_tcp(target: &::url::Url) -> Result<TcpStream, CollabError> {
     let host = target
         .host_str()
@@ -164,7 +171,10 @@ pub(crate) async fn connect_tcp(target: &::url::Url) -> Result<TcpStream, Collab
         if let Some(address) = super::e2e_route::route_for(&host) {
             return TcpStream::connect(address).await;
         }
-        TcpStream::connect((host.as_str(), port)).await
+        match proxy_for(target, &Matcher::from_system()) {
+            Some(proxy) => through_proxy(&proxy, &host, port).await,
+            None => connect_host(&host, port).await,
+        }
     };
     match tokio::time::timeout(CONNECT_TIMEOUT, attempt).await {
         Ok(Ok(stream)) => Ok(stream),
@@ -172,6 +182,107 @@ pub(crate) async fn connect_tcp(target: &::url::Url) -> Result<TcpStream, Collab
         Err(_) => Err(CollabError::Network(
             "connecting to the server timed out".to_string(),
         )),
+    }
+}
+
+const NEXT_ADDRESS_AFTER: Duration = Duration::from_millis(250);
+const PROXY_ANSWER_BYTES: usize = 8 * 1024;
+
+fn interleaved(addresses: Vec<SocketAddr>) -> Vec<SocketAddr> {
+    let first_v6 = addresses.first().is_some_and(SocketAddr::is_ipv6);
+    let (mut first, mut second): (VecDeque<SocketAddr>, VecDeque<SocketAddr>) = addresses
+        .into_iter()
+        .partition(|address| address.is_ipv6() == first_v6);
+    let mut ordered = Vec::with_capacity(first.len() + second.len());
+    while !first.is_empty() || !second.is_empty() {
+        ordered.extend(first.pop_front());
+        ordered.extend(second.pop_front());
+    }
+    ordered
+}
+
+async fn race(addresses: Vec<SocketAddr>) -> std::io::Result<TcpStream> {
+    if addresses.is_empty() {
+        return Err(std::io::Error::other(
+            "the server's address did not resolve",
+        ));
+    }
+    let attempts = interleaved(addresses)
+        .into_iter()
+        .enumerate()
+        .map(|(index, address)| {
+            Box::pin(async move {
+                let wait =
+                    NEXT_ADDRESS_AFTER.saturating_mul(u32::try_from(index).unwrap_or(u32::MAX));
+                tokio::time::sleep(wait).await;
+                TcpStream::connect(address).await
+            })
+        });
+    futures_util::future::select_ok(attempts)
+        .await
+        .map(|(stream, _)| stream)
+}
+
+async fn connect_host(host: &str, port: u16) -> std::io::Result<TcpStream> {
+    race(tokio::net::lookup_host((host, port)).await?.collect()).await
+}
+
+fn authority(host: &str, port: u16) -> String {
+    if host.contains(':') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
+    }
+}
+
+fn proxy_for(target: &::url::Url, matcher: &Matcher) -> Option<Intercept> {
+    let host = target.host_str()?;
+    if matches!(host, "localhost" | "127.0.0.1" | "[::1]") {
+        return None;
+    }
+    let scheme = match target.scheme() {
+        "wss" | "https" => "https",
+        _ => "http",
+    };
+    let port = target.port_or_known_default()?;
+    let uri: http::Uri = format!("{scheme}://{host}:{port}").parse().ok()?;
+    matcher.intercept(&uri)
+}
+
+async fn through_proxy(proxy: &Intercept, host: &str, port: u16) -> std::io::Result<TcpStream> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let address = proxy.uri();
+    let (Some("http"), Some(proxy_host)) = (address.scheme_str(), address.host()) else {
+        return connect_host(host, port).await;
+    };
+    let proxy_host = proxy_host.trim_start_matches('[').trim_end_matches(']');
+    let mut stream = connect_host(proxy_host, address.port_u16().unwrap_or(80)).await?;
+    let to = authority(host, port);
+    let mut request = format!("CONNECT {to} HTTP/1.1\r\nHost: {to}\r\n");
+    if let Some(credentials) = proxy.basic_auth().and_then(|value| value.to_str().ok()) {
+        request.push_str(&format!("Proxy-Authorization: {credentials}\r\n"));
+    }
+    request.push_str("\r\n");
+    stream.write_all(request.as_bytes()).await?;
+    let mut answer = Vec::new();
+    while !answer.ends_with(b"\r\n\r\n") {
+        if answer.len() >= PROXY_ANSWER_BYTES {
+            return Err(std::io::Error::other("the proxy's answer is too long"));
+        }
+        let mut byte = [0u8; 1];
+        if stream.read(&mut byte).await? == 0 {
+            return Err(std::io::Error::other("the proxy closed the connection"));
+        }
+        answer.push(byte[0]);
+    }
+    let answer = String::from_utf8_lossy(&answer);
+    let status = answer.lines().next().unwrap_or_default();
+    if status.split_whitespace().nth(1) == Some("200") {
+        Ok(stream)
+    } else {
+        Err(std::io::Error::other(format!(
+            "the proxy refused the connection: {status}"
+        )))
     }
 }
 
@@ -499,6 +610,153 @@ mod tests {
             matches!(refused, Err(CollabError::Network(ref message)) if message.contains("Message too long")),
             "{refused:?}"
         );
+    }
+
+    #[test]
+    fn addresses_alternate_between_the_two_families() {
+        let address = |text: &str| text.parse::<SocketAddr>().expect("address");
+        let resolved = vec![
+            address("[2001:db8::1]:443"),
+            address("[2001:db8::2]:443"),
+            address("192.0.2.1:443"),
+            address("192.0.2.2:443"),
+            address("192.0.2.3:443"),
+        ];
+        assert_eq!(
+            interleaved(resolved),
+            vec![
+                address("[2001:db8::1]:443"),
+                address("192.0.2.1:443"),
+                address("[2001:db8::2]:443"),
+                address("192.0.2.2:443"),
+                address("192.0.2.3:443"),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn an_address_that_never_answers_does_not_hold_up_one_that_does() {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let working = listener.local_addr().expect("address");
+        let dead: SocketAddr = "[100::1]:9".parse().expect("address");
+        let started = tokio::time::Instant::now();
+        let stream = tokio::time::timeout(Duration::from_secs(5), race(vec![dead, working]))
+            .await
+            .expect("the race finished")
+            .expect("the working address answered");
+        assert_eq!(stream.peer_addr().expect("peer"), working);
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    async fn connect_proxy(
+        answer: &'static str,
+    ) -> (SocketAddr, Arc<std::sync::Mutex<Vec<String>>>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let address = listener.local_addr().expect("address");
+        let asked: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
+        let kept = Arc::clone(&asked);
+        tokio::spawn(async move {
+            while let Ok((mut client, _)) = listener.accept().await {
+                let kept = Arc::clone(&kept);
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut byte = [0u8; 1];
+                    while !head.ends_with(b"\r\n\r\n") {
+                        match client.read(&mut byte).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(_) => head.push(byte[0]),
+                        }
+                    }
+                    let head = String::from_utf8_lossy(&head).to_string();
+                    kept.lock().expect("asked").push(head.clone());
+                    let target = head
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or_default()
+                        .to_owned();
+                    if !answer.starts_with("HTTP/1.1 200") {
+                        let _ = client.write_all(answer.as_bytes()).await;
+                        return;
+                    }
+                    let Ok(mut server) = TcpStream::connect(target).await else {
+                        return;
+                    };
+                    if client.write_all(answer.as_bytes()).await.is_ok() {
+                        let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+                    }
+                });
+            }
+        });
+        (address, asked)
+    }
+
+    fn proxied_by(proxy: SocketAddr) -> Intercept {
+        Matcher::builder()
+            .all(format!("http://user:secret@{proxy}"))
+            .build()
+            .intercept(&http::Uri::from_static("https://uni.edu"))
+            .expect("the proxy applies")
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_connection_through_a_proxy_tunnels_to_the_server() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let server = oleafly_server::test_support::TestServer::start(
+            oleafly_server::test_support::test_config(),
+        )
+        .await;
+        let upstream: SocketAddr = server
+            .url()
+            .trim_start_matches("http://")
+            .parse()
+            .expect("server address");
+        let (proxy, asked) = connect_proxy("HTTP/1.1 200 Connection established\r\n\r\n").await;
+        let mut stream = through_proxy(
+            &proxied_by(proxy),
+            &upstream.ip().to_string(),
+            upstream.port(),
+        )
+        .await
+        .expect("a tunnel");
+        stream
+            .write_all(
+                b"GET /.well-known/oleafly-server HTTP/1.1\r\nHost: test\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .expect("request");
+        let mut answer = String::new();
+        stream.read_to_string(&mut answer).await.expect("answer");
+        assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+        assert!(answer.contains(&server.state().server_id.to_string()));
+        let asked = asked.lock().expect("asked").clone();
+        assert!(asked[0].starts_with(&format!("CONNECT {upstream} HTTP/1.1\r\n")));
+        assert!(asked[0].contains("Proxy-Authorization: Basic dXNlcjpzZWNyZXQ="));
+        let (refusing, _) =
+            connect_proxy("HTTP/1.1 407 Proxy Authentication Required\r\n\r\n").await;
+        let refused = through_proxy(&proxied_by(refusing), "uni.edu", 443)
+            .await
+            .expect_err("the proxy said no");
+        assert!(refused.to_string().contains("407"), "{refused}");
+    }
+
+    #[test]
+    fn only_remote_secure_sockets_go_through_the_proxy_and_no_proxy_is_honoured() {
+        let matcher = Matcher::builder()
+            .all("http://127.0.0.1:3128")
+            .no("skip.example")
+            .build();
+        let url = |text: &str| ::url::Url::parse(text).expect("url");
+        assert!(proxy_for(&url("wss://uni.edu/ws"), &matcher).is_some());
+        assert!(proxy_for(&url("https://uni.edu/"), &matcher).is_some());
+        assert!(proxy_for(&url("wss://skip.example/ws"), &matcher).is_none());
+        assert!(proxy_for(&url("ws://127.0.0.1:8080/ws"), &matcher).is_none());
+        assert!(proxy_for(&url("ws://[::1]:8080/ws"), &matcher).is_none());
+        assert!(proxy_for(&url("wss://uni.edu/ws"), &Matcher::builder().build()).is_none());
     }
 
     #[test]
