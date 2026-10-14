@@ -86,6 +86,16 @@ pub(super) async fn subscribe(
                 ServerFrame::SessionRevoked { reason } => {
                     return Ok(Err(EndReason::of_session(reason)))
                 }
+                ServerFrame::Error {
+                    code: FrameErrorCode::ProtocolMismatch,
+                    message,
+                } => {
+                    return Err(CollabError::Api {
+                        status: 426,
+                        code: "protocol_mismatch".to_owned(),
+                        message,
+                    })
+                }
                 ServerFrame::Error { message, .. } => return Err(CollabError::Network(message)),
                 _ => {}
             }

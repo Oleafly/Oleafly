@@ -8,6 +8,7 @@ mod ending;
 mod refusals;
 mod restore;
 mod transport;
+mod versions;
 mod writer_list;
 
 use std::collections::BTreeSet;

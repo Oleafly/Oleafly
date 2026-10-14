@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use oleafly_collab_protocol::capabilities::{negotiate, VersionMismatch};
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -9,6 +10,7 @@ use super::writers::WriterRetry;
 use super::{
     lock, EndReason, LiveCommand, LiveEvent, LiveLink, LiveStatus, SharedLive, TransportOptions,
 };
+use crate::client::client_protocol;
 use crate::CollabError;
 
 const BACKOFF_MS: [u64; 5] = [500, 1_000, 2_000, 3_000, 5_000];
@@ -82,6 +84,29 @@ async fn answers_https(link: &LiveLink) -> bool {
     )
 }
 
+pub(super) fn refused_version(error: &CollabError) -> bool {
+    matches!(error, CollabError::Api { code, .. } if code == "protocol_mismatch")
+}
+
+// Retrying never helps once the server refuses this app's protocol version
+// or a different server answers at the address. The server's manifest says
+// which side needs an update. Without the manifest this is left to the
+// usual retries.
+pub(super) async fn ending_for_version(link: &LiveLink) -> Option<EndReason> {
+    let manifest = tokio::time::timeout(HTTPS_CHECK_WITHIN, link.client.capabilities())
+        .await
+        .ok()?
+        .ok()?;
+    if manifest.server_id != link.server_id {
+        return Some(EndReason::ServerChanged);
+    }
+    match negotiate(client_protocol(), manifest.protocol) {
+        Ok(_) => None,
+        Err(VersionMismatch::ClientTooOld) => Some(EndReason::ClientTooOld),
+        Err(VersionMismatch::ServerTooOld) => Some(EndReason::ServerTooOld),
+    }
+}
+
 pub(super) async fn run(
     link: LiveLink,
     project: SharedLive,
@@ -122,6 +147,11 @@ pub(super) async fn run(
                 Err(CollabError::SessionEnded(reason)) => {
                     Exit::End(EndReason::of_session(Some(reason)))
                 }
+                Err(CollabError::ServerChanged { .. }) => Exit::End(EndReason::ServerChanged),
+                Err(error) if refused_version(&error) => match ending_for_version(&link).await {
+                    Some(reason) => Exit::End(reason),
+                    None => Exit::Retry(Reached::Never),
+                },
                 Err(error) => {
                     if looks_blocked(&error) && answers_https(&link).await {
                         refused += 1;
