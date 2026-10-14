@@ -394,6 +394,12 @@ case "$1 $2 $3" in
 			echo 'ERROR: failed to authorize: failed to fetch anonymous token: unexpected status: 401 Unauthorized' >&2
 			exit 1
 		fi
+		left=$(cat "$DOCKER_STATE/flaky" 2>/dev/null || echo 0)
+		if [ "$left" -gt 0 ]; then
+			echo $((left - 1)) >"$DOCKER_STATE/flaky"
+			echo 'ERROR: failed to do request: Head "https://ghcr.io/v2/oleafly/oleafly-server/manifests/0.1.0": dial tcp: lookup ghcr.io: i/o timeout' >&2
+			exit 1
+		fi
 		case "$*" in
 			*--format*) printf 'sha256:%064d\n' 7 ;;
 		esac
@@ -402,22 +408,73 @@ case "$1 $2 $3" in
 	*) exit 1 ;;
 esac
 EOF
-	chmod 755 "$ws/stubs/docker"
+	cat >"$ws/stubs/sleep" <<'EOF'
+#!/bin/sh
+echo "sleep $*" >>"$DOCKER_LOG"
+EOF
+	chmod 755 "$ws/stubs/docker" "$ws/stubs/sleep"
 	mkdir -p "$ws/docker"
 	: >"$ws/docker/log"
+}
+
+public_check() {
+	: >"$ws/docker/log"
+	run_block public.sh DOCKER_LOG="$ws/docker/log" DOCKER_STATE="$ws/docker" IMAGE=ghcr.io/oleafly/oleafly-server VERSION=0.1.0
 }
 
 begin "the draft waits until anyone can pull the image, and says how to allow it"
 docker_stub
 touch "$ws/docker/private"
-run_block public.sh DOCKER_LOG="$ws/docker/log" DOCKER_STATE="$ws/docker" IMAGE=ghcr.io/oleafly/oleafly-server VERSION=0.1.0
+public_check
 expect "a private image fails, got $status" [ "$status" != 0 ]
 expect "the image is named" out_has '::error::ghcr.io/oleafly/oleafly-server:0.1.0 can'"'"'t be pulled without signing in'
 expect "the fix is named" out_has 'Make it public in the organization'"'"'s Packages settings'
+expect "Docker's own message is shown" out_has '401 Unauthorized'
 expect "it checks without the run's token" grep -q '^docker logout ghcr.io' "$ws/docker/log"
+expect "it tries three times" [ "$(grep -c 'imagetools inspect' "$ws/docker/log")" = 3 ]
+expect "it waits between tries" [ "$(grep -c '^sleep 10$' "$ws/docker/log")" = 2 ]
 rm -f "$ws/docker/private"
-run_block public.sh DOCKER_LOG="$ws/docker/log" DOCKER_STATE="$ws/docker" IMAGE=ghcr.io/oleafly/oleafly-server VERSION=0.1.0
+public_check
 expect "a public image passes, got $status" [ "$status" = 0 ]
+finish
+
+begin "a registry that doesn't answer at first isn't blamed on the package settings"
+docker_stub
+echo 2 >"$ws/docker/flaky"
+public_check
+expect "the third try passes, got $status" [ "$status" = 0 ]
+echo 5 >"$ws/docker/flaky"
+public_check
+expect "three failed tries fail, got $status" [ "$status" != 0 ]
+expect "Docker's own message is shown" out_has 'lookup ghcr.io: i/o timeout'
+expect "it says to try again" out_has 'Re-run this job once the registry answers.'
+expect "it doesn't say the package is private" sh -c "! grep -q 'Make it public' '$work/out'"
+finish
+
+begin "promote runs one at a time, and tag builds keep their layers for publish"
+python3 - "$workflow" >"$work/out" 2>&1 <<'EOF'
+import sys
+import yaml
+
+jobs = yaml.safe_load(open(sys.argv[1]))["jobs"]
+problems = []
+if jobs["promote"].get("concurrency") != {"group": "release-server-promote", "cancel-in-progress": False}:
+    problems.append("promote doesn't run one at a time in release-server-promote")
+steps = {step.get("name"): step.get("with") or {} for job in jobs.values() for step in job.get("steps", [])}
+for platform in ("amd64", "arm64"):
+    cache_to = str(steps[f"Build the {platform} image"].get("cache-to", ""))
+    if "github.event_name != 'pull_request'" not in cache_to or f"scope=release-server-{platform}" not in cache_to or "ignore-error=true" not in cache_to:
+        problems.append(f"the {platform} build doesn't keep its layers for publish, or writes them for pull requests")
+cache_from = str(steps["Push the multi-arch image with an SBOM and provenance"].get("cache-from", ""))
+for platform in ("amd64", "arm64"):
+    if f"type=gha,scope=release-server-{platform}" not in cache_from:
+        problems.append(f"publish doesn't read the {platform} layers")
+for problem in problems:
+    print(problem)
+sys.exit(1 if problems else 0)
+EOF
+status=$?
+expect "the workflow passes the concurrency and cache checks, got $status" [ "$status" = 0 ]
 finish
 
 promote() {
@@ -458,7 +515,13 @@ sync_stubs() {
 	gh_stub
 	cat >>"$ws/stubs/gh" <<'EOF'
 case "$1 $2" in
-	"workflow run") touch "$GH_STATE/started" ;;
+	"workflow run")
+		if [ -f "$GH_STATE/run-fails" ]; then
+			echo 'HTTP 403: Resource not accessible by personal access token' >&2
+			exit 1
+		fi
+		touch "$GH_STATE/started"
+		;;
 esac
 EOF
 	cat >"$ws/stubs/curl" <<'EOF'
@@ -498,6 +561,12 @@ run_block sync.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN= TAG=server-v0.
 expect "a missing token fails, got $status" [ "$status" != 0 ]
 expect "the secret and the manual command are named" out_has 'OLEAFLY_SERVER_SYNC_TOKEN secret isn'"'"'t set'
 expect "the manual command is shown" out_has 'gh workflow run sync-release.yml --repo Oleafly/oleafly-server -f tag=server-v0.1.1'
+touch "$ws/gh/run-fails"
+run_block sync.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token TAG=server-v0.1.1
+expect "a copy that can't start fails, got $status" [ "$status" != 0 ]
+expect "it says the copy didn't start" out_has "Couldn't start sync-release.yml in Oleafly/oleafly-server"
+expect "it shows the manual command" out_has 'copy the release by hand with: gh workflow run sync-release.yml --repo Oleafly/oleafly-server -f tag=server-v0.1.1'
+rm -f "$ws/gh/run-fails"
 touch "$ws/gh/copy-fails"
 : >"$ws/gh/log"
 run_block sync.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token TAG=server-v0.1.1

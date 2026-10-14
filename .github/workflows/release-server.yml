@@ -136,6 +136,10 @@ jobs:
           provenance: false
           sbom: false
           tags: oleafly-server:ci-amd64
+          # Tag and manual runs keep the layers for the publish job, which
+          # builds the same image again. Pull requests don't write the cache,
+          # and a cache that can't be written doesn't fail the build.
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max,scope=release-server-amd64,ignore-error=true' || '' }}
 
       - name: Build the arm64 image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -148,6 +152,7 @@ jobs:
           provenance: false
           sbom: false
           tags: oleafly-server:ci-arm64
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max,scope=release-server-arm64,ignore-error=true' || '' }}
 
       - name: Smoke-test both images
         shell: bash
@@ -328,6 +333,10 @@ jobs:
           sbom: true
           provenance: mode=max
           tags: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.version }}
+          # The build job of this run left both platforms' layers here.
+          cache-from: |
+            type=gha,scope=release-server-amd64
+            type=gha,scope=release-server-arm64
           labels: |
             org.opencontainers.image.version=${{ needs.build.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -402,11 +411,24 @@ jobs:
         run: |
           set -euo pipefail
           docker logout ghcr.io >/dev/null 2>&1 || true
-          if ! docker buildx imagetools inspect "$IMAGE:$VERSION" >/dev/null 2>&1; then
+          errors="$(mktemp)"
+          for attempt in 1 2 3; do
+            if docker buildx imagetools inspect "$IMAGE:$VERSION" >/dev/null 2>"$errors"; then
+              echo "$IMAGE:$VERSION can be pulled without signing in."
+              exit 0
+            fi
+            echo "Try ${attempt} of 3 couldn't read the image. Docker said:"
+            cat "$errors"
+            if [ "$attempt" -lt 3 ]; then
+              sleep 10
+            fi
+          done
+          if grep -Eqi 'unauthori[sz]ed|denied|forbidden|(^|[^0-9])40[13]([^0-9]|$)' "$errors"; then
             echo "::error::$IMAGE:$VERSION can't be pulled without signing in, so the installer, Render, Railway and Coolify can't use it. A new package on GitHub's registry starts private. Make it public in the organization's Packages settings (Package settings, Change visibility), then re-run this job."
-            exit 1
+          else
+            echo "::error::$IMAGE:$VERSION couldn't be read from the registry without signing in. Docker's message is above. Re-run this job once the registry answers."
           fi
-          echo "$IMAGE:$VERSION can be pulled without signing in."
+          exit 1
 
       - name: Download the release archives
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -483,6 +505,12 @@ jobs:
     if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Releases published close together move the tags one at a time. Each run
+    # reads the published releases when it starts, so the older one can't put
+    # :latest back on its version after the newer one moved it.
+    concurrency:
+      group: release-server-promote
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -563,7 +591,10 @@ jobs:
             echo "::error::The OLEAFLY_SERVER_SYNC_TOKEN secret isn't set, so ${TAG} wasn't copied to ${server_repo}. Until it is, the installer keeps offering the previous release. Copy it by hand with: ${by_hand}"
             exit 1
           fi
-          gh workflow run sync-release.yml --repo "$server_repo" -f tag="$TAG"
+          if ! gh workflow run sync-release.yml --repo "$server_repo" -f tag="$TAG"; then
+            echo "::error::Couldn't start sync-release.yml in ${server_repo}, so ${TAG} wasn't copied. Check that OLEAFLY_SERVER_SYNC_TOKEN can run workflows there, then copy the release by hand with: ${by_hand}"
+            exit 1
+          fi
           url="https://github.com/${server_repo}/releases/download/${TAG}/SHA256SUMS"
           tries=0
           until curl -fsSL --retry 2 -o /dev/null "$url"; do
