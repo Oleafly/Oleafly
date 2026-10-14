@@ -6,6 +6,8 @@ use crate::roles::ProjectRole;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+mod two_step;
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientFrame {
@@ -216,14 +218,38 @@ mod tests {
     const ACCOUNT: &str = "01920000-0000-7000-8000-000000000002";
     const DEVICE: &str = "01920000-0000-7000-8000-000000000003";
 
+    fn read_client(wire: Value) -> Result<ClientFrame, serde_json::Error> {
+        let text = wire.to_string();
+        let two_step = ClientFrame::from_json(&text);
+        let one_step = serde_json::from_str::<ClientFrame>(&text);
+        assert_eq!(two_step.as_ref().ok(), one_step.as_ref().ok(), "{text}");
+        two_step
+    }
+
+    fn read_server(wire: Value) -> Result<ServerFrame, serde_json::Error> {
+        let text = wire.to_string();
+        let two_step = ServerFrame::from_json(&text);
+        let one_step = serde_json::from_str::<ServerFrame>(&text);
+        assert_eq!(two_step.as_ref().ok(), one_step.as_ref().ok(), "{text}");
+        two_step
+    }
+
     fn assert_client_wire(frame: ClientFrame, wire: Value) {
         assert_eq!(serde_json::to_value(&frame).unwrap(), wire);
-        assert_eq!(serde_json::from_value::<ClientFrame>(wire).unwrap(), frame);
+        assert_eq!(
+            serde_json::from_value::<ClientFrame>(wire.clone()).unwrap(),
+            frame
+        );
+        assert_eq!(read_client(wire).unwrap(), frame);
     }
 
     fn assert_server_wire(frame: ServerFrame, wire: Value) {
         assert_eq!(serde_json::to_value(&frame).unwrap(), wire);
-        assert_eq!(serde_json::from_value::<ServerFrame>(wire).unwrap(), frame);
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(wire.clone()).unwrap(),
+            frame
+        );
+        assert_eq!(read_server(wire).unwrap(), frame);
     }
 
     #[test]
@@ -307,14 +333,11 @@ mod tests {
             EarlierServerFrame::SessionRevoked
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({ "type": "session_revoked" })).unwrap(),
+            read_server(json!({ "type": "session_revoked" })).unwrap(),
             ServerFrame::SessionRevoked { reason: None }
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(
-                json!({ "type": "session_revoked", "reason": "account_deleted" })
-            )
-            .unwrap(),
+            read_server(json!({ "type": "session_revoked", "reason": "account_deleted" })).unwrap(),
             ServerFrame::SessionRevoked {
                 reason: Some(SessionEndReason::Unknown)
             }
@@ -324,7 +347,7 @@ mod tests {
     #[test]
     fn a_frame_of_a_type_this_build_does_not_know_reads_as_unknown_and_its_details_are_ignored() {
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "from_a_later_server",
                 "project_id": PROJECT,
                 "detail": { "kind": "unknown", "n": 1 }
@@ -333,15 +356,15 @@ mod tests {
             ServerFrame::Unknown
         );
         assert_eq!(
-            serde_json::from_value::<ClientFrame>(json!({
+            read_client(json!({
                 "type": "from_a_later_client",
                 "detail": [1, 2]
             }))
             .unwrap(),
             ClientFrame::Unknown
         );
-        assert!(serde_json::from_value::<ServerFrame>(json!({ "type": "pong" })).is_err());
-        assert!(serde_json::from_value::<ClientFrame>(json!({ "type": "ping" })).is_err());
+        assert!(read_server(json!({ "type": "pong" })).is_err());
+        assert!(read_client(json!({ "type": "ping" })).is_err());
         let batch: Vec<ServerFrame> = serde_json::from_value(json!([
             { "type": "pong", "id": 1 },
             { "type": "from_a_later_server", "detail": null },
@@ -356,6 +379,50 @@ mod tests {
                 ServerFrame::Pong { id: 2 }
             ]
         );
+    }
+
+    #[test]
+    fn the_two_step_parse_ignores_fields_it_does_not_know_wherever_the_type_sits() {
+        assert_eq!(
+            read_client(json!({
+                "type": "ping",
+                "id": 3,
+                "later": { "nested": [[1], [2]], "text": "x" }
+            }))
+            .unwrap(),
+            ClientFrame::Ping { id: 3 }
+        );
+        assert_eq!(
+            read_server(json!({ "type": "pong", "id": 3, "later": [null, true, 1.5] })).unwrap(),
+            ServerFrame::Pong { id: 3 }
+        );
+        for text in [
+            r#"{"id":4,"type":"ping"}"#,
+            r#"{"type":"ping","id":4}"#,
+            r#" { "type" : "ping" , "id" : 4 } "#,
+        ] {
+            assert_eq!(
+                ClientFrame::from_json(text).unwrap(),
+                ClientFrame::Ping { id: 4 },
+                "{text}"
+            );
+            assert_eq!(
+                serde_json::from_str::<ClientFrame>(text).unwrap(),
+                ClientFrame::Ping { id: 4 },
+                "{text}"
+            );
+        }
+        for text in [
+            r#"{"type":"ping","id":4} trailing"#,
+            r#"{"type":"ping","type":"pong","id":4}"#,
+            r#"{"type":"ping","id":4,"id":5}"#,
+            r#"{"id":4}"#,
+            "[]",
+            "",
+        ] {
+            assert!(ClientFrame::from_json(text).is_err(), "{text}");
+            assert!(serde_json::from_str::<ClientFrame>(text).is_err(), "{text}");
+        }
     }
 
     #[test]
@@ -449,7 +516,7 @@ mod tests {
             FrameErrorCode::Unknown
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "error",
                 "code": "quota_exceeded",
                 "message": "m"
@@ -469,7 +536,7 @@ mod tests {
             json!({ "type": "Ping", "id": 1 }),
         ] {
             assert_eq!(
-                serde_json::from_value::<ClientFrame>(wire.clone()).unwrap(),
+                read_client(wire.clone()).unwrap(),
                 ClientFrame::Unknown,
                 "{wire}"
             );
@@ -486,12 +553,9 @@ mod tests {
                 "signature": "s"
             }),
         ] {
-            assert!(
-                serde_json::from_value::<ClientFrame>(wire.clone()).is_err(),
-                "{wire}"
-            );
+            assert!(read_client(wire.clone()).is_err(), "{wire}");
         }
-        assert!(serde_json::from_value::<ServerFrame>(json!({
+        assert!(read_server(json!({
             "type": "challenge",
             "nonce": "n",
             "server_id": "a07b6610-5950-4b90-8a29-c9ea207236c8"
@@ -603,7 +667,7 @@ mod tests {
             }),
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "update",
                 "project_id": PROJECT,
                 "seq": 10,
@@ -689,7 +753,7 @@ mod tests {
             }),
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "subscribed",
                 "project_id": PROJECT,
                 "role": "editor",
@@ -708,7 +772,7 @@ mod tests {
     #[test]
     fn frames_with_a_role_or_mode_from_a_later_server_stay_readable() {
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "subscribed",
                 "project_id": PROJECT,
                 "role": "commenter",
@@ -723,7 +787,7 @@ mod tests {
             }
         );
         assert_eq!(
-            serde_json::from_value::<ServerFrame>(json!({
+            read_server(json!({
                 "type": "access_changed",
                 "project_id": PROJECT,
                 "role": "commenter"
@@ -738,7 +802,7 @@ mod tests {
         );
         let mut sealed = serde_json::to_value(envelope()).unwrap();
         sealed["mode"] = json!("sealed");
-        let read = serde_json::from_value::<ServerFrame>(json!({
+        let read = read_server(json!({
             "type": "update",
             "project_id": PROJECT,
             "seq": 10,
@@ -841,7 +905,7 @@ mod tests {
                 signature: "sig".to_string(),
             }
         );
-        let from_a_later_client = serde_json::from_value::<ClientFrame>(json!({
+        let from_a_later_client = read_client(json!({
             "type": "hello",
             "protocol": 1,
             "device_id": DEVICE,

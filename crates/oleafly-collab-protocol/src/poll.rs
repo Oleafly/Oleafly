@@ -1,5 +1,7 @@
 use crate::frames::{ClientFrame, FrameErrorCode, ServerFrame};
-use serde::{Deserialize, Serialize};
+use serde::de::{self, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::value::RawValue;
 use std::fmt;
 
 pub const POLL_KEY_HEADER: &str = "x-oleafly-poll-key";
@@ -59,6 +61,51 @@ pub struct PollFrames {
     pub frames: Vec<ClientFrame>,
 }
 
+impl PollFrames {
+    pub fn from_json(bytes: &[u8]) -> Result<PollFrames, serde_json::Error> {
+        let posted: Posted = serde_json::from_slice(bytes)?;
+        Ok(PollFrames {
+            frames: posted.frames.0,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+struct Posted {
+    frames: OneByOne,
+}
+
+// Each posted frame is held as raw text and parsed on its own, and reading
+// stops at the limit, so a long list of small frames never piles up.
+struct OneByOne(Vec<ClientFrame>);
+
+impl<'de> Deserialize<'de> for OneByOne {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<OneByOne, D::Error> {
+        deserializer.deserialize_seq(OneByOne(Vec::new()))
+    }
+}
+
+impl<'de> Visitor<'de> for OneByOne {
+    type Value = OneByOne;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a list of frames")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(mut self, mut frames: A) -> Result<OneByOne, A::Error> {
+        while let Some(raw) = frames.next_element::<&'de RawValue>()? {
+            if self.0.len() == MAX_POSTED_FRAMES {
+                return Err(de::Error::custom(format!(
+                    "Send at most {MAX_POSTED_FRAMES} frames at a time."
+                )));
+            }
+            self.0
+                .push(ClientFrame::from_json(raw.get()).map_err(de::Error::custom)?);
+        }
+        Ok(self)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PollReplies {
     pub frames: Vec<ServerFrame>,
@@ -110,6 +157,53 @@ mod tests {
         let replies: PollReplies =
             serde_json::from_value(json!({ "frames": [{ "type": "pong", "id": 1 }] })).unwrap();
         assert_eq!(replies.frames, vec![ServerFrame::Pong { id: 1 }]);
+    }
+
+    #[test]
+    fn posted_frames_read_one_by_one_like_the_derived_parse() {
+        let text = json!({
+            "frames": [
+                { "type": "ping", "id": 1 },
+                { "type": "from_a_later_client", "detail": [1, 2] },
+                { "type": "unsubscribe", "project_id": PROJECT }
+            ],
+            "later": { "n": 1 }
+        })
+        .to_string();
+        let read = PollFrames::from_json(text.as_bytes()).unwrap();
+        assert_eq!(read, serde_json::from_str::<PollFrames>(&text).unwrap());
+        assert_eq!(read.frames[1], ClientFrame::Unknown);
+        for refused in [
+            r#"{"frames":[{"type":"ping"}]}"#,
+            r#"{"frames":[1]}"#,
+            r#"{"frames":{}}"#,
+            r#"{}"#,
+        ] {
+            assert!(
+                PollFrames::from_json(refused.as_bytes()).is_err(),
+                "{refused}"
+            );
+            assert!(
+                serde_json::from_str::<PollFrames>(refused).is_err(),
+                "{refused}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_post_carries_at_most_the_frame_limit() {
+        let ping = json!({ "type": "ping", "id": 1 });
+        let full = json!({ "frames": vec![ping.clone(); MAX_POSTED_FRAMES] }).to_string();
+        assert_eq!(
+            PollFrames::from_json(full.as_bytes()).unwrap().frames.len(),
+            MAX_POSTED_FRAMES
+        );
+        let over = json!({ "frames": vec![ping; MAX_POSTED_FRAMES + 1] }).to_string();
+        let refused = PollFrames::from_json(over.as_bytes()).unwrap_err();
+        assert!(
+            refused.to_string().contains("Send at most 64 frames"),
+            "{refused}"
+        );
     }
 
     #[test]

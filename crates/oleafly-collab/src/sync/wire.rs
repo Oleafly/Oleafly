@@ -113,7 +113,7 @@ impl Wire {
         while let Some(message) = stream.next().await {
             match message.map_err(|error| CollabError::Network(error.to_string()))? {
                 Message::Text(text) => {
-                    return serde_json::from_str(text.as_str()).map_err(|error| {
+                    return ServerFrame::from_json(text.as_str()).map_err(|error| {
                         CollabError::Network(format!("unreadable frame: {error}"))
                     });
                 }

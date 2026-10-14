@@ -68,7 +68,7 @@ enum Incoming {
 async fn next_incoming(socket: &mut WebSocket) -> Incoming {
     match socket.recv().await {
         Some(Ok(Message::Text(text))) => {
-            serde_json::from_str(text.as_str()).map_or(Incoming::Malformed, Incoming::Frame)
+            ClientFrame::from_json(text.as_str()).map_or(Incoming::Malformed, Incoming::Frame)
         }
         Some(Ok(Message::Binary(_))) => Incoming::Malformed,
         Some(Ok(Message::Ping(_) | Message::Pong(_))) => Incoming::Heard,
