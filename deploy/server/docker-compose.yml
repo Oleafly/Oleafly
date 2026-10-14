@@ -49,6 +49,10 @@ services:
       - oleafly-data:/data
       - ./litestream.yml:/etc/litestream.yml:ro
 
+networks:
+  default:
+    enable_ipv6: ${OLEAFLY_IPV6:-false}
+
 volumes:
   oleafly-data:
   caddy-data:

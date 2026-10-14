@@ -130,7 +130,7 @@ status=$(run_in_terminal "$(piped 0.1.0 '' '')" \
 expect "exit 0, got $status" [ "$status" = 0 ]
 expect "Docker was installed" command -v docker
 expect "the containers run the release image" [ "$(server_image)" = localhost:5000/oleafly/oleafly-server:0.1.0 ]
-expect "HTTPS answered through Caddy" out_has "https://$domain answers with a valid certificate."
+expect "HTTPS answered through Caddy" out_has "https://$domain answers on this machine with a valid certificate."
 printed_code=$(sed -n 's/^  Setup code: \([A-Z0-9-]*\)$/\1/p' "$out" | tail -n 1)
 logged_code=$(compose logs --no-color --no-log-prefix oleafly-server 2>/dev/null | sed -n 's/.*Setup code: \([A-Z0-9][A-Z0-9-]*\)\..*/\1/p' | tail -n 1)
 expect "a setup code was printed" [ -n "$printed_code" ]
@@ -152,7 +152,7 @@ expect "exit 0, got $status" [ "$status" = 0 ]
 expect "it found the server" out_has "Found a server in $install_dir."
 expect ".env didn't change" [ "$(env_sum)" = "$before" ]
 expect "the server id didn't change" [ "$(server_id)" = "$first_id" ]
-expect "HTTPS still answers" out_has "https://$domain answers with a valid certificate."
+expect "HTTPS still answers" out_has "https://$domain answers on this machine with a valid certificate."
 finish
 
 begin "status reports a healthy server"
@@ -167,6 +167,7 @@ before=$(env_sum)
 run "$(piped 0.1.1 '' update)"
 expect "exit 0, got $status" [ "$status" = 0 ]
 expect "it says what changed" out_has 'Updated from 0.1.0 to 0.1.1'
+expect "the data was copied before 0.1.1 started" sh -c "ls $install_dir/backups | grep -q -- '-0.1.0.tar.gz\$'"
 expect "the containers run 0.1.1" [ "$(server_image)" = localhost:5000/oleafly/oleafly-server:0.1.1 ]
 expect ".env didn't change" [ "$(env_sum)" = "$before" ]
 expect "the server id didn't change" [ "$(server_id)" = "$first_id" ]

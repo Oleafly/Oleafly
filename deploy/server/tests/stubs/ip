@@ -1,0 +1,4 @@
+#!/bin/sh
+printf 'ip %s\n' "$*" >>/stub/log
+[ -f /stub/state/ip-addr ] || exit 1
+cat /stub/state/ip-addr
