@@ -385,13 +385,16 @@ jobs:
       - name: Stage checksum-pinned Tinymist resource archive
         run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
 
+      # Oleafly Server ships as a Linux container and static Linux programs, so
+      # its own tests and lints run on the Linux job only. The desktop and sync
+      # engine tests here still build it as a dev-dependency.
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --all-targets --no-fail-fast
+        run: cargo test --workspace --exclude oleafly-server --all-targets --no-fail-fast
 
       - name: Lint all native Windows targets
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude oleafly-server --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
