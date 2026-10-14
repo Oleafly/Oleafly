@@ -217,3 +217,61 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .expect("response");
     assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
 }
+
+async fn put_file(
+    app: &TestApp,
+    token: &str,
+    project: &str,
+    content: Vec<u8>,
+) -> (StatusCode, String) {
+    let hash = sha256_hex(&content);
+    let request = Request::builder()
+        .method(Method::PUT)
+        .uri(format!("/api/v1/projects/{project}/blobs/{hash}"))
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .body(Body::from(content))
+        .expect("request");
+    let response = app.router.clone().oneshot(request).await.expect("response");
+    let status = response.status();
+    let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+        .await
+        .expect("body");
+    let code = serde_json::from_slice::<serde_json::Value>(&bytes)
+        .ok()
+        .and_then(|body| body["code"].as_str().map(str::to_owned))
+        .unwrap_or_default();
+    (status, code)
+}
+
+#[tokio::test]
+async fn a_project_at_its_size_limit_refuses_new_files_while_others_still_upload() {
+    let mut config = test_config();
+    config.limits.max_file_mb = 1;
+    config.limits.max_project_mb = 1;
+    let app = test_app_with(config).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let token = owner.access_token.as_str();
+    let full = create_project(&app, token).await;
+    let other = create_project(&app, token).await;
+    let first = vec![1u8; 600 * 1024];
+    let second = vec![2u8; 600 * 1024];
+    assert_eq!(
+        put_file(&app, token, &full, first.clone()).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        put_file(&app, token, &full, second.clone()).await,
+        (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "project_too_large".to_owned()
+        )
+    );
+    assert_eq!(
+        put_file(&app, token, &full, first).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        put_file(&app, token, &other, second).await.0,
+        StatusCode::NO_CONTENT
+    );
+}

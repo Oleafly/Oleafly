@@ -4,10 +4,10 @@ use oleafly_collab_protocol::frames::{
     ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
 };
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
-use oleafly_server::test_support::TestDevice;
+use oleafly_server::test_support::{test_config, TestDevice};
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, subscribe, Stage,
+    signed_by, stage, stage_with, subscribe, Stage,
 };
 use reqwest::{Method, StatusCode};
 
@@ -495,4 +495,28 @@ async fn a_flood_of_cursor_updates_is_thinned_and_never_pushes_anyone_off() {
             .count(stage.bob.tokens.device_id),
         1
     );
+}
+
+#[tokio::test]
+async fn a_change_past_the_project_size_limit_is_refused_and_says_why() {
+    let mut config = test_config();
+    config.limits.max_project_mb = 1;
+    let stage = stage_with(config).await;
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut alice, project, 0).await;
+    let text = vec![b'a'; 400 * 1024];
+    send_update(&mut alice, &envelope(&stage.alice, project, &text)).await;
+    assert!(matches!(
+        next_frame(&mut alice).await,
+        Some(ServerFrame::Ack { seq: 1, .. })
+    ));
+    send_update(&mut alice, &envelope(&stage.alice, project, &text)).await;
+    match next_frame(&mut alice).await {
+        Some(ServerFrame::Error {
+            code: FrameErrorCode::TooLarge,
+            message,
+        }) => assert!(message.contains("OLEAFLY_MAX_PROJECT_MB"), "{message}"),
+        other => panic!("expected the size limit, got {other:?}"),
+    }
 }

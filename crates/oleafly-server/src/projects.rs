@@ -599,6 +599,28 @@ pub fn drop_unused_blob(
     Ok(orphan)
 }
 
+// What a project keeps on this server: its files and its change log.
+// Snapshots are left out because they are rebuilt from those.
+pub fn stored_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
+    let bytes: i64 = conn.query_row(
+        "SELECT (SELECT COALESCE(SUM(size), 0) FROM project_blobs WHERE project_id = ?1) \
+         + (SELECT COALESCE(SUM(length(envelope)), 0) FROM project_updates WHERE project_id = ?1)",
+        [project.to_string()],
+        |row| row.get(0),
+    )?;
+    Ok(seq_from(bytes))
+}
+
+pub fn too_large_for(limit_mb: u64) -> ServerError {
+    ServerError::Refused {
+        status: axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+        code: "project_too_large",
+        message: format!(
+            "This project has reached this server's size limit of {limit_mb} MB. Ask the admin to raise OLEAFLY_MAX_PROJECT_MB."
+        ),
+    }
+}
+
 pub fn blob_size(
     conn: &Connection,
     project: SharedProjectId,

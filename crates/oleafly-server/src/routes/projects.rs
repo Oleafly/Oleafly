@@ -647,6 +647,24 @@ async fn put_blob(
             state.config.limits.max_file_mb
         )));
     };
+    let (size, held, limit_mb) = (
+        body.len() as u64,
+        hash.clone(),
+        state.config.limits.max_project_mb,
+    );
+    state
+        .db
+        .call(move |conn| {
+            if projects::blob_size(conn, project, &held)?.is_some() {
+                return Ok(());
+            }
+            let after = projects::stored_bytes(conn, project)?.saturating_add(size);
+            if after > limit_mb.saturating_mul(1024 * 1024) {
+                return Err(projects::too_large_for(limit_mb));
+            }
+            Ok(())
+        })
+        .await?;
     let now = state.clock.now_ms();
     crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, now).await?;
     Ok(StatusCode::NO_CONTENT)

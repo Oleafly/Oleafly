@@ -847,6 +847,9 @@ impl Peer<'_> {
             Err(ServerError::BadRequest(_)) => {
                 frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
             }
+            Err(ServerError::Refused { message, .. }) => {
+                frame_error(FrameErrorCode::TooLarge, &message)
+            }
             Err(_) => stored_failed,
         }
     }
@@ -894,6 +897,7 @@ impl Peer<'_> {
     ) -> Result<Option<projects::Appended>, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
+        let limit_mb = self.state.config.limits.max_project_mb;
         let rooms = std::sync::Arc::clone(&self.state.rooms);
         let connection = self.connection;
         self.state
@@ -922,6 +926,11 @@ impl Peer<'_> {
                 }
                 if !checked && !comments_on(&transaction, &row)? {
                     return Ok(None);
+                }
+                let after = projects::stored_bytes(&transaction, project)?
+                    .saturating_add(stored.len() as u64);
+                if after > limit_mb.saturating_mul(1024 * 1024) {
+                    return Err(projects::too_large_for(limit_mb));
                 }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
