@@ -217,6 +217,46 @@ pub fn table(conn: &Connection, project: SharedProjectId) -> Result<Vec<ProjectP
         .collect()
 }
 
+pub fn rows_for(
+    conn: &Connection,
+    project: SharedProjectId,
+    peers: &[u64],
+) -> Result<Vec<ProjectPeer>, ServerError> {
+    if peers.is_empty() {
+        return Ok(Vec::new());
+    }
+    let wanted = (0..peers.len())
+        .map(|index| format!("?{}", index + 2))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let mut statement = conn.prepare(&format!(
+        "SELECT peer, device_id, account_id FROM project_peers WHERE project_id = ?1 AND peer IN ({wanted}) ORDER BY bound_at, peer"
+    ))?;
+    let values = std::iter::once(rusqlite::types::Value::Text(project.to_string())).chain(
+        peers
+            .iter()
+            .map(|peer| rusqlite::types::Value::Integer(peer_to_sql(*peer))),
+    );
+    let rows = statement
+        .query_map(rusqlite::params_from_iter(values), |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    rows.into_iter()
+        .map(|(peer, device, account)| {
+            Ok(ProjectPeer {
+                peer: peer_from_sql(peer),
+                device_id: parse_id(&device)?,
+                account_id: parse_id(&account)?,
+            })
+        })
+        .collect()
+}
+
 pub fn bound_devices(
     conn: &Connection,
     project: SharedProjectId,

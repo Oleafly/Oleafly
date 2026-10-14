@@ -962,18 +962,53 @@ async fn list_devices(
     Ok(Json(listed))
 }
 
+pub const MAX_ASKED_PEERS: usize = 200;
+
+#[derive(Deserialize)]
+struct PeersQuery {
+    ids: Option<String>,
+}
+
+fn asked_peers(ids: &str) -> Result<Vec<u64>, ServerError> {
+    let asked = ids
+        .split(',')
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(|id| {
+            id.parse::<u64>().map_err(|_| {
+                ServerError::BadRequest(
+                    "Writer ids are decimal numbers separated by commas.".to_string(),
+                )
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if asked.len() > MAX_ASKED_PEERS {
+        return Err(ServerError::BadRequest(format!(
+            "Ask for at most {MAX_ASKED_PEERS} writers at a time."
+        )));
+    }
+    Ok(asked)
+}
+
 async fn list_peers(
     State(state): State<AppState>,
     auth: Authenticated,
     path: Result<Path<String>, PathRejection>,
+    query: Result<Query<PeersQuery>, QueryRejection>,
 ) -> Result<Json<Vec<ProjectPeer>>, ServerError> {
     let project: SharedProjectId = path_id(path)?;
+    let Query(PeersQuery { ids }) =
+        query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
+    let asked = ids.as_deref().map(asked_peers).transpose()?;
     let account = auth.account_id;
     let listed = state
         .db
         .read(move |conn| {
             access(conn, project, account)?;
-            peers::table(conn, project)
+            match asked {
+                Some(asked) => peers::rows_for(conn, project, &asked),
+                None => peers::table(conn, project),
+            }
         })
         .await?;
     Ok(Json(listed))

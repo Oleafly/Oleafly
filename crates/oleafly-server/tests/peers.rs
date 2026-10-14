@@ -440,3 +440,82 @@ async fn a_change_that_builds_on_changes_the_server_never_stored_is_refused() {
     ));
     assert_eq!(head(&stage, project).await, 0);
 }
+
+#[tokio::test]
+async fn members_can_ask_for_just_the_writers_they_do_not_know() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let (_bob, mut alice) = opened(&stage, project).await;
+    let alice_doc = base();
+    for (peer, text) in [(ALICE_PEER, " one"), (ALICE_PEER + 1, " two")] {
+        let update = typed(&alice_doc, peer, text);
+        send_update(
+            &mut alice,
+            &signed_by(&stage.alice, &stage.alice.device, project, &update),
+        )
+        .await;
+        assert!(matches!(sent(&mut alice).await, ServerFrame::Ack { .. }));
+    }
+    let path = |query: &str| format!("/api/v1/projects/{project}/peers{query}");
+    let everyone: Vec<ProjectPeer> = read(
+        call(
+            &stage.server,
+            Method::GET,
+            &path(""),
+            stage.alice.token(),
+            None,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(everyone.len(), 3);
+    let asked: Vec<ProjectPeer> = read(
+        call(
+            &stage.server,
+            Method::GET,
+            &path(&format!("?ids={},{SNAPSHOT_PEER},99", ALICE_PEER + 1)),
+            stage.alice.token(),
+            None,
+        )
+        .await,
+    )
+    .await;
+    let mut found: Vec<u64> = asked.iter().map(|row| row.peer).collect();
+    found.sort_unstable();
+    assert_eq!(found, vec![SNAPSHOT_PEER, ALICE_PEER + 1]);
+    let none: Vec<ProjectPeer> = read(
+        call(
+            &stage.server,
+            Method::GET,
+            &path("?ids="),
+            stage.alice.token(),
+            None,
+        )
+        .await,
+    )
+    .await;
+    assert!(none.is_empty());
+    let too_many = (0..201)
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    for query in [
+        format!("?ids={too_many}"),
+        "?ids=12,abc".to_owned(),
+        "?ids=-1".to_owned(),
+    ] {
+        assert_eq!(
+            call(
+                &stage.server,
+                Method::GET,
+                &path(&query),
+                stage.alice.token(),
+                None
+            )
+            .await
+            .status(),
+            StatusCode::BAD_REQUEST,
+            "{query}"
+        );
+    }
+}
