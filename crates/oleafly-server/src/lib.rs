@@ -115,6 +115,43 @@ fn cannot_listen(bind: SocketAddr, error: &std::io::Error) -> String {
     }
 }
 
+fn bucket_refused(error: &ServerError) -> String {
+    let detail = match error {
+        ServerError::Internal(detail) => detail.clone(),
+        other => other.to_string(),
+    };
+    let check = [
+        (
+            "SignatureDoesNotMatch",
+            "Check OLEAFLY_S3_SECRET_ACCESS_KEY.",
+        ),
+        ("InvalidAccessKeyId", "Check OLEAFLY_S3_ACCESS_KEY_ID."),
+        (
+            "NoSuchBucket",
+            "Check the bucket name in OLEAFLY_BLOB_STORE.",
+        ),
+        (
+            "RequestTimeTooSkewed",
+            "Set this machine's clock to the right time.",
+        ),
+        (
+            "AccessDenied",
+            "Let the key in OLEAFLY_S3_ACCESS_KEY_ID put, get and delete objects in the bucket.",
+        ),
+        (
+            "could not reach",
+            "Check OLEAFLY_S3_ENDPOINT and the network.",
+        ),
+    ]
+    .iter()
+    .find(|(sign, _)| detail.contains(sign))
+    .map_or(
+        "Check OLEAFLY_BLOB_STORE and the OLEAFLY_S3_ settings.",
+        |(_, check)| check,
+    );
+    format!("The S3 bucket did not accept a test file: {detail}. {check}")
+}
+
 fn check_data_dir(data_dir: &Path) -> Result<(), String> {
     let unwritable = |error: std::io::Error| {
         format!(
@@ -145,6 +182,11 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServeError> {
     let state = AppState::new(config, Arc::new(SystemClock))
         .await
         .map_err(|error| ServeError::CannotStart(error.to_string()))?;
+    state
+        .blobs
+        .probe()
+        .await
+        .map_err(|error| ServeError::CannotStart(bucket_refused(&error)))?;
     tracing::info!(
         "Oleafly Server {} is listening on {bind} for {}",
         env!("CARGO_PKG_VERSION"),
@@ -249,6 +291,25 @@ mod tests {
         let message = cannot_start(config).await;
         assert!(message.contains("already in use"), "{message}");
         assert!(message.contains("OLEAFLY_BIND"), "{message}");
+    }
+
+    #[tokio::test]
+    async fn a_bucket_that_refuses_the_keys_stops_the_server_and_names_the_setting() {
+        let mock = crate::test_support::MockS3::start().await;
+        let directory = tempfile::tempdir().unwrap();
+        let mut bucket = mock.config("oleafly");
+        bucket.secret_access_key = "not-the-secret".to_owned();
+        let mut config = test_config();
+        config.data_dir = directory.path().to_path_buf();
+        config.bind = "127.0.0.1:0".parse().unwrap();
+        config.blob_store = crate::config::BlobStoreConfig::S3(Box::new(bucket));
+        let message = cannot_start(config).await;
+        assert!(
+            message.contains("OLEAFLY_S3_SECRET_ACCESS_KEY"),
+            "{message}"
+        );
+        assert!(!message.contains("not-the-secret"), "{message}");
+        assert!(mock.keys().is_empty());
     }
 
     #[cfg(unix)]

@@ -26,6 +26,8 @@ use crate::tokens::random_token;
 
 const GUESTS_IMPLEMENTED: bool = true;
 const READINESS_REUSED_FOR: Duration = Duration::from_secs(5);
+const BUCKET_READY_FOR: Duration = Duration::from_secs(5 * 60);
+const BUCKET_FAILING_FOR: Duration = Duration::from_secs(30);
 const READINESS_KEY: &str = "readiness_probe";
 
 pub const PROTOCOLS: ProtocolRange = ProtocolRange {
@@ -45,6 +47,7 @@ fn chosen_protocol(range: ProtocolRange, asked: u32) -> Option<u32> {
 enum Failing {
     Database,
     Storage,
+    Files,
 }
 
 impl Failing {
@@ -52,6 +55,7 @@ impl Failing {
         match self {
             Failing::Database => "database",
             Failing::Storage => "storage",
+            Failing::Files => "files",
         }
     }
 }
@@ -59,6 +63,34 @@ impl Failing {
 #[derive(Default)]
 struct Readiness {
     last: Mutex<Option<(Instant, Result<(), Failing>)>>,
+    bucket: Mutex<Option<(Instant, bool)>>,
+}
+
+// An S3 bucket is probed with a small file at most every few minutes, and
+// sooner again after a failure.
+async fn bucket_ready(state: &AppState, readiness: &Readiness) -> bool {
+    let mut bucket = readiness.bucket.lock().await;
+    if let Some((checked, ready)) = *bucket {
+        let reuse = if ready {
+            BUCKET_READY_FOR
+        } else {
+            BUCKET_FAILING_FOR
+        };
+        if checked.elapsed() < reuse {
+            return ready;
+        }
+    }
+    let ready = match state.blobs.probe().await {
+        Ok(()) => true,
+        Err(error) => {
+            tracing::warn!(
+                "The S3 bucket does not accept files, so the server is not ready: {error}"
+            );
+            false
+        }
+    };
+    *bucket = Some((Instant::now(), ready));
+    ready
 }
 
 pub fn router() -> Router<AppState> {
@@ -124,6 +156,12 @@ async fn readyz(state: AppState, readiness: Arc<Readiness>) -> Response {
         }
     };
     drop(last);
+    let outcome = match outcome {
+        Ok(()) if state.blobs.is_s3() && !bucket_ready(&state, &readiness).await => {
+            Err(Failing::Files)
+        }
+        other => other,
+    };
     match outcome {
         Ok(()) => Json(json!({"status": "ready"})).into_response(),
         Err(failing) => (
@@ -182,6 +220,44 @@ fn write_probe(data_dir: &Path) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::body::Body;
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    use crate::test_support::{test_app_with, test_config, MockS3, MockS3Fault};
+
+    async fn readiness(app: &crate::test_support::TestApp) -> (StatusCode, Value) {
+        let request = Request::builder()
+            .uri("/readyz")
+            .body(Body::empty())
+            .expect("request");
+        let response = app.router.clone().oneshot(request).await.expect("response");
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        (
+            status,
+            serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+        )
+    }
+
+    #[tokio::test]
+    async fn a_bucket_that_stops_accepting_files_makes_the_server_unready() {
+        let mock = MockS3::start().await;
+        let directory = tempfile::tempdir().unwrap();
+        let mut config = test_config();
+        config.data_dir = directory.path().to_path_buf();
+        config.blob_store = crate::config::BlobStoreConfig::S3(Box::new(mock.config("oleafly")));
+        let healthy = test_app_with(config.clone()).await;
+        assert_eq!(readiness(&healthy).await.0, StatusCode::OK);
+        let failing = test_app_with(config).await;
+        mock.set_fault(Some(MockS3Fault::AccessDenied));
+        let (status, body) = readiness(&failing).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["failing"], "files");
+        mock.set_fault(None);
+    }
 
     #[test]
     fn a_hello_inside_the_advertised_range_is_answered_with_its_own_version() {

@@ -110,6 +110,17 @@ impl BlobStore {
         }
     }
 
+    pub fn is_s3(&self) -> bool {
+        matches!(self, BlobStore::S3(_))
+    }
+
+    pub async fn probe(&self) -> Result<(), ServerError> {
+        match self {
+            BlobStore::Filesystem(_) => Ok(()),
+            BlobStore::S3(store) => store.probe().await,
+        }
+    }
+
     pub async fn put(&self, hash: &str, bytes: Bytes) -> Result<(), ServerError> {
         if !valid_hash(hash) {
             return Err(ServerError::BadRequest(
