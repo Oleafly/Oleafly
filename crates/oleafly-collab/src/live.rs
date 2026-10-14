@@ -12,9 +12,7 @@ use oleafly_collab_protocol::snapshots::ProjectPeer;
 use serde::{Deserialize, Serialize};
 
 use crate::devices::{DeviceRegistry, NewDevice};
-use crate::doc::{
-    advance, decode_version, delta_to_operation, encode_version, DocChanges, ProjectDoc,
-};
+use crate::doc::{advance, decode_version, encode_version, DocChanges, ProjectDoc};
 use crate::editor::{ChannelError, DocMessage, EditorChannel};
 use crate::ot::TextOperation;
 use crate::{write_atomic, CollabError};
@@ -742,7 +740,9 @@ impl LiveProject {
             let Some(open) = self.open.get_mut(&id) else {
                 continue;
             };
-            let routed = delta_to_operation(open.channel.text(), &deltas)
+            let routed = open
+                .channel
+                .operation_for(&deltas)
                 .ok()
                 .and_then(|operation| {
                     open.channel
@@ -1285,10 +1285,11 @@ impl LiveProject {
         let open: Vec<String> = self.open.keys().cloned().collect();
         for id in open {
             let current = self.doc.text(&id).ok();
-            let differs = self
-                .open
-                .get(&id)
-                .is_some_and(|file| current.as_deref() != Some(file.channel.text()));
+            let differs = self.open.get(&id).is_some_and(|file| {
+                current
+                    .as_deref()
+                    .is_none_or(|text| !file.channel.holds(text))
+            });
             if differs {
                 self.reset_file(&id)?;
             }
