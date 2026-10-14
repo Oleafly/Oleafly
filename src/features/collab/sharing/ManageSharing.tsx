@@ -28,6 +28,7 @@ import {
   type CollabProjectSummary,
   type CollabShareInfo,
 } from "@/lib/tauri";
+import { useBusyRows } from "../busy-rows";
 import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
@@ -421,7 +422,7 @@ export function ManageSharing({
   const [members, setMembers] = useState<CollabProjectMember[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabProjectMember | null>(null);
   const [ending, setEnding] = useState(false);
@@ -458,18 +459,17 @@ export function ManageSharing({
     };
   }, [load]);
 
-  const runRow = async (member: CollabProjectMember, action: () => Promise<void>) => {
+  const runRow = (member: CollabProjectMember, action: () => Promise<void>) => {
     const accountId = member.person.account_id;
-    setBusyId(accountId);
-    setRowError(null);
-    try {
-      await action();
-      syncMembersChange(projectId);
-    } catch (error) {
-      setRowError({ accountId, message: collabErrorText(error) });
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(accountId, async () => {
+      setRowError((current) => (current?.accountId === accountId ? null : current));
+      try {
+        await action();
+        syncMembersChange(projectId);
+      } catch (error) {
+        setRowError({ accountId, message: collabErrorText(error) });
+      }
+    });
   };
 
   const changeRole = (member: CollabProjectMember, role: GrantableRole) =>
@@ -528,7 +528,7 @@ export function ManageSharing({
           <>
             <ProjectRolePicker
               value={grantable}
-              disabled={busyId === accountId}
+              disabled={rows.busy.has(accountId)}
               label={t(($) => $.collab.manage.roleLabel, { name: person.display_name })}
               onChange={(role) => {
                 if (role !== member.role) void changeRole(member, role);
@@ -539,7 +539,7 @@ export function ManageSharing({
               variant="ghost"
               size="sm"
               className="hover:bg-destructive/10 hover:text-destructive"
-              disabled={busyId === accountId}
+              disabled={rows.busy.has(accountId)}
               aria-label={t(($) => $.collab.manage.removeNamed, { name: person.display_name })}
               onClick={() => setRemoving(member)}
             >

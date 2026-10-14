@@ -206,6 +206,42 @@ describe("ProjectsSection", () => {
     expect(await screen.findByText(enCollab.errors.forbidden)).toBeInTheDocument();
   });
 
+  it("keeps each row's Restore off until its own request ends", async () => {
+    const older = adminProject({
+      project_id: "0192a0b0-0000-7000-8000-0000000000b5",
+      title: "Older notes",
+      status: "archived",
+      archived_at: NOW - 86_400_000,
+    });
+    const first = deferred<ReturnType<typeof adminProject>>();
+    const second = deferred<ReturnType<typeof adminProject>>();
+    mocks.collabAdminProjects.mockResolvedValue(projectsPage([OLD, older]));
+    mocks.collabAdminUnarchiveProject.mockReset();
+    mocks.collabAdminUnarchiveProject.mockImplementation((_server: string, id: string) =>
+      id === OLD.project_id ? first.promise : second.promise,
+    );
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Old notes");
+    const restoreOld = () => within(row(OLD)).getByRole("button", { name: fill(copy.restoreNamed, { title: "Old notes" }) });
+    const restoreOlder = () =>
+      within(row(older)).getByRole("button", { name: fill(copy.restoreNamed, { title: "Older notes" }) });
+    await user.click(restoreOld());
+    await user.click(restoreOlder());
+    await act(async () => {
+      first.resolve({ ...OLD, status: "active", archived_at: null });
+      await first.promise;
+    });
+    expect(within(row(OLD)).queryByText(copy.status.archived)).not.toBeInTheDocument();
+    expect(restoreOlder()).toBeDisabled();
+    await act(async () => {
+      second.resolve({ ...older, status: "active", archived_at: null });
+      await second.promise;
+    });
+    expect(within(row(older)).queryByText(copy.status.archived)).not.toBeInTheDocument();
+    expect(mocks.collabAdminUnarchiveProject).toHaveBeenCalledTimes(2);
+  });
+
   it("shows maintainers the list without sizes or archive buttons", async () => {
     mocks.collabAdminProjects.mockResolvedValue(projectsPage([{ ...GRANT, size_bytes: null }]));
     renderSection({ actor: "maintainer" });

@@ -15,6 +15,7 @@ import {
   type CollabMemberPatch,
   type CollabMemberStatus,
 } from "@/lib/tauri";
+import { useBusyRows } from "./busy-rows";
 import { DevicesList } from "./DevicesList";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
@@ -66,23 +67,22 @@ export function MembersTab({
   onAddPeople?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabMember | null>(null);
   const [devicesFor, setDevicesFor] = useState<string | null>(null);
   const canSeeDevices = serverRoleAllows(actor, "signOutAnyDevice");
 
-  const run = async (member: CollabMember, action: () => Promise<void>) => {
+  const run = (member: CollabMember, action: () => Promise<void>) => {
     const accountId = member.account.account_id;
-    setBusyId(accountId);
-    setRowError(null);
-    try {
-      await action();
-    } catch (error) {
-      setRowError({ accountId, message: collabErrorText(error, "members") });
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(accountId, async () => {
+      setRowError((current) => (current?.accountId === accountId ? null : current));
+      try {
+        await action();
+      } catch (error) {
+        setRowError({ accountId, message: collabErrorText(error, "members") });
+      }
+    });
   };
 
   const patch = (member: CollabMember, change: CollabMemberPatch) =>
@@ -108,7 +108,7 @@ export function MembersTab({
     const isSelf = accountId === selfId;
     const removed = member.status === "removed";
     const suspended = member.status === "suspended";
-    const busy = busyId === accountId;
+    const busy = rows.busy.has(accountId);
     const editable = !removed && role !== null && canChangeMember(actor, role);
     const devicesShown =
       canSeeDevices &&

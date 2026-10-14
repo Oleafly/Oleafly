@@ -238,6 +238,35 @@ describe("ManageSharing people and ending", () => {
     expect(screen.getByRole("list", { name: manage.people })).toBeInTheDocument();
   });
 
+  it("keeps each person's row busy until their own change ends", async () => {
+    const carol = projectMember(CAROL, "editor");
+    mocks.collabMembersList.mockResolvedValue([projectMember(BOB, "owner"), alice, carol]);
+    const forAlice = deferred<ReturnType<typeof projectMember>>();
+    const forCarol = deferred<ReturnType<typeof projectMember>>();
+    mocks.collabMemberSet.mockReset();
+    mocks.collabMemberSet.mockImplementation((_project: string, accountId: string) =>
+      accountId === alice.person.account_id ? forAlice.promise : forCarol.promise,
+    );
+    const user = userEvent.setup();
+    renderManage();
+    await screen.findByRole("list", { name: manage.people });
+    await chooseOption(user, fill(manage.roleLabel, { name: "Alice Chen" }), roles.viewer);
+    await chooseOption(user, fill(manage.roleLabel, { name: "Carol Diaz" }), roles.viewer);
+    const removeCarol = screen.getByRole("button", { name: fill(manage.removeNamed, { name: "Carol Diaz" }) });
+    expect(removeCarol).toBeDisabled();
+    await act(async () => {
+      forAlice.resolve(projectMember(person(), "viewer"));
+      await forAlice.promise;
+    });
+    expect(screen.getByRole("button", { name: fill(manage.removeNamed, { name: "Alice Chen" }) })).toBeEnabled();
+    expect(removeCarol).toBeDisabled();
+    await act(async () => {
+      forCarol.resolve(projectMember(CAROL, "viewer"));
+      await forCarol.promise;
+    });
+    expect(removeCarol).toBeEnabled();
+  });
+
   it("shows a failed role change on that person's row only", async () => {
     mocks.collabMemberSet.mockRejectedValue(collabError("forbidden"));
     const user = userEvent.setup();

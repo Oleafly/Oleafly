@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/intl";
 import type { CollabTrashEntry } from "@/lib/tauri";
 import { useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
-import { ALICE_ID, BOB, BOB_ID, collabError, fill, person, projectMember, shareInfo } from "../tests/fixtures";
+import { ALICE_ID, BOB, BOB_ID, collabError, deferred, fill, person, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabTrashList: vi.fn(),
@@ -156,6 +156,51 @@ describe("RecentlyDeleted", () => {
     await screen.findByRole("list", { name: enCollab.pane.deleted });
     await user.click(screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "intro.tex" }) }));
     await waitFor(() => expect(useRemovedNotices.getState().notices).toEqual([]));
+  });
+
+  it("sends one restore for a double click and keeps that Restore off until it's done", async () => {
+    const user = userEvent.setup();
+    const restoring = deferred<void>();
+    mocks.collabTrashRestore.mockReturnValue(restoring.promise);
+    view();
+    await screen.findByRole("list", { name: enCollab.pane.deleted });
+    const button = screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "intro.tex" }) });
+    await user.dblClick(button);
+    expect(mocks.collabTrashRestore).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "figs" }) })).toBeEnabled();
+    mocks.collabTrashList.mockResolvedValue(LISTED.slice(1));
+    await act(async () => {
+      restoring.resolve();
+      await restoring.promise;
+    });
+    await waitFor(() => expect(screen.queryByText("intro.tex")).toBeNull());
+  });
+
+  it("treats a repeat of a restore that already worked as done", async () => {
+    const user = userEvent.setup();
+    view();
+    await screen.findByRole("list", { name: enCollab.pane.deleted });
+    mocks.collabTrashList.mockRejectedValueOnce(collabError("unreachable"));
+    const restoreIntro = () => screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "intro.tex" }) });
+    await user.click(restoreIntro());
+    await waitFor(() => expect(mocks.collabTrashList).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(restoreIntro()).toBeEnabled());
+    mocks.collabTrashRestore.mockRejectedValueOnce(collabError("not_found"));
+    mocks.collabTrashList.mockResolvedValue(LISTED.slice(1));
+    await user.click(restoreIntro());
+    await waitFor(() => expect(screen.queryByText("intro.tex")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.collabTrashRestore).toHaveBeenCalledTimes(2);
+  });
+
+  it("still explains a missing entry that this window never restored", async () => {
+    const user = userEvent.setup();
+    mocks.collabTrashRestore.mockRejectedValue(collabError("not_found"));
+    view();
+    await screen.findByRole("list", { name: enCollab.pane.deleted });
+    await user.click(screen.getByRole("button", { name: fill(copy.restoreLabel, { name: "figs" }) }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.not_found);
   });
 
   it("says why a restore did not work", async () => {

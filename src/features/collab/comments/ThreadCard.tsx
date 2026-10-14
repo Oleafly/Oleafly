@@ -197,6 +197,20 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
   const { t } = useTranslation(["collab"]);
   const [error, run] = useFailure();
   const [confirming, setConfirming] = useState(false);
+  // Resolve and Reopen send once: a second click while one is in flight does nothing.
+  const [toggling, setToggling] = useState(false);
+  const inFlight = useRef(false);
+  const toggle = (action: () => Promise<void>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setToggling(true);
+    run(() =>
+      action().finally(() => {
+        inFlight.current = false;
+        setToggling(false);
+      }),
+    );
+  };
   const resolve = t(($) => $.collab.comments.resolve);
   const reopen = t(($) => $.collab.comments.reopen);
   const more = t(($) => $.collab.comments.threadActions);
@@ -215,7 +229,8 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
               size="icon"
               aria-label={reopen}
               className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => run(() => reopenThread(thread))}
+              disabled={toggling}
+              onClick={() => toggle(() => reopenThread(thread))}
             >
               <RotateCcw aria-hidden className="size-3.5" />
             </Button>
@@ -228,7 +243,8 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
               size="icon"
               aria-label={resolve}
               className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => run(() => resolveThread(thread))}
+              disabled={toggling}
+              onClick={() => toggle(() => resolveThread(thread))}
             >
               <Check aria-hidden className="size-3.5" />
             </Button>

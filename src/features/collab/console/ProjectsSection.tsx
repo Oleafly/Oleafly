@@ -25,6 +25,7 @@ import {
   type CollabProjectStatus,
   type CollabSortOrder,
 } from "@/lib/tauri";
+import { useBusyRows } from "../busy-rows";
 import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson } from "../people";
@@ -111,7 +112,7 @@ export function ProjectsSection({
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [request, setRequest] = useState(0);
   const [more, setMore] = useState<MoreState | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [confirming, setConfirming] = useState<CollabAdminProject | null>(null);
 
@@ -179,21 +180,19 @@ export function ProjectsSection({
         : current,
     );
 
-  const change = async (project: CollabAdminProject, archive: boolean) => {
+  const change = (project: CollabAdminProject, archive: boolean) => {
     setConfirming(null);
-    setBusyId(project.project_id);
-    setRowError(null);
-    try {
-      replace(
-        archive
-          ? await collabAdminArchiveProject(serverId, project.project_id)
-          : await collabAdminUnarchiveProject(serverId, project.project_id),
-      );
-    } catch (error) {
-      setRowError({ id: project.project_id, message: collabErrorText(error) });
-    } finally {
-      setBusyId(null);
-    }
+    const id = project.project_id;
+    return rows.run(id, async () => {
+      setRowError((current) => (current?.id === id ? null : current));
+      try {
+        replace(
+          archive ? await collabAdminArchiveProject(serverId, id) : await collabAdminUnarchiveProject(serverId, id),
+        );
+      } catch (error) {
+        setRowError({ id, message: collabErrorText(error) });
+      }
+    });
   };
 
   const sortBy = (column: Column) =>
@@ -206,7 +205,7 @@ export function ProjectsSection({
   const columnCount = columns.length + (canArchive ? 1 : 0);
 
   const renderAction = (project: CollabAdminProject) => {
-    const busy = busyId === project.project_id;
+    const busy = rows.busy.has(project.project_id);
     if (project.status === "archived") {
       return (
         <Button

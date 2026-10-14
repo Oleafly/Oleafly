@@ -235,6 +235,24 @@ describe("Comments tab", () => {
     await waitFor(() => expect(within(card("fox")).getByRole("button", { name: copy.resolve })).toBeInTheDocument());
   });
 
+  it("sends Resolve once for a double click", async () => {
+    const user = userEvent.setup();
+    let finish: (thread: CollabCommentThread) => void = () => undefined;
+    mocks.collabCommentResolve.mockReturnValue(
+      new Promise<CollabCommentThread>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    show([conversation]);
+    const button = within(card("quick")).getByRole("button", { name: copy.resolve });
+    await user.dblClick(button);
+    expect(mocks.collabCommentResolve).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+    await act(async () => finish({ ...conversation, resolved: { by: ALICE_ID, at: AT, verified: true } }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "quick" })).not.toBeInTheDocument());
+    expect(mocks.collabCommentResolve).toHaveBeenCalledTimes(1);
+  });
+
   it("edits and deletes the person's own message", async () => {
     const user = userEvent.setup();
     mocks.collabCommentEdit.mockResolvedValue(

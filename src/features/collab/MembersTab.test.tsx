@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -9,7 +9,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabMember } from "@/lib/tauri";
 import type { ServerRole } from "./roles";
-import { ALICE_ID, BOB_ID, CAROL_ID, SERVER_ID, collabError, device, fill, member } from "./tests/fixtures";
+import { ALICE_ID, BOB_ID, CAROL_ID, SERVER_ID, collabError, deferred, device, fill, member } from "./tests/fixtures";
 import { allowRadixSelect, chooseOption } from "./tests/select";
 
 const mocks = vi.hoisted(() => ({
@@ -131,6 +131,34 @@ describe("MembersTab", () => {
     await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.reactivate }));
     expect(mocks.collabAdminPatchMember).toHaveBeenLastCalledWith(SERVER_ID, BOB_ID, { status: "active" });
     expect(await within(rowOf(BOB_ID)).findByText(copy.active)).toBeInTheDocument();
+  });
+
+  it("keeps a row busy until its own action ends, whatever another row does", async () => {
+    const DAVE_ID = "0192a0b0-0000-7000-8000-0000000000d4";
+    const dave = member({ account_id: DAVE_ID, display_name: "Dave Ng", emails: ["dave@uni.edu"], logins: [] });
+    const forBob = deferred<CollabMember>();
+    const forDave = deferred<CollabMember>();
+    mocks.collabAdminPatchMember.mockImplementation((_server: string, accountId: string) =>
+      accountId === BOB_ID ? forBob.promise : forDave.promise,
+    );
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob, dave]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend }));
+    await user.click(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.suspend }));
+    expect(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend })).toBeDisabled();
+    await act(async () => {
+      forBob.resolve(member(bob.account, "suspended"));
+      await forBob.promise;
+    });
+    expect(within(rowOf(BOB_ID)).getByRole("button", { name: copy.reactivate })).toBeEnabled();
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.suspend })).toBeDisabled();
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.remove })).toBeDisabled();
+    await act(async () => {
+      forDave.resolve(member(dave.account, "suspended"));
+      await forDave.promise;
+    });
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.reactivate })).toBeEnabled();
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledTimes(2);
   });
 
   it("keeps staff rows read-only for a maintainer", () => {
