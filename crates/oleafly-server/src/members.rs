@@ -15,7 +15,13 @@ const ALLOWLIST_COLUMNS: &str =
     "id, kind, provider_id, value, server_role, created_at, bound_account";
 const DOMAIN_COLUMNS: &str = "id, domain, server_role, created_at";
 
+const UNKNOWN_ROLE: &str = "This server doesn't know that role.";
+
 pub fn role_to_str(role: ServerRole) -> &'static str {
+    debug_assert!(
+        role != ServerRole::Unknown,
+        "a role from a later server must be refused before it is stored"
+    );
     match role {
         ServerRole::Admin => "admin",
         ServerRole::Maintainer => "maintainer",
@@ -54,6 +60,13 @@ pub fn status_from_str(text: &str) -> Result<MemberStatus, ServerError> {
             "unknown stored member status {other}"
         ))),
     }
+}
+
+fn storable(role: ServerRole) -> Result<ServerRole, ServerError> {
+    if role == ServerRole::Unknown {
+        return Err(ServerError::BadRequest(UNKNOWN_ROLE.to_string()));
+    }
+    Ok(role)
 }
 
 pub fn is_staff(role: ServerRole) -> bool {
@@ -116,6 +129,7 @@ pub fn create_account(
     role: ServerRole,
     now: i64,
 ) -> Result<AccountId, ServerError> {
+    let role = storable(role)?;
     let id = AccountId::new_v7();
     conn.execute(
         "INSERT INTO accounts (id, display_name, avatar_url, server_role, status, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 'active', ?5, ?5)",
@@ -238,6 +252,7 @@ pub fn set_role(
     role: ServerRole,
     now: i64,
 ) -> Result<(), ServerError> {
+    let role = storable(role)?;
     let changed = conn.execute(
         "UPDATE accounts SET server_role = ?2, updated_at = ?3 WHERE id = ?1",
         params![account.to_string(), role_to_str(role), now],
@@ -270,6 +285,7 @@ pub fn reactivate_account(
     role: ServerRole,
     now: i64,
 ) -> Result<(), ServerError> {
+    let role = storable(role)?;
     let changed = conn.execute(
         "UPDATE accounts SET status = 'active', server_role = ?2, updated_at = ?3 WHERE id = ?1",
         params![account.to_string(), role_to_str(role), now],
@@ -488,6 +504,7 @@ pub fn add_allowlist(
     actor: Option<AccountId>,
     now: i64,
 ) -> Result<AllowlistEntry, ServerError> {
+    let role = storable(entry.role)?;
     let (kind, provider, value, key) = match &entry.matcher {
         AllowlistMatcher::Email { email } => {
             let key = normalize_email(email).ok_or_else(|| {
@@ -522,7 +539,7 @@ pub fn add_allowlist(
             provider,
             value,
             key,
-            role_to_str(entry.role),
+            role_to_str(role),
             now,
             actor.map(|account| account.to_string())
         ],
@@ -850,6 +867,30 @@ mod tests {
                 person.email.as_deref(),
                 Some("9+bo@users.noreply.github.com")
             );
+            Ok(())
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn a_role_from_a_later_server_is_refused_before_anything_is_stored() {
+        with_db(|conn| {
+            let ada = create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+            for refused in [
+                create_account(conn, "Eve", None, ServerRole::Unknown, 2).map(|_| ()),
+                set_role(conn, ada, ServerRole::Unknown, 2),
+                reactivate_account(conn, ada, ServerRole::Unknown, 2),
+                add_allowlist(conn, &email("eve@uni.edu", ServerRole::Unknown), None, 2)
+                    .map(|_| ()),
+            ] {
+                assert!(
+                    matches!(&refused, Err(ServerError::BadRequest(message)) if message.contains("doesn't know that role")),
+                    "{refused:?}"
+                );
+            }
+            assert_eq!(list_members(conn)?.len(), 1);
+            assert_eq!(account_role(conn, ada)?, Some(ServerRole::Member));
+            assert!(list_allowlist(conn)?.is_empty());
             Ok(())
         })
         .await;

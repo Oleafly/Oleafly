@@ -21,6 +21,7 @@ pub const INVITATION_DAYS: i64 = 14;
 pub const INVITATIONS_PER_HOUR: i64 = 20;
 const HOUR_MS: i64 = 60 * 60 * 1000;
 const COLUMNS: &str = "id, project_id, email, role, invited_by, status, created_at, expires_at";
+pub const GUEST_ROLES: &str = "A guest can be an Editor or a Viewer.";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Invitation {
@@ -203,6 +204,9 @@ pub fn create(
     approval_required: bool,
     now: i64,
 ) -> Result<Invitation, ServerError> {
+    if !matches!(role, ProjectRole::Editor | ProjectRole::Viewer) {
+        return Err(ServerError::BadRequest(GUEST_ROLES.to_string()));
+    }
     let recent: i64 = conn.query_row(
         "SELECT COUNT(*) FROM guest_invitations WHERE invited_by = ?1 AND created_at > ?2",
         params![invited_by.to_string(), now - HOUR_MS],
@@ -599,4 +603,46 @@ async fn prepare_invitation(
         to,
         content,
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+
+    #[tokio::test]
+    async fn an_invitation_with_a_role_a_guest_cannot_have_stores_nothing() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let owner = members::create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+                let project = projects::create_pending(conn, owner, "Thesis", 1)?;
+                projects::set_status(conn, project, ProjectStatus::Active, 1)?;
+                for role in [ProjectRole::Owner, ProjectRole::Unknown] {
+                    let refused = create(conn, project, "carol@uni.edu", role, owner, false, 2);
+                    assert!(
+                        matches!(&refused, Err(ServerError::BadRequest(message)) if message == GUEST_ROLES),
+                        "{role:?}: {refused:?}"
+                    );
+                }
+                let stored: i64 =
+                    conn.query_row("SELECT COUNT(*) FROM guest_invitations", [], |row| {
+                        row.get(0)
+                    })?;
+                assert_eq!(stored, 0);
+                let made = create(
+                    conn,
+                    project,
+                    "carol@uni.edu",
+                    ProjectRole::Viewer,
+                    owner,
+                    false,
+                    2,
+                )?;
+                assert_eq!(made.role, ProjectRole::Viewer);
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
 }

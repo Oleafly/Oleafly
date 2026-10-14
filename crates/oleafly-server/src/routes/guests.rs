@@ -156,9 +156,7 @@ async fn invite(
     let project: SharedProjectId = path_id(path)?;
     let request = json_body(body)?;
     if matches!(request.role, ProjectRole::Owner | ProjectRole::Unknown) {
-        return Err(ServerError::BadRequest(
-            "A guest can be an Editor or a Viewer.".to_string(),
-        ));
+        return Err(ServerError::BadRequest(guests::GUEST_ROLES.to_string()));
     }
     let email = members::normalize_email(&request.email).ok_or_else(|| {
         ServerError::BadRequest("That email address doesn't look right.".to_string())
