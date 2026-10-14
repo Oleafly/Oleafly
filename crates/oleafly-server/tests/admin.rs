@@ -1326,3 +1326,73 @@ async fn adding_someone_who_already_has_an_account_is_refused_and_emails_nobody(
         StatusCode::CREATED,
     );
 }
+
+async fn live_sign_ins(app: &TestApp, account: AccountId) -> (i64, i64, i64) {
+    app.state
+        .db
+        .call(move |conn| {
+            let id = account.to_string();
+            let count = |sql: &str| -> rusqlite::Result<i64> {
+                conn.query_row(sql, [&id], |row| row.get(0))
+            };
+            Ok((
+                count("SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked_at IS NULL")?,
+                count("SELECT COUNT(*) FROM access_tokens WHERE account_id = ?1")?,
+                count(
+                    "SELECT COUNT(*) FROM refresh_tokens WHERE account_id = ?1 AND revoked_at IS NULL",
+                )?,
+            ))
+        })
+        .await
+        .unwrap()
+}
+
+async fn with_a_second_device(app: &TestApp, member: &SeededMember) {
+    let (account, now) = (member.account_id, app.clock.now_ms());
+    app.state
+        .db
+        .call(move |conn| {
+            let device = oleafly_server::auth::devices::register(
+                conn,
+                account,
+                &tokens::random_token(),
+                "Lab PC",
+                "linux",
+                now,
+            )?
+            .device_id;
+            oleafly_server::auth::refresh::issue_session(conn, account, device, now)?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn suspending_or_removing_someone_signs_out_every_device_in_the_same_step() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let paused = seed_member(&app, ServerRole::Member).await;
+    let gone = seed_member(&app, ServerRole::Member).await;
+    for member in [&paused, &gone] {
+        with_a_second_device(&app, member).await;
+        assert_eq!(live_sign_ins(&app, member.account_id).await, (2, 2, 1));
+    }
+    expect_status(
+        support::send_patch(
+            &app.router,
+            &member_path(paused.account_id),
+            token(&admin),
+            status_patch(MemberStatus::Suspended),
+        )
+        .await,
+        StatusCode::OK,
+    );
+    assert_eq!(live_sign_ins(&app, paused.account_id).await, (0, 0, 0));
+    expect_status(
+        support::send_delete(&app.router, &member_path(gone.account_id), token(&admin)).await,
+        StatusCode::NO_CONTENT,
+    );
+    assert_eq!(live_sign_ins(&app, gone.account_id).await, (0, 0, 0));
+    assert_eq!(live_sign_ins(&app, admin.account_id).await.0, 1);
+}
