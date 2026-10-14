@@ -33,7 +33,7 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     )
     .await
     {
-        Err(CollabError::Unauthorized) => {
+        Err(CollabError::Unauthorized | CollabError::Api { status: 401, .. }) => {
             let access = link
                 .sessions
                 .force_refresh(link.server_id, &link.client)
@@ -47,7 +47,6 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
             )
             .await
             .map(|connection| connection.into_socket())
-            .map_err(refused_after_refresh)
         }
         other => other.map(|connection| connection.into_socket()),
     }

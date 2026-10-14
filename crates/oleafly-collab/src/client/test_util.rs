@@ -155,6 +155,75 @@ async fn read_whole_request(stream: &mut tokio::net::TcpStream) -> Option<String
     Some(String::from_utf8_lossy(&request).to_string())
 }
 
+pub(crate) struct UpgradeFront {
+    pub(crate) url: ServerUrl,
+    pub(crate) upgrades: Heard,
+}
+
+impl UpgradeFront {
+    // Passes everything on to `upstream` and keeps the head of every
+    // WebSocket upgrade, answering those with `refusal` when one is given.
+    pub(crate) async fn start(upstream: &ServerUrl, refusal: Option<String>) -> UpgradeFront {
+        let target = upstream.endpoint("/");
+        let upstream = format!(
+            "{}:{}",
+            target.host_str().expect("host"),
+            target.port_or_known_default().expect("port")
+        );
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        let upgrades: Heard = Arc::default();
+        let kept = Arc::clone(&upgrades);
+        tokio::spawn(async move {
+            while let Ok((mut client, _)) = listener.accept().await {
+                let (upstream, refusal, kept) =
+                    (upstream.clone(), refusal.clone(), Arc::clone(&kept));
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut buffer = [0u8; 8192];
+                    while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match client.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => head.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    let text = String::from_utf8_lossy(&head).to_string();
+                    if text.to_ascii_lowercase().contains("upgrade: websocket") {
+                        kept.lock().expect("upgrades").push(text);
+                        if let Some(refusal) = refusal {
+                            let _ = client.write_all(refusal.as_bytes()).await;
+                            let _ = client.shutdown().await;
+                            return;
+                        }
+                    }
+                    let Ok(mut server) = tokio::net::TcpStream::connect(&upstream).await else {
+                        return;
+                    };
+                    if server.write_all(&head).await.is_ok() {
+                        let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+                    }
+                });
+            }
+        });
+        UpgradeFront {
+            url: ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("front address"),
+            upgrades,
+        }
+    }
+
+    pub(crate) fn upgrades(&self) -> Vec<String> {
+        self.upgrades.lock().expect("upgrades").clone()
+    }
+}
+
+pub(crate) fn refusal_with(status: &str, code: &str) -> String {
+    http_response(
+        status,
+        &[("Content-Type", "application/json")],
+        &format!("{{\"code\":\"{code}\",\"message\":\"Sign in to this server again.\"}}"),
+    )
+}
+
 pub(crate) async fn closed_url() -> ServerUrl {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
     let port = listener.local_addr().expect("address").port();

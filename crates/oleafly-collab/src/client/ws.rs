@@ -2,12 +2,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, SessionEndReason};
+use oleafly_collab_protocol::auth::{
+    challenge_message, ApiError, ChallengePurpose, SessionEndReason,
+};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId};
 use rustls::pki_types::CertificateDer;
 use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
+use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 
@@ -32,7 +37,7 @@ pub async fn connect_socket(
     device_id: DeviceId,
     key: &DeviceKey,
 ) -> Result<SocketConnection, CollabError> {
-    let mut socket = open_socket(url).await?;
+    let mut socket = open_socket(url, Some(access_token)).await?;
     let nonce = match next_frame(&mut socket).await? {
         ServerFrame::Challenge {
             nonce,
@@ -103,20 +108,25 @@ impl SocketConnection {
     }
 }
 
-pub(crate) async fn open_socket(url: &ServerUrl) -> Result<Socket, CollabError> {
+pub(crate) async fn open_socket(
+    url: &ServerUrl,
+    access: Option<&str>,
+) -> Result<Socket, CollabError> {
     let target = url.websocket();
+    let mut request = target.as_str().into_client_request().map_err(ws_error)?;
+    if let Some(access) = access {
+        let bearer = HeaderValue::from_str(&format!("Bearer {access}"))
+            .map_err(|_| CollabError::Unauthorized)?;
+        request.headers_mut().insert(AUTHORIZATION, bearer);
+    }
     let stream = connect_tcp(&target).await?;
     let connector = if target.scheme() == "wss" {
         Connector::Rustls(tls_config()?)
     } else {
         Connector::Plain
     };
-    let handshake = tokio_tungstenite::client_async_tls_with_config(
-        target.as_str(),
-        stream,
-        None,
-        Some(connector),
-    );
+    let handshake =
+        tokio_tungstenite::client_async_tls_with_config(request, stream, None, Some(connector));
     match tokio::time::timeout(FRAME_TIMEOUT, handshake).await {
         Ok(Ok((socket, _))) => Ok(socket),
         Ok(Err(error)) => Err(ws_error(error)),
@@ -246,12 +256,24 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
 
 fn ws_error(error: WsError) -> CollabError {
     match error {
-        WsError::Http(response) if response.status().as_u16() == 401 => CollabError::Unauthorized,
-        WsError::Http(response) => CollabError::Api {
-            status: response.status().as_u16(),
-            code: "websocket_refused".to_string(),
-            message: "the server refused the WebSocket upgrade".to_string(),
-        },
+        WsError::Http(response) => {
+            let status = response.status().as_u16();
+            let said = response
+                .body()
+                .as_deref()
+                .and_then(|body| serde_json::from_slice::<ApiError>(body).ok());
+            match said {
+                Some(error) if status == 401 => match SessionEndReason::from_code(&error.code) {
+                    Some(reason) => CollabError::SessionEnded(reason),
+                    None => CollabError::Unauthorized,
+                },
+                _ => CollabError::Api {
+                    status,
+                    code: "websocket_refused".to_string(),
+                    message: "the server refused the WebSocket upgrade".to_string(),
+                },
+            }
+        }
         other => CollabError::Network(other.to_string()),
     }
 }
@@ -259,7 +281,9 @@ fn ws_error(error: WsError) -> CollabError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::test_util::{device_key, signed_in_admin};
+    use crate::client::test_util::{
+        device_key, http_response, refusal_with, signed_in_admin, UpgradeFront,
+    };
 
     #[test]
     fn tls_config_builds_on_the_ring_provider() {
@@ -343,6 +367,80 @@ mod tests {
             result,
             Err(CollabError::ServerChanged { expected: e, found: f })
                 if e == expected && f == signed.manifest.server_id
+        ));
+    }
+
+    fn bearer_of(head: &str) -> Option<&str> {
+        head.lines()
+            .filter_map(|line| line.split_once(':'))
+            .find(|(name, _)| name.trim().eq_ignore_ascii_case("authorization"))
+            .map(|(_, value)| value.trim())
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_upgrade_carries_the_access_token() {
+        let signed = signed_in_admin().await;
+        let front = UpgradeFront::start(&signed.url, None).await;
+        let socket = connect_socket(
+            &front.url,
+            signed.manifest.server_id,
+            &signed.tokens.access_token,
+            signed.tokens.device_id,
+            &signed.key,
+        )
+        .await
+        .expect("socket");
+        socket.close().await;
+        let upgrades = front.upgrades();
+        assert_eq!(upgrades.len(), 1);
+        assert_eq!(
+            bearer_of(&upgrades[0]),
+            Some(format!("Bearer {}", signed.tokens.access_token).as_str())
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn only_the_servers_own_401_on_the_upgrade_means_the_session_is_gone() {
+        let signed = signed_in_admin().await;
+        let connect = |front: UpgradeFront| {
+            let signed = &signed;
+            async move {
+                connect_socket(
+                    &front.url,
+                    signed.manifest.server_id,
+                    &signed.tokens.access_token,
+                    signed.tokens.device_id,
+                    &signed.key,
+                )
+                .await
+                .map(|_| ())
+            }
+        };
+        let refused = UpgradeFront::start(
+            &signed.url,
+            Some(refusal_with("401 Unauthorized", "unauthorized")),
+        )
+        .await;
+        assert_eq!(connect(refused).await, Err(CollabError::Unauthorized));
+        let suspended = UpgradeFront::start(
+            &signed.url,
+            Some(refusal_with("401 Unauthorized", "account_suspended")),
+        )
+        .await;
+        assert_eq!(
+            connect(suspended).await,
+            Err(CollabError::SessionEnded(
+                SessionEndReason::AccountSuspended
+            ))
+        );
+        let bare = UpgradeFront::start(
+            &signed.url,
+            Some(http_response("401 Unauthorized", &[], "")),
+        )
+        .await;
+        assert!(matches!(
+            connect(bare).await,
+            Err(CollabError::Api { status: 401, ref code, .. }) if code == "websocket_refused"
         ));
     }
 
