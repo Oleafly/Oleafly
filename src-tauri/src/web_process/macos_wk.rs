@@ -95,6 +95,12 @@ fn watch<R: Runtime>(webview: &Webview<R>) {
     if webview.label() != webview.window().label() {
         return;
     }
+    if !watchdog::enabled(
+        cfg!(debug_assertions) && !cfg!(feature = "e2e-testing"),
+        std::env::var_os("OLEAFLY_WEB_WATCHDOG").is_some(),
+    ) {
+        return;
+    }
     let Some(watchdogs) = webview.try_state::<Watchdogs>() else {
         return;
     };
