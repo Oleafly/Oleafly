@@ -39,7 +39,7 @@ macro_rules! texts {
 
         impl Text {
             #[cfg(test)]
-            pub(crate) const ALL: &'static [Text] = &[$(Text::$variant,)*];
+            pub(crate) const ALL: &[Text] = &[$(Text::$variant,)*];
 
             pub(crate) fn key(self) -> &'static str {
                 match self {
@@ -94,7 +94,7 @@ texts! {
 }
 
 fn catalogs() -> &'static HashMap<&'static str, Catalog> {
-    static CATALOGS: OnceLock<HashMap<&'static str, Catalog>> = OnceLock::new();
+    static CATALOGS: OnceLock<HashMap<&str, Catalog>> = OnceLock::new();
     CATALOGS.get_or_init(|| {
         SOURCES
             .iter()

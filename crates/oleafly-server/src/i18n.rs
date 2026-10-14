@@ -43,7 +43,7 @@ macro_rules! keys {
         }
 
         impl Key {
-            pub const ALL: &'static [Key] = &[$(Key::$variant,)*];
+            pub const ALL: &[Key] = &[$(Key::$variant,)*];
 
             pub fn name(self) -> &'static str {
                 match self {
@@ -135,7 +135,7 @@ pub fn locales() -> impl Iterator<Item = &'static str> {
 }
 
 fn catalogs() -> &'static HashMap<&'static str, Catalog> {
-    static CATALOGS: OnceLock<HashMap<&'static str, Catalog>> = OnceLock::new();
+    static CATALOGS: OnceLock<HashMap<&str, Catalog>> = OnceLock::new();
     CATALOGS.get_or_init(|| {
         SOURCES
             .iter()
