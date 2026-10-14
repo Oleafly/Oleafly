@@ -44,9 +44,13 @@
       "detached": "Questi progetti condivisi di {{server}} non si sincronizzano più. Restano su questo computer come progetti normali.",
       "unsent": {
         "title": "Alcune modifiche non sono ancora state inviate",
-        "description": "Progetti condivisi con modifiche che il server non ha ancora: {{count}}. Oleafly può tenere una copia locale di ciascuno su questo computer, oppure puoi restare connesso e riprovare più tardi.",
+        "description": "Questi progetti condivisi hanno modifiche che il server non ha ancora. Se tieni una copia locale, ciascuno smette di sincronizzarsi e resta su questo computer con il nome indicato sotto. Oppure puoi restare connesso e riprovare più tardi.",
+        "removeDescription": "Questi progetti condivisi hanno modifiche che il server non ha ancora. Se tieni una copia locale, ciascuno smette di sincronizzarsi e resta su questo computer con il nome indicato sotto. Oppure puoi tenere il server e riprovare più tardi.",
+        "changes": "Modifiche non inviate: {{changes}}",
+        "staysAs": "Resta come {{name}}",
         "keep": "Tieni una copia locale",
-        "stay": "Resta connesso"
+        "stay": "Resta connesso",
+        "keepServer": "Tieni il server"
       },
       "emails": {
         "label": "Inviami un'email quando qualcuno condivide un progetto",

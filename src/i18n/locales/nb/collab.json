@@ -44,9 +44,13 @@
       "detached": "Disse delte prosjektene fra {{server}} synkroniseres ikke lenger. De blir værende på denne maskinen som vanlige prosjekter.",
       "unsent": {
         "title": "Noen endringer er ikke sendt ennå",
-        "description": "Delte prosjekter med endringer serveren ikke har ennå: {{count}}. Oleafly kan beholde en lokal kopi av hvert prosjekt på denne maskinen, eller du kan forbli logget inn og prøve igjen senere.",
+        "description": "Disse delte prosjektene har endringer serveren ikke har ennå. Hvis du beholder en lokal kopi, slutter hvert prosjekt å synkronisere og blir værende på denne maskinen med navnet nedenfor. Du kan også forbli logget inn og prøve igjen senere.",
+        "removeDescription": "Disse delte prosjektene har endringer serveren ikke har ennå. Hvis du beholder en lokal kopi, slutter hvert prosjekt å synkronisere og blir værende på denne maskinen med navnet nedenfor. Du kan også beholde serveren og prøve igjen senere.",
+        "changes": "Usendte endringer: {{changes}}",
+        "staysAs": "Blir værende som {{name}}",
         "keep": "Behold en lokal kopi",
-        "stay": "Forbli logget inn"
+        "stay": "Forbli logget inn",
+        "keepServer": "Behold serveren"
       },
       "emails": {
         "label": "Send meg e-post når noen deler et prosjekt",

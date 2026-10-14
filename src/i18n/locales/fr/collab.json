@@ -44,9 +44,13 @@
       "detached": "Ces projets partagés de {{server}} ne se synchronisent plus. Ils restent sur cet ordinateur comme des projets ordinaires.",
       "unsent": {
         "title": "Certaines modifications n'ont pas encore été envoyées",
-        "description": "Projets partagés avec des modifications que le serveur n'a pas encore : {{count}}. Oleafly peut garder une copie locale de chacun sur cet ordinateur, ou vous pouvez rester connecté et réessayer plus tard.",
+        "description": "Ces projets partagés ont des modifications que le serveur n'a pas encore. Si vous gardez une copie locale, chacun cesse de se synchroniser et reste sur cet ordinateur sous le nom indiqué ci-dessous. Vous pouvez aussi rester connecté et réessayer plus tard.",
+        "removeDescription": "Ces projets partagés ont des modifications que le serveur n'a pas encore. Si vous gardez une copie locale, chacun cesse de se synchroniser et reste sur cet ordinateur sous le nom indiqué ci-dessous. Vous pouvez aussi garder le serveur et réessayer plus tard.",
+        "changes": "Modifications non envoyées : {{changes}}",
+        "staysAs": "Reste sous le nom {{name}}",
         "keep": "Garder une copie locale",
-        "stay": "Rester connecté"
+        "stay": "Rester connecté",
+        "keepServer": "Garder le serveur"
       },
       "emails": {
         "label": "M'envoyer un courriel quand quelqu'un partage un projet",

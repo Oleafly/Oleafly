@@ -44,9 +44,13 @@
       "detached": "Te udostępnione projekty z serwera {{server}} przestały się synchronizować. Zostają na tym komputerze jako zwykłe projekty.",
       "unsent": {
         "title": "Niektóre zmiany nie zostały jeszcze wysłane",
-        "description": "Udostępnione projekty ze zmianami, których serwer jeszcze nie ma: {{count}}. Oleafly może zachować kopię lokalną każdego z nich na tym komputerze albo możesz się nie wylogowywać i spróbować ponownie później.",
+        "description": "Te udostępnione projekty mają zmiany, których serwer jeszcze nie ma. Jeśli zachowasz kopię lokalną, każdy z nich przestanie się synchronizować i zostanie na tym komputerze pod nazwą podaną poniżej. Możesz też się nie wylogowywać i spróbować ponownie później.",
+        "removeDescription": "Te udostępnione projekty mają zmiany, których serwer jeszcze nie ma. Jeśli zachowasz kopię lokalną, każdy z nich przestanie się synchronizować i zostanie na tym komputerze pod nazwą podaną poniżej. Możesz też zachować serwer i spróbować ponownie później.",
+        "changes": "Niewysłane zmiany: {{changes}}",
+        "staysAs": "Zostanie jako {{name}}",
         "keep": "Zachowaj kopię lokalną",
-        "stay": "Nie wylogowuj"
+        "stay": "Nie wylogowuj",
+        "keepServer": "Zachowaj serwer"
       },
       "emails": {
         "label": "Wyślij mi e-mail, gdy ktoś udostępni projekt",

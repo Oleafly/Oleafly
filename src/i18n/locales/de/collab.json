@@ -44,9 +44,13 @@
       "detached": "Diese geteilten Projekte von {{server}} werden nicht mehr abgeglichen. Sie bleiben als normale Projekte auf diesem Computer.",
       "unsent": {
         "title": "Einige Änderungen wurden noch nicht gesendet",
-        "description": "Geteilte Projekte mit Änderungen, die der Server noch nicht hat: {{count}}. Oleafly kann von jedem Projekt eine lokale Kopie auf diesem Computer behalten, oder Sie bleiben angemeldet und versuchen es später noch einmal.",
+        "description": "Diese geteilten Projekte haben Änderungen, die der Server noch nicht hat. Wenn Sie eine lokale Kopie behalten, wird jedes Projekt nicht mehr abgeglichen und bleibt unter dem unten genannten Namen auf diesem Computer. Oder Sie bleiben angemeldet und versuchen es später noch einmal.",
+        "removeDescription": "Diese geteilten Projekte haben Änderungen, die der Server noch nicht hat. Wenn Sie eine lokale Kopie behalten, wird jedes Projekt nicht mehr abgeglichen und bleibt unter dem unten genannten Namen auf diesem Computer. Oder Sie behalten den Server und versuchen es später noch einmal.",
+        "changes": "Nicht gesendete Änderungen: {{changes}}",
+        "staysAs": "Bleibt als {{name}}",
         "keep": "Lokale Kopie behalten",
-        "stay": "Angemeldet bleiben"
+        "stay": "Angemeldet bleiben",
+        "keepServer": "Server behalten"
       },
       "emails": {
         "label": "Mir eine E-Mail schicken, wenn jemand ein Projekt teilt",

@@ -44,9 +44,13 @@
       "detached": "Deze gedeelde projecten van {{server}} synchroniseren niet meer. Ze blijven op deze computer als gewone projecten.",
       "unsent": {
         "title": "Sommige wijzigingen zijn nog niet verzonden",
-        "description": "Gedeelde projecten met wijzigingen die de server nog niet heeft: {{count}}. Oleafly kan van elk project een lokale kopie op deze computer bewaren, of je blijft aangemeld en probeert het later opnieuw.",
+        "description": "Deze gedeelde projecten hebben wijzigingen die de server nog niet heeft. Als je een lokale kopie bewaart, synchroniseert elk project niet meer en blijft het op deze computer onder de naam hieronder. Je kunt ook aangemeld blijven en het later opnieuw proberen.",
+        "removeDescription": "Deze gedeelde projecten hebben wijzigingen die de server nog niet heeft. Als je een lokale kopie bewaart, synchroniseert elk project niet meer en blijft het op deze computer onder de naam hieronder. Je kunt ook de server houden en het later opnieuw proberen.",
+        "changes": "Niet-verzonden wijzigingen: {{changes}}",
+        "staysAs": "Blijft als {{name}}",
         "keep": "Lokale kopie bewaren",
-        "stay": "Aangemeld blijven"
+        "stay": "Aangemeld blijven",
+        "keepServer": "Server houden"
       },
       "emails": {
         "label": "Mail me als iemand een project deelt",

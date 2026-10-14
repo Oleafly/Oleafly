@@ -44,9 +44,13 @@
       "detached": "De här delade projekten från {{server}} synkas inte längre. De stannar på den här datorn som vanliga projekt.",
       "unsent": {
         "title": "Vissa ändringar har inte skickats än",
-        "description": "Delade projekt med ändringar som servern inte har än: {{count}}. Oleafly kan behålla en lokal kopia av varje projekt på den här datorn, eller så kan du förbli inloggad och försöka igen senare.",
+        "description": "De här delade projekten har ändringar som servern inte har än. Om du behåller en lokal kopia slutar varje projekt att synkas och stannar på den här datorn med namnet nedan. Du kan också förbli inloggad och försöka igen senare.",
+        "removeDescription": "De här delade projekten har ändringar som servern inte har än. Om du behåller en lokal kopia slutar varje projekt att synkas och stannar på den här datorn med namnet nedan. Du kan också behålla servern och försöka igen senare.",
+        "changes": "Ej skickade ändringar: {{changes}}",
+        "staysAs": "Stannar som {{name}}",
         "keep": "Behåll en lokal kopia",
-        "stay": "Förbli inloggad"
+        "stay": "Förbli inloggad",
+        "keepServer": "Behåll servern"
       },
       "emails": {
         "label": "Mejla mig när någon delar ett projekt",

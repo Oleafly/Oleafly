@@ -44,9 +44,13 @@
       "detached": "{{server}} sunucusundaki bu paylaşılan projeler artık eşitlenmiyor. Bu bilgisayarda sıradan projeler olarak kalır.",
       "unsent": {
         "title": "Bazı değişiklikler henüz gönderilmedi",
-        "description": "Sunucunun henüz almadığı değişiklikleri olan paylaşılan projeler: {{count}}. Oleafly her birinin yerel kopyasını bu bilgisayarda saklayabilir ya da oturumunuzu açık tutup daha sonra yeniden deneyebilirsiniz.",
+        "description": "Bu paylaşılan projelerde sunucunun henüz almadığı değişiklikler var. Yerel kopyayı saklarsanız her proje eşitlemeyi bırakır ve aşağıda gösterilen adla bu bilgisayarda kalır. Oturumunuzu açık tutup daha sonra yeniden de deneyebilirsiniz.",
+        "removeDescription": "Bu paylaşılan projelerde sunucunun henüz almadığı değişiklikler var. Yerel kopyayı saklarsanız her proje eşitlemeyi bırakır ve aşağıda gösterilen adla bu bilgisayarda kalır. Sunucuyu tutup daha sonra yeniden de deneyebilirsiniz.",
+        "changes": "Gönderilmemiş değişiklikler: {{changes}}",
+        "staysAs": "{{name}} olarak kalır",
         "keep": "Yerel kopyayı sakla",
-        "stay": "Oturumu açık tut"
+        "stay": "Oturumu açık tut",
+        "keepServer": "Sunucuyu tut"
       },
       "emails": {
         "label": "Biri bir proje paylaştığında bana e-posta gönder",

@@ -44,9 +44,13 @@
       "detached": "Aceste proiecte partajate de pe {{server}} nu se mai sincronizează. Rămân pe acest computer ca proiecte obișnuite.",
       "unsent": {
         "title": "Unele modificări nu au fost trimise încă",
-        "description": "Proiecte partajate cu modificări pe care serverul nu le are încă: {{count}}. Oleafly poate păstra o copie locală a fiecăruia pe acest computer sau poți rămâne autentificat și încerca din nou mai târziu.",
+        "description": "Aceste proiecte partajate au modificări pe care serverul nu le are încă. Dacă păstrezi o copie locală, fiecare nu se mai sincronizează și rămâne pe acest computer cu numele de mai jos. Poți și să rămâi autentificat și să încerci din nou mai târziu.",
+        "removeDescription": "Aceste proiecte partajate au modificări pe care serverul nu le are încă. Dacă păstrezi o copie locală, fiecare nu se mai sincronizează și rămâne pe acest computer cu numele de mai jos. Poți și să păstrezi serverul și să încerci din nou mai târziu.",
+        "changes": "Modificări netrimise: {{changes}}",
+        "staysAs": "Rămâne ca {{name}}",
         "keep": "Păstrează o copie locală",
-        "stay": "Rămâi autentificat"
+        "stay": "Rămâi autentificat",
+        "keepServer": "Păstrează serverul"
       },
       "emails": {
         "label": "Trimite-mi un e-mail când cineva partajează un proiect",

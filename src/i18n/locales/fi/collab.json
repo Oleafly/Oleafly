@@ -44,9 +44,13 @@
       "detached": "Nämä palvelimen {{server}} jaetut projektit eivät enää synkronoidu. Ne pysyvät tällä koneella tavallisina projekteina.",
       "unsent": {
         "title": "Kaikkia muutoksia ei ole vielä lähetetty",
-        "description": "Jaetut projektit, joissa on muutoksia, joita palvelimella ei vielä ole: {{count}}. Oleafly voi säilyttää jokaisesta paikallisen kopion tällä koneella, tai voit pysyä kirjautuneena ja yrittää myöhemmin uudelleen.",
+        "description": "Näissä jaetuissa projekteissa on muutoksia, joita palvelimella ei vielä ole. Jos säilytät paikallisen kopion, jokainen projekti lakkaa synkronoitumasta ja jää tälle koneelle alla näkyvällä nimellä. Voit myös pysyä kirjautuneena ja yrittää myöhemmin uudelleen.",
+        "removeDescription": "Näissä jaetuissa projekteissa on muutoksia, joita palvelimella ei vielä ole. Jos säilytät paikallisen kopion, jokainen projekti lakkaa synkronoitumasta ja jää tälle koneelle alla näkyvällä nimellä. Voit myös säilyttää palvelimen ja yrittää myöhemmin uudelleen.",
+        "changes": "Lähettämättömiä muutoksia: {{changes}}",
+        "staysAs": "Jää nimellä {{name}}",
         "keep": "Säilytä paikallinen kopio",
-        "stay": "Pysy kirjautuneena"
+        "stay": "Pysy kirjautuneena",
+        "keepServer": "Säilytä palvelin"
       },
       "emails": {
         "label": "Lähetä minulle sähköpostia, kun joku jakaa projektin",

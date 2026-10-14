@@ -8,7 +8,14 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
-import { collabServerDevices, collabServerSignOutDevice, type CollabAccount, type CollabServer } from "@/lib/tauri";
+import { formatNumber } from "@/lib/intl";
+import {
+  collabServerDevices,
+  collabServerSignOutDevice,
+  type CollabAccount,
+  type CollabServer,
+  type CollabUnsentProject,
+} from "@/lib/tauri";
 import { openAdminConsole } from "./console/open-console";
 import { ConnectionChecks } from "./ConnectionChecks";
 import { DevicesList } from "./DevicesList";
@@ -37,6 +44,27 @@ function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; r
         ) : null}
       </div>
     </div>
+  );
+}
+
+// Which projects hold the changes, and the name each keeps as a local copy.
+function UnsentProjects({ projects }: Readonly<{ projects: readonly CollabUnsentProject[] }>) {
+  const { t } = useTranslation(["collab", "native"]);
+  return (
+    <ul className="mt-3 max-h-48 divide-y overflow-y-auto rounded-md border text-xs" data-testid="collab-unsent-projects">
+      {projects.map((project) => (
+        <li key={project.project_id} className="px-3 py-2">
+          <p className="truncate font-medium">{project.name}</p>
+          <p className="text-muted-foreground">
+            {t(($) => $.collab.section.server.unsent.changes, { changes: formatNumber(project.changes) })}
+            {" · "}
+            {t(($) => $.collab.section.server.unsent.staysAs, {
+              name: t(($) => $.native.collab.localCopy, { name: project.name }),
+            })}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -104,7 +132,7 @@ export function ServerCard({
     if (code) setActionError(collabErrorMessage(code));
   };
 
-  const unsentCount = unsent?.projects.length ?? 0;
+  const removing = unsent?.action === "remove";
 
   return (
     <>
@@ -211,12 +239,22 @@ export function ServerCard({
       <ConfirmationDialog
         open={unsent !== null}
         title={t(($) => $.collab.section.server.unsent.title)}
-        description={t(($) => $.collab.section.server.unsent.description, { count: unsentCount })}
+        description={
+          removing
+            ? t(($) => $.collab.section.server.unsent.removeDescription)
+            : t(($) => $.collab.section.server.unsent.description)
+        }
         confirmLabel={t(($) => $.collab.section.server.unsent.keep)}
-        cancelLabel={t(($) => $.collab.section.server.unsent.stay)}
+        cancelLabel={
+          removing
+            ? t(($) => $.collab.section.server.unsent.keepServer)
+            : t(($) => $.collab.section.server.unsent.stay)
+        }
         onConfirm={() => void doKeepLocalCopies()}
         onCancel={() => stay(serverId)}
-      />
+      >
+        {unsent ? <UnsentProjects projects={unsent.projects} /> : null}
+      </ConfirmationDialog>
     </>
   );
 }

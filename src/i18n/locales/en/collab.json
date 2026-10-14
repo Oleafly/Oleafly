@@ -44,9 +44,13 @@
       "detached": "These shared projects from {{server}} stopped syncing. They stay on this computer as ordinary projects.",
       "unsent": {
         "title": "Some changes haven't been sent",
-        "description": "Shared projects with changes the server doesn't have yet: {{count}}. Oleafly can keep a local copy of each one on this computer, or you can stay signed in and try again later.",
+        "description": "These shared projects have changes the server doesn't have yet. If you keep a local copy, each one stops syncing and stays on this computer under the name shown below. Or stay signed in and try again later.",
+        "removeDescription": "These shared projects have changes the server doesn't have yet. If you keep a local copy, each one stops syncing and stays on this computer under the name shown below. Or keep the server and try again later.",
+        "changes": "Unsent changes: {{changes}}",
+        "staysAs": "Stays as {{name}}",
         "keep": "Keep a local copy",
-        "stay": "Stay signed in"
+        "stay": "Stay signed in",
+        "keepServer": "Keep the server"
       },
       "emails": {
         "label": "Email me when someone shares a project",

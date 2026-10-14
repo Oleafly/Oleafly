@@ -44,9 +44,13 @@
       "detached": "Tyto sdílené projekty ze serveru {{server}} se přestaly synchronizovat. Zůstávají v tomto počítači jako běžné projekty.",
       "unsent": {
         "title": "Některé změny ještě nebyly odeslány",
-        "description": "Sdílené projekty se změnami, které server ještě nemá: {{count}}. Oleafly může každý z nich ponechat v tomto počítači jako místní kopii. Případně se neodhlašujte a zkuste to později.",
+        "description": "Tyto sdílené projekty mají změny, které server ještě nemá. Když ponecháte místní kopii, každý z nich se přestane synchronizovat a zůstane v tomto počítači pod názvem uvedeným níže. Případně se neodhlašujte a zkuste to později.",
+        "removeDescription": "Tyto sdílené projekty mají změny, které server ještě nemá. Když ponecháte místní kopii, každý z nich se přestane synchronizovat a zůstane v tomto počítači pod názvem uvedeným níže. Případně si server ponechte a zkuste to později.",
+        "changes": "Neodeslané změny: {{changes}}",
+        "staysAs": "Zůstane jako {{name}}",
         "keep": "Ponechat místní kopii",
-        "stay": "Neodhlašovat se"
+        "stay": "Neodhlašovat se",
+        "keepServer": "Ponechat server"
       },
       "emails": {
         "label": "Poslat mi e-mail, když se mnou někdo sdílí projekt",
