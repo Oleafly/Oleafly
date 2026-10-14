@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::extract::rejection::{JsonRejection, PathRejection, QueryRejection};
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
-use axum::http::{header, HeaderMap};
+use axum::http::HeaderMap;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
@@ -19,7 +19,7 @@ use crate::error::ServerError;
 use crate::polls::{self, Opening, PollSession};
 use crate::rate_limit::client_key;
 use crate::rooms::RoomMember;
-use crate::routes::ws::{frame_error, proves_device, unexpected_frame, Opened, Peer};
+use crate::routes::ws::{bearer_token, frame_error, proves_device, unexpected_frame, Opened, Peer};
 use crate::routes::{json_body, path_id, ClientIp};
 use crate::state::AppState;
 
@@ -42,13 +42,6 @@ struct PollQuery {
 fn header_text(headers: &HeaderMap, name: &str) -> Option<String> {
     let value = headers.get(name)?.to_str().ok()?.trim();
     (!value.is_empty()).then(|| value.to_owned())
-}
-
-fn bearer(headers: &HeaderMap) -> Option<String> {
-    let value = header_text(headers, header::AUTHORIZATION.as_str())?;
-    let (scheme, token) = value.split_once(' ')?;
-    let token = token.trim();
-    (scheme.eq_ignore_ascii_case("bearer") && !token.is_empty()).then(|| token.to_owned())
 }
 
 fn address_of(ip: Option<String>) -> String {
@@ -118,7 +111,7 @@ async fn open(
     project: SharedProjectId,
     since: u64,
 ) -> Result<Json<PollBatch>, ServerError> {
-    let token = bearer(headers).ok_or(ServerError::Unauthorized)?;
+    let token = bearer_token(headers).ok_or(ServerError::Unauthorized)?;
     let protocol = header_text(headers, PROTOCOL_HEADER)
         .and_then(|value| value.parse::<u32>().ok())
         .ok_or_else(|| {

@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
-use axum::response::Response;
+use axum::http::{header, HeaderMap};
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::admin::MemberStatus;
@@ -27,34 +28,75 @@ use crate::peers::{self, Bound};
 use crate::projects;
 use crate::rate_limit::client_key;
 use crate::rooms::{self, Outbox, Queued, RoomMember};
-use crate::routes::ClientIp;
+use crate::routes::{authenticate, Authenticated, ClientIp};
 use crate::settings;
-use crate::sockets::{LinkTiming, SocketControl};
+use crate::sockets::{LinkTiming, SocketControl, SocketSlot};
 use crate::state::AppState;
 use crate::tokens::{random_token, resolve_access_token};
 
 pub const HELLO_TIMEOUT: Duration = Duration::from_secs(10);
-pub const MAX_FRAME_BYTES: usize = 12 * 1024 * 1024;
+pub const MAX_HELLO_BYTES: usize = 16 * 1024;
+// An 8 MiB change is about 10.7 MiB once base64 encoded, plus its envelope.
+pub const MAX_FRAME_BYTES: usize = 11 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
+pub const MAX_SOCKETS_PER_ACCOUNT: usize = 8;
+pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
 pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
 const BRIEF_SEND: Duration = Duration::from_secs(5);
 const TOO_LARGE: &str = "This change is too large to send.";
+const NOT_A_HELLO: &str = "The first frame must be a hello.";
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/ws", get(upgrade))
 }
 
+pub(crate) fn bearer_token(headers: &HeaderMap) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?.trim();
+    let (scheme, token) = value.split_once(' ')?;
+    let token = token.trim();
+    (scheme.eq_ignore_ascii_case("bearer") && !token.is_empty()).then(|| token.to_owned())
+}
+
 async fn upgrade(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    headers: HeaderMap,
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let address = client_key(ip.as_deref().unwrap_or("unknown"));
+    let caller = match signed_in(&state, &address, &headers).await {
+        Ok(caller) => caller,
+        Err(error) => return error.into_response(),
+    };
+    let Some(slot) = state.sockets.open_slot(caller.account_id) else {
+        tracing::info!(
+            account = %caller.account_id,
+            "refused a connection over the open connection limit"
+        );
+        return ServerError::RateLimited.into_response();
+    };
     upgrade
         .max_message_size(MAX_FRAME_BYTES)
-        .on_upgrade(move |socket| run(state, socket, address))
+        .on_upgrade(move |socket| run(state, socket, address, caller, slot))
+}
+
+async fn signed_in(
+    state: &AppState,
+    address: &str,
+    headers: &HeaderMap,
+) -> Result<Authenticated, ServerError> {
+    let token = bearer_token(headers).ok_or(ServerError::Unauthorized)?;
+    let now = state.clock.now_ms();
+    let checked = state
+        .db
+        .call(move |conn| authenticate(conn, &token, now))
+        .await;
+    if matches!(checked, Err(ServerError::Internal(_))) {
+        state.connects.forgive(address, now);
+    }
+    checked
 }
 
 enum Incoming {
@@ -65,8 +107,9 @@ enum Incoming {
     Closed,
 }
 
-async fn next_incoming(socket: &mut WebSocket) -> Incoming {
+async fn next_incoming(socket: &mut WebSocket, largest: usize) -> Incoming {
     match socket.recv().await {
+        Some(Ok(Message::Text(text))) if text.len() > largest => Incoming::Malformed,
         Some(Ok(Message::Text(text))) => {
             ClientFrame::from_json(text.as_str()).map_or(Incoming::Malformed, Incoming::Frame)
         }
@@ -79,7 +122,7 @@ async fn next_incoming(socket: &mut WebSocket) -> Incoming {
 
 async fn next_hello(socket: &mut WebSocket) -> Incoming {
     loop {
-        match next_incoming(socket).await {
+        match next_incoming(socket, MAX_HELLO_BYTES).await {
             Incoming::Heard => {}
             other => return other,
         }
@@ -129,7 +172,13 @@ async fn too_large(socket: &mut WebSocket, device: Option<DeviceId>) {
     }
 }
 
-async fn run(state: AppState, mut socket: WebSocket, address: String) {
+async fn run(
+    state: AppState,
+    mut socket: WebSocket,
+    address: String,
+    caller: Authenticated,
+    _slot: SocketSlot,
+) {
     let nonce = random_token();
     let challenge = ServerFrame::Challenge {
         nonce: nonce.clone(),
@@ -141,12 +190,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
     let hello = match tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)).await {
         Ok(Incoming::Frame(frame)) => frame,
         Ok(Incoming::Malformed) => {
-            return refuse(
-                &mut socket,
-                FrameErrorCode::BadFrame,
-                "The first frame must be a hello.",
-            )
-            .await
+            return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await
         }
         Ok(Incoming::TooLarge) => return too_large(&mut socket, None).await,
         Ok(Incoming::Heard | Incoming::Closed) => return,
@@ -168,12 +212,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
         understands,
     } = hello
     else {
-        return refuse(
-            &mut socket,
-            FrameErrorCode::BadFrame,
-            "The first frame must be a hello.",
-        )
-        .await;
+        return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await;
     };
     if protocol != PROTOCOL_VERSION {
         return refuse(
@@ -184,7 +223,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
         .await;
     }
     let mut ticket = state.sockets.register(device_id);
-    let checked = if echoed == nonce {
+    let checked = if echoed == nonce && device_id == caller.device_id {
         authorize(&state, device_id, access_token, echoed, signature).await
     } else {
         Ok(None)
@@ -930,7 +969,7 @@ impl Session<'_> {
             tokio::select! {
                 biased;
                 signal = link.control.recv() => break Ending::from_signal(signal),
-                incoming = next_incoming(link.socket) => {
+                incoming = next_incoming(link.socket, MAX_FRAME_BYTES) => {
                     link.unanswered_since = None;
                     let keep_going = match incoming {
                         Incoming::Frame(frame) => self.handle(link, &frames, frame).await,

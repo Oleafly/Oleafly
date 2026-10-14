@@ -166,6 +166,6 @@ mod server;
 
 pub use server::{
     allowlist, api_error_code, app_callback, challenge_nonce, follow_to_app, no_redirect_client,
-    redeem, refresh_session, security_event_kinds, sign_in, SignInAttempt, TestDevice, TestServer,
-    TEST_REDIRECT_URI,
+    redeem, refresh_session, security_event_kinds, sign_in, socket_request, SignInAttempt,
+    TestDevice, TestServer, TEST_REDIRECT_URI,
 };

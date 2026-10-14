@@ -211,10 +211,6 @@ pub async fn grant(
     .await
 }
 
-fn ws_url(server: &TestServer) -> String {
-    format!("{}/ws", server.url().replacen("http://", "ws://", 1))
-}
-
 pub async fn next_frame(socket: &mut Socket) -> Option<ServerFrame> {
     let waited = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(message) = socket.next().await {
@@ -246,7 +242,9 @@ pub async fn connect_understanding(
     person: &Person,
     understands: Vec<FrameErrorCode>,
 ) -> Socket {
-    let (mut socket, _) = connect_async(ws_url(server)).await.expect("connect");
+    let (mut socket, _) = connect_async(server.socket_request(person.token()))
+        .await
+        .expect("connect");
     let Some(ServerFrame::Challenge { nonce, server_id }) = next_frame(&mut socket).await else {
         panic!("expected a challenge");
     };

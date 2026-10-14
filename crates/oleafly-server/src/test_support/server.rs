@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::http::{header, Request};
 use oleafly_collab_protocol::admin::{AllowlistMatcher, NewAllowlistEntry, SecurityEventKind};
 use oleafly_collab_protocol::auth::{
     challenge_message, ApiError, ChallengePurpose, ChallengeResponse, RefreshRequest,
@@ -10,7 +11,7 @@ use oleafly_collab_protocol::auth::{
 use oleafly_collab_protocol::crypto::{b64url_encode, pkce_s256};
 use oleafly_collab_protocol::ids::DeviceId;
 use oleafly_collab_protocol::roles::ServerRole;
-use ring::rand::SystemRandom;
+use ring::rand::{SecureRandom, SystemRandom};
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use serde::Serialize;
 use tokio::task::JoinHandle;
@@ -85,6 +86,41 @@ impl TestServer {
     pub fn clock(&self) -> Arc<ManualClock> {
         Arc::clone(&self.app.clock)
     }
+
+    pub fn socket_request(&self, access_token: &str) -> Request<()> {
+        socket_request(&self.url(), Some(access_token))
+    }
+}
+
+pub fn socket_request(server_url: &str, access_token: Option<&str>) -> Request<()> {
+    let url = format!("{}/ws", server_url.replacen("http://", "ws://", 1));
+    let host = Url::parse(&url)
+        .ok()
+        .and_then(|parsed| {
+            let host = parsed.host_str()?.to_owned();
+            Some(match parsed.port() {
+                Some(port) => format!("{host}:{port}"),
+                None => host,
+            })
+        })
+        .expect("the socket address has a host");
+    let mut key = [0u8; 16];
+    SystemRandom::new()
+        .fill(&mut key)
+        .expect("the operating system random number generator is available");
+    let key = b64url_encode(&key).replace('-', "+").replace('_', "/") + "==";
+    let mut request = Request::builder()
+        .method("GET")
+        .uri(&url)
+        .header(header::HOST, host)
+        .header(header::CONNECTION, "Upgrade")
+        .header(header::UPGRADE, "websocket")
+        .header(header::SEC_WEBSOCKET_VERSION, "13")
+        .header(header::SEC_WEBSOCKET_KEY, key);
+    if let Some(token) = access_token {
+        request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
+    }
+    request.body(()).expect("a valid socket request")
 }
 
 impl Drop for TestServer {

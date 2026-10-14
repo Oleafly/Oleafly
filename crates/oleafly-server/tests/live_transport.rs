@@ -11,7 +11,7 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::rate_limit::DEVICE_RECONNECT_BURST;
 use oleafly_server::rooms::MAX_QUEUED_BYTES;
-use oleafly_server::sockets::{LinkTiming, MAX_SOCKETS_PER_DEVICE};
+use oleafly_server::sockets::{LinkTiming, SocketLimits, MAX_SOCKETS_PER_DEVICE};
 use oleafly_server::test_support::{seed_person, PersonSeed, TestDevice, TestServer};
 use people::{
     connect, envelope, grant, next_frame, send_frame, send_update, share_project, stage, subscribe,
@@ -64,16 +64,12 @@ async fn acknowledged(socket: &mut Socket) {
     }
 }
 
-fn ws_url(server: &TestServer) -> String {
-    format!("{}/ws", server.url().replacen("http://", "ws://", 1))
-}
-
 async fn hello_from(
     server: &TestServer,
     device: &TestDevice,
     tokens: &SessionTokens,
 ) -> Result<(Socket, ServerFrame), String> {
-    let (mut socket, _) = connect_async(ws_url(server))
+    let (mut socket, _) = connect_async(server.socket_request(&tokens.access_token))
         .await
         .map_err(|error| error.to_string())?;
     let Some(ServerFrame::Challenge { nonce, server_id }) = next_frame(&mut socket).await else {
@@ -274,6 +270,10 @@ async fn a_long_catch_up_is_not_taken_for_a_quiet_connection() {
 async fn a_device_keeps_at_most_its_socket_allowance_and_the_oldest_gives_way() {
     let stage = stage().await;
     let state = stage.server.state();
+    state.sockets.set_limits(SocketLimits {
+        per_account: MAX_SOCKETS_PER_DEVICE + 1,
+        ..SocketLimits::default()
+    });
     let device = stage.bob.tokens.device_id;
     let mut oldest = connect(&stage.server, &stage.bob).await;
     let mut newer = Vec::new();

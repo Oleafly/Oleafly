@@ -164,7 +164,8 @@ async fn relay(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_support::{test_config, TestServer};
+    use crate::test_support::{seed_member, socket_request, test_config, TestServer};
+    use oleafly_collab_protocol::roles::ServerRole;
 
     fn upstream(server: &TestServer) -> SocketAddr {
         server
@@ -174,9 +175,8 @@ mod tests {
             .expect("server address")
     }
 
-    async fn upgrade_status(url: &str) -> Result<(), u16> {
-        let target = format!("{}/ws", url.replacen("http://", "ws://", 1));
-        match tokio_tungstenite::connect_async(target).await {
+    async fn upgrade_status(url: &str, token: &str) -> Result<(), u16> {
+        match tokio_tungstenite::connect_async(socket_request(url, Some(token))).await {
             Ok(_) => Ok(()),
             Err(tokio_tungstenite::tungstenite::Error::Http(response)) => {
                 Err(response.status().as_u16())
@@ -188,8 +188,10 @@ mod tests {
     #[tokio::test]
     async fn upgrades_are_refused_while_plain_requests_reach_the_server() {
         let server = TestServer::start(test_config()).await;
+        let member = seed_member(server.app(), ServerRole::Member).await;
+        let token = member.access_token.as_str();
         let proxy = BlockingProxy::start(upstream(&server)).await;
-        assert_eq!(upgrade_status(&proxy.url()).await, Err(403));
+        assert_eq!(upgrade_status(&proxy.url(), token).await, Err(403));
         assert_eq!(proxy.refused(), 1);
         let answer = reqwest::Client::new()
             .get(format!("{}/healthz", proxy.url()))
@@ -198,10 +200,10 @@ mod tests {
             .expect("plain request");
         assert_eq!(answer.status().as_u16(), 200);
         proxy.block_websockets(false);
-        assert_eq!(upgrade_status(&proxy.url()).await, Ok(()));
+        assert_eq!(upgrade_status(&proxy.url(), token).await, Ok(()));
         assert_eq!(proxy.refused(), 1);
         proxy.block_websockets(true);
-        assert_eq!(upgrade_status(&proxy.url()).await, Err(403));
+        assert_eq!(upgrade_status(&proxy.url(), token).await, Err(403));
         assert_eq!(proxy.refused(), 2);
     }
 
