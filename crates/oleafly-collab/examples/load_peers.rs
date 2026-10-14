@@ -1584,10 +1584,10 @@ impl Session {
         let (events, events_rx) = mpsc::unbounded_channel();
         let (sender, messages_rx) = mpsc::unbounded_channel();
         let generation = 1;
-        let (rev, content) = lock(&live)
+        let opened = lock(&live)
             .open_file(&file_id, sink_for(&sender, generation))
             .map_err(of)?;
-        let editor = EditorDoc::opened(&file_id, generation, rev, content);
+        let editor = EditorDoc::opened(&file_id, generation, opened.rev, opened.text);
         let mut observer = Observer {
             peer: Arc::clone(peer),
             run: Arc::clone(run),
@@ -1805,8 +1805,8 @@ impl Session {
         let generation = self.editor.generation + 1;
         let opened = lock(&self.live).open_file(&self.file_id, sink_for(&self.sender, generation));
         match opened {
-            Ok((rev, content)) => {
-                self.editor.reopened(generation, rev, content);
+            Ok(file) => {
+                self.editor.reopened(generation, file.rev, file.text);
                 self.observer.see(&self.editor.content);
             }
             Err(error) => self.peer.error("editor:reopen", error),

@@ -281,7 +281,9 @@ fn open(
     let sink: DocSink = Arc::new(move |message| {
         let _ = sender.send((generation, message));
     });
-    lock(live).open_file(id, sink)
+    lock(live)
+        .open_file(id, sink)
+        .map(|opened| (opened.rev, opened.text))
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -1516,7 +1516,7 @@ mod tests {
         let closed = thread_list_at(&live, "chapters/intro.tex").unwrap();
         assert_eq!(closed.rev, None);
         assert_eq!(closed.threads.len(), 1);
-        let (opened, _) = live.open_file(&intro, quiet_sink()).unwrap();
+        let opened = live.open_file(&intro, quiet_sink()).unwrap().rev;
         assert_eq!(
             thread_list_at(&live, "chapters/intro.tex").unwrap().rev,
             Some(opened)
@@ -1541,7 +1541,8 @@ mod tests {
     fn a_new_thread_from_an_editor_that_was_behind_is_refused() {
         let (alice, _bob, intro) = sides();
         let mut live = alice.live.lock().unwrap();
-        let (opened, _) = live.open_file(&intro, quiet_sink()).unwrap();
+        let file = live.open_file(&intro, quiet_sink()).unwrap();
+        let opened = file.rev;
         typed_at_start(&mut live, &intro, opened);
         let stale = create_at(
             &mut live,
@@ -1569,7 +1570,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(current.anchor.quote, "quick");
-        live.close_file(&intro);
+        live.close_file(&intro, file.session);
         let gone = create_at(
             &mut live,
             &alice.who,

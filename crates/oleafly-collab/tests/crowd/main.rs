@@ -655,9 +655,10 @@ impl Editor {
             queued.fetch_add(1, Ordering::SeqCst);
             let _ = sender.send((file.clone(), generation, message));
         });
-        let (rev, text) = lock(&person.live)
+        let opened = lock(&person.live)
             .open_file(id, sink)
             .map_err(|error| format!("opening {id} failed: {error}"))?;
+        let (rev, text) = (opened.rev, opened.text);
         match self.files.get_mut(id) {
             Some(doc) => doc.reopened(generation, rev, text),
             None => {

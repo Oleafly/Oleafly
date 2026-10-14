@@ -26,11 +26,12 @@ pub fn doc_open(
         return Ok(None);
     };
     let id = id.clone();
-    let (rev, text) = live.open_file(&id, sink)?;
+    let opened = live.open_file(&id, sink)?;
     Ok(Some(DocOpened {
         file_id: id,
-        rev,
-        text,
+        rev: opened.rev,
+        text: opened.text,
+        session: opened.session,
     }))
 }
 
@@ -83,9 +84,9 @@ pub(in crate::collab) fn edit_live<T>(
     Ok(outcome)
 }
 
-pub fn doc_close(project_id: &str, file_id: &str) {
+pub fn doc_close(project_id: &str, file_id: &str, session: u64) {
     if let Some(active) = active_for(project_id) {
-        lock(&active.live).close_file(file_id);
+        lock(&active.live).close_file(file_id, session);
     }
 }
 

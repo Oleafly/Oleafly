@@ -33,6 +33,14 @@ const SMALLEST_BATCH_BYTES: usize = 16 * 1024;
 struct OpenFile {
     channel: EditorChannel,
     sink: DocSink,
+    session: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenedFile {
+    pub rev: u64,
+    pub session: u64,
+    pub text: String,
 }
 
 #[derive(Clone)]
@@ -164,6 +172,7 @@ pub struct LiveProject {
     confirmed: VersionVector,
     outgoing: Option<Outgoing>,
     open: HashMap<String, OpenFile>,
+    sessions: u64,
     disk: DiskWork,
     role: ProjectRole,
     received: u64,
@@ -291,6 +300,7 @@ impl LiveProject {
             confirmed,
             outgoing: None,
             open: HashMap::new(),
+            sessions: 0,
             disk: DiskWork::default(),
             role,
             received: 0,
@@ -525,7 +535,7 @@ impl LiveProject {
         announced
     }
 
-    pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<(u64, String), CollabError> {
+    pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<OpenedFile, CollabError> {
         let text = self.doc.text(id)?;
         let start = self
             .editor_rev(id)
@@ -533,14 +543,27 @@ impl LiveProject {
             .map_or(0, |rev| rev + 1);
         let channel = EditorChannel::starting_at(text.clone(), start);
         let rev = channel.rev();
-        self.open.insert(id.to_owned(), OpenFile { channel, sink });
-        Ok((rev, text))
+        self.sessions += 1;
+        let session = self.sessions;
+        self.open.insert(
+            id.to_owned(),
+            OpenFile {
+                channel,
+                sink,
+                session,
+            },
+        );
+        Ok(OpenedFile { rev, session, text })
     }
 
-    pub fn close_file(&mut self, id: &str) {
+    pub fn close_file(&mut self, id: &str, session: u64) -> bool {
+        if self.open.get(id).is_none_or(|open| open.session != session) {
+            return false;
+        }
         if let Some(closed) = self.open.remove(id) {
             self.retired.insert(id.to_owned(), closed.channel.rev());
         }
+        true
     }
 
     pub fn is_open(&self, id: &str) -> bool {
@@ -1858,22 +1881,42 @@ mod tests {
         let (mut bob, _alice, main) = pair();
         assert_eq!(bob.editor_rev(&main), None);
         let (sink, _seen) = recorder();
-        let (first, _) = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        let opened = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        let first = opened.rev;
         assert_eq!(bob.editor_rev(&main), Some(first));
         bob.editor_change(&main, first, insert(3, "d", 3)).unwrap();
         let typed = bob.editor_rev(&main).unwrap();
         assert!(typed > first);
-        bob.close_file(&main);
+        assert!(bob.close_file(&main, opened.session));
         assert_eq!(bob.editor_rev(&main), None);
-        let (again, text) = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        let reopened = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        let again = reopened.rev;
         assert!(again > typed, "{again} after {typed}");
-        assert_eq!(text, "abcd");
-        let (replaced, _) = bob.open_file(&main, sink).unwrap();
+        assert_eq!(reopened.text, "abcd");
+        let replaced = bob.open_file(&main, sink).unwrap().rev;
         assert!(replaced > again, "{replaced} after {again}");
         bob.editor_change(&main, replaced, insert(0, "x", 4))
             .unwrap();
         assert_eq!(bob.doc().text(&main).unwrap(), "xabcd");
         assert_eq!(bob.editor_rev(&main), Some(replaced + 1));
+    }
+
+    #[test]
+    fn a_late_close_for_an_earlier_open_leaves_the_newer_channel_open() {
+        let (mut bob, _alice, main) = pair();
+        let (sink, _seen) = recorder();
+        let earlier = bob.open_file(&main, Arc::clone(&sink)).unwrap();
+        let newer = bob.open_file(&main, sink).unwrap();
+        assert_ne!(earlier.session, newer.session);
+        assert!(!bob.close_file(&main, earlier.session));
+        assert!(bob.is_open(&main));
+        assert_eq!(bob.editor_rev(&main), Some(newer.rev));
+        bob.editor_change(&main, newer.rev, insert(3, "d", 3))
+            .unwrap();
+        assert_eq!(bob.doc().text(&main).unwrap(), "abcd");
+        assert!(bob.close_file(&main, newer.session));
+        assert!(!bob.is_open(&main));
+        assert!(!bob.close_file(&main, newer.session));
     }
 
     #[test]
@@ -2255,7 +2298,7 @@ mod tests {
     fn an_open_editor_keeps_typing_through_the_rebuild_without_being_reset() {
         let (mut bob, mut alice, main) = pair();
         let (sink, seen) = recorder();
-        let (rev, _) = alice.open_file(&main, sink).unwrap();
+        let rev = alice.open_file(&main, sink).unwrap().rev;
         alice
             .editor_change(&main, rev, insert(3, " one", 3))
             .unwrap();

@@ -74,8 +74,9 @@ pub async fn collab_doc_change(
 pub async fn collab_doc_close(
     project_id: String,
     file_id: String,
+    session: u64,
 ) -> Result<(), CollabCommandError> {
-    doc_close(&project_id, &file_id);
+    doc_close(&project_id, &file_id, session);
     Ok(())
 }
 

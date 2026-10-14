@@ -210,10 +210,10 @@ impl Peer {
         let sink: DocSink = Arc::new(move |message| {
             let _ = sender.send((generation, message));
         });
-        let (rev, text) = lock(&self.live)
+        let opened = lock(&self.live)
             .open_file(&self.file_id, sink)
             .map_err(failure)?;
-        self.editor.reopened(generation, rev, text);
+        self.editor.reopened(generation, opened.rev, opened.text);
         Ok(())
     }
 

@@ -385,7 +385,7 @@ mod tests {
 
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
     use oleafly_collab::editor::DocMessage;
-    use oleafly_collab::live::DocSink;
+    use oleafly_collab::live::{DocSink, OpenedFile};
     use oleafly_collab::materialize;
     use oleafly_collab::ot::TextOperation;
     use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
@@ -513,7 +513,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (mut live, main) = shared("abc\n");
         let (sink, seen) = recorder();
-        let (rev, opened) = live.open_file(&main, sink).unwrap();
+        let opened = live.open_file(&main, sink).unwrap();
+        let rev = opened.rev;
         assert!(write_into(
             &mut live,
             &mut WrittenTexts::default(),
@@ -529,7 +530,7 @@ mod tests {
         match &messages[0] {
             DocMessage::Remote { rev: next, op, .. } => {
                 assert_eq!(*next, rev + 1);
-                assert_eq!(op.apply(&opened).unwrap(), "abcd\n");
+                assert_eq!(op.apply(&opened.text).unwrap(), "abcd\n");
             }
             other => panic!("expected a remote change, got {other:?}"),
         }
@@ -541,7 +542,7 @@ mod tests {
         let read = "alpha\nbeta\ngamma\n";
         let (mut live, main) = shared(read);
         let (sink, _seen) = recorder();
-        let (mut rev, _) = live.open_file(&main, sink).unwrap();
+        let OpenedFile { mut rev, .. } = live.open_file(&main, sink).unwrap();
         let mut bases = WrittenTexts::default();
         bases.record("main.tex", read);
         let mut reads = WrittenTexts::default();
