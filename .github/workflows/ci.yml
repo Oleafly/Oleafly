@@ -354,7 +354,7 @@ jobs:
   rust-windows:
     name: Rust checks (Windows)
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v7
 
