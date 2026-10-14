@@ -264,6 +264,9 @@ pub fn for_project(
 }
 
 pub fn open(conn: &Connection, now: i64) -> Result<Vec<Invitation>, ServerError> {
+    if !settings::load(conn)?.guests_enabled {
+        return Ok(Vec::new());
+    }
     select(
         conn,
         "WHERE status IN ('awaiting_approval', 'invited') AND expires_at > ?1 \
@@ -294,7 +297,25 @@ pub fn approve(
             "This invitation was already approved.".to_string(),
         ));
     }
+    if !settings::load(conn)?.guests_enabled {
+        return Err(ServerError::refused(
+            "guests_off",
+            "This server does not allow guests.",
+        ));
+    }
+    let shared = projects::project_row(conn, invitation.project)?
+        .is_some_and(|row| row.status == ProjectStatus::Active);
+    if !shared {
+        return Err(ServerError::refused(
+            "project_not_shared",
+            "This project isn't shared any more, so the invitation can't be approved.",
+        ));
+    }
     set_status(conn, id, GuestInvitationStatus::Invited, Some(by), now)?;
+    conn.execute(
+        "UPDATE guest_invitations SET expires_at = ?2 WHERE id = ?1",
+        params![id, now + INVITATION_DAYS * DAY_MS],
+    )?;
     get(conn, id)?.ok_or(ServerError::NotFound)
 }
 
@@ -588,7 +609,8 @@ async fn prepare_invitation(
     let found = state
         .db
         .call(move |conn| {
-            if !settings::load(conn)?.email_notifications {
+            let runtime = settings::load(conn)?;
+            if !runtime.email_notifications || !runtime.guests_enabled {
                 return Ok(None);
             }
             let Some(invitation) = get(conn, &id)? else {
@@ -600,6 +622,9 @@ async fn prepare_invitation(
             let Some(row) = projects::project_row(conn, invitation.project)? else {
                 return Ok(None);
             };
+            if row.status != ProjectStatus::Active {
+                return Ok(None);
+            }
             let inviter = members::account_summary(conn, invitation.invited_by)?
                 .map(|summary| summary.display_name)
                 .unwrap_or_else(|| "Someone".to_string());
