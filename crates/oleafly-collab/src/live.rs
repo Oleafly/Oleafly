@@ -195,11 +195,21 @@ pub struct LiveProject {
     numbered: BTreeMap<u64, BatchId>,
     connected: bool,
     offline_edits: HashMap<String, BTreeMap<u64, i32>>,
+    repaired: bool,
+    resync_needed: bool,
 }
 
-fn read_log(path: &Path) -> Vec<Vec<u8>> {
+struct ChangeLog {
+    records: Vec<Vec<u8>>,
+    torn: bool,
+}
+
+fn read_log(path: &Path) -> ChangeLog {
     let Ok(bytes) = std::fs::read(path) else {
-        return Vec::new();
+        return ChangeLog {
+            records: Vec::new(),
+            torn: false,
+        };
     };
     let mut records = Vec::new();
     let mut at = 0;
@@ -212,24 +222,73 @@ fn read_log(path: &Path) -> Vec<Vec<u8>> {
         records.push(bytes[at + 4..end].to_vec());
         at = end;
     }
-    records
+    ChangeLog {
+        records,
+        torn: at < bytes.len(),
+    }
+}
+
+trait LogFile: std::io::Write {
+    fn end(&mut self) -> std::io::Result<u64>;
+    fn cut_to(&mut self, length: u64) -> std::io::Result<()>;
+    fn settle(&mut self) -> std::io::Result<()>;
+}
+
+struct OpenLog<'a> {
+    file: std::fs::File,
+    path: &'a Path,
+}
+
+impl std::io::Write for OpenLog<'_> {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        self.file.write(buffer)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
+}
+
+impl LogFile for OpenLog<'_> {
+    fn end(&mut self) -> std::io::Result<u64> {
+        self.file.metadata().map(|meta| meta.len())
+    }
+
+    fn cut_to(&mut self, length: u64) -> std::io::Result<()> {
+        let file = std::fs::OpenOptions::new().write(true).open(self.path)?;
+        file.set_len(length)?;
+        file.sync_data()
+    }
+
+    fn settle(&mut self) -> std::io::Result<()> {
+        self.file.sync_data()
+    }
+}
+
+fn append_record(file: &mut impl LogFile, record: &[u8]) -> Result<(), CollabError> {
+    let length = u32::try_from(record.len())
+        .map_err(|_| CollabError::Corrupt("a change record is too large".to_owned()))?;
+    let mut framed = Vec::with_capacity(record.len() + 4);
+    framed.extend_from_slice(&length.to_le_bytes());
+    framed.extend_from_slice(record);
+    let before = file
+        .end()
+        .map_err(|error| CollabError::Io(error.to_string()))?;
+    let written = file.write_all(&framed).and_then(|()| file.settle());
+    if let Err(error) = written {
+        let _ = file.cut_to(before);
+        return Err(CollabError::Io(error.to_string()));
+    }
+    Ok(())
 }
 
 fn append_log(path: &Path, record: &[u8]) -> Result<(), CollabError> {
-    use std::io::Write;
-    let length = u32::try_from(record.len())
-        .map_err(|_| CollabError::Corrupt("a change record is too large".to_owned()))?;
-    let mut file = std::fs::OpenOptions::new()
+    let file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .map_err(|error| CollabError::Io(error.to_string()))?;
-    let mut framed = Vec::with_capacity(record.len() + 4);
-    framed.extend_from_slice(&length.to_le_bytes());
-    framed.extend_from_slice(record);
-    file.write_all(&framed)
-        .and_then(|()| file.sync_data())
-        .map_err(|error| CollabError::Io(error.to_string()))
+    append_record(&mut OpenLog { file, path }, record)
 }
 
 fn to_json<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, CollabError> {
@@ -323,6 +382,8 @@ impl LiveProject {
             numbered: BTreeMap::new(),
             connected: false,
             offline_edits: HashMap::new(),
+            repaired: false,
+            resync_needed: false,
         }
     }
 
@@ -335,22 +396,23 @@ impl LiveProject {
         )
         .map_err(|error| CollabError::Corrupt(error.to_string()))?;
         let mut doc = ProjectDoc::load(&bytes)?;
-        let records = read_log(&dir.join(LOG_FILE));
-        let saved: Vec<&[u8]> = records.iter().map(Vec::as_slice).collect();
+        let log = read_log(&dir.join(LOG_FILE));
+        let saved: Vec<&[u8]> = log.records.iter().map(Vec::as_slice).collect();
+        let mut damaged = log.torn;
         if doc.import_all(&saved).is_err() {
             doc = ProjectDoc::load(&bytes)?;
-            for record in &records {
-                if doc.import(record).is_err() {
-                    break;
-                }
+            for record in &log.records {
+                damaged |= doc.import(record).is_err();
             }
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
         live.confirmed = decode_version(&state.confirmed)?;
         live.anchor = state.anchor;
         live.offline_edits = state.offline_edits;
-        live.persisted = Some(live.doc.version());
-        live.log_records = records.len();
+        live.persisted = (!damaged).then(|| live.doc.version());
+        live.log_records = log.records.len();
+        live.repaired = damaged;
+        live.resync_needed = !live.doc.version().includes_vv(&live.confirmed);
         live.devices = DeviceRegistry::load(&dir.join(DEVICES_FILE));
         if let Some(authors) = std::fs::read(dir.join(AUTHORS_FILE))
             .ok()
@@ -414,6 +476,9 @@ impl LiveProject {
         if let Err(error) = written {
             self.devices_dirty |= pending.devices.is_some();
             self.authors_dirty |= pending.authors.is_some();
+            if matches!(pending.document, SavedDocument::Appended(_)) {
+                self.forget_saved_document();
+            }
             return Err(error);
         }
         if pending.doc_replacements != self.doc_replacements {
@@ -436,6 +501,12 @@ impl LiveProject {
 
     pub fn exists(dir: &Path) -> bool {
         dir.join(DOC_FILE).is_file() && dir.join(STATE_FILE).is_file()
+    }
+
+    // The saved change log had a torn or unreadable record. The next save
+    // writes the whole document again in place of the log.
+    pub fn repaired_on_load(&self) -> bool {
+        self.repaired
     }
 
     pub fn doc(&self) -> &ProjectDoc {
@@ -703,7 +774,8 @@ impl LiveProject {
     }
 
     pub fn diverged(&self, head: u64, at_since: Option<BatchId>) -> bool {
-        head < self.last_seq
+        self.resync_needed
+            || head < self.last_seq
             || matches!((self.anchor, at_since), (Some(mine), Some(theirs)) if mine != theirs)
     }
 
@@ -720,6 +792,7 @@ impl LiveProject {
         self.numbered.clear();
         self.anchor = None;
         self.outgoing = None;
+        self.resync_needed = false;
         self.route(imported.changes, None)
     }
 
@@ -1843,7 +1916,7 @@ mod tests {
     }
 
     #[test]
-    fn a_half_written_change_record_is_ignored_on_load() {
+    fn a_half_written_change_record_is_ignored_on_load_and_never_hides_later_saves() {
         let (mut bob, _alice, main) = pair();
         let dir = tempfile::tempdir().unwrap();
         bob.save(dir.path()).unwrap();
@@ -1854,8 +1927,149 @@ mod tests {
             .open(dir.path().join(LOG_FILE))
             .unwrap();
         std::io::Write::write_all(&mut log, &[200, 0, 0, 0, 1, 2, 3]).unwrap();
-        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        drop(log);
+        let mut loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
         assert!(loaded.doc().text(&main).unwrap().ends_with(" kept"));
+        assert!(loaded.repaired_on_load());
+        type_at_end(&mut loaded, &main, " typed after");
+        loaded.save(dir.path()).unwrap();
+        type_at_end(&mut loaded, &main, " and more");
+        loaded.save(dir.path()).unwrap();
+        let again = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(
+            again.doc().text(&main).unwrap(),
+            "abc kept typed after and more"
+        );
+        assert!(!again.repaired_on_load());
+    }
+
+    struct FailingLog {
+        bytes: Vec<u8>,
+        fails_after: usize,
+    }
+
+    impl std::io::Write for FailingLog {
+        fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+            let room = self.fails_after.saturating_sub(self.bytes.len());
+            if room == 0 {
+                return Err(std::io::Error::other("the disk is full"));
+            }
+            let taken = room.min(buffer.len());
+            self.bytes.extend_from_slice(&buffer[..taken]);
+            Ok(taken)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl LogFile for FailingLog {
+        fn end(&mut self) -> std::io::Result<u64> {
+            Ok(self.bytes.len() as u64)
+        }
+
+        fn cut_to(&mut self, length: u64) -> std::io::Result<()> {
+            self.bytes.truncate(length as usize);
+            Ok(())
+        }
+
+        fn settle(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_change_record_cut_short_by_a_failed_write_is_taken_back() {
+        let mut file = FailingLog {
+            bytes: Vec::new(),
+            fails_after: 30,
+        };
+        append_record(&mut file, b"first record").unwrap();
+        let whole = file.bytes.clone();
+        assert!(append_record(&mut file, b"a second record that does not fit").is_err());
+        assert_eq!(file.bytes, whole);
+        file.fails_after = usize::MAX;
+        append_record(&mut file, b"third").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(LOG_FILE);
+        std::fs::write(&path, &file.bytes).unwrap();
+        let log = read_log(&path);
+        assert!(!log.torn);
+        assert_eq!(
+            log.records,
+            vec![b"first record".to_vec(), b"third".to_vec()]
+        );
+    }
+
+    #[test]
+    fn a_save_after_a_failed_append_writes_the_whole_document_again() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        type_at_end(&mut bob, &main, " one");
+        std::fs::create_dir(dir.path().join(LOG_FILE)).unwrap();
+        assert!(bob.save(dir.path()).is_err());
+        std::fs::remove_dir(dir.path().join(LOG_FILE)).unwrap();
+        type_at_end(&mut bob, &main, " two");
+        bob.save(dir.path()).unwrap();
+        assert!(!dir.path().join(LOG_FILE).exists());
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(loaded.doc().text(&main).unwrap(), "abc one two");
+    }
+
+    #[test]
+    fn a_change_record_that_cannot_be_read_does_not_hide_the_ones_after_it() {
+        let (mut bob, _alice, main) = pair();
+        let notes = bob
+            .doc_mut()
+            .add_node(None, "notes.tex", NodeKind::Text, None, "n")
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        type_at_end(&mut bob, &main, " first");
+        bob.save(dir.path()).unwrap();
+        append_log(&dir.path().join(LOG_FILE), b"not a change at all").unwrap();
+        type_at_end(&mut bob, &notes, " after");
+        let since = bob.persisted.clone().unwrap();
+        append_log(
+            &dir.path().join(LOG_FILE),
+            &bob.doc().export_since(&since).unwrap(),
+        )
+        .unwrap();
+        let mut loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(loaded.doc().text(&main).unwrap(), "abc first");
+        assert_eq!(loaded.doc().text(&notes).unwrap(), "n after");
+        assert!(loaded.repaired_on_load());
+        loaded.save(dir.path()).unwrap();
+        assert!(!dir.path().join(LOG_FILE).exists());
+        let again = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(again.doc().text(&notes).unwrap(), "n after");
+    }
+
+    #[test]
+    fn a_copy_whose_document_lacks_changes_its_sync_state_counted_asks_for_the_servers_copy() {
+        let (mut bob, _alice, main) = pair();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(!loaded.diverged(0, None));
+        type_at_end(&mut bob, &main, " sent");
+        let sent = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(sent.batch, 1);
+        let state = StoredState {
+            last_seq: bob.last_seq(),
+            confirmed: bob.confirmed.encode(),
+            anchor: bob.anchor(),
+            offline_edits: HashMap::new(),
+        };
+        std::fs::write(dir.path().join(STATE_FILE), to_json(&state).unwrap()).unwrap();
+        let mut lost = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(lost.doc().text(&main).unwrap(), "abc");
+        assert!(lost.diverged(1, bob.anchor()));
+        lost.rebase(1, &bob.doc().snapshot().unwrap()).unwrap();
+        assert!(!lost.diverged(1, None));
+        assert_eq!(lost.doc().text(&main).unwrap(), "abc sent");
     }
 
     #[test]
