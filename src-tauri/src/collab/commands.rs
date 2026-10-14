@@ -4,7 +4,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab::{
     sign_in_as, sign_in_with_code_as, test_connection_pinned, CodeSignInRequest, CollabError,
-    ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SignInCode, SignInRequest,
+    ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SessionManager, SignInCode,
+    SignInRequest,
 };
 use oleafly_collab_protocol::admin::{
     AllowlistEntry, DomainRule, MemberPatch, MemberSummary, NewAllowlistEntry, NewDomainRule, Page,
@@ -69,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 20] = [
+const PASSED_THROUGH: [&str; 21] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -90,6 +91,7 @@ const PASSED_THROUGH: [&str; 20] = [
     "server_removed",
     "share_in_progress",
     "cancelled",
+    "cloud_synced",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -431,6 +433,25 @@ where
     match result {
         Err(error) => Err(settle_revocation(state, host, server, error).await),
         ok => ok,
+    }
+}
+
+pub(crate) async fn with_access<T, F>(
+    sessions: &SessionManager,
+    server: ServerId,
+    client: &ServerClient,
+    call: F,
+) -> Result<T, CollabError>
+where
+    F: for<'a> Fn(&'a ServerClient, &'a str) -> ApiCall<'a, T>,
+{
+    let access = sessions.access_token(server, client).await?;
+    match call(client, &access).await {
+        Err(CollabError::Unauthorized) => {
+            let access = sessions.force_refresh(server, client).await?;
+            call(client, &access).await
+        }
+        other => other,
     }
 }
 
@@ -1522,7 +1543,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 19] = [
+    const NEW_CODES: [(u16, &str); 20] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1539,6 +1560,7 @@ mod tests {
         (404, "server_removed"),
         (409, "share_in_progress"),
         (409, "cancelled"),
+        (409, "cloud_synced"),
         (400, "setup_code_invalid"),
         (409, "device_in_use"),
         (404, "server_unknown"),

@@ -763,6 +763,7 @@ pub fn run() {
             collab::share::collab_leave_project,
             collab::share::collab_shared_with_me,
             collab::share::collab_join_project,
+            collab::joining::collab_join_cancel,
             collab::share::collab_open_link,
             collab::share::collab_link_preview,
             collab::live::commands::collab_live_start,

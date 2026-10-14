@@ -20,6 +20,7 @@ use super::host::LiveHost;
 use super::import::{apply_local_import, read_local_changes};
 use super::payloads::StatusPayload;
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
+use crate::collab::commands::with_access;
 use crate::collab::disk::{sha256_hex, write_file_over, DiskState, Stamp, WriteOutcome};
 use crate::folder_watch::FolderChange;
 
@@ -320,22 +321,20 @@ impl Active {
         if blobs.is_empty() {
             return Ok(missing);
         }
-        let access = self
-            .link
-            .sessions
-            .access_token(self.link.server_id, &self.link.client)
-            .await;
+        let project = self.link.project;
         for (path, hash, stamp) in blobs {
-            let fetched = match &access {
-                Ok(access) => self
-                    .link
-                    .client
-                    .get_blob(access, self.link.project, &hash)
-                    .await
-                    .ok()
-                    .filter(|bytes| sha256_hex(bytes) == hash),
-                Err(_) => None,
-            };
+            let fetched = with_access(
+                &self.link.sessions,
+                self.link.server_id,
+                &self.link.client,
+                |client, access| {
+                    let hash = hash.clone();
+                    Box::pin(async move { client.get_blob(access, project, &hash).await })
+                },
+            )
+            .await
+            .ok()
+            .filter(|bytes| sha256_hex(bytes) == hash);
             let Some(bytes) = fetched else {
                 missing = true;
                 continue;

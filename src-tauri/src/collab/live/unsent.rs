@@ -365,7 +365,7 @@ mod tests {
                 crate::collab::share::share_project(
                     &state,
                     &Browser,
-                    None,
+                    &|_, _| {},
                     PROJECT,
                     signed.server_id,
                 )

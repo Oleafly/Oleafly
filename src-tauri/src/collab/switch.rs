@@ -79,6 +79,7 @@ pub(crate) fn switch_to(state: &CollabState, on: bool) {
     let was = ENABLED.swap(on, Ordering::SeqCst);
     if was && !on {
         state.cancel_sign_in();
+        state.cancel_joins();
         super::live::stop_running_session();
     }
 }
