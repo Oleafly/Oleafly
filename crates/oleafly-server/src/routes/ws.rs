@@ -24,7 +24,7 @@ use crate::comment_guard::Verdict;
 use crate::error::ServerError;
 use crate::members;
 use crate::mentions;
-use crate::peers::{self, Bound};
+use crate::peers::{self, Bound, Claim};
 use crate::projects;
 use crate::rate_limit::client_key;
 use crate::rooms::{self, Outbox, Queued, RoomMember};
@@ -874,11 +874,23 @@ impl Peer<'_> {
                 {
                     return Err(ServerError::Forbidden);
                 }
+                if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
+                    return Ok(Some(projects::Appended {
+                        seq,
+                        duplicate: true,
+                    }));
+                }
+                match peers::claim(&transaction, project, device, &reach)? {
+                    Claim::Taken(_) => return Err(ServerError::Unauthorized),
+                    Claim::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Claim::Fresh(_) => {}
+                }
                 if !checked && !comments_on(&transaction, &row)? {
                     return Ok(None);
                 }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
+                    Bound::Known => return Ok(Some(projects::Appended::nothing_new())),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(

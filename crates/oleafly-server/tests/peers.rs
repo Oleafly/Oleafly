@@ -6,10 +6,10 @@ use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectSummary};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_collab_protocol::snapshots::ProjectPeer;
-use oleafly_server::test_support::seed_member;
+use oleafly_server::test_support::{seed_member, seed_person, PersonSeed, TestDevice};
 use people::{
     call, connect, first_snapshot, grant, next_frame, raw_envelope, read, send_update,
-    share_project, signed_by, stage, subscribe, Socket, Stage, SNAPSHOT_PEER,
+    share_project, signed_by, stage, subscribe, Person, Socket, Stage, SNAPSHOT_PEER,
 };
 use reqwest::{Method, StatusCode};
 
@@ -136,7 +136,7 @@ async fn a_change_under_a_peer_another_device_wrote_with_is_refused() {
 }
 
 #[tokio::test]
-async fn a_relay_of_changes_the_server_already_holds_is_accepted() {
+async fn a_relay_of_another_devices_changes_is_refused_even_when_the_server_holds_them() {
     let stage = stage().await;
     let project = shared_with_alice(&stage).await;
     let (mut bob, mut alice) = opened(&stage, project).await;
@@ -163,8 +163,150 @@ async fn a_relay_of_changes_the_server_already_holds_is_accepted() {
     .await;
     assert!(matches!(
         sent(&mut bob).await,
+        ServerFrame::Error {
+            code: FrameErrorCode::Unauthorized,
+            ..
+        }
+    ));
+    assert_eq!(head(&stage, project).await, 1);
+}
+
+async fn editor(stage: &Stage, project: SharedProjectId, name: &str) -> Person {
+    let device = TestDevice::generate();
+    let tokens = seed_person(
+        stage.server.state(),
+        PersonSeed {
+            name: name.to_owned(),
+            email: format!("{}@uni.edu", name.to_lowercase()),
+            role: ServerRole::Member,
+            device_public_key: device.public_key_b64().to_owned(),
+            device_name: "Laptop".to_owned(),
+        },
+    )
+    .await
+    .expect("seed a person");
+    let person = Person { device, tokens };
+    assert_eq!(
+        grant(
+            &stage.server,
+            &stage.bob,
+            project,
+            &person,
+            ProjectRole::Editor
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    person
+}
+
+#[tokio::test]
+async fn a_member_cannot_store_other_text_under_another_members_operation_ids() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let mallory = editor(&stage, project, "Mallory").await;
+    let (mut bob, mut alice) = opened(&stage, project).await;
+    let bob_doc = base();
+    let from_bob = typed(&bob_doc, 2_002, " Bob");
+    let alice_doc = base();
+    let from_alice = typed(&alice_doc, ALICE_PEER, " holds.");
+    send_update(
+        &mut bob,
+        &signed_by(&stage.bob, &stage.bob.device, project, &from_bob),
+    )
+    .await;
+    assert!(matches!(
+        sent(&mut bob).await,
+        ServerFrame::Ack { seq: 1, .. }
+    ));
+    send_update(
+        &mut alice,
+        &signed_by(&stage.alice, &stage.alice.device, project, &from_alice),
+    )
+    .await;
+    assert!(matches!(
+        sent(&mut alice).await,
         ServerFrame::Ack { seq: 2, .. }
     ));
+    let forged = {
+        let doc = base();
+        let before = doc.oplog_vv();
+        let text = doc.get_text("text");
+        doc.set_peer_id(ALICE_PEER).expect("peer");
+        text.insert(text.len_unicode(), " FAILS!").expect("insert");
+        doc.commit();
+        doc.set_peer_id(3_003).expect("peer");
+        text.insert(0, ">").expect("insert");
+        doc.commit();
+        doc.export(ExportMode::updates(&before)).expect("forged")
+    };
+    let mut socket = connect(&stage.server, &mallory).await;
+    assert!(matches!(
+        subscribe(&mut socket, project, 2).await,
+        ServerFrame::Subscribed { .. }
+    ));
+    send_update(
+        &mut socket,
+        &signed_by(&mallory, &mallory.device, project, &forged),
+    )
+    .await;
+    assert!(matches!(
+        sent(&mut socket).await,
+        ServerFrame::Error {
+            code: FrameErrorCode::Unauthorized,
+            ..
+        }
+    ));
+    assert_eq!(head(&stage, project).await, 2);
+}
+
+#[tokio::test]
+async fn a_change_holding_only_what_the_server_has_is_acknowledged_without_a_new_row() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let (mut bob, mut alice) = opened(&stage, project).await;
+    let alice_doc = base();
+    let honest = typed(&alice_doc, ALICE_PEER, " from Alice");
+    let first = signed_by(&stage.alice, &stage.alice.device, project, &honest);
+    send_update(&mut alice, &first).await;
+    assert!(matches!(
+        sent(&mut alice).await,
+        ServerFrame::Ack { seq: 1, .. }
+    ));
+    send_update(&mut alice, &first).await;
+    assert!(matches!(
+        sent(&mut alice).await,
+        ServerFrame::Ack { seq: 1, .. }
+    ));
+    let again = signed_by(&stage.alice, &stage.alice.device, project, &honest);
+    assert_ne!(again.batch_id, first.batch_id);
+    send_update(&mut alice, &again).await;
+    match sent(&mut alice).await {
+        ServerFrame::Ack { seq, batch_id, .. } => {
+            assert_eq!(seq, 0);
+            assert_eq!(batch_id, again.batch_id);
+        }
+        other => panic!("expected an acknowledgement, got {other:?}"),
+    }
+    assert_eq!(head(&stage, project).await, 1);
+    let more = typed(&alice_doc, ALICE_PEER, " and more");
+    send_update(
+        &mut alice,
+        &signed_by(&stage.alice, &stage.alice.device, project, &more),
+    )
+    .await;
+    assert!(matches!(
+        sent(&mut alice).await,
+        ServerFrame::Ack { seq: 2, .. }
+    ));
+    let mut seen = Vec::new();
+    while seen.len() < 2 {
+        if let Some(ServerFrame::Update { seq, .. }) = next_frame(&mut bob).await {
+            seen.push(seq);
+        }
+    }
+    assert_eq!(seen, vec![1, 2]);
 }
 
 #[tokio::test]

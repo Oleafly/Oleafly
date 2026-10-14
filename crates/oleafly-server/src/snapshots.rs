@@ -1085,13 +1085,11 @@ impl Replay {
             let Some(reach) = peers::update_reach(&envelope.payload) else {
                 continue;
             };
-            let taken = peers::introduced(&reach.ends, &known)
-                .into_iter()
-                .any(|peer| {
-                    bindings
-                        .get(&peer)
-                        .is_some_and(|bound| *bound != entry.device)
-                });
+            let taken = reach.ends.iter().any(|(peer, _)| {
+                bindings
+                    .get(peer)
+                    .is_some_and(|bound| *bound != entry.device)
+            });
             if taken {
                 continue;
             }
@@ -1368,6 +1366,54 @@ mod tests {
             loaded.get_text("text").to_string(),
             writer.get_text("text").to_string()
         );
+    }
+
+    #[test]
+    fn a_stored_change_that_repeats_another_devices_operations_never_reaches_a_snapshot() {
+        let project = SharedProjectId::new_v7();
+        let (alice, bob, mallory) = (DeviceId::new_v7(), DeviceId::new_v7(), DeviceId::new_v7());
+        let base_doc = LoroDoc::new();
+        base_doc.set_peer_id(1).unwrap();
+        base_doc.get_text("text").insert(0, "Hello").unwrap();
+        base_doc.commit();
+        let base = base_doc.export(ExportMode::Snapshot).unwrap();
+        let written = |peer: u64, text: &str| {
+            let doc = LoroDoc::new();
+            doc.import(&base).unwrap();
+            typed(&doc, peer, text)
+        };
+        let from_bob = written(20, " Bob");
+        let from_alice = written(10, " holds.");
+        let forged = {
+            let doc = LoroDoc::new();
+            doc.import(&base).unwrap();
+            let before = doc.oplog_vv();
+            let text = doc.get_text("text");
+            doc.set_peer_id(10).unwrap();
+            text.insert(text.len_unicode(), " FAILS!").unwrap();
+            doc.commit();
+            doc.set_peer_id(30).unwrap();
+            text.insert(0, ">").unwrap();
+            doc.commit();
+            doc.export(ExportMode::updates(&before)).unwrap()
+        };
+        let entries = vec![
+            logged(1, project, bob, from_bob.clone()),
+            logged(2, project, alice, from_alice.clone()),
+            logged(3, project, mallory, forged),
+        ];
+        let bindings = HashMap::from([(1, alice), (10, alice), (20, bob), (30, mallory)]);
+        let built = replay(project, &base, &entries, &bindings).expect("a snapshot");
+        let loaded = LoroDoc::new();
+        loaded.import(&built).unwrap();
+        let expected = LoroDoc::new();
+        expected.import(&base).unwrap();
+        expected.import(&from_bob).unwrap();
+        expected.import(&from_alice).unwrap();
+        let text = loaded.get_text("text").to_string();
+        assert_eq!(text, expected.get_text("text").to_string());
+        assert!(text.contains("holds."), "{text}");
+        assert!(!text.contains("FAILS"), "{text}");
     }
 
     #[test]

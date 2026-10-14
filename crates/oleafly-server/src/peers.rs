@@ -20,8 +20,16 @@ pub struct Reach {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Bound {
     Accepted,
+    Known,
     Refused(u64),
     Detached,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Claim {
+    Fresh(Vec<Span>),
+    Known,
+    Taken(u64),
 }
 
 fn peer_to_sql(peer: u64) -> i64 {
@@ -60,13 +68,6 @@ pub fn update_reach(payload: &[u8]) -> Option<Reach> {
 pub fn snapshot_reach(bytes: &[u8]) -> Option<Reach> {
     let meta = LoroDoc::decode_import_blob_meta(bytes, true).ok()?;
     (meta.mode == EncodedBlobMode::Snapshot).then(|| reach_of(&meta))
-}
-
-pub fn introduced(ends: &[Span], known: &VersionVector) -> Vec<u64> {
-    ends.iter()
-        .filter(|(peer, end)| known.get(peer).copied().unwrap_or(0) < *end)
-        .map(|(peer, _)| *peer)
-        .collect()
 }
 
 fn known_end(
@@ -118,6 +119,27 @@ fn attached(
     Ok(true)
 }
 
+pub fn claim(
+    conn: &Connection,
+    project: SharedProjectId,
+    device: DeviceId,
+    reach: &Reach,
+) -> Result<Claim, ServerError> {
+    let mut fresh = Vec::new();
+    for (peer, end) in &reach.ends {
+        match known_end(conn, project, *peer)? {
+            Some((bound, _)) if bound != device => return Ok(Claim::Taken(*peer)),
+            Some((_, counter)) if i64::from(*end) <= counter => {}
+            _ => fresh.push((*peer, *end)),
+        }
+    }
+    Ok(if fresh.is_empty() {
+        Claim::Known
+    } else {
+        Claim::Fresh(fresh)
+    })
+}
+
 pub fn bind(
     conn: &Connection,
     project: SharedProjectId,
@@ -126,14 +148,11 @@ pub fn bind(
     reach: &Reach,
     now: i64,
 ) -> Result<Bound, ServerError> {
-    let mut fresh = Vec::new();
-    for (peer, end) in &reach.ends {
-        match known_end(conn, project, *peer)? {
-            Some((_, counter)) if i64::from(*end) <= counter => {}
-            Some((bound, _)) if bound != device => return Ok(Bound::Refused(*peer)),
-            _ => fresh.push((*peer, *end)),
-        }
-    }
+    let fresh = match claim(conn, project, device, reach)? {
+        Claim::Fresh(fresh) => fresh,
+        Claim::Known => return Ok(Bound::Known),
+        Claim::Taken(peer) => return Ok(Bound::Refused(peer)),
+    };
     if complete(conn, project)? && !attached(conn, project, reach)? {
         return Ok(Bound::Detached);
     }
@@ -261,11 +280,61 @@ mod tests {
         assert_eq!(reach.deps, vec![(1, 2)]);
     }
 
-    #[test]
-    fn a_peer_counts_as_introduced_only_past_what_is_known() {
-        let mut known = VersionVector::new();
-        known.set_end(loro::ID::new(1, 10));
-        assert_eq!(introduced(&[(1, 10), (2, 3)], &known), vec![2]);
-        assert_eq!(introduced(&[(1, 11)], &known), vec![1]);
+    #[tokio::test]
+    async fn a_range_bound_to_another_device_is_taken_even_when_the_server_holds_it() {
+        let db = crate::db::Db::open_in_memory().unwrap();
+        db.call(|conn| {
+            let project = SharedProjectId::new_v7();
+            let account = crate::members::create_account(
+                conn,
+                "Ada",
+                None,
+                oleafly_collab_protocol::roles::ServerRole::Member,
+                1,
+            )?;
+            conn.execute(
+                "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, 'Thesis', 'active', 1)",
+                params![project.to_string(), account.to_string()],
+            )?;
+            let (alice, mallory) = (DeviceId::new_v7(), DeviceId::new_v7());
+            for device in [alice, mallory] {
+                conn.execute(
+                    "INSERT INTO devices (id, account_id, public_key, name, platform, created_at) VALUES (?1, ?2, ?3, 'Laptop', 'test', 1)",
+                    params![device.to_string(), account.to_string(), device.to_string()],
+                )?;
+            }
+            let reach = |ends: Vec<Span>| Reach {
+                starts: ends.iter().map(|(peer, _)| (*peer, 0)).collect(),
+                ends,
+                deps: Vec::new(),
+            };
+            assert_eq!(
+                bind(conn, project, alice, account, &reach(vec![(7, 10)]), 1)?,
+                Bound::Accepted
+            );
+            assert_eq!(
+                claim(conn, project, alice, &reach(vec![(7, 10)]))?,
+                Claim::Known
+            );
+            assert_eq!(
+                bind(conn, project, alice, account, &reach(vec![(7, 10)]), 1)?,
+                Bound::Known
+            );
+            assert_eq!(
+                claim(conn, project, mallory, &reach(vec![(7, 4), (9, 2)]))?,
+                Claim::Taken(7)
+            );
+            assert_eq!(
+                bind(conn, project, mallory, account, &reach(vec![(7, 4), (9, 2)]), 1)?,
+                Bound::Refused(7)
+            );
+            assert_eq!(
+                claim(conn, project, mallory, &reach(vec![(9, 2)]))?,
+                Claim::Fresh(vec![(9, 2)])
+            );
+            Ok(())
+        })
+        .await
+        .unwrap();
     }
 }

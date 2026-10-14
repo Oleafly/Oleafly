@@ -42,6 +42,17 @@ pub struct Appended {
     pub duplicate: bool,
 }
 
+impl Appended {
+    // A change made only of operations the server already holds is
+    // acknowledged with seq 0 and never stored, so it can't be logged twice.
+    pub fn nothing_new() -> Appended {
+        Appended {
+            seq: 0,
+            duplicate: true,
+        }
+    }
+}
+
 pub fn role_to_str(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "owner",
@@ -603,6 +614,21 @@ pub fn append_update(
     Ok(appended)
 }
 
+pub fn stored_batch(
+    conn: &Connection,
+    project: SharedProjectId,
+    batch: BatchId,
+) -> Result<Option<u64>, ServerError> {
+    Ok(conn
+        .query_row(
+            "SELECT seq FROM project_updates WHERE project_id = ?1 AND batch_id = ?2",
+            [project.to_string(), batch.to_string()],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .map(seq_from))
+}
+
 pub fn append_update_in(
     transaction: &Connection,
     project: SharedProjectId,
@@ -612,16 +638,9 @@ pub fn append_update_in(
     envelope: &[u8],
     now: i64,
 ) -> Result<Appended, ServerError> {
-    let existing = transaction
-        .query_row(
-            "SELECT seq FROM project_updates WHERE project_id = ?1 AND batch_id = ?2",
-            [project.to_string(), batch.to_string()],
-            |row| row.get::<_, i64>(0),
-        )
-        .optional()?;
-    if let Some(seq) = existing {
+    if let Some(seq) = stored_batch(transaction, project, batch)? {
         return Ok(Appended {
-            seq: seq_from(seq),
+            seq,
             duplicate: true,
         });
     }
