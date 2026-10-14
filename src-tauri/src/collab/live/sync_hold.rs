@@ -265,6 +265,7 @@ impl Active {
             .map_or_else(|| self.document_dir.clone(), Path::to_path_buf)
     }
 
+    #[cfg(test)]
     pub(crate) async fn outside(
         &self,
         change: &FolderChange,

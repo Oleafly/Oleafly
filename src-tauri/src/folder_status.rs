@@ -202,7 +202,6 @@ fn folder_status(project_id: &str) -> Result<Option<FolderStatus>, String> {
     }))
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
 pub fn library_sync_service() -> Option<SyncService> {
     library_sync_service_in(&SyncRoots::current())
 }

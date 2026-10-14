@@ -90,6 +90,7 @@ fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl CollabState {
+    #[cfg(test)]
     pub fn new(paths: CollabPaths, secrets: Arc<dyn SecretPort>) -> CollabState {
         CollabState::with(Ok(paths), secrets)
     }
