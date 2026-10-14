@@ -337,6 +337,7 @@
     "refs-duplicate-bib-key": {
       "title": "La clé de citation « {{key}} » est définie plusieurs fois",
       "detail": "Définie dans {{places}}. BibTeX n'utilise que la première entrée portant cette clé, et il ignore les majuscules quand il compare les clés. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent.",
+      "detailBiber": "Définie dans {{places}}. Quand biber construit la bibliographie, il n'utilise que la première entrée portant cette clé. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent.",
       "detailTypst": "Définie dans {{places}}. Typst arrête la compilation quand deux entrées bibliographiques partagent une clé. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent."
     },
     "submission-path-case": {

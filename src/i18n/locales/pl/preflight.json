@@ -352,6 +352,7 @@
     "refs-duplicate-bib-key": {
       "title": "Klucz cytowania \"{{key}}\" jest zdefiniowany więcej niż raz",
       "detail": "Zdefiniowany w {{places}}. BibTeX używa tylko pierwszej pozycji z tym kluczem i przy porównywaniu kluczy nie rozróżnia wielkich i małych liter. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
+      "detailBiber": "Zdefiniowany w {{places}}. Gdy biber tworzy bibliografię, używa tylko pierwszej pozycji z tym kluczem. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
       "detailTypst": "Zdefiniowany w {{places}}. Typst przerywa kompilację, gdy dwie pozycje bibliografii mają ten sam klucz. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają."
     },
     "submission-path-case": {

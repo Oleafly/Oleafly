@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Citeringsnyckeln \"{{key}}\" är definierad mer än en gång",
       "detail": "Definierad i {{places}}. BibTeX använder bara den första posten med den här nyckeln och skiljer inte på stora och små bokstäver när den jämför nycklar. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
+      "detailBiber": "Definierad i {{places}}. När biber bygger litteraturlistan använder den bara den första posten med den här nyckeln. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
       "detailTypst": "Definierad i {{places}}. Typst avbryter kompileringen när två poster i bibliografin har samma nyckel. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem."
     },
     "submission-path-case": {

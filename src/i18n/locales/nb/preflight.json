@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Siteringsnøkkelen \"{{key}}\" er definert mer enn én gang",
       "detail": "Definert i {{places}}. BibTeX bruker bare den første oppføringen med denne nøkkelen, og skiller ikke mellom store og små bokstaver når den sammenligner nøkler. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
+      "detailBiber": "Definert i {{places}}. Når biber lager litteraturlisten, bruker den bare den første oppføringen med denne nøkkelen. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
       "detailTypst": "Definert i {{places}}. Typst stopper kompileringen når to oppføringer i litteraturlisten har samme nøkkel. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem."
     },
     "submission-path-case": {

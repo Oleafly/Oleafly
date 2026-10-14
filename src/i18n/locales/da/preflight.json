@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Citationsnøglen \"{{key}}\" er defineret mere end én gang",
       "detail": "Defineret i {{places}}. BibTeX bruger kun den første post med denne nøgle og skelner ikke mellem store og små bogstaver, når den sammenligner nøgler. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem.",
+      "detailBiber": "Defineret i {{places}}. Når biber laver litteraturlisten, bruger den kun den første post med denne nøgle. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem.",
       "detailTypst": "Defineret i {{places}}. Typst stopper kompileringen, når to litteraturposter har samme nøgle. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem."
     },
     "submission-path-case": {

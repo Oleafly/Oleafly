@@ -337,6 +337,7 @@
     "refs-duplicate-bib-key": {
       "title": "A chave de citação \"{{key}}\" está definida mais de uma vez",
       "detail": "Definida em {{places}}. O BibTeX usa só a primeira entrada com essa chave e, ao comparar chaves, não diferencia maiúsculas de minúsculas. Mantenha uma entrada ou dê chaves novas às outras e atualize as citações que as usam.",
+      "detailBiber": "Definida em {{places}}. Quando o biber monta a bibliografia, ele usa só a primeira entrada com essa chave. Mantenha uma entrada ou dê chaves novas às outras e atualize as citações que as usam.",
       "detailTypst": "Definida em {{places}}. O Typst interrompe a compilação quando duas entradas da bibliografia têm a mesma chave. Mantenha uma entrada ou dê chaves novas às outras e atualize as citações que as usam."
     },
     "submission-path-case": {

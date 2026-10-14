@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Viittausavain \"{{key}}\" on määritelty useammin kuin kerran",
       "detail": "Määritelty kohdissa {{places}}. BibTeX käyttää vain ensimmäistä viitettä, jolla on tämä avain, eikä se erottele isoja ja pieniä kirjaimia avaimia verratessaan. Säilytä yksi viite tai anna muille uudet avaimet ja päivitä viittaukset, jotka käyttävät niitä.",
+      "detailBiber": "Määritelty kohdissa {{places}}. Kun biber muodostaa lähdeluettelon, se käyttää vain ensimmäistä viitettä, jolla on tämä avain. Säilytä yksi viite tai anna muille uudet avaimet ja päivitä viittaukset, jotka käyttävät niitä.",
       "detailTypst": "Määritelty kohdissa {{places}}. Typst keskeyttää kääntämisen, jos kahdella lähdeluettelon viitteellä on sama avain. Säilytä yksi viite tai anna muille uudet avaimet ja päivitä viittaukset, jotka käyttävät niitä."
     },
     "submission-path-case": {

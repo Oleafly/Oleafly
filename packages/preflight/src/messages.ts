@@ -289,6 +289,7 @@ export const PREFLIGHT_MESSAGE_KEYS = [
   "rules.refs-bib-missing.detailTypst",
   "rules.refs-bib-missing.title",
   "rules.refs-duplicate-bib-key.detail",
+  "rules.refs-duplicate-bib-key.detailBiber",
   "rules.refs-duplicate-bib-key.detailTypst",
   "rules.refs-duplicate-bib-key.title",
   "rules.refs-duplicate-bib.detail",

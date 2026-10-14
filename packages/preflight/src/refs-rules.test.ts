@@ -170,6 +170,38 @@ describe("bibliography keys defined more than once", () => {
     expect(out[0].detail.params).toEqual({ places: "refs.bib:1, refs.bib:5 (Smith2020)" });
   });
 
+  it("keeps keys that differ only in letter case apart under biber, and names biber", () => {
+    expect(repeatedKeys(ctx({
+      bibKeyDialect: "biber",
+      bibKeyDefinitions: [
+        definition("Smith2020", "refs.bib", 1, 0),
+        definition("smith2020", "refs.bib", 5, 90),
+      ],
+    }))).toEqual([]);
+    const [finding] = repeatedKeys(ctx({
+      bibKeyDialect: "biber",
+      bibKeyDefinitions: [
+        definition("Smith2020", "refs.bib", 1, 0),
+        definition("Smith2020", "refs.bib", 5, 90),
+      ],
+    }));
+    expect(finding).toMatchObject({
+      severity: "warning",
+      detail: { key: "rules.refs-duplicate-bib-key.detailBiber", params: { places: "refs.bib:1, refs.bib:5" } },
+    });
+  });
+
+  it("names both keys of a shared DOI that biber tells apart by letter case", () => {
+    const out = runRefsRules("", ctx({
+      bibKeyDialect: "biber",
+      duplicateDois: [{ doi: "10.1/x", keys: ["Smith2020", "smith2020"] }],
+    }));
+    expect(out.find((x) => x.id === "refs-duplicate-bib")?.title).toEqual({
+      key: "rules.refs-duplicate-bib.title",
+      params: { keys: "Smith2020, smith2020" },
+    });
+  });
+
   it("stays quiet when every key is defined once", () => {
     expect(repeatedKeys(ctx({
       bibKeyDefinitions: [
