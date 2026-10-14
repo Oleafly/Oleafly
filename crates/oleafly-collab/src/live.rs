@@ -93,6 +93,16 @@ struct CatchUp {
     authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
 }
 
+// A catch-up is kept on disk until its report goes out, so quitting or a
+// dropped connection halfway through a long backlog loses nothing.
+#[derive(Serialize, Deserialize)]
+struct StoredCatchUp {
+    #[serde(with = "crate::live::hex_bytes")]
+    before: Vec<u8>,
+    files: BTreeMap<String, u32>,
+    authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct StoredState {
     last_seq: u64,
@@ -102,6 +112,8 @@ struct StoredState {
     anchor: Option<BatchId>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     offline_edits: HashMap<String, BTreeMap<u64, i32>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    catch_up: Option<StoredCatchUp>,
 }
 
 pub struct Arrival {
@@ -422,6 +434,13 @@ impl LiveProject {
         live.confirmed = decode_version(&state.confirmed)?;
         live.anchor = state.anchor;
         live.offline_edits = state.offline_edits;
+        live.catch_up = state.catch_up.and_then(|stored| {
+            Some(CatchUp {
+                before: decode_version(&stored.before).ok()?,
+                files: stored.files,
+                authors: stored.authors,
+            })
+        });
         live.persisted = (!damaged).then(|| live.doc.version());
         live.log_records = log.records.len();
         live.repaired = damaged;
@@ -456,6 +475,11 @@ impl LiveProject {
             confirmed: self.confirmed.encode(),
             anchor: self.anchor,
             offline_edits: self.offline_edits.clone(),
+            catch_up: self.catch_up.as_ref().map(|catch_up| StoredCatchUp {
+                before: catch_up.before.encode(),
+                files: catch_up.files.clone(),
+                authors: catch_up.authors.clone(),
+            }),
         };
         let state = to_json(&state)?;
         let devices = if self.devices_dirty {
@@ -1024,7 +1048,13 @@ impl LiveProject {
         self.route(imported.changes, None)
     }
 
+    // A reconnect halfway through keeps the catch-up already under way, so
+    // the report starts from the version before the first part and counts
+    // every part.
     pub fn begin_catch_up(&mut self) {
+        if self.catch_up.is_some() {
+            return;
+        }
         self.catch_up = Some(CatchUp {
             before: self.doc.version(),
             files: BTreeMap::new(),
@@ -1711,6 +1741,51 @@ mod tests {
     }
 
     #[test]
+    fn a_catch_up_cut_off_by_a_reconnect_or_a_restart_reports_every_part() {
+        let (mut bob, mut alice, main) = pair();
+        let bob_account = AccountId::new_v7();
+        let mut sent = Vec::new();
+        for round in 0..4 {
+            type_at_end(&mut bob, &main, &format!(" {round}"));
+            let outgoing = bob.next_outgoing().unwrap().unwrap();
+            bob.acknowledged(outgoing.batch, round + 1);
+            sent.push(outgoing);
+        }
+        let before = alice.doc().version();
+        alice.begin_catch_up();
+        alice
+            .import_update_from(1, &sent[0].payload, Some(bob_account))
+            .unwrap();
+        alice.disconnected();
+        alice.begin_catch_up();
+        alice
+            .import_update_from(2, &sent[1].payload, Some(bob_account))
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        alice.save(dir.path()).unwrap();
+        let mut restarted = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        restarted.begin_catch_up();
+        for (seq, outgoing) in [(3, &sent[2]), (4, &sent[3])] {
+            restarted
+                .import_update_from(seq, &outgoing.payload, Some(bob_account))
+                .unwrap();
+        }
+        let report = restarted.end_catch_up().expect("something merged");
+        assert_eq!(crate::doc::decode_version(&report.before).unwrap(), before);
+        assert_eq!(report.files.get(&main), Some(&4));
+        assert_eq!(
+            report
+                .authors
+                .get(&bob_account)
+                .and_then(|files| files.get(&main)),
+            Some(&4)
+        );
+        restarted.save(dir.path()).unwrap();
+        let mut again = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert!(again.end_catch_up().is_none());
+    }
+
+    #[test]
     fn changes_taken_in_together_while_catching_up_are_counted_per_file_and_author() {
         let (mut bob, mut alice, main) = pair();
         let bob_account = AccountId::new_v7();
@@ -2293,6 +2368,7 @@ mod tests {
             confirmed: bob.confirmed.encode(),
             anchor: bob.anchor(),
             offline_edits: HashMap::new(),
+            catch_up: None,
         };
         std::fs::write(dir.path().join(STATE_FILE), to_json(&state).unwrap()).unwrap();
         let mut lost = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
