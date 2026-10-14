@@ -264,6 +264,83 @@ mod tests {
         assert_eq!(update_reach(&damaged), None);
     }
 
+    fn xxh32(input: &[u8], seed: u32) -> u32 {
+        const P1: u32 = 0x9E37_79B1;
+        const P2: u32 = 0x85EB_CA77;
+        const P3: u32 = 0xC2B2_AE3D;
+        const P4: u32 = 0x27D4_EB2F;
+        const P5: u32 = 0x1656_67B1;
+        let word = |at: usize| u32::from_le_bytes(input[at..at + 4].try_into().unwrap());
+        let round = |acc: u32, lane: u32| {
+            acc.wrapping_add(lane.wrapping_mul(P2))
+                .rotate_left(13)
+                .wrapping_mul(P1)
+        };
+        let mut at = 0;
+        let mut hash = if input.len() >= 16 {
+            let mut lanes = [
+                seed.wrapping_add(P1).wrapping_add(P2),
+                seed.wrapping_add(P2),
+                seed,
+                seed.wrapping_sub(P1),
+            ];
+            while at + 16 <= input.len() {
+                for (index, lane) in lanes.iter_mut().enumerate() {
+                    *lane = round(*lane, word(at + 4 * index));
+                }
+                at += 16;
+            }
+            lanes[0]
+                .rotate_left(1)
+                .wrapping_add(lanes[1].rotate_left(7))
+                .wrapping_add(lanes[2].rotate_left(12))
+                .wrapping_add(lanes[3].rotate_left(18))
+        } else {
+            seed.wrapping_add(P5)
+        };
+        hash = hash.wrapping_add(u32::try_from(input.len()).unwrap());
+        while at + 4 <= input.len() {
+            hash = hash
+                .wrapping_add(word(at).wrapping_mul(P3))
+                .rotate_left(17)
+                .wrapping_mul(P4);
+            at += 4;
+        }
+        for byte in &input[at..] {
+            hash = hash
+                .wrapping_add(u32::from(*byte).wrapping_mul(P5))
+                .rotate_left(11)
+                .wrapping_mul(P1);
+        }
+        hash ^= hash >> 15;
+        hash = hash.wrapping_mul(P2);
+        hash ^= hash >> 13;
+        hash = hash.wrapping_mul(P3);
+        hash ^ (hash >> 16)
+    }
+
+    fn with_checksum(mut blob: Vec<u8>) -> Vec<u8> {
+        let sum = xxh32(&blob[20..], u32::from_le_bytes(*b"LORO"));
+        blob[16..20].copy_from_slice(&sum.to_le_bytes());
+        blob
+    }
+
+    #[test]
+    fn a_change_whose_body_does_not_decode_is_refused_even_with_a_valid_checksum() {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(42).unwrap();
+        doc.get_text("text").insert(0, "hello").unwrap();
+        doc.commit();
+        let update = doc.export(ExportMode::all_updates()).unwrap();
+        assert_eq!(with_checksum(update.clone()), update);
+        let mut truncated = update.clone();
+        truncated.push(0x7f);
+        let truncated = with_checksum(truncated);
+        assert!(LoroDoc::decode_import_blob_meta(&truncated, false).is_err());
+        assert_eq!(update_reach(&truncated), None);
+        assert!(update_reach(&update).is_some());
+    }
+
     #[test]
     fn a_change_names_where_it_starts_and_what_it_builds_on() {
         let doc = LoroDoc::new();
