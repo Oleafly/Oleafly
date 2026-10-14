@@ -37,7 +37,7 @@ pub fn challenge_message(purpose: ChallengePurpose, server_id: ServerId, nonce: 
     message
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthStartQuery {
     pub provider: String,
     pub redirect_uri: String,
@@ -48,6 +48,55 @@ pub struct AuthStartQuery {
     pub platform: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub setup_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup_claim: Option<String>,
+}
+
+impl fmt::Debug for AuthStartQuery {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AuthStartQuery")
+            .field("provider", &self.provider)
+            .field("redirect_uri", &self.redirect_uri)
+            .field("state", &self.state)
+            .field("code_challenge", &self.code_challenge)
+            .field("device_public_key", &self.device_public_key)
+            .field("device_name", &self.device_name)
+            .field("platform", &self.platform)
+            .field("setup_code", &self.setup_code.as_ref().map(|_| REDACTED))
+            .field("setup_claim", &self.setup_claim.as_ref().map(|_| REDACTED))
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetupClaimRequest {
+    pub setup_code: String,
+    pub code_challenge: String,
+}
+
+impl fmt::Debug for SetupClaimRequest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SetupClaimRequest")
+            .field("setup_code", &REDACTED)
+            .field("code_challenge", &self.code_challenge)
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetupClaimResponse {
+    pub claim: String,
+}
+
+impl fmt::Debug for SetupClaimResponse {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SetupClaimResponse")
+            .field("claim", &REDACTED)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,6 +454,62 @@ mod tests {
         let error: ApiError =
             serde_json::from_str(r#"{"code":"not_admitted","message":"no"}"#).unwrap();
         assert_eq!(error.code, AuthErrorCode::NotAdmitted.as_str());
+    }
+
+    #[test]
+    fn a_setup_claim_travels_in_the_start_query_and_the_code_in_a_request_body() {
+        let without: AuthStartQuery = serde_json::from_str(
+            r#"{"provider":"github","redirect_uri":"http://127.0.0.1:5000/callback","state":"s","code_challenge":"c","device_public_key":"k","device_name":"Laptop","platform":"linux"}"#,
+        )
+        .unwrap();
+        assert_eq!(without.setup_claim, None);
+        assert!(!serde_json::to_string(&without)
+            .unwrap()
+            .contains("setup_claim"));
+        let claimed = AuthStartQuery {
+            setup_claim: Some("claim".to_string()),
+            ..without
+        };
+        assert_eq!(
+            serde_json::to_value(&claimed).unwrap()["setup_claim"],
+            "claim"
+        );
+        let wire = serde_json::json!({ "setup_code": "4F7K-Q2ZX", "code_challenge": "c" });
+        let request: SetupClaimRequest = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(request.setup_code, "4F7K-Q2ZX");
+        assert_eq!(serde_json::to_value(&request).unwrap(), wire);
+        let reply: SetupClaimResponse = serde_json::from_str(r#"{"claim":"k"}"#).unwrap();
+        assert_eq!(reply.claim, "k");
+        assert_eq!(
+            serde_json::to_value(&reply).unwrap(),
+            serde_json::json!({ "claim": "k" })
+        );
+    }
+
+    #[test]
+    fn debug_output_never_shows_setup_codes_or_claims() {
+        let request = SetupClaimRequest {
+            setup_code: "secret-code".to_string(),
+            code_challenge: "challenge".to_string(),
+        };
+        let reply = SetupClaimResponse {
+            claim: "secret-claim".to_string(),
+        };
+        let query = AuthStartQuery {
+            provider: "github".to_string(),
+            redirect_uri: "http://127.0.0.1:5000/callback".to_string(),
+            state: "s".to_string(),
+            code_challenge: "challenge".to_string(),
+            device_public_key: "k".to_string(),
+            device_name: "Laptop".to_string(),
+            platform: "linux".to_string(),
+            setup_code: Some("secret-code".to_string()),
+            setup_claim: Some("secret-claim".to_string()),
+        };
+        let printed = format!("{request:?} {reply:?} {query:?}");
+        assert!(!printed.contains("secret-"), "{printed}");
+        assert!(printed.contains("challenge"), "{printed}");
+        assert!(printed.contains("[redacted]"), "{printed}");
     }
 
     #[test]

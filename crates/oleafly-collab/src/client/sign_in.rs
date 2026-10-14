@@ -95,6 +95,7 @@ pub async fn sign_in(
         device_name,
         platform,
         setup_code: setup_code.filter(|_| manifest.needs_setup),
+        setup_claim: None,
     };
     open_browser(client.auth_start_url(&query)?.as_str())?;
     let callback = listener.wait(&state, timeout).await?;
