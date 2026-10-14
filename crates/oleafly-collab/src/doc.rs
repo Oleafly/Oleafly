@@ -289,17 +289,13 @@ impl ProjectDoc {
         })
     }
 
+    // A project without a trash folder still opens: any editor's change can
+    // delete or rename it, so the app makes a new one when it next needs it.
     pub fn load(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
         let doc = LoroDoc::new();
         doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
         doc.import(bytes).map_err(doc_error)?;
-        let loaded = ProjectDoc::wrap(doc)?;
-        if loaded.trash.is_none() {
-            return Err(CollabError::Corrupt(
-                "the shared project has no trash folder".to_owned(),
-            ));
-        }
-        Ok(loaded)
+        ProjectDoc::wrap(doc)
     }
 
     fn wrap(doc: LoroDoc) -> Result<ProjectDoc, CollabError> {
@@ -584,15 +580,30 @@ impl ProjectDoc {
 
     pub fn trash(&mut self, id: &str) -> Result<(), CollabError> {
         let node = self.tree_id(id)?;
-        let trash = self.trash.ok_or_else(|| {
-            CollabError::Corrupt("the shared project has no trash folder".to_owned())
-        })?;
+        let trash = match self.trash {
+            Some(trash) => trash,
+            None => self.recreate_trash()?,
+        };
         self.stamp_trashed(node)?;
         self.tree
             .mov(node, TreeParentId::Node(trash))
             .map_err(doc_error)?;
         self.doc.commit();
         Ok(())
+    }
+
+    // Two members who do this at once make two trash folders; every member
+    // then uses the one with the smallest id, and files in the other still
+    // count as deleted.
+    fn recreate_trash(&mut self) -> Result<TreeID, CollabError> {
+        let trash = self.tree.create(TreeParentId::Root).map_err(doc_error)?;
+        let meta = self.tree.get_meta(trash).map_err(doc_error)?;
+        meta.insert("id", TRASH_ID).map_err(doc_error)?;
+        meta.insert("name", TRASH_ID).map_err(doc_error)?;
+        meta.insert("kind", NodeKind::Dir.as_str())
+            .map_err(doc_error)?;
+        self.trash = Some(trash);
+        Ok(trash)
     }
 
     pub fn text(&self, id: &str) -> Result<String, CollabError> {
@@ -1341,6 +1352,122 @@ mod tests {
         typed.insert("abc").retain(12);
         owner.apply_operation(&main, &typed).unwrap();
         assert_eq!(owner.pending_since(&confirmed), 3);
+    }
+
+    fn trash_folder(doc: &ProjectDoc) -> TreeID {
+        doc.tree
+            .get_nodes(false)
+            .into_iter()
+            .find(|node| {
+                doc.tree
+                    .get_meta(node.id)
+                    .ok()
+                    .and_then(|meta| meta_string(&meta, "id"))
+                    .is_some_and(|id| id == TRASH_ID)
+            })
+            .unwrap()
+            .id
+    }
+
+    #[test]
+    fn a_project_whose_trash_folder_was_removed_still_opens_and_can_delete_files() {
+        let attacks: [fn(&ProjectDoc); 3] = [
+            |mallory| mallory.tree.delete(trash_folder(mallory)).unwrap(),
+            |mallory| {
+                let meta = mallory.tree.get_meta(trash_folder(mallory)).unwrap();
+                meta.insert("id", "not-the-trash").unwrap();
+            },
+            |mallory| {
+                let holder = mallory.tree.create(TreeParentId::Root).unwrap();
+                mallory
+                    .tree
+                    .mov(trash_folder(mallory), TreeParentId::Node(holder))
+                    .unwrap();
+                mallory.tree.delete(holder).unwrap();
+            },
+        ];
+        for (round, attack) in attacks.into_iter().enumerate() {
+            let (mut alice, mut mallory, main) = shared_pair();
+            let notes = alice
+                .add_node(None, "notes.tex", NodeKind::Text, None, "x")
+                .unwrap();
+            alice.trash(&notes).unwrap();
+            mallory
+                .import(&alice.export_since(&VersionVector::new()).unwrap())
+                .unwrap();
+            let before = mallory.version();
+            attack(&mallory);
+            mallory.doc.commit();
+            alice
+                .import(&mallory.export_since(&before).unwrap())
+                .unwrap();
+            assert!(alice.trash.is_none(), "round {round}");
+            let mut reopened = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+            reopened.trash(&main).unwrap();
+            assert!(reopened.trash.is_some(), "round {round}");
+            let trashed = reopened.trashed().unwrap();
+            assert!(trashed.iter().any(|item| item.id == main), "round {round}");
+            reopened.restore(&main).unwrap();
+            let main_node = reopened.nodes().unwrap();
+            let main_node = main_node.iter().find(|node| node.id == main).unwrap();
+            assert_eq!(main_node.parent, NodeParent::Root, "round {round}");
+            alice.trash(&main).unwrap();
+            assert_eq!(
+                alice
+                    .nodes()
+                    .unwrap()
+                    .iter()
+                    .find(|node| node.id == main)
+                    .unwrap()
+                    .parent,
+                NodeParent::Trash,
+                "round {round}"
+            );
+        }
+    }
+
+    #[test]
+    fn files_deleted_into_either_of_two_remade_trash_folders_stay_deleted() {
+        let (mut alice, mut bob, main) = shared_pair();
+        let notes = alice
+            .add_node(None, "notes.tex", NodeKind::Text, None, "x")
+            .unwrap();
+        bob.import(&alice.export_since(&VersionVector::new()).unwrap())
+            .unwrap();
+        for doc in [&mut alice, &mut bob] {
+            doc.tree.delete(trash_folder(doc)).unwrap();
+            doc.doc.commit();
+            doc.reindex().unwrap();
+            assert!(doc.trash.is_none());
+        }
+        let (alice_start, bob_start) = (alice.version(), bob.version());
+        alice.trash(&main).unwrap();
+        bob.trash(&notes).unwrap();
+        alice
+            .import(&bob.export_since(&alice_start).unwrap())
+            .unwrap();
+        bob.import(&alice.export_since(&bob_start).unwrap())
+            .unwrap();
+        for doc in [&mut alice, &mut bob] {
+            let trashed: Vec<String> = doc
+                .trashed()
+                .unwrap()
+                .into_iter()
+                .map(|item| item.id)
+                .collect();
+            assert!(
+                trashed.contains(&main) && trashed.contains(&notes),
+                "{trashed:?}"
+            );
+            for id in [&main, &notes] {
+                doc.restore(id).unwrap();
+                let nodes = doc.nodes().unwrap();
+                assert_eq!(
+                    nodes.iter().find(|node| node.id == *id).unwrap().parent,
+                    NodeParent::Root
+                );
+            }
+        }
     }
 
     #[test]
