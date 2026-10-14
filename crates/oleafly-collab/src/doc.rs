@@ -417,10 +417,22 @@ impl ProjectDoc {
     }
 
     fn parent_of(&self, parent: Option<&str>) -> Result<TreeParentId, CollabError> {
-        match parent {
-            None => Ok(TreeParentId::Root),
-            Some(id) => Ok(TreeParentId::Node(self.tree_id(id)?)),
+        let Some(id) = parent else {
+            return Ok(TreeParentId::Root);
+        };
+        let node = self.tree_id(id)?;
+        let kind = self
+            .tree
+            .get_meta(node)
+            .ok()
+            .and_then(|meta| meta_string(&meta, "kind"))
+            .and_then(|kind| NodeKind::parse(&kind));
+        if kind != Some(NodeKind::Dir) {
+            return Err(CollabError::InvalidPath(format!(
+                "{id} is a file, so nothing can go inside it"
+            )));
         }
+        Ok(TreeParentId::Node(node))
     }
 
     pub(crate) fn loro(&self) -> &LoroDoc {
@@ -1329,6 +1341,29 @@ mod tests {
         typed.insert("abc").retain(12);
         owner.apply_operation(&main, &typed).unwrap();
         assert_eq!(owner.pending_since(&confirmed), 3);
+    }
+
+    #[test]
+    fn nothing_can_be_added_or_moved_inside_a_file() {
+        let (mut owner, _joiner, main) = shared_pair();
+        let chapters = owner
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        let intro = owner
+            .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, "Intro")
+            .unwrap();
+        assert!(matches!(
+            owner.add_node(Some(&main), "child.tex", NodeKind::Text, None, "x"),
+            Err(CollabError::InvalidPath(_))
+        ));
+        assert!(matches!(
+            owner.move_to(&intro, Some(&main)),
+            Err(CollabError::InvalidPath(_))
+        ));
+        owner.move_to(&intro, None).unwrap();
+        owner.move_to(&intro, Some(&chapters)).unwrap();
+        let placed = crate::materialize::layout(&owner.nodes().unwrap());
+        assert_eq!(placed[&intro].path, "chapters/intro.tex");
     }
 
     #[test]

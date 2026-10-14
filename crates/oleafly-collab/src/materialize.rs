@@ -82,12 +82,14 @@ fn suffixed(name: &str, id: &str) -> String {
     }
 }
 
-fn in_trash(parents: &BTreeMap<&str, &NodeParent>, id: &str) -> bool {
+fn in_trash(parents: &BTreeMap<&str, &NodeParent>, folders: &BTreeSet<&str>, id: &str) -> bool {
     let mut current = id;
     for _ in 0..=parents.len() {
         match parents.get(current) {
             Some(NodeParent::Trash) => return true,
-            Some(NodeParent::Node(parent)) => current = parent.as_str(),
+            Some(NodeParent::Node(parent)) if folders.contains(parent.as_str()) => {
+                current = parent.as_str();
+            }
             _ => return false,
         }
     }
@@ -96,19 +98,30 @@ fn in_trash(parents: &BTreeMap<&str, &NodeParent>, id: &str) -> bool {
 
 type Groups<'a> = BTreeMap<(NodeParent, String), Vec<&'a FileNode>>;
 
+// Only a folder holds other nodes. A node whose parent is a file, which
+// only a modified client can make, sits at the top like an orphan, so it
+// never needs a folder where a file is.
+fn folders(nodes: &[FileNode]) -> BTreeSet<&str> {
+    nodes
+        .iter()
+        .filter(|node| node.kind == NodeKind::Dir)
+        .map(|node| node.id.as_str())
+        .collect()
+}
+
 fn groups(nodes: &[FileNode]) -> Groups<'_> {
-    let ids: BTreeSet<&str> = nodes.iter().map(|node| node.id.as_str()).collect();
+    let folders = folders(nodes);
     let parents: BTreeMap<&str, &NodeParent> = nodes
         .iter()
         .map(|node| (node.id.as_str(), &node.parent))
         .collect();
     let mut groups = Groups::new();
     for node in nodes {
-        if in_trash(&parents, &node.id) {
+        if in_trash(&parents, &folders, &node.id) {
             continue;
         }
         let parent = match &node.parent {
-            NodeParent::Node(parent) if !ids.contains(parent.as_str()) => NodeParent::Root,
+            NodeParent::Node(parent) if !folders.contains(parent.as_str()) => NodeParent::Root,
             other => other.clone(),
         };
         let name = safe_name(&node.name, &node.id);
@@ -291,7 +304,11 @@ fn path_of(
     for _ in 0..=by_id.len() {
         segments.push(names.get(current)?.clone());
         match by_id.get(current).map(|node| &node.parent) {
-            Some(NodeParent::Node(parent)) if by_id.contains_key(parent.as_str()) => {
+            Some(NodeParent::Node(parent))
+                if by_id
+                    .get(parent.as_str())
+                    .is_some_and(|holder| holder.kind == NodeKind::Dir) =>
+            {
                 current = parent.as_str();
             }
             Some(NodeParent::Trash) => return None,
@@ -509,6 +526,49 @@ mod tests {
         assert_eq!(placed["t1"].path, "chapters/intro.tex");
         assert_eq!(placed["t2"].path, "main.tex");
         assert!(!placed.contains_key("t3"));
+    }
+
+    #[test]
+    fn a_node_whose_parent_is_a_file_is_laid_out_at_the_top() {
+        let nodes = vec![
+            node("t1", NodeParent::Root, "main.tex", NodeKind::Text),
+            node(
+                "t2",
+                NodeParent::Node("t1".into()),
+                "child.tex",
+                NodeKind::Text,
+            ),
+            node("d1", NodeParent::Root, "figs", NodeKind::Dir),
+            node(
+                "t3",
+                NodeParent::Node("d1".into()),
+                "plot.tex",
+                NodeKind::Text,
+            ),
+            node(
+                "t4",
+                NodeParent::Node("t1".into()),
+                "main.tex",
+                NodeKind::Text,
+            ),
+            node("t5", NodeParent::Trash, "old.tex", NodeKind::Text),
+            node(
+                "t6",
+                NodeParent::Node("t5".into()),
+                "under-old.tex",
+                NodeKind::Text,
+            ),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["t1"].path, "main.tex");
+        assert_eq!(placed["t2"].path, "child.tex");
+        assert_eq!(placed["t3"].path, "figs/plot.tex");
+        assert_eq!(placed["t4"].path, "main (t4).tex");
+        assert_eq!(placed["t6"].path, "under-old.tex");
+        assert!(!placed.contains_key("t5"));
+        assert!(placed
+            .values()
+            .all(|placed| !placed.path.starts_with("main.tex/")));
     }
 
     #[test]
