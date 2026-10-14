@@ -35,14 +35,9 @@
   "tryAgain": "Opnieuw proberen",
   "syncOnThisComputer": "Synchroniseren op deze computer",
   "syncOnHelp": "Synchroniseert zolang Oleafly open is. Als je dit uitzet, stopt de synchronisatie alleen hier. Je andere computers en je Dropbox veranderen niet.",
-  "interval": {
+  "auto": {
     "label": "Automatisch synchroniseren",
-    "description": "Hoe vaak Oleafly je Dropbox op wijzigingen controleert zolang het open is.",
-    "1m": "Elke minuut",
-    "5m": "Elke 5 minuten",
-    "15m": "Elke 15 minuten",
-    "60m": "Elk uur",
-    "manual": "Alleen als ik voor Nu synchroniseren kies"
+    "description": "Oleafly synchroniseert een paar seconden nadat je opslaat en zodra een andere computer je Dropbox wijzigt. Zet dit uit om alleen te synchroniseren als je op Nu synchroniseren klikt."
   },
   "computer": {
     "label": "Computernaam",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} project dat vanuit een map is geopend, wordt niet gesynchroniseerd. Alleen van projecten in je bibliotheek wordt een back-up gemaakt.",
     "linkedNote_other": "{{count}} projecten die vanuit een map zijn geopend, worden niet gesynchroniseerd. Alleen van projecten in je bibliotheek wordt een back-up gemaakt."
   },
+  "transfer": {
+    "uploading_one": "Uploaden: {{done}} van {{total}} bestand",
+    "uploading_other": "Uploaden: {{done}} van {{total}} bestanden",
+    "downloading_one": "Downloaden: {{done}} van {{total}} bestand",
+    "downloading_other": "Downloaden: {{done}} van {{total}} bestanden",
+    "fetching": "Downloaden: {{done}} van {{total}}"
+  },
   "row": {
     "synced": "Gesynchroniseerd: {{time}}",
     "waiting": "Nog niet in Dropbox",
+    "waitingToSync": "Wacht op synchronisatie",
     "paused": "Gepauzeerd op deze computer",
     "held": "Gepauzeerd om je bestanden te beschermen",
     "removed": "Uit Dropbox verwijderd op {{device}}",
     "removedUnknown": "Uit Dropbox verwijderd",
     "onlyInDropbox": "Alleen in Dropbox",
+    "stillUploading": "Wordt nog geüpload vanaf {{device}}",
+    "stillUploadingUnknown": "Wordt nog geüpload vanaf een andere computer",
+    "sizeSoFar": "{{size}} tot nu toe",
     "recycled": "In je Prullenbak",
     "conflicts_one": "Er is {{count}} conflictkopie gemaakt",
     "conflicts_other": "Er zijn {{count}} conflictkopieën gemaakt",

@@ -1,12 +1,12 @@
 use crate::cloud::store::{
-    endpoints, test_endpoints, BatchDelete, BatchFile, CloudStore, DropboxStore, RemoteEntry,
-    StoreError, StoreResult, TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
+    endpoints, test_endpoints, BatchCopy, BatchDelete, BatchFile, CloudStore, DropboxStore,
+    RemoteEntry, StoreError, StoreResult, TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
 };
 use crate::cloud::tests::fake_dropbox::{point_at, FakeDropbox, Reply};
 use futures_util::future::BoxFuture;
 use oleafly_core::content::ContentHash;
 use serde_json::json;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 fn store(fake: &FakeDropbox, refresher: Option<TokenRefresher>) -> DropboxStore {
@@ -697,12 +697,14 @@ fn without_an_override_the_store_talks_to_dropbox_itself() {
     let _pointed = point_at(crate::cloud::store::Endpoints {
         api: String::new(),
         content: String::new(),
+        notify: String::new(),
         token: String::new(),
     });
     test_endpoints::set(None);
     let real = endpoints();
     assert_eq!(real.api, "https://api.dropboxapi.com/2");
     assert_eq!(real.content, "https://content.dropboxapi.com/2");
+    assert_eq!(real.notify, "https://notify.dropboxapi.com/2");
     assert_eq!(real.token, "https://api.dropboxapi.com/oauth2/token");
 }
 
@@ -737,7 +739,7 @@ async fn many_files_upload_in_parallel_sessions_and_commit_in_one_batch() {
         dropbox.rejected_names.insert("part3.tex".into());
     });
 
-    let results = store.put_paths(&files).await;
+    let results = store.put_paths(&files, &|| {}).await;
     assert_eq!(results.len(), files.len());
     for (index, result) in results.iter().enumerate().take(12) {
         if index == 3 {
@@ -767,7 +769,7 @@ async fn many_files_upload_in_parallel_sessions_and_commit_in_one_batch() {
     });
 
     fake.with(|dropbox| dropbox.quota = Some(dropbox.used() - 1));
-    let full = store.put_paths(&files[..2]).await;
+    let full = store.put_paths(&files[..2], &|| {}).await;
     assert!(full
         .iter()
         .all(|result| matches!(result, Err(StoreError::QuotaFull))));
@@ -781,7 +783,7 @@ async fn many_files_upload_in_parallel_sessions_and_commit_in_one_batch() {
             1,
         );
     });
-    let unreadable = store.put_paths(&files[..2]).await;
+    let unreadable = store.put_paths(&files[..2], &|| {}).await;
     assert!(unreadable
         .iter()
         .all(|result| matches!(result, Err(StoreError::Server(_)))));
@@ -798,11 +800,18 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
     });
     let dir = tempfile::tempdir().unwrap();
 
+    let received = AtomicU64::new(0);
     let archive = dir.path().join("p.zip");
     assert!(store
-        .fetch_zip("/projects/p/files", &archive, 1 << 20)
+        .fetch_zip("/projects/p/files", &archive, 1 << 20, &|bytes| {
+            received.fetch_add(bytes, Ordering::SeqCst);
+        })
         .await
         .unwrap());
+    assert_eq!(
+        received.load(Ordering::SeqCst),
+        std::fs::metadata(&archive).unwrap().len()
+    );
     let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
     let mut names: Vec<String> = zip.file_names().map(str::to_string).collect();
     names.sort();
@@ -816,14 +825,14 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
 
     let small = dir.path().join("small.zip");
     assert!(!store
-        .fetch_zip("/projects/p/files", &small, 16)
+        .fetch_zip("/projects/p/files", &small, 16, &|_| {})
         .await
         .unwrap());
     assert!(!small.exists());
 
     let missing = dir.path().join("missing.zip");
     assert!(!store
-        .fetch_zip("/projects/none/files", &missing, 1 << 20)
+        .fetch_zip("/projects/none/files", &missing, 1 << 20, &|_| {})
         .await
         .unwrap());
 
@@ -833,6 +842,7 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
             "/projects/p/files",
             &dir.path().join("limited.zip"),
             1 << 20,
+            &|_| {},
         )
         .await;
     assert!(
@@ -944,4 +954,77 @@ async fn many_deletes_go_in_one_batch_and_keep_their_revision_checks() {
         assert_eq!(dropbox.calls("files/delete_batch"), 2);
         assert_eq!(dropbox.read("/projects/p/files/many/259.tex"), None);
     });
+}
+
+#[tokio::test]
+async fn copies_run_in_dropbox_one_at_a_time_or_as_a_batch_job() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    fake.with(|dropbox| {
+        dropbox.write("/projects/p/files/figs/a.png", b"aaaa".to_vec());
+        dropbox.write("/projects/p/files/figs/b.png", b"bbbb".to_vec());
+        dropbox.write("/projects/p/files/taken.png", b"old".to_vec());
+    });
+    let single = store
+        .copy_paths(&[BatchCopy {
+            from: "/projects/p/files/figs/a.png".into(),
+            to: "/projects/p/files/figures/a.png".into(),
+        }])
+        .await;
+    let copied = single[0].as_ref().unwrap();
+    assert_eq!(copied.size, 4);
+    assert_eq!(
+        Some(copied.rev.clone()),
+        fake.with(|dropbox| dropbox.rev("/projects/p/files/figures/a.png"))
+    );
+    assert!(copied.content_hash.is_some());
+
+    let batch = store
+        .copy_paths(&[
+            BatchCopy {
+                from: "/projects/p/files/figs/b.png".into(),
+                to: "/projects/p/files/figures/b.png".into(),
+            },
+            BatchCopy {
+                from: "/projects/p/files/figs/b.png".into(),
+                to: "/projects/p/files/taken.png".into(),
+            },
+            BatchCopy {
+                from: "/projects/p/files/figs/gone.png".into(),
+                to: "/projects/p/files/figures/gone.png".into(),
+            },
+        ])
+        .await;
+    assert_eq!(batch[0].as_ref().unwrap().size, 4);
+    assert!(matches!(batch[1], Err(StoreError::Conflict)), "{batch:?}");
+    assert!(batch[2].is_err());
+    fake.with(|dropbox| {
+        assert_eq!(
+            dropbox.read("/projects/p/files/figures/b.png"),
+            Some(b"bbbb".to_vec())
+        );
+        assert_eq!(
+            dropbox.read("/projects/p/files/taken.png"),
+            Some(b"old".to_vec())
+        );
+        assert_eq!(dropbox.calls("files/copy_v2"), 1);
+        assert_eq!(dropbox.calls("files/copy_batch_v2"), 1);
+        assert_eq!(dropbox.calls("files/copy_batch/check_v2"), 2);
+    });
+
+    fake.with(|dropbox| {
+        dropbox.fault(
+            "files/copy_v2",
+            None,
+            Reply::Refuse("from_lookup/not_found/.."),
+            1,
+        );
+    });
+    let missing = store
+        .copy_paths(&[BatchCopy {
+            from: "/projects/p/files/figs/a.png".into(),
+            to: "/projects/p/files/elsewhere.png".into(),
+        }])
+        .await;
+    assert!(missing[0].is_err());
 }

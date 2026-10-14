@@ -35,14 +35,9 @@
   "tryAgain": "Try again",
   "syncOnThisComputer": "Sync on this computer",
   "syncOnHelp": "Syncs while Oleafly is open. Turning this off stops syncing here only. Your other computers and your Dropbox don't change.",
-  "interval": {
+  "auto": {
     "label": "Sync automatically",
-    "description": "How often Oleafly checks your Dropbox for changes while it's open.",
-    "1m": "Every minute",
-    "5m": "Every 5 minutes",
-    "15m": "Every 15 minutes",
-    "60m": "Every hour",
-    "manual": "Only when I choose Sync now"
+    "description": "Oleafly syncs a few seconds after you save and as soon as another computer changes your Dropbox. Turn this off to sync only when you click Sync now."
   },
   "computer": {
     "label": "Computer name",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} project opened from a folder isn't synced. Only projects in your Library are backed up.",
     "linkedNote_other": "{{count}} projects opened from a folder aren't synced. Only projects in your Library are backed up."
   },
+  "transfer": {
+    "uploading_one": "Uploading {{done}} of {{total}} file",
+    "uploading_other": "Uploading {{done}} of {{total}} files",
+    "downloading_one": "Downloading {{done}} of {{total}} file",
+    "downloading_other": "Downloading {{done}} of {{total}} files",
+    "fetching": "Downloading {{done}} of {{total}}"
+  },
   "row": {
     "synced": "Synced {{time}}",
     "waiting": "Not in Dropbox yet",
+    "waitingToSync": "Waiting to sync",
     "paused": "Paused on this computer",
     "held": "Paused to protect your files",
     "removed": "Removed from Dropbox on {{device}}",
     "removedUnknown": "Removed from Dropbox",
     "onlyInDropbox": "Only in Dropbox",
+    "stillUploading": "Still uploading from {{device}}",
+    "stillUploadingUnknown": "Still uploading from another computer",
+    "sizeSoFar": "{{size}} so far",
     "recycled": "In your Recycle Bin",
     "conflicts_one": "{{count}} conflict copy was made",
     "conflicts_other": "{{count}} conflict copies were made",

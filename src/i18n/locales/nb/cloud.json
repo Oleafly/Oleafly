@@ -35,14 +35,9 @@
   "tryAgain": "Prøv igjen",
   "syncOnThisComputer": "Synkronisering på denne datamaskinen",
   "syncOnHelp": "Synkroniserer mens Oleafly er åpen. Hvis du slår av dette, stopper synkroniseringen bare her. De andre datamaskinene dine og Dropboxen din endres ikke.",
-  "interval": {
+  "auto": {
     "label": "Synkroniser automatisk",
-    "description": "Hvor ofte Oleafly ser etter endringer i Dropboxen din mens programmet er åpent.",
-    "1m": "Hvert minutt",
-    "5m": "Hvert 5. minutt",
-    "15m": "Hvert 15. minutt",
-    "60m": "Hver time",
-    "manual": "Bare når jeg velger Synkroniser nå"
+    "description": "Oleafly synkroniserer noen sekunder etter at du lagrer, og så snart en annen datamaskin endrer Dropboxen din. Slå av for å synkronisere bare når du klikker på Synkroniser nå."
   },
   "computer": {
     "label": "Datamaskinnavn",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} prosjekt som er åpnet fra en mappe, synkroniseres ikke. Bare prosjekter i biblioteket ditt sikkerhetskopieres.",
     "linkedNote_other": "{{count}} prosjekter som er åpnet fra en mappe, synkroniseres ikke. Bare prosjekter i biblioteket ditt sikkerhetskopieres."
   },
+  "transfer": {
+    "uploading_one": "Laster opp {{done}} av {{total}} fil",
+    "uploading_other": "Laster opp {{done}} av {{total}} filer",
+    "downloading_one": "Laster ned {{done}} av {{total}} fil",
+    "downloading_other": "Laster ned {{done}} av {{total}} filer",
+    "fetching": "Laster ned {{done}} av {{total}}"
+  },
   "row": {
     "synced": "Synkronisert {{time}}",
     "waiting": "Ikke i Dropbox ennå",
+    "waitingToSync": "Venter på synkronisering",
     "paused": "Satt på pause på denne datamaskinen",
     "held": "Satt på pause for å beskytte filene dine",
     "removed": "Fjernet fra Dropbox på {{device}}",
     "removedUnknown": "Fjernet fra Dropbox",
     "onlyInDropbox": "Bare i Dropbox",
+    "stillUploading": "Lastes fortsatt opp fra {{device}}",
+    "stillUploadingUnknown": "Lastes fortsatt opp fra en annen datamaskin",
+    "sizeSoFar": "{{size}} så langt",
     "recycled": "I papirkurven",
     "conflicts_one": "{{count}} konfliktkopi ble laget",
     "conflicts_other": "{{count}} konfliktkopier ble laget",

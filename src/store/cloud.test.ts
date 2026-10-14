@@ -100,6 +100,8 @@ function project(overrides: Partial<CloudProject> = {}): CloudProject {
     hold: null,
     recycled: false,
     removedBy: null,
+    pendingFiles: null,
+    uploadingFrom: null,
     ...overrides,
   };
 }
@@ -394,6 +396,39 @@ describe("cloud store", () => {
     await store.useCloudStore.getState().setProjectMode("thesis", "pause");
     expect(store.useCloudStore.getState().state?.projects[0].mode).toBe("sync");
     expect(store.useCloudStore.getState().busyProjects).toEqual([]);
+  });
+
+  it("marks a resumed project as waiting and clears transfer progress when the round ends", async () => {
+    await connected(cloudState({ projects: [project({ mode: "pause" })] }));
+    mocks.cloud.cloudProjectSetMode.mockResolvedValueOnce(undefined);
+    const round = deferred<SyncReport>();
+    mocks.cloud.cloudSyncNow.mockReturnValueOnce(round.promise);
+    const before = Date.now();
+    await store.useCloudStore.getState().setProjectMode("thesis", "sync");
+    expect(store.useCloudStore.getState().resumedAt.thesis).toBeGreaterThanOrEqual(before);
+    store.useCloudStore
+      .getState()
+      .noteProgress({ projectId: "thesis", cloudId: "c-thesis", phase: "uploading", done: 1, total: 4 });
+    store.useCloudStore.setState({ downloading: ["c-stats"] });
+    store.useCloudStore
+      .getState()
+      .noteProgress({ projectId: null, cloudId: "c-stats", phase: "downloading", done: 2, total: 9 });
+    expect(Object.keys(store.useCloudStore.getState().progress)).toEqual(["thesis", "c-stats"]);
+    round.resolve(report());
+    await vi.waitFor(() => expect(store.useCloudStore.getState().syncing).toBe(false));
+    expect(Object.keys(store.useCloudStore.getState().progress)).toEqual(["c-stats"]);
+  });
+
+  it("forgets a download's progress once it finishes", async () => {
+    await connected();
+    mocks.cloud.cloudDownloadProject.mockImplementationOnce(async () => {
+      store.useCloudStore
+        .getState()
+        .noteProgress({ projectId: null, cloudId: "c1", phase: "fetching", done: 5, total: 10 });
+      return { localId: "one", restored: false };
+    });
+    await store.useCloudStore.getState().downloadProject("c1");
+    expect(store.useCloudStore.getState().progress).toEqual({});
   });
 
   it("returns the rename problem and keeps the old name", async () => {

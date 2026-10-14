@@ -9,6 +9,7 @@ use crate::cloud::store::{CloudStore, StoreError, WriteMode};
 use crate::cloud::tests::memory::MemoryStore;
 use oleafly_core::hlc::{Hlc, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 struct Device {
@@ -773,6 +774,155 @@ async fn an_unreadable_zip_falls_back_to_one_download_per_file() {
         .unwrap()
         .count();
     assert_eq!(staging, 0);
+}
+
+#[tokio::test]
+async fn a_long_first_backup_reports_progress_and_marks_interim_records_unfinished() {
+    crate::cloud::progress::recorded::listen();
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    for index in 0..450 {
+        desk.write(&format!("parts/p-{index:03}.tex"), &format!("part {index}"));
+    }
+    desk.sync(&store, cloud).await;
+    let pending: Vec<Option<u64>> = store.with(|inner| {
+        inner
+            .history
+            .values()
+            .filter_map(|bytes| serde_json::from_slice::<VersionManifest>(bytes).ok())
+            .map(|version| version.pending)
+            .collect()
+    });
+    assert_eq!(pending, vec![Some(252), Some(52), None]);
+    let uploads: Vec<(u64, u64)> = crate::cloud::progress::recorded::for_cloud(&cloud.to_string())
+        .iter()
+        .filter(|event| event.phase == crate::cloud::progress::Phase::Uploading)
+        .map(|event| (event.done, event.total))
+        .collect();
+    assert_eq!(uploads.first(), Some(&(0, 452)));
+    assert_eq!(uploads.last(), Some(&(452, 452)));
+    assert!(uploads.windows(2).all(|pair| pair[0].0 <= pair[1].0));
+
+    let interim = store.with(|inner| {
+        inner
+            .history
+            .values()
+            .find_map(|bytes| {
+                serde_json::from_slice::<VersionManifest>(bytes)
+                    .ok()
+                    .filter(|version| version.pending == Some(52))
+            })
+            .unwrap()
+    });
+    store.overwrite(
+        &version_remote(cloud),
+        &serde_json::to_vec(&interim).unwrap(),
+    );
+    let listed = list_remote_projects(&store, &BTreeSet::new(), &mut BTreeMap::new())
+        .await
+        .unwrap();
+    assert_eq!(listed[0].pending, Some(52));
+    assert_eq!(listed[0].device.as_deref(), Some("Desk"));
+
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    let fetched: Vec<(u64, u64)> = crate::cloud::progress::recorded::for_cloud(&cloud.to_string())
+        .iter()
+        .filter(|event| event.phase == crate::cloud::progress::Phase::Fetching)
+        .map(|event| (event.done, event.total))
+        .collect();
+    assert!(fetched.len() >= 2, "{fetched:?}");
+    assert_eq!(
+        fetched.last().map(|(done, total)| done == total),
+        Some(true)
+    );
+    let arrived = std::fs::read_dir(laptop.root().join("parts"))
+        .unwrap()
+        .count();
+    assert_eq!(arrived as u64 + 1 + 52, 452);
+    assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+    assert!(laptop.project.remote_dirty || laptop.project.remote_rev.is_some());
+}
+
+fn figures(device: &Device, folder: &str) {
+    std::fs::create_dir_all(device.root().join(folder)).unwrap();
+    for index in 0..3_u8 {
+        std::fs::write(
+            device.root().join(format!("{folder}/f{index}.png")),
+            vec![index + 1; 600 * 1024],
+        )
+        .unwrap();
+    }
+    device.write(&format!("{folder}/notes.txt"), "small");
+}
+
+#[tokio::test]
+async fn renaming_a_folder_copies_large_files_in_dropbox_and_moves_them_on_other_computers() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    figures(&desk, "figs");
+    desk.sync(&store, cloud).await;
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+
+    std::fs::rename(desk.root().join("figs"), desk.root().join("figures")).unwrap();
+    store.with(|inner| inner.upload_bytes = 0);
+    let renamed = desk.sync(&store, cloud).await;
+    assert_eq!(renamed.outcome.copied, 3);
+    assert_eq!(store.with(|inner| inner.upload_bytes), 5);
+    assert!(store.read(&file_remote(cloud, "figs/f0.png")).is_none());
+    assert_eq!(
+        store.read(&file_remote(cloud, "figures/f2.png")),
+        Some(vec![3; 600 * 1024])
+    );
+
+    store.with(|inner| inner.downloads = 0);
+    laptop.project.remote_dirty = true;
+    let pulled = laptop.sync(&store, cloud).await;
+    assert_eq!(store.with(|inner| inner.downloads), 0);
+    assert_eq!(pulled.outcome.downloaded, 4);
+    assert_eq!(pulled.outcome.deleted_local, 4);
+    assert!(!laptop.root().join("figs").exists());
+    assert_eq!(
+        std::fs::read(laptop.root().join("figures/f1.png")).unwrap(),
+        vec![2; 600 * 1024]
+    );
+    assert_eq!(laptop.read("figures/notes.txt").as_deref(), Some("small"));
+    assert!(!laptop.dir.path().join("trash").exists());
+    assert!(laptop.sync(&store, cloud).await.outcome.unchanged);
+}
+
+#[tokio::test]
+async fn a_copy_that_does_not_match_the_file_here_is_uploaded_instead() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    figures(&desk, "figs");
+    desk.sync(&store, cloud).await;
+    std::fs::rename(desk.root().join("figs"), desk.root().join("figures")).unwrap();
+    store.with(|inner| {
+        inner.corrupt_copies = true;
+        inner.upload_bytes = 0;
+    });
+    let renamed = desk.sync(&store, cloud).await;
+    assert_eq!(renamed.outcome.copied, 0);
+    assert_eq!(store.with(|inner| inner.copies), 3);
+    assert_eq!(store.with(|inner| inner.upload_bytes), 3 * 600 * 1024 + 5);
+    assert_eq!(
+        store.read(&file_remote(cloud, "figures/f0.png")),
+        Some(vec![1; 600 * 1024])
+    );
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(
+        std::fs::read(laptop.root().join("figures/f0.png")).unwrap(),
+        vec![1; 600 * 1024]
+    );
 }
 
 #[tokio::test]

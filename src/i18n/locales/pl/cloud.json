@@ -35,14 +35,9 @@
   "tryAgain": "Spróbuj ponownie",
   "syncOnThisComputer": "Synchronizacja na tym komputerze",
   "syncOnHelp": "Synchronizacja działa, gdy Oleafly jest otwarte. Wyłączenie zatrzymuje ją tylko tutaj. Pozostałe komputery i Dropbox się nie zmienią.",
-  "interval": {
+  "auto": {
     "label": "Synchronizuj automatycznie",
-    "description": "Jak często Oleafly sprawdza zmiany na twoim koncie Dropbox, gdy jest otwarte.",
-    "1m": "Co minutę",
-    "5m": "Co 5 minut",
-    "15m": "Co 15 minut",
-    "60m": "Co godzinę",
-    "manual": "Tylko gdy wybiorę „Synchronizuj teraz”"
+    "description": "Oleafly synchronizuje kilka sekund po zapisaniu i od razu, gdy inny komputer zmieni zawartość konta Dropbox. Wyłącz, aby synchronizować tylko po kliknięciu Synchronizuj teraz."
   },
   "computer": {
     "label": "Nazwa komputera",
@@ -82,14 +77,29 @@
     "linkedNote_many": "{{count}} projektów otwartych z folderu nie jest synchronizowanych. Kopie zapasowe są tworzone tylko dla projektów z Biblioteki.",
     "linkedNote_other": "{{count}} projektu otwartego z folderu nie jest synchronizowane. Kopie zapasowe są tworzone tylko dla projektów z Biblioteki."
   },
+  "transfer": {
+    "uploading_few": "Przesyłanie plików: {{done}} z {{total}}",
+    "uploading_many": "Przesyłanie plików: {{done}} z {{total}}",
+    "uploading_one": "Przesyłanie plików: {{done}} z {{total}}",
+    "uploading_other": "Przesyłanie plików: {{done}} z {{total}}",
+    "downloading_few": "Pobieranie plików: {{done}} z {{total}}",
+    "downloading_many": "Pobieranie plików: {{done}} z {{total}}",
+    "downloading_one": "Pobieranie plików: {{done}} z {{total}}",
+    "downloading_other": "Pobieranie plików: {{done}} z {{total}}",
+    "fetching": "Pobieranie: {{done}} z {{total}}"
+  },
   "row": {
     "synced": "Zsynchronizowano {{time}}",
     "waiting": "Nie ma jeszcze na koncie Dropbox",
+    "waitingToSync": "Czeka na synchronizację",
     "paused": "Wstrzymano na tym komputerze",
     "held": "Wstrzymano, aby chronić twoje pliki",
     "removed": "Usunięto z Dropboxa na komputerze {{device}}",
     "removedUnknown": "Usunięto z Dropboxa",
     "onlyInDropbox": "Tylko na koncie Dropbox",
+    "stillUploading": "Nadal przesyłane z komputera {{device}}",
+    "stillUploadingUnknown": "Nadal przesyłane z innego komputera",
+    "sizeSoFar": "na razie {{size}}",
     "recycled": "W twoim Koszu",
     "conflicts_one": "Utworzono {{count}} kopię konfliktową",
     "conflicts_few": "Utworzono {{count}} kopie konfliktowe",

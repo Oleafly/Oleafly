@@ -35,14 +35,9 @@
   "tryAgain": "Försök igen",
   "syncOnThisComputer": "Synkronisering på den här datorn",
   "syncOnHelp": "Synkroniserar medan Oleafly är öppet. Om du stänger av det här slutar synkroniseringen bara här. Dina andra datorer och din Dropbox ändras inte.",
-  "interval": {
+  "auto": {
     "label": "Synkronisera automatiskt",
-    "description": "Hur ofta Oleafly letar efter ändringar i din Dropbox medan programmet är öppet.",
-    "1m": "Varje minut",
-    "5m": "Var 5:e minut",
-    "15m": "Var 15:e minut",
-    "60m": "Varje timme",
-    "manual": "Bara när jag väljer Synkronisera nu"
+    "description": "Oleafly synkroniserar några sekunder efter att du sparat och så fort en annan dator ändrar din Dropbox. Stäng av det för att bara synkronisera när du klickar på Synkronisera nu."
   },
   "computer": {
     "label": "Datornamn",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} projekt som öppnats från en mapp synkroniseras inte. Bara projekt i ditt bibliotek säkerhetskopieras.",
     "linkedNote_other": "{{count}} projekt som öppnats från en mapp synkroniseras inte. Bara projekt i ditt bibliotek säkerhetskopieras."
   },
+  "transfer": {
+    "uploading_one": "Laddar upp {{done}} av {{total}} fil",
+    "uploading_other": "Laddar upp {{done}} av {{total}} filer",
+    "downloading_one": "Laddar ned {{done}} av {{total}} fil",
+    "downloading_other": "Laddar ned {{done}} av {{total}} filer",
+    "fetching": "Laddar ned {{done}} av {{total}}"
+  },
   "row": {
     "synced": "Synkroniserat {{time}}",
     "waiting": "Inte i Dropbox än",
+    "waitingToSync": "Väntar på synkronisering",
     "paused": "Pausat på den här datorn",
     "held": "Pausat för att skydda dina filer",
     "removed": "Borttaget från Dropbox på {{device}}",
     "removedUnknown": "Borttaget från Dropbox",
     "onlyInDropbox": "Bara i Dropbox",
+    "stillUploading": "Laddas fortfarande upp från {{device}}",
+    "stillUploadingUnknown": "Laddas fortfarande upp från en annan dator",
+    "sizeSoFar": "{{size}} hittills",
     "recycled": "I papperskorgen",
     "conflicts_one": "{{count}} konfliktkopia skapades",
     "conflicts_other": "{{count}} konfliktkopior skapades",

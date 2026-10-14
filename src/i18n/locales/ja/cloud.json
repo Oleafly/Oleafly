@@ -35,14 +35,9 @@
   "tryAgain": "再試行",
   "syncOnThisComputer": "このコンピューターで同期",
   "syncOnHelp": "Oleafly が開いている間だけ同期します。オフにすると停止するのはこのコンピューターだけです。他のコンピューターと Dropbox は変わりません。",
-  "interval": {
+  "auto": {
     "label": "自動で同期",
-    "description": "Oleafly が開いている間に、Dropbox の変更を確認する頻度です。",
-    "1m": "1 分ごと",
-    "5m": "5 分ごと",
-    "15m": "15 分ごと",
-    "60m": "1 時間ごと",
-    "manual": "「今すぐ同期」を選んだときだけ"
+    "description": "Oleafly は、保存してから数秒後と、別のコンピュータで Dropbox が変更されたときに同期します。オフにすると、「今すぐ同期」をクリックしたときだけ同期します。"
   },
   "computer": {
     "label": "コンピューター名",
@@ -79,14 +74,23 @@
     "checkFailed": "Dropbox 内のプロジェクトを読み込めませんでした。",
     "linkedNote_other": "フォルダから開いた {{count}} 件のプロジェクトは同期されません。バックアップされるのはライブラリ内のプロジェクトだけです。"
   },
+  "transfer": {
+    "uploading_other": "アップロード中（{{done}} / {{total}} ファイル）",
+    "downloading_other": "ダウンロード中（{{done}} / {{total}} ファイル）",
+    "fetching": "ダウンロード中（{{done}} / {{total}}）"
+  },
   "row": {
     "synced": "同期済み：{{time}}",
     "waiting": "まだ Dropbox にありません",
+    "waitingToSync": "同期待ち",
     "paused": "このコンピューターで一時停止中",
     "held": "ファイルを守るため一時停止中",
     "removed": "{{device}} で Dropbox から削除されました",
     "removedUnknown": "Dropbox から削除されました",
     "onlyInDropbox": "Dropbox のみ",
+    "stillUploading": "{{device}} からアップロード中です",
+    "stillUploadingUnknown": "別のコンピュータからアップロード中です",
+    "sizeSoFar": "現在 {{size}}",
     "recycled": "ごみ箱にあります",
     "conflicts_other": "競合コピーを {{count}} 件作成しました",
     "conflictsHelp_other": "同期される前に、ここと別のコンピューターの両方で変更されたファイルがあったため、Oleafly は両方のバージョンを残しました。必要な内容を残してから、コピーを削除してください。",

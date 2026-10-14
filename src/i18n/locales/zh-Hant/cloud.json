@@ -35,14 +35,9 @@
   "tryAgain": "再試一次",
   "syncOnThisComputer": "在這台電腦上同步",
   "syncOnHelp": "Oleafly 開啟時同步。關閉僅停止這台電腦的同步。你的其他電腦和 Dropbox 不會改變。",
-  "interval": {
+  "auto": {
     "label": "自動同步",
-    "description": "Oleafly 開啟時檢查你 Dropbox 中變更的頻率。",
-    "1m": "每分鐘",
-    "5m": "每 5 分鐘",
-    "15m": "每 15 分鐘",
-    "60m": "每小時",
-    "manual": "只在我選擇「立即同步」時"
+    "description": "儲存幾秒後，以及另一台電腦變更你的 Dropbox 時，Oleafly 會立即同步。關閉後，只有按一下「立即同步」時才會同步。"
   },
   "computer": {
     "label": "電腦名稱",
@@ -79,14 +74,23 @@
     "checkFailed": "無法載入你 Dropbox 中的專案。",
     "linkedNote_other": "從資料夾開啟的 {{count}} 個專案不會同步。只有專案庫中的專案會備份。"
   },
+  "transfer": {
+    "uploading_other": "正在上傳第 {{done}} 個檔案，共 {{total}} 個",
+    "downloading_other": "正在下載第 {{done}} 個檔案，共 {{total}} 個",
+    "fetching": "正在下載 {{done}}，共 {{total}}"
+  },
   "row": {
     "synced": "{{time}}已同步",
     "waiting": "尚未在 Dropbox 中",
+    "waitingToSync": "等待同步",
     "paused": "已在這台電腦上暫停",
     "held": "為保護你的檔案已暫停",
     "removed": "已在 {{device}} 上從 Dropbox 中移除",
     "removedUnknown": "已從 Dropbox 中移除",
     "onlyInDropbox": "只在 Dropbox 中",
+    "stillUploading": "仍在從 {{device}} 上傳",
+    "stillUploadingUnknown": "仍在從另一台電腦上傳",
+    "sizeSoFar": "目前 {{size}}",
     "recycled": "在你的資源回收筒中",
     "conflicts_other": "已建立 {{count}} 個衝突副本",
     "conflictsHelp_other": "檔案在同步之前已分別在這裡和另一台電腦上被變更，因此 Oleafly 保留了兩個版本。保留你需要的內容，然後刪除副本。",

@@ -22,6 +22,7 @@ import {
   cloudState,
   cloudSyncNow,
   type CloudDirtyFile,
+  type CloudProgress,
   type CloudProject,
   type CloudSpace,
   type CloudState,
@@ -42,22 +43,16 @@ import { create } from "zustand";
 
 export type CloudConnection = "unknown" | CloudStatus;
 
-export const CLOUD_SYNC_INTERVALS = ["1m", "5m", "15m", "60m", "manual"] as const;
+const AUTO_SYNC_KEY = "oleafly.cloudSync.auto";
+const LEGACY_INTERVAL_KEY = "oleafly.cloudSync.interval";
 
-export type CloudSyncInterval = (typeof CLOUD_SYNC_INTERVALS)[number];
-
-const SYNC_INTERVAL_KEY = "oleafly.cloudSync.interval";
-
-export function isSyncInterval(value: string): value is CloudSyncInterval {
-  return (CLOUD_SYNC_INTERVALS as readonly string[]).includes(value);
-}
-
-function readSyncInterval(): CloudSyncInterval {
+function readAutoSync(): boolean {
   try {
-    const stored = localStorage.getItem(SYNC_INTERVAL_KEY) ?? "";
-    return isSyncInterval(stored) ? stored : "1m";
+    const stored = localStorage.getItem(AUTO_SYNC_KEY);
+    if (stored !== null) return stored !== "off";
+    return localStorage.getItem(LEGACY_INTERVAL_KEY) !== "manual";
   } catch {
-    return "1m";
+    return true;
   }
 }
 
@@ -79,8 +74,11 @@ export interface DownloadProgress {
 interface CloudStoreState {
   navRequest: SettingsNavRequest;
   requestNav: (request: SettingsNavRequest) => void;
-  syncInterval: CloudSyncInterval;
-  setSyncInterval: (interval: CloudSyncInterval) => void;
+  autoSync: boolean;
+  setAutoSync: (on: boolean) => void;
+  progress: Record<string, CloudProgress>;
+  noteProgress: (progress: CloudProgress) => void;
+  resumedAt: Record<string, number>;
   status: CloudConnection;
   state: CloudState | null;
   loadError: string | null;
@@ -134,6 +132,13 @@ interface CloudStoreState {
   requestSettingsImport: () => void;
   takeSettingsImport: () => boolean;
   clearSettingsImport: () => void;
+}
+
+function withoutRoundProgress(
+  progress: Record<string, CloudProgress>,
+  downloading: readonly string[],
+): Record<string, CloudProgress> {
+  return Object.fromEntries(Object.entries(progress).filter(([cloudId]) => downloading.includes(cloudId)));
 }
 
 const SYNC_TOAST = "cloud-sync";
@@ -401,7 +406,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     };
     syncInFlight = round().finally(() => {
       syncInFlight = null;
-      set({ syncing: false });
+      set((current) => ({ syncing: false, progress: withoutRoundProgress(current.progress, current.downloading) }));
     });
     return syncInFlight;
   };
@@ -452,7 +457,10 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       void logError("cloud download project", error);
       return { ok: false, error: rawError(error) };
     } finally {
-      set((current) => ({ downloading: without(current.downloading, cloudId) }));
+      set((current) => {
+        const { [cloudId]: _finished, ...progress } = current.progress;
+        return { downloading: without(current.downloading, cloudId), progress };
+      });
     }
   };
 
@@ -474,16 +482,22 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
   return {
     navRequest: null,
     requestNav: (request) => set({ navRequest: request }),
-    syncInterval: readSyncInterval(),
-    setSyncInterval: (interval) => {
-      if (!isSyncInterval(interval)) return;
+    autoSync: readAutoSync(),
+    setAutoSync: (on) => {
       try {
-        localStorage.setItem(SYNC_INTERVAL_KEY, interval);
+        localStorage.setItem(AUTO_SYNC_KEY, on ? "on" : "off");
+        localStorage.removeItem(LEGACY_INTERVAL_KEY);
       } catch (error) {
-        void logError("cloud save sync interval", error);
+        void logError("cloud save auto sync", error);
       }
-      set({ syncInterval: interval });
+      set({ autoSync: on });
     },
+    progress: {},
+    noteProgress: (progress) =>
+      set((current) => ({
+        progress: { ...current.progress, [progress.projectId ?? progress.cloudId]: progress },
+      })),
+    resumedAt: {},
     status: "unknown",
     state: null,
     loadError: null,
@@ -643,6 +657,9 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         return;
       } finally {
         setBusy(localId, false);
+      }
+      if (mode === "sync") {
+        set((current) => ({ resumedAt: { ...current.resumedAt, [localId]: Date.now() } }));
       }
       await get().refresh();
       if (mode === "sync") void get().syncNow(false);
@@ -899,6 +916,8 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         settingsChoiceError: null,
         settingsProblem: null,
         downloadProgress: null,
+        progress: {},
+        resumedAt: {},
       });
       await get().refresh();
       return true;

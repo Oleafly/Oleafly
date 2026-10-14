@@ -1,6 +1,9 @@
 use super::merge::{self, PROJECT_META};
+use super::progress::{Meter, Phase};
 use super::state::{BaseEntry, Failure, Hold, PendingDelete, ProjectState, SkippedFile};
-use super::store::{BatchDelete, BatchFile, CloudStore, StoreError, WriteMode};
+use super::store::{
+    BatchCopy, BatchDelete, BatchFile, CloudStore, DropboxContentHasher, StoreError, WriteMode,
+};
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
@@ -35,6 +38,7 @@ pub(crate) const MAX_LISTED_SKIPS: usize = 50;
 pub(crate) const MAX_CONFLICT_COPIES: usize = 100;
 const MAX_TREE_DEPTH: usize = 32;
 const APPLY_BATCH: usize = 32;
+const COPY_MIN_BYTES: u64 = 512 * 1024;
 
 pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
@@ -119,6 +123,8 @@ pub(crate) struct VersionManifest {
     pub(crate) stamp: Stamp,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) device: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) pending: Option<u64>,
     pub(crate) files: Vec<FileRecord>,
     #[serde(flatten)]
     pub(crate) extra: serde_json::Map<String, serde_json::Value>,
@@ -174,6 +180,7 @@ impl RoundOptions {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct SyncOutcome {
     pub(crate) uploaded: usize,
+    pub(crate) copied: usize,
     pub(crate) downloaded: usize,
     pub(crate) deleted_remote: usize,
     pub(crate) deleted_local: usize,
@@ -1107,10 +1114,17 @@ async fn stage_downloads<S: CloudStore>(
     cloud: ProjectId,
     jobs: Vec<(String, FileRecord)>,
     staging: &Path,
+    project_id: Option<&str>,
 ) -> (Vec<Staged>, Vec<(String, StoreError)>) {
+    let meter = (!jobs.is_empty())
+        .then(|| Meter::start(project_id, cloud, Phase::Downloading, jobs.len() as u64));
+    let meter = meter.as_ref();
     let results: Vec<(String, Result<Staged, StoreError>)> = stream::iter(jobs)
         .map(|(job_key, record)| async move {
             let result = stage_one(store, cloud, &job_key, &record, staging).await;
+            if let Some(meter) = meter {
+                meter.add(1);
+            }
             (job_key, result)
         })
         .buffer_unordered(DOWNLOAD_CONCURRENCY)
@@ -1133,9 +1147,10 @@ async fn stage_whole<S: CloudStore>(
     jobs: Vec<(String, FileRecord)>,
     staging: &Path,
     folder: (usize, u64),
+    project_id: Option<&str>,
 ) -> (Vec<Staged>, Vec<(String, StoreError)>) {
-    let (mut staged, rest) = stage_from_zip(store, cloud, jobs, staging, folder).await;
-    let (more, failed) = stage_downloads(store, cloud, rest, staging).await;
+    let (mut staged, rest) = stage_from_zip(store, cloud, jobs, staging, folder, project_id).await;
+    let (more, failed) = stage_downloads(store, cloud, rest, staging, project_id).await;
     staged.extend(more);
     (staged, failed)
 }
@@ -1151,6 +1166,7 @@ async fn stage_from_zip<S: CloudStore>(
     jobs: Vec<(String, FileRecord)>,
     staging: &Path,
     (files, bytes): (usize, u64),
+    project_id: Option<&str>,
 ) -> (Vec<Staged>, Vec<(String, FileRecord)>) {
     if files > ZIP_MAX_FILES || bytes > ZIP_MAX_BYTES || !zip_is_faster(jobs.len(), bytes) {
         return (Vec::new(), jobs);
@@ -1158,13 +1174,17 @@ async fn stage_from_zip<S: CloudStore>(
     let archive = staging_name(staging);
     let limit = bytes + bytes / 16 + files as u64 * 1024 + 1024 * 1024;
     let remote_dir = format!("{}/files", project_remote(cloud));
-    if !matches!(
-        store.fetch_zip(&remote_dir, &archive, limit).await,
-        Ok(true)
-    ) {
+    let meter = Meter::start(project_id, cloud, Phase::Fetching, bytes);
+    let fetched = store
+        .fetch_zip(&remote_dir, &archive, limit, &|received| {
+            meter.add(received)
+        })
+        .await;
+    if !matches!(fetched, Ok(true)) {
         let _ = tokio::fs::remove_file(&archive).await;
         return (Vec::new(), jobs);
     }
+    meter.add(bytes);
     let fallback = jobs.clone();
     let dir = staging.to_path_buf();
     let unpacked = tauri::async_runtime::spawn_blocking(move || {
@@ -1232,6 +1252,43 @@ fn unpack_entry<R: std::io::Read + std::io::Seek>(
     }
     let temp = staging_name(staging);
     if !copy_verified(&mut entry, &temp, record) {
+        let _ = std::fs::remove_file(&temp);
+        return None;
+    }
+    Some(Staged {
+        key: job_key.to_string(),
+        path: temp,
+        hash: record.hash.clone(),
+        size: record.size,
+    })
+}
+
+async fn dropbox_hash_of(path: &Path) -> Option<String> {
+    use tokio::io::AsyncReadExt;
+    let mut file = tokio::fs::File::open(path).await.ok()?;
+    let mut hasher = DropboxContentHasher::default();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let read = file.read(&mut buffer).await.ok()?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Some(hasher.finish())
+}
+
+fn copy_from_disk(
+    root: &Path,
+    portable_path: &str,
+    job_key: &str,
+    record: &FileRecord,
+    staging: &Path,
+) -> Option<Staged> {
+    let source = resolve_target(root, portable_path)?;
+    let mut file = std::fs::File::open(source).ok()?;
+    let temp = staging_name(staging);
+    if !copy_verified(&mut file, &temp, record) {
         let _ = std::fs::remove_file(&temp);
         return None;
     }
@@ -1317,6 +1374,7 @@ struct ApplyItem {
     local: Option<LocalFile>,
     remote: Option<FileRecord>,
     copy: Option<(String, bool)>,
+    moved_to: Option<String>,
 }
 
 struct ApplyJob {
@@ -1379,7 +1437,16 @@ fn apply_delete(job: &ApplyJob, item: &ApplyItem, applied: &mut Applied) {
     if !unchanged_since_capture(&target, Some(local)) {
         return;
     }
-    if trash_file(&target, &job.trash).is_ok() {
+    let moved = item
+        .moved_to
+        .as_ref()
+        .is_some_and(|destination| applied.downloaded.contains(destination));
+    let removed = if moved {
+        std::fs::remove_file(&target).is_ok()
+    } else {
+        trash_file(&target, &job.trash).is_ok()
+    };
+    if removed {
         prune_empty_parents(&job.root, &target);
         applied.deleted.insert(item.key.clone());
         applied.changed.insert(local.path.clone());
@@ -1451,8 +1518,14 @@ fn apply_item(job: &ApplyJob, item: &ApplyItem, temp: Option<&Path>, applied: &m
 fn apply_local(mut job: ApplyJob) -> Applied {
     let mut applied = Applied::default();
     let mut staged = std::mem::take(&mut job.staged);
+    let order: Vec<&ApplyItem> = job
+        .items
+        .iter()
+        .filter(|item| item.moved_to.is_none())
+        .chain(job.items.iter().filter(|item| item.moved_to.is_some()))
+        .collect();
     if job.root.is_dir() {
-        for chunk in job.items.chunks(APPLY_BATCH) {
+        for chunk in order.chunks(APPLY_BATCH) {
             let lock = match job.lock_id.as_deref() {
                 Some(id) => match crate::worktree_lock::ProjectWorktreeLock::try_exclusive(id) {
                     Ok(Some(lock)) => Some(lock),
@@ -1597,6 +1670,8 @@ struct Publisher<'a, S: CloudStore> {
     rev: Option<String>,
     overwrite: bool,
     published: Vec<FileRecord>,
+    pending: Option<u64>,
+    published_pending: Option<u64>,
     name: String,
     manifest: serde_json::Value,
     extra: serde_json::Map<String, serde_json::Value>,
@@ -1604,7 +1679,10 @@ struct Publisher<'a, S: CloudStore> {
 
 impl<S: CloudStore> Publisher<'_, S> {
     async fn publish(&mut self, files: Vec<FileRecord>) -> Result<bool, StoreError> {
-        if self.rev.is_some() && same_files(&files, &self.published) {
+        if self.rev.is_some()
+            && self.pending == self.published_pending
+            && same_files(&files, &self.published)
+        {
             return Ok(false);
         }
         let stamp = Stamp::new(self.clock.tick(now_ms()), self.context.device);
@@ -1615,6 +1693,7 @@ impl<S: CloudStore> Publisher<'_, S> {
             manifest: self.manifest.clone(),
             stamp,
             device: Some(self.context.device_name.clone()),
+            pending: self.pending,
             files: files.clone(),
             extra: self.extra.clone(),
         };
@@ -1631,6 +1710,7 @@ impl<S: CloudStore> Publisher<'_, S> {
             .await?;
         self.rev = Some(rev);
         self.published = files;
+        self.published_pending = self.pending;
         Ok(true)
     }
 }
@@ -1882,7 +1962,7 @@ struct UploadRun {
 }
 
 enum Loaded {
-    Remote(Option<Remote>),
+    Remote(Box<Option<Remote>>),
     Removed,
 }
 
@@ -1898,6 +1978,7 @@ struct Round<'a, S: CloudStore> {
     error: Option<RoundError>,
     late_error: Option<RoundError>,
     incomplete: bool,
+    moved: BTreeMap<String, String>,
 }
 
 impl<S: CloudStore> Round<'_, S> {
@@ -1935,7 +2016,7 @@ impl<S: CloudStore> Round<'_, S> {
             Err(error) => return Err(error),
         };
         if remote.is_some() {
-            return Ok(Loaded::Remote(remote));
+            return Ok(Loaded::Remote(Box::new(remote)));
         }
         if !self.options.replace_remote {
             if let Some(device) = read_tombstone(self.store, self.cloud).await? {
@@ -1947,7 +2028,7 @@ impl<S: CloudStore> Round<'_, S> {
         self.project.meta_base = None;
         self.project.remote_rev = None;
         self.project.pending_deletes.clear();
-        Ok(Loaded::Remote(None))
+        Ok(Loaded::Remote(Box::new(None)))
     }
 
     fn removed(&mut self, device: String) {
@@ -2048,13 +2129,31 @@ impl<S: CloudStore> Round<'_, S> {
             return Vec::new();
         }
         let records: BTreeMap<String, FileRecord> = downloads.iter().cloned().collect();
+        let (mut from_disk, downloads) = self.stage_from_disk(planned, downloads).await;
         let whole = zip_is_faster(downloads.len(), folder.1)
             && room_for(&self.env.staging, needed.saturating_add(folder.1)).await;
         let (staged, failed) = if whole {
-            stage_whole(self.store, self.cloud, downloads, &self.env.staging, folder).await
+            stage_whole(
+                self.store,
+                self.cloud,
+                downloads,
+                &self.env.staging,
+                folder,
+                self.env.lock_id.as_deref(),
+            )
+            .await
         } else {
-            stage_downloads(self.store, self.cloud, downloads, &self.env.staging).await
+            stage_downloads(
+                self.store,
+                self.cloud,
+                downloads,
+                &self.env.staging,
+                self.env.lock_id.as_deref(),
+            )
+            .await
         };
+        let mut staged = staged;
+        staged.append(&mut from_disk);
         for (job_key, error) in failed {
             self.incomplete = true;
             if error.ends_round() {
@@ -2074,6 +2173,62 @@ impl<S: CloudStore> Round<'_, S> {
             }
         }
         staged
+    }
+
+    async fn stage_from_disk(
+        &mut self,
+        planned: &[Planned],
+        downloads: Vec<(String, FileRecord)>,
+    ) -> (Vec<Staged>, Vec<(String, FileRecord)>) {
+        let mut sources: BTreeMap<(String, u64), (String, String)> = planned
+            .iter()
+            .filter(|item| matches!(item.action, Action::LocalDelete) && item.key != PROJECT_META)
+            .filter_map(|item| {
+                let local = item.local.as_ref()?;
+                Some((
+                    (local.hash.clone(), local.size),
+                    (item.key.clone(), local.path.clone()),
+                ))
+            })
+            .collect();
+        let mut wanted = Vec::new();
+        let mut rest = Vec::new();
+        for (job_key, record) in downloads {
+            let source = (job_key != PROJECT_META)
+                .then(|| sources.remove(&(record.hash.clone(), record.size)))
+                .flatten();
+            match source {
+                Some((delete_key, path)) => wanted.push((job_key, record, path, delete_key)),
+                None => rest.push((job_key, record)),
+            }
+        }
+        if wanted.is_empty() {
+            return (Vec::new(), rest);
+        }
+        let root = self.env.root.clone();
+        let staging = self.env.staging.clone();
+        let copied = tauri::async_runtime::spawn_blocking(move || {
+            wanted
+                .into_iter()
+                .map(|(job_key, record, path, delete_key)| {
+                    let staged = copy_from_disk(&root, &path, &job_key, &record, &staging);
+                    (staged, job_key, record, delete_key)
+                })
+                .collect::<Vec<_>>()
+        })
+        .await
+        .unwrap_or_default();
+        let mut staged = Vec::new();
+        for (copy, job_key, record, delete_key) in copied {
+            match copy {
+                Some(copy) => {
+                    self.moved.insert(delete_key, job_key);
+                    staged.push(copy);
+                }
+                None => rest.push((job_key, record)),
+            }
+        }
+        (staged, rest)
     }
 
     async fn apply(
@@ -2096,6 +2251,7 @@ impl<S: CloudStore> Round<'_, S> {
                 local: item.local.clone(),
                 remote: item.remote.clone(),
                 copy: names.get(&item.key).cloned(),
+                moved_to: self.moved.get(&item.key).cloned(),
             })
             .collect();
         if items.is_empty() {
@@ -2180,21 +2336,99 @@ impl<S: CloudStore> Round<'_, S> {
         }
     }
 
-    async fn upload_chunk(&mut self, chunk: &[&UploadJob], run: &mut UploadRun) -> bool {
+    async fn copy_uploads<'j>(
+        &mut self,
+        copies: Vec<(&'j UploadJob, bool, String)>,
+        run: &mut UploadRun,
+        tick: &(dyn Fn() + Sync),
+    ) -> Vec<(&'j UploadJob, bool)> {
+        let items: Vec<BatchCopy> = copies
+            .iter()
+            .map(|(job, _, from)| BatchCopy {
+                from: file_remote(self.cloud, from),
+                to: file_remote(self.cloud, &job.path),
+            })
+            .collect();
+        let results = self.store.copy_paths(&items).await;
+        let mut fallback = Vec::new();
+        for ((job, exec, _), result) in copies.into_iter().zip(results) {
+            let expected = dropbox_hash_of(&native(&self.env.root, &job.path)).await;
+            let copied = result.ok().filter(|copied| {
+                copied.size == job.size
+                    && copied.content_hash.is_some()
+                    && copied.content_hash == expected
+            });
+            match (copied, &job.local_hash) {
+                (Some(copied), Some(hash)) => {
+                    tick();
+                    let record = FileRecord {
+                        path: job.path.clone(),
+                        hash: hash.clone(),
+                        size: job.size,
+                        exec,
+                        rev: Some(copied.rev),
+                        extra: serde_json::Map::new(),
+                    };
+                    self.take_result(job, Ok(record), run);
+                    self.outcome.copied += 1;
+                }
+                _ => fallback.push((job, exec)),
+            }
+        }
+        fallback
+    }
+
+    async fn upload_chunk(
+        &mut self,
+        chunk: &[&UploadJob],
+        run: &mut UploadRun,
+        meter: Option<&Meter>,
+        sources: &BTreeMap<(String, u64), String>,
+    ) -> bool {
+        let tick = || {
+            if let Some(meter) = meter {
+                meter.add(1);
+            }
+        };
         let mut stop = false;
         let mut batch: Vec<(&UploadJob, bool)> = Vec::new();
         for job in chunk {
             if job.path == PROJECT_META {
                 let result = upload_meta(self.store, self.cloud, &self.env.root, job).await;
+                tick();
                 stop |= self.take_result(job, result, run);
                 continue;
             }
             match prepare_upload(&self.env.root, job).await {
                 Ok(exec) => batch.push((job, exec)),
-                Err(error) => stop |= self.take_result(job, Err(error), run),
+                Err(error) => {
+                    tick();
+                    stop |= self.take_result(job, Err(error), run);
+                }
             }
         }
         if stop || batch.is_empty() {
+            return stop;
+        }
+        let mut copies = Vec::new();
+        let mut direct = Vec::new();
+        for (job, exec) in batch {
+            let source = job
+                .local_hash
+                .as_ref()
+                .filter(|_| job.size >= COPY_MIN_BYTES)
+                .and_then(|hash| sources.get(&(hash.clone(), job.size)))
+                .filter(|from| key(from) != job.key);
+            match source {
+                Some(from) => copies.push((job, exec, from.clone())),
+                None => direct.push((job, exec)),
+            }
+        }
+        let mut batch = direct;
+        if !copies.is_empty() {
+            batch.extend(self.copy_uploads(copies, run, &tick).await);
+        }
+        if batch.is_empty() {
             return stop;
         }
         let files: Vec<BatchFile> = batch
@@ -2204,7 +2438,7 @@ impl<S: CloudStore> Round<'_, S> {
                 local: native(&self.env.root, &job.path),
             })
             .collect();
-        let results = self.store.put_paths(&files).await;
+        let results = self.store.put_paths(&files, &tick).await;
         for ((job, exec), result) in batch.iter().zip(results) {
             let record = result.map(|uploaded| FileRecord {
                 path: job.path.clone(),
@@ -2230,6 +2464,20 @@ impl<S: CloudStore> Round<'_, S> {
             return run;
         }
         let queue = self.within_budget(uploads);
+        let sources: BTreeMap<(String, u64), String> = view
+            .usable
+            .values()
+            .filter(|record| record.path != PROJECT_META && record.size >= COPY_MIN_BYTES)
+            .map(|record| ((record.hash.clone(), record.size), record.path.clone()))
+            .collect();
+        let meter = (!queue.is_empty()).then(|| {
+            Meter::start(
+                self.env.lock_id.as_deref(),
+                self.cloud,
+                Phase::Uploading,
+                queue.len() as u64,
+            )
+        });
         let mut next = 0;
         while next < queue.len() {
             if self.options.cancelled() {
@@ -2242,7 +2490,9 @@ impl<S: CloudStore> Round<'_, S> {
                 bytes += queue[end].size;
                 end += 1;
             }
-            let stop = self.upload_chunk(&queue[next..end], &mut run).await;
+            let stop = self
+                .upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources)
+                .await;
             next = end;
             if stop || next >= queue.len() {
                 break;
@@ -2253,6 +2503,7 @@ impl<S: CloudStore> Round<'_, S> {
                     .iter()
                     .map(|(record_key, record)| (record_key.clone(), record.clone())),
             );
+            publisher.pending = Some((queue.len() - next) as u64);
             match publisher
                 .publish(manifest_files(&interim, &view.foreign))
                 .await
@@ -2419,6 +2670,8 @@ fn publisher_for<'a, S: CloudStore>(
         published: remote
             .map(|remote| remote.version.files.clone())
             .unwrap_or_default(),
+        pending: None,
+        published_pending: remote.and_then(|remote| remote.version.pending),
         name: publisher_name(captured, context),
         manifest: captured
             .meta
@@ -2498,6 +2751,7 @@ impl<S: CloudStore> Round<'_, S> {
             pending.extend(pending_from(deletions));
             persist(&pending);
         }
+        publisher.pending = None;
         match publisher.publish(final_files.to_vec()).await {
             Ok(_) => {
                 run.published.extend(run.uploaded.keys().cloned());
@@ -2590,6 +2844,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
         error: None,
         late_error: None,
         incomplete: false,
+        moved: BTreeMap::new(),
     };
     if round.quiet(&captured).await? {
         round.outcome.unchanged = true;
@@ -2600,6 +2855,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
     let Loaded::Remote(remote) = round.remote().await? else {
         return Ok(round.finish_early(&clock));
     };
+    let remote = *remote;
     if let Some(remote) = &remote {
         observe_remote(&mut clock, remote);
     }
@@ -2688,6 +2944,8 @@ pub(crate) struct RemoteProject {
     pub(crate) name: String,
     pub(crate) stamp_ms: u64,
     pub(crate) size: u64,
+    pub(crate) pending: Option<u64>,
+    pub(crate) device: Option<String>,
 }
 
 pub(crate) async fn list_remote_projects<S: CloudStore>(
@@ -2722,6 +2980,11 @@ pub(crate) async fn list_remote_projects<S: CloudStore>(
                     name: remote.version.name.chars().take(200).collect(),
                     stamp_ms: remote.version.stamp.hlc.wall_ms().min(now_ms()),
                     size: remote.version.total_size(),
+                    pending: remote.version.pending,
+                    device: remote
+                        .version
+                        .device
+                        .map(|device| device.chars().take(64).collect()),
                 }))
         })
         .buffer_unordered(DOWNLOAD_CONCURRENCY)
@@ -2872,7 +3135,7 @@ pub(crate) async fn download_into<S: CloudStore>(
         return Err(RoundError::DiskFull);
     }
     let folder = (remote.version.files.len(), remote.version.total_size());
-    let (staged, failed) = stage_whole(store, cloud, jobs, staging, folder).await;
+    let (staged, failed) = stage_whole(store, cloud, jobs, staging, folder, None).await;
     if let Some((_, error)) = failed.into_iter().next() {
         for staged in &staged {
             let _ = tokio::fs::remove_file(&staged.path).await;

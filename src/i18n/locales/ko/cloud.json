@@ -35,14 +35,9 @@
   "tryAgain": "다시 시도",
   "syncOnThisComputer": "이 컴퓨터에서 동기화",
   "syncOnHelp": "Oleafly가 열려 있는 동안 동기화됩니다. 끄면 이 컴퓨터에서만 동기화가 멈춥니다. 다른 컴퓨터와 Dropbox는 바뀌지 않습니다.",
-  "interval": {
+  "auto": {
     "label": "자동 동기화",
-    "description": "Oleafly가 열려 있는 동안 Dropbox의 변경 사항을 확인하는 주기입니다.",
-    "1m": "1분마다",
-    "5m": "5분마다",
-    "15m": "15분마다",
-    "60m": "1시간마다",
-    "manual": "\"지금 동기화\"를 선택할 때만"
+    "description": "Oleafly는 저장하고 몇 초 뒤, 그리고 다른 컴퓨터에서 Dropbox가 바뀌는 즉시 동기화합니다. 끄면 지금 동기화를 클릭할 때만 동기화합니다."
   },
   "computer": {
     "label": "컴퓨터 이름",
@@ -79,14 +74,23 @@
     "checkFailed": "Dropbox에 있는 프로젝트를 불러오지 못했습니다.",
     "linkedNote_other": "폴더에서 연 프로젝트 {{count}}개는 동기화되지 않습니다. 라이브러리에 있는 프로젝트만 백업됩니다."
   },
+  "transfer": {
+    "uploading_other": "파일 {{total}}개 중 {{done}}개 업로드 중",
+    "downloading_other": "파일 {{total}}개 중 {{done}}개 다운로드 중",
+    "fetching": "{{total}} 중 {{done}} 다운로드 중"
+  },
   "row": {
     "synced": "{{time}} 동기화됨",
     "waiting": "아직 Dropbox에 없음",
+    "waitingToSync": "동기화 대기 중",
     "paused": "이 컴퓨터에서 일시 중지됨",
     "held": "파일을 보호하려고 일시 중지됨",
     "removed": "Dropbox에서 제거됨({{device}})",
     "removedUnknown": "Dropbox에서 제거됨",
     "onlyInDropbox": "Dropbox에만 있음",
+    "stillUploading": "{{device}}에서 아직 업로드 중",
+    "stillUploadingUnknown": "다른 컴퓨터에서 아직 업로드 중",
+    "sizeSoFar": "지금까지 {{size}}",
     "recycled": "휴지통에 있음",
     "conflicts_other": "충돌 사본 {{count}}개를 만들었습니다",
     "conflictsHelp_other": "동기화되기 전에 여기와 다른 컴퓨터에서 모두 변경된 파일이 있어 Oleafly가 두 버전을 모두 보관했습니다. 필요한 내용을 남긴 다음 사본을 삭제하세요.",

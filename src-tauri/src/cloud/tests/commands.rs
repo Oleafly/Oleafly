@@ -6,7 +6,8 @@ use crate::cloud::commands::{
     cloud_project_remove, cloud_project_replace_remote, cloud_project_resolve_hold,
     cloud_project_set_mode, cloud_remove_remote, cloud_set_device_name, cloud_set_enabled,
     cloud_settings_applied, cloud_settings_defer, cloud_settings_download,
-    cloud_settings_keep_local, cloud_settings_sync, cloud_state, cloud_sync_now, DirtyFile,
+    cloud_settings_keep_local, cloud_settings_sync, cloud_state, cloud_sync_now,
+    cloud_wait_for_changes, DirtyFile,
 };
 use crate::cloud::engine::{now_ms, project_remote, tombstone_remote, version_remote};
 use crate::cloud::settings::SETTINGS_REMOTE;
@@ -1519,4 +1520,64 @@ async fn an_unreadable_file_never_blocks_the_first_sync() {
             json!([{"path": "secret.tex", "reason": "unreadable"}])
         );
     }
+}
+
+#[tokio::test]
+async fn waiting_for_changes_follows_the_change_cursor_and_what_dropbox_asks() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    assert_eq!(
+        view(cloud_wait_for_changes().await.unwrap()),
+        json!({"changes": false, "retryAfterMs": 60000})
+    );
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha v1")]);
+    sync().await;
+    sync().await;
+    assert_eq!(
+        view(cloud_wait_for_changes().await.unwrap()),
+        json!({"changes": false, "retryAfterMs": null})
+    );
+    edit_remote(
+        &harness.fake,
+        cloud_of("alpha"),
+        "main.tex",
+        "from the laptop",
+    );
+    assert_eq!(
+        view(cloud_wait_for_changes().await.unwrap())["changes"],
+        true
+    );
+    harness.fake.with(|dropbox| dropbox.reset_cursors());
+    assert_eq!(
+        view(cloud_wait_for_changes().await.unwrap()),
+        json!({"changes": true, "retryAfterMs": null})
+    );
+    harness.fake.with(|dropbox| {
+        dropbox.fault(
+            "files/list_folder/longpoll",
+            None,
+            Reply::Json(json!({"changes": false, "backoff": 30})),
+            1,
+        );
+        dropbox.fault("files/list_folder/longpoll", None, Reply::Status(429), 1);
+    });
+    assert_eq!(
+        view(cloud_wait_for_changes().await.unwrap()),
+        json!({"changes": false, "retryAfterMs": 30000})
+    );
+    assert_eq!(
+        code(&cloud_wait_for_changes().await.err().unwrap()),
+        "cloud.rate_limited"
+    );
+    assert_eq!(
+        harness
+            .fake
+            .with(|dropbox| dropbox.calls("files/list_folder/longpoll")),
+        5
+    );
+    cloud_set_enabled(false).unwrap();
+    assert_eq!(
+        code(&cloud_wait_for_changes().await.err().unwrap()),
+        "cloud.disabled"
+    );
 }

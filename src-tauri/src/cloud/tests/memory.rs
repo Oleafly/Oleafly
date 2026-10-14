@@ -1,6 +1,6 @@
 use crate::cloud::store::{
-    Changes, CloudStore, Fetched, RemoteEntry, RemoteMeta, StoreError, StoreResult, Uploaded,
-    WriteMode,
+    BatchCopy, Changes, CloudStore, Copied, DropboxContentHasher, Fetched, RemoteEntry, RemoteMeta,
+    StoreError, StoreResult, Uploaded, WriteMode,
 };
 use oleafly_core::content::ContentHash;
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,7 +17,7 @@ struct Stored {
 #[derive(Default)]
 pub(crate) struct Inner {
     files: BTreeMap<String, Stored>,
-    history: BTreeMap<String, Vec<u8>>,
+    pub(crate) history: BTreeMap<String, Vec<u8>>,
     next_rev: u64,
     log: Vec<String>,
     pub(crate) rejected: BTreeSet<String>,
@@ -30,6 +30,8 @@ pub(crate) struct Inner {
     pub(crate) purged: BTreeSet<String>,
     pub(crate) zips: usize,
     pub(crate) broken_zip: bool,
+    pub(crate) copies: usize,
+    pub(crate) corrupt_copies: bool,
 }
 
 #[derive(Default)]
@@ -103,6 +105,35 @@ impl MemoryStore {
                 .retain(|stored, _| stored != &lower && !stored.starts_with(&prefix));
             inner.log.push(lower);
         });
+    }
+
+    fn copy_one(&self, item: &BatchCopy) -> StoreResult<Copied> {
+        self.enter()?;
+        self.with(|inner| {
+            inner.copies += 1;
+            let source = inner
+                .files
+                .get(&item.from.to_lowercase())
+                .cloned()
+                .ok_or_else(|| StoreError::Server("from_lookup/not_found".into()))?;
+            if inner.files.contains_key(&item.to.to_lowercase()) {
+                return Err(StoreError::Conflict);
+            }
+            let bytes = if inner.corrupt_copies {
+                b"changed while copying".to_vec()
+            } else {
+                source.bytes
+            };
+            let mut hasher = DropboxContentHasher::default();
+            hasher.update(&bytes);
+            let size = bytes.len() as u64;
+            let rev = inner.write(&item.to, bytes);
+            Ok(Copied {
+                rev,
+                size,
+                content_hash: Some(hasher.finish()),
+            })
+        })
     }
 
     fn enter(&self) -> StoreResult<()> {
@@ -182,7 +213,13 @@ impl CloudStore for MemoryStore {
         }))
     }
 
-    async fn fetch_zip(&self, remote_dir: &str, local: &Path, limit: u64) -> StoreResult<bool> {
+    async fn fetch_zip(
+        &self,
+        remote_dir: &str,
+        local: &Path,
+        limit: u64,
+        received: &(dyn Fn(u64) + Sync),
+    ) -> StoreResult<bool> {
         self.enter()?;
         let prefix = format!("{}/", remote_dir.to_lowercase());
         let top = remote_dir.rsplit('/').next().unwrap_or_default();
@@ -212,8 +249,13 @@ impl CloudStore for MemoryStore {
         if bytes.len() as u64 > limit {
             return Ok(false);
         }
-        std::fs::write(local, bytes).map_err(|error| StoreError::Io(error.to_string()))?;
+        std::fs::write(local, &bytes).map_err(|error| StoreError::Io(error.to_string()))?;
+        received(bytes.len() as u64);
         Ok(true)
+    }
+
+    async fn copy_paths(&self, items: &[BatchCopy]) -> Vec<StoreResult<Copied>> {
+        items.iter().map(|item| self.copy_one(item)).collect()
     }
 
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String> {

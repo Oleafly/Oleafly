@@ -35,14 +35,9 @@
   "tryAgain": "Prøv igen",
   "syncOnThisComputer": "Synkronisering på denne computer",
   "syncOnHelp": "Synkroniserer, mens Oleafly er åben. Hvis du slår det fra, stopper synkroniseringen kun her. Dine andre computere og din Dropbox ændrer sig ikke.",
-  "interval": {
+  "auto": {
     "label": "Synkronisér automatisk",
-    "description": "Hvor ofte Oleafly tjekker din Dropbox for ændringer, mens programmet er åbent.",
-    "1m": "Hvert minut",
-    "5m": "Hvert 5. minut",
-    "15m": "Hvert 15. minut",
-    "60m": "Hver time",
-    "manual": "Kun når jeg vælger Synkronisér nu"
+    "description": "Oleafly synkroniserer et par sekunder efter, du gemmer, og så snart en anden computer ændrer din Dropbox. Slå det fra for kun at synkronisere, når du klikker på Synkronisér nu."
   },
   "computer": {
     "label": "Computernavn",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} projekt, der er åbnet fra en mappe, synkroniseres ikke. Kun projekter i dit bibliotek sikkerhedskopieres.",
     "linkedNote_other": "{{count}} projekter, der er åbnet fra en mappe, synkroniseres ikke. Kun projekter i dit bibliotek sikkerhedskopieres."
   },
+  "transfer": {
+    "uploading_one": "Uploader {{done}} af {{total}} fil",
+    "uploading_other": "Uploader {{done}} af {{total}} filer",
+    "downloading_one": "Downloader {{done}} af {{total}} fil",
+    "downloading_other": "Downloader {{done}} af {{total}} filer",
+    "fetching": "Downloader {{done}} af {{total}}"
+  },
   "row": {
     "synced": "Synkroniseret {{time}}",
     "waiting": "Ikke i Dropbox endnu",
+    "waitingToSync": "Venter på synkronisering",
     "paused": "Sat på pause på denne computer",
     "held": "Sat på pause for at beskytte dine filer",
     "removed": "Fjernet fra Dropbox på {{device}}",
     "removedUnknown": "Fjernet fra Dropbox",
     "onlyInDropbox": "Kun i Dropbox",
+    "stillUploading": "Uploades stadig fra {{device}}",
+    "stillUploadingUnknown": "Uploades stadig fra en anden computer",
+    "sizeSoFar": "{{size}} indtil videre",
     "recycled": "I din papirkurv",
     "conflicts_one": "Der blev lavet {{count}} konfliktkopi",
     "conflicts_other": "Der blev lavet {{count}} konfliktkopier",

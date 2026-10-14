@@ -1,13 +1,12 @@
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { describeError } from "@/lib/app-error";
-import { CLOUD_SYNC_INTERVALS, isSyncInterval, useCloudStore } from "@/store/cloud";
+import { useCloudStore } from "@/store/cloud";
 import { Check, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -132,8 +131,8 @@ export function CloudSyncControls() {
   const { t } = useTranslation(["cloud"]);
   const state = useCloudStore((s) => s.state);
   const setEnabled = useCloudStore((s) => s.setEnabled);
-  const interval = useCloudStore((s) => s.syncInterval);
-  const setSyncInterval = useCloudStore((s) => s.setSyncInterval);
+  const autoSync = useCloudStore((s) => s.autoSync);
+  const setAutoSync = useCloudStore((s) => s.setAutoSync);
 
   if (!state) return null;
 
@@ -146,34 +145,13 @@ export function CloudSyncControls() {
         checked={state.enabled}
         onChange={(on) => void setEnabled(on)}
       />
-      <SettingsRow
-        testId="cloud-sync-interval"
-        label={t(($) => $.cloud.interval.label)}
-        description={t(($) => $.cloud.interval.description)}
-        control={
-          <Select
-            value={interval}
-            disabled={!state.enabled}
-            onValueChange={(value) => {
-              if (isSyncInterval(value)) setSyncInterval(value);
-            }}
-          >
-            <SelectTrigger
-              className="w-56 shrink-0"
-              aria-label={t(($) => $.cloud.interval.label)}
-              data-testid="cloud-sync-interval-trigger"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {CLOUD_SYNC_INTERVALS.map((choice) => (
-                <SelectItem key={choice} value={choice}>
-                  {t(($) => $.cloud.interval[choice])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
+      <SettingsToggleRow
+        testId="cloud-sync-auto"
+        label={t(($) => $.cloud.auto.label)}
+        description={t(($) => $.cloud.auto.description)}
+        checked={autoSync}
+        disabled={!state.enabled}
+        onChange={setAutoSync}
       />
       <ComputerNameRow deviceName={state.deviceName} />
     </div>

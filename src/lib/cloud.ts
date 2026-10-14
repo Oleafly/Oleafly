@@ -47,6 +47,8 @@ export interface CloudProject {
   hold: CloudHold | null;
   recycled: boolean;
   removedBy: string | null;
+  pendingFiles: number | null;
+  uploadingFrom: string | null;
 }
 
 export interface CloudState {
@@ -206,4 +208,25 @@ export function cloudSettingsKeepLocal(values: Record<string, unknown>): Promise
 
 export function cloudSettingsDefer(stamp: string): Promise<void> {
   return invoke<void>("cloud_settings_defer", { stamp });
+}
+
+export interface CloudWait {
+  changes: boolean;
+  retryAfterMs: number | null;
+}
+
+export function cloudWaitForChanges(): Promise<CloudWait> {
+  return invoke<CloudWait>("cloud_wait_for_changes");
+}
+
+export const CLOUD_PROGRESS_EVENT = "cloud-progress";
+
+export type CloudProgressPhase = "uploading" | "downloading" | "fetching";
+
+export interface CloudProgress {
+  projectId: string | null;
+  cloudId: string;
+  phase: CloudProgressPhase;
+  done: number;
+  total: number;
 }

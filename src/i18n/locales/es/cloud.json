@@ -35,14 +35,9 @@
   "tryAgain": "Intentar de nuevo",
   "syncOnThisComputer": "Sincronizar en este ordenador",
   "syncOnHelp": "Sincroniza mientras Oleafly está abierto. Desactivarlo detiene la sincronización solo aquí. Tus otros ordenadores y tu Dropbox no cambian.",
-  "interval": {
+  "auto": {
     "label": "Sincronizar automáticamente",
-    "description": "Con qué frecuencia Oleafly busca cambios en tu Dropbox mientras está abierto.",
-    "1m": "Cada minuto",
-    "5m": "Cada 5 minutos",
-    "15m": "Cada 15 minutos",
-    "60m": "Cada hora",
-    "manual": "Solo cuando elijo “Sincronizar ahora”"
+    "description": "Oleafly sincroniza unos segundos después de que guardes y en cuanto otro ordenador cambia tu Dropbox. Desactívalo para sincronizar solo cuando pulses Sincronizar ahora."
   },
   "computer": {
     "label": "Nombre del ordenador",
@@ -81,14 +76,27 @@
     "linkedNote_many": "{{count}} proyectos abiertos desde una carpeta no se sincronizan. Solo se hace copia de seguridad de los proyectos de tu biblioteca.",
     "linkedNote_other": "{{count}} proyectos abiertos desde una carpeta no se sincronizan. Solo se hace copia de seguridad de los proyectos de tu biblioteca."
   },
+  "transfer": {
+    "uploading_many": "Subiendo {{done}} de {{total}} archivos",
+    "uploading_one": "Subiendo {{done}} de {{total}} archivo",
+    "uploading_other": "Subiendo {{done}} de {{total}} archivos",
+    "downloading_many": "Descargando {{done}} de {{total}} archivos",
+    "downloading_one": "Descargando {{done}} de {{total}} archivo",
+    "downloading_other": "Descargando {{done}} de {{total}} archivos",
+    "fetching": "Descargando {{done}} de {{total}}"
+  },
   "row": {
     "synced": "Sincronizado {{time}}",
     "waiting": "Aún no está en Dropbox",
+    "waitingToSync": "Esperando para sincronizar",
     "paused": "En pausa en este ordenador",
     "held": "En pausa para proteger tus archivos",
     "removed": "Quitado de Dropbox en el ordenador {{device}}",
     "removedUnknown": "Quitado de Dropbox",
     "onlyInDropbox": "Solo en Dropbox",
+    "stillUploading": "Aún se está subiendo desde {{device}}",
+    "stillUploadingUnknown": "Aún se está subiendo desde otro ordenador",
+    "sizeSoFar": "{{size}} por ahora",
     "recycled": "En tu papelera",
     "conflicts_one": "Se creó {{count}} copia de conflicto",
     "conflicts_many": "Se crearon {{count}} copias de conflicto",

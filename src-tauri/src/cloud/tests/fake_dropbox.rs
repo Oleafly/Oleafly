@@ -23,7 +23,10 @@ const CONTENT_ROUTES: [&str; 6] = [
     "files/upload_session/append_v2",
     "files/upload_session/finish",
 ];
-const FILE_ROUTES: [&str; 11] = [
+const FILE_ROUTES: [&str; 14] = [
+    "files/copy_v2",
+    "files/copy_batch_v2",
+    "files/copy_batch/check_v2",
     "files/delete_batch",
     "files/delete_batch/check",
     "files/download",
@@ -339,6 +342,17 @@ impl Inner {
             }
             return self.token(body);
         }
+        if path == "/notify/2/files/list_folder/longpoll" {
+            *self
+                .calls
+                .entry("files/list_folder/longpoll".into())
+                .or_default() += 1;
+            let arg: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
+            if let Some(reply) = self.take_fault("files/list_folder/longpoll", &arg) {
+                return reply_response(reply);
+            }
+            return self.longpoll(&arg);
+        }
         let (route, content) = if let Some(route) = path.strip_prefix("/content/2/") {
             (route.to_string(), true)
         } else if let Some(route) = path.strip_prefix("/2/") {
@@ -404,7 +418,12 @@ impl Inner {
             "files/get_metadata" => self.get_metadata(&arg),
             "files/delete_v2" => self.delete(&arg),
             "files/delete_batch" => self.delete_batch(&arg),
-            "files/delete_batch/check" => self.delete_check(&arg),
+            "files/delete_batch/check" | "files/copy_batch/check_v2" => self.delete_check(&arg),
+            "files/copy_v2" => match self.copy_one(&arg) {
+                Ok(metadata) => json_reply(json!({ "metadata": metadata })),
+                Err(summary) => refuse(summary),
+            },
+            "files/copy_batch_v2" => self.copy_batch(&arg),
             "files/list_folder" => self.list_folder(&arg),
             "files/list_folder/continue" => self.list_continue(&arg),
             "files/list_folder/get_latest_cursor" => self.latest_cursor(&arg),
@@ -578,6 +597,46 @@ impl Inner {
         json_reply(json!({".tag": "async_job_id", "async_job_id": id}))
     }
 
+    fn copy_one(&mut self, entry: &Value) -> Result<Value, &'static str> {
+        let from = entry["from_path"]
+            .as_str()
+            .unwrap_or_default()
+            .to_lowercase();
+        let to = entry["to_path"].as_str().unwrap_or_default().to_string();
+        let Some(stored) = self.files.get(&from).cloned() else {
+            return Err("from_lookup/not_found/..");
+        };
+        if self.files.contains_key(&to.to_lowercase()) {
+            return Err("to/conflict/file/..");
+        }
+        self.write(&to, stored.bytes);
+        Ok(self
+            .files
+            .get(&to.to_lowercase())
+            .map(file_meta)
+            .unwrap_or(Value::Null))
+    }
+
+    fn copy_batch(&mut self, arg: &Value) -> Response {
+        let Some(entries) = arg["entries"].as_array().cloned() else {
+            return bad_request("missing entries");
+        };
+        let results: Vec<Value> = entries
+            .iter()
+            .map(|entry| match self.copy_one(entry) {
+                Ok(metadata) => json!({".tag": "success", "success": metadata}),
+                Err(summary) => batch_failure(summary),
+            })
+            .collect();
+        self.next_id += 1;
+        let id = format!("dbjid:{:08x}{}", self.tag, self.next_id);
+        self.jobs.insert(
+            id.clone(),
+            (1, json!({".tag": "complete", "entries": results})),
+        );
+        json_reply(json!({".tag": "async_job_id", "async_job_id": id}))
+    }
+
     fn delete_check(&mut self, arg: &Value) -> Response {
         let id = arg["async_job_id"].as_str().unwrap_or_default();
         let Some((waits, result)) = self.jobs.get_mut(id) else {
@@ -616,6 +675,19 @@ impl Inner {
             "cursor": format!("list|{end}|{limit}|{dir}"),
             "has_more": end < children.len(),
         })
+    }
+
+    fn longpoll(&self, arg: &Value) -> Response {
+        let cursor = arg["cursor"].as_str().unwrap_or_default();
+        let parts: Vec<&str> = cursor.splitn(4, '|').collect();
+        match parts.as_slice() {
+            ["chg", epoch, index, _] => match (epoch.parse::<u64>(), index.parse::<usize>()) {
+                (Ok(epoch), _) if epoch != self.epoch => refuse("reset/.."),
+                (Ok(_), Ok(index)) => json_reply(json!({"changes": self.log.len() > index})),
+                _ => bad_request("Error in call to API function: invalid cursor"),
+            },
+            _ => bad_request("Error in call to API function: invalid cursor"),
+        }
     }
 
     fn list_continue(&self, arg: &Value) -> Response {
@@ -889,6 +961,7 @@ impl FakeDropbox {
         Endpoints {
             api: format!("{}/2", self.base),
             content: format!("{}/content/2", self.base),
+            notify: format!("{}/notify/2", self.base),
             token: format!("{}/oauth2/token", self.base),
         }
     }
@@ -939,6 +1012,7 @@ pub(crate) async fn black_hole() -> BlackHole {
         endpoints: Endpoints {
             api: format!("{base}/2"),
             content: format!("{base}/content/2"),
+            notify: format!("{base}/notify/2"),
             token: format!("{base}/oauth2/token"),
         },
         task,

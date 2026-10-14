@@ -79,6 +79,8 @@ pub struct CloudProjectView {
     removed_by: Option<String>,
     skipped_files: Vec<SkippedFile>,
     conflict_copies: Vec<String>,
+    pending_files: Option<u64>,
+    uploading_from: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -841,6 +843,8 @@ fn local_view(
         removed_by: entry.and_then(|entry| entry.removed_by.clone()),
         skipped_files: entry.map_or_else(Vec::new, |entry| entry.skipped_files.clone()),
         conflict_copies: entry.map_or_else(Vec::new, |entry| entry.conflict_copies.clone()),
+        pending_files: None,
+        uploading_from: None,
     }
 }
 
@@ -1006,6 +1010,8 @@ fn remote_view(
         removed_by: None,
         skipped_files: Vec::new(),
         conflict_copies: Vec::new(),
+        pending_files: project.pending,
+        uploading_from: project.pending.and(project.device),
     }
 }
 
@@ -1970,6 +1976,47 @@ pub fn cloud_settings_applied(stamp: String, values: serde_json::Value) -> Resul
         settings::applied(&mut state.settings, stamp, values);
         state.hlc = state.hlc.max(state.settings.stamp);
     })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudWait {
+    changes: bool,
+    retry_after_ms: Option<u64>,
+}
+
+const LONGPOLL_SECS: u64 = 120;
+const NO_CURSOR_RETRY_MS: u64 = 60_000;
+
+#[tauri::command]
+pub async fn cloud_wait_for_changes() -> Result<CloudWait, String> {
+    let (_, account) = require_usable()?;
+    let cursor = state::read(|state| {
+        if same_account(state, &account.account_id) {
+            state.cursor.clone()
+        } else {
+            None
+        }
+    })?;
+    let Some(cursor) = cursor else {
+        return Ok(CloudWait {
+            changes: false,
+            retry_after_ms: Some(NO_CURSOR_RETRY_MS),
+        });
+    };
+    match super::store::wait_for_changes(&cursor, LONGPOLL_SECS).await {
+        Ok(waited) => Ok(CloudWait {
+            changes: waited.changes,
+            retry_after_ms: waited
+                .backoff
+                .map(|backoff| u64::try_from(backoff.as_millis()).unwrap_or(u64::MAX)),
+        }),
+        Err(StoreError::Reset) => Ok(CloudWait {
+            changes: true,
+            retry_after_ms: None,
+        }),
+        Err(error) => Err(RoundError::Store(error).to_app_error()),
+    }
 }
 
 #[tauri::command]

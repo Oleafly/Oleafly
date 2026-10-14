@@ -35,14 +35,9 @@
   "tryAgain": "Zkusit znovu",
   "syncOnThisComputer": "Synchronizovat na tomto počítači",
   "syncOnHelp": "Synchronizuje se, když je Oleafly otevřená. Vypnutí zastaví synchronizaci jen tady. Ostatní počítače ani Dropbox se nezmění.",
-  "interval": {
+  "auto": {
     "label": "Synchronizovat automaticky",
-    "description": "Jak často Oleafly kontroluje změny ve vašem Dropboxu, když je otevřená.",
-    "1m": "Každou minutu",
-    "5m": "Každých 5 minut",
-    "15m": "Každých 15 minut",
-    "60m": "Každou hodinu",
-    "manual": "Jen když zvolím „Synchronizovat“"
+    "description": "Oleafly synchronizuje pár sekund po uložení a hned, jak jiný počítač změní váš Dropbox. Když ji vypnete, synchronizuje se jen po kliknutí na Synchronizovat."
   },
   "computer": {
     "label": "Název počítače",
@@ -82,14 +77,29 @@
     "linkedNote_many": "{{count}} projektu otevřeného ze složky se nesynchronizuje. Zálohují se jen projekty ve vaší knihovně.",
     "linkedNote_other": "{{count}} projektů otevřených ze složky se nesynchronizuje. Zálohují se jen projekty ve vaší knihovně."
   },
+  "transfer": {
+    "uploading_few": "Nahrávání souborů: {{done}} z {{total}}",
+    "uploading_many": "Nahrávání souborů: {{done}} z {{total}}",
+    "uploading_one": "Nahrávání souborů: {{done}} z {{total}}",
+    "uploading_other": "Nahrávání souborů: {{done}} z {{total}}",
+    "downloading_few": "Stahování souborů: {{done}} z {{total}}",
+    "downloading_many": "Stahování souborů: {{done}} z {{total}}",
+    "downloading_one": "Stahování souborů: {{done}} z {{total}}",
+    "downloading_other": "Stahování souborů: {{done}} z {{total}}",
+    "fetching": "Stahování: {{done}} z {{total}}"
+  },
   "row": {
     "synced": "Synchronizováno {{time}}",
     "waiting": "Zatím není v Dropboxu",
+    "waitingToSync": "Čeká na synchronizaci",
     "paused": "Na tomto počítači pozastaveno",
     "held": "Pozastaveno kvůli ochraně vašich souborů",
     "removed": "Odebráno z Dropboxu na počítači {{device}}",
     "removedUnknown": "Odebráno z Dropboxu",
     "onlyInDropbox": "Jen v Dropboxu",
+    "stillUploading": "Stále se nahrává z počítače {{device}}",
+    "stillUploadingUnknown": "Stále se nahrává z jiného počítače",
+    "sizeSoFar": "zatím {{size}}",
     "recycled": "Ve vašem koši",
     "conflicts_one": "Vznikla {{count}} konfliktní kopie",
     "conflicts_few": "Vznikly {{count}} konfliktní kopie",

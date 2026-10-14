@@ -75,6 +75,8 @@ function project(overrides: Partial<CloudProject>): CloudProject {
     hold: null,
     recycled: false,
     removedBy: null,
+    pendingFiles: null,
+    uploadingFrom: null,
     ...overrides,
   };
 }
@@ -135,7 +137,7 @@ beforeEach(() => {
   localStorage.clear();
   useCloudStore.setState(initialCloud, true);
   useSettingsStore.setState({ cloudSync: true });
-  useCloudStore.setState({ syncInterval: "1m" });
+  useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ refreshProjects: mocks.refreshProjects });
   mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 1, error: null });
   serve(cloudState({ status: "disconnected", email: null }));
@@ -274,14 +276,65 @@ describe("CloudTab", () => {
   });
 
   it("stores the automatic sync choice for this computer", async () => {
+    localStorage.setItem("oleafly.cloudSync.interval", "5m");
     serve(cloudState());
     render(<CloudTab />);
-    const trigger = await screen.findByTestId("cloud-sync-interval-trigger");
-    expect(trigger).toHaveTextContent("Every minute");
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("option", { name: "Only when I choose Sync now" }));
-    expect(useCloudStore.getState().syncInterval).toBe("manual");
-    expect(localStorage.getItem("oleafly.cloudSync.interval")).toBe("manual");
+    const auto = await screen.findByRole("switch", { name: "Sync automatically" });
+    expect(auto).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByTestId("cloud-sync-auto")).toHaveTextContent(/as soon as another computer changes your Dropbox/);
+    await userEvent.click(auto);
+    expect(useCloudStore.getState().autoSync).toBe(false);
+    expect(localStorage.getItem("oleafly.cloudSync.auto")).toBe("off");
+    expect(localStorage.getItem("oleafly.cloudSync.interval")).toBeNull();
+    expect(auto).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows what a round is moving, what another computer is still uploading, and a resumed project waiting", async () => {
+    serve(
+      cloudState({
+        projects: [
+          project({ lastSyncedMs: Date.now() - 60_000 }),
+          project({ localId: "notes", cloudId: "c-notes", name: "Notes", mode: "sync", lastSyncedMs: Date.now() - 60_000 }),
+        ],
+      }),
+      { used: 1, allocated: 100 },
+      [
+        project({
+          localId: null,
+          cloudId: "c-stats",
+          name: "Stats",
+          mode: "download",
+          sizeBytes: 2048,
+          pendingFiles: 844,
+          uploadingFrom: "Laptop",
+        }),
+        project({ localId: null, cloudId: "c-old", name: "Old", mode: "download", sizeBytes: 0, pendingFiles: 3 }),
+      ],
+    );
+    render(<CloudTab />);
+    await openProjects();
+    act(() => {
+      useCloudStore.getState().noteProgress({ projectId: "thesis", cloudId: "c-thesis", phase: "uploading", done: 312, total: 1144 });
+      useCloudStore.getState().noteProgress({ projectId: null, cloudId: "c-stats", phase: "fetching", done: 1024, total: 4096 });
+      useCloudStore.setState({ resumedAt: { notes: Date.now() } });
+    });
+    const rows = await screen.findAllByTestId("cloud-project-row");
+    const thesis = rows.find((row) => within(row).queryByText("Thesis"));
+    const bar = within(thesis as HTMLElement).getByRole("progressbar");
+    expect(bar).toHaveAccessibleName("Uploading 312 of 1,144 files");
+    expect(bar).toHaveAttribute("aria-valuenow", "312");
+    const stats = rows.find((row) => within(row).queryByText("Stats")) as HTMLElement;
+    expect(within(stats).getByRole("progressbar")).toHaveAccessibleName("Downloading 1 KB of 4 KB");
+    act(() => {
+      useCloudStore.getState().noteProgress({ projectId: null, cloudId: "c-stats", phase: "fetching", done: 4096, total: 4096 });
+    });
+    expect(within(stats).queryByRole("progressbar")).toBeNull();
+    expect(stats).toHaveTextContent("Still uploading from Laptop");
+    expect(stats).toHaveTextContent("2 KB so far");
+    const old = rows.find((row) => within(row).queryByText("Old")) as HTMLElement;
+    expect(old).toHaveTextContent("Still uploading from another computer");
+    const notes = rows.find((row) => within(row).queryByText("Notes")) as HTMLElement;
+    expect(notes).toHaveTextContent("Waiting to sync");
   });
 
   it("lists local and Dropbox-only projects with their controls", async () => {

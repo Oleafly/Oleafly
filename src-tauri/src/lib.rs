@@ -217,6 +217,10 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         project_availability::install_sink(Box::new(move |event| {
             let _ = handle.emit("project-availability", event);
         }));
+        let handle = app.handle().clone();
+        cloud::progress::install_sink(Box::new(move |progress| {
+            let _ = handle.emit(cloud::progress::EVENT, progress);
+        }));
     }
     program_locator::start_background_probe();
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
@@ -700,6 +704,7 @@ pub fn run() {
             cloud::commands::cloud_settings_download,
             cloud::commands::cloud_settings_applied,
             cloud::commands::cloud_settings_defer,
+            cloud::commands::cloud_wait_for_changes,
             cloud::commands::cloud_settings_keep_local,
             github::gh_request_device_code,
             github::gh_check_device_token,

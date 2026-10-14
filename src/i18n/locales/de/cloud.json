@@ -35,14 +35,9 @@
   "tryAgain": "Erneut versuchen",
   "syncOnThisComputer": "Auf diesem Computer abgleichen",
   "syncOnHelp": "Der Abgleich läuft, solange Oleafly geöffnet ist. Ausschalten stoppt ihn nur hier. Ihre anderen Computer und Ihre Dropbox bleiben unverändert.",
-  "interval": {
+  "auto": {
     "label": "Automatisch abgleichen",
-    "description": "Wie oft Oleafly Ihre Dropbox auf Änderungen prüft, solange es geöffnet ist.",
-    "1m": "Jede Minute",
-    "5m": "Alle 5 Minuten",
-    "15m": "Alle 15 Minuten",
-    "60m": "Jede Stunde",
-    "manual": "Nur wenn ich „Jetzt abgleichen“ wähle"
+    "description": "Oleafly gleicht wenige Sekunden nach dem Speichern ab und sobald ein anderer Computer Ihre Dropbox ändert. Schalten Sie das aus, um nur abzugleichen, wenn Sie auf Jetzt abgleichen klicken."
   },
   "computer": {
     "label": "Computername",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} aus einem Ordner geöffnetes Projekt wird nicht abgeglichen. Nur Projekte in Ihrer Bibliothek werden gesichert.",
     "linkedNote_other": "{{count}} aus einem Ordner geöffnete Projekte werden nicht abgeglichen. Nur Projekte in Ihrer Bibliothek werden gesichert."
   },
+  "transfer": {
+    "uploading_one": "Hochladen: {{done}} von {{total}} Datei",
+    "uploading_other": "Hochladen: {{done}} von {{total}} Dateien",
+    "downloading_one": "Herunterladen: {{done}} von {{total}} Datei",
+    "downloading_other": "Herunterladen: {{done}} von {{total}} Dateien",
+    "fetching": "Herunterladen: {{done}} von {{total}}"
+  },
   "row": {
     "synced": "Abgeglichen: {{time}}",
     "waiting": "Noch nicht in Dropbox",
+    "waitingToSync": "Wartet auf Abgleich",
     "paused": "Auf diesem Computer pausiert",
     "held": "Pausiert, um Ihre Dateien zu schützen",
     "removed": "Auf {{device}} aus Dropbox entfernt",
     "removedUnknown": "Aus Dropbox entfernt",
     "onlyInDropbox": "Nur in Dropbox",
+    "stillUploading": "Wird noch von {{device}} hochgeladen",
+    "stillUploadingUnknown": "Wird noch von einem anderen Computer hochgeladen",
+    "sizeSoFar": "bisher {{size}}",
     "recycled": "In Ihrem Papierkorb",
     "conflicts_one": "{{count}} Konfliktkopie wurde erstellt",
     "conflicts_other": "{{count}} Konfliktkopien wurden erstellt",

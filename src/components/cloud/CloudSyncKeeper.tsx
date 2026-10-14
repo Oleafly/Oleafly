@@ -1,19 +1,26 @@
 import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import {
+  CHANGE_DELAY_MS,
   FIRST_ROUND_DELAY_MS,
+  MIN_ROUND_GAP_MS,
   SETTINGS_DEBOUNCE_MS,
-  nextRoundDelay,
+  nextCheckDelay,
+  waitRetryDelay,
 } from "@/components/cloud/cloud-schedule";
 import { CloudSettingsChoiceDialog } from "@/components/cloud/CloudSettingsChoiceDialog";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { loadNamespace } from "@/i18n/lazy-namespaces";
 import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
+import { CLOUD_PROGRESS_EVENT, cloudWaitForChanges, type CloudProgress } from "@/lib/cloud";
 import { logError } from "@/lib/log";
 import { watchSettingsSources } from "@/lib/settings-file/transfer";
 import { SET_THEME_PREFERENCE_EVENT, TOGGLE_THEME_EVENT } from "@/lib/theme";
 import { THEME_CUSTOMIZATION_CHANGED_EVENT } from "@/lib/theme-customization";
 import { cloudAttentionReasons, useCloudStore } from "@/store/cloud";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -66,9 +73,18 @@ function useCloudAttention(): boolean {
   return attention;
 }
 
+function savedSomething(
+  files: Readonly<Record<string, { dirty: boolean }>>,
+  previous: Readonly<Record<string, { dirty: boolean }>>,
+): boolean {
+  if (files === previous) return false;
+  return Object.entries(previous).some(([path, before]) => before.dirty && files[path] !== undefined && !files[path].dirty);
+}
+
 export default function CloudSyncKeeper() {
-  const interval = useCloudStore((s) => s.syncInterval);
+  const auto = useCloudStore((s) => s.autoSync);
   const active = useCloudStore((s) => s.status === "connected" && s.state?.enabled === true);
+  const noteProgress = useCloudStore((s) => s.noteProgress);
   const attention = useCloudAttention();
   const mountedAt = useRef(Date.now());
   const lastRoundAt = useRef<number | null>(null);
@@ -78,16 +94,34 @@ export default function CloudSyncKeeper() {
     void useCloudStore.getState().refresh();
   }, []);
 
+  useTauriEvent<CloudProgress>(
+    CLOUD_PROGRESS_EVENT,
+    (progress) => {
+      if (progress) noteProgress(progress);
+    },
+    isTauri(),
+  );
+
   useEffect(() => {
-    if (!active || interval === "manual") return;
+    if (!active || !auto) return;
     let timer: number | undefined;
+    let pause: number | undefined;
+    let wake: (() => void) | null = null;
     let running = false;
+    let again = false;
     let stopped = false;
+    let waiting: Array<() => void> = [];
+
+    const settle = () => {
+      const done = waiting;
+      waiting = [];
+      for (const resolve of done) resolve();
+    };
 
     const delay = () => {
       const last = lastRoundAt.current;
       if (last === null) return Math.max(0, mountedAt.current + FIRST_ROUND_DELAY_MS - Date.now());
-      const wait = nextRoundDelay(interval, document.hidden, useCloudStore.getState().failureStreak);
+      const wait = nextCheckDelay(document.hidden, useCloudStore.getState().failureStreak);
       return Math.max(0, last + wait - Date.now());
     };
 
@@ -97,44 +131,110 @@ export default function CloudSyncKeeper() {
     };
 
     const round = async () => {
-      if (running || stopped) return;
+      if (stopped) return;
+      if (running) {
+        again = true;
+        return;
+      }
       running = true;
       try {
         await useCloudStore.getState().syncNow(false);
       } finally {
         running = false;
         lastRoundAt.current = Date.now();
-        schedule(delay());
+        settle();
+        if (again) {
+          again = false;
+          schedule(MIN_ROUND_GAP_MS);
+        } else {
+          schedule(delay());
+        }
+      }
+    };
+
+    const soon = () => {
+      if (running) {
+        again = true;
+        return;
+      }
+      const last = lastRoundAt.current;
+      const gap = last === null ? 0 : last + MIN_ROUND_GAP_MS - Date.now();
+      schedule(Math.max(CHANGE_DELAY_MS, gap));
+    };
+
+    const roundDone = () =>
+      new Promise<void>((resolve) => {
+        if (stopped) resolve();
+        else waiting.push(resolve);
+      });
+
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        wake = resolve;
+        pause = window.setTimeout(resolve, ms);
+      });
+
+    const watchDropbox = async () => {
+      let failures = 0;
+      while (!stopped) {
+        let wait = 0;
+        try {
+          const result = await cloudWaitForChanges();
+          if (stopped) return;
+          failures = 0;
+          if (result.changes) {
+            soon();
+            await roundDone();
+          }
+          wait = result.retryAfterMs ?? 0;
+        } catch (error) {
+          if (stopped) return;
+          failures += 1;
+          if (failures === 1) void logError("cloud wait for changes", error);
+          wait = waitRetryDelay(failures);
+        }
+        if (wait > 0 && !stopped) await sleep(wait);
       }
     };
 
     const stopWatchingRounds = useCloudStore.subscribe((state, previous) => {
       if (!previous.syncing || state.syncing) return;
       lastRoundAt.current = Date.now();
+      settle();
       if (!running) schedule(delay());
     });
 
+    const stopWatchingSaves = useFilesStore.subscribe((state, previous) => {
+      if (savedSomething(state.files, previous.files)) soon();
+    });
+
     const onVisibility = () => {
-      if (!running) schedule(delay());
+      if (running) return;
+      const last = lastRoundAt.current;
+      if (!document.hidden && last !== null && Date.now() - last >= nextCheckDelay(false, 0)) soon();
+      else schedule(delay());
     };
-    const onOnline = () => {
-      if (!running) schedule(0);
-    };
+    const onOnline = () => soon();
 
     schedule(delay());
+    void watchDropbox();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", onOnline);
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      window.clearTimeout(pause);
+      wake?.();
+      settle();
       stopWatchingRounds();
+      stopWatchingSaves();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online", onOnline);
     };
-  }, [active, interval]);
+  }, [active, auto]);
 
   useEffect(() => {
-    if (!active || interval === "manual") return;
+    if (!active || !auto) return;
     let debounce: number | undefined;
     const onChange = () => {
       if (useCloudStore.getState().applyingSettings) return;
@@ -151,7 +251,7 @@ export default function CloudSyncKeeper() {
       stopWatching();
       for (const name of SETTINGS_EVENTS) window.removeEventListener(name, onChange);
     };
-  }, [active, interval]);
+  }, [active, auto]);
 
   return (
     <>

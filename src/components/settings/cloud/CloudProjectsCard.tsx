@@ -12,9 +12,9 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
-import type { CloudProject, CloudState } from "@/lib/cloud";
+import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
-import { formatList, formatRelativeTimeFrom } from "@/lib/intl";
+import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, remoteBusyKey, useCloudStore } from "@/store/cloud";
 import {
@@ -67,11 +67,15 @@ function relative(t: CloudTranslate, timestamp: number, now: number): string {
   });
 }
 
-function rowStatus(t: CloudTranslate, project: CloudProject, now: number): string {
+function rowStatus(t: CloudTranslate, project: CloudProject, now: number, resumedAt?: number): string {
   if (project.mode === "download") {
-    return project.recycled
-      ? t(($) => $.cloud.row.recycled)
-      : t(($) => $.cloud.row.onlyInDropbox);
+    if (project.recycled) return t(($) => $.cloud.row.recycled);
+    if (project.pendingFiles !== null) {
+      return project.uploadingFrom
+        ? t(($) => $.cloud.row.stillUploading, { device: project.uploadingFrom })
+        : t(($) => $.cloud.row.stillUploadingUnknown);
+    }
+    return t(($) => $.cloud.row.onlyInDropbox);
   }
   if (project.mode === "held") return t(($) => $.cloud.row.held);
   if (project.mode === "pause") return t(($) => $.cloud.row.paused);
@@ -80,9 +84,46 @@ function rowStatus(t: CloudTranslate, project: CloudProject, now: number): strin
       ? t(($) => $.cloud.row.removed, { device: project.removedBy })
       : t(($) => $.cloud.row.removedUnknown);
   }
+  if (resumedAt !== undefined && project.lastSyncedMs < resumedAt) return t(($) => $.cloud.row.waitingToSync);
   return project.lastSyncedMs > 0
     ? t(($) => $.cloud.row.synced, { time: relative(t, project.lastSyncedMs, now) })
     : t(($) => $.cloud.row.waiting);
+}
+
+function transferText(t: CloudTranslate, progress: CloudProgress): string {
+  if (progress.phase === "fetching") {
+    return t(($) => $.cloud.transfer.fetching, {
+      done: formatBytes(progress.done),
+      total: formatBytes(progress.total),
+    });
+  }
+  const values = { count: progress.total, done: formatNumber(progress.done), total: formatNumber(progress.total) };
+  return progress.phase === "uploading"
+    ? t(($) => $.cloud.transfer.uploading, values)
+    : t(($) => $.cloud.transfer.downloading, values);
+}
+
+function TransferLine({ progress }: Readonly<{ progress: CloudProgress }>) {
+  const { t } = useTranslation(["cloud"]);
+  const text = transferText(t, progress);
+  const share = progress.total > 0 ? Math.min(100, (progress.done / progress.total) * 100) : 0;
+  return (
+    <div data-testid="cloud-transfer" className="mt-1 space-y-1">
+      <p aria-live="polite" className="text-xs tabular-nums text-foreground">
+        {text}
+      </p>
+      <div
+        role="progressbar"
+        aria-label={text}
+        aria-valuemin={0}
+        aria-valuemax={progress.total}
+        aria-valuenow={progress.done}
+        className="h-1 w-full max-w-56 overflow-hidden rounded-full bg-muted"
+      >
+        <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${share}%` }} />
+      </div>
+    </div>
+  );
 }
 
 function summaryLine(
@@ -403,6 +444,10 @@ function ProjectRow({
     : connected;
   const unreadable = local && isUnreadable(project);
   const conflicted = local && (project.conflictCopies.length > 0 || project.conflicts > 0);
+  const progressKey = local ? (project.localId as string) : project.cloudId;
+  const progress = useCloudStore((s) => s.progress[progressKey]);
+  const resumedAt = useCloudStore((s) => (local ? s.resumedAt[project.localId as string] : undefined));
+  const transferring = progress !== undefined && progress.done < progress.total;
   return (
     <li data-testid="cloud-project-row" className="px-3 py-2.5">
       <div className="flex items-center gap-3">
@@ -410,7 +455,11 @@ function ProjectRow({
           <p className="truncate text-sm font-medium text-foreground" title={project.name}>
             {project.name}
           </p>
-          <p className="text-xs text-muted-foreground">{rowStatus(t, project, now)}</p>
+          {transferring ? (
+            <TransferLine progress={progress} />
+          ) : (
+            <p className="text-xs text-muted-foreground">{rowStatus(t, project, now, resumedAt)}</p>
+          )}
           {project.error && !unreadable ? (
             <p className="break-words text-xs text-destructive">{describeError(project.error)}</p>
           ) : null}
@@ -418,7 +467,11 @@ function ProjectRow({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {project.sizeBytes > 0 ? (
-            <span className="mr-1 text-xs tabular-nums text-muted-foreground">{formatBytes(project.sizeBytes)}</span>
+            <span className="mr-1 text-xs tabular-nums text-muted-foreground">
+              {project.mode === "download" && project.pendingFiles !== null
+                ? t(($) => $.cloud.row.sizeSoFar, { size: formatBytes(project.sizeBytes) })
+                : formatBytes(project.sizeBytes)}
+            </span>
           ) : null}
           {local ? <ProjectSwitch project={project} /> : <DownloadButton project={project} />}
           {removable ? (

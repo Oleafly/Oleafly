@@ -10,6 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const API_BASE: &str = "https://api.dropboxapi.com/2";
 const CONTENT_BASE: &str = "https://content.dropboxapi.com/2";
+const NOTIFY_BASE: &str = "https://notify.dropboxapi.com/2";
 const TOKEN_URL: &str = "https://api.dropboxapi.com/oauth2/token";
 pub(crate) const SINGLE_UPLOAD_LIMIT: u64 = 8 * 1024 * 1024;
 const SESSION_CHUNK: usize = 8 * 1024 * 1024;
@@ -22,7 +23,7 @@ const MAX_RETRY_AFTER: Duration = Duration::from_secs(60);
 const UPLOAD_CONCURRENCY: usize = 16;
 const MAX_BATCH_ENTRIES: usize = 1_000;
 const MAX_DELETE_ENTRIES: usize = 250;
-const DELETE_BATCH_WAIT: Duration = Duration::from_secs(300);
+const BATCH_JOB_WAIT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StoreError {
@@ -134,6 +135,19 @@ pub(crate) struct BatchDelete {
     pub(crate) parent_rev: Option<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BatchCopy {
+    pub(crate) from: String,
+    pub(crate) to: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct Copied {
+    pub(crate) rev: String,
+    pub(crate) size: u64,
+    pub(crate) content_hash: Option<String>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Changes {
     pub(crate) paths: Vec<String>,
@@ -152,14 +166,25 @@ pub(crate) trait CloudStore: Send + Sync {
     ) -> StoreResult<Option<Fetched>>;
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String>;
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded>;
-    async fn put_paths(&self, files: &[BatchFile]) -> Vec<StoreResult<Uploaded>> {
+    async fn put_paths(
+        &self,
+        files: &[BatchFile],
+        tick: &(dyn Fn() + Sync),
+    ) -> Vec<StoreResult<Uploaded>> {
         let mut results = Vec::with_capacity(files.len());
         for file in files {
             results.push(self.put_path(&file.remote, &file.local).await);
+            tick();
         }
         results
     }
-    async fn fetch_zip(&self, _remote_dir: &str, _local: &Path, _limit: u64) -> StoreResult<bool> {
+    async fn fetch_zip(
+        &self,
+        _remote_dir: &str,
+        _local: &Path,
+        _limit: u64,
+        _received: &(dyn Fn(u64) + Sync),
+    ) -> StoreResult<bool> {
         Ok(false)
     }
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()>;
@@ -170,6 +195,12 @@ pub(crate) trait CloudStore: Send + Sync {
         }
         results
     }
+    async fn copy_paths(&self, items: &[BatchCopy]) -> Vec<StoreResult<Copied>> {
+        items
+            .iter()
+            .map(|_| Err(StoreError::Server("this store cannot copy".into())))
+            .collect()
+    }
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
     async fn changes(&self, cursor: &str) -> StoreResult<Changes>;
@@ -179,6 +210,7 @@ pub(crate) trait CloudStore: Send + Sync {
 pub(crate) struct Endpoints {
     pub(crate) api: String,
     pub(crate) content: String,
+    pub(crate) notify: String,
     pub(crate) token: String,
 }
 
@@ -190,6 +222,7 @@ pub(crate) fn endpoints() -> Endpoints {
     Endpoints {
         api: API_BASE.into(),
         content: CONTENT_BASE.into(),
+        notify: NOTIFY_BASE.into(),
         token: TOKEN_URL.into(),
     }
 }
@@ -225,6 +258,64 @@ pub(crate) fn http() -> &'static reqwest::Client {
             .pool_idle_timeout(Duration::from_secs(90))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
+fn notify_http() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent("Oleafly")
+            .connect_timeout(Duration::from_secs(15))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Waited {
+    pub(crate) changes: bool,
+    pub(crate) backoff: Option<Duration>,
+}
+
+pub(crate) async fn wait_for_changes(cursor: &str, timeout_secs: u64) -> StoreResult<Waited> {
+    let timeout = timeout_secs.clamp(30, 480);
+    let response = notify_http()
+        .post(format!("{}/files/list_folder/longpoll", endpoints().notify))
+        .timeout(Duration::from_secs(timeout + 120))
+        .json(&serde_json::json!({ "cursor": cursor, "timeout": timeout }))
+        .send()
+        .await
+        .map_err(|error| StoreError::Network(error.to_string()))?;
+    let status = response.status().as_u16();
+    if status == 429 {
+        return Err(StoreError::RateLimited);
+    }
+    if status == 409 {
+        return Err(match DropboxStore::refusal(response).await {
+            Refusal::Reset => StoreError::Reset,
+            refusal => refusal_error(refusal),
+        });
+    }
+    if !response.status().is_success() {
+        return Err(StoreError::Server(format!(
+            "dropbox returned status {status}"
+        )));
+    }
+    let value: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|error| StoreError::Network(error.to_string()))?;
+    Ok(Waited {
+        changes: value
+            .get("changes")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+        backoff: value
+            .get("backoff")
+            .and_then(serde_json::Value::as_u64)
+            .map(Duration::from_secs),
     })
 }
 
@@ -796,48 +887,36 @@ impl DropboxStore {
 }
 
 impl DropboxStore {
-    async fn delete_batch(&self, items: &[BatchDelete]) -> StoreResult<Vec<StoreResult<()>>> {
-        let entries: Vec<serde_json::Value> = items
-            .iter()
-            .map(|item| match &item.parent_rev {
-                Some(rev) => serde_json::json!({"path": item.remote, "parent_rev": rev}),
-                None => serde_json::json!({"path": item.remote}),
-            })
-            .collect();
-        let mut reply = self
-            .rpc(
-                "files/delete_batch",
-                &serde_json::json!({ "entries": entries }),
-            )
-            .await?
-            .map_err(refusal_error)?;
+    async fn batch_job(
+        &self,
+        launch: &str,
+        check: &str,
+        arg: &serde_json::Value,
+        count: usize,
+    ) -> StoreResult<Vec<serde_json::Value>> {
+        let mut reply = self.rpc(launch, arg).await?.map_err(refusal_error)?;
         let job = reply
             .get("async_job_id")
             .and_then(serde_json::Value::as_str)
             .map(str::to_string);
-        let deadline = tokio::time::Instant::now() + DELETE_BATCH_WAIT;
+        let deadline = tokio::time::Instant::now() + BATCH_JOB_WAIT;
         let mut wait = Duration::from_millis(250);
         loop {
             match reply.get(".tag").and_then(serde_json::Value::as_str) {
                 Some("complete") => break,
                 Some("async_job_id" | "in_progress") => {
                     let Some(job) = job.as_deref() else {
-                        return Err(StoreError::Server(
-                            "dropbox delete batch reply had no job".into(),
-                        ));
+                        return Err(StoreError::Server("dropbox batch reply had no job".into()));
                     };
                     if tokio::time::Instant::now() >= deadline {
                         return Err(StoreError::Server(
-                            "dropbox did not finish deleting in time".into(),
+                            "dropbox did not finish the batch in time".into(),
                         ));
                     }
                     tokio::time::sleep(wait).await;
                     wait = (wait * 2).min(Duration::from_secs(2));
                     reply = self
-                        .rpc(
-                            "files/delete_batch/check",
-                            &serde_json::json!({ "async_job_id": job }),
-                        )
+                        .rpc(check, &serde_json::json!({ "async_job_id": job }))
                         .await?
                         .map_err(refusal_error)?;
                 }
@@ -848,18 +927,35 @@ impl DropboxStore {
                 }
                 _ => {
                     return Err(StoreError::Server(
-                        "dropbox delete batch reply was unreadable".into(),
+                        "dropbox batch reply was unreadable".into(),
                     ))
                 }
             }
         }
-        let results = reply
+        reply
             .get("entries")
             .and_then(serde_json::Value::as_array)
-            .filter(|results| results.len() == items.len())
-            .ok_or_else(|| {
-                StoreError::Server("dropbox delete batch reply was unreadable".into())
-            })?;
+            .filter(|results| results.len() == count)
+            .cloned()
+            .ok_or_else(|| StoreError::Server("dropbox batch reply was unreadable".into()))
+    }
+
+    async fn delete_batch(&self, items: &[BatchDelete]) -> StoreResult<Vec<StoreResult<()>>> {
+        let entries: Vec<serde_json::Value> = items
+            .iter()
+            .map(|item| match &item.parent_rev {
+                Some(rev) => serde_json::json!({"path": item.remote, "parent_rev": rev}),
+                None => serde_json::json!({"path": item.remote}),
+            })
+            .collect();
+        let results = self
+            .batch_job(
+                "files/delete_batch",
+                "files/delete_batch/check",
+                &serde_json::json!({ "entries": entries }),
+                items.len(),
+            )
+            .await?;
         Ok(results
             .iter()
             .zip(items)
@@ -874,6 +970,51 @@ impl DropboxStore {
             )
             .collect())
     }
+
+    async fn copy_batch(&self, items: &[BatchCopy]) -> StoreResult<Vec<StoreResult<Copied>>> {
+        let entries: Vec<serde_json::Value> = items
+            .iter()
+            .map(|item| serde_json::json!({"from_path": item.from, "to_path": item.to}))
+            .collect();
+        let results = self
+            .batch_job(
+                "files/copy_batch_v2",
+                "files/copy_batch/check_v2",
+                &serde_json::json!({ "entries": entries, "autorename": false }),
+                items.len(),
+            )
+            .await?;
+        Ok(results
+            .iter()
+            .map(
+                |result| match result.get(".tag").and_then(serde_json::Value::as_str) {
+                    Some("success") => copied(result.get("success").unwrap_or(result)),
+                    _ => Err(refusal_error(classify(&tag_path(
+                        result.get("failure").unwrap_or(result),
+                    )))),
+                },
+            )
+            .collect())
+    }
+}
+
+fn copied(metadata: &serde_json::Value) -> StoreResult<Copied> {
+    let rev = metadata
+        .get("rev")
+        .and_then(serde_json::Value::as_str)
+        .filter(|rev| valid_rev(rev))
+        .ok_or_else(|| StoreError::Server("dropbox copy reply had no revision".into()))?;
+    Ok(Copied {
+        rev: rev.to_string(),
+        size: metadata
+            .get("size")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0),
+        content_hash: metadata
+            .get("content_hash")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+    })
 }
 
 fn delete_refused(refusal: Refusal, pinned: bool) -> StoreResult<()> {
@@ -929,6 +1070,7 @@ async fn save_body(
     mut response: reqwest::Response,
     local: &Path,
     limit: u64,
+    received: &(dyn Fn(u64) + Sync),
 ) -> StoreResult<Fetched> {
     let mut file = tokio::fs::OpenOptions::new()
         .write(true)
@@ -954,6 +1096,7 @@ async fn save_body(
             file.write_all(&chunk)
                 .await
                 .map_err(|error| StoreError::Io(error.to_string()))?;
+            received(chunk.len() as u64);
         }
         file.flush()
             .await
@@ -1034,10 +1177,16 @@ impl CloudStore for DropboxStore {
         let Some(response) = self.download_any(remote, rev).await? else {
             return Ok(None);
         };
-        save_body(response, local, limit).await.map(Some)
+        save_body(response, local, limit, &|_| {}).await.map(Some)
     }
 
-    async fn fetch_zip(&self, remote_dir: &str, local: &Path, limit: u64) -> StoreResult<bool> {
+    async fn fetch_zip(
+        &self,
+        remote_dir: &str,
+        local: &Path,
+        limit: u64,
+        received: &(dyn Fn(u64) + Sync),
+    ) -> StoreResult<bool> {
         let response = self
             .send(&Call {
                 url: format!("{}/files/download_zip", self.content_base),
@@ -1052,7 +1201,7 @@ impl CloudStore for DropboxStore {
                 _ => Ok(false),
             };
         }
-        match save_body(response, local, limit).await {
+        match save_body(response, local, limit, received).await {
             Ok(_) => Ok(true),
             Err(StoreError::Verify(_)) => Ok(false),
             Err(error) => Err(error),
@@ -1105,10 +1254,18 @@ impl CloudStore for DropboxStore {
         Self::uploaded(&value, hash, size, &dropbox.finish())
     }
 
-    async fn put_paths(&self, files: &[BatchFile]) -> Vec<StoreResult<Uploaded>> {
+    async fn put_paths(
+        &self,
+        files: &[BatchFile],
+        tick: &(dyn Fn() + Sync),
+    ) -> Vec<StoreResult<Uploaded>> {
         let pending: Vec<_> = files
             .iter()
-            .map(|file| self.open_session(&file.local))
+            .map(|file| async move {
+                let opened = self.open_session(&file.local).await;
+                tick();
+                opened
+            })
             .collect();
         let opened: Vec<StoreResult<OpenSession>> = stream::iter(pending)
             .buffered(UPLOAD_CONCURRENCY)
@@ -1169,6 +1326,25 @@ impl CloudStore for DropboxStore {
         let mut results = Vec::with_capacity(items.len());
         for chunk in items.chunks(MAX_DELETE_ENTRIES) {
             match self.delete_batch(chunk).await {
+                Ok(done) => results.extend(done),
+                Err(error) => results.extend(chunk.iter().map(|_| Err(error.clone()))),
+            }
+        }
+        results
+    }
+
+    async fn copy_paths(&self, items: &[BatchCopy]) -> Vec<StoreResult<Copied>> {
+        if let [item] = items {
+            let arg = serde_json::json!({"from_path": item.from, "to_path": item.to, "autorename": false});
+            return vec![match self.rpc("files/copy_v2", &arg).await {
+                Ok(Ok(value)) => copied(value.get("metadata").unwrap_or(&value)),
+                Ok(Err(refusal)) => Err(refusal_error(refusal)),
+                Err(error) => Err(error),
+            }];
+        }
+        let mut results = Vec::with_capacity(items.len());
+        for chunk in items.chunks(MAX_DELETE_ENTRIES) {
+            match self.copy_batch(chunk).await {
                 Ok(done) => results.extend(done),
                 Err(error) => results.extend(chunk.iter().map(|_| Err(error.clone()))),
             }

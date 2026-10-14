@@ -35,14 +35,9 @@
   "tryAgain": "Încearcă din nou",
   "syncOnThisComputer": "Sincronizare pe acest computer",
   "syncOnHelp": "Sincronizează cât timp Oleafly este deschis. Dezactivarea oprește sincronizarea doar aici. Celelalte computere și Dropbox nu se schimbă.",
-  "interval": {
+  "auto": {
     "label": "Sincronizează automat",
-    "description": "Cât de des verifică Oleafly modificările din Dropbox cât timp este deschis.",
-    "1m": "În fiecare minut",
-    "5m": "La fiecare 5 minute",
-    "15m": "La fiecare 15 minute",
-    "60m": "În fiecare oră",
-    "manual": "Doar când aleg „Sincronizează acum”"
+    "description": "Oleafly sincronizează la câteva secunde după salvare și imediat ce alt computer modifică Dropboxul. Când opțiunea este dezactivată, sincronizarea are loc doar la clic pe Sincronizează acum."
   },
   "computer": {
     "label": "Numele computerului",
@@ -81,14 +76,27 @@
     "linkedNote_few": "{{count}} proiecte deschise din foldere nu se sincronizează. Doar proiectele din Bibliotecă au copii de rezervă.",
     "linkedNote_other": "{{count}} de proiecte deschise din foldere nu se sincronizează. Doar proiectele din Bibliotecă au copii de rezervă."
   },
+  "transfer": {
+    "uploading_few": "Se încarcă fișierele: {{done}} din {{total}}",
+    "uploading_one": "Se încarcă fișierele: {{done}} din {{total}}",
+    "uploading_other": "Se încarcă fișierele: {{done}} din {{total}}",
+    "downloading_few": "Se descarcă fișierele: {{done}} din {{total}}",
+    "downloading_one": "Se descarcă fișierele: {{done}} din {{total}}",
+    "downloading_other": "Se descarcă fișierele: {{done}} din {{total}}",
+    "fetching": "Se descarcă: {{done}} din {{total}}"
+  },
   "row": {
     "synced": "Sincronizat {{time}}",
     "waiting": "Nu este încă în Dropbox",
+    "waitingToSync": "Așteaptă sincronizarea",
     "paused": "Întrerupt pe acest computer",
     "held": "Întrerupt ca să-ți protejeze fișierele",
     "removed": "Eliminat din Dropbox pe computerul {{device}}",
     "removedUnknown": "Eliminat din Dropbox",
     "onlyInDropbox": "Doar în Dropbox",
+    "stillUploading": "Încă se încarcă de pe {{device}}",
+    "stillUploadingUnknown": "Încă se încarcă de pe alt computer",
+    "sizeSoFar": "{{size}} până acum",
     "recycled": "În Coșul de reciclare",
     "conflicts_one": "S-a creat {{count}} copie de conflict",
     "conflicts_few": "S-au creat {{count}} copii de conflict",

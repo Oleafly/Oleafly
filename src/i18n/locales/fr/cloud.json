@@ -35,14 +35,9 @@
   "tryAgain": "Réessayer",
   "syncOnThisComputer": "Synchroniser sur cet ordinateur",
   "syncOnHelp": "La synchronisation a lieu tant qu'Oleafly est ouvert. La désactiver l'arrête ici seulement. Vos autres ordinateurs et votre Dropbox ne changent pas.",
-  "interval": {
+  "auto": {
     "label": "Synchroniser automatiquement",
-    "description": "La fréquence à laquelle Oleafly cherche des changements dans votre Dropbox tant qu'il est ouvert.",
-    "1m": "Toutes les minutes",
-    "5m": "Toutes les 5 minutes",
-    "15m": "Toutes les 15 minutes",
-    "60m": "Toutes les heures",
-    "manual": "Seulement quand je choisis « Synchroniser »"
+    "description": "Oleafly synchronise quelques secondes après chaque enregistrement et dès qu'un autre ordinateur modifie votre Dropbox. Désactivez cette option pour ne synchroniser que lorsque vous cliquez sur Synchroniser."
   },
   "computer": {
     "label": "Nom de l'ordinateur",
@@ -81,14 +76,27 @@
     "linkedNote_many": "{{count}} projets ouverts depuis un dossier ne sont pas synchronisés. Seuls les projets de votre bibliothèque sont sauvegardés.",
     "linkedNote_other": "{{count}} projets ouverts depuis un dossier ne sont pas synchronisés. Seuls les projets de votre bibliothèque sont sauvegardés."
   },
+  "transfer": {
+    "uploading_many": "Envoi des fichiers : {{done}} sur {{total}}",
+    "uploading_one": "Envoi des fichiers : {{done}} sur {{total}}",
+    "uploading_other": "Envoi des fichiers : {{done}} sur {{total}}",
+    "downloading_many": "Téléchargement des fichiers : {{done}} sur {{total}}",
+    "downloading_one": "Téléchargement des fichiers : {{done}} sur {{total}}",
+    "downloading_other": "Téléchargement des fichiers : {{done}} sur {{total}}",
+    "fetching": "Téléchargement : {{done}} sur {{total}}"
+  },
   "row": {
     "synced": "Synchronisé {{time}}",
     "waiting": "Pas encore dans Dropbox",
+    "waitingToSync": "En attente de synchronisation",
     "paused": "En pause sur cet ordinateur",
     "held": "En pause pour protéger vos fichiers",
     "removed": "Retiré de Dropbox sur l'ordinateur {{device}}",
     "removedUnknown": "Retiré de Dropbox",
     "onlyInDropbox": "Uniquement dans Dropbox",
+    "stillUploading": "Envoi encore en cours depuis l'ordinateur {{device}}",
+    "stillUploadingUnknown": "Envoi encore en cours depuis un autre ordinateur",
+    "sizeSoFar": "{{size}} pour l'instant",
     "recycled": "Dans votre corbeille",
     "conflicts_one": "{{count}} copie de conflit a été créée",
     "conflicts_many": "{{count}} copies de conflit ont été créées",

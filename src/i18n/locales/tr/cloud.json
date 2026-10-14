@@ -35,14 +35,9 @@
   "tryAgain": "Tekrar dene",
   "syncOnThisComputer": "Bu bilgisayarda eşitle",
   "syncOnHelp": "Oleafly açıkken eşitlenir. Kapatmak eşitlemeyi yalnızca burada durdurur. Diğer bilgisayarlarınız ve Dropbox değişmez.",
-  "interval": {
+  "auto": {
     "label": "Otomatik eşitle",
-    "description": "Oleafly açıkken Dropbox'ınızdaki değişikliklerin ne sıklıkla kontrol edileceği.",
-    "1m": "Her dakika",
-    "5m": "5 dakikada bir",
-    "15m": "15 dakikada bir",
-    "60m": "Saatte bir",
-    "manual": "Yalnızca “Şimdi eşitle” düğmesine bastığımda"
+    "description": "Oleafly, kaydettikten birkaç saniye sonra ve başka bir bilgisayar Dropbox'ınızı değiştirir değiştirmez eşitler. Yalnızca Şimdi eşitle'ye tıkladığınızda eşitlemek için bunu kapatın."
   },
   "computer": {
     "label": "Bilgisayar adı",
@@ -80,14 +75,25 @@
     "linkedNote_one": "Bir klasörden açılan {{count}} proje eşitlenmiyor. Yalnızca kitaplığınızdaki projeler yedeklenir.",
     "linkedNote_other": "Klasörlerden açılan {{count}} proje eşitlenmiyor. Yalnızca kitaplığınızdaki projeler yedeklenir."
   },
+  "transfer": {
+    "uploading_one": "Dosyalar yükleniyor ({{done}}/{{total}})",
+    "uploading_other": "Dosyalar yükleniyor ({{done}}/{{total}})",
+    "downloading_one": "Dosyalar indiriliyor ({{done}}/{{total}})",
+    "downloading_other": "Dosyalar indiriliyor ({{done}}/{{total}})",
+    "fetching": "İndiriliyor ({{done}}/{{total}})"
+  },
   "row": {
     "synced": "Eşitlendi: {{time}}",
     "waiting": "Henüz Dropbox'ta değil",
+    "waitingToSync": "Eşitlenmeyi bekliyor",
     "paused": "Bu bilgisayarda duraklatıldı",
     "held": "Dosyalarınızı korumak için duraklatıldı",
     "removed": "{{device}} bilgisayarında Dropbox'tan kaldırıldı",
     "removedUnknown": "Dropbox'tan kaldırıldı",
     "onlyInDropbox": "Yalnızca Dropbox'ta",
+    "stillUploading": "{{device}} bilgisayarından hâlâ yükleniyor",
+    "stillUploadingUnknown": "Başka bir bilgisayardan hâlâ yükleniyor",
+    "sizeSoFar": "şimdiye kadar {{size}}",
     "recycled": "Geri Dönüşüm Kutusu'nda",
     "conflicts_one": "{{count}} çakışma kopyası oluşturuldu",
     "conflicts_other": "{{count}} çakışma kopyası oluşturuldu",

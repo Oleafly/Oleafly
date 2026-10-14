@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
     cloudSettingsKeepLocal: vi.fn(async () => undefined),
     cloudSettingsDefer: vi.fn(async () => undefined),
     cloudConnectCancel: vi.fn(async () => undefined),
+    cloudWaitForChanges: vi.fn(),
+    CLOUD_PROGRESS_EVENT: "cloud-progress",
   },
   settings: {
     gatherCloudSettings: vi.fn(async () => ({ general: { language: "system" } })),
@@ -34,7 +36,7 @@ vi.mock("@/lib/cloud-settings", () => mocks.settings);
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => undefined) }));
 
-import { nextRoundDelay } from "@/components/cloud/cloud-schedule";
+import { nextCheckDelay, waitRetryDelay } from "@/components/cloud/cloud-schedule";
 import { CloudSyncHost } from "@/components/cloud/CloudSyncHost";
 import { loadNamespace } from "@/i18n/lazy-namespaces";
 import { useCloudStore } from "@/store/cloud";
@@ -79,6 +81,8 @@ function heldProject(overrides: Partial<CloudProject> = {}): CloudProject {
     hold: { kind: "massDelete", count: 3, total: 9 },
     recycled: false,
     removedBy: null,
+    pendingFiles: null,
+    uploadingFrom: null,
     ...overrides,
   };
 }
@@ -109,7 +113,7 @@ beforeEach(() => {
   setHidden(false);
   useCloudStore.setState(initialCloud, true);
   useSettingsStore.setState({ cloudSync: true });
-  useCloudStore.setState({ syncInterval: "1m" });
+  useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ projectId: null, files: {}, refreshProjects: vi.fn(async () => undefined) });
   useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
   useTourStore.setState({ activeTourId: null });
@@ -117,34 +121,51 @@ beforeEach(() => {
   mocks.cloud.cloudState.mockResolvedValue(cloudState());
   mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 1, error: null });
   mocks.cloud.cloudSettingsSync.mockResolvedValue({ outcome: "current" });
+  mocks.cloud.cloudWaitForChanges.mockImplementation(() => new Promise(() => undefined));
 });
+
+function changeInDropbox() {
+  let answer: (value: { changes: boolean; retryAfterMs: number | null }) => void = () => undefined;
+  mocks.cloud.cloudWaitForChanges.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+  );
+  return (changes: boolean, retryAfterMs: number | null = null) => answer({ changes, retryAfterMs });
+}
 
 afterEach(() => {
   vi.useRealTimers();
   setHidden(false);
 });
 
-describe("nextRoundDelay", () => {
-  it("stretches the interval while hidden and backs off after failures up to 30 minutes", () => {
-    expect(nextRoundDelay("1m", false, 0)).toBe(60_000);
-    expect(nextRoundDelay("1m", true, 0)).toBe(300_000);
-    expect(nextRoundDelay("60m", true, 0)).toBe(3_600_000);
-    expect(nextRoundDelay("1m", false, 1)).toBe(120_000);
-    expect(nextRoundDelay("1m", false, 3)).toBe(480_000);
-    expect(nextRoundDelay("1m", false, 12)).toBe(1_800_000);
-    expect(nextRoundDelay("60m", false, 4)).toBe(3_600_000);
+describe("cloud schedule", () => {
+  it("checks every five minutes, every fifteen while hidden, and retries failures sooner", () => {
+    expect(nextCheckDelay(false, 0)).toBe(300_000);
+    expect(nextCheckDelay(true, 0)).toBe(900_000);
+    expect(nextCheckDelay(false, 1)).toBe(30_000);
+    expect(nextCheckDelay(false, 3)).toBe(120_000);
+    expect(nextCheckDelay(false, 9)).toBe(300_000);
+    expect(nextCheckDelay(true, 9)).toBe(900_000);
+  });
+
+  it("waits longer after each failed wait for changes, up to five minutes", () => {
+    expect(waitRetryDelay(1)).toBe(30_000);
+    expect(waitRetryDelay(2)).toBe(60_000);
+    expect(waitRetryDelay(10)).toBe(300_000);
   });
 });
 
 describe("CloudSyncKeeper", () => {
-  it("waits about 20 seconds before the first round, then follows the interval", async () => {
+  it("waits about 20 seconds before the first round, then checks every five minutes", async () => {
     await mountKeeper();
     expect(mocks.cloud.cloudState).toHaveBeenCalled();
     await advance(19_000);
     expect(mocks.cloud.cloudSyncNow).not.toHaveBeenCalled();
     await advance(1_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
-    await advance(59_000);
+    await advance(299_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
     await advance(1_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
@@ -153,13 +174,68 @@ describe("CloudSyncKeeper", () => {
   });
 
   it("runs no automatic rounds when only Sync now should sync", async () => {
-    useCloudStore.setState({ syncInterval: "manual" });
+    useCloudStore.setState({ autoSync: false });
     await mountKeeper();
     window.dispatchEvent(new Event("online"));
     window.dispatchEvent(new Event("oleafly:ai-config-changed"));
     await advance(30 * 60_000);
     expect(mocks.cloud.cloudSyncNow).not.toHaveBeenCalled();
     expect(mocks.cloud.cloudSettingsSync).not.toHaveBeenCalled();
+    expect(mocks.cloud.cloudWaitForChanges).not.toHaveBeenCalled();
+  });
+
+  it("syncs a few seconds after a file is saved, once for a burst of saves", async () => {
+    useFilesStore.setState({ projectId: "thesis", files: { "main.tex": { content: "a", dirty: true } } });
+    await mountKeeper();
+    await advance(20_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
+    await advance(10_000);
+    act(() => useFilesStore.setState({ files: { "main.tex": { content: "a", dirty: false } } }));
+    await advance(1_000);
+    act(() => useFilesStore.setState({ files: { "main.tex": { content: "b", dirty: true } } }));
+    act(() => useFilesStore.setState({ files: { "main.tex": { content: "b", dirty: false } } }));
+    await advance(2_999);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
+    act(() => useFilesStore.setState({ files: { "main.tex": { content: "c", dirty: false } } }));
+    await advance(60_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
+  });
+
+  it("syncs soon after another computer changes Dropbox and waits for that round before asking again", async () => {
+    const answer = changeInDropbox();
+    await mountKeeper();
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(1);
+    await advance(20_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
+    await advance(5_000);
+    answer(true);
+    await advance(0);
+    await advance(4_999);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
+    await advance(0);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(2);
+  });
+
+  it("honours Dropbox's back-off and retries failed waits less often", async () => {
+    const quiet = changeInDropbox();
+    mocks.cloud.cloudWaitForChanges.mockImplementationOnce(async () => {
+      throw new Error("offline");
+    });
+    await mountKeeper();
+    quiet(false, 60_000);
+    await advance(59_999);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(2);
+    await advance(29_999);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(2);
+    await advance(1);
+    expect(mocks.cloud.cloudWaitForChanges).toHaveBeenCalledTimes(3);
   });
 
   it("stays quiet while sync is off on this computer or access ended", async () => {
@@ -173,39 +249,46 @@ describe("CloudSyncKeeper", () => {
     expect(mocks.cloud.cloudSyncNow).not.toHaveBeenCalled();
   });
 
-  it("waits at least five minutes between rounds while the window is hidden", async () => {
+  it("checks every fifteen minutes while hidden and catches up when the window comes back", async () => {
     await mountKeeper();
     await advance(20_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
     setHidden(true);
     document.dispatchEvent(new Event("visibilitychange"));
-    await advance(4 * 60_000);
+    await advance(14 * 60_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
     await advance(60_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
+    await advance(6 * 60_000);
+    setHidden(false);
+    document.dispatchEvent(new Event("visibilitychange"));
+    await advance(3_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(3);
   });
 
-  it("backs off after network failures and resets after a good round", async () => {
+  it("retries network failures sooner and returns to the usual check after a good round", async () => {
     mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 0, error: NETWORK });
     await mountKeeper();
     await advance(20_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
-    await advance(119_000);
+    await advance(29_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
     await advance(1_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
     mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 1, error: null });
-    await advance(240_000);
-    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(3);
     await advance(60_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(3);
+    await advance(299_000);
+    expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(3);
+    await advance(1_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(4);
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
   });
 
-  it("syncs once when the connection comes back", async () => {
+  it("syncs once soon after the connection comes back", async () => {
     await mountKeeper();
     window.dispatchEvent(new Event("online"));
-    await advance(0);
+    await advance(3_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(1);
   });
 
@@ -234,7 +317,7 @@ describe("CloudSyncKeeper", () => {
     await mountKeeper();
     await advance(20_000);
     expect(screen.getByTestId("cloud-settings-choice")).toHaveTextContent("Which settings should Oleafly use?");
-    await advance(60_000);
+    await advance(5 * 60_000);
     expect(mocks.cloud.cloudSyncNow).toHaveBeenCalledTimes(2);
     expect(mocks.cloud.cloudSettingsSync).toHaveBeenCalledTimes(1);
     expect(screen.getAllByTestId("cloud-settings-choice")).toHaveLength(1);

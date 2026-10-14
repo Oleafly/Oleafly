@@ -35,14 +35,9 @@
   "tryAgain": "Yritä uudelleen",
   "syncOnThisComputer": "Synkronoi tällä tietokoneella",
   "syncOnHelp": "Synkronoi, kun Oleafly on auki. Jos poistat tämän käytöstä, synkronointi pysähtyy vain tällä tietokoneella. Muut tietokoneesi ja Dropboxisi eivät muutu.",
-  "interval": {
+  "auto": {
     "label": "Synkronoi automaattisesti",
-    "description": "Kuinka usein Oleafly tarkistaa Dropboxisi muutokset, kun se on auki.",
-    "1m": "Minuutin välein",
-    "5m": "5 minuutin välein",
-    "15m": "15 minuutin välein",
-    "60m": "Tunnin välein",
-    "manual": "Vain kun valitsen Synkronoi nyt"
+    "description": "Oleafly synkronoi muutaman sekunnin kuluttua tallentamisesta ja heti, kun toinen tietokone muuttaa Dropboxiasi. Poista tämä käytöstä, jos haluat synkronoida vain, kun napsautat Synkronoi nyt."
   },
   "computer": {
     "label": "Tietokoneen nimi",
@@ -80,14 +75,25 @@
     "linkedNote_one": "{{count}} kansiosta avattu projekti jää synkronoinnin ulkopuolelle. Vain kirjastosi projektit varmuuskopioidaan.",
     "linkedNote_other": "{{count}} kansiosta avattua projektia jää synkronoinnin ulkopuolelle. Vain kirjastosi projektit varmuuskopioidaan."
   },
+  "transfer": {
+    "uploading_one": "Lähetetään tiedostoja: {{done}}/{{total}}",
+    "uploading_other": "Lähetetään tiedostoja: {{done}}/{{total}}",
+    "downloading_one": "Ladataan tiedostoja: {{done}}/{{total}}",
+    "downloading_other": "Ladataan tiedostoja: {{done}}/{{total}}",
+    "fetching": "Ladataan {{done}}/{{total}}"
+  },
   "row": {
     "synced": "Synkronoitu {{time}}",
     "waiting": "Ei vielä Dropboxissa",
+    "waitingToSync": "Odottaa synkronointia",
     "paused": "Tauolla tällä tietokoneella",
     "held": "Tauolla tiedostojesi suojaamiseksi",
     "removed": "Poistettu Dropboxista tietokoneella {{device}}",
     "removedUnknown": "Poistettu Dropboxista",
     "onlyInDropbox": "Vain Dropboxissa",
+    "stillUploading": "Lähetys on vielä kesken tietokoneelta {{device}}",
+    "stillUploadingUnknown": "Lähetys on vielä kesken toiselta tietokoneelta",
+    "sizeSoFar": "{{size}} tähän mennessä",
     "recycled": "Roskakorissa",
     "conflicts_one": "{{count}} ristiriitakopio luotiin",
     "conflicts_other": "{{count}} ristiriitakopiota luotiin",

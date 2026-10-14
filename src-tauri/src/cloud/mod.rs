@@ -2,6 +2,7 @@ pub(crate) mod commands;
 pub(crate) mod engine;
 pub(crate) mod merge;
 pub(crate) mod oauth;
+pub(crate) mod progress;
 pub(crate) mod settings;
 pub(crate) mod state;
 pub(crate) mod store;
