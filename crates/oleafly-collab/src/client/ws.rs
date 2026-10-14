@@ -13,6 +13,7 @@ use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 
@@ -20,6 +21,14 @@ use super::{ServerUrl, CONNECT_TIMEOUT};
 use crate::{CollabError, DeviceKey};
 
 const FRAME_TIMEOUT: Duration = Duration::from_secs(10);
+// The server's own limit: an 8 MiB change in base64 with its envelope fits.
+pub(crate) const MAX_MESSAGE_BYTES: usize = 12 * 1024 * 1024;
+
+fn socket_config() -> WebSocketConfig {
+    WebSocketConfig::default()
+        .max_message_size(Some(MAX_MESSAGE_BYTES))
+        .max_frame_size(Some(MAX_MESSAGE_BYTES))
+}
 
 pub(crate) type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -125,8 +134,12 @@ pub(crate) async fn open_socket(
     } else {
         Connector::Plain
     };
-    let handshake =
-        tokio_tungstenite::client_async_tls_with_config(request, stream, None, Some(connector));
+    let handshake = tokio_tungstenite::client_async_tls_with_config(
+        request,
+        stream,
+        Some(socket_config()),
+        Some(connector),
+    );
     match tokio::time::timeout(FRAME_TIMEOUT, handshake).await {
         Ok(Ok((socket, _))) => Ok(socket),
         Ok(Err(error)) => Err(ws_error(error)),
@@ -442,6 +455,50 @@ mod tests {
             connect(bare).await,
             Err(CollabError::Api { status: 401, ref code, .. }) if code == "websocket_refused"
         ));
+    }
+
+    async fn sending(message: String) -> ServerUrl {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                if let Ok(mut socket) = tokio_tungstenite::accept_async(stream).await {
+                    let _ = socket.send(Message::text(message)).await;
+                    let _ = socket.next().await;
+                }
+            }
+        });
+        ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address")
+    }
+
+    fn padded_pong(bytes: usize) -> String {
+        let mut text = String::from(r#"{"type":"pong","id":7,"x":""#);
+        text.push_str(&"0".repeat(bytes.saturating_sub(text.len() + 2)));
+        text.push_str("\"}");
+        text
+    }
+
+    #[tokio::test]
+    async fn a_message_over_the_servers_own_limit_closes_the_socket_before_it_is_read() {
+        let fits = padded_pong(MAX_MESSAGE_BYTES - 1024);
+        let mut socket = open_socket(&sending(fits).await, None)
+            .await
+            .expect("socket");
+        assert_eq!(
+            read_frame(&mut socket).await,
+            Ok(ServerFrame::Pong { id: 7 })
+        );
+        let over = padded_pong(MAX_MESSAGE_BYTES + 1024);
+        let mut socket = open_socket(&sending(over).await, None)
+            .await
+            .expect("socket");
+        let refused = read_frame(&mut socket).await;
+        assert!(
+            matches!(refused, Err(CollabError::Network(ref message)) if message.contains("Message too long")),
+            "{refused:?}"
+        );
     }
 
     #[test]

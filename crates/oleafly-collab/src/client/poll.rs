@@ -13,13 +13,14 @@ use oleafly_collab_protocol::poll::{
 };
 use tokio::sync::{mpsc, Notify};
 
-use super::http::json;
+use super::http::{check_status, network_error};
 use super::ServerClient;
 use crate::{CollabError, DeviceKey};
 
 const POLL_TIMEOUT: Duration = Duration::from_secs(45);
 const POST_TIMEOUT: Duration = Duration::from_secs(60);
 const POST_BYTES: usize = 8 * 1024 * 1024;
+const ANSWER_BYTES: usize = 32 * 1024 * 1024;
 
 pub(crate) type Polled = Result<Vec<ServerFrame>, CollabError>;
 
@@ -205,6 +206,47 @@ pub(crate) struct PollRequest<'a> {
     pub(crate) since: u64,
 }
 
+pub(crate) async fn answer_within(
+    request: reqwest::RequestBuilder,
+    limit: usize,
+) -> Result<(u16, Vec<u8>), CollabError> {
+    let mut response = check_status(request.send().await.map_err(network_error)?).await?;
+    let status = response.status().as_u16();
+    let too_large = || {
+        CollabError::Network(format!(
+            "the server's answer is larger than {} MiB",
+            limit / (1024 * 1024)
+        ))
+    };
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(too_large());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(network_error)? {
+        if body.len() + chunk.len() > limit {
+            return Err(too_large());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok((status, body))
+}
+
+fn unreadable(status: u16, error: &serde_json::Error) -> CollabError {
+    CollabError::Api {
+        status,
+        code: "invalid_response".to_string(),
+        message: error.to_string(),
+    }
+}
+
+async fn read_batch(request: reqwest::RequestBuilder) -> Result<PollBatch, CollabError> {
+    let (status, body) = answer_within(request, ANSWER_BYTES).await?;
+    PollBatch::from_json(&body).map_err(|error| unreadable(status, &error))
+}
+
 fn project_url(client: &ServerClient, project: SharedProjectId, last: &str) -> Url {
     let mut url = client.url().endpoint("api/v1/projects");
     if let Ok(mut segments) = url.path_segments_mut() {
@@ -222,7 +264,7 @@ impl ServerClient {
         let nonce = self.challenge().await?.nonce;
         let message = challenge_message(ChallengePurpose::Socket, request.server_id, &nonce);
         let poll = project_url(self, request.project, "poll");
-        let batch: PollBatch = json(
+        let batch = read_batch(
             self.http()
                 .get(poll.clone())
                 .query(&[("since", request.since.to_string())])
@@ -263,7 +305,7 @@ impl PollChannel {
         cursor: &str,
         within: Duration,
     ) -> Result<Option<PollBatch>, CollabError> {
-        let request = json(
+        let request = read_batch(
             self.http
                 .get(self.poll.clone())
                 .query(&[("cursor", cursor)])
@@ -280,14 +322,16 @@ impl PollChannel {
         &self,
         frames: Vec<ClientFrame>,
     ) -> Result<Vec<ServerFrame>, CollabError> {
-        let replies: PollReplies = json(
+        let (status, body) = answer_within(
             self.http
                 .post(self.frames.clone())
                 .header(POLL_KEY_HEADER, &self.key)
                 .json(&PollFrames { frames })
                 .timeout(POST_TIMEOUT),
+            ANSWER_BYTES,
         )
         .await?;
+        let replies = PollReplies::from_json(&body).map_err(|error| unreadable(status, &error))?;
         Ok(replies.frames)
     }
 }
@@ -421,6 +465,66 @@ mod tests {
         });
         let url = Url::parse(&format!("http://{address}/")).expect("gateway address");
         (url, timeouts)
+    }
+
+    async fn answering_with(head: &'static str, body_bytes: usize) -> Url {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+        let address = listener.local_addr().expect("address");
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    read_head(&mut stream).await;
+                    if stream.write_all(head.as_bytes()).await.is_err() {
+                        return;
+                    }
+                    let chunk = vec![b' '; 64 * 1024];
+                    let mut sent = 0;
+                    while sent < body_bytes {
+                        let take = chunk.len().min(body_bytes - sent);
+                        if stream.write_all(&chunk[..take]).await.is_err() {
+                            return;
+                        }
+                        sent += take;
+                    }
+                    let _ = stream.shutdown().await;
+                });
+            }
+        });
+        Url::parse(&format!("http://{address}/")).expect("address")
+    }
+
+    #[tokio::test]
+    async fn an_answer_larger_than_the_limit_is_refused_while_it_is_read() {
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("client");
+        let declared = answering_with(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 4194304\r\nConnection: close\r\n\r\n",
+            4 * 1024 * 1024,
+        )
+        .await;
+        let streamed = answering_with(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
+            4 * 1024 * 1024,
+        )
+        .await;
+        for url in [declared, streamed] {
+            let read = answer_within(client.get(url), 1024 * 1024).await;
+            assert!(
+                matches!(read, Err(CollabError::Network(ref message)) if message.contains("larger than 1 MiB")),
+                "{read:?}"
+            );
+        }
+        let small = answering_with(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
+            1000,
+        )
+        .await;
+        let (status, body) = answer_within(client.get(small), 1024 * 1024)
+            .await
+            .expect("a small answer");
+        assert_eq!((status, body.len()), (200, 1000));
     }
 
     #[tokio::test(flavor = "multi_thread")]
