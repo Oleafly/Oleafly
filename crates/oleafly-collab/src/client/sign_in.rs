@@ -80,10 +80,9 @@ pub async fn sign_in(
         });
     };
     let timeout = wait_for(kind, timeout);
-    let listener =
-        LoopbackListener::bind()
-            .await?
-            .describing(&manifest.name, &provider_label, kind);
+    let listener = LoopbackListener::bind(client.url().clone())
+        .await?
+        .describing(&manifest.name, &provider_label, kind);
     let verifier = random_b64url(VERIFIER_BYTES)?;
     let state = random_b64url(STATE_BYTES)?;
     let query = AuthStartQuery {
@@ -448,6 +447,123 @@ mod tests {
         .expect("sign in");
         let page = last_page(&pages).await;
         assert!(page.contains("<h1>You&#39;re signed in</h1>"), "{page}");
+    }
+
+    struct Bouncer {
+        url: ServerUrl,
+        asked_for_tokens: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl Bouncer {
+        async fn start(onward_to: ServerUrl, own_key: String) -> Bouncer {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+                .await
+                .expect("bind");
+            let port = listener.local_addr().expect("address").port();
+            let asked_for_tokens = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let asked = Arc::clone(&asked_for_tokens);
+            let manifest =
+                serde_json::to_string(&sample_manifest(ProtocolRange { min: 1, max: 1 }))
+                    .expect("manifest");
+            tokio::spawn(async move {
+                while let Ok((mut stream, _)) = listener.accept().await {
+                    let mut head = Vec::new();
+                    let mut buffer = [0u8; 4096];
+                    while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match stream.read(&mut buffer).await {
+                            Ok(0) | Err(_) => break,
+                            Ok(read) => head.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    let head = String::from_utf8_lossy(&head).to_string();
+                    let requested = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
+                    let asked_at = ::url::Url::parse(&format!("http://bouncer{requested}"))
+                        .expect("request target");
+                    let answer = match asked_at.path() {
+                        "/.well-known/oleafly-server" => http_response(
+                            "200 OK",
+                            &[("Content-Type", "application/json")],
+                            &manifest,
+                        ),
+                        "/auth/start" => {
+                            let mut onward = onward_to.endpoint("auth/start");
+                            for (name, value) in asked_at.query_pairs() {
+                                let value = if name == "device_public_key" {
+                                    own_key.clone()
+                                } else {
+                                    value.into_owned()
+                                };
+                                onward.query_pairs_mut().append_pair(&name, &value);
+                            }
+                            http_response("302 Found", &[("Location", onward.as_str())], "")
+                        }
+                        _ => {
+                            asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                            http_response("404 Not Found", &[], "")
+                        }
+                    };
+                    let _ = stream.write_all(answer.as_bytes()).await;
+                    let _ = stream.shutdown().await;
+                }
+            });
+            Bouncer {
+                url: ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address"),
+                asked_for_tokens,
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_server_that_bounces_the_sign_in_to_another_server_never_gets_that_servers_code() {
+        let (_github, lab) = github_server(vec![github_user(5, "alice")]).await;
+        let admin = seed(&lab, ServerRole::Admin).await;
+        ServerClient::new(server_url(&lab))
+            .expect("client")
+            .admin_add_allowlist(
+                &admin.access_token,
+                &NewAllowlistEntry {
+                    matcher: AllowlistMatcher::ProviderLogin {
+                        provider: "github".to_string(),
+                        login: "alice".to_string(),
+                    },
+                    role: ServerRole::Admin,
+                },
+            )
+            .await
+            .expect("allowlist");
+        let mallory = Bouncer::start(server_url(&lab), device_key().public_key_b64()).await;
+        let pages: Pages = Arc::default();
+        let request = SignInRequest {
+            url: mallory.url.clone(),
+            provider_id: "github".to_string(),
+            device_name: "Alice's Mac".to_string(),
+            platform: "macos".to_string(),
+            setup_code: None,
+        };
+        let result = sign_in(
+            request,
+            &device_key(),
+            &recording_browser(Arc::clone(&pages)),
+            Duration::from_secs(3),
+        )
+        .await;
+        assert!(
+            matches!(result, Err(CollabError::SignInTimedOut)),
+            "{result:?}"
+        );
+        assert_eq!(
+            mallory
+                .asked_for_tokens
+                .load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "the app sent something to the server that bounced the sign-in"
+        );
+        let page = last_page(&pages).await;
+        assert!(
+            page.contains("<h1>This sign-in came from a different server</h1>"),
+            "{page}"
+        );
     }
 
     #[test]

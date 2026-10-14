@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::time::Duration;
 
+use ::url::Url;
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, DeviceCodeRequest, DeviceCodeResponse, DevicePoll,
     DeviceTokenRequest, SessionTokens,
@@ -111,6 +112,19 @@ where
     }
 }
 
+// The approval page must be the sign-in server's own, or a server could send
+// its users to approve a code another server issued for a key it holds.
+fn on_page(approval: &Url, shown: &str) -> bool {
+    let Ok(shown) = Url::parse(shown) else {
+        return false;
+    };
+    let path = shown.path();
+    shown.origin() == approval.origin()
+        && shown.username().is_empty()
+        && shown.password().is_none()
+        && (path == approval.path() || path.starts_with(&format!("{}/", approval.path())))
+}
+
 async fn poll_once(
     client: &ServerClient,
     key: &DeviceKey,
@@ -171,6 +185,17 @@ pub async fn sign_in_with_code(
             setup_code: setup_code.filter(|_| manifest.needs_setup),
         })
         .await?;
+    let approval = client.url().endpoint("auth/device");
+    if !on_page(&approval, &issued.verification_uri)
+        || !on_page(&approval, &issued.verification_uri_complete)
+    {
+        return Err(CollabError::Api {
+            status: 400,
+            code: "wrong_server".to_string(),
+            message: "The server sent its sign-in page on another address, so Oleafly stopped."
+                .to_string(),
+        });
+    }
     let lifetime = i64::try_from(issued.expires_in.saturating_mul(1000)).unwrap_or(i64::MAX);
     show_code(&SignInCode {
         user_code: issued.user_code.clone(),
@@ -199,7 +224,9 @@ mod tests {
     use oleafly_server::test_support::approve_code;
 
     use super::*;
-    use crate::client::test_util::{device_key, github_server, github_user, seed, server_url};
+    use crate::client::test_util::{
+        device_key, github_server, github_user, http_response, seed, server_url,
+    };
 
     const ACCOUNT: &str = "01920000-0000-7000-8000-000000000002";
     const DEVICE: &str = "01920000-0000-7000-8000-000000000003";
@@ -301,6 +328,85 @@ mod tests {
         let (gave_up, _, polls) = run(vec![network(), network(), network(), network()]).await;
         assert!(matches!(gave_up, Err(CollabError::Network(_))));
         assert_eq!(polls, 4);
+    }
+
+    #[tokio::test]
+    async fn a_code_that_sends_people_to_another_address_is_refused_before_it_is_shown() {
+        let manifest =
+            serde_json::to_string(&crate::client::test_util::sample_manifest(ProtocolRange {
+                min: 1,
+                max: 1,
+            }))
+            .expect("manifest");
+        let elsewhere = [
+            (
+                "https://evil.example/auth/device",
+                "OWN/auth/device?code=BCDF-GHJK",
+            ),
+            (
+                "OWN/auth/device",
+                "https://evil.example/auth/device?code=BCDF-GHJK",
+            ),
+            (
+                "OWN/auth/device",
+                "OWN/auth/devices-elsewhere?code=BCDF-GHJK",
+            ),
+            (
+                "OWN/auth/device",
+                "http://someone@OWNHOST/auth/device?code=BCDF-GHJK",
+            ),
+        ];
+        for (plain, complete) in elsewhere {
+            let (url, heard) = crate::client::test_util::routed(|own| {
+                let host = own.as_str().trim_start_matches("http://");
+                let place = |page: &str| page.replace("OWNHOST", host).replace("OWN", own.as_str());
+                let (plain, complete) = (place(plain), place(complete));
+                let issued = serde_json::json!({
+                    "device_code": "dc",
+                    "user_code": "BCDF-GHJK",
+                    "verification_uri": plain,
+                    "verification_uri_complete": complete,
+                    "expires_in": 600,
+                    "interval": 5,
+                })
+                .to_string();
+                let json = [("Content-Type", "application/json")];
+                vec![
+                    (
+                        "/.well-known/oleafly-server",
+                        vec![http_response("200 OK", &json, &manifest)],
+                    ),
+                    (
+                        "/auth/device/code",
+                        vec![http_response("200 OK", &json, &issued)],
+                    ),
+                ]
+            })
+            .await;
+            let shown = Arc::new(Mutex::new(false));
+            let seen = Arc::clone(&shown);
+            let show = move |_: &SignInCode| -> Result<(), CollabError> {
+                *seen.lock().expect("lock") = true;
+                Ok(())
+            };
+            let request = CodeSignInRequest {
+                url,
+                device_name: "Lab PC".to_string(),
+                platform: "linux".to_string(),
+                setup_code: None,
+            };
+            let result = sign_in_with_code(request, &device_key(), &show).await;
+            assert!(
+                matches!(result, Err(CollabError::Api { ref code, .. }) if code == "wrong_server"),
+                "{result:?}"
+            );
+            assert!(!*shown.lock().expect("lock"));
+            assert!(heard
+                .lock()
+                .expect("heard")
+                .iter()
+                .all(|request| !request.contains("/auth/device/token")));
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
