@@ -366,6 +366,7 @@ enum Ending {
     Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
+    Restarting,
     Stalled,
     Idle,
     TooLarge,
@@ -377,6 +378,7 @@ impl Ending {
             Some(SocketControl::Revoked(reason)) => Ending::Revoked(reason),
             Some(SocketControl::Overloaded) => Ending::Overloaded,
             Some(SocketControl::Replaced) => Ending::Replaced,
+            Some(SocketControl::Restarting) => Ending::Restarting,
             None => Ending::Closed,
         }
     }
@@ -480,6 +482,14 @@ impl<'a> Link<'a> {
                     self.socket,
                     close_code::POLICY,
                     "This device opened too many connections.",
+                )
+                .await;
+            }
+            Ending::Restarting => {
+                close(
+                    self.socket,
+                    close_code::RESTART,
+                    "The server is restarting.",
                 )
                 .await;
             }

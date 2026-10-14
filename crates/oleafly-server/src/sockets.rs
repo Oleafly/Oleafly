@@ -16,6 +16,7 @@ pub enum SocketControl {
     Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
+    Restarting,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -150,6 +151,14 @@ impl SocketRegistry {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .total
+    }
+
+    pub fn restart_all(&self) -> usize {
+        self.lock()
+            .values()
+            .flatten()
+            .filter(|entry| entry.sender.send(SocketControl::Restarting).is_ok())
+            .count()
     }
 
     pub fn register(&self, device: DeviceId) -> SocketTicket {

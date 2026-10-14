@@ -430,6 +430,7 @@ async fn keep(
                     close(&state, &session);
                     return;
                 }
+                Some(SocketControl::Restarting) => {}
             },
             () = tokio::time::sleep(check) => {
                 if session.closed.load(Ordering::SeqCst) {

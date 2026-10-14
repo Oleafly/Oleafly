@@ -48,6 +48,8 @@ use crate::state::AppState;
 
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+// Sockets are told the server is restarting and get this long to close.
+const SOCKET_FAREWELL: Duration = Duration::from_secs(2);
 
 pub fn log_filter(level: Level) -> Targets {
     let others = if level >= Level::DEBUG {
@@ -101,13 +103,20 @@ where
     mentions::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let polls = Arc::clone(&state.polls);
+    let sockets = Arc::clone(&state.sockets);
     let app = build_router(state).into_make_service_with_connect_info::<SocketAddr>();
+    let farewell = Arc::clone(&sockets);
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             shutdown.await;
             polls.stop_waiting();
+            farewell.restart_all();
         })
         .await;
+    let deadline = tokio::time::Instant::now() + SOCKET_FAREWELL;
+    while sockets.open_sockets() > 0 && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
     maintenance.abort();
     result.map_err(|error| ServerError::Internal(format!("the server stopped: {error}")))
 }
