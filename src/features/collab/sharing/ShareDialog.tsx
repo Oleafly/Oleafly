@@ -22,7 +22,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { collabErrorText } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabStore } from "../store";
 import { syncShareChange } from "./after-change";
@@ -37,7 +37,7 @@ type CheckState =
 type UploadState =
   | { kind: "idle" }
   | { kind: "sharing"; done: number; total: number }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string; elsewhere: boolean };
 
 function openCollaborationSettings() {
   useShareDialog.getState().close();
@@ -194,6 +194,7 @@ function ShareStep({
   const start = async () => {
     if (!ready || blocked || sharing) return;
     setUpload({ kind: "sharing", done: 0, total: ready.file_count });
+    useShareDialog.getState().setSharing(true);
     let unlisten: (() => void) | null = null;
     let shared: CollabShareInfo;
     try {
@@ -204,10 +205,15 @@ function ShareStep({
       });
       shared = await collabShareProject(projectId, chosenId);
     } catch (error) {
-      setUpload({ kind: "failed", message: collabErrorText(error) });
+      setUpload({
+        kind: "failed",
+        message: collabErrorText(error),
+        elsewhere: collabErrorCode(error) === "share_in_progress",
+      });
       return;
     } finally {
       unlisten?.();
+      useShareDialog.getState().setSharing(false);
     }
     await syncShareChange(projectId);
     onShared(shared);
@@ -245,6 +251,8 @@ function ShareStep({
       );
     }
     if (upload.kind === "failed") {
+      // Another share of this project is still running, so this one didn't fail as such.
+      if (upload.elsewhere) return <InlineAlert>{upload.message}</InlineAlert>;
       return (
         <InlineAlert>
           {t(($) => $.collab.share.failed)} {upload.message}
@@ -297,6 +305,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();
   const close = useShareDialog((state) => state.close);
+  const sharing = useShareDialog((state) => state.sharing);
   const fromCopy = useShareDialog((state) => state.fromCopy);
   const project = useFilesStore((state) => state.projects.find((entry) => entry.id === projectId) ?? null);
   const servers = useCollabStore((state) => state.servers);
@@ -373,6 +382,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
           size="icon"
           className="size-7 shrink-0"
           aria-label={t(($) => $.common.actions.close)}
+          disabled={sharing}
           onClick={close}
         >
           <X aria-hidden className="size-4" />
