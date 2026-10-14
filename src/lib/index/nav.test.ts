@@ -882,6 +882,20 @@ describe("renamePreview", () => {
   });
 });
 
+describe("renaming in an open file that changed after the plan, outside a live project", () => {
+  it("skips it rather than writing text built from the older copy", async () => {
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+    });
+    filesState.files = { "chapters/intro.tex": { content: "Reloaded from disk.\nSee \\ref{fig:old}.\n", dirty: false } };
+    await applyRename(view, SYMBOL, "fig:new");
+    expect(mocks.setContent).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalled();
+  });
+});
+
 describe("applyRename edge cases", () => {
   it("skips the rename when no index is loaded", async () => {
     const previous = indexState.index;
@@ -947,6 +961,41 @@ describe("applyRename edge cases", () => {
 });
 
 describe("renaming a symbol in a live shared project", () => {
+  const PLANNED = "See \\ref{fig:old}.\n";
+  const RENAMED = "See \\ref{fig:new}.\n";
+  const plan = () =>
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+    });
+
+  it("merges into an open background file from the text the rename was planned on, not the newer buffer", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      plan();
+      filesState.files = { "chapters/intro.tex": { content: `Bob's new sentence.\n${PLANNED}`, dirty: false } };
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.setContent).toHaveBeenCalledExactlyOnceWith("chapters/intro.tex", RENAMED, { base: PLANNED });
+      expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
+  it("skips an open file with unsaved edits made after the rename was planned", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      plan();
+      filesState.files = { "chapters/intro.tex": { content: `Typed but unsaved.\n${PLANNED}`, dirty: true } };
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.setContent).not.toHaveBeenCalled();
+      expect(mocks.toastError).toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
   it("merges the edit into a closed file from the text it was planned on", async () => {
     useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
     try {

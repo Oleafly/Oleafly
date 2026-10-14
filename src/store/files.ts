@@ -472,7 +472,10 @@ interface FilesStore {
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
   closeTabs: (paths: readonly string[]) => void;
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
+  // `base` is the text the caller built `content` from, when that may be older
+  // than the buffer. A live project merges the change from it, so edits that
+  // reached the buffer since are kept.
+  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean; base?: string }) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
@@ -2001,7 +2004,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (before?.content === content) return true;
     const saved = matchesSavedDiskText(projectId, path, content);
     if (!saved && before && !before.dirty && projectId && sharedDocumentLive(projectId)) {
-      sharedSaveBases.set(writeKey(projectId, path), before.content);
+      sharedSaveBases.set(writeKey(projectId, path), opts?.base ?? before.content);
     }
     set((s) => ({
       files: {

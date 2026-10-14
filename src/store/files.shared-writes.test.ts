@@ -205,6 +205,23 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 
+  it("merges from the base a writer passes when it built the new text from an older copy", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("older\nlabel\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "newer from Bob\nolder\nlabel\n", dirty: false } },
+    }));
+    useFilesStore.getState().setContent("main.tex", "older\nrenamed\n", { base: "older\nlabel\n" });
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "older\nlabel\n",
+      "older\nrenamed\n",
+    );
+  });
+
   it("starts the next save from the text the previous save sent", async () => {
     goLive();
     mocks.readFileContent.mockResolvedValue("a\n");
