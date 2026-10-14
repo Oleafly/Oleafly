@@ -107,6 +107,16 @@ pub(super) async fn pump(
                     active.project_id
                 ));
             }
+            LiveEvent::Unreadable { seq, device_id } => {
+                let from = device_id.map_or_else(
+                    || "a device this app doesn't know".to_owned(),
+                    |device| format!("device {device}"),
+                );
+                let _ = crate::project::append_app_log(format!(
+                    "Live collaboration skipped change {seq} from {from} in project {}: this app could not read it",
+                    active.project_id
+                ));
+            }
             LiveEvent::Unsendable => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration stopped sending changes in project {}: one edit is larger than the server accepts in a single change",

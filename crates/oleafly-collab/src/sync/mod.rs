@@ -52,6 +52,9 @@ pub enum EndReason {
     Stopped,
     AccountSuspended,
     AccessEnded,
+    ClientTooOld,
+    ServerTooOld,
+    ServerChanged,
 }
 
 impl EndReason {
@@ -70,7 +73,10 @@ impl EndReason {
             EndReason::Removed
             | EndReason::Archived
             | EndReason::SignedOut
-            | EndReason::Stopped => None,
+            | EndReason::Stopped
+            | EndReason::ClientTooOld
+            | EndReason::ServerTooOld
+            | EndReason::ServerChanged => None,
         }
     }
 }
@@ -107,6 +113,10 @@ pub enum LiveEvent {
     Untrusted {
         device_id: DeviceId,
         seq: u64,
+    },
+    Unreadable {
+        seq: u64,
+        device_id: Option<DeviceId>,
     },
     Unsendable,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),

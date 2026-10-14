@@ -241,3 +241,19 @@ async fn the_removed_person_hears_who_removed_them_before_sync_ends() {
     )
     .await;
 }
+
+#[test]
+fn version_and_address_endings_have_snake_case_names_and_no_session_reason() {
+    for (reason, name) in [
+        (EndReason::ClientTooOld, "client_too_old"),
+        (EndReason::ServerTooOld, "server_too_old"),
+        (EndReason::ServerChanged, "server_changed"),
+    ] {
+        assert_eq!(serde_json::to_value(reason).unwrap(), name);
+        assert_eq!(reason.session(), None);
+        assert_eq!(
+            serde_json::to_value(LiveStatus::Ended { reason }).unwrap(),
+            serde_json::json!({ "state": "ended", "reason": name })
+        );
+    }
+}
