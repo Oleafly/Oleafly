@@ -22,6 +22,7 @@ serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["rustls-tls-webpki-roots"] }
+unicode-normalization = "0.1"
 url = "2.5"
 webpki-roots = "1"
 

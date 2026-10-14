@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::doc::{FileNode, NodeKind, NodeParent};
 
@@ -63,8 +64,12 @@ pub fn safe_name(name: &str, id: &str) -> String {
     }
 }
 
+// Two names are one file wherever a member's file system says so: macOS
+// and Windows ignore case, and macOS also treats a name typed as one
+// character (NFC) and the same name spelled with a combining accent (NFD),
+// which Finder and zip files from a Mac use, as the same name.
 fn fold(name: &str) -> String {
-    name.to_lowercase()
+    name.nfc().flat_map(char::to_lowercase).collect()
 }
 
 fn suffixed(name: &str, id: &str) -> String {
@@ -580,6 +585,33 @@ mod tests {
         let placed = layout(&nodes);
         assert_eq!(placed["a1"].path, "Main.tex");
         assert_eq!(placed["b2"].path, "main (b2).tex");
+    }
+
+    #[test]
+    fn names_that_differ_only_in_unicode_form_get_a_suffix() {
+        let nodes = vec![
+            node(
+                "a1",
+                NodeParent::Root,
+                "Gr\u{f6}\u{df}e.png",
+                NodeKind::Text,
+            ),
+            node(
+                "b2",
+                NodeParent::Root,
+                "Gro\u{308}\u{df}e.png",
+                NodeKind::Text,
+            ),
+            node("c3", NodeParent::Root, "CAF\u{c9}", NodeKind::Dir),
+            node("d4", NodeParent::Root, "cafe\u{301}", NodeKind::Dir),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["a1"].path, "Gr\u{f6}\u{df}e.png");
+        assert_eq!(placed["b2"].path, "Gro\u{308}\u{df}e (b2).png");
+        assert_eq!(placed["c3"].path, "CAF\u{c9}");
+        assert_eq!(placed["d4"].path, "cafe\u{301} (d4)");
+        let clashed: Vec<String> = clashes(&nodes).into_iter().map(|clash| clash.id).collect();
+        assert_eq!(clashed, ["d4", "b2"]);
     }
 
     #[test]
