@@ -54,6 +54,11 @@ impl Appended {
 }
 
 pub fn role_to_str(role: ProjectRole) -> &'static str {
+    debug_assert_ne!(
+        role,
+        ProjectRole::Unknown,
+        "a role this server does not know is never stored"
+    );
     match role {
         ProjectRole::Owner => "owner",
         ProjectRole::Editor => "editor",
@@ -267,6 +272,11 @@ pub fn apply_patch(
     project: SharedProjectId,
     patch: &ProjectPatch,
 ) -> Result<(), ServerError> {
+    if patch.link_role == Some(ProjectRole::Unknown) {
+        return Err(ServerError::BadRequest(
+            "A link can give Editor or Viewer access.".to_string(),
+        ));
+    }
     if let Some(title) = &patch.title {
         conn.execute(
             "UPDATE projects SET title = ?2 WHERE id = ?1",
@@ -349,6 +359,11 @@ pub fn grant(
     by: AccountId,
     now: i64,
 ) -> Result<(), ServerError> {
+    if role == ProjectRole::Unknown {
+        return Err(ServerError::BadRequest(
+            "This server doesn't know that role.".to_string(),
+        ));
+    }
     conn.execute(
         "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, ?3, ?4, ?5) \
          ON CONFLICT (project_id, account_id) DO UPDATE SET role = excluded.role",
@@ -1338,4 +1353,42 @@ pub fn delete_project(
         snapshots,
         orphan_blobs,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+    use oleafly_collab_protocol::roles::ServerRole;
+
+    #[tokio::test]
+    async fn a_role_this_server_does_not_know_is_never_written() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let owner = members::create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+                let other = members::create_account(conn, "Bo", None, ServerRole::Member, 1)?;
+                let project = create_pending(conn, owner, "Thesis", 1)?;
+                assert!(matches!(
+                    grant(conn, project, other, ProjectRole::Unknown, owner, 2),
+                    Err(ServerError::BadRequest(_))
+                ));
+                assert_eq!(role_of(conn, project, other)?, None);
+                let patch = ProjectPatch {
+                    title: Some("Renamed".to_string()),
+                    link_role: Some(ProjectRole::Unknown),
+                    ..ProjectPatch::default()
+                };
+                assert!(matches!(
+                    apply_patch(conn, project, &patch),
+                    Err(ServerError::BadRequest(_))
+                ));
+                let row = project_row(conn, project)?.expect("the project");
+                assert_eq!(row.title, "Thesis");
+                assert_eq!(row.link_role, ProjectRole::Viewer);
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
 }
