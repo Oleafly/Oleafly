@@ -266,16 +266,36 @@ async fn a_retried_refresh_gets_the_same_pair_while_the_new_one_is_unused() {
     let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
         .expect("rotate");
-    server.clock().advance(3 * 24 * 60 * 60 * 1000);
+    server.clock().advance(60 * 1000);
     let retried = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
-        .expect("a laptop that slept mid-refresh retries");
+        .expect("a reply lost on a bad connection is retried");
     assert_eq!(retried.refresh_token, rotated.refresh_token);
     assert!(access_is_live(&server, &retried.access_token).await);
     let next = refresh_session(&server, &device, first.device_id, &rotated.refresh_token)
         .await
         .expect("the new refresh token still rotates");
     assert_ne!(next.refresh_token, rotated.refresh_token);
+}
+
+#[tokio::test]
+async fn an_old_refresh_presented_days_later_is_caught_as_reuse_even_if_the_new_one_was_never_used()
+{
+    let (server, _github) = server().await;
+    let device = TestDevice::generate();
+    let first = session(&server, &device).await;
+    let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
+        .await
+        .expect("rotate");
+    server.clock().advance(3 * 24 * 60 * 60 * 1000);
+    let copied = refresh_session(&server, &device, first.device_id, &first.refresh_token).await;
+    assert_eq!(copied.err().as_deref(), Some("refresh_reused"));
+    let after = refresh_session(&server, &device, first.device_id, &rotated.refresh_token).await;
+    assert_eq!(after.err().as_deref(), Some("revoked"));
+    let kinds = security_event_kinds(&server).await;
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::RefreshReuseDetected)));
 }
 
 #[tokio::test]

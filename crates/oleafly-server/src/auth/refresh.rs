@@ -10,6 +10,7 @@ use crate::error::ServerError;
 use crate::tokens::{hash_token, issue_access_token, random_token};
 
 pub const REFRESH_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
+pub const GRACE_MS: i64 = 5 * 60 * 1000;
 const FAMILY_SEPARATOR: char = '.';
 
 #[derive(Debug)]
@@ -132,8 +133,9 @@ pub fn rotate(
             .map_err(db_error)?;
             Ok(RefreshOutcome::Rotated(tokens))
         }
-        Some(_) => {
-            if successor_unused(conn, stored.replaced_by.as_deref(), now)? {
+        Some(rotated_at) => {
+            let recent = now.saturating_sub(rotated_at) <= GRACE_MS;
+            if recent && successor_unused(conn, stored.replaced_by.as_deref(), now)? {
                 let replay = stored
                     .grace_reply
                     .as_deref()
@@ -290,7 +292,7 @@ mod tests {
     #[tokio::test]
     async fn rotation_replays_while_the_successor_is_unused_and_flags_reuse_after_it() {
         let app = test_app().await;
-        let later = 2_000 + 30 * 24 * 60 * 60 * 1000;
+        let later = 2_000 + GRACE_MS;
         let (rotated, replayed, reused) = app
             .state
             .db
@@ -322,6 +324,32 @@ mod tests {
             other => panic!("expected a replay, got {other:?}"),
         }
         assert!(matches!(reused, RefreshOutcome::Reused { .. }));
+    }
+
+    #[tokio::test]
+    async fn the_previous_token_is_replayed_only_shortly_after_its_rotation() {
+        let app = test_app().await;
+        let (inside, outside) = app
+            .state
+            .db
+            .call(|conn| {
+                let account =
+                    members::create_account(conn, "Carol", None, ServerRole::Member, 1_000)?;
+                let device =
+                    devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
+                let first = issue_session(conn, account, device, 1_000)?;
+                rotate(conn, &first.refresh_token, device, 2_000)?;
+                let inside = rotate(conn, &first.refresh_token, device, 2_000 + GRACE_MS - 1)?;
+                let outside = rotate(conn, &first.refresh_token, device, 2_000 + GRACE_MS + 1)?;
+                Ok((inside, outside))
+            })
+            .await
+            .expect("db");
+        assert!(matches!(inside, RefreshOutcome::Replayed(_)), "{inside:?}");
+        assert!(
+            matches!(outside, RefreshOutcome::Reused { .. }),
+            "{outside:?}"
+        );
     }
 
     #[tokio::test]
@@ -393,7 +421,7 @@ mod tests {
                     }
                 }
                 let rows = family_rows(conn, device)?;
-                let replayed = rotate(conn, &previous, device, 2_000 + 160 * 540_000)?;
+                let replayed = rotate(conn, &previous, device, 2_000 + 159 * 540_000 + 1_000)?;
                 Ok((rows, replayed))
             })
             .await
