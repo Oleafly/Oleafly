@@ -1,4 +1,5 @@
 use futures_util::future::BoxFuture;
+use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
 use sha2::{Digest, Sha256};
 use std::fmt;
@@ -18,6 +19,8 @@ const MAX_ATTEMPTS: u32 = 4;
 const MAX_LIST_PAGES: usize = 1_000;
 const RPC_TIMEOUT: Duration = Duration::from_secs(60);
 const MAX_RETRY_AFTER: Duration = Duration::from_secs(60);
+const UPLOAD_CONCURRENCY: usize = 16;
+const MAX_BATCH_ENTRIES: usize = 1_000;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StoreError {
@@ -117,6 +120,12 @@ pub(crate) enum WriteMode {
     Overwrite,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BatchFile {
+    pub(crate) remote: String,
+    pub(crate) local: std::path::PathBuf,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Changes {
     pub(crate) paths: Vec<String>,
@@ -135,6 +144,16 @@ pub(crate) trait CloudStore: Send + Sync {
     ) -> StoreResult<Option<Fetched>>;
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String>;
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded>;
+    async fn put_paths(&self, files: &[BatchFile]) -> Vec<StoreResult<Uploaded>> {
+        let mut results = Vec::with_capacity(files.len());
+        for file in files {
+            results.push(self.put_path(&file.remote, &file.local).await);
+        }
+        results
+    }
+    async fn fetch_zip(&self, _remote_dir: &str, _local: &Path, _limit: u64) -> StoreResult<bool> {
+        Ok(false)
+    }
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()>;
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
@@ -648,6 +667,119 @@ impl DropboxStore {
     }
 }
 
+struct OpenSession {
+    id: String,
+    size: u64,
+    hash: ContentHash,
+    dropbox: String,
+}
+
+fn tag_path(value: &serde_json::Value) -> String {
+    let mut parts = Vec::new();
+    let mut current = value;
+    while let Some(tag) = current.get(".tag").and_then(serde_json::Value::as_str) {
+        parts.push(tag.to_string());
+        match current.get(tag) {
+            Some(next) if next.is_object() => current = next,
+            _ => break,
+        }
+    }
+    parts.join("/")
+}
+
+impl DropboxStore {
+    async fn open_session(&self, local: &Path) -> StoreResult<OpenSession> {
+        let mut file = tokio::fs::File::open(local)
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?;
+        let mut hasher = ContentHasher::new();
+        let mut dropbox = DropboxContentHasher::default();
+        let first = read_full(&mut file, SESSION_CHUNK).await?;
+        hasher.update(&first);
+        dropbox.update(&first);
+        let mut closed = first.len() < SESSION_CHUNK;
+        let started = self
+            .upload_call(
+                "files/upload_session/start",
+                &serde_json::json!({ "close": closed }),
+                &first,
+            )
+            .await?
+            .map_err(refusal_error)?;
+        let id = started
+            .get("session_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| {
+                StoreError::Server("dropbox upload session reply was unreadable".into())
+            })?
+            .to_string();
+        let mut offset = first.len() as u64;
+        while !closed {
+            let chunk = read_full(&mut file, SESSION_CHUNK).await?;
+            hasher.update(&chunk);
+            dropbox.update(&chunk);
+            closed = chunk.len() < SESSION_CHUNK;
+            self.upload_call(
+                "files/upload_session/append_v2",
+                &serde_json::json!({"cursor": {"session_id": id, "offset": offset}, "close": closed}),
+                &chunk,
+            )
+            .await?
+            .map_err(refusal_error)?;
+            offset += chunk.len() as u64;
+        }
+        Ok(OpenSession {
+            id,
+            size: offset,
+            hash: hasher.finish(),
+            dropbox: dropbox.finish(),
+        })
+    }
+
+    async fn finish_batch(
+        &self,
+        sessions: &[(&str, &OpenSession)],
+    ) -> StoreResult<Vec<StoreResult<Uploaded>>> {
+        let entries: Vec<serde_json::Value> = sessions
+            .iter()
+            .map(|(remote, session)| {
+                serde_json::json!({
+                    "cursor": {"session_id": session.id, "offset": session.size},
+                    "commit": {"path": remote, "mode": "overwrite", "mute": true, "strict_conflict": false}
+                })
+            })
+            .collect();
+        let reply = self
+            .rpc(
+                "files/upload_session/finish_batch_v2",
+                &serde_json::json!({ "entries": entries }),
+            )
+            .await?
+            .map_err(refusal_error)?;
+        let results = reply
+            .get("entries")
+            .and_then(serde_json::Value::as_array)
+            .filter(|results| results.len() == sessions.len())
+            .ok_or_else(|| {
+                StoreError::Server("dropbox batch commit reply was unreadable".into())
+            })?;
+        Ok(results
+            .iter()
+            .zip(sessions)
+            .map(|(result, (_, session))| {
+                match result.get(".tag").and_then(serde_json::Value::as_str) {
+                    Some("success") => {
+                        Self::uploaded(result, session.hash, session.size, &session.dropbox)
+                    }
+                    _ => Err(refusal_error(classify(&tag_path(
+                        result.get("failure").unwrap_or(result),
+                    )))),
+                }
+            })
+            .collect())
+    }
+}
+
 async fn read_full(file: &mut tokio::fs::File, want: usize) -> StoreResult<Vec<u8>> {
     let mut buffer = vec![0_u8; want];
     let mut filled = 0;
@@ -686,6 +818,56 @@ fn page_entries(page: &serde_json::Value) -> Vec<RemoteEntry> {
 
 fn remove_quietly(path: &Path) {
     let _ = std::fs::remove_file(path);
+}
+
+async fn save_body(
+    mut response: reqwest::Response,
+    local: &Path,
+    limit: u64,
+) -> StoreResult<Fetched> {
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(local)
+        .await
+        .map_err(|error| StoreError::Io(error.to_string()))?;
+    let mut hasher = ContentHasher::new();
+    let mut size: u64 = 0;
+    let written = async {
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| StoreError::Network(error.to_string()))?
+        {
+            size += chunk.len() as u64;
+            if size > limit {
+                return Err(StoreError::Verify(
+                    "a file from dropbox is larger than its record".into(),
+                ));
+            }
+            hasher.update(&chunk);
+            file.write_all(&chunk)
+                .await
+                .map_err(|error| StoreError::Io(error.to_string()))?;
+        }
+        file.flush()
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?;
+        file.sync_all()
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?;
+        Ok(())
+    }
+    .await;
+    drop(file);
+    if let Err(error) = written {
+        remove_quietly(local);
+        return Err(error);
+    }
+    Ok(Fetched {
+        hash: hasher.finish(),
+        size,
+    })
 }
 
 impl CloudStore for DropboxStore {
@@ -744,52 +926,32 @@ impl CloudStore for DropboxStore {
         local: &Path,
         limit: u64,
     ) -> StoreResult<Option<Fetched>> {
-        let Some(mut response) = self.download_any(remote, rev).await? else {
+        let Some(response) = self.download_any(remote, rev).await? else {
             return Ok(None);
         };
-        let mut file = tokio::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(local)
-            .await
-            .map_err(|error| StoreError::Io(error.to_string()))?;
-        let mut hasher = ContentHasher::new();
-        let mut size: u64 = 0;
-        let written = async {
-            while let Some(chunk) = response
-                .chunk()
-                .await
-                .map_err(|error| StoreError::Network(error.to_string()))?
-            {
-                size += chunk.len() as u64;
-                if size > limit {
-                    return Err(StoreError::Verify(
-                        "a file from dropbox is larger than its record".into(),
-                    ));
-                }
-                hasher.update(&chunk);
-                file.write_all(&chunk)
-                    .await
-                    .map_err(|error| StoreError::Io(error.to_string()))?;
-            }
-            file.flush()
-                .await
-                .map_err(|error| StoreError::Io(error.to_string()))?;
-            file.sync_all()
-                .await
-                .map_err(|error| StoreError::Io(error.to_string()))?;
-            Ok(())
+        save_body(response, local, limit).await.map(Some)
+    }
+
+    async fn fetch_zip(&self, remote_dir: &str, local: &Path, limit: u64) -> StoreResult<bool> {
+        let response = self
+            .send(&Call {
+                url: format!("{}/files/download_zip", self.content_base),
+                arg: Some(arg_header(&serde_json::json!({ "path": remote_dir }))),
+                body: Body::None,
+                timeout: None,
+            })
+            .await?;
+        if !response.status().is_success() {
+            return match Self::refusal(response).await {
+                Refusal::RateLimited => Err(StoreError::RateLimited),
+                _ => Ok(false),
+            };
         }
-        .await;
-        drop(file);
-        if let Err(error) = written {
-            remove_quietly(local);
-            return Err(error);
+        match save_body(response, local, limit).await {
+            Ok(_) => Ok(true),
+            Err(StoreError::Verify(_)) => Ok(false),
+            Err(error) => Err(error),
         }
-        Ok(Some(Fetched {
-            hash: hasher.finish(),
-            size,
-        }))
     }
 
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String> {
@@ -836,6 +998,52 @@ impl CloudStore for DropboxStore {
             .await?
             .map_err(refusal_error)?;
         Self::uploaded(&value, hash, size, &dropbox.finish())
+    }
+
+    async fn put_paths(&self, files: &[BatchFile]) -> Vec<StoreResult<Uploaded>> {
+        let pending: Vec<_> = files
+            .iter()
+            .map(|file| self.open_session(&file.local))
+            .collect();
+        let opened: Vec<StoreResult<OpenSession>> = stream::iter(pending)
+            .buffered(UPLOAD_CONCURRENCY)
+            .collect()
+            .await;
+        let mut results: Vec<Option<StoreResult<Uploaded>>> = Vec::with_capacity(files.len());
+        let mut ready: Vec<(usize, &str, &OpenSession)> = Vec::new();
+        for (index, opened) in opened.iter().enumerate() {
+            match opened {
+                Ok(session) => {
+                    results.push(None);
+                    ready.push((index, files[index].remote.as_str(), session));
+                }
+                Err(error) => results.push(Some(Err(error.clone()))),
+            }
+        }
+        for batch in ready.chunks(MAX_BATCH_ENTRIES) {
+            let sessions: Vec<(&str, &OpenSession)> = batch
+                .iter()
+                .map(|(_, remote, session)| (*remote, *session))
+                .collect();
+            match self.finish_batch(&sessions).await {
+                Ok(finished) => {
+                    for ((index, _, _), result) in batch.iter().zip(finished) {
+                        results[*index] = Some(result);
+                    }
+                }
+                Err(error) => {
+                    for (index, _, _) in batch {
+                        results[*index] = Some(Err(error.clone()));
+                    }
+                }
+            }
+        }
+        results
+            .into_iter()
+            .map(|result| {
+                result.unwrap_or_else(|| Err(StoreError::Server("upload was not committed".into())))
+            })
+            .collect()
     }
 
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {

@@ -28,6 +28,8 @@ pub(crate) struct Inner {
     pub(crate) upload_bytes: u64,
     pub(crate) downloads: usize,
     pub(crate) purged: BTreeSet<String>,
+    pub(crate) zips: usize,
+    pub(crate) broken_zip: bool,
 }
 
 #[derive(Default)]
@@ -58,6 +60,18 @@ impl Inner {
         self.log.push(path.to_lowercase());
         rev
     }
+}
+
+pub(crate) fn zip_of(top: &str, entries: &[(String, Vec<u8>)]) -> Vec<u8> {
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    writer.add_directory(format!("{top}/"), options).unwrap();
+    for (name, bytes) in entries {
+        writer.start_file(format!("{top}/{name}"), options).unwrap();
+        std::io::Write::write_all(&mut writer, bytes).unwrap();
+    }
+    writer.finish().unwrap().into_inner()
 }
 
 impl MemoryStore {
@@ -166,6 +180,40 @@ impl CloudStore for MemoryStore {
             hash: ContentHash::digest(&bytes),
             size: bytes.len() as u64,
         }))
+    }
+
+    async fn fetch_zip(&self, remote_dir: &str, local: &Path, limit: u64) -> StoreResult<bool> {
+        self.enter()?;
+        let prefix = format!("{}/", remote_dir.to_lowercase());
+        let top = remote_dir.rsplit('/').next().unwrap_or_default();
+        let (entries, broken) = self.with(|inner| {
+            inner.zips += 1;
+            let entries: Vec<(String, Vec<u8>)> = inner
+                .files
+                .values()
+                .filter(|stored| stored.path.to_lowercase().starts_with(&prefix))
+                .map(|stored| {
+                    (
+                        stored.path[prefix.len()..].to_string(),
+                        stored.bytes.clone(),
+                    )
+                })
+                .collect();
+            (entries, inner.broken_zip)
+        });
+        if entries.is_empty() {
+            return Ok(false);
+        }
+        let bytes = if broken {
+            b"not a zip archive".to_vec()
+        } else {
+            zip_of(top, &entries)
+        };
+        if bytes.len() as u64 > limit {
+            return Ok(false);
+        }
+        std::fs::write(local, bytes).map_err(|error| StoreError::Io(error.to_string()))?;
+        Ok(true)
     }
 
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String> {

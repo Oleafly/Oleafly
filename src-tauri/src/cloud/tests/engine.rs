@@ -667,6 +667,73 @@ async fn a_downloaded_project_drops_device_fields_and_unsafe_entries() {
     assert!(meta.get("exports").is_none());
 }
 
+fn long_thesis(device: &Device) {
+    thesis(device);
+    for index in 0..40 {
+        device.write(
+            &format!("chapters/part-{index:02}.tex"),
+            &format!("part {index}"),
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_large_download_comes_as_one_zip_and_checks_every_file() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    long_thesis(&desk);
+    desk.sync(&store, cloud).await;
+    store.overwrite(
+        &file_remote(cloud, "chapters/part-07.tex"),
+        b"bytes the version record does not know",
+    );
+    store.with(|inner| inner.downloads = 0);
+
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 2));
+    assert_eq!(
+        laptop.read("chapters/part-07.tex").as_deref(),
+        Some("part 7")
+    );
+    assert_eq!(
+        laptop.read("chapters/part-39.tex").as_deref(),
+        Some("part 39")
+    );
+    assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+    assert!(laptop.sync(&store, cloud).await.outcome.unchanged);
+
+    let (small, small_cloud, _desk, _office) = paired().await;
+    assert_eq!(small.with(|inner| inner.zips), 0);
+    assert!(small.read(&version_remote(small_cloud)).is_some());
+}
+
+#[tokio::test]
+async fn an_unreadable_zip_falls_back_to_one_download_per_file() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    long_thesis(&desk);
+    desk.sync(&store, cloud).await;
+    store.with(|inner| {
+        inner.broken_zip = true;
+        inner.downloads = 0;
+    });
+
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 42));
+    assert_eq!(
+        laptop.read("chapters/part-21.tex").as_deref(),
+        Some("part 21")
+    );
+    let staging = std::fs::read_dir(laptop.dir.path().join("staging"))
+        .unwrap()
+        .count();
+    assert_eq!(staging, 0);
+}
+
 #[tokio::test]
 async fn a_missing_file_fails_a_download_without_leaving_half_a_project() {
     let (store, cloud, _desk, _laptop) = paired().await;

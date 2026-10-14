@@ -682,7 +682,7 @@ async fn a_full_dropbox_stops_uploads_until_space_returns() {
     let still = sync().await;
     assert_eq!(code_of(&still["error"]), "cloud.quota_full");
     harness.fake.with(|dropbox| {
-        assert_eq!(dropbox.calls("files/upload"), 0);
+        assert_eq!(dropbox.calls("files/upload_session/start"), 0);
         assert_eq!(dropbox.calls("users/get_space_usage"), 1);
         dropbox.fault("users/get_space_usage", None, Reply::Status(500), 1);
         dropbox.clear_calls();
@@ -690,7 +690,8 @@ async fn a_full_dropbox_stops_uploads_until_space_returns() {
     let unknown = sync().await;
     assert_eq!(code_of(&unknown["error"]), "cloud.quota_full");
     harness.fake.with(|dropbox| {
-        assert_eq!(dropbox.calls("files/upload"), 1);
+        assert_eq!(dropbox.calls("files/upload_session/start"), 1);
+        assert_eq!(dropbox.calls("files/upload_session/finish_batch_v2"), 1);
         dropbox.quota = None;
     });
 
@@ -780,7 +781,12 @@ async fn server_errors_conflicts_rate_limits_and_busy_projects_are_reported() {
         "alpha, a fourth draft that meets a busy dropbox",
     );
     harness.fake.with(|dropbox| {
-        dropbox.fault("files/upload", Some("main.tex"), Reply::Status(429), 4);
+        dropbox.fault(
+            "files/upload_session/finish_batch_v2",
+            None,
+            Reply::Status(429),
+            4,
+        );
     });
     let throttled = sync().await;
     assert_eq!(code_of(&throttled["error"]), "cloud.rate_limited");

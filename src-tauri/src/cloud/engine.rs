@@ -1,9 +1,9 @@
 use super::merge::{self, PROJECT_META};
 use super::state::{BaseEntry, Failure, Hold, PendingDelete, ProjectState, SkippedFile};
-use super::store::{CloudStore, StoreError, WriteMode};
+use super::store::{BatchFile, CloudStore, StoreError, WriteMode};
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
-use oleafly_core::content::ContentHash;
+use oleafly_core::content::{ContentHash, ContentHasher};
 use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason};
 use oleafly_core::hlc::{Hlc, HlcClock, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
@@ -22,7 +22,10 @@ const MASS_DELETE_MIN: usize = 20;
 const PUBLISH_EVERY_FILES: usize = 200;
 const PUBLISH_EVERY_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
-const DOWNLOAD_CONCURRENCY: usize = 4;
+const DOWNLOAD_CONCURRENCY: usize = 16;
+const ZIP_MIN_FILES: usize = 32;
+const ZIP_MAX_FILES: usize = 9_000;
+const ZIP_MAX_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const STALE_TEMP_AGE: Duration = Duration::from_secs(60 * 60);
 pub(crate) const RETRY_FAILED_MS: u64 = 60 * 60 * 1000;
 const DISK_HEADROOM_BYTES: u64 = 64 * 1024 * 1024;
@@ -1122,6 +1125,147 @@ async fn stage_downloads<S: CloudStore>(
     (staged, failed)
 }
 
+async fn stage_whole<S: CloudStore>(
+    store: &S,
+    cloud: ProjectId,
+    jobs: Vec<(String, FileRecord)>,
+    staging: &Path,
+    folder: (usize, u64),
+) -> (Vec<Staged>, Vec<(String, StoreError)>) {
+    let (mut staged, rest) = stage_from_zip(store, cloud, jobs, staging, folder).await;
+    let (more, failed) = stage_downloads(store, cloud, rest, staging).await;
+    staged.extend(more);
+    (staged, failed)
+}
+
+async fn stage_from_zip<S: CloudStore>(
+    store: &S,
+    cloud: ProjectId,
+    jobs: Vec<(String, FileRecord)>,
+    staging: &Path,
+    (files, bytes): (usize, u64),
+) -> (Vec<Staged>, Vec<(String, FileRecord)>) {
+    if jobs.len() < ZIP_MIN_FILES || files > ZIP_MAX_FILES || bytes > ZIP_MAX_BYTES {
+        return (Vec::new(), jobs);
+    }
+    let archive = staging_name(staging);
+    let limit = bytes + bytes / 16 + files as u64 * 1024 + 1024 * 1024;
+    let remote_dir = format!("{}/files", project_remote(cloud));
+    if !matches!(
+        store.fetch_zip(&remote_dir, &archive, limit).await,
+        Ok(true)
+    ) {
+        let _ = tokio::fs::remove_file(&archive).await;
+        return (Vec::new(), jobs);
+    }
+    let fallback = jobs.clone();
+    let dir = staging.to_path_buf();
+    let unpacked = tauri::async_runtime::spawn_blocking(move || {
+        let result = unpack_zip(&archive, jobs, &dir);
+        let _ = std::fs::remove_file(&archive);
+        result
+    })
+    .await;
+    unpacked.unwrap_or_else(|_| (Vec::new(), fallback))
+}
+
+fn unpack_zip(
+    archive: &Path,
+    jobs: Vec<(String, FileRecord)>,
+    staging: &Path,
+) -> (Vec<Staged>, Vec<(String, FileRecord)>) {
+    let opened = std::fs::File::open(archive)
+        .ok()
+        .and_then(|file| zip::ZipArchive::new(std::io::BufReader::new(file)).ok());
+    let Some(mut zip) = opened else {
+        return (Vec::new(), jobs);
+    };
+    let mut entries: BTreeMap<String, Option<usize>> = BTreeMap::new();
+    for index in 0..zip.len() {
+        let Some((_, inner)) = zip
+            .name_for_index(index)
+            .and_then(|name| name.split_once('/'))
+        else {
+            continue;
+        };
+        if inner.is_empty() || inner.ends_with('/') {
+            continue;
+        }
+        entries
+            .entry(key(inner))
+            .and_modify(|slot| *slot = None)
+            .or_insert(Some(index));
+    }
+    let mut staged = Vec::new();
+    let mut rest = Vec::new();
+    for (job_key, record) in jobs {
+        let index = entries
+            .get(&key(&record.path))
+            .copied()
+            .flatten()
+            .filter(|_| job_key != PROJECT_META);
+        match index.and_then(|index| unpack_entry(&mut zip, index, &job_key, &record, staging)) {
+            Some(entry) => staged.push(entry),
+            None => rest.push((job_key, record)),
+        }
+    }
+    (staged, rest)
+}
+
+fn unpack_entry<R: std::io::Read + std::io::Seek>(
+    zip: &mut zip::ZipArchive<R>,
+    index: usize,
+    job_key: &str,
+    record: &FileRecord,
+    staging: &Path,
+) -> Option<Staged> {
+    let mut entry = zip.by_index(index).ok()?;
+    if entry.size() != record.size {
+        return None;
+    }
+    let temp = staging_name(staging);
+    if !copy_verified(&mut entry, &temp, record) {
+        let _ = std::fs::remove_file(&temp);
+        return None;
+    }
+    Some(Staged {
+        key: job_key.to_string(),
+        path: temp,
+        hash: record.hash.clone(),
+        size: record.size,
+    })
+}
+
+fn copy_verified(source: &mut impl std::io::Read, target: &Path, record: &FileRecord) -> bool {
+    use std::io::Write;
+    let Ok(mut file) = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(target)
+    else {
+        return false;
+    };
+    let mut hasher = ContentHasher::new();
+    let mut buffer = vec![0_u8; 64 * 1024];
+    let mut size: u64 = 0;
+    loop {
+        let read = match source.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(read) => read,
+            Err(_) => return false,
+        };
+        size += read as u64;
+        if size > record.size {
+            return false;
+        }
+        hasher.update(&buffer[..read]);
+        if file.write_all(&buffer[..read]).is_err() {
+            return false;
+        }
+    }
+    size == record.size && hasher.finish().to_hex() == record.hash && file.sync_all().is_ok()
+}
+
 async fn room_for(staging: &Path, needed: u64) -> bool {
     let staging = staging.to_path_buf();
     let available =
@@ -1371,34 +1515,34 @@ impl UploadJob {
     }
 }
 
-async fn upload_one<S: CloudStore>(
+async fn upload_meta<S: CloudStore>(
     store: &S,
     cloud: ProjectId,
     root: &Path,
     job: &UploadJob,
 ) -> Result<FileRecord, StoreError> {
-    let absolute = native(root, &job.path);
-    if job.path == PROJECT_META {
-        let bytes = match &job.meta {
-            Some(bytes) => bytes.clone(),
-            None => tokio::fs::read(&absolute)
-                .await
-                .map_err(|error| StoreError::Io(error.to_string()))?,
-        };
-        let digest = merge::meta_digest(&bytes).to_hex();
-        let size = bytes.len() as u64;
-        let rev = store
-            .put(&file_remote(cloud, &job.path), bytes, WriteMode::Overwrite)
-            .await?;
-        return Ok(FileRecord {
-            path: job.path.clone(),
-            hash: digest,
-            size,
-            exec: false,
-            rev: Some(rev),
-            extra: serde_json::Map::new(),
-        });
-    }
+    let bytes = match &job.meta {
+        Some(bytes) => bytes.clone(),
+        None => tokio::fs::read(native(root, &job.path))
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?,
+    };
+    let digest = merge::meta_digest(&bytes).to_hex();
+    let size = bytes.len() as u64;
+    let rev = store
+        .put(&file_remote(cloud, &job.path), bytes, WriteMode::Overwrite)
+        .await?;
+    Ok(FileRecord {
+        path: job.path.clone(),
+        hash: digest,
+        size,
+        exec: false,
+        rev: Some(rev),
+        extra: serde_json::Map::new(),
+    })
+}
+
+async fn prepare_upload(root: &Path, job: &UploadJob) -> Result<bool, StoreError> {
     let checked = {
         let root = root.to_path_buf();
         let path = job.path.clone();
@@ -1412,20 +1556,9 @@ async fn upload_one<S: CloudStore>(
             job.path
         )));
     }
-    let exec = tokio::fs::symlink_metadata(&absolute)
+    Ok(tokio::fs::symlink_metadata(native(root, &job.path))
         .await
-        .map_or(job.exec, |metadata| executable(&metadata, job.exec));
-    let uploaded = store
-        .put_path(&file_remote(cloud, &job.path), &absolute)
-        .await?;
-    Ok(FileRecord {
-        path: job.path.clone(),
-        hash: uploaded.hash.to_hex(),
-        size: uploaded.size,
-        exec,
-        rev: Some(uploaded.rev),
-        extra: serde_json::Map::new(),
-    })
+        .map_or(job.exec, |metadata| executable(&metadata, job.exec)))
 }
 
 fn manifest_files(
@@ -1989,6 +2122,91 @@ impl<S: CloudStore> Round<'_, S> {
         Ok(applied)
     }
 
+    fn within_budget<'j>(&mut self, uploads: &'j [UploadJob]) -> Vec<&'j UploadJob> {
+        let mut free = self.options.free_bytes;
+        let mut queue = Vec::new();
+        for job in uploads {
+            if let Some(left) = free {
+                let cost = job.size.saturating_sub(job.replaces);
+                if cost > left {
+                    self.outcome.quota_hit = true;
+                    continue;
+                }
+                free = Some(left - cost);
+            }
+            queue.push(job);
+        }
+        queue
+    }
+
+    fn take_result(
+        &mut self,
+        job: &UploadJob,
+        result: Result<FileRecord, StoreError>,
+        run: &mut UploadRun,
+    ) -> bool {
+        match result {
+            Ok(record) => {
+                run.uploaded.insert(job.key.clone(), record);
+                false
+            }
+            Err(StoreError::QuotaFull) => {
+                self.outcome.quota_hit = true;
+                true
+            }
+            Err(error) if error.ends_round() => {
+                run.error.get_or_insert(RoundError::Store(error));
+                true
+            }
+            Err(error) => {
+                run.skipped.push(SkippedFile {
+                    path: job.path.clone(),
+                    reason: upload_skip_code(&error).into(),
+                });
+                false
+            }
+        }
+    }
+
+    async fn upload_chunk(&mut self, chunk: &[&UploadJob], run: &mut UploadRun) -> bool {
+        let mut stop = false;
+        let mut batch: Vec<(&UploadJob, bool)> = Vec::new();
+        for job in chunk {
+            if job.path == PROJECT_META {
+                let result = upload_meta(self.store, self.cloud, &self.env.root, job).await;
+                stop |= self.take_result(job, result, run);
+                continue;
+            }
+            match prepare_upload(&self.env.root, job).await {
+                Ok(exec) => batch.push((job, exec)),
+                Err(error) => stop |= self.take_result(job, Err(error), run),
+            }
+        }
+        if stop || batch.is_empty() {
+            return stop;
+        }
+        let files: Vec<BatchFile> = batch
+            .iter()
+            .map(|(job, _)| BatchFile {
+                remote: file_remote(self.cloud, &job.path),
+                local: native(&self.env.root, &job.path),
+            })
+            .collect();
+        let results = self.store.put_paths(&files).await;
+        for ((job, exec), result) in batch.iter().zip(results) {
+            let record = result.map(|uploaded| FileRecord {
+                path: job.path.clone(),
+                hash: uploaded.hash.to_hex(),
+                size: uploaded.size,
+                exec: *exec,
+                rev: Some(uploaded.rev),
+                extra: serde_json::Map::new(),
+            });
+            stop |= self.take_result(job, record, run);
+        }
+        stop
+    }
+
     async fn upload(
         &mut self,
         uploads: &[UploadJob],
@@ -1999,61 +2217,38 @@ impl<S: CloudStore> Round<'_, S> {
         if self.error.is_some() {
             return run;
         }
-        let mut free = self.options.free_bytes;
-        let mut since_files = 0usize;
-        let mut since_bytes = 0u64;
-        for job in uploads {
+        let queue = self.within_budget(uploads);
+        let mut next = 0;
+        while next < queue.len() {
             if self.options.cancelled() {
                 break;
             }
-            if let Some(left) = free {
-                let cost = job.size.saturating_sub(job.replaces);
-                if cost > left {
-                    self.outcome.quota_hit = true;
-                    continue;
-                }
-                free = Some(left - cost);
+            let interval = PUBLISH_EVERY_FILES.max((view.usable.len() + run.uploaded.len()) / 4);
+            let mut end = next;
+            let mut bytes = 0u64;
+            while end < queue.len() && end - next < interval && bytes < PUBLISH_EVERY_BYTES {
+                bytes += queue[end].size;
+                end += 1;
             }
-            match upload_one(self.store, self.cloud, &self.env.root, job).await {
-                Ok(record) => {
-                    since_files += 1;
-                    since_bytes += record.size;
-                    run.uploaded.insert(job.key.clone(), record);
-                }
-                Err(StoreError::QuotaFull) => {
-                    self.outcome.quota_hit = true;
-                    break;
-                }
-                Err(error) if error.ends_round() => {
+            let stop = self.upload_chunk(&queue[next..end], &mut run).await;
+            next = end;
+            if stop || next >= queue.len() {
+                break;
+            }
+            let mut interim = view.usable.clone();
+            interim.extend(
+                run.uploaded
+                    .iter()
+                    .map(|(record_key, record)| (record_key.clone(), record.clone())),
+            );
+            match publisher
+                .publish(manifest_files(&interim, &view.foreign))
+                .await
+            {
+                Ok(_) => run.published.extend(run.uploaded.keys().cloned()),
+                Err(error) => {
                     run.error = Some(RoundError::Store(error));
                     break;
-                }
-                Err(error) => run.skipped.push(SkippedFile {
-                    path: job.path.clone(),
-                    reason: upload_skip_code(&error).into(),
-                }),
-            }
-            let interval = PUBLISH_EVERY_FILES.max((view.usable.len() + run.uploaded.len()) / 4);
-            if since_files >= interval || since_bytes >= PUBLISH_EVERY_BYTES {
-                let mut interim = view.usable.clone();
-                interim.extend(
-                    run.uploaded
-                        .iter()
-                        .map(|(record_key, record)| (record_key.clone(), record.clone())),
-                );
-                match publisher
-                    .publish(manifest_files(&interim, &view.foreign))
-                    .await
-                {
-                    Ok(_) => {
-                        run.published.extend(run.uploaded.keys().cloned());
-                        since_files = 0;
-                        since_bytes = 0;
-                    }
-                    Err(error) => {
-                        run.error = Some(RoundError::Store(error));
-                        break;
-                    }
                 }
             }
         }
@@ -2652,7 +2847,8 @@ pub(crate) async fn download_into<S: CloudStore>(
     if !room_for(staging, needed.saturating_mul(2)).await {
         return Err(RoundError::DiskFull);
     }
-    let (staged, failed) = stage_downloads(store, cloud, jobs, staging).await;
+    let folder = (remote.version.files.len(), remote.version.total_size());
+    let (staged, failed) = stage_whole(store, cloud, jobs, staging, folder).await;
     if let Some((_, error)) = failed.into_iter().next() {
         for staged in &staged {
             let _ = tokio::fs::remove_file(&staged.path).await;

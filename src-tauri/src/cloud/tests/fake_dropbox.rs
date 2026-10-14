@@ -15,19 +15,22 @@ pub(crate) const ACCOUNT_ID: &str = "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc";
 pub(crate) const EMAIL: &str = "ada@example.org";
 pub(crate) const DISPLAY_NAME: &str = "Ada Lovelace";
 const MAX_BODY: usize = 64 * 1024 * 1024;
-const CONTENT_ROUTES: [&str; 5] = [
+const CONTENT_ROUTES: [&str; 6] = [
     "files/download",
+    "files/download_zip",
     "files/upload",
     "files/upload_session/start",
     "files/upload_session/append_v2",
     "files/upload_session/finish",
 ];
-const FILE_ROUTES: [&str; 7] = [
+const FILE_ROUTES: [&str; 9] = [
     "files/download",
+    "files/download_zip",
     "files/upload",
     "files/upload_session/start",
     "files/upload_session/append_v2",
     "files/upload_session/finish",
+    "files/upload_session/finish_batch_v2",
     "files/get_metadata",
     "files/delete_v2",
 ];
@@ -400,6 +403,7 @@ impl Inner {
             "files/list_folder/continue" => self.list_continue(&arg),
             "files/list_folder/get_latest_cursor" => self.latest_cursor(&arg),
             "files/download" => self.download(&arg),
+            "files/download_zip" => self.download_zip(&arg),
             "files/upload" => self.commit(&arg, body.to_vec()),
             "files/upload_session/start" => {
                 self.next_id += 1;
@@ -411,6 +415,7 @@ impl Inner {
                 Ok(_) => json_reply(Value::Null),
                 Err(summary) => refuse(summary),
             },
+            "files/upload_session/finish_batch_v2" => self.finish_batch(&arg),
             "files/upload_session/finish" => match self.append(&arg, body) {
                 Ok(id) => {
                     let data = self.sessions.remove(&id).unwrap_or_default();
@@ -632,6 +637,32 @@ impl Inner {
             .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
     }
 
+    fn download_zip(&self, arg: &Value) -> Response {
+        let dir = arg["path"].as_str().unwrap_or_default().to_lowercase();
+        let prefix = format!("{dir}/");
+        let entries: Vec<(String, Vec<u8>)> = self
+            .files
+            .iter()
+            .filter(|(lower, _)| lower.starts_with(&prefix))
+            .filter_map(|(_, stored)| {
+                let name = stored.path.get(prefix.len()..)?;
+                Some((name.to_string(), stored.bytes.clone()))
+            })
+            .collect();
+        if entries.is_empty() {
+            return refuse("path/not_found/..");
+        }
+        let top = dir.rsplit('/').next().unwrap_or_default();
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Dropbox-API-Result", arg_header(&folder_meta(&dir)))
+            .header(header::CONTENT_TYPE, "application/zip")
+            .body(Body::from(crate::cloud::tests::memory::zip_of(
+                top, &entries,
+            )))
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+    }
+
     fn append(&mut self, arg: &Value, body: &[u8]) -> Result<String, &'static str> {
         let id = arg
             .pointer("/cursor/session_id")
@@ -650,18 +681,62 @@ impl Inner {
     }
 
     fn commit(&mut self, commit: &Value, bytes: Vec<u8>) -> Response {
+        match self.commit_value(commit, bytes) {
+            Ok(metadata) => json_reply(metadata),
+            Err(Refused::Summary(summary)) => refuse(summary),
+            Err(Refused::BadRequest(message)) => bad_request(message),
+        }
+    }
+
+    fn finish_batch(&mut self, arg: &Value) -> Response {
+        let Some(entries) = arg["entries"].as_array() else {
+            return bad_request("missing entries");
+        };
+        if entries.len() > 1_000 {
+            return bad_request("too many entries");
+        }
+        let results: Vec<Value> = entries
+            .iter()
+            .map(|entry| {
+                let id = entry
+                    .pointer("/cursor/session_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let offset = entry.pointer("/cursor/offset").and_then(Value::as_u64);
+                let Some(data) = self.sessions.get(&id) else {
+                    return batch_failure("lookup_failed/not_found/..");
+                };
+                if offset != Some(data.len() as u64) {
+                    return batch_failure("lookup_failed/incorrect_offset/..");
+                }
+                let data = self.sessions.remove(&id).unwrap_or_default();
+                match self.commit_value(&entry["commit"], data) {
+                    Ok(mut metadata) => {
+                        metadata[".tag"] = json!("success");
+                        metadata
+                    }
+                    Err(Refused::Summary(summary)) => batch_failure(summary),
+                    Err(Refused::BadRequest(message)) => batch_failure(message),
+                }
+            })
+            .collect();
+        json_reply(json!({ "entries": results }))
+    }
+
+    fn commit_value(&mut self, commit: &Value, bytes: Vec<u8>) -> Result<Value, Refused> {
         let Some(path) = commit["path"]
             .as_str()
             .filter(|path| path.starts_with('/') && !path.ends_with('/'))
         else {
-            return refuse("path/malformed_path/..");
+            return Err(Refused::Summary("path/malformed_path/.."));
         };
         if self.rejected_names.contains(&name_of(path).to_lowercase()) {
-            return refuse("path/disallowed_name/..");
+            return Err(Refused::Summary("path/disallowed_name/.."));
         }
         let lower = path.to_lowercase();
         if self.folder_exists(&lower) {
-            return refuse("path/conflict/folder/..");
+            return Err(Refused::Summary("path/conflict/folder/.."));
         }
         let current = self.files.get(&lower).cloned();
         let mode = &commit["mode"];
@@ -675,15 +750,15 @@ impl Inner {
                 mode["update"].as_str() == Some(existing.rev.as_str())
             }
             (Some("add"), _, Some(_)) | (None, Some("update"), None) => false,
-            _ => return bad_request("unknown write mode"),
+            _ => return Err(Refused::BadRequest("unknown write mode")),
         };
         if !allowed {
-            return refuse("path/conflict/file/..");
+            return Err(Refused::Summary("path/conflict/file/.."));
         }
         if let Some(quota) = self.quota {
             let replaced = current.map_or(0, |existing| existing.bytes.len() as u64);
             if self.used() - replaced + bytes.len() as u64 > quota {
-                return refuse("path/insufficient_space/..");
+                return Err(Refused::Summary("path/insufficient_space/.."));
             }
         }
         self.write(path, bytes);
@@ -691,8 +766,29 @@ impl Inner {
         if std::mem::take(&mut self.corrupt_hash) {
             metadata["content_hash"] = json!("0".repeat(64));
         }
-        json_reply(metadata)
+        Ok(metadata)
     }
+}
+
+enum Refused {
+    Summary(&'static str),
+    BadRequest(&'static str),
+}
+
+fn batch_failure(summary: &str) -> Value {
+    let parts: Vec<&str> = summary
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != "..")
+        .collect();
+    let mut failure = json!({});
+    for part in parts.iter().rev() {
+        let mut node = json!({ ".tag": part });
+        if failure.get(".tag").is_some() {
+            node[*part] = failure;
+        }
+        failure = node;
+    }
+    json!({ ".tag": "failure", "failure": failure })
 }
 
 async fn handle(

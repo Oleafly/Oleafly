@@ -1,6 +1,6 @@
 use crate::cloud::store::{
-    endpoints, test_endpoints, CloudStore, DropboxStore, RemoteEntry, StoreError, StoreResult,
-    TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
+    endpoints, test_endpoints, BatchFile, CloudStore, DropboxStore, RemoteEntry, StoreError,
+    StoreResult, TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
 };
 use crate::cloud::tests::fake_dropbox::{point_at, FakeDropbox, Reply};
 use futures_util::future::BoxFuture;
@@ -704,4 +704,139 @@ fn without_an_override_the_store_talks_to_dropbox_itself() {
     assert_eq!(real.api, "https://api.dropboxapi.com/2");
     assert_eq!(real.content, "https://content.dropboxapi.com/2");
     assert_eq!(real.token, "https://api.dropboxapi.com/oauth2/token");
+}
+
+#[tokio::test]
+async fn many_files_upload_in_parallel_sessions_and_commit_in_one_batch() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let mut files = Vec::new();
+    for index in 0..12 {
+        let local = dir.path().join(format!("part{index}.tex"));
+        std::fs::write(&local, format!("part {index}")).unwrap();
+        files.push(BatchFile {
+            remote: format!("/projects/p/files/part{index}.tex"),
+            local,
+        });
+    }
+    let large = dir.path().join("large.bin");
+    let large_bytes: Vec<u8> = (0..(SINGLE_UPLOAD_LIMIT as usize * 2 + 17))
+        .map(|index| (index % 251) as u8)
+        .collect();
+    std::fs::write(&large, &large_bytes).unwrap();
+    files.push(BatchFile {
+        remote: "/projects/p/files/large.bin".into(),
+        local: large,
+    });
+    files.push(BatchFile {
+        remote: "/projects/p/files/missing.tex".into(),
+        local: dir.path().join("missing.tex"),
+    });
+    fake.with(|dropbox| {
+        dropbox.rejected_names.insert("part3.tex".into());
+    });
+
+    let results = store.put_paths(&files).await;
+    assert_eq!(results.len(), files.len());
+    for (index, result) in results.iter().enumerate().take(12) {
+        if index == 3 {
+            assert!(matches!(result, Err(StoreError::Rejected(_))), "{result:?}");
+            continue;
+        }
+        let uploaded = result.as_ref().unwrap();
+        let expected = format!("part {index}");
+        assert_eq!(uploaded.hash, ContentHash::digest(expected.as_bytes()));
+        assert_eq!(uploaded.size, expected.len() as u64);
+        assert_eq!(
+            fake.with(|dropbox| dropbox.rev(&format!("/projects/p/files/part{index}.tex"))),
+            Some(uploaded.rev.clone())
+        );
+    }
+    let large_result = results[12].as_ref().unwrap();
+    assert_eq!(large_result.size, large_bytes.len() as u64);
+    assert_eq!(
+        fake.with(|dropbox| dropbox.read("/projects/p/files/large.bin")),
+        Some(large_bytes)
+    );
+    assert!(matches!(results[13], Err(StoreError::Io(_))));
+    fake.with(|dropbox| {
+        assert_eq!(dropbox.calls("files/upload_session/finish_batch_v2"), 1);
+        assert_eq!(dropbox.calls("files/upload"), 0);
+        assert!(dropbox.calls("files/upload_session/append_v2") >= 2);
+    });
+
+    fake.with(|dropbox| dropbox.quota = Some(dropbox.used() - 1));
+    let full = store.put_paths(&files[..2]).await;
+    assert!(full
+        .iter()
+        .all(|result| matches!(result, Err(StoreError::QuotaFull))));
+
+    fake.with(|dropbox| {
+        dropbox.quota = None;
+        dropbox.fault(
+            "files/upload_session/finish_batch_v2",
+            None,
+            Reply::Raw("not json"),
+            1,
+        );
+    });
+    let unreadable = store.put_paths(&files[..2]).await;
+    assert!(unreadable
+        .iter()
+        .all(|result| matches!(result, Err(StoreError::Server(_)))));
+}
+
+#[tokio::test]
+async fn a_folder_downloads_as_one_zip_within_its_limit() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    fake.with(|dropbox| {
+        dropbox.write("/projects/p/files/main.tex", b"main".to_vec());
+        dropbox.write("/projects/p/files/chapters/one.tex", b"one".to_vec());
+        dropbox.write("/projects/q/files/other.tex", b"other".to_vec());
+    });
+    let dir = tempfile::tempdir().unwrap();
+
+    let archive = dir.path().join("p.zip");
+    assert!(store
+        .fetch_zip("/projects/p/files", &archive, 1 << 20)
+        .await
+        .unwrap());
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
+    let mut names: Vec<String> = zip.file_names().map(str::to_string).collect();
+    names.sort();
+    assert_eq!(
+        names,
+        ["files/", "files/chapters/one.tex", "files/main.tex"]
+    );
+    let mut text = String::new();
+    std::io::Read::read_to_string(&mut zip.by_name("files/main.tex").unwrap(), &mut text).unwrap();
+    assert_eq!(text, "main");
+
+    let small = dir.path().join("small.zip");
+    assert!(!store
+        .fetch_zip("/projects/p/files", &small, 16)
+        .await
+        .unwrap());
+    assert!(!small.exists());
+
+    let missing = dir.path().join("missing.zip");
+    assert!(!store
+        .fetch_zip("/projects/none/files", &missing, 1 << 20)
+        .await
+        .unwrap());
+
+    fake.with(|dropbox| dropbox.fault("files/download_zip", None, Reply::Status(429), 4));
+    let limited = store
+        .fetch_zip(
+            "/projects/p/files",
+            &dir.path().join("limited.zip"),
+            1 << 20,
+        )
+        .await;
+    assert!(
+        matches!(limited, Err(StoreError::RateLimited)),
+        "{limited:?}"
+    );
 }
