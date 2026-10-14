@@ -377,6 +377,42 @@ describe("carriage returns in a shared document", () => {
   });
 });
 
+describe("a local edit the session refuses", () => {
+  it("puts the session's text back and sends the next edit at the right offset", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "a😀b\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    const refuse = vi.spyOn(session, "applyLocal").mockImplementationOnce(() => {
+      throw new RangeError("Edits must not split a surrogate pair.");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => view().dispatch({ changes: { from: 2, to: 4, insert: "x" } }));
+    expect(view().state.doc.toString()).toBe(session.text());
+    expect(session.text()).toBe("a😀b\n");
+
+    refuse.mockRestore();
+    await act(async () => typeAt(view().state.doc.length, "!"));
+    expect(session.text()).toBe("a😀b\n!");
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("drops the rest of a batch that was built on the refused edit", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "abc");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    vi.spyOn(session, "applyLocal").mockImplementationOnce(() => {
+      throw new Error("stale edit");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const first = view().state.update({ changes: { from: 0, insert: "1" } });
+    const second = first.state.update({ changes: { from: 4, insert: "2" } });
+
+    await act(async () => view().dispatch([first, second]));
+
+    expect(session.text()).toBe("abc");
+    expect(view().state.doc.toString()).toBe("abc");
+  });
+});
+
 describe("where the focus goes when the document changes", () => {
   function outsideField(tag: "textarea" | "input"): HTMLElement {
     const field = document.createElement(tag);

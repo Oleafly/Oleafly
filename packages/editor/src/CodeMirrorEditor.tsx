@@ -16,6 +16,7 @@ import {
   highlightActiveLineGutter,
   highlightSpecialChars,
   dropCursor,
+  logException,
   rectangularSelection,
   crosshairCursor,
   type KeyBinding,
@@ -307,7 +308,17 @@ class EditorSessions {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
         continue;
       }
-      session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+      try {
+        session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+      } catch (error) {
+        // The editor already shows this change but the session refused it
+        // (read-only, stale, outside the text or splitting a character). Put
+        // the session's text back, or every later edit lands at the wrong
+        // offset for everyone.
+        logException(view.state, error, "shared document");
+        this.keepAligned(view, session, true);
+        return true;
+      }
       this.currentVersion = session.version();
     }
     this.keepAligned(view, session, false);
