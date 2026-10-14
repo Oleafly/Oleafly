@@ -217,14 +217,16 @@
     "access_log_off": "Deze server staat geen toegangslogboeken toe. Vraag de beheerder om ze aan te zetten.",
     "last_admin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
     "duplicate_entry": "Dat staat al op de lijst.",
-    "already_member": "Die persoon heeft al een account op deze server en hoeft dus niet op de lijst te staan.",
+    "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
     "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
     "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
+    "owner_away": "De eigenaar van dit project is op dit moment niet actief op deze server, dus het project kan geen nieuwe mensen opnemen.",
     "not_a_link": "Dat is geen link naar een gedeeld project. Kopieer de hele link en probeer het opnieuw.",
     "signed_out": "Je bent afgemeld bij deze server. Meld je opnieuw aan om dit project te synchroniseren.",
     "server_removed": "De server van dit project staat niet meer in je lijst. Bewaar het project als lokale kopie of voeg de server opnieuw toe.",
     "share_in_progress": "Dit project wordt al gedeeld. Wacht tot dat klaar is.",
-    "cancelled": "Het openen van het gedeelde project is geannuleerd."
+    "cancelled": "Het openen van het gedeelde project is geannuleerd.",
+    "cloud_synced": "Je Oleafly-bibliotheek staat in een map die een clouddienst synchroniseert. Haal hem uit Dropbox, OneDrive of iCloud Drive om projecten te delen of eraan mee te doen."
   },
   "roles": {
     "admin": "Beheerder",

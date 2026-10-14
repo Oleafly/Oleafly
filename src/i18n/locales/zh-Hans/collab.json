@@ -217,14 +217,16 @@
     "access_log_off": "此服务器不允许访问日志。请让其管理员开启该功能。",
     "last_admin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
     "duplicate_entry": "该条目已在列表中。",
-    "already_member": "此人已在该服务器上拥有账户，无需加入名单。",
+    "already_member": "此人已经有账户。请在人员中更改其角色。",
     "project_not_shared": "此项目尚未共享。请先共享，再邀请其他人。",
     "project_full": "此项目的人数已达到服务器允许的上限。请先移除某人，或联系服务器的管理员。",
+    "owner_away": "这个项目的所有者目前在此服务器上不可用，所以项目无法接纳新成员。",
     "not_a_link": "这不是共享项目的链接。请复制完整链接，然后重试。",
     "signed_out": "你已退出此服务器的登录。请重新登录以同步此项目。",
     "server_removed": "此项目的服务器已不在你的列表中。请将项目保留为本地副本，或重新添加该服务器。",
     "share_in_progress": "此项目正在共享中。请等待其完成。",
-    "cancelled": "已取消打开共享项目。"
+    "cancelled": "已取消打开共享项目。",
+    "cloud_synced": "你的 Oleafly 库位于由云服务同步的文件夹中。要共享或加入项目，请把它移出 Dropbox、OneDrive 或 iCloud Drive。"
   },
   "roles": {
     "admin": "管理员",

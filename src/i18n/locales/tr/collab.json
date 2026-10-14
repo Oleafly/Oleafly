@@ -217,14 +217,16 @@
     "access_log_off": "Bu sunucu erişim günlüklerine izin vermiyor. Sunucunun yöneticisinden bunları açmasını isteyin.",
     "last_admin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
     "duplicate_entry": "Bu zaten listede.",
-    "already_member": "Bu kişinin bu sunucuda zaten bir hesabı var, bu yüzden listede olması gerekmiyor.",
+    "already_member": "Bu kişinin zaten bir hesabı var. Rolünü Kişiler bölümünden değiştirin.",
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
+    "owner_away": "Bu projenin sahibi şu anda bu sunucuda etkin değil, bu yüzden projeye yeni kişiler katılamıyor.",
     "not_a_link": "Bu, paylaşılan bir projenin bağlantısı değil. Bağlantının tamamını kopyalayıp yeniden deneyin.",
     "signed_out": "Bu sunucudaki oturumunuz kapalı. Bu projeyi eşitlemek için yeniden oturum açın.",
     "server_removed": "Bu projenin sunucusu artık listenizde değil. Projeyi yerel kopya olarak saklayın veya sunucuyu yeniden ekleyin.",
     "share_in_progress": "Bu proje zaten paylaşılıyor. Bitmesini bekleyin.",
-    "cancelled": "Paylaşılan projenin açılması iptal edildi."
+    "cancelled": "Paylaşılan projenin açılması iptal edildi.",
+    "cloud_synced": "Oleafly kitaplığınız bir bulut hizmetinin eşitlediği bir klasörde. Proje paylaşmak veya projelere katılmak için onu Dropbox, OneDrive veya iCloud Drive dışına taşıyın."
   },
   "roles": {
     "admin": "Yönetici",

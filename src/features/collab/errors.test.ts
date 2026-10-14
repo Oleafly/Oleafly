@@ -44,6 +44,13 @@ describe("collab errors", () => {
     expect(collabErrorCode('@oleafly/error:{"code":"project.not_found"}')).toBe("internal");
   });
 
+  it("knows the refusals for a cloud-synced library and an owner who is away", () => {
+    expect(collabErrorText({ code: "cloud_synced", message: "synced" })).toBe(enCollab.errors.cloud_synced);
+    expect(collabErrorText({ code: "owner_away", message: "away" })).toBe(enCollab.errors.owner_away);
+    expect(collabErrorText({ code: "already_member", message: "" }, "allowlist")).toBe(enCollab.errors.already_member);
+    expect(enCollab.errors.already_member).toContain(enCollab.admin.tabs.members);
+  });
+
   it("shows the server's own sentence for a refusal it has no code for", () => {
     const refusal = { code: "invalid", message: "That isn't a domain name. Use a form like cs.example.edu." };
     expect(collabErrorText(refusal)).toBe(refusal.message);

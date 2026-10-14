@@ -217,14 +217,16 @@
     "access_log_off": "Ten serwer nie zezwala na dzienniki dostępu. Poproś jego administratora o ich włączenie.",
     "last_admin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
     "duplicate_entry": "To już jest na liście.",
-    "already_member": "Ta osoba ma już konto na tym serwerze, więc nie musi być na liście.",
+    "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
+    "owner_away": "Właściciel tego projektu nie jest teraz aktywny na tym serwerze, więc projekt nie może przyjąć nowych osób.",
     "not_a_link": "To nie jest link do udostępnionego projektu. Skopiuj cały link i spróbuj ponownie.",
     "signed_out": "Wylogowano Cię z tego serwera. Zaloguj się ponownie, aby synchronizować ten projekt.",
     "server_removed": "Serwera tego projektu nie ma już na Twojej liście. Zachowaj projekt jako kopię lokalną albo dodaj serwer ponownie.",
     "share_in_progress": "Ten projekt jest już udostępniany. Poczekaj, aż to się zakończy.",
-    "cancelled": "Otwieranie udostępnionego projektu zostało anulowane."
+    "cancelled": "Otwieranie udostępnionego projektu zostało anulowane.",
+    "cloud_synced": "Twoja biblioteka Oleafly jest w folderze synchronizowanym przez usługę w chmurze. Przenieś ją poza Dropbox, OneDrive lub iCloud Drive, aby udostępniać projekty lub do nich dołączać."
   },
   "roles": {
     "admin": "Administrator",

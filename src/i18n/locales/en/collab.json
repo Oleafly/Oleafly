@@ -217,14 +217,16 @@
     "access_log_off": "This server doesn't allow access logs. Ask its admin to turn them on.",
     "last_admin": "This server needs at least one admin. Make someone else an admin first.",
     "duplicate_entry": "That's already on the list.",
-    "already_member": "That person already has an account on this server, so they don't need to be on the list.",
+    "already_member": "That person already has an account. Change their role under People.",
     "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
     "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
+    "owner_away": "This project's owner isn't active on this server right now, so it can't take new people.",
     "not_a_link": "That isn't a link to a shared project. Copy the whole link, then try again.",
     "signed_out": "You're signed out of this server. Sign in again to sync this project.",
     "server_removed": "This project's server isn't in your list any more. Keep the project as a local copy, or add the server again.",
     "share_in_progress": "This project is already being shared. Wait for that to finish.",
-    "cancelled": "Opening the shared project was cancelled."
+    "cancelled": "Opening the shared project was cancelled.",
+    "cloud_synced": "Your Oleafly library is in a folder that a cloud service syncs. Move it out of Dropbox, OneDrive or iCloud Drive to share or join projects."
   },
   "roles": {
     "admin": "Admin",

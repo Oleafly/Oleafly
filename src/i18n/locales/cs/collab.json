@@ -217,14 +217,16 @@
     "access_log_off": "Tento server nepovoluje protokoly přístupu. Požádejte jeho administrátora, aby je povolil.",
     "last_admin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
     "duplicate_entry": "To už na seznamu je.",
-    "already_member": "Tento člověk už má na tomto serveru účet, takže na seznamu být nemusí.",
+    "already_member": "Tento člověk už má účet. Jeho roli změníte v sekci Lidé.",
     "project_not_shared": "Tento projekt ještě není sdílený. Nejdřív ho sdílejte a pak pozvěte lidi.",
     "project_full": "Tento projekt už má tolik lidí, kolik server dovoluje. Nejdřív někoho odeberte, nebo se obraťte na administrátora serveru.",
+    "owner_away": "Vlastník tohoto projektu teď na tomto serveru není aktivní, takže projekt nemůže přijmout nové lidi.",
     "not_a_link": "To není odkaz na sdílený projekt. Zkopírujte celý odkaz a zkuste to znovu.",
     "signed_out": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu, aby se projekt synchronizoval.",
     "server_removed": "Server tohoto projektu už ve vašem seznamu není. Ponechte si projekt jako místní kopii, nebo server přidejte znovu.",
     "share_in_progress": "Tento projekt se už sdílí. Počkejte, až to skončí.",
-    "cancelled": "Otevírání sdíleného projektu bylo zrušeno."
+    "cancelled": "Otevírání sdíleného projektu bylo zrušeno.",
+    "cloud_synced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje cloudová služba. Pokud chcete sdílet projekty nebo se k nim připojit, přesuňte ji mimo Dropbox, OneDrive nebo iCloud Drive."
   },
   "roles": {
     "admin": "Administrátor",

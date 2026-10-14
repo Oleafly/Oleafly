@@ -217,14 +217,16 @@
     "access_log_off": "Tämä palvelin ei salli käyttölokeja. Pyydä sen ylläpitäjää ottamaan ne käyttöön.",
     "last_admin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
     "duplicate_entry": "Se on jo listalla.",
-    "already_member": "Tällä henkilöllä on jo tili tällä palvelimella, joten häntä ei tarvitse lisätä listalle.",
+    "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
+    "owner_away": "Tämän projektin omistaja ei ole nyt aktiivinen tällä palvelimella, joten projektiin ei voi ottaa uusia henkilöitä.",
     "not_a_link": "Tämä ei ole linkki jaettuun projektiin. Kopioi koko linkki ja yritä sitten uudelleen.",
     "signed_out": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään, niin projekti synkronoituu.",
     "server_removed": "Tämän projektin palvelin ei ole enää listallasi. Säilytä projekti paikallisena kopiona tai lisää palvelin uudelleen.",
     "share_in_progress": "Tätä projektia jaetaan jo. Odota, että jakaminen valmistuu.",
-    "cancelled": "Jaetun projektin avaaminen peruttiin."
+    "cancelled": "Jaetun projektin avaaminen peruttiin.",
+    "cloud_synced": "Oleafly-kirjastosi on kansiossa, jota pilvipalvelu synkronoi. Siirrä se pois Dropboxista, OneDrivesta tai iCloud Drivesta, niin voit jakaa projekteja tai liittyä niihin."
   },
   "roles": {
     "admin": "Ylläpitäjä",

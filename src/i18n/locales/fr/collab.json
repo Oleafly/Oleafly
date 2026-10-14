@@ -217,14 +217,16 @@
     "access_log_off": "Ce serveur n'autorise pas les journaux d'accès. Demandez à son administrateur de les activer.",
     "last_admin": "Ce serveur doit garder au moins un administrateur. Nommez d'abord quelqu'un d'autre administrateur.",
     "duplicate_entry": "Cet élément figure déjà dans la liste.",
-    "already_member": "Cette personne a déjà un compte sur ce serveur, elle n'a donc pas besoin de figurer dans la liste.",
+    "already_member": "Cette personne a déjà un compte. Changez son rôle dans Personnes.",
     "project_not_shared": "Ce projet n'est pas encore partagé. Partagez-le d'abord, puis invitez des personnes.",
     "project_full": "Ce projet compte déjà autant de personnes que le serveur le permet. Retirez d'abord quelqu'un, ou demandez à l'administrateur du serveur.",
+    "owner_away": "La personne propriétaire de ce projet n'est pas active sur ce serveur en ce moment, le projet ne peut donc pas accueillir de nouvelles personnes.",
     "not_a_link": "Ce n'est pas un lien vers un projet partagé. Copiez le lien en entier, puis réessayez.",
     "signed_out": "Vous êtes déconnecté de ce serveur. Reconnectez-vous pour synchroniser ce projet.",
     "server_removed": "Le serveur de ce projet ne figure plus dans votre liste. Gardez le projet comme copie locale, ou ajoutez de nouveau le serveur.",
     "share_in_progress": "Ce projet est déjà en cours de partage. Attendez la fin de l'opération.",
-    "cancelled": "L'ouverture du projet partagé a été annulée."
+    "cancelled": "L'ouverture du projet partagé a été annulée.",
+    "cloud_synced": "Votre bibliothèque Oleafly se trouve dans un dossier synchronisé par un service cloud. Sortez-la de Dropbox, OneDrive ou iCloud Drive pour partager des projets ou en rejoindre."
   },
   "roles": {
     "admin": "Administrateur",

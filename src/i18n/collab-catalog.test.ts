@@ -41,6 +41,8 @@ const ERROR_CODES = [
   "server_removed",
   "share_in_progress",
   "cancelled",
+  "cloud_synced",
+  "owner_away",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];

@@ -217,14 +217,16 @@
     "access_log_off": "Dieser Server erlaubt keine Zugriffsprotokolle. Bitten Sie den Admin des Servers, sie zu erlauben.",
     "last_admin": "Dieser Server braucht mindestens einen Admin. Machen Sie zuerst eine andere Person zum Admin.",
     "duplicate_entry": "Das steht bereits auf der Liste.",
-    "already_member": "Diese Person hat bereits ein Konto auf diesem Server und muss deshalb nicht auf der Liste stehen.",
+    "already_member": "Diese Person hat bereits ein Konto. Ändern Sie ihre Rolle unter Personen.",
     "project_not_shared": "Dieses Projekt ist noch nicht geteilt. Teilen Sie es zuerst und laden Sie dann Personen ein.",
     "project_full": "Dieses Projekt hat bereits so viele Personen, wie der Server erlaubt. Entfernen Sie zuerst jemanden oder fragen Sie den Admin des Servers.",
+    "owner_away": "Die Person, der dieses Projekt gehört, ist auf diesem Server gerade nicht aktiv, daher kann das Projekt keine neuen Personen aufnehmen.",
     "not_a_link": "Das ist kein Link zu einem geteilten Projekt. Kopieren Sie den ganzen Link und versuchen Sie es dann erneut.",
     "signed_out": "Sie sind von diesem Server abgemeldet. Melden Sie sich erneut an, um dieses Projekt zu synchronisieren.",
     "server_removed": "Der Server dieses Projekts steht nicht mehr in Ihrer Liste. Behalten Sie das Projekt als lokale Kopie oder fügen Sie den Server erneut hinzu.",
     "share_in_progress": "Dieses Projekt wird bereits geteilt. Warten Sie, bis das abgeschlossen ist.",
-    "cancelled": "Das Öffnen des geteilten Projekts wurde abgebrochen."
+    "cancelled": "Das Öffnen des geteilten Projekts wurde abgebrochen.",
+    "cloud_synced": "Ihre Oleafly-Bibliothek liegt in einem Ordner, den ein Cloud-Dienst synchronisiert. Verschieben Sie sie aus Dropbox, OneDrive oder iCloud Drive heraus, um Projekte zu teilen oder ihnen beizutreten."
   },
   "roles": {
     "admin": "Admin",

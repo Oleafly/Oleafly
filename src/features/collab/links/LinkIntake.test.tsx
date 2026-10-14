@@ -339,6 +339,23 @@ describe("LinkIntake", () => {
     expect(screen.queryByText(enCollab.errors.conflict)).not.toBeInTheDocument();
   });
 
+  it("says when the project's owner is away instead of calling it missing", async () => {
+    mocks.collabLinkPreview.mockRejectedValue(collabError("owner_away", "The owner is suspended."));
+    deliver([OPEN]);
+    expect(await screen.findByText(enCollab.errors.owner_away)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.library.openLink.noAccess)).not.toBeInTheDocument();
+  });
+
+  it("says to move a library a cloud service syncs before joining", async () => {
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockRejectedValue(collabError("cloud_synced", "library is synced"));
+    const user = userEvent.setup();
+    deliver([OPEN]);
+    await joinWhenAsked(user);
+    expect(await screen.findByText(enCollab.errors.cloud_synced)).toBeInTheDocument();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
   it("shows the server's own sentence for a refusal it has no code for", async () => {
     mocks.collabLinkPreview.mockRejectedValue(collabError("invalid", "That invitation was withdrawn."));
     deliver([OPEN]);

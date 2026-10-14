@@ -217,14 +217,16 @@
     "access_log_off": "Denne serveren tillater ikke tilgangslogger. Be administratoren om å slå dem på.",
     "last_admin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
     "duplicate_entry": "Det står allerede på listen.",
-    "already_member": "Denne personen har allerede en konto på denne serveren, så vedkommende trenger ikke å stå på listen.",
+    "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
+    "owner_away": "Eieren av dette prosjektet er ikke aktiv på serveren akkurat nå, så prosjektet kan ikke ta inn nye personer.",
     "not_a_link": "Det er ikke en lenke til et delt prosjekt. Kopier hele lenken, og prøv igjen.",
     "signed_out": "Du er logget ut av denne serveren. Logg inn igjen for å synkronisere prosjektet.",
     "server_removed": "Serveren til dette prosjektet står ikke lenger i listen din. Behold prosjektet som en lokal kopi, eller legg til serveren igjen.",
     "share_in_progress": "Dette prosjektet holder allerede på å bli delt. Vent til det er ferdig.",
-    "cancelled": "Åpningen av det delte prosjektet ble avbrutt."
+    "cancelled": "Åpningen av det delte prosjektet ble avbrutt.",
+    "cloud_synced": "Oleafly-biblioteket ditt ligger i en mappe som en skytjeneste synkroniserer. Flytt det ut av Dropbox, OneDrive eller iCloud Drive for å dele prosjekter eller bli med i dem."
   },
   "roles": {
     "admin": "Administrator",

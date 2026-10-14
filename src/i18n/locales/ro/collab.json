@@ -217,14 +217,16 @@
     "access_log_off": "Acest server nu permite jurnale de acces. Cere-i administratorului să le activeze.",
     "last_admin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
     "duplicate_entry": "Este deja pe listă.",
-    "already_member": "Această persoană are deja un cont pe acest server, deci nu trebuie să fie pe listă.",
+    "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
     "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
     "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
+    "owner_away": "Proprietarul acestui proiect nu este activ acum pe acest server, așa că proiectul nu poate primi persoane noi.",
     "not_a_link": "Acesta nu este un link către un proiect partajat. Copiază tot linkul, apoi încearcă din nou.",
     "signed_out": "Ești deconectat de la acest server. Autentifică-te din nou ca să sincronizezi acest proiect.",
     "server_removed": "Serverul acestui proiect nu mai este în lista ta. Păstrează proiectul ca o copie locală sau adaugă din nou serverul.",
     "share_in_progress": "Acest proiect se partajează deja. Așteaptă să se termine.",
-    "cancelled": "Deschiderea proiectului partajat a fost anulată."
+    "cancelled": "Deschiderea proiectului partajat a fost anulată.",
+    "cloud_synced": "Biblioteca ta Oleafly se află într-un folder sincronizat de un serviciu cloud. Mut-o din Dropbox, OneDrive sau iCloud Drive ca să poți partaja proiecte sau să te alături lor."
   },
   "roles": {
     "admin": "Administrator",
