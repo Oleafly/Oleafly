@@ -60,8 +60,9 @@ static APPROVALS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Every tool name a rule can match: the assistant's tools, helper agents'
 /// and the MCP server's. Tools from connected MCP servers are named
-/// `mcp_ext_<server>_<tool>_<hash>`. A test in src/lib/mcp-bridge.test.ts
-/// keeps this list in step with the tools the app registers.
+/// `mcp_ext_<server>_<tool>_<hash>`. Tests in src/lib/mcp-bridge.test.ts and
+/// packages/ai-tools/src/known-tools.test.ts keep this list in step with the
+/// tools the MCP bridge and the in-app chat register.
 const KNOWN_TOOLS: &[&str] = &[
     "close_agent",
     "compile",
@@ -152,12 +153,15 @@ fn closest_tool(name: &str) -> Option<&'static str> {
         .map(|(_, known)| known)
 }
 
+/// One entry per unknown name, however many projects use it.
 fn unknown_tools(approvals: &ApprovalsFile) -> Vec<UnknownTool> {
     approvals
         .decisions
         .values()
         .flat_map(|tools| tools.keys())
         .filter(|tool| !KNOWN_TOOLS.contains(&tool.as_str()) && !tool.starts_with(MCP_TOOL_PREFIX))
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
         .map(|tool| UnknownTool {
             name: tool.clone(),
             suggestion: closest_tool(tool),
@@ -585,6 +589,16 @@ mod tests {
         assert_eq!(found("run_command"), None);
         assert_eq!(found("mcp_ext_papers_find_0a1b2c3d4e5f"), None);
         assert_eq!(unknown.len(), 4);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_misspelled_tool_used_in_several_projects_warns_once() {
+        let root = temp_root("raw-unknown-repeated");
+        let text = "[one]\nrun-command = \"deny\"\n\n[two]\nrun-command = \"deny\"\nfrobnicate = \"deny\"\n";
+        let unknown = super::write_raw(&root, text).unwrap();
+        let names: Vec<_> = unknown.iter().map(|item| item.name.as_str()).collect();
+        assert_eq!(names, ["frobnicate", "run-command"]);
         std::fs::remove_dir_all(&root).ok();
     }
 
