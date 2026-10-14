@@ -982,3 +982,22 @@ fn a_viewer_write_is_refused_as_read_only_and_never_reaches_the_document() {
     assert_eq!(outside.reason, None);
 }
 
+#[test]
+fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
+    let (_dir, _root, _host, rig) = watched_rig("channels", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+    let first = super::editor::doc_open("channels", "main.tex", Arc::clone(&quiet))
+        .unwrap()
+        .expect("main.tex opens");
+    let second = super::editor::doc_open("channels", "main.tex", quiet)
+        .unwrap()
+        .expect("main.tex opens again");
+    assert_ne!(first.session, second.session);
+    super::editor::doc_close("channels", &first.file_id, first.session);
+    let active = super::active_for("channels").unwrap();
+    assert!(super::lock(&active.live).is_open(&second.file_id));
+    super::editor::doc_close("channels", &second.file_id, second.session);
+    assert!(!super::lock(&active.live).is_open(&second.file_id));
+}
+
