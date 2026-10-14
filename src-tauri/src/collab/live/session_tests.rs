@@ -796,6 +796,7 @@ impl Watching {
             .collect()
     }
 
+    #[cfg(unix)]
     fn told(&self) -> Option<Vec<super::unwritten::UnwrittenFile>> {
         guard(&self.unwritten)
             .last()
