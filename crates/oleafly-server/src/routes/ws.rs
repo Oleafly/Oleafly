@@ -8,7 +8,6 @@ use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::admin::MemberStatus;
 use oleafly_collab_protocol::auth::{ChallengePurpose, SessionEndReason};
-use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -28,6 +27,7 @@ use crate::peers::{self, Bound, Claim};
 use crate::projects;
 use crate::rate_limit::client_key;
 use crate::rooms::{self, Outbox, Queued, RoomMember};
+use crate::routes::meta::spoken_protocol;
 use crate::routes::{authenticate, Authenticated, ClientIp};
 use crate::settings;
 use crate::sockets::{LinkTiming, SocketControl, SocketSlot};
@@ -214,14 +214,14 @@ async fn run(
     else {
         return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await;
     };
-    if protocol != PROTOCOL_VERSION {
+    let Some(protocol) = spoken_protocol(protocol) else {
         return refuse(
             &mut socket,
             FrameErrorCode::ProtocolMismatch,
             "This server speaks another protocol version.",
         )
         .await;
-    }
+    };
     let mut ticket = state.sockets.register(device_id);
     let checked = if echoed == nonce && device_id == caller.device_id {
         authorize(&state, device_id, access_token, echoed, signature).await
@@ -234,7 +234,7 @@ async fn run(
             if state.connects.admitted(&address, device_id, now) {
                 state.sockets.admit(device_id, ticket.id);
                 let welcome = ServerFrame::Welcome {
-                    protocol: PROTOCOL_VERSION,
+                    protocol,
                     account_id,
                 };
                 if send(&mut socket, &welcome).await {

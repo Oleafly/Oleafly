@@ -28,6 +28,19 @@ const GUESTS_IMPLEMENTED: bool = true;
 const READINESS_REUSED_FOR: Duration = Duration::from_secs(5);
 const READINESS_KEY: &str = "readiness_probe";
 
+pub const PROTOCOLS: ProtocolRange = ProtocolRange {
+    min: PROTOCOL_VERSION,
+    max: PROTOCOL_VERSION,
+};
+
+pub fn spoken_protocol(asked: u32) -> Option<u32> {
+    chosen_protocol(PROTOCOLS, asked)
+}
+
+fn chosen_protocol(range: ProtocolRange, asked: u32) -> Option<u32> {
+    (range.min..=range.max).contains(&asked).then_some(asked)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Failing {
     Database,
@@ -70,10 +83,7 @@ async fn manifest(State(state): State<AppState>) -> Result<Response, ServerError
         name: config.server_name.clone(),
         icon_url: config.server_icon_url.clone(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        protocol: ProtocolRange {
-            min: PROTOCOL_VERSION,
-            max: PROTOCOL_VERSION,
-        },
+        protocol: PROTOCOLS,
         needs_setup: admins == 0,
         providers: email_link::with_email_link(
             state.providers.infos(),
@@ -167,4 +177,21 @@ fn write_probe(data_dir: &Path) -> std::io::Result<()> {
         });
     let removed = std::fs::remove_file(&path);
     written.and(removed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_hello_inside_the_advertised_range_is_answered_with_its_own_version() {
+        let range = ProtocolRange { min: 2, max: 4 };
+        assert_eq!(chosen_protocol(range, 1), None);
+        assert_eq!(chosen_protocol(range, 2), Some(2));
+        assert_eq!(chosen_protocol(range, 3), Some(3));
+        assert_eq!(chosen_protocol(range, 4), Some(4));
+        assert_eq!(chosen_protocol(range, 5), None);
+        assert_eq!(spoken_protocol(PROTOCOL_VERSION), Some(PROTOCOL_VERSION));
+        assert_eq!(spoken_protocol(PROTOCOLS.max + 1), None);
+    }
 }

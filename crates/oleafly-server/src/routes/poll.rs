@@ -6,7 +6,6 @@ use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{DeviceId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
@@ -20,6 +19,7 @@ use crate::error::ServerError;
 use crate::polls::{self, Opening, PollSession};
 use crate::rate_limit::client_key;
 use crate::rooms::RoomMember;
+use crate::routes::meta::spoken_protocol;
 use crate::routes::ws::{
     bearer_token, frame_error, proves_device, unexpected_frame, Opened, Peer, MAX_FRAME_BYTES,
 };
@@ -120,7 +120,7 @@ async fn open(
         .ok_or_else(|| {
             ServerError::BadRequest("Say which protocol version you speak.".to_owned())
         })?;
-    if protocol != PROTOCOL_VERSION {
+    if spoken_protocol(protocol).is_none() {
         return Ok(only(vec![frame_error(
             FrameErrorCode::ProtocolMismatch,
             "This server speaks another protocol version.",

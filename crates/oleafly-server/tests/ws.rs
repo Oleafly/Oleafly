@@ -1,6 +1,8 @@
 use futures_util::{SinkExt, StreamExt};
 use oleafly_collab_protocol::auth::{challenge_message, ApiError, ChallengePurpose, SessionTokens};
-use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
+use oleafly_collab_protocol::capabilities::{
+    CapabilityManifest, PROTOCOL_VERSION, WELL_KNOWN_PATH,
+};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::ServerId;
 use oleafly_collab_protocol::roles::ServerRole;
@@ -117,6 +119,52 @@ async fn a_hello_is_welcomed_and_pings_are_answered() {
         Some(ServerFrame::Pong { id: 7 })
     );
     assert_eq!(server.state().sockets.count(tokens.device_id), 1);
+}
+
+#[tokio::test]
+async fn every_protocol_the_manifest_advertises_is_welcomed_with_its_own_version() {
+    let (server, _github) = server_with_carol().await;
+    let device = TestDevice::generate();
+    let tokens = first_session(&server, &device).await;
+    let manifest: CapabilityManifest = reqwest::Client::new()
+        .get(format!("{}{WELL_KNOWN_PATH}", server.url()))
+        .send()
+        .await
+        .expect("manifest")
+        .json()
+        .await
+        .expect("manifest json");
+    assert!(manifest.protocol.min <= manifest.protocol.max);
+    for protocol in manifest.protocol.min..=manifest.protocol.max {
+        let (mut socket, nonce, server_id) = open(&server, &tokens.access_token).await;
+        send_frame(
+            &mut socket,
+            &hello(&device, &tokens, &nonce, server_id, protocol),
+        )
+        .await;
+        assert_eq!(
+            next_frame(&mut socket).await,
+            Some(ServerFrame::Welcome {
+                protocol,
+                account_id: tokens.account_id
+            })
+        );
+    }
+    for outside in [manifest.protocol.min - 1, manifest.protocol.max + 1] {
+        let (mut socket, nonce, server_id) = open(&server, &tokens.access_token).await;
+        send_frame(
+            &mut socket,
+            &hello(&device, &tokens, &nonce, server_id, outside),
+        )
+        .await;
+        assert!(matches!(
+            next_frame(&mut socket).await,
+            Some(ServerFrame::Error {
+                code: FrameErrorCode::ProtocolMismatch,
+                ..
+            })
+        ));
+    }
 }
 
 #[tokio::test]
@@ -502,14 +550,9 @@ async fn a_first_frame_larger_than_a_hello_is_refused_unread() {
     let device = TestDevice::generate();
     let tokens = first_session(&server, &device).await;
     let (mut socket, nonce, server_id) = open(&server, &tokens.access_token).await;
-    let mut padded = serde_json::to_value(hello(
-        &device,
-        &tokens,
-        &nonce,
-        server_id,
-        PROTOCOL_VERSION,
-    ))
-    .expect("hello json");
+    let mut padded =
+        serde_json::to_value(hello(&device, &tokens, &nonce, server_id, PROTOCOL_VERSION))
+            .expect("hello json");
     padded["padding"] = serde_json::Value::String("x".repeat(MAX_HELLO_BYTES));
     let padded = padded.to_string();
     assert!(matches!(
