@@ -632,6 +632,23 @@ impl LiveProject {
         }
     }
 
+    // Rows from a list filtered to writer ids this copy did not know. They
+    // never count as the whole list: only the full listing vouches for that.
+    pub fn add_peers(&mut self, listed: Vec<ProjectPeer>) {
+        if self.devices.pin_peers(&listed) {
+            self.devices_dirty = true;
+        }
+        for bound in &listed {
+            if self
+                .doc
+                .authors_mut()
+                .witness([bound.peer], bound.account_id)
+            {
+                self.authors_dirty = true;
+            }
+        }
+    }
+
     pub fn await_writers(&mut self) {
         if self.doc.authors_mut().await_vouch() {
             self.authors_dirty = true;

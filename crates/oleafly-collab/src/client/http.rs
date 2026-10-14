@@ -28,6 +28,8 @@ use serde::de::DeserializeOwned;
 use super::{ServerUrl, CONNECT_TIMEOUT};
 use crate::{CollabError, DeviceKey};
 
+pub const PEERS_PER_REQUEST: usize = 200;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SnapshotSignature {
     pub device_id: DeviceId,
@@ -571,6 +573,25 @@ impl ServerClient {
                 .bearer_auth(access),
         )
         .await
+    }
+
+    // Only the rows for these writer ids, at most PEERS_PER_REQUEST to a
+    // request. A server that does not filter yet sends every row, which
+    // merges the same way.
+    pub async fn project_peers_among(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        peers: &[u64],
+    ) -> Result<Vec<ProjectPeer>, CollabError> {
+        let mut listed = Vec::new();
+        for chunk in peers.chunks(PEERS_PER_REQUEST) {
+            let ids: Vec<String> = chunk.iter().map(u64::to_string).collect();
+            let mut url = self.project_url(project, &["peers"]);
+            url.set_query(Some(&format!("ids={}", ids.join(","))));
+            listed.extend(json::<Vec<ProjectPeer>>(self.http.get(url).bearer_auth(access)).await?);
+        }
+        Ok(listed)
     }
 
     pub async fn snapshot_seq(
