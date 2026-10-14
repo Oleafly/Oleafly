@@ -300,6 +300,7 @@ async fn online(
                             return retry;
                         }
                     }
+                    Some(LiveCommand::Reconnect) => {}
                     Some(LiveCommand::Stop) | None => {
                         if lock(project).can_edit() && since_snapshot > 0 {
                             hint_snapshot(link, project);

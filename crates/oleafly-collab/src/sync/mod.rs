@@ -128,6 +128,7 @@ enum LiveCommand {
     Flush,
     Presence(PresenceState),
     LeavePresence,
+    Reconnect,
     Stop,
 }
 
@@ -147,6 +148,12 @@ impl LiveHandle {
 
     pub fn leave_presence(&self) {
         let _ = self.commands.send(LiveCommand::LeavePresence);
+    }
+
+    // For when the network changes or the machine wakes: a session waiting
+    // to reconnect tries again now and starts its waits over.
+    pub fn reconnect_now(&self) {
+        let _ = self.commands.send(LiveCommand::Reconnect);
     }
 
     pub fn stop(&self) {
