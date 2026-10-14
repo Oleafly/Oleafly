@@ -36,6 +36,12 @@ const limits = {
   // BibTeX completion and linter, the dictionary catalog picker and the figure
   // dialog: the entry measures 3.98 MB. The visual editor package stays out
   // of the entry through the insertion registry the lazy editor fills in.
+  // +50 KB for the live collaboration hooks that load at startup even while
+  // collaboration is off: the collaboration command wrappers in
+  // src/lib/tauri.ts, the switch sync, link intake, the editor's document
+  // sessions and the collaboration slots. The entry measures 4.81 MB. Moving
+  // the wrappers into a module that only src/features/collab imports would
+  // take most of it back out.
   largestJavaScript: 4_850_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
@@ -96,6 +102,8 @@ const limits = {
   // again, and Explorer Git badges and skill search took its room. The
   // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
   // Windows.
+  // +340 KB for live collaboration, most of it in chunks that load only once
+  // collaboration is turned on: the combined graph measures 20.25 MB.
   totalJavaScript: 20_264_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
