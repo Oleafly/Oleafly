@@ -1616,7 +1616,7 @@ export interface BackendPort {
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
   collabPresenceLeave: (projectId: string) => Promise<void>;
   collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
-  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<{ handled: boolean }>;
+  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<CollabWriteOutcome>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
@@ -1715,6 +1715,13 @@ export interface CollabUnsentProject {
   project_id: string;
   name: string;
   changes: number;
+}
+// `handled` is false when the shared document didn't take the write.
+// `reason` says why when it was refused rather than not shared: "read_only"
+// when this person can only view the project.
+export interface CollabWriteOutcome {
+  handled: boolean;
+  reason?: string;
 }
 export interface CollabDetachedProject {
   project_id: string;

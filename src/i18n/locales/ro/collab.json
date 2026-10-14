@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "{{name}} te-a făcut cititor. Poți citi acest proiect, dar nu îl poți edita.",
     "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "viewOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita.",
     "removedBy": "{{name}} te-a eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată.",
     "removed": "Ai fost eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată."
   },

@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "{{name}} heeft je lezer gemaakt. Je kunt dit project lezen, maar niet bewerken.",
     "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
+    "viewOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken.",
     "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
     "removed": "Je bent uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld."
   },

@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "{{name}} ti ha reso visualizzatore. Puoi leggere questo progetto, ma non modificarlo.",
     "viewer": "Ora sei un visualizzatore. Puoi leggere questo progetto, ma non modificarlo.",
+    "viewOnly": "Puoi vedere questo progetto condiviso, ma non modificarlo.",
     "removedBy": "{{name}} ti ha rimosso da questo progetto. La tua copia resta su questo computer e non è più condivisa.",
     "removed": "Sei stato rimosso da questo progetto. La tua copia resta su questo computer e non è più condivisa."
   },

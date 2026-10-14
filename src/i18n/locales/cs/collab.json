@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
+    "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
     "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
     "removed": "Byli jste odebráni z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená."
   },

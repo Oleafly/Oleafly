@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -69,8 +69,14 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "./files";
+
+beforeAll(async () => {
+  await loadNamespace("collab");
+});
 
 function goLive(): void {
   useCollabEditorGate.setState({ projectId: "project", viewer: false, connecting: false });
@@ -154,6 +160,23 @@ describe("a file written by the app in a live shared project", () => {
     expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "refs.bib", "@book{new}\n", 3);
   });
 
+  it("is refused for a viewer instead of being written to disk", async () => {
+    useCollabEditorGate.setState({ projectId: "project", viewer: true, connecting: false });
+    await expect(
+      useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n", { base: "@book{old}\n" }),
+    ).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("is refused when the shared document says this person can only view", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false, reason: "read_only" });
+    await expect(
+      useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n", { base: "@book{old}\n" }),
+    ).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
   it("is written to disk in a project that is not shared, as before", async () => {
     await useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n", {
       base: "@book{old}\n",
@@ -222,6 +245,17 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
       3,
       expect.any(String),
     );
+  });
+
+  it("fails to save and stays unsaved for a viewer, never writing the disk", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false, reason: "read_only" });
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
   });
 
   it("is saved to disk in a project that is not shared, as before", async () => {

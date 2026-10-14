@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "Użytkownik {{name}} zmienił Twoją rolę na przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
     "viewer": "Masz teraz rolę przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
+    "viewOnly": "Możesz przeglądać ten udostępniony projekt, ale nie możesz go edytować.",
     "removedBy": "Użytkownik {{name}} usunął Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana.",
     "removed": "Usunięto Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana."
   },

@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "{{name}} har gjort dig till läsare. Du kan läsa projektet men inte redigera det.",
     "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
+    "viewOnly": "Du kan visa det här delade projektet men inte redigera det.",
     "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",
     "removed": "Du har tagits bort från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre."
   },

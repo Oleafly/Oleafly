@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { collabWriteText } from "@/lib/tauri";
 
@@ -13,6 +14,15 @@ function lf(text: string): string {
   return text.replace(/\r\n?/gu, "\n");
 }
 
+// A viewer's write is refused, never written to disk instead: a local file
+// that differs from the shared text stops taking collaborators' changes.
+export class SharedReadOnlyError extends Error {
+  constructor() {
+    super(i18n.t(($) => $.collab.access.viewOnly));
+    this.name = "SharedReadOnlyError";
+  }
+}
+
 export async function writeSharedText(
   projectId: string,
   path: string,
@@ -20,12 +30,16 @@ export async function writeSharedText(
   base?: string | null,
 ): Promise<boolean> {
   if (!sharedDocumentLive(projectId)) return false;
+  if (useCollabEditorGate.getState().viewer) throw new SharedReadOnlyError();
+  let handled: boolean;
   try {
     const outcome = await collabWriteText(projectId, path, base == null ? null : lf(base), lf(text));
-    return outcome.handled;
+    if (!outcome.handled && outcome.reason === "read_only") throw new SharedReadOnlyError();
+    handled = outcome.handled;
   } catch (error) {
     throw sharedWriteError(error);
   }
+  return handled;
 }
 
 function errorText(message: unknown, code: unknown): string {

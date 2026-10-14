@@ -2133,7 +2133,7 @@ export const synctexMapLine = (
   });
 
 export const collabWriteText = (projectId: string, path: string, base: string | null, text: string) =>
-  invoke<{ handled: boolean }>("collab_write_text", { projectId, path, base, text });
+  invoke<import("@oleafly/backend-port").CollabWriteOutcome>("collab_write_text", { projectId, path, base, text });
 
 export const COLLAB_LIVE_RENAMED_EVENT = "collab-live-renamed";
 

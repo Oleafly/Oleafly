@@ -968,6 +968,7 @@
   "access": {
     "viewerBy": "{{name}} muutti sinut katselijaksi. Voit lukea projektia mutta et muokata sitä.",
     "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
+    "viewOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä.",
     "removedBy": "{{name}} poisti sinut tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta.",
     "removed": "Sinut poistettiin tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta."
   },
