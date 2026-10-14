@@ -252,6 +252,39 @@ pub fn effective_decision_for(root: &Path, project_id: &str, tool: &str) -> Opti
     }
 }
 
+/// The Oleafly tools whose rules cover an ACP agent's permission request of
+/// this kind.
+fn tools_for_acp_kind(kind: Option<&str>) -> &'static [&'static str] {
+    match kind {
+        Some("execute") => &["run_command"],
+        Some("edit") => &["write_file", "replace_in_file", "create_file"],
+        Some("delete") => &["delete_file"],
+        Some("move") => &["rename_file"],
+        Some("read") => &["read_file"],
+        Some("search") => &["search_project"],
+        _ => &[],
+    }
+}
+
+/// The tool whose deny rule refuses an ACP agent's permission request of this
+/// kind, if any. A file that can't be read denies, as everywhere else.
+pub fn acp_request_denied_by(
+    root: &Path,
+    project_id: &str,
+    kind: Option<&str>,
+) -> Option<&'static str> {
+    tools_for_acp_kind(kind)
+        .iter()
+        .copied()
+        .find(|tool| effective_decision_for(root, project_id, tool) == Some(ToolDecision::Deny))
+}
+
+/// Whether Full access approves a helper agent's permission requests for this
+/// project without asking. An unreadable file asks.
+pub fn helper_requests_auto_approved(root: &Path, project_id: &str) -> bool {
+    matches!(try_mode_for(root, project_id), Ok(ApprovalMode::FullAccess))
+}
+
 pub fn set_mode(root: &Path, project_id: &str, mode: ApprovalMode) -> Result<(), String> {
     let _guard = APPROVALS_WRITE_LOCK
         .lock()
@@ -463,6 +496,38 @@ mod tests {
             super::decisions_for(&root, "proj").get("run_command"),
             Some(&super::ToolDecision::Deny)
         );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn deny_rules_cover_the_acp_request_kinds_of_their_tools() {
+        let root = temp_root("acp-kinds");
+        set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("execute")), None);
+        assert!(helper_requests_auto_approved(&root, "proj"));
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        set_decision(&root, "proj", "replace_in_file", Some(ToolDecision::Deny)).unwrap();
+        set_decision(&root, "proj", "delete_file", Some(ToolDecision::Allow)).unwrap();
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("execute")),
+            Some("run_command")
+        );
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("edit")),
+            Some("replace_in_file")
+        );
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("delete")), None);
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("think")), None);
+        assert_eq!(acp_request_denied_by(&root, "proj", None), None);
+        assert_eq!(acp_request_denied_by(&root, "other", Some("execute")), None);
+        set_mode(&root, "proj", ApprovalMode::AskForApproval).unwrap();
+        assert!(!helper_requests_auto_approved(&root, "proj"));
+        std::fs::write(approvals_path(&root), "[proj\nrun_command = deny").unwrap();
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("move")),
+            Some("rename_file")
+        );
+        assert!(!helper_requests_auto_approved(&root, "proj"));
         std::fs::remove_dir_all(&root).ok();
     }
 

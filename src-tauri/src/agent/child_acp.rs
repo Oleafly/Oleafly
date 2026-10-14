@@ -97,8 +97,14 @@ impl AcpChild {
                 .await?
         };
         *super::lock_or_recover(&self.session_id) = Some(snapshot.session.id.clone());
+        // The runtime never approves a helper's request by itself. Each request
+        // goes to the parent conversation, and run_connected answers it from
+        // the rules as they are when it arrives.
         self.runtime
-            .set_permission_delegate(&snapshot.session.id, self.permission_delegate())
+            .set_permission_delegate(
+                &snapshot.session.id,
+                crate::acp::PermissionDelegate::ParentChat,
+            )
             .await?;
         if let Some(model) = &self.model_id {
             self.runtime.set_model(&snapshot.session.id, model).await?;
@@ -106,10 +112,21 @@ impl AcpChild {
         Ok(snapshot.session.id)
     }
 
-    fn permission_delegate(&self) -> crate::acp::PermissionDelegate {
-        crate::paths::oleafly_root().map_or(crate::acp::PermissionDelegate::ParentChat, |root| {
-            permission_delegate_for(&root, &self.project_id)
-        })
+    async fn answer_by_rules(
+        &self,
+        session_id: &str,
+        sink: &super::subagents::ActivitySink,
+        id: &str,
+        label: &str,
+    ) {
+        let root = crate::paths::oleafly_root().ok();
+        for tool in
+            answer_pending_by_rules(&self.runtime, session_id, root.as_deref(), &self.project_id)
+                .await
+        {
+            let detail = format!("Refused by the {tool} rule in approvals.toml");
+            let _ = sink.send(self.activity(id, label, "tool", Some(detail)));
+        }
     }
 
     async fn ready_session(&self) -> Result<String, String> {
@@ -161,21 +178,20 @@ impl AcpChild {
         loop {
             tokio::select! {
                 result = &mut run => { result?; break; }
-                event = events.recv() => {
-                    if let Ok(event) = event {
-                        if event.session_id == session_id {
-                            let (state, detail) = match event.kind.as_str() {
-                                "agent_message_chunk" => ("thinking", event_text(&event.data).map(|text| super::subagents::bounded_output(text, 240))),
-                                "agent_thought_chunk" => ("thinking", None),
-                                "tool_call" | "tool_call_update" => ("tool", event.data["title"].as_str().map(str::to_owned)),
-                                "permission" => ("permission", Some(permission_detail(&event.data))),
-                                "permission_resolved" => ("tool", Some(resolved_detail(&event.data))),
-                                _ => continue,
-                            };
+                event = events.recv() => match event {
+                    Ok(event) if event.session_id == session_id => {
+                        if let Some((state, detail)) = event_activity(&event) {
                             let _ = sink.send(self.activity(id, label, state, detail));
                         }
+                        if event.kind == "permission" {
+                            self.answer_by_rules(&session_id, sink, id, label).await;
+                        }
                     }
-                }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        self.answer_by_rules(&session_id, sink, id, label).await;
+                    }
+                    _ => {}
+                },
             }
         }
         completed_turn_output(&self.runtime, &session_id, before)
@@ -204,16 +220,75 @@ impl AcpChild {
     }
 }
 
-fn permission_delegate_for(
+fn event_activity(event: &crate::acp::AcpEvent) -> Option<(&'static str, Option<String>)> {
+    Some(match event.kind.as_str() {
+        "agent_message_chunk" => (
+            "thinking",
+            event_text(&event.data).map(|text| super::subagents::bounded_output(text, 240)),
+        ),
+        "agent_thought_chunk" => ("thinking", None),
+        "tool_call" | "tool_call_update" => {
+            ("tool", event.data["title"].as_str().map(str::to_owned))
+        }
+        "permission" => ("permission", Some(permission_detail(&event.data))),
+        "permission_resolved" => ("tool", Some(resolved_detail(&event.data))),
+        _ => return None,
+    })
+}
+
+/// How the project's rules answer a helper agent's permission request. `None`
+/// leaves it to the parent conversation. `Some(option)` answers it with that
+/// option, or declines it when the request offers no matching option.
+fn rules_answer(
     root: &std::path::Path,
     project_id: &str,
-) -> crate::acp::PermissionDelegate {
-    match crate::approvals::policy_for(root, project_id, "run_command") {
-        Ok((crate::approvals::ApprovalMode::FullAccess, None)) => {
-            crate::acp::PermissionDelegate::AutoAllow
-        }
-        _ => crate::acp::PermissionDelegate::ParentChat,
+    request: &crate::acp::PermissionRequest,
+) -> Option<(Option<String>, Option<&'static str>)> {
+    let option = |kind: &str| {
+        request
+            .options
+            .iter()
+            .find(|option| option.kind == kind)
+            .map(|option| option.option_id.clone())
+    };
+    if let Some(tool) =
+        crate::approvals::acp_request_denied_by(root, project_id, request.kind.as_deref())
+    {
+        return Some((option("reject_once"), Some(tool)));
     }
+    if crate::approvals::helper_requests_auto_approved(root, project_id) {
+        return option("allow_once").map(|allow| (Some(allow), None));
+    }
+    None
+}
+
+/// Answers a helper agent's pending permission requests from the project's
+/// rules as they are now: a deny rule refuses its tool without a card in
+/// every mode, and Full access approves the rest. Other requests stay with the
+/// parent conversation. Returns the tools whose rules refused a request.
+async fn answer_pending_by_rules(
+    runtime: &crate::acp::AcpRuntime,
+    session_id: &str,
+    root: Option<&std::path::Path>,
+    project_id: &str,
+) -> Vec<&'static str> {
+    let (Some(root), Ok(snapshot)) = (root, runtime.snapshot(session_id).await) else {
+        return Vec::new();
+    };
+    let mut refused = Vec::new();
+    for request in snapshot.permissions {
+        let Some((option, denied_by)) = rules_answer(root, project_id, &request) else {
+            continue;
+        };
+        if runtime
+            .resolve_delegated_permission(session_id, &request.id, option)
+            .await
+            .is_ok()
+        {
+            refused.extend(denied_by);
+        }
+    }
+    refused
 }
 
 fn event_text(data: &serde_json::Value) -> Option<&str> {
