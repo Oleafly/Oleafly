@@ -253,13 +253,15 @@ async fn update(
             let (_, role) = access(conn, project, account)?;
             require(role, ProjectAction::ChangeLinkSharing)?;
             if patch.link_sharing == Some(true) && !settings::load(conn)?.link_sharing_allowed {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow link sharing.".to_string(),
+                return Err(ServerError::refused(
+                    "link_sharing_off",
+                    "This server does not allow link sharing.",
                 ));
             }
             if patch.access_log == Some(true) && !settings::load(conn)?.access_logs_allowed {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow access logs.".to_string(),
+                return Err(ServerError::refused(
+                    "access_log_off",
+                    "This server does not allow access logs.",
                 ));
             }
             let trimmed = ProjectPatch {
@@ -474,11 +476,16 @@ fn by_link(
         return Err(ServerError::NotFound);
     }
     if projects::member_count(conn, project)? >= limit {
-        return Err(ServerError::Conflict(format!(
-            "A project on this server can have at most {limit} people."
-        )));
+        return Err(project_full(limit));
     }
     Ok((row, None))
+}
+
+fn project_full(limit: u32) -> ServerError {
+    ServerError::refused(
+        "project_full",
+        format!("A project on this server can have at most {limit} people."),
+    )
 }
 
 fn note_rejoin_refused(
@@ -963,8 +970,9 @@ async fn grant_member(
             let (row, actor_role) = access(conn, project, account)?;
             require(actor_role, ProjectAction::ManageMembers)?;
             if row.status != ProjectStatus::Active {
-                return Err(ServerError::Conflict(
-                    "Share the project before adding people.".to_string(),
+                return Err(ServerError::refused(
+                    "project_not_shared",
+                    "Share the project before adding people.",
                 ));
             }
             if target == row.owner {
@@ -981,9 +989,7 @@ async fn grant_member(
                 return Err(ServerError::NotFound);
             }
             if existing.is_none() && projects::member_count(conn, project)? >= limit {
-                return Err(ServerError::Conflict(format!(
-                    "A project on this server can have at most {limit} people."
-                )));
+                return Err(project_full(limit));
             }
             projects::grant(conn, project, target, role, account, now)?;
             removals::clear(conn, project, target)?;
@@ -1190,4 +1196,152 @@ async fn directory(
         })
         .await?;
     Ok(Json(found))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::Body;
+    use axum::http::{Method, Request, StatusCode};
+    use oleafly_collab_protocol::admin::RuntimeSettingsPatch;
+    use oleafly_collab_protocol::ids::SharedProjectId;
+    use oleafly_collab_protocol::projects::{ProjectPatch, ProjectStatus};
+    use oleafly_collab_protocol::roles::ServerRole;
+    use serde_json::{json, Value};
+    use tower::ServiceExt;
+
+    use crate::clock::Clock;
+    use crate::projects;
+    use crate::settings;
+    use crate::test_support::{seed_member, test_app_with, test_config, SeededMember, TestApp};
+
+    async fn refusal(
+        app: &TestApp,
+        method: Method,
+        path: &str,
+        token: &str,
+        body: Value,
+    ) -> (StatusCode, String) {
+        let request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header("authorization", format!("Bearer {token}"))
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .expect("request");
+        let response = app.router.clone().oneshot(request).await.expect("response");
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("body");
+        let body: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+        (status, body["code"].as_str().unwrap_or_default().to_owned())
+    }
+
+    async fn project(app: &TestApp, owner: &SeededMember, active: bool) -> SharedProjectId {
+        let (owner, now) = (owner.account_id, app.clock.now_ms());
+        app.state
+            .db
+            .call(move |conn| {
+                let project = projects::create_pending(conn, owner, "Thesis", now)?;
+                if active {
+                    projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                }
+                Ok(project)
+            })
+            .await
+            .expect("a project")
+    }
+
+    async fn allow(app: &TestApp, allowed: bool) {
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = RuntimeSettingsPatch {
+                    link_sharing_allowed: Some(allowed),
+                    access_logs_allowed: Some(allowed),
+                    ..RuntimeSettingsPatch::default()
+                };
+                settings::patch(conn, &patch).map(|_| ())
+            })
+            .await
+            .expect("settings");
+    }
+
+    #[tokio::test]
+    async fn refusals_a_person_can_cause_carry_their_own_codes() {
+        let mut config = test_config();
+        config.limits.max_members_per_project = 1;
+        let app = test_app_with(config).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let other = seed_member(&app, ServerRole::Member).await;
+        let pending = project(&app, &owner, false).await;
+        let active = project(&app, &owner, true).await;
+        let conflict = |code: &str| (StatusCode::CONFLICT, code.to_owned());
+        allow(&app, false).await;
+        let patch = format!("/api/v1/projects/{active}");
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PATCH,
+                &patch,
+                &owner.access_token,
+                json!({ "link_sharing": true })
+            )
+            .await,
+            conflict("link_sharing_off")
+        );
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PATCH,
+                &patch,
+                &owner.access_token,
+                json!({ "access_log": true })
+            )
+            .await,
+            conflict("access_log_off")
+        );
+        let add = |project: SharedProjectId| {
+            format!("/api/v1/projects/{project}/members/{}", other.account_id)
+        };
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PUT,
+                &add(pending),
+                &owner.access_token,
+                json!({ "role": "editor" })
+            )
+            .await,
+            conflict("project_not_shared")
+        );
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PUT,
+                &add(active),
+                &owner.access_token,
+                json!({ "role": "editor" })
+            )
+            .await,
+            conflict("project_full")
+        );
+        allow(&app, true).await;
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = ProjectPatch {
+                    link_sharing: Some(true),
+                    ..ProjectPatch::default()
+                };
+                projects::apply_patch(conn, active, &patch)
+            })
+            .await
+            .expect("link sharing on");
+        let join = format!("/api/v1/projects/{active}/join");
+        assert_eq!(
+            refusal(&app, Method::POST, &join, &other.access_token, json!({})).await,
+            conflict("project_full")
+        );
+    }
 }
