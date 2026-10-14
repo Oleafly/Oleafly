@@ -6,9 +6,9 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { i18n, loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
 import {
-  collabJoinProject,
   collabLinkPreview,
   collabOpenLink,
+  collabShareInfo,
   type CollabErrorCode,
   type CollabProjectSummary,
   type CollabServer,
@@ -79,6 +79,21 @@ function findServer(address: string): CollabServer | undefined {
   return useCollabStore.getState().servers.find((entry) => sameServer(entry.url, address));
 }
 
+// The library project that is this shared project on this computer, if any.
+async function localCopyOf(server: CollabServer, sharedProjectId: string): Promise<string | null> {
+  const shared = useFilesStore.getState().projects.filter((project) => project.shared);
+  for (const project of shared) {
+    let info: Awaited<ReturnType<typeof collabShareInfo>>;
+    try {
+      info = await collabShareInfo(project.id);
+    } catch {
+      continue;
+    }
+    if (info?.shared_project_id === sharedProjectId && info.server_id === server.server_id) return project.id;
+  }
+  return null;
+}
+
 async function reach(server: CollabServer, link: OpenLink, agreed: boolean): Promise<Reached> {
   if (agreed) {
     try {
@@ -87,11 +102,11 @@ async function reach(server: CollabServer, link: OpenLink, agreed: boolean): Pro
       return refused(error);
     }
   }
-  try {
-    return { localId: await collabJoinProject(server.server_id, link.project) };
-  } catch (error) {
-    if (collabErrorCode(error) !== "not_found") return refused(error);
-  }
+  // A link can come from any web page. A project already on this computer
+  // opens without asking, and anything that would download one, even for
+  // someone who is already a member, is shown first for the person to decide.
+  const local = await localCopyOf(server, link.project);
+  if (local !== null) return { localId: local };
   try {
     return { preview: await collabLinkPreview(server.server_id, link.project) };
   } catch (error) {
