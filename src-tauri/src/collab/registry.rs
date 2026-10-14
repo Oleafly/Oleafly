@@ -1,6 +1,7 @@
-use oleafly_collab::{load_binding, CollabPaths};
+use oleafly_collab::{load_binding, CollabError, CollabPaths};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex, MutexGuard, PoisonError};
 
 static REGISTRY: LazyLock<ShareRegistry> = LazyLock::new(ShareRegistry::default);
@@ -19,25 +20,39 @@ pub fn invalidate(local_project_id: &str) {
 #[derive(Default)]
 pub(crate) struct ShareRegistry {
     cache: Mutex<HashMap<(PathBuf, String), bool>>,
+    generation: AtomicU64,
 }
 
 impl ShareRegistry {
     pub(crate) fn is_shared_at(&self, paths: &CollabPaths, local_project_id: &str) -> bool {
+        self.is_shared_with(paths, local_project_id, || {
+            load_binding(paths, local_project_id).map(|binding| binding.is_some())
+        })
+    }
+
+    fn is_shared_with(
+        &self,
+        paths: &CollabPaths,
+        local_project_id: &str,
+        read: impl FnOnce() -> Result<bool, CollabError>,
+    ) -> bool {
         let key = (paths.root().to_path_buf(), local_project_id.to_string());
         if let Some(known) = self.cache().get(&key) {
             return *known;
         }
-        match load_binding(paths, local_project_id) {
-            Ok(binding) => {
-                let shared = binding.is_some();
-                self.cache().insert(key, shared);
-                shared
-            }
-            Err(_) => false,
+        let generation = self.generation.load(Ordering::SeqCst);
+        let Ok(shared) = read() else {
+            return false;
+        };
+        let mut cache = self.cache();
+        if self.generation.load(Ordering::SeqCst) == generation {
+            cache.insert(key, shared);
         }
+        shared
     }
 
     pub(crate) fn invalidate(&self, local_project_id: &str) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
         self.cache()
             .retain(|(_, cached), _| cached.as_str() != local_project_id);
     }
@@ -91,6 +106,19 @@ mod tests {
         assert!(registry.is_shared_at(&paths, "paper"));
         registry.invalidate("paper");
         assert!(!registry.is_shared_at(&paths, "paper"));
+    }
+
+    #[test]
+    fn a_share_finished_while_the_binding_was_being_read_is_never_hidden_by_a_stale_answer() {
+        let (_directory, paths, registry) = fixture();
+        let stale = registry.is_shared_with(&paths, "paper", || {
+            let read = load_binding(&paths, "paper").map(|binding| binding.is_some());
+            save_binding(&paths, "paper", &binding()).unwrap();
+            registry.invalidate("paper");
+            read
+        });
+        assert!(!stale);
+        assert!(registry.is_shared_at(&paths, "paper"));
     }
 
     #[test]
