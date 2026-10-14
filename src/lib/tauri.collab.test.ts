@@ -153,6 +153,18 @@ describe("collaboration IPC contract", () => {
       "collab_link_preview",
       { serverId: SERVER, sharedProjectId: ACCOUNT },
     ],
+    [
+      "collabJoinProject",
+      () => tauri.collabJoinProject(SERVER, ACCOUNT),
+      "collab_join_project",
+      { serverId: SERVER, sharedProjectId: ACCOUNT },
+    ],
+    [
+      "collabJoinCancel",
+      () => tauri.collabJoinCancel(SERVER, ACCOUNT),
+      "collab_join_cancel",
+      { serverId: SERVER, sharedProjectId: ACCOUNT },
+    ],
   ] as const)("sends %s", async (_label, call, command, args) => {
     await call();
     if (args === undefined) expect(mocks.invoke).toHaveBeenCalledWith(command);
@@ -171,6 +183,17 @@ describe("collaboration IPC helpers", () => {
     expect(tauri.isCollabCommandError({ code: "server" })).toBe(false);
     expect(tauri.isCollabCommandError("unreachable")).toBe(false);
     expect(tauri.isCollabCommandError(null)).toBe(false);
+  });
+
+  it("forwards join progress with the server and project it belongs to", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabJoinProgress((payload) => seen.push(payload));
+    expect(tauri.COLLAB_JOIN_PROGRESS_EVENT).toBe("collab-join-progress");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-join-progress", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { serverId: SERVER, sharedProjectId: ACCOUNT, done: 2, total: 5 };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
   });
 
   it("forwards server change events", async () => {

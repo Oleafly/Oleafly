@@ -861,6 +861,8 @@
     "openSettings": "Öppna Inställningar",
     "malformed": "Oleafly kan inte öppna den här länken. Be den som skickade den om en ny.",
     "opening": "Öppnar det delade projektet…",
+    "downloading": "Laddar ned filer: {{done}} av {{total}}",
+    "cancelNamed": "Sluta öppna {{name}}",
     "confirm": {
       "title": "Gå med i det här delade projektet?",
       "body": "När du går med läggs du till i projektet och dess filer kopieras till den här datorn. Gå bara med om du vet vem som skickade länken till dig.",

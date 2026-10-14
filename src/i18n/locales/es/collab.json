@@ -861,6 +861,8 @@
     "openSettings": "Abrir Ajustes",
     "malformed": "Oleafly no puede abrir este enlace. Pide uno nuevo a quien te lo envió.",
     "opening": "Abriendo el proyecto compartido…",
+    "downloading": "Descargando archivos: {{done}} de {{total}}",
+    "cancelNamed": "Dejar de abrir {{name}}",
     "confirm": {
       "title": "¿Unirte a este proyecto compartido?",
       "body": "Al unirte, se te añade al proyecto y sus archivos se copian en este equipo. Únete solo si sabes quién te envió el enlace.",

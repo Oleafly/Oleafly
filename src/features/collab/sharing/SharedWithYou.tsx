@@ -15,8 +15,9 @@ import {
   type CollabSharedWithMe,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { collabErrorText } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
+import { JoinProgress } from "../links/JoinProgress";
 import { collabPerson } from "../people";
 import { useCollabStore } from "../store";
 
@@ -102,7 +103,8 @@ export function SharedWithYou() {
       await files.refreshProjects();
       await files.openProject(localId);
     } catch (error_) {
-      setError({ key, message: collabErrorText(error_) });
+      // Stopping the download on purpose isn't a failure.
+      if (collabErrorCode(error_) !== "cancelled") setError({ key, message: collabErrorText(error_) });
     } finally {
       setOpening(null);
     }
@@ -145,6 +147,14 @@ export function SharedWithYou() {
                 {opening === key ? <Spinner /> : <FolderDown aria-hidden />}
                 {t(($) => $.collab.library.sharedWithYou.open)}
               </Button>
+              {opening === key && item.local_project_id === null ? (
+                <div className="basis-full">
+                  <JoinProgress
+                    target={{ serverId: item.server_id, sharedProjectId: project.project_id }}
+                    name={project.title}
+                  />
+                </div>
+              ) : null}
               {error?.key === key ? (
                 <div className="basis-full">
                   <InlineAlert>{error.message}</InlineAlert>

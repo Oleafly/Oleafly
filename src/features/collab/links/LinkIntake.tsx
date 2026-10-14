@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { Spinner } from "@/components/ui/spinner";
 import { i18n, loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
 import {
@@ -22,6 +21,7 @@ import { useCollabStore } from "../store";
 import { useAddServerRequest } from "./add-server-request";
 import { linkKey, parseAppLink, sameServer, type AppLink } from "./app-link";
 import { JoinLinkDialog } from "./JoinLinkDialog";
+import { JoinProgress, type JoinTarget } from "./JoinProgress";
 import { openLinkedComment } from "./open-comment";
 
 const DUPLICATE_WINDOW_MS = 5_000;
@@ -175,19 +175,20 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
   );
 }
 
-function OpeningStatus() {
-  const { t } = useTranslation(["collab"]);
+function OpeningStatus({ target, onCancel }: Readonly<{ target: JoinTarget; onCancel: () => void }>) {
   return (
-    <output className="fixed bottom-4 left-1/2 z-[85] flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm text-foreground shadow-lg">
-      <Spinner />
-      {t(($) => $.collab.links.opening)}
-    </output>
+    <div
+      className="fixed bottom-4 left-1/2 z-[85] w-80 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border bg-background px-3 py-2 text-foreground shadow-lg"
+      data-testid="collab-link-opening"
+    >
+      <JoinProgress target={target} name={null} onCancel={onCancel} />
+    </div>
   );
 }
 
 interface FlowUi {
   setStep: (step: Step) => void;
-  setBusy: (busy: boolean) => void;
+  setBusy: (busy: JoinTarget | null) => void;
   setPending: (count: number) => void;
 }
 
@@ -196,6 +197,9 @@ function createFlow(ui: FlowUi) {
   const seen = new Map<string, number>();
   let serverWait: ((server: CollabServer | null) => void) | null = null;
   let joinWait: ((join: boolean) => void) | null = null;
+  // Set when the person stops the download, so whatever answer comes back
+  // for that link is dropped instead of opening the project or an error.
+  let stopped = false;
 
   const show = (notice: Notice) => ui.setStep({ kind: "notice", notice });
 
@@ -225,13 +229,13 @@ function createFlow(ui: FlowUi) {
       ui.setStep({ kind: "server", url, baseline: useCollabStore.getState().servers });
     });
 
-  const whileBusy = async <T,>(work: () => Promise<T>): Promise<T> => {
-    const timer = window.setTimeout(() => ui.setBusy(true), BUSY_DELAY_MS);
+  const whileBusy = async <T,>(target: JoinTarget, work: () => Promise<T>): Promise<T> => {
+    const timer = window.setTimeout(() => ui.setBusy(target), BUSY_DELAY_MS);
     try {
       return await work();
     } finally {
       window.clearTimeout(timer);
-      ui.setBusy(false);
+      ui.setBusy(null);
     }
   };
 
@@ -243,11 +247,14 @@ function createFlow(ui: FlowUi) {
     let agreed = false;
     while (server) {
       const current: CollabServer = server;
-      const reached = await whileBusy(async () => {
+      stopped = false;
+      const target = { serverId: current.server_id, sharedProjectId: link.project };
+      const reached = await whileBusy(target, async () => {
         const outcome = await reach(current, link, agreed);
-        if ("localId" in outcome) await openLocal(outcome.localId);
+        if ("localId" in outcome && !stopped) await openLocal(outcome.localId);
         return outcome;
       });
+      if (stopped || ("code" in reached && reached.code === "cancelled")) return;
       if ("localId" in reached) {
         openComment(link, reached.localId);
         return;
@@ -306,6 +313,9 @@ function createFlow(ui: FlowUi) {
           seen.set(linkKey(link), Date.now());
         });
     },
+    stop() {
+      stopped = true;
+    },
     serverChanged(servers: readonly CollabServer[], step: Step) {
       if (step.kind !== "server" || servers === step.baseline) return;
       const match = servers.find((entry) => entry.signed_in && sameServer(entry.url, step.url));
@@ -325,7 +335,7 @@ export function LinkIntake({
   const servers = useCollabStore((state) => state.servers);
   const [pending, setPending] = useState(0);
   const [working, setWorking] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<JoinTarget | null>(null);
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const flow = useRef<ReturnType<typeof createFlow> | null>(null);
   flow.current ??= createFlow({ setStep, setBusy, setPending });
@@ -373,7 +383,7 @@ export function LinkIntake({
           onAnswer={(join) => flow.current?.answerJoin(join)}
         />
       ) : null}
-      {busy ? <OpeningStatus /> : null}
+      {busy ? <OpeningStatus target={busy} onCancel={() => flow.current?.stop()} /> : null}
     </>
   );
 }

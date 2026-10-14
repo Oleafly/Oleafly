@@ -861,6 +861,8 @@
     "openSettings": "Einstellungen öffnen",
     "malformed": "Oleafly kann diesen Link nicht öffnen. Bitten Sie die Person, die ihn geschickt hat, um einen neuen.",
     "opening": "Das geteilte Projekt wird geöffnet…",
+    "downloading": "Dateien werden heruntergeladen: {{done}} von {{total}}",
+    "cancelNamed": "Öffnen von {{name}} abbrechen",
     "confirm": {
       "title": "Diesem geteilten Projekt beitreten?",
       "body": "Wenn Sie beitreten, werden Sie zum Projekt hinzugefügt und seine Dateien werden auf diesen Computer kopiert. Treten Sie nur bei, wenn Sie wissen, wer Ihnen den Link geschickt hat.",

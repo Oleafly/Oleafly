@@ -13,6 +13,7 @@ import {
   SERVER_ID,
   SHARED_ID,
   collabError,
+  deferred,
   fill,
   projectSummary,
   server,
@@ -22,6 +23,7 @@ import {
 const mocks = vi.hoisted(() => ({
   collabSharedWithMe: vi.fn(),
   collabJoinProject: vi.fn(),
+  collabJoinCancel: vi.fn(),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
 }));
 
@@ -35,6 +37,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabSharedWithMe: mocks.collabSharedWithMe,
   collabJoinProject: mocks.collabJoinProject,
+  collabJoinCancel: mocks.collabJoinCancel,
 }));
 
 import { SharedWithYou } from "./SharedWithYou";
@@ -134,6 +137,32 @@ describe("SharedWithYou", () => {
     expect(mocks.collabJoinProject).toHaveBeenCalledWith(SERVER_ID, SHARED_ID);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("grant-local"));
     expect(refreshProjects).toHaveBeenCalled();
+  });
+
+  it("shows the download on that row and stops it with Cancel", async () => {
+    const join = deferred<string>();
+    mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe(), thesis]);
+    mocks.collabJoinProject.mockReturnValue(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<SharedWithYou />);
+    await user.click(await screen.findByRole("button", { name: fill(copy.openNamed, { name: "Grant proposal" }) }));
+    const rows = within(screen.getByRole("list", { name: copy.title })).getAllByRole("listitem");
+    const progress = within(rows[0]).getByTestId("collab-join-progress");
+    expect(within(rows[1]).queryByTestId("collab-join-progress")).toBeNull();
+    await waitFor(() => expect(mocks.listeners.has("collab-join-progress")).toBe(true));
+    act(() =>
+      mocks.listeners.get("collab-join-progress")?.({
+        payload: { serverId: SERVER_ID, sharedProjectId: SHARED_ID, done: 1, total: 4 },
+      }),
+    );
+    expect(progress).toHaveTextContent(fill(enCollab.links.downloading, { done: "1", total: "4" }));
+    await user.click(within(progress).getByRole("button", { name: fill(enCollab.links.cancelNamed, { name: "Grant proposal" }) }));
+    expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, SHARED_ID);
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-join-progress")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(openProject).not.toHaveBeenCalled();
   });
 
   it("explains a failed open on that row", async () => {

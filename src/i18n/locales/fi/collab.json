@@ -861,6 +861,8 @@
     "openSettings": "Avaa Asetukset",
     "malformed": "Oleafly ei voi avata tätä linkkiä. Pyydä lähettäjältä uusi linkki.",
     "opening": "Avataan jaettua projektia…",
+    "downloading": "Ladataan tiedostoja: {{done}}/{{total}}",
+    "cancelNamed": "Lopeta projektin {{name}} avaaminen",
     "confirm": {
       "title": "Liitytkö tähän jaettuun projektiin?",
       "body": "Kun liityt, sinut lisätään projektiin ja sen tiedostot kopioidaan tälle koneelle. Liity vain, jos tiedät, kuka lähetti sinulle linkin.",

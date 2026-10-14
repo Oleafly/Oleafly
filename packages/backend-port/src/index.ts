@@ -1220,6 +1220,13 @@ export interface CollabShareProgress {
     done: number;
     total: number;
 }
+// Downloading a shared project: `total` files to fetch, `done` fetched so far.
+export interface CollabJoinProgress {
+    serverId: string;
+    sharedProjectId: string;
+    done: number;
+    total: number;
+}
 export type CollabLiveEndReason =
     | "removed"
     | "archived"
@@ -1610,6 +1617,7 @@ export interface BackendPort {
   collabLeaveProject: (projectId: string) => Promise<void>;
   collabSharedWithMe: () => Promise<CollabSharedWithMe[]>;
   collabJoinProject: (serverId: string, sharedProjectId: string) => Promise<string>;
+  collabJoinCancel: (serverId: string, sharedProjectId: string) => Promise<void>;
   collabOpenLink: (link: string) => Promise<string>;
   collabPendingLinks: () => Promise<string[]>;
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;

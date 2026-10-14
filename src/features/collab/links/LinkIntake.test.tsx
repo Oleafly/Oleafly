@@ -12,6 +12,7 @@ import {
   BOB,
   collabError,
   deferred,
+  fill,
   projectSummary,
   SERVER_ID,
   server,
@@ -21,6 +22,7 @@ import {
 const mocks = vi.hoisted(() => ({
   collabCommentFilePath: vi.fn(),
   collabJoinProject: vi.fn(),
+  collabJoinCancel: vi.fn(),
   collabLinkPreview: vi.fn(),
   collabOpenLink: vi.fn(),
   collabServersList: vi.fn(),
@@ -31,6 +33,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
+}));
+
+const events = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>());
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, handler: (event: { payload: unknown }) => void) => {
+    events.set(event, handler);
+    return () => events.delete(event);
+  }),
 }));
 
 import { useCommentsRail } from "@/components/collab/comments-rail";
@@ -320,6 +331,30 @@ describe("LinkIntake", () => {
     await act(async () => join.resolve("local-3"));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-3"));
     expect(screen.queryByText(copy.opening)).not.toBeInTheDocument();
+  });
+
+  it("shows how far the download got and stops it with Cancel, without an error", async () => {
+    const user = userEvent.setup();
+    const join = deferred<string>();
+    mocks.collabJoinProject.mockReturnValue(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    deliver([OPEN]);
+    const opening = await screen.findByTestId("collab-link-opening");
+    expect(within(opening).getByRole("progressbar")).toHaveAttribute("data-state", "indeterminate");
+    await waitFor(() => expect(events.has("collab-join-progress")).toBe(true));
+    const report = (sharedProjectId: string, done: number, total: number) =>
+      act(() => events.get("collab-join-progress")?.({ payload: { serverId: SERVER_ID, sharedProjectId, done, total } }));
+    report(PROJECT, 3, 12);
+    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
+    expect(within(opening).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    report("01920000-0000-7000-8000-0000000000bb", 9, 9);
+    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
+    await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
+    expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
+    expect(screen.queryByTestId("collab-link-notice")).toBeNull();
+    expect(openProject).not.toHaveBeenCalled();
   });
 
   it("adds an unknown server first, then opens the project", async () => {

@@ -861,6 +861,8 @@
     "openSettings": "Ayarları aç",
     "malformed": "Oleafly bu bağlantıyı açamıyor. Gönderen kişiden yeni bir bağlantı isteyin.",
     "opening": "Paylaşılan proje açılıyor…",
+    "downloading": "Dosyalar indiriliyor: {{done}} / {{total}}",
+    "cancelNamed": "{{name}} projesini açmayı durdur",
     "confirm": {
       "title": "Bu paylaşılan projeye katılmak istiyor musunuz?",
       "body": "Katıldığınızda projeye eklenirsiniz ve projenin dosyaları bu bilgisayara kopyalanır. Yalnızca bağlantıyı kimin gönderdiğini biliyorsanız katılın.",

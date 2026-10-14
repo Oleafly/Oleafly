@@ -861,6 +861,8 @@
     "openSettings": "Instellingen openen",
     "malformed": "Oleafly kan deze link niet openen. Vraag degene die hem stuurde om een nieuwe.",
     "opening": "Het gedeelde project wordt geopend…",
+    "downloading": "Bestanden downloaden: {{done}} van {{total}}",
+    "cancelNamed": "Openen van {{name}} stoppen",
     "confirm": {
       "title": "Deelnemen aan dit gedeelde project?",
       "body": "Als je deelneemt, word je aan het project toegevoegd en worden de bestanden naar deze computer gekopieerd. Neem alleen deel als je weet wie je de link heeft gestuurd.",

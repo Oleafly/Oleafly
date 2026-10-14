@@ -861,6 +861,8 @@
     "openSettings": "Abrir Configurações",
     "malformed": "O Oleafly não consegue abrir este link. Peça um novo a quem enviou.",
     "opening": "Abrindo o projeto compartilhado…",
+    "downloading": "Baixando arquivos: {{done}} de {{total}}",
+    "cancelNamed": "Parar de abrir {{name}}",
     "confirm": {
       "title": "Participar deste projeto compartilhado?",
       "body": "Participar adiciona você ao projeto e copia os arquivos dele para este computador. Só participe se souber quem enviou o link para você.",

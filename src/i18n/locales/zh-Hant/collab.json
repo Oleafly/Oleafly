@@ -861,6 +861,8 @@
     "openSettings": "開啟設定",
     "malformed": "Oleafly 無法開啟這個連結。請向傳送者索取新的連結。",
     "opening": "正在開啟分享的專案…",
+    "downloading": "正在下載檔案：{{done}}/{{total}}",
+    "cancelNamed": "停止開啟 {{name}}",
     "confirm": {
       "title": "要加入這個分享的專案嗎？",
       "body": "加入後，你會被新增到專案中，專案檔案也會複製到這台電腦。只有在你知道是誰傳來連結時才加入。",

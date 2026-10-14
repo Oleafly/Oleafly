@@ -1816,6 +1816,20 @@ export const collabLeaveProject = (projectId: string) =>
 export const collabSharedWithMe = () => invoke<CollabSharedWithMe[]>("collab_shared_with_me");
 export const collabJoinProject = (serverId: string, sharedProjectId: string) =>
   invoke<string>("collab_join_project", { serverId, sharedProjectId });
+// Stops a running join and removes what it downloaded. The join then fails
+// with the code "cancelled".
+export const collabJoinCancel = (serverId: string, sharedProjectId: string) =>
+  invoke<void>("collab_join_cancel", { serverId, sharedProjectId });
+
+export const COLLAB_JOIN_PROGRESS_EVENT = "collab-join-progress";
+
+export function onCollabJoinProgress(
+  handler: (payload: import("@oleafly/backend-port").CollabJoinProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabJoinProgress>(COLLAB_JOIN_PROGRESS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
 export const collabOpenLink = (link: string) => invoke<string>("collab_open_link", { link });
 export const collabPendingLinks = () => invoke<string[]>("collab_pending_links");
 
