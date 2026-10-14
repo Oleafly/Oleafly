@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}} (로컬 사본)"
+  },
+  "approvals": {
+    "unknownTool": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다.",
+    "unknownToolSuggestion": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다. {{suggestion}}을(를) 말씀하신 건가요?"
   }
 }

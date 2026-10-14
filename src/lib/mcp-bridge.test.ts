@@ -388,6 +388,15 @@ describe("mcp tool registry", () => {
     expect(backend).toEqual(removed);
   });
 
+  it("names every registered tool in the approval rules' tool list, so a correct rule never warns", () => {
+    const rust = readFileSync(join(process.cwd(), "src-tauri/src/approvals.rs"), "utf8");
+    const block = rust.slice(rust.indexOf("const KNOWN_TOOLS"), rust.indexOf("const MCP_TOOL_PREFIX"));
+    const known = new Set([...block.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]));
+
+    expect(known.size).toBeGreaterThan(0);
+    expect(Object.keys(registry).filter((name) => !known.has(name))).toEqual([]);
+  });
+
   it("exposes a plain JSON schema for every tool", () => {
     for (const [name, entry] of Object.entries(registry)) {
       const schema = rawSchemaOf(entry.inputSchema) as { type?: string };

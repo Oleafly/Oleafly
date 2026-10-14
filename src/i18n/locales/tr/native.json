@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}} (yerel kopya)"
+  },
+  "approvals": {
+    "unknownTool": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor.",
+    "unknownToolSuggestion": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor. {{suggestion}} mi demek istediniz?"
   }
 }

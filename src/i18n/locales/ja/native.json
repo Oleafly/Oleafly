@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}}（ローカルコピー）"
+  },
+  "approvals": {
+    "unknownTool": "{{name}} という名前のツールはないため、このルールは何もしません。",
+    "unknownToolSuggestion": "{{name}} という名前のツールはないため、このルールは何もしません。{{suggestion}} のことですか？"
   }
 }

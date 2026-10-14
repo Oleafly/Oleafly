@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}} (paikallinen kopio)"
+  },
+  "approvals": {
+    "unknownTool": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään.",
+    "unknownToolSuggestion": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään. Tarkoititko {{suggestion}}?"
   }
 }

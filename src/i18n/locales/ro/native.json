@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}} (copie locală)"
+  },
+  "approvals": {
+    "unknownTool": "Niciun instrument nu se numește {{name}}, așa că regula nu face nimic.",
+    "unknownToolSuggestion": "Niciun instrument nu se numește {{name}}, așa că regula nu face nimic. Ai vrut să scrii {{suggestion}}?"
   }
 }

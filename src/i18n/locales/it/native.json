@@ -119,5 +119,9 @@
   },
   "collab": {
     "localCopy": "{{name}} (copia locale)"
+  },
+  "approvals": {
+    "unknownTool": "Nessuno strumento si chiama {{name}}, quindi la regola non fa nulla.",
+    "unknownToolSuggestion": "Nessuno strumento si chiama {{name}}, quindi la regola non fa nulla. Intendevi {{suggestion}}?"
   }
 }
