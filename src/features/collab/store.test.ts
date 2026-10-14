@@ -235,4 +235,35 @@ describe("collab store", () => {
     expect(useCollabStore.getState().servers[0]?.account?.server_role).toBe("maintainer");
     expect(useCollabStore.getState().servers).toHaveLength(2);
   });
+
+  it("keeps a server signed out when its refresh, started before the sign-out, answers later", async () => {
+    const other = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), other], status: "ready" });
+    const slow = deferred<CollabServer>();
+    mocks.collabServerRefresh.mockImplementation((serverId: string) =>
+      serverId === SERVER_ID ? slow.promise : Promise.resolve(other),
+    );
+    const refreshing = useCollabStore.getState().refreshAccounts();
+    mocks.collabServerSignOut.mockResolvedValueOnce(DONE);
+    await useCollabStore.getState().signOut(SERVER_ID);
+    expect(useCollabStore.getState().servers[0]?.signed_in).toBe(false);
+
+    slow.resolve(server());
+    await refreshing;
+
+    expect(useCollabStore.getState().servers[0]).toMatchObject({ server_id: SERVER_ID, signed_in: false, account: null });
+  });
+
+  it("applies a quick refresh without waiting for a slow one", async () => {
+    const other = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), other], status: "ready" });
+    const slow = deferred<CollabServer>();
+    mocks.collabServerRefresh.mockImplementation((serverId: string) =>
+      serverId === SERVER_ID ? slow.promise : Promise.resolve({ ...other, name: "Jones Lab renamed" }),
+    );
+    const refreshing = useCollabStore.getState().refreshAccounts();
+    await vi.waitFor(() => expect(useCollabStore.getState().servers[1]?.name).toBe("Jones Lab renamed"));
+    slow.resolve(server());
+    await refreshing;
+  });
 });

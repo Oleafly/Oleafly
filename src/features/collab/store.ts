@@ -151,10 +151,21 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
   dismissDetached: () => set({ detached: null }),
   refreshAccounts: async () => {
+    // Apply each answer as it comes, and only while nothing has changed the
+    // list since: a refresh started before a sign-out must not sign back in.
+    const started = loadRequest;
     const signedIn = get().servers.filter((entry) => entry.signed_in);
-    const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));
-    const fresh = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-    if (fresh.length === 0) return;
-    set((state) => ({ servers: fresh.reduce((servers, server) => upsert(servers, server), state.servers) }));
+    await Promise.all(
+      signedIn.map(async (entry) => {
+        let fresh: CollabServer;
+        try {
+          fresh = await collabServerRefresh(entry.server_id);
+        } catch {
+          return;
+        }
+        if (loadRequest !== started || get().pending[entry.server_id]) return;
+        set((state) => ({ servers: upsert(state.servers, fresh) }));
+      }),
+    );
   },
 }));
