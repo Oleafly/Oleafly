@@ -322,7 +322,7 @@ describe("CloudTab", () => {
     const thesis = rows.find((row) => within(row).queryByText("Thesis"));
     const bar = within(thesis as HTMLElement).getByRole("progressbar");
     expect(bar).toHaveAccessibleName("Uploading 312 of 1,144 files");
-    expect(bar).toHaveAttribute("aria-valuenow", "312");
+    expect(bar).toHaveAttribute("aria-valuenow", "27");
     const stats = rows.find((row) => within(row).queryByText("Stats")) as HTMLElement;
     expect(within(stats).getByRole("progressbar")).toHaveAccessibleName("Downloading 1 KB of 4 KB");
     act(() => {

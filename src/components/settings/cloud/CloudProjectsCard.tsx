@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
@@ -67,16 +68,16 @@ function relative(t: CloudTranslate, timestamp: number, now: number): string {
   });
 }
 
+function remoteStatus(t: CloudTranslate, project: CloudProject): string {
+  if (project.recycled) return t(($) => $.cloud.row.recycled);
+  if (project.pendingFiles === null) return t(($) => $.cloud.row.onlyInDropbox);
+  return project.uploadingFrom
+    ? t(($) => $.cloud.row.stillUploading, { device: project.uploadingFrom })
+    : t(($) => $.cloud.row.stillUploadingUnknown);
+}
+
 function rowStatus(t: CloudTranslate, project: CloudProject, now: number, resumedAt?: number): string {
-  if (project.mode === "download") {
-    if (project.recycled) return t(($) => $.cloud.row.recycled);
-    if (project.pendingFiles !== null) {
-      return project.uploadingFrom
-        ? t(($) => $.cloud.row.stillUploading, { device: project.uploadingFrom })
-        : t(($) => $.cloud.row.stillUploadingUnknown);
-    }
-    return t(($) => $.cloud.row.onlyInDropbox);
-  }
+  if (project.mode === "download") return remoteStatus(t, project);
   if (project.mode === "held") return t(($) => $.cloud.row.held);
   if (project.mode === "pause") return t(($) => $.cloud.row.paused);
   if (project.mode === "removed") {
@@ -106,22 +107,13 @@ function transferText(t: CloudTranslate, progress: CloudProgress): string {
 function TransferLine({ progress }: Readonly<{ progress: CloudProgress }>) {
   const { t } = useTranslation(["cloud"]);
   const text = transferText(t, progress);
-  const share = progress.total > 0 ? Math.min(100, (progress.done / progress.total) * 100) : 0;
+  const share = progress.total > 0 ? (progress.done / progress.total) * 100 : 0;
   return (
     <div data-testid="cloud-transfer" className="mt-1 space-y-1">
       <p aria-live="polite" className="text-xs tabular-nums text-foreground">
         {text}
       </p>
-      <div
-        role="progressbar"
-        aria-label={text}
-        aria-valuemin={0}
-        aria-valuemax={progress.total}
-        aria-valuenow={progress.done}
-        className="h-1 w-full max-w-56 overflow-hidden rounded-full bg-muted"
-      >
-        <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${share}%` }} />
-      </div>
+      <Progress value={share} label={text} className="h-1 max-w-56" indicatorClassName="bg-primary" />
     </div>
   );
 }
@@ -431,6 +423,40 @@ function SkippedFiles({ project }: Readonly<{ project: CloudProject }>) {
   );
 }
 
+function RowSize({ project }: Readonly<{ project: CloudProject }>) {
+  const { t } = useTranslation(["cloud"]);
+  if (project.sizeBytes <= 0) return null;
+  const size = formatBytes(project.sizeBytes);
+  return (
+    <span className="mr-1 text-xs tabular-nums text-muted-foreground">
+      {project.mode === "download" && project.pendingFiles !== null ? t(($) => $.cloud.row.sizeSoFar, { size }) : size}
+    </span>
+  );
+}
+
+function RowNotices({
+  project,
+  onConfirm,
+}: Readonly<{ project: CloudProject; onConfirm: (pending: PendingConfirm) => void }>) {
+  const conflicted = project.conflictCopies.length > 0 || project.conflicts > 0;
+  return (
+    <>
+      {project.mode === "held" ? (
+        <HeldNotice project={project} onDelete={() => onConfirm({ kind: "deleteHeld", project })} />
+      ) : null}
+      {isUnreadable(project) ? (
+        <UnreadableNotice project={project} onReplace={() => onConfirm({ kind: "replace", project })} />
+      ) : null}
+      {conflicted ? <ConflictNotice project={project} /> : null}
+    </>
+  );
+}
+
+function isRemovable(project: CloudProject, local: boolean, connected: boolean): boolean {
+  if (!local) return connected;
+  return (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0;
+}
+
 function ProjectRow({
   project,
   now,
@@ -439,11 +465,8 @@ function ProjectRow({
   const { t } = useTranslation(["cloud"]);
   const connected = useCloudStore((s) => s.status === "connected");
   const local = project.localId !== null && project.mode !== "download";
-  const removable = local
-    ? (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0
-    : connected;
+  const removable = isRemovable(project, local, connected);
   const unreadable = local && isUnreadable(project);
-  const conflicted = local && (project.conflictCopies.length > 0 || project.conflicts > 0);
   const progressKey = local ? (project.localId as string) : project.cloudId;
   const progress = useCloudStore((s) => s.progress[progressKey]);
   const resumedAt = useCloudStore((s) => (local ? s.resumedAt[project.localId as string] : undefined));
@@ -466,13 +489,7 @@ function ProjectRow({
           {project.skipped > 0 ? <SkippedFiles project={project} /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {project.sizeBytes > 0 ? (
-            <span className="mr-1 text-xs tabular-nums text-muted-foreground">
-              {project.mode === "download" && project.pendingFiles !== null
-                ? t(($) => $.cloud.row.sizeSoFar, { size: formatBytes(project.sizeBytes) })
-                : formatBytes(project.sizeBytes)}
-            </span>
-          ) : null}
+          <RowSize project={project} />
           {local ? <ProjectSwitch project={project} /> : <DownloadButton project={project} />}
           {removable ? (
             <RowMenu
@@ -485,11 +502,7 @@ function ProjectRow({
           )}
         </div>
       </div>
-      {project.mode === "held" && local ? (
-        <HeldNotice project={project} onDelete={() => onConfirm({ kind: "deleteHeld", project })} />
-      ) : null}
-      {unreadable ? <UnreadableNotice project={project} onReplace={() => onConfirm({ kind: "replace", project })} /> : null}
-      {conflicted ? <ConflictNotice project={project} /> : null}
+      {local ? <RowNotices project={project} onConfirm={onConfirm} /> : null}
     </li>
   );
 }

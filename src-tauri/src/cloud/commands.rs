@@ -1843,7 +1843,7 @@ pub async fn cloud_download_project(
     let projects_root = crate::paths::projects_root()?;
     let reservation =
         crate::project::reserve_unique_project_directory_adopting(&projects_root, cloud)?;
-    crate::trust::mark_library_restricted(reservation.project_id()).map_err(String::from)?;
+    crate::trust::mark_library_restricted(reservation.project_id())?;
     let downloaded = match engine::download_into(&store, cloud, reservation.path(), &staging).await
     {
         Ok(Some(downloaded)) => downloaded,

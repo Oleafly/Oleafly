@@ -174,27 +174,25 @@ export default function CloudSyncKeeper() {
         pause = window.setTimeout(resolve, ms);
       });
 
-    const watchDropbox = async () => {
-      let failures = 0;
-      while (!stopped) {
-        let wait = 0;
-        try {
-          const result = await cloudWaitForChanges();
-          if (stopped) return;
-          failures = 0;
-          if (result.changes) {
-            soon();
-            await roundDone();
-          }
-          wait = result.retryAfterMs ?? 0;
-        } catch (error) {
-          if (stopped) return;
-          failures += 1;
-          if (failures === 1) void logError("cloud wait for changes", error);
-          wait = waitRetryDelay(failures);
+    const checkDropbox = async (failures: number) => {
+      try {
+        const result = await cloudWaitForChanges();
+        if (result.changes && !stopped) {
+          soon();
+          await roundDone();
         }
-        if (wait > 0 && !stopped) await sleep(wait);
+        return { failures: 0, wait: result.retryAfterMs ?? 0 };
+      } catch (error) {
+        if (failures === 0 && !stopped) void logError("cloud wait for changes", error);
+        return { failures: failures + 1, wait: waitRetryDelay(failures + 1) };
       }
+    };
+
+    const watchDropbox = async (failures: number) => {
+      if (stopped) return;
+      const next = await checkDropbox(failures);
+      if (next.wait > 0 && !stopped) await sleep(next.wait);
+      void watchDropbox(next.failures);
     };
 
     const stopWatchingRounds = useCloudStore.subscribe((state, previous) => {
@@ -217,7 +215,7 @@ export default function CloudSyncKeeper() {
     const onOnline = () => soon();
 
     schedule(delay());
-    void watchDropbox();
+    void watchDropbox(0);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", onOnline);
     return () => {
