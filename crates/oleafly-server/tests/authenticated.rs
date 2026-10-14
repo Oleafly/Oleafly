@@ -296,6 +296,78 @@ async fn client_ip_looks_past_every_proxy_in_front_of_the_server() {
     }
 }
 
+async fn ip_seen(
+    app: &oleafly_server::test_support::TestApp,
+    forwarded: &str,
+    peer: [u8; 4],
+) -> Value {
+    let mut request = support::build_request(Method::GET, "/ip", None, None);
+    request.headers_mut().insert(
+        "x-forwarded-for",
+        HeaderValue::from_str(forwarded).expect("header"),
+    );
+    request
+        .extensions_mut()
+        .insert(ConnectInfo(SocketAddr::from((peer, 40_000))));
+    support::send_request(&ip_probe(app.state.clone()), request)
+        .await
+        .body["ip"]
+        .clone()
+}
+
+#[tokio::test]
+async fn a_proxy_that_adds_a_port_is_still_read_and_a_garbled_entry_never_moves_further_left() {
+    let app = test_app_with(support::config_with(&[("OLEAFLY_BEHIND_PROXY", "true")])).await;
+    for (forwarded, expected) in [
+        ("203.0.113.66, 198.51.100.9:52113", "198.51.100.9"),
+        ("203.0.113.66, [2001:db8::7]:443", "2001:db8::7"),
+        ("203.0.113.66, ::ffff:198.51.100.9", "198.51.100.9"),
+        ("203.0.113.66, unknown", "10.0.15.2"),
+        ("203.0.113.66, ", "10.0.15.2"),
+    ] {
+        assert_eq!(
+            ip_seen(&app, forwarded, [10, 0, 15, 2]).await,
+            json!(expected),
+            "forwarded: {forwarded}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn trusted_proxies_are_skipped_and_the_first_address_outside_them_is_the_client() {
+    let app = test_app_with(support::config_with(&[
+        ("OLEAFLY_BEHIND_PROXY", "true"),
+        ("OLEAFLY_TRUSTED_PROXIES", "173.245.48.0/20, 10.0.0.0/8"),
+    ]))
+    .await;
+    for (forwarded, peer, expected) in [
+        ("203.0.113.66, 198.51.100.9", [10, 0, 15, 2], "198.51.100.9"),
+        (
+            "203.0.113.66, 198.51.100.9, 173.245.48.5",
+            [10, 0, 15, 2],
+            "198.51.100.9",
+        ),
+        ("198.51.100.9, 10.0.1.1", [10, 0, 15, 2], "198.51.100.9"),
+        (
+            "203.0.113.66, 198.51.100.9",
+            [198, 51, 100, 20],
+            "198.51.100.20",
+        ),
+        ("173.245.48.5, 10.0.1.1", [10, 0, 15, 2], "173.245.48.5"),
+        (
+            "203.0.113.66, junk, 173.245.48.5",
+            [10, 0, 15, 2],
+            "10.0.15.2",
+        ),
+    ] {
+        assert_eq!(
+            ip_seen(&app, forwarded, peer).await,
+            json!(expected),
+            "forwarded: {forwarded} from {peer:?}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn seeding_an_admin_ends_setup() {
     let app = test_app().await;

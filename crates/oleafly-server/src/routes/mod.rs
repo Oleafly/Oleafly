@@ -29,6 +29,7 @@ use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use oleafly_collab_protocol::roles::{server_role_allows, ServerAction, ServerRole};
 use rusqlite::{Connection, OptionalExtension};
 
+use crate::config::ServerConfig;
 use crate::error::ServerError;
 use crate::members;
 use crate::state::AppState;
@@ -131,33 +132,61 @@ impl FromRequestParts<AppState> for ClientIp {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        Ok(ClientIp(client_ip(
-            parts,
-            state.config.behind_proxy,
-            state.config.proxy_hops,
-        )))
+        Ok(ClientIp(
+            client_ip(parts, &state.config).map(|address| address.to_string()),
+        ))
     }
 }
 
-fn client_ip(parts: &Parts, behind_proxy: bool, proxy_hops: u8) -> Option<String> {
-    if behind_proxy {
-        let forwarded: Vec<IpAddr> = parts
-            .headers
-            .get_all("x-forwarded-for")
-            .iter()
-            .filter_map(|value| value.to_str().ok())
-            .flat_map(|value| value.split(','))
-            .filter_map(|item| item.trim().parse::<IpAddr>().ok())
-            .collect();
-        let skip = usize::from(proxy_hops.max(1)) - 1;
-        if let Some(address) = forwarded.iter().rev().nth(skip).or(forwarded.first()) {
-            return Some(address.to_string());
-        }
-    }
-    parts
+fn forwarded_address(item: &str) -> Option<IpAddr> {
+    let item = item.trim();
+    item.parse::<IpAddr>()
+        .or_else(|_| item.parse::<SocketAddr>().map(|address| address.ip()))
+        .ok()
+        .map(|address| address.to_canonical())
+}
+
+fn client_ip(parts: &Parts, config: &ServerConfig) -> Option<IpAddr> {
+    let peer = parts
         .extensions
         .get::<ConnectInfo<SocketAddr>>()
-        .map(|ConnectInfo(address)| address.ip().to_string())
+        .map(|ConnectInfo(address)| address.ip().to_canonical());
+    if !config.behind_proxy {
+        return peer;
+    }
+    let forwarded: Vec<Option<IpAddr>> = parts
+        .headers
+        .get_all("x-forwarded-for")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(','))
+        .map(forwarded_address)
+        .collect();
+    if config.trusted_proxies.is_empty() {
+        let skip = usize::from(config.proxy_hops.max(1)) - 1;
+        return match forwarded.iter().rev().nth(skip).or(forwarded.first()) {
+            Some(Some(address)) => Some(*address),
+            Some(None) | None => peer,
+        };
+    }
+    let trusted = |address: &IpAddr| {
+        config
+            .trusted_proxies
+            .iter()
+            .any(|range| range.contains(*address))
+    };
+    if peer.is_some_and(|peer| !trusted(&peer)) {
+        return peer;
+    }
+    let mut leftmost = peer;
+    for entry in forwarded.iter().rev() {
+        match entry {
+            Some(address) if trusted(address) => leftmost = Some(*address),
+            Some(address) => return Some(*address),
+            None => return peer,
+        }
+    }
+    leftmost
 }
 
 pub fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ServerError> {

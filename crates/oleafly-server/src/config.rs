@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -112,6 +112,55 @@ impl Default for SignInLimits {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProxyRange {
+    network: IpAddr,
+    prefix: u8,
+}
+
+impl ProxyRange {
+    pub fn parse(text: &str) -> Option<ProxyRange> {
+        let (address, prefix) = match text.trim().split_once('/') {
+            Some((address, prefix)) => (address, Some(prefix)),
+            None => (text.trim(), None),
+        };
+        let address = address.parse::<IpAddr>().ok()?.to_canonical();
+        let widest = if address.is_ipv4() { 32 } else { 128 };
+        let prefix = match prefix {
+            Some(prefix) => prefix.parse::<u8>().ok().filter(|bits| *bits <= widest)?,
+            None => widest,
+        };
+        Some(ProxyRange {
+            network: masked(address, prefix),
+            prefix,
+        })
+    }
+
+    pub fn contains(&self, address: IpAddr) -> bool {
+        let address = address.to_canonical();
+        address.is_ipv4() == self.network.is_ipv4() && masked(address, self.prefix) == self.network
+    }
+}
+
+fn masked(address: IpAddr, prefix: u8) -> IpAddr {
+    match address {
+        IpAddr::V4(address) => {
+            let mask = u32::MAX.checked_shl(32 - u32::from(prefix)).unwrap_or(0);
+            IpAddr::V4(Ipv4Addr::from(u32::from(address) & mask))
+        }
+        IpAddr::V6(address) => {
+            let mask = u128::MAX.checked_shl(128 - u32::from(prefix)).unwrap_or(0);
+            IpAddr::V6(Ipv6Addr::from(u128::from(address) & mask))
+        }
+    }
+}
+
+impl fmt::Display for ProxyRange {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}/{}", self.network, self.prefix)
+    }
+}
+
 #[derive(Clone)]
 pub struct ServerConfig {
     pub public_url: Url,
@@ -128,6 +177,7 @@ pub struct ServerConfig {
     pub sign_in: SignInLimits,
     pub behind_proxy: bool,
     pub proxy_hops: u8,
+    pub trusted_proxies: Vec<ProxyRange>,
     pub log_level: String,
     pub security_log_days: u32,
     pub archive_days: u32,
@@ -263,6 +313,22 @@ impl ServerConfig {
                 "OLEAFLY_PROXY_HOPS only applies when OLEAFLY_BEHIND_PROXY is true.",
             ));
         }
+        let trusted_proxies = match source.get("OLEAFLY_TRUSTED_PROXIES") {
+            Some(raw) => parse_trusted_proxies(&raw)?,
+            None => Vec::new(),
+        };
+        if !trusted_proxies.is_empty() && !behind_proxy {
+            return Err(ConfigError::new(
+                "OLEAFLY_TRUSTED_PROXIES",
+                "OLEAFLY_TRUSTED_PROXIES only applies when OLEAFLY_BEHIND_PROXY is true.",
+            ));
+        }
+        if !trusted_proxies.is_empty() && source.is_set("OLEAFLY_PROXY_HOPS") {
+            return Err(ConfigError::new(
+                "OLEAFLY_TRUSTED_PROXIES",
+                "Set OLEAFLY_TRUSTED_PROXIES or OLEAFLY_PROXY_HOPS, not both. The trusted list is safer, so remove OLEAFLY_PROXY_HOPS.",
+            ));
+        }
         let log_level = match source.get("OLEAFLY_LOG_LEVEL") {
             Some(raw) => {
                 let level = raw.to_ascii_lowercase();
@@ -306,6 +372,7 @@ impl ServerConfig {
             sign_in,
             behind_proxy,
             proxy_hops,
+            trusted_proxies,
             log_level,
             security_log_days,
             archive_days,
@@ -684,6 +751,20 @@ fn parse_oidc(source: &Source<'_>, name: &str) -> Result<ProviderConfig, ConfigE
     })
 }
 
+fn parse_trusted_proxies(raw: &str) -> Result<Vec<ProxyRange>, ConfigError> {
+    raw.split([',', ' ', '\t', '\n'])
+        .filter(|item| !item.trim().is_empty())
+        .map(|item| {
+            ProxyRange::parse(item).ok_or_else(|| {
+                ConfigError::new(
+                    "OLEAFLY_TRUSTED_PROXIES",
+                    format!("OLEAFLY_TRUSTED_PROXIES must list addresses or ranges such as 173.245.48.0/20 or 10.0.0.0/8, separated by commas. {} is not one.", item.trim()),
+                )
+            })
+        })
+        .collect()
+}
+
 fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError> {
     let limits = SignInLimits {
         requests_burst: source.number("OLEAFLY_SIGN_IN_BURST", DEFAULT_SIGN_IN_BURST)?,
@@ -963,6 +1044,14 @@ impl fmt::Debug for ServerConfig {
             .field("sign_in", &self.sign_in)
             .field("behind_proxy", &self.behind_proxy)
             .field("proxy_hops", &self.proxy_hops)
+            .field(
+                "trusted_proxies",
+                &self
+                    .trusted_proxies
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>(),
+            )
             .field("log_level", &self.log_level)
             .field("security_log_days", &self.security_log_days)
             .field("archive_days", &self.archive_days)
@@ -1687,6 +1776,83 @@ mod tests {
                 "{name}={value}"
             );
         }
+    }
+
+    #[test]
+    fn trusted_proxy_ranges_match_the_addresses_inside_them() {
+        let range = |text: &str| ProxyRange::parse(text).expect(text);
+        let docker = range("10.0.0.0/8");
+        assert!(docker.contains("10.1.2.3".parse().unwrap()));
+        assert!(docker.contains("::ffff:10.0.15.2".parse().unwrap()));
+        assert!(!docker.contains("11.0.0.1".parse().unwrap()));
+        assert!(!docker.contains("2001:db8::1".parse().unwrap()));
+        let edge = range(" 173.245.48.0/20 ");
+        assert!(edge.contains("173.245.63.255".parse().unwrap()));
+        assert!(!edge.contains("173.245.64.0".parse().unwrap()));
+        let one = range("198.51.100.9");
+        assert_eq!(one.to_string(), "198.51.100.9/32");
+        assert!(one.contains("198.51.100.9".parse().unwrap()));
+        assert!(!one.contains("198.51.100.10".parse().unwrap()));
+        let v6 = range("2400:cb00::/32");
+        assert!(v6.contains("2400:cb00:1:2::3".parse().unwrap()));
+        assert!(!v6.contains("2400:cb01::1".parse().unwrap()));
+        assert_eq!(range("10.1.2.3/8").to_string(), "10.0.0.0/8");
+        assert!(range("0.0.0.0/0").contains("203.0.113.1".parse().unwrap()));
+        for bad in [
+            "10.0.0.0/33",
+            "2001:db8::/129",
+            "10.0.0/8",
+            "proxy",
+            "10.0.0.0/x",
+            "",
+        ] {
+            assert_eq!(ProxyRange::parse(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn trusted_proxies_need_a_proxy_and_replace_the_hop_count() {
+        let config = load(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            (
+                "OLEAFLY_TRUSTED_PROXIES",
+                "173.245.48.0/20, 2400:cb00::/32 10.0.0.0/8",
+            ),
+        ])
+        .unwrap();
+        assert_eq!(
+            config
+                .trusted_proxies
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["173.245.48.0/20", "2400:cb00::/32", "10.0.0.0/8"]
+        );
+        assert!(format!("{config:?}").contains("10.0.0.0/8"));
+        assert!(load(&[BASE]).unwrap().trusted_proxies.is_empty());
+        let without_proxy = load_err(&[BASE, ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8")]);
+        assert_eq!(without_proxy.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(without_proxy.message.contains("OLEAFLY_BEHIND_PROXY"));
+        let both = load_err(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            ("OLEAFLY_PROXY_HOPS", "2"),
+            ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8"),
+        ]);
+        assert_eq!(both.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(both.message.contains("not both"), "{}", both.message);
+        let bad = load_err(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8, cloudflare"),
+        ]);
+        assert_eq!(bad.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(
+            bad.message.contains("cloudflare is not one"),
+            "{}",
+            bad.message
+        );
     }
 
     #[test]
