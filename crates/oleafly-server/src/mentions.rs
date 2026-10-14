@@ -30,7 +30,7 @@ const MAX_ATTEMPTS: i64 = 5;
 const RETRY: Duration = Duration::from_secs(60);
 const KEPT_CHARS: usize = 2_000;
 
-const KEY: &[u8] = b"mentions";
+const WATCHED_KEYS: [&[u8]; 3] = [b"\x08mentions", b"\x07deleted", b"\x04body"];
 const COMMENTS: &str = "comments";
 const MESSAGES: &str = "messages";
 const TREE: &str = "tree";
@@ -51,7 +51,9 @@ pub struct Found {
 }
 
 pub fn may_mention(payload: &[u8]) -> bool {
-    payload.windows(KEY.len()).any(|window| window == KEY)
+    WATCHED_KEYS
+        .iter()
+        .any(|key| payload.windows(key.len()).any(|window| window == *key))
 }
 
 fn text_of(value: Option<&LoroValue>) -> Option<String> {
@@ -84,28 +86,39 @@ struct Message {
     body: String,
 }
 
-fn read_message(map: &LoroMap) -> Option<Message> {
+fn is_deleted(value: Option<&LoroValue>) -> bool {
+    matches!(value, Some(LoroValue::Bool(true)))
+}
+
+fn read_message(map: &LoroMap, thread_deleted: bool) -> Option<Message> {
     let LoroValue::Map(fields) = map.get_deep_value() else {
         return None;
     };
-    if matches!(fields.get("deleted"), Some(LoroValue::Bool(true))) {
-        return None;
+    let id = text_of(fields.get("id"))?;
+    let author = text_of(fields.get("author"))?.parse().ok()?;
+    if thread_deleted || is_deleted(fields.get("deleted")) {
+        return Some(Message {
+            id,
+            author,
+            mentions: Vec::new(),
+            writers: Vec::new(),
+            body: String::new(),
+        });
     }
     let mentions = accounts_of(fields.get("mentions"));
-    if mentions.is_empty() {
-        return None;
-    }
     let mut writers = Vec::new();
-    for key in WRITTEN {
-        let peer = map.get_last_editor(key)?;
-        if !writers.contains(&peer) {
-            writers.push(peer);
+    if !mentions.is_empty() {
+        for key in WRITTEN {
+            let peer = map.get_last_editor(key)?;
+            if !writers.contains(&peer) {
+                writers.push(peer);
+            }
         }
+        writers.sort_unstable();
     }
-    writers.sort_unstable();
     Some(Message {
-        id: text_of(fields.get("id"))?,
-        author: text_of(fields.get("author"))?.parse().ok()?,
+        id,
+        author,
         mentions,
         writers,
         body: text_of(fields.get("body")).unwrap_or_default(),
@@ -195,14 +208,19 @@ pub fn found_in(doc: &LoroDoc, spans: &[Span]) -> Vec<Found> {
             Some(ValueOrContainer::Value(value)) => text_of(Some(&value)).unwrap_or_default(),
             _ => String::new(),
         };
+        let thread_deleted = match thread.get("deleted") {
+            Some(ValueOrContainer::Value(value)) => is_deleted(Some(&value)),
+            _ => false,
+        };
+        let thread_withdrawn = thread_deleted && changed.contains(&thread.id());
         for index in 0..messages.len() {
             let Some(ValueOrContainer::Container(Container::Map(map))) = messages.get(index) else {
                 continue;
             };
-            if !changed.contains(&map.id()) {
+            if !thread_withdrawn && !changed.contains(&map.id()) {
                 continue;
             }
-            if let Some(message) = read_message(&map) {
+            if let Some(message) = read_message(&map, thread_deleted) {
                 found.push(Found {
                     file_id: file_id.to_string(),
                     thread_id: thread_id.to_string(),
@@ -533,6 +551,12 @@ fn record(
                 .writers
                 .iter()
                 .all(|peer| writers.get(peer) == Some(&item.author));
+        let still_mentioned: &[AccountId] = if written_by_author {
+            &item.mentions
+        } else {
+            &[]
+        };
+        withdraw(conn, project, &item.message_id, still_mentioned)?;
         if !written_by_author {
             continue;
         }
@@ -542,8 +566,11 @@ fn record(
             }
             let due = waiting_due(conn, *recipient)?.unwrap_or(now + WINDOW_MS);
             recorded += conn.execute(
-                "INSERT OR IGNORE INTO mention_emails (project_id, message_id, recipient_id, author_id, file_id, thread_id, path, quote, body, noticed_at, due_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                "INSERT INTO mention_emails (project_id, message_id, recipient_id, author_id, file_id, thread_id, path, quote, body, noticed_at, due_at) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) \
+                 ON CONFLICT (project_id, message_id, recipient_id) DO UPDATE SET \
+                 path = excluded.path, quote = excluded.quote, body = excluded.body \
+                 WHERE mention_emails.sent_at IS NULL",
                 params![
                     project.to_string(),
                     item.message_id,
@@ -561,6 +588,36 @@ fn record(
         }
     }
     Ok(recorded)
+}
+
+fn withdraw(
+    conn: &Connection,
+    project: SharedProjectId,
+    message_id: &str,
+    still_mentioned: &[AccountId],
+) -> Result<usize, ServerError> {
+    let waiting: Vec<String> = conn
+        .prepare_cached(
+            "SELECT recipient_id FROM mention_emails \
+             WHERE project_id = ?1 AND message_id = ?2 AND sent_at IS NULL",
+        )?
+        .query_map(params![project.to_string(), message_id], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut withdrawn = 0;
+    for recipient in waiting {
+        if still_mentioned
+            .iter()
+            .any(|kept| kept.to_string() == recipient)
+        {
+            continue;
+        }
+        withdrawn += conn.execute(
+            "DELETE FROM mention_emails WHERE project_id = ?1 AND message_id = ?2 \
+             AND recipient_id = ?3 AND sent_at IS NULL",
+            params![project.to_string(), message_id, recipient],
+        )?;
+    }
+    Ok(withdrawn)
 }
 
 struct Waiting {
@@ -931,11 +988,20 @@ mod tests {
             doc.get_text("text:file-1").insert(0, "@Bob ").unwrap();
         });
         assert!(found_in(&doc, &spans).is_empty());
+        let mentioned = |found: Vec<Found>| -> Vec<(String, Vec<AccountId>)> {
+            found
+                .into_iter()
+                .map(|found| (found.message_id, found.mentions))
+                .collect()
+        };
         let (spans, _) = written(&doc, 21, |doc| {
             let messages = thread(doc, "file-2", "thread-2", "quiet");
             message(&messages, "message-3", ALICE, "no one", &[]);
         });
-        assert!(found_in(&doc, &spans).is_empty());
+        assert_eq!(
+            mentioned(found_in(&doc, &spans)),
+            vec![("message-3".to_string(), vec![])]
+        );
         let (spans, _) = written(&doc, 21, |doc| {
             let Some(ValueOrContainer::Container(Container::Map(thread))) =
                 doc.get_map("comments").get("file-2/thread-2")
@@ -953,7 +1019,102 @@ mod tests {
             };
             written.insert("deleted", true).unwrap();
         });
-        assert!(found_in(&doc, &spans).is_empty());
+        assert_eq!(
+            mentioned(found_in(&doc, &spans)),
+            vec![("message-4".to_string(), vec![])]
+        );
+    }
+
+    #[test]
+    fn deleting_a_thread_or_a_message_and_editing_one_are_reported_with_what_they_mention_now() {
+        let doc = project();
+        written(&doc, 21, |doc| {
+            let first = thread(doc, "file-1", "thread-8", "fox");
+            message(&first, "message-9", ALICE, "@Bob look", &[BOB]);
+            message(&first, "message-10", ALICE, "@Carol and you", &[CAROL]);
+            let second = thread(doc, "file-1", "thread-9", "dog");
+            message(&second, "message-11", ALICE, "@Bob here", &[BOB]);
+        });
+        let (spans, _) = written(&doc, 21, |doc| {
+            let Some(ValueOrContainer::Container(Container::Map(gone))) =
+                doc.get_map("comments").get("file-1/thread-8")
+            else {
+                panic!("the thread exists");
+            };
+            gone.insert("deleted", true).unwrap();
+        });
+        let mut withdrawn: Vec<(String, Vec<AccountId>)> = found_in(&doc, &spans)
+            .into_iter()
+            .map(|found| (found.message_id, found.mentions))
+            .collect();
+        withdrawn.sort();
+        assert_eq!(
+            withdrawn,
+            vec![
+                ("message-10".to_string(), vec![]),
+                ("message-9".to_string(), vec![])
+            ]
+        );
+        let (spans, _) = written(&doc, 21, |doc| {
+            let Some(ValueOrContainer::Container(Container::Map(edited))) =
+                messages_of(doc, "file-1", "thread-9").get(0)
+            else {
+                panic!("the message exists");
+            };
+            edited.insert("body", "@Bob over here").unwrap();
+        });
+        let found = found_in(&doc, &spans);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].message_id, "message-11");
+        assert_eq!(found[0].mentions, vec![account(BOB)]);
+        assert_eq!(found[0].body, "@Bob over here");
+        let (spans, _) = written(&doc, 21, |doc| {
+            let Some(ValueOrContainer::Container(Container::Map(deleted))) =
+                messages_of(doc, "file-1", "thread-9").get(0)
+            else {
+                panic!("the message exists");
+            };
+            deleted.insert("deleted", true).unwrap();
+            deleted.insert("body", "").unwrap();
+        });
+        let found = found_in(&doc, &spans);
+        assert_eq!(found.len(), 1);
+        assert!(found[0].mentions.is_empty());
+        assert!(found[0].body.is_empty());
+    }
+
+    #[test]
+    fn only_changes_to_comment_keys_ask_for_a_scan_and_words_in_the_text_do_not() {
+        let doc = project();
+        let (_, prose) = written(&doc, 21, |doc| {
+            doc.get_text("text:file-1")
+                .insert(0, "As Smith mentions in [3], the body of work was deleted.")
+                .unwrap();
+        });
+        assert!(!may_mention(&prose));
+        let (_, comment) = written(&doc, 21, |doc| {
+            let messages = thread(doc, "file-1", "thread-10", "fox");
+            message(&messages, "message-12", ALICE, "@Bob", &[BOB]);
+        });
+        assert!(may_mention(&comment));
+        let (_, edit) = written(&doc, 21, |doc| {
+            let Some(ValueOrContainer::Container(Container::Map(edited))) =
+                messages_of(doc, "file-1", "thread-10").get(0)
+            else {
+                panic!("the message exists");
+            };
+            edited.insert("body", "@Bob, fixed").unwrap();
+        });
+        assert!(may_mention(&edit));
+        let (_, gone) = written(&doc, 21, |doc| {
+            let Some(ValueOrContainer::Container(Container::Map(thread))) =
+                doc.get_map("comments").get("file-1/thread-10")
+            else {
+                panic!("the thread exists");
+            };
+            thread.insert("deleted", true).unwrap();
+        });
+        assert!(may_mention(&gone));
     }
 
     #[test]

@@ -714,3 +714,121 @@ async fn mentions_waiting_when_the_server_stops_go_out_after_it_starts_again() {
         .text()
         .contains("Comment: @Bob Smith before the restart"));
 }
+
+fn thread_map(doc: &LoroDoc, thread: &str) -> LoroMap {
+    let Some(ValueOrContainer::Container(Container::Map(map))) =
+        doc.get_map("comments").get(&format!("{FILE}/{thread}"))
+    else {
+        panic!("the thread exists");
+    };
+    map
+}
+
+fn first_message(doc: &LoroDoc, thread: &str) -> LoroMap {
+    let Some(ValueOrContainer::Container(Container::Map(message))) =
+        messages_of(doc, thread).get(0)
+    else {
+        panic!("the message exists");
+    };
+    message
+}
+
+async fn mention_then(edit: impl FnOnce(&LoroDoc, &str)) -> (Vec<CapturedEmail>, MockSmtp, Stage) {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    let thread = new_id();
+    alice
+        .send(&stage.alice, project, |doc| {
+            start_thread(
+                doc,
+                &thread,
+                account(&stage.alice),
+                "@Bob Smith the second reviewer is clueless",
+                &[account(&stage.bob)],
+            );
+        })
+        .await;
+    tokio::time::timeout(WAIT, stage.server.state().mentions.settled())
+        .await
+        .unwrap();
+    stage.server.clock().advance(10_000);
+    alice
+        .send(&stage.alice, project, |doc| edit(doc, &thread))
+        .await;
+    let sent = mention_emails(&stage.server, &smtp).await;
+    (sent, smtp, stage)
+}
+
+#[tokio::test]
+async fn a_thread_deleted_before_the_minute_is_up_emails_nobody() {
+    let (sent, _smtp, _stage) = mention_then(|doc, thread| {
+        thread_map(doc, thread).insert("deleted", true).unwrap();
+    })
+    .await;
+    assert!(sent.is_empty(), "{sent:?}");
+}
+
+#[tokio::test]
+async fn a_comment_deleted_before_the_minute_is_up_emails_nobody() {
+    let (sent, _smtp, _stage) = mention_then(|doc, thread| {
+        let message = first_message(doc, thread);
+        message.insert("deleted", true).unwrap();
+        message.insert("body", "").unwrap();
+    })
+    .await;
+    assert!(sent.is_empty(), "{sent:?}");
+}
+
+#[tokio::test]
+async fn a_comment_edited_before_the_minute_is_up_sends_the_new_text() {
+    let (sent, _smtp, _stage) = mention_then(|doc, thread| {
+        let message = first_message(doc, thread);
+        message
+            .insert("body", "@Bob Smith the second review needs another look")
+            .unwrap();
+        message.insert("edited_at", 20_i64).unwrap();
+    })
+    .await;
+    assert_eq!(sent.len(), 1, "{sent:?}");
+    let text = sent[0].text();
+    assert!(
+        text.contains("Comment: @Bob Smith the second review needs another look"),
+        "{text}"
+    );
+    assert!(!text.contains("clueless"), "{text}");
+}
+
+#[tokio::test]
+async fn an_edit_that_takes_someone_out_withdraws_their_email() {
+    let (sent, _smtp, _stage) = mention_then(|doc, thread| {
+        let message = first_message(doc, thread);
+        message.insert("body", "Never mind").unwrap();
+        message.insert("mentions", mention_list(&[])).unwrap();
+    })
+    .await;
+    assert!(sent.is_empty(), "{sent:?}");
+}
+
+#[tokio::test]
+async fn a_thread_written_and_deleted_offline_emails_nobody() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    let thread = new_id();
+    alice.change(|doc| {
+        start_thread(
+            doc,
+            &thread,
+            account(&stage.alice),
+            "@Bob Smith written on the train",
+            &[account(&stage.bob)],
+        );
+    });
+    alice.change(|doc| {
+        thread_map(doc, &thread).insert("deleted", true).unwrap();
+    });
+    alice.flush(&stage.alice, project).await;
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert!(sent.is_empty(), "{sent:?}");
+}
