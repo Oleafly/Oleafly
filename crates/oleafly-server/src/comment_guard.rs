@@ -11,7 +11,7 @@ use crate::db::Db;
 use crate::error::ServerError;
 use crate::peers;
 use crate::projects;
-use crate::snapshots::{self, Replay, Snapshots};
+use crate::snapshots::{self, Budgeted, Replay, Snapshots};
 
 pub const COMMENTS: &str = "comments";
 const IDLE: Duration = Duration::from_secs(15 * 60);
@@ -25,7 +25,7 @@ pub enum Verdict {
 }
 
 struct Kept {
-    replay: Replay,
+    replay: Budgeted,
     seq: u64,
 }
 
@@ -103,7 +103,7 @@ impl CommentGuard {
             let replay = if intact {
                 Some(replay)
             } else {
-                rewound(project, &replay, &before)
+                rewound(project, &replay, &before).map(|fresh| replay.replaced(fresh))
             };
             (verdict, replay)
         })
@@ -142,7 +142,7 @@ async fn caught_up(
     db: &Db,
     project: SharedProjectId,
     kept: Option<Kept>,
-) -> Result<Option<(Replay, u64)>, ServerError> {
+) -> Result<Option<(Budgeted, u64)>, ServerError> {
     let Some(Kept { replay, seq }) = kept else {
         return Ok(None);
     };

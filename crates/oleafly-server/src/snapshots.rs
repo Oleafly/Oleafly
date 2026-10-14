@@ -75,8 +75,48 @@ impl Drop for Reserved {
     }
 }
 
+// A document read under the snapshot memory budget. The share of the budget
+// it took goes back only when the document itself is dropped, wherever that
+// happens, so a caller that keeps it, or a blocking task that outlives the
+// request that started it, keeps paying for it.
+pub struct Budgeted {
+    replay: Replay,
+    reserved: Reserved,
+}
+
+impl Budgeted {
+    pub fn reserved_bytes(&self) -> u64 {
+        self.reserved.bytes
+    }
+
+    pub fn replaced(self, replay: Replay) -> Budgeted {
+        Budgeted {
+            replay,
+            reserved: self.reserved,
+        }
+    }
+
+    pub fn finish(self) -> Option<Vec<u8>> {
+        self.replay.finish()
+    }
+}
+
+impl std::ops::Deref for Budgeted {
+    type Target = Replay;
+
+    fn deref(&self) -> &Replay {
+        &self.replay
+    }
+}
+
+impl std::ops::DerefMut for Budgeted {
+    fn deref_mut(&mut self) -> &mut Replay {
+        &mut self.replay
+    }
+}
+
 enum Replayed {
-    Ready(Replay),
+    Ready(Budgeted),
     Unreadable,
     Gap,
 }
@@ -409,7 +449,7 @@ impl Snapshots {
                 );
                 return Ok(Upload::Held(newest.seq));
             }
-            let Some(_reserved) = self.reserve(needed) else {
+            let Some(reserved) = self.reserve(needed) else {
                 tracing::info!(
                     "Put off the snapshot of project {project} at {through} while other snapshots are being built"
                 );
@@ -431,7 +471,7 @@ impl Snapshots {
                 }
             };
             let replay = match self
-                .replayed(db, project, base, after, through, &bindings)
+                .replayed(db, project, base, after, through, &bindings, reserved)
                 .await?
             {
                 Replayed::Ready(replay) => replay,
@@ -490,6 +530,7 @@ impl Snapshots {
         Ok(Some(blocking(move || Ok(replay.files())).await?))
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn replayed(
         &self,
         db: &Db,
@@ -498,8 +539,12 @@ impl Snapshots {
         after: u64,
         through: u64,
         bindings: &Arc<HashMap<u64, DeviceId>>,
+        reserved: Reserved,
     ) -> Result<Replayed, ServerError> {
-        let Some(replay) = blocking(move || Ok(Replay::start(project, &base))).await? else {
+        let started = blocking(move || {
+            Ok(Replay::start(project, &base).map(|replay| Budgeted { replay, reserved }))
+        });
+        let Some(replay) = started.await? else {
             return Ok(Replayed::Unreadable);
         };
         Ok(
@@ -514,7 +559,7 @@ impl Snapshots {
         &self,
         db: &Db,
         project: SharedProjectId,
-    ) -> Result<Option<(Replay, u64)>, ServerError> {
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
         let (candidates, bindings, head) = db
             .call(move |conn| {
                 Ok((
@@ -548,14 +593,14 @@ impl Snapshots {
                 );
                 return Ok(None);
             }
-            let Some(_reserved) = self.reserve(needed) else {
+            let Some(reserved) = self.reserve(needed) else {
                 return Ok(None);
             };
             let Ok(Some(base)) = self.read(project, &row).await else {
                 continue;
             };
             match self
-                .replayed(db, project, base, after, head, &bindings)
+                .replayed(db, project, base, after, head, &bindings, reserved)
                 .await?
             {
                 Replayed::Ready(replay) => return Ok(Some((replay, head))),
@@ -1013,11 +1058,11 @@ pub struct Replay {
 pub async fn advance(
     db: &Db,
     project: SharedProjectId,
-    mut replay: Replay,
+    mut replay: Budgeted,
     after: u64,
     through: u64,
     bindings: &Arc<HashMap<u64, DeviceId>>,
-) -> Result<Option<Replay>, ServerError> {
+) -> Result<Option<Budgeted>, ServerError> {
     let mut cursor = after;
     while cursor < through {
         let page = db
@@ -1256,6 +1301,66 @@ mod tests {
         drop((second, third));
         assert!(snapshots.reserve(100).is_some());
         assert!(snapshots.reserve(101).is_none());
+    }
+
+    async fn project_with_snapshot(snapshots: &Snapshots, db: &Db, text: &str) -> SharedProjectId {
+        let project = SharedProjectId::new_v7();
+        let owner = db
+            .call(move |conn| {
+                let owner = crate::members::create_account(
+                    conn,
+                    "Ada",
+                    None,
+                    oleafly_collab_protocol::roles::ServerRole::Member,
+                    1,
+                )?;
+                conn.execute(
+                    "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, 'Thesis', 'active', 1)",
+                    rusqlite::params![project.to_string(), owner.to_string()],
+                )?;
+                Ok(owner)
+            })
+            .await
+            .unwrap();
+        let doc = LoroDoc::new();
+        doc.set_peer_id(1).unwrap();
+        doc.get_text("text").insert(0, text).unwrap();
+        doc.commit();
+        let bytes = doc.export(ExportMode::Snapshot).unwrap();
+        snapshots
+            .upload_first(db, project, Bytes::from(bytes), owner, None, 1)
+            .await
+            .unwrap();
+        project
+    }
+
+    #[tokio::test]
+    async fn a_document_read_keeps_its_share_of_the_budget_until_it_is_dropped() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let size = db
+            .call(move |conn| projects::snapshot_size(conn, project, 0))
+            .await
+            .unwrap()
+            .expect("a stored snapshot");
+        let needed = read_cost(size, 0);
+        snapshots.set_budget(Budget {
+            memory_bytes: needed,
+            max_snapshot_bytes: 1 << 20,
+        });
+        let (kept, head) = snapshots
+            .current(&db, project)
+            .await
+            .unwrap()
+            .expect("the document fits the budget");
+        assert_eq!(head, 0);
+        assert_eq!(kept.reserved_bytes(), needed);
+        assert_eq!(kept.doc().get_text("text").to_string(), "Hello");
+        assert!(snapshots.reserve(needed).is_none());
+        assert!(snapshots.current(&db, project).await.unwrap().is_none());
+        drop(kept);
+        assert!(snapshots.reserve(needed).is_some());
     }
 
     fn logged(
