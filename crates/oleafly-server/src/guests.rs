@@ -398,6 +398,7 @@ pub fn accept_for(
     account: AccountId,
     emails: &[String],
     max_members: u32,
+    ip: Option<&str>,
     now: i64,
 ) -> Result<Vec<Accepted>, ServerError> {
     if !settings::load(conn)?.guests_enabled {
@@ -405,9 +406,16 @@ pub fn accept_for(
     }
     let mut accepted = Vec::new();
     for invitation in usable(conn, emails, now)? {
-        accepted.extend(accept(conn, &invitation, account, max_members, now)?);
+        let by = Granter { actor: account, ip };
+        accepted.extend(accept(conn, &invitation, account, max_members, by, now)?);
     }
     Ok(accepted)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Granter<'a> {
+    pub actor: AccountId,
+    pub ip: Option<&'a str>,
 }
 
 fn accept(
@@ -415,6 +423,7 @@ fn accept(
     invitation: &Invitation,
     account: AccountId,
     max_members: u32,
+    by: Granter<'_>,
     now: i64,
 ) -> Result<Option<Accepted>, ServerError> {
     if !owner_present(conn, invitation.project)? {
@@ -444,15 +453,16 @@ fn accept(
             conn,
             now,
             NewSecurityEvent {
-                actor: Some(invitation.invited_by),
+                actor: Some(by.actor),
                 kind: SecurityEventKind::ProjectAccessGranted,
                 target: Some(account.to_string()),
-                ip: None,
+                ip: by.ip.map(str::to_string),
                 detail: json!({
                     "project": invitation.project.to_string(),
                     "role": projects::role_to_str(invitation.role),
                     "via": "invitation",
                     "invitation": invitation.id,
+                    "invited_by": invitation.invited_by.to_string(),
                 }),
             },
         )?;
@@ -469,6 +479,7 @@ pub fn accept_existing(
     conn: &Connection,
     invitation: &Invitation,
     max_members: u32,
+    by: Granter<'_>,
     now: i64,
 ) -> Result<Option<Accepted>, ServerError> {
     if invitation.status_at(now) != GuestInvitationStatus::Invited
@@ -493,7 +504,7 @@ pub fn accept_existing(
         return Ok(None);
     };
     let account: AccountId = parse_id(holder)?;
-    accept(conn, invitation, account, max_members, now)
+    accept(conn, invitation, account, max_members, by, now)
 }
 
 pub fn end_if_no_access(

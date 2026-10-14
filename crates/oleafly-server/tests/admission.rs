@@ -94,7 +94,7 @@ async fn admit(app: &TestApp, identity: &ExternalIdentity, setup_hash: Option<St
         .db
         .call(move |conn| {
             let decision = admission::decide(conn, &identity, setup_hash.as_deref())?;
-            admission::apply(conn, &identity, decision, 20, now)
+            admission::apply(conn, &identity, decision, 20, None, now)
         })
         .await
         .expect("admit")
@@ -791,7 +791,7 @@ async fn removed_then_invited(role: ServerRole) -> Returning {
             let identity = github("42", "bob", &["bob@uni.edu"]);
             let decision = admission::decide(conn, &identity, None)?;
             let again = admission::decide(conn, &identity, None)?;
-            let applied = admission::apply(conn, &identity, again, 20, now)?;
+            let applied = admission::apply(conn, &identity, again, 20, None, now)?;
             Ok(Returning {
                 decision,
                 applied,
@@ -1109,7 +1109,7 @@ async fn inactive_then_invited_under_another_identity(
             let accounts_before = count(conn)?;
             let identity = github("43", "bob-elsewhere", &["bob@uni.edu"]);
             let decision = admission::decide(conn, &identity, None)?;
-            let applied = admission::apply(conn, &identity, decision, 20, now)?;
+            let applied = admission::apply(conn, &identity, decision, 20, None, now)?;
             Ok(InvitedElsewhere {
                 applied,
                 accounts_before,

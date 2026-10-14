@@ -147,6 +147,7 @@ pub fn apply(
     identity: &ExternalIdentity,
     admission: Admission,
     max_members: u32,
+    ip: Option<&str>,
     now: i64,
 ) -> Result<Applied, ServerError> {
     let (role, entry_id, existing, via) = match admission {
@@ -175,6 +176,7 @@ pub fn apply(
                 account_id,
                 &identity.verified_emails,
                 max_members,
+                ip,
                 now,
             )?;
             return Ok(Applied::Admitted(Admitted {
@@ -246,6 +248,7 @@ pub fn apply(
         account_id,
         &identity.verified_emails,
         max_members,
+        ip,
         now,
     )?;
     if let Some(entry_id) = entry_id {

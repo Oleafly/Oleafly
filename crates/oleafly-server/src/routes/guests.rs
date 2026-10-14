@@ -15,7 +15,7 @@ use rusqlite::Connection;
 use serde_json::json;
 
 use crate::error::ServerError;
-use crate::guests::{self, Accepted, Invitation};
+use crate::guests::{self, Accepted, Granter, Invitation};
 use crate::mail::notify;
 use crate::members;
 use crate::projects::{self, ProjectRow};
@@ -212,13 +212,17 @@ async fn invite(
                     account,
                     SecurityEventKind::GuestInvitationApproved,
                     &approved,
-                    ip,
+                    ip.clone(),
                 )?;
                 approved
             } else {
                 created
             };
-            let accepted = guests::accept_existing(&transaction, &created, max_members, now)?;
+            let by = Granter {
+                actor: account,
+                ip: ip.as_deref(),
+            };
+            let accepted = guests::accept_existing(&transaction, &created, max_members, by, now)?;
             let current = guests::get(&transaction, &created.id)?.ok_or(ServerError::NotFound)?;
             let wire = guests::to_wire(&transaction, &current, now)?;
             let emailed = accepted.is_none() && guests::will_email(mail, &transaction, &email)?;
@@ -306,9 +310,13 @@ async fn approve(
                 actor,
                 SecurityEventKind::GuestInvitationApproved,
                 &approved,
-                ip,
+                ip.clone(),
             )?;
-            let accepted = guests::accept_existing(&transaction, &approved, max_members, now)?;
+            let by = Granter {
+                actor,
+                ip: ip.as_deref(),
+            };
+            let accepted = guests::accept_existing(&transaction, &approved, max_members, by, now)?;
             let current = guests::get(&transaction, &id)?.ok_or(ServerError::NotFound)?;
             let wire = guests::to_wire(&transaction, &current, now)?;
             transaction.commit()?;

@@ -338,6 +338,79 @@ async fn a_guest_waits_while_the_owner_who_invited_them_is_away() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn access_from_an_invitation_is_logged_by_whoever_granted_it_and_from_where() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Alice's paper").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let dana_first = sign_in_as(stage, "dana-gh").await;
+    assert_eq!(dana_first.err().as_deref(), Some("not_admitted"));
+    let approved = decide(stage, &stage.bob, &waiting.invitation.id, "approve").await;
+    assert_eq!(approved.status(), StatusCode::OK);
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("dana is admitted");
+    let second = share_project(&stage.server, &stage.alice, "Alice's notes").await;
+    invited_by(
+        stage,
+        &stage.alice,
+        second.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let approved_again = staff_list(stage, &stage.bob).await;
+    let open: Vec<oleafly_collab_protocol::guests::GuestInvitation> =
+        approved_again.json().await.expect("open invitations");
+    let second_invitation = open
+        .iter()
+        .find(|invitation| invitation.project_id == second.project_id)
+        .expect("the second invitation waits for approval");
+    let approved = decide(stage, &stage.bob, &second_invitation.id, "approve").await;
+    assert_eq!(approved.status(), StatusCode::OK);
+    let events = stage
+        .server
+        .state()
+        .db
+        .call(|conn| oleafly_server::security_log::page(conn, None, 200))
+        .await
+        .expect("security log")
+        .items;
+    let granted: Vec<_> = events
+        .iter()
+        .filter(|event| event.kind == SecurityEventKind::ProjectAccessGranted)
+        .filter(|event| event.detail["via"] == "invitation")
+        .collect();
+    assert_eq!(granted.len(), 2, "{granted:?}");
+    let alice = stage.alice.tokens.account_id.to_string();
+    for event in &granted {
+        assert_eq!(event.detail["invited_by"], alice.as_str(), "{event:?}");
+        assert!(
+            event.ip.as_deref().is_some_and(|ip| !ip.is_empty()),
+            "{event:?}"
+        );
+    }
+    let by_sign_in = granted
+        .iter()
+        .find(|event| event.detail["project"] == project.project_id.to_string().as_str())
+        .expect("the first grant");
+    assert_eq!(by_sign_in.actor, Some(dana.tokens.account_id));
+    let by_approval = granted
+        .iter()
+        .find(|event| event.detail["project"] == second.project_id.to_string().as_str())
+        .expect("the second grant");
+    assert_eq!(by_approval.actor, Some(stage.bob.tokens.account_id));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_owner_can_change_a_guests_role_but_not_add_a_guest_by_account() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;

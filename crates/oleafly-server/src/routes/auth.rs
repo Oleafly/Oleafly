@@ -529,7 +529,7 @@ pub(crate) fn complete_sign_in(
         }
     }
     let decision = admission::decide(&tx, identity, pending.setup_code_hash.as_deref())?;
-    let result = match admission::apply(&tx, identity, decision, max_members, now)? {
+    let result = match admission::apply(&tx, identity, decision, max_members, ip.as_deref(), now)? {
         Applied::Admitted(admitted) => {
             if admitted.via == Via::Setup {
                 security_log::record(
