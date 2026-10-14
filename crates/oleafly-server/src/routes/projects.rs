@@ -1242,10 +1242,13 @@ async fn remove_member(
             Ok(signed_out)
         })
         .await?;
+    // end_if_no_access signed these devices out inside the removal's
+    // transaction, so only their open connections are left to tell, and
+    // that can't fail after the removal has been committed.
     for device in signed_out {
         state
-            .end_device_session(device, SessionEndReason::AccessEnded)
-            .await?;
+            .sockets
+            .revoke(device, Some(SessionEndReason::AccessEnded));
     }
     let change = MemberChange {
         account_id: target,
