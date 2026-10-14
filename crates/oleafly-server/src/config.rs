@@ -161,6 +161,12 @@ impl fmt::Display for ProxyRange {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StartupNote {
+    Info(String),
+    Warning(String),
+}
+
 #[derive(Clone)]
 pub struct ServerConfig {
     pub public_url: Url,
@@ -183,6 +189,7 @@ pub struct ServerConfig {
     pub archive_days: u32,
     pub snapshot_memory_mb: u64,
     pub poll_hold: Duration,
+    pub startup_notes: Vec<StartupNote>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -344,10 +351,23 @@ impl ServerConfig {
         };
         let security_log_days = source.number("OLEAFLY_SECURITY_LOG_DAYS", 365u32)?;
         let archive_days = source.number("OLEAFLY_ARCHIVE_DAYS", 30u32)?;
-        let snapshot_memory_mb = source.number(
-            "OLEAFLY_SNAPSHOT_MEMORY_MB",
-            source.half_the_memory_limit_mb(),
-        )?;
+        let mut startup_notes = Vec::new();
+        let (detected_mb, memory) = source.half_the_memory_limit_mb();
+        let snapshot_memory_mb = source.number("OLEAFLY_SNAPSHOT_MEMORY_MB", detected_mb)?;
+        startup_notes.push(StartupNote::Info(
+            match (source.is_set("OLEAFLY_SNAPSHOT_MEMORY_MB"), memory) {
+                (true, _) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says."
+                ),
+                (false, Some(memory)) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB (half of {} MB).",
+                    memory / MB
+                ),
+                (false, None) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB. The server could not tell how much memory it has, so set OLEAFLY_SNAPSHOT_MEMORY_MB to about half of it."
+                ),
+            },
+        ));
         let poll_hold_seconds =
             source.number("OLEAFLY_POLL_HOLD_SECONDS", DEFAULT_POLL_HOLD_SECONDS)?;
         if poll_hold_seconds > MAX_POLL_HOLD_SECONDS {
@@ -378,6 +398,7 @@ impl ServerConfig {
             archive_days,
             snapshot_memory_mb,
             poll_hold,
+            startup_notes,
         })
     }
 
@@ -422,10 +443,14 @@ fn read_secret_file(path: &Path) -> std::io::Result<String> {
 }
 
 const DEFAULT_SNAPSHOT_MEMORY_MB: u64 = 1024;
+const MB: u64 = 1024 * 1024;
+const UNLIMITED: u64 = 1 << 40;
 const MEMORY_LIMIT_FILES: [&str; 2] = [
     "/sys/fs/cgroup/memory.max",
     "/sys/fs/cgroup/memory/memory.limit_in_bytes",
 ];
+const OWN_CGROUP_FILE: &str = "/proc/self/cgroup";
+const MEMORY_INFO_FILE: &str = "/proc/meminfo";
 
 struct Source<'a> {
     vars: &'a BTreeMap<String, String>,
@@ -490,15 +515,67 @@ impl Source<'_> {
         }
     }
 
-    fn half_the_memory_limit_mb(&self) -> u64 {
-        const UNLIMITED: u64 = 1 << 40;
-        const MB: u64 = 1024 * 1024;
-        MEMORY_LIMIT_FILES
+    fn half_the_memory_limit_mb(&self) -> (u64, Option<u64>) {
+        let files = self.memory_limit_files();
+        let limits = files
             .iter()
-            .filter_map(|file| (self.read_file)(Path::new(file)).ok())
-            .filter_map(|text| text.trim().parse::<u64>().ok())
-            .find(|limit| *limit < UNLIMITED)
-            .map_or(DEFAULT_SNAPSHOT_MEMORY_MB, |limit| (limit / 2 / MB).max(1))
+            .filter_map(|file| (self.read_file)(file).ok())
+            .filter_map(|text| text.trim().parse::<u64>().ok());
+        let smallest = limits
+            .chain(self.memory_total())
+            .filter(|limit| *limit < UNLIMITED)
+            .min();
+        match smallest {
+            Some(limit) => ((limit / 2 / MB).max(1), Some(limit)),
+            None => (DEFAULT_SNAPSHOT_MEMORY_MB, None),
+        }
+    }
+
+    fn memory_limit_files(&self) -> Vec<PathBuf> {
+        let mut files: Vec<PathBuf> = MEMORY_LIMIT_FILES.iter().map(PathBuf::from).collect();
+        let Ok(own) = (self.read_file)(Path::new(OWN_CGROUP_FILE)) else {
+            return files;
+        };
+        for line in own.lines() {
+            let mut fields = line.splitn(3, ':');
+            let (Some(_), Some(controllers), Some(path)) =
+                (fields.next(), fields.next(), fields.next())
+            else {
+                continue;
+            };
+            let (root, file) = if controllers.is_empty() {
+                ("/sys/fs/cgroup", "memory.max")
+            } else if controllers
+                .split(',')
+                .any(|controller| controller == "memory")
+            {
+                ("/sys/fs/cgroup/memory", "memory.limit_in_bytes")
+            } else {
+                continue;
+            };
+            let mut group = PathBuf::from(path.trim());
+            loop {
+                let relative = group.strip_prefix("/").unwrap_or(&group);
+                files.push(Path::new(root).join(relative).join(file));
+                if !group.pop() {
+                    break;
+                }
+            }
+        }
+        files
+    }
+
+    fn memory_total(&self) -> Option<u64> {
+        let text = (self.read_file)(Path::new(MEMORY_INFO_FILE)).ok()?;
+        let line = text.lines().find(|line| line.starts_with("MemTotal:"))?;
+        let kilobytes = line
+            .trim_start_matches("MemTotal:")
+            .trim()
+            .trim_end_matches("kB")
+            .trim()
+            .parse::<u64>()
+            .ok()?;
+        kilobytes.checked_mul(1024)
     }
 
     fn flag(&self, name: &str, default: bool) -> Result<bool, ConfigError> {
@@ -1057,6 +1134,7 @@ impl fmt::Debug for ServerConfig {
             .field("archive_days", &self.archive_days)
             .field("snapshot_memory_mb", &self.snapshot_memory_mb)
             .field("poll_hold", &self.poll_hold)
+            .field("startup_notes", &self.startup_notes)
             .finish()
     }
 }
@@ -1135,6 +1213,110 @@ mod tests {
         assert_eq!(
             load_err(&[BASE, ("OLEAFLY_SNAPSHOT_MEMORY_MB", "0")]).variable,
             "OLEAFLY_SNAPSHOT_MEMORY_MB"
+        );
+    }
+
+    fn files(
+        answers: &'static [(&'static str, &'static str)],
+    ) -> impl Fn(&Path) -> std::io::Result<String> {
+        move |path: &Path| {
+            answers
+                .iter()
+                .find(|(wanted, _)| path == Path::new(wanted))
+                .map(|(_, answer)| Ok((*answer).to_string()))
+                .unwrap_or_else(|| missing_file(path))
+        }
+    }
+
+    fn budget_and_note(
+        answers: &'static [(&'static str, &'static str)],
+    ) -> (u64, Vec<StartupNote>) {
+        let config = load_with(&[BASE], &files(answers)).unwrap();
+        (config.snapshot_memory_mb, config.startup_notes)
+    }
+
+    #[test]
+    fn snapshot_memory_is_half_the_smaller_of_the_limit_and_the_machine() {
+        let (budget, notes) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "max\n"),
+            (
+                "/proc/meminfo",
+                "MemTotal:        1000000 kB\nMemFree:          200000 kB\n",
+            ),
+        ]);
+        assert_eq!(budget, 488);
+        assert_eq!(
+            notes,
+            [StartupNote::Info(
+                "Snapshot builds may use 488 MB (half of 976 MB).".to_string()
+            )]
+        );
+        let (bigger_limit, _) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "4294967296\n"),
+            ("/proc/meminfo", "MemTotal: 2048000 kB\n"),
+        ]);
+        assert_eq!(bigger_limit, 1000);
+        let (smaller_limit, _) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "536870912\n"),
+            ("/proc/meminfo", "MemTotal: 8192000 kB\n"),
+        ]);
+        assert_eq!(smaller_limit, 256);
+    }
+
+    #[test]
+    fn a_systemd_memory_limit_on_the_service_or_its_slice_counts() {
+        let (service, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "0::/system.slice/oleafly-server.service\n",
+            ),
+            (
+                "/sys/fs/cgroup/system.slice/oleafly-server.service/memory.max",
+                "1073741824\n",
+            ),
+            ("/sys/fs/cgroup/system.slice/memory.max", "max\n"),
+            ("/proc/meminfo", "MemTotal: 16384000 kB\n"),
+        ]);
+        assert_eq!(service, 512);
+        let (slice, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "0::/system.slice/oleafly-server.service\n",
+            ),
+            (
+                "/sys/fs/cgroup/system.slice/oleafly-server.service/memory.max",
+                "max\n",
+            ),
+            ("/sys/fs/cgroup/system.slice/memory.max", "805306368\n"),
+        ]);
+        assert_eq!(slice, 384);
+        let (version_one, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "12:cpu,cpuacct:/docker/abc\n4:memory:/docker/abc\n",
+            ),
+            (
+                "/sys/fs/cgroup/memory/docker/abc/memory.limit_in_bytes",
+                "268435456\n",
+            ),
+        ]);
+        assert_eq!(version_one, 128);
+    }
+
+    #[test]
+    fn without_any_memory_figure_the_default_stays_and_the_note_says_how_to_change_it() {
+        let (budget, notes) = budget_and_note(&[]);
+        assert_eq!(budget, 1024);
+        assert!(
+            matches!(&notes[..], [StartupNote::Info(text)] if text.contains("set OLEAFLY_SNAPSHOT_MEMORY_MB")),
+            "{notes:?}"
+        );
+        let set = load(&[BASE, ("OLEAFLY_SNAPSHOT_MEMORY_MB", "300")]).unwrap();
+        assert_eq!(
+            set.startup_notes,
+            [StartupNote::Info(
+                "Snapshot builds may use 300 MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says.".to_string()
+            )]
         );
     }
 
