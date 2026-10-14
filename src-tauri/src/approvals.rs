@@ -279,10 +279,22 @@ pub fn acp_request_denied_by(
         .find(|tool| effective_decision_for(root, project_id, tool) == Some(ToolDecision::Deny))
 }
 
-/// Whether Full access approves a helper agent's permission requests for this
-/// project without asking. An unreadable file asks.
-pub fn helper_requests_auto_approved(root: &Path, project_id: &str) -> bool {
-    matches!(try_mode_for(root, project_id), Ok(ApprovalMode::FullAccess))
+/// Whether Full access approves a helper agent's permission request of this
+/// kind without asking. A kind no tool's rules cover, such as fetch, think or
+/// none at all, asks while the project has any deny rule, because the request
+/// may do what a rule forbids. An unreadable file asks.
+pub fn helper_request_auto_approved(root: &Path, project_id: &str, kind: Option<&str>) -> bool {
+    let Ok(approvals) = read_file(root) else {
+        return false;
+    };
+    if approvals.mode_for(project_id) != ApprovalMode::FullAccess {
+        return false;
+    }
+    let has_deny_rule = approvals
+        .decisions
+        .get(project_id)
+        .is_some_and(|decisions| decisions.values().any(|d| *d == ToolDecision::Deny));
+    !tools_for_acp_kind(kind).is_empty() || !has_deny_rule
 }
 
 pub fn set_mode(root: &Path, project_id: &str, mode: ApprovalMode) -> Result<(), String> {
@@ -504,10 +516,25 @@ mod tests {
         let root = temp_root("acp-kinds");
         set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
         assert_eq!(acp_request_denied_by(&root, "proj", Some("execute")), None);
-        assert!(helper_requests_auto_approved(&root, "proj"));
+        set_decision(&root, "proj", "delete_file", Some(ToolDecision::Allow)).unwrap();
+        // With no deny rule, Full access approves every kind, even ones no
+        // tool's rules cover. An allow rule doesn't change that.
+        for kind in [Some("execute"), Some("fetch"), Some("think"), None] {
+            assert!(
+                helper_request_auto_approved(&root, "proj", kind),
+                "{kind:?}"
+            );
+        }
         set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
         set_decision(&root, "proj", "replace_in_file", Some(ToolDecision::Deny)).unwrap();
-        set_decision(&root, "proj", "delete_file", Some(ToolDecision::Allow)).unwrap();
+        // Once a deny rule exists, a kind no rule covers goes to the card.
+        assert!(helper_request_auto_approved(&root, "proj", Some("delete")));
+        for kind in [Some("fetch"), Some("think"), Some("other"), None] {
+            assert!(
+                !helper_request_auto_approved(&root, "proj", kind),
+                "{kind:?}"
+            );
+        }
         assert_eq!(
             acp_request_denied_by(&root, "proj", Some("execute")),
             Some("run_command")
@@ -521,13 +548,13 @@ mod tests {
         assert_eq!(acp_request_denied_by(&root, "proj", None), None);
         assert_eq!(acp_request_denied_by(&root, "other", Some("execute")), None);
         set_mode(&root, "proj", ApprovalMode::AskForApproval).unwrap();
-        assert!(!helper_requests_auto_approved(&root, "proj"));
+        assert!(!helper_request_auto_approved(&root, "proj", Some("delete")));
         std::fs::write(approvals_path(&root), "[proj\nrun_command = deny").unwrap();
         assert_eq!(
             acp_request_denied_by(&root, "proj", Some("move")),
             Some("rename_file")
         );
-        assert!(!helper_requests_auto_approved(&root, "proj"));
+        assert!(!helper_request_auto_approved(&root, "proj", Some("delete")));
         std::fs::remove_dir_all(&root).ok();
     }
 

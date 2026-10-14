@@ -121,6 +121,7 @@
     "localCopy": "{{name}} (lokal kopi)"
   },
   "approvals": {
+    "helperRefused": "Avvist av regelen for {{tool}} i approvals.toml",
     "unknownTool": "Ingen verktøy heter {{name}}, så regelen gjør ingenting.",
     "unknownToolSuggestion": "Ingen verktøy heter {{name}}, så regelen gjør ingenting. Mente du {{suggestion}}?"
   }

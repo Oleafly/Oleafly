@@ -121,6 +121,7 @@
     "localCopy": "{{name}} (místní kopie)"
   },
   "approvals": {
+    "helperRefused": "Odmítnuto pravidlem {{tool}} v approvals.toml",
     "unknownTool": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá.",
     "unknownToolSuggestion": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá. Měli jste na mysli {{suggestion}}?"
   }

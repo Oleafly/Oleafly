@@ -121,6 +121,7 @@
     "localCopy": "{{name}}（ローカルコピー）"
   },
   "approvals": {
+    "helperRefused": "approvals.toml の {{tool}} のルールにより拒否されました",
     "unknownTool": "{{name}} という名前のツールはないため、このルールは何もしません。",
     "unknownToolSuggestion": "{{name}} という名前のツールはないため、このルールは何もしません。{{suggestion}} のことですか？"
   }

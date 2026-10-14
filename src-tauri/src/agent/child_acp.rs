@@ -124,7 +124,7 @@ impl AcpChild {
             answer_pending_by_rules(&self.runtime, session_id, root.as_deref(), &self.project_id)
                 .await
         {
-            let detail = format!("Refused by the {tool} rule in approvals.toml");
+            let detail = refused_by_rule_detail(tool);
             let _ = sink.send(self.activity(id, label, "tool", Some(detail)));
         }
     }
@@ -236,6 +236,12 @@ fn event_activity(event: &crate::acp::AcpEvent) -> Option<(&'static str, Option<
     })
 }
 
+/// The helper's activity line for a request a deny rule refused, in the app's
+/// language.
+fn refused_by_rule_detail(tool: &str) -> String {
+    crate::i18n::t_with("approvals.helperRefused", &[("tool", tool)])
+}
+
 /// How the project's rules answer a helper agent's permission request. `None`
 /// leaves it to the parent conversation. `Some(option)` answers it with that
 /// option, or declines it when the request offers no matching option.
@@ -256,7 +262,7 @@ fn rules_answer(
     {
         return Some((option("reject_once"), Some(tool)));
     }
-    if crate::approvals::helper_requests_auto_approved(root, project_id) {
+    if crate::approvals::helper_request_auto_approved(root, project_id, request.kind.as_deref()) {
         return option("allow_once").map(|allow| (Some(allow), None));
     }
     None
@@ -264,8 +270,9 @@ fn rules_answer(
 
 /// Answers a helper agent's pending permission requests from the project's
 /// rules as they are now: a deny rule refuses its tool without a card in
-/// every mode, and Full access approves the rest. Other requests stay with the
-/// parent conversation. Returns the tools whose rules refused a request.
+/// every mode, and Full access approves the rest, except requests of a kind
+/// no rule covers while the project has a deny rule. Other requests stay with
+/// the parent conversation. Returns the tools whose rules refused a request.
 async fn answer_pending_by_rules(
     runtime: &crate::acp::AcpRuntime,
     session_id: &str,

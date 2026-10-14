@@ -386,3 +386,47 @@ async fn an_unreadable_approvals_file_refuses_a_helpers_command() {
     assert_eq!(chosen_option(&runtime, &id), "no");
     runtime.close(&id).await.unwrap();
 }
+
+#[tokio::test]
+async fn full_access_sends_a_request_no_rule_covers_to_the_card_while_a_deny_rule_exists() {
+    use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
+    set_decision(
+        rules.path(),
+        PROJECT,
+        "run_command",
+        Some(ToolDecision::Deny),
+    )
+    .unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+
+    // A fetch matches no tool's rules, so it might do what the deny rule
+    // forbids. It waits for the user instead of being approved.
+    let (turn, request) = helper_asks(&temp, &runtime, &id, "fetch").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert!(refused.is_empty());
+    assert_eq!(request.kind.as_deref(), Some("fetch"));
+    assert_eq!(runtime.snapshot(&id).await.unwrap().permissions.len(), 1);
+    runtime
+        .resolve_delegated_permission(&id, &request.id, Some("no".into()))
+        .await
+        .unwrap();
+    turn.await.unwrap().unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[test]
+fn a_refused_request_is_described_in_the_apps_language() {
+    assert_eq!(
+        crate::i18n::t_with_in("en", "approvals.helperRefused", &[("tool", "run_command")]),
+        "Refused by the run_command rule in approvals.toml"
+    );
+    let detail = super::refused_by_rule_detail("run_command");
+    assert!(detail.contains("run_command"), "{detail}");
+    assert!(
+        !detail.contains("helperRefused") && !detail.contains("{{"),
+        "{detail}"
+    );
+}

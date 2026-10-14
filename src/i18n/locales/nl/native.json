@@ -121,6 +121,7 @@
     "localCopy": "{{name}} (lokale kopie)"
   },
   "approvals": {
+    "helperRefused": "Geweigerd door de regel voor {{tool}} in approvals.toml",
     "unknownTool": "Er is geen tool met de naam {{name}}, dus de regel doet niets.",
     "unknownToolSuggestion": "Er is geen tool met de naam {{name}}, dus de regel doet niets. Bedoelde je {{suggestion}}?"
   }

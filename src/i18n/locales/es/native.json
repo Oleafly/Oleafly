@@ -121,6 +121,7 @@
     "localCopy": "{{name}} (copia local)"
   },
   "approvals": {
+    "helperRefused": "Rechazado por la regla de {{tool}} en approvals.toml",
     "unknownTool": "Ninguna herramienta se llama {{name}}, así que la regla no hace nada.",
     "unknownToolSuggestion": "Ninguna herramienta se llama {{name}}, así que la regla no hace nada. ¿Querías decir {{suggestion}}?"
   }

@@ -121,6 +121,7 @@
     "localCopy": "{{name}} (локальная копия)"
   },
   "approvals": {
+    "helperRefused": "Отклонено правилом {{tool}} в approvals.toml",
     "unknownTool": "Инструмента с именем {{name}} нет, поэтому это правило ничего не делает.",
     "unknownToolSuggestion": "Инструмента с именем {{name}} нет, поэтому это правило ничего не делает. Возможно, вы имели в виду {{suggestion}}?"
   }
