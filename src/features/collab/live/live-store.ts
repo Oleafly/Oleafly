@@ -5,6 +5,7 @@ import {
   collabLiveStart,
   collabLiveStop,
   collabMembersList,
+  collabServersList,
   collabShareInfo,
   onCollabCommentsNotSent,
   onCollabLiveMembers,
@@ -14,8 +15,10 @@ import {
   onCollabLiveStatus,
   onCollabPresence,
   onCollabPresenceLeft,
+  onCollabServerChanged,
   type CollabCommentNotSent,
   type CollabCommentsNotSent,
+  type CollabErrorCode,
   type CollabLiveEndedReason,
   type CollabLiveMembers,
   type CollabLiveMerged,
@@ -28,9 +31,11 @@ import {
   type CollabPresenceLeft,
   type CollabProjectMember,
   type CollabProjectRole,
+  type CollabServerChanged,
   type CollabShareInfo,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { collabErrorCode } from "../errors";
 import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
 
@@ -218,6 +223,24 @@ interface LiveRun {
 
 const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 
+// Retrying a live start can't fix these: the person has to sign in again, or
+// add the project's server back. They are tried again on the next server
+// change instead of on a timer.
+const START_REFUSALS: ReadonlySet<CollabErrorCode> = new Set([
+  "signed_out",
+  "server_removed",
+  "unauthorized",
+  "not_found",
+  "server_unknown",
+]);
+
+// Endings that signing in again, or adding the server back, can undo.
+const RESUMABLE: ReadonlySet<CollabLiveEndedReason> = new Set(["signed_out", "server_removed", "account_suspended"]);
+
+function refusalReason(code: CollabErrorCode): CollabLiveEndedReason {
+  return code === "server_removed" || code === "server_unknown" ? "server_removed" : "signed_out";
+}
+
 function holdEditors(projectId: string): void {
   useCollabEditorGate.setState({ projectId, viewer: false, connecting: true });
 }
@@ -233,6 +256,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const store = useCollabLiveStore;
   let disposed = false;
   let live: LiveRun | null = null;
+  let resumable = false;
   let askedAbout = new Set<string>();
   let ownChange: Pick<CollabLiveMembers, "by" | "kind"> | null = null;
 
@@ -256,9 +280,20 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     if (run.ready) void collabLiveStop(run.projectId).catch((error) => logError("collab live stop", error));
   };
 
+  const refuseStart = (projectId: string, code: CollabErrorCode) => {
+    releaseEditors(projectId);
+    resumable = true;
+    const state = store.getState();
+    // A status event from the start already said why, unless the server is gone.
+    if (refusalReason(code) !== "server_removed" && state.status?.state === "ended") return;
+    const reason = refusalReason(code);
+    store.setState({ status: { state: "ended", reason }, ended: reason, peers: {} });
+  };
+
   const goLive = async (projectId: string, attempt = 0) => {
     const run: LiveRun = { projectId, ready: false, deviceId: null, release: null, retry: null };
     live = run;
+    resumable = false;
     holdEditors(projectId);
     let info: Awaited<ReturnType<typeof collabLiveStart>>;
     try {
@@ -272,8 +307,16 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       }
       info = await collabLiveStart(projectId);
     } catch (error) {
-      void logError("collab live start", error);
-      if (disposed || live !== run) return;
+      if (disposed) return;
+      const code = collabErrorCode(error);
+      if (START_REFUSALS.has(code)) {
+        if (live === run) live = null;
+        if (live === null && current() === projectId) refuseStart(projectId, code);
+        return;
+      }
+      if (live !== run) return;
+      // One line per run: the retries below would otherwise log every 30 seconds.
+      if (attempt === 0) void logError("collab live start", error);
       const delay = START_RETRY_MS[Math.min(attempt, START_RETRY_MS.length - 1)];
       run.retry = setTimeout(() => {
         run.retry = null;
@@ -302,6 +345,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const openProject = (projectId: string | null) => {
     stopLive();
+    resumable = false;
     askedAbout = new Set();
     ownChange = null;
     store.setState(emptyLive(projectId));
@@ -324,11 +368,15 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
     store.setState((state) => ({ status: heldStatus(state.status, payload.status), pending: payload.pending }));
-    if (payload.status.state !== "ended" || payload.status.reason === "stopped") return;
+    if (payload.status.state !== "ended") return;
+    releaseEditors(payload.projectId);
+    if (payload.status.reason === "stopped") return;
     if (live?.projectId === payload.projectId) {
+      if (live.retry) clearTimeout(live.retry);
       live.release?.();
       live = null;
     }
+    resumable = RESUMABLE.has(payload.status.reason);
     const removedBy = payload.status.reason === "removed" ? takeOwnChange("removed") : "";
     const self = store.getState().share?.account_id ?? null;
     const notice: AccessNotice | null =
@@ -415,6 +463,25 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     });
   };
 
+  // After a sign-in, or after the project's server is added back, a project
+  // that couldn't go live tries again.
+  const onServerChanged = (payload: CollabServerChanged) => {
+    const state = store.getState();
+    const projectId = state.projectId;
+    const share = state.share;
+    if (disposed || !resumable || live !== null || !projectId || share?.server_id !== payload.serverId) return;
+    collabServersList().then(
+      (servers) => {
+        const now = store.getState();
+        if (disposed || !resumable || live !== null || now.projectId !== projectId || !now.share) return;
+        if (!servers.some((server) => server.server_id === payload.serverId && server.signed_in)) return;
+        store.setState({ status: null, ended: null });
+        void goLive(projectId);
+      },
+      (error: unknown) => logError("collab servers after a change", error),
+    );
+  };
+
   const onCommentsNotSent = (payload: CollabCommentsNotSent) => {
     if (payload.projectId !== current()) return;
     store.setState((state) => ({ commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments] }));
@@ -437,6 +504,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabPresence(onPresence),
     onCollabPresenceLeft(onLeft),
     onCollabCommentsNotSent(onCommentsNotSent),
+    onCollabServerChanged(onServerChanged),
   ].map((pending) =>
     pending.catch((error) => {
       void logError("collab live listen", error);

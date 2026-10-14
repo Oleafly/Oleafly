@@ -545,7 +545,8 @@
     "accessEnded": "無存取權",
     "removed": "存取權已移除",
     "archived": "分享已停止",
-    "paused": "已暫停"
+    "paused": "已暫停",
+    "serverRemoved": "伺服器已移除"
   },
   "toolbar": {
     "noFile": "未開啟檔案",

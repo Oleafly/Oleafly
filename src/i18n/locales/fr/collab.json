@@ -545,7 +545,8 @@
     "accessEnded": "Sans accès",
     "removed": "Accès retiré",
     "archived": "Partage arrêté",
-    "paused": "En pause"
+    "paused": "En pause",
+    "serverRemoved": "Serveur retiré"
   },
   "toolbar": {
     "noFile": "Aucun fichier ouvert",

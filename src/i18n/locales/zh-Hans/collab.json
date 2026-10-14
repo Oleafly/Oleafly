@@ -545,7 +545,8 @@
     "accessEnded": "无访问权限",
     "removed": "访问权限已移除",
     "archived": "共享已停止",
-    "paused": "已暂停"
+    "paused": "已暂停",
+    "serverRemoved": "服务器已移除"
   },
   "toolbar": {
     "noFile": "未打开文件",

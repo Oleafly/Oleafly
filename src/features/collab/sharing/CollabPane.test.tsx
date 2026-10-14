@@ -20,6 +20,8 @@ import { useAccessLogSwitches } from "./access-log-store";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
 const spies = vi.hoisted(() => ({
+  collabLeaveProject: vi.fn(async () => undefined),
+  collabShareInfo: vi.fn(async () => null),
   relativeTime: vi.fn(),
   person: vi.fn(),
   review: vi.fn(),
@@ -37,6 +39,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   collabTrashRestore: vi.fn(async () => undefined),
   collabAccessLogStatus: vi.fn(async () => ({ serverAllowed: true, enabled: true })),
   collabAccessLogPage: vi.fn(async () => ({ items: [], next_cursor: null })),
+  collabLeaveProject: spies.collabLeaveProject,
+  collabShareInfo: spies.collabShareInfo,
 }));
 
 vi.mock("./MergeReviewDialog", () => ({
@@ -183,6 +187,12 @@ describe("CollabPane", () => {
     [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused, "circle-pause", "text-muted-foreground"],
     [{ status: { state: "ended", reason: "access_ended" }, pending: 0 }, enCollab.sync.accessEnded, "ban", "text-destructive"],
     [{ status: { state: "ended", reason: "signed_out" }, pending: 0 }, enCollab.sync.signedOut, "log-out", "text-destructive"],
+    [
+      { status: { state: "ended", reason: "server_removed" }, pending: 0 },
+      enCollab.sync.serverRemoved,
+      "server-off",
+      "text-destructive",
+    ],
   ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);
@@ -603,6 +613,35 @@ describe("CollabPane", () => {
     expect(within(header).getByRole("button", { name: words }).querySelector("svg")).toBeInTheDocument();
     expect(screen.queryByTestId("collab-people")).toBeNull();
     expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("offers to keep a local copy, not Sign in, when the project's server was removed", async () => {
+    useCollabLiveStore.setState({
+      share: shareInfo({ role: "editor", account_id: ALICE_ID, server_name: "" }),
+      status: { state: "ended", reason: "server_removed" },
+      ended: "server_removed",
+    });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverRemoved }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(enCollab.errors.server_removed);
+    expect(within(details).queryByRole("button", { name: activity.signIn })).toBeNull();
+    expect(details).not.toHaveTextContent(fill(enCollab.manage.sharedOn, { server: "" }));
+    await user.click(within(details).getByRole("button", { name: enCollab.section.server.unsent.keep }));
+    expect(spies.collabLeaveProject).toHaveBeenCalledWith("grant");
+    await vi.waitFor(() => expect(spies.collabShareInfo).toHaveBeenCalledWith("grant"));
+  });
+
+  it("shows why keeping a local copy failed", async () => {
+    spies.collabLeaveProject.mockRejectedValueOnce({ code: "invalid", message: "That project is busy." });
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_removed" }, ended: "server_removed" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverRemoved }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    await user.click(within(details).getByRole("button", { name: enCollab.section.server.unsent.keep }));
+    expect(await within(details).findByRole("alert")).toHaveTextContent("That project is busy.");
   });
 
   it("offers Sign in in the status details while signed out", async () => {

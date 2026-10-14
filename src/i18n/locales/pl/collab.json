@@ -545,7 +545,8 @@
     "accessEnded": "Brak dostępu",
     "removed": "Dostęp odebrany",
     "archived": "Udostępnianie zakończone",
-    "paused": "Wstrzymano"
+    "paused": "Wstrzymano",
+    "serverRemoved": "Serwer usunięty"
   },
   "toolbar": {
     "noFile": "Brak otwartego pliku",

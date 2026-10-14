@@ -545,7 +545,8 @@
     "accessEnded": "Geen toegang",
     "removed": "Toegang ingetrokken",
     "archived": "Delen gestopt",
-    "paused": "Gepauzeerd"
+    "paused": "Gepauzeerd",
+    "serverRemoved": "Server weggehaald"
   },
   "toolbar": {
     "noFile": "Geen bestand open",

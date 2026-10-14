@@ -545,7 +545,8 @@
     "accessEnded": "Fără acces",
     "removed": "Acces eliminat",
     "archived": "Partajare oprită",
-    "paused": "Întrerupt"
+    "paused": "Întrerupt",
+    "serverRemoved": "Server eliminat"
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",

@@ -11,6 +11,7 @@ export const SYNC_STATES = [
   "removed",
   "archived",
   "paused",
+  "serverRemoved",
 ] as const;
 
 export type SyncState = (typeof SYNC_STATES)[number];
@@ -22,6 +23,7 @@ const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
   stopped: "paused",
   account_suspended: "suspended",
   access_ended: "accessEnded",
+  server_removed: "serverRemoved",
 };
 
 export function syncState(status: CollabLiveSyncState | null, pending: number): SyncState {

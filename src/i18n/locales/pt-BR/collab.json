@@ -545,7 +545,8 @@
     "accessEnded": "Sem acesso",
     "removed": "Acesso removido",
     "archived": "Compartilhamento encerrado",
-    "paused": "Pausado"
+    "paused": "Pausado",
+    "serverRemoved": "Servidor removido"
   },
   "toolbar": {
     "noFile": "Nenhum arquivo aberto",

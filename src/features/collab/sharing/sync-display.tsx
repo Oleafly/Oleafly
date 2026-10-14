@@ -9,6 +9,7 @@ import {
   CloudUpload,
   LogOut,
   RefreshCw,
+  ServerOff,
   UserLock,
   UserX,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   removed: UserX,
   archived: Archive,
   paused: CirclePause,
+  serverRemoved: ServerOff,
 };
 
 const SYNC_TONES: Readonly<Record<SyncState, string>> = {
@@ -42,6 +44,7 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   removed: "text-destructive",
   archived: "text-muted-foreground",
   paused: "text-muted-foreground",
+  serverRemoved: "text-destructive",
 };
 
 export function SyncStateIcon({ state, className }: Readonly<{ state: SyncState; className?: string }>) {

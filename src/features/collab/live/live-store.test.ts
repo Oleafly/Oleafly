@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   collabDocOpen: vi.fn(),
   collabDocChange: vi.fn(),
   collabDocClose: vi.fn(),
+  collabServersList: vi.fn(),
+  logError: vi.fn(),
   handlers: {} as Record<string, ((payload: unknown) => void) | undefined>,
   unlisten: vi.fn(),
 }));
@@ -49,6 +51,13 @@ vi.mock("@/lib/tauri", () => ({
   collabDocOpen: mocks.collabDocOpen,
   collabDocChange: mocks.collabDocChange,
   collabDocClose: mocks.collabDocClose,
+  collabServersList: mocks.collabServersList,
+  isCollabCommandError: (value: unknown) =>
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { code?: unknown }).code === "string" &&
+    typeof (value as { message?: unknown }).message === "string",
+  onCollabServerChanged: listener("serverChanged"),
   onCollabLiveStatus: listener("status"),
   onCollabLiveRole: listener("role"),
   onCollabLiveMerged: listener("merged"),
@@ -58,6 +67,8 @@ vi.mock("@/lib/tauri", () => ({
   onCollabPresenceLeft: listener("left"),
   onCollabCommentsNotSent: listener("notSent"),
 }));
+
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@/store/files", async () => {
   const { create } = await import("zustand");
@@ -131,6 +142,8 @@ beforeEach(() => {
   mocks.collabLiveFlush.mockResolvedValue(undefined);
   mocks.collabMembersList.mockResolvedValue([member(ALICE, "Alice Chen"), member(BOB, "Bob Jones")]);
   mocks.collabPresenceSet.mockResolvedValue(undefined);
+  mocks.collabServersList.mockResolvedValue([]);
+  mocks.logError.mockResolvedValue(undefined);
   openProject(null);
 });
 
@@ -242,6 +255,118 @@ describe("collab live store", () => {
     await settle();
     expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("logs a start that keeps failing once, not on every retry", async () => {
+    vi.useFakeTimers();
+    mocks.collabLiveStart.mockRejectedValue(new Error("busy"));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(mocks.collabLiveStart.mock.calls.length).toBeGreaterThan(3);
+    expect(mocks.logError.mock.calls.filter(([scope]) => scope === "collab live start")).toHaveLength(1);
+  });
+
+  it.each(["signed_out", "unauthorized", "not_found"])(
+    "lets the person edit and asks them to sign in when going live is refused with %s",
+    async (code) => {
+      vi.useFakeTimers();
+      mocks.collabLiveStart.mockRejectedValue({ code, message: "" });
+      openProject(PROJECT);
+      stop = startCollabLive();
+      await settle();
+      expect(collabProjectReadOnly(PROJECT)).toBe(false);
+      const state = useCollabLiveStore.getState();
+      expect(syncState(state.status, state.pending)).toBe("signedOut");
+      expect(state.ended).toBe("signed_out");
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["server_removed", "server_unknown"])(
+    "says the project's server is gone when going live is refused with %s",
+    async (code) => {
+      vi.useFakeTimers();
+      mocks.collabLiveStart.mockRejectedValue({ code, message: "" });
+      openProject(PROJECT);
+      stop = startCollabLive();
+      await settle();
+      expect(collabProjectReadOnly(PROJECT)).toBe(false);
+      const state = useCollabLiveStore.getState();
+      expect(syncState(state.status, state.pending)).toBe("serverRemoved");
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("keeps the reason the start's own status event gave and releases the editors", async () => {
+    let refuse: (reason: unknown) => void = () => {};
+    mocks.collabLiveStart.mockReturnValueOnce(new Promise((_, reject) => (refuse = reject)));
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    emit<CollabLiveStatus>("status", {
+      projectId: PROJECT,
+      status: { state: "ended", reason: "account_suspended" },
+      pending: 0,
+    });
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    refuse({ code: "signed_out", message: "" });
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    const state = useCollabLiveStore.getState();
+    expect(syncState(state.status, state.pending)).toBe("suspended");
+  });
+
+  it("releases the editors when the session ends before going live, whatever the reason", async () => {
+    mocks.collabLiveStart.mockReturnValueOnce(new Promise(() => undefined));
+    mocks.collabShareInfo.mockResolvedValueOnce(share()).mockResolvedValue(null);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "access_ended" }, pending: 0 });
+    await settle();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("tries again after the person signs in to the project's server, and only then", async () => {
+    mocks.collabLiveStart.mockRejectedValueOnce({ code: "signed_out", message: "" });
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+
+    emit("serverChanged", { serverId: "another-server" });
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+
+    mocks.collabServersList.mockResolvedValue([{ server_id: "server", signed_in: false }]);
+    emit("serverChanged", { serverId: "server" });
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+
+    mocks.collabServersList.mockResolvedValue([{ server_id: "server", signed_in: true }]);
+    emit("serverChanged", { serverId: "server" });
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
+    const state = useCollabLiveStore.getState();
+    expect(state).toMatchObject({ ended: null, role: "editor" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+  });
+
+  it("does not try again on a server change while the project is live", async () => {
+    mocks.collabServersList.mockResolvedValue([{ server_id: "server", signed_in: true }]);
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("serverChanged", { serverId: "server" });
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(1);
+    expect(mocks.collabServersList).not.toHaveBeenCalled();
   });
 
   it("lets a project that stops being shared be edited again", async () => {
@@ -722,7 +847,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(8);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(9);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });
@@ -875,7 +1000,7 @@ describe("collab live store edges", () => {
     stop();
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledOnce();
-    expect(mocks.unlisten).toHaveBeenCalledTimes(8);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(9);
   });
 });
 

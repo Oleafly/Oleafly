@@ -45,11 +45,13 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
-import type { CollabProjectMember } from "@/lib/tauri";
+import { collabLeaveProject, type CollabProjectMember } from "@/lib/tauri";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
+import { collabErrorText } from "../errors";
+import { InlineAlert } from "../feedback";
 import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
@@ -398,6 +400,42 @@ function useSectionOpen(projectId: string | null) {
   return [sectionOpen, setSectionOpen] as const;
 }
 
+// The project's server is no longer in the list, so signing in can't help.
+// Leaving makes the project an ordinary one on this computer.
+function ServerRemovedActions({ projectId }: Readonly<{ projectId: string }>) {
+  const { t } = useTranslation(["collab"]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const keep = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await collabLeaveProject(projectId);
+      await useCollabLiveStore.getState().refreshShare();
+    } catch (error_) {
+      setError(collabErrorText(error_));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground">{t(($) => $.collab.errors.server_removed)}</p>
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={busy} onClick={() => void keep()}>
+          {t(($) => $.collab.section.server.unsent.keep)}
+        </Button>
+        <PopoverClose asChild>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={openCollaborationSettings}>
+            {t(($) => $.collab.share.openSettings)}
+          </Button>
+        </PopoverClose>
+      </div>
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
 function SyncStatus() {
   const { t } = useTranslation(["collab"]);
   const live = useCollabLiveStore(
@@ -434,11 +472,14 @@ function SyncStatus() {
             </Button>
           </PopoverClose>
         ) : null}
+        {state === "serverRemoved" && live.share ? <ServerRemovedActions projectId={live.share.project_id} /> : null}
         {live.share ? (
           <div className="space-y-0.5 border-t pt-2 text-muted-foreground">
-            <p className="break-words font-medium text-foreground">
-              {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
-            </p>
+            {live.share.server_name ? (
+              <p className="break-words font-medium text-foreground">
+                {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
+              </p>
+            ) : null}
             <p className="select-text break-all">{live.share.server_url}</p>
             {role ? <p>{t(($) => $.collab.manage.yourRole, { role: t(($) => $.collab.projectRoles[role]) })}</p> : null}
             <p className="tabular-nums">{t(($) => $.collab.pane.waiting, { number: formatNumber(live.pending) })}</p>

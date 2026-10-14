@@ -545,7 +545,8 @@
     "accessEnded": "Ingen åtkomst",
     "removed": "Åtkomst borttagen",
     "archived": "Delning stoppad",
-    "paused": "Pausad"
+    "paused": "Pausad",
+    "serverRemoved": "Servern borttagen"
   },
   "toolbar": {
     "noFile": "Ingen fil öppen",

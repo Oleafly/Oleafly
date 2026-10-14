@@ -545,7 +545,8 @@
     "accessEnded": "No access",
     "removed": "Access removed",
     "archived": "Sharing stopped",
-    "paused": "Paused"
+    "paused": "Paused",
+    "serverRemoved": "Server removed"
   },
   "toolbar": {
     "noFile": "No file open",

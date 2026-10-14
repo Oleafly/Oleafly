@@ -545,7 +545,8 @@
     "accessEnded": "Ei pääsyä",
     "removed": "Pääsy poistettu",
     "archived": "Jakaminen lopetettu",
-    "paused": "Tauolla"
+    "paused": "Tauolla",
+    "serverRemoved": "Palvelin poistettu"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",

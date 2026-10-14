@@ -545,7 +545,8 @@
     "accessEnded": "Ingen tilgang",
     "removed": "Tilgang fjernet",
     "archived": "Deling stoppet",
-    "paused": "På pause"
+    "paused": "På pause",
+    "serverRemoved": "Server fjernet"
   },
   "toolbar": {
     "noFile": "Ingen fil åpen",

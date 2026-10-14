@@ -545,7 +545,8 @@
     "accessEnded": "Erişim yok",
     "removed": "Erişim kaldırıldı",
     "archived": "Paylaşım durduruldu",
-    "paused": "Duraklatıldı"
+    "paused": "Duraklatıldı",
+    "serverRemoved": "Sunucu kaldırıldı"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",

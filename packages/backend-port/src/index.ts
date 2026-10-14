@@ -1223,7 +1223,7 @@ export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
     | { state: "offline"; retry_in_ms: number }
-    | { state: "ended"; reason: CollabLiveEndReason };
+    | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
 export interface CollabLiveStatus {
     projectId: string;
     status: CollabLiveState;
@@ -2094,7 +2094,9 @@ export interface BackendPort {
 }
 
 export type CollabSessionEnd = "account_suspended" | "access_ended";
-export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd;
+// `server_removed` never arrives in a status event: the app shows it when a
+// live start is refused because the project's server is no longer listed.
+export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd | "server_removed";
 export type CollabLiveSyncState =
     | Exclude<CollabLiveState, { state: "ended" }>
     | { state: "ended"; reason: CollabLiveEndedReason };

@@ -545,7 +545,8 @@
     "accessEnded": "Nessun accesso",
     "removed": "Accesso rimosso",
     "archived": "Condivisione interrotta",
-    "paused": "In pausa"
+    "paused": "In pausa",
+    "serverRemoved": "Server rimosso"
   },
   "toolbar": {
     "noFile": "Nessun file aperto",

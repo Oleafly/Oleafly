@@ -545,7 +545,8 @@
     "accessEnded": "Bez přístupu",
     "removed": "Přístup odebrán",
     "archived": "Sdílení ukončeno",
-    "paused": "Pozastaveno"
+    "paused": "Pozastaveno",
+    "serverRemoved": "Server odebrán"
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",

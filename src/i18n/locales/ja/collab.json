@@ -545,7 +545,8 @@
     "accessEnded": "アクセス権なし",
     "removed": "アクセス権が削除されました",
     "archived": "共有が停止されました",
-    "paused": "一時停止中"
+    "paused": "一時停止中",
+    "serverRemoved": "サーバーが削除されました"
   },
   "toolbar": {
     "noFile": "開いているファイルはありません",
