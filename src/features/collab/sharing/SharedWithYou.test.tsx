@@ -76,7 +76,7 @@ describe("SharedWithYou", () => {
     expect(screen.queryByText("Already here")).toBeNull();
   });
 
-  it("checks again when the window regains focus and on a timer, so new shares appear while the app is open", async () => {
+  it("checks again when the window is shown and on a timer, so new shares appear while the app is open", async () => {
     mocks.collabSharedWithMe.mockResolvedValue([]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -84,7 +84,7 @@ describe("SharedWithYou", () => {
       await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
       mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
       act(() => {
-        window.dispatchEvent(new Event("focus"));
+        document.dispatchEvent(new Event("visibilitychange"));
       });
       expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
       const calls = mocks.collabSharedWithMe.mock.calls.length;
@@ -94,6 +94,34 @@ describe("SharedWithYou", () => {
       expect(mocks.collabSharedWithMe.mock.calls.length).toBeGreaterThan(calls);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("doesn't check while the window is hidden, and catches up once it's shown", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([]);
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<SharedWithYou />);
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
+      visibility = "hidden";
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+        mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } });
+        await vi.advanceTimersByTimeAsync(5 * 60_000);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1);
+      visibility = "visible";
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      Reflect.deleteProperty(document, "visibilityState");
     }
   });
 
@@ -125,15 +153,39 @@ describe("SharedWithYou", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("refreshes when a server changes or the server list changes", async () => {
+  it("refreshes once after a burst of server changes, and when a server is added or signs in or out", async () => {
     mocks.collabSharedWithMe.mockResolvedValue([]);
-    render(<SharedWithYou />);
-    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
-    mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
-    act(() => mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } }));
-    expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
-    act(() => useCollabStore.setState({ servers: [server()] }));
-    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<SharedWithYou />);
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
+      mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
+      await act(async () => {
+        for (let index = 0; index < 3; index += 1) {
+          mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } });
+          await vi.advanceTimersByTimeAsync(200);
+        }
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+
+      act(() => useCollabStore.setState({ servers: [server()] }));
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3));
+      act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab renamed" })] }));
+      act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab renamed" })] }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3);
+      act(() => useCollabStore.setState({ servers: [server({ signed_in: false, account: null })] }));
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(4));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
