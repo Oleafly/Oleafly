@@ -1001,3 +1001,20 @@ fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
     assert!(!super::lock(&active.live).is_open(&second.file_id));
 }
 
+#[test]
+fn quitting_right_after_typing_offline_keeps_the_edit_in_the_document_and_on_disk() {
+    let (_dir, root, _host, rig) = watched_rig("quitting", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let (main, rev) = rig.open("main.tex");
+    rig.typed(&main, rev, " typed just before quitting");
+    super::finish_for_quit(Duration::from_secs(5));
+    assert!(super::active_for("quitting").is_none());
+    assert_eq!(
+        rig.saved_text("main.tex").as_deref(),
+        Some("abc typed just before quitting")
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc typed just before quitting"
+    );
+}

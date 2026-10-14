@@ -1062,6 +1062,7 @@ pub fn run() {
         .expect("error while running Oleafly")
         .run(|_, event| {
             if let tauri::RunEvent::Exit = event {
+                collab::live::finish_for_quit(collab::live::QUIT_WAIT);
                 quit_gate::on_app_exit();
             }
         });

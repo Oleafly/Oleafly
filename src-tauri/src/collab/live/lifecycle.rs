@@ -154,6 +154,21 @@ async fn stop_any() {
     }
 }
 
+pub const QUIT_WAIT: Duration = Duration::from_secs(2);
+
+pub fn finish_for_quit(wait: Duration) {
+    let Some(active) = guard(&ACTIVE).take() else {
+        return;
+    };
+    tauri::async_runtime::block_on(async move {
+        let (done, flushed) = oneshot::channel();
+        let _ = active.writer.send(WriterSignal::Flush(done));
+        let _ = tokio::time::timeout(wait, flushed).await;
+        active.save_now();
+        active.handle.stop();
+    });
+}
+
 pub fn stop_running_session() {
     let Some(active) = guard(&ACTIVE).take() else {
         return;
