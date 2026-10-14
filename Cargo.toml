@@ -11,6 +11,12 @@ lto = true
 codegen-units = 1
 strip = true
 
+# The desktop bundle is built for size, but the collaboration server spends
+# its time on JSON, base64 and document replays, so its own code is built
+# for speed.
+[profile.release.package.oleafly-server]
+opt-level = 3
+
 # The upstream bridge resolves windows through `webview_windows()`, which
 # drops a window the moment it hosts a second webview (the browser dock), so
 # every eval after opening the dock failed with "window not found". The
