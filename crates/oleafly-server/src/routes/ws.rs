@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{close_code, CloseFrame, Message, Utf8Bytes, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::http::{header, HeaderMap};
 use axum::response::{IntoResponse, Response};
@@ -45,6 +45,8 @@ pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
 pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
 const BRIEF_SEND: Duration = Duration::from_secs(5);
+// Frames at least this large are parsed and encoded on the blocking pool.
+pub const ASIDE_BYTES: usize = 256 * 1024;
 const TOO_LARGE: &str = "This change is too large to send.";
 const NOT_A_HELLO: &str = "The first frame must be a hello.";
 
@@ -108,16 +110,29 @@ enum Incoming {
 }
 
 async fn next_incoming(socket: &mut WebSocket, largest: usize) -> Incoming {
-    match socket.recv().await {
+    incoming(socket.recv().await, largest).await
+}
+
+async fn incoming(message: Option<Result<Message, axum::Error>>, largest: usize) -> Incoming {
+    match message {
         Some(Ok(Message::Text(text))) if text.len() > largest => Incoming::Malformed,
-        Some(Ok(Message::Text(text))) => {
-            ClientFrame::from_json(text.as_str()).map_or(Incoming::Malformed, Incoming::Frame)
-        }
+        Some(Ok(Message::Text(text))) => parsed(text).await,
         Some(Ok(Message::Binary(_))) => Incoming::Malformed,
         Some(Ok(Message::Ping(_) | Message::Pong(_))) => Incoming::Heard,
         Some(Err(error)) if over_size_limit(&error) => Incoming::TooLarge,
         Some(Ok(Message::Close(_)) | Err(_)) | None => Incoming::Closed,
     }
+}
+
+async fn parsed(text: Utf8Bytes) -> Incoming {
+    let read =
+        |text: &str| ClientFrame::from_json(text).map_or(Incoming::Malformed, Incoming::Frame);
+    if text.len() < ASIDE_BYTES {
+        return read(text.as_str());
+    }
+    tokio::task::spawn_blocking(move || read(text.as_str()))
+        .await
+        .unwrap_or(Incoming::Malformed)
 }
 
 async fn next_hello(socket: &mut WebSocket) -> Incoming {
@@ -417,8 +432,32 @@ impl<'a> Link<'a> {
         }
     }
 
-    async fn send_queued(&mut self, queued: &Queued) -> bool {
-        match queued.text() {
+    async fn send_owned(&mut self, frame: ServerFrame) -> bool {
+        if rooms::frame_size(&frame) < ASIDE_BYTES {
+            return self.send(&frame).await;
+        }
+        let encoded = tokio::task::spawn_blocking(move || serde_json::to_string(&frame)).await;
+        match encoded {
+            Ok(Ok(text)) => {
+                let size = text.len();
+                self.send_message(Message::Text(text.into()), size).await
+            }
+            _ => false,
+        }
+    }
+
+    async fn send_queued(&mut self, queued: std::sync::Arc<Queued>) -> bool {
+        let text = if queued.size() < ASIDE_BYTES {
+            queued.text()
+        } else {
+            // The first member of the room to send a large change encodes it
+            // on the blocking pool, and the others reuse that text.
+            tokio::task::spawn_blocking(move || queued.text())
+                .await
+                .ok()
+                .flatten()
+        };
+        match text {
             Some(text) => {
                 let size = text.as_str().len();
                 self.send_message(Message::Text(text), size).await
@@ -550,27 +589,29 @@ pub(crate) async fn backlog_page(
     project: SharedProjectId,
     after: u64,
 ) -> Result<BacklogPage, ServerError> {
-    let page = state
+    state
         .db
-        .read(move |conn| projects::updates_since(conn, project, after))
-        .await?;
-    let full = projects::page_is_full(page.iter().map(|stored| stored.envelope.len()));
-    let entries = page
-        .into_iter()
-        .map(|stored| BacklogEntry {
-            seq: stored.seq,
-            size: stored.envelope.len(),
-            frame: serde_json::from_slice::<Envelope>(&stored.envelope)
-                .ok()
-                .map(|envelope| ServerFrame::Update {
-                    project_id: project,
+        .read(move |conn| {
+            let page = projects::updates_since(conn, project, after)?;
+            let full = projects::page_is_full(page.iter().map(|stored| stored.envelope.len()));
+            let entries = page
+                .into_iter()
+                .map(|stored| BacklogEntry {
                     seq: stored.seq,
-                    account_id: Some(stored.account),
-                    envelope,
-                }),
+                    size: stored.envelope.len(),
+                    frame: serde_json::from_slice::<Envelope>(&stored.envelope)
+                        .ok()
+                        .map(|envelope| ServerFrame::Update {
+                            project_id: project,
+                            seq: stored.seq,
+                            account_id: Some(stored.account),
+                            envelope,
+                        }),
+                })
+                .collect();
+            Ok(BacklogPage { entries, full })
         })
-        .collect();
-    Ok(BacklogPage { entries, full })
+        .await
 }
 
 pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
@@ -584,6 +625,19 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
             },
         );
     }
+}
+
+struct ReadChange {
+    envelope: Envelope,
+    reach: peers::Reach,
+    mention: bool,
+    stored: Vec<u8>,
+}
+
+enum Unread {
+    Unsigned,
+    Unreadable,
+    Failed,
 }
 
 pub(crate) struct Peer<'a> {
@@ -759,16 +813,6 @@ impl Peer<'_> {
                 "This change is too large to send.",
             ));
         }
-        if !verify_ed25519(
-            self.public_key,
-            &envelope.signing_bytes(),
-            &envelope.signature,
-        ) {
-            return Some(frame_error(
-                FrameErrorCode::Unauthorized,
-                "This update is not signed by this device.",
-            ));
-        }
         None
     }
 
@@ -786,24 +830,43 @@ impl Peer<'_> {
             FrameErrorCode::Internal,
             "The server could not store this change.",
         );
-        let payload = envelope.payload.clone();
+        let public_key = self.public_key.to_vec();
         let mail = self.state.mailer.is_configured();
+        // Checking the signature, reading the change and encoding it for
+        // storage all walk the whole payload, so they run beside the async
+        // workers rather than on them.
         let read = tokio::task::spawn_blocking(move || {
-            (
-                peers::update_reach(&payload),
-                mail && mentions::may_mention(&payload),
-            )
+            if !verify_ed25519(&public_key, &envelope.signing_bytes(), &envelope.signature) {
+                return Err(Unread::Unsigned);
+            }
+            let reach = peers::update_reach(&envelope.payload).ok_or(Unread::Unreadable)?;
+            let mention = mail && mentions::may_mention(&envelope.payload);
+            let stored = serde_json::to_vec(&envelope).map_err(|_| Unread::Failed)?;
+            Ok(ReadChange {
+                envelope,
+                reach,
+                mention,
+                stored,
+            })
         })
         .await;
-        let (reach, mention) = match read {
-            Ok((Some(reach), mention)) => (reach, mention),
-            Ok((None, _)) => {
+        let ReadChange {
+            envelope,
+            reach,
+            mention,
+            stored,
+        } = match read {
+            Ok(Ok(read)) => read,
+            Ok(Err(Unread::Unsigned)) => {
+                return frame_error(
+                    FrameErrorCode::Unauthorized,
+                    "This update is not signed by this device.",
+                );
+            }
+            Ok(Err(Unread::Unreadable)) => {
                 return frame_error(FrameErrorCode::BadFrame, "This update is not valid.");
             }
-            Err(_) => return stored_failed,
-        };
-        let Ok(stored) = serde_json::to_vec(&envelope) else {
-            return stored_failed;
+            Ok(Err(Unread::Failed)) | Err(_) => return stored_failed,
         };
         let batch = envelope.batch_id;
         let first = self
@@ -1039,9 +1102,9 @@ impl Session<'_> {
             tokio::select! {
                 biased;
                 signal = link.control.recv() => break Ending::from_signal(signal),
-                incoming = next_incoming(link.socket, MAX_FRAME_BYTES) => {
+                message = link.socket.recv() => {
                     link.unanswered_since = None;
-                    let keep_going = match incoming {
+                    let keep_going = match incoming(message, MAX_FRAME_BYTES).await {
                         Incoming::Frame(frame) => self.handle(link, &frames, frame).await,
                         Incoming::Malformed => link.send(&unexpected_frame()).await,
                         Incoming::Heard => true,
@@ -1053,7 +1116,7 @@ impl Session<'_> {
                     }
                 }
                 Some(queued) = outbound.recv_shared() => {
-                    if !link.send_queued(&queued).await {
+                    if !link.send_queued(queued).await {
                         break link.ended();
                     }
                 }
@@ -1139,7 +1202,7 @@ impl Session<'_> {
             for entry in page.entries {
                 cursor = entry.seq;
                 if let Some(frame) = entry.frame {
-                    if !link.send(&frame).await {
+                    if !link.send_owned(frame).await {
                         return false;
                     }
                 }

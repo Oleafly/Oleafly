@@ -3,7 +3,8 @@ use std::sync::Arc;
 use axum::body::Body;
 use axum::extract::rejection::{PathRejection, QueryRejection};
 use axum::extract::{Path, Query, State};
-use axum::http::HeaderMap;
+use axum::http::{header, HeaderMap};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -18,11 +19,11 @@ use crate::auth::nonce;
 use crate::error::ServerError;
 use crate::polls::{self, Opening, PollSession};
 use crate::rate_limit::client_key;
-use crate::rooms::RoomMember;
+use crate::rooms::{self, RoomMember};
 use crate::routes::meta::spoken_protocol;
 use crate::routes::ws::{
     bearer_token, frame_error, proves_device, unexpected_frame, CursorGate, Opened, Peer,
-    MAX_FRAME_BYTES,
+    ASIDE_BYTES, MAX_FRAME_BYTES,
 };
 use crate::routes::{path_id, ClientIp};
 use crate::state::AppState;
@@ -78,12 +79,32 @@ fn session_for(
     }
 }
 
-fn only(frames: Vec<ServerFrame>) -> Json<PollBatch> {
-    Json(PollBatch {
+fn only(frames: Vec<ServerFrame>) -> PollBatch {
+    PollBatch {
         cursor: None,
         key: None,
         frames,
-    })
+    }
+}
+
+// A batch that carries large changes is encoded on the blocking pool, as a
+// socket does with the frames it sends.
+async fn reply(batch: PollBatch) -> Result<Response, ServerError> {
+    let size = batch
+        .frames
+        .iter()
+        .map(rooms::frame_size)
+        .fold(0, usize::saturating_add);
+    if size < ASIDE_BYTES {
+        return Ok(Json(batch).into_response());
+    }
+    let unencoded =
+        |error: String| ServerError::Internal(format!("could not encode a poll reply: {error}"));
+    let body = tokio::task::spawn_blocking(move || serde_json::to_vec(&batch))
+        .await
+        .map_err(|error| unencoded(error.to_string()))?
+        .map_err(|error| unencoded(error.to_string()))?;
+    Ok(([(header::CONTENT_TYPE, "application/json")], body).into_response())
 }
 
 async fn poll(
@@ -92,20 +113,20 @@ async fn poll(
     headers: HeaderMap,
     path: Result<Path<String>, PathRejection>,
     query: Result<Query<PollQuery>, QueryRejection>,
-) -> Result<Json<PollBatch>, ServerError> {
+) -> Result<Response, ServerError> {
     if headers.contains_key(POLL_KEY_HEADER) {
         let project: SharedProjectId = path_id(path)?;
         let session = session_for(&state, ip, &headers, project)?;
         let Query(query) =
             query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
         let cursor = query.cursor.unwrap_or_default();
-        return polls::poll(&state, session, &cursor).await.map(Json);
+        return reply(polls::poll(&state, session, &cursor).await?).await;
     }
     let address = address_of(ip);
     charge(&state, &address)?;
     let project: SharedProjectId = path_id(path)?;
     let Query(query) = query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
-    open(&state, &address, &headers, project, query.since).await
+    reply(open(&state, &address, &headers, project, query.since).await?).await
 }
 
 async fn open(
@@ -114,7 +135,7 @@ async fn open(
     headers: &HeaderMap,
     project: SharedProjectId,
     since: u64,
-) -> Result<Json<PollBatch>, ServerError> {
+) -> Result<PollBatch, ServerError> {
     let token = bearer_token(headers).ok_or(ServerError::Unauthorized)?;
     let protocol = header_text(headers, PROTOCOL_HEADER)
         .and_then(|value| value.parse::<u32>().ok())
@@ -206,9 +227,7 @@ async fn open(
                 outbound,
                 understands,
             };
-            polls::start(state, opening, subscribed, since, head)
-                .await
-                .map(Json)
+            polls::start(state, opening, subscribed, since, head).await
         }
     }
 }
@@ -244,7 +263,15 @@ async fn frames(
         .read_body(body, &headers, MAX_FRAME_BYTES as u64)
         .await?
         .ok_or_else(|| ServerError::BadRequest(TOO_MUCH.to_owned()))?;
-    let posted = posted_frames(&bytes)?;
+    let posted = if bytes.len() < ASIDE_BYTES {
+        posted_frames(&bytes)?
+    } else {
+        tokio::task::spawn_blocking(move || posted_frames(&bytes))
+            .await
+            .map_err(|error| {
+                ServerError::Internal(format!("could not read posted frames: {error}"))
+            })??
+    };
     let peer = session.peer(&state);
     let mut replies = Vec::new();
     for frame in posted {

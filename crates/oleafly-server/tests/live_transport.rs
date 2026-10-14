@@ -14,8 +14,8 @@ use oleafly_server::rooms::MAX_QUEUED_BYTES;
 use oleafly_server::sockets::{LinkTiming, SocketLimits, MAX_SOCKETS_PER_DEVICE};
 use oleafly_server::test_support::{seed_person, PersonSeed, TestDevice, TestServer};
 use people::{
-    connect, envelope, grant, next_frame, send_frame, send_update, share_project, stage, subscribe,
-    Socket, Stage,
+    beside, connect, envelope, grant, large_change, longest_stall, next_frame, seeded, send_frame,
+    send_update, share_project, stage, subscribe, Person, Socket, Stage, LONGEST_STALL,
 };
 use reqwest::StatusCode;
 use tokio_tungstenite::connect_async;
@@ -367,4 +367,89 @@ async fn a_device_reconnecting_in_a_tight_loop_is_slowed_down() {
         .await
         .expect("another device still connects");
     assert!(matches!(welcome, ServerFrame::Welcome { .. }));
+}
+
+async fn granted(stage: &Stage, project: SharedProjectId, name: &str, role: ProjectRole) -> Person {
+    let person = seeded(&stage.server, name).await;
+    assert_eq!(
+        grant(&stage.server, &stage.bob, project, &person, role)
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    person
+}
+
+async fn next_change(socket: &mut Socket) -> Option<ServerFrame> {
+    loop {
+        match next_frame(socket).await {
+            Some(ServerFrame::Presence { .. } | ServerFrame::PresenceLeft { .. }) => {}
+            other => return other,
+        }
+    }
+}
+
+// The server runs on the test's only thread, so a ping that waits shows the
+// server's thread was busy with the large change rather than beside it.
+#[tokio::test(flavor = "current_thread")]
+async fn a_large_change_does_not_hold_up_other_connections() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let carol = granted(&stage, project, "Carol", ProjectRole::Editor).await;
+    let dave = granted(&stage, project, "Dave", ProjectRole::Viewer).await;
+    let large = large_change(&carol, project);
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    let url = stage.server.url();
+    let (work, done) = beside(async move {
+        let mut reader = people::connect_to(&url, &dave).await;
+        subscribe(&mut reader, project, 0).await;
+        let mut sender = people::connect_to(&url, &carol).await;
+        subscribe(&mut sender, project, 0).await;
+        send_update(&mut sender, &large).await;
+        (
+            next_change(&mut sender).await,
+            next_change(&mut reader).await,
+        )
+    });
+    let stall = longest_stall(&mut alice, &done).await;
+    let (answer, arrived) = work.await.expect("the clients ran");
+    assert!(
+        matches!(answer, Some(ServerFrame::Ack { seq: 1, .. })),
+        "{answer:?}"
+    );
+    assert!(matches!(arrived, Some(ServerFrame::Update { seq: 1, .. })));
+    assert!(
+        stall < LONGEST_STALL,
+        "the server's thread was held for {stall:?} while a large change was stored and sent on"
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn catching_up_on_a_large_change_does_not_hold_up_other_connections() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let carol = granted(&stage, project, "Carol", ProjectRole::Editor).await;
+    let dave = granted(&stage, project, "Dave", ProjectRole::Viewer).await;
+    let mut sender = connect(&stage.server, &carol).await;
+    subscribe(&mut sender, project, 0).await;
+    send_update(&mut sender, &large_change(&carol, project)).await;
+    let answer = next_change(&mut sender).await;
+    assert!(
+        matches!(answer, Some(ServerFrame::Ack { seq: 1, .. })),
+        "{answer:?}"
+    );
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    let url = stage.server.url();
+    let (work, done) = beside(async move {
+        let mut reader = people::connect_to(&url, &dave).await;
+        subscribe(&mut reader, project, 0).await;
+        next_change(&mut reader).await
+    });
+    let stall = longest_stall(&mut alice, &done).await;
+    let arrived = work.await.expect("the reader ran");
+    assert!(matches!(arrived, Some(ServerFrame::Update { seq: 1, .. })));
+    assert!(
+        stall < LONGEST_STALL,
+        "the server's thread was held for {stall:?} while a large change was read from the log"
+    );
 }

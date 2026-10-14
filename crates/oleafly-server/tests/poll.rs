@@ -27,8 +27,9 @@ use oleafly_server::test_support::{
 };
 use oleafly_server::transfers::UploadTiming;
 use people::{
-    call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, subscribe, Person, Stage,
+    beside, call, connect, envelope, grant, large_change, longest_stall, next_frame, put_bytes,
+    seeded, send_frame, send_update, share_project, signed_by, stage, subscribe, Person, Stage,
+    LONGEST_STALL,
 };
 use reqwest::{Method, StatusCode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -564,6 +565,36 @@ async fn a_change_too_large_is_refused_like_on_the_socket() {
             ..
         }]
     ));
+}
+
+// The server runs on the test's only thread, so a ping that waits shows the
+// server's thread was busy with the large change rather than beside it.
+#[tokio::test(flavor = "current_thread")]
+async fn a_large_change_over_long_poll_does_not_hold_up_other_connections() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let large = large_change(&stage.alice, project);
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    let mut bob = opened(&stage.server, &stage.bob, project).await;
+    let carol = seeded(&stage.server, "Carol").await;
+    let mut pinger = connect(&stage.server, &carol).await;
+    let (work, done) =
+        beside(async move { tokio::join!(alice.post(vec![update(&large)]), bob.collect(1)) });
+    let stall = longest_stall(&mut pinger, &done).await;
+    let (answer, arrived) = work.await.expect("the clients ran");
+    assert!(
+        matches!(answer.as_slice(), [ServerFrame::Ack { seq: 1, .. }]),
+        "{answer:?}"
+    );
+    assert!(matches!(
+        arrived.as_slice(),
+        [ServerFrame::Update { seq: 1, .. }]
+    ));
+    assert!(
+        stall < LONGEST_STALL,
+        "the server's thread was held for {stall:?} while a large change was posted and polled"
+    );
 }
 
 #[tokio::test]
