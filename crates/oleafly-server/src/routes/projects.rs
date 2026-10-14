@@ -40,6 +40,9 @@ use crate::snapshots::{Signed, Upload};
 use crate::state::AppState;
 
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
+// The app gives a hint 30 seconds. A build that takes longer goes on in the
+// background and the hint is answered 202 with the snapshot the server holds.
+const HINT_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_TITLE_CHARS: usize = 200;
 const REFUSALS_FOLDED_MS: i64 = crate::state::DAY_MS;
 
@@ -722,7 +725,7 @@ async fn put_snapshot(
     };
     content_length_within(&headers, limit)?;
     let (account, device) = (auth.account_id, auth.device_id);
-    let (first, public_key) = state
+    let (newest, public_key) = state
         .db
         .call(move |conn| {
             let (row, role) = access(conn, project, account)?;
@@ -737,20 +740,33 @@ async fn put_snapshot(
                     "A snapshot cannot cover updates the server has not stored.".to_string(),
                 ));
             }
-            let first = projects::latest_snapshot(conn, project)?.is_none();
+            let newest = projects::latest_snapshot(conn, project)?.map(|row| row.seq);
             let public_key = crate::auth::devices::find(conn, device)?
                 .map(|found| found.public_key)
                 .ok_or(ServerError::Unauthorized)?;
-            Ok((first, public_key))
+            Ok((newest, public_key))
         })
         .await?;
+    let now = state.clock.now_ms();
+    if let Some(newest) = newest {
+        drop(body);
+        let built = state
+            .snapshots
+            .build_soon(&state.db, project, seq, account, now, HINT_WAIT)
+            .await?;
+        let (status, held) = match built {
+            Some(Upload::Stored) => (StatusCode::NO_CONTENT, seq),
+            Some(Upload::Held(held)) => (StatusCode::NO_CONTENT, held),
+            None => (StatusCode::ACCEPTED, newest),
+        };
+        return Ok((status, [(SNAPSHOT_SEQ_HEADER, seq_value(held)?)]).into_response());
+    }
     let bytes = state
         .transfers
         .read_body(body, &headers, limit)
         .await?
         .ok_or_else(too_large)?;
-    let now = state.clock.now_ms();
-    let held = if first {
+    let held = {
         if bytes.is_empty() {
             return Err(too_large());
         }
@@ -777,15 +793,6 @@ async fn put_snapshot(
         }
         match uploaded {
             Upload::Stored => 0,
-            Upload::Held(held) => held,
-        }
-    } else {
-        match state
-            .snapshots
-            .derive(&state.db, project, seq, account, now)
-            .await?
-        {
-            Upload::Stored => seq,
             Upload::Held(held) => held,
         }
     };

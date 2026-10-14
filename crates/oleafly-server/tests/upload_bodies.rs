@@ -121,3 +121,41 @@ async fn a_blob_within_the_file_limit_uploads_even_when_streamed() {
         .status();
     assert_eq!(status, StatusCode::NO_CONTENT);
 }
+
+#[tokio::test]
+async fn a_snapshot_hint_for_a_project_with_a_snapshot_is_answered_without_reading_its_body() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let doc = loro::LoroDoc::new();
+    doc.get_text("text").insert(0, "first").expect("insert");
+    doc.commit();
+    let first = doc.export(loro::ExportMode::Snapshot).expect("snapshot");
+    let upload = |body: Body| {
+        Request::builder()
+            .method(Method::PUT)
+            .uri(format!("/api/v1/projects/{project}/snapshot?seq=0"))
+            .header(
+                header::AUTHORIZATION,
+                format!("Bearer {}", owner.access_token),
+            )
+            .body(body)
+            .expect("request")
+    };
+    let stored = app
+        .router
+        .clone()
+        .oneshot(upload(Body::from(first)))
+        .await
+        .expect("response");
+    assert_eq!(stored.status(), StatusCode::NO_CONTENT);
+    let polled = Arc::new(AtomicUsize::new(0));
+    let hinted = app
+        .router
+        .clone()
+        .oneshot(upload(counted(4, 1024, Arc::clone(&polled))))
+        .await
+        .expect("response");
+    assert_eq!(hinted.status(), StatusCode::NO_CONTENT);
+    assert_eq!(polled.load(Ordering::SeqCst), 0);
+}

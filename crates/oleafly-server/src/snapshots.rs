@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError, RwLock};
+use std::time::Duration;
 
 use axum::body::Bytes;
 use loro::{
@@ -11,7 +12,7 @@ use loro::{
 };
 use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
-use tokio::sync::Mutex;
+use tokio::sync::{watch, Mutex};
 
 use crate::blobs::{sha256_hex, BlobStore};
 use crate::db::Db;
@@ -63,6 +64,48 @@ pub struct Snapshots {
     reserved: Arc<RwLock<u64>>,
     reported: Arc<RwLock<HashMap<SharedProjectId, u64>>>,
     reads: Arc<AtomicU64>,
+    building: Running,
+}
+
+type Running = Arc<std::sync::Mutex<HashMap<SharedProjectId, watch::Receiver<bool>>>>;
+
+// One snapshot build per project runs at a time. A hint that arrives while
+// one runs waits for it to finish and then takes its own turn.
+struct Building {
+    running: Running,
+    project: SharedProjectId,
+    finished: watch::Sender<bool>,
+}
+
+enum Turn {
+    Lead(Building),
+    Follow(watch::Receiver<bool>),
+}
+
+impl Building {
+    fn turn(running: &Running, project: SharedProjectId) -> Turn {
+        let mut builds = running.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(finished) = builds.get(&project) {
+            return Turn::Follow(finished.clone());
+        }
+        let (finished, waiting) = watch::channel(false);
+        builds.insert(project, waiting);
+        Turn::Lead(Building {
+            running: Arc::clone(running),
+            project,
+            finished,
+        })
+    }
+}
+
+impl Drop for Building {
+    fn drop(&mut self) {
+        self.running
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&self.project);
+        let _ = self.finished.send(true);
+    }
 }
 
 pub enum Current {
@@ -337,6 +380,7 @@ impl Snapshots {
             reserved: Arc::new(RwLock::new(0)),
             reported: Arc::new(RwLock::new(HashMap::new())),
             reads: Arc::new(AtomicU64::new(0)),
+            building: Arc::new(std::sync::Mutex::new(HashMap::new())),
         }
     }
 
@@ -675,8 +719,7 @@ impl Snapshots {
                 return Ok(Upload::Held(newest.seq));
             }
         }
-        let size = bytes.len() as u64;
-        let hash = self.blobs.put_snapshot(project, bytes).await?;
+        let (hash, size) = self.stage(db, project, bytes, now).await?;
         if !matches!(self.blobs.get_snapshot(project, &hash).await, Ok(Some(_))) {
             self.drop_unused(db, project, &hash, now).await;
             return Err(ServerError::Internal(format!(
@@ -732,6 +775,71 @@ impl Snapshots {
             }
         }
         Ok(Upload::Stored)
+    }
+
+    // Notes the object for removal before writing it, so a build that stops
+    // between writing and recording (a dropped request, a killed process)
+    // leaves it for the maintenance pass rather than in the store forever.
+    // Recording the snapshot clears the note.
+    async fn stage(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        bytes: Bytes,
+        now: i64,
+    ) -> Result<(String, u64), ServerError> {
+        let size = bytes.len() as u64;
+        let (hash, bytes) = blocking(move || Ok((sha256_hex(&bytes), bytes))).await?;
+        let queued = hash.clone();
+        db.call(move |conn| {
+            projects::queue_removal(conn, Removal::Snapshot, Some(project), &queued, now)
+        })
+        .await?;
+        self.blobs.put_snapshot_as(project, &hash, bytes).await?;
+        Ok((hash, size))
+    }
+
+    pub async fn build_soon(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        through: u64,
+        by: AccountId,
+        now: i64,
+        wait: Duration,
+    ) -> Result<Option<Upload>, ServerError> {
+        let deadline = tokio::time::Instant::now() + wait;
+        let building = loop {
+            match Building::turn(&self.building, project) {
+                Turn::Lead(building) => break building,
+                Turn::Follow(mut finished) => {
+                    let waited =
+                        tokio::time::timeout_at(deadline, finished.wait_for(|done| *done)).await;
+                    if waited.is_err() {
+                        return Ok(None);
+                    }
+                }
+            }
+        };
+        let (done, outcome) = tokio::sync::oneshot::channel();
+        let (snapshots, db) = (self.clone(), db.clone());
+        tokio::spawn(async move {
+            let _building = building;
+            let built = snapshots.derive(&db, project, through, by, now).await;
+            if let Err(error) = &built {
+                tracing::warn!(
+                    "Could not build the snapshot of project {project} at {through}: {error}"
+                );
+            }
+            let _ = done.send(built);
+        });
+        match tokio::time::timeout_at(deadline, outcome).await {
+            Ok(Ok(built)) => built.map(Some),
+            Ok(Err(_)) => Err(ServerError::Internal(format!(
+                "the snapshot build of project {project} stopped before it finished"
+            ))),
+            Err(_) => Ok(None),
+        }
     }
 
     async fn intact(&self, project: SharedProjectId, row: &SnapshotRow, size: u64) -> bool {
@@ -1442,6 +1550,43 @@ mod tests {
         assert!(snapshots.current(&db, project).await.unwrap().is_none());
         drop(kept);
         assert!(snapshots.reserve(needed).is_some());
+    }
+
+    #[tokio::test]
+    async fn an_object_written_but_never_recorded_is_removed_by_maintenance() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let recorded = db
+            .call(move |conn| projects::pending_removals(conn, 10))
+            .await
+            .unwrap();
+        assert!(recorded.is_empty(), "{recorded:?}");
+        let (hash, _) = snapshots
+            .stage(&db, project, Bytes::from_static(b"a build that stopped"), 2)
+            .await
+            .unwrap();
+        assert!(snapshots
+            .blobs
+            .get_snapshot(project, &hash)
+            .await
+            .unwrap()
+            .is_some());
+        let pending = db
+            .call(move |conn| projects::pending_removals(conn, 10))
+            .await
+            .unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].hash, hash);
+        crate::blobs::cleanup::finish_removals(&db, &snapshots.blobs, &snapshots)
+            .await
+            .unwrap();
+        assert!(snapshots
+            .blobs
+            .get_snapshot(project, &hash)
+            .await
+            .unwrap()
+            .is_none());
     }
 
     fn logged(

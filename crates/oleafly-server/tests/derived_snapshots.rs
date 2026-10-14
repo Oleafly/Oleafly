@@ -8,11 +8,13 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_collab_protocol::snapshots::{
     snapshot_signing_bytes, SNAPSHOT_DEVICE_HEADER, SNAPSHOT_SIGNATURE_HEADER,
 };
+use oleafly_server::config::BlobStoreConfig;
 use oleafly_server::projects;
-use oleafly_server::test_support::TestDevice;
+use oleafly_server::test_support::{test_config, MockS3, MockS3Fault, TestDevice};
 use people::{
     call, connect, create_project, first_snapshot, grant, next_frame, put_bytes, send_update,
-    share_project, signed_by, stage, subscribe, text_of, Person, Socket, Stage, SNAPSHOT_TEXT,
+    share_project, signed_by, stage, stage_with, subscribe, text_of, Person, Socket, Stage,
+    SNAPSHOT_TEXT,
 };
 use reqwest::{Method, StatusCode};
 
@@ -756,6 +758,58 @@ async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_wit
     };
     assert_eq!(seq, Some(0));
     assert_eq!(text_of(&bytes), SNAPSHOT_TEXT);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_hint_the_app_gives_up_on_still_builds_the_snapshot() {
+    let mock = MockS3::start().await;
+    let mut config = test_config();
+    config.blob_store = BlobStoreConfig::S3(Box::new(mock.config("oleafly")));
+    let stage = stage_with(config).await;
+    snapshot_often(&stage);
+    let project = shared_with_alice(&stage).await;
+    let doc = LoroDoc::new();
+    doc.import(&first_snapshot())
+        .expect("the first snapshot loads");
+    append_changes(&stage, &doc, project, 1, 3).await;
+    mock.set_fault(Some(MockS3Fault::Stall(std::time::Duration::from_secs(1))));
+    let gave_up = reqwest::Client::new()
+        .put(format!(
+            "{}/api/v1/projects/{project}/snapshot?seq=3",
+            stage.server.url()
+        ))
+        .bearer_auth(stage.alice.token())
+        .timeout(std::time::Duration::from_millis(500))
+        .body(Vec::new())
+        .send()
+        .await;
+    assert!(gave_up.is_err(), "the slow build answered in time");
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        let newest = stage
+            .server
+            .state()
+            .db
+            .call(move |conn| projects::latest_snapshot(conn, project))
+            .await
+            .expect("the newest snapshot")
+            .map(|row| row.seq);
+        if newest == Some(3) {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "the build stopped with the request, newest is {newest:?}"
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    mock.set_fault(None);
+    let response = download(&stage, "", project).await;
+    assert_eq!(seq_of(&response), Some(3));
+    assert_eq!(
+        text_of(&response.bytes().await.expect("body")),
+        doc.get_text("text").to_string()
+    );
 }
 
 async fn catches_up_from_the_log(stage: &Stage, project: SharedProjectId, since: u64) {
