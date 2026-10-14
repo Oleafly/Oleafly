@@ -466,13 +466,14 @@ async fn forwarded_calls_for_a_restricted_open_folder_are_refused_before_routing
         );
     }
     *state.active_project.lock().await = Some("mcp-forward-trusted-project".into());
+    let trusted = Some("mcp-forward-trusted-project".to_string());
     assert_eq!(
         forward_route(&state, 0, "read_file", policy.clone(), root()).await,
-        Ok(ToolRoute::Native)
+        Ok((ToolRoute::Native, trusted.clone()))
     );
     assert_eq!(
         forward_route(&state, 0, "write_file", policy, root()).await,
-        Ok(ToolRoute::RejectNoRenderer)
+        Ok((ToolRoute::RejectNoRenderer, trusted))
     );
 }
 
@@ -497,12 +498,42 @@ async fn deny_rules_refuse_native_and_forwarded_tools_for_the_open_project() {
     }
     assert_eq!(
         forward_route(&state, 0, "list_files", trust.clone(), root()).await,
-        Ok(ToolRoute::Native)
+        Ok((ToolRoute::Native, Some("mcp-deny-project".into())))
     );
     *state.active_project.lock().await = Some("mcp-other-project".into());
     assert_eq!(
         forward_route(&state, 0, "read_file", trust, root()).await,
-        Ok(ToolRoute::Native)
+        Ok((ToolRoute::Native, Some("mcp-other-project".into())))
+    );
+}
+
+#[tokio::test]
+async fn a_native_call_keeps_the_project_whose_rules_were_checked() {
+    let rules = tempfile::tempdir().unwrap();
+    std::fs::write(
+        rules.path().join("approvals.toml"),
+        "[mcp-switch-denied]\nread_file = \"deny\"\n",
+    )
+    .unwrap();
+    let state = McpState::default();
+    *state.active_project.lock().await = Some("mcp-switch-allowed".into());
+    let trust = Some(("trust".to_string(), false));
+
+    let routed = forward_route(
+        &state,
+        0,
+        "read_file",
+        trust,
+        Some(rules.path().to_path_buf()),
+    )
+    .await;
+    // The project whose rules deny read_file opens before the call runs. The
+    // call still runs on the project that was checked, not on this one.
+    *state.active_project.lock().await = Some("mcp-switch-denied".into());
+
+    assert_eq!(
+        routed,
+        Ok((ToolRoute::Native, Some("mcp-switch-allowed".into())))
     );
 }
 
