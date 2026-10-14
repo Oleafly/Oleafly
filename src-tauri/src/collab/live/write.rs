@@ -15,7 +15,7 @@ use super::{
     WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
-use crate::collab::disk::safe_target;
+use crate::collab::disk::{crlf_only, lf_text, safe_target};
 
 const WRITE_SETTLE: Duration = Duration::from_secs(10);
 
@@ -85,48 +85,53 @@ fn write_into(
     if under_a_file(&placed, &path) {
         return Ok(false);
     }
+    let crlf = crlf_only(text.as_bytes()) == Some(true);
+    let text = lf_text(text);
+    let base = base.map(lf_text);
     match placed.get(&path).cloned() {
         Some((id, NodeKind::Text, _)) => {
             let current = live.doc().text(&id)?;
             let chosen = match base {
-                Some(base) => Some(base.to_owned()),
-                None => closest_base(bases, reads, &path, text),
+                Some(base) => Some(base.into_owned()),
+                None => closest_base(bases, reads, &path, &text),
             };
             match chosen
                 .as_deref()
-                .and_then(|base| merged_onto(base, text, &current))
+                .and_then(|base| merged_onto(base, &text, &current))
             {
                 Some(operation) => live.local_operation(&id, &operation)?,
-                None => live.local_text(&id, text)?,
+                None => live.local_text(&id, &text)?,
             };
         }
         Some((_, NodeKind::Dir, _)) => return Ok(false),
         Some((id, NodeKind::Blob, _)) => {
             live.doc_mut().trash(&id)?;
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
-            live.doc_mut().add_node(
+            let id = live.doc_mut().add_node(
                 parent.as_deref(),
                 name_of(&path),
                 NodeKind::Text,
                 None,
-                text,
+                &text,
             )?;
+            live.doc_mut().set_crlf(&id, crlf)?;
         }
         None => {
             if std::fs::symlink_metadata(&target).is_ok() {
                 return Ok(false);
             }
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
-            live.doc_mut().add_node(
+            let id = live.doc_mut().add_node(
                 parent.as_deref(),
                 name_of(&path),
                 NodeKind::Text,
                 None,
-                text,
+                &text,
             )?;
+            live.doc_mut().set_crlf(&id, crlf)?;
         }
     }
-    bases.record(&path, text);
+    bases.record(&path, &text);
     Ok(true)
 }
 
@@ -172,7 +177,7 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
     reads
         .entry(project_id.to_owned())
         .or_default()
-        .record(&path, text);
+        .record(&path, &lf_text(text));
 }
 
 pub fn note_read(project_id: &str, path: &str, text: &str) {
@@ -248,9 +253,10 @@ fn undo_shared(
             continue;
         };
         let current = live.doc().text(&id)?;
-        match merged_onto(shared.text, before, &current) {
+        let before = lf_text(before);
+        match merged_onto(&lf_text(shared.text), &before, &current) {
             Some(operation) => live.local_operation(&id, &operation)?,
-            None => live.local_text(&id, before)?,
+            None => live.local_text(&id, &before)?,
         };
     }
     let layout = materialize::layout(&live.doc().nodes()?);
@@ -542,6 +548,78 @@ mod tests {
             }
             other => panic!("expected a remote change, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_crlf_write_reaches_the_document_and_the_open_editor_as_lf() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, main) = shared("a\n");
+        let (sink, seen) = recorder();
+        let opened = live.open_file(&main, sink).unwrap();
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            Some("a\r\n"),
+            "a\r\nb\r\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "a\nb\n");
+        let messages = seen.lock().unwrap().clone();
+        match &messages[..] {
+            [DocMessage::Remote { op, .. }] => {
+                assert_eq!(op.apply(&opened.text).unwrap(), "a\nb\n");
+            }
+            other => panic!("expected one remote change, got {other:?}"),
+        }
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            None,
+            "a\rb\r\nc\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "a\nb\nc\n");
+    }
+
+    #[test]
+    fn a_new_crlf_file_is_lf_in_the_document_and_remembered_as_crlf() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, _) = shared("abc\n");
+        for (path, text) in [
+            ("windows.tex", "one\r\ntwo\r\n"),
+            ("unix.tex", "one\ntwo\n"),
+        ] {
+            assert!(write_into(
+                &mut live,
+                &mut WrittenTexts::default(),
+                None,
+                dir.path(),
+                path,
+                None,
+                text,
+            )
+            .unwrap());
+        }
+        let layout = materialize::layout(&live.doc().nodes().unwrap());
+        let id_of = |path: &str| {
+            layout
+                .iter()
+                .find(|(_, placed)| placed.path == path)
+                .unwrap()
+                .0
+                .clone()
+        };
+        let (windows, unix) = (id_of("windows.tex"), id_of("unix.tex"));
+        assert_eq!(live.doc().text(&windows).unwrap(), "one\ntwo\n");
+        assert!(live.doc().crlf(&windows));
+        assert_eq!(live.doc().text(&unix).unwrap(), "one\ntwo\n");
+        assert!(!live.doc().crlf(&unix));
     }
 
     #[test]

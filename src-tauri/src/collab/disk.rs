@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
@@ -46,7 +47,16 @@ pub fn as_text(bytes: &[u8]) -> Option<String> {
     }
     std::str::from_utf8(bytes)
         .ok()
-        .map(|text| text.replace("\r\n", "\n"))
+        .map(|text| lf_text(text).into_owned())
+}
+
+// The shared document and the editor hold LF only; the disk keeps each file's style.
+pub fn lf_text(text: &str) -> Cow<'_, str> {
+    if text.contains('\r') {
+        Cow::Owned(text.replace("\r\n", "\n").replace('\r', "\n"))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
 
 pub fn crlf_only(bytes: &[u8]) -> Option<bool> {
@@ -535,6 +545,14 @@ mod tests {
         assert_eq!(as_text(b"a\r\nb").as_deref(), Some("a\nb"));
         assert_eq!(as_text(b"\x89PNG\0"), None);
         assert_eq!(as_text(&[0xff, 0xfe]), None);
+    }
+
+    #[test]
+    fn a_lone_carriage_return_reads_as_a_line_end_like_the_editor() {
+        assert_eq!(as_text(b"a\rb\r\nc\n").as_deref(), Some("a\nb\nc\n"));
+        assert_eq!(as_text(b"\r\r\n").as_deref(), Some("\n\n"));
+        assert_eq!(lf_text("one\r\ntwo\rthree"), "one\ntwo\nthree");
+        assert!(matches!(lf_text("plain\n"), Cow::Borrowed("plain\n")));
     }
 
     #[test]
