@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use futures_util::FutureExt;
-use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
+use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::AccountId;
 use tokio::sync::mpsc::UnboundedSender;
@@ -78,18 +78,6 @@ pub(super) async fn take_in(
     let mut unbound: BTreeSet<u64> = BTreeSet::new();
     let mut imported = 0;
     for (seq, account_id, envelope) in backlog {
-        if envelope.mode == EnvelopeMode::Unknown {
-            {
-                let mut live = lock(project);
-                live.note_batch(seq, envelope.batch_id);
-                live.skip_update(seq);
-            }
-            let _ = events.send(LiveEvent::Unreadable {
-                seq,
-                device_id: Some(envelope.device_id),
-            });
-            continue;
-        }
         let first_seen: Vec<u64> = {
             let live = lock(project);
             live.doc()
@@ -122,6 +110,13 @@ pub(super) async fn take_in(
                 let _ = events.send(LiveEvent::Untrusted {
                     device_id: envelope.device_id,
                     seq,
+                });
+            }
+            Trust::Unreadable => {
+                lock(project).skip_update(seq);
+                let _ = events.send(LiveEvent::Unreadable {
+                    seq,
+                    device_id: Some(envelope.device_id),
                 });
             }
             Trust::Unreachable => {

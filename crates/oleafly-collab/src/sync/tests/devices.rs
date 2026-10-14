@@ -369,6 +369,25 @@ async fn an_update_that_cannot_be_imported_is_reported_once_and_syncing_goes_on(
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn the_trust_check_calls_an_envelope_in_an_unknown_mode_unreadable_not_forged() {
+    let pair = two_people().await;
+    let (project, main, bob_live, _alice_live) = shared(&pair).await;
+    let bob = side(bob_live, &main);
+    let mut sealed = signed_envelope(&pair.alice, project, b"sealed for later".to_vec());
+    sealed.mode = EnvelopeMode::Unknown;
+    let verdict = trust(
+        &link(&pair, &pair.bob, project),
+        &bob.live,
+        &bob.events_tx,
+        &mut Refreshed::default(),
+        &sealed,
+        Some(pair.alice.tokens.account_id),
+    )
+    .await;
+    assert!(matches!(verdict, Trust::Unreadable));
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn an_update_in_a_mode_this_build_cannot_read_is_skipped_without_calling_it_forged() {
     let pair = two_people().await;
     let (project, main, bob_live, mut alice_live) = shared(&pair).await;

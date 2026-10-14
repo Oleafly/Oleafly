@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use oleafly_collab_protocol::crypto::verify_ed25519;
-use oleafly_collab_protocol::envelope::Envelope;
+use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -12,6 +12,7 @@ use crate::live::PeerCheck;
 pub(super) enum Trust {
     Signed(Option<AccountId>),
     Refused,
+    Unreadable,
     Unreachable,
 }
 
@@ -29,6 +30,9 @@ pub(super) async fn trust(
     envelope: &Envelope,
     claimed: Option<AccountId>,
 ) -> Trust {
+    if envelope.mode == EnvelopeMode::Unknown {
+        return Trust::Unreadable;
+    }
     match signature_trust(
         link,
         project,
