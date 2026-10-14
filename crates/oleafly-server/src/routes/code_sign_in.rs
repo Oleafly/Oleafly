@@ -176,7 +176,12 @@ fn redeem(
         return Err(ServerError::Auth(AuthErrorCode::InvalidSignature));
     }
     let outcome = match authorization.status {
-        Status::Used => return Err(ServerError::Auth(AuthErrorCode::InvalidCode)),
+        Status::Used => {
+            match device_code::replay(&tx, &authorization.id, &request.device_code, now)? {
+                Some(tokens) => (DevicePoll::Approved { tokens }, None),
+                None => return Err(ServerError::Auth(AuthErrorCode::InvalidCode)),
+            }
+        }
         Status::Refused => return Err(ServerError::Auth(AuthErrorCode::NotAdmitted)),
         Status::Denied => (DevicePoll::Denied, None),
         _ if authorization.expires_at <= now => (DevicePoll::Expired, None),
@@ -184,7 +189,7 @@ fn redeem(
             Pace::Steady { interval } => (DevicePoll::Pending { interval }, None),
             Pace::TooFast { interval } => (DevicePoll::SlowDown { interval }, None),
         },
-        Status::Approved => approved(&tx, &authorization, ip, now)?,
+        Status::Approved => approved(&tx, &authorization, &request.device_code, ip, now)?,
     };
     tx.commit().map_err(db_error)?;
     Ok(outcome)
@@ -193,6 +198,7 @@ fn redeem(
 fn approved(
     tx: &Connection,
     authorization: &Authorization,
+    device_code: &str,
     ip: Option<String>,
     now: i64,
 ) -> Result<(DevicePoll, Added), ServerError> {
@@ -234,6 +240,7 @@ fn approved(
         )?;
     }
     let tokens = refresh::issue_session(tx, account, registered.device_id, now)?;
+    device_code::keep_reply(tx, &authorization.id, device_code, &tokens, now)?;
     let added = registered.added.then(|| {
         (
             account,

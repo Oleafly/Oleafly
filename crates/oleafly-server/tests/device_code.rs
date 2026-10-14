@@ -220,7 +220,7 @@ async fn the_person_can_stop_a_sign_in_they_did_not_start() {
 }
 
 #[tokio::test]
-async fn an_approved_code_gives_out_tokens_once() {
+async fn an_approved_code_gives_out_one_session() {
     let setup = setup().await;
     let device = TestDevice::generate();
     let code = request_code(&setup.server, &device, None)
@@ -229,7 +229,10 @@ async fn an_approved_code_gives_out_tokens_once() {
     let browser = Browser::new();
     let confirm = enter_code(&browser, &code, &code.user_code).await;
     continue_with(&browser, &confirm, "GitHub").await;
-    tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    let first = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    let again = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    assert_eq!(again.refresh_token, first.refresh_token);
+    setup.server.clock().advance(2 * MINUTE_MS + 1);
     assert_eq!(
         poll(&setup.server, &device, &code.device_code).await,
         Err("invalid_code".to_owned())
@@ -776,4 +779,46 @@ async fn approving_a_code_asked_for_on_another_network_shows_a_warning() {
     )
     .await;
     assert!(!text_of(&same).contains(warning), "{}", same.body);
+}
+
+#[tokio::test]
+async fn a_poll_whose_approved_reply_was_lost_gets_the_same_session_again() {
+    let setup = setup().await;
+    let device = TestDevice::generate();
+    let code = request_code(&setup.server, &device, None)
+        .await
+        .expect("a code");
+    let browser = Browser::new();
+    let confirm = enter_code(&browser, &code, &code.user_code).await;
+    let done = continue_with(&browser, &confirm, "GitHub").await;
+    assert_eq!(done.status, 200, "{}", done.body);
+    let lost = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    setup.server.clock().advance(30 * 1000);
+    let again = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    assert_eq!(again.refresh_token, lost.refresh_token);
+    assert_eq!(again.access_token, lost.access_token);
+    assert_eq!(again.device_id, lost.device_id);
+    assert_eq!(me(&setup.server, &again.access_token).await.logins, ["ada"]);
+    let stranger = TestDevice::generate();
+    assert_eq!(
+        poll(&setup.server, &stranger, &code.device_code)
+            .await
+            .err()
+            .as_deref(),
+        Some("invalid_signature")
+    );
+    let added = security_events(&setup.server)
+        .await
+        .into_iter()
+        .filter(|event| event.kind == SecurityEventKind::DeviceAdded)
+        .count();
+    assert_eq!(added, 1);
+    setup.server.clock().advance(2 * MINUTE_MS);
+    assert_eq!(
+        poll(&setup.server, &device, &code.device_code)
+            .await
+            .err()
+            .as_deref(),
+        Some("invalid_code")
+    );
 }

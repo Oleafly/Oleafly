@@ -221,8 +221,11 @@ pub fn revoke_family(conn: &Connection, family_id: &str, now: i64) -> Result<(),
     Ok(())
 }
 
-fn reply_key(presented: &str) -> Result<LessSafeKey, ServerError> {
-    let mut material = b"oleafly-refresh-grace\0".to_vec();
+const REFRESH_GRACE: &[u8] = b"oleafly-refresh-grace";
+
+fn reply_key(purpose: &[u8], presented: &str) -> Result<LessSafeKey, ServerError> {
+    let mut material = purpose.to_vec();
+    material.push(0);
     material.extend_from_slice(presented.as_bytes());
     let key = digest(&SHA256, &material);
     UnboundKey::new(&AES_256_GCM, key.as_ref())
@@ -231,7 +234,19 @@ fn reply_key(presented: &str) -> Result<LessSafeKey, ServerError> {
 }
 
 pub fn seal_reply(presented: &str, tokens: &SessionTokens) -> Result<Vec<u8>, ServerError> {
-    let key = reply_key(presented)?;
+    seal_reply_for(REFRESH_GRACE, presented, tokens)
+}
+
+pub fn open_reply(presented: &str, blob: &[u8]) -> Option<SessionTokens> {
+    open_reply_for(REFRESH_GRACE, presented, blob)
+}
+
+pub fn seal_reply_for(
+    purpose: &[u8],
+    presented: &str,
+    tokens: &SessionTokens,
+) -> Result<Vec<u8>, ServerError> {
+    let key = reply_key(purpose, presented)?;
     let mut nonce = [0u8; NONCE_LEN];
     SystemRandom::new()
         .fill(&mut nonce)
@@ -249,11 +264,11 @@ pub fn seal_reply(presented: &str, tokens: &SessionTokens) -> Result<Vec<u8>, Se
     Ok(blob)
 }
 
-pub fn open_reply(presented: &str, blob: &[u8]) -> Option<SessionTokens> {
+pub fn open_reply_for(purpose: &[u8], presented: &str, blob: &[u8]) -> Option<SessionTokens> {
     if blob.len() <= NONCE_LEN {
         return None;
     }
-    let key = reply_key(presented).ok()?;
+    let key = reply_key(purpose, presented).ok()?;
     let (nonce, sealed) = blob.split_at(NONCE_LEN);
     let nonce = Nonce::try_assume_unique_for_key(nonce).ok()?;
     let mut sealed = sealed.to_vec();

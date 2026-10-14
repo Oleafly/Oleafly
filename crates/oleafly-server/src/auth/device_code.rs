@@ -1,9 +1,10 @@
+use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::AccountId;
 use ring::rand::{SecureRandom, SystemRandom};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::auth::split_token::{self, constant_time_eq, verifier_matches};
-use crate::auth::{db_error, parse_account};
+use crate::auth::{db_error, parse_account, refresh};
 use crate::error::ServerError;
 use crate::tokens::hash_token;
 
@@ -344,6 +345,8 @@ pub fn record_poll(conn: &Connection, id: &str, now: i64) -> Result<Pace, Server
     })
 }
 
+const REPLY_PURPOSE: &[u8] = b"oleafly-device-code-grace";
+
 pub fn mark_used(conn: &Connection, id: &str) -> Result<bool, ServerError> {
     let changed = conn
         .execute(
@@ -352,6 +355,41 @@ pub fn mark_used(conn: &Connection, id: &str) -> Result<bool, ServerError> {
         )
         .map_err(db_error)?;
     Ok(changed == 1)
+}
+
+pub fn keep_reply(
+    conn: &Connection,
+    id: &str,
+    device_code: &str,
+    tokens: &SessionTokens,
+    now: i64,
+) -> Result<(), ServerError> {
+    let sealed = refresh::seal_reply_for(REPLY_PURPOSE, device_code, tokens)?;
+    conn.execute(
+        "UPDATE device_authorizations SET grace_reply = ?2, expires_at = ?3 WHERE id = ?1 AND status = 'used'",
+        params![id, sealed, now + APPROVED_GRACE_MS],
+    )
+    .map_err(db_error)?;
+    Ok(())
+}
+
+pub fn replay(
+    conn: &Connection,
+    id: &str,
+    device_code: &str,
+    now: i64,
+) -> Result<Option<SessionTokens>, ServerError> {
+    let sealed: Option<Vec<u8>> = conn
+        .query_row(
+            "SELECT grace_reply FROM device_authorizations \
+             WHERE id = ?1 AND status = 'used' AND expires_at > ?2",
+            params![id, now],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(db_error)?
+        .flatten();
+    Ok(sealed.and_then(|sealed| refresh::open_reply_for(REPLY_PURPOSE, device_code, &sealed)))
 }
 
 #[cfg(test)]
