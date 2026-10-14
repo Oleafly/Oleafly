@@ -19,14 +19,16 @@ use crate::auth::device_code::{self, Authorization, NewAuthorization, Pace, Stat
 use crate::auth::email_link;
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::throttle::{self, Throttle};
-use crate::auth::{browser_binding, csrf, db_error, devices, nonce, refresh};
+use crate::auth::{browser_binding, csrf, db_error, devices, nonce, noting_failure, refresh};
 use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::messages::escape;
 use crate::mail::notify;
 use crate::members;
 use crate::rate_limit::client_key;
-use crate::routes::auth::{checked_setup_code, email_link_available, Finish};
+use crate::routes::auth::{
+    checked_setup_code, email_link_available, note_provider_problem, Finish,
+};
 use crate::routes::email_sign_in::{self, page_expired};
 use crate::routes::sign_in_pages::{
     self, device_label, heading, next, paragraph, provider_button, Field, Input, Tone,
@@ -564,15 +566,15 @@ async fn continue_with(
         let callback = state
             .config
             .endpoint(&format!("/auth/callback/{}", pending.provider_id));
-        let Ok(authorize) = provider
-            .authorize_url(
-                &pending.id,
-                &callback,
-                &pkce_s256(&pending.provider_verifier),
-                &pending.provider_nonce,
-            )
-            .await
-        else {
+        let (authorize, detail) = noting_failure(provider.authorize_url(
+            &pending.id,
+            &callback,
+            &pkce_s256(&pending.provider_verifier),
+            &pending.provider_nonce,
+        ))
+        .await;
+        let Ok(authorize) = authorize else {
+            note_provider_problem(&state, &pending.provider_id, detail, now);
             return Ok(finished(
                 locale,
                 &state,

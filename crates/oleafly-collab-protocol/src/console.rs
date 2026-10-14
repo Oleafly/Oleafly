@@ -24,8 +24,16 @@ pub enum HealthStatus {
 pub enum HealthIssue {
     NoSignInProvider,
     StorageNotWritable,
+    SignInFailing,
     #[serde(other)]
     Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignInProblem {
+    pub provider: String,
+    pub at: i64,
+    pub reason: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,6 +91,8 @@ pub struct AdminOverview {
     pub limits: Limits,
     #[serde(default)]
     pub archive_days: u32,
+    #[serde(default)]
+    pub sign_in_problems: Vec<SignInProblem>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -200,7 +210,7 @@ mod tests {
             "protocol": { "min": 1, "max": 1 },
             "started_at": 10,
             "now": 70,
-            "health": { "status": "warning", "issues": ["no_sign_in_provider", "storage_not_writable"] },
+            "health": { "status": "warning", "issues": ["no_sign_in_provider", "storage_not_writable", "sign_in_failing"] },
             "counts": {
                 "people": 3,
                 "suspended_people": 1,
@@ -222,10 +232,17 @@ mod tests {
             "providers": [{ "id": "github", "kind": "github", "label": "GitHub" }],
             "settings": RuntimeSettings::default(),
             "limits": { "max_project_mb": 200, "max_file_mb": 50, "max_members_per_project": 20 },
-            "archive_days": 30
+            "archive_days": 30,
+            "sign_in_problems": [{
+                "provider": "uni",
+                "at": 60,
+                "reason": "unauthorized_client: The client is not allowed to request this grant."
+            }]
         });
         let overview: AdminOverview = serde_json::from_value(wire.clone()).unwrap();
         assert_eq!(overview.counts.pending_guest_approvals, 3);
+        assert_eq!(overview.health.issues[2], HealthIssue::SignInFailing);
+        assert_eq!(overview.sign_in_problems[0].provider, "uni");
         assert_eq!(overview.health.status, HealthStatus::Warning);
         assert_eq!(overview.storage.unwrap().files_location, FilesLocation::S3);
         assert_eq!(serde_json::to_value(&overview).unwrap(), wire);
@@ -239,12 +256,14 @@ mod tests {
         assert_eq!(parsed.storage, None);
         let mut older = serde_json::to_value(&parsed).unwrap();
         older.as_object_mut().unwrap().remove("archive_days");
+        older.as_object_mut().unwrap().remove("sign_in_problems");
         older["counts"]
             .as_object_mut()
             .unwrap()
             .remove("pending_guest_approvals");
         let without: AdminOverview = serde_json::from_value(older).unwrap();
         assert_eq!(without.archive_days, 0);
+        assert!(without.sign_in_problems.is_empty());
         assert_eq!(without.counts.pending_guest_approvals, 0);
         let tape: FilesLocation = serde_json::from_value(json!("tape")).unwrap();
         assert_eq!(tape, FilesLocation::Unknown);

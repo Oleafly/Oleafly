@@ -8,6 +8,7 @@ use oleafly_collab_protocol::auth::{
     AuthErrorCode, AuthStartQuery, ChallengePurpose, ChallengeResponse, RefreshRequest,
     SessionTokens, TokenRequest,
 };
+use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::crypto::{b64url_decode, pkce_s256};
 use oleafly_collab_protocol::ids::ServerId;
 use rusqlite::Connection;
@@ -19,7 +20,8 @@ use crate::auth::admission::{self, Applied, Via};
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::refresh::{self, RefreshOutcome};
 use crate::auth::{
-    browser_binding, db_error, device_code, devices, email_link, nonce, setup, ExternalIdentity,
+    browser_binding, db_error, device_code, devices, email_link, nonce, noting_failure, setup,
+    short, ExternalIdentity,
 };
 use crate::config::ServerConfig;
 use crate::error::ServerError;
@@ -256,15 +258,15 @@ async fn start(
         return email_sign_in::ask_for_address(locale, &state, &headers, pending, now).await;
     };
     let callback = callback_url(&state, &pending.provider_id);
-    let authorize = provider
-        .authorize_url(
-            &pending.id,
-            &callback,
-            &pkce_s256(&pending.provider_verifier),
-            &pending.provider_nonce,
-        )
-        .await;
+    let (authorize, detail) = noting_failure(provider.authorize_url(
+        &pending.id,
+        &callback,
+        &pkce_s256(&pending.provider_verifier),
+        &pending.provider_nonce,
+    ))
+    .await;
     let Ok(authorize) = authorize else {
+        note_provider_problem(&state, &pending.provider_id, detail, now);
         return Ok(back_to_app(
             &state.config,
             &redirect,
@@ -284,6 +286,48 @@ struct CallbackQuery {
     code: Option<String>,
     state: Option<String>,
     error: Option<String>,
+    error_description: Option<String>,
+}
+
+pub(crate) fn note_provider_problem(
+    state: &AppState,
+    provider: &str,
+    detail: Option<String>,
+    now: i64,
+) -> String {
+    let reason = detail.unwrap_or_else(|| "the provider's answer could not be used".to_string());
+    state.providers.note_problem(provider, now, &reason);
+    reason
+}
+
+fn cancelled_by_the_person(
+    state: &AppState,
+    provider: &str,
+    error: &str,
+    description: &str,
+) -> bool {
+    error == "access_denied"
+        && (description.is_empty() || state.providers.kind(provider) == Some(ProviderKind::Github))
+}
+
+async fn record_provider_refusal(
+    state: &AppState,
+    pending: &PendingSignIn,
+    ip: Option<String>,
+    detail: serde_json::Value,
+    now: i64,
+) -> Result<(), ServerError> {
+    let event = NewSecurityEvent {
+        actor: None,
+        kind: SecurityEventKind::SignInRefused,
+        target: Some(pending.device_name.clone()),
+        ip,
+        detail,
+    };
+    state
+        .db
+        .call(move |conn| security_log::record(conn, now, event).map(|_| ()))
+        .await
 }
 
 async fn refuse_other_browser(
@@ -347,28 +391,64 @@ async fn callback(
     };
     let code = match (query.code, query.error.as_deref()) {
         (Some(code), None) => code,
-        (_, Some("access_denied")) => {
-            return conclude(
-                locale,
-                &state,
-                &pending,
-                Err(AuthErrorCode::SignInCancelled),
-            )
+        (_, error) => {
+            let error = short(error.unwrap_or("no_code"));
+            let description = query
+                .error_description
+                .as_deref()
+                .map(short)
+                .unwrap_or_default();
+            if cancelled_by_the_person(&state, &provider_id, &error, &description) {
+                return conclude(
+                    locale,
+                    &state,
+                    &pending,
+                    Err(AuthErrorCode::SignInCancelled),
+                );
+            }
+            tracing::warn!(
+                provider = %provider_id,
+                error = %error,
+                description = %description,
+                "the sign-in provider turned the sign-in down"
+            );
+            let reason = if description.is_empty() {
+                error.clone()
+            } else {
+                format!("{error}: {description}")
+            };
+            state.providers.note_problem(&provider_id, now, &reason);
+            let detail = json!({
+                "provider": provider_id,
+                "reason": "provider_error",
+                "error": error,
+                "description": description,
+                "device_code": pending.device_authorization.is_some()
+            });
+            record_provider_refusal(&state, &pending, ip, detail, now).await?;
+            return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed));
         }
-        _ => return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed)),
     };
     let callback = callback_url(&state, &provider_id);
-    let exchanged = provider
-        .exchange(
-            &code,
-            &callback,
-            &pending.provider_verifier,
-            &pending.provider_nonce,
-        )
-        .await;
+    let (exchanged, failure) = noting_failure(provider.exchange(
+        &code,
+        &callback,
+        &pending.provider_verifier,
+        &pending.provider_nonce,
+    ))
+    .await;
     let Ok(identity) = exchanged else {
+        let reason = note_provider_problem(&state, &provider_id, failure, now);
+        let detail = json!({
+            "provider": provider_id,
+            "reason": "provider_failed",
+            "description": reason,
+            "device_code": pending.device_authorization.is_some()
+        });
+        record_provider_refusal(&state, &pending, ip, detail, now).await?;
         return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed));
     };
+    state.providers.clear_problem(&provider_id);
     let account = account_label(&identity);
     let finishing = pending.clone();
     let max_members = state.config.limits.max_members_per_project;

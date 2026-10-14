@@ -14,10 +14,15 @@ pub mod setup;
 pub mod split_token;
 pub mod throttle;
 
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::future::Future;
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::auth::AuthErrorCode;
 use oleafly_collab_protocol::capabilities::{ProviderInfo, ProviderKind};
+use oleafly_collab_protocol::console::SignInProblem;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use url::Url;
 
@@ -26,6 +31,11 @@ use crate::error::ServerError;
 
 pub const PROVIDER_TIMEOUT: Duration = Duration::from_secs(15);
 pub const USER_AGENT: &str = concat!("oleafly-server/", env!("CARGO_PKG_VERSION"));
+pub const DETAIL_CHARS: usize = 300;
+
+tokio::task_local! {
+    static FAILURE: RefCell<Option<String>>;
+}
 
 #[async_trait::async_trait]
 pub trait IdentityProvider: Send + Sync {
@@ -62,6 +72,7 @@ pub struct ExternalIdentity {
 pub struct ProviderRegistry {
     infos: Vec<ProviderInfo>,
     providers: Vec<Box<dyn IdentityProvider>>,
+    problems: Mutex<BTreeMap<String, SignInProblem>>,
 }
 
 impl ProviderRegistry {
@@ -116,7 +127,11 @@ impl ProviderRegistry {
                 }
             }
         }
-        ProviderRegistry { infos, providers }
+        ProviderRegistry {
+            infos,
+            providers,
+            problems: Mutex::new(BTreeMap::new()),
+        }
     }
 
     pub fn infos(&self) -> Vec<ProviderInfo> {
@@ -129,6 +144,57 @@ impl ProviderRegistry {
             .find(|provider| provider.id() == id)
             .map(AsRef::as_ref)
     }
+
+    pub fn kind(&self, id: &str) -> Option<ProviderKind> {
+        self.infos
+            .iter()
+            .find(|info| info.id == id)
+            .map(|info| info.kind)
+    }
+
+    pub fn note_problem(&self, provider: &str, at: i64, reason: &str) {
+        self.problems
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(
+                provider.to_string(),
+                SignInProblem {
+                    provider: provider.to_string(),
+                    at,
+                    reason: short(reason),
+                },
+            );
+    }
+
+    pub fn clear_problem(&self, provider: &str) {
+        self.problems
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(provider);
+    }
+
+    pub fn problems(&self) -> Vec<SignInProblem> {
+        self.problems
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .cloned()
+            .collect()
+    }
+}
+
+pub fn short(text: &str) -> String {
+    text.chars().take(DETAIL_CHARS).collect()
+}
+
+pub async fn noting_failure<F: Future>(work: F) -> (F::Output, Option<String>) {
+    FAILURE
+        .scope(RefCell::new(None), async move {
+            let output = work.await;
+            let detail = FAILURE.with(|slot| slot.borrow_mut().take());
+            (output, detail)
+        })
+        .await
 }
 
 pub fn join_url(base: &Url, path: &str) -> Url {
@@ -146,6 +212,10 @@ pub fn normalize_email(email: &str) -> String {
 
 pub fn provider_failed(provider: &str, detail: impl std::fmt::Display) -> ServerError {
     tracing::warn!(provider, %detail, "sign-in provider request failed");
+    let _ = FAILURE.try_with(|slot| {
+        slot.borrow_mut()
+            .get_or_insert_with(|| short(&detail.to_string()));
+    });
     ServerError::Auth(AuthErrorCode::ProviderFailed)
 }
 

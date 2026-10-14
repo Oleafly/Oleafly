@@ -81,6 +81,10 @@ async fn overview(
     if !console::data_dir_writable(state.config.data_dir.clone()).await {
         issues.push(HealthIssue::StorageNotWritable);
     }
+    let sign_in_problems = state.providers.problems();
+    if !sign_in_problems.is_empty() {
+        issues.push(HealthIssue::SignInFailing);
+    }
     let config = &state.config;
     Ok(Json(AdminOverview {
         server_name: config.server_name.clone(),
@@ -106,6 +110,7 @@ async fn overview(
         settings: runtime,
         limits: config.limits,
         archive_days: config.archive_days,
+        sign_in_problems,
     }))
 }
 
