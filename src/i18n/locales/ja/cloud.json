@@ -55,6 +55,9 @@
   "flagOff": "「実験的な機能」でクラウド同期がオフになっているため、何も同期されません。Oleafly の Dropbox へのアクセスを取り消すには、接続を解除してください。",
   "advanced": "詳細設定",
   "disconnect": "接続を解除",
+  "attention": "クラウド同期で対応が必要です。",
+  "settingsUnreadable": "Oleafly は Dropbox 内の設定を読み込めません。置き換えるまで、設定は同期されません。",
+  "useLocalSettings": "このコンピューターの設定を使う",
   "projects": {
     "title": "プロジェクト",
     "synced": "同期済み {{count}} 件",
@@ -72,6 +75,8 @@
     "downloading": "ダウンロード中（{{current}} / {{total}}）",
     "listLabel": "クラウド同期のプロジェクト",
     "empty": "プロジェクトはまだありません。ライブラリで作成したプロジェクトが同期されます。",
+    "checking": "Dropbox を確認しています",
+    "checkFailed": "Dropbox 内のプロジェクトを読み込めませんでした。",
     "linkedNote_other": "フォルダから開いた {{count}} 件のプロジェクトは同期されません。バックアップされるのはライブラリ内のプロジェクトだけです。"
   },
   "row": {
@@ -84,20 +89,42 @@
     "onlyInDropbox": "Dropbox のみ",
     "recycled": "ごみ箱にあります",
     "conflicts_other": "競合コピーを {{count}} 件作成しました",
+    "conflictsHelp_other": "同期される前に、ここと別のコンピューターの両方で変更されたファイルがあったため、Oleafly は両方のバージョンを残しました。必要な内容を残してから、コピーを削除してください。",
+    "conflictsLabel": "{{name}} の競合コピー",
+    "dismiss": "閉じる",
     "skipped_other": "{{count}} 件のファイルをスキップしました",
+    "skippedMore_other": "ほか {{count}} 件のファイル",
+    "skippedLabel": "{{name}} でスキップされたファイル",
     "syncSwitch": "このコンピューターで {{name}} を同期",
     "download": "{{name}} をダウンロード",
     "restore": "{{name}} をごみ箱から復元",
     "more": "{{name}} のその他の操作",
     "remove": "Dropbox から削除",
+    "replace": "このコンピューターのコピーで置き換える",
     "heldMessage_other": "{{total}} 件中 {{count}} 件のファイルがここで削除されたため、Dropbox 内のコピーを守るために同期を一時停止しています。",
     "putBack": "元に戻す",
-    "deleteToo": "Dropbox からも削除"
+    "deleteToo": "Dropbox からも削除",
+    "skipReason": {
+      "unsupportedName": "一部のコンピューターで使えない名前",
+      "duplicateName": "大文字と小文字の違いを除いて別のファイルと同じ名前",
+      "symlink": "シンボリックリンク",
+      "specialFile": "通常のファイルではありません",
+      "tooLarge": "大きすぎて同期できません",
+      "packageFolder": "再インストールできるインストール済みパッケージ",
+      "zipLeftovers": "解凍時に残ったファイル",
+      "unreadable": "読み込めませんでした",
+      "downloadFailed": "ダウンロードできませんでした",
+      "uploadFailed": "アップロードできませんでした"
+    }
   },
   "confirm": {
     "removeTitle": "{{name}} を Dropbox から削除しますか？",
     "removeDescription": "容量を空けるため、Dropbox 内のコピーを削除します。プロジェクトはこのコンピューターに残り、ここでの同期は止まります。他のコンピューターのコピーはそのまま残ります。",
     "removeAction": "Dropbox から削除",
+    "removeRemoteDescription": "容量を空けるため、Dropbox からこのプロジェクトを削除します。このコンピューターにはないため、後からここでダウンロードすることはできません。すでにプロジェクトがあるコンピューターでは、コピーがそのまま残ります。",
+    "replaceTitle": "Dropbox 内の {{name}} のコピーを置き換えますか？",
+    "replaceDescription": "Oleafly は Dropbox 内のコピーを読み込めません。このコンピューターのコピーで置き換えられ、Dropbox にしかない内容は失われます。",
+    "replaceAction": "置き換える",
     "deleteTitle": "これらのファイルを Dropbox からも削除しますか？",
     "deleteDescription_other": "このコンピューターで {{name}} から削除した {{count}} 件のファイルは、Dropbox からも削除されます。このプロジェクトを同期している他のコンピューターからも消えます。",
     "deleteAction": "Dropbox から削除",
@@ -120,6 +147,8 @@
     "downloadedAll_other": "{{count}} 件のプロジェクトをダウンロードしました。",
     "downloadedSome_other": "{{count}} 件中 {{failed}} 件のプロジェクトをダウンロードできませんでした。",
     "removed": "{{name}} を Dropbox から削除しました。このコンピューターには残っています。",
+    "removedRemote": "{{name}} を Dropbox から削除しました。",
+    "replaced": "Dropbox 内の {{name}} が、このコンピューターと同じ内容になりました。",
     "filesRestored": "削除したファイルを {{name}} に戻しました。",
     "filesDeleted": "削除したファイルを Dropbox からも削除しました。"
   },
@@ -128,6 +157,7 @@
     "device_name_empty": "名前を入力してください。",
     "device_name_invalid": "コンピューター名には \\ / : * ? \" < > | と制御文字は使えません。また、32 文字以内にしてください。",
     "disabled": "このコンピューターでは同期がオフになっています。",
+    "disk_full": "このコンピューターのディスクの空き容量が少なくなっています。同期を続けるには、空き容量を増やしてください。",
     "download_missing": "このプロジェクトの一部のファイルが Dropbox にないため、ダウンロードしませんでした。",
     "local_io": "Oleafly はこのプロジェクトのファイルを読み書きできませんでした。次回の同期で再試行します。",
     "network": "Dropbox に接続できませんでした。接続を確認してください。",
@@ -138,10 +168,12 @@
     "quota_full": "Dropbox の容量がいっぱいです。空きができるまで、新しい変更はこのコンピューターに残ります。",
     "rate_limited": "Dropbox から Oleafly に速度を落とすよう要求がありました。まもなく同期を再試行します。",
     "remote_busy": "別のコンピューターがこのプロジェクトを同時に同期していました。まもなくもう一度同期します。",
+    "remote_unreadable": "Oleafly は Dropbox 内のコピーを読み込めないため、このプロジェクトは同期されていません。",
     "revoked": "Dropbox へのアクセスが取り消されました。再度接続してください。",
     "server": "Dropbox で問題が発生しました。まもなく同期を再試行します。",
     "sign_in_cancelled": "Dropbox サインインはキャンセルされました。",
     "sign_in_timeout": "サインインに時間がかかりすぎました。もう一度お試しください。",
+    "too_many_files": "このプロジェクトには 100,000 件を超えるファイルがあります。多すぎて同期できません。",
     "verify_failed": "Dropbox のファイルが Oleafly の想定と一致しなかったため、そのままにしました。同期を再試行します。"
   }
 }

@@ -515,6 +515,13 @@ impl Inner {
         let path = arg["path"].as_str().unwrap_or_default();
         let lower = path.to_lowercase();
         let metadata = match self.files.get(&lower) {
+            Some(stored)
+                if arg["parent_rev"]
+                    .as_str()
+                    .is_some_and(|expected| expected != stored.rev) =>
+            {
+                return refuse("path_write/conflict/file/..");
+            }
             Some(stored) => file_meta(stored),
             None if self.folder_exists(&lower) => folder_meta(path),
             None => return refuse("path_lookup/not_found/.."),

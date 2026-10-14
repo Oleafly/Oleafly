@@ -176,7 +176,6 @@ impl EntryInfo {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PolicyFields<'a> {
-    pub compile_dir: Option<&'a str>,
     pub main_doc: &'a str,
     pub sync_include: &'a [String],
     pub sync_exclude: &'a [String],
@@ -214,26 +213,6 @@ fn listed(list: &[String], portable: &str) -> bool {
                     .strip_prefix(entry)
                     .is_some_and(|rest| rest.starts_with('/')))
     })
-}
-
-fn inside_compile_dir(portable: &str, compile_dir: Option<&str>) -> bool {
-    let Some(compile_dir) = compile_dir else {
-        return false;
-    };
-    let compile_dir = compile_dir.replace('\\', "/");
-    let compile_dir = compile_dir.trim_matches('/');
-    if compile_dir.is_empty()
-        || compile_dir == "."
-        || compile_dir
-            .split('/')
-            .any(|part| part == ".." || part.is_empty())
-    {
-        return false;
-    }
-    portable == compile_dir
-        || portable
-            .strip_prefix(compile_dir)
-            .is_some_and(|rest| rest.starts_with('/'))
 }
 
 fn is_main_pdf(portable: &str, main_doc: &str) -> bool {
@@ -294,10 +273,9 @@ pub fn decide(relative: &Path, entry: &EntryInfo, fields: &PolicyFields<'_>) -> 
 
     let overridden = entry.git_tracked || listed(fields.sync_include, &portable);
     if !overridden {
-        let build_output = inside_compile_dir(&portable, fields.compile_dir)
-            || components
-                .iter()
-                .any(|part| is_helper_output_component(part))
+        let build_output = components
+            .iter()
+            .any(|part| is_helper_output_component(part))
             || (entry.kind == EntryKind::File
                 && (is_build_artifact(&portable, |_| false)
                     || is_main_pdf(&portable, fields.main_doc)));
@@ -346,7 +324,6 @@ mod tests {
 
     fn fields() -> PolicyFields<'static> {
         PolicyFields {
-            compile_dir: Some("build"),
             main_doc: "chapters/main.tex",
             sync_include: &[],
             sync_exclude: &[],
@@ -432,10 +409,9 @@ mod tests {
             file("build/main.aux"),
             Decision::Skip(SkipReason::BuildOutput)
         );
-        assert_eq!(
-            file("build/custom.dat"),
-            Decision::Skip(SkipReason::BuildOutput)
-        );
+        assert_eq!(file("build/custom.dat"), Decision::Include);
+        assert_eq!(file("chapters/main.tex"), Decision::Include);
+        assert_eq!(file("chapters/figures/plot.png"), Decision::Include);
         assert_eq!(file("main.log"), Decision::Skip(SkipReason::BuildOutput));
         assert_eq!(
             file("chapters/main.pdf"),

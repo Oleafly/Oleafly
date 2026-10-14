@@ -207,7 +207,12 @@ pub fn ensure(local_id: &str, root: &Path) -> Result<ProjectBinding, String> {
     if binding.origin_digest.is_some() {
         return Ok(binding);
     }
-    finalize_origin(local_id, root)?;
+    if let Err(error) = finalize_origin(local_id, root) {
+        let _ = crate::project::append_app_log(format!(
+            "could not record the origin of project {local_id}: {error}"
+        ));
+        return Ok(binding);
+    }
     self::binding(local_id)?.ok_or_else(|| format!("project {local_id} has no identity binding"))
 }
 
@@ -268,68 +273,68 @@ pub fn set_cloud(local_id: &str, account_id: &str, cloud: Option<ProjectId>) -> 
 pub fn origin_digest(root: &Path) -> Result<ContentHash, String> {
     let manifest = read_manifest_fields(root);
     let fields = PolicyFields {
-        compile_dir: manifest.compile_dir.as_deref(),
         main_doc: &manifest.main_doc,
         sync_include: &manifest.sync_include,
         sync_exclude: &manifest.sync_exclude,
     };
     let mut entries = Vec::new();
+    std::fs::read_dir(root)
+        .map_err(|error| format!("failed to read project directory: {error}"))?;
     let mut pending = vec![root.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let read = std::fs::read_dir(&directory)
-            .map_err(|error| format!("failed to read project directory: {error}"))?;
-        let mut children: Vec<_> = read
-            .collect::<std::io::Result<Vec<_>>>()
-            .map_err(|error| format!("failed to read project directory: {error}"))?;
+        let Ok(read) = std::fs::read_dir(&directory) else {
+            continue;
+        };
+        let mut children: Vec<_> = read.flatten().collect();
         children.sort_by_key(std::fs::DirEntry::file_name);
         for entry in children {
-            let file_type = entry
-                .file_type()
-                .map_err(|error| format!("failed to inspect project entry: {error}"))?;
-            let path = entry.path();
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|_| "project entry escaped the project root".to_string())?;
-            let kind = if file_type.is_symlink() {
-                EntryKind::Symlink
-            } else if file_type.is_dir() {
-                EntryKind::Directory
-            } else if file_type.is_file() {
-                EntryKind::File
-            } else {
-                EntryKind::Other
-            };
-            let metadata = entry
-                .metadata()
-                .map_err(|error| format!("failed to inspect project entry: {error}"))?;
-            let info = EntryInfo {
-                kind,
-                len: metadata.len(),
-                placeholder: oleafly_core::is_cloud_placeholder(&metadata),
-                git_tracked: false,
-                git_pointer_inside: None,
-            };
-            match decide(relative, &info, &fields) {
-                Decision::Include => {
-                    if kind == EntryKind::Directory {
-                        pending.push(path);
-                    } else {
-                        let Some(portable) = portable_path(relative) else {
-                            continue;
-                        };
-                        let hash = ContentHash::digest_file(&path)
-                            .map_err(|error| format!("failed to read project file: {error}"))?;
-                        entries.push((portable, hash, is_executable(&metadata)));
-                        if entries.len() > MAX_ORIGIN_FILES {
-                            return Err("project has too many files for an origin digest".into());
-                        }
-                    }
+            if let Some(file) = origin_entry(root, &entry, &fields, &mut pending) {
+                entries.push(file);
+                if entries.len() > MAX_ORIGIN_FILES {
+                    return Err("project has too many files for an origin digest".into());
                 }
-                Decision::Ignore | Decision::Skip(_) | Decision::Hold | Decision::Git => {}
             }
         }
     }
     Ok(tree_digest(&entries))
+}
+
+fn origin_entry(
+    root: &Path,
+    entry: &std::fs::DirEntry,
+    fields: &PolicyFields<'_>,
+    pending: &mut Vec<PathBuf>,
+) -> Option<(String, ContentHash, bool)> {
+    let file_type = entry.file_type().ok()?;
+    let path = entry.path();
+    let relative = path.strip_prefix(root).ok()?;
+    let kind = if file_type.is_symlink() {
+        EntryKind::Symlink
+    } else if file_type.is_dir() {
+        EntryKind::Directory
+    } else if file_type.is_file() {
+        EntryKind::File
+    } else {
+        EntryKind::Other
+    };
+    let metadata = entry.metadata().ok()?;
+    let info = EntryInfo {
+        kind,
+        len: metadata.len(),
+        placeholder: oleafly_core::is_cloud_placeholder(&metadata),
+        git_tracked: false,
+        git_pointer_inside: None,
+    };
+    if decide(relative, &info, fields) != Decision::Include {
+        return None;
+    }
+    if kind == EntryKind::Directory {
+        pending.push(path);
+        return None;
+    }
+    let portable = portable_path(relative)?;
+    let hash = crate::checkpoint_capture::cached_capture_hash(&path, &portable, &metadata).ok()?;
+    Some((portable, hash, is_executable(&metadata)))
 }
 
 fn read_manifest_fields(root: &Path) -> oleafly_core::ProjectManifest {

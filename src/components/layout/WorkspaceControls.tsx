@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup,
@@ -244,6 +245,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
         <Tooltip label={settingsLabel} side="bottom">
           <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
             data-testid={hideSettings ? undefined : "open-settings"} aria-label={t(($) => $.shell.dock.settings)}
+            aria-describedby={CLOUD_ATTENTION_HINT_ID}
             onClick={() => setSettingsOpen(true)}><SettingsIcon className="size-4" /></Button>
         </Tooltip>
       </ToolbarAction>

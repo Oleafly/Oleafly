@@ -1,3 +1,4 @@
+import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import {
   FIRST_ROUND_DELAY_MS,
   SETTINGS_DEBOUNCE_MS,
@@ -5,12 +6,16 @@ import {
 } from "@/components/cloud/cloud-schedule";
 import { CloudSettingsChoiceDialog } from "@/components/cloud/CloudSettingsChoiceDialog";
 import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
 import { logError } from "@/lib/log";
 import { watchSettingsSources } from "@/lib/settings-file/transfer";
 import { SET_THEME_PREFERENCE_EVENT, TOGGLE_THEME_EVENT } from "@/lib/theme";
 import { THEME_CUSTOMIZATION_CHANGED_EVENT } from "@/lib/theme-customization";
-import { useCloudStore } from "@/store/cloud";
+import { cloudAttentionReasons, useCloudStore } from "@/store/cloud";
+import { useSettingsStore } from "@/store/settings";
+import { useTourStore } from "@/store/tours";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 const SETTINGS_EVENTS = [
   "oleafly:ai-config-changed",
@@ -19,9 +24,52 @@ const SETTINGS_EVENTS = [
   TOGGLE_THEME_EVENT,
 ];
 
+function attentionKey(): string {
+  return cloudAttentionReasons(useCloudStore.getState()).join("\n");
+}
+
+function CloudAttentionHint() {
+  const { t } = useTranslation(["cloud"]);
+  useCatalogUpdates("cloud");
+  return (
+    <p id={CLOUD_ATTENTION_HINT_ID} hidden>
+      {t(($) => $.cloud.attention)}
+    </p>
+  );
+}
+
+function useCloudAttention(): boolean {
+  const attention = useCloudStore((s) => cloudAttentionReasons(s).length > 0);
+
+  useEffect(() => {
+    if (!attention) return;
+    const root = document.documentElement;
+    root.dataset.cloudAttention = "true";
+    return () => {
+      delete root.dataset.cloudAttention;
+    };
+  }, [attention]);
+
+  useEffect(() => {
+    let shown = "";
+    return useSettingsStore.subscribe((settings, previous) => {
+      if (!settings.settingsOpen || previous.settingsOpen || settings.settingsInitialSection !== "general") return;
+      if (useTourStore.getState().activeTourId !== null) return;
+      const key = attentionKey();
+      if (key === "" || key === shown) return;
+      shown = key;
+      settings.setSettingsInitialSection("data");
+      useCloudStore.getState().requestNav("data-cloud");
+    });
+  }, []);
+
+  return attention;
+}
+
 export default function CloudSyncKeeper() {
   const interval = useCloudStore((s) => s.syncInterval);
   const active = useCloudStore((s) => s.status === "connected" && s.state?.enabled === true);
+  const attention = useCloudAttention();
   const mountedAt = useRef(Date.now());
   const lastRoundAt = useRef<number | null>(null);
 
@@ -105,5 +153,10 @@ export default function CloudSyncKeeper() {
     };
   }, [active, interval]);
 
-  return <CloudSettingsChoiceDialog />;
+  return (
+    <>
+      {attention ? <CloudAttentionHint /> : null}
+      <CloudSettingsChoiceDialog />
+    </>
+  );
 }

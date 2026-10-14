@@ -15,6 +15,23 @@ export interface CloudHold {
   total: number;
 }
 
+export type CloudSkipReason =
+  | "unsupportedName"
+  | "duplicateName"
+  | "symlink"
+  | "specialFile"
+  | "tooLarge"
+  | "packageFolder"
+  | "zipLeftovers"
+  | "unreadable"
+  | "downloadFailed"
+  | "uploadFailed";
+
+export interface CloudSkippedFile {
+  path: string;
+  reason: CloudSkipReason;
+}
+
 export interface CloudProject {
   localId: string | null;
   cloudId: string;
@@ -25,6 +42,8 @@ export interface CloudProject {
   error: string | null;
   conflicts: number;
   skipped: number;
+  skippedFiles: CloudSkippedFile[];
+  conflictCopies: string[];
   hold: CloudHold | null;
   recycled: boolean;
   removedBy: string | null;
@@ -60,6 +79,8 @@ export interface SyncProjectReport {
   skipped: number;
   held: boolean;
   error: string | null;
+  changed: string[];
+  changedTruncated: boolean;
 }
 
 export interface SyncReport {
@@ -88,7 +109,7 @@ export type SettingsSyncOutcome =
   | { outcome: "current" }
   | { outcome: "pushed" }
   | { outcome: "apply"; values: Record<string, unknown>; stamp: string }
-  | { outcome: "choose"; values: Record<string, unknown>; stamp: string };
+  | { outcome: "choose"; values: Record<string, unknown>; stamp: string; deferred: boolean };
 
 export interface CloudSettingsDownload {
   values: Record<string, unknown> | null;
@@ -139,8 +160,24 @@ export function cloudProjectSetMode(localId: string, mode: "sync" | "pause"): Pr
   return invoke<void>("cloud_project_set_mode", { localId, mode });
 }
 
-export function cloudProjectResolveHold(localId: string, choice: "restore" | "delete"): Promise<SyncProjectReport> {
-  return invoke<SyncProjectReport>("cloud_project_resolve_hold", { localId, choice });
+export function cloudProjectResolveHold(
+  localId: string,
+  choice: "restore" | "delete",
+  dirty: CloudDirtyFile[],
+): Promise<SyncProjectReport> {
+  return invoke<SyncProjectReport>("cloud_project_resolve_hold", { localId, choice, dirty });
+}
+
+export function cloudProjectDismissConflicts(localId: string): Promise<void> {
+  return invoke<void>("cloud_project_dismiss_conflicts", { localId });
+}
+
+export function cloudProjectReplaceRemote(localId: string, dirty: CloudDirtyFile[]): Promise<SyncProjectReport> {
+  return invoke<SyncProjectReport>("cloud_project_replace_remote", { localId, dirty });
+}
+
+export function cloudRemoveRemote(cloudId: string): Promise<void> {
+  return invoke<void>("cloud_remove_remote", { cloudId });
 }
 
 export function cloudProjectRemove(localId: string): Promise<void> {
@@ -165,4 +202,8 @@ export function cloudSettingsApplied(stamp: string, values: Record<string, unkno
 
 export function cloudSettingsKeepLocal(values: Record<string, unknown>): Promise<void> {
   return invoke<void>("cloud_settings_keep_local", { values });
+}
+
+export function cloudSettingsDefer(stamp: string): Promise<void> {
+  return invoke<void>("cloud_settings_defer", { stamp });
 }

@@ -135,7 +135,7 @@ pub(crate) trait CloudStore: Send + Sync {
     ) -> StoreResult<Option<Fetched>>;
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String>;
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded>;
-    async fn delete(&self, remote: &str) -> StoreResult<()>;
+    async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()>;
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
     async fn changes(&self, cursor: &str) -> StoreResult<Changes>;
@@ -320,6 +320,10 @@ fn retry_after(response: &reqwest::Response) -> Option<Duration> {
         .map(Duration::from_secs)
 }
 
+fn transient(error: &reqwest::Error) -> bool {
+    error.is_timeout() || error.is_connect() || error.is_request()
+}
+
 fn upload_timeout(len: usize) -> Duration {
     RPC_TIMEOUT + Duration::from_secs(u64::try_from(len / 32_768).unwrap_or(u64::MAX))
 }
@@ -372,63 +376,70 @@ impl DropboxStore {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = token;
     }
 
+    fn request(&self, call: &Call<'_>) -> reqwest::RequestBuilder {
+        let mut request = http().post(&call.url).bearer_auth(self.token());
+        if let Some(timeout) = call.timeout {
+            request = request.timeout(timeout);
+        }
+        if let Some(arg) = &call.arg {
+            request = request.header("Dropbox-API-Arg", arg);
+        }
+        match call.body {
+            Body::None => request,
+            Body::Json(value) => request.json(value),
+            Body::Bytes(bytes) => request
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .body(bytes.to_vec()),
+        }
+    }
+
+    async fn refreshed_once(&self, refreshed: &mut bool) -> StoreResult<bool> {
+        if *refreshed {
+            return Ok(false);
+        }
+        let Some(refresher) = &self.refresher else {
+            return Ok(false);
+        };
+        let token = refresher().await?;
+        self.set_token(token);
+        *refreshed = true;
+        Ok(true)
+    }
+
     async fn send(&self, call: &Call<'_>) -> StoreResult<reqwest::Response> {
         let mut refreshed = false;
         let mut attempt = 0;
         loop {
             attempt += 1;
-            let mut request = http().post(&call.url).bearer_auth(self.token());
-            if let Some(timeout) = call.timeout {
-                request = request.timeout(timeout);
-            }
-            if let Some(arg) = &call.arg {
-                request = request.header("Dropbox-API-Arg", arg);
-            }
-            request = match call.body {
-                Body::None => request,
-                Body::Json(value) => request.json(value),
-                Body::Bytes(bytes) => request
-                    .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-                    .body(bytes.to_vec()),
-            };
-            let response = match request.send().await {
+            let response = match self.request(call).send().await {
                 Ok(response) => response,
-                Err(error) => {
-                    if attempt < MAX_ATTEMPTS
-                        && (error.is_timeout() || error.is_connect() || error.is_request())
-                    {
-                        tokio::time::sleep(retry_delay(attempt, None)).await;
-                        continue;
-                    }
-                    return Err(StoreError::Network(error.to_string()));
+                Err(error) if attempt < MAX_ATTEMPTS && transient(&error) => {
+                    tokio::time::sleep(retry_delay(attempt, None)).await;
+                    continue;
                 }
+                Err(error) => return Err(StoreError::Network(error.to_string())),
             };
             let status = response.status().as_u16();
             if status == 401 {
-                if !refreshed {
-                    if let Some(refresher) = &self.refresher {
-                        let token = refresher().await?;
-                        self.set_token(token);
-                        refreshed = true;
-                        continue;
-                    }
+                if self.refreshed_once(&mut refreshed).await? {
+                    continue;
                 }
                 return Err(StoreError::Revoked);
             }
-            if status == 429 || (500..600).contains(&status) {
-                let wait = retry_after(&response);
-                if attempt < MAX_ATTEMPTS {
-                    drop(response);
-                    tokio::time::sleep(retry_delay(attempt, wait)).await;
-                    continue;
-                }
-                return Err(if status == 429 {
-                    StoreError::RateLimited
-                } else {
-                    StoreError::Server(format!("dropbox returned status {status}"))
-                });
+            if status != 429 && !(500..600).contains(&status) {
+                return Ok(response);
             }
-            return Ok(response);
+            if attempt < MAX_ATTEMPTS {
+                let wait = retry_after(&response);
+                drop(response);
+                tokio::time::sleep(retry_delay(attempt, wait)).await;
+                continue;
+            }
+            return Err(if status == 429 {
+                StoreError::RateLimited
+            } else {
+                StoreError::Server(format!("dropbox returned status {status}"))
+            });
         }
     }
 
@@ -827,12 +838,15 @@ impl CloudStore for DropboxStore {
         Self::uploaded(&value, hash, size, &dropbox.finish())
     }
 
-    async fn delete(&self, remote: &str) -> StoreResult<()> {
-        match self
-            .rpc("files/delete_v2", &serde_json::json!({"path": remote}))
-            .await?
-        {
+    async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {
+        let mut arg = serde_json::json!({"path": remote});
+        if let Some(rev) = parent_rev {
+            arg["parent_rev"] = serde_json::Value::String(rev.to_string());
+        }
+        match self.rpc("files/delete_v2", &arg).await? {
             Ok(_) | Err(Refusal::NotFound) => Ok(()),
+            Err(Refusal::RateLimited) => Err(StoreError::RateLimited),
+            Err(_) if parent_rev.is_some() => Ok(()),
             Err(refusal) => Err(refusal_error(refusal)),
         }
     }

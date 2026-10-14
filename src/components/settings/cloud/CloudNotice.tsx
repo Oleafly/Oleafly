@@ -8,12 +8,15 @@ const TONE_CLASS: Readonly<Record<CloudNoticeTone, string>> = {
   danger: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
+const MESSAGE_CLASS = "block min-w-0 flex-1 basis-48 leading-relaxed";
+
 export function CloudNotice({
   tone,
   icon: Icon,
   testId,
   className,
   actions,
+  details,
   children,
 }: Readonly<{
   tone: CloudNoticeTone;
@@ -21,16 +24,23 @@ export function CloudNotice({
   testId?: string;
   className?: string;
   actions?: ReactNode;
+  details?: ReactNode;
   children: ReactNode;
 }>) {
   return (
-    <output
-      data-testid={testId}
-      className={cn("flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 text-xs", TONE_CLASS[tone], className)}
-    >
-      <Icon aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-      <span className="block min-w-0 flex-1 basis-48 leading-relaxed">{children}</span>
-      {actions ? <span className="flex shrink-0 flex-wrap items-center gap-2 self-center">{actions}</span> : null}
-    </output>
+    <div data-testid={testId} className={cn("rounded-lg border px-3 py-2.5 text-xs", TONE_CLASS[tone], className)}>
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <Icon aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+        {tone === "danger" ? (
+          <div role="alert" className={MESSAGE_CLASS}>
+            {children}
+          </div>
+        ) : (
+          <output className={MESSAGE_CLASS}>{children}</output>
+        )}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 self-center">{actions}</div> : null}
+      </div>
+      {details}
+    </div>
   );
 }

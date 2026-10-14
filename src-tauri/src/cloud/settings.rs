@@ -11,7 +11,10 @@ pub(crate) const SETTINGS_REMOTE: &str = "/settings/settings.json";
 const SETTINGS_VERSION: u32 = 1;
 const MAX_SETTINGS_BYTES: usize = 8 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
-const DEVICE_ONLY: [(&str, &str); 1] = [("experimentation", "cloudSync")];
+const DEVICE_ONLY: [(&str, &str); 2] = [
+    ("experimentation", "cloudSync"),
+    ("experimentation", "webBrowser"),
+];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct SettingsBlob {
@@ -31,22 +34,39 @@ fn first_version() -> u32 {
 pub(crate) enum SettingsOutcome {
     Current,
     Pushed,
-    Apply { values: Value, stamp: u64 },
-    Choose { values: Value, stamp: u64 },
+    Apply {
+        values: Value,
+        stamp: u64,
+    },
+    Choose {
+        values: Value,
+        stamp: u64,
+        deferred: bool,
+    },
 }
 
 pub(crate) fn strip_device_only(mut values: Value) -> Value {
     for (group, field) in DEVICE_ONLY {
         if let Some(Value::Object(map)) = values.get_mut(group) {
             map.remove(field);
-            if map.is_empty() {
-                if let Value::Object(root) = &mut values {
-                    root.remove(group);
-                }
+        }
+    }
+    for (group, _) in DEVICE_ONLY {
+        let empty = values
+            .get(group)
+            .and_then(Value::as_object)
+            .is_some_and(serde_json::Map::is_empty);
+        if empty {
+            if let Value::Object(root) = &mut values {
+                root.remove(group);
             }
         }
     }
     values
+}
+
+fn unreadable() -> RoundError {
+    RoundError::Unreadable("the settings in dropbox are unreadable".into())
 }
 
 struct RemoteSettings {
@@ -58,13 +78,12 @@ async fn fetch<S: CloudStore>(store: &S) -> Result<Option<RemoteSettings>, Round
     let Some((bytes, rev)) = store.get(SETTINGS_REMOTE, MAX_SETTINGS_BYTES).await? else {
         return Ok(None);
     };
-    let blob: SettingsBlob = serde_json::from_slice(&bytes)
-        .map_err(|_| StoreError::Server("the settings in dropbox are unreadable".into()))?;
+    let blob: SettingsBlob = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
     if blob.v > SETTINGS_VERSION {
         return Err(RoundError::NewerVersion);
     }
     if !blob.values.is_object() {
-        return Err(StoreError::Server("the settings in dropbox are unreadable".into()).into());
+        return Err(unreadable());
     }
     Ok(Some(RemoteSettings {
         blob: SettingsBlob {
@@ -92,7 +111,7 @@ async fn push<S: CloudStore>(
     device_name: &str,
     values: &Value,
     mode: WriteMode,
-) -> Result<u64, RoundError> {
+) -> Result<(u64, String), RoundError> {
     let stamp = Stamp::new(clock.tick(now_ms()), device);
     let blob = SettingsBlob {
         v: SETTINGS_VERSION,
@@ -101,8 +120,16 @@ async fn push<S: CloudStore>(
         values: values.clone(),
     };
     let bytes = serde_json::to_vec(&blob).map_err(|error| RoundError::Local(error.to_string()))?;
-    store.put(SETTINGS_REMOTE, bytes, mode).await?;
-    Ok(stamp.hlc.raw())
+    let rev = store.put(SETTINGS_REMOTE, bytes, mode).await?;
+    Ok((stamp.hlc.raw(), rev))
+}
+
+fn settle(state: &mut SettingsState, stamp: u64, rev: Option<String>, values: &Value) {
+    state.stamp = stamp;
+    state.rev = rev;
+    state.base = Some(values.clone());
+    state.offered = None;
+    state.deferred = None;
 }
 
 fn mode_for(remote: Option<&RemoteSettings>) -> WriteMode {
@@ -146,6 +173,23 @@ pub(crate) async fn sync_settings<S: CloudStore>(
     }
 }
 
+async fn unchanged_remote<S: CloudStore>(
+    store: &S,
+    state: &SettingsState,
+    local: &Value,
+) -> Result<bool, RoundError> {
+    let Some(rev) = state.rev.as_deref() else {
+        return Ok(false);
+    };
+    if state.base.as_ref() != Some(local) || state.offered.is_some() {
+        return Ok(false);
+    }
+    Ok(store
+        .metadata(SETTINGS_REMOTE)
+        .await?
+        .is_some_and(|meta| meta.rev == rev))
+}
+
 async fn sync_once<S: CloudStore>(
     store: &S,
     hlc: &mut u64,
@@ -154,10 +198,13 @@ async fn sync_once<S: CloudStore>(
     device_name: &str,
     local: &Value,
 ) -> Result<SettingsOutcome, RoundError> {
+    if unchanged_remote(store, state, local).await? {
+        return Ok(SettingsOutcome::Current);
+    }
     let remote = fetch(store).await?;
     let mut clock = clock_after(*hlc, remote.as_ref());
     let Some(remote_settings) = &remote else {
-        let stamp = push(
+        let (stamp, rev) = push(
             store,
             &mut clock,
             device,
@@ -166,33 +213,36 @@ async fn sync_once<S: CloudStore>(
             WriteMode::Add,
         )
         .await?;
-        state.stamp = stamp;
-        state.base = Some(local.clone());
-        state.offered = None;
+        settle(state, stamp, Some(rev), local);
         *hlc = clock.last().raw();
         return Ok(SettingsOutcome::Pushed);
     };
     let remote_values = &remote_settings.blob.values;
     let remote_stamp = remote_settings.blob.stamp.hlc.raw();
+    let remote_rev = remote_settings.rev.clone();
     *hlc = clock.last().raw();
     let Some(base) = state.base.clone() else {
         if remote_values == local {
-            state.stamp = remote_stamp;
-            state.base = Some(local.clone());
-            state.offered = None;
+            settle(state, remote_stamp, Some(remote_rev), local);
             return Ok(SettingsOutcome::Current);
         }
+        let deferred = state.deferred == Some(remote_stamp);
         state.offered = Some(remote_stamp);
         return Ok(SettingsOutcome::Choose {
             values: remote_values.clone(),
             stamp: remote_stamp,
+            deferred,
         });
     };
+    if remote_values == local {
+        settle(state, remote_stamp, Some(remote_rev), local);
+        return Ok(SettingsOutcome::Current);
+    }
     let local_changed = *local != base;
     let remote_changed = remote_stamp != state.stamp && *remote_values != base;
     match (local_changed, remote_changed) {
         (false, false) => {
-            state.stamp = remote_stamp;
+            settle(state, remote_stamp, Some(remote_rev), local);
             Ok(SettingsOutcome::Current)
         }
         (false, true) => {
@@ -203,7 +253,7 @@ async fn sync_once<S: CloudStore>(
             })
         }
         (true, false) => {
-            let stamp = push(
+            let (stamp, rev) = push(
                 store,
                 &mut clock,
                 device,
@@ -212,15 +262,20 @@ async fn sync_once<S: CloudStore>(
                 mode_for(remote.as_ref()),
             )
             .await?;
-            state.stamp = stamp;
-            state.base = Some(local.clone());
-            state.offered = None;
+            settle(state, stamp, Some(rev), local);
             *hlc = clock.last().raw();
             Ok(SettingsOutcome::Pushed)
         }
         (true, true) => {
             let merged = merge3(Some(&base), local, remote_values);
-            let stamp = push(
+            if merged == *remote_values {
+                state.offered = Some(remote_stamp);
+                return Ok(SettingsOutcome::Apply {
+                    values: merged,
+                    stamp: remote_stamp,
+                });
+            }
+            let (stamp, rev) = push(
                 store,
                 &mut clock,
                 device,
@@ -229,14 +284,12 @@ async fn sync_once<S: CloudStore>(
                 mode_for(remote.as_ref()),
             )
             .await?;
-            state.stamp = stamp;
-            state.base = Some(merged.clone());
-            state.offered = Some(stamp);
             *hlc = clock.last().raw();
             if merged == *local {
-                state.offered = None;
+                settle(state, stamp, Some(rev), local);
                 return Ok(SettingsOutcome::Pushed);
             }
+            state.offered = Some(stamp);
             Ok(SettingsOutcome::Apply {
                 values: merged,
                 stamp,
@@ -261,9 +314,15 @@ pub(crate) fn applied(state: &mut SettingsState, stamp: u64, values: Value) -> b
     if state.offered != Some(stamp) {
         return false;
     }
-    state.stamp = stamp;
-    state.base = Some(strip_device_only(values));
-    state.offered = None;
+    settle(state, stamp, None, &strip_device_only(values));
+    true
+}
+
+pub(crate) fn defer(state: &mut SettingsState, stamp: u64) -> bool {
+    if state.offered != Some(stamp) || state.base.is_some() {
+        return false;
+    }
+    state.deferred = Some(stamp);
     true
 }
 
@@ -276,7 +335,14 @@ pub(crate) async fn keep_local<S: CloudStore>(
     let mut attempt = 0;
     loop {
         attempt += 1;
-        let remote = fetch(store).await?;
+        let (remote, mode) = match fetch(store).await {
+            Ok(remote) => {
+                let mode = mode_for(remote.as_ref());
+                (remote, mode)
+            }
+            Err(RoundError::Unreadable(_)) => (None, WriteMode::Overwrite),
+            Err(error) => return Err(error),
+        };
         let mut clock = clock_after(*round.hlc, remote.as_ref());
         match push(
             store,
@@ -284,14 +350,12 @@ pub(crate) async fn keep_local<S: CloudStore>(
             round.device,
             round.device_name,
             &local,
-            mode_for(remote.as_ref()),
+            mode,
         )
         .await
         {
-            Ok(stamp) => {
-                round.state.stamp = stamp;
-                round.state.base = Some(local);
-                round.state.offered = None;
+            Ok((stamp, rev)) => {
+                settle(round.state, stamp, Some(rev), &local);
                 *round.hlc = clock.last().raw();
                 return Ok(());
             }

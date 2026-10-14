@@ -19,12 +19,16 @@ const mocks = vi.hoisted(() => ({
     cloudSyncNow: vi.fn(),
     cloudProjectSetMode: vi.fn(async () => undefined),
     cloudProjectResolveHold: vi.fn(),
+    cloudProjectDismissConflicts: vi.fn(async () => undefined),
+    cloudProjectReplaceRemote: vi.fn(),
     cloudProjectRemove: vi.fn(async () => undefined),
+    cloudRemoveRemote: vi.fn(async () => undefined),
     cloudDownloadProject: vi.fn(),
     cloudSettingsSync: vi.fn(async () => ({ outcome: "current" })),
     cloudSettingsDownload: vi.fn(),
     cloudSettingsApplied: vi.fn(async () => undefined),
     cloudSettingsKeepLocal: vi.fn(async () => undefined),
+    cloudSettingsDefer: vi.fn(async () => undefined),
   },
   open: vi.fn(async () => undefined),
   toast: {
@@ -66,10 +70,30 @@ function project(overrides: Partial<CloudProject>): CloudProject {
     error: null,
     conflicts: 0,
     skipped: 0,
+    skippedFiles: [],
+    conflictCopies: [],
     hold: null,
     recycled: false,
     removedBy: null,
     ...overrides,
+  };
+}
+
+const UNREADABLE = '@oleafly/error:{"code":"cloud.remote_unreadable","params":{}}';
+
+function holdReport() {
+  return {
+    localId: "thesis",
+    uploaded: 0,
+    downloaded: 12,
+    deletedRemote: 0,
+    deletedLocal: 0,
+    conflicts: 0,
+    skipped: 0,
+    held: false,
+    error: null,
+    changed: [],
+    changedTruncated: false,
   };
 }
 
@@ -230,6 +254,9 @@ describe("CloudTab", () => {
     render(<CloudTab />);
     const banner = await screen.findByTestId("cloud-revoked");
     expect(banner).toHaveTextContent("Dropbox access ended. Connect again to keep syncing.");
+    const alert = within(banner).getByRole("alert");
+    expect(alert).toHaveTextContent("Dropbox access ended.");
+    expect(within(alert).queryByRole("button")).toBeNull();
     expect(screen.getByText("Access ended")).toBeInTheDocument();
     await userEvent.click(within(banner).getByRole("button", { name: "Connect again" }));
     expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false);
@@ -239,7 +266,10 @@ describe("CloudTab", () => {
   it("warns when Dropbox is full", async () => {
     serve(cloudState({ quotaFull: true }));
     render(<CloudTab />);
-    expect(await screen.findByTestId("cloud-quota-full")).toHaveTextContent(/New changes stay on this computer/);
+    const notice = await screen.findByTestId("cloud-quota-full");
+    expect(notice).toHaveTextContent(/New changes stay on this computer/);
+    expect(within(notice).getByRole("status")).toHaveTextContent(/Your Dropbox is full/);
+    expect(within(notice).queryByRole("alert")).toBeNull();
     expect(screen.getByText("Dropbox full")).toBeInTheDocument();
   });
 
@@ -343,29 +373,19 @@ describe("CloudTab", () => {
     serve(
       cloudState({ projects: [project({ mode: "held", hold: { kind: "massDelete", count: 12, total: 40 } })] }),
     );
-    mocks.cloud.cloudProjectResolveHold.mockResolvedValue({
-      localId: "thesis",
-      uploaded: 0,
-      downloaded: 12,
-      deletedRemote: 0,
-      deletedLocal: 0,
-      conflicts: 0,
-      skipped: 0,
-      held: false,
-      error: null,
-    });
+    mocks.cloud.cloudProjectResolveHold.mockResolvedValue(holdReport());
     render(<CloudTab />);
     const held = await screen.findByTestId("cloud-project-held");
     expect(held).toHaveTextContent("12 of 40 files were deleted here");
     await userEvent.click(within(held).getByRole("button", { name: "Put them back" }));
-    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledWith("thesis", "restore");
+    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledWith("thesis", "restore", []);
     await waitFor(() => expect(within(held).getByRole("button", { name: "Delete from Dropbox too" })).toBeEnabled());
     await userEvent.click(within(held).getByRole("button", { name: "Delete from Dropbox too" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("The 12 files you deleted from Thesis");
     expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledTimes(1);
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete from Dropbox" }));
-    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenLastCalledWith("thesis", "delete");
+    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenLastCalledWith("thesis", "delete", []);
   });
 
   it("removes a project from Dropbox only after confirming", async () => {
@@ -447,5 +467,179 @@ describe("CloudTab", () => {
     useCloudStore.setState({ settingsImport: "resume" });
     render(<CloudTab />);
     await waitFor(() => expect(useCloudStore.getState().navRequest).toBe("general"));
+  });
+
+  it("shows a loading row while Dropbox is checked instead of saying there are no projects", async () => {
+    let finish!: (value: unknown) => void;
+    mocks.cloud.cloudState.mockResolvedValue(cloudState());
+    mocks.cloud.cloudDetails.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<CloudTab />);
+    await openProjects();
+    expect(await screen.findByTestId("cloud-remote-loading")).toHaveTextContent("Checking your Dropbox");
+    expect(screen.getByTestId("cloud-projects")).toHaveTextContent("Checking your Dropbox");
+    expect(screen.queryByText(/No projects yet/)).toBeNull();
+    await act(async () => finish({ space: null, remote: [], error: null }));
+    expect(await screen.findByText("No projects yet. Projects you create in your Library will sync.")).toBeInTheDocument();
+    expect(screen.queryByTestId("cloud-remote-loading")).toBeNull();
+  });
+
+  it("offers Try again when the Dropbox list can't be loaded", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState());
+    mocks.cloud.cloudDetails.mockRejectedValueOnce('@oleafly/error:{"code":"cloud.network","params":{}}');
+    render(<CloudTab />);
+    await openProjects();
+    const failed = await screen.findByTestId("cloud-remote-error");
+    expect(failed).toHaveTextContent("Couldn't load the projects in your Dropbox.");
+    expect(screen.queryByText(/No projects yet/)).toBeNull();
+    mocks.cloud.cloudDetails.mockResolvedValueOnce({
+      space: null,
+      remote: [project({ localId: null, cloudId: "c-notes", name: "Notes", mode: "download" })],
+      error: null,
+    });
+    await userEvent.click(within(failed).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Notes")).toBeInTheDocument();
+    expect(screen.queryByTestId("cloud-remote-error")).toBeNull();
+  });
+
+  it("removes a Dropbox-only project from Dropbox after confirming", async () => {
+    serve(cloudState(), null, [project({ localId: null, cloudId: "c-notes", name: "Notes", mode: "download" })]);
+    render(<CloudTab />);
+    await openProjects();
+    fireEvent.pointerDown(await screen.findByRole("button", { name: "More actions for Notes" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    await userEvent.click(await screen.findByTestId("cloud-project-remove"));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Remove Notes from Dropbox?");
+    expect(dialog).toHaveTextContent("It isn't on this computer, so you can't download it here afterwards.");
+    expect(mocks.cloud.cloudRemoveRemote).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remove from Dropbox" }));
+    expect(mocks.cloud.cloudRemoveRemote).toHaveBeenCalledWith("c-notes");
+    await waitFor(() =>
+      expect(mocks.toast.successUnique).toHaveBeenCalledWith("cloud-action", "Notes was removed from your Dropbox."),
+    );
+  });
+
+  it("hides Download all when the only Dropbox projects are in the Recycle Bin", async () => {
+    serve(cloudState(), null, [project({ localId: null, cloudId: "c-bin", name: "Binned", mode: "download", recycled: true })]);
+    render(<CloudTab />);
+    await waitFor(() => expect(screen.getByTestId("cloud-projects")).toHaveTextContent("1 only in Dropbox"));
+    expect(screen.queryByTestId("cloud-download-all")).toBeNull();
+  });
+
+  it("lists skipped files with a reason and how many more there are", async () => {
+    serve(
+      cloudState({
+        projects: [
+          project({
+            lastSyncedMs: Date.now(),
+            skipped: 4,
+            skippedFiles: [
+              { path: "figures/CON.png", reason: "unsupportedName" },
+              { path: "data/huge.bin", reason: "tooLarge" },
+              { path: "notes.md", reason: "uploadFailed" },
+            ],
+          }),
+        ],
+      }),
+    );
+    render(<CloudTab />);
+    await openProjects();
+    const toggle = screen.getByTestId("cloud-project-skipped");
+    expect(toggle).toHaveTextContent("4 files were skipped");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("figures/CON.png")).toBeNull();
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const list = screen.getByRole("list", { name: "Skipped files in Thesis" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("figures/CON.png");
+    expect(items[0]).toHaveTextContent("Name that doesn't work on every computer");
+    expect(items[1]).toHaveTextContent("data/huge.bin");
+    expect(items[1]).toHaveTextContent("Too large to sync");
+    expect(items[2]).toHaveTextContent("notes.md");
+    expect(items[2]).toHaveTextContent("Couldn't be uploaded");
+    expect(items[3]).toHaveTextContent("And 1 more file");
+  });
+
+  it("lists conflict copies and dismisses them", async () => {
+    serve(
+      cloudState({
+        projects: [
+          project({
+            lastSyncedMs: Date.now(),
+            conflicts: 2,
+            conflictCopies: ["main (Laptop 2026-10-14).tex", "refs (Laptop 2026-10-14).bib"],
+          }),
+        ],
+      }),
+    );
+    render(<CloudTab />);
+    const notice = await screen.findByTestId("cloud-project-conflicts");
+    expect(notice).toHaveTextContent("2 conflict copies were made");
+    expect(notice).toHaveTextContent("so Oleafly kept both");
+    const list = within(notice).getByRole("list", { name: "Conflict copies in Thesis" });
+    expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "main (Laptop 2026-10-14).tex",
+      "refs (Laptop 2026-10-14).bib",
+    ]);
+    expect(within(within(notice).getByRole("status")).queryByRole("button")).toBeNull();
+    serve(cloudState({ projects: [project({ lastSyncedMs: Date.now() })] }));
+    await userEvent.click(within(notice).getByRole("button", { name: "Dismiss" }));
+    expect(mocks.cloud.cloudProjectDismissConflicts).toHaveBeenCalledWith("thesis");
+    await waitFor(() => expect(screen.queryByTestId("cloud-project-conflicts")).toBeNull());
+  });
+
+  it("replaces an unreadable copy in Dropbox only after confirming", async () => {
+    serve(cloudState({ projects: [project({ lastSyncedMs: 5, error: UNREADABLE })] }));
+    mocks.cloud.cloudProjectReplaceRemote.mockResolvedValue({ ...holdReport(), downloaded: 0, uploaded: 4 });
+    render(<CloudTab />);
+    const notice = await screen.findByTestId("cloud-project-unreadable");
+    expect(within(notice).getByRole("alert")).toHaveTextContent(
+      "Oleafly can't read the copy in your Dropbox, so this project isn't syncing.",
+    );
+    expect(notice).not.toHaveTextContent(/try again/i);
+    await userEvent.click(within(notice).getByRole("button", { name: "Replace with this computer's copy" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Replace the copy of Thesis in Dropbox?");
+    expect(mocks.cloud.cloudProjectReplaceRemote).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+    expect(mocks.cloud.cloudProjectReplaceRemote).toHaveBeenCalledWith("thesis", []);
+  });
+
+  it("says a project with too many files can't sync without promising to try again", async () => {
+    serve(
+      cloudState({
+        projects: [project({ lastSyncedMs: 5, error: '@oleafly/error:{"code":"cloud.too_many_files","params":{}}' })],
+      }),
+    );
+    render(<CloudTab />);
+    const row = await screen.findByTestId("cloud-project-row");
+    expect(row).toHaveTextContent("This project has more than 100,000 files. That's too many to sync.");
+    expect(row).not.toHaveTextContent(/try again/i);
+  });
+
+  it("offers a put-off settings choice in the card instead of a dialog", async () => {
+    serve(cloudState());
+    useCloudStore.setState({ settingsChoice: { values: { a: 1 }, stamp: "6", deferred: true } });
+    render(<CloudTab />);
+    const notice = await screen.findByTestId("cloud-settings-waiting");
+    expect(notice).toHaveTextContent("Which settings should Oleafly use?");
+    expect(screen.queryByTestId("cloud-settings-choice")).toBeNull();
+    await userEvent.click(within(notice).getByRole("button", { name: "Use Dropbox settings" }));
+    expect(mocks.cloud.cloudSettingsApplied).toHaveBeenCalledWith("6", {});
+    await waitFor(() => expect(screen.queryByTestId("cloud-settings-waiting")).toBeNull());
+  });
+
+  it("replaces unreadable settings in Dropbox with this computer's", async () => {
+    serve(cloudState());
+    useCloudStore.setState({ settingsProblem: UNREADABLE });
+    render(<CloudTab />);
+    const notice = await screen.findByTestId("cloud-settings-problem");
+    expect(notice).toHaveTextContent("Oleafly can't read the settings in your Dropbox. They won't sync until you replace them.");
+    await userEvent.click(within(notice).getByRole("button", { name: "Use this computer's settings" }));
+    expect(mocks.cloud.cloudSettingsKeepLocal).toHaveBeenCalledWith({});
+    await waitFor(() => expect(screen.queryByTestId("cloud-settings-problem")).toBeNull());
   });
 });

@@ -55,6 +55,9 @@
   "flagOff": "云同步已在“实验功能”中关闭，因此不会同步任何内容。断开连接即可移除 Oleafly 对你 Dropbox 的访问权限。",
   "advanced": "高级",
   "disconnect": "断开连接",
+  "attention": "云同步需要你处理。",
+  "settingsUnreadable": "Oleafly 无法读取你 Dropbox 中的设置。在你替换这些设置之前，它们不会同步。",
+  "useLocalSettings": "使用这台电脑的设置",
   "projects": {
     "title": "项目",
     "synced": "{{count}} 个已同步",
@@ -72,6 +75,8 @@
     "downloading": "正在下载第 {{current}} 个，共 {{total}} 个",
     "listLabel": "云同步中的项目",
     "empty": "还没有项目。你在库中创建的项目会自动同步。",
+    "checking": "正在检查你的 Dropbox",
+    "checkFailed": "无法加载你 Dropbox 中的项目。",
     "linkedNote_other": "从文件夹打开的 {{count}} 个项目不会同步。只有库中的项目会被备份。"
   },
   "row": {
@@ -84,20 +89,42 @@
     "onlyInDropbox": "仅在 Dropbox 中",
     "recycled": "在你的回收站中",
     "conflicts_other": "已创建 {{count}} 个冲突副本",
+    "conflictsHelp_other": "文件在同步之前已分别在这里和另一台电脑上被更改，因此 Oleafly 保留了两个版本。保留你需要的内容，然后删除副本。",
+    "conflictsLabel": "{{name}} 中的冲突副本",
+    "dismiss": "忽略",
     "skipped_other": "已跳过 {{count}} 个文件",
+    "skippedMore_other": "还有 {{count}} 个文件",
+    "skippedLabel": "{{name}} 中跳过的文件",
     "syncSwitch": "在这台电脑上同步 {{name}}",
     "download": "下载 {{name}}",
     "restore": "从回收站恢复 {{name}}",
     "more": "{{name}} 的更多操作",
     "remove": "从 Dropbox 中移除",
+    "replace": "用这台电脑上的副本替换",
     "heldMessage_other": "这里删除了 {{total}} 个文件中的 {{count}} 个，因此同步已暂停，以保护你 Dropbox 中的副本。",
     "putBack": "放回原处",
-    "deleteToo": "也从 Dropbox 中删除"
+    "deleteToo": "也从 Dropbox 中删除",
+    "skipReason": {
+      "unsupportedName": "并非在所有电脑上都可用的名称",
+      "duplicateName": "与另一个文件同名，仅大小写不同",
+      "symlink": "符号链接",
+      "specialFile": "不是普通文件",
+      "tooLarge": "文件过大，无法同步",
+      "packageFolder": "可以重新安装的已安装软件包",
+      "zipLeftovers": "解压后遗留的文件",
+      "unreadable": "无法读取",
+      "downloadFailed": "无法下载",
+      "uploadFailed": "无法上传"
+    }
   },
   "confirm": {
     "removeTitle": "要从 Dropbox 中移除 {{name}} 吗？",
     "removeDescription": "这会删除你 Dropbox 中的副本以释放空间。项目会保留在这台电脑上，并停止在这里同步。你的其他电脑会保留各自的副本。",
     "removeAction": "从 Dropbox 中移除",
+    "removeRemoteDescription": "这会从你的 Dropbox 中删除该项目以释放空间。它不在这台电脑上，因此之后无法下载到这里。已有该项目的电脑会保留各自的副本。",
+    "replaceTitle": "要替换 Dropbox 中 {{name}} 的副本吗？",
+    "replaceDescription": "Oleafly 无法读取你 Dropbox 中的副本。它将被这台电脑上的副本替换，仅存在于 Dropbox 中的内容都将丢失。",
+    "replaceAction": "替换",
     "deleteTitle": "也要从 Dropbox 中删除这些文件吗？",
     "deleteDescription_other": "你在这台电脑上从 {{name}} 中删除的 {{count}} 个文件也会从你的 Dropbox 中删除。同步此项目的其他电脑也会失去这些文件。",
     "deleteAction": "从 Dropbox 中删除",
@@ -120,6 +147,8 @@
     "downloadedAll_other": "已下载 {{count}} 个项目。",
     "downloadedSome_other": "{{count}} 个项目中有 {{failed}} 个无法下载。",
     "removed": "{{name}} 已从你的 Dropbox 中移除。它仍在这台电脑上。",
+    "removedRemote": "{{name}} 已从你的 Dropbox 中移除。",
+    "replaced": "你 Dropbox 中的 {{name}} 现已与这台电脑一致。",
     "filesRestored": "已删除的文件已放回 {{name}}。",
     "filesDeleted": "已删除的文件也已从你的 Dropbox 中移除。"
   },
@@ -128,6 +157,7 @@
     "device_name_empty": "请输入名称。",
     "device_name_invalid": "电脑名称不能包含 \\ / : * ? \" < > | 或控制字符，且最多 32 个字符。",
     "disabled": "这台电脑上的同步已关闭。",
+    "disk_full": "这台电脑的磁盘空间即将用完。请释放一些空间以继续同步。",
     "download_missing": "此项目的部分文件在 Dropbox 中缺失，因此未下载。",
     "local_io": "Oleafly 无法读取或写入此项目中的某个文件。它会在下次同步时重试。",
     "network": "无法连接到 Dropbox。请检查你的网络连接。",
@@ -138,10 +168,12 @@
     "quota_full": "你的 Dropbox 已满。在腾出空间之前，新的更改会保留在这台电脑上。",
     "rate_limited": "Dropbox 要求 Oleafly 放慢速度。稍后会重试同步。",
     "remote_busy": "另一台电脑正在同时同步此项目。稍后会再次同步。",
+    "remote_unreadable": "Oleafly 无法读取你 Dropbox 中的副本，因此此项目没有同步。",
     "revoked": "Dropbox 访问权限已被撤销。请重新连接。",
     "server": "Dropbox 出现问题。稍后会重试同步。",
     "sign_in_cancelled": "Dropbox 登录已取消。",
     "sign_in_timeout": "登录耗时过长。请重试。",
+    "too_many_files": "此项目有超过 100,000 个文件。文件太多，无法同步。",
     "verify_failed": "来自 Dropbox 的某个文件与 Oleafly 预期的不一致，因此未做改动。稍后会重试同步。"
   }
 }

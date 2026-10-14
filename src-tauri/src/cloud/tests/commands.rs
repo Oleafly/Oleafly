@@ -2,15 +2,16 @@
 
 use crate::cloud::commands::{
     cloud_connect_begin, cloud_connect_cancel, cloud_connect_paste, cloud_connect_wait,
-    cloud_details, cloud_disconnect, cloud_download_project, cloud_project_remove,
-    cloud_project_resolve_hold, cloud_project_set_mode, cloud_set_device_name, cloud_set_enabled,
-    cloud_settings_applied, cloud_settings_download, cloud_settings_keep_local,
-    cloud_settings_sync, cloud_state, cloud_sync_now, DirtyFile,
+    cloud_details, cloud_disconnect, cloud_download_project, cloud_project_dismiss_conflicts,
+    cloud_project_remove, cloud_project_replace_remote, cloud_project_resolve_hold,
+    cloud_project_set_mode, cloud_remove_remote, cloud_set_device_name, cloud_set_enabled,
+    cloud_settings_applied, cloud_settings_defer, cloud_settings_download,
+    cloud_settings_keep_local, cloud_settings_sync, cloud_state, cloud_sync_now, DirtyFile,
 };
 use crate::cloud::engine::{now_ms, project_remote, tombstone_remote, version_remote};
 use crate::cloud::settings::SETTINGS_REMOTE;
 use crate::cloud::state::ProjectState;
-use crate::cloud::store::Endpoints;
+use crate::cloud::store::{Endpoints, StoreError};
 use crate::cloud::tests::fake_dropbox::{
     black_hole, point_at, FakeDropbox, Pointed, Reply, DISPLAY_NAME, EMAIL,
 };
@@ -790,7 +791,7 @@ async fn server_errors_conflicts_rate_limits_and_busy_projects_are_reported() {
 
     let lock = crate::worktree_lock::ProjectWorktreeLock::exclusive("beta").unwrap();
     let locked = view(
-        cloud_project_resolve_hold("beta".into(), "restore".into())
+        cloud_project_resolve_hold("beta".into(), "restore".into(), None)
             .await
             .unwrap(),
     );
@@ -798,7 +799,7 @@ async fn server_errors_conflicts_rate_limits_and_busy_projects_are_reported() {
     drop(lock);
     assert_eq!(
         code(
-            &cloud_project_resolve_hold("beta".into(), "maybe".into())
+            &cloud_project_resolve_hold("beta".into(), "maybe".into(), None)
                 .await
                 .err()
                 .unwrap()
@@ -892,14 +893,14 @@ async fn pausing_removing_and_resuming_projects() {
     harness.fake.with(|dropbox| {
         dropbox.fault("files/delete_v2", None, Reply::Status(400), 1);
     });
-    assert_eq!(
-        code(&cloud_project_remove("alpha".into()).await.unwrap_err()),
-        "cloud.server"
-    );
-    assert_eq!(listed(&state().await, "alpha")["mode"], "sync");
     cloud_project_remove("alpha".into()).await.unwrap();
     assert!(harness.remote(&tombstone_remote(alpha_cloud)).is_some());
+    assert!(harness.remote(&version_remote(alpha_cloud)).is_some());
+    assert!(crate::cloud::state::snapshot().unwrap().projects["alpha"].remove_pending);
+    assert_eq!(listed(&state().await, "alpha")["mode"], "removed");
+    sync().await;
     assert!(harness.remote(&version_remote(alpha_cloud)).is_none());
+    assert!(!crate::cloud::state::snapshot().unwrap().projects["alpha"].remove_pending);
     let removed = state().await;
     assert_eq!(listed(&removed, "alpha")["mode"], "removed");
     assert_eq!(
@@ -982,7 +983,7 @@ async fn mass_deletions_wait_for_a_choice_to_restore_or_delete() {
     );
 
     let restored = view(
-        cloud_project_resolve_hold("book".into(), "restore".into())
+        cloud_project_resolve_hold("book".into(), "restore".into(), None)
             .await
             .unwrap(),
     );
@@ -994,7 +995,7 @@ async fn mass_deletions_wait_for_a_choice_to_restore_or_delete() {
     remove_chapters();
     assert_eq!(report_for(&sync().await, "book")["held"], true);
     let deleted = view(
-        cloud_project_resolve_hold("book".into(), "delete".into())
+        cloud_project_resolve_hold("book".into(), "delete".into(), None)
             .await
             .unwrap(),
     );
@@ -1228,10 +1229,6 @@ async fn settings_push_apply_choose_and_keep_local() {
     );
 
     let sepia = json!({"appearance": {"theme": "sepia"}});
-    write_settings(
-        &harness.fake,
-        &json!({"v": 1, "stamp": fresh_stamp(), "device": "Laptop", "values": sepia}),
-    );
     harness.fake.with(|dropbox| {
         dropbox.fault(
             "files/upload",
@@ -1277,7 +1274,7 @@ async fn settings_push_apply_choose_and_keep_local() {
     );
     assert_eq!(
         code(&cloud_settings_sync(sepia.clone()).await.err().unwrap()),
-        "cloud.server"
+        "cloud.remote_unreadable"
     );
 
     write_settings(
@@ -1293,14 +1290,227 @@ async fn settings_push_apply_choose_and_keep_local() {
         .with(|dropbox| dropbox.write(SETTINGS_REMOTE, b"not json".to_vec()));
     assert_eq!(
         code(&cloud_settings_download().await.err().unwrap()),
-        "cloud.server"
+        "cloud.remote_unreadable"
     );
-    assert_eq!(
-        code(&cloud_settings_keep_local(sepia).await.err().unwrap()),
-        "cloud.server"
-    );
+    cloud_settings_keep_local(sepia.clone()).await.unwrap();
+    let replaced: Value = serde_json::from_str(&harness.remote(SETTINGS_REMOTE).unwrap()).unwrap();
+    assert_eq!(replaced["values"], sepia);
     assert_eq!(
         code(&cloud_settings_sync(json!([1, 2])).await.err().unwrap()),
         "cloud.local_io"
     );
+}
+
+#[tokio::test]
+async fn a_missing_sign_in_secret_shows_that_access_ended() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha")]);
+    let backend = crate::secrets::cloud_secret_backend().backend;
+    let _ = crate::secrets::delete_cloud_secret("cloud/dropbox/refresh", backend);
+    harness.fake.with(|dropbox| dropbox.expire_tokens());
+    let report = sync().await;
+    assert_eq!(code_of(&report["error"]), "cloud.revoked");
+    assert_eq!(state().await["status"], "revoked");
+}
+
+#[tokio::test]
+async fn a_round_never_refreshes_into_another_account() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let refresh = crate::cloud::commands::refresher("dbid:someone-else");
+    let error = refresh().await.unwrap_err();
+    assert!(matches!(error, StoreError::Network(_)));
+    assert_eq!(state().await["status"], "connected");
+    drop(harness);
+}
+
+#[tokio::test]
+async fn projects_only_in_dropbox_can_be_removed_from_dropbox() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let laptop = seed_remote(&harness.fake, "From the laptop", "laptop text");
+    let before = view(cloud_details().await.unwrap());
+    assert_eq!(before["remote"].as_array().unwrap().len(), 1);
+    let id = laptop.to_string();
+    harness.fake.with(|dropbox| {
+        dropbox.fault(
+            "files/delete_v2",
+            Some(&id),
+            Reply::Refuse("too_many_files/.."),
+            1,
+        );
+    });
+    cloud_remove_remote(id).await.unwrap();
+    assert!(harness.remote(&version_remote(laptop)).is_none());
+    assert!(harness.remote(&tombstone_remote(laptop)).is_some());
+    assert_eq!(view(cloud_details().await.unwrap())["remote"], json!([]));
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha")]);
+    sync().await;
+    assert_eq!(
+        code(
+            &cloud_remove_remote(cloud_of("alpha").to_string())
+                .await
+                .unwrap_err()
+        ),
+        "cloud.server"
+    );
+    assert_eq!(
+        code(&cloud_remove_remote("nope".into()).await.unwrap_err()),
+        "cloud.not_found"
+    );
+}
+
+#[tokio::test]
+async fn details_reuse_what_they_read_until_a_project_changes() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let laptop = seed_remote(&harness.fake, "From the laptop", "laptop text");
+    let first = view(cloud_details().await.unwrap());
+    assert_eq!(first["remote"][0]["name"], "From the laptop");
+    harness.fake.with(|dropbox| dropbox.clear_calls());
+    let again = view(cloud_details().await.unwrap());
+    assert_eq!(again["remote"][0]["name"], "From the laptop");
+    assert_eq!(
+        harness.fake.with(|dropbox| dropbox.calls("files/download")),
+        0
+    );
+    harness.fake.with(|dropbox| {
+        let mut version: Value =
+            serde_json::from_slice(&dropbox.read(&version_remote(laptop)).unwrap()).unwrap();
+        version["name"] = json!("Renamed on the laptop");
+        dropbox.write(
+            &version_remote(laptop),
+            serde_json::to_vec(&version).unwrap(),
+        );
+    });
+    let renamed = view(cloud_details().await.unwrap());
+    assert_eq!(renamed["remote"][0]["name"], "Renamed on the laptop");
+}
+
+#[tokio::test]
+async fn quiet_rounds_still_mark_projects_as_checked() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha")]);
+    sync().await;
+    crate::cloud::state::update(|state| {
+        state.projects.get_mut("alpha").unwrap().last_synced_ms = 1;
+    })
+    .unwrap();
+    assert_eq!(sync().await["projects"], json!([]));
+    assert!(entry("alpha").last_synced_ms > 1);
+    drop(harness);
+}
+
+#[tokio::test]
+async fn a_postponed_settings_choice_stays_postponed() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    write_settings(
+        &harness.fake,
+        &json!({"v": 1, "stamp": fresh_stamp(), "device": "Laptop", "values": {"appearance": {"theme": "dark"}}}),
+    );
+    let mine = json!({"appearance": {"theme": "light"}});
+    let choose = view(cloud_settings_sync(mine.clone()).await.unwrap());
+    assert_eq!(choose["outcome"], "choose");
+    assert_eq!(choose["deferred"], false);
+    cloud_settings_defer(text(&choose["stamp"])).unwrap();
+    let later = view(cloud_settings_sync(mine.clone()).await.unwrap());
+    assert_eq!(later["outcome"], "choose");
+    assert_eq!(later["deferred"], true);
+    assert!(cloud_settings_defer("later".into()).is_err());
+    cloud_settings_keep_local(mine.clone()).await.unwrap();
+    assert_eq!(
+        view(cloud_settings_sync(mine).await.unwrap()),
+        json!({"outcome": "current"})
+    );
+}
+
+#[tokio::test]
+async fn reports_name_changed_files_and_conflict_copies_wait_to_be_dismissed() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let alpha = harness.project("alpha", "Alpha", &[("main.tex", "alpha v1")]);
+    sync().await;
+    let alpha_cloud = cloud_of("alpha");
+    edit_remote(&harness.fake, alpha_cloud, "main.tex", "from the laptop");
+    let pulled = sync().await;
+    assert_eq!(report_for(&pulled, "alpha")["changed"], json!(["main.tex"]));
+    assert_eq!(report_for(&pulled, "alpha")["changedTruncated"], false);
+
+    write(&alpha, "main.tex", "edited here");
+    edit_remote(&harness.fake, alpha_cloud, "main.tex", "edited there");
+    let conflicted = sync().await;
+    assert_eq!(report_for(&conflicted, "alpha")["conflicts"], 1);
+    let copies = listed(&state().await, "alpha")["conflictCopies"].clone();
+    assert_eq!(copies.as_array().unwrap().len(), 1);
+    sync().await;
+    assert_eq!(listed(&state().await, "alpha")["conflictCopies"], copies);
+    cloud_project_dismiss_conflicts("alpha".into()).unwrap();
+    let dismissed = state().await;
+    assert_eq!(listed(&dismissed, "alpha")["conflictCopies"], json!([]));
+    assert_eq!(listed(&dismissed, "alpha")["conflicts"], 0);
+
+    harness
+        .fake
+        .with(|dropbox| dropbox.write(&version_remote(alpha_cloud), b"not json".to_vec()));
+    write(&alpha, "main.tex", "after the damage");
+    let broken = sync().await;
+    assert_eq!(
+        code_of(&report_for(&broken, "alpha")["error"]),
+        "cloud.remote_unreadable"
+    );
+    let replaced = view(
+        cloud_project_replace_remote("alpha".into(), None)
+            .await
+            .unwrap(),
+    );
+    assert_eq!(replaced["error"], Value::Null);
+    let version: Value =
+        serde_json::from_str(&harness.remote(&version_remote(alpha_cloud)).unwrap()).unwrap();
+    assert!(version["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|file| file["path"] == "main.tex"));
+    assert_eq!(
+        code(&cloud_project_remove("ghost".into()).await.unwrap_err()),
+        "cloud.not_found"
+    );
+    assert_eq!(
+        code(
+            &cloud_project_replace_remote("ghost".into(), None)
+                .await
+                .err()
+                .unwrap()
+        ),
+        "cloud.not_found"
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_unreadable_file_never_blocks_the_first_sync() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let root = harness.project(
+        "alpha",
+        "Alpha",
+        &[("main.tex", "alpha"), ("secret.tex", "locked")],
+    );
+    let secret = root.join("secret.tex");
+    std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let readable = std::fs::read(&secret).is_ok();
+    let first = sync().await;
+    std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert_eq!(report_for(&first, "alpha")["error"], Value::Null);
+    if !readable {
+        assert_eq!(report_for(&first, "alpha")["uploaded"], 2);
+        assert_eq!(
+            listed(&state().await, "alpha")["skippedFiles"],
+            json!([{"path": "secret.tex", "reason": "unreadable"}])
+        );
+    }
 }

@@ -1,16 +1,18 @@
 use super::merge::{self, PROJECT_META};
-use super::state::{BaseEntry, Hold, ProjectState};
+use super::state::{BaseEntry, Failure, Hold, PendingDelete, ProjectState, SkippedFile};
 use super::store::{CloudStore, StoreError, WriteMode};
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::ContentHash;
-use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields};
+use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason};
 use oleafly_core::hlc::{Hlc, HlcClock, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
 use oleafly_core::portable;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub(crate) const FORMAT_VERSION: u32 = 1;
@@ -22,6 +24,12 @@ const PUBLISH_EVERY_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
 const DOWNLOAD_CONCURRENCY: usize = 4;
 const STALE_TEMP_AGE: Duration = Duration::from_secs(60 * 60);
+pub(crate) const RETRY_FAILED_MS: u64 = 60 * 60 * 1000;
+const DISK_HEADROOM_BYTES: u64 = 64 * 1024 * 1024;
+pub(crate) const MAX_LISTED_SKIPS: usize = 50;
+pub(crate) const MAX_CONFLICT_COPIES: usize = 100;
+const MAX_TREE_DEPTH: usize = 32;
+const APPLY_BATCH: usize = 32;
 
 pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
@@ -35,6 +43,9 @@ pub(crate) enum RoundError {
     Store(StoreError),
     NewerVersion,
     Busy,
+    Unreadable(String),
+    TooManyFiles,
+    DiskFull,
     Local(String),
 }
 
@@ -50,11 +61,17 @@ impl RoundError {
     }
 
     pub(crate) fn to_app_error(&self) -> String {
+        use crate::app_error::AppError;
         match self {
             Self::Store(error) => error.to_app_error(),
-            Self::NewerVersion => crate::app_error::AppError::new("cloud.newer_version").into(),
-            Self::Busy => crate::app_error::AppError::new("cloud.project_busy").into(),
-            Self::Local(detail) => crate::app_error::AppError::new("cloud.local_io")
+            Self::NewerVersion => AppError::new("cloud.newer_version").into(),
+            Self::Busy => AppError::new("cloud.project_busy").into(),
+            Self::Unreadable(detail) => AppError::new("cloud.remote_unreadable")
+                .detail(detail.clone())
+                .into(),
+            Self::TooManyFiles => AppError::new("cloud.too_many_files").into(),
+            Self::DiskFull => AppError::new("cloud.disk_full").into(),
+            Self::Local(detail) => AppError::new("cloud.local_io")
                 .detail(detail.clone())
                 .into(),
         }
@@ -67,7 +84,9 @@ impl std::fmt::Display for RoundError {
             Self::Store(error) => error.fmt(formatter),
             Self::NewerVersion => formatter.write_str("a newer Oleafly wrote this project"),
             Self::Busy => formatter.write_str("the project is busy"),
-            Self::Local(detail) => formatter.write_str(detail),
+            Self::TooManyFiles => formatter.write_str("the project has too many files to sync"),
+            Self::DiskFull => formatter.write_str("there isn't enough free disk space"),
+            Self::Unreadable(detail) | Self::Local(detail) => formatter.write_str(detail),
         }
     }
 }
@@ -129,7 +148,22 @@ pub(crate) struct RoundOptions {
     pub(crate) allow_mass_delete: bool,
     pub(crate) restore_deleted: bool,
     pub(crate) allow_uploads: bool,
+    pub(crate) replace_remote: bool,
+    pub(crate) free_bytes: Option<u64>,
     pub(crate) dirty: BTreeSet<String>,
+    pub(crate) cancel: Option<Arc<AtomicBool>>,
+}
+
+impl RoundOptions {
+    fn forced(&self) -> bool {
+        self.allow_mass_delete || self.restore_deleted || self.replace_remote
+    }
+
+    fn cancelled(&self) -> bool {
+        self.cancel
+            .as_ref()
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -144,13 +178,17 @@ pub(crate) struct SyncOutcome {
     pub(crate) removed_by: Option<String>,
     pub(crate) quota_hit: bool,
     pub(crate) unchanged: bool,
+    pub(crate) changed: Vec<String>,
 }
+
+pub(crate) type PendingHook = Arc<dyn Fn(&[PendingDelete]) + Send + Sync>;
 
 pub(crate) struct RoundEnv {
     pub(crate) root: PathBuf,
     pub(crate) staging: PathBuf,
     pub(crate) trash: PathBuf,
     pub(crate) lock_id: Option<String>,
+    pub(crate) persist_pending: Option<PendingHook>,
 }
 
 pub(crate) struct RoundResult {
@@ -204,14 +242,14 @@ fn is_reparse(_metadata: &std::fs::Metadata) -> bool {
 }
 
 #[cfg(unix)]
-fn is_executable(metadata: &std::fs::Metadata) -> bool {
+fn executable(metadata: &std::fs::Metadata, _fallback: bool) -> bool {
     use std::os::unix::fs::PermissionsExt as _;
     metadata.permissions().mode() & 0o111 != 0
 }
 
 #[cfg(not(unix))]
-fn is_executable(_metadata: &std::fs::Metadata) -> bool {
-    false
+fn executable(_metadata: &std::fs::Metadata, fallback: bool) -> bool {
+    fallback
 }
 
 #[cfg(unix)]
@@ -227,8 +265,15 @@ fn apply_exec(path: &Path, portable: &str, exec: bool) {
     if let Ok(metadata) = std::fs::metadata(path) {
         let mut permissions = metadata.permissions();
         let mode = permissions.mode();
-        permissions.set_mode(if exec { mode | 0o755 } else { mode & !0o111 });
-        let _ = std::fs::set_permissions(path, permissions);
+        let wanted = if exec {
+            mode | ((mode & 0o444) >> 2)
+        } else {
+            mode & !0o111
+        };
+        if wanted != mode {
+            permissions.set_mode(wanted);
+            let _ = std::fs::set_permissions(path, permissions);
+        }
     }
 }
 
@@ -237,7 +282,6 @@ fn apply_exec(_path: &Path, _portable: &str, _exec: bool) {}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct OwnedPolicy {
-    compile_dir: Option<String>,
     main_doc: String,
     include: Vec<String>,
     exclude: Vec<String>,
@@ -246,7 +290,6 @@ pub(crate) struct OwnedPolicy {
 impl OwnedPolicy {
     fn fields(&self) -> PolicyFields<'_> {
         PolicyFields {
-            compile_dir: self.compile_dir.as_deref(),
             main_doc: &self.main_doc,
             sync_include: &self.include,
             sync_exclude: &self.exclude,
@@ -255,12 +298,7 @@ impl OwnedPolicy {
 }
 
 pub(crate) fn read_meta_value(root: &Path) -> Option<serde_json::Value> {
-    let path = root.join(PROJECT_META);
-    let metadata = std::fs::symlink_metadata(&path).ok()?;
-    if !metadata.is_file() || metadata.len() > oleafly_core::MAX_MANIFEST_BYTES {
-        return None;
-    }
-    serde_json::from_slice(&std::fs::read(&path).ok()?).ok()
+    read_json(&root.join(PROJECT_META))
 }
 
 fn policy_for(meta: Option<&serde_json::Value>) -> OwnedPolicy {
@@ -269,7 +307,6 @@ fn policy_for(meta: Option<&serde_json::Value>) -> OwnedPolicy {
         .and_then(|bytes| oleafly_core::sniff_oleafly_manifest(&bytes))
         .unwrap_or_default();
     OwnedPolicy {
-        compile_dir: manifest.compile_dir,
         main_doc: manifest.main_doc,
         include: manifest.sync_include,
         exclude: manifest.sync_exclude,
@@ -280,19 +317,28 @@ fn policy_for(meta: Option<&serde_json::Value>) -> OwnedPolicy {
 pub(crate) struct LocalFile {
     pub(crate) path: String,
     pub(crate) hash: String,
+    size: u64,
     stamp: FileStamp,
+    signature: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Capture {
     pub(crate) files: BTreeMap<String, LocalFile>,
     pub(crate) unobserved: BTreeSet<String>,
-    pub(crate) skipped: usize,
+    pub(crate) skipped: Vec<SkippedFile>,
     policy: OwnedPolicy,
     meta: Option<serde_json::Value>,
 }
 
 impl Capture {
+    fn skip(&mut self, path: String, reason: &str) {
+        self.skipped.push(SkippedFile {
+            path,
+            reason: reason.to_string(),
+        });
+    }
+
     pub(crate) fn matches_base(&self, base: &BTreeMap<String, BaseEntry>) -> bool {
         let base_by_key: BTreeMap<String, &BaseEntry> = base
             .iter()
@@ -309,6 +355,54 @@ impl Capture {
             .keys()
             .all(|key| self.files.contains_key(key) || self.unobserved.contains(key))
     }
+}
+
+struct Prior<'a> {
+    by_key: BTreeMap<String, (&'a str, &'a BaseEntry)>,
+}
+
+impl<'a> Prior<'a> {
+    fn new(base: &'a BTreeMap<String, BaseEntry>) -> Self {
+        Self {
+            by_key: base
+                .iter()
+                .map(|(path, entry)| (key(path), (path.as_str(), entry)))
+                .collect(),
+        }
+    }
+
+    fn path(&self, file_key: &str) -> Option<&'a str> {
+        self.by_key.get(file_key).map(|(path, _)| *path)
+    }
+
+    fn reusable_hash(&self, file_key: &str, portable: &str, stamp: &FileStamp) -> Option<String> {
+        let (path, entry) = self.by_key.get(file_key)?;
+        let stored = entry.stamp.as_deref()?;
+        (*path == portable && stamp.signature().as_deref() == Some(stored))
+            .then(|| entry.hash.clone())
+    }
+}
+
+fn skip_code(reason: SkipReason) -> Option<&'static str> {
+    match reason {
+        SkipReason::BuildOutput | SkipReason::ExcludedByUser | SkipReason::OutsideGitPointer => {
+            None
+        }
+        SkipReason::Reinstallable => Some("packageFolder"),
+        SkipReason::ZipLeftovers => Some("zipLeftovers"),
+        SkipReason::Symlink => Some("symlink"),
+        SkipReason::SpecialFile => Some("specialFile"),
+        SkipReason::NonUtf8Name => Some("unsupportedName"),
+        SkipReason::TooLarge => Some("tooLarge"),
+    }
+}
+
+fn shown_path(relative: &Path) -> String {
+    relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn sweep_stale_temp(path: &Path, name: &str) {
@@ -385,13 +479,23 @@ fn classify_entry(
             }
             return Seen::Skip;
         }
-        Decision::Include if !is_reparse(&metadata) => {}
-        _ => return Seen::Skip,
+        Decision::Skip(reason) => {
+            if let Some(code) = skip_code(reason) {
+                out.skip(shown_path(relative), code);
+            }
+            return Seen::Skip;
+        }
+        Decision::Include if is_reparse(&metadata) => {
+            out.skip(shown_path(relative), "symlink");
+            return Seen::Skip;
+        }
+        Decision::Include => {}
+        Decision::Hold | Decision::Git => return Seen::Skip,
     }
     let Some(portable) = portable_path(relative)
         .filter(|portable| portable::synced_path_problem(portable).is_none())
     else {
-        out.skipped += 1;
+        out.skip(shown_path(relative), "unsupportedName");
         return Seen::Skip;
     };
     if kind == EntryKind::Directory {
@@ -404,16 +508,40 @@ fn classify_entry(
     }
 }
 
-fn record_file(out: &mut Capture, portable: String, path: &Path, metadata: &std::fs::Metadata) {
-    let file_key = key(&portable);
-    if out.files.contains_key(&file_key) {
-        out.skipped += 1;
-        return;
+fn hash_local(
+    portable: &str,
+    path: &Path,
+    metadata: &std::fs::Metadata,
+) -> std::io::Result<String> {
+    if portable == PROJECT_META {
+        return std::fs::read(path).map(|bytes| merge::meta_digest(&bytes).to_hex());
     }
-    let hash = if portable == PROJECT_META {
-        std::fs::read(path).map(|bytes| merge::meta_digest(&bytes))
-    } else {
-        crate::checkpoint_capture::cached_capture_hash(path, &portable, metadata)
+    crate::checkpoint_capture::cached_capture_hash(path, portable, metadata)
+        .map(|hash| hash.to_hex())
+}
+
+fn record_file(
+    out: &mut Capture,
+    prior: &Prior<'_>,
+    portable: String,
+    path: &Path,
+    metadata: &std::fs::Metadata,
+) {
+    let file_key = key(&portable);
+    if let Some(existing) = out.files.get(&file_key) {
+        let wanted = prior.path(&file_key) == Some(portable.as_str()) && existing.path != portable;
+        if !wanted {
+            out.skip(portable, "duplicateName");
+            return;
+        }
+        let displaced = existing.path.clone();
+        out.files.remove(&file_key);
+        out.skip(displaced, "duplicateName");
+    }
+    let stamp = FileStamp::of(metadata);
+    let hash = match prior.reusable_hash(&file_key, &portable, &stamp) {
+        Some(hash) => Ok(hash),
+        None => hash_local(&portable, path, metadata),
     };
     match hash {
         Ok(hash) => {
@@ -421,29 +549,41 @@ fn record_file(out: &mut Capture, portable: String, path: &Path, metadata: &std:
                 file_key,
                 LocalFile {
                     path: portable,
-                    hash: hash.to_hex(),
-                    stamp: FileStamp::of(metadata),
+                    hash,
+                    size: metadata.len(),
+                    signature: stamp.settled_signature(SystemTime::now()),
+                    stamp,
                 },
             );
         }
         Err(_) => {
             out.unobserved.insert(file_key);
+            out.skip(portable, "unreadable");
         }
     }
 }
 
-pub(crate) fn capture(root: &Path) -> Result<Capture, RoundError> {
+pub(crate) fn capture_with(
+    root: &Path,
+    base: &BTreeMap<String, BaseEntry>,
+) -> Result<Capture, RoundError> {
     let meta = read_meta_value(root);
     let policy = policy_for(meta.as_ref());
+    let prior = Prior::new(base);
     let mut out = Capture {
         meta,
         ..Capture::default()
     };
     let fields = policy.fields();
+    std::fs::read_dir(root).map_err(|error| RoundError::Local(error.to_string()))?;
     let mut pending = vec![root.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let read =
-            std::fs::read_dir(&directory).map_err(|error| RoundError::Local(error.to_string()))?;
+        let Ok(read) = std::fs::read_dir(&directory) else {
+            if let Ok(relative) = directory.strip_prefix(root) {
+                out.skip(shown_path(relative), "unreadable");
+            }
+            continue;
+        };
         let mut children: Vec<_> = read.flatten().collect();
         children.sort_by_key(std::fs::DirEntry::file_name);
         for entry in children {
@@ -455,11 +595,9 @@ pub(crate) fn capture(root: &Path) -> Result<Capture, RoundError> {
                     path,
                     metadata,
                 } => {
-                    record_file(&mut out, portable, &path, &metadata);
+                    record_file(&mut out, &prior, portable, &path, &metadata);
                     if out.files.len() > MAX_FILES {
-                        return Err(RoundError::Local(
-                            "project has too many files to sync".into(),
-                        ));
+                        return Err(RoundError::TooManyFiles);
                     }
                 }
             }
@@ -511,8 +649,11 @@ pub(crate) fn resolve_target(root: &Path, portable: &str) -> Option<PathBuf> {
 
 fn on_disk(root: &Path, portable: &str) -> bool {
     match std::fs::symlink_metadata(native(root, portable)) {
-        Ok(_) => true,
-        Err(error) => error.kind() != std::io::ErrorKind::NotFound,
+        Ok(metadata) => !metadata.is_dir(),
+        Err(error) => !matches!(
+            error.kind(),
+            std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+        ),
     }
 }
 
@@ -523,8 +664,8 @@ pub(crate) async fn fetch_version<S: CloudStore>(
     let Some((bytes, rev)) = store.get(&version_remote(cloud), MAX_VERSION_BYTES).await? else {
         return Ok(None);
     };
-    let probe: serde_json::Value = serde_json::from_slice(&bytes)
-        .map_err(|_| StoreError::Server("the remote version record is unreadable".into()))?;
+    let unreadable = || RoundError::Unreadable("the remote version record is unreadable".into());
+    let probe: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
     if probe
         .get("v")
         .and_then(serde_json::Value::as_u64)
@@ -532,22 +673,21 @@ pub(crate) async fn fetch_version<S: CloudStore>(
     {
         return Err(RoundError::NewerVersion);
     }
-    let version: VersionManifest = serde_json::from_value(probe)
-        .map_err(|_| StoreError::Server("the remote version record is unreadable".into()))?;
+    let version: VersionManifest = serde_json::from_value(probe).map_err(|_| unreadable())?;
     if version.project != cloud {
-        return Err(
-            StoreError::Server("the remote version record names another project".into()).into(),
-        );
+        return Err(RoundError::Unreadable(
+            "the remote version record names another project".into(),
+        ));
     }
     if version.files.len() > MAX_FILES {
-        return Err(
-            StoreError::Server("the remote version record lists too many files".into()).into(),
-        );
+        return Err(RoundError::Unreadable(
+            "the remote version record lists too many files".into(),
+        ));
     }
     Ok(Some(Remote { version, rev }))
 }
 
-pub(crate) fn sanitize_label(name: &str) -> String {
+fn tidy_label(name: &str) -> Option<String> {
     let cleaned: String = name
         .chars()
         .filter(|character| {
@@ -561,14 +701,26 @@ pub(crate) fn sanitize_label(name: &str) -> String {
         .take(32)
         .collect();
     let trimmed = cleaned.trim().trim_end_matches(['.', ' ']).trim();
-    if trimmed.is_empty() {
-        "conflict".into()
-    } else {
-        trimmed.to_string()
-    }
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
-fn conflict_path(portable: &str, label: &str, date: &str, taken: &dyn Fn(&str) -> bool) -> String {
+pub(crate) fn sanitize_label(name: &str) -> String {
+    tidy_label(name).unwrap_or_else(|| "conflict".into())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Slot {
+    Free,
+    Same,
+    Taken,
+}
+
+fn conflict_path(
+    portable: &str,
+    label: &str,
+    date: &str,
+    slot: &dyn Fn(&str) -> Slot,
+) -> (String, bool) {
     let (directory, name) = match portable.rsplit_once('/') {
         Some((directory, name)) => (Some(directory), name),
         None => (None, portable),
@@ -594,11 +746,16 @@ fn conflict_path(portable: &str, label: &str, date: &str, taken: &dyn Fn(&str) -
             format!("{label} {date} {attempt}")
         };
         let candidate = build(&suffix);
-        if !taken(&candidate) {
-            return candidate;
+        match slot(&candidate) {
+            Slot::Free => return (candidate, false),
+            Slot::Same => return (candidate, true),
+            Slot::Taken => {}
         }
     }
-    build(&format!("{label} {date} {:08x}", rand::random::<u32>()))
+    (
+        build(&format!("{label} {date} {:08x}", rand::random::<u32>())),
+        false,
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -619,17 +776,21 @@ struct Planned {
     remote: Option<FileRecord>,
     base: Option<BaseEntry>,
     action: Action,
+    settled: bool,
+    backed_off: bool,
 }
 
 struct RemoteView {
     usable: BTreeMap<String, FileRecord>,
     foreign: Vec<FileRecord>,
+    foreign_keys: BTreeSet<String>,
 }
 
 fn split_remote(remote: Option<&Remote>, policy: &OwnedPolicy) -> RemoteView {
     let mut view = RemoteView {
         usable: BTreeMap::new(),
         foreign: Vec::new(),
+        foreign_keys: BTreeSet::new(),
     };
     let Some(remote) = remote else {
         return view;
@@ -649,91 +810,146 @@ fn split_remote(remote: Option<&Remote>, policy: &OwnedPolicy) -> RemoteView {
         if usable && !view.usable.contains_key(&record_key) {
             view.usable.insert(record_key, record.clone());
         } else {
+            view.foreign_keys.insert(record_key);
             view.foreign.push(record.clone());
         }
     }
     view
 }
 
-fn plan(
-    capture: &Capture,
-    remote: &RemoteView,
-    base: &BTreeMap<String, BaseEntry>,
-    root: &Path,
-    options: &RoundOptions,
-) -> Vec<Planned> {
-    let base_by_key: BTreeMap<String, (&String, &BaseEntry)> = base
+struct PlanInput<'a> {
+    capture: &'a Capture,
+    remote: &'a RemoteView,
+    base: &'a BTreeMap<String, BaseEntry>,
+    root: &'a Path,
+    options: &'a RoundOptions,
+    failed: &'a BTreeMap<String, Failure>,
+    now: u64,
+}
+
+fn decide_action(
+    local: Option<&LocalFile>,
+    remote: Option<&FileRecord>,
+    base: Option<&BaseEntry>,
+    is_meta: bool,
+    restore_deleted: bool,
+) -> Action {
+    let local_hash = local.map(|file| file.hash.as_str());
+    let remote_hash = remote.map(|record| record.hash.as_str());
+    if local_hash == remote_hash {
+        return Action::Keep;
+    }
+    let base_hash = base.map(|entry| entry.hash.as_str());
+    let local_changed = local_hash != base_hash;
+    let remote_changed = remote_hash != base_hash;
+    match (
+        local_changed,
+        remote_changed,
+        local.is_some(),
+        remote.is_some(),
+    ) {
+        (true, false, true, _) | (true, true, true, false) => Action::Upload,
+        (true, false, false, true) if restore_deleted => Action::Download,
+        (true, false, false, _) => Action::RemoteDelete,
+        (false, true, _, true) | (true, true, false, true) => Action::Download,
+        (false, true, _, false) => Action::LocalDelete,
+        (true, true, true, true) if is_meta => Action::MetaMerge,
+        (true, true, true, true) => Action::Conflict,
+        _ => Action::Keep,
+    }
+}
+
+fn backed_off(input: &PlanInput<'_>, entry_key: &str, remote: Option<&FileRecord>) -> bool {
+    remote.is_some_and(|record| {
+        input.failed.get(entry_key).is_some_and(|failure| {
+            failure.hash == record.hash && input.now.saturating_sub(failure.at_ms) < RETRY_FAILED_MS
+        })
+    })
+}
+
+fn plan(input: &PlanInput<'_>) -> Vec<Planned> {
+    let base_by_key: BTreeMap<String, (&String, &BaseEntry)> = input
+        .base
         .iter()
         .map(|(path, entry)| (key(path), (path, entry)))
         .collect();
     let mut keys: BTreeSet<&String> = BTreeSet::new();
-    keys.extend(capture.files.keys());
-    keys.extend(remote.usable.keys());
+    keys.extend(input.capture.files.keys());
+    keys.extend(input.remote.usable.keys());
     keys.extend(base_by_key.keys());
     let mut planned = Vec::new();
     for entry_key in keys {
-        let local = capture.files.get(entry_key);
-        let remote_record = remote.usable.get(entry_key);
+        let local = input.capture.files.get(entry_key);
+        let remote_record = input.remote.usable.get(entry_key);
         let base_entry = base_by_key.get(entry_key);
+        let foreign = remote_record.is_none() && input.remote.foreign_keys.contains(entry_key);
         let unobserved = local.is_none()
-            && (capture.unobserved.contains(entry_key)
-                || base_entry.is_some_and(|(path, _)| on_disk(root, path))
-                || remote_record.is_some_and(|record| on_disk(root, &record.path)));
-        let local_hash = local.map(|file| file.hash.as_str());
-        let remote_hash = remote_record.map(|record| record.hash.as_str());
-        let base_hash = base_entry.map(|(_, entry)| entry.hash.as_str());
-        let dirty = options.dirty.contains(entry_key);
-        let action = if unobserved {
+            && (input.capture.unobserved.contains(entry_key)
+                || base_entry.is_some_and(|(path, _)| on_disk(input.root, path))
+                || remote_record.is_some_and(|record| on_disk(input.root, &record.path)));
+        let mut action = if unobserved || foreign {
             Action::Carry
-        } else if local_hash == remote_hash {
-            Action::Keep
         } else {
-            let local_changed = local_hash != base_hash;
-            let remote_changed = remote_hash != base_hash;
-            let is_meta = entry_key == PROJECT_META;
-            match (
-                local_changed,
-                remote_changed,
-                local.is_some(),
-                remote_record.is_some(),
-            ) {
-                (true, false, true, _) => Action::Upload,
-                (true, false, false, _) => {
-                    if options.restore_deleted && remote_record.is_some() {
-                        Action::Download
-                    } else {
-                        Action::RemoteDelete
-                    }
-                }
-                (false, true, _, true) => Action::Download,
-                (false, true, _, false) => Action::LocalDelete,
-                (true, true, true, true) if is_meta => Action::MetaMerge,
-                (true, true, true, true) => Action::Conflict,
-                (true, true, true, false) => Action::Upload,
-                (true, true, false, true) => Action::Download,
-                _ => Action::Keep,
-            }
+            decide_action(
+                local,
+                remote_record,
+                base_entry.map(|(_, entry)| *entry),
+                entry_key == PROJECT_META,
+                input.options.restore_deleted,
+            )
         };
-        let action = match action {
-            Action::Download | Action::LocalDelete | Action::MetaMerge if dirty => Action::Carry,
-            other => other,
-        };
+        if input.options.dirty.contains(entry_key)
+            && matches!(
+                action,
+                Action::Download | Action::LocalDelete | Action::MetaMerge
+            )
+        {
+            action = Action::Carry;
+        }
+        let waiting = matches!(
+            action,
+            Action::Download | Action::Conflict | Action::MetaMerge
+        ) && backed_off(input, entry_key, remote_record);
+        if waiting {
+            action = Action::Carry;
+        }
         planned.push(Planned {
             key: entry_key.clone(),
             local: local.cloned(),
             remote: remote_record.cloned(),
             base: base_entry.map(|(_, entry)| (*entry).clone()),
             action,
+            settled: foreign || waiting,
+            backed_off: waiting,
         });
     }
     planned
 }
 
 fn mass_delete(planned: &[Planned], base_len: usize) -> Option<Hold> {
-    let count = planned
-        .iter()
-        .filter(|item| item.action == Action::RemoteDelete)
-        .count();
+    let mut moved: BTreeMap<&str, usize> = BTreeMap::new();
+    for item in planned {
+        if item.action == Action::Upload && item.base.is_none() {
+            if let Some(local) = &item.local {
+                *moved.entry(local.hash.as_str()).or_default() += 1;
+            }
+        }
+    }
+    let mut count = 0;
+    for item in planned {
+        if item.action != Action::RemoteDelete {
+            continue;
+        }
+        let reappeared = item
+            .base
+            .as_ref()
+            .and_then(|entry| moved.get_mut(entry.hash.as_str()))
+            .filter(|left| **left > 0);
+        match reappeared {
+            Some(left) => *left -= 1,
+            None => count += 1,
+        }
+    }
     let all = count > 0 && count == base_len;
     (all || (count > MASS_DELETE_MIN && count * 2 > base_len)).then_some(Hold::MassDelete {
         count,
@@ -832,11 +1048,14 @@ async fn stage_one<S: CloudStore>(
 ) -> Result<Staged, StoreError> {
     let temp = staging_name(staging);
     let pinned = record.rev.is_some();
-    let limit = if pinned {
+    let mut limit = if pinned {
         record.size
     } else {
         oleafly_core::exclude::MAX_SYNC_FILE_BYTES
     };
+    if job_key == PROJECT_META {
+        limit = limit.min(oleafly_core::MAX_MANIFEST_BYTES);
+    }
     let fetched = store
         .fetch_to(
             &file_remote(cloud, &record.path),
@@ -903,6 +1122,16 @@ async fn stage_downloads<S: CloudStore>(
     (staged, failed)
 }
 
+async fn room_for(staging: &Path, needed: u64) -> bool {
+    let staging = staging.to_path_buf();
+    let available =
+        tauri::async_runtime::spawn_blocking(move || fs4::available_space(&staging).ok())
+            .await
+            .ok()
+            .flatten();
+    available.is_none_or(|free| needed.saturating_add(DISK_HEADROOM_BYTES) <= free)
+}
+
 fn corrections(staged: &[Staged], view: &RemoteView) -> BTreeMap<String, FileRecord> {
     staged
         .iter()
@@ -927,7 +1156,16 @@ struct Applied {
     deleted: BTreeSet<String>,
     conflict_copies: BTreeMap<String, String>,
     merged_meta: Option<(String, Vec<u8>)>,
-    skipped: usize,
+    changed: BTreeSet<String>,
+    failed: BTreeSet<String>,
+}
+
+struct ApplyItem {
+    key: String,
+    action: Action,
+    local: Option<LocalFile>,
+    remote: Option<FileRecord>,
+    copy: Option<(String, bool)>,
 }
 
 struct ApplyJob {
@@ -935,98 +1173,105 @@ struct ApplyJob {
     trash: PathBuf,
     lock_id: Option<String>,
     staged: BTreeMap<String, PathBuf>,
-    items: Vec<(String, Action, Option<LocalFile>, Option<FileRecord>)>,
-    conflict_names: BTreeMap<String, String>,
+    items: Vec<ApplyItem>,
     meta_base: Option<serde_json::Value>,
 }
 
-fn apply_download(
-    root: &Path,
-    item_key: &str,
-    temp: &Path,
-    local: Option<&LocalFile>,
-    record: &FileRecord,
-    applied: &mut Applied,
-) {
+fn write_meta(lock_id: Option<&str>, target: &Path, bytes: &[u8]) -> Result<(), String> {
+    match lock_id {
+        Some(id) => crate::project::with_project_metadata_lock_held(id, || {
+            crate::sandbox::atomic_write(target, bytes)
+        }),
+        None => crate::sandbox::atomic_write(target, bytes),
+    }
+}
+
+fn apply_download(job: &ApplyJob, item: &ApplyItem, temp: &Path, applied: &mut Applied) {
+    let Some(record) = &item.remote else {
+        return;
+    };
+    let local = item.local.as_ref();
     let portable_path = local.map_or(record.path.as_str(), |file| file.path.as_str());
-    let Some(target) = resolve_target(root, portable_path) else {
-        applied.skipped += 1;
+    let Some(target) = resolve_target(&job.root, portable_path) else {
+        applied.failed.insert(item.key.clone());
         return;
     };
     if !unchanged_since_capture(&target, local) {
         return;
     }
-    let placed = if item_key == PROJECT_META {
+    let placed = if item.key == PROJECT_META {
         place_meta(
             temp,
             &target,
             local.and_then(|_| read_json(&target)).as_ref(),
+            job.lock_id.as_deref(),
         )
     } else {
         move_into(temp, &target).map_err(|error| error.to_string())
     };
     if placed.is_ok() {
         apply_exec(&target, portable_path, record.exec);
-        applied.downloaded.insert(item_key.to_string());
+        applied.downloaded.insert(item.key.clone());
+        applied.changed.insert(portable_path.to_string());
+    } else {
+        applied.failed.insert(item.key.clone());
     }
 }
 
-fn apply_delete(
-    root: &Path,
-    trash: &Path,
-    item_key: &str,
-    local: &LocalFile,
-    applied: &mut Applied,
-) {
-    let Some(target) = resolve_target(root, &local.path) else {
+fn apply_delete(job: &ApplyJob, item: &ApplyItem, applied: &mut Applied) {
+    let Some(local) = &item.local else {
+        return;
+    };
+    let Some(target) = resolve_target(&job.root, &local.path) else {
         return;
     };
     if !unchanged_since_capture(&target, Some(local)) {
         return;
     }
-    if trash_file(&target, trash).is_ok() {
-        prune_empty_parents(root, &target);
-        applied.deleted.insert(item_key.to_string());
+    if trash_file(&target, &job.trash).is_ok() {
+        prune_empty_parents(&job.root, &target);
+        applied.deleted.insert(item.key.clone());
+        applied.changed.insert(local.path.clone());
     }
 }
 
-fn apply_conflict(
-    root: &Path,
-    item_key: &str,
-    temp: &Path,
-    copy: &str,
-    remote: Option<&FileRecord>,
-    applied: &mut Applied,
-) {
-    let Some(target) = resolve_target(root, copy).filter(|target| !target.exists()) else {
+fn apply_conflict(job: &ApplyJob, item: &ApplyItem, temp: &Path, applied: &mut Applied) {
+    let Some((copy, reuse)) = &item.copy else {
+        return;
+    };
+    if *reuse {
+        applied
+            .conflict_copies
+            .insert(item.key.clone(), copy.clone());
+        return;
+    }
+    let Some(target) = resolve_target(&job.root, copy).filter(|target| !target.exists()) else {
         return;
     };
     if move_into(temp, &target).is_err() {
         return;
     }
-    if let Some(record) = remote {
+    if let Some(record) = &item.remote {
         apply_exec(&target, copy, record.exec);
     }
     applied
         .conflict_copies
-        .insert(item_key.to_string(), copy.to_string());
+        .insert(item.key.clone(), copy.clone());
+    applied.changed.insert(copy.clone());
 }
 
-fn apply_meta_merge(
-    root: &Path,
-    temp: &Path,
-    local: &LocalFile,
-    meta_base: Option<&serde_json::Value>,
-    applied: &mut Applied,
-) {
-    let target = root.join(PROJECT_META);
+fn apply_meta_merge(job: &ApplyJob, item: &ApplyItem, temp: &Path, applied: &mut Applied) {
+    let Some(local) = &item.local else {
+        return;
+    };
+    let target = job.root.join(PROJECT_META);
     let (Some(incoming), Some(current)) = (read_json(temp), read_json(&target)) else {
         return;
     };
     if !unchanged_since_capture(&target, Some(local)) {
         return;
     }
-    let base = meta_base.map(merge::portable_meta);
+    let base = job.meta_base.as_ref().map(merge::portable_meta);
     let merged = merge::merge3(
         base.as_ref(),
         &merge::portable_meta(&current),
@@ -1036,71 +1281,51 @@ fn apply_meta_merge(
     let Ok(bytes) = merge::pretty(&written) else {
         return;
     };
-    if crate::sandbox::atomic_write(&target, &bytes).is_ok() {
+    if write_meta(job.lock_id.as_deref(), &target, &bytes).is_ok() {
         applied.merged_meta = Some((merge::meta_digest(&bytes).to_hex(), bytes));
+        applied.changed.insert(PROJECT_META.to_string());
     }
 }
 
-fn apply_local(job: ApplyJob) -> Applied {
-    let mut applied = Applied::default();
-    let lock = match &job.lock_id {
-        Some(id) => crate::worktree_lock::ProjectWorktreeLock::try_shared(id)
-            .ok()
-            .flatten(),
-        None => None,
-    };
-    let mut staged = job.staged;
-    if (job.lock_id.is_some() && lock.is_none()) || !job.root.is_dir() {
-        for temp in staged.values() {
-            let _ = std::fs::remove_file(temp);
-        }
-        return applied;
+fn apply_item(job: &ApplyJob, item: &ApplyItem, temp: Option<&Path>, applied: &mut Applied) {
+    match (&item.action, temp) {
+        (Action::Download, Some(temp)) => apply_download(job, item, temp, applied),
+        (Action::LocalDelete, _) => apply_delete(job, item, applied),
+        (Action::Conflict, Some(temp)) => apply_conflict(job, item, temp, applied),
+        (Action::MetaMerge, Some(temp)) => apply_meta_merge(job, item, temp, applied),
+        _ => {}
     }
-    for (item_key, action, local, remote) in &job.items {
-        let temp = staged.remove(item_key);
-        match (action, temp.as_deref(), local, remote) {
-            (Action::Download, Some(temp), local, Some(record)) => {
-                apply_download(
-                    &job.root,
-                    item_key,
-                    temp,
-                    local.as_ref(),
-                    record,
-                    &mut applied,
-                );
-            }
-            (Action::LocalDelete, _, Some(local), _) => {
-                apply_delete(&job.root, &job.trash, item_key, local, &mut applied);
-            }
-            (Action::Conflict, Some(temp), _, remote) => {
-                if let Some(copy) = job.conflict_names.get(item_key) {
-                    apply_conflict(
-                        &job.root,
-                        item_key,
-                        temp,
-                        copy,
-                        remote.as_ref(),
-                        &mut applied,
-                    );
+}
+
+fn apply_local(mut job: ApplyJob) -> Applied {
+    let mut applied = Applied::default();
+    let mut staged = std::mem::take(&mut job.staged);
+    if job.root.is_dir() {
+        for chunk in job.items.chunks(APPLY_BATCH) {
+            let lock = match job.lock_id.as_deref() {
+                Some(id) => match crate::worktree_lock::ProjectWorktreeLock::try_exclusive(id) {
+                    Ok(Some(lock)) => Some(lock),
+                    _ => break,
+                },
+                None => None,
+            };
+            for item in chunk {
+                let temp = staged.remove(&item.key);
+                apply_item(&job, item, temp.as_deref(), &mut applied);
+                if let Some(temp) = temp {
+                    let _ = std::fs::remove_file(temp);
                 }
             }
-            (Action::MetaMerge, Some(temp), Some(local), _) => {
-                apply_meta_merge(&job.root, temp, local, job.meta_base.as_ref(), &mut applied);
-            }
-            _ => {}
-        }
-        if let Some(temp) = temp {
-            let _ = std::fs::remove_file(temp);
+            drop(lock);
         }
     }
     for leftover in staged.values() {
         let _ = std::fs::remove_file(leftover);
     }
-    drop(lock);
     applied
 }
 
-fn read_json(path: &Path) -> Option<serde_json::Value> {
+pub(crate) fn read_json(path: &Path) -> Option<serde_json::Value> {
     let metadata = std::fs::symlink_metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > oleafly_core::MAX_MANIFEST_BYTES {
         return None;
@@ -1108,26 +1333,41 @@ fn read_json(path: &Path) -> Option<serde_json::Value> {
     serde_json::from_slice(&std::fs::read(path).ok()?).ok()
 }
 
-fn place_meta(temp: &Path, target: &Path, local: Option<&serde_json::Value>) -> Result<(), String> {
+fn place_meta(
+    temp: &Path,
+    target: &Path,
+    local: Option<&serde_json::Value>,
+    lock_id: Option<&str>,
+) -> Result<(), String> {
     let incoming = read_json(temp).ok_or("the incoming project.json is unreadable")?;
     let merged = merge::with_device_fields(&incoming, local);
     let bytes = merge::pretty(&merged)?;
-    crate::sandbox::atomic_write(target, &bytes)
+    write_meta(lock_id, target, &bytes)
 }
 
-fn record_from_upload(
-    path: &str,
-    uploaded: &super::store::Uploaded,
+struct UploadJob {
+    key: String,
+    path: String,
+    meta: Option<Vec<u8>>,
+    size: u64,
+    replaces: u64,
     exec: bool,
-    hash: String,
-) -> FileRecord {
-    FileRecord {
-        path: path.to_string(),
-        hash,
-        size: uploaded.size,
-        exec,
-        rev: Some(uploaded.rev.clone()),
-        extra: serde_json::Map::new(),
+    local_hash: Option<String>,
+    signature: Option<String>,
+}
+
+impl UploadJob {
+    fn from_local(item_key: &str, local: &LocalFile, remote: Option<&FileRecord>) -> Self {
+        Self {
+            key: item_key.to_string(),
+            path: local.path.clone(),
+            meta: None,
+            size: local.size,
+            replaces: remote.map_or(0, |record| record.size),
+            exec: remote.is_some_and(|record| record.exec),
+            local_hash: Some(local.hash.clone()),
+            signature: local.signature.clone(),
+        }
     }
 }
 
@@ -1135,17 +1375,12 @@ async fn upload_one<S: CloudStore>(
     store: &S,
     cloud: ProjectId,
     root: &Path,
-    path: &str,
-    meta_bytes: Option<&[u8]>,
+    job: &UploadJob,
 ) -> Result<FileRecord, StoreError> {
-    let absolute = native(root, path);
-    let exec = tokio::fs::symlink_metadata(&absolute)
-        .await
-        .map(|metadata| is_executable(&metadata))
-        .unwrap_or(false);
-    if path == PROJECT_META {
-        let bytes = match meta_bytes {
-            Some(bytes) => bytes.to_vec(),
+    let absolute = native(root, &job.path);
+    if job.path == PROJECT_META {
+        let bytes = match &job.meta {
+            Some(bytes) => bytes.clone(),
             None => tokio::fs::read(&absolute)
                 .await
                 .map_err(|error| StoreError::Io(error.to_string()))?,
@@ -1153,10 +1388,10 @@ async fn upload_one<S: CloudStore>(
         let digest = merge::meta_digest(&bytes).to_hex();
         let size = bytes.len() as u64;
         let rev = store
-            .put(&file_remote(cloud, path), bytes, WriteMode::Overwrite)
+            .put(&file_remote(cloud, &job.path), bytes, WriteMode::Overwrite)
             .await?;
         return Ok(FileRecord {
-            path: path.to_string(),
+            path: job.path.clone(),
             hash: digest,
             size,
             exec: false,
@@ -1166,19 +1401,31 @@ async fn upload_one<S: CloudStore>(
     }
     let checked = {
         let root = root.to_path_buf();
-        let path = path.to_string();
+        let path = job.path.clone();
         tauri::async_runtime::spawn_blocking(move || resolve_target(&root, &path).is_some())
             .await
             .unwrap_or(false)
     };
     if !checked {
         return Err(StoreError::Io(format!(
-            "{path} is not a regular file in the project"
+            "{} is not a regular file in the project",
+            job.path
         )));
     }
-    let uploaded = store.put_path(&file_remote(cloud, path), &absolute).await?;
-    let hash = uploaded.hash.to_hex();
-    Ok(record_from_upload(path, &uploaded, exec, hash))
+    let exec = tokio::fs::symlink_metadata(&absolute)
+        .await
+        .map_or(job.exec, |metadata| executable(&metadata, job.exec));
+    let uploaded = store
+        .put_path(&file_remote(cloud, &job.path), &absolute)
+        .await?;
+    Ok(FileRecord {
+        path: job.path.clone(),
+        hash: uploaded.hash.to_hex(),
+        size: uploaded.size,
+        exec,
+        rev: Some(uploaded.rev),
+        extra: serde_json::Map::new(),
+    })
 }
 
 fn manifest_files(
@@ -1208,6 +1455,7 @@ struct Publisher<'a, S: CloudStore> {
     context: &'a SyncContext,
     clock: HlcClock,
     rev: Option<String>,
+    overwrite: bool,
     published: Vec<FileRecord>,
     name: String,
     manifest: serde_json::Value,
@@ -1234,6 +1482,7 @@ impl<S: CloudStore> Publisher<'_, S> {
             serde_json::to_vec(&version).map_err(|error| StoreError::Io(error.to_string()))?;
         let mode = match &self.rev {
             Some(rev) => WriteMode::Update(rev.clone()),
+            None if self.overwrite => WriteMode::Overwrite,
             None => WriteMode::Add,
         };
         let rev = self
@@ -1257,6 +1506,7 @@ fn base_entry(record: &FileRecord) -> BaseEntry {
     BaseEntry {
         hash: record.hash.clone(),
         size: record.size,
+        stamp: None,
     }
 }
 
@@ -1264,9 +1514,13 @@ fn utc_date() -> String {
     crate::project_ids::rfc3339_from_unix_ms(now_ms())[..10].to_string()
 }
 
-async fn capture_locked(env: &RoundEnv) -> Result<Option<Capture>, RoundError> {
+async fn capture_locked(
+    env: &RoundEnv,
+    base: &BTreeMap<String, BaseEntry>,
+) -> Result<Option<Capture>, RoundError> {
     let root = env.root.clone();
     let lock_id = env.lock_id.clone();
+    let base = base.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lock = match &lock_id {
             Some(id) => match crate::worktree_lock::ProjectWorktreeLock::try_shared(id) {
@@ -1279,22 +1533,10 @@ async fn capture_locked(env: &RoundEnv) -> Result<Option<Capture>, RoundError> {
         if !root.is_dir() {
             return Ok(None);
         }
-        capture(&root).map(Some)
+        capture_with(&root, &base).map(Some)
     })
     .await
     .map_err(|error| RoundError::Local(error.to_string()))?
-}
-
-fn unchanged(project: ProjectState, clock: &HlcClock, outcome: SyncOutcome) -> RoundResult {
-    RoundResult {
-        outcome: SyncOutcome {
-            unchanged: true,
-            ..outcome
-        },
-        project,
-        hlc: clock.last().raw(),
-        error: None,
-    }
 }
 
 async fn read_tombstone<S: CloudStore>(
@@ -1306,18 +1548,798 @@ async fn read_tombstone<S: CloudStore>(
         .await?
         .map(|(bytes, _)| {
             serde_json::from_slice::<Tombstone>(&bytes)
-                .map(|tombstone| sanitize_label(&tombstone.device))
-                .unwrap_or_else(|_| sanitize_label(""))
+                .ok()
+                .and_then(|tombstone| tidy_label(&tombstone.device))
+                .unwrap_or_default()
         }))
 }
 
-struct UploadJob {
-    key: String,
-    path: String,
-    meta: Option<Vec<u8>>,
+fn quiet_round(capture: &Capture, project: &ProjectState, options: &RoundOptions) -> bool {
+    let now = now_ms();
+    !options.forced()
+        && capture.matches_base(&project.base)
+        && project.pending_deletes.is_empty()
+        && project.hold.is_none()
+        && !project
+            .failed
+            .values()
+            .any(|failure| now.saturating_sub(failure.at_ms) >= RETRY_FAILED_MS)
 }
 
-#[allow(clippy::too_many_lines)]
+struct Settled {
+    base: BTreeMap<String, (String, BaseEntry)>,
+    records: BTreeMap<String, FileRecord>,
+    uploads: Vec<UploadJob>,
+    incomplete: bool,
+}
+
+struct SettleInput<'a> {
+    planned: &'a [Planned],
+    applied: &'a Applied,
+    captured: &'a Capture,
+    fixes: &'a BTreeMap<String, FileRecord>,
+    options: &'a RoundOptions,
+}
+
+fn settle_keep(item: &Planned, out: &mut Settled) {
+    match (&item.remote, &item.local) {
+        (Some(record), Some(local)) => {
+            let entry = BaseEntry {
+                stamp: local.signature.clone(),
+                ..base_entry(record)
+            };
+            out.base
+                .insert(item.key.clone(), (local.path.clone(), entry));
+        }
+        _ => {
+            out.base.remove(&item.key);
+        }
+    }
+}
+
+fn settle_carry(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
+    let excluded = item.local.is_none()
+        && !input.captured.unobserved.contains(&item.key)
+        && !input.options.dirty.contains(&item.key);
+    if excluded {
+        out.base.remove(&item.key);
+        return;
+    }
+    if item.settled {
+        return;
+    }
+    let remote_hash = item.remote.as_ref().map(|record| record.hash.as_str());
+    let base_hash = item.base.as_ref().map(|entry| entry.hash.as_str());
+    let local_hash = item.local.as_ref().map(|file| file.hash.as_str());
+    if remote_hash != base_hash || (item.local.is_some() && local_hash != base_hash) {
+        out.incomplete = true;
+    }
+}
+
+fn settle_download(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
+    match &item.remote {
+        Some(record) if input.applied.downloaded.contains(&item.key) => {
+            let agreed = input.fixes.get(&item.key).unwrap_or(record);
+            let path = item
+                .local
+                .as_ref()
+                .map_or_else(|| record.path.clone(), |file| file.path.clone());
+            out.base
+                .insert(item.key.clone(), (path, base_entry(agreed)));
+            if let Some(fix) = input.fixes.get(&item.key) {
+                out.records.insert(item.key.clone(), fix.clone());
+            }
+        }
+        _ => out.incomplete = true,
+    }
+}
+
+fn settle_conflict(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
+    let copy = input.applied.conflict_copies.get(&item.key);
+    let (Some(copy), Some(record), Some(local)) = (copy, &item.remote, &item.local) else {
+        out.incomplete = true;
+        return;
+    };
+    out.base
+        .insert(item.key.clone(), (local.path.clone(), base_entry(record)));
+    let copy_key = key(copy);
+    if !input.captured.files.contains_key(&copy_key) {
+        out.uploads.push(UploadJob {
+            key: copy_key,
+            path: copy.clone(),
+            meta: None,
+            size: record.size,
+            replaces: 0,
+            exec: record.exec,
+            local_hash: None,
+            signature: None,
+        });
+    }
+    out.uploads
+        .push(UploadJob::from_local(&item.key, local, Some(record)));
+}
+
+fn settle_meta(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
+    let (Some((_, bytes)), Some(record)) = (&input.applied.merged_meta, &item.remote) else {
+        out.incomplete = true;
+        return;
+    };
+    out.base.insert(
+        item.key.clone(),
+        (PROJECT_META.to_string(), base_entry(record)),
+    );
+    out.uploads.push(UploadJob {
+        key: item.key.clone(),
+        path: PROJECT_META.to_string(),
+        meta: Some(bytes.clone()),
+        size: bytes.len() as u64,
+        replaces: record.size,
+        exec: false,
+        local_hash: None,
+        signature: None,
+    });
+}
+
+fn settle(
+    input: &SettleInput<'_>,
+    previous: &BTreeMap<String, BaseEntry>,
+    view: &RemoteView,
+) -> Settled {
+    let mut out = Settled {
+        base: previous
+            .iter()
+            .map(|(path, entry)| (key(path), (path.clone(), entry.clone())))
+            .collect(),
+        records: view.usable.clone(),
+        uploads: Vec::new(),
+        incomplete: false,
+    };
+    for item in input.planned {
+        match item.action {
+            Action::Keep => settle_keep(item, &mut out),
+            Action::Carry => settle_carry(input, item, &mut out),
+            Action::Download => settle_download(input, item, &mut out),
+            Action::LocalDelete => {
+                if input.applied.deleted.contains(&item.key) {
+                    out.base.remove(&item.key);
+                } else {
+                    out.incomplete = true;
+                }
+            }
+            Action::Upload => {
+                if let Some(local) = &item.local {
+                    out.uploads.push(UploadJob::from_local(
+                        &item.key,
+                        local,
+                        item.remote.as_ref(),
+                    ));
+                }
+            }
+            Action::Conflict => settle_conflict(input, item, &mut out),
+            Action::MetaMerge => settle_meta(input, item, &mut out),
+            Action::RemoteDelete => {}
+        }
+    }
+    let mut seen = BTreeSet::new();
+    out.uploads.retain(|job| seen.insert(job.key.clone()));
+    out
+}
+
+fn upload_skip_code(error: &StoreError) -> &'static str {
+    match error {
+        StoreError::Rejected(_) => "unsupportedName",
+        StoreError::Io(_) => "unreadable",
+        _ => "uploadFailed",
+    }
+}
+
+#[derive(Default)]
+struct UploadRun {
+    uploaded: BTreeMap<String, FileRecord>,
+    published: BTreeSet<String>,
+    skipped: Vec<SkippedFile>,
+    error: Option<RoundError>,
+}
+
+enum Loaded {
+    Remote(Option<Remote>),
+    Removed,
+}
+
+struct Round<'a, S: CloudStore> {
+    store: &'a S,
+    env: &'a RoundEnv,
+    cloud: ProjectId,
+    options: &'a RoundOptions,
+    project: ProjectState,
+    outcome: SyncOutcome,
+    skipped: Vec<SkippedFile>,
+    failures: BTreeMap<String, String>,
+    error: Option<RoundError>,
+    late_error: Option<RoundError>,
+    incomplete: bool,
+}
+
+impl<S: CloudStore> Round<'_, S> {
+    fn finish_early(self, clock: &HlcClock) -> RoundResult {
+        RoundResult {
+            outcome: self.outcome,
+            project: self.project,
+            hlc: clock.last().raw(),
+            error: None,
+        }
+    }
+
+    async fn quiet(&mut self, captured: &Capture) -> Result<bool, RoundError> {
+        if !quiet_round(captured, &self.project, self.options) {
+            return Ok(false);
+        }
+        if !self.project.remote_dirty {
+            return Ok(true);
+        }
+        let Some(rev) = self.project.remote_rev.clone() else {
+            return Ok(false);
+        };
+        let current = self.store.metadata(&version_remote(self.cloud)).await?;
+        if current.is_some_and(|meta| meta.rev == rev) {
+            self.project.remote_dirty = false;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    async fn remote(&mut self) -> Result<Loaded, RoundError> {
+        let remote = match fetch_version(self.store, self.cloud).await {
+            Ok(remote) => remote,
+            Err(RoundError::Unreadable(_)) if self.options.replace_remote => None,
+            Err(error) => return Err(error),
+        };
+        if remote.is_some() {
+            return Ok(Loaded::Remote(remote));
+        }
+        if !self.options.replace_remote {
+            if let Some(device) = read_tombstone(self.store, self.cloud).await? {
+                self.removed(device);
+                return Ok(Loaded::Removed);
+            }
+        }
+        self.project.base.clear();
+        self.project.meta_base = None;
+        self.project.remote_rev = None;
+        self.project.pending_deletes.clear();
+        Ok(Loaded::Remote(None))
+    }
+
+    fn removed(&mut self, device: String) {
+        let project = &mut self.project;
+        project.paused = true;
+        project.removed_by = Some(device);
+        project.base.clear();
+        project.meta_base = None;
+        project.remote_rev = None;
+        project.remote_dirty = false;
+        project.hold = None;
+        project.pending_deletes.clear();
+        self.outcome.removed_by = project.removed_by.clone();
+    }
+
+    fn limit_uploads(&mut self, planned: &mut [Planned]) {
+        if self.options.allow_uploads {
+            return;
+        }
+        for item in planned {
+            if matches!(
+                item.action,
+                Action::Upload | Action::Conflict | Action::MetaMerge
+            ) {
+                item.action = Action::Carry;
+                self.outcome.quota_hit = true;
+            }
+        }
+    }
+
+    fn conflict_names(
+        &self,
+        planned: &[Planned],
+        captured: &Capture,
+        view: &RemoteView,
+        label: &str,
+    ) -> BTreeMap<String, (String, bool)> {
+        let date = utc_date();
+        let mut reserved: BTreeSet<String> = BTreeSet::new();
+        let mut names = BTreeMap::new();
+        for item in planned {
+            let (Action::Conflict, Some(local), Some(record)) =
+                (&item.action, &item.local, &item.remote)
+            else {
+                continue;
+            };
+            let slot = |candidate: &str| {
+                let candidate_key = key(candidate);
+                if reserved.contains(&candidate_key) {
+                    return Slot::Taken;
+                }
+                if let Some(existing) = captured.files.get(&candidate_key) {
+                    return if existing.hash == record.hash && existing.path == candidate {
+                        Slot::Same
+                    } else {
+                        Slot::Taken
+                    };
+                }
+                let taken = view.usable.contains_key(&candidate_key)
+                    || view.foreign_keys.contains(&candidate_key)
+                    || on_disk(&self.env.root, candidate);
+                if taken {
+                    Slot::Taken
+                } else {
+                    Slot::Free
+                }
+            };
+            let (name, reuse) = conflict_path(&local.path, label, &date, &slot);
+            reserved.insert(key(&name));
+            names.insert(item.key.clone(), (name, reuse));
+        }
+        names
+    }
+
+    async fn stage(&mut self, planned: &[Planned]) -> Vec<Staged> {
+        let downloads: Vec<(String, FileRecord)> = planned
+            .iter()
+            .filter(|item| {
+                matches!(
+                    item.action,
+                    Action::Download | Action::Conflict | Action::MetaMerge
+                )
+            })
+            .filter_map(|item| item.remote.clone().map(|record| (item.key.clone(), record)))
+            .collect();
+        if downloads.is_empty() {
+            return Vec::new();
+        }
+        if let Err(error) = tokio::fs::create_dir_all(&self.env.staging).await {
+            self.incomplete = true;
+            self.late_error = Some(RoundError::Local(error.to_string()));
+            return Vec::new();
+        }
+        let needed: u64 = downloads.iter().map(|(_, record)| record.size).sum();
+        if !room_for(&self.env.staging, needed).await {
+            self.incomplete = true;
+            self.late_error = Some(RoundError::DiskFull);
+            return Vec::new();
+        }
+        let records: BTreeMap<String, FileRecord> = downloads.iter().cloned().collect();
+        let (staged, failed) =
+            stage_downloads(self.store, self.cloud, downloads, &self.env.staging).await;
+        for (job_key, error) in failed {
+            self.incomplete = true;
+            if error.ends_round() {
+                if self.error.is_none() {
+                    self.error = Some(RoundError::Store(error));
+                }
+                continue;
+            }
+            if let Some(record) = records.get(&job_key) {
+                if !matches!(error, StoreError::Io(_)) {
+                    self.failures.insert(job_key.clone(), record.hash.clone());
+                }
+                self.skipped.push(SkippedFile {
+                    path: record.path.clone(),
+                    reason: "downloadFailed".into(),
+                });
+            }
+        }
+        staged
+    }
+
+    async fn apply(
+        &mut self,
+        planned: &[Planned],
+        staged: Vec<Staged>,
+        names: BTreeMap<String, (String, bool)>,
+    ) -> Result<Applied, RoundError> {
+        let items: Vec<ApplyItem> = planned
+            .iter()
+            .filter(|item| {
+                matches!(
+                    item.action,
+                    Action::Download | Action::LocalDelete | Action::Conflict | Action::MetaMerge
+                )
+            })
+            .map(|item| ApplyItem {
+                key: item.key.clone(),
+                action: item.action.clone(),
+                local: item.local.clone(),
+                remote: item.remote.clone(),
+                copy: names.get(&item.key).cloned(),
+            })
+            .collect();
+        if items.is_empty() {
+            for staged in staged {
+                let _ = tokio::fs::remove_file(&staged.path).await;
+            }
+            return Ok(Applied::default());
+        }
+        let job = ApplyJob {
+            root: self.env.root.clone(),
+            trash: self.env.trash.clone(),
+            lock_id: self.env.lock_id.clone(),
+            staged: staged
+                .into_iter()
+                .map(|staged| (staged.key, staged.path))
+                .collect(),
+            items,
+            meta_base: self.project.meta_base.clone(),
+        };
+        let applied = tauri::async_runtime::spawn_blocking(move || apply_local(job))
+            .await
+            .map_err(|error| RoundError::Local(error.to_string()))?;
+        for item_key in &applied.failed {
+            if let Some(record) = planned
+                .iter()
+                .find(|item| &item.key == item_key)
+                .and_then(|item| item.remote.as_ref())
+            {
+                self.failures.insert(item_key.clone(), record.hash.clone());
+                self.skipped.push(SkippedFile {
+                    path: record.path.clone(),
+                    reason: "downloadFailed".into(),
+                });
+            }
+        }
+        Ok(applied)
+    }
+
+    async fn upload(
+        &mut self,
+        uploads: &[UploadJob],
+        view: &RemoteView,
+        publisher: &mut Publisher<'_, S>,
+    ) -> UploadRun {
+        let mut run = UploadRun::default();
+        if self.error.is_some() {
+            return run;
+        }
+        let mut free = self.options.free_bytes;
+        let mut since_files = 0usize;
+        let mut since_bytes = 0u64;
+        for job in uploads {
+            if self.options.cancelled() {
+                break;
+            }
+            if let Some(left) = free {
+                let cost = job.size.saturating_sub(job.replaces);
+                if cost > left {
+                    self.outcome.quota_hit = true;
+                    continue;
+                }
+                free = Some(left - cost);
+            }
+            match upload_one(self.store, self.cloud, &self.env.root, job).await {
+                Ok(record) => {
+                    since_files += 1;
+                    since_bytes += record.size;
+                    run.uploaded.insert(job.key.clone(), record);
+                }
+                Err(StoreError::QuotaFull) => {
+                    self.outcome.quota_hit = true;
+                    break;
+                }
+                Err(error) if error.ends_round() => {
+                    run.error = Some(RoundError::Store(error));
+                    break;
+                }
+                Err(error) => run.skipped.push(SkippedFile {
+                    path: job.path.clone(),
+                    reason: upload_skip_code(&error).into(),
+                }),
+            }
+            let interval = PUBLISH_EVERY_FILES.max((view.usable.len() + run.uploaded.len()) / 4);
+            if since_files >= interval || since_bytes >= PUBLISH_EVERY_BYTES {
+                let mut interim = view.usable.clone();
+                interim.extend(
+                    run.uploaded
+                        .iter()
+                        .map(|(record_key, record)| (record_key.clone(), record.clone())),
+                );
+                match publisher
+                    .publish(manifest_files(&interim, &view.foreign))
+                    .await
+                {
+                    Ok(_) => {
+                        run.published.extend(run.uploaded.keys().cloned());
+                        since_files = 0;
+                        since_bytes = 0;
+                    }
+                    Err(error) => {
+                        run.error = Some(RoundError::Store(error));
+                        break;
+                    }
+                }
+            }
+        }
+        run
+    }
+
+    async fn delete_remote(&mut self, deletions: &[&Planned], final_files: &[FileRecord]) {
+        let live: BTreeSet<String> = final_files.iter().map(|record| key(&record.path)).collect();
+        let mut pending = self.project.pending_deletes.clone();
+        pending.extend(pending_from(deletions));
+        pending.sort_by(|left, right| left.path.cmp(&right.path));
+        pending.dedup_by(|left, right| left.path == right.path);
+        let mut still_pending = Vec::new();
+        for entry in pending {
+            if live.contains(&key(&entry.path)) {
+                continue;
+            }
+            if let Err(error) = self
+                .store
+                .delete(&file_remote(self.cloud, &entry.path), entry.rev.as_deref())
+                .await
+            {
+                if error.ends_round() && self.error.is_none() {
+                    self.error = Some(RoundError::Store(error));
+                }
+                still_pending.push(entry);
+            }
+        }
+        self.project.pending_deletes = still_pending;
+    }
+
+    fn record_failures(&mut self, planned: &[Planned], applied: &Applied) {
+        let now = now_ms();
+        let mut failed = std::mem::take(&mut self.project.failed);
+        failed.retain(|item_key, failure| {
+            planned.iter().any(|item| {
+                &item.key == item_key
+                    && !applied.downloaded.contains(item_key)
+                    && item
+                        .remote
+                        .as_ref()
+                        .is_some_and(|record| record.hash == failure.hash)
+            })
+        });
+        for (item_key, hash) in std::mem::take(&mut self.failures) {
+            failed.insert(item_key, Failure { hash, at_ms: now });
+        }
+        self.project.failed = failed;
+    }
+
+    fn record_skips(&mut self, captured: &Capture, planned: &[Planned], uploads: &UploadRun) {
+        let mut skipped = captured.skipped.clone();
+        skipped.extend(
+            planned
+                .iter()
+                .filter(|item| item.backed_off)
+                .filter_map(|item| {
+                    item.remote.as_ref().map(|record| SkippedFile {
+                        path: record.path.clone(),
+                        reason: "downloadFailed".into(),
+                    })
+                }),
+        );
+        skipped.append(&mut self.skipped);
+        skipped.extend(uploads.skipped.iter().cloned());
+        self.outcome.skipped = skipped.len();
+        self.project.skipped = skipped.len();
+        skipped.truncate(MAX_LISTED_SKIPS);
+        self.project.skipped_files = skipped;
+    }
+
+    fn record_conflicts(&mut self, applied: &Applied) {
+        self.outcome.conflicts = applied.conflict_copies.len();
+        self.project.conflicts += applied.conflict_copies.len();
+        for copy in applied.conflict_copies.values() {
+            if !self.project.conflict_copies.contains(copy) {
+                self.project.conflict_copies.push(copy.clone());
+            }
+        }
+        let overflow = self
+            .project
+            .conflict_copies
+            .len()
+            .saturating_sub(MAX_CONFLICT_COPIES);
+        self.project.conflict_copies.drain(..overflow);
+    }
+}
+
+fn pending_from(deletions: &[&Planned]) -> Vec<PendingDelete> {
+    deletions
+        .iter()
+        .filter_map(|item| {
+            item.remote.as_ref().map(|record| PendingDelete {
+                path: record.path.clone(),
+                rev: record.rev.clone(),
+            })
+        })
+        .collect()
+}
+
+fn publisher_name(captured: &Capture, context: &SyncContext) -> String {
+    captured
+        .meta
+        .as_ref()
+        .and_then(|meta| meta.get("name"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map_or_else(
+            || context.fallback_name.clone(),
+            |name| name.chars().take(200).collect(),
+        )
+}
+
+async fn agreed_meta(root: &Path, project: &ProjectState) -> Option<serde_json::Value> {
+    let agreed = project.base.get(PROJECT_META)?.hash.clone();
+    let bytes = tokio::fs::read(root.join(PROJECT_META)).await.ok()?;
+    (merge::meta_digest(&bytes).to_hex() == agreed)
+        .then(|| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .flatten()
+        .map(|value| merge::portable_meta(&value))
+}
+
+fn publisher_for<'a, S: CloudStore>(
+    store: &'a S,
+    context: &'a SyncContext,
+    cloud: ProjectId,
+    clock: HlcClock,
+    remote: Option<&Remote>,
+    captured: &Capture,
+    options: &RoundOptions,
+) -> Publisher<'a, S> {
+    Publisher {
+        store,
+        cloud,
+        context,
+        clock,
+        rev: remote.map(|remote| remote.rev.clone()),
+        overwrite: options.replace_remote && remote.is_none(),
+        published: remote
+            .map(|remote| remote.version.files.clone())
+            .unwrap_or_default(),
+        name: publisher_name(captured, context),
+        manifest: captured
+            .meta
+            .as_ref()
+            .map(merge::portable_meta)
+            .unwrap_or_default(),
+        extra: remote
+            .map(|remote| remote.version.extra.clone())
+            .unwrap_or_default(),
+    }
+}
+
+fn keep_unfinished(
+    records: &mut BTreeMap<String, FileRecord>,
+    run: &UploadRun,
+    uploads: &[UploadJob],
+    view: &RemoteView,
+) -> bool {
+    for (record_key, record) in &run.uploaded {
+        records.insert(record_key.clone(), record.clone());
+    }
+    let mut unfinished = false;
+    for job in uploads {
+        if run.uploaded.contains_key(&job.key) {
+            continue;
+        }
+        unfinished = true;
+        match view.usable.get(&job.key) {
+            Some(record) => records.insert(job.key.clone(), record.clone()),
+            None => records.remove(&job.key),
+        };
+    }
+    unfinished
+}
+
+fn stamp_uploads(
+    base: &mut BTreeMap<String, (String, BaseEntry)>,
+    run: &UploadRun,
+    uploads: &[UploadJob],
+) {
+    let jobs: BTreeMap<&str, &UploadJob> =
+        uploads.iter().map(|job| (job.key.as_str(), job)).collect();
+    for (record_key, record) in &run.uploaded {
+        if !run.published.contains(record_key) {
+            continue;
+        }
+        let stamp = jobs
+            .get(record_key.as_str())
+            .filter(|job| job.local_hash.as_deref() == Some(record.hash.as_str()))
+            .and_then(|job| job.signature.clone());
+        base.insert(
+            record_key.clone(),
+            (
+                record.path.clone(),
+                BaseEntry {
+                    stamp,
+                    ..base_entry(record)
+                },
+            ),
+        );
+    }
+}
+
+impl<S: CloudStore> Round<'_, S> {
+    async fn publish_final(
+        &mut self,
+        publisher: &mut Publisher<'_, S>,
+        final_files: &[FileRecord],
+        deletions: &[&Planned],
+        run: &mut UploadRun,
+    ) -> bool {
+        if self.error.is_some() {
+            return false;
+        }
+        if let Some(persist) = &self.env.persist_pending {
+            let mut pending = self.project.pending_deletes.clone();
+            pending.extend(pending_from(deletions));
+            persist(&pending);
+        }
+        match publisher.publish(final_files.to_vec()).await {
+            Ok(_) => {
+                run.published.extend(run.uploaded.keys().cloned());
+                true
+            }
+            Err(error) => {
+                self.error = Some(RoundError::Store(error));
+                false
+            }
+        }
+    }
+
+    async fn commit(
+        &mut self,
+        settled: Settled,
+        planned: &[Planned],
+        view: &RemoteView,
+        mut publisher: Publisher<'_, S>,
+    ) -> (UploadRun, u64) {
+        let Settled {
+            mut base,
+            mut records,
+            uploads,
+            incomplete,
+        } = settled;
+        self.incomplete |= incomplete;
+        let mut run = self.upload(&uploads, view, &mut publisher).await;
+        if let Some(error) = run.error.take() {
+            self.error.get_or_insert(error);
+        }
+        self.incomplete |= keep_unfinished(&mut records, &run, &uploads, view);
+        let deletions: Vec<&Planned> = planned
+            .iter()
+            .filter(|item| item.action == Action::RemoteDelete)
+            .collect();
+        for item in &deletions {
+            records.remove(&item.key);
+        }
+        let final_files = manifest_files(&records, &view.foreign);
+        let final_published = self
+            .publish_final(&mut publisher, &final_files, &deletions, &mut run)
+            .await;
+        stamp_uploads(&mut base, &run, &uploads);
+        if final_published {
+            for item in &deletions {
+                base.remove(&item.key);
+            }
+            self.outcome.deleted_remote = deletions.len();
+            self.delete_remote(&deletions, &final_files).await;
+        } else {
+            self.incomplete = true;
+        }
+        if publisher.rev.is_some() && (final_published || !run.published.is_empty()) {
+            self.project.remote_rev = publisher.rev.clone();
+        }
+        self.outcome.uploaded = run.published.len();
+        self.project.base = base.into_values().collect();
+        self.project.meta_base = match agreed_meta(&self.env.root, &self.project).await {
+            Some(meta) => Some(meta),
+            None => self.project.meta_base.take(),
+        };
+        (run, publisher.clock.last().raw())
+    }
+}
+
 pub(crate) async fn sync_project<S: CloudStore>(
     store: &S,
     env: &RoundEnv,
@@ -1327,490 +2349,109 @@ pub(crate) async fn sync_project<S: CloudStore>(
     hlc: u64,
     options: &RoundOptions,
 ) -> Result<RoundResult, RoundError> {
-    let Some(captured) = capture_locked(env).await? else {
+    let Some(captured) = capture_locked(env, &previous.base).await? else {
         return Err(RoundError::Busy);
     };
-    let root = env.root.clone();
     let mut project = previous.clone();
     project.cloud = Some(cloud);
     let mut clock = HlcClock::restore(Hlc::from_raw(hlc));
-    let mut outcome = SyncOutcome {
-        skipped: captured.skipped,
-        ..SyncOutcome::default()
+    let mut round = Round {
+        store,
+        env,
+        cloud,
+        options,
+        project,
+        outcome: SyncOutcome::default(),
+        skipped: Vec::new(),
+        failures: BTreeMap::new(),
+        error: None,
+        late_error: None,
+        incomplete: false,
     };
-
-    let forced = options.allow_mass_delete || options.restore_deleted;
-    let quiet = !forced
-        && captured.matches_base(&project.base)
-        && project.pending_deletes.is_empty()
-        && project.hold.is_none();
-    if quiet && !project.remote_dirty {
-        return Ok(unchanged(project, &clock, outcome));
+    if round.quiet(&captured).await? {
+        round.outcome.unchanged = true;
+        round.outcome.skipped = round.project.skipped;
+        return Ok(round.finish_early(&clock));
     }
-    if quiet {
-        if let Some(rev) = project.remote_rev.clone() {
-            let current = store.metadata(&version_remote(cloud)).await?;
-            if current.is_some_and(|meta| meta.rev == rev) {
-                project.remote_dirty = false;
-                return Ok(unchanged(project, &clock, outcome));
-            }
-        }
-    }
-
-    let remote = fetch_version(store, cloud).await?;
+    let Loaded::Remote(remote) = round.remote().await? else {
+        return Ok(round.finish_early(&clock));
+    };
     if let Some(remote) = &remote {
         observe_remote(&mut clock, remote);
-    } else {
-        if let Some(device) = read_tombstone(store, cloud).await? {
-            project.paused = true;
-            project.removed_by = Some(device);
-            project.base.clear();
-            project.meta_base = None;
-            project.remote_rev = None;
-            project.remote_dirty = false;
-            project.hold = None;
-            project.pending_deletes.clear();
-            outcome.removed_by = project.removed_by.clone();
-            return Ok(RoundResult {
-                outcome,
-                project,
-                hlc: clock.last().raw(),
-                error: None,
-            });
-        }
-        project.base.clear();
-        project.meta_base = None;
-        project.remote_rev = None;
-        project.pending_deletes.clear();
     }
-
     let view = split_remote(remote.as_ref(), &captured.policy);
-    let mut planned = plan(&captured, &view, &project.base, &root, options);
-    if !options.allow_uploads {
-        for item in &mut planned {
-            if matches!(
-                item.action,
-                Action::Upload | Action::Conflict | Action::MetaMerge
-            ) {
-                item.action = Action::Carry;
-                outcome.quota_hit = true;
-            }
+    let mut planned = plan(&PlanInput {
+        capture: &captured,
+        remote: &view,
+        base: &round.project.base,
+        root: &env.root,
+        options,
+        failed: &round.project.failed,
+        now: now_ms(),
+    });
+    round.limit_uploads(&mut planned);
+    if !options.allow_mass_delete && !options.restore_deleted {
+        if let Some(hold) = mass_delete(&planned, round.project.base.len()) {
+            round.project.hold = Some(hold);
+            round.project.remote_dirty = true;
+            round.outcome.held = true;
+            return Ok(round.finish_early(&clock));
         }
     }
-    if !forced {
-        if let Some(hold) = mass_delete(&planned, project.base.len()) {
-            project.hold = Some(hold);
-            project.remote_dirty = true;
-            outcome.held = true;
-            return Ok(RoundResult {
-                outcome,
-                project,
-                hlc: clock.last().raw(),
-                error: None,
-            });
-        }
-    }
-    project.hold = None;
-
+    round.project.hold = None;
     let label = sanitize_label(
         remote
             .as_ref()
             .and_then(|remote| remote.version.device.as_deref())
             .unwrap_or("conflict"),
     );
-    let date = utc_date();
-    let mut reserved: BTreeSet<String> = BTreeSet::new();
-    let mut conflict_names: BTreeMap<String, String> = BTreeMap::new();
-    for item in &planned {
-        if item.action != Action::Conflict {
-            continue;
-        }
-        let Some(local) = &item.local else {
-            continue;
-        };
-        let name = {
-            let taken = |candidate: &str| {
-                let candidate_key = key(candidate);
-                captured.files.contains_key(&candidate_key)
-                    || view.usable.contains_key(&candidate_key)
-                    || view
-                        .foreign
-                        .iter()
-                        .any(|record| key(&record.path) == candidate_key)
-                    || reserved.contains(&candidate_key)
-                    || on_disk(&root, candidate)
-            };
-            conflict_path(&local.path, &label, &date, &taken)
-        };
-        reserved.insert(key(&name));
-        conflict_names.insert(item.key.clone(), name);
-    }
-
-    let downloads: Vec<(String, FileRecord)> = planned
-        .iter()
-        .filter(|item| {
-            matches!(
-                item.action,
-                Action::Download | Action::Conflict | Action::MetaMerge
-            )
-        })
-        .filter_map(|item| item.remote.clone().map(|record| (item.key.clone(), record)))
-        .collect();
-    let mut round_error: Option<RoundError> = None;
-    let mut incomplete = false;
-    let staged = if downloads.is_empty() {
-        Vec::new()
-    } else {
-        tokio::fs::create_dir_all(&env.staging)
-            .await
-            .map_err(|error| RoundError::Local(error.to_string()))?;
-        let (staged, failed) = stage_downloads(store, cloud, downloads, &env.staging).await;
-        for (_, error) in failed {
-            incomplete = true;
-            if error.ends_round() {
-                if round_error.is_none() {
-                    round_error = Some(RoundError::Store(error));
-                }
-            } else {
-                outcome.skipped += 1;
-            }
-        }
-        staged
-    };
+    let names = round.conflict_names(&planned, &captured, &view, &label);
+    let staged = round.stage(&planned).await;
     let fixes = corrections(&staged, &view);
-    let needs_apply = planned.iter().any(|item| {
-        matches!(
-            item.action,
-            Action::Download | Action::LocalDelete | Action::Conflict | Action::MetaMerge
-        )
-    });
-    let applied = if needs_apply {
-        let job = ApplyJob {
-            root: root.clone(),
-            trash: env.trash.clone(),
-            lock_id: env.lock_id.clone(),
-            staged: staged
-                .into_iter()
-                .map(|staged| (staged.key, staged.path))
-                .collect(),
-            items: planned
-                .iter()
-                .filter(|item| {
-                    matches!(
-                        item.action,
-                        Action::Download
-                            | Action::LocalDelete
-                            | Action::Conflict
-                            | Action::MetaMerge
-                    )
-                })
-                .map(|item| {
-                    (
-                        item.key.clone(),
-                        item.action.clone(),
-                        item.local.clone(),
-                        item.remote.clone(),
-                    )
-                })
-                .collect(),
-            conflict_names,
-            meta_base: project.meta_base.clone(),
-        };
-        tauri::async_runtime::spawn_blocking(move || apply_local(job))
-            .await
-            .map_err(|error| RoundError::Local(error.to_string()))?
-    } else {
-        Applied::default()
-    };
-    outcome.skipped += applied.skipped;
-    outcome.downloaded = applied.downloaded.len();
-    outcome.conflicts = applied.conflict_copies.len();
-    outcome.deleted_local = applied.deleted.len();
-
-    let mut base: BTreeMap<String, (String, BaseEntry)> = project
-        .base
-        .iter()
-        .map(|(path, entry)| (key(path), (path.clone(), entry.clone())))
-        .collect();
-    let mut records: BTreeMap<String, FileRecord> = view.usable.clone();
-    let mut uploads: Vec<UploadJob> = Vec::new();
-    for item in &planned {
-        let local_path = item.local.as_ref().map(|file| file.path.clone());
-        let remote_hash = item.remote.as_ref().map(|record| record.hash.as_str());
-        let base_hash = item.base.as_ref().map(|entry| entry.hash.as_str());
-        let local_hash = item.local.as_ref().map(|file| file.hash.as_str());
-        match item.action {
-            Action::Keep => match (&item.remote, &local_path) {
-                (Some(record), Some(path)) => {
-                    base.insert(item.key.clone(), (path.clone(), base_entry(record)));
-                }
-                _ => {
-                    base.remove(&item.key);
-                }
-            },
-            Action::Carry => {
-                let excluded = item.local.is_none()
-                    && !captured.unobserved.contains(&item.key)
-                    && !options.dirty.contains(&item.key);
-                if excluded {
-                    base.remove(&item.key);
-                } else if remote_hash != base_hash
-                    || (item.local.is_some() && local_hash != base_hash)
-                {
-                    incomplete = true;
-                }
-            }
-            Action::Download => match &item.remote {
-                Some(record) if applied.downloaded.contains(&item.key) => {
-                    let agreed = fixes.get(&item.key).unwrap_or(record);
-                    let path = local_path.unwrap_or_else(|| record.path.clone());
-                    base.insert(item.key.clone(), (path, base_entry(agreed)));
-                    if let Some(fix) = fixes.get(&item.key) {
-                        records.insert(item.key.clone(), fix.clone());
-                    }
-                }
-                _ => incomplete = true,
-            },
-            Action::LocalDelete => {
-                if applied.deleted.contains(&item.key) {
-                    base.remove(&item.key);
-                } else {
-                    incomplete = true;
-                }
-            }
-            Action::Upload => {
-                if let Some(path) = local_path {
-                    uploads.push(UploadJob {
-                        key: item.key.clone(),
-                        path,
-                        meta: None,
-                    });
-                }
-            }
-            Action::Conflict => match (
-                applied.conflict_copies.get(&item.key),
-                &item.remote,
-                local_path,
-            ) {
-                (Some(copy), Some(record), Some(path)) => {
-                    base.insert(item.key.clone(), (path.clone(), base_entry(record)));
-                    uploads.push(UploadJob {
-                        key: key(copy),
-                        path: copy.clone(),
-                        meta: None,
-                    });
-                    uploads.push(UploadJob {
-                        key: item.key.clone(),
-                        path,
-                        meta: None,
-                    });
-                }
-                _ => incomplete = true,
-            },
-            Action::MetaMerge => match (&applied.merged_meta, &item.remote) {
-                (Some((_, bytes)), Some(record)) => {
-                    base.insert(
-                        item.key.clone(),
-                        (PROJECT_META.to_string(), base_entry(record)),
-                    );
-                    uploads.push(UploadJob {
-                        key: item.key.clone(),
-                        path: PROJECT_META.to_string(),
-                        meta: Some(bytes.clone()),
-                    });
-                }
-                _ => incomplete = true,
-            },
-            Action::RemoteDelete => {}
-        }
-    }
-
-    let mut publisher = Publisher {
+    let applied = round.apply(&planned, staged, names).await?;
+    round.outcome.downloaded = applied.downloaded.len();
+    round.outcome.deleted_local = applied.deleted.len();
+    round.outcome.changed = applied.changed.iter().cloned().collect();
+    let settled = settle(
+        &SettleInput {
+            planned: &planned,
+            applied: &applied,
+            captured: &captured,
+            fixes: &fixes,
+            options,
+        },
+        &round.project.base,
+        &view,
+    );
+    let publisher = publisher_for(
         store,
-        cloud,
         context,
+        cloud,
         clock,
-        rev: remote.as_ref().map(|remote| remote.rev.clone()),
-        published: remote
-            .as_ref()
-            .map(|remote| remote.version.files.clone())
-            .unwrap_or_default(),
-        name: captured
-            .meta
-            .as_ref()
-            .and_then(|meta| meta.get("name"))
-            .and_then(serde_json::Value::as_str)
-            .map(str::trim)
-            .filter(|name| !name.is_empty())
-            .map_or_else(
-                || context.fallback_name.clone(),
-                |name| name.chars().take(200).collect(),
-            ),
-        manifest: captured
-            .meta
-            .as_ref()
-            .map(merge::portable_meta)
-            .unwrap_or_default(),
-        extra: remote
-            .as_ref()
-            .map(|remote| remote.version.extra.clone())
-            .unwrap_or_default(),
-    };
-
-    let mut uploaded: BTreeMap<String, FileRecord> = BTreeMap::new();
-    let mut published: BTreeSet<String> = BTreeSet::new();
-    let mut since_publish_files = 0usize;
-    let mut since_publish_bytes = 0u64;
-    if round_error.is_none() {
-        for job in &uploads {
-            match upload_one(store, cloud, &root, &job.path, job.meta.as_deref()).await {
-                Ok(record) => {
-                    since_publish_files += 1;
-                    since_publish_bytes += record.size;
-                    records.insert(job.key.clone(), record.clone());
-                    uploaded.insert(job.key.clone(), record);
-                }
-                Err(StoreError::QuotaFull) => {
-                    outcome.quota_hit = true;
-                    break;
-                }
-                Err(error) if error.ends_round() => {
-                    round_error = Some(RoundError::Store(error));
-                    break;
-                }
-                Err(_) => outcome.skipped += 1,
-            }
-            if since_publish_files >= PUBLISH_EVERY_FILES
-                || since_publish_bytes >= PUBLISH_EVERY_BYTES
-            {
-                let mut interim = view.usable.clone();
-                interim.extend(
-                    uploaded
-                        .iter()
-                        .map(|(record_key, record)| (record_key.clone(), record.clone())),
-                );
-                match publisher
-                    .publish(manifest_files(&interim, &view.foreign))
-                    .await
-                {
-                    Ok(_) => {
-                        published.extend(uploaded.keys().cloned());
-                        since_publish_files = 0;
-                        since_publish_bytes = 0;
-                    }
-                    Err(error) => {
-                        round_error = Some(RoundError::Store(error));
-                        break;
-                    }
-                }
-            }
-        }
+        remote.as_ref(),
+        &captured,
+        options,
+    );
+    let (run, hlc) = round.commit(settled, &planned, &view, publisher).await;
+    round.record_failures(&planned, &applied);
+    round.record_skips(&captured, &planned, &run);
+    round.record_conflicts(&applied);
+    if round.error.is_none() {
+        round.error = round.late_error.take();
     }
-    for job in &uploads {
-        if uploaded.contains_key(&job.key) {
-            continue;
-        }
-        incomplete = true;
-        match view.usable.get(&job.key) {
-            Some(record) => {
-                records.insert(job.key.clone(), record.clone());
-            }
-            None => {
-                records.remove(&job.key);
-            }
-        }
+    let failed_round = round.error.is_some();
+    round.project.remote_dirty = round.incomplete || round.outcome.quota_hit || failed_round;
+    if round.project.remote_dirty {
+        round.project.remote_rev = None;
     }
-    let deletions: Vec<&Planned> = planned
-        .iter()
-        .filter(|item| item.action == Action::RemoteDelete)
-        .collect();
-    for item in &deletions {
-        records.remove(&item.key);
-    }
-    let final_files = manifest_files(&records, &view.foreign);
-    let mut final_published = false;
-    if round_error.is_none() {
-        match publisher.publish(final_files.clone()).await {
-            Ok(_) => {
-                final_published = true;
-                published.extend(uploaded.keys().cloned());
-            }
-            Err(error) => round_error = Some(RoundError::Store(error)),
-        }
-    }
-    for (record_key, record) in &uploaded {
-        if published.contains(record_key) {
-            base.insert(
-                record_key.clone(),
-                (record.path.clone(), base_entry(record)),
-            );
-        }
-    }
-    if final_published {
-        for item in &deletions {
-            base.remove(&item.key);
-        }
-        outcome.deleted_remote = deletions.len();
-        let live: BTreeSet<String> = final_files.iter().map(|record| key(&record.path)).collect();
-        let mut pending: Vec<String> = project.pending_deletes.clone();
-        pending.extend(
-            deletions
-                .iter()
-                .filter_map(|item| item.remote.as_ref().map(|record| record.path.clone())),
-        );
-        pending.sort();
-        pending.dedup();
-        let mut still_pending = Vec::new();
-        for path in pending {
-            if live.contains(&key(&path)) {
-                continue;
-            }
-            match store.delete(&file_remote(cloud, &path)).await {
-                Ok(()) => {}
-                Err(error) => {
-                    if error.ends_round() && round_error.is_none() {
-                        round_error = Some(RoundError::Store(error));
-                    }
-                    still_pending.push(path);
-                }
-            }
-        }
-        project.pending_deletes = still_pending;
-    } else {
-        incomplete = true;
-    }
-    if publisher.rev.is_some() && (final_published || !published.is_empty()) {
-        project.remote_rev = publisher.rev.clone();
-    }
-    outcome.uploaded = published.len();
-
-    project.base = base.into_values().collect();
-    let agreed_meta = project
-        .base
-        .get(PROJECT_META)
-        .map(|entry| entry.hash.clone());
-    let local_meta = tokio::fs::read(root.join(PROJECT_META)).await.ok();
-    if let (Some(agreed), Some(bytes)) = (agreed_meta, local_meta) {
-        if merge::meta_digest(&bytes).to_hex() == agreed {
-            project.meta_base = serde_json::from_slice::<serde_json::Value>(&bytes)
-                .ok()
-                .map(|value| merge::portable_meta(&value));
-        }
-    }
-    project.skipped = outcome.skipped;
-    project.conflicts = outcome.conflicts;
-    project.remote_dirty = incomplete || outcome.quota_hit || round_error.is_some();
-    if project.remote_dirty {
-        project.remote_rev = None;
-    }
-    if round_error.is_none() {
-        project.last_synced_ms = now_ms();
+    if !failed_round {
+        round.project.last_synced_ms = now_ms();
     }
     Ok(RoundResult {
-        outcome,
-        project,
-        hlc: publisher.clock.last().raw(),
-        error: round_error,
+        outcome: round.outcome,
+        project: round.project,
+        hlc,
+        error: round.error,
     })
 }
 
@@ -1825,16 +2466,27 @@ pub(crate) struct RemoteProject {
 pub(crate) async fn list_remote_projects<S: CloudStore>(
     store: &S,
     known: &BTreeSet<ProjectId>,
+    cache: &mut BTreeMap<ProjectId, RemoteProject>,
 ) -> Result<Vec<RemoteProject>, RoundError> {
     let entries = store.list("/projects").await?;
-    let unknown: Vec<ProjectId> = entries
+    let listed: BTreeSet<ProjectId> = entries
         .iter()
         .filter(|entry| entry.folder)
         .filter_map(|entry| ProjectId::parse(&entry.name).ok())
+        .collect();
+    cache.retain(|cloud, _| listed.contains(cloud));
+    let unknown: Vec<ProjectId> = listed
+        .iter()
         .filter(|cloud| !known.contains(cloud))
         .take(500)
+        .copied()
         .collect();
-    let fetched: Vec<Result<Option<RemoteProject>, RoundError>> = stream::iter(unknown)
+    let missing: Vec<ProjectId> = unknown
+        .iter()
+        .filter(|cloud| !cache.contains_key(cloud))
+        .copied()
+        .collect();
+    let fetched: Vec<Result<Option<RemoteProject>, RoundError>> = stream::iter(missing)
         .map(|cloud| async move {
             Ok(fetch_version(store, cloud)
                 .await?
@@ -1848,17 +2500,55 @@ pub(crate) async fn list_remote_projects<S: CloudStore>(
         .buffer_unordered(DOWNLOAD_CONCURRENCY)
         .collect()
         .await;
-    let mut projects = Vec::new();
     for result in fetched {
         match result {
-            Ok(Some(project)) => projects.push(project),
+            Ok(Some(project)) => {
+                cache.insert(project.cloud, project);
+            }
             Ok(None) => {}
             Err(error) if error.ends_round() => return Err(error),
             Err(_) => {}
         }
     }
+    let mut projects: Vec<RemoteProject> = unknown
+        .iter()
+        .filter_map(|cloud| cache.get(cloud).cloned())
+        .collect();
     projects.sort_by_key(|project| std::cmp::Reverse(project.stamp_ms));
     Ok(projects)
+}
+
+fn too_many_files(error: &StoreError) -> bool {
+    matches!(error, StoreError::Server(detail) | StoreError::Rejected(detail) if detail.contains("too_many_files"))
+}
+
+pub(crate) async fn delete_project_folder<S: CloudStore>(
+    store: &S,
+    cloud: ProjectId,
+) -> Result<(), StoreError> {
+    let mut stack = vec![(project_remote(cloud), 0usize)];
+    let mut emptied = Vec::new();
+    while let Some((folder, depth)) = stack.pop() {
+        match store.delete(&folder, None).await {
+            Ok(()) => {}
+            Err(error) if too_many_files(&error) && depth < MAX_TREE_DEPTH => {
+                emptied.push(folder.clone());
+                for entry in store.list(&folder).await? {
+                    let child = format!("{folder}/{}", entry.name);
+                    if entry.folder {
+                        stack.push((child, depth + 1));
+                    } else {
+                        store.delete(&child, None).await?;
+                    }
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    for folder in emptied.into_iter().rev() {
+        store.delete(&folder, None).await?;
+    }
+    Ok(())
 }
 
 pub(crate) struct Downloaded {
@@ -1890,7 +2580,7 @@ fn place_download(
             continue;
         };
         let placed = if staged.key == PROJECT_META {
-            place_meta(&staged.path, &target, None)
+            place_meta(&staged.path, &target, None, None)
         } else {
             move_into(&staged.path, &target).map_err(|error| error.to_string())
         };
@@ -1902,6 +2592,7 @@ fn place_download(
             BaseEntry {
                 hash: staged.hash,
                 size: staged.size,
+                stamp: None,
             },
         );
     }
@@ -1942,6 +2633,10 @@ pub(crate) async fn download_into<S: CloudStore>(
         .iter()
         .map(|(record_key, record)| (record_key.clone(), record.clone()))
         .collect();
+    let needed: u64 = jobs.iter().map(|(_, record)| record.size).sum();
+    if !room_for(staging, needed.saturating_mul(2)).await {
+        return Err(RoundError::DiskFull);
+    }
     let (staged, failed) = stage_downloads(store, cloud, jobs, staging).await;
     if let Some((_, error)) = failed.into_iter().next() {
         for staged in &staged {

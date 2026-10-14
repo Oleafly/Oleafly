@@ -4,7 +4,7 @@ use super::oauth::{
     LoopbackListener, LoopbackPages, OAuthError, PkceFlow, TokenSet,
 };
 use super::settings::{self, SettingsOutcome, SettingsRound};
-use super::state::{self, EngineState, Hold, ProjectState};
+use super::state::{self, EngineState, Hold, PendingDelete, ProjectState, SkippedFile};
 use super::store::{CloudStore, DropboxStore, StoreError, TokenRefresher, WriteMode};
 use crate::app_error::AppError;
 use crate::secrets::SecretBackend;
@@ -12,6 +12,7 @@ use oleafly_core::ids::{DeviceId, ProjectId};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -19,6 +20,7 @@ const REFRESH_SECRET_ACCOUNT: &str = "cloud/dropbox/refresh";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(600);
 const ROUND_ATTEMPTS: usize = 3;
 const MIN_FREE_BYTES: u64 = 1024 * 1024;
+const MAX_CHANGED_PATHS: usize = 500;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct ConnectedAccount {
@@ -75,6 +77,8 @@ pub struct CloudProjectView {
     hold: Option<Hold>,
     recycled: bool,
     removed_by: Option<String>,
+    skipped_files: Vec<SkippedFile>,
+    conflict_copies: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -149,6 +153,8 @@ pub struct SyncProjectReport {
     skipped: usize,
     held: bool,
     error: Option<String>,
+    changed: Vec<String>,
+    changed_truncated: bool,
 }
 
 impl SyncProjectReport {
@@ -163,6 +169,13 @@ impl SyncProjectReport {
             skipped: outcome.skipped,
             held: outcome.held,
             error,
+            changed: outcome
+                .changed
+                .iter()
+                .take(MAX_CHANGED_PATHS)
+                .cloned()
+                .collect(),
+            changed_truncated: outcome.changed.len() > MAX_CHANGED_PATHS,
         }
     }
 
@@ -200,6 +213,7 @@ pub enum SettingsSyncView {
         values: serde_json::Value,
         #[serde(serialize_with = "stamp_string")]
         stamp: u64,
+        deferred: bool,
     },
 }
 
@@ -255,6 +269,55 @@ fn refresh_gate() -> &'static tokio::sync::Mutex<()> {
 fn sync_gate() -> &'static tokio::sync::Mutex<()> {
     static GATE: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
     GATE.get_or_init(|| tokio::sync::Mutex::new(()))
+}
+
+fn preempt_flag() -> &'static Arc<AtomicBool> {
+    static FLAG: OnceLock<Arc<AtomicBool>> = OnceLock::new();
+    FLAG.get_or_init(|| Arc::new(AtomicBool::new(false)))
+}
+
+fn waiting_actions() -> &'static std::sync::atomic::AtomicUsize {
+    static WAITING: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    &WAITING
+}
+
+struct ActionWait;
+
+impl ActionWait {
+    fn begin() -> Self {
+        waiting_actions().fetch_add(1, Ordering::SeqCst);
+        preempt_flag().store(true, Ordering::SeqCst);
+        Self
+    }
+}
+
+impl Drop for ActionWait {
+    fn drop(&mut self) {
+        if waiting_actions().fetch_sub(1, Ordering::SeqCst) == 1 {
+            preempt_flag().store(false, Ordering::SeqCst);
+        }
+    }
+}
+
+async fn action_gate() -> tokio::sync::MutexGuard<'static, ()> {
+    let _wait = ActionWait::begin();
+    sync_gate().lock().await
+}
+
+fn preempted() -> bool {
+    preempt_flag().load(Ordering::SeqCst)
+}
+
+fn details_cache() -> &'static Mutex<DetailsCache> {
+    static CACHE: OnceLock<Mutex<DetailsCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(DetailsCache::default()))
+}
+
+#[derive(Default)]
+struct DetailsCache {
+    account: String,
+    cursor: Option<String>,
+    projects: BTreeMap<ProjectId, engine::RemoteProject>,
 }
 
 fn settings_gate() -> &'static tokio::sync::Mutex<()> {
@@ -489,11 +552,19 @@ async fn finish_connect(tokens: TokenSet) -> Result<ConnectDone, String> {
     })
 }
 
-async fn refresh_access_token() -> Result<String, String> {
+async fn refresh_access_token(expected: Option<&str>) -> Result<String, String> {
     let file = read_connection()?.ok_or_else(not_connected)?;
     let account = file.account.ok_or_else(not_connected)?;
-    let refresh = crate::secrets::get_cloud_secret(REFRESH_SECRET_ACCOUNT, account.backend)?
-        .ok_or_else(|| AppError::new("cloud.revoked").to_string())?;
+    if expected.is_some_and(|expected| expected != account.account_id) {
+        return Err(AppError::new("cloud.network")
+            .detail("the dropbox account changed")
+            .into());
+    }
+    let Some(refresh) = crate::secrets::get_cloud_secret(REFRESH_SECRET_ACCOUNT, account.backend)?
+    else {
+        mark_revoked();
+        return Err(AppError::new("cloud.revoked").into());
+    };
     let tokens = match auth_client().refresh(dropbox_app_key(), &refresh).await {
         Ok(tokens) => tokens,
         Err(OAuthError::Revoked) => {
@@ -518,28 +589,31 @@ async fn access_token() -> Result<String, String> {
             }
         }
     }
-    refresh_access_token().await
+    refresh_access_token(None).await
 }
 
-async fn forced_refresh() -> Result<String, StoreError> {
+async fn forced_refresh(expected: Option<String>) -> Result<String, StoreError> {
     let _gate = refresh_gate().lock().await;
     clear_token_cache();
-    refresh_access_token().await.map_err(|error| {
-        if error.contains("cloud.revoked") {
-            StoreError::Revoked
-        } else {
-            StoreError::Network(error)
-        }
-    })
+    refresh_access_token(expected.as_deref())
+        .await
+        .map_err(|error| {
+            if error.contains("cloud.revoked") {
+                StoreError::Revoked
+            } else {
+                StoreError::Network(error)
+            }
+        })
 }
 
-fn refresher() -> TokenRefresher {
-    Arc::new(|| Box::pin(forced_refresh()))
+pub(crate) fn refresher(account_id: &str) -> TokenRefresher {
+    let account_id = account_id.to_string();
+    Arc::new(move || Box::pin(forced_refresh(Some(account_id.clone()))))
 }
 
-async fn dropbox_store() -> Result<DropboxStore, String> {
+async fn dropbox_store(account_id: &str) -> Result<DropboxStore, String> {
     let token = access_token().await?;
-    Ok(DropboxStore::new(token, Some(refresher())))
+    Ok(DropboxStore::new(token, Some(refresher(account_id))))
 }
 
 fn connected_account() -> Result<(ConnectionFile, ConnectedAccount), String> {
@@ -765,6 +839,8 @@ fn local_view(
         hold: entry.and_then(|entry| entry.hold),
         recycled: false,
         removed_by: entry.and_then(|entry| entry.removed_by.clone()),
+        skipped_files: entry.map_or_else(Vec::new, |entry| entry.skipped_files.clone()),
+        conflict_copies: entry.map_or_else(Vec::new, |entry| entry.conflict_copies.clone()),
     }
 }
 
@@ -776,25 +852,43 @@ pub async fn cloud_state() -> Result<CloudStateView, String> {
     let Some(account) = file.account.clone() else {
         return Ok(disconnected_view(file.device_name, file.last_email));
     };
-    let engine_state = state::snapshot().unwrap_or_default();
     let (library, linked_count) = split_library(library_projects().await);
     let bindings = crate::project_ids::all_bindings().unwrap_or_default();
-    let projects = library
-        .iter()
-        .map(|project| {
-            let entry = engine_state.projects.get(&project.id);
-            let cloud = entry.and_then(|entry| entry.cloud).or_else(|| {
-                bindings.get(&project.id).map(|binding| {
-                    binding
-                        .cloud
-                        .get(&account.account_id)
-                        .copied()
-                        .unwrap_or(binding.project)
-                })
-            });
-            local_view(project, entry, cloud)
-        })
-        .collect();
+    let (projects, last_synced_ms, last_error, quota_full) = state::read(|engine_state| {
+        let projects: Vec<CloudProjectView> = library
+            .iter()
+            .map(|project| {
+                let entry = engine_state.projects.get(&project.id);
+                let cloud = entry.and_then(|entry| entry.cloud).or_else(|| {
+                    bindings.get(&project.id).map(|binding| {
+                        binding
+                            .cloud
+                            .get(&account.account_id)
+                            .copied()
+                            .unwrap_or(binding.project)
+                    })
+                });
+                local_view(project, entry, cloud)
+            })
+            .collect();
+        (
+            projects,
+            engine_state.last_synced_ms,
+            engine_state.last_error.clone(),
+            engine_state.quota_full,
+        )
+    })
+    .unwrap_or_else(|_| {
+        (
+            library
+                .iter()
+                .map(|project| local_view(project, None, None))
+                .collect(),
+            0,
+            None,
+            false,
+        )
+    });
     Ok(CloudStateView {
         status: if account.revoked {
             "revoked"
@@ -806,9 +900,9 @@ pub async fn cloud_state() -> Result<CloudStateView, String> {
         device_name: file.device_name,
         enabled: account.enabled,
         last_email: file.last_email,
-        last_synced_ms: engine_state.last_synced_ms,
-        last_error: engine_state.last_error,
-        quota_full: engine_state.quota_full,
+        last_synced_ms,
+        last_error,
+        quota_full,
         linked_count,
         projects,
     })
@@ -842,6 +936,79 @@ fn known_cloud_ids(
     known
 }
 
+async fn remote_listing(
+    store: &DropboxStore,
+    account_id: &str,
+    known: &BTreeSet<ProjectId>,
+) -> Result<Vec<engine::RemoteProject>, RoundError> {
+    let (mut cache, cursor) = {
+        let mut held = details_cache()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if held.account != account_id {
+            *held = DetailsCache {
+                account: account_id.to_string(),
+                ..DetailsCache::default()
+            };
+        }
+        (std::mem::take(&mut held.projects), held.cursor.take())
+    };
+    let next = match cursor {
+        Some(cursor) => match store.changes(&cursor).await {
+            Ok(changes) => {
+                for cloud in changed_clouds(&changes.paths) {
+                    cache.remove(&cloud);
+                }
+                Some(changes.cursor)
+            }
+            Err(_) => {
+                cache.clear();
+                store.latest_cursor("/projects").await.ok().flatten()
+            }
+        },
+        None => {
+            cache.clear();
+            store.latest_cursor("/projects").await.ok().flatten()
+        }
+    };
+    let listed = engine::list_remote_projects(store, known, &mut cache).await;
+    let mut held = details_cache()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if held.account == account_id {
+        held.projects = cache;
+        held.cursor = if listed.is_ok() { next } else { None };
+    }
+    listed
+}
+
+fn remote_view(
+    project: engine::RemoteProject,
+    bindings: &BTreeMap<String, crate::project_ids::ProjectBinding>,
+    recycled: &BTreeSet<String>,
+) -> CloudProjectView {
+    let bound = bindings.iter().find(|(_, binding)| {
+        binding.project == project.cloud
+            || binding.cloud.values().any(|cloud| *cloud == project.cloud)
+    });
+    CloudProjectView {
+        local_id: None,
+        cloud_id: project.cloud.to_string(),
+        name: project.name,
+        mode: "download",
+        last_synced_ms: project.stamp_ms,
+        size_bytes: project.size,
+        error: None,
+        conflicts: 0,
+        skipped: 0,
+        hold: None,
+        recycled: bound.is_some_and(|(local_id, _)| recycled.contains(local_id)),
+        removed_by: None,
+        skipped_files: Vec::new(),
+        conflict_copies: Vec::new(),
+    }
+}
+
 #[tauri::command]
 pub async fn cloud_details() -> Result<CloudDetailsView, String> {
     let (_, account) = connected_account()?;
@@ -864,7 +1031,7 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
     };
     let mut usage = auth_client().space_usage(&token).await;
     if matches!(usage, Err(OAuthError::Revoked)) {
-        if let Ok(fresh) = forced_refresh().await {
+        if let Ok(fresh) = forced_refresh(Some(account.account_id.clone())).await {
             usage = auth_client().space_usage(&fresh).await;
             token = fresh;
         }
@@ -872,7 +1039,7 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
     let space = usage
         .ok()
         .map(|(used, allocated)| CloudSpaceView { used, allocated });
-    let store = DropboxStore::new(token, Some(refresher()));
+    let store = DropboxStore::new(token, Some(refresher(&account.account_id)));
     let engine_state = state::snapshot().unwrap_or_default();
     let (library, _) = split_library(library_projects().await);
     let bindings = crate::project_ids::all_bindings().unwrap_or_default();
@@ -883,46 +1050,26 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
         .into_iter()
         .map(|entry| entry.project_id)
         .collect();
-    let (remote, error) = match engine::list_remote_projects(&store, &known).await {
+    let (remote, error) = match remote_listing(&store, &account.account_id, &known).await {
         Ok(remote) => (remote, None),
         Err(error) => {
             note_error(&error);
             (Vec::new(), Some(error.to_app_error()))
         }
     };
-    let remote = remote
-        .into_iter()
-        .map(|project| {
-            let bound = bindings.iter().find(|(_, binding)| {
-                binding.project == project.cloud
-                    || binding.cloud.values().any(|cloud| *cloud == project.cloud)
-            });
-            CloudProjectView {
-                local_id: None,
-                cloud_id: project.cloud.to_string(),
-                name: project.name,
-                mode: "download",
-                last_synced_ms: project.stamp_ms,
-                size_bytes: project.size,
-                error: None,
-                conflicts: 0,
-                skipped: 0,
-                hold: None,
-                recycled: bound.is_some_and(|(local_id, _)| recycled.contains(local_id)),
-                removed_by: None,
-            }
-        })
-        .collect();
     Ok(CloudDetailsView {
         space,
-        remote,
+        remote: remote
+            .into_iter()
+            .map(|project| remote_view(project, &bindings, &recycled))
+            .collect(),
         error,
     })
 }
 
 #[tauri::command]
 pub async fn cloud_disconnect() -> Result<(), String> {
-    let _gate = tokio::time::timeout(Duration::from_secs(30), sync_gate().lock())
+    let _gate = tokio::time::timeout(Duration::from_secs(30), action_gate())
         .await
         .ok();
     let Some(file) = read_connection()? else {
@@ -976,44 +1123,122 @@ fn cloud_id_for(local_id: &str, root: &Path, account_id: &str) -> Result<Project
     Ok(binding.project)
 }
 
+async fn cloud_id_off_thread(
+    local_id: &str,
+    root: &Path,
+    account_id: &str,
+) -> Result<ProjectId, String> {
+    let local_id = local_id.to_string();
+    let root = root.to_path_buf();
+    let account_id = account_id.to_string();
+    tauri::async_runtime::spawn_blocking(move || cloud_id_for(&local_id, &root, &account_id))
+        .await
+        .map_err(|error| plain_error(error.to_string()))?
+}
+
+fn library_root(local_id: &str) -> Result<PathBuf, String> {
+    if !library_has(local_id) {
+        return Err(AppError::new("cloud.not_found").into());
+    }
+    crate::paths::project_dir(local_id)
+}
+
 struct ProjectRun {
     outcome: SyncOutcome,
     error: Option<RoundError>,
 }
 
+struct RunTarget<'a> {
+    account_id: &'a str,
+    local_id: &'a str,
+    root: PathBuf,
+    cloud: ProjectId,
+}
+
+fn same_account(state: &EngineState, account_id: &str) -> bool {
+    state.account.as_deref() == Some(account_id)
+}
+
+fn pending_hook(account_id: &str, local_id: &str) -> engine::PendingHook {
+    let account_id = account_id.to_string();
+    let local_id = local_id.to_string();
+    Arc::new(move |pending: &[PendingDelete]| {
+        let _ = state::update(|state| {
+            if !same_account(state, &account_id) {
+                return;
+            }
+            let entry = state.projects.entry(local_id.clone()).or_default();
+            for delete in pending {
+                if !entry
+                    .pending_deletes
+                    .iter()
+                    .any(|known| known.path == delete.path)
+                {
+                    entry.pending_deletes.push(delete.clone());
+                }
+            }
+        });
+    })
+}
+
+fn store_round(
+    target: &RunTarget<'_>,
+    result: &engine::RoundResult,
+    error_text: Option<String>,
+) -> Result<(), String> {
+    state::update(|state| {
+        if !same_account(state, target.account_id) {
+            return;
+        }
+        state.hlc = state.hlc.max(result.hlc);
+        let entry = state
+            .projects
+            .entry(target.local_id.to_string())
+            .or_default();
+        let paused = entry.paused || result.project.paused;
+        *entry = ProjectState {
+            paused,
+            last_error: error_text,
+            ..result.project.clone()
+        };
+    })
+}
+
 async fn run_project<S: CloudStore>(
     store: &S,
     context: &SyncContext,
-    local_id: &str,
-    root: PathBuf,
-    cloud: ProjectId,
+    target: RunTarget<'_>,
     options: &RoundOptions,
 ) -> Result<ProjectRun, String> {
     let (staging, trash) = cloud_dirs()?;
     let env = RoundEnv {
-        root,
+        root: target.root.clone(),
         staging,
         trash,
-        lock_id: Some(local_id.to_string()),
+        lock_id: Some(target.local_id.to_string()),
+        persist_pending: Some(pending_hook(target.account_id, target.local_id)),
     };
     for attempt in 1..=ROUND_ATTEMPTS {
-        let snapshot = state::snapshot()?;
-        let previous = snapshot.projects.get(local_id).cloned().unwrap_or_default();
-        match engine::sync_project(
-            store,
-            &env,
-            context,
-            cloud,
-            &previous,
-            snapshot.hlc,
-            options,
-        )
-        .await
+        let (previous, hlc) = state::read(|state| {
+            (
+                state
+                    .projects
+                    .get(target.local_id)
+                    .cloned()
+                    .unwrap_or_default(),
+                state.hlc,
+            )
+        })?;
+        match engine::sync_project(store, &env, context, target.cloud, &previous, hlc, options)
+            .await
         {
             Ok(result) => {
                 let conflict =
                     matches!(result.error, Some(RoundError::Store(StoreError::Conflict)));
-                let error_text =
+                let retry = conflict && attempt < ROUND_ATTEMPTS;
+                let error_text = if retry {
+                    None
+                } else {
                     result
                         .error
                         .as_ref()
@@ -1023,22 +1248,10 @@ async fn run_project<S: CloudStore>(
                                 .outcome
                                 .quota_hit
                                 .then(|| AppError::new("cloud.quota_full").into())
-                        });
-                state::update(|state| {
-                    state.hlc = state.hlc.max(result.hlc);
-                    let entry = state.projects.entry(local_id.to_string()).or_default();
-                    let paused = entry.paused || result.project.paused;
-                    *entry = ProjectState {
-                        paused,
-                        last_error: if conflict && attempt < ROUND_ATTEMPTS {
-                            None
-                        } else {
-                            error_text.clone()
-                        },
-                        ..result.project.clone()
-                    };
-                })?;
-                if conflict && attempt < ROUND_ATTEMPTS {
+                        })
+                };
+                store_round(&target, &result, error_text)?;
+                if retry {
                     continue;
                 }
                 if let Some(error) = &result.error {
@@ -1053,7 +1266,13 @@ async fn run_project<S: CloudStore>(
                 note_error(&error);
                 let text = error.to_app_error();
                 state::update(|state| {
-                    let entry = state.projects.entry(local_id.to_string()).or_default();
+                    if !same_account(state, target.account_id) {
+                        return;
+                    }
+                    let entry = state
+                        .projects
+                        .entry(target.local_id.to_string())
+                        .or_default();
                     entry.last_error = Some(text.clone());
                     entry.remote_dirty = true;
                 })?;
@@ -1093,6 +1312,7 @@ fn changed_clouds(paths: &[String]) -> BTreeSet<ProjectId> {
 
 async fn mark_remote_changes<S: CloudStore>(
     store: &S,
+    account_id: &str,
     cursor: Option<String>,
 ) -> Result<(), RoundError> {
     let (all, changed, next) = match cursor {
@@ -1112,6 +1332,9 @@ async fn mark_remote_changes<S: CloudStore>(
         ),
     };
     state::update(|state| {
+        if !same_account(state, account_id) {
+            return;
+        }
         if next.is_some() || all {
             state.cursor = next;
         }
@@ -1124,17 +1347,134 @@ async fn mark_remote_changes<S: CloudStore>(
     .map_err(RoundError::Local)
 }
 
-async fn uploads_allowed(quota_full: bool) -> bool {
+async fn free_space(quota_full: bool) -> Option<u64> {
     if !quota_full {
-        return true;
+        return None;
     }
-    let Ok(token) = access_token().await else {
-        return true;
+    let token = access_token().await.ok()?;
+    let (used, allocated) = auth_client().space_usage(&token).await.ok()?;
+    (allocated > 0).then(|| allocated.saturating_sub(used))
+}
+
+async fn retry_removals<S: CloudStore>(store: &S, account_id: &str) {
+    let pending: Vec<(String, ProjectId)> = state::read(|state| {
+        state
+            .projects
+            .iter()
+            .filter(|(_, entry)| entry.remove_pending)
+            .filter_map(|(local_id, entry)| entry.cloud.map(|cloud| (local_id.clone(), cloud)))
+            .collect()
+    })
+    .unwrap_or_default();
+    for (local_id, cloud) in pending {
+        if engine::delete_project_folder(store, cloud).await.is_ok() {
+            let _ = state::update(|state| {
+                if !same_account(state, account_id) {
+                    return;
+                }
+                if let Some(entry) = state.projects.get_mut(&local_id) {
+                    entry.remove_pending = false;
+                }
+            });
+        }
+    }
+}
+
+struct Sweep {
+    reports: Vec<SyncProjectReport>,
+    checked: Vec<String>,
+    error: Option<RoundError>,
+    quota_hit: bool,
+}
+
+async fn sweep_library(
+    store: &DropboxStore,
+    file: &ConnectionFile,
+    account: &ConnectedAccount,
+    dirty: &BTreeMap<String, BTreeSet<String>>,
+    free_bytes: Option<u64>,
+) -> Result<Sweep, String> {
+    let mut allow_uploads = free_bytes.is_none_or(|free| free > MIN_FREE_BYTES);
+    let (library, _) = split_library(library_projects().await);
+    let mut sweep = Sweep {
+        reports: Vec::new(),
+        checked: Vec::new(),
+        error: None,
+        quota_hit: !allow_uploads,
     };
-    match auth_client().space_usage(&token).await {
-        Ok((used, allocated)) => allocated == 0 || allocated.saturating_sub(used) > MIN_FREE_BYTES,
-        Err(_) => true,
+    for project in library {
+        if preempted() {
+            break;
+        }
+        let skip = state::read(|state| {
+            state
+                .projects
+                .get(&project.id)
+                .is_some_and(|entry| entry.paused || entry.removed_by.is_some())
+        })?;
+        if skip {
+            continue;
+        }
+        let root = match crate::paths::project_dir(&project.id) {
+            Ok(root) => root,
+            Err(error) => {
+                sweep
+                    .reports
+                    .push(SyncProjectReport::failed(&project.id, plain_error(error)));
+                continue;
+            }
+        };
+        let cloud = match cloud_id_off_thread(&project.id, &root, &account.account_id).await {
+            Ok(cloud) => cloud,
+            Err(error) => {
+                sweep
+                    .reports
+                    .push(SyncProjectReport::failed(&project.id, plain_error(error)));
+                continue;
+            }
+        };
+        let context = SyncContext {
+            device: file.device_id,
+            device_name: file.device_name.clone(),
+            fallback_name: project.name.clone(),
+        };
+        let options = RoundOptions {
+            allow_uploads,
+            free_bytes: free_bytes.filter(|_| allow_uploads),
+            dirty: dirty.get(&project.id).cloned().unwrap_or_default(),
+            cancel: Some(preempt_flag().clone()),
+            ..RoundOptions::default()
+        };
+        let target = RunTarget {
+            account_id: &account.account_id,
+            local_id: &project.id,
+            root,
+            cloud,
+        };
+        let run = run_project(store, &context, target, &options).await?;
+        if run.outcome.quota_hit {
+            sweep.quota_hit = true;
+            allow_uploads = false;
+        }
+        if run.outcome.unchanged && run.error.is_none() {
+            sweep.checked.push(project.id.clone());
+            continue;
+        }
+        if run.error.is_none() {
+            sweep.checked.push(project.id.clone());
+        }
+        let ends = run.error.as_ref().is_some_and(RoundError::ends_round);
+        sweep.reports.push(SyncProjectReport::from_outcome(
+            &project.id,
+            &run.outcome,
+            run.error.as_ref().map(RoundError::to_app_error),
+        ));
+        if ends {
+            sweep.error = run.error;
+            break;
+        }
     }
+    Ok(sweep)
 }
 
 #[tauri::command]
@@ -1142,7 +1482,7 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
     let _gate = sync_gate().lock().await;
     let (file, account) = require_usable()?;
     state::update(|state| state.adopt_account(&account.account_id))?;
-    let store = match dropbox_store().await {
+    let store = match dropbox_store(&account.account_id).await {
         Ok(store) => store,
         Err(error) => {
             state::update(|state| state.last_error = Some(error.clone()))?;
@@ -1156,8 +1496,8 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
     if let Ok((staging, _)) = cloud_dirs() {
         let _ = tauri::async_runtime::spawn_blocking(move || engine::sweep_staging(&staging)).await;
     }
-    let snapshot = state::snapshot()?;
-    if let Err(error) = mark_remote_changes(&store, snapshot.cursor.clone()).await {
+    let (cursor, quota_full) = state::read(|state| (state.cursor.clone(), state.quota_full))?;
+    if let Err(error) = mark_remote_changes(&store, &account.account_id, cursor).await {
         if error.ends_round() {
             note_error(&error);
             let text = error.to_app_error();
@@ -1175,76 +1515,34 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
             }
         })?;
     }
-    let mut allow_uploads = uploads_allowed(snapshot.quota_full).await;
+    retry_removals(&store, &account.account_id).await;
+    let free_bytes = free_space(quota_full).await;
     let dirty = dirty_keys(dirty);
-    let (library, _) = split_library(library_projects().await);
-    let mut reports = Vec::new();
-    let mut round_error: Option<RoundError> = None;
-    let mut quota_hit = !allow_uploads;
-    for project in library {
-        let current = state::snapshot()?;
-        let entry = current
-            .projects
-            .get(&project.id)
-            .cloned()
-            .unwrap_or_default();
-        if entry.paused || entry.removed_by.is_some() {
-            continue;
-        }
-        let root = match crate::paths::project_dir(&project.id) {
-            Ok(root) => root,
-            Err(error) => {
-                reports.push(SyncProjectReport::failed(&project.id, plain_error(error)));
-                continue;
-            }
-        };
-        let cloud = match cloud_id_for(&project.id, &root, &account.account_id) {
-            Ok(cloud) => cloud,
-            Err(error) => {
-                reports.push(SyncProjectReport::failed(&project.id, plain_error(error)));
-                continue;
-            }
-        };
-        let context = SyncContext {
-            device: file.device_id,
-            device_name: file.device_name.clone(),
-            fallback_name: project.name.clone(),
-        };
-        let options = RoundOptions {
-            allow_uploads,
-            dirty: dirty.get(&project.id).cloned().unwrap_or_default(),
-            ..RoundOptions::default()
-        };
-        let run = run_project(&store, &context, &project.id, root, cloud, &options).await?;
-        if run.outcome.quota_hit {
-            quota_hit = true;
-            allow_uploads = false;
-        }
-        if run.outcome.unchanged && run.error.is_none() {
-            continue;
-        }
-        let ends = run.error.as_ref().is_some_and(RoundError::ends_round);
-        reports.push(SyncProjectReport::from_outcome(
-            &project.id,
-            &run.outcome,
-            run.error.as_ref().map(RoundError::to_app_error),
-        ));
-        if ends {
-            round_error = run.error;
-            break;
-        }
-    }
+    let sweep = sweep_library(&store, &file, &account, &dirty, free_bytes).await?;
     let bound = crate::project_ids::all_bindings().ok();
     let finished = now_ms();
-    let round_text = round_error
+    let round_text = sweep
+        .error
         .as_ref()
         .map(RoundError::to_app_error)
-        .or_else(|| quota_hit.then(|| AppError::new("cloud.quota_full").into()));
+        .or_else(|| {
+            sweep
+                .quota_hit
+                .then(|| AppError::new("cloud.quota_full").into())
+        });
     state::update(|state| {
-        state.quota_full = quota_hit;
+        if !same_account(state, &account.account_id) {
+            return;
+        }
+        state.quota_full = sweep.quota_hit;
         state.last_error = round_text.clone();
-        if round_error.is_none() {
+        if sweep.error.is_none() {
             state.last_synced_ms = finished;
+        }
+        for local_id in &sweep.checked {
+            if let Some(entry) = state.projects.get_mut(local_id) {
+                entry.last_synced_ms = finished;
+            }
         }
         if let Some(bound) = &bound {
             state
@@ -1253,8 +1551,8 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
         }
     })?;
     Ok(SyncReport {
-        projects: reports,
-        last_synced_ms: if round_error.is_none() { finished } else { 0 },
+        projects: sweep.reports,
+        last_synced_ms: if sweep.error.is_none() { finished } else { 0 },
         error: round_text,
     })
 }
@@ -1270,18 +1568,20 @@ pub async fn cloud_project_set_mode(local_id: String, mode: String) -> Result<()
                 .into())
         }
     };
-    let removed = state::snapshot()?
-        .projects
-        .get(&local_id)
-        .is_some_and(|entry| entry.removed_by.is_some());
+    let removed = state::read(|state| {
+        state
+            .projects
+            .get(&local_id)
+            .is_some_and(|entry| entry.removed_by.is_some())
+    })?;
     if !paused && removed {
-        let _gate = sync_gate().lock().await;
+        let _gate = action_gate().await;
         let (_, account) = require_usable()?;
-        let root = crate::paths::project_dir(&local_id)?;
-        let cloud = cloud_id_for(&local_id, &root, &account.account_id)?;
-        let store = dropbox_store().await?;
+        let root = library_root(&local_id)?;
+        let cloud = cloud_id_off_thread(&local_id, &root, &account.account_id).await?;
+        let store = dropbox_store(&account.account_id).await?;
         store
-            .delete(&engine::tombstone_remote(cloud))
+            .delete(&engine::tombstone_remote(cloud), None)
             .await
             .map_err(|error| error.to_app_error())?;
     }
@@ -1290,16 +1590,52 @@ pub async fn cloud_project_set_mode(local_id: String, mode: String) -> Result<()
         entry.paused = paused;
         if !paused {
             entry.removed_by = None;
+            entry.remove_pending = false;
             entry.remote_dirty = true;
             entry.last_error = None;
         }
     })
 }
 
+async fn forced_round(
+    local_id: &str,
+    dirty: Option<Vec<DirtyFile>>,
+    options: RoundOptions,
+) -> Result<SyncProjectReport, String> {
+    let _gate = action_gate().await;
+    let (file, account) = require_usable()?;
+    let root = library_root(local_id)?;
+    let cloud = cloud_id_off_thread(local_id, &root, &account.account_id).await?;
+    let store = dropbox_store(&account.account_id).await?;
+    let context = SyncContext {
+        device: file.device_id,
+        device_name: file.device_name.clone(),
+        fallback_name: local_id.to_string(),
+    };
+    let options = RoundOptions {
+        allow_uploads: true,
+        dirty: dirty_keys(dirty).remove(local_id).unwrap_or_default(),
+        ..options
+    };
+    let target = RunTarget {
+        account_id: &account.account_id,
+        local_id,
+        root,
+        cloud,
+    };
+    let run = run_project(&store, &context, target, &options).await?;
+    Ok(SyncProjectReport::from_outcome(
+        local_id,
+        &run.outcome,
+        run.error.as_ref().map(RoundError::to_app_error),
+    ))
+}
+
 #[tauri::command]
 pub async fn cloud_project_resolve_hold(
     local_id: String,
     choice: String,
+    dirty: Option<Vec<DirtyFile>>,
 ) -> Result<SyncProjectReport, String> {
     let (allow_mass_delete, restore_deleted) = match choice.as_str() {
         "restore" => (false, true),
@@ -1310,39 +1646,51 @@ pub async fn cloud_project_resolve_hold(
                 .into())
         }
     };
-    let _gate = sync_gate().lock().await;
-    let (file, account) = require_usable()?;
-    let root = crate::paths::project_dir(&local_id)?;
-    let cloud = cloud_id_for(&local_id, &root, &account.account_id)?;
-    let store = dropbox_store().await?;
-    let context = SyncContext {
-        device: file.device_id,
-        device_name: file.device_name.clone(),
-        fallback_name: local_id.clone(),
-    };
-    let options = RoundOptions {
-        allow_mass_delete,
-        restore_deleted,
-        allow_uploads: true,
-        ..RoundOptions::default()
-    };
-    let run = run_project(&store, &context, &local_id, root, cloud, &options).await?;
-    Ok(SyncProjectReport::from_outcome(
+    forced_round(
         &local_id,
-        &run.outcome,
-        run.error.as_ref().map(RoundError::to_app_error),
-    ))
+        dirty,
+        RoundOptions {
+            allow_mass_delete,
+            restore_deleted,
+            ..RoundOptions::default()
+        },
+    )
+    .await
 }
 
 #[tauri::command]
-pub async fn cloud_project_remove(local_id: String) -> Result<(), String> {
-    let _gate = sync_gate().lock().await;
-    let (file, account) = require_usable()?;
-    let root = crate::paths::project_dir(&local_id)?;
-    let cloud = cloud_id_for(&local_id, &root, &account.account_id)?;
-    let store = dropbox_store().await?;
+pub async fn cloud_project_replace_remote(
+    local_id: String,
+    dirty: Option<Vec<DirtyFile>>,
+) -> Result<SyncProjectReport, String> {
+    forced_round(
+        &local_id,
+        dirty,
+        RoundOptions {
+            replace_remote: true,
+            ..RoundOptions::default()
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub fn cloud_project_dismiss_conflicts(local_id: String) -> Result<(), String> {
+    state::update(|state| {
+        if let Some(entry) = state.projects.get_mut(&local_id) {
+            entry.conflict_copies.clear();
+            entry.conflicts = 0;
+        }
+    })
+}
+
+async fn write_tombstone(
+    store: &DropboxStore,
+    cloud: ProjectId,
+    device_name: &str,
+) -> Result<(), String> {
     let tombstone = engine::Tombstone {
-        device: file.device_name.clone(),
+        device: device_name.to_string(),
         at_ms: now_ms(),
     };
     let bytes = serde_json::to_vec(&tombstone).map_err(|error| plain_error(error.to_string()))?;
@@ -1353,21 +1701,62 @@ pub async fn cloud_project_remove(local_id: String) -> Result<(), String> {
             WriteMode::Overwrite,
         )
         .await
-        .map_err(|error| error.to_app_error())?;
-    store
-        .delete(&engine::project_remote(cloud))
-        .await
-        .map_err(|error| error.to_app_error())?;
+        .map(|_| ())
+        .map_err(|error| error.to_app_error())
+}
+
+#[tauri::command]
+pub async fn cloud_project_remove(local_id: String) -> Result<(), String> {
+    let _gate = action_gate().await;
+    let (file, account) = require_usable()?;
+    let root = library_root(&local_id)?;
+    let cloud = cloud_id_off_thread(&local_id, &root, &account.account_id).await?;
+    let store = dropbox_store(&account.account_id).await?;
+    write_tombstone(&store, cloud, &file.device_name).await?;
     state::update(|state| {
-        let entry = state.projects.entry(local_id).or_default();
+        let entry = state.projects.entry(local_id.clone()).or_default();
         *entry = ProjectState {
             cloud: Some(cloud),
             paused: true,
             removed_by: Some(file.device_name.clone()),
             remote_dirty: false,
+            remove_pending: true,
             ..ProjectState::default()
         };
-    })
+    })?;
+    if engine::delete_project_folder(&store, cloud).await.is_ok() {
+        state::update(|state| {
+            if let Some(entry) = state.projects.get_mut(&local_id) {
+                entry.remove_pending = false;
+            }
+        })?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cloud_remove_remote(cloud_id: String) -> Result<(), String> {
+    let _gate = action_gate().await;
+    let (file, account) = require_usable()?;
+    let cloud =
+        ProjectId::parse(&cloud_id).map_err(|_| AppError::new("cloud.not_found").to_string())?;
+    let local = crate::project_ids::bound_local_id(cloud)?.filter(|local_id| library_has(local_id));
+    if local.is_some() {
+        return Err(AppError::new("cloud.server")
+            .detail("this project is on this computer")
+            .into());
+    }
+    let store = dropbox_store(&account.account_id).await?;
+    write_tombstone(&store, cloud, &file.device_name).await?;
+    engine::delete_project_folder(&store, cloud)
+        .await
+        .map_err(|error| error.to_app_error())?;
+    details_cache()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .projects
+        .remove(&cloud);
+    Ok(())
 }
 
 fn library_has(local_id: &str) -> bool {
@@ -1378,12 +1767,46 @@ fn library_has(local_id: &str) -> bool {
             .is_ok_and(|location| location.kind == crate::project_location::ProjectKind::Library)
 }
 
+async fn restore_from_recycle_bin(
+    local_id: &str,
+    app_state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Option<String>, String> {
+    let recycled = crate::storage::list_recycled_projects()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|entry| entry.project_id == local_id)
+        .max_by_key(|entry| entry.deleted_at);
+    let Some(entry) = recycled else {
+        return Ok(None);
+    };
+    let restored = crate::storage::restore_recycled_project(entry.id, app_state).await?;
+    state::update(|state| {
+        let project = state.projects.entry(restored.clone()).or_default();
+        project.remote_dirty = true;
+        project.paused = false;
+        project.removed_by = None;
+    })?;
+    Ok(Some(restored))
+}
+
+fn download_error(cloud: ProjectId, error: RoundError) -> String {
+    note_error(&error);
+    let _ = crate::project::append_app_log(format!("cloud download of {cloud} stopped: {error}"));
+    match error {
+        RoundError::Store(StoreError::Verify(detail)) => AppError::new("cloud.download_missing")
+            .detail(detail)
+            .into(),
+        other => other.to_app_error(),
+    }
+}
+
 #[tauri::command]
 pub async fn cloud_download_project(
     cloud_id: String,
     app_state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<DownloadDone, String> {
-    let _gate = sync_gate().lock().await;
+    let _gate = action_gate().await;
     let (_, account) = require_usable()?;
     let cloud =
         ProjectId::parse(&cloud_id).map_err(|_| AppError::new("cloud.not_found").to_string())?;
@@ -1394,20 +1817,7 @@ pub async fn cloud_download_project(
                 restored: false,
             });
         }
-        let recycled = crate::storage::list_recycled_projects()
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|entry| entry.project_id == local_id)
-            .max_by_key(|entry| entry.deleted_at);
-        if let Some(entry) = recycled {
-            let restored = crate::storage::restore_recycled_project(entry.id, app_state).await?;
-            state::update(|state| {
-                let project = state.projects.entry(restored.clone()).or_default();
-                project.remote_dirty = true;
-                project.paused = false;
-                project.removed_by = None;
-            })?;
+        if let Some(restored) = restore_from_recycle_bin(&local_id, app_state).await? {
             return Ok(DownloadDone {
                 local_id: restored,
                 restored: true,
@@ -1422,11 +1832,12 @@ pub async fn cloud_download_project(
             })?;
         }
     }
-    let store = dropbox_store().await?;
+    let store = dropbox_store(&account.account_id).await?;
     let (staging, _) = cloud_dirs()?;
     let projects_root = crate::paths::projects_root()?;
     let reservation =
         crate::project::reserve_unique_project_directory_adopting(&projects_root, cloud)?;
+    crate::trust::mark_library_restricted(reservation.project_id()).map_err(String::from)?;
     let downloaded = match engine::download_into(&store, cloud, reservation.path(), &staging).await
     {
         Ok(Some(downloaded)) => downloaded,
@@ -1436,27 +1847,13 @@ pub async fn cloud_download_project(
         }
         Err(error) => {
             drop(reservation);
-            note_error(&error);
-            let _ = crate::project::append_app_log(format!(
-                "cloud download of {cloud} stopped: {error}"
-            ));
-            return Err(match error {
-                RoundError::Store(StoreError::Verify(detail)) => {
-                    AppError::new("cloud.download_missing")
-                        .detail(detail)
-                        .into()
-                }
-                other => other.to_app_error(),
-            });
+            return Err(download_error(cloud, error));
         }
     };
-    let local_id = reservation.commit()?;
+    let local_id = tauri::async_runtime::spawn_blocking(move || reservation.commit())
+        .await
+        .map_err(|error| plain_error(error.to_string()))??;
     crate::project_ids::set_cloud(&local_id, &account.account_id, Some(cloud))?;
-    if let Err(error) = crate::trust::mark_library_restricted(&local_id) {
-        let _ = crate::project::append_app_log(format!(
-            "could not mark downloaded project {local_id} as restricted: {error}"
-        ));
-    }
     let meta_base = engine::read_meta_value(&projects_root.join(&local_id))
         .map(|value| super::merge::portable_meta(&value));
     state::update(|state| {
@@ -1482,6 +1879,7 @@ pub async fn cloud_download_project(
 struct SettingsContext {
     store: DropboxStore,
     file: ConnectionFile,
+    account_id: String,
     hlc: u64,
     settings: state::SettingsState,
 }
@@ -1489,13 +1887,14 @@ struct SettingsContext {
 async fn settings_context() -> Result<SettingsContext, String> {
     let (file, account) = require_usable()?;
     state::update(|state| state.adopt_account(&account.account_id))?;
-    let store = dropbox_store().await?;
-    let snapshot = state::snapshot()?;
+    let store = dropbox_store(&account.account_id).await?;
+    let (hlc, settings) = state::read(|state| (state.hlc, state.settings.clone()))?;
     Ok(SettingsContext {
         store,
         file,
-        hlc: snapshot.hlc,
-        settings: snapshot.settings,
+        account_id: account.account_id,
+        hlc,
+        settings,
     })
 }
 
@@ -1507,6 +1906,9 @@ fn settings_finish<T>(
         note_error(error);
     }
     state::update(|state| {
+        if !same_account(state, &context.account_id) {
+            return;
+        }
         state.hlc = state.hlc.max(context.hlc);
         state.settings = context.settings.clone();
     })?;
@@ -1532,7 +1934,15 @@ pub async fn cloud_settings_sync(values: serde_json::Value) -> Result<SettingsSy
         SettingsOutcome::Current => SettingsSyncView::Current,
         SettingsOutcome::Pushed => SettingsSyncView::Pushed,
         SettingsOutcome::Apply { values, stamp } => SettingsSyncView::Apply { values, stamp },
-        SettingsOutcome::Choose { values, stamp } => SettingsSyncView::Choose { values, stamp },
+        SettingsOutcome::Choose {
+            values,
+            stamp,
+            deferred,
+        } => SettingsSyncView::Choose {
+            values,
+            stamp,
+            deferred,
+        },
     })
 }
 
@@ -1559,6 +1969,14 @@ pub fn cloud_settings_applied(stamp: String, values: serde_json::Value) -> Resul
     state::update(|state| {
         settings::applied(&mut state.settings, stamp, values);
         state.hlc = state.hlc.max(state.settings.stamp);
+    })
+}
+
+#[tauri::command]
+pub fn cloud_settings_defer(stamp: String) -> Result<(), String> {
+    let stamp = parse_stamp(&stamp)?;
+    state::update(|state| {
+        settings::defer(&mut state.settings, stamp);
     })
 }
 

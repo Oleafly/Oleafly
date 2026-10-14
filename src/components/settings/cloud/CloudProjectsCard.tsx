@@ -16,14 +16,25 @@ import type { CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
-import { cloudErrorCode, useCloudStore } from "@/store/cloud";
-import { CloudOff, Download, MoreHorizontal, RefreshCw, ShieldAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { cloudErrorCode, remoteBusyKey, useCloudStore } from "@/store/cloud";
+import {
+  ChevronRight,
+  CloudOff,
+  Copy,
+  Download,
+  FileWarning,
+  MoreHorizontal,
+  RefreshCw,
+  ShieldAlert,
+} from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 type CloudTranslate = ReturnType<typeof useTranslation<["cloud"]>>["t"];
 
-type PendingConfirm = { kind: "remove" | "deleteHeld"; project: CloudProject };
+type PendingConfirm = { kind: "remove" | "removeRemote" | "replace" | "deleteHeld"; project: CloudProject };
+
+type RemoteListState = "idle" | "loading" | "failed" | "ready";
 
 const NOW_TICK_MS = 30_000;
 
@@ -38,12 +49,16 @@ function useNow(): number {
 
 function attentionRank(project: CloudProject): number {
   if (project.mode === "held") return 0;
-  if (project.error) return 1;
+  if (project.error || project.conflictCopies.length > 0) return 1;
   return 2;
 }
 
 function needsAttention(project: CloudProject): boolean {
   return attentionRank(project) < 2;
+}
+
+function isUnreadable(project: CloudProject): boolean {
+  return cloudErrorCode(project.error) === "cloud.remote_unreadable";
 }
 
 function relative(t: CloudTranslate, timestamp: number, now: number): string {
@@ -70,7 +85,12 @@ function rowStatus(t: CloudTranslate, project: CloudProject, now: number): strin
     : t(($) => $.cloud.row.waiting);
 }
 
-function summaryLine(t: CloudTranslate, local: readonly CloudProject[], cloudOnly: number): string {
+function summaryLine(
+  t: CloudTranslate,
+  local: readonly CloudProject[],
+  cloudOnly: number,
+  remote: RemoteListState,
+): string {
   const synced = local.filter((project) => project.mode === "sync" || project.mode === "held").length;
   const paused = local.length - synced;
   const parts = [
@@ -78,8 +98,10 @@ function summaryLine(t: CloudTranslate, local: readonly CloudProject[], cloudOnl
     paused > 0 ? t(($) => $.cloud.projects.paused, { count: paused }) : null,
     cloudOnly > 0 ? t(($) => $.cloud.projects.onlyInDropbox, { count: cloudOnly }) : null,
   ].filter((part): part is string => part !== null);
-  if (parts.length === 0) return t(($) => $.cloud.projects.none);
-  return formatList(parts, { type: "unit", style: "short" });
+  if (parts.length > 0) return formatList(parts, { type: "unit", style: "short" });
+  if (remote === "loading") return t(($) => $.cloud.projects.checking);
+  if (remote === "failed") return t(($) => $.cloud.projects.checkFailed);
+  return t(($) => $.cloud.projects.none);
 }
 
 function statusLine(
@@ -111,6 +133,39 @@ function statusLine(
   return { text: t(($) => $.cloud.projects.notSynced), problem: false };
 }
 
+function confirmCopy(
+  t: CloudTranslate,
+  pending: PendingConfirm,
+): { title: string; description: string; confirmLabel: string } {
+  const name = pending.project.name;
+  switch (pending.kind) {
+    case "remove":
+      return {
+        title: t(($) => $.cloud.confirm.removeTitle, { name }),
+        description: t(($) => $.cloud.confirm.removeDescription),
+        confirmLabel: t(($) => $.cloud.confirm.removeAction),
+      };
+    case "removeRemote":
+      return {
+        title: t(($) => $.cloud.confirm.removeTitle, { name }),
+        description: t(($) => $.cloud.confirm.removeRemoteDescription),
+        confirmLabel: t(($) => $.cloud.confirm.removeAction),
+      };
+    case "replace":
+      return {
+        title: t(($) => $.cloud.confirm.replaceTitle, { name }),
+        description: t(($) => $.cloud.confirm.replaceDescription),
+        confirmLabel: t(($) => $.cloud.confirm.replaceAction),
+      };
+    case "deleteHeld":
+      return {
+        title: t(($) => $.cloud.confirm.deleteTitle),
+        description: t(($) => $.cloud.confirm.deleteDescription, { count: pending.project.hold?.count ?? 0, name }),
+        confirmLabel: t(($) => $.cloud.confirm.deleteAction),
+      };
+  }
+}
+
 function ProjectSwitch({ project }: Readonly<{ project: CloudProject }>) {
   const { t } = useTranslation(["cloud"]);
   const localId = project.localId as string;
@@ -136,6 +191,7 @@ function DownloadButton({ project }: Readonly<{ project: CloudProject }>) {
   const { t } = useTranslation(["cloud"]);
   const downloadingThis = useCloudStore((s) => s.downloading.includes(project.cloudId));
   const anyDownload = useCloudStore((s) => s.downloading.length > 0 || s.downloadProgress !== null);
+  const removing = useCloudStore((s) => s.busyProjects.includes(remoteBusyKey(project.cloudId)));
   const downloadProject = useCloudStore((s) => s.downloadProject);
   const label = project.recycled
     ? t(($) => $.cloud.row.restore, { name: project.name })
@@ -149,7 +205,7 @@ function DownloadButton({ project }: Readonly<{ project: CloudProject }>) {
         className="size-8"
         aria-label={label}
         data-testid="cloud-project-download"
-        disabled={anyDownload}
+        disabled={anyDownload || removing}
         onClick={() => void downloadProject(project.cloudId)}
       >
         {downloadingThis ? <Spinner size="sm" /> : <Download aria-hidden className="size-4" />}
@@ -158,9 +214,13 @@ function DownloadButton({ project }: Readonly<{ project: CloudProject }>) {
   );
 }
 
-function RowMenu({ project, onRemove }: Readonly<{ project: CloudProject; onRemove: () => void }>) {
+function RowMenu({
+  project,
+  busyKey,
+  onRemove,
+}: Readonly<{ project: CloudProject; busyKey: string; onRemove: () => void }>) {
   const { t } = useTranslation(["cloud"]);
-  const busy = useCloudStore((s) => s.busyProjects.includes(project.localId as string));
+  const busy = useCloudStore((s) => s.busyProjects.includes(busyKey) || s.downloading.includes(project.cloudId));
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -173,7 +233,7 @@ function RowMenu({ project, onRemove }: Readonly<{ project: CloudProject; onRemo
           aria-label={t(($) => $.cloud.row.more, { name: project.name })}
           data-testid="cloud-project-menu"
         >
-          <MoreHorizontal aria-hidden className="size-4" />
+          {busy && project.localId === null ? <Spinner size="sm" /> : <MoreHorizontal aria-hidden className="size-4" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-[100]">
@@ -227,14 +287,122 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
   );
 }
 
+function UnreadableNotice({ project, onReplace }: Readonly<{ project: CloudProject; onReplace: () => void }>) {
+  const { t } = useTranslation(["cloud"]);
+  const busy = useCloudStore((s) => s.busyProjects.includes(project.localId as string));
+  return (
+    <CloudNotice
+      tone="danger"
+      icon={FileWarning}
+      testId="cloud-project-unreadable"
+      className="mt-2"
+      actions={
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onReplace}>
+          {busy ? <Spinner /> : null}
+          {t(($) => $.cloud.row.replace)}
+        </Button>
+      }
+    >
+      {describeError(project.error)}
+    </CloudNotice>
+  );
+}
+
+function ConflictNotice({ project }: Readonly<{ project: CloudProject }>) {
+  const { t } = useTranslation(["cloud"]);
+  const localId = project.localId as string;
+  const busy = useCloudStore((s) => s.busyProjects.includes(localId));
+  const dismissConflicts = useCloudStore((s) => s.dismissConflicts);
+  const count = project.conflictCopies.length || project.conflicts;
+  return (
+    <CloudNotice
+      tone="warning"
+      icon={Copy}
+      testId="cloud-project-conflicts"
+      className="mt-2"
+      actions={
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void dismissConflicts(localId)}>
+          {t(($) => $.cloud.row.dismiss)}
+        </Button>
+      }
+      details={
+        project.conflictCopies.length > 0 ? (
+          <ul
+            aria-label={t(($) => $.cloud.row.conflictsLabel, { name: project.name })}
+            className="mt-2 space-y-0.5 pl-6.5"
+          >
+            {project.conflictCopies.map((path) => (
+              <li key={path} className="select-text break-all">
+                {path}
+              </li>
+            ))}
+          </ul>
+        ) : null
+      }
+    >
+      <span className="block font-medium">{t(($) => $.cloud.row.conflicts, { count })}</span>
+      <span className="block">{t(($) => $.cloud.row.conflictsHelp, { count })}</span>
+    </CloudNotice>
+  );
+}
+
+function SkippedFiles({ project }: Readonly<{ project: CloudProject }>) {
+  const { t } = useTranslation(["cloud"]);
+  const listId = useId();
+  const [open, setOpen] = useState(false);
+  const label = t(($) => $.cloud.row.skipped, { count: project.skipped });
+  if (project.skippedFiles.length === 0) return <p className="text-xs text-muted-foreground">{label}</p>;
+  const more = project.skipped - project.skippedFiles.length;
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        data-testid="cloud-project-skipped"
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex items-center gap-1 rounded text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+      >
+        {label}
+        <ChevronRight
+          aria-hidden
+          className={cn("size-3 shrink-0 motion-safe:transition-transform", open && "rotate-90")}
+        />
+      </button>
+      {open ? (
+        <ul
+          id={listId}
+          aria-label={t(($) => $.cloud.row.skippedLabel, { name: project.name })}
+          className="mt-1 space-y-0.5 text-xs"
+        >
+          {project.skippedFiles.map((file) => (
+            <li key={file.path} className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              <span className="min-w-0 select-text break-all text-foreground">{file.path}</span>
+              <span className="text-muted-foreground">{t(($) => $.cloud.row.skipReason[file.reason])}</span>
+            </li>
+          ))}
+          {more > 0 ? (
+            <li className="text-muted-foreground">{t(($) => $.cloud.row.skippedMore, { count: more })}</li>
+          ) : null}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function ProjectRow({
   project,
   now,
   onConfirm,
 }: Readonly<{ project: CloudProject; now: number; onConfirm: (pending: PendingConfirm) => void }>) {
   const { t } = useTranslation(["cloud"]);
+  const connected = useCloudStore((s) => s.status === "connected");
   const local = project.localId !== null && project.mode !== "download";
-  const removable = local && (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0;
+  const removable = local
+    ? (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0
+    : connected;
+  const unreadable = local && isUnreadable(project);
+  const conflicted = local && (project.conflictCopies.length > 0 || project.conflicts > 0);
   return (
     <li data-testid="cloud-project-row" className="px-3 py-2.5">
       <div className="flex items-center gap-3">
@@ -243,17 +411,10 @@ function ProjectRow({
             {project.name}
           </p>
           <p className="text-xs text-muted-foreground">{rowStatus(t, project, now)}</p>
-          {project.error ? <p className="break-words text-xs text-destructive">{describeError(project.error)}</p> : null}
-          {project.conflicts > 0 ? (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              {t(($) => $.cloud.row.conflicts, { count: project.conflicts })}
-            </p>
+          {project.error && !unreadable ? (
+            <p className="break-words text-xs text-destructive">{describeError(project.error)}</p>
           ) : null}
-          {project.skipped > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t(($) => $.cloud.row.skipped, { count: project.skipped })}
-            </p>
-          ) : null}
+          {project.skipped > 0 ? <SkippedFiles project={project} /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {project.sizeBytes > 0 ? (
@@ -261,7 +422,11 @@ function ProjectRow({
           ) : null}
           {local ? <ProjectSwitch project={project} /> : <DownloadButton project={project} />}
           {removable ? (
-            <RowMenu project={project} onRemove={() => onConfirm({ kind: "remove", project })} />
+            <RowMenu
+              project={project}
+              busyKey={local ? (project.localId as string) : remoteBusyKey(project.cloudId)}
+              onRemove={() => onConfirm({ kind: local ? "remove" : "removeRemote", project })}
+            />
           ) : (
             <span aria-hidden className="size-8 shrink-0" />
           )}
@@ -270,11 +435,35 @@ function ProjectRow({
       {project.mode === "held" && local ? (
         <HeldNotice project={project} onDelete={() => onConfirm({ kind: "deleteHeld", project })} />
       ) : null}
+      {unreadable ? <UnreadableNotice project={project} onReplace={() => onConfirm({ kind: "replace", project })} /> : null}
+      {conflicted ? <ConflictNotice project={project} /> : null}
     </li>
   );
 }
 
-function ProjectsActions({ cloudOnly, state }: Readonly<{ cloudOnly: number; state: CloudState }>) {
+function RemoteListStatus({ state }: Readonly<{ state: RemoteListState }>) {
+  const { t } = useTranslation(["cloud"]);
+  const retryDetails = useCloudStore((s) => s.retryDetails);
+  if (state === "loading") {
+    return (
+      <li data-testid="cloud-remote-loading" className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground">
+        <Spinner size="sm" />
+        {t(($) => $.cloud.projects.checking)}
+      </li>
+    );
+  }
+  if (state !== "failed") return null;
+  return (
+    <li data-testid="cloud-remote-error" className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-xs">
+      <span className="min-w-0 flex-1 basis-48 text-destructive">{t(($) => $.cloud.projects.checkFailed)}</span>
+      <Button type="button" size="sm" variant="outline" onClick={() => void retryDetails()}>
+        {t(($) => $.cloud.tryAgain)}
+      </Button>
+    </li>
+  );
+}
+
+function ProjectsActions({ downloadable, state }: Readonly<{ downloadable: number; state: CloudState }>) {
   const { t } = useTranslation(["cloud"]);
   const syncing = useCloudStore((s) => s.syncing);
   const progress = useCloudStore((s) => s.downloadProgress);
@@ -283,7 +472,7 @@ function ProjectsActions({ cloudOnly, state }: Readonly<{ cloudOnly: number; sta
   const downloadAll = useCloudStore((s) => s.downloadAll);
   return (
     <>
-      {cloudOnly > 0 || progress ? (
+      {downloadable > 0 || progress ? (
         <Button
           type="button"
           size="sm"
@@ -321,8 +510,15 @@ export function CloudProjectsCard() {
   const remote = useCloudStore((s) => s.remote);
   const syncing = useCloudStore((s) => s.syncing);
   const syncError = useCloudStore((s) => s.syncError);
+  const remoteList = useCloudStore((s): RemoteListState => {
+    if (s.status !== "connected") return "idle";
+    if (!s.detailsLoaded) return "loading";
+    return s.detailsError ? "failed" : "ready";
+  });
   const resolveHold = useCloudStore((s) => s.resolveHold);
   const removeProject = useCloudStore((s) => s.removeProject);
+  const removeRemote = useCloudStore((s) => s.removeRemote);
+  const replaceRemote = useCloudStore((s) => s.replaceRemote);
   const now = useNow();
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [defaultOpen] = useState(() => state?.projects.some(needsAttention) ?? false);
@@ -332,15 +528,24 @@ export function CloudProjectsCard() {
   const local = [...state.projects].sort((a, b) => attentionRank(a) - attentionRank(b));
   const known = new Set(local.map((project) => project.cloudId).filter(Boolean));
   const cloudOnly = remote.filter((project) => project.mode === "download" && !known.has(project.cloudId));
+  const downloadable = cloudOnly.filter((project) => !project.recycled).length;
   const status = statusLine(t, state, syncing, syncError, now);
-  const empty = local.length === 0 && cloudOnly.length === 0;
+  const settled = remoteList === "ready" || remoteList === "idle";
+  const empty = local.length === 0 && cloudOnly.length === 0 && settled;
+  const copy = confirm ? confirmCopy(t, confirm) : null;
 
   const confirmAction = () => {
-    if (!confirm?.project.localId) return;
-    const localId = confirm.project.localId;
-    if (confirm.kind === "remove") void removeProject(localId);
-    else void resolveHold(localId, "delete");
+    if (!confirm) return;
+    const { kind, project } = confirm;
     setConfirm(null);
+    if (kind === "removeRemote") {
+      void removeRemote(project.cloudId);
+      return;
+    }
+    if (!project.localId) return;
+    if (kind === "remove") void removeProject(project.localId);
+    else if (kind === "replace") void replaceRemote(project.localId);
+    else void resolveHold(project.localId, "delete");
   };
 
   return (
@@ -351,7 +556,7 @@ export function CloudProjectsCard() {
         title={t(($) => $.cloud.projects.title)}
         description={
           <>
-            <span className="block truncate">{summaryLine(t, local, cloudOnly.length)}</span>
+            <span className="block truncate">{summaryLine(t, local, cloudOnly.length, remoteList)}</span>
             <span
               data-testid="cloud-sync-status"
               className={cn("flex items-center gap-1.5", status.problem && "text-amber-700 dark:text-amber-300")}
@@ -361,7 +566,7 @@ export function CloudProjectsCard() {
             </span>
           </>
         }
-        trailing={<ProjectsActions cloudOnly={cloudOnly.length} state={state} />}
+        trailing={<ProjectsActions downloadable={downloadable} state={state} />}
       >
         {empty ? (
           <p className="text-xs text-muted-foreground">{t(($) => $.cloud.projects.empty)}</p>
@@ -381,6 +586,7 @@ export function CloudProjectsCard() {
             {cloudOnly.map((project) => (
               <ProjectRow key={`cloud:${project.cloudId}`} project={project} now={now} onConfirm={setConfirm} />
             ))}
+            <RemoteListStatus state={remoteList} />
           </ul>
         )}
         {state.linkedCount > 0 ? (
@@ -390,26 +596,11 @@ export function CloudProjectsCard() {
         ) : null}
       </CollapsibleSection>
       <ConfirmationDialog
-        open={confirm !== null}
+        open={copy !== null}
         destructive
-        title={
-          confirm?.kind === "remove"
-            ? t(($) => $.cloud.confirm.removeTitle, { name: confirm.project.name })
-            : t(($) => $.cloud.confirm.deleteTitle)
-        }
-        description={
-          confirm?.kind === "remove"
-            ? t(($) => $.cloud.confirm.removeDescription)
-            : t(($) => $.cloud.confirm.deleteDescription, {
-                count: confirm?.project.hold?.count ?? 0,
-                name: confirm?.project.name ?? "",
-              })
-        }
-        confirmLabel={
-          confirm?.kind === "remove"
-            ? t(($) => $.cloud.confirm.removeAction)
-            : t(($) => $.cloud.confirm.deleteAction)
-        }
+        title={copy?.title ?? ""}
+        description={copy?.description ?? ""}
+        confirmLabel={copy?.confirmLabel ?? ""}
         onConfirm={confirmAction}
         onCancel={() => setConfirm(null)}
       />

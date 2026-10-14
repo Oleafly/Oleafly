@@ -25,6 +25,9 @@ pub(crate) struct Inner {
     pub(crate) race_next_version: bool,
     pub(crate) offline: bool,
     pub(crate) calls: usize,
+    pub(crate) upload_bytes: u64,
+    pub(crate) downloads: usize,
+    pub(crate) purged: BTreeSet<String>,
 }
 
 #[derive(Default)]
@@ -40,7 +43,7 @@ impl Inner {
             .sum()
     }
 
-    fn write(&mut self, path: &str, bytes: Vec<u8>) -> String {
+    pub(crate) fn write(&mut self, path: &str, bytes: Vec<u8>) -> String {
         self.next_rev += 1;
         let rev = format!("{:012x}", 0x0a00_0000_0000_u64 + self.next_rev);
         self.history.insert(rev.clone(), bytes.clone());
@@ -134,7 +137,9 @@ impl CloudStore for MemoryStore {
     ) -> StoreResult<Option<Fetched>> {
         self.enter()?;
         let bytes = self.with(|inner| {
-            rev.and_then(|rev| inner.history.get(rev).cloned())
+            inner.downloads += 1;
+            rev.filter(|rev| !inner.purged.contains(*rev))
+                .and_then(|rev| inner.history.get(rev).cloned())
                 .or_else(|| {
                     inner
                         .files
@@ -166,6 +171,9 @@ impl CloudStore for MemoryStore {
     async fn put(&self, remote: &str, bytes: Vec<u8>, mode: WriteMode) -> StoreResult<String> {
         self.enter()?;
         self.with(|inner| {
+            if !remote.to_lowercase().ends_with("version.json") {
+                inner.upload_bytes += bytes.len() as u64;
+            }
             if inner.rejected.contains(remote) {
                 return Err(StoreError::Rejected("path/disallowed_name/".into()));
             }
@@ -206,8 +214,18 @@ impl CloudStore for MemoryStore {
         Ok(Uploaded { rev, hash, size })
     }
 
-    async fn delete(&self, remote: &str) -> StoreResult<()> {
+    async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {
         self.enter()?;
+        let current = self.with(|inner| {
+            inner
+                .files
+                .get(&remote.to_lowercase())
+                .map(|stored| stored.rev.clone())
+        });
+        if parent_rev.is_some_and(|expected| current.as_deref().is_some_and(|rev| rev != expected))
+        {
+            return Ok(());
+        }
         self.remove(remote);
         Ok(())
     }

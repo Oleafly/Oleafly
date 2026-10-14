@@ -168,6 +168,26 @@ impl FileStamp {
             identity: None,
         }
     }
+
+    pub(crate) fn signature(&self) -> Option<String> {
+        let modified = self
+            .modified?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_nanos();
+        let changed = self
+            .changed
+            .map_or_else(String::new, |(seconds, nanos)| format!("{seconds}.{nanos}"));
+        let identity = self
+            .identity
+            .map_or_else(String::new, |(device, inode)| format!("{device}.{inode}"));
+        Some(format!("{}:{modified}:{changed}:{identity}", self.len))
+    }
+
+    pub(crate) fn settled_signature(&self, now: SystemTime) -> Option<String> {
+        let settled = self.modified?.checked_add(RACY_HASH_WINDOW)? <= now;
+        settled.then(|| self.signature()).flatten()
+    }
 }
 
 struct CachedHash {

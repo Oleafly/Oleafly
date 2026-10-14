@@ -1,10 +1,10 @@
 use crate::cloud::engine::{
-    download_into, list_remote_projects, now_ms, sync_project, tombstone_remote, version_remote,
-    FileRecord, RoundEnv, RoundError, RoundOptions, RoundResult, SyncContext, Tombstone,
-    VersionManifest,
+    capture_with, download_into, list_remote_projects, now_ms, sync_project, tombstone_remote,
+    version_remote, FileRecord, RoundEnv, RoundError, RoundOptions, RoundResult, SyncContext,
+    Tombstone, VersionManifest,
 };
 use crate::cloud::settings::{self, SettingsOutcome, SettingsRound};
-use crate::cloud::state::{Hold, ProjectState, SettingsState};
+use crate::cloud::state::{Hold, PendingDelete, ProjectState, SettingsState};
 use crate::cloud::store::{CloudStore, StoreError, WriteMode};
 use crate::cloud::tests::memory::MemoryStore;
 use oleafly_core::hlc::{Hlc, Stamp};
@@ -42,6 +42,7 @@ impl Device {
             staging: self.dir.path().join("staging"),
             trash: self.dir.path().join("trash"),
             lock_id: None,
+            persist_pending: None,
         }
     }
 
@@ -763,7 +764,7 @@ async fn settings_start_with_a_choice_on_a_new_computer_and_then_merge() {
     )
     .await
     .unwrap();
-    let SettingsOutcome::Choose { values, stamp } = choose else {
+    let SettingsOutcome::Choose { values, stamp, .. } = choose else {
         panic!("expected a choice, got {choose:?}");
     };
     assert_eq!(values["appearance"]["theme"], "dark");
@@ -920,7 +921,9 @@ async fn cloud_only_projects_are_listed_with_their_names_and_sizes() {
     office.sync(&store, other).await;
     store.overwrite("/projects/not-a-project/version.json", b"{}");
     let known = [cloud].into_iter().collect();
-    let listed = list_remote_projects(&store, &known).await.unwrap();
+    let listed = list_remote_projects(&store, &known, &mut std::collections::BTreeMap::new())
+        .await
+        .unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].cloud, other);
     assert_eq!(listed[0].name, "Grant");
@@ -1043,4 +1046,530 @@ async fn an_unpinned_record_from_the_first_build_trusts_the_bytes_in_dropbox_and
     );
     laptop.project.remote_dirty = true;
     assert!(laptop.sync(&store, cloud).await.outcome.unchanged);
+}
+
+#[tokio::test]
+async fn a_main_document_inside_the_compile_folder_syncs() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    desk.write(
+        "project.json",
+        r#"{"name":"Paper","main_doc":"paper/main.tex","compile_dir":"paper"}"#,
+    );
+    desk.write("paper/main.tex", "body");
+    desk.write("paper/figures/plot.png", "png");
+    desk.write("paper/main.aux", "aux");
+    let first = desk.sync(&store, cloud).await;
+    assert_eq!(first.outcome.uploaded, 3);
+    let paths: Vec<String> = remote_version(&store, cloud)
+        .files
+        .iter()
+        .map(|file| file.path.clone())
+        .collect();
+    assert!(paths.contains(&"paper/main.tex".to_string()));
+    assert!(paths.contains(&"paper/figures/plot.png".to_string()));
+    assert!(!paths.iter().any(|path| path.ends_with(".aux")));
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(laptop.read("paper/main.tex").as_deref(), Some("body"));
+}
+
+#[tokio::test]
+async fn a_record_this_build_cannot_read_never_deletes_the_local_file() {
+    let (store, cloud, _desk, mut laptop) = paired().await;
+    let mut version = remote_version(&store, cloud);
+    for file in &mut version.files {
+        if file.path == "main.tex" {
+            file.rev = Some("zz".into());
+        }
+    }
+    store.overwrite(
+        &version_remote(cloud),
+        &serde_json::to_vec(&version).unwrap(),
+    );
+    laptop.project.remote_dirty = true;
+    laptop.project.remote_rev = None;
+    let result = laptop.sync(&store, cloud).await;
+    assert!(result.error.is_none());
+    assert_eq!(result.outcome.deleted_local, 0);
+    assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+    assert!(remote_version(&store, cloud)
+        .files
+        .iter()
+        .any(|file| file.path == "main.tex" && file.rev.as_deref() == Some("zz")));
+    assert!(!laptop.project.remote_dirty);
+}
+
+#[tokio::test]
+async fn renaming_a_folder_moves_its_files_without_a_hold() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    for index in 0..30 {
+        desk.write(
+            &format!("chapters/part{index}.tex"),
+            &format!("part {index}"),
+        );
+    }
+    desk.sync(&store, cloud).await;
+    std::fs::rename(desk.root().join("chapters"), desk.root().join("sections")).unwrap();
+    let moved = desk.sync(&store, cloud).await;
+    assert!(!moved.outcome.held);
+    assert_eq!(moved.outcome.deleted_remote, 30);
+    assert_eq!(moved.outcome.uploaded, 30);
+    let version = remote_version(&store, cloud);
+    assert!(version
+        .files
+        .iter()
+        .all(|file| !file.path.starts_with("chapters/")));
+    assert_eq!(
+        version
+            .files
+            .iter()
+            .filter(|file| file.path.starts_with("sections/"))
+            .count(),
+        30
+    );
+    for index in 0..25 {
+        desk.remove(&format!("sections/part{index}.tex"));
+    }
+    desk.write("empty-a.tex", "");
+    let held = desk.sync(&store, cloud).await;
+    assert!(held.outcome.held);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn skipped_files_are_counted_and_listed_with_their_reasons() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    desk.write("node_modules/pkg/index.js", "x");
+    std::os::unix::fs::symlink(desk.root().join("main.tex"), desk.root().join("alias.tex"))
+        .unwrap();
+    let first = desk.sync(&store, cloud).await;
+    assert_eq!(first.outcome.skipped, 2);
+    assert_eq!(desk.project.skipped, 2);
+    let reasons: Vec<(String, String)> = desk
+        .project
+        .skipped_files
+        .iter()
+        .map(|file| (file.path.clone(), file.reason.clone()))
+        .collect();
+    assert!(reasons.contains(&("node_modules".into(), "packageFolder".into())));
+    assert!(reasons.contains(&("alias.tex".into(), "symlink".into())));
+}
+
+#[tokio::test]
+async fn a_revision_dropbox_no_longer_keeps_is_not_downloaded_every_round() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    desk.write("main.tex", "two");
+    desk.sync(&store, cloud).await;
+    let rev = remote_version(&store, cloud)
+        .files
+        .iter()
+        .find(|file| file.path == "main.tex")
+        .and_then(|file| file.rev.clone())
+        .unwrap();
+    store.with(|inner| {
+        inner.purged.insert(rev);
+    });
+    store.overwrite(&file_remote(cloud, "main.tex"), b"three, not in any record");
+    laptop.project.remote_dirty = true;
+    let first = laptop.sync(&store, cloud).await;
+    assert_eq!(first.outcome.downloaded, 0);
+    assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+    assert!(laptop.project.failed.contains_key("main.tex"));
+    assert!(laptop
+        .project
+        .skipped_files
+        .iter()
+        .any(|file| file.path == "main.tex" && file.reason == "downloadFailed"));
+    let fetched = store.with(|inner| inner.downloads);
+    laptop.project.remote_dirty = true;
+    let second = laptop.sync(&store, cloud).await;
+    assert!(second.error.is_none());
+    assert_eq!(store.with(|inner| inner.downloads), fetched);
+    laptop.project.failed.get_mut("main.tex").unwrap().at_ms = 0;
+    laptop.sync(&store, cloud).await;
+    assert!(store.with(|inner| inner.downloads) > fetched);
+}
+
+#[tokio::test]
+async fn a_settled_file_keeps_its_hash_between_launches() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    let past = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    for name in ["project.json", "main.tex"] {
+        std::fs::File::options()
+            .write(true)
+            .open(desk.root().join(name))
+            .unwrap()
+            .set_modified(past)
+            .unwrap();
+    }
+    desk.sync(&store, cloud).await;
+    assert!(desk.project.base["main.tex"].stamp.is_some());
+    let fake = "f".repeat(64);
+    let mut base = desk.project.base.clone();
+    base.get_mut("main.tex").unwrap().hash = fake.clone();
+    let reused = capture_with(&desk.root(), &base).unwrap();
+    assert_eq!(reused.files["main.tex"].hash, fake);
+    desk.write("main.tex", "changed");
+    let rehashed = capture_with(&desk.root(), &base).unwrap();
+    assert_ne!(rehashed.files["main.tex"].hash, fake);
+}
+
+#[tokio::test]
+async fn a_nearly_full_dropbox_skips_files_that_cannot_fit() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    desk.sync(&store, cloud).await;
+    desk.write("data.bin", &"x".repeat(4096));
+    desk.write("note.tex", "small");
+    let before = store.with(|inner| inner.upload_bytes);
+    let result = desk
+        .sync_with(
+            &store,
+            cloud,
+            RoundOptions {
+                allow_uploads: true,
+                free_bytes: Some(1024),
+                ..RoundOptions::default()
+            },
+        )
+        .await;
+    assert!(result.outcome.quota_hit);
+    assert_eq!(result.outcome.uploaded, 1);
+    assert_eq!(store.with(|inner| inner.upload_bytes) - before, 5);
+    assert!(store.read(&file_remote(cloud, "data.bin")).is_none());
+    assert!(desk.project.remote_dirty);
+}
+
+#[tokio::test]
+async fn stopping_a_round_keeps_the_rest_for_next_time() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    let flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+    let stopped = desk
+        .sync_with(
+            &store,
+            cloud,
+            RoundOptions {
+                allow_uploads: true,
+                cancel: Some(flag.clone()),
+                ..RoundOptions::default()
+            },
+        )
+        .await;
+    assert_eq!(stopped.outcome.uploaded, 0);
+    assert!(desk.project.remote_dirty);
+    flag.store(false, std::sync::atomic::Ordering::Relaxed);
+    let resumed = desk
+        .sync_with(
+            &store,
+            cloud,
+            RoundOptions {
+                allow_uploads: true,
+                cancel: Some(flag),
+                ..RoundOptions::default()
+            },
+        )
+        .await;
+    assert_eq!(resumed.outcome.uploaded, 2);
+}
+
+#[tokio::test]
+async fn a_delete_waits_for_the_revision_it_expected() {
+    let (store, cloud, mut desk, _laptop) = paired().await;
+    let stray = file_remote(cloud, "stray.tex");
+    let stray_rev = store.with(|inner| inner.write(&stray, b"another computer".to_vec()));
+    let kept = file_remote(cloud, "kept.tex");
+    store.overwrite(&kept, b"newer");
+    let persisted = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen = persisted.clone();
+    desk.project.pending_deletes = vec![
+        PendingDelete {
+            path: "stray.tex".into(),
+            rev: Some(stray_rev),
+        },
+        PendingDelete {
+            path: "kept.tex".into(),
+            rev: Some("0123456789abcdef".into()),
+        },
+    ];
+    let mut env = desk.env();
+    env.persist_pending = Some(std::sync::Arc::new(move |pending: &[PendingDelete]| {
+        seen.lock().unwrap().extend(pending.iter().cloned());
+    }));
+    let result = sync_project(
+        &store,
+        &env,
+        &desk.context(),
+        cloud,
+        &desk.project,
+        desk.hlc,
+        &RoundOptions {
+            allow_uploads: true,
+            ..RoundOptions::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(result.error.is_none());
+    assert!(store.read(&stray).is_none());
+    assert_eq!(store.read(&kept).as_deref(), Some(&b"newer"[..]));
+    assert!(result.project.pending_deletes.is_empty());
+    assert_eq!(persisted.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn replacing_a_file_with_a_folder_converges() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    desk.write("notes", "a file");
+    desk.sync(&store, cloud).await;
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    assert_eq!(laptop.read("notes").as_deref(), Some("a file"));
+    desk.remove("notes");
+    desk.write("notes/intro.tex", "now a folder");
+    desk.sync(&store, cloud).await;
+    desk.sync(&store, cloud).await;
+    let version = remote_version(&store, cloud);
+    assert!(version
+        .files
+        .iter()
+        .any(|file| file.path == "notes/intro.tex"));
+    assert!(!version.files.iter().any(|file| file.path == "notes"));
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    assert_eq!(
+        laptop.read("notes/intro.tex").as_deref(),
+        Some("now a folder")
+    );
+}
+
+#[tokio::test]
+async fn an_unreadable_record_in_dropbox_can_be_replaced_from_this_computer() {
+    let (store, cloud, mut desk, _laptop) = paired().await;
+    store.overwrite(&version_remote(cloud), b"not json");
+    desk.project.remote_dirty = true;
+    desk.write("main.tex", "desk edit");
+    let failed = desk
+        .try_sync(
+            &store,
+            cloud,
+            RoundOptions {
+                allow_uploads: true,
+                ..RoundOptions::default()
+            },
+        )
+        .await;
+    assert!(matches!(failed, Err(RoundError::Unreadable(_))));
+    let replaced = desk
+        .sync_with(
+            &store,
+            cloud,
+            RoundOptions {
+                allow_uploads: true,
+                replace_remote: true,
+                ..RoundOptions::default()
+            },
+        )
+        .await;
+    assert!(replaced.error.is_none());
+    assert!(remote_version(&store, cloud)
+        .files
+        .iter()
+        .any(|file| file.path == "main.tex"));
+    assert_eq!(
+        store.read(&file_remote(cloud, "main.tex")).as_deref(),
+        Some(&b"desk edit"[..])
+    );
+}
+
+#[tokio::test]
+async fn an_unreadable_tombstone_names_no_device() {
+    let (store, cloud, _desk, mut laptop) = paired().await;
+    store.remove(&format!("/projects/{cloud}"));
+    store.overwrite(&tombstone_remote(cloud), b"garbage");
+    laptop.project.remote_dirty = true;
+    let removed = laptop.sync(&store, cloud).await;
+    assert_eq!(removed.outcome.removed_by.as_deref(), Some(""));
+    assert!(laptop.project.paused);
+}
+
+#[tokio::test]
+async fn conflict_copies_add_up_until_dismissed_and_name_what_changed() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    desk.write("main.tex", "desk version");
+    desk.sync(&store, cloud).await;
+    laptop.write("main.tex", "laptop version");
+    laptop.project.remote_dirty = true;
+    let first = laptop.sync(&store, cloud).await;
+    assert_eq!(first.outcome.conflicts, 1);
+    let copy = format!("main (Desk {}).tex", today());
+    assert!(first.outcome.changed.contains(&copy));
+    assert_eq!(laptop.project.conflict_copies, vec![copy.clone()]);
+    desk.project.remote_dirty = true;
+    desk.sync(&store, cloud).await;
+    desk.write("main.tex", "desk again");
+    desk.sync(&store, cloud).await;
+    laptop.write("main.tex", "laptop again");
+    laptop.project.remote_dirty = true;
+    let second = laptop.sync(&store, cloud).await;
+    assert_eq!(second.outcome.conflicts, 1);
+    assert_eq!(laptop.project.conflicts, 2);
+    assert_eq!(laptop.project.conflict_copies.len(), 2);
+}
+
+#[tokio::test]
+async fn a_crash_after_placing_a_conflict_copy_reuses_it() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    desk.write("main.tex", "desk version");
+    desk.sync(&store, cloud).await;
+    laptop.write("main.tex", "laptop version");
+    let copy = format!("main (Desk {}).tex", today());
+    laptop.write(&copy, "desk version");
+    laptop.project.remote_dirty = true;
+    let result = laptop.sync(&store, cloud).await;
+    assert_eq!(result.outcome.conflicts, 1);
+    assert!(!laptop
+        .names()
+        .iter()
+        .any(|name| name.starts_with("main (Desk") && name.ends_with(" 2).tex")));
+    assert_eq!(laptop.read(&copy).as_deref(), Some("desk version"));
+}
+
+#[tokio::test]
+async fn merged_settings_that_were_not_applied_never_revert_the_other_computer() {
+    let store = MemoryStore::default();
+    let desk = Device::new("Desk");
+    let laptop = Device::new("Laptop");
+    let (mut desk_hlc, mut laptop_hlc) = (0, 0);
+    let mut desk_state = SettingsState::default();
+    let mut laptop_state = SettingsState::default();
+    let start = serde_json::json!({"theme": "light", "font": 14});
+    settings::sync_settings(
+        &store,
+        round(&desk, &mut desk_hlc, &mut desk_state),
+        start.clone(),
+    )
+    .await
+    .unwrap();
+    let choose = settings::sync_settings(
+        &store,
+        round(&laptop, &mut laptop_hlc, &mut laptop_state),
+        serde_json::json!({"theme": "light", "font": 12}),
+    )
+    .await
+    .unwrap();
+    let SettingsOutcome::Choose {
+        stamp, deferred, ..
+    } = choose
+    else {
+        panic!("expected a choice, got {choose:?}");
+    };
+    assert!(!deferred);
+    assert!(settings::defer(&mut laptop_state, stamp));
+    let again = settings::sync_settings(
+        &store,
+        round(&laptop, &mut laptop_hlc, &mut laptop_state),
+        serde_json::json!({"theme": "light", "font": 12}),
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        again,
+        SettingsOutcome::Choose { deferred: true, .. }
+    ));
+    assert!(settings::applied(&mut laptop_state, stamp, start.clone()));
+    assert!(laptop_state.deferred.is_none());
+
+    settings::sync_settings(
+        &store,
+        round(&desk, &mut desk_hlc, &mut desk_state),
+        serde_json::json!({"theme": "dark", "font": 14}),
+    )
+    .await
+    .unwrap();
+    let local = serde_json::json!({"theme": "light", "font": 16});
+    let merged = settings::sync_settings(
+        &store,
+        round(&laptop, &mut laptop_hlc, &mut laptop_state),
+        local.clone(),
+    )
+    .await
+    .unwrap();
+    let SettingsOutcome::Apply { values, .. } = merged else {
+        panic!("expected merged settings, got {merged:?}");
+    };
+    assert_eq!(values, serde_json::json!({"theme": "dark", "font": 16}));
+    let unapplied = settings::sync_settings(
+        &store,
+        round(&laptop, &mut laptop_hlc, &mut laptop_state),
+        local,
+    )
+    .await
+    .unwrap();
+    assert!(matches!(unapplied, SettingsOutcome::Apply { .. }));
+    let stored: serde_json::Value =
+        serde_json::from_slice(&store.read(settings::SETTINGS_REMOTE).unwrap()).unwrap();
+    assert_eq!(stored["values"]["theme"], "dark");
+    assert_eq!(stored["values"]["font"], 16);
+}
+
+#[tokio::test]
+async fn unchanged_settings_check_the_revision_instead_of_downloading() {
+    let store = MemoryStore::default();
+    let desk = Device::new("Desk");
+    let mut hlc = 0;
+    let mut state = SettingsState::default();
+    let values = serde_json::json!({"theme": "dark", "experimentation": {"webBrowser": true}});
+    settings::sync_settings(&store, round(&desk, &mut hlc, &mut state), values.clone())
+        .await
+        .unwrap();
+    let stored: serde_json::Value =
+        serde_json::from_slice(&store.read(settings::SETTINGS_REMOTE).unwrap()).unwrap();
+    assert!(stored["values"].get("experimentation").is_none());
+    let calls = store.with(|inner| inner.calls);
+    let current = settings::sync_settings(&store, round(&desk, &mut hlc, &mut state), values)
+        .await
+        .unwrap();
+    assert_eq!(current, SettingsOutcome::Current);
+    assert_eq!(store.with(|inner| inner.calls) - calls, 1);
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn a_new_name_that_differs_only_by_case_never_replaces_the_synced_file() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    thesis(&desk);
+    desk.write("intro.tex", "synced");
+    desk.sync(&store, cloud).await;
+    desk.write("Intro.tex", "newcomer");
+    let result = desk.sync(&store, cloud).await;
+    assert!(result.error.is_none());
+    assert_eq!(
+        store.read(&file_remote(cloud, "intro.tex")).as_deref(),
+        Some(&b"synced"[..])
+    );
+    assert!(desk
+        .project
+        .skipped_files
+        .iter()
+        .any(|file| file.path == "Intro.tex" && file.reason == "duplicateName"));
 }

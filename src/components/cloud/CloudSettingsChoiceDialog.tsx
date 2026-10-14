@@ -19,7 +19,7 @@ export function CloudSettingsChoiceDialog() {
   const chooseSettings = useCloudStore((s) => s.chooseSettings);
   const deferSettingsChoice = useCloudStore((s) => s.deferSettingsChoice);
 
-  if (!choice) return null;
+  if (!choice || choice.deferred) return null;
 
   return (
     <ModalShell

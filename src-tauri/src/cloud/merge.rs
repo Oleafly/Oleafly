@@ -22,25 +22,7 @@ pub(crate) fn merge3(base: Option<&Value>, local: &Value, remote: &Value) -> Val
     }
     match (local, remote) {
         (Value::Object(local), Value::Object(remote)) => {
-            let base = base.and_then(Value::as_object);
-            let mut merged = Map::new();
-            for (key, local_value) in local {
-                let value = match remote.get(key) {
-                    Some(remote_value) => merge3(
-                        base.and_then(|base| base.get(key)),
-                        local_value,
-                        remote_value,
-                    ),
-                    None => local_value.clone(),
-                };
-                merged.insert(key.clone(), value);
-            }
-            for (key, remote_value) in remote {
-                if !local.contains_key(key) {
-                    merged.insert(key.clone(), remote_value.clone());
-                }
-            }
-            Value::Object(merged)
+            merge_objects(base.and_then(Value::as_object), local, remote)
         }
         (Value::Array(local), Value::Array(remote)) => {
             let base = base.and_then(Value::as_array);
@@ -59,6 +41,42 @@ pub(crate) fn merge3(base: Option<&Value>, local: &Value, remote: &Value) -> Val
         }
         _ => local.clone(),
     }
+}
+
+fn merge_objects(
+    base: Option<&Map<String, Value>>,
+    local: &Map<String, Value>,
+    remote: &Map<String, Value>,
+) -> Value {
+    let unchanged_from_base = |key: &String, value: &Value| {
+        base.and_then(|base| base.get(key))
+            .is_some_and(|before| before == value)
+    };
+    let mut merged = Map::new();
+    for (key, local_value) in local {
+        match remote.get(key) {
+            Some(remote_value) => {
+                merged.insert(
+                    key.clone(),
+                    merge3(
+                        base.and_then(|base| base.get(key)),
+                        local_value,
+                        remote_value,
+                    ),
+                );
+            }
+            None if unchanged_from_base(key, local_value) => {}
+            None => {
+                merged.insert(key.clone(), local_value.clone());
+            }
+        }
+    }
+    for (key, remote_value) in remote {
+        if !local.contains_key(key) && !unchanged_from_base(key, remote_value) {
+            merged.insert(key.clone(), remote_value.clone());
+        }
+    }
+    Value::Object(merged)
 }
 
 fn canonical(value: &Value) -> Value {
@@ -175,6 +193,30 @@ mod tests {
         assert_eq!(
             merge3(None, &json!({"x": 1}), &json!({"x": 1})),
             json!({"x": 1})
+        );
+    }
+
+    #[test]
+    fn a_key_removed_on_one_side_stays_removed_unless_the_other_side_changed_it() {
+        assert_eq!(
+            merge3(Some(&json!({"k": 1})), &json!({}), &json!({"k": 1, "x": 2})),
+            json!({"x": 2})
+        );
+        assert_eq!(
+            merge3(
+                Some(&json!({"k": 1, "engine": "pdflatex"})),
+                &json!({"k": 1, "engine": "xelatex"}),
+                &json!({"engine": "pdflatex"})
+            ),
+            json!({"engine": "xelatex"})
+        );
+        assert_eq!(
+            merge3(
+                Some(&json!({"k": 1, "engine": "pdflatex"})),
+                &json!({"k": 2, "engine": "xelatex"}),
+                &json!({"engine": "pdflatex"})
+            ),
+            json!({"k": 2, "engine": "xelatex"})
         );
     }
 

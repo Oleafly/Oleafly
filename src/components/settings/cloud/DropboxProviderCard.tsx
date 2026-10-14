@@ -12,7 +12,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { InfoHint } from "@/components/ui/info-hint";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
-import { useCloudStore } from "@/store/cloud";
+import { cloudErrorCode, useCloudStore } from "@/store/cloud";
 import { Files, HardDriveUpload, History, Settings2, ShieldCheck, Unplug } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -139,6 +139,85 @@ function RevokedNotice() {
   );
 }
 
+function SettingsNotice() {
+  const { t } = useTranslation(["cloud"]);
+  const choice = useCloudStore((s) => s.settingsChoice);
+  const problem = useCloudStore((s) => s.settingsProblem);
+  const busy = useCloudStore((s) => s.settingsChoiceBusy);
+  const error = useCloudStore((s) => s.settingsChoiceError);
+  const chooseSettings = useCloudStore((s) => s.chooseSettings);
+  const failure = error ? <IntegrationError>{describeError(error)}</IntegrationError> : null;
+
+  if (choice?.deferred) {
+    return (
+      <div className="space-y-2">
+        <CloudNotice
+          tone="warning"
+          icon={Settings2}
+          testId="cloud-settings-waiting"
+          actions={
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                data-testid="cloud-settings-waiting-local"
+                onClick={() => void chooseSettings("local")}
+              >
+                {t(($) => $.cloud.choice.keepLocal)}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy}
+                data-testid="cloud-settings-waiting-cloud"
+                onClick={() => void chooseSettings("cloud")}
+              >
+                {busy ? <Spinner /> : null}
+                {t(($) => $.cloud.choice.useCloud)}
+              </Button>
+            </>
+          }
+        >
+          <span className="block font-medium">{t(($) => $.cloud.choice.title)}</span>
+          <span className="block">{t(($) => $.cloud.choice.description)}</span>
+        </CloudNotice>
+        {failure}
+      </div>
+    );
+  }
+
+  if (!problem) return null;
+  const unreadable = cloudErrorCode(problem) === "cloud.remote_unreadable";
+  return (
+    <div className="space-y-2">
+      <CloudNotice
+        tone="danger"
+        icon={Settings2}
+        testId="cloud-settings-problem"
+        actions={
+          unreadable ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void chooseSettings("local")}
+            >
+              {busy ? <Spinner /> : null}
+              {t(($) => $.cloud.useLocalSettings)}
+            </Button>
+          ) : null
+        }
+      >
+        {unreadable ? t(($) => $.cloud.settingsUnreadable) : describeError(problem)}
+      </CloudNotice>
+      {failure}
+    </div>
+  );
+}
+
 function AdvancedSection({
   disconnecting,
   onDisconnect,
@@ -216,6 +295,7 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
               {t(($) => $.cloud.quotaFull)}
             </CloudNotice>
           ) : null}
+          {revoked ? null : <SettingsNotice />}
           <CloudSyncControls />
           <CloudProjectsCard />
           <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />

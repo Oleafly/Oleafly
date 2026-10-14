@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
+use std::time::SystemTime;
 
 const MAX_STATE_BYTES: usize = 128 * 1024 * 1024;
 
@@ -11,6 +12,8 @@ pub(crate) struct BaseEntry {
     pub(crate) hash: String,
     #[serde(default)]
     pub(crate) size: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) stamp: Option<String>,
 }
 
 impl<'de> Deserialize<'de> for BaseEntry {
@@ -23,13 +26,57 @@ impl<'de> Deserialize<'de> for BaseEntry {
                 hash: String,
                 #[serde(default)]
                 size: u64,
+                #[serde(default)]
+                stamp: Option<String>,
             },
         }
         Ok(match Stored::deserialize(deserializer)? {
-            Stored::Hash(hash) => Self { hash, size: 0 },
-            Stored::Entry { hash, size } => Self { hash, size },
+            Stored::Hash(hash) => Self {
+                hash,
+                size: 0,
+                stamp: None,
+            },
+            Stored::Entry { hash, size, stamp } => Self { hash, size, stamp },
         })
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct PendingDelete {
+    pub(crate) path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) rev: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for PendingDelete {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Stored {
+            Path(String),
+            Entry {
+                path: String,
+                #[serde(default)]
+                rev: Option<String>,
+            },
+        }
+        Ok(match Stored::deserialize(deserializer)? {
+            Stored::Path(path) => Self { path, rev: None },
+            Stored::Entry { path, rev } => Self { path, rev },
+        })
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct Failure {
+    pub(crate) hash: String,
+    pub(crate) at_ms: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct SkippedFile {
+    pub(crate) path: String,
+    pub(crate) reason: String,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -65,7 +112,15 @@ pub(crate) struct ProjectState {
     #[serde(default)]
     pub(crate) removed_by: Option<String>,
     #[serde(default)]
-    pub(crate) pending_deletes: Vec<String>,
+    pub(crate) pending_deletes: Vec<PendingDelete>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) conflict_copies: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) skipped_files: Vec<SkippedFile>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) failed: BTreeMap<String, Failure>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) remove_pending: bool,
 }
 
 fn dirty_by_default() -> bool {
@@ -88,6 +143,10 @@ impl Default for ProjectState {
             hold: None,
             removed_by: None,
             pending_deletes: Vec::new(),
+            conflict_copies: Vec::new(),
+            skipped_files: Vec::new(),
+            failed: BTreeMap::new(),
+            remove_pending: false,
         }
     }
 }
@@ -100,6 +159,10 @@ pub(crate) struct SettingsState {
     pub(crate) base: Option<serde_json::Value>,
     #[serde(default)]
     pub(crate) offered: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) rev: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) deferred: Option<u64>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -148,15 +211,26 @@ impl EngineState {
     }
 }
 
-fn state_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
+struct Cached {
+    path: PathBuf,
+    stamp: Option<(SystemTime, u64)>,
+    state: EngineState,
+}
+
+fn state_lock() -> &'static Mutex<Option<Cached>> {
+    static LOCK: OnceLock<Mutex<Option<Cached>>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(None))
 }
 
 fn state_path() -> Result<PathBuf, String> {
     Ok(crate::paths::oleafly_root()?
         .join("cloud")
         .join("state.json"))
+}
+
+fn file_stamp(path: &Path) -> Option<(SystemTime, u64)> {
+    let metadata = std::fs::metadata(path).ok()?;
+    Some((metadata.modified().ok()?, metadata.len()))
 }
 
 pub(crate) fn read_at(path: &Path) -> Result<EngineState, String> {
@@ -180,30 +254,50 @@ pub(crate) fn write_at(path: &Path, state: &EngineState) -> Result<(), String> {
     crate::sandbox::atomic_write(path, &bytes)
 }
 
-pub(crate) fn snapshot() -> Result<EngineState, String> {
-    let _guard = state_lock()
+fn loaded(slot: &mut Option<Cached>) -> Result<&mut Cached, String> {
+    let path = state_path()?;
+    let stamp = file_stamp(&path);
+    let fresh = slot
+        .as_ref()
+        .is_some_and(|cached| cached.path == path && cached.stamp == stamp);
+    if !fresh {
+        let state = read_at(&path)?;
+        *slot = Some(Cached { path, stamp, state });
+    }
+    slot.as_mut()
+        .ok_or_else(|| "cloud sync state is unavailable".to_string())
+}
+
+pub(crate) fn read<T>(view: impl FnOnce(&EngineState) -> T) -> Result<T, String> {
+    let mut slot = state_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    read_at(&state_path()?)
+    let cached = loaded(&mut slot)?;
+    Ok(view(&cached.state))
+}
+
+pub(crate) fn snapshot() -> Result<EngineState, String> {
+    read(EngineState::clone)
 }
 
 pub(crate) fn update<T>(change: impl FnOnce(&mut EngineState) -> T) -> Result<T, String> {
-    let _guard = state_lock()
+    let mut slot = state_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let path = state_path()?;
-    let before = read_at(&path)?;
-    let mut state = before.clone();
+    let cached = loaded(&mut slot)?;
+    let mut state = cached.state.clone();
     let value = change(&mut state);
-    if state != before {
-        write_at(&path, &state)?;
+    if state != cached.state {
+        write_at(&cached.path, &state)?;
+        cached.stamp = file_stamp(&cached.path);
+        cached.state = state;
     }
     Ok(value)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{read_at, write_at, BaseEntry, EngineState, ProjectState};
+    use super::{read_at, write_at, BaseEntry, EngineState, PendingDelete, ProjectState};
 
     #[test]
     fn older_state_files_with_plain_hashes_still_load() {
@@ -221,12 +315,54 @@ mod tests {
             project.base["main.tex"],
             BaseEntry {
                 hash: "abc".into(),
-                size: 0
+                size: 0,
+                stamp: None,
             }
         );
         assert!(project.remote_dirty);
         write_at(&path, &state).unwrap();
         assert_eq!(read_at(&path).unwrap(), state);
+    }
+
+    #[test]
+    fn pending_deletes_load_from_plain_paths_and_keep_their_revisions() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("state.json");
+        std::fs::write(
+            &path,
+            r#"{"projects":{"thesis":{"pending_deletes":["old.tex",{"path":"new.tex","rev":"0123456789a"}]}}}"#,
+        )
+        .unwrap();
+        let state = read_at(&path).unwrap();
+        assert_eq!(
+            state.projects["thesis"].pending_deletes,
+            vec![
+                PendingDelete {
+                    path: "old.tex".into(),
+                    rev: None
+                },
+                PendingDelete {
+                    path: "new.tex".into(),
+                    rev: Some("0123456789a".into())
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn the_cached_state_reloads_when_the_file_changes_underneath() {
+        let _env = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        super::update(|state| state.hlc = 7).unwrap();
+        assert_eq!(super::read(|state| state.hlc).unwrap(), 7);
+        let path = directory.path().join("cloud").join("state.json");
+        std::fs::write(&path, r#"{"hlc":12345678}"#).unwrap();
+        assert_eq!(super::read(|state| state.hlc).unwrap(), 12_345_678);
+        super::update(|state| assert_eq!(state.hlc, 12_345_678)).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(super::snapshot().unwrap().hlc, 0);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]
@@ -245,6 +381,7 @@ mod tests {
             BaseEntry {
                 hash: "h".into(),
                 size: 1,
+                stamp: None,
             },
         );
         state.projects.insert("thesis".into(), project);

@@ -1812,7 +1812,7 @@ pub(crate) fn read_project_worktree<T>(
 /// Metadata serialization for a caller whose `MutationAdmission` already owns
 /// the cross-process worktree lock. Keeping this separate prevents recursive
 /// acquisition of the same OS lock during restore, rename, and recycle.
-fn with_project_metadata_lock_held<T>(
+pub(crate) fn with_project_metadata_lock_held<T>(
     project_id: &str,
     operation: impl FnOnce() -> Result<T, String>,
 ) -> Result<T, String> {
@@ -6009,7 +6009,7 @@ pub(crate) struct ProjectDirectoryReservation {
 }
 
 impl ProjectDirectoryReservation {
-    fn project_id(&self) -> &str {
+    pub(crate) fn project_id(&self) -> &str {
         &self.project_id
     }
 

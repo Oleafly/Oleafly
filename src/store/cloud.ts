@@ -7,12 +7,16 @@ import {
   cloudDetails,
   cloudDisconnect,
   cloudDownloadProject,
+  cloudProjectDismissConflicts,
   cloudProjectRemove,
+  cloudProjectReplaceRemote,
   cloudProjectResolveHold,
   cloudProjectSetMode,
+  cloudRemoveRemote,
   cloudSetDeviceName,
   cloudSetEnabled,
   cloudSettingsApplied,
+  cloudSettingsDefer,
   cloudSettingsKeepLocal,
   cloudSettingsSync,
   cloudState,
@@ -23,11 +27,14 @@ import {
   type CloudState,
   type CloudStatus,
   type ConnectBegin,
+  type SyncProjectReport,
   type SyncReport,
 } from "@/lib/cloud";
 import { i18n } from "@/i18n";
 import { applyCloudSettings, gatherCloudSettings } from "@/lib/cloud-settings";
+import { applyFolderChange } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
+import { existingProjectFiles } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { open } from "@tauri-apps/plugin-shell";
@@ -61,6 +68,7 @@ export type SettingsNavRequest = "data-cloud" | "general" | null;
 export interface SettingsChoice {
   values: Record<string, unknown>;
   stamp: string;
+  deferred: boolean;
 }
 
 export interface DownloadProgress {
@@ -93,6 +101,7 @@ interface CloudStoreState {
   settingsChoice: SettingsChoice | null;
   settingsChoiceBusy: boolean;
   settingsChoiceError: string | null;
+  settingsProblem: string | null;
   downloading: string[];
   downloadProgress: DownloadProgress | null;
   busyProjects: string[];
@@ -100,6 +109,7 @@ interface CloudStoreState {
   settingsImport: SettingsImportRequest;
   refresh: () => Promise<void>;
   refreshDetails: () => Promise<void>;
+  retryDetails: () => Promise<void>;
   watchDetails: () => () => void;
   syncNow: (manual?: boolean) => Promise<void>;
   syncSettings: () => Promise<void>;
@@ -107,7 +117,10 @@ interface CloudStoreState {
   setDeviceName: (name: string) => Promise<string | null>;
   setProjectMode: (localId: string, mode: "sync" | "pause") => Promise<void>;
   resolveHold: (localId: string, choice: "restore" | "delete") => Promise<void>;
+  dismissConflicts: (localId: string) => Promise<void>;
+  replaceRemote: (localId: string) => Promise<void>;
   removeProject: (localId: string) => Promise<void>;
+  removeRemote: (cloudId: string) => Promise<void>;
   downloadProject: (cloudId: string) => Promise<void>;
   downloadAll: () => Promise<void>;
   beginConnect: (paste: boolean) => Promise<void>;
@@ -127,6 +140,19 @@ const SYNC_TOAST = "cloud-sync";
 const ACTION_TOAST = "cloud-action";
 const DOWNLOAD_TOAST = "cloud-download";
 const RETRYABLE_CODES: ReadonlySet<string> = new Set(["cloud.network", "cloud.rate_limited", "cloud.server"]);
+const TRANSIENT_CODES: ReadonlySet<string> = new Set([
+  ...RETRYABLE_CODES,
+  "cloud.local_io",
+  "cloud.project_busy",
+  "cloud.remote_busy",
+  "cloud.verify_failed",
+]);
+const ACCOUNT_CODES: ReadonlySet<string> = new Set([
+  "cloud.revoked",
+  "cloud.quota_full",
+  "cloud.not_connected",
+  "cloud.disabled",
+]);
 
 let stateGeneration = 0;
 let detailsGeneration = 0;
@@ -137,7 +163,7 @@ let settingsInFlight: Promise<void> | null = null;
 let pasteInFlight = false;
 let detailsViewers = 0;
 let applyingDepth = 0;
-let settingsDeferred = false;
+let deferredStamp: string | null = null;
 
 function rawError(error: unknown): string {
   if (typeof error === "string") return error;
@@ -156,12 +182,96 @@ export function isRetryableCloudError(error: string | null | undefined): boolean
   return code === null || RETRYABLE_CODES.has(code);
 }
 
+export function isLastingCloudError(error: string | null | undefined): boolean {
+  const code = cloudErrorCode(error);
+  return code !== null && !TRANSIENT_CODES.has(code);
+}
+
+export function projectNeedsAttention(project: CloudProject): boolean {
+  return project.mode === "held" || isLastingCloudError(project.error) || project.conflictCopies.length > 0;
+}
+
+export function remoteBusyKey(cloudId: string): string {
+  return `remote:${cloudId}`;
+}
+
+type AttentionSource = Pick<CloudStoreState, "status" | "state" | "settingsChoice" | "settingsProblem">;
+
+export function cloudAttentionReasons(source: AttentionSource): string[] {
+  const { status, state } = source;
+  if (status === "revoked") return ["revoked"];
+  if (status !== "connected" || !state?.enabled) return [];
+  const reasons: string[] = [];
+  if (state.quotaFull) reasons.push("quotaFull");
+  const roundCode = cloudErrorCode(state.lastError);
+  if (roundCode && isLastingCloudError(state.lastError) && !ACCOUNT_CODES.has(roundCode)) {
+    reasons.push(`round:${roundCode}`);
+  }
+  if (source.settingsChoice?.deferred) reasons.push(`settings:${source.settingsChoice.stamp}`);
+  if (source.settingsProblem) reasons.push(`settingsProblem:${cloudErrorCode(source.settingsProblem)}`);
+  for (const project of state.projects) {
+    if (!projectNeedsAttention(project)) continue;
+    const code = cloudErrorCode(project.error) ?? "";
+    reasons.push(`${project.localId ?? project.cloudId}:${project.mode}:${code}:${project.conflictCopies.length}`);
+  }
+  return reasons;
+}
+
+function portablePath(path: string): string {
+  return path.replaceAll("\\", "/").replace(/^\.?\//, "");
+}
+
 export function collectDirtyFiles(): CloudDirtyFile[] {
   const { projectId, files } = useFilesStore.getState();
   if (!projectId) return [];
   return Object.entries(files)
     .filter(([, file]) => file.dirty)
-    .map(([path]) => ({ localId: projectId, path: path.replaceAll("\\", "/").replace(/^\.?\//, "") }));
+    .map(([path]) => ({ localId: projectId, path: portablePath(path) }));
+}
+
+function dirtyFilesOf(localId: string): CloudDirtyFile[] {
+  return collectDirtyFiles().filter((file) => file.localId === localId);
+}
+
+function settingsProblemOf(error: unknown): string | null {
+  const raw = rawError(error);
+  const code = cloudErrorCode(raw);
+  return code !== null && isLastingCloudError(raw) && !ACCOUNT_CODES.has(code) ? raw : null;
+}
+
+async function applyChangesOnDisk(report: SyncProjectReport | null | undefined): Promise<void> {
+  const projectId = useFilesStore.getState().projectId;
+  if (!report || !projectId || report.localId !== projectId) return;
+  if (!report.changedTruncated && report.changed.length === 0) return;
+  const buffers = new Map(Object.keys(useFilesStore.getState().files).map((path) => [portablePath(path), path]));
+  const changed = report.changed.map((path) => buffers.get(portablePath(path)) ?? path);
+  const open = report.changedTruncated
+    ? [...buffers.values()]
+    : changed.filter((path) => buffers.has(portablePath(path)));
+  const present = new Set(open.length > 0 ? await existingProjectFiles(projectId, open).catch(() => open) : []);
+  const files = useFilesStore.getState();
+  if (files.projectId !== projectId) return;
+  const gone = new Set(open.filter((path) => !present.has(path)));
+  for (const path of gone) files.applyExternalDelete(projectId, path);
+  applyFolderChange({
+    projectId,
+    paths: changed.filter((path) => !gone.has(path)),
+    rescan: report.changedTruncated,
+    structural: true,
+  });
+}
+
+async function followChangesOnDisk(report: SyncProjectReport | null | undefined): Promise<void> {
+  try {
+    await applyChangesOnDisk(report);
+  } catch (error) {
+    void logError("cloud refresh open files", error);
+  }
+}
+
+function followRound(report: SyncReport | null): Promise<void> {
+  const projectId = useFilesStore.getState().projectId;
+  return followChangesOnDisk(report?.projects.find((project) => project.localId === projectId));
 }
 
 async function openInBrowser(url: string): Promise<void> {
@@ -182,7 +292,12 @@ async function cancelFlow(flowId: string): Promise<void> {
 
 function changedOnThisComputer(report: SyncReport): boolean {
   return report.projects.some(
-    (project) => project.downloaded > 0 || project.deletedLocal > 0 || project.conflicts > 0,
+    (project) =>
+      project.downloaded > 0 ||
+      project.deletedLocal > 0 ||
+      project.conflicts > 0 ||
+      project.changed.length > 0 ||
+      project.changedTruncated,
   );
 }
 
@@ -278,6 +393,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         failureStreak: retryable ? current.failureStreak + 1 : 0,
       }));
       if (report && changedOnThisComputer(report)) await refreshLibrary();
+      await followRound(report);
       await get().refresh();
       if (includeSettings && !retryable && account === accountGeneration) await get().syncSettings();
       if (manual && account === accountGeneration) announceRound(roundError, report);
@@ -292,7 +408,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
 
   const finishConnect = async () => {
     accountGeneration += 1;
-    settingsDeferred = false;
+    deferredStamp = null;
     set({
       connectFlow: null,
       connectBusy: false,
@@ -307,6 +423,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       detailsError: null,
       settingsChoice: null,
       settingsChoiceError: null,
+      settingsProblem: null,
     });
     await get().refresh();
     if (get().settingsImport === "awaitingConnect") set({ settingsImport: "resume" });
@@ -337,6 +454,15 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     } finally {
       set((current) => ({ downloading: without(current.downloading, cloudId) }));
     }
+  };
+
+  const offerSettingsChoice = (values: Record<string, unknown>, stamp: string, deferred: boolean) => {
+    const current = get().settingsChoice;
+    if (current && !current.deferred) return;
+    set({
+      settingsChoice: { values, stamp, deferred: deferred || stamp === deferredStamp },
+      settingsChoiceError: current?.stamp === stamp ? get().settingsChoiceError : null,
+    });
   };
 
   const afterDownloads = async () => {
@@ -378,6 +504,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     settingsChoice: null,
     settingsChoiceBusy: false,
     settingsChoiceError: null,
+    settingsProblem: null,
     downloading: [],
     downloadProgress: null,
     busyProjects: [],
@@ -417,6 +544,11 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       }
     },
 
+    retryDetails: () => {
+      set({ detailsLoaded: false, detailsError: null });
+      return get().refreshDetails();
+    },
+
     watchDetails: () => {
       detailsViewers += 1;
       void get().refreshDetails();
@@ -433,24 +565,30 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     syncSettings: () => {
       if (settingsInFlight) return settingsInFlight;
       const { status, state, settingsChoice } = get();
-      if (status !== "connected" || !state?.enabled || settingsChoice || settingsDeferred || applyingDepth > 0) {
+      const asking = settingsChoice !== null && !settingsChoice.deferred;
+      if (status !== "connected" || !state?.enabled || asking || applyingDepth > 0) {
         return Promise.resolve();
       }
       const account = accountGeneration;
       const exchange = async () => {
         try {
-          const outcome = await cloudSettingsSync(await gatherCloudSettings());
+          const sent = await gatherCloudSettings();
+          const outcome = await cloudSettingsSync(sent);
           if (account !== accountGeneration) return;
-          if (outcome.outcome === "apply") {
-            await applyRemoteSettings(outcome.values, outcome.stamp);
-          } else if (outcome.outcome === "choose" && !get().settingsChoice && !settingsDeferred) {
-            set({
-              settingsChoice: { values: outcome.values, stamp: outcome.stamp },
-              settingsChoiceError: null,
-            });
+          if (get().settingsProblem) set({ settingsProblem: null });
+          if (outcome.outcome === "choose") {
+            offerSettingsChoice(outcome.values, outcome.stamp, outcome.deferred);
+            return;
           }
+          if (get().settingsChoice?.deferred) set({ settingsChoice: null, settingsChoiceError: null });
+          if (outcome.outcome !== "apply") return;
+          const latest = await gatherCloudSettings();
+          if (account !== accountGeneration || JSON.stringify(latest) !== JSON.stringify(sent)) return;
+          await applyRemoteSettings(outcome.values, outcome.stamp);
         } catch (error) {
           void logError("cloud settings sync", error);
+          const problem = settingsProblemOf(error);
+          if (problem && account === accountGeneration) set({ settingsProblem: problem });
         }
       };
       settingsInFlight = exchange().finally(() => {
@@ -515,7 +653,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       if (!project || get().busyProjects.includes(localId)) return;
       setBusy(localId, true);
       try {
-        const report = await cloudProjectResolveHold(localId, choice);
+        const report = await cloudProjectResolveHold(localId, choice, dirtyFilesOf(localId));
         if (report.error) {
           toast.errorUnique(ACTION_TOAST, describeError(report.error));
         } else {
@@ -527,8 +665,49 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
           );
         }
         if (report.downloaded > 0 || report.deletedLocal > 0) await refreshLibrary();
+        await followChangesOnDisk(report);
       } catch (error) {
         void logError("cloud resolve hold", error);
+        toast.errorUnique(ACTION_TOAST, describeError(error));
+      } finally {
+        setBusy(localId, false);
+      }
+      await get().refresh();
+      refreshDetailsIfWatched();
+    },
+
+    dismissConflicts: async (localId) => {
+      if (!projectOf(localId) || get().busyProjects.includes(localId)) return;
+      setBusy(localId, true);
+      try {
+        await cloudProjectDismissConflicts(localId);
+        mutateProject(localId, { conflictCopies: [], conflicts: 0 });
+      } catch (error) {
+        void logError("cloud dismiss conflict copies", error);
+        toast.errorUnique(ACTION_TOAST, describeError(error));
+      } finally {
+        setBusy(localId, false);
+      }
+      await get().refresh();
+    },
+
+    replaceRemote: async (localId) => {
+      const project = projectOf(localId);
+      if (!project || get().busyProjects.includes(localId)) return;
+      setBusy(localId, true);
+      try {
+        const report = await cloudProjectReplaceRemote(localId, dirtyFilesOf(localId));
+        if (report.error) {
+          toast.errorUnique(ACTION_TOAST, describeError(report.error));
+        } else {
+          toast.successUnique(
+            ACTION_TOAST,
+            i18n.t(($) => $.cloud.toast.replaced, { name: project.name }),
+          );
+        }
+        await followChangesOnDisk(report);
+      } catch (error) {
+        void logError("cloud replace remote copy", error);
         toast.errorUnique(ACTION_TOAST, describeError(error));
       } finally {
         setBusy(localId, false);
@@ -557,6 +736,28 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       refreshDetailsIfWatched();
     },
 
+    removeRemote: async (cloudId) => {
+      const key = remoteBusyKey(cloudId);
+      const project = get().remote.find((entry) => entry.cloudId === cloudId);
+      if (!project || get().busyProjects.includes(key)) return;
+      setBusy(key, true);
+      try {
+        await cloudRemoveRemote(cloudId);
+        set((current) => ({ remote: current.remote.filter((entry) => entry.cloudId !== cloudId) }));
+        toast.successUnique(
+          ACTION_TOAST,
+          i18n.t(($) => $.cloud.toast.removedRemote, { name: project.name }),
+        );
+      } catch (error) {
+        void logError("cloud remove remote project", error);
+        toast.errorUnique(ACTION_TOAST, describeError(error));
+      } finally {
+        setBusy(key, false);
+      }
+      await get().refresh();
+      await get().refreshDetails();
+    },
+
     downloadProject: async (cloudId) => {
       if (get().downloading.length > 0 || get().downloadProgress) return;
       const name = get().remote.find((project) => project.cloudId === cloudId)?.name ?? "";
@@ -583,7 +784,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     downloadAll: async () => {
       if (get().downloading.length > 0 || get().downloadProgress) return;
       const queue = get()
-        .remote.filter((project) => project.mode === "download")
+        .remote.filter((project) => project.mode === "download" && !project.recycled)
         .map((project) => project.cloudId);
       if (queue.length === 0) return;
       const account = accountGeneration;
@@ -683,7 +884,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       }
       accountGeneration += 1;
       detailsGeneration += 1;
-      settingsDeferred = false;
+      deferredStamp = null;
       set({
         disconnecting: false,
         lastReport: null,
@@ -696,6 +897,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         detailsError: null,
         settingsChoice: null,
         settingsChoiceError: null,
+        settingsProblem: null,
         downloadProgress: null,
       });
       await get().refresh();
@@ -703,13 +905,15 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     },
 
     chooseSettings: async (choice) => {
-      const pending = get().settingsChoice;
-      if (!pending || get().settingsChoiceBusy) return;
+      const { settingsChoice: pending, settingsProblem, settingsChoiceBusy } = get();
+      if (settingsChoiceBusy) return;
+      if (choice === "cloud" ? !pending : !pending && !settingsProblem) return;
       set({ settingsChoiceBusy: true, settingsChoiceError: null });
       try {
-        if (choice === "cloud") await applyRemoteSettings(pending.values, pending.stamp);
+        if (choice === "cloud" && pending) await applyRemoteSettings(pending.values, pending.stamp);
         else await cloudSettingsKeepLocal(await gatherCloudSettings());
-        set({ settingsChoice: null, settingsChoiceBusy: false });
+        deferredStamp = null;
+        set({ settingsChoice: null, settingsChoiceBusy: false, settingsProblem: null });
       } catch (error) {
         void logError("cloud settings choice", error);
         set({ settingsChoiceBusy: false, settingsChoiceError: rawError(error) });
@@ -717,9 +921,11 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     },
 
     deferSettingsChoice: () => {
-      if (get().settingsChoiceBusy) return;
-      settingsDeferred = true;
-      set({ settingsChoice: null, settingsChoiceError: null });
+      const pending = get().settingsChoice;
+      if (!pending || pending.deferred || get().settingsChoiceBusy) return;
+      deferredStamp = pending.stamp;
+      set({ settingsChoice: { ...pending, deferred: true }, settingsChoiceError: null });
+      cloudSettingsDefer(pending.stamp).catch((error: unknown) => logError("cloud settings defer", error));
     },
 
     whileApplyingSettings: whileApplying,
@@ -727,8 +933,8 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     settingsImported: async (stamp) => {
       try {
         await cloudSettingsApplied(stamp, await gatherCloudSettings());
-        settingsDeferred = false;
-        set({ settingsChoice: null, settingsChoiceError: null });
+        deferredStamp = null;
+        set({ settingsChoice: null, settingsChoiceError: null, settingsProblem: null });
       } catch (error) {
         void logError("cloud settings applied", error);
       }

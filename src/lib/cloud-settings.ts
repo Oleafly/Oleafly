@@ -17,10 +17,16 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
+const LOCAL_ONLY_EXPERIMENTS: ReadonlySet<string> = new Set(["cloudSync", "webBrowser"]);
+
 export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
   const experimentation = document.experimentation;
-  if (!isRecord(experimentation) || !Object.hasOwn(experimentation, "cloudSync")) return document;
-  const kept = Object.fromEntries(Object.entries(experimentation).filter(([key]) => key !== "cloudSync"));
+  if (!isRecord(experimentation) || !Object.keys(experimentation).some((key) => LOCAL_ONLY_EXPERIMENTS.has(key))) {
+    return document;
+  }
+  const kept = Object.fromEntries(
+    Object.entries(experimentation).filter(([key]) => !LOCAL_ONLY_EXPERIMENTS.has(key)),
+  );
   const copy = Object.fromEntries(Object.entries(document).filter(([key]) => key !== "experimentation"));
   return Object.keys(kept).length > 0 ? { ...copy, experimentation: kept } : copy;
 }

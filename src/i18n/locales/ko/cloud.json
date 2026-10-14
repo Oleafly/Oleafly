@@ -55,6 +55,9 @@
   "flagOff": "실험 기능에서 클라우드 동기화가 꺼져 있어 아무것도 동기화되지 않습니다. Oleafly의 Dropbox 액세스를 없애려면 연결을 해제하세요.",
   "advanced": "고급",
   "disconnect": "연결 해제",
+  "attention": "클라우드 동기화를 확인해야 합니다.",
+  "settingsUnreadable": "Oleafly가 Dropbox에 있는 설정을 읽을 수 없습니다. 설정을 바꿀 때까지 동기화되지 않습니다.",
+  "useLocalSettings": "이 컴퓨터의 설정 사용",
   "projects": {
     "title": "프로젝트",
     "synced": "{{count}}개 동기화됨",
@@ -72,6 +75,8 @@
     "downloading": "{{total}}개 중 {{current}}개 다운로드 중",
     "listLabel": "클라우드 동기화 프로젝트",
     "empty": "아직 프로젝트가 없습니다. 라이브러리에서 만든 프로젝트가 동기화됩니다.",
+    "checking": "Dropbox를 확인하는 중",
+    "checkFailed": "Dropbox에 있는 프로젝트를 불러오지 못했습니다.",
     "linkedNote_other": "폴더에서 연 프로젝트 {{count}}개는 동기화되지 않습니다. 라이브러리에 있는 프로젝트만 백업됩니다."
   },
   "row": {
@@ -84,20 +89,42 @@
     "onlyInDropbox": "Dropbox에만 있음",
     "recycled": "휴지통에 있음",
     "conflicts_other": "충돌 사본 {{count}}개를 만들었습니다",
+    "conflictsHelp_other": "동기화되기 전에 여기와 다른 컴퓨터에서 모두 변경된 파일이 있어 Oleafly가 두 버전을 모두 보관했습니다. 필요한 내용을 남긴 다음 사본을 삭제하세요.",
+    "conflictsLabel": "{{name}}의 충돌 사본",
+    "dismiss": "닫기",
     "skipped_other": "파일 {{count}}개를 건너뛰었습니다",
+    "skippedMore_other": "그 외 파일 {{count}}개",
+    "skippedLabel": "{{name}}에서 건너뛴 파일",
     "syncSwitch": "이 컴퓨터에서 {{name}} 동기화",
     "download": "{{name}} 다운로드",
     "restore": "휴지통에서 {{name}} 복원",
     "more": "{{name}} 추가 작업",
     "remove": "Dropbox에서 제거",
+    "replace": "이 컴퓨터의 사본으로 바꾸기",
     "heldMessage_other": "여기에서 파일 {{total}}개 중 {{count}}개가 삭제되어, Dropbox에 있는 사본을 안전하게 지키려고 동기화를 일시 중지했습니다.",
     "putBack": "되돌려 놓기",
-    "deleteToo": "Dropbox에서도 삭제"
+    "deleteToo": "Dropbox에서도 삭제",
+    "skipReason": {
+      "unsupportedName": "일부 컴퓨터에서 사용할 수 없는 이름",
+      "duplicateName": "대소문자만 다르고 다른 파일과 같은 이름",
+      "symlink": "심볼릭 링크",
+      "specialFile": "일반 파일이 아님",
+      "tooLarge": "너무 커서 동기화할 수 없음",
+      "packageFolder": "다시 설치할 수 있는 설치된 패키지",
+      "zipLeftovers": "압축 해제 후 남은 파일",
+      "unreadable": "읽지 못함",
+      "downloadFailed": "다운로드하지 못함",
+      "uploadFailed": "업로드하지 못함"
+    }
   },
   "confirm": {
     "removeTitle": "Dropbox에서 {{name}}을(를) 제거할까요?",
     "removeDescription": "공간을 확보하기 위해 Dropbox에 있는 사본을 삭제합니다. 프로젝트는 이 컴퓨터에 남고, 여기에서는 동기화가 멈춥니다. 다른 컴퓨터는 각자의 사본을 그대로 유지합니다.",
     "removeAction": "Dropbox에서 제거",
+    "removeRemoteDescription": "공간을 확보하기 위해 Dropbox에서 프로젝트를 삭제합니다. 이 컴퓨터에는 없으므로 삭제한 후에는 여기에서 다운로드할 수 없습니다. 이미 프로젝트가 있는 컴퓨터는 각자의 사본을 그대로 유지합니다.",
+    "replaceTitle": "Dropbox에 있는 {{name}} 사본을 바꿀까요?",
+    "replaceDescription": "Oleafly가 Dropbox에 있는 사본을 읽을 수 없습니다. 이 컴퓨터의 사본으로 바뀌며, Dropbox에만 있는 내용은 사라집니다.",
+    "replaceAction": "바꾸기",
     "deleteTitle": "이 파일들을 Dropbox에서도 삭제할까요?",
     "deleteDescription_other": "이 컴퓨터의 {{name}}에서 삭제한 파일 {{count}}개가 Dropbox에서도 삭제됩니다. 이 프로젝트를 동기화하는 다른 컴퓨터에서도 사라집니다.",
     "deleteAction": "Dropbox에서 삭제",
@@ -120,6 +147,8 @@
     "downloadedAll_other": "프로젝트 {{count}}개를 다운로드했습니다.",
     "downloadedSome_other": "프로젝트 {{count}}개 중 {{failed}}개를 다운로드하지 못했습니다.",
     "removed": "{{name}}을(를) Dropbox에서 제거했습니다. 이 컴퓨터에는 그대로 있습니다.",
+    "removedRemote": "{{name}}을(를) Dropbox에서 제거했습니다.",
+    "replaced": "이제 Dropbox에 있는 {{name}} 프로젝트가 이 컴퓨터와 같습니다.",
     "filesRestored": "삭제한 파일을 {{name}}에 되돌려 놓았습니다.",
     "filesDeleted": "삭제한 파일을 Dropbox에서도 제거했습니다."
   },
@@ -128,6 +157,7 @@
     "device_name_empty": "이름을 입력하세요.",
     "device_name_invalid": "컴퓨터 이름에는 \\ / : * ? \" < > | 또는 제어 문자를 쓸 수 없으며, 최대 32자까지 쓸 수 있습니다.",
     "disabled": "이 컴퓨터에서는 동기화가 꺼져 있습니다.",
+    "disk_full": "이 컴퓨터의 디스크 공간이 부족해지고 있습니다. 계속 동기화하려면 공간을 확보하세요.",
     "download_missing": "이 프로젝트의 일부 파일이 Dropbox에 없어 다운로드하지 않았습니다.",
     "local_io": "Oleafly가 이 프로젝트의 파일을 읽거나 쓰지 못했습니다. 다음 동기화 때 다시 시도합니다.",
     "network": "Dropbox에 연결하지 못했습니다. 연결을 확인하세요.",
@@ -138,10 +168,12 @@
     "quota_full": "Dropbox가 가득 찼습니다. 공간이 생길 때까지 새 변경 사항은 이 컴퓨터에 남아 있습니다.",
     "rate_limited": "Dropbox가 Oleafly에 속도를 늦춰 달라고 요청했습니다. 잠시 후 다시 동기화합니다.",
     "remote_busy": "다른 컴퓨터가 같은 시간에 이 프로젝트를 동기화하고 있었습니다. 잠시 후 다시 동기화합니다.",
+    "remote_unreadable": "Oleafly가 Dropbox에 있는 사본을 읽을 수 없어 이 프로젝트가 동기화되지 않고 있습니다.",
     "revoked": "Dropbox 액세스가 취소되었습니다. 다시 연결하세요.",
     "server": "Dropbox에 문제가 생겼습니다. 잠시 후 다시 동기화합니다.",
     "sign_in_cancelled": "Dropbox 로그인이 취소되었습니다.",
     "sign_in_timeout": "로그인이 너무 오래 걸렸습니다. 다시 시도하세요.",
+    "too_many_files": "이 프로젝트에는 파일이 100,000개 넘게 있습니다. 너무 많아서 동기화할 수 없습니다.",
     "verify_failed": "Dropbox에서 받은 파일이 Oleafly가 예상한 것과 달라 그대로 두었습니다. 다시 동기화를 시도합니다."
   }
 }

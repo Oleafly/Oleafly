@@ -417,9 +417,9 @@ async fn listings_page_through_folders_and_deletes_tolerate_missing_paths() {
         "dropbox could not find the item"
     );
 
-    store.delete("/projects/c.json").await.unwrap();
-    store.delete("/projects/A").await.unwrap();
-    store.delete("/projects/never").await.unwrap();
+    store.delete("/projects/c.json", None).await.unwrap();
+    store.delete("/projects/A", None).await.unwrap();
+    store.delete("/projects/never", None).await.unwrap();
     fake.with(|dropbox| {
         assert!(dropbox.read("/projects/c.json").is_none());
         assert!(dropbox.read("/projects/a/files/main.tex").is_none());
@@ -434,11 +434,11 @@ async fn listings_page_through_folders_and_deletes_tolerate_missing_paths() {
         dropbox.fault("files/delete_v2", None, Reply::Status(400), 1);
     });
     assert!(matches!(
-        store.delete("/projects/b").await,
+        store.delete("/projects/b", None).await,
         Err(StoreError::Rejected(_))
     ));
     assert!(matches!(
-        store.delete("/projects/b").await,
+        store.delete("/projects/b", None).await,
         Err(StoreError::Server(_))
     ));
 }
