@@ -947,3 +947,38 @@ fn files_the_project_leaves_out_never_enter_the_shared_tree_but_shared_ones_keep
     assert_eq!(rig.paths(), ["main.tex", "notes.tex", "old.aux"]);
     assert_eq!(rig.text("old.aux").as_deref(), Some("kept and changed"));
 }
+
+#[test]
+fn a_viewer_write_is_refused_as_read_only_and_never_reaches_the_document() {
+    let (_dir, root, _host, rig) = watched_rig("viewing", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    rig.set_role(ProjectRole::Viewer);
+    let outcome = tauri::async_runtime::block_on(write::write_text(
+        "viewing",
+        "main.tex",
+        Some("abc"),
+        "abc and more",
+    ))
+    .unwrap();
+    assert_eq!(
+        outcome,
+        write::WriteOutcome {
+            handled: false,
+            reason: Some("read_only".to_owned()),
+        }
+    );
+    assert_eq!(
+        serde_json::to_value(&outcome).unwrap(),
+        serde_json::json!({ "handled": false, "reason": "read_only" })
+    );
+    assert_eq!(rig.text("main.tex").as_deref(), Some("abc"));
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc"
+    );
+    let outside =
+        tauri::async_runtime::block_on(write::write_text("viewing", "project.json", None, "{}"))
+            .unwrap();
+    assert_eq!(outside.reason, None);
+}
+

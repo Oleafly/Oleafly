@@ -135,16 +135,45 @@ fn write_into(
     Ok(true)
 }
 
+const READ_ONLY: &str = "read_only";
+
+fn kept_from_a_viewer(live: &LiveProject, root: &Path, path: &str) -> Result<bool, CollabError> {
+    if live.can_edit() {
+        return Ok(false);
+    }
+    let Some(path) = normalized(path) else {
+        return Ok(false);
+    };
+    let Some(target) = safe_target(root, &path) else {
+        return Ok(false);
+    };
+    let placed = by_path(&materialize::layout(&live.doc().nodes()?));
+    if under_a_file(&placed, &path) {
+        return Ok(false);
+    }
+    Ok(match placed.get(&path) {
+        Some((_, NodeKind::Dir, _)) => false,
+        Some(_) => true,
+        None => std::fs::symlink_metadata(target).is_err(),
+    })
+}
+
 impl Active {
     async fn write_text(
         &self,
         path: &str,
         base: Option<&str>,
         text: &str,
-    ) -> Result<bool, CollabError> {
+    ) -> Result<WriteOutcome, CollabError> {
         let handled = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
+            if kept_from_a_viewer(&live, &self.root, path)? {
+                return Ok(WriteOutcome {
+                    handled: false,
+                    reason: Some(READ_ONLY.to_owned()),
+                });
+            }
             let mut bases = guard(&self.bases);
             write_into(
                 &mut live,
@@ -157,14 +186,20 @@ impl Active {
             )?
         };
         if !handled {
-            return Ok(false);
+            return Ok(WriteOutcome {
+                handled: false,
+                reason: None,
+            });
         }
         self.handle.flush();
         self.refresh_pending();
         let (done, wait) = oneshot::channel();
         let _ = self.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
-        Ok(true)
+        Ok(WriteOutcome {
+            handled: true,
+            reason: None,
+        })
     }
 }
 
@@ -198,14 +233,11 @@ pub async fn write_text(
             reason: None,
         });
     };
-    let handled = active.write_text(path, base, text).await?;
-    if handled {
+    let outcome = active.write_text(path, base, text).await?;
+    if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
     }
-    Ok(WriteOutcome {
-        handled,
-        reason: None,
-    })
+    Ok(outcome)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -737,6 +769,37 @@ mod tests {
     }
 
     #[test]
+    fn a_viewer_is_told_a_write_to_the_shared_tree_is_read_only() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("outside.tex"), "local").unwrap();
+        let (mut live, _) = shared("abc\n");
+        live.doc_mut()
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        assert!(!kept_from_a_viewer(&live, dir.path(), "main.tex").unwrap());
+        live.set_role(ProjectRole::Viewer);
+        for path in ["main.tex", "./main.tex", "new.tex", "chapters/new.tex"] {
+            assert!(
+                kept_from_a_viewer(&live, dir.path(), path).unwrap(),
+                "{path}"
+            );
+        }
+        for path in [
+            "project.json",
+            ".git/config",
+            "../escape.tex",
+            "chapters",
+            "main.tex/inner.tex",
+            "outside.tex",
+        ] {
+            assert!(
+                !kept_from_a_viewer(&live, dir.path(), path).unwrap(),
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
     fn a_binary_file_written_as_text_becomes_a_text_file() {
         let dir = tempfile::tempdir().unwrap();
         let (mut live, _) = shared("abc\n");
@@ -902,7 +965,7 @@ mod tests {
             .await
             .expect("the write never answered")
             .unwrap();
-            assert!(created);
+            assert!(created.handled);
             assert_eq!(
                 std::fs::read_to_string(root.join("figures/plot.tex")).unwrap(),
                 "\\draw;\n"
@@ -919,10 +982,13 @@ mod tests {
                 }
             }
             remember_read("written-live", "main.tex", "alpha\nbeta\n");
-            assert!(active
-                .write_text("main.tex", None, "ALPHA\nbeta\n")
-                .await
-                .unwrap());
+            assert!(
+                active
+                    .write_text("main.tex", None, "ALPHA\nbeta\n")
+                    .await
+                    .unwrap()
+                    .handled
+            );
             assert_eq!(
                 shared_live.lock().unwrap().doc().text(&main).unwrap(),
                 "ALPHA\nbeta\ngamma\n"
