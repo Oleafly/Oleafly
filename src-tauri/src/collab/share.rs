@@ -1376,6 +1376,12 @@ mod transfer_tests {
         use std::os::unix::fs::PermissionsExt;
         let joiner = Joiner::start().await;
         let collab = joiner.member.paths().unwrap().root().to_path_buf();
+        std::fs::set_permissions(&collab, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let unguarded = std::fs::create_dir(collab.join("probe")).is_ok();
+        std::fs::set_permissions(&collab, std::fs::Permissions::from_mode(0o755)).unwrap();
+        if unguarded {
+            return;
+        }
         let locked = AtomicBool::new(false);
         let lock = |progress: JoinProgress| {
             if progress.done == progress.total && !locked.swap(true, Ordering::SeqCst) {
