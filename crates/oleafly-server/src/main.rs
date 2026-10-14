@@ -54,6 +54,10 @@ async fn run_server() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    if let Err(error) = config.require_sign_in() {
+        eprintln!("Oleafly Server cannot start. {error}");
+        return ExitCode::from(2);
+    }
     let level = config
         .log_level
         .parse::<tracing::Level>()

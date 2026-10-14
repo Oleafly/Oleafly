@@ -32,7 +32,7 @@ You need:
 
 - A Linux machine that stays on, or an account with a hosting service such as Render or Railway. A small virtual machine is enough to start. Keep an eye on its memory and disk as your projects grow.
 - A domain name for the server, such as `collab.example.org`, with a DNS record pointing at the machine. Render and Railway give you an address if you don't have one. If the machine has no public address, read [Without a public address](#without-a-public-address).
-- A way for people to sign in: at least one sign-in provider, or an email account the server can send from. Read [Sign-in providers](#sign-in-providers).
+- A way for people to sign in: GitHub, or an OpenID Connect login such as your university's. The server won't start without one. Email is optional. Read [Sign-in providers](#sign-in-providers).
 
 Then pick how to run it:
 
@@ -565,7 +565,7 @@ When you update the server later, name the service so Caddy stays off: `docker c
 
 ## Sign-in providers
 
-People sign in through providers you configure, so the server never handles passwords. Configure at least one, or set up [email](#email) and turn on [sign-in by email link](#sign-in-by-email-link). Each provider sends people back to a callback address on your server:
+People sign in through providers you configure, so the server never handles passwords. Configure GitHub, OpenID Connect or both. Without either, the server stops at startup with `Oleafly Server cannot start. No sign-in method is set up` and names the settings to add. [Email](#email) can't take their place, because [sign-in by email link](#sign-in-by-email-link) stays off until an admin turns it on. Each provider sends people back to a callback address on your server:
 
 `https://collab.example.org/auth/callback/<provider>`
 
@@ -800,12 +800,12 @@ A backup you have never restored is only a hope. This drill starts a second copy
 cd /opt/oleafly-server
 docker volume create oleafly-restore-drill
 docker run --rm -v oleafly-restore-drill:/data -v "$PWD":/backup:ro debian:13.7-slim tar -C /data -xzf /backup/oleafly-data-2026-10-11.tar.gz
-docker run -d --name oleafly-restore-drill -v oleafly-restore-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid "$(docker compose images -q oleafly-server)"
+docker run -d --name oleafly-restore-drill -v oleafly-restore-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid -e OLEAFLY_GITHUB_CLIENT_ID=restore-drill -e OLEAFLY_GITHUB_CLIENT_SECRET=restore-drill "$(docker compose images -q oleafly-server)"
 docker run --rm --network container:oleafly-restore-drill curlimages/curl:8.22.0 -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/.well-known/oleafly-server
 curl -fsS https://collab.example.org/.well-known/oleafly-server
 ```
 
-The `server_id` in the two answers must match. The drill copy has no sign-in providers and no open port, so nobody can use it. Remove it when you're done:
+The `server_id` in the two answers must match. The drill copy has a placeholder GitHub sign-in that can't sign anyone in, and no open port, so nobody can use it. Remove it when you're done:
 
 ```sh
 docker rm -f oleafly-restore-drill
@@ -874,7 +874,7 @@ This drill restores the database from the bucket into a scratch volume, starts a
 cd /opt/oleafly-server
 docker run --rm -v oleafly-litestream-drill:/data "$(docker compose images -q oleafly-server)" --version
 docker compose run --rm --no-deps -v oleafly-litestream-drill:/restore litestream restore -config /etc/litestream.yml -o /restore/oleafly-server.sqlite3 /data/oleafly-server.sqlite3
-docker run -d --name oleafly-litestream-drill -v oleafly-litestream-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid "$(docker compose images -q oleafly-server)"
+docker run -d --name oleafly-litestream-drill -v oleafly-litestream-drill:/data -e OLEAFLY_PUBLIC_URL=https://restore-drill.invalid -e OLEAFLY_GITHUB_CLIENT_ID=restore-drill -e OLEAFLY_GITHUB_CLIENT_SECRET=restore-drill "$(docker compose images -q oleafly-server)"
 docker run --rm --network container:oleafly-litestream-drill curlimages/curl:8.22.0 -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/.well-known/oleafly-server
 curl -fsS https://collab.example.org/.well-known/oleafly-server
 ```

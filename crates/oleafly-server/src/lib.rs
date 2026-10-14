@@ -75,11 +75,6 @@ pub fn build_router(state: AppState) -> Router {
 }
 
 pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
-    if config.providers.is_empty() {
-        tracing::warn!(
-            "No sign-in provider is configured, so nobody can sign in yet. Set OLEAFLY_GITHUB_CLIENT_ID and OLEAFLY_GITHUB_CLIENT_SECRET, or an OLEAFLY_OIDC_<NAME>_ISSUER block."
-        );
-    }
     let bind = config.bind;
     let state = AppState::new(config, Arc::new(SystemClock)).await?;
     let listener = tokio::net::TcpListener::bind(bind)

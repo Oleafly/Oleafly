@@ -9,7 +9,7 @@ volume="oleafly-smoke-$suffix"
 work="$(mktemp -d)"
 
 cleanup() {
-  docker rm -f "$name" >/dev/null 2>&1 || true
+  docker rm -f "$name" "$name-refused" >/dev/null 2>&1 || true
   docker volume rm "$volume" >/dev/null 2>&1 || true
   rm -rf "$work"
 }
@@ -77,12 +77,31 @@ case "$version" in
   *) fail "unexpected --version output: $version" ;;
 esac
 
+docker run -d --name "$name-refused" --platform "$platform" \
+  -e OLEAFLY_PUBLIC_URL=http://localhost:8080 \
+  "$image" >/dev/null
+code=""
+for _ in $(seq 1 30); do
+  if [ "$(docker inspect --format '{{.State.Running}}' "$name-refused")" = "false" ]; then
+    code="$(docker inspect --format '{{.State.ExitCode}}' "$name-refused")"
+    break
+  fi
+  sleep 1
+done
+refusal="$(docker logs "$name-refused" 2>&1)"
+docker rm -f "$name-refused" >/dev/null
+[ "$code" = "2" ] || fail "with no GitHub or OpenID Connect the server should stop with code 2, not '${code:-still running}': $refusal"
+printf '%s' "$refusal" | grep -q 'No sign-in method is set up' || fail "the refusal doesn't say why: $refusal"
+pass "the server refuses to start without GitHub or OpenID Connect"
+
 docker volume create "$volume" >/dev/null
 docker run -d --name "$name" \
   --platform "$platform" \
   -p 127.0.0.1::8080 \
   -v "$volume:/data" \
   -e OLEAFLY_PUBLIC_URL=http://localhost:8080 \
+  -e OLEAFLY_GITHUB_CLIENT_ID=smoke-test \
+  -e OLEAFLY_GITHUB_CLIENT_SECRET=smoke-test \
   "$image" >/dev/null
 
 status=""

@@ -329,11 +329,10 @@ function commentGutter(source: EditorCommentsSource): Extension {
 function commentClicks(source: EditorCommentsSource): Extension {
   return EditorView.domEventHandlers({
     click: (event, view) => {
-      if (event.button !== 0 || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
-      if (!view.state.selection.main.empty) return false;
+      if (event.button !== 0 || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+      if (!view.state.selection.main.empty) return;
       const [id] = idsAt(event.target, "data-comment-id");
       if (id) source.open(id, "text");
-      return false;
     },
   });
 }

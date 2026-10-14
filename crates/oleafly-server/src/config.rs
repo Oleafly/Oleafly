@@ -321,6 +321,16 @@ impl ServerConfig {
     pub fn path_prefix(&self) -> &str {
         self.public_url.path().trim_end_matches('/')
     }
+
+    pub fn require_sign_in(&self) -> Result<(), ConfigError> {
+        if self.providers.is_empty() {
+            return Err(ConfigError::new(
+                "OLEAFLY_GITHUB_CLIENT_ID",
+                "No sign-in method is set up, so nobody could sign in. For GitHub, set OLEAFLY_GITHUB_CLIENT_ID and OLEAFLY_GITHUB_CLIENT_SECRET. For OpenID Connect, set OLEAFLY_OIDC_<NAME>_ISSUER, OLEAFLY_OIDC_<NAME>_CLIENT_ID and OLEAFLY_OIDC_<NAME>_CLIENT_SECRET. Email doesn't count, because sign-in by email link stays off until an admin turns it on.",
+            ));
+        }
+        Ok(())
+    }
 }
 
 pub fn join_url(base: &Url, path: &str) -> Url {
@@ -1343,6 +1353,52 @@ mod tests {
         };
         assert_eq!(empty.variable, "OLEAFLY_SMTP_URL_FILE");
         assert!(empty.message.contains("empty"));
+    }
+
+    #[test]
+    fn starting_needs_github_or_openid_connect_and_email_alone_is_not_enough() {
+        let nothing = load(&[BASE]).unwrap().require_sign_in().unwrap_err();
+        assert_eq!(nothing.variable, "OLEAFLY_GITHUB_CLIENT_ID");
+        assert!(
+            nothing.message.starts_with("No sign-in method is set up"),
+            "{}",
+            nothing.message
+        );
+        assert!(
+            nothing.message.contains("OLEAFLY_GITHUB_CLIENT_SECRET"),
+            "{}",
+            nothing.message
+        );
+        assert!(
+            nothing.message.contains("OLEAFLY_OIDC_<NAME>_ISSUER"),
+            "{}",
+            nothing.message
+        );
+        let email_only = load(&[
+            BASE,
+            (
+                "OLEAFLY_SMTP_URL",
+                "smtps://lab:secret@smtp.example.edu:465",
+            ),
+            ("OLEAFLY_MAIL_FROM", "lab@example.edu"),
+        ])
+        .unwrap();
+        assert_eq!(email_only.require_sign_in(), Err(nothing));
+        let github = load(&[
+            BASE,
+            ("OLEAFLY_GITHUB_CLIENT_ID", "id"),
+            ("OLEAFLY_GITHUB_CLIENT_SECRET", "secret"),
+        ])
+        .unwrap();
+        assert_eq!(github.require_sign_in(), Ok(()));
+        let oidc = load(&[
+            BASE,
+            ("OLEAFLY_OIDC_UNI_ISSUER", "https://login.uni.edu"),
+            ("OLEAFLY_OIDC_UNI_CLIENT_ID", "id"),
+            ("OLEAFLY_OIDC_UNI_CLIENT_SECRET", "secret"),
+        ])
+        .unwrap();
+        assert_eq!(oidc.require_sign_in(), Ok(()));
     }
 
     #[test]

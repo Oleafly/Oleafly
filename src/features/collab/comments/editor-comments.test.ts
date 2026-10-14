@@ -223,6 +223,17 @@ describe("comment marks in the editor", () => {
     expect(source.open).toHaveBeenCalledTimes(2);
   });
 
+  it("leaves a click on tinted text to the editor so the cursor still moves there", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    view.contentDOM.querySelector(".cm-comment-range")?.dispatchEvent(click);
+    expect(source.open).toHaveBeenLastCalledWith("t-quick", "text");
+    expect(click.defaultPrevented).toBe(false);
+  });
+
   it("ignores modified clicks, clicks on plain text and clicks on the gutter away from a marker", async () => {
     const source = new Source();
     source.state = { ...source.state, spans: [quick] };
