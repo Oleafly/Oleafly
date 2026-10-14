@@ -725,3 +725,67 @@ async fn the_link_page_on_the_computer_says_it_works_only_there() {
     );
     assert!(confirm.body.contains("<form"), "{}", confirm.body);
 }
+
+async fn link_page_from(setup: &Setup, address: &str, email: &str) -> Page {
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    ask_for_link(&Browser::from_address(address), &attempt, email).await
+}
+
+#[tokio::test]
+async fn the_server_sends_at_most_its_hourly_number_of_sign_in_emails() {
+    let setup = setup_with(|config| {
+        config.behind_proxy = true;
+        config.sign_in.email_links_per_hour = 5;
+    })
+    .await;
+    for index in 1..=5 {
+        let page = link_page_from(
+            &setup,
+            &format!("198.51.100.{index}"),
+            &format!("person{index}@uni.edu"),
+        )
+        .await;
+        assert_eq!(page.status, 200, "{index}: {}", page.body);
+    }
+    let sixth = link_page_from(&setup, "198.51.100.6", "person6@uni.edu").await;
+    assert_eq!(sixth.status, 429, "{}", sixth.body);
+    assert!(text_of(&sixth).contains("Too many sign-in emails"));
+    assert_eq!(wait_for_sign_in_emails(&setup.smtp, 5).await.len(), 5);
+    assert_eq!(sign_in_emails_after_a_pause(&setup.smtp).await, 5);
+    let refusals: Vec<_> = security_events(&setup.server)
+        .await
+        .into_iter()
+        .filter(|event| event.detail["limit"] == "server")
+        .collect();
+    assert_eq!(refusals.len(), 1);
+    let overview: oleafly_collab_protocol::console::AdminOverview = reqwest::Client::new()
+        .get(format!("{}/api/v1/admin/overview", setup.server.url()))
+        .bearer_auth(&setup.admin.access_token)
+        .send()
+        .await
+        .expect("overview")
+        .json()
+        .await
+        .expect("overview json");
+    assert!(overview
+        .health
+        .issues
+        .contains(&oleafly_collab_protocol::console::HealthIssue::SignInEmailsPaused));
+    setup.server.clock().advance(60 * MINUTE_MS);
+    let later = link_page_from(&setup, "198.51.100.7", "person7@uni.edu").await;
+    assert_eq!(later.status, 200, "{}", later.body);
+}
+
+#[tokio::test]
+async fn plus_addresses_of_one_mailbox_share_its_limit() {
+    let setup = setup().await;
+    for index in 1..=3 {
+        let page = link_page_from(&setup, "127.0.0.1", &format!("ada+{index}@uni.edu")).await;
+        assert_eq!(page.status, 200, "{index}: {}", page.body);
+    }
+    let fourth = link_page_from(&setup, "127.0.0.1", "ada+4@uni.edu").await;
+    assert_eq!(fourth.status, 429, "{}", fourth.body);
+    let other = link_page_from(&setup, "127.0.0.1", "bob+1@uni.edu").await;
+    assert_eq!(other.status, 200, "{}", other.body);
+}

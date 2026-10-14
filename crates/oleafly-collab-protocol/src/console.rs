@@ -25,6 +25,7 @@ pub enum HealthIssue {
     NoSignInProvider,
     StorageNotWritable,
     SignInFailing,
+    SignInEmailsPaused,
     #[serde(other)]
     Unknown,
 }
@@ -210,7 +211,7 @@ mod tests {
             "protocol": { "min": 1, "max": 1 },
             "started_at": 10,
             "now": 70,
-            "health": { "status": "warning", "issues": ["no_sign_in_provider", "storage_not_writable", "sign_in_failing"] },
+            "health": { "status": "warning", "issues": ["no_sign_in_provider", "storage_not_writable", "sign_in_failing", "sign_in_emails_paused"] },
             "counts": {
                 "people": 3,
                 "suspended_people": 1,
@@ -242,6 +243,7 @@ mod tests {
         let overview: AdminOverview = serde_json::from_value(wire.clone()).unwrap();
         assert_eq!(overview.counts.pending_guest_approvals, 3);
         assert_eq!(overview.health.issues[2], HealthIssue::SignInFailing);
+        assert_eq!(overview.health.issues[3], HealthIssue::SignInEmailsPaused);
         assert_eq!(overview.sign_in_problems[0].provider, "uni");
         assert_eq!(overview.health.status, HealthStatus::Warning);
         assert_eq!(overview.storage.unwrap().files_location, FilesLocation::S3);

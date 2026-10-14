@@ -245,6 +245,47 @@ fn lockout(
     }
 }
 
+fn server_lockout(
+    conn: &rusqlite::Connection,
+    limit: u32,
+    ip: &Option<String>,
+    now: i64,
+) -> Result<bool, ServerError> {
+    match throttle::hit(
+        conn,
+        email_link::SERVER_LIMIT_KEY,
+        limit,
+        email_link::HOUR_MS,
+        now,
+    )? {
+        Throttle::Allowed => Ok(false),
+        Throttle::LockedOut { first } => {
+            if first {
+                tracing::warn!(
+                    "This server sent {limit} sign-in emails within an hour, so it sends no more until the hour is over."
+                );
+                security_log::record(
+                    conn,
+                    now,
+                    NewSecurityEvent {
+                        actor: None,
+                        kind: SecurityEventKind::SignInRefused,
+                        target: None,
+                        ip: ip.clone(),
+                        detail: json!({
+                            "provider": email_link::PROVIDER_ID,
+                            "reason": "locked_out",
+                            "limit": "server",
+                            "per_hour": limit
+                        }),
+                    },
+                )?;
+            }
+            Ok(true)
+        }
+    }
+}
+
 async fn request_link(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -287,6 +328,7 @@ async fn request_link(
     };
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
     let for_link = address.clone();
+    let mailbox = email_link::mailbox(&address);
     let pending_id = pending.id.clone();
     let limits = state.config.sign_in;
     let issued = state
@@ -302,13 +344,14 @@ async fn request_link(
                 now,
             )? || lockout(
                 conn,
-                &format!("email-link:{for_link}"),
+                &format!("email-link:{mailbox}"),
                 limits.email_links_per_address,
                 &for_link,
                 "address",
                 &ip,
                 now,
-            )? {
+            )? || server_lockout(conn, limits.email_links_per_hour, &ip, now)?
+            {
                 return Ok(None);
             }
             let token = email_link::issue(conn, &pending_id, &for_link, now)?;

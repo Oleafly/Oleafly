@@ -16,6 +16,7 @@ pub const DEFAULT_SIGN_IN_PER_MINUTE: u32 = 120;
 pub const DEFAULT_EMAIL_LINKS_PER_IP: u32 = 100;
 pub const DEFAULT_DEVICE_CODES_PER_IP: u32 = 100;
 pub const DEFAULT_EMAIL_LINKS_PER_ADDRESS: u32 = 3;
+pub const DEFAULT_EMAIL_LINKS_PER_HOUR: u32 = 300;
 pub const MAX_POLL_HOLD_SECONDS: u64 = 40;
 pub const MAX_PROXY_HOPS: u8 = 8;
 pub const MIN_SETUP_CODE_CHARS: usize = 12;
@@ -100,6 +101,7 @@ pub struct SignInLimits {
     pub requests_per_minute: u32,
     pub email_links_per_ip: u32,
     pub email_links_per_address: u32,
+    pub email_links_per_hour: u32,
     pub device_codes_per_ip: u32,
 }
 
@@ -110,6 +112,7 @@ impl Default for SignInLimits {
             requests_per_minute: DEFAULT_SIGN_IN_PER_MINUTE,
             email_links_per_ip: DEFAULT_EMAIL_LINKS_PER_IP,
             email_links_per_address: DEFAULT_EMAIL_LINKS_PER_ADDRESS,
+            email_links_per_hour: DEFAULT_EMAIL_LINKS_PER_HOUR,
             device_codes_per_ip: DEFAULT_DEVICE_CODES_PER_IP,
         }
     }
@@ -954,6 +957,8 @@ fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError
             "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
             DEFAULT_EMAIL_LINKS_PER_ADDRESS,
         )?,
+        email_links_per_hour: source
+            .number("OLEAFLY_EMAIL_LINKS_PER_HOUR", DEFAULT_EMAIL_LINKS_PER_HOUR)?,
         device_codes_per_ip: source
             .number("OLEAFLY_DEVICE_CODES_PER_IP", DEFAULT_DEVICE_CODES_PER_IP)?,
     };
@@ -1453,6 +1458,7 @@ mod tests {
                 requests_per_minute: 120,
                 email_links_per_ip: 100,
                 email_links_per_address: 3,
+                email_links_per_hour: 300,
                 device_codes_per_ip: 100,
             }
         );
@@ -1472,6 +1478,7 @@ mod tests {
             ("OLEAFLY_SIGN_IN_PER_MINUTE", "250"),
             ("OLEAFLY_EMAIL_LINKS_PER_IP", "400"),
             ("OLEAFLY_EMAIL_LINKS_PER_ADDRESS", "5"),
+            ("OLEAFLY_EMAIL_LINKS_PER_HOUR", "50"),
             ("OLEAFLY_DEVICE_CODES_PER_IP", "300"),
         ])
         .unwrap()
@@ -1483,6 +1490,7 @@ mod tests {
                 requests_per_minute: 250,
                 email_links_per_ip: 400,
                 email_links_per_address: 5,
+                email_links_per_hour: 50,
                 device_codes_per_ip: 300,
             }
         );
@@ -1491,6 +1499,7 @@ mod tests {
             "OLEAFLY_SIGN_IN_PER_MINUTE",
             "OLEAFLY_EMAIL_LINKS_PER_IP",
             "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
+            "OLEAFLY_EMAIL_LINKS_PER_HOUR",
             "OLEAFLY_DEVICE_CODES_PER_IP",
         ] {
             for bad in ["0", "-3", "lots", "1.5"] {

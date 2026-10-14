@@ -16,7 +16,7 @@ use oleafly_collab_protocol::roles::ServerAction;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::auth::email_link;
+use crate::auth::{email_link, throttle};
 use crate::config::BlobStoreConfig;
 use crate::console::{self, ProjectFilter};
 use crate::error::ServerError;
@@ -55,7 +55,8 @@ async fn overview(
         BlobStoreConfig::S3(_) => FilesLocation::S3,
     };
     let now = state.clock.now_ms();
-    let (mut counts, storage, runtime) = state
+    let per_hour = state.config.sign_in.email_links_per_hour;
+    let (mut counts, storage, runtime, emails_paused) = state
         .db
         .call(move |conn| {
             let counts = console::counts(conn, now)?;
@@ -64,7 +65,8 @@ async fn overview(
             } else {
                 None
             };
-            Ok((counts, storage, settings::load(conn)?))
+            let paused = throttle::reached(conn, email_link::SERVER_LIMIT_KEY, per_hour, now)?;
+            Ok((counts, storage, settings::load(conn)?, paused))
         })
         .await?;
     let (open_rooms, people_online) = state.rooms.occupancy();
@@ -84,6 +86,9 @@ async fn overview(
     let sign_in_problems = state.providers.problems();
     if !sign_in_problems.is_empty() {
         issues.push(HealthIssue::SignInFailing);
+    }
+    if emails_paused {
+        issues.push(HealthIssue::SignInEmailsPaused);
     }
     let config = &state.config;
     Ok(Json(AdminOverview {

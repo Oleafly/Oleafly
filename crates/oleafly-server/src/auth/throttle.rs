@@ -58,6 +58,17 @@ pub fn hit(
     }
 }
 
+pub fn reached(conn: &Connection, key: &str, limit: u32, now: i64) -> Result<bool, ServerError> {
+    let hits: Option<i64> = conn
+        .query_row(
+            "SELECT hits FROM sign_in_throttle WHERE key = ?1 AND expires_at > ?2",
+            params![key, now],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(hits.is_some_and(|hits| hits >= i64::from(limit)))
+}
+
 pub fn check(conn: &Connection, key: &str, limit: u32, now: i64) -> Result<Throttle, ServerError> {
     match current(conn, key, now)? {
         Some((hits, logged)) if hits >= i64::from(limit) => locked_out(conn, key, logged),
