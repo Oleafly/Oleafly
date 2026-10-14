@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError, RwLock};
 
 use axum::body::Bytes;
@@ -61,6 +62,14 @@ pub struct Snapshots {
     budget: Arc<RwLock<Budget>>,
     reserved: Arc<RwLock<u64>>,
     reported: Arc<RwLock<HashMap<SharedProjectId, u64>>>,
+    reads: Arc<AtomicU64>,
+}
+
+pub enum Current {
+    Read(Budgeted, u64),
+    TooLarge { needed: u64, allowed: u64 },
+    Busy,
+    Missing,
 }
 
 struct Reserved {
@@ -87,6 +96,15 @@ pub struct Budgeted {
 impl Budgeted {
     pub fn reserved_bytes(&self) -> u64 {
         self.reserved.bytes
+    }
+
+    pub fn grow(&mut self, snapshots: &Snapshots, bytes: u64) -> bool {
+        let Some(mut more) = snapshots.reserve(bytes) else {
+            return false;
+        };
+        self.reserved.bytes += more.bytes;
+        more.bytes = 0;
+        true
     }
 
     pub fn replaced(self, replay: Replay) -> Budgeted {
@@ -318,7 +336,12 @@ impl Snapshots {
             budget: Arc::new(RwLock::new(Budget::default())),
             reserved: Arc::new(RwLock::new(0)),
             reported: Arc::new(RwLock::new(HashMap::new())),
+            reads: Arc::new(AtomicU64::new(0)),
         }
+    }
+
+    pub fn document_reads(&self) -> u64 {
+        self.reads.load(Ordering::Relaxed)
     }
 
     fn put_off(&self, project: SharedProjectId, through: u64) -> bool {
@@ -560,6 +583,17 @@ impl Snapshots {
         db: &Db,
         project: SharedProjectId,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        Ok(match self.read_current(db, project).await? {
+            Current::Read(replay, head) => Some((replay, head)),
+            Current::TooLarge { .. } | Current::Busy | Current::Missing => None,
+        })
+    }
+
+    pub async fn read_current(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+    ) -> Result<Current, ServerError> {
         let (candidates, bindings, head) = db
             .call(move |conn| {
                 Ok((
@@ -582,7 +616,7 @@ impl Snapshots {
                 })
                 .await?;
             if span.count != head.saturating_sub(after) {
-                return Ok(None);
+                return Ok(Current::Missing);
             }
             let needed = read_cost(size, span.bytes);
             if needed > budget.memory_bytes {
@@ -591,11 +625,15 @@ impl Snapshots {
                     megabytes(needed),
                     megabytes(budget.memory_bytes)
                 );
-                return Ok(None);
+                return Ok(Current::TooLarge {
+                    needed,
+                    allowed: budget.memory_bytes,
+                });
             }
             let Some(reserved) = self.reserve(needed) else {
-                return Ok(None);
+                return Ok(Current::Busy);
             };
+            self.reads.fetch_add(1, Ordering::Relaxed);
             let Ok(Some(base)) = self.read(project, &row).await else {
                 continue;
             };
@@ -603,12 +641,12 @@ impl Snapshots {
                 .replayed(db, project, base, after, head, &bindings, reserved)
                 .await?
             {
-                Replayed::Ready(replay) => return Ok(Some((replay, head))),
-                Replayed::Gap => return Ok(None),
+                Replayed::Ready(replay) => return Ok(Current::Read(replay, head)),
+                Replayed::Gap => return Ok(Current::Missing),
                 Replayed::Unreadable => {}
             }
         }
-        Ok(None)
+        Ok(Current::Missing)
     }
 
     #[allow(clippy::too_many_arguments)]

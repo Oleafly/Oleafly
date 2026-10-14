@@ -832,7 +832,7 @@ impl Peer<'_> {
             )
             .await;
         match verdict {
-            Ok(Verdict::Allowed) => None,
+            Ok(Verdict::Allowed | Verdict::Unchecked) => None,
             Ok(Verdict::ChangesComments) => Some(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
