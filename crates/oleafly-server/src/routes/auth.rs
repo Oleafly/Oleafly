@@ -21,6 +21,7 @@ use crate::auth::refresh::{self, RefreshOutcome};
 use crate::auth::{
     browser_binding, db_error, device_code, devices, email_link, nonce, setup, ExternalIdentity,
 };
+use crate::config::ServerConfig;
 use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::notify;
@@ -89,15 +90,30 @@ pub(crate) fn found(location: &str) -> Response {
         .into_response()
 }
 
+pub(crate) fn issuer(config: &ServerConfig) -> String {
+    config.public_url.as_str().trim_end_matches('/').to_owned()
+}
+
+fn from_another_site(headers: &HeaderMap) -> bool {
+    headers
+        .get("sec-fetch-site")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|site| {
+            site.eq_ignore_ascii_case("cross-site") || site.eq_ignore_ascii_case("same-site")
+        })
+}
+
 pub(crate) fn back_to_app(
+    config: &ServerConfig,
     redirect: &Url,
     client_state: &str,
     outcome: Result<&str, AuthErrorCode>,
 ) -> Response {
-    back_to_app_naming(redirect, client_state, outcome, None)
+    back_to_app_naming(config, redirect, client_state, outcome, None)
 }
 
 fn back_to_app_naming(
+    config: &ServerConfig,
     redirect: &Url,
     client_state: &str,
     outcome: Result<&str, AuthErrorCode>,
@@ -116,6 +132,7 @@ fn back_to_app_naming(
             }
         };
         pairs.append_pair("state", client_state);
+        pairs.append_pair("iss", &issuer(config));
     }
     found(target.as_str())
 }
@@ -180,6 +197,9 @@ async fn start(
     headers: HeaderMap,
     Query(query): Query<AuthStartQuery>,
 ) -> Result<Response, ServerError> {
+    if from_another_site(&headers) {
+        return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
+    }
     let Some(redirect) = loopback_redirect(&query.redirect_uri) else {
         return Ok(sign_in_pages::notice(
             locale,
@@ -199,6 +219,7 @@ async fn start(
     };
     if !offered {
         return Ok(back_to_app(
+            &state.config,
             &redirect,
             &query.state,
             Err(AuthErrorCode::UnknownProvider),
@@ -206,7 +227,14 @@ async fn start(
     }
     let setup_code_hash = match checked_setup_code(&state, query.setup_code.as_deref()).await? {
         Ok(hash) => hash,
-        Err(code) => return Ok(back_to_app(&redirect, &query.state, Err(code))),
+        Err(code) => {
+            return Ok(back_to_app(
+                &state.config,
+                &redirect,
+                &query.state,
+                Err(code),
+            ))
+        }
     };
     let now = state.clock.now_ms();
     let pending = PendingSignIn {
@@ -238,6 +266,7 @@ async fn start(
         .await;
     let Ok(authorize) = authorize else {
         return Ok(back_to_app(
+            &state.config,
             &redirect,
             &query.state,
             Err(AuthErrorCode::ProviderFailed),
@@ -392,11 +421,16 @@ pub(crate) fn conclude_naming(
         .map_err(|error| ServerError::Internal(error.to_string()))?;
     let client_state = &pending.client_state;
     Ok(match outcome {
-        Ok(Finish::Code(code)) => back_to_app(&redirect, client_state, Ok(&code)),
-        Ok(Finish::DeviceApproved | Finish::DeviceGone) => {
-            back_to_app(&redirect, client_state, Err(AuthErrorCode::InvalidCode))
+        Ok(Finish::Code(code)) => back_to_app(&state.config, &redirect, client_state, Ok(&code)),
+        Ok(Finish::DeviceApproved | Finish::DeviceGone) => back_to_app(
+            &state.config,
+            &redirect,
+            client_state,
+            Err(AuthErrorCode::InvalidCode),
+        ),
+        Err(error) => {
+            back_to_app_naming(&state.config, &redirect, client_state, Err(error), account)
         }
-        Err(error) => back_to_app_naming(&redirect, client_state, Err(error), account),
     })
 }
 
@@ -732,6 +766,64 @@ mod tests {
         ] {
             assert!(loopback_redirect(raw).is_none(), "{raw} was accepted");
         }
+    }
+
+    fn returned_to(response: &Response) -> Vec<(String, String)> {
+        let location = response.headers()[header::LOCATION]
+            .to_str()
+            .expect("a location");
+        Url::parse(location)
+            .expect("a loopback url")
+            .query_pairs()
+            .into_owned()
+            .collect()
+    }
+
+    #[test]
+    fn every_return_to_the_app_names_this_server_without_a_trailing_slash() {
+        let mut config = crate::test_support::test_config();
+        let redirect = loopback_redirect("http://127.0.0.1:53111/callback").expect("loopback");
+        let done = back_to_app(&config, &redirect, "s1", Ok("code-1"));
+        assert_eq!(
+            returned_to(&done),
+            [
+                ("code".to_owned(), "code-1".to_owned()),
+                ("state".to_owned(), "s1".to_owned()),
+                ("iss".to_owned(), "https://collab.test".to_owned()),
+            ]
+        );
+        config.public_url = Url::parse("https://uni.edu/oleafly").expect("prefixed url");
+        let refused = back_to_app_naming(
+            &config,
+            &redirect,
+            "s2",
+            Err(AuthErrorCode::NotAdmitted),
+            Some("@ada"),
+        );
+        assert_eq!(
+            returned_to(&refused),
+            [
+                ("account".to_owned(), "@ada".to_owned()),
+                ("error".to_owned(), "not_admitted".to_owned()),
+                ("state".to_owned(), "s2".to_owned()),
+                ("iss".to_owned(), "https://uni.edu/oleafly".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn only_a_start_from_another_site_counts_as_one() {
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert("sec-fetch-site", value.parse().expect("header value"));
+            headers
+        };
+        assert!(from_another_site(&with("cross-site")));
+        assert!(from_another_site(&with("same-site")));
+        assert!(from_another_site(&with("SAME-SITE")));
+        assert!(!from_another_site(&with("none")));
+        assert!(!from_another_site(&with("same-origin")));
+        assert!(!from_another_site(&HeaderMap::new()));
     }
 
     #[test]
