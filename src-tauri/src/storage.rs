@@ -1416,6 +1416,12 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
     // A crash or later Store::destroy failure therefore remains retryable.
     let cleanup_path = write_cleanup_job(&cleanup)?;
     remove_cleanup_target_if_present(&cleanup)?;
+    if let Err(error) = crate::project_ids::forget(&manifest.project_id) {
+        let _ = crate::project::append_app_log(format!(
+            "could not forget the project identity of {}: {error}",
+            manifest.project_id
+        ));
+    }
     if !linked_member {
         crate::research_workspace::roots::forget_project(&manifest.project_id);
         if let Err(error) = crate::overleaf::forget_sync_copy(&manifest.project_id) {

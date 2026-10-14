@@ -754,8 +754,45 @@
     "data": {
       "cloud": {
         "comingSoon": "Binnenkort",
-        "description": "Houd projecten gesynchroniseerd tussen je apparaten zonder een Git-remote in te stellen. Elke overdracht wordt end-to-end versleuteld, dus je werk blijft onderweg privé. Je lokale projectmappen blijven de bron van waarheid.",
-        "title": "Cloudsynchronisatie"
+        "title": "Cloudsynchronisatie",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Browser niet geopend? Open Dropbox",
+        "codeLabel": "Code van Dropbox",
+        "connect": "Verbinden",
+        "connectDropbox": "Dropbox verbinden",
+        "disconnect": "Verbinding verbreken",
+        "finishInBrowser": "Voltooi in je browser",
+        "lastConnected": "Laatst verbonden met {{email}}.",
+        "lead": "Maak een back-up van je projecten in je Dropbox en open ze op andere apparaten.",
+        "loadFailed": "Cloudsynchronisatie kon niet worden geladen. Probeer het opnieuw.",
+        "pasteHint": "Dropbox toont een code. Kopieer hem en plak hem hier.",
+        "pasteInstead": "Problemen met inloggen? Plak een code",
+        "placeholder": "Maak een back-up van je projecten in je eigen Dropbox en open ze op je andere computers. Binnenkort beschikbaar.",
+        "rename": "Hernoemen",
+        "storageLine": "{{used}} in gebruik in je Dropbox · {{free}} vrij van {{total}}",
+        "syncCheckpoints": "Checkpoints (je versiegeschiedenis)",
+        "syncFiles": "Elk project met zijn bestanden en Git-geschiedenis (build-uitvoer wordt overgeslagen)",
+        "syncNever": "AI-chats, wachtwoorden en sleutels verlaten deze computer nooit.",
+        "syncOnHelp": "Synchroniseert zolang Oleafly open is. Uitschakelen stopt synchronisatie alleen hier. Je andere computers en Dropbox blijven onveranderd.",
+        "syncOnThisComputer": "Synchroniseren op deze computer",
+        "syncSettings": "Je instellingen, AI-persona's, vaardigheden en sjablonen",
+        "thisComputer": "Deze computer: {{name}}",
+        "tryAgain": "Opnieuw proberen",
+        "waiting": "Wachten op Dropbox…",
+        "projectsTitle": "Projecten",
+        "syncNow": "Nu synchroniseren",
+        "syncing": "Synchroniseren…",
+        "lastSynced": "Laatst gesynchroniseerd: {{time}}",
+        "neverSynced": "Nog niet in Dropbox",
+        "download": "Downloaden",
+        "inDropboxOnly": "In Dropbox, niet op deze computer",
+        "noProjects": "Nog geen projecten. Nieuwe projecten worden gesynchroniseerd.",
+        "syncProjectSwitch": "{{name}} synchroniseren op deze computer",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} staat nu op deze computer.",
+        "toastDownloadFailed": "{{name}} kon niet worden gedownload.",
+        "toastSynced": "Alles is gesynchroniseerd.",
+        "toastSyncFailed": "De synchronisatie is niet voltooid."
       },
       "danger": {
         "confirmDeleteAllAction": "Alle projecten verwijderen",
@@ -848,6 +885,10 @@
       "webBrowser": {
         "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
         "label": "Webbrowser"
+      },
+      "cloudSync": {
+        "description": "Back-upt projecten naar je Dropbox zodat je ze op andere computers kunt openen. Experimenteel in Oleafly en synchroniseert alleen terwijl de app open is.",
+        "label": "Cloudsynchronisatie"
       }
     },
     "footer": {

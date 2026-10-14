@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Otevřít v Oleafly",
     "openWithOleafly": "Otevřít v aplikaci Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Jste připojeni. Tuto kartu můžete zavřít a vrátit se do Oleafly.",
+    "failedPage": "Přihlášení se nedokončilo. Tuto kartu můžete zavřít a vrátit se do Oleafly."
   }
 }

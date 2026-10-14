@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Openen in Oleafly",
     "openWithOleafly": "Openen met Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Je bent verbonden. Je kunt dit tabblad sluiten en teruggaan naar Oleafly.",
+    "failedPage": "Het inloggen is niet voltooid. Je kunt dit tabblad sluiten en teruggaan naar Oleafly."
   }
 }

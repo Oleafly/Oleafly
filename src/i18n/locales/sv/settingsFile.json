@@ -19,7 +19,9 @@
     "readFailed": "Det gick inte att öppna filen.",
     "imported": "Inställningarna har importerats.",
     "unchanged": "Dina inställningar stämmer redan med {{name}}.",
-    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen."
+    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen.",
+    "cloudEmpty": "Inga inställningar i molnet än. Synkronisera från din andra dator först.",
+    "cloudLoadFailed": "Det gick inte att läsa in inställningar från molnet."
   },
   "confirm": {
     "title": "Vill du ersätta dina inställningar?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "måste vara en ordlistekod som en_US",
     "shortcut": "måste vara ett kortkommando som Mod-Shift-k, eller \"default\"",
     "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\""
-  }
+  },
+  "importFromLocal": "Importera från den här enheten",
+  "importFromCloud": "Importera från molnet"
 }

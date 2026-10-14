@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Открыть в Oleafly",
     "openWithOleafly": "Открыть с помощью Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Вы подключены. Можно закрыть эту вкладку и вернуться в Oleafly.",
+    "failedPage": "Вход не завершён. Можно закрыть эту вкладку и вернуться в Oleafly."
   }
 }

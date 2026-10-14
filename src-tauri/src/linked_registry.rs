@@ -977,6 +977,7 @@ mod management {
             write_record(&reservation.directory, &record)?;
             before_commit(self, &record)?;
             let directory = reservation.commit();
+            crate::project_ids::mint(&project_id, None)?;
             let data_root = crate::paths::oleafly_root()?;
             store_entry(
                 &data_root,

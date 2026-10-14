@@ -19,7 +19,9 @@
     "readFailed": "Kunne ikke åbne filen.",
     "imported": "Indstillingerne er importeret.",
     "unchanged": "Dine indstillinger svarer allerede til {{name}}.",
-    "applyFailed": "Nogle indstillinger kunne ikke gemmes. Prøv at importere igen."
+    "applyFailed": "Nogle indstillinger kunne ikke gemmes. Prøv at importere igen.",
+    "cloudEmpty": "Ingen indstillinger i skyen endnu. Synkronisér fra din anden computer først.",
+    "cloudLoadFailed": "Kunne ikke indlæse indstillinger fra skyen."
   },
   "confirm": {
     "title": "Vil du erstatte dine indstillinger?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "skal være en ordbogskode som en_US",
     "shortcut": "skal være en genvej som Mod-Shift-k, eller \"default\"",
     "editorKey": "skal være en tast som Mod-d, \"\" for ingen, eller \"default\""
-  }
+  },
+  "importFromLocal": "Importér fra denne enhed",
+  "importFromCloud": "Importér fra skyen"
 }

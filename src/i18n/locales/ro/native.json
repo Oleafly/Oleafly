@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Deschide în Oleafly",
     "openWithOleafly": "Deschide cu Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Ești conectat. Poți închide fila și reveni la Oleafly.",
+    "failedPage": "Conectarea nu s-a terminat. Poți închide fila și reveni la Oleafly."
   }
 }

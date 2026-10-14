@@ -748,8 +748,45 @@
     "data": {
       "cloud": {
         "comingSoon": "近日対応",
-        "description": "Git のリモートを設定しなくても、複数の端末でプロジェクトを同期できるようになります。通信はすべて端末間で暗号化されるため、転送中も内容は守られます。正となるのは、これまでどおりローカルのプロジェクトフォルダです。",
-        "title": "クラウド同期"
+        "title": "クラウド同期",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "ブラウザが開きませんでしたか？ Dropbox を開く",
+        "codeLabel": "Dropbox のコード",
+        "connect": "接続",
+        "connectDropbox": "Dropbox を接続",
+        "disconnect": "接続を解除",
+        "finishInBrowser": "ブラウザで完了してください",
+        "lastConnected": "前回の接続先：{{email}}",
+        "lead": "プロジェクトを自分の Dropbox にバックアップして、他のデバイスでも開けるようになります。",
+        "loadFailed": "クラウド同期を読み込めませんでした。もう一度お試しください。",
+        "pasteHint": "Dropbox にコードが表示されます。コピーしてここに貼り付けてください。",
+        "pasteInstead": "サインインできませんか？ コードを貼り付けてください",
+        "placeholder": "プロジェクトを自分の Dropbox にバックアップして、他のコンピューターでも開けるようになります。近日対応予定です。",
+        "rename": "名前を変更",
+        "storageLine": "Dropbox 使用量 {{used}} · 空き {{free}} / 合計 {{total}}",
+        "syncCheckpoints": "チェックポイント（版の履歴）",
+        "syncFiles": "ファイルと Git 履歴を含むすべてのプロジェクト（ビルド出力は除く）",
+        "syncNever": "AI チャット、パスワード、キーがこのコンピューターの外に出ることはありません。",
+        "syncOnHelp": "Oleafly が開いている間だけ同期します。オフにすると停止するのはこのコンピューターだけです。他のコンピューターと Dropbox は変わりません。",
+        "syncOnThisComputer": "このコンピューターで同期",
+        "syncSettings": "設定、AI ペルソナ、スキル、テンプレート",
+        "thisComputer": "このコンピューター：{{name}}",
+        "tryAgain": "再試行",
+        "waiting": "Dropbox を待機中…",
+        "projectsTitle": "プロジェクト",
+        "syncNow": "今すぐ同期",
+        "syncing": "同期中…",
+        "lastSynced": "最終同期：{{time}}",
+        "neverSynced": "まだ Dropbox にありません",
+        "download": "ダウンロード",
+        "inDropboxOnly": "Dropbox 内、このコンピューターにはなし",
+        "noProjects": "プロジェクトはまだありません。新しく作ったプロジェクトが同期されます。",
+        "syncProjectSwitch": "このコンピューターで {{name}} を同期",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} がこのコンピューターにダウンロードされました。",
+        "toastDownloadFailed": "{{name}} をダウンロードできませんでした。",
+        "toastSynced": "すべて同期済みです。",
+        "toastSyncFailed": "同期が完了しませんでした。"
       },
       "danger": {
         "confirmDeleteAllAction": "すべてのプロジェクトを削除",
@@ -833,6 +870,10 @@
       "webBrowser": {
         "description": "アプリ内のウェブブラウザ（ドックの切り替えとショートカット）を表示し、AI がコンピュータ操作で動かせるようにします。ベータ版のため既定ではオフで、オフのときはブラウザのボタンも AI のブラウザツールもありません。",
         "label": "ウェブブラウザ"
+      },
+      "cloudSync": {
+        "description": "プロジェクトを Dropbox にバックアップして他のコンピューターで開けます。Oleafly の実験機能で、アプリが開いている間だけ同期します。",
+        "label": "クラウド同期"
       }
     },
     "footer": {

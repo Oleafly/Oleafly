@@ -128,6 +128,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "apple-native-keyring-store"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b350bfd03649e07aa05c0a81b3e15934374e585c98204a57e20b9d49f49bb9a"
+dependencies = [
+ "keyring-core",
+ "log",
+ "security-framework 3.7.0",
+]
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2637,6 +2648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "keyring-core"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29fbf4b551298c67925f38cf341a1ada797a75f1837bdf8ae1fc8e2ebc6efb59"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "kqueue"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3305,6 +3325,7 @@ version = "0.4.6"
 dependencies = [
  "aes",
  "aho-corasick",
+ "apple-native-keyring-store",
  "argon2",
  "atomicwrites",
  "axum",
@@ -3321,6 +3342,7 @@ dependencies = [
  "futures-util",
  "gtk",
  "icu_properties",
+ "keyring-core",
  "libc",
  "liblzma",
  "muda",
@@ -3369,6 +3391,7 @@ dependencies = [
  "webview2-com",
  "window-vibrancy 0.8.1",
  "windows-core 0.61.2",
+ "windows-native-keyring-store",
  "windows-registry 0.6.1",
  "windows-sys 0.61.2",
  "zeroize",
@@ -3412,7 +3435,9 @@ name = "oleafly-core"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
+ "blake3",
  "crc32fast",
+ "fastcdc",
  "fs4",
  "memchr",
  "regex",
@@ -3421,6 +3446,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "unicode-normalization",
+ "uuid",
  "windows-sys 0.61.2",
 ]
 
@@ -3429,7 +3455,6 @@ name = "oleafly-history"
 version = "0.1.0"
 dependencies = [
  "blake3",
- "fastcdc",
  "fs4",
  "libc",
  "oleafly-core",
@@ -6701,6 +6726,19 @@ name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-native-keyring-store"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8"
+dependencies = [
+ "byteorder",
+ "keyring-core",
+ "regex",
+ "windows-sys 0.61.2",
+ "zeroize",
+]
 
 [[package]]
 name = "windows-numerics"

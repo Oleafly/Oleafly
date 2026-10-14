@@ -215,5 +215,16 @@
     "git_token_invalid": "Acesta nu pare un token Git pentru Overleaf. Copiază tot tokenul și încearcă din nou.",
     "git_token_rejected": "Overleaf nu a acceptat tokenul Git. Poate a expirat. Creează unul nou în setările contului tău Overleaf.",
     "git_unavailable": "Integrarea Git din Overleaf nu este disponibilă pentru acest proiect. Proprietarul proiectului are nevoie de un plan plătit sau universitar."
+  },
+  "cloud": {
+    "code_invalid": "Codul acela nu a funcționat. Încearcă din nou.",
+    "connect_frozen": "Dropbox nu acceptă acum conexiuni noi pentru Oleafly. Încearcă din nou în câteva zile.",
+    "device_name_empty": "Introdu un nume.",
+    "device_name_invalid": "Numele computerului nu poate conține \\ / : * ? \" < > | și are maximum 32 de caractere.",
+    "network": "Nu s-a putut ajunge la Dropbox. Verifică conexiunea.",
+    "not_connected": "Dropbox nu este conectat.",
+    "revoked": "Accesul la Dropbox a fost revocat. Conectează-te din nou.",
+    "sign_in_cancelled": "Conectarea la Dropbox a fost anulată.",
+    "sign_in_timeout": "Conectarea a durat prea mult. Încearcă din nou."
   }
 }

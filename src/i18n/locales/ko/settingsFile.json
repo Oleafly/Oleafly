@@ -19,7 +19,9 @@
     "readFailed": "해당 파일을 열지 못했습니다.",
     "imported": "설정을 가져왔습니다.",
     "unchanged": "설정이 이미 {{name}} 파일과 같습니다.",
-    "applyFailed": "일부 설정을 저장하지 못했습니다. 다시 가져와 보세요."
+    "applyFailed": "일부 설정을 저장하지 못했습니다. 다시 가져와 보세요.",
+    "cloudEmpty": "아직 클라우드에 설정이 없습니다. 다른 컴퓨터에서 먼저 동기화하세요.",
+    "cloudLoadFailed": "클라우드에서 설정을 불러오지 못했습니다."
   },
   "confirm": {
     "title": "설정을 바꿀까요?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "값은 en_US 같은 사전 코드여야 합니다",
     "shortcut": "값은 Mod-Shift-k 같은 단축키이거나 \"default\"여야 합니다",
     "editorKey": "값은 Mod-d 같은 키, 키를 쓰지 않으려면 \"\", 또는 \"default\"여야 합니다"
-  }
+  },
+  "importFromLocal": "이 기기에서 가져오기",
+  "importFromCloud": "클라우드에서 가져오기"
 }

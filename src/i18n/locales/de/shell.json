@@ -754,8 +754,45 @@
     "data": {
       "cloud": {
         "comingSoon": "In Kürze",
-        "description": "Projekte über Ihre Geräte hinweg abgleichen, ohne ein Git-Remote einzurichten. Jede Übertragung wird Ende-zu-Ende verschlüsselt, Ihre Arbeit bleibt also unterwegs privat. Ihre lokalen Projektordner bleiben maßgeblich.",
-        "title": "Cloud-Abgleich"
+        "title": "Cloud-Abgleich",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Browser nicht geöffnet? Dropbox öffnen",
+        "codeLabel": "Code von Dropbox",
+        "connect": "Verbinden",
+        "connectDropbox": "Dropbox verbinden",
+        "disconnect": "Verbindung trennen",
+        "finishInBrowser": "Im Browser abschließen",
+        "lastConnected": "Zuletzt verbunden mit {{email}}.",
+        "lead": "Sichern Sie Ihre Projekte in Ihrer Dropbox und öffnen Sie sie auf anderen Geräten.",
+        "loadFailed": "Cloud-Abgleich konnte nicht geladen werden. Versuchen Sie es erneut.",
+        "pasteHint": "Dropbox zeigt einen Code. Kopieren Sie ihn und fügen Sie ihn hier ein.",
+        "pasteInstead": "Probleme bei der Anmeldung? Stattdessen einen Code einfügen",
+        "placeholder": "Sichern Sie Ihre Projekte in Ihrer eigenen Dropbox und öffnen Sie sie auf Ihren anderen Computern. In Kürze.",
+        "rename": "Umbenennen",
+        "storageLine": "{{used}} in Ihrer Dropbox belegt · {{free}} frei von {{total}}",
+        "syncCheckpoints": "Checkpoints (Ihre Versionsgeschichte)",
+        "syncFiles": "Jedes Projekt mit seinen Dateien und der Git-Historie (Build-Ausgaben bleiben außen vor)",
+        "syncNever": "KI-Chats, Passwörter und Schlüssel verlassen diesen Computer nie.",
+        "syncOnHelp": "Der Abgleich läuft, solange Oleafly geöffnet ist. Ausschalten stoppt ihn nur hier. Ihre anderen Computer und Dropbox bleiben unverändert.",
+        "syncOnThisComputer": "Auf diesem Computer abgleichen",
+        "syncSettings": "Ihre Einstellungen, KI-Personas, Skills und Vorlagen",
+        "thisComputer": "Dieser Computer: {{name}}",
+        "tryAgain": "Erneut versuchen",
+        "waiting": "Warten auf Dropbox…",
+        "projectsTitle": "Projekte",
+        "syncNow": "Jetzt abgleichen",
+        "syncing": "Abgleich läuft…",
+        "lastSynced": "Zuletzt abgeglichen: {{time}}",
+        "neverSynced": "Noch nicht in Dropbox",
+        "download": "Herunterladen",
+        "inDropboxOnly": "In Dropbox, nicht auf diesem Computer",
+        "noProjects": "Noch keine Projekte. Neue Projekte werden abgeglichen.",
+        "syncProjectSwitch": "{{name}} auf diesem Computer abgleichen",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} ist jetzt auf diesem Computer.",
+        "toastDownloadFailed": "{{name}} konnte nicht heruntergeladen werden.",
+        "toastSynced": "Alles ist abgeglichen.",
+        "toastSyncFailed": "Der Abgleich wurde nicht fertig."
       },
       "danger": {
         "confirmDeleteAllAction": "Alle Projekte löschen",
@@ -848,6 +885,10 @@
       "webBrowser": {
         "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es in der Beta ist. Ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
         "label": "Webbrowser"
+      },
+      "cloudSync": {
+        "description": "Sichert Projekte in Ihrer Dropbox, damit Sie sie auf anderen Computern öffnen können. Experimentell in Oleafly und gleicht nur ab, solange die App geöffnet ist.",
+        "label": "Cloud-Abgleich"
       }
     },
     "footer": {

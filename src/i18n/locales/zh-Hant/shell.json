@@ -748,8 +748,45 @@
     "data": {
       "cloud": {
         "comingSoon": "即將推出",
-        "description": "不必設定 Git 遠端，就能讓專案在你的各台裝置之間保持同步。每次傳輸都會採用端對端加密，你的成果在傳輸過程中保持私密。本機的專案資料夾仍是唯一的依據來源。",
-        "title": "雲端同步"
+        "title": "雲端同步",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "瀏覽器沒有開啟？開啟 Dropbox",
+        "codeLabel": "Dropbox 代碼",
+        "connect": "連接",
+        "connectDropbox": "連接 Dropbox",
+        "disconnect": "中斷連接",
+        "finishInBrowser": "在瀏覽器中完成",
+        "lastConnected": "上次連接到 {{email}}。",
+        "lead": "將專案備份到你的 Dropbox，並在其他裝置上開啟。",
+        "loadFailed": "無法載入雲端同步。請再試一次。",
+        "pasteHint": "Dropbox 會顯示一個代碼。複製並貼到這裡。",
+        "pasteInstead": "登入有問題？貼上代碼",
+        "placeholder": "將專案備份到你自己的 Dropbox，並在你的其他電腦上開啟。即將推出。",
+        "rename": "重新命名",
+        "storageLine": "Dropbox 已用 {{used}} · 共 {{total}}，剩餘 {{free}}",
+        "syncCheckpoints": "檢查點（你的版本記錄）",
+        "syncFiles": "每個專案及其檔案和 Git 記錄（不含建置輸出）",
+        "syncNever": "AI 對話、密碼和金鑰永不離開這台電腦。",
+        "syncOnHelp": "Oleafly 開啟時同步。關閉僅停止這台電腦的同步。你的其他電腦和 Dropbox 不會改變。",
+        "syncOnThisComputer": "在這台電腦上同步",
+        "syncSettings": "你的設定、AI 角色、技能和範本",
+        "thisComputer": "這台電腦：{{name}}",
+        "tryAgain": "再試一次",
+        "waiting": "正在等待 Dropbox…",
+        "projectsTitle": "專案",
+        "syncNow": "立即同步",
+        "syncing": "正在同步…",
+        "lastSynced": "上次同步：{{time}}",
+        "neverSynced": "尚未在 Dropbox 中",
+        "download": "下載",
+        "inDropboxOnly": "在 Dropbox 中，不在這台電腦上",
+        "noProjects": "還沒有專案。新專案將自動同步。",
+        "syncProjectSwitch": "在這台電腦上同步 {{name}}",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} 已下載到這台電腦。",
+        "toastDownloadFailed": "無法下載 {{name}}。",
+        "toastSynced": "全部已同步。",
+        "toastSyncFailed": "同步未完成。"
       },
       "danger": {
         "confirmDeleteAllAction": "刪除所有專案",
@@ -833,6 +870,10 @@
       "webBrowser": {
         "description": "顯示應用程式內建的網頁瀏覽器（含停駐列切換與快捷鍵），並允許 AI 透過 computer use 操作它。目前在 beta 階段，預設為關閉。關閉時不會有瀏覽器按鈕，AI 也沒有瀏覽器工具。",
         "label": "網頁瀏覽器"
+      },
+      "cloudSync": {
+        "description": "將專案備份到 Dropbox 並在其他電腦上開啟。Oleafly 的實驗功能，僅在應用開啟時同步。",
+        "label": "雲端同步"
       }
     },
     "footer": {

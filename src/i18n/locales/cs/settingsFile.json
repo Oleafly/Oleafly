@@ -19,7 +19,9 @@
     "readFailed": "Tento soubor se nepodařilo otevřít.",
     "imported": "Nastavení bylo importováno.",
     "unchanged": "Vaše nastavení už odpovídá souboru {{name}}.",
-    "applyFailed": "Některá nastavení se nepodařilo uložit. Zkuste import znovu."
+    "applyFailed": "Některá nastavení se nepodařilo uložit. Zkuste import znovu.",
+    "cloudEmpty": "V cloudu zatím žádná nastavení nejsou. Nejdřív synchronizujte z jiného počítače.",
+    "cloudLoadFailed": "Nastavení z cloudu se nepodařilo načíst."
   },
   "confirm": {
     "title": "Nahradit vaše nastavení?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "musí být kód slovníku, například en_US",
     "shortcut": "musí být klávesová zkratka, například Mod-Shift-k, nebo \"default\"",
     "editorKey": "musí být klávesa, například Mod-d, \"\" pro žádnou, nebo \"default\""
-  }
+  },
+  "importFromLocal": "Importovat z tohoto zařízení",
+  "importFromCloud": "Importovat z cloudu"
 }

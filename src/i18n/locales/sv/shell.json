@@ -754,8 +754,45 @@
     "data": {
       "cloud": {
         "comingSoon": "Kommer snart",
-        "description": "Håll projekt synkroniserade mellan dina enheter utan att konfigurera en Git-fjärransluten. Varje överföring blir totalsträckskrypterad, så ditt arbete förblir privat under transporten. Dina lokala projektmappar förblir den sanna källan.",
-        "title": "Molnsynkronisering"
+        "title": "Molnsynkronisering",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Öppnades inte webbläsaren? Öppna Dropbox",
+        "codeLabel": "Kod från Dropbox",
+        "connect": "Anslut",
+        "connectDropbox": "Anslut Dropbox",
+        "disconnect": "Koppla från",
+        "finishInBrowser": "Slutför i webbläsaren",
+        "lastConnected": "Senast ansluten till {{email}}.",
+        "lead": "Säkerhetskopiera dina projekt till din Dropbox och öppna dem på andra enheter.",
+        "loadFailed": "Det gick inte att läsa in molnsynkronisering. Försök igen.",
+        "pasteHint": "Dropbox visar en kod. Kopiera och klistra in den här.",
+        "pasteInstead": "Problem att logga in? Klistra in en kod",
+        "placeholder": "Säkerhetskopiera dina projekt till din egen Dropbox och öppna dem på dina andra datorer. Kommer snart.",
+        "rename": "Byt namn",
+        "storageLine": "{{used}} använt i din Dropbox · {{free}} ledigt av {{total}}",
+        "syncCheckpoints": "Kontrollpunkter (din versionshistorik)",
+        "syncFiles": "Varje projekt med dess filer och Git-historik (byggutdata utelämnas)",
+        "syncNever": "AI-chattar, lösenord och nycklar lämnar aldrig den här datorn.",
+        "syncOnHelp": "Synkroniserar medan Oleafly är öppet. Att stänga av stoppar synkroniseringen bara här. Dina andra datorer och Dropbox ändras inte.",
+        "syncOnThisComputer": "Synkronisering på den här datorn",
+        "syncSettings": "Dina inställningar, AI-personor, färdigheter och mallar",
+        "thisComputer": "Den här datorn: {{name}}",
+        "tryAgain": "Försök igen",
+        "waiting": "Väntar på Dropbox…",
+        "projectsTitle": "Projekt",
+        "syncNow": "Synkronisera nu",
+        "syncing": "Synkroniserar…",
+        "lastSynced": "Senast synkroniserad {{time}}",
+        "neverSynced": "Inte i Dropbox än",
+        "download": "Ladda ned",
+        "inDropboxOnly": "I Dropbox, inte på den här datorn",
+        "noProjects": "Inga projekt än. Nya projekt synkroniseras.",
+        "syncProjectSwitch": "Synkronisera {{name}} på den här datorn",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} finns nu på den här datorn.",
+        "toastDownloadFailed": "Det gick inte att ladda ned {{name}}.",
+        "toastSynced": "Allt är synkroniserat.",
+        "toastSyncFailed": "Synkroniseringen slutfördes inte."
       },
       "danger": {
         "confirmDeleteAllAction": "Radera alla projekt",
@@ -848,6 +885,10 @@
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
         "label": "Webbläsare"
+      },
+      "cloudSync": {
+        "description": "Säkerhetskopierar projekt till Dropbox så du kan öppna dem på andra datorer. Experimentellt i Oleafly och synkroniserar bara medan appen är öppen.",
+        "label": "Molnsynkronisering"
       }
     },
     "footer": {

@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Abrir en Oleafly",
     "openWithOleafly": "Abrir con Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Ya estás conectado. Puedes cerrar esta pestaña y volver a Oleafly.",
+    "failedPage": "El inicio de sesión no terminó. Puedes cerrar esta pestaña y volver a Oleafly."
   }
 }

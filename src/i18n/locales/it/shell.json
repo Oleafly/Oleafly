@@ -760,8 +760,45 @@
     "data": {
       "cloud": {
         "comingSoon": "In arrivo",
-        "description": "Tieni i progetti sincronizzati tra i tuoi dispositivi senza configurare un remote Git. Ogni trasferimento sarà cifrato end-to-end, così il tuo lavoro resta privato durante il transito. Le cartelle locali dei progetti resteranno la fonte di verità.",
-        "title": "Sincronizzazione cloud"
+        "title": "Sincronizzazione cloud",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Il browser non si è aperto? Apri Dropbox",
+        "codeLabel": "Codice Dropbox",
+        "connect": "Collega",
+        "connectDropbox": "Collega Dropbox",
+        "disconnect": "Disconnetti",
+        "finishInBrowser": "Completa nel browser",
+        "lastConnected": "Ultima connessione a {{email}}.",
+        "lead": "Esegui il backup dei tuoi progetti nel tuo Dropbox e aprili su altri dispositivi.",
+        "loadFailed": "Impossibile caricare la sincronizzazione cloud. Riprova.",
+        "pasteHint": "Dropbox mostrerà un codice. Copialo e incollalo qui.",
+        "pasteInstead": "Problemi di accesso? Incolla un codice",
+        "placeholder": "Esegui il backup dei tuoi progetti nel tuo Dropbox e aprili sugli altri tuoi computer. In arrivo.",
+        "rename": "Rinomina",
+        "storageLine": "{{used}} usati nel tuo Dropbox · {{free}} liberi di {{total}}",
+        "syncCheckpoints": "I checkpoint (la cronologia delle versioni)",
+        "syncFiles": "Ogni progetto con i suoi file e la cronologia Git (gli output di compilazione sono esclusi)",
+        "syncNever": "Chat IA, password e chiavi non lasciano mai questo computer.",
+        "syncOnHelp": "Si sincronizza mentre Oleafly è aperto. Disattivarla ferma la sincronizzazione solo qui. Gli altri computer e Dropbox non cambiano.",
+        "syncOnThisComputer": "Sincronizza su questo computer",
+        "syncSettings": "Le tue impostazioni, i personaggi IA, le abilità e i modelli",
+        "thisComputer": "Questo computer: {{name}}",
+        "tryAgain": "Riprova",
+        "waiting": "In attesa di Dropbox…",
+        "projectsTitle": "Progetti",
+        "syncNow": "Sincronizza ora",
+        "syncing": "Sincronizzazione…",
+        "lastSynced": "Ultima sincronizzazione: {{time}}",
+        "neverSynced": "Non ancora in Dropbox",
+        "download": "Scarica",
+        "inDropboxOnly": "In Dropbox, non su questo computer",
+        "noProjects": "Ancora nessun progetto. I nuovi progetti verranno sincronizzati.",
+        "syncProjectSwitch": "Sincronizza {{name}} su questo computer",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} ora è su questo computer.",
+        "toastDownloadFailed": "Impossibile scaricare {{name}}.",
+        "toastSynced": "Tutto è sincronizzato.",
+        "toastSyncFailed": "La sincronizzazione non è terminata."
       },
       "danger": {
         "confirmDeleteAllAction": "Elimina tutti i progetti",
@@ -863,6 +900,10 @@
       "webBrowser": {
         "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta. Quando è disattivato, non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
         "label": "Browser web"
+      },
+      "cloudSync": {
+        "description": "Esegui il backup dei progetti nel tuo Dropbox e aprili su altri computer. Sperimentale in Oleafly, sincronizza solo con l'app aperta.",
+        "label": "Sincronizzazione cloud"
       }
     },
     "footer": {

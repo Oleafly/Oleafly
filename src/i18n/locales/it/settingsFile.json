@@ -19,7 +19,9 @@
     "readFailed": "Non è stato possibile aprire quel file.",
     "imported": "Impostazioni importate.",
     "unchanged": "Le tue impostazioni corrispondono già a {{name}}.",
-    "applyFailed": "Non è stato possibile salvare alcune impostazioni. Riprova l'importazione."
+    "applyFailed": "Non è stato possibile salvare alcune impostazioni. Riprova l'importazione.",
+    "cloudEmpty": "Ancora nessuna impostazione nel cloud. Sincronizza prima dall'altro computer.",
+    "cloudLoadFailed": "Impossibile caricare le impostazioni dal cloud."
   },
   "confirm": {
     "title": "Vuoi sostituire le tue impostazioni?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "deve essere un codice di dizionario come en_US",
     "shortcut": "deve essere una scorciatoia come Mod-Shift-k, oppure \"default\"",
     "editorKey": "deve essere un tasto come Mod-d, \"\" per nessuno, oppure \"default\""
-  }
+  },
+  "importFromLocal": "Importa da questo dispositivo",
+  "importFromCloud": "Importa dal cloud"
 }

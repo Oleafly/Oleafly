@@ -6,6 +6,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { AppConfig } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
+  cloudSettingsDownload: vi.fn(),
+  cloudSettingsApplied: vi.fn(async () => undefined),
   getConfig: vi.fn(),
   setConfig: vi.fn(),
   appVersion: vi.fn(async () => "0.4.6"),
@@ -15,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/lib/cloud", () => ({
+  cloudSettingsDownload: mocks.cloudSettingsDownload,
+  cloudSettingsApplied: mocks.cloudSettingsApplied,
+}));
 vi.mock("@/lib/tauri", () => ({
   getConfig: mocks.getConfig,
   setConfig: mocks.setConfig,
@@ -50,6 +56,16 @@ const config = {
   checkpoints_enabled: true,
   checkpoint_notifications: true,
 } as unknown as AppConfig;
+
+async function chooseLocalImport() {
+  await userEvent.click(screen.getByTestId("settings-file-import"));
+  await userEvent.click(await screen.findByTestId("settings-file-import-local"));
+}
+
+async function chooseCloudImport() {
+  await userEvent.click(screen.getByTestId("settings-file-import"));
+  await userEvent.click(await screen.findByTestId("settings-file-import-cloud"));
+}
 
 function settingsFile(body: Record<string, unknown>) {
   return { name: "class.json", text: JSON.stringify(body) };
@@ -114,7 +130,7 @@ describe("SettingsFileCard", () => {
       settingsFile({ appearance: { app: { fontSize: 99 }, editor: { lineWrap: "maybe" } } }),
     );
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     const problem = await screen.findByTestId("settings-file-problem");
     expect(problem).toHaveTextContent("class.json wasn't imported");
     expect(problem).toHaveTextContent(
@@ -131,7 +147,7 @@ describe("SettingsFileCard", () => {
   it("names a shortcut the operating system keeps for itself", async () => {
     mocks.pickSettingsFile.mockResolvedValue(settingsFile({ shortcuts: { app: { recompile: "Ctrl-c" } } }));
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     expect(await screen.findByTestId("settings-file-problem")).toHaveTextContent(
       "shortcuts.app.recompile Copy is reserved by the operating system.",
     );
@@ -140,7 +156,7 @@ describe("SettingsFileCard", () => {
   it("names a file that isn't a settings file", async () => {
     mocks.pickSettingsFile.mockResolvedValue({ name: "notes.json", text: "{\"hello\": 1}" });
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     expect(await screen.findByTestId("settings-file-problem")).toHaveTextContent(
       "This isn't an Oleafly settings file.",
     );
@@ -151,7 +167,7 @@ describe("SettingsFileCard", () => {
       settingsFile({ appearance: { app: { fontSize: 18 }, editor: { fontSize: 20 } }, extra: true }),
     );
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Replace your settings?");
     expect(dialog).toHaveTextContent("Settings that will change: 2");
@@ -164,7 +180,7 @@ describe("SettingsFileCard", () => {
   it("keeps settings when the import is cancelled", async () => {
     mocks.pickSettingsFile.mockResolvedValue(settingsFile({ appearance: { app: { fontSize: 18 } } }));
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(within(dialog).getByRole("button", { name: /^Cancel/ }));
     expect(useSettingsStore.getState().appFontSize).toBe(16);
@@ -173,7 +189,7 @@ describe("SettingsFileCard", () => {
   it("says so when the file matches the current settings", async () => {
     mocks.pickSettingsFile.mockResolvedValue(settingsFile({ appearance: { app: { fontSize: 16 } } }));
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     await waitFor(() => expect(mocks.toast.info).toHaveBeenCalledWith("Your settings already match class.json."));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
@@ -181,7 +197,7 @@ describe("SettingsFileCard", () => {
   it("reports a file the picker couldn't read", async () => {
     mocks.pickSettingsFile.mockRejectedValue("The settings file is larger than 1 MB.");
     render(<SettingsFileCard />);
-    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await chooseLocalImport();
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("Couldn't open that file."));
   });
 
@@ -203,5 +219,33 @@ describe("SettingsFileCard", () => {
     await waitFor(() => expect(screen.getByTestId("settings-file-json")).toHaveTextContent('"fontSize": 21'));
     await userEvent.click(toggle);
     expect(screen.queryByTestId("settings-file-json")).not.toBeInTheDocument();
+  });
+
+  it("imports settings from the cloud through the same confirmation", async () => {
+    const { useCloudStore } = await import("@/store/cloud");
+    useCloudStore.setState({ status: "connected" });
+    useSettingsStore.getState().setCloudSync(true);
+    mocks.cloudSettingsDownload.mockResolvedValue({
+      values: { appearance: { app: { fontSize: 18 } } },
+      stamp: 4242,
+    });
+    render(<SettingsFileCard />);
+    await chooseCloudImport();
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Import/ }));
+    await waitFor(() => expect(useSettingsStore.getState().appFontSize).toBe(18));
+    expect(mocks.cloudSettingsApplied).toHaveBeenCalledWith(4242);
+    useCloudStore.setState({ status: "unknown" });
+  });
+
+  it("routes to connect when cloud import is chosen while disconnected", async () => {
+    const { useCloudStore } = await import("@/store/cloud");
+    useCloudStore.setState({ status: "disconnected", pendingSettingsImport: false });
+    render(<SettingsFileCard />);
+    await chooseCloudImport();
+    expect(useCloudStore.getState().pendingSettingsImport).toBe(true);
+    expect(useSettingsStore.getState().settingsNavRequest).toBe("data-cloud");
+    expect(mocks.cloudSettingsDownload).not.toHaveBeenCalled();
+    useCloudStore.setState({ status: "unknown", pendingSettingsImport: false });
   });
 });

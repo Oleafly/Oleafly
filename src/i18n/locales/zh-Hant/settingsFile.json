@@ -19,7 +19,9 @@
     "readFailed": "無法開啟該檔案。",
     "imported": "設定已匯入。",
     "unchanged": "你的設定已與 {{name}} 相同。",
-    "applyFailed": "部分設定無法儲存。請重新匯入。"
+    "applyFailed": "部分設定無法儲存。請重新匯入。",
+    "cloudEmpty": "雲端還沒有設定。請先在另一台電腦上同步。",
+    "cloudLoadFailed": "無法從雲端載入設定。"
   },
   "confirm": {
     "title": "要取代你的設定嗎？",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "必須是 en_US 這類的字典代碼",
     "shortcut": "必須是 Mod-Shift-k 這類的快捷鍵，或為 \"default\"",
     "editorKey": "必須是 Mod-d 這類的按鍵，或用 \"\" 表示不設按鍵，或為 \"default\""
-  }
+  },
+  "importFromLocal": "從此裝置匯入",
+  "importFromCloud": "從雲端匯入"
 }

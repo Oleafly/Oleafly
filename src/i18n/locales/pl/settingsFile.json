@@ -19,7 +19,9 @@
     "readFailed": "Nie udało się otworzyć tego pliku.",
     "imported": "Zaimportowano ustawienia.",
     "unchanged": "Twoje ustawienia są już zgodne z plikiem {{name}}.",
-    "applyFailed": "Nie udało się zapisać niektórych ustawień. Spróbuj zaimportować ponownie."
+    "applyFailed": "Nie udało się zapisać niektórych ustawień. Spróbuj zaimportować ponownie.",
+    "cloudEmpty": "W chmurze nie ma jeszcze ustawień. Najpierw zsynchronizuj z innego komputera.",
+    "cloudLoadFailed": "Nie udało się wczytać ustawień z chmury."
   },
   "confirm": {
     "title": "Zastąpić twoje ustawienia?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "musi być kodem słownika, na przykład en_US",
     "shortcut": "musi być skrótem klawiszowym, na przykład Mod-Shift-k, albo \"default\"",
     "editorKey": "musi być klawiszem, na przykład Mod-d, \"\", jeśli bez klawisza, albo \"default\""
-  }
+  },
+  "importFromLocal": "Importuj z tego urządzenia",
+  "importFromCloud": "Importuj z chmury"
 }

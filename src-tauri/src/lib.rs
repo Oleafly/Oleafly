@@ -29,6 +29,8 @@ mod checkpoint_publication;
 mod checkpoints;
 mod chunked;
 mod citation;
+#[allow(dead_code)]
+mod cloud;
 mod cloud_files;
 mod commands;
 mod community;
@@ -81,6 +83,7 @@ mod project;
 mod project_availability;
 mod project_file_sizes;
 mod project_grants;
+mod project_ids;
 mod project_location;
 mod project_manifest;
 mod project_rebind;
@@ -677,6 +680,20 @@ pub fn run() {
             commands::write_project_bytes,
             commands::write_bytes_file,
             commands::export_project_image,
+            cloud::commands::cloud_state,
+            cloud::commands::cloud_connect_begin,
+            cloud::commands::cloud_connect_wait,
+            cloud::commands::cloud_connect_paste,
+            cloud::commands::cloud_connect_cancel,
+            cloud::commands::cloud_disconnect,
+            cloud::commands::cloud_set_enabled,
+            cloud::commands::cloud_set_device_name,
+            cloud::commands::cloud_sync_now,
+            cloud::commands::cloud_project_set_mode,
+            cloud::commands::cloud_download_project,
+            cloud::commands::cloud_settings_sync,
+            cloud::commands::cloud_settings_download,
+            cloud::commands::cloud_settings_applied,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,

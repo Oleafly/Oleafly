@@ -19,7 +19,9 @@
     "readFailed": "Diese Datei konnte nicht geöffnet werden.",
     "imported": "Einstellungen importiert.",
     "unchanged": "Ihre Einstellungen stimmen bereits mit {{name}} überein.",
-    "applyFailed": "Einige Einstellungen konnten nicht gespeichert werden. Versuchen Sie den Import erneut."
+    "applyFailed": "Einige Einstellungen konnten nicht gespeichert werden. Versuchen Sie den Import erneut.",
+    "cloudEmpty": "Noch keine Einstellungen in der Cloud. Gleichen Sie zuerst von Ihrem anderen Computer ab.",
+    "cloudLoadFailed": "Einstellungen aus der Cloud konnten nicht geladen werden."
   },
   "confirm": {
     "title": "Ihre Einstellungen ersetzen?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "muss ein Wörterbuchcode wie en_US sein",
     "shortcut": "muss ein Tastenkürzel wie Mod-Shift-k sein, oder \"default\"",
     "editorKey": "muss eine Taste wie Mod-d sein, \"\" für keine, oder \"default\""
-  }
+  },
+  "importFromLocal": "Von diesem Gerät importieren",
+  "importFromCloud": "Aus der Cloud importieren"
 }

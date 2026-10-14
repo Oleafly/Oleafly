@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Otwórz w Oleafly",
     "openWithOleafly": "Otwórz w programie Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Połączono. Możesz zamknąć tę kartę i wrócić do Oleafly.",
+    "failedPage": "Logowanie nie zostało ukończone. Możesz zamknąć tę kartę i wrócić do Oleafly."
   }
 }

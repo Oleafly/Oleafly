@@ -456,6 +456,10 @@ pub struct ProjectManifest {
     pub dictionary_locale: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compile_dir: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sync_exclude: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sync_include: Vec<String>,
     #[serde(default)]
     pub color: String,
     #[serde(default)]
@@ -483,6 +487,8 @@ impl Default for ProjectManifest {
             typst: None,
             dictionary_locale: None,
             compile_dir: None,
+            sync_exclude: Vec::new(),
+            sync_include: Vec::new(),
             color: String::new(),
             kind: String::new(),
             exports: Vec::new(),
@@ -591,6 +597,20 @@ mod tests {
         manifest.validate().unwrap();
         let output = serde_json::to_value(manifest).unwrap();
         assert_eq!(output["future"]["enabled"], true);
+        assert!(output.get("sync_exclude").is_none());
+        assert!(output.get("sync_include").is_none());
+    }
+
+    #[test]
+    fn sync_lists_round_trip_when_present() {
+        let manifest: ProjectManifest = serde_json::from_str(
+            r#"{"main_doc":"main.tex","engine":"latexmk","sync_exclude":["data/raw"],"sync_include":["build/out.pdf"]}"#,
+        )
+        .unwrap();
+        assert_eq!(manifest.sync_exclude, ["data/raw"]);
+        assert_eq!(manifest.sync_include, ["build/out.pdf"]);
+        let output = serde_json::to_value(manifest).unwrap();
+        assert_eq!(output["sync_exclude"][0], "data/raw");
     }
 
     #[test]

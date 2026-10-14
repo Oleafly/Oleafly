@@ -19,7 +19,9 @@
     "readFailed": "Couldn't open that file.",
     "imported": "Settings imported.",
     "unchanged": "Your settings already match {{name}}.",
-    "applyFailed": "Some settings couldn't be saved. Try the import again."
+    "applyFailed": "Some settings couldn't be saved. Try the import again.",
+    "cloudEmpty": "No settings in the cloud yet. Sync from your other computer first.",
+    "cloudLoadFailed": "Couldn't load settings from the cloud."
   },
   "confirm": {
     "title": "Replace your settings?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "must be a dictionary code like en_US",
     "shortcut": "must be a shortcut like Mod-Shift-k, or \"default\"",
     "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\""
-  }
+  },
+  "importFromLocal": "Import from this device",
+  "importFromCloud": "Import from cloud"
 }

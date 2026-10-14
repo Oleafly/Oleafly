@@ -19,7 +19,9 @@
     "readFailed": "无法打开该文件。",
     "imported": "设置已导入。",
     "unchanged": "你的设置已与 {{name}} 一致。",
-    "applyFailed": "部分设置无法保存。请重新导入。"
+    "applyFailed": "部分设置无法保存。请重新导入。",
+    "cloudEmpty": "云端还没有设置。请先在另一台电脑上同步。",
+    "cloudLoadFailed": "无法从云端加载设置。"
   },
   "confirm": {
     "title": "要替换你的设置吗？",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "必须是 en_US 这样的词典代码",
     "shortcut": "必须是 Mod-Shift-k 这样的快捷键，或为 \"default\"",
     "editorKey": "必须是 Mod-d 这样的按键，或用 \"\" 表示不设按键，或为 \"default\""
-  }
+  },
+  "importFromLocal": "从此设备导入",
+  "importFromCloud": "从云端导入"
 }

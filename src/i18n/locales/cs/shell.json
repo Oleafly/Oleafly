@@ -766,8 +766,45 @@
     "data": {
       "cloud": {
         "comingSoon": "Již brzy",
-        "description": "Udržujte projekty synchronizované mezi svými zařízeními, aniž byste nastavovali vzdálený repozitář Git. Každý přenos bude šifrovaný od konce ke konci, takže vaše práce zůstane po cestě soukromá. Zdrojem pravdy zůstanou vaše místní složky projektů.",
-        "title": "Synchronizace v cloudu"
+        "title": "Synchronizace v cloudu",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Prohlížeč se neotevřel? Otevřít Dropbox",
+        "codeLabel": "Kód z Dropboxu",
+        "connect": "Připojit",
+        "connectDropbox": "Připojit Dropbox",
+        "disconnect": "Odpojit",
+        "finishInBrowser": "Dokončete v prohlížeči",
+        "lastConnected": "Naposledy připojeno k {{email}}.",
+        "lead": "Zálohujte své projekty do svého Dropboxu a otvírejte je na ostatních zařízeních.",
+        "loadFailed": "Cloudovou synchronizaci se nepodařilo načíst. Zkuste to znovu.",
+        "pasteHint": "Dropbox zobrazí kód. Zkopírujte ho a vložte sem.",
+        "pasteInstead": "Problémy s přihlášením? Vložte místo toho kód",
+        "placeholder": "Zálohujte své projekty do vlastního Dropboxu a otvírejte je na svých ostatních počítačích. Již brzy.",
+        "rename": "Přejmenovat",
+        "storageLine": "{{used}} použito ve vašem Dropboxu · {{free}} volných z {{total}}",
+        "syncCheckpoints": "Kontrolní body (vaše historie verzí)",
+        "syncFiles": "Každý projekt se soubory a historií Gitu (výstupy sestavení se vynechávají)",
+        "syncNever": "Chaty s AI, hesla a klíče tento počítač nikdy neopouštějí.",
+        "syncOnHelp": "Synchronizuje se, když je Oleafly otevřená. Vypnutí zastaví synchronizaci jen tady. Ostatní počítače ani Dropbox se nezmění.",
+        "syncOnThisComputer": "Synchronizovat na tomto počítači",
+        "syncSettings": "Vaše nastavení, AI persony, dovednosti a šablony",
+        "thisComputer": "Tento počítač: {{name}}",
+        "tryAgain": "Zkusit znovu",
+        "waiting": "Čekání na Dropbox…",
+        "projectsTitle": "Projekty",
+        "syncNow": "Synchronizovat",
+        "syncing": "Synchronizuje se…",
+        "lastSynced": "Naposledy synchronizováno {{time}}",
+        "neverSynced": "Zatím není v Dropboxu",
+        "download": "Stáhnout",
+        "inDropboxOnly": "V Dropboxu, ne na tomto počítači",
+        "noProjects": "Zatím žádné projekty. Nové projekty se budou synchronizovat.",
+        "syncProjectSwitch": "Synchronizovat {{name}} na tomto počítači",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "Projekt {{name}} je nyní v tomto počítači.",
+        "toastDownloadFailed": "Projekt {{name}} se nepodařilo stáhnout.",
+        "toastSynced": "Vše je synchronizováno.",
+        "toastSyncFailed": "Synchronizace se nedokončila."
       },
       "danger": {
         "confirmDeleteAllAction": "Smazat všechny projekty",
@@ -878,6 +915,10 @@
       "webBrowser": {
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
         "label": "Webový prohlížeč"
+      },
+      "cloudSync": {
+        "description": "Zálohuje projekty do vašeho Dropboxu, abyste je mohli otvírat na ostatních počítačích. Experimentální funkce Oleafly, synchronizuje se jen při otevřené aplikaci.",
+        "label": "Synchronizace v cloudu"
       }
     },
     "footer": {

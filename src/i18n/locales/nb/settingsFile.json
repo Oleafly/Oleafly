@@ -19,7 +19,9 @@
     "readFailed": "Kunne ikke åpne filen.",
     "imported": "Innstillingene er importert.",
     "unchanged": "Innstillingene dine samsvarer allerede med {{name}}.",
-    "applyFailed": "Noen innstillinger kunne ikke lagres. Prøv å importere på nytt."
+    "applyFailed": "Noen innstillinger kunne ikke lagres. Prøv å importere på nytt.",
+    "cloudEmpty": "Ingen innstillinger i skyen ennå. Synkroniser fra den andre datamaskinen først.",
+    "cloudLoadFailed": "Kunne ikke laste innstillinger fra skyen."
   },
   "confirm": {
     "title": "Vil du erstatte innstillingene dine?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "må være en ordbokskode som en_US",
     "shortcut": "må være en hurtigtast som Mod-Shift-k, eller \"default\"",
     "editorKey": "må være en tast som Mod-d, \"\" for ingen, eller \"default\""
-  }
+  },
+  "importFromLocal": "Importer fra denne enheten",
+  "importFromCloud": "Importer fra skyen"
 }

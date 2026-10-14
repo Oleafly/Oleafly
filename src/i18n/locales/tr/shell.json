@@ -754,8 +754,45 @@
     "data": {
       "cloud": {
         "comingSoon": "Yakında",
-        "description": "Bir Git uzak deposu yapılandırmadan projelerinizi cihazlarınız arasında eşitleyin. Her aktarım uçtan uca şifrelenecek, böylece çalışmanız yolda gizli kalacak. Yerel proje klasörleriniz doğruluk kaynağı olmayı sürdürecek.",
-        "title": "Bulut eşitleme"
+        "title": "Bulut eşitleme",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Tarayıcı açılmadı mı? Dropbox'ı aç",
+        "codeLabel": "Dropbox kodu",
+        "connect": "Bağlan",
+        "connectDropbox": "Dropbox'ı bağla",
+        "disconnect": "Bağlantıyı kes",
+        "finishInBrowser": "Tarayıcıda tamamlayın",
+        "lastConnected": "Son bağlanılan: {{email}}.",
+        "lead": "Projelerinizi Dropbox'ınıza yedekleyin ve diğer cihazlarda açın.",
+        "loadFailed": "Bulut eşitleme yüklenemedi. Tekrar deneyin.",
+        "pasteHint": "Dropbox bir kod gösterecek. Kopyalayıp buraya yapıştırın.",
+        "pasteInstead": "Oturum açamıyor musunuz? Kod yapıştırın",
+        "placeholder": "Projelerinizi kendi Dropbox'ınıza yedekleyin ve diğer bilgisayarlarınızda açın. Yakında.",
+        "rename": "Yeniden adlandır",
+        "storageLine": "Dropbox'ınızda {{used}} kullanılıyor · {{total}} içinden {{free}} boş",
+        "syncCheckpoints": "Kontrol noktaları (sürüm geçmişiniz)",
+        "syncFiles": "Dosyaları ve Git geçmişiyle her proje (derleme çıktıları hariç)",
+        "syncNever": "Yapay zekâ sohbetleri, parolalar ve anahtarlar bu bilgisayardan asla çıkmaz.",
+        "syncOnHelp": "Oleafly açıkken eşitlenir. Kapatmak eşitlemeyi yalnızca burada durdurur. Diğer bilgisayarlarınız ve Dropbox değişmez.",
+        "syncOnThisComputer": "Bu bilgisayarda eşitle",
+        "syncSettings": "Ayarlarınız, yapay zekâ personalarınız, becerileriniz ve şablonlarınız",
+        "thisComputer": "Bu bilgisayar: {{name}}",
+        "tryAgain": "Tekrar dene",
+        "waiting": "Dropbox bekleniyor…",
+        "projectsTitle": "Projeler",
+        "syncNow": "Şimdi eşitle",
+        "syncing": "Eşitleniyor…",
+        "lastSynced": "Son eşitleme: {{time}}",
+        "neverSynced": "Henüz Dropbox'ta değil",
+        "download": "İndir",
+        "inDropboxOnly": "Dropbox'ta, bu bilgisayarda değil",
+        "noProjects": "Henüz proje yok. Yeni projeler eşitlenecek.",
+        "syncProjectSwitch": "Bu bilgisayarda {{name}} projesini eşitle",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} artık bu bilgisayarda.",
+        "toastDownloadFailed": "{{name}} indirilemedi.",
+        "toastSynced": "Her şey eşitlendi.",
+        "toastSyncFailed": "Eşitleme tamamlanmadı."
       },
       "danger": {
         "confirmDeleteAllAction": "Tüm projeleri sil",
@@ -848,6 +885,10 @@
       "webBrowser": {
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
         "label": "Web tarayıcısı"
+      },
+      "cloudSync": {
+        "description": "Projeleri Dropbox'a yedekleyip diğer bilgisayarlarda açın. Oleafly'de deneyseldir ve yalnızca uygulama açıkken eşitlenir.",
+        "label": "Bulut eşitleme"
       }
     },
     "footer": {

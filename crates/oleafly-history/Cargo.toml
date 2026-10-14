@@ -10,7 +10,6 @@ rust-version = "1.87"
 [dependencies]
 oleafly-core = { path = "../oleafly-core" }
 blake3 = "1.8"
-fastcdc = "5"
 fs4 = "1.1"
 libc = "0.2"
 rand = "0.8"

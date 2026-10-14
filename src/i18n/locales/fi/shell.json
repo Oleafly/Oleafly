@@ -754,8 +754,45 @@
     "data": {
       "cloud": {
         "comingSoon": "Tulossa pian",
-        "description": "Pidä projektit synkronoituina laitteiden välillä ilman Git-etäosoitteen määrittämistä. Jokainen siirto salataan päästä päähän, joten työ pysyy yksityisenä matkalla. Paikalliset projektikansiot pysyvät totuuden lähteenä.",
-        "title": "Pilvisynkronointi"
+        "title": "Pilvisynkronointi",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Selain ei avautunut? Avaa Dropbox",
+        "codeLabel": "Koodi Dropboxista",
+        "connect": "Yhdistä",
+        "connectDropbox": "Yhdistä Dropbox",
+        "disconnect": "Katkaise yhteys",
+        "finishInBrowser": "Viimeistele selaimessa",
+        "lastConnected": "Viimeksi yhdistetty tiliin {{email}}.",
+        "lead": "Varmuuskopioi projektisi Dropboxiisi ja avaa ne muilla laitteilla.",
+        "loadFailed": "Pilvisynkronointia ei voitu ladata. Yritä uudelleen.",
+        "pasteHint": "Dropbox näyttää koodin. Kopioi se ja liitä tähän.",
+        "pasteInstead": "Kirjautumisongelmia? Liitä koodi",
+        "placeholder": "Varmuuskopioi projektisi omaan Dropboxiisi ja avaa ne muilla tietokoneillasi. Tulossa pian.",
+        "rename": "Nimeä uudelleen",
+        "storageLine": "{{used}} käytössä Dropboxissasi · {{free}} vapaana {{total}}:sta",
+        "syncCheckpoints": "Tarkistuspisteet (versiohistoriasi)",
+        "syncFiles": "Jokainen projekti tiedostoineen ja Git-historioineen (käännöstulosteet jätetään pois)",
+        "syncNever": "Tekoälykeskustelut, salasanat ja avaimet eivät koskaan lähde tältä tietokoneelta.",
+        "syncOnHelp": "Synkronoi, kun Oleafly on auki. Pois kytkeminen pysäyttää synkronoinnin vain täällä. Muut tietokoneet ja Dropbox eivät muutu.",
+        "syncOnThisComputer": "Synkronoi tällä tietokoneella",
+        "syncSettings": "Asetuksesi, tekoälypersoonat, taidot ja mallit",
+        "thisComputer": "Tämä tietokone: {{name}}",
+        "tryAgain": "Yritä uudelleen",
+        "waiting": "Odotetaan Dropboxia…",
+        "projectsTitle": "Projektit",
+        "syncNow": "Synkronoi nyt",
+        "syncing": "Synkronoidaan…",
+        "lastSynced": "Viimeksi synkronoitu {{time}}",
+        "neverSynced": "Ei vielä Dropboxissa",
+        "download": "Lataa",
+        "inDropboxOnly": "Dropboxissa, ei tällä tietokoneella",
+        "noProjects": "Ei projekteja vielä. Uudet projektit synkronoidaan.",
+        "syncProjectSwitch": "Synkronoi {{name}} tällä tietokoneella",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} on nyt tällä tietokoneella.",
+        "toastDownloadFailed": "Projektia {{name}} ei voitu ladata.",
+        "toastSynced": "Kaikki on synkronoitu.",
+        "toastSyncFailed": "Synkronointi ei valmistunut."
       },
       "danger": {
         "confirmDeleteAllAction": "Poista kaikki projektit",
@@ -848,6 +885,10 @@
       "webBrowser": {
         "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
         "label": "Verkkoselain"
+      },
+      "cloudSync": {
+        "description": "Varmuuskopioi projektit Dropboxiisi, jotta voit avata ne muilla tietokoneilla. Kokeellinen Oleaflyssä ja synkronoi vain sovelluksen ollessa auki.",
+        "label": "Pilvisynkronointi"
       }
     },
     "footer": {

@@ -65,6 +65,7 @@ zstd = "0.13"
 # webview and the CSP does not need to allow GitHub API origins.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
+keyring-core = "1"
 ring = "0.17"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 argon2 = "0.5"
@@ -87,6 +88,7 @@ fontdb = "0.24"
 skrifa = { version = "0.48", default-features = false, features = ["std"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain"] }
 security-framework = "=2.11.1"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "objc2-core-foundation"] }
@@ -96,6 +98,7 @@ dispatch2 = "0.3"
 plist = "1"
 
 [target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = "1"
 webview2-com = "0.38"
 windows-core = "0.61"
 windows-registry = "0.6"

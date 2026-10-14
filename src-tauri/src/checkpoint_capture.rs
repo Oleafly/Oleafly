@@ -1,15 +1,10 @@
 use crate::project_location::{ProjectKind, ProjectLocation};
-use oleafly_history::{
-    CaptureInput, CheckpointFile, ContentHash, HistoryError, DETACHED_MANIFEST_PATH,
-};
+use oleafly_history::{CaptureInput, CheckpointFile, ContentHash, DETACHED_MANIFEST_PATH};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, SystemTime};
-
-const EXCLUDED_EXACT: [&str; 3] = [".git", ".oleafly", "node_modules"];
-const EXCLUDED_PREFIX: [&str; 2] = ["_minted-", "pythontex-files-"];
 
 #[derive(Clone, Debug)]
 pub struct CapturedFile {
@@ -48,17 +43,7 @@ impl ProjectWalk {
 }
 
 pub fn is_excluded_component(component: &str) -> bool {
-    if EXCLUDED_EXACT
-        .iter()
-        .any(|name| component.eq_ignore_ascii_case(name))
-    {
-        return true;
-    }
-    EXCLUDED_PREFIX.iter().any(|prefix| {
-        let component = component.as_bytes();
-        let prefix = prefix.as_bytes();
-        component.len() > prefix.len() && component[..prefix.len()].eq_ignore_ascii_case(prefix)
-    })
+    oleafly_core::exclude::is_capture_excluded_component(component)
 }
 
 fn portable_relative(relative: &Path) -> Option<String> {
@@ -249,11 +234,7 @@ fn cached_capture_hash(
 
 fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
     ContentHash::digest_file(path).map_err(|error| {
-        let kind = match &error {
-            oleafly_history::HistoryError::Io(error) => error.kind(),
-            _ => std::io::ErrorKind::Other,
-        };
-        std::io::Error::new(kind, format!("Could not read {relative}: {error}"))
+        std::io::Error::new(error.kind(), format!("Could not read {relative}: {error}"))
     })
 }
 
@@ -263,19 +244,7 @@ pub(crate) const LINKED_LARGE_FILE_BYTES: u64 = 25 * 1024 * 1024;
 pub(crate) const CAPTURE_NOTICE_FILE: &str = "checkpoint-capture.json";
 const MAX_RECORDER_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_NOTICE_BYTES: u64 = 64 * 1024;
-const LINKED_SKIPPED_DIRECTORIES: [&str; 5] =
-    ["node_modules", "target", "build", "out", "__MACOSX"];
-const LINKED_SKIPPED_DIRECTORY_PREFIXES: [&str; 2] = ["_minted", "pythontex-files-"];
-const OS_METADATA_FILES: [&str; 5] = [
-    ".DS_Store",
-    "Thumbs.db",
-    "ehthumbs.db",
-    "desktop.ini",
-    "Icon\r",
-];
-#[cfg(any(target_os = "macos", test))]
-const MACOS_DATALESS_FLAG: u32 = 0x4000_0000;
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 const WINDOWS_PLACEHOLDER_ATTRIBUTES: u32 = 0x0000_1000 | 0x0004_0000 | 0x0040_0000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -401,67 +370,22 @@ enum EntryDecision {
     Capture(LinkedEntry),
 }
 
-fn starts_with_ignoring_case(name: &str, prefix: &str) -> bool {
-    name.as_bytes()
-        .get(..prefix.len())
-        .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
-}
-
 pub(crate) fn is_oleafly_owned(name: &str) -> bool {
-    starts_with_ignoring_case(name, ".oleafly")
-        || (name.starts_with('.') && name.ends_with(".tmp") && name.contains(".oleafly-"))
-}
-
-fn is_os_metadata(name: &str) -> bool {
-    name.starts_with("._")
-        || OS_METADATA_FILES
-            .iter()
-            .any(|junk| name.eq_ignore_ascii_case(junk))
+    oleafly_core::exclude::is_oleafly_owned_name(name)
 }
 
 fn is_left_out_quietly(name: &str) -> bool {
-    is_oleafly_owned(name) || is_os_metadata(name) || name.eq_ignore_ascii_case(".git")
+    is_oleafly_owned(name)
+        || oleafly_core::exclude::is_os_metadata_name(name)
+        || name.eq_ignore_ascii_case(".git")
 }
 
 fn is_skipped_directory(name: &str) -> bool {
-    name.starts_with('.')
-        || LINKED_SKIPPED_DIRECTORIES
-            .iter()
-            .any(|skipped| name.eq_ignore_ascii_case(skipped))
-        || LINKED_SKIPPED_DIRECTORY_PREFIXES
-            .iter()
-            .any(|prefix| starts_with_ignoring_case(name, prefix))
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn dataless_flag(flags: u32) -> bool {
-    flags & MACOS_DATALESS_FLAG != 0
-}
-
-#[cfg(any(windows, test))]
-fn windows_placeholder_attributes(attributes: u32) -> bool {
-    attributes & WINDOWS_PLACEHOLDER_ATTRIBUTES != 0
-}
-
-#[cfg(target_os = "macos")]
-fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
-    use std::os::macos::fs::MetadataExt as _;
-    dataless_flag(metadata.st_flags())
-}
-
-#[cfg(windows)]
-fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt as _;
-    windows_placeholder_attributes(metadata.file_attributes())
-}
-
-#[cfg(not(any(target_os = "macos", windows)))]
-fn is_cloud_placeholder(_metadata: &std::fs::Metadata) -> bool {
-    false
+    oleafly_core::exclude::is_linked_skipped_directory(name)
 }
 
 fn probe_entry(_path: &Path, metadata: &std::fs::Metadata) -> EntryProbe {
-    if is_cloud_placeholder(metadata) {
+    if oleafly_core::is_cloud_placeholder(metadata) {
         EntryProbe::Placeholder
     } else {
         EntryProbe::Local
@@ -693,7 +617,7 @@ fn walk_linked_folder_with(
                 relative_path: entry.relative,
                 content_hash,
             }),
-            Err(HistoryError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => notice.skipped.record(SkipKind::Other),
         }
     }
@@ -1124,12 +1048,14 @@ mod tests {
 
     #[test]
     fn placeholder_flags_match_the_platform_constants() {
-        assert!(dataless_flag(0x4000_0000));
-        assert!(!dataless_flag(0x0000_0020));
-        assert!(windows_placeholder_attributes(0x0040_0000));
-        assert!(windows_placeholder_attributes(0x0004_0000));
-        assert!(windows_placeholder_attributes(0x0000_1000));
-        assert!(!windows_placeholder_attributes(0x0000_0020 | 0x0000_0400));
+        assert!(oleafly_core::is_dataless_flags(0x4000_0000));
+        assert!(!oleafly_core::is_dataless_flags(0x0000_0020));
+        assert!(oleafly_core::is_placeholder_attributes(0x0040_0000));
+        assert!(oleafly_core::is_placeholder_attributes(0x0004_0000));
+        assert!(oleafly_core::is_placeholder_attributes(0x0000_1000));
+        assert!(!oleafly_core::is_placeholder_attributes(
+            0x0000_0020 | 0x0000_0400
+        ));
     }
 
     #[cfg(windows)]

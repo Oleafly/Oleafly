@@ -1,8 +1,12 @@
 mod build;
 mod compile_log;
+pub mod content;
 mod detect;
 mod engine_temp;
 mod error;
+pub mod exclude;
+pub mod hlc;
+pub mod ids;
 mod image_check;
 mod latexmk_env;
 pub mod locking;

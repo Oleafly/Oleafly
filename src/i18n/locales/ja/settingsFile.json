@@ -19,7 +19,9 @@
     "readFailed": "そのファイルを開けませんでした。",
     "imported": "設定を読み込みました。",
     "unchanged": "設定はすでに {{name}} と同じです。",
-    "applyFailed": "一部の設定を保存できませんでした。もう一度読み込んでください。"
+    "applyFailed": "一部の設定を保存できませんでした。もう一度読み込んでください。",
+    "cloudEmpty": "クラウドにはまだ設定がありません。先に他のコンピューターから同期してください。",
+    "cloudLoadFailed": "クラウドから設定を読み込めませんでした。"
   },
   "confirm": {
     "title": "設定を置き換えますか？",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "は en_US のような辞書コードである必要があります",
     "shortcut": "は Mod-Shift-k のようなショートカットか \"default\" である必要があります",
     "editorKey": "は Mod-d のようなキー、キーなしの場合は \"\"、または \"default\" である必要があります"
-  }
+  },
+  "importFromLocal": "このデバイスからインポート",
+  "importFromCloud": "クラウドからインポート"
 }

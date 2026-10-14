@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Oleafly'de aç",
     "openWithOleafly": "Oleafly ile aç"
+  },
+  "cloud": {
+    "connectedPage": "Bağlandınız. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz.",
+    "failedPage": "Oturum açma tamamlanmadı. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz."
   }
 }

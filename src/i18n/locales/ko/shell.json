@@ -748,8 +748,45 @@
     "data": {
       "cloud": {
         "comingSoon": "준비 중",
-        "description": "Git 원격 저장소를 설정하지 않고도 여러 기기에서 프로젝트를 동기화하세요. 모든 전송은 종단 간 암호화되어 전송 중에도 작업물이 안전합니다. 로컬 프로젝트 폴더가 계속 기준이 됩니다.",
-        "title": "클라우드 동기화"
+        "title": "클라우드 동기화",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "브라우저가 열리지 않았나요? Dropbox 열기",
+        "codeLabel": "Dropbox 코드",
+        "connect": "연결",
+        "connectDropbox": "Dropbox 연결",
+        "disconnect": "연결 해제",
+        "finishInBrowser": "브라우저에서 완료하세요",
+        "lastConnected": "마지막 연결: {{email}}",
+        "lead": "프로젝트를 Dropbox에 백업하고 다른 기기에서도 열 수 있습니다.",
+        "loadFailed": "클라우드 동기화를 불러오지 못했습니다. 다시 시도하세요.",
+        "pasteHint": "Dropbox에 코드가 표시됩니다. 복사해서 여기에 붙여넣으세요.",
+        "pasteInstead": "로그인에 문제가 있나요? 코드를 붙여넣으세요",
+        "placeholder": "프로젝트를 본인의 Dropbox에 백업하고 다른 컴퓨터에서도 열 수 있습니다. 준비 중입니다.",
+        "rename": "이름 변경",
+        "storageLine": "Dropbox 사용량 {{used}} · {{total}} 중 {{free}} 남음",
+        "syncCheckpoints": "체크포인트(버전 기록)",
+        "syncFiles": "파일과 Git 기록을 포함한 모든 프로젝트(빌드 출력물은 제외)",
+        "syncNever": "AI 채팅, 비밀번호, 키는 이 컴퓨터를 절대 벗어나지 않습니다.",
+        "syncOnHelp": "Oleafly가 열려 있는 동안 동기화됩니다. 끄면 이 컴퓨터에서만 동기화가 멈춥니다. 다른 컴퓨터와 Dropbox는 바뀌지 않습니다.",
+        "syncOnThisComputer": "이 컴퓨터에서 동기화",
+        "syncSettings": "설정, AI 페르소나, 스킬, 템플릿",
+        "thisComputer": "이 컴퓨터: {{name}}",
+        "tryAgain": "다시 시도",
+        "waiting": "Dropbox를 기다리는 중…",
+        "projectsTitle": "프로젝트",
+        "syncNow": "지금 동기화",
+        "syncing": "동기화 중…",
+        "lastSynced": "마지막 동기화: {{time}}",
+        "neverSynced": "아직 Dropbox에 없음",
+        "download": "다운로드",
+        "inDropboxOnly": "Dropbox에 있음, 이 컴퓨터에는 없음",
+        "noProjects": "아직 프로젝트가 없습니다. 새 프로젝트는 동기화됩니다.",
+        "syncProjectSwitch": "이 컴퓨터에서 {{name}} 동기화",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}}이(가) 이제 이 컴퓨터에 있습니다.",
+        "toastDownloadFailed": "{{name}}을(를) 다운로드하지 못했습니다.",
+        "toastSynced": "모두 동기화되었습니다.",
+        "toastSyncFailed": "동기화가 완료되지 않았습니다."
       },
       "danger": {
         "confirmDeleteAllAction": "모든 프로젝트 삭제",
@@ -833,6 +870,10 @@
       "webBrowser": {
         "description": "앱 내장 웹 브라우저(독 전환과 단축키)를 표시하고 AI가 컴퓨터 사용 기능으로 브라우저를 다룰 수 있게 합니다. 아직 베타라서 기본은 꺼짐이며, 꺼져 있으면 브라우저 버튼도 AI의 브라우저 도구도 없습니다.",
         "label": "웹 브라우저"
+      },
+      "cloudSync": {
+        "description": "프로젝트를 Dropbox에 백업해 다른 컴퓨터에서 열 수 있습니다. Oleafly의 실험 기능이며 앱이 열려 있을 때만 동기화됩니다.",
+        "label": "클라우드 동기화"
       }
     },
     "footer": {

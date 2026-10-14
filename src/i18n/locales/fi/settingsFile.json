@@ -19,7 +19,9 @@
     "readFailed": "Tiedostoa ei voitu avata.",
     "imported": "Asetukset tuotiin.",
     "unchanged": "Asetuksesi vastaavat jo tiedostoa {{name}}.",
-    "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen."
+    "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen.",
+    "cloudEmpty": "Pilvessä ei ole vielä asetuksia. Synkronoi ensin toiselta tietokoneeltasi.",
+    "cloudLoadFailed": "Asetuksia ei voitu ladata pilvestä."
   },
   "confirm": {
     "title": "Korvataanko asetuksesi?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "saa olla vain sanakirjan koodi, esimerkiksi en_US",
     "shortcut": "saa olla vain pikanäppäin, esimerkiksi Mod-Shift-k, tai \"default\"",
     "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\""
-  }
+  },
+  "importFromLocal": "Tuo tältä laitteelta",
+  "importFromCloud": "Tuo pilvestä"
 }

@@ -215,5 +215,16 @@
     "git_token_invalid": "這看起來不像 Overleaf Git 權杖。請複製完整的權杖後再試一次。",
     "git_token_rejected": "Overleaf 不接受這個 Git 權杖，它可能已過期。請在 Overleaf 帳號設定中建立新的權杖。",
     "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。"
+  },
+  "cloud": {
+    "code_invalid": "該代碼無效。請再試一次。",
+    "connect_frozen": "Dropbox 目前不接受 Oleafly 的新連接。請過幾天再試。",
+    "device_name_empty": "請輸入名稱。",
+    "device_name_invalid": "電腦名稱不能包含 \\ / : * ? \" < > |，且最多 32 個字元。",
+    "network": "無法連接到 Dropbox。請檢查你的網絡連接。",
+    "not_connected": "Dropbox 未連接。",
+    "revoked": "Dropbox 存取權限已被撤銷。請重新連接。",
+    "sign_in_cancelled": "Dropbox 登入已取消。",
+    "sign_in_timeout": "登入耗時過長。請再試一次。"
   }
 }

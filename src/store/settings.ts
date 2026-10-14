@@ -981,6 +981,8 @@ interface SettingsState {
   // never re-triggers on a later, unrelated open.
   settingsScrollTarget: string | null;
   setSettingsScrollTarget: (v: string | null) => void;
+  settingsNavRequest: string | null;
+  requestSettingsNav: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
   // Make the editor pane visible (opening a file from the tree): reveal the
@@ -1078,6 +1080,8 @@ interface SettingsState {
   // entry point is gated on this.
   webBrowser: boolean;
   setWebBrowser: (v: boolean) => void;
+  cloudSync: boolean;
+  setCloudSync: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -1248,6 +1252,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
+  cloudSync: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1338,6 +1343,7 @@ export const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     webBrowser: "oleafly.webBrowser",
+    cloudSync: "oleafly.cloudSync",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1693,6 +1699,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
+  settingsNavRequest: null,
+  requestSettingsNav: (v) => set({ settingsNavRequest: v }),
   viewMode: "editor",
   // Choosing an explicit editor/split/pdf view always reveals the workspace.
   setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
@@ -1994,6 +2002,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
+  },
+  cloudSync: ls("oleafly.cloudSync", "0") === "1",
+  setCloudSync: (v) => {
+    saveLs("oleafly.cloudSync", v ? "1" : "0");
+    set({ cloudSync: v });
   },
   webBrowser: ls("oleafly.webBrowser", "0") === "1",
   setWebBrowser: (v) => {

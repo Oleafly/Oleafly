@@ -111,5 +111,9 @@
   "systemIntegration": {
     "openInOleafly": "Avaa sovelluksessa Oleafly",
     "openWithOleafly": "Avaa sovelluksella Oleafly"
+  },
+  "cloud": {
+    "connectedPage": "Olet yhteydessä. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen.",
+    "failedPage": "Kirjautuminen ei valmistunut. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen."
   }
 }

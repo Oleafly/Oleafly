@@ -215,5 +215,16 @@
     "git_token_invalid": "Tohle nevypadá jako token Git z Overleafu. Zkopírujte celý token a zkuste to znovu.",
     "git_token_rejected": "Overleaf token Git nepřijal. Možná vypršel. Vytvořte nový v nastavení svého účtu Overleaf.",
     "git_unavailable": "Integrace Git v Overleafu není pro tento projekt dostupná. Vlastník projektu k ní potřebuje placený nebo univerzitní tarif."
+  },
+  "cloud": {
+    "code_invalid": "Tento kód nefungoval. Zkuste to znovu.",
+    "connect_frozen": "Dropbox teď pro Oleafly nová připojení nepřijímá. Zkuste to za pár dní.",
+    "device_name_empty": "Zadejte název.",
+    "device_name_invalid": "Název počítače nesmí obsahovat \\ / : * ? \" < > | a má nejvýše 32 znaků.",
+    "network": "Dropbox se nepodařilo kontaktovat. Zkontrolujte připojení.",
+    "not_connected": "Dropbox není připojený.",
+    "revoked": "Přístup k Dropboxu byl odebrán. Připojte se znovu.",
+    "sign_in_cancelled": "Přihlášení do Dropboxu bylo zrušeno.",
+    "sign_in_timeout": "Přihlášení trvalo příliš dlouho. Zkuste to znovu."
   }
 }

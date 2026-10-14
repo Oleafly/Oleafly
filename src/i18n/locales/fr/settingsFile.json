@@ -19,7 +19,9 @@
     "readFailed": "Impossible d'ouvrir ce fichier.",
     "imported": "Paramètres importés.",
     "unchanged": "Vos paramètres correspondent déjà à {{name}}.",
-    "applyFailed": "Certains paramètres n'ont pas pu être enregistrés. Relancez l'import."
+    "applyFailed": "Certains paramètres n'ont pas pu être enregistrés. Relancez l'import.",
+    "cloudEmpty": "Aucun paramètre dans le cloud pour l'instant. Synchronisez d'abord depuis votre autre ordinateur.",
+    "cloudLoadFailed": "Impossible de charger les paramètres depuis le cloud."
   },
   "confirm": {
     "title": "Remplacer vos paramètres ?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "doit être un code de dictionnaire comme en_US",
     "shortcut": "doit être un raccourci comme Mod-Shift-k, ou \"default\"",
     "editorKey": "doit être une touche comme Mod-d, \"\" pour aucune, ou \"default\""
-  }
+  },
+  "importFromLocal": "Importer depuis cet appareil",
+  "importFromCloud": "Importer depuis le cloud"
 }

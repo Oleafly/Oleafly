@@ -501,4 +501,5 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
 
   pref("experimentation.latexTools", "latexTools", bool),
   pref("experimentation.webBrowser", "webBrowser", bool),
+  pref("experimentation.cloudSync", "cloudSync", bool),
 ];

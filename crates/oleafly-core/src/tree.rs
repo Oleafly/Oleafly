@@ -13,16 +13,8 @@ pub fn is_generated_directory(name: &OsStr) -> bool {
 }
 
 pub fn is_skipped_scan_directory(name: &OsStr) -> bool {
-    let Some(name) = name.to_str() else {
-        return false;
-    };
-    name.starts_with('.')
-        || matches!(
-            name,
-            "node_modules" | "target" | "build" | "out" | "__MACOSX" | "svg-inkscape"
-        )
-        || name.starts_with("_minted")
-        || name.starts_with("pythontex-files-")
+    name.to_str()
+        .is_some_and(crate::exclude::is_scan_skipped_directory)
 }
 
 const SF_DATALESS: u32 = 0x4000_0000;

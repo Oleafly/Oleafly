@@ -19,7 +19,9 @@
     "readFailed": "Bu dosya açılamadı.",
     "imported": "Ayarlar içe aktarıldı.",
     "unchanged": "Ayarlarınız zaten {{name}} dosyasıyla aynı.",
-    "applyFailed": "Bazı ayarlar kaydedilemedi. İçe aktarmayı yeniden deneyin."
+    "applyFailed": "Bazı ayarlar kaydedilemedi. İçe aktarmayı yeniden deneyin.",
+    "cloudEmpty": "Bulutta henüz ayar yok. Önce diğer bilgisayarınızdan eşitleyin.",
+    "cloudLoadFailed": "Buluttaki ayarlar yüklenemedi."
   },
   "confirm": {
     "title": "Ayarlarınız değiştirilsin mi?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "en_US gibi bir sözlük kodu olmalıdır",
     "shortcut": "Mod-Shift-k gibi bir kısayol ya da \"default\" olmalıdır",
     "editorKey": "Mod-d gibi bir tuş, tuş olmaması için \"\" ya da \"default\" olmalıdır"
-  }
+  },
+  "importFromLocal": "Bu cihazdan içe aktar",
+  "importFromCloud": "Buluttan içe aktar"
 }

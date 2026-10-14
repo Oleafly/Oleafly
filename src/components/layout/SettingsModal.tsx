@@ -15,7 +15,6 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
-  Cloud,
   Compass,
   Copy,
   Cpu,
@@ -56,6 +55,7 @@ import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
+import { CloudTab } from "@/components/settings/cloud/CloudTab";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
@@ -288,6 +288,8 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
+  const cloudSync = useSettingsStore((s) => s.cloudSync);
+  const setCloudSync = useSettingsStore((s) => s.setCloudSync);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
@@ -299,6 +301,19 @@ export function SettingsModal() {
   const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
+  const [dataTab, setDataTab] = useState("local");
+  const settingsNavRequest = useSettingsStore((s) => s.settingsNavRequest);
+  const requestSettingsNav = useSettingsStore((s) => s.requestSettingsNav);
+  useEffect(() => {
+    if (!settingsNavRequest) return;
+    if (settingsNavRequest === "data-cloud") {
+      setSection("data");
+      setDataTab("cloud");
+    } else if (settingsNavRequest === "general") {
+      setSection("general");
+    }
+    requestSettingsNav(null);
+  }, [settingsNavRequest, requestSettingsNav]);
   useEffect(() => {
     import("@/i18n/lazy-namespaces")
       .then((module) => module.loadNamespace("settingsFile"))
@@ -739,6 +754,12 @@ export function SettingsModal() {
           checked={webBrowser}
           onChange={setWebBrowser}
         />
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.experimentation.cloudSync.label)}
+          description={t(($) => $.shell.settings.experimentation.cloudSync.description)}
+          checked={cloudSync}
+          onChange={setCloudSync}
+        />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={resetExperimentationPreferences}
@@ -846,7 +867,7 @@ export function SettingsModal() {
 
   const renderDataSection = () => (
     section === "data" && (
-      <Tabs defaultValue="local" className="space-y-4 text-sm">
+      <Tabs value={dataTab} onValueChange={setDataTab} className="space-y-4 text-sm">
         <TabsList>
           <TabsTrigger value="local" data-testid="data-tab-local">
             {t(($) => $.shell.settings.data.tabs.local)}
@@ -987,25 +1008,7 @@ export function SettingsModal() {
         </section>
         </TabsContent>
         <TabsContent value="cloud">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex max-w-xl flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="relative size-6 shrink-0 text-primary" aria-hidden>
-                <Cloud className="absolute left-0 top-0 size-5" />
-                <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
-              </span>
-              <h3 className="font-semibold text-foreground">
-                {t(($) => $.shell.settings.data.cloud.title)}
-              </h3>
-              <Badge variant="muted" size="sm" className="uppercase tracking-wide">
-                {t(($) => $.shell.settings.data.cloud.comingSoon)}
-              </Badge>
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t(($) => $.shell.settings.data.cloud.description)}
-            </p>
-          </div>
-        </div>
+          <CloudTab />
         </TabsContent>
       </Tabs>
     )

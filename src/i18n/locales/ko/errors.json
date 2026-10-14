@@ -215,5 +215,16 @@
     "git_token_invalid": "Overleaf Git 토큰이 아닌 것 같습니다. 토큰 전체를 복사한 뒤 다시 시도하세요.",
     "git_token_rejected": "Overleaf가 Git 토큰을 받아들이지 않았습니다. 만료되었을 수 있습니다. Overleaf 계정 설정에서 새 토큰을 만드세요.",
     "git_unavailable": "이 프로젝트에서는 Overleaf의 Git 연동을 사용할 수 없습니다. 프로젝트 소유자에게 유료 요금제나 대학 요금제가 필요합니다."
+  },
+  "cloud": {
+    "code_invalid": "그 코드가 작동하지 않았습니다. 다시 시도하세요.",
+    "connect_frozen": "Dropbox가 현재 Oleafly의 새 연결을 받고 있지 않습니다. 며칠 뒤에 다시 시도하세요.",
+    "device_name_empty": "이름을 입력하세요.",
+    "device_name_invalid": "컴퓨터 이름에는 \\ / : * ? \" < > | 를 쓸 수 없고 최대 32자입니다.",
+    "network": "Dropbox에 연결하지 못했습니다. 연결을 확인하세요.",
+    "not_connected": "Dropbox가 연결되어 있지 않습니다.",
+    "revoked": "Dropbox 액세스가 취소되었습니다. 다시 연결하세요.",
+    "sign_in_cancelled": "Dropbox 로그인이 취소되었습니다.",
+    "sign_in_timeout": "로그인이 너무 오래 걸렸습니다. 다시 시도하세요."
   }
 }

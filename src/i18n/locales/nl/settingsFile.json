@@ -19,7 +19,9 @@
     "readFailed": "Kon dat bestand niet openen.",
     "imported": "Instellingen geïmporteerd.",
     "unchanged": "Je instellingen komen al overeen met {{name}}.",
-    "applyFailed": "Sommige instellingen konden niet worden opgeslagen. Probeer het importeren opnieuw."
+    "applyFailed": "Sommige instellingen konden niet worden opgeslagen. Probeer het importeren opnieuw.",
+    "cloudEmpty": "Nog geen instellingen in de cloud. Synchroniseer eerst vanaf je andere computer.",
+    "cloudLoadFailed": "Instellingen uit de cloud konden niet worden geladen."
   },
   "confirm": {
     "title": "Je instellingen vervangen?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "moet een woordenboekcode zijn zoals en_US",
     "shortcut": "moet een sneltoets zijn zoals Mod-Shift-k, of \"default\"",
     "editorKey": "moet een toets zijn zoals Mod-d, \"\" voor geen, of \"default\""
-  }
+  },
+  "importFromLocal": "Importeren vanaf dit apparaat",
+  "importFromCloud": "Importeren uit de cloud"
 }

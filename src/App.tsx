@@ -40,6 +40,7 @@ import { ZenSession } from "@/components/layout/ZenSession";
 import { ZenCompileCorner, ZenTitleStrip } from "@/components/layout/ZenChrome";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
+import { CloudSyncKeeper } from "@/components/cloud/CloudSyncKeeper";
 import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
@@ -1372,6 +1373,7 @@ export default function App() {
       <ProjectAvailabilityKeeper />
       <OpenFolderKeeper />
       <FolderWatchKeeper />
+      <CloudSyncKeeper />
       <AppContent />
       <OpenCompileKeeper />
     </>

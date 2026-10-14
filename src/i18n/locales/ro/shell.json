@@ -760,8 +760,45 @@
     "data": {
       "cloud": {
         "comingSoon": "În curând",
-        "description": "Ține proiectele sincronizate pe toate dispozitivele tale, fără să configurezi un depozit Git la distanță. Fiecare transfer va fi criptat cap la cap, așa că munca ta rămâne privată pe drum. Folderele tale locale de proiect vor rămâne sursa de adevăr.",
-        "title": "Sincronizare în cloud"
+        "title": "Sincronizare în cloud",
+        "accountLabel": "Dropbox · {{email}}",
+        "browserDidntOpen": "Browserul nu s-a deschis? Deschide Dropbox",
+        "codeLabel": "Cod de la Dropbox",
+        "connect": "Conectează",
+        "connectDropbox": "Conectează Dropbox",
+        "disconnect": "Deconectează",
+        "finishInBrowser": "Finalizează în browser",
+        "lastConnected": "Ultima conectare la {{email}}.",
+        "lead": "Fă copii de rezervă ale proiectelor tale în Dropbox și deschide-le pe alte dispozitive.",
+        "loadFailed": "Sincronizarea în cloud nu a putut fi încărcată. Încearcă din nou.",
+        "pasteHint": "Dropbox va afișa un cod. Copiază-l și lipește-l aici.",
+        "pasteInstead": "Probleme la conectare? Lipește un cod",
+        "placeholder": "Fă copii de rezervă ale proiectelor tale în propriul Dropbox și deschide-le pe celelalte computere ale tale. În curând.",
+        "rename": "Redenumește",
+        "storageLine": "{{used}} folosiți în Dropbox · {{free}} liberi din {{total}}",
+        "syncCheckpoints": "Punctele de control (istoricul versiunilor)",
+        "syncFiles": "Fiecare proiect cu fișierele și istoricul Git (rezultatele compilării sunt omise)",
+        "syncNever": "Conversațiile IA, parolele și cheile nu părăsesc niciodată acest computer.",
+        "syncOnHelp": "Sincronizează cât timp Oleafly este deschis. Dezactivarea oprește sincronizarea doar aici. Celelalte computere și Dropbox nu se schimbă.",
+        "syncOnThisComputer": "Sincronizare pe acest computer",
+        "syncSettings": "Setările tale, personajele IA, abilitățile și șabloanele",
+        "thisComputer": "Acest computer: {{name}}",
+        "tryAgain": "Încearcă din nou",
+        "waiting": "Se așteaptă Dropbox…",
+        "projectsTitle": "Proiecte",
+        "syncNow": "Sincronizează acum",
+        "syncing": "Se sincronizează…",
+        "lastSynced": "Ultima sincronizare: {{time}}",
+        "neverSynced": "Nu este încă în Dropbox",
+        "download": "Descarcă",
+        "inDropboxOnly": "În Dropbox, nu pe acest computer",
+        "noProjects": "Niciun proiect încă. Proiectele noi se vor sincroniza.",
+        "syncProjectSwitch": "Sincronizează {{name}} pe acest computer",
+        "dropbox": "Dropbox",
+        "toastDownloaded": "{{name}} este acum pe acest computer.",
+        "toastDownloadFailed": "{{name}} nu a putut fi descărcat.",
+        "toastSynced": "Totul este sincronizat.",
+        "toastSyncFailed": "Sincronizarea nu s-a terminat."
       },
       "danger": {
         "confirmDeleteAllAction": "Șterge toate proiectele",
@@ -863,6 +900,10 @@
       "webBrowser": {
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
         "label": "Browser web"
+      },
+      "cloudSync": {
+        "description": "Fă copii ale proiectelor în Dropbox și deschide-le pe alte computere. Experimental în Oleafly, sincronizează doar cu aplicația deschisă.",
+        "label": "Sincronizare în cloud"
       }
     },
     "footer": {

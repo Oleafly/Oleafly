@@ -19,7 +19,9 @@
     "readFailed": "Não foi possível abrir esse arquivo.",
     "imported": "Configurações importadas.",
     "unchanged": "Suas configurações já correspondem a {{name}}.",
-    "applyFailed": "Não foi possível salvar algumas configurações. Tente importar de novo."
+    "applyFailed": "Não foi possível salvar algumas configurações. Tente importar de novo.",
+    "cloudEmpty": "Ainda não há configurações na nuvem. Sincronize primeiro do outro computador.",
+    "cloudLoadFailed": "Não foi possível carregar as configurações da nuvem."
   },
   "confirm": {
     "title": "Substituir suas configurações?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "precisa ser um código de dicionário como en_US",
     "shortcut": "precisa ser um atalho como Mod-Shift-k, ou \"default\"",
     "editorKey": "precisa ser uma tecla como Mod-d, \"\" para nenhuma, ou \"default\""
-  }
+  },
+  "importFromLocal": "Importar deste dispositivo",
+  "importFromCloud": "Importar da nuvem"
 }

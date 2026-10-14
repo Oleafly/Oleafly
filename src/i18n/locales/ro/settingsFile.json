@@ -19,7 +19,9 @@
     "readFailed": "Fișierul nu a putut fi deschis.",
     "imported": "Setările au fost importate.",
     "unchanged": "Setările tale se potrivesc deja cu {{name}}.",
-    "applyFailed": "Unele setări nu au putut fi salvate. Încearcă din nou importul."
+    "applyFailed": "Unele setări nu au putut fi salvate. Încearcă din nou importul.",
+    "cloudEmpty": "Încă nu sunt setări în cloud. Sincronizează mai întâi de pe celălalt computer.",
+    "cloudLoadFailed": "Setările din cloud nu au putut fi încărcate."
   },
   "confirm": {
     "title": "Înlocuiești setările?",
@@ -53,5 +55,7 @@
     "dictionaryLocale": "trebuie să fie un cod de dicționar, de exemplu en_US",
     "shortcut": "trebuie să fie o scurtătură, de exemplu Mod-Shift-k, sau \"default\"",
     "editorKey": "trebuie să fie o tastă, de exemplu Mod-d, \"\" pentru niciuna, sau \"default\""
-  }
+  },
+  "importFromLocal": "Importă de pe acest dispozitiv",
+  "importFromCloud": "Importă din cloud"
 }
