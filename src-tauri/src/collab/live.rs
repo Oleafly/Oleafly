@@ -33,11 +33,10 @@ pub(crate) use unsent::{
     detach_projects, keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT,
 };
 
-use bases::{merged_onto, nearest, WrittenTexts};
+use bases::{initial_bases, merged_onto, nearest, WrittenTexts};
 use disk_pass::{checked, writable};
 use import::{
-    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, upload_blobs,
-    LocalImport,
+    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport,
 };
 use session::{guard, lock, not_live, WriterSignal, ACTIVE};
 
@@ -51,8 +50,6 @@ pub use payloads::{
 
 #[cfg(test)]
 use crate::collab::disk::sha256_hex;
-#[cfg(test)]
-use bases::initial_bases;
 #[cfg(test)]
 use disk_pass::{apply_to_disk, DiskPass};
 #[cfg(test)]

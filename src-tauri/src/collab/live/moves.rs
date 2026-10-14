@@ -505,9 +505,9 @@ impl Active {
         }
         let (outcome, adopted) = {
             let mut disk = guard(&self.disk);
+            let outcome = work()?;
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
-            let outcome = work()?;
             let adopted = match adopt(&outcome, &mut live, &mut disk, &mut bases) {
                 Ok(adopted) => adopted,
                 Err(error) => {

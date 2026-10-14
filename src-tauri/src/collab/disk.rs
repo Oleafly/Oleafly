@@ -212,9 +212,14 @@ pub fn excluded_name(relative: &str) -> bool {
 }
 
 pub fn scan_folder(root: &Path) -> Result<Scan, String> {
+    scan_folder_within(root, "")
+}
+
+pub fn scan_folder_within(root: &Path, folder: &str) -> Result<Scan, String> {
     let rules = ShareRules::load(root);
     let mut scan = Scan::default();
-    walk(root, "", &rules, &mut scan, 0)?;
+    let depth = folder.split('/').filter(|part| !part.is_empty()).count();
+    walk(root, folder, &rules, &mut scan, depth)?;
     scan.files.sort();
     scan.dirs.sort();
     scan.excluded.sort();

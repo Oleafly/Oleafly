@@ -9,7 +9,6 @@ use oleafly_collab_protocol::auth::SessionEndReason;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-use super::bases::initial_bases;
 use super::host::LiveHost;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
@@ -97,11 +96,15 @@ pub async fn start(
         .await
         .map_err(io)??
     };
-    let (mut live, mut disk) = loaded;
+    let (mut live, disk) = loaded;
     crate::collab::tree::sign(&mut live, state, binding.server_id, tokens.account_id);
-    let mut bases = initial_bases(&root, &disk, &live);
     let hold_dir = paths.project_dir(project_id)?;
-    sync_hold::catch_up(&root, &hold_dir, &link, &mut live, &mut disk, &mut bases).await?;
+    let sync_hold::CaughtUp {
+        live,
+        disk,
+        bases,
+        to_upload,
+    } = sync_hold::catch_up(root.clone(), hold_dir, live, disk).await?;
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
     let (writer_tx, writer_rx) = mpsc::unbounded_channel();
@@ -132,6 +135,12 @@ pub async fn start(
     settings::schedule(&active);
     uploads::attach(&active);
     active.announce_uploads();
+    if !to_upload.is_empty() {
+        let uploading = Arc::clone(&active);
+        tauri::async_runtime::spawn(async move {
+            let _ = uploading.import_paths(Some(to_upload)).await;
+        });
+    }
     Ok(LiveInfo {
         role,
         account_id: tokens.account_id,

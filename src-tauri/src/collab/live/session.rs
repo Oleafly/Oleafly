@@ -17,7 +17,7 @@ use tokio::sync::oneshot;
 use super::bases::WrittenTexts;
 use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
-use super::import::{apply_local_import, read_local_changes};
+use super::import::{apply_local_import, placed_now, scan_local};
 use super::payloads::StatusPayload;
 use super::unwritten::{reason_of, Settled, UnwrittenReason};
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
@@ -139,10 +139,15 @@ impl Active {
             return Ok(());
         }
         let snapshot = guard(&self.disk).clone();
-        let mut import = {
-            let live = lock(&self.live);
-            read_local_changes(&self.root, &snapshot, &live, only.as_deref())?
-        };
+        let placed = placed_now(&lock(&self.live))?;
+        let root = self.root.clone();
+        let (scanned, snapshot) = tauri::async_runtime::spawn_blocking(move || {
+            let scanned = scan_local(&root, &snapshot, &placed, only.as_deref());
+            (scanned, snapshot)
+        })
+        .await
+        .map_err(io)?;
+        let mut import = scanned?.classify(&lock(&self.live));
         let edits = sync_hold::screen(&self.hold_dir(), &self.root, &snapshot, &mut import)?;
         if import.is_empty() && edits.is_empty() {
             return Ok(());

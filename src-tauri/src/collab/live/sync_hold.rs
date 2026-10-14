@@ -6,7 +6,6 @@ use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, DiskPlan, Layout};
 use oleafly_collab::ot::TextOperation;
-use oleafly_collab::sync::LiveLink;
 use oleafly_collab::{evaluate, write_atomic, CollabError, MassChangeThreshold, MassChangeVerdict};
 use serde::{Deserialize, Serialize};
 
@@ -303,9 +302,11 @@ impl Active {
         let dir = self.hold_dir();
         {
             let mut disk = guard(&self.disk);
+            let placed = super::import::placed_now(&lock(&self.live))?;
+            let scanned = super::import::scan_local(&self.root, &disk, &placed, only)?;
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
-            let import = super::read_local_changes(&self.root, &disk, &live, only)?;
+            let import = scanned.classify(&live);
             let placed = by_path(&materialize::layout(&live.doc().nodes()?));
             let _lock = hold_lock();
             let mut hold = Hold::load(&dir);
@@ -672,28 +673,58 @@ fn hold_at_start(
     Ok(true)
 }
 
+pub(super) struct CaughtUp {
+    pub(super) live: LiveProject,
+    pub(super) disk: DiskState,
+    pub(super) bases: WrittenTexts,
+    pub(super) to_upload: Vec<String>,
+}
+
 pub(super) async fn catch_up(
+    root: PathBuf,
+    dir: PathBuf,
+    mut live: LiveProject,
+    mut disk: DiskState,
+) -> Result<CaughtUp, CollabError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut bases = super::initial_bases(&root, &disk, &live);
+        let to_upload = catch_up_here(&root, &dir, &mut live, &mut disk, &mut bases)?;
+        Ok(CaughtUp {
+            live,
+            disk,
+            bases,
+            to_upload,
+        })
+    })
+    .await
+    .map_err(io)?
+}
+
+fn catch_up_here(
     root: &Path,
     dir: &Path,
-    link: &LiveLink,
     live: &mut LiveProject,
     disk: &mut DiskState,
     bases: &mut WrittenTexts,
-) -> Result<(), CollabError> {
+) -> Result<Vec<String>, CollabError> {
     let mut import = super::read_local_changes(root, disk, live, None)?;
     let edits = screen(dir, root, disk, &mut import)?;
     if hold_at_start(dir, disk, &import, &edits)? {
-        return Ok(());
+        return Ok(Vec::new());
     }
     if (import.is_empty() && edits.is_empty()) || !live.can_edit() {
-        return Ok(());
+        return Ok(Vec::new());
     }
-    let failed = super::upload_blobs(link, &import.blobs).await;
-    import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
+    let sent: BTreeSet<&String> = disk.hashes.values().collect();
+    let (fresh, known): (Vec<_>, Vec<_>) = std::mem::take(&mut import.blobs)
+        .into_iter()
+        .partition(|(_, hash, _)| !sent.contains(hash));
+    import.blobs = known;
+    let to_upload = fresh.into_iter().map(|(path, _, _)| path).collect();
     super::moves::adopt_folder_moves(live, disk, bases, &mut import)?;
     super::apply_local_import(live, disk, bases, import, root)?;
     apply_kept_edits(dir, root, live, disk, bases, edits)?;
-    Ok(())
+    Ok(to_upload)
 }
 
 pub(crate) fn outside_change(
@@ -758,7 +789,7 @@ mod tests {
     use crate::collab::testing::RecordedPauses;
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
     use oleafly_collab::materialize;
-    use oleafly_collab::sync::{spawn_live, LiveStatus, SharedLive};
+    use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
@@ -893,21 +924,17 @@ mod tests {
         } = rig;
         let document_dir = active.document_dir.clone();
         let disk_file = active.disk_file.clone();
-        let link = active.link.clone();
         drop(active);
-        let mut live = LiveProject::load(&document_dir, ProjectRole::Owner).unwrap();
-        let mut disk = DiskState::load(&disk_file);
-        let mut bases = initial_bases(&root, &disk, &live);
-        catch_up(
-            &root,
-            &collab_of(&dir),
-            &link,
-            &mut live,
-            &mut disk,
-            &mut bases,
-        )
-        .await
-        .unwrap();
+        let live = LiveProject::load(&document_dir, ProjectRole::Owner).unwrap();
+        let disk = DiskState::load(&disk_file);
+        let CaughtUp {
+            mut live,
+            disk,
+            bases,
+            ..
+        } = catch_up(root.clone(), collab_of(&dir), live, disk)
+            .await
+            .unwrap();
         live.mark_all_dirty().unwrap();
         build(dir, root, state, live, disk, bases, seq.into_inner()).await
     }

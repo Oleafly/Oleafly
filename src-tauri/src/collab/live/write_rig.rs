@@ -238,6 +238,10 @@ impl LiveRig {
         names
     }
 
+    pub(crate) fn shared_live(&self) -> SharedLive {
+        Arc::clone(&self.active.live)
+    }
+
     pub(crate) fn saved_text(&self, path: &str) -> Option<String> {
         let id = self.id_of(path)?;
         let saved = LiveProject::load(&self.active.document_dir, ProjectRole::Owner).ok()?;

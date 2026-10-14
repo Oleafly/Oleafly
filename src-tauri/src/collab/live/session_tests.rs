@@ -1018,3 +1018,72 @@ fn quitting_right_after_typing_offline_keeps_the_edit_in_the_document_and_on_dis
         "abc typed just before quitting"
     );
 }
+
+#[test]
+fn reading_a_folder_for_an_import_leaves_the_shared_document_free() {
+    let (_dir, root, _host, rig) = watched_rig("lock-free", &[("main.tex", "abc")]);
+    std::fs::create_dir_all(root.join("figs")).unwrap();
+    std::fs::write(root.join("figs/a.tex"), "a").unwrap();
+    std::fs::write(root.join("figs/held-open.tex"), "slow").unwrap();
+    let (reading, read) = std::sync::mpsc::channel::<()>();
+    let (go, wait) = std::sync::mpsc::channel::<()>();
+    let (reading, wait) = (Mutex::new(reading), Mutex::new(wait));
+    *guard(&super::import::BEFORE_READ) = Some(Arc::new(move |path: &str| {
+        if path == "figs/held-open.tex" {
+            let _ = guard(&reading).send(());
+            let _ = guard(&wait).recv_timeout(Duration::from_secs(20));
+        }
+    }));
+    let live = rig.shared_live();
+    let importing = std::thread::spawn(move || {
+        rig.import(&["figs"]);
+        rig
+    });
+    let reached = read.recv_timeout(Duration::from_secs(20)).is_ok();
+    let (taken, took) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _held = live.lock();
+        let _ = taken.send(());
+    });
+    let free = took.recv_timeout(Duration::from_secs(5)).is_ok();
+    let _ = go.send(());
+    let rig = importing.join().unwrap();
+    *guard(&super::import::BEFORE_READ) = None;
+    assert!(reached, "the import never read the folder");
+    assert!(
+        free,
+        "typing and syncing waited while the import read files"
+    );
+    assert_eq!(
+        rig.paths(),
+        ["figs", "figs/a.tex", "figs/held-open.tex", "main.tex"]
+    );
+}
+
+#[test]
+fn opening_a_project_takes_in_local_text_at_once_and_leaves_new_figures_for_later() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(root.join("figs")).unwrap();
+    let (live, disk, main) = project(&root);
+    std::fs::write(root.join("main.tex"), "abc edited while closed").unwrap();
+    std::fs::write(root.join("figs/new.png"), [0x89, b'P', 0, 9]).unwrap();
+    let caught = tauri::async_runtime::block_on(super::sync_hold::catch_up(
+        root.clone(),
+        dir.path().join("collab"),
+        live,
+        disk,
+    ))
+    .unwrap();
+    assert_eq!(caught.to_upload, ["figs/new.png"]);
+    assert_eq!(
+        caught.live.doc().text(&main).unwrap(),
+        "abc edited while closed"
+    );
+    let shared: Vec<String> =
+        oleafly_collab::materialize::layout(&caught.live.doc().nodes().unwrap())
+            .into_values()
+            .map(|placed| placed.path)
+            .collect();
+    assert!(!shared.contains(&"figs/new.png".to_owned()), "{shared:?}");
+}
