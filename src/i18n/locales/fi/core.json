@@ -287,7 +287,9 @@
     "yearRangeInvalid": "Alkuvuosi ei voi olla loppuvuotta myöhäisempi."
   },
   "mcp": {
+    "deniedByRules": "Hylätty approvals.toml-tiedoston deny-säännön vuoksi",
     "openProjectSummary": "Avaa projekti {{id}}",
+    "rulesUnreadable": "Hylätty, koska approvals.toml-tiedostoa ei voitu lukea",
     "useToolSummary": "Käytä työkalua {{tool}} MCP-palvelimelta {{server}}"
   },
   "mcpConfig": {

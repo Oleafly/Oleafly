@@ -293,7 +293,9 @@
     "yearRangeInvalid": "Початковий рік не може бути пізнішим за кінцевий."
   },
   "mcp": {
+    "deniedByRules": "Відхилено правилом deny в approvals.toml",
     "openProjectSummary": "Відкрити проєкт {{id}}",
+    "rulesUnreadable": "Відхилено, бо не вдалося прочитати approvals.toml",
     "useToolSummary": "Використати {{tool}} із сервера MCP {{server}}"
   },
   "mcpConfig": {

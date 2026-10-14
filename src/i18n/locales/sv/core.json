@@ -287,7 +287,9 @@
     "yearRangeInvalid": "Startåret kan inte vara senare än slutåret."
   },
   "mcp": {
+    "deniedByRules": "Nekad av en deny-regel i approvals.toml",
     "openProjectSummary": "Öppna projektet {{id}}",
+    "rulesUnreadable": "Nekad eftersom approvals.toml inte kunde läsas",
     "useToolSummary": "Använd {{tool}} från MCP-servern {{server}}"
   },
   "mcpConfig": {

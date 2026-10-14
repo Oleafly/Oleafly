@@ -284,7 +284,9 @@
     "yearRangeInvalid": "시작 연도가 종료 연도보다 늦을 수 없습니다."
   },
   "mcp": {
+    "deniedByRules": "approvals.toml의 거부 규칙에 따라 거부됨",
     "openProjectSummary": "프로젝트 {{id}} 열기",
+    "rulesUnreadable": "approvals.toml을 읽을 수 없어 거부됨",
     "useToolSummary": "{{server}} MCP 서버의 {{tool}} 사용"
   },
   "mcpConfig": {

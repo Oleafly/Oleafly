@@ -290,7 +290,9 @@
     "yearRangeInvalid": "Anul de început nu poate fi după anul de sfârșit."
   },
   "mcp": {
+    "deniedByRules": "Refuzat de o regulă deny din approvals.toml",
     "openProjectSummary": "Deschide proiectul {{id}}",
+    "rulesUnreadable": "Refuzat deoarece approvals.toml nu a putut fi citit",
     "useToolSummary": "Folosește {{tool}} de pe serverul MCP {{server}}"
   },
   "mcpConfig": {

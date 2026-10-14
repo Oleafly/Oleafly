@@ -284,7 +284,9 @@
     "yearRangeInvalid": "起始年份不能晚於結束年份。"
   },
   "mcp": {
+    "deniedByRules": "已被 approvals.toml 中的拒絕規則拒絕。",
     "openProjectSummary": "開啟專案 {{id}}",
+    "rulesUnreadable": "無法讀取 approvals.toml，因此已拒絕。",
     "useToolSummary": "使用 {{server}} MCP 伺服器的 {{tool}}"
   },
   "mcpConfig": {

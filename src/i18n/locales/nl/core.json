@@ -287,7 +287,9 @@
     "yearRangeInvalid": "Het beginjaar mag niet later zijn dan het eindjaar."
   },
   "mcp": {
+    "deniedByRules": "Geweigerd door een deny-regel in approvals.toml",
     "openProjectSummary": "Project {{id}} openen",
+    "rulesUnreadable": "Geweigerd omdat approvals.toml niet kon worden gelezen",
     "useToolSummary": "{{tool}} gebruiken van de MCP-server {{server}}"
   },
   "mcpConfig": {

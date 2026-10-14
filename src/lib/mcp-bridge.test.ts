@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
 // The bridge imports the app tool registry, which pulls stores + tauri; mock
 // the heavy edges the same way src/lib/ai-tools.test.ts does.
@@ -723,12 +724,19 @@ describe("MCP tool calls and the project's deny rules", () => {
     mocks.api.deleteFile.mockClear();
 
     const { bridge, result } = await callTool("delete_file", { path: "chapters/one.tex" });
+    const { useMcpActivityStore } = await import("@/store/mcp-activity");
 
     expect(mocks.api.approvalsList).toHaveBeenCalledWith("proj");
     expect(mocks.api.deleteFile).not.toHaveBeenCalled();
+    // The client gets the English sentence; the app's activity list the catalog text.
     expect(result).toEqual(
       bridge.toMcpResult({ error: "This tool is denied for this project in approvals.toml." }, []),
     );
+    expect(useMcpActivityStore.getState().logs[0]).toMatchObject({
+      name: "delete_file",
+      status: "error",
+      summary: enCore.mcp.deniedByRules,
+    });
   });
 
   it("refuses tools while the rules can't be read", async () => {
@@ -736,10 +744,16 @@ describe("MCP tool calls and the project's deny rules", () => {
     mocks.api.readFileContent.mockClear();
 
     const { result } = await callTool("read_file", { path: "main.tex" });
+    const { useMcpActivityStore } = await import("@/store/mcp-activity");
 
     expect(mocks.api.readFileContent).not.toHaveBeenCalled();
     expect(result).toMatchObject({ isError: true });
     expect(JSON.stringify(result)).toContain("couldn't read the approval rules");
+    expect(useMcpActivityStore.getState().logs[0]).toMatchObject({
+      name: "read_file",
+      status: "error",
+      summary: enCore.mcp.rulesUnreadable,
+    });
   });
 
   it("runs a tool that no deny rule names", async () => {

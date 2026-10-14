@@ -293,7 +293,9 @@
     "yearRangeInvalid": "Počáteční rok nemůže být pozdější než koncový."
   },
   "mcp": {
+    "deniedByRules": "Odmítnuto pravidlem deny v approvals.toml",
     "openProjectSummary": "Otevřít projekt {{id}}",
+    "rulesUnreadable": "Odmítnuto, protože soubor approvals.toml nešlo přečíst",
     "useToolSummary": "Použít {{tool}} ze serveru MCP {{server}}"
   },
   "mcpConfig": {

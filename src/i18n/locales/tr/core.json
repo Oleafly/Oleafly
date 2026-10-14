@@ -287,7 +287,9 @@
     "yearRangeInvalid": "Başlangıç yılı bitiş yılından sonra olamaz."
   },
   "mcp": {
+    "deniedByRules": "approvals.toml içindeki bir deny kuralı nedeniyle reddedildi",
     "openProjectSummary": "{{id}} projesini aç",
+    "rulesUnreadable": "approvals.toml okunamadığı için reddedildi",
     "useToolSummary": "{{server}} MCP sunucusundaki {{tool}} aracını kullan"
   },
   "mcpConfig": {

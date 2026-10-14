@@ -290,7 +290,9 @@
     "yearRangeInvalid": "L'anno iniziale non può essere successivo all'anno finale."
   },
   "mcp": {
+    "deniedByRules": "Rifiutato da una regola deny in approvals.toml",
     "openProjectSummary": "Apri il progetto {{id}}",
+    "rulesUnreadable": "Rifiutato perché non è stato possibile leggere approvals.toml",
     "useToolSummary": "Usa {{tool}} dal server MCP {{server}}"
   },
   "mcpConfig": {
