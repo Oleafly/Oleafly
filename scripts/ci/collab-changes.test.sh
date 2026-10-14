@@ -67,6 +67,12 @@ for path in \
   src/features/collab/sharing/ShareDialog.tsx \
   src/components/collab/CollabSlots.tsx \
   src/lib/collab-live-bridge.ts \
+  src/lib/tauri.ts \
+  packages/editor/src/collaboration.ts \
+  packages/editor/src/document-session.ts \
+  src/components/editor/cm/collab-slot.ts \
+  src/components/layout/CollabLiveKeeper.tsx \
+  src/components/layout/CollabLinkKeeper.tsx \
   e2e/tests/109-live-collaboration-peer.spec.ts \
   scripts/e2e-collab-browser.sh \
   scripts/ci/collab-changes.sh \
@@ -80,6 +86,9 @@ done
 for path in \
   src/app.ts \
   src/lib/collaborator.ts \
+  src/lib/tauri.test.ts \
+  packages/editor/src/view.ts \
+  src/components/layout/TopToolbar.tsx \
   src-tauri/src/project.rs \
   src-tauri/src/collaboration.rs \
   crates/oleafly-core/src/lib.rs \
