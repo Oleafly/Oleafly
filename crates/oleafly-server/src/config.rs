@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -37,6 +38,8 @@ const GITHUB_VARIABLES: [&str; 6] = [
     "OLEAFLY_GITHUB_LABEL",
 ];
 const LOG_LEVELS: [&str; 5] = ["error", "warn", "info", "debug", "trace"];
+const FOR_OTHER_TOOLS: [&str; 1] = ["OLEAFLY_DOMAIN"];
+const CLOSE_ENOUGH: usize = 3;
 const S3_VARIABLES: [&str; 6] = [
     "OLEAFLY_S3_ENDPOINT",
     "OLEAFLY_S3_REGION",
@@ -167,6 +170,25 @@ pub enum StartupNote {
     Warning(String),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IgnoredSetting {
+    pub name: String,
+    pub instead: Option<String>,
+}
+
+impl IgnoredSetting {
+    fn sentence(&self) -> String {
+        match &self.instead {
+            Some(base) if self.name.strip_suffix("_FILE") == Some(base.as_str()) => format!(
+                "{} is not a setting. Only secrets can come from a file, so set {base} itself.",
+                self.name
+            ),
+            Some(close) => format!("{} is not a setting. Did you mean {close}?", self.name),
+            None => format!("{} is not a setting, so it has no effect.", self.name),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ServerConfig {
     pub public_url: Url,
@@ -190,6 +212,7 @@ pub struct ServerConfig {
     pub snapshot_memory_mb: u64,
     pub poll_hold: Duration,
     pub startup_notes: Vec<StartupNote>,
+    pub ignored_settings: Vec<IgnoredSetting>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -228,7 +251,11 @@ impl ServerConfig {
         vars: &BTreeMap<String, String>,
         read_file: &dyn Fn(&Path) -> std::io::Result<String>,
     ) -> Result<ServerConfig, ConfigError> {
-        let source = Source { vars, read_file };
+        let source = Source {
+            vars,
+            read_file,
+            read: RefCell::new(BTreeSet::new()),
+        };
         let public_url = match source.get("OLEAFLY_PUBLIC_URL") {
             Some(raw) => parse_public_url(&raw)?,
             None => {
@@ -377,6 +404,14 @@ impl ServerConfig {
             ));
         }
         let poll_hold = Duration::from_secs(poll_hold_seconds);
+        let ignored_settings = source.ignored();
+        if !ignored_settings.is_empty() {
+            let sentences: Vec<String> = ignored_settings
+                .iter()
+                .map(IgnoredSetting::sentence)
+                .collect();
+            startup_notes.push(StartupNote::Warning(sentences.join(" ")));
+        }
         Ok(ServerConfig {
             public_url,
             bind,
@@ -399,6 +434,7 @@ impl ServerConfig {
             snapshot_memory_mb,
             poll_hold,
             startup_notes,
+            ignored_settings,
         })
     }
 
@@ -455,15 +491,40 @@ const MEMORY_INFO_FILE: &str = "/proc/meminfo";
 struct Source<'a> {
     vars: &'a BTreeMap<String, String>,
     read_file: &'a dyn Fn(&Path) -> std::io::Result<String>,
+    read: RefCell<BTreeSet<String>>,
 }
 
 impl Source<'_> {
+    fn noted(&self, name: &str) {
+        self.read.borrow_mut().insert(name.to_string());
+    }
+
+    fn ignored(&self) -> Vec<IgnoredSetting> {
+        let read = self.read.borrow();
+        self.vars
+            .iter()
+            .filter(|(name, value)| {
+                name.starts_with("OLEAFLY_")
+                    && !value.trim().is_empty()
+                    && !read.contains(name.as_str())
+                    && !FOR_OTHER_TOOLS.contains(&name.as_str())
+            })
+            .map(|(name, _)| IgnoredSetting {
+                name: name.clone(),
+                instead: instead_of(name, &read),
+            })
+            .collect()
+    }
+
     fn get(&self, name: &str) -> Option<String> {
+        self.noted(name);
         present(self.vars, name).map(str::to_string)
     }
 
     fn secret(&self, name: &str) -> Result<Option<String>, ConfigError> {
         let file_variable = format!("{name}_FILE");
+        self.noted(name);
+        self.noted(&file_variable);
         match (present(self.vars, name), present(self.vars, &file_variable)) {
             (Some(_), Some(_)) => Err(ConfigError::new(
                 name,
@@ -493,6 +554,7 @@ impl Source<'_> {
     }
 
     fn is_set(&self, name: &str) -> bool {
+        self.noted(name);
         present(self.vars, name).is_some()
     }
 
@@ -590,6 +652,48 @@ impl Source<'_> {
             ))
         }
     }
+}
+
+fn instead_of(name: &str, read: &BTreeSet<String>) -> Option<String> {
+    let oidc_shaped = |base: &str| {
+        base.starts_with(OIDC_PREFIX) && OIDC_SUFFIXES.iter().any(|suffix| base.ends_with(suffix))
+    };
+    if let Some(base) = name
+        .strip_suffix("_FILE")
+        .filter(|base| read.contains(*base) || oidc_shaped(base))
+    {
+        return Some(base.to_string());
+    }
+    let mut candidates: Vec<String> = read.iter().cloned().collect();
+    if let Some(rest) = name.strip_prefix(OIDC_PREFIX) {
+        for (split, _) in rest.match_indices('_') {
+            for suffix in OIDC_SUFFIXES {
+                candidates.push(format!("{OIDC_PREFIX}{}{suffix}", &rest[..split]));
+            }
+        }
+    }
+    candidates
+        .into_iter()
+        .map(|candidate| (edit_distance(name, &candidate), candidate))
+        .filter(|(distance, _)| *distance <= CLOSE_ENOUGH)
+        .min_by_key(|(distance, _)| *distance)
+        .map(|(_, candidate)| candidate)
+}
+
+fn edit_distance(left: &str, right: &str) -> usize {
+    let right: Vec<char> = right.chars().collect();
+    let mut previous: Vec<usize> = (0..=right.len()).collect();
+    for (row, left_char) in left.chars().enumerate() {
+        let mut current = vec![row + 1; right.len() + 1];
+        for (column, right_char) in right.iter().enumerate() {
+            let substitution = previous[column] + usize::from(left_char != *right_char);
+            current[column + 1] = substitution
+                .min(previous[column + 1] + 1)
+                .min(current[column] + 1);
+        }
+        previous = current;
+    }
+    previous[right.len()]
 }
 
 fn present<'a>(vars: &'a BTreeMap<String, String>, name: &str) -> Option<&'a str> {
@@ -1572,7 +1676,7 @@ mod tests {
     }
 
     #[test]
-    fn only_secret_settings_have_file_variants_and_unknown_names_are_ignored() {
+    fn only_secret_settings_have_file_variants_and_unknown_names_are_ignored_but_named() {
         let read =
             |_: &Path| -> std::io::Result<String> { Ok("https://other.example.edu".to_string()) };
         let config = load_with(
@@ -1589,6 +1693,89 @@ mod tests {
         .unwrap();
         assert_eq!(config.public_url.as_str(), "https://c.example.edu/");
         assert!(config.providers.is_empty());
+        let named: Vec<(&str, Option<&str>)> = config
+            .ignored_settings
+            .iter()
+            .map(|ignored| (ignored.name.as_str(), ignored.instead.as_deref()))
+            .collect();
+        assert_eq!(
+            named,
+            [
+                (
+                    "OLEAFLY_GITHUB_CLIENT_ID_FILE",
+                    Some("OLEAFLY_GITHUB_CLIENT_ID")
+                ),
+                (
+                    "OLEAFLY_OIDC_UNI_ISSUER_FILE",
+                    Some("OLEAFLY_OIDC_UNI_ISSUER")
+                ),
+                ("OLEAFLY_OIDC_UNI_ISSUR", Some("OLEAFLY_OIDC_UNI_ISSUER")),
+                ("OLEAFLY_PUBLIC_URL_FILE", Some("OLEAFLY_PUBLIC_URL")),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_misspelled_setting_is_named_at_startup_with_the_one_it_was_meant_to_be() {
+        let config = load(&[
+            BASE,
+            ("OLEAFLY_SMTP_URI", "smtps://lab:secret@smtp.example.edu"),
+            ("OLEAFLY_SECURITY_LOGS_DAYS", "30"),
+            ("OLEAFLY_BEHIND_PROXIES", "true"),
+            ("OLEAFLY_COLOUR_SCHEME", "dark"),
+            ("OLEAFLY_DOMAIN", "c.example.edu"),
+            ("OLEAFLY_EMPTY_ONE", " "),
+        ])
+        .unwrap();
+        let named: Vec<(&str, Option<&str>)> = config
+            .ignored_settings
+            .iter()
+            .map(|ignored| (ignored.name.as_str(), ignored.instead.as_deref()))
+            .collect();
+        assert_eq!(
+            named,
+            [
+                ("OLEAFLY_BEHIND_PROXIES", Some("OLEAFLY_BEHIND_PROXY")),
+                ("OLEAFLY_COLOUR_SCHEME", None),
+                (
+                    "OLEAFLY_SECURITY_LOGS_DAYS",
+                    Some("OLEAFLY_SECURITY_LOG_DAYS")
+                ),
+                ("OLEAFLY_SMTP_URI", Some("OLEAFLY_SMTP_URL")),
+            ]
+        );
+        let warning = config
+            .startup_notes
+            .iter()
+            .find_map(|note| match note {
+                StartupNote::Warning(text) => Some(text.as_str()),
+                StartupNote::Info(_) => None,
+            })
+            .expect("one warning");
+        assert!(
+            warning.contains("OLEAFLY_SMTP_URI is not a setting. Did you mean OLEAFLY_SMTP_URL?"),
+            "{warning}"
+        );
+        assert!(
+            warning.contains("OLEAFLY_COLOUR_SCHEME is not a setting, so it has no effect."),
+            "{warning}"
+        );
+        assert!(!warning.contains("secret"), "{warning}");
+        assert!(!format!("{config:?}").contains("smtp.example.edu"));
+        let clean = load(&[BASE, ("OLEAFLY_DOMAIN", "c.example.edu")]).unwrap();
+        assert!(clean.ignored_settings.is_empty());
+        assert!(clean
+            .startup_notes
+            .iter()
+            .all(|note| matches!(note, StartupNote::Info(_))));
+    }
+
+    #[test]
+    fn edit_distance_counts_single_character_changes() {
+        assert_eq!(edit_distance("OLEAFLY_SMTP_URI", "OLEAFLY_SMTP_URL"), 1);
+        assert_eq!(edit_distance("PROXIES", "PROXY"), 3);
+        assert_eq!(edit_distance("", "abc"), 3);
+        assert_eq!(edit_distance("same", "same"), 0);
     }
 
     #[test]
