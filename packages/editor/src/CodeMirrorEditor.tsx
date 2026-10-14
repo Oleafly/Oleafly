@@ -202,10 +202,11 @@ function indentExtensions(tabSize: number): Extension {
   return [indentUnit.of(" ".repeat(tabSize)), EditorState.tabSize.of(tabSize)];
 }
 
+// What a file that isn't shown keeps between visits: a small editor state with
+// only its text, selection and undo history. A remote edit to it then costs as
+// much as the edit, not as much as the file.
 interface PathViewState {
-  doc: string;
-  selection: EditorSelection;
-  history: unknown;
+  state: EditorState;
   scroll: StateEffect<unknown>;
 }
 
@@ -243,11 +244,18 @@ export function minimalReplacement(before: string, after: string) {
   };
 }
 
-function capturePathViewState(view: EditorView, doc: string): PathViewState {
+function capturePathViewState(view: EditorView, sessionBound: boolean): PathViewState {
+  const saved = view.state.field(historyField, false);
   return {
-    doc,
-    selection: view.state.selection,
-    history: view.state.field(historyField, false),
+    state: EditorState.create({
+      doc: view.state.doc,
+      selection: view.state.selection,
+      extensions: [
+        EditorState.allowMultipleSelections.of(true),
+        sessionBound ? sessionLineBreaks : [],
+        saved ? [historyField.init(() => saved), history()] : history(),
+      ],
+    }),
     scroll: view.scrollSnapshot(),
   };
 }
@@ -257,24 +265,18 @@ function pathViewStateAfter(
   changes: readonly BackgroundDocumentChange[],
   annotations: readonly Annotation<unknown>[],
 ): PathViewState {
-  const state = EditorState.create({
-    doc: saved.doc,
-    selection: saved.selection,
-    extensions: [
-      EditorState.allowMultipleSelections.of(true),
-      saved.history ? [historyField.init(() => saved.history), history()] : history(),
-    ],
-  });
-  const transaction = state.update({
+  const transaction = saved.state.update({
     changes: [...changes],
     annotations: [...annotations],
   });
   return {
-    doc: transaction.state.doc.toString(),
-    selection: transaction.state.selection,
-    history: transaction.state.field(historyField, false),
+    state: transaction.state,
     scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
   };
+}
+
+function holdsText(saved: PathViewState, text: string): boolean {
+  return saved.state.doc.length === text.length && saved.state.doc.toString() === text;
 }
 
 function editedPathViewState(
@@ -313,8 +315,8 @@ function takeSavedPathState(
   if (!saved) return { restorable: undefined, selection: undefined };
   states.delete(path);
   return {
-    restorable: saved.doc === content ? saved : undefined,
-    selection: clampedSelection(saved.selection, content.length),
+    restorable: holdsText(saved, content) ? saved : undefined,
+    selection: clampedSelection(saved.state.selection, content.length),
   };
 }
 
@@ -349,9 +351,14 @@ function realignWithSession(view: EditorView, session: DocumentSession): void {
   });
 }
 
+interface BackgroundSession {
+  session: DocumentSession;
+  stop: () => void;
+}
+
 class EditorSessions {
   private readonly states: Map<string, PathViewState>;
-  private readonly background = new Map<string, () => void>();
+  private readonly background = new Map<string, BackgroundSession>();
   private current: DocumentSession | null = null;
   private currentVersion = 0;
   private stopCurrent: (() => void) | null = null;
@@ -371,6 +378,7 @@ class EditorSessions {
   bind(session: DocumentSession, view: EditorView): void {
     this.currentVersion = session.version();
     if (this.current === session) return;
+    this.dropBackgroundOf(session);
     this.current = session;
     this.stopCurrent = session.subscribe((change) => {
       this.currentVersion = change.version;
@@ -417,7 +425,7 @@ class EditorSessions {
   }
 
   takeBackground(path: string): void {
-    this.background.get(path)?.();
+    this.background.get(path)?.stop();
     this.background.delete(path);
   }
 
@@ -436,14 +444,36 @@ class EditorSessions {
     for (const path of Array.from(this.background.keys())) this.takeBackground(path);
   }
 
+  private dropBackgroundOf(session: DocumentSession): void {
+    for (const [path, entry] of Array.from(this.background)) {
+      if (entry.session === session) this.takeBackground(path);
+    }
+  }
+
   private keepInBackground(path: string, session: DocumentSession): void {
-    this.background.set(
-      path,
-      session.subscribe((change) => {
-        const saved = this.states.get(path);
-        if (saved) this.states.set(path, remotePathViewState(saved, change.edits));
+    this.dropBackgroundOf(session);
+    let key = path;
+    const entry: BackgroundSession = {
+      session,
+      stop: session.subscribe((change) => {
+        if (session.path !== key) key = this.follow(key, session.path, entry);
+        const saved = this.states.get(key);
+        if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
       }),
-    );
+    };
+    this.background.set(path, entry);
+  }
+
+  // A rename moves the session to a new path. Carry the saved view along, so
+  // the old path doesn't keep a copy that every remote edit updates.
+  private follow(from: string, to: string, entry: BackgroundSession): string {
+    const saved = this.states.get(from);
+    this.states.delete(from);
+    if (saved) this.states.set(to, saved);
+    if (this.background.get(from) === entry) this.background.delete(from);
+    this.background.get(to)?.stop();
+    this.background.set(to, entry);
+    return to;
   }
 }
 
@@ -499,12 +529,9 @@ function restorePathHistory(
   compartment: Compartment,
   restorable: PathViewState | undefined,
 ): void {
+  const saved = restorable?.state.field(historyField, false);
   view.dispatch({
-    effects: compartment.reconfigure(
-      restorable?.history
-        ? [historyField.init(() => restorable.history), history()]
-        : history(),
-    ),
+    effects: compartment.reconfigure(saved ? [historyField.init(() => saved), history()] : history()),
   });
   if (restorable) view.dispatch({ effects: restorable.scroll });
 }
@@ -1120,7 +1147,9 @@ export function CodeMirrorEditor({
     if (host.saveActive) registerHostSave(view, host.saveActive);
     const unregisterBackgroundEditor = registerBackgroundDocumentEditor((path, base, changes) => {
       const saved = pathStatesRef.current.get(path);
-      if (saved?.doc !== base || prevPathRef.current === path || sessionsRef.current.hasBackground(path)) return false;
+      if (!saved || !holdsText(saved, base) || prevPathRef.current === path || sessionsRef.current.hasBackground(path)) {
+        return false;
+      }
       pathStatesRef.current.set(path, editedPathViewState(saved, changes));
       return true;
     });
@@ -1210,14 +1239,14 @@ export function CodeMirrorEditor({
     if (leavingPath) cancelSourceProofreading(leavingPath);
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
+    const sessions = sessionsRef.current;
     if (leavingPath) {
       rememberPathState(
         pathStatesRef.current,
         leavingPath,
-        capturePathViewState(view, current),
+        capturePathViewState(view, sessions.active !== null),
       );
     }
-    const sessions = sessionsRef.current;
     if (pathChanged || sessions.active !== session) {
       sessions.release(leavingPath);
       sessions.takeBackground(activePath);

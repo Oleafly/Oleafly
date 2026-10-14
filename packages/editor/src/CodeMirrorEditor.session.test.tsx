@@ -98,7 +98,7 @@ function typeAt(pos: number, text: string): void {
 // Takes remote text exactly as sent, carriage returns included, the way a
 // shared document fed by an older client can. Local edits must be LF.
 class UncheckedRemoteSession implements DocumentSession {
-  readonly path: string;
+  path: string;
   readonly readOnly = false;
   private content: string;
   private revision = 0;
@@ -484,6 +484,63 @@ describe("switching between session files", () => {
       undo(view());
     });
     expect(a.text()).toBe("first line\nsecond line\nthird line\n");
+  });
+
+  it("keeps the undo history of a large background file through many remote edits", async () => {
+    const big = Array.from({ length: 300 }, (_, index) => `Line ${index} of a long chapter.`).join("\n");
+    const a = new LocalDocumentSession("a.tex", big);
+    const b = new LocalDocumentSession("b.tex", "b");
+    const { store } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessionsOf(a, b));
+    await act(async () => typeAt(0, "% "));
+    await open(store, "b.tex");
+
+    await act(async () => {
+      for (let index = 0; index < 200; index += 1) {
+        const end = a.text().length;
+        a.pushRemote([{ from: end, to: end, insert: index % 2 === 0 ? "x" : "\n" }]);
+      }
+    });
+    await open(store, "a.tex");
+
+    expect(view().state.doc.toString()).toBe(a.text());
+    expect(view().state.selection.main.head).toBe(2);
+    expect(undoDepth(view().state)).toBe(1);
+    await act(async () => {
+      undo(view());
+    });
+    expect(a.text().startsWith("Line 0 of a long chapter.")).toBe(true);
+  });
+
+  it("carries a background file's undo history to its new name when the file is renamed", async () => {
+    const a = new UncheckedRemoteSession("a.tex", "first line\n");
+    const b = new UncheckedRemoteSession("b.tex", "b");
+    const sessions = sessionsOf(a, b);
+    const listening = vi.fn();
+    const subscribe = a.subscribe.bind(a);
+    let live = 0;
+    vi.spyOn(a, "subscribe").mockImplementation((listener) => {
+      live += 1;
+      listening(live);
+      const stop = subscribe(listener);
+      return () => {
+        live -= 1;
+        stop();
+      };
+    });
+    const { store } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessions);
+    await act(async () => typeAt(0, "% "));
+    await open(store, "b.tex");
+
+    a.path = "renamed.tex";
+    sessions.delete("a.tex");
+    sessions.set("renamed.tex", a);
+    const end = a.text().length;
+    await act(async () => a.pushRemote([{ from: end, to: end, insert: "second line\n" }]));
+    await open(store, "renamed.tex");
+
+    expect(view().state.doc.toString()).toBe("% first line\nsecond line\n");
+    expect(undoDepth(view().state)).toBe(1);
+    expect(live).toBe(1);
   });
 
   it("declines background edits to a file a session holds", async () => {
