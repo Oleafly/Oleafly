@@ -120,6 +120,38 @@ describe("RemoteDocumentSession", () => {
     expect(session.synchronized).toBe(true);
   });
 
+  it("keeps typing made while opening where it was, when the shared text differs at both ends", async () => {
+    const lines = Array.from({ length: 10 }, (_, index) => `line ${index}\n`).join("");
+    const shared = lines.replace("line 0\n", "line 0 EDITED-BY-BOB\n").replace("line 9\n", "line 9 EDITED-BY-BOB\n");
+    const channel = new FakeChannel(shared);
+    const transport = channel.transport();
+    let answer: () => void = () => undefined;
+    const ready = new Promise<void>((resolve) => (answer = resolve));
+    const session = new RemoteDocumentSession("main.tex", lines, {
+      transport: {
+        ...transport,
+        open: async (path, onMessage) => {
+          await ready;
+          return transport.open(path, onMessage);
+        },
+      },
+    });
+    const editor = new Editor(session);
+    const opening = session.open();
+    const afterFive = lines.indexOf("line 5") + "line 5".length;
+    editor.type([{ from: afterFive, to: afterFive, insert: "Q" }]);
+    answer();
+    await opening;
+    expect(session.text()).toBe(shared.replace("line 5\n", "line 5Q\n"));
+    expect(editor.doc).toBe(session.text());
+    const touched = editor.changes.flatMap((change) => change.edits);
+    expect(touched.every((edit) => edit.to <= lines.indexOf("line 1") || edit.from >= lines.indexOf("line 9"))).toBe(
+      true,
+    );
+    channel.drain();
+    expect(channel.text).toBe(session.text());
+  });
+
   it("moves a remote change past its own pending changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

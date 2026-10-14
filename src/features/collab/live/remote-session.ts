@@ -1,6 +1,6 @@
 import type { DocumentSession, RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
 import type { CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
-import { editsFromOperation, operationFromEdits, replacementOperation, TextOperation } from "./ot";
+import { diffOperation, editsFromOperation, operationFromEdits, TextOperation } from "./ot";
 
 export interface RemoteSessionTransport {
   open(path: string, onMessage: (message: CollabDocMessage) => void): Promise<CollabDocOpened | null>;
@@ -217,7 +217,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.pending = null;
     this.confirmed = serverText;
     if (pending && this.rebase(pending, serverText)) return;
-    this.applyRemote(replacementOperation(this.content, serverText));
+    this.applyRemote(diffOperation(this.content, serverText));
   }
 
   // Moves typing made on `base` onto the shared text and sends it. False when
@@ -228,7 +228,7 @@ export class RemoteDocumentSession implements DocumentSession {
     let theirs: TextOperation;
     try {
       if (pending.baseLength !== this.base.length || pending.targetLength !== this.content.length) return false;
-      [mine, theirs] = TextOperation.transform(pending, replacementOperation(this.base, serverText));
+      [mine, theirs] = TextOperation.transform(pending, diffOperation(this.base, serverText));
       this.applyRemote(theirs);
     } catch {
       return false;
@@ -302,14 +302,14 @@ export class RemoteDocumentSession implements DocumentSession {
     let discarded: DiscardReason | null = null;
     if (unsent) discarded = this.readOnly ? "read_only" : this.resent ? "refused" : null;
     const moved =
-      unsent && !discarded ? TextOperation.transform(unsent, replacementOperation(this.confirmed, text)) : null;
+      unsent && !discarded ? TextOperation.transform(unsent, diffOperation(this.confirmed, text)) : null;
     this.serverRev = rev;
     this.confirmed = text;
     this.outstanding = null;
     this.buffer = null;
     if (!moved) {
       this.resent = false;
-      this.applyRemote(replacementOperation(this.content, text));
+      this.applyRemote(diffOperation(this.content, text));
       if (discarded) this.options.onDiscarded?.(discarded);
       this.settle();
       return;

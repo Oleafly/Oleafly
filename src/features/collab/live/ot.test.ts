@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { OtError, TextOperation, editsFromOperation, operationFromEdits, replacementOperation } from "./ot";
+import {
+  OtError,
+  TextOperation,
+  diffOperation,
+  editsFromOperation,
+  operationFromEdits,
+  replacementOperation,
+} from "./ot";
 
 function op(build: (operation: TextOperation) => void): TextOperation {
   const operation = new TextOperation();
@@ -175,6 +182,64 @@ describe("edits and operations", () => {
       const again = operationFromEdits(document, editsFromOperation(operation));
       expect(again.apply(document)).toBe(operation.apply(document));
     }
+  });
+});
+
+describe("diffOperation", () => {
+  const lines = (count: number) => Array.from({ length: count }, (_, index) => `line ${index}\n`).join("");
+
+  it("changes only the lines that differ, keeping the ones between them", () => {
+    const before = lines(10);
+    const after = before.replace("line 0\n", "line 0 EDITED\n").replace("line 9\n", "line 9 EDITED\n");
+    const operation = diffOperation(before, after);
+    expect(operation.apply(before)).toBe(after);
+    expect(editsFromOperation(operation)).toEqual([
+      { from: 6, to: 6, insert: " EDITED" },
+      { from: after.indexOf("line 9") - 7 + 6, to: after.indexOf("line 9") - 7 + 6, insert: " EDITED" },
+    ]);
+  });
+
+  it("handles added, removed and moved lines, empty texts and texts without a final line break", () => {
+    const cases: [string, string][] = [
+      ["", "a\nb"],
+      ["a\nb", ""],
+      ["a\nb\nc", "a\nc"],
+      ["a\nc", "a\nb\nc"],
+      ["a\nb\nc\nd", "d\nb\nc\na"],
+      ["no break", "no break at all"],
+      ["x\r\ny", "x\r\nz"],
+      ["😀\n😀", "😀\n😃"],
+    ];
+    for (const [before, after] of cases) {
+      const operation = diffOperation(before, after);
+      expect(operation.apply(before), JSON.stringify([before, after])).toBe(after);
+      expect(operation.baseLength).toBe(before.length);
+      expect(operation.targetLength).toBe(after.length);
+    }
+  });
+
+  it("matches the text for random edits", () => {
+    let seed = 42;
+    const random = (limit: number) => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed % limit;
+    };
+    const words = ["alpha", "beta", "", "gamma", "delta", "\\section{x}", "% note"];
+    const text = (count: number) =>
+      Array.from({ length: count }, () => words[random(words.length)]).join("\n");
+    for (let round = 0; round < 200; round += 1) {
+      const before = text(random(30));
+      const after = text(random(30));
+      expect(diffOperation(before, after).apply(before)).toBe(after);
+    }
+  });
+
+  it("falls back to one replacement when too many lines differ", () => {
+    const before = Array.from({ length: 1_000 }, (_, index) => `a${index}`).join("\n");
+    const after = Array.from({ length: 1_000 }, (_, index) => `b${index}`).join("\n");
+    const operation = diffOperation(before, after);
+    expect(operation.apply(before)).toBe(after);
+    expect(operation.equals(replacementOperation(before, after))).toBe(true);
   });
 });
 
