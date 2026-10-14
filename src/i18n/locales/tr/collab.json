@@ -225,7 +225,8 @@
     "admin": "Yönetici",
     "maintainer": "Sorumlu",
     "member": "Üye",
-    "guest": "Konuk"
+    "guest": "Konuk",
+    "unknown": "Bilinmeyen rol"
   },
   "admin": {
     "title": "{{name}} sunucusunu yönet",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Sahip",
     "editor": "Düzenleyen",
-    "viewer": "Görüntüleyen"
+    "viewer": "Görüntüleyen",
+    "unknown": "Bilinmeyen rol"
   },
   "share": {
     "button": "Paylaş",

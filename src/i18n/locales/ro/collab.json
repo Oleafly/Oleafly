@@ -225,7 +225,8 @@
     "admin": "Administrator",
     "maintainer": "Coordonator",
     "member": "Membru",
-    "guest": "Invitat"
+    "guest": "Invitat",
+    "unknown": "Rol necunoscut"
   },
   "admin": {
     "title": "Gestionează {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Proprietar",
     "editor": "Editor",
-    "viewer": "Cititor"
+    "viewer": "Cititor",
+    "unknown": "Rol necunoscut"
   },
   "share": {
     "button": "Partajează",

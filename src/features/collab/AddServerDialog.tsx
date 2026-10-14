@@ -506,7 +506,10 @@ export function AddServerDialog({
     const role = toServerRole(server.account?.server_role);
     const name = server.account?.display_name ?? server.name;
     if (canManageServer(role)) return t(($) => $.collab.addServer.doneManageDescription, { name });
-    if (role !== null && !serverRoleAllows(role, "shareProjects")) {
+    // A role from a later server reads as no role and grants nothing, so it
+    // gets no promise of sharing either.
+    const laterRole = server.account != null && role === null;
+    if (laterRole || (role !== null && !serverRoleAllows(role, "shareProjects"))) {
       return t(($) => $.collab.addServer.doneGuestDescription, { name });
     }
     return t(($) => $.collab.addServer.doneDescription, { name });

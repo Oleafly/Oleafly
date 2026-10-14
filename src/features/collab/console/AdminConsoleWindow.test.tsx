@@ -100,12 +100,14 @@ describe("AdminConsoleWindow", () => {
     expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
   });
 
-  it("refuses a role this version does not know", async () => {
-    const later = server({ account: account({ server_role: "auditor" as never }) });
+  it("refuses a role from a later server, naming it as unknown", async () => {
+    const later = server({ account: account({ server_role: "unknown" }) });
     mocks.collabServersList.mockResolvedValue([later]);
     mocks.collabServerRefresh.mockResolvedValue(later);
     render(<AdminConsoleWindow search={SEARCH} />);
-    expect(await screen.findByText(fill(copy.refusedDescription, { role: "auditor" }))).toBeInTheDocument();
+    expect(
+      await screen.findByText(fill(copy.refusedDescription, { role: enCollab.roles.unknown })),
+    ).toBeInTheDocument();
   });
 
   it("says when this computer is signed out of the server", async () => {

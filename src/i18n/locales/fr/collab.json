@@ -225,7 +225,8 @@
     "admin": "Administrateur",
     "maintainer": "Mainteneur",
     "member": "Membre",
-    "guest": "Invité"
+    "guest": "Invité",
+    "unknown": "Rôle inconnu"
   },
   "admin": {
     "title": "Gérer {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Propriétaire",
     "editor": "Éditeur",
-    "viewer": "Lecteur"
+    "viewer": "Lecteur",
+    "unknown": "Rôle inconnu"
   },
   "share": {
     "button": "Partager",

@@ -214,10 +214,10 @@ describe("MembersTab", () => {
     ).toBeNull();
   });
 
-  it("shows a role this version does not know as the server wrote it, without a picker", () => {
-    const later = member({ ...bob.account, server_role: "auditor" as never });
+  it("shows a role from a later server as an unknown role, without a picker", () => {
+    const later = member({ ...bob.account, server_role: "unknown" });
     render(<Harness actor="admin" initial={[alice, later]} />);
-    expect(within(rowOf(BOB_ID)).getByText("auditor")).toBeInTheDocument();
+    expect(within(rowOf(BOB_ID)).getByText(enCollab.roles.unknown)).toBeInTheDocument();
     expect(within(rowOf(BOB_ID)).queryByRole("combobox")).toBeNull();
     expect(within(rowOf(BOB_ID)).queryByRole("button", { name: copy.suspend })).toBeNull();
   });

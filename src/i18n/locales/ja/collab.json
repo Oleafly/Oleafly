@@ -225,7 +225,8 @@
     "admin": "管理者",
     "maintainer": "メンテナー",
     "member": "メンバー",
-    "guest": "ゲスト"
+    "guest": "ゲスト",
+    "unknown": "不明な役割"
   },
   "admin": {
     "title": "{{name}} を管理",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "所有者",
     "editor": "編集者",
-    "viewer": "閲覧者"
+    "viewer": "閲覧者",
+    "unknown": "不明な役割"
   },
   "share": {
     "button": "共有",

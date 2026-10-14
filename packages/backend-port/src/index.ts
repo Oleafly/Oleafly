@@ -979,7 +979,8 @@ export interface SynctexHit {
     column: number;
 }
 
-export type CollabServerRole = "admin" | "maintainer" | "member" | "guest";
+// "unknown" is a role from a later server: no rights at all.
+export type CollabServerRole = "admin" | "maintainer" | "member" | "guest" | "unknown";
 export type CollabProviderKind = "github" | "oidc" | "email_link" | "unknown";
 export interface CollabProvider {
     id: string;
@@ -1172,7 +1173,8 @@ export interface CollabCommandError {
 export interface CollabServerChanged {
     serverId: string;
 }
-export type CollabProjectRole = "owner" | "editor" | "viewer";
+// "unknown" is a role from a later server: read-only, like a viewer.
+export type CollabProjectRole = "owner" | "editor" | "viewer" | "unknown";
 export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
 export interface CollabPerson {
     account_id: string;

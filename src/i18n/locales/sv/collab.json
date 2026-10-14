@@ -225,7 +225,8 @@
     "admin": "Administratör",
     "maintainer": "Underhållare",
     "member": "Medlem",
-    "guest": "Gäst"
+    "guest": "Gäst",
+    "unknown": "Okänd roll"
   },
   "admin": {
     "title": "Hantera {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Ägare",
     "editor": "Redigerare",
-    "viewer": "Läsare"
+    "viewer": "Läsare",
+    "unknown": "Okänd roll"
   },
   "share": {
     "button": "Dela",

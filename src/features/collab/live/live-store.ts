@@ -36,6 +36,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
+import { isReadOnlyProjectRole } from "../roles";
 import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
 
@@ -394,9 +395,9 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     const changed = before !== payload.role;
     const by = takeOwnChange("role_changed");
     let notice = state.accessNotice;
-    if (changed && before !== null && before !== "viewer" && payload.role === "viewer") {
+    if (changed && before !== null && !isReadOnlyProjectRole(before) && isReadOnlyProjectRole(payload.role)) {
       notice = { kind: "viewer", byName: changedBy(by) };
-    } else if (changed && payload.role !== "viewer" && notice?.kind === "viewer") {
+    } else if (changed && !isReadOnlyProjectRole(payload.role) && notice?.kind === "viewer") {
       notice = null;
     }
     store.setState({ role: payload.role, accessNotice: notice });

@@ -225,7 +225,8 @@
     "admin": "Administrator",
     "maintainer": "Vedligeholder",
     "member": "Medlem",
-    "guest": "Gæst"
+    "guest": "Gæst",
+    "unknown": "Ukendt rolle"
   },
   "admin": {
     "title": "Administrer {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Ejer",
     "editor": "Redaktør",
-    "viewer": "Læser"
+    "viewer": "Læser",
+    "unknown": "Ukendt rolle"
   },
   "share": {
     "button": "Del",

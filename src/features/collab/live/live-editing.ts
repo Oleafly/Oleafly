@@ -13,6 +13,7 @@ import {
   collabPresenceSet,
 } from "@/lib/tauri";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
+import { isReadOnlyProjectRole } from "../roles";
 import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
@@ -96,7 +97,7 @@ function currentPresence(projectId: string): Presence {
 
 export function startLiveEditing(live: LiveSession): () => void {
   const { projectId } = live;
-  const isViewer = () => useCollabLiveStore.getState().role === "viewer";
+  const isViewer = () => isReadOnlyProjectRole(useCollabLiveStore.getState().role);
   const sessions = new LiveSessions({
     transport: {
       open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
@@ -139,7 +140,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   });
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: state.role === "viewer" });
+    if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: isReadOnlyProjectRole(state.role) });
   });
 
   const queue = inOrder();

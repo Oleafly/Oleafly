@@ -225,7 +225,8 @@
     "admin": "Administrátor",
     "maintainer": "Správce",
     "member": "Člen",
-    "guest": "Host"
+    "guest": "Host",
+    "unknown": "Neznámá role"
   },
   "admin": {
     "title": "Spravovat {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Vlastník",
     "editor": "Editor",
-    "viewer": "Čtenář"
+    "viewer": "Čtenář",
+    "unknown": "Neznámá role"
   },
   "share": {
     "button": "Sdílet",

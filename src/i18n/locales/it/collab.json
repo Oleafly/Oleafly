@@ -225,7 +225,8 @@
     "admin": "Amministratore",
     "maintainer": "Gestore",
     "member": "Membro",
-    "guest": "Ospite"
+    "guest": "Ospite",
+    "unknown": "Ruolo sconosciuto"
   },
   "admin": {
     "title": "Gestisci il server {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Proprietario",
     "editor": "Editor",
-    "viewer": "Visualizzatore"
+    "viewer": "Visualizzatore",
+    "unknown": "Ruolo sconosciuto"
   },
   "share": {
     "button": "Condividi",

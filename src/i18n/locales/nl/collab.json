@@ -225,7 +225,8 @@
     "admin": "Beheerder",
     "maintainer": "Onderhouder",
     "member": "Lid",
-    "guest": "Gast"
+    "guest": "Gast",
+    "unknown": "Onbekende rol"
   },
   "admin": {
     "title": "{{name}} beheren",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Eigenaar",
     "editor": "Bewerker",
-    "viewer": "Lezer"
+    "viewer": "Lezer",
+    "unknown": "Onbekende rol"
   },
   "share": {
     "button": "Delen",

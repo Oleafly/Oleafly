@@ -100,7 +100,7 @@ const PROJECT = "project-1";
 let channels: Map<string, (message: CollabDocMessage) => void>;
 let release: (() => void) | null = null;
 
-function start(role: "owner" | "editor" | "viewer" = "editor") {
+function start(role: "owner" | "editor" | "viewer" | "unknown" = "editor") {
   useCollabLiveStore.setState({ projectId: PROJECT, role });
   release = startLiveEditing({ projectId: PROJECT, role, accountId: "alice", deviceId: "device-me" });
 }
@@ -220,6 +220,15 @@ describe("live editing", () => {
     expect(mocks.collabLiveFlush).not.toHaveBeenCalled();
     await collabCompileBarrier(PROJECT);
     expect(mocks.collabLiveFlush).toHaveBeenCalledWith(PROJECT);
+  });
+
+  it("makes a role from a later server read-only, like a viewer", () => {
+    start("unknown");
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    useCollabLiveStore.setState({ role: "editor" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    useCollabLiveStore.setState({ role: "unknown" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
   });
 
   it("makes viewers read-only and follows role changes", () => {

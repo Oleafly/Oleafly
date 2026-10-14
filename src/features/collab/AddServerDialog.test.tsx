@@ -452,6 +452,11 @@ describe("AddServerDialog", () => {
     expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneGuestDescription, { name: "Alice Chen" }));
   });
 
+  it("promises no sharing to a role from a later server", async () => {
+    await signInAs(server({ account: account({ server_role: "unknown" }) }));
+    expectHeader(fill(copy.doneTitle, { server: "Smith Lab" }), fill(copy.doneGuestDescription, { name: "Alice Chen" }));
+  });
+
   it("closes from the done step without cancelling anything", async () => {
     mocks.collabServerProbe.mockResolvedValue(capabilities());
     mocks.collabServerSignIn.mockResolvedValue(server());

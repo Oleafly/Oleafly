@@ -115,7 +115,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
           icon={<ShieldX aria-hidden className={STATE_ICON_CLASS} />}
           title={t(($) => $.collab.console.states.refusedTitle)}
           description={t(($) => $.collab.console.states.refusedDescription, {
-            role: role === null ? (server.account?.server_role ?? "") : t(($) => $.collab.roles[role]),
+            role: role === null ? t(($) => $.collab.roles.unknown) : t(($) => $.collab.roles[role]),
           })}
         />
       );

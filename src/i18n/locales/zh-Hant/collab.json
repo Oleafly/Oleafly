@@ -225,7 +225,8 @@
     "admin": "管理員",
     "maintainer": "維護者",
     "member": "成員",
-    "guest": "訪客"
+    "guest": "訪客",
+    "unknown": "未知角色"
   },
   "admin": {
     "title": "管理 {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "擁有者",
     "editor": "編輯者",
-    "viewer": "檢視者"
+    "viewer": "檢視者",
+    "unknown": "未知角色"
   },
   "share": {
     "button": "分享",

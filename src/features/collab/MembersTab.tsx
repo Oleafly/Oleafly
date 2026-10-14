@@ -144,7 +144,7 @@ export function MembersTab({
           />
         ) : (
           <Badge variant="muted" size="sm">
-            {role === null ? member.account.server_role : t(($) => $.collab.roles[role])}
+            {role === null ? t(($) => $.collab.roles.unknown) : t(($) => $.collab.roles[role])}
           </Badge>
         )}
         {devicesShown ? (

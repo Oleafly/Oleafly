@@ -112,7 +112,8 @@ describe("collab catalog", () => {
   });
 
   it("names every server role, security event and runtime setting", () => {
-    expect(Object.keys(collab.roles)).toEqual(["admin", "maintainer", "member", "guest"]);
+    expect(Object.keys(collab.roles)).toEqual(["admin", "maintainer", "member", "guest", "unknown"]);
+    expect(Object.keys(collab.projectRoles)).toEqual(["owner", "editor", "viewer", "unknown"]);
     expect(Object.keys(collab.admin.log.kinds).sort()).toEqual([...EVENT_KINDS].sort());
     for (const key of RUNTIME_SETTINGS) {
       expect(flat.get(`admin.settings.${key}.label`), key).toBeTruthy();

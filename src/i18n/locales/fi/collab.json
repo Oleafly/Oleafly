@@ -225,7 +225,8 @@
     "admin": "Ylläpitäjä",
     "maintainer": "Valvoja",
     "member": "Jäsen",
-    "guest": "Vieras"
+    "guest": "Vieras",
+    "unknown": "Tuntematon rooli"
   },
   "admin": {
     "title": "Hallitse palvelinta {{name}}",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "Omistaja",
     "editor": "Muokkaaja",
-    "viewer": "Katselija"
+    "viewer": "Katselija",
+    "unknown": "Tuntematon rooli"
   },
   "share": {
     "button": "Jaa",

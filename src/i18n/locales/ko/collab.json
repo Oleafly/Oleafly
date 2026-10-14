@@ -225,7 +225,8 @@
     "admin": "관리자",
     "maintainer": "유지 관리자",
     "member": "멤버",
-    "guest": "게스트"
+    "guest": "게스트",
+    "unknown": "알 수 없는 역할"
   },
   "admin": {
     "title": "{{name}} 관리",
@@ -459,7 +460,8 @@
   "projectRoles": {
     "owner": "소유자",
     "editor": "편집자",
-    "viewer": "뷰어"
+    "viewer": "뷰어",
+    "unknown": "알 수 없는 역할"
   },
   "share": {
     "button": "공유",

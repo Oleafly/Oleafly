@@ -12,6 +12,7 @@ import { collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
 import { useRemovedNotices } from "../live/removed-notices";
+import { isReadOnlyProjectRole } from "../roles";
 import { useLiveTree } from "./tree-version";
 
 const NONE: readonly CollabTrashEntry[] = [];
@@ -165,7 +166,7 @@ export function RecentlyDeleted({
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const { t } = useTranslation(["collab"]);
   const [entries, refresh, projectId] = useTrash();
-  const canRestore = useCollabLiveStore((state) => (state.role ?? state.share?.role ?? "viewer") !== "viewer");
+  const canRestore = useCollabLiveStore((state) => !isReadOnlyProjectRole(state.role ?? state.share?.role ?? "viewer"));
   const [failure, setFailure] = useState<string | null>(null);
   const title = t(($) => $.collab.pane.deleted);
   const restore = useCallback(
