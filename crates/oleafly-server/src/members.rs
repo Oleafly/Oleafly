@@ -286,10 +286,20 @@ pub fn remove_account(
     now: i64,
 ) -> Result<usize, ServerError> {
     set_status(conn, account, &MemberStatus::Removed, now)?;
-    Ok(conn.execute(
-        "DELETE FROM allowlist WHERE bound_account = ?1",
-        [account.to_string()],
-    )?)
+    let id = account.to_string();
+    let mut removed = conn.execute("DELETE FROM allowlist WHERE bound_account = ?1", [&id])?;
+    removed += conn.execute(
+        "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'email' \
+         AND match_key IN (SELECT email FROM account_emails WHERE account_id = ?1)",
+        [&id],
+    )?;
+    removed += conn.execute(
+        "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'provider_login' \
+         AND EXISTS (SELECT 1 FROM identities i WHERE i.account_id = ?1 \
+         AND i.provider_id = allowlist.provider_id AND lower(i.login) = allowlist.match_key)",
+        [&id],
+    )?;
+    Ok(removed)
 }
 
 pub fn account_devices(
@@ -1063,33 +1073,53 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn removing_an_account_keeps_it_and_drops_only_its_bound_allowlist_entries() {
+    async fn removing_an_account_keeps_it_and_drops_every_allowlist_entry_that_would_let_it_back() {
         with_db(|conn| {
             let ada = create_account(conn, "Ada", None, ServerRole::Member, 1)?;
-            add_verified_emails(conn, ada, &["ada@uni.edu".to_string()])?;
+            add_verified_emails(
+                conn,
+                ada,
+                &["ada@uni.edu".to_string(), "ada@lab.uni.edu".to_string()],
+            )?;
             link_identity(
                 conn,
                 ada,
                 "github",
                 "https://github.com",
                 "42",
-                Some("ada"),
+                Some("Ada-L"),
                 1,
             )?;
             let bound = add_allowlist(conn, &email("ada@uni.edu", ServerRole::Member), None, 1)?;
+            let second_address =
+                add_allowlist(conn, &email("ADA@lab.uni.edu", ServerRole::Member), None, 1)?;
+            let handle = add_allowlist(
+                conn,
+                &login("github", "@ada-l", ServerRole::Member),
+                None,
+                1,
+            )?;
+            let other_provider =
+                add_allowlist(conn, &login("gitlab", "ada-l", ServerRole::Member), None, 1)?;
             let unbound = add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 1)?;
             bind_allowlist(conn, &bound.id, ada)?;
-            assert_eq!(remove_account(conn, ada, 5)?, 1);
+            assert_eq!(remove_account(conn, ada, 5)?, 3);
             assert_eq!(account_status(conn, ada)?, Some(MemberStatus::Removed));
             assert_eq!(
                 find_account_by_identity(conn, "https://github.com", "42")?,
                 Some(ada)
             );
-            assert!(get_allowlist(conn, &bound.id)?.is_none());
+            for gone in [&bound, &second_address, &handle] {
+                assert!(get_allowlist(conn, &gone.id)?.is_none(), "{gone:?}");
+            }
+            assert!(get_allowlist(conn, &other_provider.id)?.is_some());
             assert!(get_allowlist(conn, &unbound.id)?.is_some());
             assert_eq!(
                 account_summary(conn, ada)?.map(|summary| summary.emails),
-                Some(vec!["ada@uni.edu".to_string()])
+                Some(vec![
+                    "ada@lab.uni.edu".to_string(),
+                    "ada@uni.edu".to_string()
+                ])
             );
             assert!(list_members(conn)?.is_empty());
             assert!(matches!(

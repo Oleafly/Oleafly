@@ -419,6 +419,100 @@ async fn a_removed_member_added_again_gets_the_same_account() {
     );
 }
 
+#[tokio::test]
+async fn a_removed_member_with_a_second_entry_for_them_stays_out() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::ProviderLogin {
+            provider: "github".to_owned(),
+            login: "grace".to_owned(),
+        },
+    )
+    .await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::Email {
+            email: "Grace@uni.edu".to_owned(),
+        },
+    )
+    .await;
+    let grace = github("9009", "Grace", &["grace@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &grace, None).await else {
+        panic!("grace was refused");
+    };
+    remove(&app, &admin.access_token, first.account_id).await;
+    assert!(matches!(
+        decide(&app, &grace, None).await,
+        Admission::NotAdmitted
+    ));
+    let left = app
+        .state
+        .db
+        .call(|conn| members::list_allowlist(conn))
+        .await
+        .expect("allowlist");
+    assert!(left.is_empty(), "{left:?}");
+}
+
+#[tokio::test]
+async fn an_entry_made_after_someone_joined_by_domain_does_not_bring_them_back() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let rule = NewDomainRule {
+        domain: "uni.edu".to_owned(),
+        role: ServerRole::Member,
+    };
+    admin_call(
+        &app,
+        &admin.access_token,
+        Method::POST,
+        "/api/v1/admin/domains",
+        serde_json::to_value(rule).expect("rule json"),
+    )
+    .await;
+    let bob = github("5005", "bob", &["bob@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &bob, None).await else {
+        panic!("bob was refused");
+    };
+    assert_eq!(first.via, Via::Domain);
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            for matcher in [
+                AllowlistMatcher::Email {
+                    email: "bob@uni.edu".to_owned(),
+                },
+                AllowlistMatcher::ProviderLogin {
+                    provider: "github".to_owned(),
+                    login: "BOB".to_owned(),
+                },
+            ] {
+                let entry = NewAllowlistEntry {
+                    matcher,
+                    role: ServerRole::Maintainer,
+                };
+                members::add_allowlist(conn, &entry, None, now)?;
+            }
+            Ok(())
+        })
+        .await
+        .expect("entries made before such entries were refused");
+    assert!(matches!(
+        decide(&app, &bob, None).await,
+        Admission::Linked { account_id } if account_id == first.account_id
+    ));
+    remove(&app, &admin.access_token, first.account_id).await;
+    assert!(matches!(
+        decide(&app, &bob, None).await,
+        Admission::NotAdmitted
+    ));
+}
+
 async fn admin_status(
     app: &TestApp,
     token: &str,
