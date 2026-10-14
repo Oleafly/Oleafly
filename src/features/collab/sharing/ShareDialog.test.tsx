@@ -318,7 +318,7 @@ describe("ShareDialog once shared", () => {
     const user = userEvent.setup();
     openDialog();
     await user.type(await screen.findByRole("textbox", { name: manage.add.label }), "zed");
-    expect(await screen.findByText(fill(manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(await screen.findByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeInTheDocument();
   });
 
   it("copies the link and turns link sharing on with a role", async () => {

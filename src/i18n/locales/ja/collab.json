@@ -506,6 +506,11 @@
       "roleLabel": "追加するユーザーの役割",
       "searching": "検索中…",
       "noResults": "{{server}} に一致する人はいません。",
+      "noResultsTryEmail": "{{server}} に一致する人はいません。メールアドレス全体で検索してみてください。",
+      "alreadyMember": "{{name}} はすでにアクセスできます。",
+      "allMembers": "一致するユーザーは全員すでにアクセスできます。",
+      "noAccountNoGuests": "{{server}} では {{email}} を使っているユーザーはまだいません。{{server}} の管理者に参加を許可してもらい、その人が一度サインインしたらここで追加してください。",
+      "guestCheckFailed": "Oleafly は {{server}} がゲストを許可しているかどうかを確認できませんでした。",
       "add": "追加",
       "addNamed": "{{name}} を追加"
     },

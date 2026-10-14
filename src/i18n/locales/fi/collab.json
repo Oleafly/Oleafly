@@ -506,6 +506,11 @@
       "roleLabel": "Lisättävien henkilöiden rooli",
       "searching": "Haetaan…",
       "noResults": "Kukaan palvelimella {{server}} ei vastaa hakua.",
+      "noResultsTryEmail": "Kukaan palvelimella {{server}} ei vastaa hakua. Kokeile henkilön koko sähköpostiosoitetta.",
+      "alreadyMember": "Henkilöllä {{name}} on jo pääsy.",
+      "allMembers": "Kaikilla hakua vastaavilla on jo pääsy.",
+      "noAccountNoGuests": "Kukaan palvelimella {{server}} ei vielä käytä osoitetta {{email}}. Pyydä palvelimen {{server}} ylläpitäjää päästämään henkilö sisään ja lisää hänet tähän, kun hän on kirjautunut kerran.",
+      "guestCheckFailed": "Oleafly ei voinut tarkistaa, salliiko {{server}} vieraat.",
       "add": "Lisää",
       "addNamed": "Lisää {{name}}"
     },

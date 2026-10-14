@@ -44,12 +44,16 @@ export function looksLikeEmail(text: string): boolean {
 
 export interface ProjectGuests {
   readonly info: CollabProjectGuestInvitations | null;
+  // The guest settings couldn't be loaded, so nobody knows whether guests
+  // can be invited. Callers say so with a retry instead of hiding the offer.
+  readonly failed: boolean;
   readonly reload: () => void;
   readonly remove: (id: string) => void;
 }
 
 export function useProjectGuests(projectId: string, enabled: boolean): ProjectGuests {
   const [info, setInfo] = useState<CollabProjectGuestInvitations | null>(null);
+  const [failed, setFailed] = useState(false);
   const [request, setRequest] = useState(0);
 
   const load = useMemo(() => ({ projectId, enabled, request }), [projectId, enabled, request]);
@@ -57,11 +61,14 @@ export function useProjectGuests(projectId: string, enabled: boolean): ProjectGu
   useEffect(() => {
     if (!load.enabled) return;
     let active = true;
+    setFailed(false);
     collabGuestInvitations(load.projectId).then(
       (next) => {
         if (active) setInfo(next);
       },
-      () => undefined,
+      () => {
+        if (active) setFailed(true);
+      },
     );
     return () => {
       active = false;
@@ -76,7 +83,7 @@ export function useProjectGuests(projectId: string, enabled: boolean): ProjectGu
       ),
     [],
   );
-  return { info, reload, remove };
+  return { info, failed, reload, remove };
 }
 
 function inviteError(error: unknown, t: ReturnType<typeof useTranslation<["collab"]>>["t"]): string {

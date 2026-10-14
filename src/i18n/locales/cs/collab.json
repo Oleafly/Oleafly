@@ -506,6 +506,11 @@
       "roleLabel": "Role pro přidané lidi",
       "searching": "Hledá se…",
       "noResults": "Na serveru {{server}} nikdo neodpovídá.",
+      "noResultsTryEmail": "Na serveru {{server}} nikdo neodpovídá. Zkuste celou e-mailovou adresu.",
+      "alreadyMember": "{{name}} už má přístup.",
+      "allMembers": "Všichni, kdo odpovídají, už mají přístup.",
+      "noAccountNoGuests": "Adresu {{email}} zatím na serveru {{server}} nikdo nepoužívá. Požádejte administrátora serveru {{server}}, aby tohoto člověka pustil dovnitř, a až se jednou přihlásí, přidejte ho sem.",
+      "guestCheckFailed": "Oleafly nemohl ověřit, zda server {{server}} povoluje hosty.",
       "add": "Přidat",
       "addNamed": "Přidat {{name}}"
     },

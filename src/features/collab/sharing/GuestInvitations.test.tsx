@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDate } from "@/lib/intl";
 import type { CollabProjectGuestInvitations } from "@/lib/tauri";
@@ -49,6 +50,7 @@ async function typeQuery(text: string) {
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  await loadNamespace("common");
 });
 
 beforeEach(() => {
@@ -73,16 +75,33 @@ describe("inviting a guest from the share dialog", () => {
     expect(await screen.findByText(fill(guests.sent.emailed, { email: EMAIL }))).toBeInTheDocument();
   });
 
-  it("does not offer it while guests are off on the server", async () => {
+  it("says who can let the person in while guests are off on the server, instead of offering it", async () => {
     mocks.collabGuestInvitations.mockResolvedValue(projectInvitations({ guests_enabled: false }));
     await typeQuery(EMAIL);
-    expect(await screen.findByText(fill(enCollab.manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noAccountNoGuests, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) })).toBeNull();
+  });
+
+  it("offers a retry instead of hiding the invitation when the guest settings can't load", async () => {
+    mocks.collabGuestInvitations.mockRejectedValueOnce(new Error("offline"));
+    const user = await typeQuery(EMAIL);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      fill(enCollab.manage.add.guestCheckFailed, { server: "Smith Lab" }),
+    );
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(
+      await screen.findByText(fill(guests.invite.noAccount, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(mocks.collabGuestInvitations).toHaveBeenCalledTimes(2);
   });
 
   it("does not offer it for a name or for an address someone already uses", async () => {
     await typeQuery("dana");
-    expect(await screen.findByText(fill(enCollab.manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noResultsTryEmail, { server: "Smith Lab" })),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: guests.invite.button })).toBeNull();
     mocks.collabPeopleSearch.mockResolvedValue([CAROL]);
     const user = userEvent.setup();

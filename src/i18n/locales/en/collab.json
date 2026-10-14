@@ -506,6 +506,11 @@
       "roleLabel": "Role for people you add",
       "searching": "Searching…",
       "noResults": "Nobody on {{server}} matches.",
+      "noResultsTryEmail": "Nobody on {{server}} matches. Try their full email address.",
+      "alreadyMember": "{{name}} already has access.",
+      "allMembers": "Everyone who matches already has access.",
+      "noAccountNoGuests": "Nobody on {{server}} uses {{email}} yet. Ask an admin of {{server}} to let them in, then add them here after they sign in once.",
+      "guestCheckFailed": "Oleafly couldn't check whether {{server}} allows guests.",
       "add": "Add",
       "addNamed": "Add {{name}}"
     },

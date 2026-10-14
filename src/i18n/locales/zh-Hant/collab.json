@@ -506,6 +506,11 @@
       "roleLabel": "新增人員的角色",
       "searching": "正在搜尋…",
       "noResults": "{{server}} 上沒有符合的人。",
+      "noResultsTryEmail": "{{server}} 上沒有符合的人。請試著輸入對方的完整電子郵件地址。",
+      "alreadyMember": "{{name}} 已有存取權。",
+      "allMembers": "所有符合的人都已有存取權。",
+      "noAccountNoGuests": "{{server}} 上還沒有人使用 {{email}}。請聯絡 {{server}} 的管理員允許此人加入，等對方登入一次後再在這裡新增。",
+      "guestCheckFailed": "Oleafly 無法確認 {{server}} 是否允許訪客。",
       "add": "新增",
       "addNamed": "新增 {{name}}"
     },

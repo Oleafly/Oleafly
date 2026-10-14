@@ -506,6 +506,11 @@
       "roleLabel": "추가할 사람의 역할",
       "searching": "검색하는 중…",
       "noResults": "{{server}}에 일치하는 사람이 없습니다.",
+      "noResultsTryEmail": "{{server}}에 일치하는 사람이 없습니다. 전체 이메일 주소로 검색해 보세요.",
+      "alreadyMember": "{{name}} 님은 이미 접근 권한이 있습니다.",
+      "allMembers": "일치하는 사람은 모두 이미 접근 권한이 있습니다.",
+      "noAccountNoGuests": "{{server}}에서 아직 {{email}}을(를) 쓰는 사람이 없습니다. {{server}} 관리자에게 이 사람의 접근을 허용해 달라고 요청한 다음, 이 사람이 한 번 로그인하면 여기에서 추가하세요.",
+      "guestCheckFailed": "Oleafly가 {{server}}에서 게스트를 허용하는지 확인하지 못했습니다.",
       "add": "추가",
       "addNamed": "{{name}} 추가"
     },

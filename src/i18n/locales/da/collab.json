@@ -506,6 +506,11 @@
       "roleLabel": "Rolle for personer, du tilføjer",
       "searching": "Søger…",
       "noResults": "Ingen på {{server}} matcher.",
+      "noResultsTryEmail": "Ingen på {{server}} matcher. Prøv personens fulde e-mailadresse.",
+      "alreadyMember": "{{name}} har allerede adgang.",
+      "allMembers": "Alle, der matcher, har allerede adgang.",
+      "noAccountNoGuests": "Ingen på {{server}} bruger {{email}} endnu. Bed en administrator af {{server}} om at lukke personen ind, og tilføj vedkommende her, når personen har logget ind én gang.",
+      "guestCheckFailed": "Oleafly kunne ikke tjekke, om {{server}} tillader gæster.",
       "add": "Tilføj",
       "addNamed": "Tilføj {{name}}"
     },

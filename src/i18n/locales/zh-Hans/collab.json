@@ -506,6 +506,11 @@
       "roleLabel": "所添加人员的角色",
       "searching": "正在搜索…",
       "noResults": "{{server}} 上没有匹配的人员。",
+      "noResultsTryEmail": "{{server}} 上没有匹配的人员。请尝试输入对方的完整电子邮件地址。",
+      "alreadyMember": "{{name}} 已有访问权限。",
+      "allMembers": "所有匹配的人都已有访问权限。",
+      "noAccountNoGuests": "{{server}} 上还没有人使用 {{email}}。请让 {{server}} 的管理员允许此人加入，等对方登录一次后再在这里添加。",
+      "guestCheckFailed": "Oleafly 无法确认 {{server}} 是否允许访客。",
       "add": "添加",
       "addNamed": "添加 {{name}}"
     },

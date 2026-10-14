@@ -506,6 +506,11 @@
       "roleLabel": "Rol voor mensen die je toevoegt",
       "searching": "Zoeken…",
       "noResults": "Niemand op {{server}} komt overeen.",
+      "noResultsTryEmail": "Niemand op {{server}} komt overeen. Probeer het volledige e-mailadres.",
+      "alreadyMember": "{{name}} heeft al toegang.",
+      "allMembers": "Iedereen die overeenkomt, heeft al toegang.",
+      "noAccountNoGuests": "Niemand op {{server}} gebruikt {{email}} nog. Vraag een beheerder van {{server}} om deze persoon toe te laten en voeg die hier toe zodra die zich één keer heeft aangemeld.",
+      "guestCheckFailed": "Oleafly kon niet controleren of {{server}} gasten toestaat.",
       "add": "Toevoegen",
       "addNamed": "{{name}} toevoegen"
     },

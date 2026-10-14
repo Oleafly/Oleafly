@@ -506,6 +506,11 @@
       "roleLabel": "Roll för personer du lägger till",
       "searching": "Söker…",
       "noResults": "Ingen på {{server}} matchar.",
+      "noResultsTryEmail": "Ingen på {{server}} matchar. Prova personens fullständiga e-postadress.",
+      "alreadyMember": "{{name}} har redan åtkomst.",
+      "allMembers": "Alla som matchar har redan åtkomst.",
+      "noAccountNoGuests": "Ingen på {{server}} använder {{email}} än. Be en administratör för {{server}} att släppa in personen och lägg sedan till personen här när hen har loggat in en gång.",
+      "guestCheckFailed": "Oleafly kunde inte kontrollera om {{server}} tillåter gäster.",
       "add": "Lägg till",
       "addNamed": "Lägg till {{name}}"
     },

@@ -506,6 +506,11 @@
       "roleLabel": "Eklediğiniz kişilerin rolü",
       "searching": "Aranıyor…",
       "noResults": "{{server}} sunucusunda eşleşen kimse yok.",
+      "noResultsTryEmail": "{{server}} sunucusunda eşleşen kimse yok. Kişinin tam e-posta adresini deneyin.",
+      "alreadyMember": "{{name}} zaten erişime sahip.",
+      "allMembers": "Eşleşen herkes zaten erişime sahip.",
+      "noAccountNoGuests": "{{server}} sunucusunda henüz {{email}} adresini kullanan kimse yok. {{server}} yöneticisinden bu kişinin girişine izin vermesini isteyin, kişi bir kez oturum açtıktan sonra onu buradan ekleyin.",
+      "guestCheckFailed": "Oleafly, {{server}} sunucusunun konuklara izin verip vermediğini denetleyemedi.",
       "add": "Ekle",
       "addNamed": "{{name}} kişisini ekle"
     },

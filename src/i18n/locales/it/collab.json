@@ -506,6 +506,11 @@
       "roleLabel": "Ruolo delle persone che aggiungi",
       "searching": "Ricerca in corso…",
       "noResults": "Nessuno su {{server}} corrisponde.",
+      "noResultsTryEmail": "Nessuno su {{server}} corrisponde. Prova con il suo indirizzo email completo.",
+      "alreadyMember": "{{name}} ha già accesso.",
+      "allMembers": "Tutte le persone corrispondenti hanno già accesso.",
+      "noAccountNoGuests": "Nessuno su {{server}} usa ancora {{email}}. Chiedi a un amministratore di {{server}} di farla entrare, poi aggiungila qui dopo che avrà eseguito l'accesso una volta.",
+      "guestCheckFailed": "Oleafly non è riuscito a verificare se {{server}} consente gli ospiti.",
       "add": "Aggiungi",
       "addNamed": "Aggiungi {{name}}"
     },

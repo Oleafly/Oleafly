@@ -506,6 +506,11 @@
       "roleLabel": "Função das pessoas que você adicionar",
       "searching": "Procurando…",
       "noResults": "Ninguém em {{server}} corresponde.",
+      "noResultsTryEmail": "Ninguém em {{server}} corresponde. Tente o endereço de e-mail completo da pessoa.",
+      "alreadyMember": "{{name}} já tem acesso.",
+      "allMembers": "Todas as pessoas encontradas já têm acesso.",
+      "noAccountNoGuests": "Ninguém em {{server}} usa {{email}} ainda. Peça a um administrador de {{server}} para liberar a entrada dessa pessoa e adicione-a aqui depois que ela entrar pela primeira vez.",
+      "guestCheckFailed": "O Oleafly não conseguiu verificar se {{server}} permite convidados.",
       "add": "Adicionar",
       "addNamed": "Adicionar {{name}}"
     },

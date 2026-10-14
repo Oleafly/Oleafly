@@ -91,7 +91,7 @@ describe("ManageSharing people search", () => {
     mocks.collabPeopleSearch.mockRejectedValue(collabError("unreachable"));
     await search("car");
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
-    expect(screen.queryByText(fill(manage.add.noResults, { server: "Smith Lab" }))).toBeNull();
+    expect(screen.queryByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeNull();
   });
 
   it("shows only the answer for what is typed now when an earlier search answers late", async () => {
@@ -120,10 +120,24 @@ describe("ManageSharing people search", () => {
     const user = await search("zo");
     await waitFor(() => expect(mocks.collabPeopleSearch).toHaveBeenCalledWith("grant", "zo"));
     await user.type(screen.getByRole("textbox", { name: manage.add.label }), "e");
-    expect(await screen.findByText(fill(manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(await screen.findByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeInTheDocument();
     await act(async () => early.reject(collabError("unreachable")));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByText(fill(manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(screen.getByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeInTheDocument();
+  });
+
+  it("says a match is already in the project instead of saying nobody matches", async () => {
+    mocks.collabPeopleSearch.mockResolvedValue([alice.person]);
+    await search("alice");
+    expect(await screen.findByText(fill(manage.add.alreadyMember, { name: alice.person.display_name })))
+      .toBeInTheDocument();
+    expect(screen.queryByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeNull();
+  });
+
+  it("says everyone who matches already has access", async () => {
+    mocks.collabPeopleSearch.mockResolvedValue([alice.person, BOB]);
+    await search("lab");
+    expect(await screen.findByText(manage.add.allMembers)).toBeInTheDocument();
   });
 
   it("keeps the search and says why when adding someone fails", async () => {

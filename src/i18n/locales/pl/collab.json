@@ -506,6 +506,11 @@
       "roleLabel": "Rola dla dodawanych osób",
       "searching": "Wyszukiwanie…",
       "noResults": "Nikt na serwerze {{server}} nie pasuje.",
+      "noResultsTryEmail": "Nikt na serwerze {{server}} nie pasuje. Spróbuj pełnego adresu e-mail tej osoby.",
+      "alreadyMember": "{{name}} ma już dostęp.",
+      "allMembers": "Wszystkie pasujące osoby mają już dostęp.",
+      "noAccountNoGuests": "Nikt na serwerze {{server}} nie używa jeszcze adresu {{email}}. Poproś administratora serwera {{server}} o wpuszczenie tej osoby, a potem dodaj ją tutaj, gdy zaloguje się po raz pierwszy.",
+      "guestCheckFailed": "Oleafly nie mógł sprawdzić, czy serwer {{server}} zezwala na gości.",
       "add": "Dodaj",
       "addNamed": "Dodaj użytkownika {{name}}"
     },

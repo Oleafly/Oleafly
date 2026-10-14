@@ -506,6 +506,11 @@
       "roleLabel": "Rol pentru persoanele pe care le adaugi",
       "searching": "Se caută…",
       "noResults": "Nimeni de pe {{server}} nu se potrivește.",
+      "noResultsTryEmail": "Nimeni de pe {{server}} nu se potrivește. Încearcă adresa de e-mail completă a persoanei.",
+      "alreadyMember": "{{name}} are deja acces.",
+      "allMembers": "Toate persoanele găsite au deja acces.",
+      "noAccountNoGuests": "Nimeni de pe {{server}} nu folosește încă {{email}}. Cere-i unui administrator al {{server}} să permită accesul acestei persoane, apoi adaug-o aici după ce se autentifică o dată.",
+      "guestCheckFailed": "Oleafly nu a putut verifica dacă {{server}} permite invitați.",
       "add": "Adaugă",
       "addNamed": "Adaugă {{name}}"
     },

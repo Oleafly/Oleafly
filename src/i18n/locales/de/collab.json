@@ -506,6 +506,11 @@
       "roleLabel": "Rolle für Personen, die Sie hinzufügen",
       "searching": "Wird gesucht…",
       "noResults": "Niemand auf {{server}} passt zur Suche.",
+      "noResultsTryEmail": "Niemand auf {{server}} passt zur Suche. Versuchen Sie es mit der vollständigen E-Mail-Adresse.",
+      "alreadyMember": "{{name}} hat bereits Zugriff.",
+      "allMembers": "Alle passenden Personen haben bereits Zugriff.",
+      "noAccountNoGuests": "Auf {{server}} verwendet noch niemand {{email}}. Bitten Sie einen Admin von {{server}}, die Person zuzulassen, und fügen Sie sie hier hinzu, sobald sie sich einmal angemeldet hat.",
+      "guestCheckFailed": "Oleafly konnte nicht prüfen, ob {{server}} Gäste erlaubt.",
       "add": "Hinzufügen",
       "addNamed": "{{name}} hinzufügen"
     },
