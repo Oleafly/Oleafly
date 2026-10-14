@@ -75,8 +75,8 @@ fn fold(name: &str) -> String {
     name.nfc().flat_map(char::to_lowercase).collect()
 }
 
-fn suffixed(name: &str, id: &str) -> String {
-    let short: String = id
+fn suffixed(name: &str, id: &str, number: usize) -> String {
+    let mut short: String = id
         .chars()
         .rev()
         .take(6)
@@ -84,9 +84,25 @@ fn suffixed(name: &str, id: &str) -> String {
         .into_iter()
         .rev()
         .collect();
+    if number > 1 {
+        short = format!("{short} {number}");
+    }
     match name.rfind('.') {
         Some(dot) if dot > 0 => format!("{} ({short}){}", &name[..dot], &name[dot..]),
         _ => format!("{name} ({short})"),
+    }
+}
+
+// Any name can already be taken, even one with this node's id in it, so
+// the suffix counts up until the name is free.
+fn free_suffixed(name: &str, id: &str, mut free: impl FnMut(&str) -> bool) -> String {
+    let mut number = 1;
+    loop {
+        let named = suffixed(name, id, number);
+        if free(&named) {
+            return named;
+        }
+        number += 1;
     }
 }
 
@@ -238,7 +254,11 @@ fn naming<'a>(groups: &Groups<'a>) -> Naming<'a> {
                         taken.insert((parent.clone(), fold(named)))
                     })
                 })
-                .unwrap_or_else(|| suffixed(&name, &node.id));
+                .unwrap_or_else(|| {
+                    free_suffixed(&name, &node.id, |named| {
+                        taken.insert((parent.clone(), fold(named)))
+                    })
+                });
             if !reserved {
                 clashes.push(Clash {
                     id: node.id.clone(),
@@ -270,8 +290,6 @@ pub fn layout(nodes: &[FileNode]) -> Layout {
             },
         );
     }
-    let taken: BTreeSet<String> = placed.values().map(|entry| fold(&entry.path)).collect();
-    debug_assert_eq!(taken.len(), placed.len());
     placed
 }
 
@@ -471,6 +489,33 @@ mod tests {
         assert_eq!(placed["a1"].path, "plot.png");
         assert_eq!(placed["b2"].path, "plot (from Bob 2).png");
         assert_eq!(placed["c3"].path, "plot (from Bob).png");
+    }
+
+    #[test]
+    fn a_suffixed_name_never_takes_a_name_another_file_already_has() {
+        let nodes = vec![
+            node("ab0001", NodeParent::Root, "plot.png", NodeKind::Text),
+            node("ab0002", NodeParent::Root, "plot.png", NodeKind::Text),
+            node(
+                "ab0003",
+                NodeParent::Root,
+                "plot (ab0002).png",
+                NodeKind::Text,
+            ),
+            node(
+                "ab0004",
+                NodeParent::Root,
+                "plot (ab0002 2).png",
+                NodeKind::Text,
+            ),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["ab0001"].path, "plot.png");
+        assert_eq!(placed["ab0002"].path, "plot (ab0002 3).png");
+        assert_eq!(placed["ab0003"].path, "plot (ab0002).png");
+        assert_eq!(placed["ab0004"].path, "plot (ab0002 2).png");
+        let paths: BTreeSet<String> = placed.values().map(|entry| fold(&entry.path)).collect();
+        assert_eq!(paths.len(), placed.len());
     }
 
     #[test]
