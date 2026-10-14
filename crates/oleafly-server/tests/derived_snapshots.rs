@@ -696,6 +696,68 @@ async fn hinted(stage: &Stage, project: SharedProjectId, seq: u64) -> Option<u64
     seq_of(&response)
 }
 
+#[tokio::test]
+async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_without_it() {
+    let stage = stage().await;
+    snapshot_often(&stage);
+    let project = shared_with_alice(&stage).await;
+    let doc = LoroDoc::new();
+    doc.import(&first_snapshot())
+        .expect("the first snapshot loads");
+    append_changes(&stage, &doc, project, 1, 3).await;
+    let hidden = doc.fork();
+    hidden.set_peer_id(9_009).expect("peer");
+    hidden
+        .get_text("text")
+        .insert(0, "never stored ")
+        .expect("insert");
+    hidden.commit();
+    let before = hidden.oplog_vv();
+    hidden
+        .get_text("text")
+        .insert(0, "after it ")
+        .expect("insert");
+    hidden.commit();
+    let unreadable = hidden.export(ExportMode::updates(&before)).expect("update");
+    let person = &stage.alice;
+    let envelope = signed_by(person, &person.device, project, &unreadable);
+    let (device, account) = (person.tokens.device_id, person.tokens.account_id);
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            let stored = serde_json::to_vec(&envelope).expect("json");
+            projects::append_update(
+                conn,
+                project,
+                envelope.batch_id,
+                device,
+                account,
+                &stored,
+                1,
+            )
+            .map(|_| ())
+        })
+        .await
+        .expect("store the change directly");
+    assert_eq!(hinted(&stage, project, 4).await, Some(0));
+    let kept = stage
+        .server
+        .state()
+        .db
+        .call(move |conn| projects::oldest_kept_update(conn, project))
+        .await
+        .expect("oldest kept");
+    assert_eq!(kept, Some(1));
+    let (seq, bytes) = {
+        let response = download(&stage, "", project).await;
+        (seq_of(&response), response.bytes().await.expect("body"))
+    };
+    assert_eq!(seq, Some(0));
+    assert_eq!(text_of(&bytes), SNAPSHOT_TEXT);
+}
+
 async fn catches_up_from_the_log(stage: &Stage, project: SharedProjectId, since: u64) {
     let mut late = connect(&stage.server, &stage.bob).await;
     let opened = subscribe(&mut late, project, since).await;

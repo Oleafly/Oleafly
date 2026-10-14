@@ -511,6 +511,13 @@ impl Snapshots {
                     continue;
                 }
             };
+            if let Some((first, last)) = replay.left_out() {
+                self.refused(project, through);
+                tracing::error!(
+                    "Kept the change log of project {project} and did not build its snapshot at {through}, because changes stored between {first} and {last} could not be read. Members who were online have them. Update Oleafly Server if the apps are newer than it."
+                );
+                return Ok(Upload::Held(newest.seq));
+            }
             let Some(derived) = blocking(move || Ok(replay.finish())).await? else {
                 tracing::warn!(
                     "The snapshot of project {project} at {after} does not load, so the server builds on the one before it"
@@ -1091,6 +1098,15 @@ impl Snapshots {
 pub struct Replay {
     project: SharedProjectId,
     doc: LoroDoc,
+    reached: HashMap<u64, Reached>,
+}
+
+// How far the replayed entries took one writer id, and which entries did.
+#[derive(Clone, Copy)]
+struct Reached {
+    end: i32,
+    first: u64,
+    last: u64,
 }
 
 pub async fn advance(
@@ -1151,7 +1167,24 @@ impl Replay {
         peers::snapshot_reach(base)?;
         let doc = LoroDoc::new();
         doc.import(base).ok()?;
-        Some(Replay { project, doc })
+        Some(Replay {
+            project,
+            doc,
+            reached: HashMap::new(),
+        })
+    }
+
+    // The changes the replayed entries carried that the document does not
+    // hold, as the range of entries they came from. Such changes were
+    // accepted but could not be imported, so a snapshot built now would
+    // leave them out.
+    pub fn left_out(&self) -> Option<(u64, u64)> {
+        let held = self.doc.oplog_vv();
+        self.reached
+            .iter()
+            .filter(|(peer, reached)| held.get(peer).copied().unwrap_or(0) < reached.end)
+            .map(|(_, reached)| (reached.first, reached.last))
+            .reduce(|(low, high), (first, last)| (low.min(first), high.max(last)))
     }
 
     pub fn apply(&mut self, entries: &[LoggedUpdate], bindings: &HashMap<u64, DeviceId>) {
@@ -1175,6 +1208,16 @@ impl Replay {
             });
             if taken {
                 continue;
+            }
+            for (peer, end) in &reach.ends {
+                let reached = self.reached.entry(*peer).or_insert(Reached {
+                    end: *end,
+                    first: entry.seq,
+                    last: entry.seq,
+                });
+                reached.end = reached.end.max(*end);
+                reached.first = reached.first.min(entry.seq);
+                reached.last = reached.last.max(entry.seq);
             }
             if builds_on(&reach, &known) {
                 for (peer, end) in &reach.ends {
@@ -1557,6 +1600,32 @@ mod tests {
         assert_eq!(text, expected.get_text("text").to_string());
         assert!(text.contains("holds."), "{text}");
         assert!(!text.contains("FAILS"), "{text}");
+    }
+
+    #[test]
+    fn a_replay_names_the_entries_whose_changes_it_could_not_take_in() {
+        let project = SharedProjectId::new_v7();
+        let laptop = DeviceId::new_v7();
+        let base_doc = LoroDoc::new();
+        base_doc.set_peer_id(1).unwrap();
+        base_doc.get_text("text").insert(0, "Hello").unwrap();
+        base_doc.commit();
+        let base = base_doc.export(ExportMode::Snapshot).unwrap();
+        let writer = LoroDoc::new();
+        writer.import(&base).unwrap();
+        let first = typed(&writer, 2, " one");
+        typed(&writer, 3, " never stored");
+        let after_the_gap = typed(&writer, 3, " builds on it");
+        let entries = vec![
+            logged(1, project, laptop, first),
+            logged(2, project, laptop, after_the_gap),
+        ];
+        let mut whole = Replay::start(project, &base).unwrap();
+        whole.apply(&entries[..1], &HashMap::new());
+        assert_eq!(whole.left_out(), None);
+        let mut gapped = Replay::start(project, &base).unwrap();
+        gapped.apply(&entries, &HashMap::new());
+        assert_eq!(gapped.left_out(), Some((2, 2)));
     }
 
     #[test]
