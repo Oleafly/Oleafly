@@ -4,7 +4,7 @@ use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::roles::ServerRole;
 use rusqlite::Connection;
 
-use crate::auth::{setup, ExternalIdentity};
+use crate::auth::{email_link, setup, ExternalIdentity};
 use crate::db::parse_id;
 use crate::error::ServerError;
 use crate::guests;
@@ -151,6 +151,24 @@ pub fn apply(
 ) -> Result<Applied, ServerError> {
     let (role, entry_id, existing, via) = match admission {
         Admission::Linked { account_id } => {
+            members::link_identity(
+                conn,
+                account_id,
+                &identity.provider_id,
+                &identity.issuer,
+                &identity.subject,
+                identity.login.as_deref(),
+                now,
+            )?;
+            if identity.provider_id != email_link::PROVIDER_ID {
+                members::refresh_profile(
+                    conn,
+                    account_id,
+                    &identity.display_name,
+                    identity.avatar_url.as_deref(),
+                    now,
+                )?;
+            }
             members::add_verified_emails(conn, account_id, &identity.verified_emails)?;
             guests::accept_for(
                 conn,

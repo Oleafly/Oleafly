@@ -513,6 +513,84 @@ async fn an_entry_made_after_someone_joined_by_domain_does_not_bring_them_back()
     ));
 }
 
+#[tokio::test]
+async fn signing_in_again_follows_a_new_login_name_and_picture_but_an_email_link_keeps_them() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::ProviderLogin {
+            provider: "github".to_owned(),
+            login: "ada-old".to_owned(),
+        },
+    )
+    .await;
+    let first = ExternalIdentity {
+        provider_id: "github".to_owned(),
+        issuer: "https://github.com".to_owned(),
+        subject: "42".to_owned(),
+        login: Some("ada-old".to_owned()),
+        display_name: "Ada".to_owned(),
+        avatar_url: Some("https://avatars.example/ada-1.png".to_owned()),
+        verified_emails: vec!["ada@uni.edu".to_owned()],
+    };
+    let Applied::Admitted(admitted) = admit(&app, &first, None).await else {
+        panic!("ada was refused");
+    };
+    let renamed = ExternalIdentity {
+        login: Some("ada-new".to_owned()),
+        display_name: "Ada Lovelace".to_owned(),
+        avatar_url: Some("https://avatars.example/ada-2.png".to_owned()),
+        ..first.clone()
+    };
+    let Applied::Admitted(again) = admit(&app, &renamed, None).await else {
+        panic!("ada was refused the second time");
+    };
+    assert_eq!(again.account_id, admitted.account_id);
+    assert_eq!(again.via, Via::Linked);
+    let account = admitted.account_id;
+    let summary = app
+        .state
+        .db
+        .call(move |conn| members::account_summary(conn, account))
+        .await
+        .expect("summary")
+        .expect("the account exists");
+    assert_eq!(summary.logins, ["ada-new"]);
+    assert_eq!(summary.display_name, "Ada Lovelace");
+    assert_eq!(
+        summary.avatar_url.as_deref(),
+        Some("https://avatars.example/ada-2.png")
+    );
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            oleafly_server::auth::email_link::link_existing_account(conn, "ada@uni.edu", now)
+        })
+        .await
+        .expect("the address is linked");
+    let by_email = oleafly_server::auth::email_link::identity("ada@uni.edu");
+    let Applied::Admitted(linked) = admit(&app, &by_email, None).await else {
+        panic!("ada was refused by email");
+    };
+    assert_eq!(linked.account_id, account);
+    let kept = app
+        .state
+        .db
+        .call(move |conn| members::account_summary(conn, account))
+        .await
+        .expect("summary")
+        .expect("the account exists");
+    assert_eq!(kept.display_name, "Ada Lovelace");
+    assert_eq!(
+        kept.avatar_url.as_deref(),
+        Some("https://avatars.example/ada-2.png")
+    );
+    assert_eq!(kept.logins, ["ada-new"]);
+}
+
 async fn admin_status(
     app: &TestApp,
     token: &str,

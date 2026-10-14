@@ -138,6 +138,29 @@ pub fn create_account(
     Ok(id)
 }
 
+pub fn refresh_profile(
+    conn: &Connection,
+    account: AccountId,
+    display_name: &str,
+    avatar_url: Option<&str>,
+    now: i64,
+) -> Result<(), ServerError> {
+    let display_name = display_name.trim();
+    if !display_name.is_empty() {
+        conn.execute(
+            "UPDATE accounts SET display_name = ?2, updated_at = ?3 WHERE id = ?1 AND display_name != ?2",
+            params![account.to_string(), display_name, now],
+        )?;
+    }
+    if let Some(avatar_url) = avatar_url.filter(|url| !url.trim().is_empty()) {
+        conn.execute(
+            "UPDATE accounts SET avatar_url = ?2, updated_at = ?3 WHERE id = ?1 AND avatar_url IS NOT ?2",
+            params![account.to_string(), avatar_url, now],
+        )?;
+    }
+    Ok(())
+}
+
 pub fn account_summary(
     conn: &Connection,
     account: AccountId,
