@@ -81,10 +81,12 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
 | `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
 | `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` | How many sign-in emails one email address can get in 15 minutes. It can't be more than `OLEAFLY_EMAIL_LINKS_PER_IP`. | `3` |
+| `OLEAFLY_EMAIL_LINKS_PER_HOUR` | How many sign-in emails the whole server sends in an hour, all addresses together. A flood of requests from many addresses stops there instead of at your mail provider's limit. | `300` |
 | `OLEAFLY_DEVICE_CODES_PER_IP` | How many sign-in codes people at one network address can ask for in 10 minutes. Read [Sign in with a code](#sign-in-with-a-code). | `100` |
-| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half the container's memory limit, or `1024` without a limit |
+| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
-| `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. Set it to `2` when Cloudflare sits in front of your own proxy, such as Coolify's. It needs `OLEAFLY_BEHIND_PROXY=true`. | `1` |
+| `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. It needs `OLEAFLY_BEHIND_PROXY=true`. With more than one proxy, `OLEAFLY_TRUSTED_PROXIES` is safer. | `1` |
+| `OLEAFLY_TRUSTED_PROXIES` | Your proxies' IP addresses and CIDR ranges, separated by commas. The server then uses `X-Forwarded-For` only on connections from them, and skips the trusted entries from the right to find the visitor. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. | None |
 | `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. Libraries the server uses only log warnings unless you pick `debug` or `trace`. | `info` |
 | `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries, project access log entries and answered or expired guest invitations. | `365` |
 | `OLEAFLY_ARCHIVE_DAYS` | How many days to keep a project after its owner stops sharing it. | `30` |
@@ -92,9 +94,11 @@ The server reads its settings from environment variables. A variable that is set
 
 In the Compose `.env` file, put a value in single quotes if it contains `$` or `#`.
 
+When the server starts, it warns about every variable whose name starts with `OLEAFLY_` but that it doesn't know, and suggests the closest name it does know. A typo such as `OLEAFLY_PROXY_HOP` then shows up in the log instead of being ignored.
+
 ### Keeping secrets in files
 
-Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
+Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The server trims spaces and line breaks around the value in the file, the same as for a plain variable. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
 
 ### Files in a bucket
 
@@ -272,7 +276,7 @@ Before you start, point your domain's DNS record, such as `collab.example.org`, 
 
 If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
 
-If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_PROXY_HOPS` to `2`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit.
+If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_TRUSTED_PROXIES`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit. Behind Cloudflare's proxy, list [Cloudflare's published ranges](https://www.cloudflare.com/ips/) plus the range of Docker's `coolify` network, separated by commas. Find that range with `docker network inspect coolify --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`. Behind a tunnel, the `coolify` network's range is enough. Cloudflare changes its list now and then, so check it when you update the server. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains the other choice, `OLEAFLY_PROXY_HOPS=2`, and why it needs more care.
 
 The Coolify file has room for GitHub and one OpenID Connect provider named `UNIVERSITY`. Set `OLEAFLY_OIDC_UNIVERSITY_LABEL` to the text people should see, such as `GitLab`. Its callback address ends in `/auth/callback/university`. For more providers, deploy from a fork with your own copy of the file.
 
@@ -462,9 +466,13 @@ With `OLEAFLY_BEHIND_PROXY=true`, the server reads the `X-Forwarded-For` header 
 
 Turn it on only when every request comes through your proxy. If people can also reach the server directly, anyone can send a made-up `X-Forwarded-For`, put any address in the security log and get around the sign-in limit.
 
-With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. Set `OLEAFLY_PROXY_HOPS=2` and the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one.
+With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. There are two ways to fix that.
 
-To check the number, sign in from your own computer and open **Security log** in the admin console. The newest entry should show your public address, the one a site such as `ifconfig.me` reports. If it shows a private or Cloudflare address instead, raise `OLEAFLY_PROXY_HOPS` by one.
+The safer one is `OLEAFLY_TRUSTED_PROXIES`, a list of your proxies' IP addresses and CIDR ranges separated by commas. The server then uses `X-Forwarded-For` only on connections that come from an address on the list. It reads the header from the right, skips every address on the list, and takes the first one that isn't as the visitor, the way nginx does with `real_ip_recursive`. A connection from anywhere else keeps its own address, whatever header it sends. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. [Coolify](#coolify) shows what to list behind Cloudflare.
+
+The other one is `OLEAFLY_PROXY_HOPS=2`: the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one. With `2`, the inner proxy must not be reachable directly from the internet, because a request sent straight to it can carry a made-up address that the server then takes as the visitor's. On Coolify, remove the `sslip.io` host Coolify generated for the resource, so only the domain behind Cloudflare leads to the server.
+
+To check the setting, sign in from your own computer and open **Security log** in the admin console. The newest entry should show your public address, the one a site such as `ifconfig.me` reports. If it shows a private or Cloudflare address instead, add that address's range to `OLEAFLY_TRUSTED_PROXIES`, or raise `OLEAFLY_PROXY_HOPS` by one.
 
 ### Caddy
 
@@ -603,7 +611,7 @@ If the machine has no public address, for example a computer in your lab behind 
 
 On a machine without Docker, install `cloudflared` from [Cloudflare's package repository](https://pkg.cloudflare.com/), run `sudo cloudflared service install` followed by the token, and set **Service URL** to `http://127.0.0.1:8080`.
 
-Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
+Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_TRUSTED_PROXIES` to the range of the Docker network that `cloudflared` and that proxy share. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains this and the other choice, `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
 
 When you update the server later, name the service so Caddy stays off: `docker compose pull oleafly-server && docker compose up -d oleafly-server`. The one-command installer always starts Caddy, so use these steps for a tunnel instead.
 
@@ -674,7 +682,7 @@ Your access rules still decide who gets in: an allowed list entry for that email
 
 Turning **Sign in by email** on also opens existing accounts to email links. A link signs in to the account that already has that address as a verified address. The server keeps every verified address a provider has reported for an account, not just the main one, and it keeps an address even after the person removes it from the provider. GitHub, for example, reports every verified address on the GitHub account. So anyone who can read mail at one of those addresses can sign in to that account by email. Before you turn it on, check that people still control every address on their accounts. If an address belongs to more than one account that can sign in, the link signs in to none of them, and your access rules decide whether it gets an account of its own. If the only account with that address is suspended or removed, the link is refused until you let that person back in, even when a domain rule covers the address.
 
-The server sends at most 3 links to one email address and 100 links to one IP address in 15 minutes, so a class of 50 at one address can all sign in. `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` and `OLEAFLY_EMAIL_LINKS_PER_IP` set these numbers. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. Turning **Sign in by email** off stops links that were already sent.
+The server sends at most 3 links to one email address and 100 links to one IP address in 15 minutes, so a class of 50 at one address can all sign in. `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` and `OLEAFLY_EMAIL_LINKS_PER_IP` set these numbers. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. The whole server also sends at most 300 sign-in emails an hour, whoever asks for them, and `OLEAFLY_EMAIL_LINKS_PER_HOUR` sets that number. Turning **Sign in by email** off stops links that were already sent.
 
 ### Sign in with a code
 
@@ -748,7 +756,7 @@ Set both lines or neither. Write special characters in the user name and passwor
 
 `smtps://` uses TLS from the start, on port 465 unless you name another port. `smtp://` uses port 587 unless you name another, then switches to TLS with STARTTLS. If the mail server doesn't offer STARTTLS, the server won't send. A mail relay on the same machine is the one exception: `smtp://localhost`, `smtp://127.0.0.1` and `smtp://[::1]` send without TLS. The server checks the mail server's certificate against the system's trusted certificates.
 
-A relay on the same private network can skip TLS too, when you ask for it. Add `?tls=none`, as in `smtp://mailpit:1025?tls=none`. That suits a relay container in the same Compose project, or a mail catcher such as [Mailpit](https://mailpit.axllent.org) on a test server. The address can't hold a user name or password then, because they would cross the network unencrypted. Use it only when nobody else can reach that network.
+A relay on the same private network can skip TLS too, when you ask for it. Add `?tls=none`, as in `smtp://mailpit:1025?tls=none`. That suits a relay container in the same Compose project, or a mail catcher such as [Mailpit](https://mailpit.axllent.org) on a test server. The address can't hold a user name or password then, because they would cross the network unencrypted. The server accepts `tls=none` only for this machine, an IP address in a private, link-local or unique-local range, or a one-word host name such as a Compose service. It refuses it for any other host. Use it only when nobody else can reach that network.
 
 ### What the server sends
 
