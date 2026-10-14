@@ -326,6 +326,112 @@ fn sweep_stale_temp(path: &Path, name: &str) {
     }
 }
 
+fn entry_kind(file_type: std::fs::FileType) -> EntryKind {
+    if file_type.is_symlink() {
+        EntryKind::Symlink
+    } else if file_type.is_dir() {
+        EntryKind::Directory
+    } else if file_type.is_file() {
+        EntryKind::File
+    } else {
+        EntryKind::Other
+    }
+}
+
+enum Seen {
+    Skip,
+    Directory(PathBuf),
+    File {
+        portable: String,
+        path: PathBuf,
+        metadata: std::fs::Metadata,
+    },
+}
+
+fn classify_entry(
+    out: &mut Capture,
+    root: &Path,
+    fields: &PolicyFields<'_>,
+    entry: &std::fs::DirEntry,
+) -> Seen {
+    let path = entry.path();
+    let Ok(relative) = path.strip_prefix(root) else {
+        return Seen::Skip;
+    };
+    let Ok(file_type) = entry.file_type() else {
+        return Seen::Skip;
+    };
+    let kind = entry_kind(file_type);
+    let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+        return Seen::Skip;
+    };
+    let info = EntryInfo {
+        kind,
+        len: metadata.len(),
+        placeholder: oleafly_core::is_cloud_placeholder(&metadata),
+        git_tracked: false,
+        git_pointer_inside: None,
+    };
+    match decide(relative, &info, fields) {
+        Decision::Ignore => {
+            if let Some(name) = entry.file_name().to_str() {
+                sweep_stale_temp(&path, name);
+            }
+            return Seen::Skip;
+        }
+        Decision::Hold if kind == EntryKind::File => {
+            if let Some(portable) = portable_path(relative) {
+                out.unobserved.insert(key(&portable));
+            }
+            return Seen::Skip;
+        }
+        Decision::Include if !is_reparse(&metadata) => {}
+        _ => return Seen::Skip,
+    }
+    let Some(portable) = portable_path(relative)
+        .filter(|portable| portable::synced_path_problem(portable).is_none())
+    else {
+        out.skipped += 1;
+        return Seen::Skip;
+    };
+    if kind == EntryKind::Directory {
+        return Seen::Directory(path);
+    }
+    Seen::File {
+        portable,
+        path,
+        metadata,
+    }
+}
+
+fn record_file(out: &mut Capture, portable: String, path: &Path, metadata: &std::fs::Metadata) {
+    let file_key = key(&portable);
+    if out.files.contains_key(&file_key) {
+        out.skipped += 1;
+        return;
+    }
+    let hash = if portable == PROJECT_META {
+        std::fs::read(path).map(|bytes| merge::meta_digest(&bytes))
+    } else {
+        crate::checkpoint_capture::cached_capture_hash(path, &portable, metadata)
+    };
+    match hash {
+        Ok(hash) => {
+            out.files.insert(
+                file_key,
+                LocalFile {
+                    path: portable,
+                    hash: hash.to_hex(),
+                    stamp: FileStamp::of(metadata),
+                },
+            );
+        }
+        Err(_) => {
+            out.unobserved.insert(file_key);
+        }
+    }
+}
+
 pub(crate) fn capture(root: &Path) -> Result<Capture, RoundError> {
     let meta = read_meta_value(root);
     let policy = policy_for(meta.as_ref());
@@ -341,89 +447,21 @@ pub(crate) fn capture(root: &Path) -> Result<Capture, RoundError> {
         let mut children: Vec<_> = read.flatten().collect();
         children.sort_by_key(std::fs::DirEntry::file_name);
         for entry in children {
-            let path = entry.path();
-            let Ok(relative) = path.strip_prefix(root) else {
-                continue;
-            };
-            let Ok(file_type) = entry.file_type() else {
-                continue;
-            };
-            let kind = if file_type.is_symlink() {
-                EntryKind::Symlink
-            } else if file_type.is_dir() {
-                EntryKind::Directory
-            } else if file_type.is_file() {
-                EntryKind::File
-            } else {
-                EntryKind::Other
-            };
-            let Ok(metadata) = std::fs::symlink_metadata(&path) else {
-                continue;
-            };
-            let info = EntryInfo {
-                kind,
-                len: metadata.len(),
-                placeholder: oleafly_core::is_cloud_placeholder(&metadata),
-                git_tracked: false,
-                git_pointer_inside: None,
-            };
-            let decision = decide(relative, &info, &fields);
-            if decision == Decision::Ignore {
-                if let Some(name) = entry.file_name().to_str() {
-                    sweep_stale_temp(&path, name);
+            match classify_entry(&mut out, root, &fields, &entry) {
+                Seen::Skip => {}
+                Seen::Directory(path) => pending.push(path),
+                Seen::File {
+                    portable,
+                    path,
+                    metadata,
+                } => {
+                    record_file(&mut out, portable, &path, &metadata);
+                    if out.files.len() > MAX_FILES {
+                        return Err(RoundError::Local(
+                            "project has too many files to sync".into(),
+                        ));
+                    }
                 }
-                continue;
-            }
-            if decision == Decision::Hold && kind == EntryKind::File {
-                if let Some(portable) = portable_path(relative) {
-                    out.unobserved.insert(key(&portable));
-                }
-                continue;
-            }
-            if decision != Decision::Include || is_reparse(&metadata) {
-                continue;
-            }
-            let Some(portable) = portable_path(relative) else {
-                out.skipped += 1;
-                continue;
-            };
-            if portable::synced_path_problem(&portable).is_some() {
-                out.skipped += 1;
-                continue;
-            }
-            if kind == EntryKind::Directory {
-                pending.push(path);
-                continue;
-            }
-            let file_key = key(&portable);
-            if out.files.contains_key(&file_key) {
-                out.skipped += 1;
-                continue;
-            }
-            let hash = if portable == PROJECT_META {
-                std::fs::read(&path).map(|bytes| merge::meta_digest(&bytes))
-            } else {
-                crate::checkpoint_capture::cached_capture_hash(&path, &portable, &metadata)
-            };
-            match hash {
-                Ok(hash) => {
-                    out.files.insert(
-                        file_key,
-                        LocalFile {
-                            path: portable,
-                            hash: hash.to_hex(),
-                            stamp: FileStamp::of(&metadata),
-                        },
-                    );
-                }
-                Err(_) => {
-                    out.unobserved.insert(file_key);
-                }
-            }
-            if out.files.len() > MAX_FILES {
-                return Err(RoundError::Local(
-                    "project has too many files to sync".into(),
-                ));
             }
         }
     }
@@ -781,6 +819,63 @@ fn trash_file(path: &Path, trash: &Path) -> Result<(), String> {
 struct Staged {
     key: String,
     path: PathBuf,
+    hash: String,
+    size: u64,
+}
+
+async fn stage_one<S: CloudStore>(
+    store: &S,
+    cloud: ProjectId,
+    job_key: &str,
+    record: &FileRecord,
+    staging: &Path,
+) -> Result<Staged, StoreError> {
+    let temp = staging_name(staging);
+    let pinned = record.rev.is_some();
+    let limit = if pinned {
+        record.size
+    } else {
+        oleafly_core::exclude::MAX_SYNC_FILE_BYTES
+    };
+    let fetched = store
+        .fetch_to(
+            &file_remote(cloud, &record.path),
+            record.rev.as_deref(),
+            &temp,
+            limit,
+        )
+        .await?
+        .ok_or_else(|| StoreError::Verify(format!("{} is missing from dropbox", record.path)))?;
+    let (hash, matches) = if job_key == PROJECT_META {
+        match tokio::fs::read(&temp).await {
+            Ok(bytes) => {
+                let digest = merge::meta_digest(&bytes).to_hex();
+                let matches = digest == record.hash || fetched.hash.to_hex() == record.hash;
+                (digest, matches)
+            }
+            Err(error) => {
+                let _ = tokio::fs::remove_file(&temp).await;
+                return Err(StoreError::Io(error.to_string()));
+            }
+        }
+    } else {
+        let hash = fetched.hash.to_hex();
+        let matches = hash == record.hash && fetched.size == record.size;
+        (hash, matches)
+    };
+    if matches || !pinned {
+        return Ok(Staged {
+            key: job_key.to_string(),
+            path: temp,
+            hash,
+            size: fetched.size,
+        });
+    }
+    let _ = tokio::fs::remove_file(&temp).await;
+    Err(StoreError::Verify(format!(
+        "{} did not match its record",
+        record.path
+    )))
 }
 
 async fn stage_downloads<S: CloudStore>(
@@ -789,39 +884,9 @@ async fn stage_downloads<S: CloudStore>(
     jobs: Vec<(String, FileRecord)>,
     staging: &Path,
 ) -> (Vec<Staged>, Vec<(String, StoreError)>) {
-    let results: Vec<(String, Result<Option<PathBuf>, StoreError>)> = stream::iter(jobs)
+    let results: Vec<(String, Result<Staged, StoreError>)> = stream::iter(jobs)
         .map(|(job_key, record)| async move {
-            let temp = staging_name(staging);
-            let fetched = store
-                .fetch_to(
-                    &file_remote(cloud, &record.path),
-                    record.rev.as_deref(),
-                    &temp,
-                    record.size,
-                )
-                .await;
-            let result = match fetched {
-                Ok(Some(fetched)) => {
-                    let digest = if job_key == PROJECT_META {
-                        std::fs::read(&temp).map(|bytes| merge::meta_digest(&bytes).to_hex())
-                    } else {
-                        Ok(fetched.hash.to_hex())
-                    };
-                    let size_ok = job_key == PROJECT_META || fetched.size == record.size;
-                    match digest {
-                        Ok(digest) if digest == record.hash && size_ok => Ok(Some(temp)),
-                        _ => {
-                            let _ = std::fs::remove_file(&temp);
-                            Err(StoreError::Verify(format!(
-                                "{} did not match its record",
-                                record.path
-                            )))
-                        }
-                    }
-                }
-                Ok(None) => Ok(None),
-                Err(error) => Err(error),
-            };
+            let result = stage_one(store, cloud, &job_key, &record, staging).await;
             (job_key, result)
         })
         .buffer_unordered(DOWNLOAD_CONCURRENCY)
@@ -831,15 +896,29 @@ async fn stage_downloads<S: CloudStore>(
     let mut failed = Vec::new();
     for (job_key, result) in results {
         match result {
-            Ok(Some(path)) => staged.push(Staged { key: job_key, path }),
-            Ok(None) => failed.push((
-                job_key,
-                StoreError::Verify("a file is missing from dropbox".into()),
-            )),
+            Ok(entry) => staged.push(entry),
             Err(error) => failed.push((job_key, error)),
         }
     }
     (staged, failed)
+}
+
+fn corrections(staged: &[Staged], view: &RemoteView) -> BTreeMap<String, FileRecord> {
+    staged
+        .iter()
+        .filter_map(|entry| {
+            let record = view.usable.get(&entry.key)?;
+            (record.hash != entry.hash).then(|| FileRecord {
+                hash: entry.hash.clone(),
+                size: entry.size,
+                rev: None,
+                ..record.clone()
+            })
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|record| (key(&record.path), record))
+        .collect()
 }
 
 #[derive(Default)]
@@ -861,6 +940,107 @@ struct ApplyJob {
     meta_base: Option<serde_json::Value>,
 }
 
+fn apply_download(
+    root: &Path,
+    item_key: &str,
+    temp: &Path,
+    local: Option<&LocalFile>,
+    record: &FileRecord,
+    applied: &mut Applied,
+) {
+    let portable_path = local.map_or(record.path.as_str(), |file| file.path.as_str());
+    let Some(target) = resolve_target(root, portable_path) else {
+        applied.skipped += 1;
+        return;
+    };
+    if !unchanged_since_capture(&target, local) {
+        return;
+    }
+    let placed = if item_key == PROJECT_META {
+        place_meta(
+            temp,
+            &target,
+            local.and_then(|_| read_json(&target)).as_ref(),
+        )
+    } else {
+        move_into(temp, &target).map_err(|error| error.to_string())
+    };
+    if placed.is_ok() {
+        apply_exec(&target, portable_path, record.exec);
+        applied.downloaded.insert(item_key.to_string());
+    }
+}
+
+fn apply_delete(
+    root: &Path,
+    trash: &Path,
+    item_key: &str,
+    local: &LocalFile,
+    applied: &mut Applied,
+) {
+    let Some(target) = resolve_target(root, &local.path) else {
+        return;
+    };
+    if !unchanged_since_capture(&target, Some(local)) {
+        return;
+    }
+    if trash_file(&target, trash).is_ok() {
+        prune_empty_parents(root, &target);
+        applied.deleted.insert(item_key.to_string());
+    }
+}
+
+fn apply_conflict(
+    root: &Path,
+    item_key: &str,
+    temp: &Path,
+    copy: &str,
+    remote: Option<&FileRecord>,
+    applied: &mut Applied,
+) {
+    let Some(target) = resolve_target(root, copy).filter(|target| !target.exists()) else {
+        return;
+    };
+    if move_into(temp, &target).is_err() {
+        return;
+    }
+    if let Some(record) = remote {
+        apply_exec(&target, copy, record.exec);
+    }
+    applied
+        .conflict_copies
+        .insert(item_key.to_string(), copy.to_string());
+}
+
+fn apply_meta_merge(
+    root: &Path,
+    temp: &Path,
+    local: &LocalFile,
+    meta_base: Option<&serde_json::Value>,
+    applied: &mut Applied,
+) {
+    let target = root.join(PROJECT_META);
+    let (Some(incoming), Some(current)) = (read_json(temp), read_json(&target)) else {
+        return;
+    };
+    if !unchanged_since_capture(&target, Some(local)) {
+        return;
+    }
+    let base = meta_base.map(merge::portable_meta);
+    let merged = merge::merge3(
+        base.as_ref(),
+        &merge::portable_meta(&current),
+        &merge::portable_meta(&incoming),
+    );
+    let written = merge::with_device_fields(&merged, Some(&current));
+    let Ok(bytes) = merge::pretty(&written) else {
+        return;
+    };
+    if crate::sandbox::atomic_write(&target, &bytes).is_ok() {
+        applied.merged_meta = Some((merge::meta_digest(&bytes).to_hex(), bytes));
+    }
+}
+
 fn apply_local(job: ApplyJob) -> Applied {
     let mut applied = Applied::default();
     let lock = match &job.lock_id {
@@ -869,113 +1049,48 @@ fn apply_local(job: ApplyJob) -> Applied {
             .flatten(),
         None => None,
     };
+    let mut staged = job.staged;
     if (job.lock_id.is_some() && lock.is_none()) || !job.root.is_dir() {
-        for staged in job.staged.values() {
-            let _ = std::fs::remove_file(staged);
+        for temp in staged.values() {
+            let _ = std::fs::remove_file(temp);
         }
         return applied;
     }
-    let mut staged = job.staged;
     for (item_key, action, local, remote) in &job.items {
-        match action {
-            Action::Download => {
-                let (Some(record), Some(temp)) = (remote, staged.remove(item_key)) else {
-                    continue;
-                };
-                let portable_path = local
-                    .as_ref()
-                    .map_or(record.path.as_str(), |file| file.path.as_str());
-                let Some(target) = resolve_target(&job.root, portable_path) else {
-                    applied.skipped += 1;
-                    let _ = std::fs::remove_file(&temp);
-                    continue;
-                };
-                if !unchanged_since_capture(&target, local.as_ref()) {
-                    let _ = std::fs::remove_file(&temp);
-                    continue;
-                }
-                let placed = if item_key == PROJECT_META {
-                    place_meta(
-                        &temp,
-                        &target,
-                        local.as_ref().and_then(|_| read_json(&target)).as_ref(),
-                    )
-                } else {
-                    move_into(&temp, &target).map_err(|error| error.to_string())
-                };
-                let _ = std::fs::remove_file(&temp);
-                if placed.is_ok() {
-                    apply_exec(&target, portable_path, record.exec);
-                    applied.downloaded.insert(item_key.clone());
-                }
-            }
-            Action::LocalDelete => {
-                let Some(local) = local else {
-                    continue;
-                };
-                let Some(target) = resolve_target(&job.root, &local.path) else {
-                    continue;
-                };
-                if !unchanged_since_capture(&target, Some(local)) {
-                    continue;
-                }
-                if trash_file(&target, &job.trash).is_ok() {
-                    prune_empty_parents(&job.root, &target);
-                    applied.deleted.insert(item_key.clone());
-                }
-            }
-            Action::Conflict => {
-                let (Some(temp), Some(copy)) =
-                    (staged.remove(item_key), job.conflict_names.get(item_key))
-                else {
-                    continue;
-                };
-                let placed = resolve_target(&job.root, copy)
-                    .filter(|target| !target.exists())
-                    .map(|target| {
-                        let moved = move_into(&temp, &target);
-                        if moved.is_ok() {
-                            if let Some(record) = remote {
-                                apply_exec(&target, copy, record.exec);
-                            }
-                        }
-                        moved
-                    });
-                let _ = std::fs::remove_file(&temp);
-                if matches!(placed, Some(Ok(()))) {
-                    applied
-                        .conflict_copies
-                        .insert(item_key.clone(), copy.clone());
-                }
-            }
-            Action::MetaMerge => {
-                let (Some(temp), Some(local)) = (staged.remove(item_key), local) else {
-                    continue;
-                };
-                let target = job.root.join(PROJECT_META);
-                let incoming = read_json(&temp);
-                let _ = std::fs::remove_file(&temp);
-                let current = read_json(&target);
-                let (Some(incoming), Some(current)) = (incoming, current) else {
-                    continue;
-                };
-                if !unchanged_since_capture(&target, Some(local)) {
-                    continue;
-                }
-                let base = job.meta_base.as_ref().map(merge::portable_meta);
-                let merged = merge::merge3(
-                    base.as_ref(),
-                    &merge::portable_meta(&current),
-                    &merge::portable_meta(&incoming),
+        let temp = staged.remove(item_key);
+        match (action, temp.as_deref(), local, remote) {
+            (Action::Download, Some(temp), local, Some(record)) => {
+                apply_download(
+                    &job.root,
+                    item_key,
+                    temp,
+                    local.as_ref(),
+                    record,
+                    &mut applied,
                 );
-                let written = merge::with_device_fields(&merged, Some(&current));
-                if let Ok(bytes) = merge::pretty(&written) {
-                    if crate::sandbox::atomic_write(&target, &bytes).is_ok() {
-                        applied.merged_meta = Some((merge::meta_digest(&bytes).to_hex(), bytes));
-                    }
+            }
+            (Action::LocalDelete, _, Some(local), _) => {
+                apply_delete(&job.root, &job.trash, item_key, local, &mut applied);
+            }
+            (Action::Conflict, Some(temp), _, remote) => {
+                if let Some(copy) = job.conflict_names.get(item_key) {
+                    apply_conflict(
+                        &job.root,
+                        item_key,
+                        temp,
+                        copy,
+                        remote.as_ref(),
+                        &mut applied,
+                    );
                 }
+            }
+            (Action::MetaMerge, Some(temp), Some(local), _) => {
+                apply_meta_merge(&job.root, temp, local, job.meta_base.as_ref(), &mut applied);
             }
             _ => {}
+        }
+        if let Some(temp) = temp {
+            let _ = std::fs::remove_file(temp);
         }
     }
     for leftover in staged.values() {
@@ -1024,13 +1139,16 @@ async fn upload_one<S: CloudStore>(
     meta_bytes: Option<&[u8]>,
 ) -> Result<FileRecord, StoreError> {
     let absolute = native(root, path);
-    let exec = std::fs::symlink_metadata(&absolute)
+    let exec = tokio::fs::symlink_metadata(&absolute)
+        .await
         .map(|metadata| is_executable(&metadata))
         .unwrap_or(false);
     if path == PROJECT_META {
         let bytes = match meta_bytes {
             Some(bytes) => bytes.to_vec(),
-            None => std::fs::read(&absolute).map_err(|error| StoreError::Io(error.to_string()))?,
+            None => tokio::fs::read(&absolute)
+                .await
+                .map_err(|error| StoreError::Io(error.to_string()))?,
         };
         let digest = merge::meta_digest(&bytes).to_hex();
         let size = bytes.len() as u64;
@@ -1046,7 +1164,14 @@ async fn upload_one<S: CloudStore>(
             extra: serde_json::Map::new(),
         });
     }
-    if resolve_target(root, path).is_none() {
+    let checked = {
+        let root = root.to_path_buf();
+        let path = path.to_string();
+        tauri::async_runtime::spawn_blocking(move || resolve_target(&root, &path).is_some())
+            .await
+            .unwrap_or(false)
+    };
+    if !checked {
         return Err(StoreError::Io(format!(
             "{path} is not a regular file in the project"
         )));
@@ -1336,7 +1461,8 @@ pub(crate) async fn sync_project<S: CloudStore>(
     let staged = if downloads.is_empty() {
         Vec::new()
     } else {
-        std::fs::create_dir_all(&env.staging)
+        tokio::fs::create_dir_all(&env.staging)
+            .await
             .map_err(|error| RoundError::Local(error.to_string()))?;
         let (staged, failed) = stage_downloads(store, cloud, downloads, &env.staging).await;
         for (_, error) in failed {
@@ -1351,6 +1477,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
         }
         staged
     };
+    let fixes = corrections(&staged, &view);
     let needs_apply = planned.iter().any(|item| {
         matches!(
             item.action,
@@ -1435,8 +1562,12 @@ pub(crate) async fn sync_project<S: CloudStore>(
             }
             Action::Download => match &item.remote {
                 Some(record) if applied.downloaded.contains(&item.key) => {
+                    let agreed = fixes.get(&item.key).unwrap_or(record);
                     let path = local_path.unwrap_or_else(|| record.path.clone());
-                    base.insert(item.key.clone(), (path, base_entry(record)));
+                    base.insert(item.key.clone(), (path, base_entry(agreed)));
+                    if let Some(fix) = fixes.get(&item.key) {
+                        records.insert(item.key.clone(), fix.clone());
+                    }
                 }
                 _ => incomplete = true,
             },
@@ -1658,7 +1789,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
         .base
         .get(PROJECT_META)
         .map(|entry| entry.hash.clone());
-    let local_meta = std::fs::read(root.join(PROJECT_META)).ok();
+    let local_meta = tokio::fs::read(root.join(PROJECT_META)).await.ok();
     if let (Some(agreed), Some(bytes)) = (agreed_meta, local_meta) {
         if merge::meta_digest(&bytes).to_hex() == agreed {
             project.meta_base = serde_json::from_slice::<serde_json::Value>(&bytes)
@@ -1735,6 +1866,59 @@ pub(crate) struct Downloaded {
     pub(crate) rev: String,
     pub(crate) base: BTreeMap<String, BaseEntry>,
     pub(crate) skipped: usize,
+    pub(crate) stale: bool,
+}
+
+struct Placement {
+    root: PathBuf,
+    staged: Vec<Staged>,
+    records: BTreeMap<String, FileRecord>,
+    meta: serde_json::Value,
+    name: String,
+}
+
+fn place_download(
+    placement: Placement,
+) -> Result<(BTreeMap<String, BaseEntry>, usize), RoundError> {
+    let mut base = BTreeMap::new();
+    let mut skipped = 0;
+    for staged in placement.staged {
+        let record = &placement.records[&staged.key];
+        let Some(target) = resolve_target(&placement.root, &record.path) else {
+            skipped += 1;
+            let _ = std::fs::remove_file(&staged.path);
+            continue;
+        };
+        let placed = if staged.key == PROJECT_META {
+            place_meta(&staged.path, &target, None)
+        } else {
+            move_into(&staged.path, &target).map_err(|error| error.to_string())
+        };
+        let _ = std::fs::remove_file(&staged.path);
+        placed.map_err(RoundError::Local)?;
+        apply_exec(&target, &record.path, record.exec);
+        base.insert(
+            record.path.clone(),
+            BaseEntry {
+                hash: staged.hash,
+                size: staged.size,
+            },
+        );
+    }
+    let meta_path = placement.root.join(PROJECT_META);
+    if !meta_path.exists() {
+        let fallback = if placement.meta.is_object() {
+            merge::with_device_fields(&placement.meta, None)
+        } else {
+            serde_json::json!({ "name": placement.name })
+        };
+        let bytes = merge::pretty(&fallback).map_err(RoundError::Local)?;
+        crate::sandbox::atomic_write(&meta_path, &bytes).map_err(RoundError::Local)?;
+    }
+    let meta_bytes =
+        std::fs::read(&meta_path).map_err(|error| RoundError::Local(error.to_string()))?;
+    crate::project::parse_project_meta(&meta_bytes).map_err(RoundError::Local)?;
+    Ok((base, skipped))
 }
 
 pub(crate) async fn download_into<S: CloudStore>(
@@ -1750,7 +1934,9 @@ pub(crate) async fn download_into<S: CloudStore>(
     let policy = policy_for(meta.is_object().then_some(&meta));
     let view = split_remote(Some(&remote), &policy);
     let mut skipped = view.foreign.len();
-    std::fs::create_dir_all(staging).map_err(|error| RoundError::Local(error.to_string()))?;
+    tokio::fs::create_dir_all(staging)
+        .await
+        .map_err(|error| RoundError::Local(error.to_string()))?;
     let jobs: Vec<(String, FileRecord)> = view
         .usable
         .iter()
@@ -1759,55 +1945,30 @@ pub(crate) async fn download_into<S: CloudStore>(
     let (staged, failed) = stage_downloads(store, cloud, jobs, staging).await;
     if let Some((_, error)) = failed.into_iter().next() {
         for staged in &staged {
-            let _ = std::fs::remove_file(&staged.path);
+            let _ = tokio::fs::remove_file(&staged.path).await;
         }
-        return Err(match error {
-            StoreError::Verify(_) => {
-                StoreError::Verify("a file in the project is missing or damaged".into())
-            }
-            other => other,
-        }
-        .into());
+        return Err(error.into());
     }
-    let mut base = BTreeMap::new();
-    for staged in staged {
-        let record = &view.usable[&staged.key];
-        let Some(target) = resolve_target(root, &record.path) else {
-            skipped += 1;
-            let _ = std::fs::remove_file(&staged.path);
-            continue;
-        };
-        let placed = if staged.key == PROJECT_META {
-            place_meta(&staged.path, &target, None)
-        } else {
-            move_into(&staged.path, &target).map_err(|error| error.to_string())
-        };
-        let _ = std::fs::remove_file(&staged.path);
-        placed.map_err(RoundError::Local)?;
-        apply_exec(&target, &record.path, record.exec);
-        base.insert(record.path.clone(), base_entry(record));
-    }
-    let meta_path = root.join(PROJECT_META);
-    if !meta_path.exists() {
-        let fallback = if meta.is_object() {
-            merge::with_device_fields(&meta, None)
-        } else {
-            serde_json::json!({ "name": remote.version.name })
-        };
-        let bytes = merge::pretty(&fallback).map_err(RoundError::Local)?;
-        crate::sandbox::atomic_write(&meta_path, &bytes).map_err(RoundError::Local)?;
-    }
-    let meta_bytes =
-        std::fs::read(&meta_path).map_err(|error| RoundError::Local(error.to_string()))?;
-    crate::project::parse_project_meta(&meta_bytes).map_err(RoundError::Local)?;
+    let placement = Placement {
+        root: root.to_path_buf(),
+        staged,
+        records: view.usable,
+        meta,
+        name: remote.version.name.clone(),
+    };
+    let (base, unplaced) = tauri::async_runtime::spawn_blocking(move || place_download(placement))
+        .await
+        .map_err(|error| RoundError::Local(error.to_string()))??;
+    skipped += unplaced;
+    let stale = remote.version.files.iter().any(|record| {
+        base.get(&record.path)
+            .is_some_and(|entry| entry.hash != record.hash)
+    });
     Ok(Some(Downloaded {
         version: remote.version,
         rev: remote.rev,
         base,
         skipped,
+        stale,
     }))
 }
-
-#[cfg(test)]
-#[path = "engine_tests.rs"]
-mod tests;

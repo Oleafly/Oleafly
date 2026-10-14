@@ -6,7 +6,6 @@
   "about": "Informacje o synchronizacji w chmurze",
   "aboutHint": "Oleafly przechowuje kopię projektów z Biblioteki i twoich ustawień na twoim koncie Dropbox, dzięki czemu możesz kontynuować pracę na innym komputerze. Synchronizacja działa, gdy Oleafly jest otwarte.",
   "badge": {
-    "connected": "Połączono",
     "revoked": "Dostęp zakończony",
     "full": "Dropbox jest pełny"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Połącz ponownie",
   "quotaFull": "Twoje konto Dropbox jest pełne. Nowe zmiany zostaną na tym komputerze, dopóki nie zwolni się miejsce. Aby zrobić miejsce, wyłącz synchronizację dużych projektów albo usuń je z Dropboxa.",
   "flagOff": "Synchronizacja w chmurze jest wyłączona w sekcji Eksperymenty, więc nic nie jest synchronizowane. Rozłącz, aby odebrać Oleafly dostęp do twojego konta Dropbox.",
+  "advanced": "Zaawansowane",
   "disconnect": "Rozłącz",
   "projects": {
     "title": "Projekty",

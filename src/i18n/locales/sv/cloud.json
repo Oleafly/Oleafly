@@ -6,7 +6,6 @@
   "about": "Om molnsynkronisering",
   "aboutHint": "Oleafly sparar en kopia av projekten i ditt bibliotek och dina inställningar i din egen Dropbox, så att du kan fortsätta där du slutade på en annan dator. Synkroniseringen pågår medan Oleafly är öppet.",
   "badge": {
-    "connected": "Ansluten",
     "revoked": "Åtkomsten upphörde",
     "full": "Dropbox är full"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Anslut igen",
   "quotaFull": "Din Dropbox är full. Nya ändringar stannar på den här datorn tills det finns plats. Du kan frigöra utrymme genom att stänga av synkronisering för stora projekt eller ta bort dem från Dropbox.",
   "flagOff": "Molnsynkronisering är avstängd under Experiment, så inget synkroniseras. Koppla från för att ta bort Oleaflys åtkomst till din Dropbox.",
+  "advanced": "Avancerat",
   "disconnect": "Koppla från",
   "projects": {
     "title": "Projekt",

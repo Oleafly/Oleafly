@@ -6,7 +6,6 @@
   "about": "关于云同步",
   "aboutHint": "Oleafly 会在你自己的 Dropbox 中保存一份库中项目和设置的副本，让你在另一台电脑上接着之前的进度继续工作。同步在 Oleafly 打开时进行。",
   "badge": {
-    "connected": "已连接",
     "revoked": "访问已结束",
     "full": "Dropbox 已满"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "重新连接",
   "quotaFull": "你的 Dropbox 已满。在腾出空间之前，新的更改会保留在这台电脑上。要腾出空间，请关闭大型项目的同步，或将它们从 Dropbox 中移除。",
   "flagOff": "云同步已在“实验功能”中关闭，因此不会同步任何内容。断开连接即可移除 Oleafly 对你 Dropbox 的访问权限。",
+  "advanced": "高级",
   "disconnect": "断开连接",
   "projects": {
     "title": "项目",

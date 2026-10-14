@@ -1,11 +1,12 @@
-use super::{
-    download_into, sync_project, version_remote, RoundEnv, RoundError, RoundOptions, RoundResult,
-    SyncContext, Tombstone, VersionManifest,
+use crate::cloud::engine::{
+    download_into, list_remote_projects, now_ms, sync_project, tombstone_remote, version_remote,
+    FileRecord, RoundEnv, RoundError, RoundOptions, RoundResult, SyncContext, Tombstone,
+    VersionManifest,
 };
-use crate::cloud::memory::MemoryStore;
 use crate::cloud::settings::{self, SettingsOutcome, SettingsRound};
 use crate::cloud::state::{Hold, ProjectState, SettingsState};
 use crate::cloud::store::{CloudStore, StoreError, WriteMode};
+use crate::cloud::tests::memory::MemoryStore;
 use oleafly_core::hlc::{Hlc, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
 use std::path::PathBuf;
@@ -127,8 +128,8 @@ impl Device {
         self.project = ProjectState {
             cloud: Some(cloud),
             base: downloaded.base,
-            remote_rev: Some(downloaded.rev),
-            remote_dirty: false,
+            remote_rev: (!downloaded.stale).then_some(downloaded.rev),
+            remote_dirty: downloaded.stale,
             ..ProjectState::default()
         };
     }
@@ -144,7 +145,7 @@ fn thesis(device: &Device) {
 }
 
 fn today() -> String {
-    crate::project_ids::rfc3339_from_unix_ms(super::now_ms())[..10].to_string()
+    crate::project_ids::rfc3339_from_unix_ms(now_ms())[..10].to_string()
 }
 
 fn file_remote(cloud: ProjectId, path: &str) -> String {
@@ -262,11 +263,7 @@ async fn a_project_removed_from_dropbox_pauses_here_and_keeps_every_file() {
     })
     .unwrap();
     store
-        .put(
-            &super::tombstone_remote(cloud),
-            tombstone,
-            WriteMode::Overwrite,
-        )
+        .put(&tombstone_remote(cloud), tombstone, WriteMode::Overwrite)
         .await
         .unwrap();
     store.remove(&format!("/projects/{cloud}"));
@@ -443,7 +440,7 @@ async fn a_file_that_does_not_match_its_record_is_left_alone() {
     for file in &mut version.files {
         if file.path == "main.tex" {
             file.hash = oleafly_core::content::ContentHash::digest(b"something else").to_hex();
-            file.rev = None;
+            assert!(file.rev.is_some());
         }
     }
     store.overwrite(
@@ -638,7 +635,7 @@ async fn a_downloaded_project_drops_device_fields_and_unsafe_entries() {
         &file_remote(cloud, ".git/hooks/post-checkout"),
         b"#!/bin/sh",
     );
-    version.files.push(super::FileRecord {
+    version.files.push(FileRecord {
         path: ".git/hooks/post-checkout".into(),
         hash: oleafly_core::content::ContentHash::digest(b"#!/bin/sh").to_hex(),
         size: 9,
@@ -923,9 +920,127 @@ async fn cloud_only_projects_are_listed_with_their_names_and_sizes() {
     office.sync(&store, other).await;
     store.overwrite("/projects/not-a-project/version.json", b"{}");
     let known = [cloud].into_iter().collect();
-    let listed = super::list_remote_projects(&store, &known).await.unwrap();
+    let listed = list_remote_projects(&store, &known).await.unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].cloud, other);
     assert_eq!(listed[0].name, "Grant");
     assert!(listed[0].size > 0);
+}
+
+#[tokio::test]
+async fn projects_uploaded_by_the_first_cloud_build_still_download_and_sync() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let meta = br#"{"name":"Early","main_doc":"main.tex","engine":"latexmk"}"#;
+    let tex = b"from the first build";
+    store.overwrite(&file_remote(cloud, "project.json"), meta);
+    store.overwrite(&file_remote(cloud, "main.tex"), tex);
+    let version = serde_json::json!({
+        "v": 1,
+        "project": cloud,
+        "name": "Early",
+        "manifest": {"name": "Early", "main_doc": "main.tex", "engine": "latexmk"},
+        "stamp": Stamp::new(Hlc::from_raw(1 << 16), DeviceId::new()),
+        "files": [
+            {"path": "main.tex", "hash": oleafly_core::content::ContentHash::digest(tex).to_hex(), "size": tex.len()},
+            {"path": "project.json", "hash": oleafly_core::content::ContentHash::digest(meta).to_hex(), "size": meta.len()}
+        ]
+    });
+    store.overwrite(
+        &version_remote(cloud),
+        &serde_json::to_vec(&version).unwrap(),
+    );
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(
+        laptop.read("main.tex").as_deref(),
+        Some("from the first build")
+    );
+    let meta: serde_json::Value =
+        serde_json::from_str(&laptop.read("project.json").unwrap()).unwrap();
+    assert_eq!(meta["name"], "Early");
+    laptop.project.remote_dirty = true;
+    let healed = laptop.sync(&store, cloud).await;
+    assert!(healed.error.is_none());
+    assert_eq!(healed.outcome.conflicts, 0);
+    assert_eq!(
+        laptop.read("main.tex").as_deref(),
+        Some("from the first build")
+    );
+}
+
+#[tokio::test]
+async fn a_missing_file_names_itself_in_the_error() {
+    let (store, cloud, _desk, _laptop) = paired().await;
+    store.remove(&file_remote(cloud, "main.tex"));
+    let mut version = remote_version(&store, cloud);
+    for file in &mut version.files {
+        file.rev = None;
+    }
+    store.overwrite(
+        &version_remote(cloud),
+        &serde_json::to_vec(&version).unwrap(),
+    );
+    let office = Device::new("Office");
+    let error = download_into(
+        &store,
+        cloud,
+        &office.root(),
+        &office.dir.path().join("staging"),
+    )
+    .await
+    .err();
+    assert_eq!(
+        error,
+        Some(RoundError::Store(StoreError::Verify(
+            "main.tex is missing from dropbox".into()
+        )))
+    );
+}
+
+#[tokio::test]
+async fn an_unpinned_record_from_the_first_build_trusts_the_bytes_in_dropbox_and_heals() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let meta = br#"{"name":"Early","main_doc":"main.tex","engine":"latexmk"}"#;
+    store.overwrite(&file_remote(cloud, "project.json"), meta);
+    store.overwrite(
+        &file_remote(cloud, "main.tex"),
+        b"what is really in dropbox",
+    );
+    let version = serde_json::json!({
+        "v": 1,
+        "project": cloud,
+        "name": "Early",
+        "stamp": Stamp::new(Hlc::from_raw(1 << 16), DeviceId::new()),
+        "files": [
+            {"path": "main.tex", "hash": oleafly_core::content::ContentHash::digest(b"an older edit").to_hex(), "size": 13},
+            {"path": "project.json", "hash": oleafly_core::content::ContentHash::digest(meta).to_hex(), "size": meta.len()}
+        ]
+    });
+    store.overwrite(
+        &version_remote(cloud),
+        &serde_json::to_vec(&version).unwrap(),
+    );
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    assert_eq!(
+        laptop.read("main.tex").as_deref(),
+        Some("what is really in dropbox")
+    );
+    laptop.project.remote_dirty = true;
+    let healed = laptop.sync(&store, cloud).await;
+    assert!(healed.error.is_none());
+    assert_eq!(healed.outcome.conflicts, 0);
+    let main = remote_version(&store, cloud)
+        .files
+        .into_iter()
+        .find(|file| file.path == "main.tex")
+        .unwrap();
+    assert_eq!(
+        main.hash,
+        oleafly_core::content::ContentHash::digest(b"what is really in dropbox").to_hex()
+    );
+    laptop.project.remote_dirty = true;
+    assert!(laptop.sync(&store, cloud).await.outcome.unchanged);
 }

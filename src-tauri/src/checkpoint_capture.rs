@@ -244,8 +244,6 @@ pub(crate) const LINKED_LARGE_FILE_BYTES: u64 = 25 * 1024 * 1024;
 pub(crate) const CAPTURE_NOTICE_FILE: &str = "checkpoint-capture.json";
 const MAX_RECORDER_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_NOTICE_BYTES: u64 = 64 * 1024;
-#[cfg(windows)]
-const WINDOWS_PLACEHOLDER_ATTRIBUTES: u32 = 0x0000_1000 | 0x0004_0000 | 0x0040_0000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum EntryProbe {
@@ -1056,21 +1054,6 @@ mod tests {
         assert!(!oleafly_core::is_placeholder_attributes(
             0x0000_0020 | 0x0000_0400
         ));
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn windows_placeholder_bits_match_windows_sys() {
-        use windows_sys::Win32::Storage::FileSystem::{
-            FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS,
-            FILE_ATTRIBUTE_RECALL_ON_OPEN,
-        };
-        assert_eq!(
-            WINDOWS_PLACEHOLDER_ATTRIBUTES,
-            FILE_ATTRIBUTE_OFFLINE
-                | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
-                | FILE_ATTRIBUTE_RECALL_ON_OPEN
-        );
     }
 
     #[test]

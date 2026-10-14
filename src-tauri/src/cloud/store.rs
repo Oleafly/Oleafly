@@ -9,6 +9,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const API_BASE: &str = "https://api.dropboxapi.com/2";
 const CONTENT_BASE: &str = "https://content.dropboxapi.com/2";
+const TOKEN_URL: &str = "https://api.dropboxapi.com/oauth2/token";
 pub(crate) const SINGLE_UPLOAD_LIMIT: u64 = 8 * 1024 * 1024;
 const SESSION_CHUNK: usize = 8 * 1024 * 1024;
 const MAX_SMALL_BYTES: usize = 16 * 1024 * 1024;
@@ -138,6 +139,46 @@ pub(crate) trait CloudStore: Send + Sync {
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
     async fn changes(&self, cursor: &str) -> StoreResult<Changes>;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct Endpoints {
+    pub(crate) api: String,
+    pub(crate) content: String,
+    pub(crate) token: String,
+}
+
+pub(crate) fn endpoints() -> Endpoints {
+    #[cfg(test)]
+    if let Some(endpoints) = test_endpoints::current() {
+        return endpoints;
+    }
+    Endpoints {
+        api: API_BASE.into(),
+        content: CONTENT_BASE.into(),
+        token: TOKEN_URL.into(),
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_endpoints {
+    use super::Endpoints;
+    use std::sync::Mutex;
+
+    static OVERRIDE: Mutex<Option<Endpoints>> = Mutex::new(None);
+
+    pub(crate) fn set(endpoints: Option<Endpoints>) {
+        *OVERRIDE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = endpoints;
+    }
+
+    pub(crate) fn current() -> Option<Endpoints> {
+        OVERRIDE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
 }
 
 pub(crate) fn http() -> &'static reqwest::Client {
@@ -308,9 +349,10 @@ pub(crate) struct DropboxStore {
 
 impl DropboxStore {
     pub(crate) fn new(token: String, refresher: Option<TokenRefresher>) -> Self {
+        let endpoints = endpoints();
         Self {
-            api_base: API_BASE.into(),
-            content_base: CONTENT_BASE.into(),
+            api_base: endpoints.api,
+            content_base: endpoints.content,
             token: Mutex::new(token),
             refresher,
         }
@@ -612,6 +654,25 @@ async fn read_full(file: &mut tokio::fs::File, want: usize) -> StoreResult<Vec<u
     Ok(buffer)
 }
 
+fn page_entries(page: &serde_json::Value) -> Vec<RemoteEntry> {
+    page.get("entries")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.get("name").and_then(serde_json::Value::as_str)?;
+            let tag = entry
+                .get(".tag")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default();
+            (tag != "deleted").then(|| RemoteEntry {
+                name: name.to_string(),
+                folder: tag == "folder",
+            })
+        })
+        .collect()
+}
+
 fn remove_quietly(path: &Path) {
     let _ = std::fs::remove_file(path);
 }
@@ -790,27 +851,7 @@ impl CloudStore for DropboxStore {
         };
         let mut entries = Vec::new();
         for _ in 0..MAX_LIST_PAGES {
-            for entry in page
-                .get("entries")
-                .and_then(serde_json::Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                let Some(name) = entry.get("name").and_then(serde_json::Value::as_str) else {
-                    continue;
-                };
-                let tag = entry
-                    .get(".tag")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or_default();
-                if tag == "deleted" {
-                    continue;
-                }
-                entries.push(RemoteEntry {
-                    name: name.to_string(),
-                    folder: tag == "folder",
-                });
-            }
+            entries.extend(page_entries(&page));
             if page.get("has_more").and_then(serde_json::Value::as_bool) != Some(true) {
                 return Ok(entries);
             }

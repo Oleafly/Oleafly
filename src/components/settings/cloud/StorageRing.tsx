@@ -39,15 +39,14 @@ export function StorageRing({ space }: Readonly<{ space: CloudSpace | null }>) {
   });
   return (
     <div data-testid="cloud-storage" data-tone={tone} className="flex shrink-0 items-center gap-3">
-      <span
-        role="progressbar"
-        aria-label={t(($) => $.cloud.storage.label)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={shown}
-        aria-valuetext={usedText}
-        className="relative inline-flex size-14 shrink-0"
-      >
+      <span className="relative inline-flex size-14 shrink-0">
+        <progress
+          className="sr-only"
+          aria-label={t(($) => $.cloud.storage.label)}
+          aria-valuetext={usedText}
+          max={100}
+          value={shown}
+        />
         <svg viewBox="0 0 36 36" aria-hidden className="size-full">
           <circle cx="18" cy="18" r={RADIUS} fill="none" strokeWidth="3.5" className="stroke-foreground/10" />
           {percent > 0 ? (

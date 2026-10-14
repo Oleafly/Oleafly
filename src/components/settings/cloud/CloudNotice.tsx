@@ -24,14 +24,13 @@ export function CloudNotice({
   children: ReactNode;
 }>) {
   return (
-    <div
-      role="status"
+    <output
       data-testid={testId}
       className={cn("flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 text-xs", TONE_CLASS[tone], className)}
     >
       <Icon aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 basis-48 leading-relaxed">{children}</p>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 self-center">{actions}</div> : null}
-    </div>
+      <span className="block min-w-0 flex-1 basis-48 leading-relaxed">{children}</span>
+      {actions ? <span className="flex shrink-0 flex-wrap items-center gap-2 self-center">{actions}</span> : null}
+    </output>
   );
 }

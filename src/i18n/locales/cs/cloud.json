@@ -6,7 +6,6 @@
   "about": "O synchronizaci v cloudu",
   "aboutHint": "Oleafly uchovává kopii projektů z vaší knihovny a vašeho nastavení ve vašem vlastním Dropboxu, takže můžete na jiném počítači pokračovat tam, kde jste skončili. Synchronizuje se, když je Oleafly otevřená.",
   "badge": {
-    "connected": "Připojeno",
     "revoked": "Přístup skončil",
     "full": "Dropbox je plný"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Připojit znovu",
   "quotaFull": "Váš Dropbox je plný. Nové změny zůstanou na tomto počítači, dokud se neuvolní místo. Místo uvolníte tak, že vypnete synchronizaci velkých projektů nebo je z Dropboxu odeberete.",
   "flagOff": "Synchronizace v cloudu je vypnutá v sekci Experimenty, takže se nic nesynchronizuje. Odpojením odeberete Oleafly přístup k vašemu Dropboxu.",
+  "advanced": "Pokročilé",
   "disconnect": "Odpojit",
   "projects": {
     "title": "Projekty",

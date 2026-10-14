@@ -424,9 +424,12 @@ export function SettingsModal() {
   }, [open]);
 
   useEffect(() => {
+    if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
+  }, [cloudLibraryRevision]);
+
+  useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
     void storageRefreshKey;
-    void cloudLibraryRevision;
     let cancelled = false;
     setStorageLoading(true);
     setStorageError("");
@@ -446,7 +449,7 @@ export function SettingsModal() {
     return () => {
       cancelled = true;
     };
-  }, [open, section, storageRefreshKey, cloudLibraryRevision]);
+  }, [open, section, storageRefreshKey]);
 
   const restoreProject = async (project: RecycledProjectInfo) => {
     setRecycleActionId(project.id);

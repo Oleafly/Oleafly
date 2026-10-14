@@ -6,7 +6,6 @@
   "about": "Bulut eşitleme hakkında",
   "aboutHint": "Oleafly, kitaplığınızdaki projelerin ve ayarlarınızın bir kopyasını kendi Dropbox'ınızda tutar. Böylece başka bir bilgisayarda kaldığınız yerden devam edebilirsiniz. Oleafly açıkken eşitlenir.",
   "badge": {
-    "connected": "Bağlı",
     "revoked": "Erişim sona erdi",
     "full": "Dropbox dolu"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Yeniden bağlan",
   "quotaFull": "Dropbox'ınız dolu. Yer açılana kadar yeni değişiklikler bu bilgisayarda kalır. Yer açmak için büyük projelerin eşitlemesini kapatın veya onları Dropbox'tan kaldırın.",
   "flagOff": "Bulut eşitleme Deneysel Özellikler bölümünde kapalı olduğu için hiçbir şey eşitlenmiyor. Oleafly'nin Dropbox'ınıza erişimini kaldırmak için bağlantıyı kesin.",
+  "advanced": "Gelişmiş",
   "disconnect": "Bağlantıyı kes",
   "projects": {
     "title": "Projeler",

@@ -1,4 +1,4 @@
-use super::store::{
+use crate::cloud::store::{
     Changes, CloudStore, Fetched, RemoteEntry, RemoteMeta, StoreError, StoreResult, Uploaded,
     WriteMode,
 };

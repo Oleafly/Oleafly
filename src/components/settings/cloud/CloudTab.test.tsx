@@ -134,6 +134,8 @@ describe("CloudTab", () => {
     expect(await screen.findByText("ada@uni.edu")).toBeInTheDocument();
     expect(screen.getByText(/turned off in Experimentation/)).toBeInTheDocument();
     expect(screen.queryByTestId("cloud-projects")).toBeNull();
+    expect(screen.queryByTestId("cloud-disconnect")).toBeNull();
+    await userEvent.click(screen.getByTestId("cloud-advanced-toggle"));
     expect(screen.getByTestId("cloud-disconnect")).toBeInTheDocument();
     expect(mocks.cloud.cloudDetails).not.toHaveBeenCalled();
   });
@@ -188,10 +190,10 @@ describe("CloudTab", () => {
     serve(cloudState(), { used: 1_288_490_189, allocated: 2_147_483_648 });
     render(<CloudTab />);
     const provider = await screen.findByTestId("cloud-provider-dropbox");
-    expect(within(provider).getByText("Connected")).toBeInTheDocument();
+    expect(within(provider).queryByText("Connected")).toBeNull();
     expect(within(provider).getByText("ada@uni.edu")).toBeInTheDocument();
     const ring = await screen.findByRole("progressbar", { name: "Dropbox storage" });
-    expect(ring).toHaveAttribute("aria-valuenow", "60");
+    expect(ring).toHaveAttribute("value", "60");
     expect(ring).toHaveAttribute("aria-valuetext", "1.2 GB of 2 GB used");
     const storage = screen.getByTestId("cloud-storage");
     expect(storage).toHaveAttribute("data-tone", "filling");
@@ -380,9 +382,30 @@ describe("CloudTab", () => {
     expect(mocks.cloud.cloudProjectRemove).toHaveBeenCalledWith("thesis");
   });
 
+  it("renames this computer in place and cancels with Escape", async () => {
+    serve(cloudState());
+    render(<CloudTab />);
+    await userEvent.click(await screen.findByTestId("cloud-computer-rename"));
+    const field = screen.getByRole("textbox", { name: "Name for this computer" });
+    expect(field).toHaveValue("Desk");
+    await userEvent.clear(field);
+    await userEvent.type(field, "Laptop{Escape}");
+    expect(screen.queryByRole("textbox", { name: "Name for this computer" })).toBeNull();
+    expect(mocks.cloud.cloudSetDeviceName).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByTestId("cloud-computer-rename"));
+    const again = screen.getByRole("textbox", { name: "Name for this computer" });
+    await userEvent.clear(again);
+    serve(cloudState({ deviceName: "Laptop" }));
+    await userEvent.type(again, "Laptop{Enter}");
+    expect(mocks.cloud.cloudSetDeviceName).toHaveBeenCalledWith("Laptop");
+    await waitFor(() => expect(screen.getByTestId("cloud-computer-name")).toHaveTextContent("Laptop"));
+    expect(screen.queryByRole("textbox", { name: "Name for this computer" })).toBeNull();
+  });
+
   it("disconnects only after confirming and clears the last round", async () => {
     serve(cloudState());
     render(<CloudTab />);
+    await userEvent.click(await screen.findByTestId("cloud-advanced-toggle"));
     await userEvent.click(await screen.findByTestId("cloud-disconnect"));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Your projects stay on this computer and in your Dropbox.");

@@ -852,7 +852,7 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
             error: Some(AppError::new("cloud.revoked").into()),
         });
     }
-    let token = match access_token().await {
+    let mut token = match access_token().await {
         Ok(token) => token,
         Err(error) => {
             return Ok(CloudDetailsView {
@@ -862,14 +862,16 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
             })
         }
     };
-    let space = match auth_client().space_usage(&token).await {
-        Ok((used, allocated)) => Some(CloudSpaceView { used, allocated }),
-        Err(OAuthError::Revoked) => {
-            mark_revoked();
-            None
+    let mut usage = auth_client().space_usage(&token).await;
+    if matches!(usage, Err(OAuthError::Revoked)) {
+        if let Ok(fresh) = forced_refresh().await {
+            usage = auth_client().space_usage(&fresh).await;
+            token = fresh;
         }
-        Err(_) => None,
-    };
+    }
+    let space = usage
+        .ok()
+        .map(|(used, allocated)| CloudSpaceView { used, allocated });
     let store = DropboxStore::new(token, Some(refresher()));
     let engine_state = state::snapshot().unwrap_or_default();
     let (library, _) = split_library(library_projects().await);
@@ -1435,9 +1437,14 @@ pub async fn cloud_download_project(
         Err(error) => {
             drop(reservation);
             note_error(&error);
+            let _ = crate::project::append_app_log(format!(
+                "cloud download of {cloud} stopped: {error}"
+            ));
             return Err(match error {
-                RoundError::Store(StoreError::Verify(_)) => {
-                    AppError::new("cloud.download_missing").into()
+                RoundError::Store(StoreError::Verify(detail)) => {
+                    AppError::new("cloud.download_missing")
+                        .detail(detail)
+                        .into()
                 }
                 other => other.to_app_error(),
             });
@@ -1459,8 +1466,8 @@ pub async fn cloud_download_project(
             cloud: Some(cloud),
             base: downloaded.base.clone(),
             meta_base: meta_base.clone(),
-            remote_rev: Some(downloaded.rev.clone()),
-            remote_dirty: false,
+            remote_rev: (!downloaded.stale).then(|| downloaded.rev.clone()),
+            remote_dirty: downloaded.stale,
             last_synced_ms: now_ms(),
             skipped: downloaded.skipped,
             ..ProjectState::default()

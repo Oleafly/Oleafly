@@ -6,7 +6,6 @@
   "about": "Acerca de la sincronización en la nube",
   "aboutHint": "Oleafly guarda una copia de los proyectos de tu biblioteca y de tus ajustes en tu propio Dropbox, para que puedas seguir donde lo dejaste en otro ordenador. Se sincroniza mientras Oleafly está abierto.",
   "badge": {
-    "connected": "Conectado",
     "revoked": "Acceso finalizado",
     "full": "Dropbox lleno"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Conectar de nuevo",
   "quotaFull": "Tu Dropbox está lleno. Los cambios nuevos se quedan en este ordenador hasta que haya espacio. Para liberar espacio, desactiva la sincronización de los proyectos grandes o quítalos de Dropbox.",
   "flagOff": "La sincronización en la nube está desactivada en Experimentación, así que no se sincroniza nada. Desconecta para quitarle a Oleafly el acceso a tu Dropbox.",
+  "advanced": "Avanzado",
   "disconnect": "Desconectar",
   "projects": {
     "title": "Proyectos",

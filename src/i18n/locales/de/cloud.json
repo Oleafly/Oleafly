@@ -6,7 +6,6 @@
   "about": "Über den Cloud-Abgleich",
   "aboutHint": "Oleafly bewahrt eine Kopie der Projekte aus Ihrer Bibliothek und Ihrer Einstellungen in Ihrer eigenen Dropbox auf, damit Sie auf einem anderen Computer dort weitermachen können, wo Sie aufgehört haben. Der Abgleich läuft, solange Oleafly geöffnet ist.",
   "badge": {
-    "connected": "Verbunden",
     "revoked": "Zugriff beendet",
     "full": "Dropbox voll"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Erneut verbinden",
   "quotaFull": "Ihre Dropbox ist voll. Neue Änderungen bleiben auf diesem Computer, bis wieder Platz ist. Um Platz zu schaffen, schalten Sie den Abgleich für große Projekte aus oder entfernen Sie sie aus Dropbox.",
   "flagOff": "Der Cloud-Abgleich ist unter Experimente ausgeschaltet, daher wird nichts abgeglichen. Trennen Sie die Verbindung, um den Zugriff von Oleafly auf Ihre Dropbox aufzuheben.",
+  "advanced": "Erweitert",
   "disconnect": "Verbindung trennen",
   "projects": {
     "title": "Projekte",

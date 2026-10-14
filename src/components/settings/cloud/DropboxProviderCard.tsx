@@ -3,10 +3,11 @@ import { CloudNotice } from "@/components/settings/cloud/CloudNotice";
 import { CloudProjectsCard } from "@/components/settings/cloud/CloudProjectsCard";
 import { CloudSyncControls } from "@/components/settings/cloud/CloudSyncControls";
 import { StorageRing } from "@/components/settings/cloud/StorageRing";
-import { ConnectedBadge, IntegrationBusyButton, IntegrationError } from "@/components/settings/IntegrationCard";
+import { IntegrationBusyButton, IntegrationError } from "@/components/settings/IntegrationCard";
 import { DropboxBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { InfoHint } from "@/components/ui/info-hint";
 import { Spinner } from "@/components/ui/spinner";
@@ -138,6 +139,29 @@ function RevokedNotice() {
   );
 }
 
+function AdvancedSection({
+  disconnecting,
+  onDisconnect,
+}: Readonly<{ disconnecting: boolean; onDisconnect: () => void }>) {
+  const { t } = useTranslation(["cloud"]);
+  return (
+    <CollapsibleSection id="cloud-advanced" title={t(($) => $.cloud.advanced)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        data-testid="cloud-disconnect"
+        disabled={disconnecting}
+        onClick={onDisconnect}
+        className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+      >
+        {disconnecting ? <Spinner /> : <Unplug aria-hidden className="size-3.5" />}
+        {t(($) => $.cloud.disconnect)}
+      </Button>
+    </CollapsibleSection>
+  );
+}
+
 function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
   const { t } = useTranslation(["cloud"]);
   const titleId = useId();
@@ -172,8 +196,6 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
         {t(($) => $.cloud.badge.full)}
       </Badge>
     );
-  } else {
-    badge = <ConnectedBadge label={t(($) => $.cloud.badge.connected)} />;
   }
 
   return (
@@ -196,26 +218,14 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
           ) : null}
           <CloudSyncControls />
           <CloudProjectsCard />
+          <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />
         </div>
       ) : (
-        <p className="px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
-          {t(($) => $.cloud.flagOff)}
-        </p>
+        <div className="space-y-4 px-4 pb-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.cloud.flagOff)}</p>
+          <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />
+        </div>
       )}
-      <footer className="flex items-center justify-end border-t px-4 py-3">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          data-testid="cloud-disconnect"
-          disabled={disconnecting}
-          onClick={() => setConfirmDisconnect(true)}
-          className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
-        >
-          {disconnecting ? <Spinner /> : <Unplug aria-hidden className="size-3.5" />}
-          {t(($) => $.cloud.disconnect)}
-        </Button>
-      </footer>
       <ConfirmationDialog
         open={confirmDisconnect}
         destructive

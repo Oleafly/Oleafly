@@ -42,7 +42,7 @@ export type CloudSyncInterval = (typeof CLOUD_SYNC_INTERVALS)[number];
 const SYNC_INTERVAL_KEY = "oleafly.cloudSync.interval";
 
 export function isSyncInterval(value: string): value is CloudSyncInterval {
-  return CLOUD_SYNC_INTERVALS.some((interval) => interval === value);
+  return (CLOUD_SYNC_INTERVALS as readonly string[]).includes(value);
 }
 
 function readSyncInterval(): CloudSyncInterval {
@@ -591,14 +591,15 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       let done = 0;
       let failed = 0;
       set({ downloadProgress: { done, total } });
-      for (const cloudId of queue) {
-        if (account !== accountGeneration) break;
+      await queue.reduce(async (previous, cloudId) => {
+        await previous;
+        if (account !== accountGeneration) return;
         const result = await downloadOne(cloudId);
         if (!result.ok) failed += 1;
         done += 1;
         set({ downloadProgress: { done, total } });
         if (result.ok) await get().refresh();
-      }
+      }, Promise.resolve());
       set({ downloadProgress: null });
       if (account !== accountGeneration) return;
       if (failed === 0) {

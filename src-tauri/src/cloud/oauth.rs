@@ -9,8 +9,6 @@ use tokio::sync::{oneshot, Notify};
 
 pub(crate) const LOOPBACK_PORTS: [u16; 3] = [53171, 53172, 53173];
 const AUTHORIZE_URL: &str = "https://www.dropbox.com/oauth2/authorize";
-const TOKEN_URL: &str = "https://api.dropboxapi.com/oauth2/token";
-const API_BASE: &str = "https://api.dropboxapi.com/2";
 const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
 
 pub(crate) fn dropbox_app_key() -> &'static str {
@@ -372,10 +370,11 @@ const AUTH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 impl DropboxAuthClient {
     pub(crate) fn new() -> Self {
+        let endpoints = super::store::endpoints();
         Self {
             http: super::store::http().clone(),
-            token_url: TOKEN_URL.into(),
-            api_base: API_BASE.into(),
+            token_url: endpoints.token,
+            api_base: endpoints.api,
         }
     }
 

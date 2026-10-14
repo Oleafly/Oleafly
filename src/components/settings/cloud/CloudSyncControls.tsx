@@ -1,14 +1,16 @@
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useDismiss } from "@/components/ui/use-dismiss";
+import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { describeError } from "@/lib/app-error";
 import { CLOUD_SYNC_INTERVALS, isSyncInterval, useCloudStore } from "@/store/cloud";
-import { useEffect, useRef, useState } from "react";
+import { Check, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 
 function ComputerNameRow({ deviceName }: Readonly<{ deviceName: string }>) {
   const { t } = useTranslation(["common", "cloud"]);
@@ -17,35 +19,31 @@ function ComputerNameRow({ deviceName }: Readonly<{ deviceName: string }>) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const renameRef = useRef<HTMLButtonElement>(null);
-  const returnFocus = useRef(false);
+  const editRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useInitialFocus<HTMLInputElement>(editing);
 
-  useEffect(() => {
-    if (editing) {
-      inputRef.current?.select();
-    } else if (returnFocus.current) {
-      returnFocus.current = false;
-      renameRef.current?.focus();
-    }
-  }, [editing]);
-
-  const finish = () => {
-    returnFocus.current = true;
+  const cancel = () => {
     setEditing(false);
     setError(null);
   };
 
+  useDismiss(editing && !saving, [editRef], cancel, { pointerEvent: "mousedown" });
+
   const save = async () => {
-    if (saving || !draft.trim()) return;
+    if (saving) return;
+    const next = draft.trim();
+    if (!next || next === deviceName) {
+      cancel();
+      return;
+    }
     setSaving(true);
-    const failure = await setDeviceName(draft);
+    const failure = await setDeviceName(next);
     setSaving(false);
     if (failure) {
       setError(failure);
       return;
     }
-    finish();
+    setEditing(false);
   };
 
   return (
@@ -62,14 +60,7 @@ function ComputerNameRow({ deviceName }: Readonly<{ deviceName: string }>) {
       }
       control={
         editing ? (
-          <form
-            data-modal-escape-inner
-            className="flex shrink-0 items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save();
-            }}
-          >
+          <span ref={editRef} data-modal-escape-inner className="flex shrink-0 items-center gap-1">
             <Input
               ref={inputRef}
               aria-label={t(($) => $.cloud.computer.inputLabel)}
@@ -77,43 +68,60 @@ function ComputerNameRow({ deviceName }: Readonly<{ deviceName: string }>) {
               maxLength={32}
               autoComplete="off"
               spellCheck={false}
+              disabled={saving}
+              onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Escape") {
+                if (event.key === "Enter") {
                   event.preventDefault();
-                  finish();
+                  void save();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancel();
                 }
               }}
-              className="h-8 w-44"
+              className="h-7 w-48 rounded border bg-muted px-1.5 text-sm focus:border-primary"
             />
-            <Button type="submit" size="sm" disabled={saving || !draft.trim()}>
-              {saving ? <Spinner /> : null}
-              {t(($) => $.common.actions.save)}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={finish}>
-              {t(($) => $.common.actions.cancel)}
-            </Button>
-          </form>
+            <Tooltip label={t(($) => $.common.actions.save)}>
+              <button
+                type="button"
+                data-testid="cloud-computer-save"
+                aria-label={t(($) => $.common.actions.save)}
+                disabled={saving}
+                onClick={() => void save()}
+                className="flex size-7 items-center justify-center rounded text-emerald-600 hover:bg-accent focus-visible:bg-accent dark:text-emerald-400"
+              >
+                {saving ? <Spinner size="sm" /> : <Check aria-hidden className="size-3.5" />}
+              </button>
+            </Tooltip>
+            <Tooltip label={t(($) => $.common.actions.cancel)}>
+              <button
+                type="button"
+                aria-label={t(($) => $.common.actions.cancel)}
+                disabled={saving}
+                onClick={cancel}
+                className="flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+              >
+                <X aria-hidden className="size-3.5" />
+              </button>
+            </Tooltip>
+          </span>
         ) : (
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <span className="max-w-40 truncate text-sm text-foreground" title={deviceName}>
-              {deviceName}
-            </span>
-            <Button
-              ref={renameRef}
+          <Tooltip label={t(($) => $.common.actions.rename)}>
+            <button
               type="button"
-              size="sm"
-              variant="outline"
               data-testid="cloud-computer-rename"
+              aria-label={`${t(($) => $.common.actions.rename)}: ${deviceName}`}
               onClick={() => {
                 setDraft(deviceName);
                 setError(null);
                 setEditing(true);
               }}
+              className="flex min-w-0 max-w-56 shrink-0 items-center rounded px-1.5 py-0.5 text-sm text-foreground hover:bg-accent focus-visible:bg-accent"
             >
-              {t(($) => $.common.actions.rename)}
-            </Button>
-          </div>
+              <span className="min-w-0 truncate">{deviceName}</span>
+            </button>
+          </Tooltip>
         )
       }
     />

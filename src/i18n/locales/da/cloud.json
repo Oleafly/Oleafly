@@ -6,7 +6,6 @@
   "about": "Om synkronisering i skyen",
   "aboutHint": "Oleafly gemmer en kopi af projekterne i dit bibliotek og dine indstillinger i din egen Dropbox, så du kan fortsætte, hvor du slap, på en anden computer. Synkroniseringen kører, mens Oleafly er åben.",
   "badge": {
-    "connected": "Tilsluttet",
     "revoked": "Adgangen er ophørt",
     "full": "Dropbox er fuld"
   },
@@ -54,6 +53,7 @@
   "connectAgain": "Tilslut igen",
   "quotaFull": "Din Dropbox er fuld. Nye ændringer bliver på denne computer, indtil der er plads. Du kan frigøre plads ved at slå synkronisering fra for store projekter eller fjerne dem fra Dropbox.",
   "flagOff": "Synkronisering i skyen er slået fra under Eksperimenter, så intet synkroniseres. Afbryd forbindelsen for at fjerne Oleaflys adgang til din Dropbox.",
+  "advanced": "Avanceret",
   "disconnect": "Afbryd forbindelsen",
   "projects": {
     "title": "Projekter",
