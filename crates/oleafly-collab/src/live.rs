@@ -103,6 +103,16 @@ struct StoredCatchUp {
     authors: BTreeMap<AccountId, BTreeMap<String, u32>>,
 }
 
+// The batch on its way up is kept with the sync state. After a restart it
+// goes out again under the same batch id, so a server that took it before
+// the app quit stores it once.
+#[derive(Serialize, Deserialize)]
+struct StoredOutgoing {
+    batch: BatchId,
+    #[serde(with = "crate::live::hex_bytes")]
+    version: Vec<u8>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct StoredState {
     last_seq: u64,
@@ -114,6 +124,8 @@ struct StoredState {
     offline_edits: HashMap<String, BTreeMap<u64, i32>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     catch_up: Option<StoredCatchUp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    outgoing: Option<StoredOutgoing>,
 }
 
 pub struct Arrival {
@@ -434,6 +446,7 @@ impl LiveProject {
         live.confirmed = decode_version(&state.confirmed)?;
         live.anchor = state.anchor;
         live.offline_edits = state.offline_edits;
+        live.outgoing = state.outgoing.and_then(|stored| live.resumed(stored));
         live.catch_up = state.catch_up.and_then(|stored| {
             Some(CatchUp {
                 before: decode_version(&stored.before).ok()?,
@@ -479,6 +492,10 @@ impl LiveProject {
                 before: catch_up.before.encode(),
                 files: catch_up.files.clone(),
                 authors: catch_up.authors.clone(),
+            }),
+            outgoing: self.outgoing.as_ref().map(|outgoing| StoredOutgoing {
+                batch: outgoing.batch,
+                version: outgoing.version.encode(),
             }),
         };
         let state = to_json(&state)?;
@@ -1036,8 +1053,16 @@ impl LiveProject {
     }
 
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
+        let held = LoroDoc::decode_import_blob_meta(snapshot, true)
+            .ok()
+            .map(|meta| meta.partial_end_vv);
         let imported = self.doc.import(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
+        // Own changes in the server's snapshot are held there too, even the
+        // ones this copy already had, so they are not sent again.
+        if let Some(held) = held {
+            self.confirmed.merge(&held);
+        }
         self.note_waiting(&imported.waiting);
         if seq > self.last_seq {
             self.last_seq = seq;
@@ -1161,6 +1186,37 @@ impl LiveProject {
             }
         }
         ready
+    }
+
+    fn resumed(&self, stored: StoredOutgoing) -> Option<Outgoing> {
+        let version = decode_version(&stored.version).ok()?;
+        if !self.doc.version().includes_vv(&version) {
+            return None;
+        }
+        let spans: Vec<IdSpan> = version
+            .iter()
+            .filter_map(|(peer, end)| {
+                let from = self.confirmed.get(peer).copied().unwrap_or(0);
+                (from < *end).then(|| IdSpan::new(*peer, from, *end))
+            })
+            .collect();
+        if spans.is_empty() {
+            return None;
+        }
+        let payload = self
+            .doc
+            .loro()
+            .export(ExportMode::UpdatesInRange {
+                spans: Cow::Owned(spans),
+            })
+            .ok()?;
+        Some(Outgoing {
+            batch: stored.batch,
+            payload,
+            version,
+            sent: false,
+            sent_at: std::time::Instant::now(),
+        })
     }
 
     fn export_prefix(
@@ -1738,6 +1794,43 @@ mod tests {
         );
         assert!(alice.end_catch_up().is_none());
         assert_eq!(bob.pending_changes(), 1);
+    }
+
+    #[test]
+    fn a_batch_still_on_its_way_up_keeps_its_id_after_a_restart() {
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " sent");
+        let first = bob.next_outgoing().unwrap().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        bob.save(dir.path()).unwrap();
+        let mut restarted = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(restarted.has_unsent());
+        let again = restarted.next_outgoing().unwrap().unwrap();
+        assert_eq!(again.batch, first.batch);
+        alice.import_update(1, &again.payload).unwrap();
+        assert_eq!(
+            alice.doc().text(&main).unwrap(),
+            bob.doc().text(&main).unwrap()
+        );
+        restarted.acknowledged(again.batch, 1);
+        assert!(!restarted.has_unsent());
+        restarted.save(dir.path()).unwrap();
+        let mut later = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(later.next_outgoing().unwrap().is_none());
+    }
+
+    #[test]
+    fn own_changes_in_a_downloaded_snapshot_are_not_sent_again() {
+        let (mut bob, mut alice, main) = pair();
+        let before = bob.doc().version();
+        type_at_end(&mut bob, &main, " mine");
+        let mine = bob.doc().export_since(&before).unwrap();
+        alice.import_update(1, &mine).unwrap();
+        assert!(bob.has_unsent());
+        bob.import_snapshot(1, &alice.doc().snapshot().unwrap())
+            .unwrap();
+        assert!(!bob.has_unsent());
+        assert_eq!(bob.pending_changes(), 0);
     }
 
     #[test]
@@ -2369,6 +2462,7 @@ mod tests {
             anchor: bob.anchor(),
             offline_edits: HashMap::new(),
             catch_up: None,
+            outgoing: None,
         };
         std::fs::write(dir.path().join(STATE_FILE), to_json(&state).unwrap()).unwrap();
         let mut lost = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
