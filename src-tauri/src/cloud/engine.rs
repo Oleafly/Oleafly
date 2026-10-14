@@ -1,6 +1,6 @@
 use super::merge::{self, PROJECT_META};
 use super::state::{BaseEntry, Failure, Hold, PendingDelete, ProjectState, SkippedFile};
-use super::store::{BatchFile, CloudStore, StoreError, WriteMode};
+use super::store::{BatchDelete, BatchFile, CloudStore, StoreError, WriteMode};
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
@@ -23,8 +23,10 @@ const PUBLISH_EVERY_FILES: usize = 200;
 const PUBLISH_EVERY_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
 const DOWNLOAD_CONCURRENCY: usize = 16;
-const ZIP_MIN_FILES: usize = 32;
 const ZIP_MAX_FILES: usize = 9_000;
+const ZIP_SETUP_MS: u64 = 6_000;
+const ZIP_BYTES_PER_MS: u64 = 3_000;
+const FILE_DOWNLOAD_MS: u64 = 50;
 const ZIP_MAX_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const STALE_TEMP_AGE: Duration = Duration::from_secs(60 * 60);
 pub(crate) const RETRY_FAILED_MS: u64 = 60 * 60 * 1000;
@@ -1138,6 +1140,11 @@ async fn stage_whole<S: CloudStore>(
     (staged, failed)
 }
 
+fn zip_is_faster(files: usize, folder_bytes: u64) -> bool {
+    let one_by_one = (files as u64).saturating_mul(FILE_DOWNLOAD_MS);
+    one_by_one > ZIP_SETUP_MS + folder_bytes / ZIP_BYTES_PER_MS
+}
+
 async fn stage_from_zip<S: CloudStore>(
     store: &S,
     cloud: ProjectId,
@@ -1145,7 +1152,7 @@ async fn stage_from_zip<S: CloudStore>(
     staging: &Path,
     (files, bytes): (usize, u64),
 ) -> (Vec<Staged>, Vec<(String, FileRecord)>) {
-    if jobs.len() < ZIP_MIN_FILES || files > ZIP_MAX_FILES || bytes > ZIP_MAX_BYTES {
+    if files > ZIP_MAX_FILES || bytes > ZIP_MAX_BYTES || !zip_is_faster(jobs.len(), bytes) {
         return (Vec::new(), jobs);
     }
     let archive = staging_name(staging);
@@ -2015,7 +2022,7 @@ impl<S: CloudStore> Round<'_, S> {
         names
     }
 
-    async fn stage(&mut self, planned: &[Planned]) -> Vec<Staged> {
+    async fn stage(&mut self, planned: &[Planned], folder: (usize, u64)) -> Vec<Staged> {
         let downloads: Vec<(String, FileRecord)> = planned
             .iter()
             .filter(|item| {
@@ -2041,8 +2048,13 @@ impl<S: CloudStore> Round<'_, S> {
             return Vec::new();
         }
         let records: BTreeMap<String, FileRecord> = downloads.iter().cloned().collect();
-        let (staged, failed) =
-            stage_downloads(self.store, self.cloud, downloads, &self.env.staging).await;
+        let whole = zip_is_faster(downloads.len(), folder.1)
+            && room_for(&self.env.staging, needed.saturating_add(folder.1)).await;
+        let (staged, failed) = if whole {
+            stage_whole(self.store, self.cloud, downloads, &self.env.staging, folder).await
+        } else {
+            stage_downloads(self.store, self.cloud, downloads, &self.env.staging).await
+        };
         for (job_key, error) in failed {
             self.incomplete = true;
             if error.ends_round() {
@@ -2261,16 +2273,18 @@ impl<S: CloudStore> Round<'_, S> {
         pending.extend(pending_from(deletions));
         pending.sort_by(|left, right| left.path.cmp(&right.path));
         pending.dedup_by(|left, right| left.path == right.path);
+        pending.retain(|entry| !live.contains(&key(&entry.path)));
+        let batch: Vec<BatchDelete> = pending
+            .iter()
+            .map(|entry| BatchDelete {
+                remote: file_remote(self.cloud, &entry.path),
+                parent_rev: entry.rev.clone(),
+            })
+            .collect();
+        let results = self.store.delete_paths(&batch).await;
         let mut still_pending = Vec::new();
-        for entry in pending {
-            if live.contains(&key(&entry.path)) {
-                continue;
-            }
-            if let Err(error) = self
-                .store
-                .delete(&file_remote(self.cloud, &entry.path), entry.rev.as_deref())
-                .await
-            {
+        for (entry, result) in pending.into_iter().zip(results) {
+            if let Err(error) = result {
                 if error.ends_round() && self.error.is_none() {
                     self.error = Some(RoundError::Store(error));
                 }
@@ -2616,7 +2630,10 @@ pub(crate) async fn sync_project<S: CloudStore>(
             .unwrap_or("conflict"),
     );
     let names = round.conflict_names(&planned, &captured, &view, &label);
-    let staged = round.stage(&planned).await;
+    let folder = remote.as_ref().map_or((0, 0), |remote| {
+        (remote.version.files.len(), remote.version.total_size())
+    });
+    let staged = round.stage(&planned, folder).await;
     let fixes = corrections(&staged, &view);
     let applied = round.apply(&planned, staged, names).await?;
     round.outcome.downloaded = applied.downloaded.len();
@@ -2743,13 +2760,20 @@ pub(crate) async fn delete_project_folder<S: CloudStore>(
             Ok(()) => {}
             Err(error) if too_many_files(&error) && depth < MAX_TREE_DEPTH => {
                 emptied.push(folder.clone());
+                let mut files = Vec::new();
                 for entry in store.list(&folder).await? {
                     let child = format!("{folder}/{}", entry.name);
                     if entry.folder {
                         stack.push((child, depth + 1));
                     } else {
-                        store.delete(&child, None).await?;
+                        files.push(BatchDelete {
+                            remote: child,
+                            parent_rev: None,
+                        });
                     }
+                }
+                for result in store.delete_paths(&files).await {
+                    result?;
                 }
             }
             Err(error) => return Err(error),

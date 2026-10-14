@@ -23,7 +23,9 @@ const CONTENT_ROUTES: [&str; 6] = [
     "files/upload_session/append_v2",
     "files/upload_session/finish",
 ];
-const FILE_ROUTES: [&str; 9] = [
+const FILE_ROUTES: [&str; 11] = [
+    "files/delete_batch",
+    "files/delete_batch/check",
     "files/download",
     "files/download_zip",
     "files/upload",
@@ -66,6 +68,7 @@ pub(crate) struct Inner {
     log: Vec<String>,
     epoch: u64,
     sessions: BTreeMap<String, Vec<u8>>,
+    jobs: BTreeMap<String, (usize, Value)>,
     access: BTreeSet<String>,
     refresh: BTreeSet<String>,
     faults: Vec<Fault>,
@@ -198,6 +201,7 @@ impl Inner {
             log: Vec::new(),
             epoch: 0,
             sessions: BTreeMap::new(),
+            jobs: BTreeMap::new(),
             access: BTreeSet::new(),
             refresh: BTreeSet::new(),
             faults: Vec::new(),
@@ -399,6 +403,8 @@ impl Inner {
             })),
             "files/get_metadata" => self.get_metadata(&arg),
             "files/delete_v2" => self.delete(&arg),
+            "files/delete_batch" => self.delete_batch(&arg),
+            "files/delete_batch/check" => self.delete_check(&arg),
             "files/list_folder" => self.list_folder(&arg),
             "files/list_folder/continue" => self.list_continue(&arg),
             "files/list_folder/get_latest_cursor" => self.latest_cursor(&arg),
@@ -533,6 +539,55 @@ impl Inner {
         };
         self.remove(path);
         json_reply(json!({"metadata": metadata}))
+    }
+
+    fn delete_batch(&mut self, arg: &Value) -> Response {
+        let Some(entries) = arg["entries"].as_array().cloned() else {
+            return bad_request("missing entries");
+        };
+        if entries.len() > 1_000 {
+            return bad_request("too many entries");
+        }
+        let results: Vec<Value> = entries
+            .iter()
+            .map(|entry| {
+                let path = entry["path"].as_str().unwrap_or_default();
+                let lower = path.to_lowercase();
+                let metadata = match self.files.get(&lower) {
+                    Some(stored)
+                        if entry["parent_rev"]
+                            .as_str()
+                            .is_some_and(|expected| expected != stored.rev) =>
+                    {
+                        return batch_failure("path_write/conflict/file/..");
+                    }
+                    Some(stored) => file_meta(stored),
+                    None if self.folder_exists(&lower) => folder_meta(path),
+                    None => return batch_failure("path_lookup/not_found/.."),
+                };
+                self.remove(path);
+                json!({".tag": "success", "metadata": metadata})
+            })
+            .collect();
+        self.next_id += 1;
+        let id = format!("dbjid:{:08x}{}", self.tag, self.next_id);
+        self.jobs.insert(
+            id.clone(),
+            (1, json!({".tag": "complete", "entries": results})),
+        );
+        json_reply(json!({".tag": "async_job_id", "async_job_id": id}))
+    }
+
+    fn delete_check(&mut self, arg: &Value) -> Response {
+        let id = arg["async_job_id"].as_str().unwrap_or_default();
+        let Some((waits, result)) = self.jobs.get_mut(id) else {
+            return refuse("invalid_async_job_id/..");
+        };
+        if *waits > 0 {
+            *waits -= 1;
+            return json_reply(json!({".tag": "in_progress"}));
+        }
+        json_reply(result.clone())
     }
 
     fn list_folder(&self, arg: &Value) -> Response {

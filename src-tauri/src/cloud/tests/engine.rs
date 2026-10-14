@@ -669,9 +669,9 @@ async fn a_downloaded_project_drops_device_fields_and_unsafe_entries() {
 
 fn long_thesis(device: &Device) {
     thesis(device);
-    for index in 0..40 {
+    for index in 0..150 {
         device.write(
-            &format!("chapters/part-{index:02}.tex"),
+            &format!("chapters/part-{index:03}.tex"),
             &format!("part {index}"),
         );
     }
@@ -685,7 +685,7 @@ async fn a_large_download_comes_as_one_zip_and_checks_every_file() {
     long_thesis(&desk);
     desk.sync(&store, cloud).await;
     store.overwrite(
-        &file_remote(cloud, "chapters/part-07.tex"),
+        &file_remote(cloud, "chapters/part-007.tex"),
         b"bytes the version record does not know",
     );
     store.with(|inner| inner.downloads = 0);
@@ -694,12 +694,12 @@ async fn a_large_download_comes_as_one_zip_and_checks_every_file() {
     laptop.download(&store, cloud).await;
     assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 2));
     assert_eq!(
-        laptop.read("chapters/part-07.tex").as_deref(),
+        laptop.read("chapters/part-007.tex").as_deref(),
         Some("part 7")
     );
     assert_eq!(
-        laptop.read("chapters/part-39.tex").as_deref(),
-        Some("part 39")
+        laptop.read("chapters/part-139.tex").as_deref(),
+        Some("part 139")
     );
     assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
     assert!(laptop.sync(&store, cloud).await.outcome.unchanged);
@@ -707,6 +707,47 @@ async fn a_large_download_comes_as_one_zip_and_checks_every_file() {
     let (small, small_cloud, _desk, _office) = paired().await;
     assert_eq!(small.with(|inner| inner.zips), 0);
     assert!(small.read(&version_remote(small_cloud)).is_some());
+}
+
+#[tokio::test]
+async fn putting_back_most_of_a_project_downloads_it_as_one_zip() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    long_thesis(&desk);
+    desk.sync(&store, cloud).await;
+    std::fs::remove_dir_all(desk.root().join("chapters")).unwrap();
+    assert!(desk.sync(&store, cloud).await.outcome.held);
+    store.with(|inner| inner.downloads = 0);
+
+    desk.sync_with(
+        &store,
+        cloud,
+        RoundOptions {
+            allow_uploads: true,
+            restore_deleted: true,
+            ..RoundOptions::default()
+        },
+    )
+    .await;
+    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 0));
+    assert_eq!(
+        desk.read("chapters/part-012.tex").as_deref(),
+        Some("part 12")
+    );
+
+    let mut laptop = Device::new("Laptop");
+    laptop.download(&store, cloud).await;
+    laptop.write("chapters/part-001.tex", "part 1 from the laptop");
+    laptop.sync(&store, cloud).await;
+    desk.project.remote_dirty = true;
+    store.with(|inner| inner.downloads = 0);
+    assert_eq!(desk.sync(&store, cloud).await.outcome.downloaded, 1);
+    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (2, 1));
+    assert_eq!(
+        desk.read("chapters/part-001.tex").as_deref(),
+        Some("part 1 from the laptop")
+    );
 }
 
 #[tokio::test]
@@ -723,9 +764,9 @@ async fn an_unreadable_zip_falls_back_to_one_download_per_file() {
 
     let mut laptop = Device::new("Laptop");
     laptop.download(&store, cloud).await;
-    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 42));
+    assert_eq!(store.with(|inner| (inner.zips, inner.downloads)), (1, 152));
     assert_eq!(
-        laptop.read("chapters/part-21.tex").as_deref(),
+        laptop.read("chapters/part-021.tex").as_deref(),
         Some("part 21")
     );
     let staging = std::fs::read_dir(laptop.dir.path().join("staging"))

@@ -1,6 +1,6 @@
 use crate::cloud::store::{
-    endpoints, test_endpoints, BatchFile, CloudStore, DropboxStore, RemoteEntry, StoreError,
-    StoreResult, TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
+    endpoints, test_endpoints, BatchDelete, BatchFile, CloudStore, DropboxStore, RemoteEntry,
+    StoreError, StoreResult, TokenRefresher, WriteMode, SINGLE_UPLOAD_LIMIT,
 };
 use crate::cloud::tests::fake_dropbox::{point_at, FakeDropbox, Reply};
 use futures_util::future::BoxFuture;
@@ -839,4 +839,109 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
         matches!(limited, Err(StoreError::RateLimited)),
         "{limited:?}"
     );
+}
+
+#[tokio::test]
+async fn many_deletes_go_in_one_batch_and_keep_their_revision_checks() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let (kept_rev, stale_rev) = fake.with(|dropbox| {
+        dropbox.write("/projects/p/files/a.tex", b"a".to_vec());
+        dropbox.write("/projects/p/files/b.tex", b"b".to_vec());
+        let stale = dropbox.write("/projects/p/files/c.tex", b"c".to_vec());
+        let kept = dropbox.write("/projects/p/files/c.tex", b"c again".to_vec());
+        (kept, stale)
+    });
+    let items = vec![
+        BatchDelete {
+            remote: "/projects/p/files/a.tex".into(),
+            parent_rev: None,
+        },
+        BatchDelete {
+            remote: "/projects/p/files/b.tex".into(),
+            parent_rev: fake.with(|dropbox| dropbox.rev("/projects/p/files/b.tex")),
+        },
+        BatchDelete {
+            remote: "/projects/p/files/c.tex".into(),
+            parent_rev: Some(stale_rev),
+        },
+        BatchDelete {
+            remote: "/projects/p/files/gone.tex".into(),
+            parent_rev: None,
+        },
+    ];
+    let results = store.delete_paths(&items).await;
+    assert!(results.iter().all(Result::is_ok), "{results:?}");
+    fake.with(|dropbox| {
+        assert_eq!(dropbox.read("/projects/p/files/a.tex"), None);
+        assert_eq!(dropbox.read("/projects/p/files/b.tex"), None);
+        assert_eq!(
+            dropbox.rev("/projects/p/files/c.tex"),
+            Some(kept_rev.clone())
+        );
+        assert_eq!(dropbox.calls("files/delete_batch"), 1);
+        assert_eq!(dropbox.calls("files/delete_batch/check"), 2);
+        assert_eq!(dropbox.calls("files/delete_v2"), 0);
+    });
+
+    fake.with(|dropbox| {
+        dropbox.write("/projects/p/files/d.tex", b"d".to_vec());
+        dropbox.write("/projects/p/files/e.tex", b"e".to_vec());
+        dropbox.fault(
+            "files/delete_batch/check",
+            None,
+            Reply::Json(json!({".tag": "failed", "failed": {".tag": "too_many_write_operations"}})),
+            1,
+        );
+    });
+    let pair = [
+        BatchDelete {
+            remote: "/projects/p/files/d.tex".into(),
+            parent_rev: None,
+        },
+        BatchDelete {
+            remote: "/projects/p/files/e.tex".into(),
+            parent_rev: None,
+        },
+    ];
+    let limited = store.delete_paths(&pair).await;
+    assert!(limited
+        .iter()
+        .all(|result| matches!(result, Err(StoreError::RateLimited))));
+
+    fake.with(|dropbox| {
+        dropbox.fault(
+            "files/delete_batch",
+            None,
+            Reply::Json(json!({".tag": "other"})),
+            1,
+        );
+    });
+    let unreadable = store.delete_paths(&pair).await;
+    assert!(unreadable
+        .iter()
+        .all(|result| matches!(result, Err(StoreError::Server(_)))));
+
+    let single = store.delete_paths(&pair[..1]).await;
+    assert!(single[0].is_ok());
+    assert_eq!(fake.with(|dropbox| dropbox.calls("files/delete_v2")), 1);
+
+    let many: Vec<BatchDelete> = (0..260)
+        .map(|index| {
+            let remote = format!("/projects/p/files/many/{index}.tex");
+            fake.with(|dropbox| dropbox.write(&remote, b"x".to_vec()));
+            BatchDelete {
+                remote,
+                parent_rev: None,
+            }
+        })
+        .collect();
+    fake.with(|dropbox| dropbox.clear_calls());
+    let results = store.delete_paths(&many).await;
+    assert_eq!(results.len(), 260);
+    assert!(results.iter().all(Result::is_ok));
+    fake.with(|dropbox| {
+        assert_eq!(dropbox.calls("files/delete_batch"), 2);
+        assert_eq!(dropbox.read("/projects/p/files/many/259.tex"), None);
+    });
 }

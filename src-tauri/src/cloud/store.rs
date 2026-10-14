@@ -21,6 +21,8 @@ const RPC_TIMEOUT: Duration = Duration::from_secs(60);
 const MAX_RETRY_AFTER: Duration = Duration::from_secs(60);
 const UPLOAD_CONCURRENCY: usize = 16;
 const MAX_BATCH_ENTRIES: usize = 1_000;
+const MAX_DELETE_ENTRIES: usize = 250;
+const DELETE_BATCH_WAIT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StoreError {
@@ -126,6 +128,12 @@ pub(crate) struct BatchFile {
     pub(crate) local: std::path::PathBuf,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BatchDelete {
+    pub(crate) remote: String,
+    pub(crate) parent_rev: Option<String>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Changes {
     pub(crate) paths: Vec<String>,
@@ -155,6 +163,13 @@ pub(crate) trait CloudStore: Send + Sync {
         Ok(false)
     }
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()>;
+    async fn delete_paths(&self, items: &[BatchDelete]) -> Vec<StoreResult<()>> {
+        let mut results = Vec::with_capacity(items.len());
+        for item in items {
+            results.push(self.delete(&item.remote, item.parent_rev.as_deref()).await);
+        }
+        results
+    }
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
     async fn changes(&self, cursor: &str) -> StoreResult<Changes>;
@@ -780,6 +795,96 @@ impl DropboxStore {
     }
 }
 
+impl DropboxStore {
+    async fn delete_batch(&self, items: &[BatchDelete]) -> StoreResult<Vec<StoreResult<()>>> {
+        let entries: Vec<serde_json::Value> = items
+            .iter()
+            .map(|item| match &item.parent_rev {
+                Some(rev) => serde_json::json!({"path": item.remote, "parent_rev": rev}),
+                None => serde_json::json!({"path": item.remote}),
+            })
+            .collect();
+        let mut reply = self
+            .rpc(
+                "files/delete_batch",
+                &serde_json::json!({ "entries": entries }),
+            )
+            .await?
+            .map_err(refusal_error)?;
+        let job = reply
+            .get("async_job_id")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string);
+        let deadline = tokio::time::Instant::now() + DELETE_BATCH_WAIT;
+        let mut wait = Duration::from_millis(250);
+        loop {
+            match reply.get(".tag").and_then(serde_json::Value::as_str) {
+                Some("complete") => break,
+                Some("async_job_id" | "in_progress") => {
+                    let Some(job) = job.as_deref() else {
+                        return Err(StoreError::Server(
+                            "dropbox delete batch reply had no job".into(),
+                        ));
+                    };
+                    if tokio::time::Instant::now() >= deadline {
+                        return Err(StoreError::Server(
+                            "dropbox did not finish deleting in time".into(),
+                        ));
+                    }
+                    tokio::time::sleep(wait).await;
+                    wait = (wait * 2).min(Duration::from_secs(2));
+                    reply = self
+                        .rpc(
+                            "files/delete_batch/check",
+                            &serde_json::json!({ "async_job_id": job }),
+                        )
+                        .await?
+                        .map_err(refusal_error)?;
+                }
+                Some("failed") => {
+                    return Err(refusal_error(classify(&tag_path(
+                        reply.get("failed").unwrap_or(&reply),
+                    ))));
+                }
+                _ => {
+                    return Err(StoreError::Server(
+                        "dropbox delete batch reply was unreadable".into(),
+                    ))
+                }
+            }
+        }
+        let results = reply
+            .get("entries")
+            .and_then(serde_json::Value::as_array)
+            .filter(|results| results.len() == items.len())
+            .ok_or_else(|| {
+                StoreError::Server("dropbox delete batch reply was unreadable".into())
+            })?;
+        Ok(results
+            .iter()
+            .zip(items)
+            .map(
+                |(result, item)| match result.get(".tag").and_then(serde_json::Value::as_str) {
+                    Some("success") => Ok(()),
+                    _ => delete_refused(
+                        classify(&tag_path(result.get("failure").unwrap_or(result))),
+                        item.parent_rev.is_some(),
+                    ),
+                },
+            )
+            .collect())
+    }
+}
+
+fn delete_refused(refusal: Refusal, pinned: bool) -> StoreResult<()> {
+    match refusal {
+        Refusal::NotFound => Ok(()),
+        Refusal::RateLimited => Err(StoreError::RateLimited),
+        _ if pinned => Ok(()),
+        refusal => Err(refusal_error(refusal)),
+    }
+}
+
 async fn read_full(file: &mut tokio::fs::File, want: usize) -> StoreResult<Vec<u8>> {
     let mut buffer = vec![0_u8; want];
     let mut filled = 0;
@@ -1052,11 +1157,23 @@ impl CloudStore for DropboxStore {
             arg["parent_rev"] = serde_json::Value::String(rev.to_string());
         }
         match self.rpc("files/delete_v2", &arg).await? {
-            Ok(_) | Err(Refusal::NotFound) => Ok(()),
-            Err(Refusal::RateLimited) => Err(StoreError::RateLimited),
-            Err(_) if parent_rev.is_some() => Ok(()),
-            Err(refusal) => Err(refusal_error(refusal)),
+            Ok(_) => Ok(()),
+            Err(refusal) => delete_refused(refusal, parent_rev.is_some()),
         }
+    }
+
+    async fn delete_paths(&self, items: &[BatchDelete]) -> Vec<StoreResult<()>> {
+        if let [item] = items {
+            return vec![self.delete(&item.remote, item.parent_rev.as_deref()).await];
+        }
+        let mut results = Vec::with_capacity(items.len());
+        for chunk in items.chunks(MAX_DELETE_ENTRIES) {
+            match self.delete_batch(chunk).await {
+                Ok(done) => results.extend(done),
+                Err(error) => results.extend(chunk.iter().map(|_| Err(error.clone()))),
+            }
+        }
+        results
     }
 
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>> {
