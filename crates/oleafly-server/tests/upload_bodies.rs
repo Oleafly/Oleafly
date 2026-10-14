@@ -159,3 +159,61 @@ async fn a_snapshot_hint_for_a_project_with_a_snapshot_is_answered_without_readi
     assert_eq!(hinted.status(), StatusCode::NO_CONTENT);
     assert_eq!(polled.load(Ordering::SeqCst), 0);
 }
+
+#[tokio::test]
+async fn large_transfers_wait_for_room_in_the_transfer_budget() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let content = vec![3u8; MIB];
+    let hash = sha256_hex(&content);
+    let path = format!("/api/v1/projects/{project}/blobs/{hash}");
+    let request = |method: Method, body: Body| {
+        Request::builder()
+            .method(method)
+            .uri(&path)
+            .header(
+                header::AUTHORIZATION,
+                format!("Bearer {}", owner.access_token),
+            )
+            .body(body)
+            .expect("request")
+    };
+    let stored = app
+        .router
+        .clone()
+        .oneshot(request(Method::PUT, Body::from(content.clone())))
+        .await
+        .expect("response");
+    assert_eq!(stored.status(), StatusCode::NO_CONTENT);
+    app.state.transfers.set_budget(MIB as u64);
+    let spent = app.state.transfers.hold(MIB as u64).await;
+    let mut download = tokio::spawn(
+        app.router
+            .clone()
+            .oneshot(request(Method::GET, Body::empty())),
+    );
+    let mut upload = tokio::spawn(
+        app.router
+            .clone()
+            .oneshot(request(Method::PUT, Body::from(content.clone()))),
+    );
+    let waiting = std::time::Duration::from_millis(300);
+    assert!(tokio::time::timeout(waiting, &mut download).await.is_err());
+    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    drop(spent);
+    let downloaded = download.await.expect("task").expect("response");
+    assert_eq!(downloaded.status(), StatusCode::OK);
+    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    let bytes = axum::body::to_bytes(downloaded.into_body(), 2 * MIB)
+        .await
+        .expect("the file");
+    assert_eq!(bytes.len(), MIB);
+    drop(bytes);
+    let uploaded = tokio::time::timeout(std::time::Duration::from_secs(5), upload)
+        .await
+        .expect("the upload gets room once the download is sent")
+        .expect("task")
+        .expect("response");
+    assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
+}

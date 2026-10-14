@@ -599,19 +599,19 @@ pub fn drop_unused_blob(
     Ok(orphan)
 }
 
-pub fn has_blob(
+pub fn blob_size(
     conn: &Connection,
     project: SharedProjectId,
     hash: &str,
-) -> Result<bool, ServerError> {
+) -> Result<Option<u64>, ServerError> {
     Ok(conn
         .query_row(
-            "SELECT 1 FROM project_blobs WHERE project_id = ?1 AND hash = ?2",
+            "SELECT size FROM project_blobs WHERE project_id = ?1 AND hash = ?2",
             [project.to_string(), hash.to_string()],
-            |_| Ok(()),
+            |row| row.get::<_, i64>(0),
         )
         .optional()?
-        .is_some())
+        .map(seq_from))
 }
 
 pub fn append_update(

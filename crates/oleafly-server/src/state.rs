@@ -139,6 +139,7 @@ impl AppState {
         });
         snapshots.move_legacy_files(&database).await?;
         let polls = Arc::new(PollHub::with_hold(config.poll_hold));
+        let transfer_budget = config.snapshot_memory_mb.saturating_mul(1024 * 1024) / 2;
         let rate_limiter = Arc::new(RateLimiter::new(
             config.sign_in.requests_burst,
             config.sign_in.requests_per_minute,
@@ -162,7 +163,7 @@ impl AppState {
             snapshots,
             comment_guard: CommentGuard::default(),
             mentions: Mentions::default(),
-            transfers: Transfers::default(),
+            transfers: Transfers::with_budget(transfer_budget),
         })
     }
 

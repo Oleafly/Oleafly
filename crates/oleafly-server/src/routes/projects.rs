@@ -38,6 +38,7 @@ use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::snapshots::{Signed, Upload};
 use crate::state::AppState;
+use crate::transfers::declared_length;
 
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
 // The app gives a hint 30 seconds. A build that takes longer goes on in the
@@ -636,6 +637,10 @@ async fn put_blob(
             Ok(())
         })
         .await?;
+    let _room = state
+        .transfers
+        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
+        .await;
     let Some(body) = state.transfers.read_body(body, &headers, limit).await? else {
         return Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
@@ -655,18 +660,16 @@ async fn get_blob(
     let (project, hash) = project_and_hash(path)?;
     let account = auth.account_id;
     let lookup = hash.clone();
-    state
+    let size = state
         .db
         .call(move |conn| {
             access(conn, project, account)?;
-            if projects::has_blob(conn, project, &lookup)? {
-                Ok(())
-            } else {
-                Err(ServerError::NotFound)
-            }
+            projects::blob_size(conn, project, &lookup)?.ok_or(ServerError::NotFound)
         })
         .await?;
+    let room = state.transfers.hold(size).await;
     let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
+    let bytes = room.keep_with(bytes);
     Ok((
         [(
             header::CONTENT_TYPE,
@@ -761,6 +764,10 @@ async fn put_snapshot(
         };
         return Ok((status, [(SNAPSHOT_SEQ_HEADER, seq_value(held)?)]).into_response());
     }
+    let _room = state
+        .transfers
+        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
+        .await;
     let bytes = state
         .transfers
         .read_body(body, &headers, limit)
@@ -844,10 +851,17 @@ async fn get_snapshot(
     let Query(DownloadQuery { before }) =
         query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
     let account = auth.account_id;
-    state
+    let size = state
         .db
-        .call(move |conn| access(conn, project, account).map(|_| ()))
+        .call(move |conn| {
+            access(conn, project, account)?;
+            let Some(newest) = projects::latest_snapshot(conn, project)? else {
+                return Ok(0);
+            };
+            Ok(projects::snapshot_size(conn, project, newest.seq)?.unwrap_or(0))
+        })
         .await?;
+    let room = state.transfers.hold(size).await;
     let loaded = match before {
         Some(before) => {
             state
@@ -883,7 +897,7 @@ async fn get_snapshot(
             );
         }
     }
-    Ok((headers, loaded.bytes).into_response())
+    Ok((headers, room.keep_with(loaded.bytes)).into_response())
 }
 
 pub(crate) fn sees_emails(role: ServerRole, settings: &RuntimeSettings) -> bool {

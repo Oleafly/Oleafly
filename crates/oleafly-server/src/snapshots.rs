@@ -720,7 +720,8 @@ impl Snapshots {
             }
         }
         let (hash, size) = self.stage(db, project, bytes, now).await?;
-        if !matches!(self.blobs.get_snapshot(project, &hash).await, Ok(Some(_))) {
+        if !matches!(self.blobs.snapshot_size(project, &hash).await, Ok(Some(found)) if found == size)
+        {
             self.drop_unused(db, project, &hash, now).await;
             return Err(ServerError::Internal(format!(
                 "the snapshot of project {project} at {seq} could not be read back from the blob store"
