@@ -1,3 +1,5 @@
+mod claims;
+
 use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, SessionTokens, TokenRequest,
@@ -6,8 +8,8 @@ use oleafly_server::clock::Clock;
 use oleafly_server::members;
 use oleafly_server::test_support::{
     api_error_code, app_callback, challenge_nonce, follow_to_app, github_provider,
-    no_redirect_client, redeem, refresh_session, security_event_kinds, sign_in, test_config,
-    MockGithub, MockGithubUser, SignInAttempt, TestDevice, TestServer,
+    no_redirect_client, redeem, refresh_session, security_event_kinds, test_config, MockGithub,
+    MockGithubUser, TestDevice, TestServer,
 };
 use oleafly_server::tokens::resolve_access_token;
 use reqwest::StatusCode;
@@ -37,7 +39,9 @@ async fn setup_code_if_needed(server: &TestServer) -> Option<String> {
 
 async fn code_for(server: &TestServer, device: &TestDevice) -> (String, String) {
     let setup_code = setup_code_if_needed(server).await;
-    let attempt = SignInAttempt::new(server, "github", device, setup_code.as_deref());
+    let attempt = claims::attempt(server, "github", device, setup_code.as_deref())
+        .await
+        .expect("a setup claim");
     let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
         .await
         .expect("redirects");
@@ -49,7 +53,7 @@ async fn code_for(server: &TestServer, device: &TestDevice) -> (String, String) 
 
 async fn session(server: &TestServer, device: &TestDevice) -> SessionTokens {
     let setup_code = setup_code_if_needed(server).await;
-    sign_in(server, "github", device, setup_code.as_deref())
+    claims::sign_in(server, "github", device, setup_code.as_deref())
         .await
         .expect("sign in")
 }

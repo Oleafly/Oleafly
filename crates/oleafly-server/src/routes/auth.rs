@@ -1,3 +1,4 @@
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -6,7 +7,7 @@ use axum::{Json, Router};
 use oleafly_collab_protocol::admin::{MemberStatus, SecurityEventKind};
 use oleafly_collab_protocol::auth::{
     AuthErrorCode, AuthStartQuery, ChallengePurpose, ChallengeResponse, RefreshRequest,
-    SessionTokens, TokenRequest,
+    SessionTokens, SetupClaimRequest, SetupClaimResponse, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::crypto::{b64url_decode, pkce_s256};
@@ -30,7 +31,7 @@ use crate::mail::notify;
 use crate::members;
 use crate::rate_limit::client_key;
 use crate::routes::sign_in_pages::{self, Tone};
-use crate::routes::{code_sign_in, email_sign_in, Authenticated, ClientIp};
+use crate::routes::{code_sign_in, email_sign_in, json_body, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::{setup_code_hash, AppState};
@@ -41,6 +42,7 @@ const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Ole
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/auth/start", get(start))
+        .route("/auth/setup-claim", post(setup_claim))
         .route("/auth/callback/{provider}", get(callback))
         .route("/auth/challenge", post(challenge))
         .route("/auth/token", post(token))
@@ -155,7 +157,7 @@ fn callback_url(state: &AppState, provider: &str) -> Url {
 }
 
 fn well_formed(query: &AuthStartQuery) -> bool {
-    let challenge = b64url_decode(&query.code_challenge).is_ok_and(|bytes| bytes.len() == 32);
+    let challenge = a_pkce_challenge(&query.code_challenge);
     let key = b64url_decode(&query.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
     let client_state = !query.state.is_empty() && query.state.len() <= 512;
     let name = !query.device_name.trim().is_empty() && query.device_name.chars().count() <= 100;
@@ -194,6 +196,61 @@ pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, Serve
     ))
 }
 
+fn a_pkce_challenge(text: &str) -> bool {
+    b64url_decode(text).is_ok_and(|bytes| bytes.len() == 32)
+}
+
+async fn setup_claim(
+    State(state): State<AppState>,
+    body: Result<Json<SetupClaimRequest>, JsonRejection>,
+) -> Result<Json<SetupClaimResponse>, ServerError> {
+    let request = json_body(body)?;
+    if !a_pkce_challenge(&request.code_challenge) {
+        return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
+    }
+    if checked_setup_code(&state, Some(&request.setup_code))
+        .await?
+        .map_err(ServerError::Auth)?
+        .is_none()
+    {
+        return Err(ServerError::Auth(AuthErrorCode::SetupCodeInvalid));
+    }
+    let now = state.clock.now_ms();
+    let challenge = request.code_challenge;
+    let claim = state
+        .db
+        .call(move |conn| setup::issue_claim(conn, &challenge, now))
+        .await?;
+    Ok(Json(SetupClaimResponse { claim }))
+}
+
+async fn claimed_setup(
+    state: &AppState,
+    query: &AuthStartQuery,
+    now: i64,
+) -> Result<Result<Option<String>, AuthErrorCode>, ServerError> {
+    if query
+        .setup_code
+        .as_deref()
+        .is_some_and(|code| !code.trim().is_empty())
+    {
+        return Ok(Err(AuthErrorCode::SetupCodeInvalid));
+    }
+    let Some(claim) = query
+        .setup_claim
+        .clone()
+        .filter(|claim| !claim.trim().is_empty())
+    else {
+        return Ok(Ok(None));
+    };
+    let challenge = query.code_challenge.clone();
+    let redeemed = state
+        .db
+        .call(move |conn| setup::redeem_claim(conn, &claim, &challenge, now))
+        .await?;
+    Ok(redeemed.map(Some).ok_or(AuthErrorCode::SetupCodeInvalid))
+}
+
 async fn start(
     State(state): State<AppState>,
     PageLocale(locale): PageLocale,
@@ -228,7 +285,8 @@ async fn start(
             Err(AuthErrorCode::UnknownProvider),
         ));
     }
-    let setup_code_hash = match checked_setup_code(&state, query.setup_code.as_deref()).await? {
+    let now = state.clock.now_ms();
+    let setup_code_hash = match claimed_setup(&state, &query, now).await? {
         Ok(hash) => hash,
         Err(code) => {
             return Ok(back_to_app(
@@ -239,7 +297,6 @@ async fn start(
             ))
         }
     };
-    let now = state.clock.now_ms();
     let pending = PendingSignIn {
         id: random_token(),
         provider_id: query.provider.clone(),
