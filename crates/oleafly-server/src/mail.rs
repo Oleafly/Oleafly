@@ -3,6 +3,7 @@ pub mod notify;
 pub mod preferences;
 
 use std::fmt;
+use std::net::IpAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -64,17 +65,24 @@ impl SmtpSettings {
                 .to_string()
         };
         let url = Url::parse(raw).map_err(|_| invalid())?;
-        let (host, loopback) = match url.host() {
-            Some(Host::Domain(domain)) => (
-                domain.to_string(),
-                domain.eq_ignore_ascii_case("localhost")
-                    || domain
-                        .parse::<std::net::IpAddr>()
-                        .is_ok_and(|address| address.is_loopback()),
-            ),
-            Some(Host::Ipv4(address)) => (address.to_string(), address.is_loopback()),
-            Some(Host::Ipv6(address)) => (address.to_string(), address.is_loopback()),
+        let (host, address) = match url.host() {
+            Some(Host::Domain(domain)) => (domain.to_string(), domain.parse::<IpAddr>().ok()),
+            Some(Host::Ipv4(address)) => (address.to_string(), Some(IpAddr::V4(address))),
+            Some(Host::Ipv6(address)) => (address.to_string(), Some(IpAddr::V6(address))),
             None => return Err(invalid()),
+        };
+        let loopback = host.eq_ignore_ascii_case("localhost")
+            || address.is_some_and(|address| address.is_loopback());
+        let nearby = match address {
+            Some(IpAddr::V4(address)) => {
+                address.is_loopback() || address.is_private() || address.is_link_local()
+            }
+            Some(IpAddr::V6(address)) => {
+                address.is_loopback()
+                    || address.is_unique_local()
+                    || address.is_unicast_link_local()
+            }
+            None => loopback || !host.contains('.'),
         };
         let without_tls = match url.query_pairs().find(|(key, _)| key == "tls") {
             None => false,
@@ -95,6 +103,11 @@ impl SmtpSettings {
             "smtp" => (Security::StartTls, 587),
             _ => return Err(invalid()),
         };
+        if without_tls && !nearby {
+            return Err(format!(
+                "OLEAFLY_SMTP_URL asks for tls=none, but {host} is not on this machine or a private network, so every email would cross the network unencrypted. Remove tls=none, and if the relay's certificate is the problem, add its certificate authority to the server instead."
+            ));
+        }
         let username = Some(percent_decode(url.username())).filter(|name| !name.is_empty());
         let password = url.password().map(percent_decode);
         if without_tls && (username.is_some() || password.is_some()) {
@@ -825,6 +838,47 @@ mod tests {
         ] {
             assert!(SmtpSettings::parse(refused).is_err(), "{refused}");
         }
+    }
+
+    #[test]
+    fn tls_none_works_only_for_a_relay_on_this_machine_or_a_private_network() {
+        for nearby in [
+            "smtp://mailpit:1025?tls=none",
+            "smtp://10.0.0.5?tls=none",
+            "smtp://172.20.0.3:25?tls=none",
+            "smtp://192.168.1.10?tls=none",
+            "smtp://169.254.10.1?tls=none",
+            "smtp://[fd00::25]:25?tls=none",
+            "smtp://[fe80::1]?tls=none",
+            "smtp://127.0.0.1:1025?tls=none",
+            "smtp://localhost?tls=none",
+        ] {
+            let settings =
+                SmtpSettings::parse(nearby).unwrap_or_else(|error| panic!("{nearby}: {error}"));
+            assert_eq!(settings.security, Security::Plain, "{nearby}");
+        }
+        for far in [
+            "smtp://smtp.example.org?tls=none",
+            "smtp://203.0.113.5?tls=none",
+            "smtp://relay.lab.internal?tls=none",
+            "smtp://[2001:db8::25]?tls=none",
+        ] {
+            let error = SmtpSettings::parse(far).expect_err(far);
+            let host = Url::parse(far)
+                .unwrap()
+                .host_str()
+                .unwrap()
+                .trim_matches(['[', ']'])
+                .to_string();
+            assert!(error.contains(&host), "{far}: {error}");
+            assert!(error.contains("certificate authority"), "{far}: {error}");
+        }
+        assert_eq!(
+            SmtpSettings::parse("smtp://smtp.example.org")
+                .unwrap()
+                .security,
+            Security::StartTls
+        );
     }
 
     #[test]
