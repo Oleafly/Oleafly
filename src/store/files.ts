@@ -809,9 +809,10 @@ function enqueueWrite(
     .then(async (expectedGeneration) => {
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
+      // The shared document takes LF text and restores CRLF on disk itself, so
+      // only the direct disk write below uses the file's own line endings.
       const bytes = crlf ? crlfBytes(content) : content;
-      const base = sharedBase === undefined || !crlf ? sharedBase : crlfBytes(sharedBase);
-      if (await writeSharedText(projectId, path, bytes, base)) {
+      if (await writeSharedText(projectId, path, content, sharedBase)) {
         diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
         settleDiskConflict(key);
         return rememberMutationGeneration(projectId, expectedGeneration);
@@ -2404,12 +2405,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
-    const shared = await writeSharedText(
-      projectId,
-      path,
-      bytes,
-      base === undefined || !crlf ? base : crlfBytes(base),
-    );
+    // LF into the shared document; CRLF only for the direct disk write.
+    const shared = await writeSharedText(projectId, path, canonicalContent, base);
     const result = shared
       ? null
       : await writeFileContent(

@@ -42,6 +42,12 @@ describe("writing through the shared document", () => {
     expect(mocks.collabWriteText).toHaveBeenCalledWith("paper", "refs.bib", "old", "new");
   });
 
+  it("sends LF text and an LF base whatever line endings the writer used", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    await writeSharedText("paper", "refs.bib", "@book{a,\r\n}\r\n@book{b,\r}\r", "@book{a,\r\n}\r\n");
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("paper", "refs.bib", "@book{a,\n}\n", "@book{a,\n}\n@book{b,\n}\n");
+  });
+
   it("sends no base when the writer has none", async () => {
     useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
     await writeSharedText("paper", "figures/a.tex", "body");

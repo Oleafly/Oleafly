@@ -6,6 +6,13 @@ export function sharedDocumentLive(projectId: string | null): boolean {
   return projectId !== null && gate.projectId === projectId && !gate.connecting;
 }
 
+// The live document holds LF text only; the disk writer restores each file's
+// CRLF endings. A carriage return sent into it would make the shared text and
+// every open editor disagree about offsets.
+function lf(text: string): string {
+  return text.replace(/\r\n?/gu, "\n");
+}
+
 export async function writeSharedText(
   projectId: string,
   path: string,
@@ -14,7 +21,7 @@ export async function writeSharedText(
 ): Promise<boolean> {
   if (!sharedDocumentLive(projectId)) return false;
   try {
-    const outcome = await collabWriteText(projectId, path, base ?? null, text);
+    const outcome = await collabWriteText(projectId, path, base == null ? null : lf(base), lf(text));
     return outcome.handled;
   } catch (error) {
     throw sharedWriteError(error);

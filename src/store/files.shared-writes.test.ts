@@ -118,23 +118,31 @@ describe("a file written by the app in a live shared project", () => {
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
-  it("keeps CRLF line endings in both the text and its base", async () => {
+  it("sends LF text and an LF base for a CRLF file, since the shared document restores CRLF on disk", async () => {
     goLive();
+    mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "one\r\ntwo\r\nthree\r\n", {
+      base: "one\r\ntwo\r\n",
+    });
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("project", "main.tex", "one\ntwo\n", "one\ntwo\nthree\n");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "one\ntwo\nthree\n",
+      dirty: false,
+    });
+  });
+
+  it("still writes CRLF to disk when the shared document does not take a CRLF file", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false });
     mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
     await useFilesStore.getState().openFile("main.tex");
     await useFilesStore.getState().writeProjectFile("project", "main.tex", "one\ntwo\nthree\n", {
       base: "one\ntwo\n",
     });
-    expect(mocks.collabWriteText).toHaveBeenCalledWith(
-      "project",
-      "main.tex",
-      "one\r\ntwo\r\n",
-      "one\r\ntwo\r\nthree\r\n",
-    );
-    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
-      content: "one\ntwo\nthree\n",
-      dirty: false,
-    });
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("project", "main.tex", "one\ntwo\n", "one\ntwo\nthree\n");
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "one\r\ntwo\r\nthree\r\n", 3);
   });
 
   it("is written to disk when the shared document does not take it", async () => {
@@ -187,6 +195,33 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
       ["a\nb\n", "a\nb\nc\n"],
     ]);
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("saves an open CRLF file through the shared document as LF text from an LF base", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\nb\n");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("keeps CRLF for the direct disk save when the shared document does not take an open CRLF file", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false });
+    mocks.readFileContent.mockResolvedValue("a\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\nb\n");
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "a\r\nb\r\n",
+      3,
+      expect.any(String),
+    );
   });
 
   it("is saved to disk in a project that is not shared, as before", async () => {

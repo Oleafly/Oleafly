@@ -9,7 +9,7 @@ import { Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
 import { editBackgroundDocument, getEditorView, waitForEditorDocument } from "./controller";
-import { LocalDocumentSession, type DocumentSession } from "./document-session";
+import { LocalDocumentSession, type DocumentSession, type RemoteChange, type Utf16Edit } from "./document-session";
 import { englishEditorMessage } from "./test-messages";
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
@@ -93,6 +93,59 @@ function typeAt(pos: number, text: string): void {
     selection: { anchor: pos + text.length },
     annotations: Transaction.userEvent.of("input.type"),
   });
+}
+
+// Takes remote text exactly as sent, carriage returns included, the way a
+// shared document fed by an older client can. Local edits must be LF.
+class UncheckedRemoteSession implements DocumentSession {
+  readonly path: string;
+  readonly readOnly = false;
+  private content: string;
+  private revision = 0;
+  private readonly listeners = new Set<(change: RemoteChange) => void>();
+
+  constructor(path: string, text: string) {
+    this.path = path;
+    this.content = text;
+  }
+
+  version(): number {
+    return this.revision;
+  }
+
+  text(): string {
+    return this.content;
+  }
+
+  applyLocal(edits: Utf16Edit[], baseVersion: number): void {
+    if (baseVersion !== this.revision) throw new Error("stale edit");
+    if (edits.some((edit) => edit.insert.includes("\r"))) throw new RangeError("Edits must use LF line breaks.");
+    this.content = applied(this.content, edits);
+    this.revision += 1;
+  }
+
+  pushRemote(edits: Utf16Edit[]): void {
+    this.content = applied(this.content, edits);
+    this.revision += 1;
+    for (const listener of Array.from(this.listeners)) listener({ edits, version: this.revision });
+  }
+
+  subscribe(listener: (change: RemoteChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+}
+
+function applied(text: string, edits: readonly Utf16Edit[]): string {
+  let result = "";
+  let position = 0;
+  for (const edit of edits) {
+    result += text.slice(position, edit.from) + edit.insert;
+    position = edit.to;
+  }
+  return result + text.slice(position);
 }
 
 function sessionsOf(...sessions: DocumentSession[]): Map<string, DocumentSession> {
@@ -262,6 +315,65 @@ describe("an editor bound to a document session", () => {
     await act(async () => session.pushRemote([{ from: lineTwo, to: lineTwo + 4, insert: "row" }]));
     expect(view().state.doc.toString()).toBe("a!b\nrow two\n");
     expect(session.text()).toBe(view().state.doc.toString());
+  });
+});
+
+describe("carriage returns in a shared document", () => {
+  it("counts a remote CRLF as two characters so the editor stays as long as the session", async () => {
+    const session = new UncheckedRemoteSession("refs.bib", "@book{a,\n  title={A}\n}\n");
+    await mountEditor({ activePath: "refs.bib", docVersion: 0, files: {} }, sessionsOf(session));
+    const end = session.text().length;
+
+    await act(async () => session.pushRemote([{ from: end, to: end, insert: "@article{b,\r\n  title={B}\r\n}\r\n" }]));
+    expect(view().state.doc.length).toBe(session.text().length);
+
+    await act(async () => typeAt(view().state.doc.length, "X"));
+    expect(session.text()).toBe("@book{a,\n  title={A}\n}\n@article{b,\r\n  title={B}\r\n}\r\nX");
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("opens a session text that holds CRLF without shifting later edits", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "one\r\ntwo\r\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    expect(view().state.doc.length).toBe(session.text().length);
+
+    await act(async () => session.pushRemote([{ from: 5, to: 8, insert: "TWO" }]));
+    expect(view().state.doc.toString()).toBe("one\r\nTWO\r\n");
+  });
+
+  it("sends a local insert that carries CRLF as LF and keeps the editor on the session text", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "end\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+
+    await act(async () => view().dispatch({ changes: { from: 0, insert: "x\r\ny\r\n" } }));
+    expect(session.text()).toBe("x\ny\nend\n");
+    expect(view().state.doc.toString()).toBe(session.text());
+
+    await act(async () => typeAt(view().state.doc.length, "!"));
+    expect(session.text()).toBe("x\ny\nend\n!");
+  });
+
+  it("still reads CRLF as one line break in a file without a session", async () => {
+    const session = new UncheckedRemoteSession("shared.tex", "a\r\nb");
+    const { store, setContent } = await mountEditor(
+      { activePath: "shared.tex", docVersion: 0, files: { "solo.tex": "solo\n" } },
+      sessionsOf(session),
+    );
+    await open(store, "solo.tex");
+
+    await act(async () => view().dispatch({ changes: { from: 0, insert: "x\r\ny\r\n" } }));
+    expect(view().state.doc.toString()).toBe("x\ny\nsolo\n");
+    expect(setContent).toHaveBeenLastCalledWith("solo.tex", "x\ny\nsolo\n");
+  });
+
+  it("puts the session's text back when a remote change does not fit the editor", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "abc");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => session.pushRemote([{ from: 3, to: 3, insert: "d" }, { from: 9, to: 9, insert: "?" }]));
+
+    expect(view().state.doc.toString()).toBe(session.text());
   });
 });
 

@@ -320,6 +320,35 @@ function takeSavedPathState(
 
 const documentLoad = Annotation.define<boolean>();
 
+// While a document session is bound, a carriage return in the shared text has
+// to count as one character in the editor too, or every offset after it is
+// off by one between the editor and everyone else. CodeMirror's default treats
+// CRLF as a single line break, so session files split lines on LF only.
+const sessionLineBreaks = EditorState.lineSeparator.of("\n");
+
+const lfText = (text: string): string => text.replace(/\r\n?/gu, "\n");
+
+function lfEdits(edits: Utf16Edit[]): Utf16Edit[] {
+  return edits.map((edit) => (edit.insert.includes("\r") ? { ...edit, insert: lfText(edit.insert) } : edit));
+}
+
+function matchSessionLineBreaks(view: EditorView, compartment: Compartment, bound: boolean): void {
+  if ((view.state.facet(EditorState.lineSeparator) === "\n") === bound) return;
+  view.dispatch({ effects: compartment.reconfigure(bound ? sessionLineBreaks : []) });
+}
+
+// Takes the session's text into the editor without sending it back.
+function realignWithSession(view: EditorView, session: DocumentSession): void {
+  const current = view.state.doc.toString();
+  const next = session.text();
+  if (current === next) return;
+  view.dispatch({
+    filter: false,
+    changes: minimalReplacement(current, next),
+    annotations: [Transaction.addToHistory.of(false), documentLoad.of(true)],
+  });
+}
+
 class EditorSessions {
   private readonly states: Map<string, PathViewState>;
   private readonly background = new Map<string, () => void>();
@@ -339,27 +368,44 @@ class EditorSessions {
     return this.current?.readOnly === true;
   }
 
-  bind(session: DocumentSession, apply: (change: RemoteChange) => void): void {
+  bind(session: DocumentSession, view: EditorView): void {
     this.currentVersion = session.version();
     if (this.current === session) return;
     this.current = session;
     this.stopCurrent = session.subscribe((change) => {
       this.currentVersion = change.version;
-      apply(change);
+      let applied = true;
+      try {
+        applyRemoteChange(view, change);
+      } catch {
+        applied = false;
+      }
+      this.keepAligned(view, session, !applied);
     });
   }
 
-  sendLocal(transactions: readonly Transaction[]): boolean {
+  sendLocal(view: EditorView, transactions: readonly Transaction[]): boolean {
     const session = this.current;
     if (!session) return false;
     for (const transaction of transactions) {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
         continue;
       }
-      session.applyLocal(changesToUtf16Edits(transaction.changes), this.currentVersion);
+      session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
       this.currentVersion = session.version();
     }
+    this.keepAligned(view, session, false);
     return true;
+  }
+
+  // Every local edit is sent with the editor's offsets, so the editor must
+  // hold exactly the session's text. Comparing lengths is cheap enough for
+  // every change and catches a line break the two count differently.
+  private keepAligned(view: EditorView, session: DocumentSession, force: boolean): void {
+    if (this.current !== session) return;
+    if (!force && view.state.doc.length === session.text().length) return;
+    realignWithSession(view, session);
+    this.currentVersion = session.version();
   }
 
   release(backgroundPath: string | null): void {
@@ -817,6 +863,7 @@ export function CodeMirrorEditor({
   const lineWrapCompartmentRef = useRef<Compartment | null>(null);
   const editorKeymapCompartmentRef = useRef<Compartment | null>(null);
   const visualCompartmentRef = useRef<Compartment | null>(null);
+  const lineBreakCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
   const visualActive = host.useVisualMode();
   const visualActiveRef = useRef(visualActive);
@@ -939,6 +986,8 @@ export function CodeMirrorEditor({
     editorKeymapCompartmentRef.current = editorKeymapCompartment;
     const visualCompartment = new Compartment();
     visualCompartmentRef.current = visualCompartment;
+    const lineBreakCompartment = new Compartment();
+    lineBreakCompartmentRef.current = lineBreakCompartment;
     prevPathRef.current = initialPath;
     const initialVisual = visualRendersPath(
       initialPath,
@@ -955,6 +1004,8 @@ export function CodeMirrorEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
+        lineBreakCompartment.of(initialSession ? sessionLineBreaks : []),
+        EditorView.clipboardInputFilter.of(lfText),
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
         centerWithinEditor,
@@ -1025,7 +1076,7 @@ export function CodeMirrorEditor({
             : []
         ),
         EditorView.updateListener.of((vu) => {
-          if (vu.docChanged && !sessionsRef.current.sendLocal(vu.transactions) && !suppressSyncRef.current) {
+          if (vu.docChanged && !sessionsRef.current.sendLocal(vu.view, vu.transactions) && !suppressSyncRef.current) {
             const path = host.getActivePath();
             if (path) host.setContent(path, vu.state.doc.toString());
           }
@@ -1040,7 +1091,7 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
-    if (initialSession) sessionsRef.current.bind(initialSession, (change) => applyRemoteChange(view, change));
+    if (initialSession) sessionsRef.current.bind(initialSession, view);
     applyVisualModeWhenLoaded(
       initialVisual,
       () => viewRef.current === view,
@@ -1235,11 +1286,12 @@ export function CodeMirrorEditor({
         ),
       );
     }
+    matchSessionLineBreaks(view, lineBreakCompartmentRef.current!, session !== null);
     dispatchDocumentSync(view, current, activeContent, pathChanged, selection, effects);
     if (pathChanged) {
       restorePathHistory(view, historyCompartmentRef.current!, restorable);
     }
-    if (session) sessions.bind(session, (change) => applyRemoteChange(view, change));
+    if (session) sessions.bind(session, view);
     prevPathRef.current = activePath;
     setEditorDocumentPath(activePath);
     queueMicrotask(() => {
