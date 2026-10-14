@@ -877,8 +877,36 @@ impl ProjectDoc {
         self.keep(imported, &before, status, changes)
     }
 
+    // One writer carrying on from the document's only head, say someone
+    // pasting while the others are idle, has nothing concurrent to merge, so
+    // a plain import is as fast as it gets and the fork is skipped.
+    fn continues_its_own_head(&self, bytes: &[u8]) -> bool {
+        let Ok(meta) = LoroDoc::decode_import_blob_meta(bytes, false) else {
+            return false;
+        };
+        let heads: Vec<ID> = self.doc.oplog_frontiers().iter().collect();
+        let deps: Vec<ID> = meta.start_frontiers.iter().collect();
+        let starts: Vec<(u64, i32)> = meta
+            .partial_start_vv
+            .iter()
+            .map(|(peer, counter)| (*peer, *counter))
+            .collect();
+        let ends: Vec<u64> = meta.partial_end_vv.keys().copied().collect();
+        match (
+            heads.as_slice(),
+            deps.as_slice(),
+            starts.as_slice(),
+            ends.as_slice(),
+        ) {
+            ([head], [dep], [(peer, start)], [writer]) => {
+                head == dep && head.peer == *peer && *writer == *peer && *start == head.counter + 1
+            }
+            _ => false,
+        }
+    }
+
     fn staged(&self, bytes: &[u8]) -> Option<Staged> {
-        if self.doc.oplog_vv().is_empty() {
+        if self.doc.oplog_vv().is_empty() || self.continues_its_own_head(bytes) {
             return None;
         }
         let scratch = self.doc.fork();

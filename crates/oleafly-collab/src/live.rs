@@ -845,8 +845,18 @@ impl LiveProject {
             }
             fresh.push(receive(arrival, &mut known));
         }
+        let (fresh, known_already): (Vec<Received>, Vec<Received>) = fresh
+            .into_iter()
+            .partition(|received| received.meta.is_none() || !received.spans.is_empty());
+        for received in &known_already {
+            if let Some(meta) = &received.meta {
+                held_by_server(&mut self.confirmed, meta);
+            }
+            self.mark_seen(received.arrival.seq);
+            self.received += 1;
+        }
         if fresh.is_empty() {
-            return Ok(0);
+            return Ok(known_already.len());
         }
         let (imported, unreadable) = {
             let payloads: Vec<&[u8]> = fresh
@@ -891,7 +901,7 @@ impl LiveProject {
                 self.deliver(imported.changes)?;
             }
         }
-        Ok(fresh.len())
+        Ok(fresh.len() + known_already.len())
     }
 
     // A batch import stops at the first update it cannot read, after taking
