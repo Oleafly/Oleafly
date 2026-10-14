@@ -33,7 +33,6 @@ import {
   historyField,
   historyKeymap,
   indentWithTab,
-  isolateHistory,
 } from "@codemirror/commands";
 import {
   autocompletion,
@@ -70,7 +69,6 @@ import {
   registerBackgroundDocumentEditor,
   setEditorDocumentPath,
   setEditorView,
-  type BackgroundDocumentChange,
 } from "./controller";
 import {
   cancelSourceProofreading,
@@ -95,7 +93,16 @@ import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { emacsModeExtension } from "./emacs-mode";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
-import { changesToUtf16Edits, remoteChange } from "./collaboration";
+import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
+import {
+  capturePathViewState,
+  editedPathViewState,
+  holdsText,
+  type PathViewState,
+  rememberPathState,
+  remotePathViewState,
+  takeSavedPathState,
+} from "./path-view-state";
 import type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
@@ -202,23 +209,6 @@ function indentExtensions(tabSize: number): Extension {
   return [indentUnit.of(" ".repeat(tabSize)), EditorState.tabSize.of(tabSize)];
 }
 
-// What a file that isn't shown keeps between visits: a small editor state with
-// only its text, selection and undo history. A remote edit to it then costs as
-// much as the edit, not as much as the file.
-interface PathViewState {
-  state: EditorState;
-  scroll: StateEffect<unknown>;
-}
-
-function clampedSelection(selection: EditorSelection, length: number): EditorSelection {
-  return EditorSelection.create(
-    selection.ranges.map((range) =>
-      EditorSelection.range(Math.min(range.anchor, length), Math.min(range.head, length)),
-    ),
-    selection.mainIndex,
-  );
-}
-
 function startsWithHighSurrogate(text: string, index: number): boolean {
   const code = text.codePointAt(index) ?? 0;
   return code > 0xffff || (code >= 0xd800 && code <= 0xdbff);
@@ -244,89 +234,7 @@ export function minimalReplacement(before: string, after: string) {
   };
 }
 
-function capturePathViewState(view: EditorView, sessionBound: boolean): PathViewState {
-  const saved = view.state.field(historyField, false);
-  return {
-    state: EditorState.create({
-      doc: view.state.doc,
-      selection: view.state.selection,
-      extensions: [
-        EditorState.allowMultipleSelections.of(true),
-        sessionBound ? sessionLineBreaks : [],
-        saved ? [historyField.init(() => saved), history()] : history(),
-      ],
-    }),
-    scroll: view.scrollSnapshot(),
-  };
-}
-
-function pathViewStateAfter(
-  saved: PathViewState,
-  changes: readonly BackgroundDocumentChange[],
-  annotations: readonly Annotation<unknown>[],
-): PathViewState {
-  const transaction = saved.state.update({
-    changes: [...changes],
-    annotations: [...annotations],
-  });
-  return {
-    state: transaction.state,
-    scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
-  };
-}
-
-function holdsText(saved: PathViewState, text: string): boolean {
-  return saved.state.doc.length === text.length && saved.state.doc.toString() === text;
-}
-
-function editedPathViewState(
-  saved: PathViewState,
-  changes: readonly BackgroundDocumentChange[],
-): PathViewState {
-  return pathViewStateAfter(saved, changes, [isolateHistory.of("full")]);
-}
-
-function remotePathViewState(saved: PathViewState, edits: readonly Utf16Edit[]): PathViewState {
-  return pathViewStateAfter(saved, edits, [remoteChange.of(true), Transaction.addToHistory.of(false)]);
-}
-
-const MAX_SAVED_PATH_STATES = 20;
-
-function rememberPathState(
-  states: Map<string, PathViewState>,
-  path: string,
-  state: PathViewState,
-): void {
-  states.delete(path);
-  states.set(path, state);
-  for (const oldest of states.keys()) {
-    if (states.size <= MAX_SAVED_PATH_STATES) break;
-    states.delete(oldest);
-  }
-}
-
-function takeSavedPathState(
-  states: Map<string, PathViewState>,
-  path: string,
-  pathChanged: boolean,
-  content: string,
-): { restorable: PathViewState | undefined; selection: EditorSelection | undefined } {
-  const saved = pathChanged ? states.get(path) : undefined;
-  if (!saved) return { restorable: undefined, selection: undefined };
-  states.delete(path);
-  return {
-    restorable: holdsText(saved, content) ? saved : undefined,
-    selection: clampedSelection(saved.state.selection, content.length),
-  };
-}
-
 const documentLoad = Annotation.define<boolean>();
-
-// While a document session is bound, a carriage return in the shared text has
-// to count as one character in the editor too, or every offset after it is
-// off by one between the editor and everyone else. CodeMirror's default treats
-// CRLF as a single line break, so session files split lines on LF only.
-const sessionLineBreaks = EditorState.lineSeparator.of("\n");
 
 const lfText = (text: string): string => text.replace(/\r\n?/gu, "\n");
 
