@@ -10,7 +10,7 @@ use oleafly_collab_protocol::auth::{
 };
 use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::crypto::{b64url_decode, pkce_s256};
-use oleafly_collab_protocol::ids::ServerId;
+use oleafly_collab_protocol::ids::{DeviceId, ServerId};
 use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::json;
@@ -28,6 +28,7 @@ use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::notify;
 use crate::members;
+use crate::rate_limit::client_key;
 use crate::routes::sign_in_pages::{self, Tone};
 use crate::routes::{code_sign_in, email_sign_in, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
@@ -768,6 +769,14 @@ fn rotate_session(
     Ok(result)
 }
 
+fn refund_a_proven_refresh(state: &AppState, ip: Option<&str>, device: DeviceId, now: i64) {
+    if state.connects.refreshed(device, now) {
+        let address = client_key(ip.unwrap_or("unknown"));
+        state.rate_limiter.refund(&address, now);
+        state.rate_limiter.refund(&address, now);
+    }
+}
+
 async fn refresh_session(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -776,12 +785,16 @@ async fn refresh_session(
     let now = state.clock.now_ms();
     let server_id = state.server_id;
     let device_id = request.device_id;
+    let address = ip.clone();
     let result = state
         .db
         .call(move |conn| rotate_session(conn, &request, server_id, ip, now))
         .await?;
     match result {
-        RefreshResult::Tokens(tokens) => Ok(Json(tokens)),
+        RefreshResult::Tokens(tokens) => {
+            refund_a_proven_refresh(&state, address.as_deref(), device_id, now);
+            Ok(Json(tokens))
+        }
         RefreshResult::Reused => {
             state.revoke_device(device_id).await?;
             Err(ServerError::Auth(AuthErrorCode::RefreshReused))
