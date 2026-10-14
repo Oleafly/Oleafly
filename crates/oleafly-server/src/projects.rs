@@ -211,6 +211,7 @@ pub fn person(
     let Some(summary) = members::account_summary(conn, account)? else {
         return Ok(None);
     };
+    let active = members::account_status(conn, account)? == Some(MemberStatus::Active);
     Ok(Some(PersonSummary {
         account_id: summary.account_id,
         display_name: summary.display_name,
@@ -220,6 +221,7 @@ pub fn person(
             .flatten(),
         login: summary.logins.first().cloned(),
         guest: summary.server_role == oleafly_collab_protocol::roles::ServerRole::Guest,
+        active,
     }))
 }
 
@@ -364,9 +366,12 @@ pub fn members(
     Ok(list)
 }
 
+// People removed from or suspended on the server keep their grants, so
+// adding them back restores their projects, but they don't take a seat.
 pub fn member_count(conn: &Connection, project: SharedProjectId) -> Result<u32, ServerError> {
     let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM project_grants WHERE project_id = ?1",
+        "SELECT COUNT(*) FROM project_grants g JOIN accounts a ON a.id = g.account_id \
+         WHERE g.project_id = ?1 AND a.status = 'active'",
         [project.to_string()],
         |row| row.get(0),
     )?;
@@ -1302,6 +1307,7 @@ pub fn directory(
                 .flatten(),
             login: summary.logins.first().cloned(),
             guest: false,
+            active: true,
         });
         if found.len() >= DIRECTORY_LIMIT {
             break;

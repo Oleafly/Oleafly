@@ -5,7 +5,7 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
-use oleafly_collab_protocol::admin::{RuntimeSettings, SecurityEventKind};
+use oleafly_collab_protocol::admin::{MemberStatus, RuntimeSettings, SecurityEventKind};
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::frames::{
@@ -483,10 +483,23 @@ fn by_link(
         note_rejoin_refused(conn, project, account, ip, now)?;
         return Err(ServerError::NotFound);
     }
+    // Only the owner can manage the people a link brings in, so a project
+    // whose owner was removed or suspended takes no one new until they are
+    // back.
+    if members::account_status(conn, row.owner)? != Some(MemberStatus::Active) {
+        return Err(owner_away());
+    }
     if projects::member_count(conn, project)? >= limit {
         return Err(project_full(limit));
     }
     Ok((row, None))
+}
+
+fn owner_away() -> ServerError {
+    ServerError::refused(
+        "owner_away",
+        "This project's owner is not active on this server right now, so it can't take new people.",
+    )
 }
 
 fn project_full(limit: u32) -> ServerError {

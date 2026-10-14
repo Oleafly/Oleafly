@@ -89,6 +89,7 @@ mod tests {
                 email: None,
                 login: Some("ada".to_string()),
                 guest: false,
+                active: true,
             },
             created_at: 5,
             expires_at: 9,
