@@ -141,7 +141,7 @@ describe("Library with live collaboration on", () => {
     fireEvent.pointerDown(locationSelect() as HTMLElement, { button: 0, ctrlKey: false, pointerType: "mouse" });
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
       enLibrary.home.filters.locationAll,
-      enLibrary.home.filters.locationLibrary,
+      enCollab.library.locationNotShared,
       enCollab.library.location,
     ]);
     fireEvent.click(screen.getByRole("option", { name: enCollab.library.location }));
@@ -151,9 +151,9 @@ describe("Library with live collaboration on", () => {
     expect(screen.getByRole("button", { name: "Open Grant" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open Paper" })).toBeNull();
 
-    await chooseLocation(enLibrary.home.filters.locationLibrary);
+    await chooseLocation(enCollab.library.locationNotShared);
     expect(search).toHaveValue("is:library -is:shared");
-    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationLibrary);
+    expect(locationSelect()).toHaveTextContent(enCollab.library.locationNotShared);
     expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open Grant" })).toBeNull();
   });

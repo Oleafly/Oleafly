@@ -322,6 +322,14 @@ describe("ServerCard admin console", () => {
     expect(consoleMocks.openAdminConsole).toHaveBeenCalledWith(entry);
   });
 
+  it("says how Manage server and the admin console differ, only to people who have both", () => {
+    renderCard(server({ account: account({ server_role: "maintainer" }) }));
+    expect(screen.getByText(copy.server.manageHint)).toBeInTheDocument();
+    cleanup();
+    renderCard(server({ account: account({ server_role: "member" }) }));
+    expect(screen.queryByText(copy.server.manageHint)).toBeNull();
+  });
+
   it("keeps the admin console from members and signed out computers", () => {
     renderCard(server({ account: account({ server_role: "member" }) }));
     expect(screen.queryByRole("button", { name: enCollab.console.open })).not.toBeInTheDocument();

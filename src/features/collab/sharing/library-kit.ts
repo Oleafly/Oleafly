@@ -55,6 +55,7 @@ export function libraryKit(t: CollabTranslate): CollabLibraryKit {
     share: t(($) => $.collab.share.button),
     copyAndShare: t(($) => $.collab.share.copyAndShare),
     location: t(($) => $.collab.library.location),
+    libraryLocation: t(($) => $.collab.library.locationNotShared),
     openLink: t(($) => $.collab.library.openLink.menu),
     extension: {
       is: [

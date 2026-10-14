@@ -215,6 +215,9 @@ export function ServerCard({
             {t(($) => $.collab.section.server.remove)}
           </Button>
         </div>
+        {canManage ? (
+          <p className="text-xs text-muted-foreground">{t(($) => $.collab.section.server.manageHint)}</p>
+        ) : null}
         {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
         <ConnectionTestResult test={test} />
         {account ? <EmailPreferencesRow key={`emails-${serverId}`} serverId={serverId} /> : null}

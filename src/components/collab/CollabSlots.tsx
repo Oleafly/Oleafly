@@ -30,6 +30,8 @@ export interface CollabLibraryKit {
   share: string;
   copyAndShare: string;
   location: string;
+  // With sharing on, the library option leaves shared projects out.
+  libraryLocation: string;
   openLink: string;
   extension: ProjectSearchExtension;
   readLocation: (query: ProjectQuery) => FacetState;

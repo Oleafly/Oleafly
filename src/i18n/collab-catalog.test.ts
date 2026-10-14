@@ -129,6 +129,22 @@ describe("collab catalog", () => {
     }
   });
 
+  it("calls each collaboration idea by one name on every screen", () => {
+    // Admins suspend and reactivate accounts, so members see the same word.
+    expect(collab.section.server.paused).toBe(collab.admin.members.suspended);
+    expect(collab.sync.suspended).toMatch(/suspended/u);
+    expect(collab.section.server.pausedHint).toMatch(/suspended/u);
+    expect(collab.activity.suspended).toBe(collab.section.server.pausedHint);
+    // One name for the list of people let in, the people list and server settings.
+    expect(collab.admin.members.addHint).toContain(collab.admin.tabs.allowlist);
+    expect(collab.admin.log.kinds.allowlistAdded).toContain(collab.admin.tabs.allowlist);
+    expect(collab.admin.log.kinds.allowlistRemoved).toContain(collab.admin.tabs.allowlist);
+    expect(collab.errors.not_admitted).not.toMatch(/list/u);
+    expect(collab.admin.tabs.members).toBe(collab.console.sections.people);
+    expect(collab.admin.tabs.settings).toBe(collab.console.sections.settings);
+    for (const [key, value] of flat) expect(value, key).not.toMatch(/paused your account|allowed list|Account paused/u);
+  });
+
   it("only explains keys the catalog has", () => {
     for (const key of flattenCatalog(context).keys()) {
       expect(flat.has(key), key).toBe(true);

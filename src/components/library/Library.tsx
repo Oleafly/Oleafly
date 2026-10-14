@@ -1078,7 +1078,10 @@ export function Library() {
                 value={facetValue("location")}                onChange={(value) => setFacet("location", value)}                customLabel={t(($) => $.library.home.customFilter)}
                 options={[
                   { value: "all", label: t(($) => $.library.home.filters.locationAll) },
-                  { value: "library", label: t(($) => $.library.home.filters.locationLibrary) },
+                  {
+                    value: "library",
+                    label: collabKit?.libraryLocation ?? t(($) => $.library.home.filters.locationLibrary),
+                  },
                   ...(sharedLocation && collabKit ? [{ value: "shared", label: collabKit.location }] : []),
                   ...(hasFolders
                     ? [{ value: "external", label: t(($) => $.library.home.filters.locationExternal) }]
