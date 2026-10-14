@@ -91,7 +91,7 @@ async fn signed_in(
     let now = state.clock.now_ms();
     let checked = state
         .db
-        .call(move |conn| authenticate(conn, &token, now))
+        .read(move |conn| authenticate(conn, &token, now))
         .await;
     if matches!(checked, Err(ServerError::Internal(_))) {
         state.connects.forgive(address, now);
@@ -542,7 +542,7 @@ pub(crate) async fn backlog_page(
 ) -> Result<BacklogPage, ServerError> {
     let page = state
         .db
-        .call(move |conn| projects::updates_since(conn, project, after))
+        .read(move |conn| projects::updates_since(conn, project, after))
         .await?;
     let full = projects::page_is_full(page.iter().map(|stored| stored.envelope.len()));
     let entries = page
@@ -637,7 +637,7 @@ impl Peer<'_> {
         let checked = self
             .state
             .db
-            .call(move |conn| {
+            .read(move |conn| {
                 let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
                 let role =
                     projects::role_of(conn, project, account)?.ok_or(ServerError::NotFound)?;
@@ -680,7 +680,7 @@ impl Peer<'_> {
         let still = self
             .state
             .db
-            .call(move |conn| projects::role_of(conn, project, account))
+            .read(move |conn| projects::role_of(conn, project, account))
             .await;
         if !matches!(still, Ok(Some(_))) {
             self.state.rooms.leave(project, self.connection);

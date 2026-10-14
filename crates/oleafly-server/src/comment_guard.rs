@@ -250,7 +250,7 @@ async fn caught_up(
         return Ok(None);
     };
     let (head, bindings, grown) = db
-        .call(move |conn| {
+        .read(move |conn| {
             let head = projects::project_row(conn, project)?.map_or(0, |row| row.head_seq);
             let grown = projects::log_span(conn, project, seq, head.max(seq))?.bytes;
             Ok((head, peers::bound_devices(conn, project)?, grown))

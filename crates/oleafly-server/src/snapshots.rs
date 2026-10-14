@@ -472,7 +472,7 @@ impl Snapshots {
     ) -> Result<Upload, ServerError> {
         let _writing = self.writer(project).lock().await;
         let newest = db
-            .call(move |conn| projects::latest_snapshot(conn, project))
+            .read(move |conn| projects::latest_snapshot(conn, project))
             .await?
             .ok_or(ServerError::NotFound)?;
         if through < newest.seq.saturating_add(self.policy().build_after.max(1))
@@ -481,7 +481,7 @@ impl Snapshots {
             return Ok(Upload::Held(newest.seq));
         }
         let (candidates, bindings) = db
-            .call(move |conn| {
+            .read(move |conn| {
                 Ok((
                     projects::readable_snapshots(conn, project)?,
                     peers::bound_devices(conn, project)?,
@@ -493,7 +493,7 @@ impl Snapshots {
         for row in candidates {
             let after = row.seq;
             let (span, size) = db
-                .call(move |conn| {
+                .read(move |conn| {
                     Ok((
                         projects::log_span(conn, project, after, through)?,
                         projects::snapshot_size(conn, project, after)?.unwrap_or(0),
@@ -646,7 +646,7 @@ impl Snapshots {
         project: SharedProjectId,
     ) -> Result<Current, ServerError> {
         let (candidates, bindings, head) = db
-            .call(move |conn| {
+            .read(move |conn| {
                 Ok((
                     projects::readable_snapshots(conn, project)?,
                     peers::bound_devices(conn, project)?,
@@ -659,7 +659,7 @@ impl Snapshots {
         for row in candidates {
             let after = row.seq;
             let (span, size) = db
-                .call(move |conn| {
+                .read(move |conn| {
                     Ok((
                         projects::log_span(conn, project, after, head)?,
                         projects::snapshot_size(conn, project, after)?.unwrap_or(0),
@@ -938,7 +938,7 @@ impl Snapshots {
         project: SharedProjectId,
     ) -> Result<Option<Loaded>, ServerError> {
         let candidates = db
-            .call(move |conn| projects::readable_snapshots(conn, project))
+            .read(move |conn| projects::readable_snapshots(conn, project))
             .await?;
         self.first_readable(db, project, &candidates).await
     }
@@ -950,7 +950,7 @@ impl Snapshots {
         before: u64,
     ) -> Result<Option<Loaded>, ServerError> {
         let candidates = db
-            .call(move |conn| projects::readable_snapshots_before(conn, project, before))
+            .read(move |conn| projects::readable_snapshots_before(conn, project, before))
             .await?;
         self.first_readable(db, project, &candidates).await
     }
@@ -969,7 +969,7 @@ impl Snapshots {
                 Ok(Some(bytes)) => {
                     let seq = row.seq;
                     let signed = db
-                        .call(move |conn| projects::snapshot_signature(conn, project, seq))
+                        .read(move |conn| projects::snapshot_signature(conn, project, seq))
                         .await?
                         .map(|(device, signature)| Signed { device, signature });
                     return Ok(Some(Loaded { seq, bytes, signed }));
@@ -1229,7 +1229,7 @@ pub async fn advance(
     let mut cursor = after;
     while cursor < through {
         let page = db
-            .call(move |conn| projects::logged_between(conn, project, cursor, through))
+            .read(move |conn| projects::logged_between(conn, project, cursor, through))
             .await?;
         let contiguous = page
             .iter()

@@ -173,7 +173,7 @@ async fn list(
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| projects::list_for_account(conn, account))
+        .read(move |conn| projects::list_for_account(conn, account))
         .await?;
     Ok(Json(listed))
 }
@@ -213,7 +213,7 @@ async fn show(
     let account = auth.account_id;
     let shown = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             let (row, role) = access(conn, project, account)?;
             projects::summary(conn, &row, role)
         })
@@ -680,7 +680,7 @@ async fn get_blob(
     let lookup = hash.clone();
     let size = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             projects::blob_size(conn, project, &lookup)?.ok_or(ServerError::NotFound)
         })
@@ -842,7 +842,7 @@ async fn head_snapshot(
     let account = auth.account_id;
     let newest = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             projects::latest_snapshot(conn, project)?.ok_or(ServerError::NotFound)
         })
@@ -871,7 +871,7 @@ async fn get_snapshot(
     let account = auth.account_id;
     let size = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             let Some(newest) = projects::latest_snapshot(conn, project)? else {
                 return Ok(0);
@@ -936,7 +936,7 @@ async fn list_members(
     let server_role = auth.role;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             let emails = sees_emails(server_role, &settings::load(conn)?);
             projects::members(conn, project, emails)
@@ -954,7 +954,7 @@ async fn list_devices(
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             projects::devices(conn, project)
         })
@@ -971,7 +971,7 @@ async fn list_peers(
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             peers::table(conn, project)
         })
@@ -1225,7 +1225,7 @@ async fn directory(
     let role = auth.role;
     let found = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             let settings = settings::load(conn)?;
             let staff = matches!(role, ServerRole::Admin | ServerRole::Maintainer);
             if !settings.directory_visible && !staff {
@@ -1304,6 +1304,40 @@ mod tests {
             })
             .await
             .expect("settings");
+    }
+
+    #[tokio::test]
+    async fn reads_on_a_file_database_answer_from_its_read_connections() {
+        let directory = tempfile::tempdir().expect("a folder");
+        let db = crate::db::Db::open(&directory.path().join("oleafly-server.sqlite3"))
+            .expect("a file database");
+        let clock = crate::clock::ManualClock::new(crate::test_support::TEST_START_MS);
+        let state = crate::state::AppState::with_db(test_config(), clock.clone(), db)
+            .await
+            .expect("state");
+        let app = TestApp {
+            router: crate::build_router(state.clone()),
+            state,
+            clock,
+        };
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let project = project(&app, &owner, true).await;
+        for path in [
+            "/api/v1/projects".to_owned(),
+            format!("/api/v1/projects/{project}"),
+            format!("/api/v1/projects/{project}/members"),
+            format!("/api/v1/projects/{project}/devices"),
+            format!("/api/v1/projects/{project}/peers"),
+            "/api/v1/directory?q=seeded".to_owned(),
+        ] {
+            let request = Request::builder()
+                .uri(&path)
+                .header("authorization", format!("Bearer {}", owner.access_token))
+                .body(Body::empty())
+                .expect("request");
+            let response = app.router.clone().oneshot(request).await.expect("response");
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+        }
     }
 
     #[tokio::test]
