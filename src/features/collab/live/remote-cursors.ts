@@ -22,6 +22,55 @@ export interface RemoteCursorSource {
   activity?(view: EditorView): void;
 }
 
+const LABEL_SATURATION = 70;
+const LABEL_LIGHTNESS = 45;
+const MIN_LABEL_CONTRAST = 4.5;
+
+function channel(value: number): number {
+  return value <= 0.039_28 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}
+
+// WCAG relative luminance of an HSL colour (hue in degrees, the rest 0 to 100).
+export function hslLuminance(hue: number, saturation: number, lightness: number): number {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const h = (((hue % 360) + 360) % 360) / 60;
+  const x = chroma * (1 - Math.abs((h % 2) - 1));
+  const sectors = [
+    [chroma, x, 0],
+    [x, chroma, 0],
+    [0, chroma, x],
+    [0, x, chroma],
+    [x, 0, chroma],
+    [chroma, 0, x],
+  ];
+  const [r, g, b] = sectors[Math.floor(h) % 6];
+  const m = l - chroma / 2;
+  return 0.2126 * channel(r + m) + 0.7152 * channel(g + m) + 0.0722 * channel(b + m);
+}
+
+export function contrastWithWhite(luminance: number): number {
+  return 1.05 / (luminance + 0.05);
+}
+
+const labelLightnessByHue = new Map<number, number>();
+
+// White name labels need 4.5:1. Yellows, greens and cyans are too light at
+// the caret's lightness, so their labels get the lightest shade that is dark
+// enough. Most hues keep the caret's own shade.
+export function labelLightness(hue: number): number {
+  const key = Math.round(hue) % 360;
+  const known = labelLightnessByHue.get(key);
+  if (known !== undefined) return known;
+  let lightness = LABEL_LIGHTNESS;
+  while (lightness > 10 && contrastWithWhite(hslLuminance(key, LABEL_SATURATION, lightness)) < MIN_LABEL_CONTRAST) {
+    lightness -= 1;
+  }
+  labelLightnessByHue.set(key, lightness);
+  return lightness;
+}
+
 export const REMOTE_CURSOR_STYLES = {
   ".cm-remote-selection": {
     backgroundColor: "hsl(var(--remote-hue) 85% 55% / 0.22)",
@@ -42,7 +91,7 @@ export const REMOTE_CURSOR_STYLES = {
     left: "-1px",
     padding: "0 0.25rem",
     borderRadius: "0.25rem 0.25rem 0.25rem 0",
-    backgroundColor: "hsl(var(--remote-hue) 70% 45%)",
+    backgroundColor: `hsl(var(--remote-hue) ${LABEL_SATURATION}% var(--remote-label-lightness, ${LABEL_LIGHTNESS}%))`,
     color: "#fff",
     fontSize: "0.6875rem",
     fontStyle: "normal",
@@ -93,6 +142,7 @@ class CaretWidget extends WidgetType {
     if (this.name) {
       const label = document.createElement("span");
       label.className = "cm-remote-caret-label";
+      label.style.setProperty("--remote-label-lightness", `${labelLightness(this.hue)}%`);
       label.textContent = this.name;
       caret.appendChild(label);
     }
