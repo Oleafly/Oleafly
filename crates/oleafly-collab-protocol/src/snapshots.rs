@@ -40,6 +40,22 @@ mod tests {
         assert_ne!(base, snapshot_signing_bytes(project, 0, &[2; 32]));
     }
 
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    }
+
+    #[test]
+    fn snapshot_signing_bytes_are_stable() {
+        let project: SharedProjectId = PROJECT.parse().unwrap();
+        let expected = concat!(
+            "6f6c6561666c792d736e617073686f742f763100",
+            "01920000000070008000000000000001",
+            "0000000000000007",
+            "0101010101010101010101010101010101010101010101010101010101010101",
+        );
+        assert_eq!(hex(&snapshot_signing_bytes(project, 7, &[1; 32])), expected);
+    }
+
     #[test]
     fn a_peer_reads_back_from_json_with_its_full_width() {
         let peer = ProjectPeer {
