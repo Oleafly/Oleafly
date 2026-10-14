@@ -969,6 +969,8 @@
     "viewerBy": "{{name}} vous a passé en lecteur. Vous pouvez lire ce projet, mais pas le modifier.",
     "viewer": "Vous êtes maintenant lecteur. Vous pouvez lire ce projet, mais pas le modifier.",
     "viewOnly": "Vous pouvez consulter ce projet partagé, mais pas le modifier.",
+    "unsentReadOnly": "Vos dernières modifications de {{path}} n'ont pas été envoyées, car vous pouvez maintenant seulement consulter ce projet.",
+    "unsentRefused": "Oleafly n'a pas pu envoyer vos dernières modifications de {{path}}, elles ont donc été abandonnées.",
     "removedBy": "{{name}} vous a retiré de ce projet. Votre copie reste sur cet ordinateur et n'est plus partagée.",
     "removed": "Vous avez été retiré de ce projet. Votre copie reste sur cet ordinateur et n'est plus partagée."
   },

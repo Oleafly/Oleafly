@@ -1,5 +1,5 @@
 import { isBinaryProjectPath } from "@/lib/project-paths";
-import { RemoteDocumentSession, type RemoteSessionTransport } from "./remote-session";
+import { type DiscardReason, RemoteDocumentSession, type RemoteSessionTransport } from "./remote-session";
 
 export interface LiveSessionsOptions {
   transport: RemoteSessionTransport;
@@ -7,6 +7,7 @@ export interface LiveSessionsOptions {
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
   detached(path: string, text: string, edited: boolean): void;
+  discarded?(path: string, reason: DiscardReason): void;
   settleTimeoutMs?: number;
 }
 
@@ -38,6 +39,7 @@ export class LiveSessions {
       onPhase: (phase) => {
         if (phase === "detached") this.detach(session.path, session);
       },
+      onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
     });
     this.sessions.set(path, session);
     void session.open();
@@ -103,7 +105,9 @@ export class LiveSessions {
 
   private detach(path: string, session: RemoteDocumentSession): void {
     if (this.sessions.get(path) !== session) return;
-    const edited = !session.synchronized;
+    // Typing Rust never confirmed has to be saved locally now. A reopen keeps
+    // it as pending, so "synchronized" alone can't tell.
+    const edited = session.unconfirmed;
     this.sessions.delete(path);
     this.local.add(path);
     session.close();

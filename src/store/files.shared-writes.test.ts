@@ -285,6 +285,29 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
   });
 });
 
+describe("text a live session hands back to local editing", () => {
+  it("is saved even though the buffer already shows it", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\ntyped\n", dirty: false } },
+    }));
+    expect(useFilesStore.getState().setContent("main.tex", "a\ntyped\n")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    useFilesStore.getState().setContent("main.tex", "a\ntyped\n", { unsaved: true });
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "a\ntyped\n", 3, expect.any(String));
+  });
+
+  it("stays saved when the disk already has it", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\n", { unsaved: true });
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+});
+
 describe("text reloaded from disk in a live shared project", () => {
   it("is never sent back into the shared document", async () => {
     goLive();

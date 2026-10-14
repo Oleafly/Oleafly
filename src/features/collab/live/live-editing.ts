@@ -1,7 +1,9 @@
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
 import { setCollabEditorExtension } from "@/components/editor/cm/collab-slot";
 import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import {
   collabDocChange,
   collabDocClose,
@@ -99,7 +101,7 @@ export function startLiveEditing(live: LiveSession): () => void {
     transport: {
       open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
       change: (fileId, rev, op) => collabDocChange(projectId, fileId, rev, op),
-      close: (fileId) => collabDocClose(projectId, fileId),
+      close: (fileId, session) => collabDocClose(projectId, fileId, session),
     },
     readOnly: isViewer,
     initialText: (path) => {
@@ -110,8 +112,17 @@ export function startLiveEditing(live: LiveSession): () => void {
     detached: (path, text, edited) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;
-      if (edited) files.setContent(path, text);
+      // The mirror already put this text in the buffer as saved, so say it
+      // isn't, or the typing would never reach the disk.
+      if (edited) files.setContent(path, text, { unsaved: true });
       if (files.activePath === path) files.bumpDocVersion();
+    },
+    discarded: (path, reason) => {
+      toast.info(
+        reason === "read_only"
+          ? i18n.t(($) => $.collab.access.unsentReadOnly, { path })
+          : i18n.t(($) => $.collab.access.unsentRefused, { path }),
+      );
     },
   });
   const stopMoves = onPathsMoved((moved) => {

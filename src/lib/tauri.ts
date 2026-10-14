@@ -1844,8 +1844,8 @@ export const collabDocChange = (
   rev: number,
   op: CollabTextOperation,
 ) => invoke<void>("collab_doc_change", { projectId, fileId, rev, op });
-export const collabDocClose = (projectId: string, fileId: string) =>
-  invoke<void>("collab_doc_close", { projectId, fileId });
+export const collabDocClose = (projectId: string, fileId: string, session: number) =>
+  invoke<void>("collab_doc_close", { projectId, fileId, session });
 export const collabPresenceSet = (
   projectId: string,
   path: string | null,

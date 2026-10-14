@@ -969,6 +969,8 @@
     "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
     "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
+    "unsentReadOnly": "Vaše poslední změny v souboru {{path}} se neodeslaly, protože tento projekt teď můžete jen prohlížet.",
+    "unsentRefused": "Oleafly nemohl odeslat vaše poslední změny v souboru {{path}}, a tak byly zahozeny.",
     "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
     "removed": "Byli jste odebráni z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená."
   },

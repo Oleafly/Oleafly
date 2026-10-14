@@ -121,7 +121,7 @@ beforeEach(() => {
   mocks.collabDocOpen.mockImplementation(async (_projectId: string, path: string, onMessage) => {
     if (path === "excluded.log") return null;
     channels.set(`id-${path}`, onMessage);
-    return { file_id: `id-${path}`, rev: 4, text: "shared" };
+    return { file_id: `id-${path}`, rev: 4, text: "shared", session: 1 };
   });
   mocks.collabDocChange.mockResolvedValue(undefined);
   mocks.collabDocClose.mockResolvedValue(undefined);
@@ -184,7 +184,7 @@ describe("live editing", () => {
     await settle();
     for (const listener of mocks.pathDeletes) listener({ projectId: PROJECT, path: "main.tex" });
     await settle();
-    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex");
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex", 1);
     expect(collabDocumentSession("main.tex")).not.toBe(session);
     release?.();
     release = null;
@@ -314,7 +314,7 @@ describe("live editing", () => {
     const version = useFilesStore.getState().docVersion;
     release?.();
     release = null;
-    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex");
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex", 1);
     expect(collabDocumentSession("main.tex")).toBeNull();
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
     expect(collabVisualReadOnly(PROJECT)).toBe(false);
@@ -338,7 +338,7 @@ describe("live editing edges", () => {
     const session = collabDocumentSession("excluded.log");
     session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     await settle();
-    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!");
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!", { unsaved: true });
     expect(useFilesStore.getState().docVersion).toBe(version);
   });
 

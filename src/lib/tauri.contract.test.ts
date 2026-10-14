@@ -236,6 +236,13 @@ describe("IPC helpers with client-side logic", () => {
     expect(onMessage).toHaveBeenCalledWith({ kind: "text" });
   });
 
+  it("sends a live document change and closes the channel with the token it opened", async () => {
+    await tauri.collabDocChange("p", "file-1", 4, [3, "x"]);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_change", { projectId: "p", fileId: "file-1", rev: 4, op: [3, "x"] });
+    await tauri.collabDocClose("p", "file-1", 7);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_close", { projectId: "p", fileId: "file-1", session: 7 });
+  });
+
   it.each([
     ["without a setup code", undefined, null],
     ["with a setup code", "K7QX-2MPL", "K7QX-2MPL"],

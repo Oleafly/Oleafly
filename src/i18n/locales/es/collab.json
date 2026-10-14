@@ -969,6 +969,8 @@
     "viewerBy": "{{name}} te cambió el rol a lector. Puedes leer este proyecto, pero no editarlo.",
     "viewer": "Ahora eres lector. Puedes leer este proyecto, pero no editarlo.",
     "viewOnly": "Puedes ver este proyecto compartido, pero no editarlo.",
+    "unsentReadOnly": "Tus últimos cambios en {{path}} no se enviaron porque ahora solo puedes ver este proyecto.",
+    "unsentRefused": "Oleafly no pudo enviar tus últimos cambios en {{path}}, así que se descartaron.",
     "removedBy": "{{name}} te quitó de este proyecto. Tu copia se queda en este equipo y ya no se comparte.",
     "removed": "Te quitaron de este proyecto. Tu copia se queda en este equipo y ya no se comparte."
   },

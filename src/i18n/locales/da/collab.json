@@ -969,6 +969,8 @@
     "viewerBy": "{{name}} har gjort dig til læser. Du kan læse projektet, men ikke redigere det.",
     "viewer": "Du er nu læser. Du kan læse projektet, men ikke redigere det.",
     "viewOnly": "Du kan se dette delte projekt, men ikke redigere det.",
+    "unsentReadOnly": "Dine seneste ændringer i {{path}} blev ikke sendt, fordi du nu kun kan se dette projekt.",
+    "unsentRefused": "Oleafly kunne ikke sende dine seneste ændringer i {{path}}, så de blev kasseret.",
     "removedBy": "{{name}} fjernede dig fra dette projekt. Din kopi bliver på denne computer og deles ikke længere.",
     "removed": "Du blev fjernet fra dette projekt. Din kopi bliver på denne computer og deles ikke længere."
   },

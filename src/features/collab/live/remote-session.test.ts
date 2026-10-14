@@ -98,11 +98,9 @@ describe("RemoteDocumentSession", () => {
     expect(editor.doc).toBe(channel.text);
   });
 
-  it("replaces the text and drops pending changes on reset", async () => {
+  it("replaces the text on a reset when nothing of its own is waiting", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);
-    editor.type([{ from: 0, to: 0, insert: "x" }]);
-    editor.type([{ from: 0, to: 0, insert: "y" }]);
     channel.reset("fresh");
     channel.deliverOne(id);
     expect(session.text()).toBe("fresh");
@@ -110,6 +108,99 @@ describe("RemoteDocumentSession", () => {
     expect(session.synchronized).toBe(true);
     editor.type([{ from: 5, to: 5, insert: "!" }]);
     expect(channel.sent.at(-1)).toEqual({ client: id, rev: channel.rev, op: [5, "!"] });
+  });
+
+  it("keeps typing the shared document refused once and sends it again on top of the reset text", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    const id = channel.opens[0];
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }]);
+    channel.refuseChanges = true;
+    channel.remote(insertAt(0, ">", 3));
+    channel.receiveOne();
+    channel.refuseChanges = false;
+    channel.drain();
+    expect(channel.text).toBe(">abcde");
+    expect(session.text()).toBe(">abcde");
+    expect(editor.doc).toBe(">abcde");
+    expect(session.synchronized).toBe(true);
+    expect(discarded).not.toHaveBeenCalled();
+    expect(channel.sent.at(-1)?.client).toBe(id);
+  });
+
+  it("drops typing the shared document refuses twice, and says so", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    channel.refuseChanges = true;
+    channel.drain();
+    expect(discarded).toHaveBeenCalledExactlyOnceWith("refused");
+    expect(session.text()).toBe("abc");
+    expect(editor.doc).toBe("abc");
+    expect(session.synchronized).toBe(true);
+  });
+
+  it("drops typing it can no longer send once the person can only view, and says so", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    let viewer = false;
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      readOnly: () => viewer,
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    viewer = true;
+    channel.refuseChanges = true;
+    channel.receiveOne();
+    channel.deliverOne(channel.opens[0]);
+    expect(discarded).toHaveBeenCalledExactlyOnceWith("read_only");
+    expect(session.text()).toBe("abc");
+    expect(channel.inbox).toHaveLength(0);
+  });
+
+  it("keeps typing that wasn't confirmed through a reopen, moved past remote changes", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }]);
+    channel.inbox.length = 0;
+    channel.remote(insertAt(0, ">", 3));
+    const outbox = channel.clients.get(id)?.outbox ?? [];
+    outbox[0] = { ...outbox[0], length: 99 } as CollabDocMessage;
+    channel.deliverOne(id);
+    await flush();
+    channel.drain();
+    expect(channel.opens).toHaveLength(2);
+    expect(channel.text).toBe(">abcde");
+    expect(session.text()).toBe(">abcde");
+    expect(editor.doc).toBe(">abcde");
+  });
+
+  it("closes each channel with the token its open returned", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, id } = await opened(channel);
+    channel.clients.get(id)?.outbox.push({ kind: "ack", rev: 1, length: 3 });
+    channel.deliverOne(id);
+    await flush();
+    session.close();
+    expect(channel.closes).toEqual([id, channel.opens[1]]);
+    expect(channel.closeTokens).toEqual([1, 2]);
   });
 
   it("reopens the document when its length disagrees with the channel", async () => {
@@ -157,7 +248,7 @@ describe("RemoteDocumentSession", () => {
     const opening = session.open();
     expect(session.phase).toBe("opening");
     editor.type([{ from: 4, to: 4, insert: "!" }]);
-    release({ file_id: "file-0", rev: channel.rev, text: channel.text });
+    release({ file_id: "file-0", rev: channel.rev, text: channel.text, session: 1 });
     await opening;
     expect(editor.doc).toBe("shared text!");
     channel.drain();
@@ -181,7 +272,7 @@ describe("RemoteDocumentSession", () => {
     queued.push({ kind: "remote", rev: 2, op: ["a", 2], length: 3 });
     queued.push({ kind: "remote", rev: 3, op: [3, "b"], length: 4 });
     for (const message of queued) deliver(message);
-    release({ file_id: "f", rev: 2, text: "xya" });
+    release({ file_id: "f", rev: 2, text: "xya", session: 2 });
     await opening;
     expect(session.text()).toBe("xyab");
   });
@@ -282,7 +373,7 @@ describe("RemoteDocumentSession recovery", () => {
     const transport = {
       open: vi.fn((_path: string, onMessage: (message: CollabDocMessage) => void) => {
         listeners.push(onMessage);
-        return Promise.resolve<CollabDocOpened>(answers.shift() ?? { file_id: "again", rev: 9, text: "fresh" });
+        return Promise.resolve<CollabDocOpened>(answers.shift() ?? { file_id: "again", rev: 9, text: "fresh", session: 3 });
       }),
       change: vi.fn<RemoteSessionTransport["change"]>(),
       close: vi.fn(),
@@ -318,7 +409,7 @@ describe("RemoteDocumentSession recovery", () => {
     const opening = session.open();
     editor.type([{ from: 3, to: 3, insert: "d" }]);
     editor.type([{ from: 0, to: 0, insert: ">" }]);
-    release({ file_id: "file-0", rev: channel.rev, text: channel.text });
+    release({ file_id: "file-0", rev: channel.rev, text: channel.text, session: 4 });
     await opening;
     expect(channel.sent).toEqual([{ client: "file-0", rev: 0, op: [">", 3, "d"] }]);
     channel.drain();
@@ -342,7 +433,7 @@ describe("RemoteDocumentSession recovery", () => {
     const editor = new Editor(session);
     const opening = session.open();
     editor.type([{ from: 1, to: 2, insert: "" }]);
-    release({ file_id: "file-0", rev: channel.rev, text: channel.text });
+    release({ file_id: "file-0", rev: channel.rev, text: channel.text, session: 5 });
     await opening;
     expect(channel.sent).toEqual([]);
     expect(session.text()).toBe("ac");
@@ -382,9 +473,9 @@ describe("RemoteDocumentSession recovery", () => {
     });
     const opening = session.open();
     session.close();
-    release({ file_id: "late", rev: 0, text: "abc" });
+    release({ file_id: "late", rev: 0, text: "abc", session: 6 });
     await opening;
-    expect(close).toHaveBeenCalledExactlyOnceWith("late");
+    expect(close).toHaveBeenCalledExactlyOnceWith("late", 6);
     let settled = false;
     void session.settled().then(() => (settled = true));
     await flush();
@@ -393,8 +484,8 @@ describe("RemoteDocumentSession recovery", () => {
 
   it("ignores messages from a document it has opened again since", async () => {
     const { transport, listeners } = scripted(
-      { file_id: "first", rev: 0, text: "abc" },
-      { file_id: "second", rev: 0, text: "abc" },
+      { file_id: "first", rev: 0, text: "abc", session: 7 },
+      { file_id: "second", rev: 0, text: "abc", session: 8 },
     );
     const session = new RemoteDocumentSession("main.tex", "abc", { transport });
     await session.open();
@@ -409,7 +500,7 @@ describe("RemoteDocumentSession recovery", () => {
     let release: (value: CollabDocOpened | null) => void = () => {};
     let deliver: (message: CollabDocMessage) => void = () => {};
     const open = vi.fn((_path: string, onMessage: (message: CollabDocMessage) => void) => {
-      if (open.mock.calls.length > 1) return Promise.resolve({ file_id: "again", rev: 9, text: "fresh" });
+      if (open.mock.calls.length > 1) return Promise.resolve({ file_id: "again", rev: 9, text: "fresh", session: 9 });
       deliver = onMessage;
       return new Promise<CollabDocOpened | null>((resolve) => (release = resolve));
     });
@@ -418,10 +509,10 @@ describe("RemoteDocumentSession recovery", () => {
     const opening = session.open();
     deliver({ kind: "remote", rev: 3, op: [3, "b"], length: 99 });
     deliver({ kind: "ack", rev: 4, length: 4 });
-    release({ file_id: "first", rev: 2, text: "xya" });
+    release({ file_id: "first", rev: 2, text: "xya", session: 10 });
     await opening;
     await flush();
-    expect(close).toHaveBeenCalledExactlyOnceWith("first");
+    expect(close).toHaveBeenCalledExactlyOnceWith("first", 10);
     expect(open).toHaveBeenCalledTimes(2);
     expect(session.text()).toBe("fresh");
     expect(session.phase).toBe("open");
@@ -451,10 +542,10 @@ describe("RemoteDocumentSession recovery", () => {
     expect(session.text()).toBe("abc");
   });
 
-  it("reopens when sending a change fails", async () => {
+  it("reopens when sending a change fails, and sends the change again", async () => {
     const { transport } = scripted(
-      { file_id: "first", rev: 0, text: "abc" },
-      { file_id: "second", rev: 1, text: "abcd" },
+      { file_id: "first", rev: 0, text: "abc", session: 11 },
+      { file_id: "second", rev: 1, text: "Xabc", session: 12 },
     );
     transport.change.mockRejectedValueOnce(new Error("gone"));
     const session = new RemoteDocumentSession("main.tex", "abc", { transport });
@@ -462,14 +553,15 @@ describe("RemoteDocumentSession recovery", () => {
     await session.open();
     editor.type([{ from: 3, to: 3, insert: "d" }]);
     await flush();
-    expect(transport.close).toHaveBeenCalledWith("first");
+    expect(transport.close).toHaveBeenCalledWith("first", 11);
     expect(transport.open).toHaveBeenCalledTimes(2);
-    expect(session.text()).toBe("abcd");
-    expect(editor.doc).toBe("abcd");
+    expect(session.text()).toBe("Xabcd");
+    expect(editor.doc).toBe("Xabcd");
+    expect(transport.change).toHaveBeenLastCalledWith("second", 1, [4, "d"]);
   });
 
   it("stays closed when a change sent before closing fails afterwards", async () => {
-    const { transport } = scripted({ file_id: "first", rev: 0, text: "abc" });
+    const { transport } = scripted({ file_id: "first", rev: 0, text: "abc", session: 13 });
     let fail: (error: Error) => void = () => {};
     transport.change.mockReturnValueOnce(new Promise<void>((_, reject) => (fail = reject)));
     const session = new RemoteDocumentSession("main.tex", "abc", { transport });

@@ -969,6 +969,8 @@
     "viewerBy": "{{name}} heeft je lezer gemaakt. Je kunt dit project lezen, maar niet bewerken.",
     "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
     "viewOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken.",
+    "unsentReadOnly": "Je laatste wijzigingen in {{path}} zijn niet verstuurd, omdat je dit project nu alleen kunt bekijken.",
+    "unsentRefused": "Oleafly kon je laatste wijzigingen in {{path}} niet versturen, dus ze zijn verworpen.",
     "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
     "removed": "Je bent uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld."
   },

@@ -1292,6 +1292,9 @@ export interface CollabDocOpened {
     file_id: string;
     rev: number;
     text: string;
+    // Identifies the channel this open registered. Closing passes it back so
+    // a late close can't shut a channel the same file opened since.
+    session: number;
 }
 export interface ProjectSharing {
     server_name: string;
@@ -1612,7 +1615,7 @@ export interface BackendPort {
   collabLiveFlush: (projectId: string) => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
-  collabDocClose: (projectId: string, fileId: string) => Promise<void>;
+  collabDocClose: (projectId: string, fileId: string, session: number) => Promise<void>;
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
   collabPresenceLeave: (projectId: string) => Promise<void>;
   collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;

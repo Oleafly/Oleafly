@@ -475,7 +475,13 @@ interface FilesStore {
   // `base` is the text the caller built `content` from, when that may be older
   // than the buffer. A live project merges the change from it, so edits that
   // reached the buffer since are kept.
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean; base?: string }) => boolean;
+  // `unsaved` marks text the buffer may already hold but the disk doesn't,
+  // such as typing a shared file's session never had confirmed.
+  setContent: (
+    path: string,
+    content: string,
+    opts?: { bumpVersion?: boolean; base?: string; unsaved?: boolean },
+  ) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
@@ -2001,8 +2007,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     const before = get().files[path];
-    if (before?.content === content) return true;
+    const same = before?.content === content;
+    if (same && (!opts?.unsaved || before.dirty)) return true;
     const saved = matchesSavedDiskText(projectId, path, content);
+    if (same && saved) return true;
     if (!saved && before && !before.dirty && projectId && sharedDocumentLive(projectId)) {
       sharedSaveBases.set(writeKey(projectId, path), opts?.base ?? before.content);
     }

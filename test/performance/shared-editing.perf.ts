@@ -63,7 +63,7 @@ async function openSession(text: string, mirror: (text: string) => void) {
     transport: {
       open: async (_path, onMessage) => {
         deliver = onMessage;
-        return { file_id: "file", rev: 0, text };
+        return { file_id: "file", rev: 0, text, session: 1 };
       },
       change: () => undefined,
       close: () => undefined,
