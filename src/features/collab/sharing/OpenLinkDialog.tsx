@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { collabOpenLink, isCollabCommandError } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 
 type Failure = { kind: "serverUnknown"; server: string } | { kind: "message"; text: string };
@@ -40,7 +40,7 @@ export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
       } else if (code === "not_found") {
         setFailure({ kind: "message", text: t(($) => $.collab.library.openLink.noAccess) });
       } else {
-        setFailure({ kind: "message", text: collabErrorMessage(code) });
+        setFailure({ kind: "message", text: collabErrorText(error) });
       }
     } finally {
       setBusy(false);

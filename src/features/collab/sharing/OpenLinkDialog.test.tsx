@@ -81,6 +81,22 @@ describe("OpenLinkDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
   });
 
+  it("says a mistyped or cut-off link isn't a project link", async () => {
+    mocks.collabOpenLink.mockRejectedValue(collabError("not_a_link", "not a shared project link"));
+    const user = userEvent.setup();
+    render(<OpenLinkDialog onClose={onClose} />);
+    await user.type(screen.getByRole("textbox", { name: copy.label }), `${LINK}{Enter}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.not_a_link);
+  });
+
+  it("shows the server's own sentence for a refusal it has no code for", async () => {
+    mocks.collabOpenLink.mockRejectedValue(collabError("invalid", "That link has expired."));
+    const user = userEvent.setup();
+    render(<OpenLinkDialog onClose={onClose} />);
+    await user.type(screen.getByRole("textbox", { name: copy.label }), `${LINK}{Enter}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("That link has expired.");
+  });
+
   it("never asks the server about a blank link, even if the form is sent", () => {
     render(<OpenLinkDialog onClose={onClose} />);
     const field = screen.getByRole("textbox", { name: copy.label });

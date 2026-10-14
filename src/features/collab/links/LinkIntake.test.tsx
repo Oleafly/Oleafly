@@ -290,6 +290,19 @@ describe("LinkIntake", () => {
     expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
   });
 
+  it("says when the project is full instead of calling it a clash", async () => {
+    mocks.collabJoinProject.mockRejectedValue(collabError("project_full", "A project on this server can have at most 20 people."));
+    deliver([OPEN]);
+    expect(await screen.findByText(enCollab.errors.project_full)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.errors.conflict)).not.toBeInTheDocument();
+  });
+
+  it("shows the server's own sentence for a refusal it has no code for", async () => {
+    mocks.collabJoinProject.mockRejectedValue(collabError("invalid", "That invitation was withdrawn."));
+    deliver([OPEN]);
+    expect(await screen.findByText("That invitation was withdrawn.")).toBeInTheDocument();
+  });
+
   it("explains when the server list cannot be read", async () => {
     useCollabStore.setState({ servers: [], status: "idle" });
     mocks.collabServersList.mockRejectedValue(collabError("internal"));

@@ -13,7 +13,8 @@ import {
   type CollabDomainRule,
   type CollabNewDomainRule,
 } from "@/lib/tauri";
-import { collabErrorText } from "./errors";
+import { looksLikeDomain } from "./address-checks";
+import { collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
 import { toServerRole, type ServerRole } from "./roles";
@@ -58,6 +59,10 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
     event.preventDefault();
     const value = normalizeDomain(domain);
     if (value === "") return;
+    if (!looksLikeDomain(value)) {
+      setFormError(collabErrorMessage("invalid_domain"));
+      return;
+    }
     const rule: CollabNewDomainRule = { domain: value, role };
     setSaving(true);
     setFormError(null);

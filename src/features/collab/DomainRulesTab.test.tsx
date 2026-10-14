@@ -88,6 +88,31 @@ describe("DomainRulesTab", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.duplicate);
   });
 
+  it.each(["https://uni.edu", "uni_lab.edu", "uni"])(
+    "names %s as not a domain without asking the server",
+    async (typed) => {
+      mocks.collabAdminDomainRules.mockResolvedValue([]);
+      const user = userEvent.setup();
+      render(<DomainRulesTab serverId={SERVER_ID} actor="maintainer" />);
+      await screen.findByText(copy.empty);
+      await user.type(screen.getByRole("textbox", { name: copy.domainLabel }), typed);
+      await user.click(screen.getByRole("button", { name: copy.add }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.invalid_domain);
+      expect(mocks.collabAdminAddDomainRule).not.toHaveBeenCalled();
+    },
+  );
+
+  it("says when the server already has the rule, under its new code", async () => {
+    mocks.collabAdminDomainRules.mockResolvedValue([]);
+    mocks.collabAdminAddDomainRule.mockRejectedValue(collabError("duplicate_entry"));
+    const user = userEvent.setup();
+    render(<DomainRulesTab serverId={SERVER_ID} actor="maintainer" />);
+    await screen.findByText(copy.empty);
+    await user.type(screen.getByRole("textbox", { name: copy.domainLabel }), "cs.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.duplicate);
+  });
+
   it("removes a rule", async () => {
     mocks.collabAdminDomainRules.mockResolvedValue([domainRule()]);
     mocks.collabAdminRemoveDomainRule.mockResolvedValue(undefined);

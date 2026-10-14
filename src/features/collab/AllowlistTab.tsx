@@ -15,7 +15,8 @@ import {
   type CollabNewAllowlistEntry,
   type CollabProvider,
 } from "@/lib/tauri";
-import { collabErrorText } from "./errors";
+import { looksLikeEmailAddress, looksLikeLogin } from "./address-checks";
+import { collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
 import { toServerRole, type ServerRole } from "./roles";
@@ -76,6 +77,10 @@ export function AllowlistTab({
     event.preventDefault();
     const trimmed = value.trim();
     if (trimmed === "" || (kind === "login" && provider === null)) return;
+    if (kind === "email" ? !looksLikeEmailAddress(trimmed) : !looksLikeLogin(trimmed)) {
+      setFormError(collabErrorMessage(kind === "email" ? "invalid_email" : "invalid_login"));
+      return;
+    }
     const entry: CollabNewAllowlistEntry = {
       matcher:
         kind === "email"
