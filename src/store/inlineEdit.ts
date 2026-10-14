@@ -28,7 +28,9 @@ interface InlineEditState {
     autoRun?: boolean;
   }) => void;
   setInstruction: (s: string) => void;
-  startStreaming: () => void;
+  // `original` is the target text as it is when the run starts, which
+  // collaborators may have changed while the instruction was being typed.
+  startStreaming: (original?: string) => void;
   appendProposed: (full: string) => void;
   finishReviewing: () => void;
   fail: (msg: string) => void;
@@ -57,8 +59,12 @@ export const useInlineEditStore = create<InlineEditState>((set) => ({
     }),
   setInstruction: (instruction) =>
     set((st) => (active(st.session) ? { session: { ...st.session, instruction } } : st)),
-  startStreaming: () =>
-    set((st) => (active(st.session) ? { session: { ...st.session, phase: "streaming", proposed: "" } } : st)),
+  startStreaming: (original) =>
+    set((st) =>
+      active(st.session)
+        ? { session: { ...st.session, phase: "streaming", proposed: "", original: original ?? st.session.original } }
+        : st,
+    ),
   appendProposed: (full) =>
     set((st) => (active(st.session) ? { session: { ...st.session, proposed: full } } : st)),
   finishReviewing: () =>

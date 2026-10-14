@@ -165,6 +165,18 @@ describe("InlineEditPanel", () => {
     });
   });
 
+  it("asks about the text as it is when the run starts, after someone changed it", async () => {
+    useFilesStore.setState({ engineLoaded: false });
+    openSession();
+    await renderPanel();
+    act(() => view?.dispatch({ changes: { from: 0, to: 5, insert: "HELLO" } }));
+    fireEvent.change(promptBox(), { target: { value: "Make it friendlier" } });
+    fireEvent.click(screen.getByLabelText(inlineAi.submit));
+    await waitFor(() => expect(inline.runInlineCompletion).toHaveBeenCalled());
+    expect(inline.runInlineCompletion).toHaveBeenCalledWith(expect.objectContaining({ selection: "HELLO" }));
+    expect(useInlineEditStore.getState().session?.original).toBe("HELLO");
+  });
+
   it("passes the loaded document engine and runs a preset", async () => {
     const engine = useFilesStore.getState().engine;
     useFilesStore.setState({ engineLoaded: true });

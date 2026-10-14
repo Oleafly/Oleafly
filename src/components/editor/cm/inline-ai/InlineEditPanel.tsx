@@ -101,7 +101,10 @@ export function InlineEditPanel() {
     if (!instruction) return;
     const store = useInlineEditStore.getState();
     store.setInstruction(instruction);
-    store.startStreaming();
+    // Someone may have edited the target while the instruction was typed.
+    const view = getEditorView();
+    const original = view ? view.state.sliceDoc(s.from, s.to) : s.original;
+    store.startStreaming(original);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
@@ -110,7 +113,7 @@ export function InlineEditPanel() {
           ? useFilesStore.getState().engine
           : undefined,
         instruction,
-        selection: s.original,
+        selection: original,
         signal: ctrl.signal,
         onToken: (full) => useInlineEditStore.getState().appendProposed(full),
       });
