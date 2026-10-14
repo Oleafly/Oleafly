@@ -264,7 +264,7 @@ The data lives in a Docker volume whose name ends in `oleafly-data`. Find it wit
 
 Each server release is published as `ghcr.io/oleafly/oleafly-server`, for x86-64 and ARM. Running it skips the build, which suits a small Coolify server.
 
-Follow the steps above with two changes. In step 2, set **Docker Compose Location** to `/deploy/server/docker-compose.coolify-image.yml`. Skip step 3, because nothing gets built. The file asks for the `0.1` tag, so each **Redeploy** pulls the newest `0.1` release.
+Follow the steps above with two changes. In step 2, set **Docker Compose Location** to `/deploy/server/docker-compose.coolify-image.yml`. Skip step 3, because nothing gets built. The file asks for the `0.1` tag, which moves to each `0.1` release once it is published, so each **Redeploy** pulls the newest one.
 
 ## Render
 
