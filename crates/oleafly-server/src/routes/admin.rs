@@ -198,7 +198,7 @@ fn apply_member_patch(
         && was_active
         && (new_role != ServerRole::Admin || !will_be_active);
     if loses_admin && members::count_admins(&transaction)? <= 1 {
-        return Err(ServerError::Conflict(LAST_ADMIN.to_string()));
+        return Err(ServerError::refused("last_admin", LAST_ADMIN));
     }
     let target_text = target.to_string();
     if role_changes {
@@ -274,7 +274,7 @@ async fn remove_member(
                 && matches!(current.status, MemberStatus::Active)
                 && members::count_admins(&transaction)? <= 1
             {
-                return Err(ServerError::Conflict(LAST_ADMIN.to_string()));
+                return Err(ServerError::refused("last_admin", LAST_ADMIN));
             }
             let devices = members::account_devices(&transaction, target)?;
             let unbound = members::remove_account(&transaction, target, now)?;

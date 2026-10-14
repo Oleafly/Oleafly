@@ -159,7 +159,7 @@ async fn invite(
         return Err(ServerError::BadRequest(guests::GUEST_ROLES.to_string()));
     }
     let email = members::normalize_email(&request.email).ok_or_else(|| {
-        ServerError::BadRequest("That email address doesn't look right.".to_string())
+        ServerError::invalid("invalid_email", "That email address doesn't look right.")
     })?;
     let account = auth.account_id;
     let now = state.clock.now_ms();
@@ -172,14 +172,16 @@ async fn invite(
             let row = owner_of(conn, project, account)?;
             auth.require(ServerAction::ShareProjects)?;
             if row.status != ProjectStatus::Active {
-                return Err(ServerError::Conflict(
-                    "Share the project before inviting people.".to_string(),
+                return Err(ServerError::refused(
+                    "project_not_shared",
+                    "Share the project before inviting people.",
                 ));
             }
             let runtime = settings::load(conn)?;
             if !runtime.guests_enabled {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow guests.".to_string(),
+                return Err(ServerError::refused(
+                    "guests_off",
+                    "This server does not allow guests.",
                 ));
             }
             let transaction = conn.transaction()?;

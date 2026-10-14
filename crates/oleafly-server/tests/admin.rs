@@ -397,12 +397,13 @@ async fn the_last_admin_cannot_be_demoted_suspended_or_removed() {
     ] {
         let reply = support::send_patch(router, &own, auth, body).await;
         assert_eq!(reply.status, StatusCode::CONFLICT);
-        assert_eq!(reply.body["code"], "conflict");
+        assert_eq!(reply.body["code"], "last_admin");
     }
-    expect_status(
+    let removal = expect_status(
         support::send_delete(router, &own, auth).await,
         StatusCode::CONFLICT,
     );
+    assert_eq!(removal.body["code"], "last_admin");
     let second = seed_member(&app, ServerRole::Admin).await;
     expect_status(
         support::send_patch(router, &own, auth, role_patch(ServerRole::Member)).await,
@@ -698,8 +699,8 @@ async fn allowlist_entries_are_validated_and_unique() {
     )
     .await;
     assert_eq!(duplicate.status, StatusCode::CONFLICT);
-    assert_eq!(duplicate.body["code"], "conflict");
-    expect_status(
+    assert_eq!(duplicate.body["code"], "duplicate_entry");
+    let not_an_address = expect_status(
         support::send_post(
             router,
             ALLOWLIST,
@@ -709,6 +710,7 @@ async fn allowlist_entries_are_validated_and_unique() {
         .await,
         StatusCode::BAD_REQUEST,
     );
+    assert_eq!(not_an_address.body["code"], "invalid_email");
     let by_login: AllowlistEntry = parse(expect_status(
         support::send_post(
             router,
@@ -782,7 +784,7 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
     ));
     assert_eq!(created.domain, "cs.stanford.edu");
     assert_eq!(created.role, ServerRole::Member);
-    expect_status(
+    let again = expect_status(
         support::send_post(
             router,
             DOMAINS,
@@ -792,13 +794,14 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
         .await,
         StatusCode::CONFLICT,
     );
+    assert_eq!(again.body["code"], "duplicate_entry");
     for role in [ServerRole::Admin, ServerRole::Maintainer] {
         expect_status(
             support::send_post(router, DOMAINS, auth, domain_rule("uni.edu", role)).await,
             StatusCode::BAD_REQUEST,
         );
     }
-    expect_status(
+    let not_a_domain = expect_status(
         support::send_post(
             router,
             DOMAINS,
@@ -808,6 +811,7 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
         .await,
         StatusCode::BAD_REQUEST,
     );
+    assert_eq!(not_a_domain.body["code"], "invalid_domain");
     let found = app
         .state
         .db

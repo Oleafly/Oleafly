@@ -20,8 +20,8 @@ use oleafly_server::config::ServerConfig;
 use oleafly_server::members;
 use oleafly_server::state::DAY_MS;
 use oleafly_server::test_support::{
-    github_provider, mail_config, refresh_session, security_event_kinds, sign_in, test_config,
-    MockGithub, MockGithubUser, MockSmtp, TestDevice,
+    api_error_code, github_provider, mail_config, refresh_session, security_event_kinds, sign_in,
+    test_config, MockGithub, MockGithubUser, MockSmtp, TestDevice,
 };
 use people::{call, connect, next_frame, read, share_project, stage_with, Person, Stage};
 use reqwest::{Method, StatusCode};
@@ -906,6 +906,31 @@ async fn an_existing_guest_gets_a_newly_approved_project_without_signing_in_agai
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn inviting_to_a_project_that_is_not_shared_yet_says_so() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, false).await;
+    let (owner, now) = (stage.bob.tokens.account_id, stage.server.clock().now_ms());
+    let draft = stage
+        .server
+        .state()
+        .db
+        .call(move |conn| oleafly_server::projects::create_pending(conn, owner, "Draft", now))
+        .await
+        .expect("a project that is still uploading");
+    let refused = invite(
+        stage,
+        &stage.bob,
+        draft,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "project_not_shared");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
@@ -918,7 +943,8 @@ async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
         ProjectRole::Viewer,
     )
     .await;
-    assert_eq!(off.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(off.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(off).await, "guests_off");
     let list = owner_list(stage, project.project_id).await;
     assert!(!list.guests_enabled);
     guests_on(stage, false).await;
@@ -940,6 +966,7 @@ async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
     )
     .await;
     assert_eq!(junk.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(api_error_code(junk).await, "invalid_email");
     invited(
         stage,
         project.project_id,

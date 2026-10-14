@@ -508,7 +508,7 @@ pub fn add_allowlist(
     let (kind, provider, value, key) = match &entry.matcher {
         AllowlistMatcher::Email { email } => {
             let key = normalize_email(email).ok_or_else(|| {
-                ServerError::BadRequest("That email address doesn't look right.".to_string())
+                ServerError::invalid("invalid_email", "That email address doesn't look right.")
             })?;
             ("email", String::new(), email.trim().to_string(), key)
         }
@@ -520,7 +520,7 @@ pub fn add_allowlist(
                 ));
             }
             let key = normalize_login(login).ok_or_else(|| {
-                ServerError::BadRequest("That sign-in name doesn't look right.".to_string())
+                ServerError::invalid("invalid_login", "That sign-in name doesn't look right.")
             })?;
             (
                 "provider_login",
@@ -547,8 +547,9 @@ pub fn add_allowlist(
     match inserted {
         Ok(_) => {}
         Err(error) if is_unique_violation(&error) => {
-            return Err(ServerError::Conflict(
-                "That person is already on the allowlist.".to_string(),
+            return Err(ServerError::refused(
+                "duplicate_entry",
+                "That person is already on the allowlist.",
             ))
         }
         Err(error) => return Err(error.into()),
@@ -657,8 +658,9 @@ pub fn add_domain_rule(
     now: i64,
 ) -> Result<DomainRule, ServerError> {
     let domain = normalize_domain(&rule.domain).ok_or_else(|| {
-        ServerError::BadRequest(
-            "That isn't a domain name. Use a form like cs.example.edu.".to_string(),
+        ServerError::invalid(
+            "invalid_domain",
+            "That isn't a domain name. Use a form like cs.example.edu.",
         )
     })?;
     if !matches!(rule.role, ServerRole::Member | ServerRole::Guest) {
@@ -680,8 +682,9 @@ pub fn add_domain_rule(
     match inserted {
         Ok(_) => {}
         Err(error) if is_unique_violation(&error) => {
-            return Err(ServerError::Conflict(
-                "There is already a rule for that domain.".to_string(),
+            return Err(ServerError::refused(
+                "duplicate_entry",
+                "There is already a rule for that domain.",
             ))
         }
         Err(error) => return Err(error.into()),
@@ -1007,9 +1010,11 @@ mod tests {
             assert!(find_allowlist_by_email(conn, "bob@uni.edu")?.is_none());
             assert!(find_allowlist_by_email(conn, "not an email")?.is_none());
             let duplicate = add_allowlist(conn, &email("alice@uni.edu", ServerRole::Admin), None, 6);
-            assert!(matches!(duplicate, Err(ServerError::Conflict(_))));
+            assert_eq!(duplicate.map(|_| ()).unwrap_err().code(), "duplicate_entry");
             let invalid = add_allowlist(conn, &email("alice", ServerRole::Member), None, 7);
-            assert!(matches!(invalid, Err(ServerError::BadRequest(_))));
+            assert_eq!(invalid.map(|_| ()).unwrap_err().code(), "invalid_email");
+            let name = add_allowlist(conn, &login("github", "two words", ServerRole::Member), None, 8);
+            assert_eq!(name.map(|_| ()).unwrap_err().code(), "invalid_login");
             Ok(())
         })
         .await;
@@ -1079,16 +1084,16 @@ mod tests {
                     Err(ServerError::BadRequest(_))
                 ));
             }
-            assert!(matches!(
-                add_domain_rule(conn, &rule("not a domain", ServerRole::Member), None, 3),
-                Err(ServerError::BadRequest(_))
-            ));
+            let not_a_domain =
+                add_domain_rule(conn, &rule("not a domain", ServerRole::Member), None, 3);
+            assert_eq!(
+                not_a_domain.map(|_| ()).unwrap_err().code(),
+                "invalid_domain"
+            );
             let unicode = add_domain_rule(conn, &rule("Bücher.de", ServerRole::Guest), None, 4)?;
             assert_eq!(unicode.domain, "xn--bcher-kva.de");
-            assert!(matches!(
-                add_domain_rule(conn, &rule("cs.stanford.edu", ServerRole::Guest), None, 5),
-                Err(ServerError::Conflict(_))
-            ));
+            let again = add_domain_rule(conn, &rule("cs.stanford.edu", ServerRole::Guest), None, 5);
+            assert_eq!(again.map(|_| ()).unwrap_err().code(), "duplicate_entry");
             assert_eq!(list_domain_rules(conn)?.len(), 2);
             assert!(remove_domain_rule(conn, &created.id)?);
             assert!(!remove_domain_rule(conn, &created.id)?);
