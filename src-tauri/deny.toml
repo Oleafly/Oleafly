@@ -26,7 +26,6 @@ ignore = [
   { id = "RUSTSEC-2026-0247", reason = "bitmaps is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0248", reason = "im is unmaintained, used by loro-internal for persistent maps; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0251", reason = "sized-chunks is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
-  { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml is unmaintained, reached through serde_yaml in the desktop app; no vulnerability, a parser swap is tracked separately" },
 ]
 
 [licenses]
