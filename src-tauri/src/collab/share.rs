@@ -389,6 +389,8 @@ pub async fn share_project(
     if check.cloud_synced {
         return Err(cloud_synced());
     }
+    crate::trust::mark_library_restricted(project_id)
+        .map_err(|error| CollabError::Io(format!("{error:?}")))?;
     let meta = crate::project::read_meta(project_id).map_err(CollabError::Io)?;
     let title: String = if meta.name.trim().is_empty() {
         project_id.to_owned()
@@ -1203,6 +1205,32 @@ mod transfer_tests {
             .unwrap();
         assert_eq!(again.shared_project_id, first.unwrap().shared_project_id);
         assert!(load_pending(state.paths().unwrap(), "twice").is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_shared_project_needs_this_computer_to_trust_it_again_before_tools_run() {
+        let library = TempLibrary::new();
+        paper(&library, "trusted-once");
+        assert!(crate::trust::is_trusted("trusted-once"));
+        let lab = Lab::start().await;
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_in(&dir, "collab");
+        let server = lab.sign_in(&state, &lab.server.url(), true).await;
+        share_project(&state, &Browser, &|_, _| {}, "trusted-once", server)
+            .await
+            .unwrap();
+        assert_eq!(
+            crate::trust::project_trust("trusted-once").unwrap(),
+            crate::trust::TrustState::Restricted
+        );
+        for capability in [
+            crate::trust::Capability::RunCommand,
+            crate::trust::Capability::FullAccess,
+            crate::trust::Capability::ExternalAgents,
+            crate::trust::Capability::TerminalAutostart,
+        ] {
+            assert!(crate::trust::require_trusted("trusted-once", capability).is_err());
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
