@@ -271,6 +271,11 @@
         "description": "I suoi dispositivi vengono disconnessi subito. I progetti che possiede restano sul server, e potrai aggiungere di nuovo questa persona in seguito.",
         "confirm": "Rimuovi il membro"
       },
+      "selfRoleConfirm": {
+        "title": "Cambiare il tuo ruolo in {{role}}?",
+        "description": "Perderai i diritti di amministratore su questo server, e solo un altro amministratore potrà restituirteli.",
+        "confirm": "Cambia il mio ruolo"
+      },
       "deviceSignOutConfirm": {
         "title": "Vuoi disconnettere il dispositivo {{name}}?",
         "description": "Quel dispositivo smette di sincronizzarsi con questo server finché il proprietario non accede di nuovo da lì.",

@@ -271,6 +271,11 @@
         "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
         "confirm": "Usuń członka"
       },
+      "selfRoleConfirm": {
+        "title": "Zmienić swoją rolę na {{role}}?",
+        "description": "Stracisz uprawnienia administratora na tym serwerze, a przywrócić je może tylko inny administrator.",
+        "confirm": "Zmień moją rolę"
+      },
       "deviceSignOutConfirm": {
         "title": "Wylogować urządzenie {{name}}?",
         "description": "To urządzenie przestanie synchronizować się z tym serwerem, dopóki jego właściciel ponownie się na nim nie zaloguje.",

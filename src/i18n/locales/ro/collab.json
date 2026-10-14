@@ -271,6 +271,11 @@
         "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
         "confirm": "Elimină membrul"
       },
+      "selfRoleConfirm": {
+        "title": "Îți schimbi propriul rol în {{role}}?",
+        "description": "Îți pierzi drepturile de administrator pe acest server, și doar alt administrator ți le poate da înapoi.",
+        "confirm": "Schimbă-mi rolul"
+      },
       "deviceSignOutConfirm": {
         "title": "Deconectezi {{name}}?",
         "description": "Acel dispozitiv nu se mai sincronizează cu acest server până când proprietarul lui se autentifică din nou pe el.",

@@ -271,6 +271,11 @@
         "description": "Personens enheder bliver logget ud med det samme. Projekter, som personen ejer, bliver på serveren, og du kan tilføje personen igen senere.",
         "confirm": "Fjern medlemmet"
       },
+      "selfRoleConfirm": {
+        "title": "Vil du ændre din egen rolle til {{role}}?",
+        "description": "Du mister dine administratorrettigheder på denne server, og kun en anden administrator kan give dig dem igen.",
+        "confirm": "Skift min rolle"
+      },
       "deviceSignOutConfirm": {
         "title": "Vil du logge {{name}} ud?",
         "description": "Den enhed holder op med at synkronisere med denne server, indtil dens ejer logger ind på den igen.",

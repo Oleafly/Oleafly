@@ -271,6 +271,11 @@
         "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
         "confirm": "Remove member"
       },
+      "selfRoleConfirm": {
+        "title": "Change your own role to {{role}}?",
+        "description": "You'll lose your admin rights on this server, and only another admin can give them back.",
+        "confirm": "Change my role"
+      },
       "deviceSignOutConfirm": {
         "title": "Sign out {{name}}?",
         "description": "That device stops syncing with this server until its owner signs in on it again.",

@@ -271,6 +271,11 @@
         "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
         "confirm": "Poista jäsen"
       },
+      "selfRoleConfirm": {
+        "title": "Vaihdetaanko oma roolisi rooliin {{role}}?",
+        "description": "Menetät ylläpitäjän oikeutesi tällä palvelimella, ja vain toinen ylläpitäjä voi palauttaa ne.",
+        "confirm": "Vaihda roolini"
+      },
       "deviceSignOutConfirm": {
         "title": "Kirjataanko {{name}} ulos?",
         "description": "Laite lakkaa synkronoimasta tämän palvelimen kanssa, kunnes sen omistaja kirjautuu sillä uudelleen sisään.",

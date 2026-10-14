@@ -271,6 +271,11 @@
         "description": "Medlemmens enheter loggas ut direkt. Projekt som medlemmen äger ligger kvar på servern, och du kan lägga till medlemmen igen senare.",
         "confirm": "Ta bort medlemmen"
       },
+      "selfRoleConfirm": {
+        "title": "Ändra din egen roll till {{role}}?",
+        "description": "Du förlorar dina administratörsrättigheter på den här servern, och bara en annan administratör kan ge dig dem igen.",
+        "confirm": "Ändra min roll"
+      },
       "deviceSignOutConfirm": {
         "title": "Logga ut {{name}}?",
         "description": "Enheten slutar synka med den här servern tills ägaren loggar in på den igen.",

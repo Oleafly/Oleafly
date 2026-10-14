@@ -271,6 +271,11 @@
         "description": "對方的裝置會立即登出。對方擁有的專案會保留在伺服器上，你之後也可以再把對方加回來。",
         "confirm": "移除成員"
       },
+      "selfRoleConfirm": {
+        "title": "要把你自己的角色改為 {{role}} 嗎？",
+        "description": "你會失去這個伺服器上的管理員權限，只有其他管理員才能把權限還給你。",
+        "confirm": "變更我的角色"
+      },
       "deviceSignOutConfirm": {
         "title": "要登出 {{name}} 嗎？",
         "description": "該裝置會停止與這個伺服器同步，直到它的擁有者在上面重新登入。",

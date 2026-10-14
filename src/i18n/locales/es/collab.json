@@ -271,6 +271,11 @@
         "description": "Sus dispositivos cierran la sesión al momento. Los proyectos que le pertenecen se quedan en el servidor, y puedes volver a añadir a esta persona más tarde.",
         "confirm": "Quitar al miembro"
       },
+      "selfRoleConfirm": {
+        "title": "¿Cambiar tu propio rol a {{role}}?",
+        "description": "Perderás tus permisos de administrador en este servidor, y solo otro administrador podrá devolvértelos.",
+        "confirm": "Cambiar mi rol"
+      },
       "deviceSignOutConfirm": {
         "title": "¿Cerrar la sesión de {{name}}?",
         "description": "Ese dispositivo deja de sincronizarse con este servidor hasta que su propietario vuelva a iniciar sesión en él.",

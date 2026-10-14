@@ -70,6 +70,8 @@ export function MembersTab({
   const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabMember | null>(null);
+  // A change to your own role takes your admin rights away, so it waits for a yes.
+  const [stepping, setStepping] = useState<{ member: CollabMember; role: ServerRole } | null>(null);
   const [devicesFor, setDevicesFor] = useState<string | null>(null);
   const canSeeDevices = serverRoleAllows(actor, "signOutAnyDevice");
 
@@ -139,7 +141,9 @@ export function MembersTab({
             disabled={busy}
             label={t(($) => $.collab.admin.members.roleLabel, { name })}
             onChange={(next) => {
-              if (next !== role) void patch(member, { role: next });
+              if (next === role) return;
+              if (isSelf) setStepping({ member, role: next });
+              else void patch(member, { role: next });
             }}
           />
         ) : (
@@ -242,6 +246,20 @@ export function MembersTab({
           if (removing) void remove(removing);
         }}
         onCancel={() => setRemoving(null)}
+      />
+      <ConfirmationDialog
+        open={stepping !== null}
+        title={t(($) => $.collab.admin.members.selfRoleConfirm.title, {
+          role: stepping ? t(($) => $.collab.roles[stepping.role]) : "",
+        })}
+        description={t(($) => $.collab.admin.members.selfRoleConfirm.description)}
+        confirmLabel={t(($) => $.collab.admin.members.selfRoleConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (stepping) void patch(stepping.member, { role: stepping.role });
+          setStepping(null);
+        }}
+        onCancel={() => setStepping(null)}
       />
     </div>
   );

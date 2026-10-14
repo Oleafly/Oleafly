@@ -271,6 +271,11 @@
         "description": "Die Geräte dieser Person werden sofort abgemeldet. Projekte, die ihr gehören, bleiben auf dem Server, und Sie können die Person später wieder hinzufügen.",
         "confirm": "Mitglied entfernen"
       },
+      "selfRoleConfirm": {
+        "title": "Ihre eigene Rolle zu {{role}} ändern?",
+        "description": "Sie verlieren Ihre Admin-Rechte auf diesem Server, und nur ein anderer Admin kann sie Ihnen zurückgeben.",
+        "confirm": "Meine Rolle ändern"
+      },
       "deviceSignOutConfirm": {
         "title": "{{name}} abmelden?",
         "description": "Das Gerät gleicht sich nicht mehr mit diesem Server ab, bis sich die Person, der es gehört, dort wieder anmeldet.",

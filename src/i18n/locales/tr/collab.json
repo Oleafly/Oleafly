@@ -271,6 +271,11 @@
         "description": "Kişinin cihazlarındaki oturumlar hemen kapatılır. Sahibi olduğu projeler sunucuda kalır ve kişiyi daha sonra yeniden ekleyebilirsiniz.",
         "confirm": "Üyeyi kaldır"
       },
+      "selfRoleConfirm": {
+        "title": "Kendi rolünüz {{role}} olarak değiştirilsin mi?",
+        "description": "Bu sunucudaki yönetici haklarınızı kaybedersiniz ve bunları yalnızca başka bir yönetici geri verebilir.",
+        "confirm": "Rolümü değiştir"
+      },
       "deviceSignOutConfirm": {
         "title": "{{name}} cihazında oturum kapatılsın mı?",
         "description": "O cihaz, sahibi orada yeniden oturum açana kadar bu sunucuyla eşitleme yapmaz.",

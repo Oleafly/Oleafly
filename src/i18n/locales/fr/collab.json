@@ -271,6 +271,11 @@
         "description": "Ses appareils sont déconnectés immédiatement. Les projets dont cette personne est propriétaire restent sur le serveur, et vous pourrez l'ajouter de nouveau plus tard.",
         "confirm": "Retirer le membre"
       },
+      "selfRoleConfirm": {
+        "title": "Changer votre propre rôle en {{role}} ?",
+        "description": "Vous perdrez vos droits d'administrateur sur ce serveur, et seul un autre administrateur pourra vous les rendre.",
+        "confirm": "Changer mon rôle"
+      },
       "deviceSignOutConfirm": {
         "title": "Déconnecter l'appareil {{name}} ?",
         "description": "Cet appareil cesse de se synchroniser avec ce serveur jusqu'à ce que son propriétaire s'y connecte à nouveau.",

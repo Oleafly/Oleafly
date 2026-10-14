@@ -271,6 +271,11 @@
         "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
         "confirm": "Lid weghalen"
       },
+      "selfRoleConfirm": {
+        "title": "Je eigen rol wijzigen in {{role}}?",
+        "description": "Je verliest je beheerdersrechten op deze server, en alleen een andere beheerder kan ze je teruggeven.",
+        "confirm": "Mijn rol wijzigen"
+      },
       "deviceSignOutConfirm": {
         "title": "{{name}} afmelden?",
         "description": "Dat apparaat synchroniseert niet meer met deze server totdat de eigenaar zich er opnieuw op aanmeldt.",

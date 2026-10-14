@@ -271,6 +271,11 @@
         "description": "A sessão dos dispositivos dessa pessoa é encerrada na hora. Os projetos dela continuam no servidor, e você pode adicioná-la de novo depois.",
         "confirm": "Remover membro"
       },
+      "selfRoleConfirm": {
+        "title": "Mudar a sua própria função para {{role}}?",
+        "description": "Você vai perder os direitos de administrador neste servidor, e só outro administrador poderá devolvê-los.",
+        "confirm": "Mudar minha função"
+      },
       "deviceSignOutConfirm": {
         "title": "Encerrar a sessão de {{name}}?",
         "description": "Aquele dispositivo para de sincronizar com este servidor até o dono fazer login nele de novo.",

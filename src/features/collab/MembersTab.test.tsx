@@ -182,10 +182,49 @@ describe("MembersTab", () => {
     const user = userEvent.setup();
     render(<Harness actor="admin" initial={[alice, bob]} />);
     await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.member);
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.selfRoleConfirm.confirm }),
+    );
     expect(await within(rowOf(ALICE_ID)).findByRole("alert")).toHaveTextContent(copy.lastAdmin);
     expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
       roles.admin,
     );
+  });
+
+  it("asks before you change your own role, and keeps it when you cancel", async () => {
+    mocks.collabAdminPatchMember.mockResolvedValue(member({ ...alice.account, server_role: "maintainer" }));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob]} />);
+    await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.maintainer);
+    const dialog = await screen.findByRole("alertdialog", {
+      name: fill(copy.selfRoleConfirm.title, { role: roles.maintainer }),
+    });
+    expect(dialog).toHaveTextContent(copy.selfRoleConfirm.description);
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
+      roles.admin,
+    );
+    await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.maintainer);
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.selfRoleConfirm.confirm }),
+    );
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, ALICE_ID, { role: "maintainer" });
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
+        roles.maintainer,
+      ),
+    );
+  });
+
+  it("changes someone else's role without asking", async () => {
+    mocks.collabAdminPatchMember.mockResolvedValue(member({ ...bob.account, server_role: "maintainer" }));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob]} />);
+    await chooseOption(user, fill(copy.roleLabel, { name: "Bob Smith" }), roles.maintainer);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, BOB_ID, { role: "maintainer" });
   });
 
   it("never offers to suspend or remove yourself", () => {

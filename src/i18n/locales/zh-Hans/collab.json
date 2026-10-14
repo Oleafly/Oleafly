@@ -271,6 +271,11 @@
         "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
         "confirm": "移除成员"
       },
+      "selfRoleConfirm": {
+        "title": "要把你自己的角色改为 {{role}} 吗？",
+        "description": "你会失去此服务器上的管理员权限，只有其他管理员才能把权限还给你。",
+        "confirm": "更改我的角色"
+      },
       "deviceSignOutConfirm": {
         "title": "要退出 {{name}} 的登录吗？",
         "description": "在其所有者重新在该设备上登录之前，该设备不会再与此服务器同步。",

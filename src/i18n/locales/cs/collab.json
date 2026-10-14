@@ -271,6 +271,11 @@
         "description": "Zařízení tohoto člena se okamžitě odhlásí. Projekty, které vlastní, zůstanou na serveru a člena můžete později přidat zpět.",
         "confirm": "Odebrat člena"
       },
+      "selfRoleConfirm": {
+        "title": "Změnit vlastní roli na {{role}}?",
+        "description": "Přijdete o administrátorská práva na tomto serveru a vrátit vám je může jen jiný administrátor.",
+        "confirm": "Změnit moji roli"
+      },
       "deviceSignOutConfirm": {
         "title": "Odhlásit {{name}}?",
         "description": "Toto zařízení se přestane synchronizovat s tímto serverem, dokud se na něm jeho vlastník znovu nepřihlásí.",
