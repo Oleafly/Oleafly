@@ -741,7 +741,9 @@
       "signedOutTitle": "Du er logget ud af denne server",
       "signedOutDescription": "Log ind igen i Indstillinger, og åbn så administrationskonsollen fra serverens kort.",
       "refusedTitle": "Administrationskonsollen er for administratorer og vedligeholdere",
-      "refusedDescription": "Din rolle på denne server er {{role}}. Spørg en administrator, hvis du skal administrere den."
+      "refusedDescription": "Din rolle på denne server er {{role}}. Spørg en administrator, hvis du skal administrere den.",
+      "turnedOffTitle": "Samarbejde i realtid er slået fra",
+      "turnedOffDescription": "Slå det til igen i Indstillinger under Eksperimenter for at administrere serveren her."
     },
     "overview": {
       "loading": "Indlæser overblikket…",

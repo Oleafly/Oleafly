@@ -741,7 +741,9 @@
       "signedOutTitle": "Vous êtes déconnecté de ce serveur",
       "signedOutDescription": "Reconnectez-vous dans Paramètres, puis ouvrez la console d'administration depuis la carte du serveur.",
       "refusedTitle": "La console d'administration est réservée aux administrateurs et aux mainteneurs",
-      "refusedDescription": "Votre rôle sur ce serveur est {{role}}. Si vous devez le gérer, demandez à un administrateur."
+      "refusedDescription": "Votre rôle sur ce serveur est {{role}}. Si vous devez le gérer, demandez à un administrateur.",
+      "turnedOffTitle": "La collaboration en direct est désactivée",
+      "turnedOffDescription": "Réactivez-la dans Paramètres, sous Expérimentation, pour gérer ce serveur ici."
     },
     "overview": {
       "loading": "Chargement de la vue d'ensemble…",

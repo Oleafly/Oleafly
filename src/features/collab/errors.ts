@@ -1,5 +1,10 @@
 import { i18n } from "@/i18n";
+import { decodeAppError } from "@/lib/app-error";
 import { isCollabCommandError, type CollabErrorCode } from "@/lib/tauri";
+
+// What the backend's switch says when Live collaboration is off and a command
+// is refused before it runs, as one of the app's own errors.
+const SWITCH_OFF = "collab.turned_off";
 
 export const COLLAB_ERROR_CODES = [
   "unreachable",
@@ -55,7 +60,9 @@ const CONFLICT_MESSAGES: Readonly<Record<CollabErrorContext, () => string>> = {
 };
 
 export function collabErrorCode(error: unknown): CollabErrorCode {
-  return isCollabCommandError(error) ? error.code : "internal";
+  if (isCollabCommandError(error)) return error.code;
+  if (decodeAppError(error)?.code === SWITCH_OFF) return "turned_off";
+  return "internal";
 }
 
 export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorContext): string {

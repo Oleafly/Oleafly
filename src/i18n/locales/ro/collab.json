@@ -741,7 +741,9 @@
       "signedOutTitle": "Ești deconectat de la acest server",
       "signedOutDescription": "Autentifică-te din nou în Setări, apoi deschide consola de administrare de pe cardul serverului.",
       "refusedTitle": "Consola de administrare este pentru administratori și coordonatori",
-      "refusedDescription": "Rolul tău pe acest server este {{role}}. Dacă trebuie să gestionezi serverul, adresează-te unui administrator."
+      "refusedDescription": "Rolul tău pe acest server este {{role}}. Dacă trebuie să gestionezi serverul, adresează-te unui administrator.",
+      "turnedOffTitle": "Colaborarea în timp real este dezactivată",
+      "turnedOffDescription": "Activeaz-o din nou din Setări, la Experimente, ca să gestionezi aici acest server."
     },
     "overview": {
       "loading": "Se încarcă prezentarea generală…",

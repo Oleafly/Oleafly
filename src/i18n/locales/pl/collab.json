@@ -741,7 +741,9 @@
       "signedOutTitle": "Wylogowano Cię z tego serwera",
       "signedOutDescription": "Zaloguj się ponownie w Ustawieniach, a potem otwórz konsolę administracyjną z karty serwera.",
       "refusedTitle": "Konsola administracyjna jest dla administratorów i opiekunów",
-      "refusedDescription": "Twoja rola na tym serwerze: {{role}}. Jeśli musisz nim zarządzać, poproś o to administratora."
+      "refusedDescription": "Twoja rola na tym serwerze: {{role}}. Jeśli musisz nim zarządzać, poproś o to administratora.",
+      "turnedOffTitle": "Współpraca na żywo jest wyłączona",
+      "turnedOffDescription": "Włącz ją ponownie w Ustawieniach, w sekcji Eksperymenty, aby zarządzać tu tym serwerem."
     },
     "overview": {
       "loading": "Wczytywanie przeglądu…",

@@ -741,7 +741,9 @@
       "signedOutTitle": "You're signed out of this server",
       "signedOutDescription": "Sign in again in Settings, then open the admin console from the server's card.",
       "refusedTitle": "The admin console is for admins and maintainers",
-      "refusedDescription": "Your role on this server is {{role}}. Ask an admin if you need to manage it."
+      "refusedDescription": "Your role on this server is {{role}}. Ask an admin if you need to manage it.",
+      "turnedOffTitle": "Live collaboration is turned off",
+      "turnedOffDescription": "Turn it on again in Settings, under Experimentation, to manage this server here."
     },
     "overview": {
       "loading": "Loading the overview…",

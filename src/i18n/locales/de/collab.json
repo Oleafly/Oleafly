@@ -741,7 +741,9 @@
       "signedOutTitle": "Sie sind von diesem Server abgemeldet",
       "signedOutDescription": "Melden Sie sich in den Einstellungen erneut an und öffnen Sie dann die Admin-Konsole über die Karte des Servers.",
       "refusedTitle": "Die Admin-Konsole ist für Admins und Maintainer",
-      "refusedDescription": "Ihre Rolle auf diesem Server ist {{role}}. Wenden Sie sich an einen Admin, wenn Sie den Server verwalten müssen."
+      "refusedDescription": "Ihre Rolle auf diesem Server ist {{role}}. Wenden Sie sich an einen Admin, wenn Sie den Server verwalten müssen.",
+      "turnedOffTitle": "Live-Zusammenarbeit ist ausgeschaltet",
+      "turnedOffDescription": "Schalten Sie sie in den Einstellungen unter Experimente wieder ein, um diesen Server hier zu verwalten."
     },
     "overview": {
       "loading": "Der Überblick wird geladen…",

@@ -741,7 +741,9 @@
       "signedOutTitle": "Non hai eseguito l'accesso a questo server",
       "signedOutDescription": "Accedi di nuovo in Impostazioni, poi apri la console di amministrazione dalla scheda del server.",
       "refusedTitle": "La console di amministrazione è riservata ad amministratori e gestori",
-      "refusedDescription": "Il tuo ruolo su questo server è {{role}}. Se devi gestirlo, chiedi a un amministratore."
+      "refusedDescription": "Il tuo ruolo su questo server è {{role}}. Se devi gestirlo, chiedi a un amministratore.",
+      "turnedOffTitle": "La collaborazione in tempo reale è disattivata",
+      "turnedOffDescription": "Riattivala in Impostazioni, sotto Sperimentazione, per gestire qui questo server."
     },
     "overview": {
       "loading": "Caricamento della panoramica…",

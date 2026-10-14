@@ -37,6 +37,13 @@ describe("collab errors", () => {
     expect(collabErrorMessage("turned_off")).toBe(enErrors.collab.turned_off);
   });
 
+  it("names the switch being off when the command was refused as one of the app's own errors", () => {
+    const refused = '@oleafly/error:{"code":"collab.turned_off","params":{}}';
+    expect(collabErrorCode(refused)).toBe("turned_off");
+    expect(collabErrorText(new Error(refused))).toBe(enErrors.collab.turned_off);
+    expect(collabErrorCode('@oleafly/error:{"code":"project.not_found"}')).toBe("internal");
+  });
+
   it("shows the server's own sentence for a refusal it has no code for", () => {
     const refusal = { code: "invalid", message: "That isn't a domain name. Use a form like cs.example.edu." };
     expect(collabErrorText(refusal)).toBe(refusal.message);

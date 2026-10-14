@@ -741,7 +741,9 @@
       "signedOutTitle": "Jste z tohoto serveru odhlášeni",
       "signedOutDescription": "Přihlaste se znovu v Nastavení a pak otevřete konzoli pro správu z karty serveru.",
       "refusedTitle": "Konzole pro správu je určena administrátorům a správcům",
-      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora."
+      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora.",
+      "turnedOffTitle": "Živá spolupráce je vypnutá",
+      "turnedOffDescription": "Pokud chcete tento server spravovat tady, znovu ji zapněte v Nastavení v části Experimenty."
     },
     "overview": {
       "loading": "Načítá se přehled…",

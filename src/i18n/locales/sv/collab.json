@@ -741,7 +741,9 @@
       "signedOutTitle": "Du är utloggad från den här servern",
       "signedOutDescription": "Logga in igen i Inställningar och öppna sedan administratörskonsolen från serverns kort.",
       "refusedTitle": "Administratörskonsolen är till för administratörer och underhållare",
-      "refusedDescription": "Din roll på den här servern är {{role}}. Fråga en administratör om du behöver hantera den."
+      "refusedDescription": "Din roll på den här servern är {{role}}. Fråga en administratör om du behöver hantera den.",
+      "turnedOffTitle": "Samarbete i realtid är avstängt",
+      "turnedOffDescription": "Slå på det igen i Inställningar under Experiment för att hantera servern här."
     },
     "overview": {
       "loading": "Läser in översikten…",

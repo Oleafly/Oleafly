@@ -741,7 +741,9 @@
       "signedOutTitle": "Olet kirjautunut ulos tältä palvelimelta",
       "signedOutDescription": "Kirjaudu uudelleen sisään Asetuksissa ja avaa sitten hallintakonsoli palvelimen kortista.",
       "refusedTitle": "Hallintakonsoli on ylläpitäjille ja valvojille",
-      "refusedDescription": "Roolisi tällä palvelimella on {{role}}. Kysy ylläpitäjältä, jos sinun täytyy hallita palvelinta."
+      "refusedDescription": "Roolisi tällä palvelimella on {{role}}. Kysy ylläpitäjältä, jos sinun täytyy hallita palvelinta.",
+      "turnedOffTitle": "Reaaliaikainen yhteistyö on pois päältä",
+      "turnedOffDescription": "Ota se uudelleen käyttöön Asetusten kohdassa Kokeilut, niin voit hallita palvelinta täällä."
     },
     "overview": {
       "loading": "Ladataan yleiskatsausta…",

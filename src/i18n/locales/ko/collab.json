@@ -741,7 +741,9 @@
       "signedOutTitle": "이 서버에서 로그아웃되어 있습니다",
       "signedOutDescription": "설정에서 다시 로그인한 다음 서버 카드에서 관리 콘솔을 여세요.",
       "refusedTitle": "관리 콘솔은 관리자와 유지 관리자만 쓸 수 있습니다",
-      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요."
+      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요.",
+      "turnedOffTitle": "실시간 공동 작업이 꺼져 있습니다",
+      "turnedOffDescription": "여기에서 이 서버를 관리하려면 설정의 실험 기능에서 다시 켜세요."
     },
     "overview": {
       "loading": "개요를 불러오는 중…",

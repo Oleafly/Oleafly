@@ -741,7 +741,9 @@
       "signedOutTitle": "No tienes la sesión iniciada en este servidor",
       "signedOutDescription": "Vuelve a iniciar sesión en Ajustes y luego abre la consola de administración desde la tarjeta del servidor.",
       "refusedTitle": "La consola de administración es para administradores y mantenedores",
-      "refusedDescription": "Tu rol en este servidor es {{role}}. Pide ayuda a un administrador si necesitas gestionarlo."
+      "refusedDescription": "Tu rol en este servidor es {{role}}. Pide ayuda a un administrador si necesitas gestionarlo.",
+      "turnedOffTitle": "La colaboración en tiempo real está desactivada",
+      "turnedOffDescription": "Vuelve a activarla en Ajustes, en Experimentación, para gestionar este servidor aquí."
     },
     "overview": {
       "loading": "Cargando el resumen…",

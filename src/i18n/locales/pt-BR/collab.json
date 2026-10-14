@@ -741,7 +741,9 @@
       "signedOutTitle": "Você está desconectado deste servidor",
       "signedOutDescription": "Faça login de novo em Configurações e depois abra o console de administração pelo cartão do servidor.",
       "refusedTitle": "O console de administração é para administradores e mantenedores",
-      "refusedDescription": "A sua função neste servidor é {{role}}. Se você precisar gerenciá-lo, fale com um administrador."
+      "refusedDescription": "A sua função neste servidor é {{role}}. Se você precisar gerenciá-lo, fale com um administrador.",
+      "turnedOffTitle": "A colaboração em tempo real está desativada",
+      "turnedOffDescription": "Ative-a de novo em Configurações, na seção Experimentação, para gerenciar este servidor aqui."
     },
     "overview": {
       "loading": "Carregando a visão geral…",

@@ -741,7 +741,9 @@
       "signedOutTitle": "Je bent afgemeld bij deze server",
       "signedOutDescription": "Meld je opnieuw aan in Instellingen en open de beheerconsole daarna vanaf de kaart van de server.",
       "refusedTitle": "De beheerconsole is voor beheerders en onderhouders",
-      "refusedDescription": "Je rol op deze server is {{role}}. Moet je de server beheren, vraag het dan aan een beheerder."
+      "refusedDescription": "Je rol op deze server is {{role}}. Moet je de server beheren, vraag het dan aan een beheerder.",
+      "turnedOffTitle": "Live samenwerken staat uit",
+      "turnedOffDescription": "Zet het weer aan in Instellingen, onder Experimenten, om deze server hier te beheren."
     },
     "overview": {
       "loading": "Het overzicht laden…",

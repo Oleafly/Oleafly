@@ -741,7 +741,9 @@
       "signedOutTitle": "Bu sunucudaki oturumunuz kapalı",
       "signedOutDescription": "Ayarlar'da yeniden oturum açın, ardından yönetici konsolunu sunucunun kartından açın.",
       "refusedTitle": "Yönetici konsolu yöneticiler ve sorumlular içindir",
-      "refusedDescription": "Bu sunucudaki rolünüz: {{role}}. Sunucuyu yönetmeniz gerekiyorsa bir yöneticiye sorun."
+      "refusedDescription": "Bu sunucudaki rolünüz: {{role}}. Sunucuyu yönetmeniz gerekiyorsa bir yöneticiye sorun.",
+      "turnedOffTitle": "Canlı iş birliği kapalı",
+      "turnedOffDescription": "Bu sunucuyu burada yönetmek için Ayarlar'daki Deneysel Özellikler bölümünden yeniden açın."
     },
     "overview": {
       "loading": "Genel bakış yükleniyor…",

@@ -741,7 +741,9 @@
       "signedOutTitle": "你已登出這個伺服器",
       "signedOutDescription": "請在設定中重新登入，然後從伺服器的卡片開啟管理主控台。",
       "refusedTitle": "管理主控台僅供管理員和維護者使用",
-      "refusedDescription": "你在這個伺服器上的角色是 {{role}}。如果需要管理這個伺服器，請聯絡管理員。"
+      "refusedDescription": "你在這個伺服器上的角色是 {{role}}。如果需要管理這個伺服器，請聯絡管理員。",
+      "turnedOffTitle": "即時協作已關閉",
+      "turnedOffDescription": "如需在這裡管理這個伺服器，請在設定的「實驗功能」中重新開啟。"
     },
     "overview": {
       "loading": "正在載入總覽…",
