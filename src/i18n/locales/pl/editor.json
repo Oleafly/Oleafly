@@ -678,6 +678,7 @@
     "endOfDocument": "Koniec dokumentu",
     "hidePreamble": "Ukryj preambułę dokumentu",
     "showPreamble": "Pokaż preambułę dokumentu",
+    "sharedReadOnly": "W udostępnionym projekcie tryb wizualny tylko wyświetla plik. Aby go edytować, przełącz na widok źródła.",
     "findingLabel": "{{message}}. Otwórz sugestie korekty.",
     "rawBlockFindings_one": "{{count}} uwaga korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
     "rawBlockFindings_few": "{{count}} uwagi korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",

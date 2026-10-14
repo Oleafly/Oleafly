@@ -658,6 +658,7 @@
     "endOfDocument": "Slutten av dokumentet",
     "hidePreamble": "Skjul innledningen i dokumentet",
     "showPreamble": "Vis innledningen i dokumentet",
+    "sharedReadOnly": "I et delt prosjekt viser visuell modus bare filen. Bytt til kildevisning for å redigere den.",
     "findingLabel": "{{message}}. Åpne korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag."

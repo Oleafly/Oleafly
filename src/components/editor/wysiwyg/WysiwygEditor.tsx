@@ -40,6 +40,7 @@ import {
 } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
+import { useVisualModeStore } from "@/store/visual-mode";
 import { useDictionary } from "@/lib/dictionary";
 import { cancelProofreading, suggestSpelling } from "@/lib/proofreading/client";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
@@ -89,6 +90,8 @@ function isMarkdownPath(path: string): boolean {
 }
 
 const FLUSH_DEBOUNCE_MS = 300;
+// How long a shared file must stay still before the read-only view re-renders it.
+const FOLLOW_REMOTE_MS = 150;
 const EXTERNAL_DOCUMENT_SYNC = "oleaflyExternalDocumentSync";
 const BOOKTABS_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{[^}]*\bbooktabs\b[^}]*\}/u;
 const PACKAGE_EXTENSIONS = createWysiwygExtensions({
@@ -861,6 +864,27 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     synchronizeRef.current();
   }, [editor, activePath, wysiwyg, docVersion]);
 
+  // In a live project this view is read-only, and collaborators' edits reach
+  // the store through the session mirror without a document version bump.
+  // Follow them so the view never shows stale text.
+  useEffect(() => {
+    if (!editor || !collabReadOnly || !wysiwyg) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = useFilesStore.subscribe((state, previous) => {
+      const path = state.activePath;
+      if (!path || state.files[path]?.content === previous.files[path]?.content) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        synchronizeRef.current();
+      }, FOLLOW_REMOTE_MS);
+    });
+    return () => {
+      stop();
+      if (timer) clearTimeout(timer);
+    };
+  }, [editor, collabReadOnly, wysiwyg]);
+
   useEffect(() => {
     if (!editor || !activePath) return;
     const path = activePath;
@@ -896,8 +920,19 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   };
 
   return (
-    <>
-      <div className="wysiwyg-content flex h-full flex-col overflow-auto">
+    <div className="flex h-full flex-col">
+      {collabReadOnly && wysiwyg ? (
+        <output
+          data-testid="visual-shared-notice"
+          className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-sm text-muted-foreground"
+        >
+          <span>{t(($) => $.editor.visual.sharedReadOnly)}</span>
+          <Button type="button" variant="outline" size="xs" onClick={() => useVisualModeStore.getState().setEnabled(false)}>
+            {t(($) => $.editor.toolbar.switchToSource)}
+          </Button>
+        </output>
+      ) : null}
+      <div className="wysiwyg-content flex min-h-0 flex-1 flex-col overflow-auto">
         {hasDocumentEnv && (
           <div className="mx-auto w-full max-w-[42rem] px-8 pt-6">
             <div className="rounded-md border border-border">
@@ -952,6 +987,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
           }
         />
       )}
-    </>
+    </div>
   );
 }

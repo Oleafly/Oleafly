@@ -658,6 +658,7 @@
     "endOfDocument": "End of document",
     "hidePreamble": "Hide document preamble",
     "showPreamble": "Show document preamble",
+    "sharedReadOnly": "In a shared project, visual mode only shows the file. Switch to the source view to edit it.",
     "findingLabel": "{{message}}. Open proofreading suggestions.",
     "rawBlockFindings_one": "{{count}} proofreading finding in this raw block. {{message}}. Open suggestions.",
     "rawBlockFindings_other": "{{count}} proofreading findings in this raw block. {{message}}. Open suggestions."

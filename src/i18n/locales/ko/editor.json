@@ -648,6 +648,7 @@
     "endOfDocument": "문서 끝",
     "hidePreamble": "문서 프리앰블 숨기기",
     "showPreamble": "문서 프리앰블 표시",
+    "sharedReadOnly": "공유 프로젝트에서는 비주얼 모드가 파일을 보여 주기만 합니다. 편집하려면 소스 보기로 전환하세요.",
     "findingLabel": "{{message}}. 교정 제안을 엽니다.",
     "rawBlockFindings_other": "이 원시 블록에 교정 항목이 {{count}}개 있습니다. {{message}}. 제안을 엽니다."
   },

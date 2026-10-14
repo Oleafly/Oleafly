@@ -658,6 +658,7 @@
     "endOfDocument": "Dokumentets slut",
     "hidePreamble": "Dölj dokumentets ingress",
     "showPreamble": "Visa dokumentets ingress",
+    "sharedReadOnly": "I ett delat projekt visar det visuella läget bara filen. Byt till källkodsvyn för att redigera den.",
     "findingLabel": "{{message}}. Öppna korrekturförslag.",
     "rawBlockFindings_one": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
     "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag."
