@@ -483,20 +483,15 @@ async fn an_entry_made_after_someone_joined_by_domain_does_not_bring_them_back()
     app.state
         .db
         .call(move |conn| {
-            for matcher in [
-                AllowlistMatcher::Email {
-                    email: "bob@uni.edu".to_owned(),
-                },
-                AllowlistMatcher::ProviderLogin {
-                    provider: "github".to_owned(),
-                    login: "BOB".to_owned(),
-                },
+            for (id, kind, provider, value) in [
+                ("old-1", "email", "", "bob@uni.edu"),
+                ("old-2", "provider_login", "github", "bob"),
             ] {
-                let entry = NewAllowlistEntry {
-                    matcher,
-                    role: ServerRole::Maintainer,
-                };
-                members::add_allowlist(conn, &entry, None, now)?;
+                conn.execute(
+                    "INSERT INTO allowlist (id, kind, provider_id, value, match_key, server_role, created_at) \
+                     VALUES (?1, ?2, ?3, ?4, ?4, 'maintainer', ?5)",
+                    rusqlite::params![id, kind, provider, value, now],
+                )?;
             }
             Ok(())
         })

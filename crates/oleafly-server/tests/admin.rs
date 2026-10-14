@@ -1275,3 +1275,54 @@ async fn the_member_list_says_how_many_shared_projects_each_person_owns() {
     ));
     assert_eq!(suspended.owned_projects, 2);
 }
+
+#[tokio::test]
+async fn adding_someone_who_already_has_an_account_is_refused_and_emails_nobody() {
+    let smtp = oleafly_server::test_support::MockSmtp::start().await;
+    let app = test_app_with(oleafly_server::test_support::mail_config(&smtp)).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let bob = seed_member(&app, ServerRole::Member).await;
+    let bob_id = bob.account_id;
+    app.state
+        .db
+        .call(move |conn| members::add_verified_emails(conn, bob_id, &["bob@uni.edu".to_string()]))
+        .await
+        .unwrap();
+    let refused = support::send_post(
+        &app.router,
+        ALLOWLIST,
+        token(&admin),
+        email_entry("Bob@uni.edu", ServerRole::Maintainer),
+    )
+    .await;
+    assert_eq!(refused.status, StatusCode::CONFLICT, "{}", refused.body);
+    assert_eq!(refused.body["code"], "already_member");
+    assert!(
+        refused.body["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("under People")),
+        "{}",
+        refused.body
+    );
+    app.state.mailer.settled().await;
+    assert!(smtp.messages().is_empty(), "{:?}", smtp.messages());
+    let listed: Vec<AllowlistEntry> = parse(expect_status(
+        support::send_get(&app.router, ALLOWLIST, token(&admin)).await,
+        StatusCode::OK,
+    ));
+    assert!(listed.is_empty(), "{listed:?}");
+    expect_status(
+        support::send_delete(&app.router, &member_path(bob_id), token(&admin)).await,
+        StatusCode::NO_CONTENT,
+    );
+    expect_status(
+        support::send_post(
+            &app.router,
+            ALLOWLIST,
+            token(&admin),
+            email_entry("bob@uni.edu", ServerRole::Member),
+        )
+        .await,
+        StatusCode::CREATED,
+    );
+}
