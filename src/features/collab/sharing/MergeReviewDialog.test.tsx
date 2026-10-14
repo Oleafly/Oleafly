@@ -25,7 +25,7 @@ vi.mock("@/components/ai/turns/DiffPreview", () => ({
   ),
 }));
 
-import { MergeReviewDialog } from "./MergeReviewDialog";
+import { MAX_OPEN_DIFFS, MergeReviewDialog } from "./MergeReviewDialog";
 
 const copy = enCollab.mergeReview;
 const onClose = vi.fn();
@@ -84,6 +84,29 @@ describe("MergeReviewDialog", () => {
     expect(within(files).getByText(fill(enCollab.activity.mergedFile, { path: "main.tex", number: "3" }))).toBeInTheDocument();
     expect(within(files).getByText(copy.newFile)).toBeInTheDocument();
     expect(within(dialog).queryByRole("textbox")).toBeNull();
+  });
+
+  it("compares only a few files at once after a long time offline, and opens others on request", async () => {
+    const changed = Array.from({ length: 30 }, (_, index) => ({
+      path: `chapter-${String(index + 1).padStart(2, "0")}.tex`,
+      before: `old ${index}`,
+      after: `new ${index}`,
+    }));
+    mocks.collabMergeReview.mockResolvedValue(changed);
+    const user = userEvent.setup();
+    render(<MergeReviewDialog projectId="grant" entry={{ files: [] }} onClose={onClose} />);
+    const shown = async () => (await screen.findAllByTestId("diff")).map((diff) => diff.dataset.path);
+    expect(MAX_OPEN_DIFFS).toBe(3);
+    expect(await shown()).toEqual(["chapter-01.tex", "chapter-02.tex", "chapter-03.tex"]);
+    const row = (path: string) =>
+      screen.getByRole("button", { name: fill(enCollab.activity.mergedFile, { path, number: "0" }) });
+    expect(row("chapter-10.tex")).toHaveAttribute("aria-expanded", "false");
+    await user.click(row("chapter-10.tex"));
+    expect(row("chapter-10.tex")).toHaveAttribute("aria-expanded", "true");
+    expect(await shown()).toEqual(["chapter-02.tex", "chapter-03.tex", "chapter-10.tex"]);
+    await user.click(row("chapter-02.tex"));
+    expect(await shown()).toEqual(["chapter-03.tex", "chapter-10.tex"]);
+    expect(row("chapter-01.tex")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("says when no text changed and closes from its close button", async () => {

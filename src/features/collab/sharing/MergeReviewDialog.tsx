@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { DiffPreview } from "@/components/ai/turns/DiffPreview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { collabMergeReview, type CollabMergeReviewFile } from "@/lib/tauri";
+import { cn } from "@/lib/utils";
 import { useCollabLiveStore } from "../live/live-store";
 import { InlineAlert } from "../feedback";
 import type { MergedFileCount } from "./activity-store";
@@ -19,6 +20,10 @@ export interface MergeReviewEntry {
 }
 
 type Loaded = { state: "loading" } | { state: "failed" } | { state: "ready"; files: CollabMergeReviewFile[] };
+
+// Each open diff runs a full text comparison on the main thread, so only a
+// few are open at once. Opening another closes the one opened longest ago.
+export const MAX_OPEN_DIFFS = 3;
 
 function total(files: readonly MergedFileCount[]): number {
   return files.reduce((sum, file) => sum + file.changes, 0);
@@ -35,6 +40,7 @@ export function MergeReviewDialog({
   const filesId = useId();
   const members = useCollabLiveStore((state) => state.members);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+  const [open, setOpen] = useState<readonly string[]>([]);
   const before = entry.review?.before ?? "";
   const after = entry.review?.after ?? "";
 
@@ -43,7 +49,9 @@ export function MergeReviewDialog({
     setLoaded({ state: "loading" });
     collabMergeReview(projectId, before, after).then(
       (files) => {
-        if (current) setLoaded({ state: "ready", files });
+        if (!current) return;
+        setLoaded({ state: "ready", files });
+        setOpen(files.slice(0, MAX_OPEN_DIFFS).map((file) => file.path));
       },
       (error: unknown) => {
         void logError("collab merge review", error);
@@ -59,6 +67,10 @@ export function MergeReviewDialog({
     members.find((member) => member.person.account_id === accountId)?.person.display_name ??
     t(($) => $.collab.toolbar.unknownPerson);
   const changesIn = (path: string) => entry.files.find((file) => file.path === path)?.changes ?? 0;
+  const toggle = (path: string) =>
+    setOpen((current) =>
+      current.includes(path) ? current.filter((item) => item !== path) : [...current, path].slice(-MAX_OPEN_DIFFS),
+    );
   const close = t(($) => $.common.actions.close);
 
   return (
@@ -133,35 +145,53 @@ export function MergeReviewDialog({
           ) : null}
           {loaded.state === "ready" && loaded.files.length > 0 ? (
             <ul aria-labelledby={filesId} className="space-y-3">
-              {loaded.files.map((file) => (
-                <li key={file.path} className="space-y-1.5">
-                  <p className="flex min-w-0 items-center gap-2 text-xs">
-                    <span className="truncate font-mono">
-                      {t(($) => $.collab.activity.mergedFile, {
-                        path: file.path,
-                        number: formatNumber(changesIn(file.path)),
-                      })}
-                    </span>
-                    {file.before === null ? (
-                      <Badge variant="primaryGhost" size="sm">
-                        {t(($) => $.collab.mergeReview.newFile)}
-                      </Badge>
+              {loaded.files.map((file, index) => {
+                const expanded = open.includes(file.path);
+                const diffId = `${filesId}-${index}`;
+                return (
+                  <li key={file.path} className="space-y-1.5">
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-controls={expanded ? diffId : undefined}
+                      onClick={() => toggle(file.path)}
+                      className="flex w-full min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left text-xs transition-colors hover:bg-accent focus-visible:bg-accent"
+                    >
+                      <ChevronRight
+                        aria-hidden
+                        className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-90")}
+                      />
+                      <span className="truncate font-mono">
+                        {t(($) => $.collab.activity.mergedFile, {
+                          path: file.path,
+                          number: formatNumber(changesIn(file.path)),
+                        })}
+                      </span>
+                      {file.before === null ? (
+                        <Badge variant="primaryGhost" size="sm">
+                          {t(($) => $.collab.mergeReview.newFile)}
+                        </Badge>
+                      ) : null}
+                      {file.after === null ? (
+                        <Badge variant="primaryGhost" size="sm">
+                          {t(($) => $.collab.mergeReview.removedFile)}
+                        </Badge>
+                      ) : null}
+                    </button>
+                    {expanded ? (
+                      <div id={diffId}>
+                        <DiffPreview
+                          path={file.path}
+                          oldText={file.before ?? ""}
+                          newText={file.after ?? ""}
+                          label={t(($) => $.collab.mergeReview.diffLabel, { path: file.path })}
+                          loadingLabel={t(($) => $.collab.mergeReview.loading)}
+                        />
+                      </div>
                     ) : null}
-                    {file.after === null ? (
-                      <Badge variant="primaryGhost" size="sm">
-                        {t(($) => $.collab.mergeReview.removedFile)}
-                      </Badge>
-                    ) : null}
-                  </p>
-                  <DiffPreview
-                    path={file.path}
-                    oldText={file.before ?? ""}
-                    newText={file.after ?? ""}
-                    label={t(($) => $.collab.mergeReview.diffLabel, { path: file.path })}
-                    loadingLabel={t(($) => $.collab.mergeReview.loading)}
-                  />
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </section>
