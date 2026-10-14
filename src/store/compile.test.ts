@@ -1165,12 +1165,65 @@ describe("saving before a compile", () => {
       );
     });
 
-    it("stops on an error with a code, even for a file the build doesn't read", async () => {
+    it("stops when a package, class or style the main document loads by name can't be saved", async () => {
+      // \usepackage{macros}, \documentclass{localclass} and \bibliographystyle
+      // have no edge in the graph, but LaTeX reads them during the build.
+      for (const path of ["macros.sty", "styles/localclass.cls", "plain.bst", ".latexmkrc"]) {
+        mocks.compileProject.mockClear();
+        mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path, reason: "disk full" }]));
+        await useCompileStore.getState().recompile();
+        expect(mocks.compileProject, path).not.toHaveBeenCalled();
+        expect(useCompileStore.getState().failureReason).toBe(enCore.compile.saveFailed.replace("{{path}}", path));
+      }
+    });
+
+    it("stops when the project folder is gone, even for a file the build doesn't read", async () => {
       mocks.saveAllDirty.mockRejectedValue(
-        new SaveFlushError([{ path: "notes.md", reason: '@oleafly/error:{"code":"files.read_only"}' }]),
+        new SaveFlushError([{ path: "notes.md", reason: '@oleafly/error:{"code":"project.linked_missing"}' }]),
       );
       await useCompileStore.getState().recompile();
       expect(mocks.compileProject).not.toHaveBeenCalled();
+    });
+
+    it("compiles past an error with a code in a file the build doesn't read", async () => {
+      const readOnly = '@oleafly/error:{"code":"files.read_only"}';
+      mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path: "notes.md", reason: readOnly }]));
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).toHaveBeenCalledOnce();
+      expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+        "save before compile",
+        "project",
+        "notes.md",
+        readOnly,
+        true,
+      );
+    });
+
+    it("stops for a Typst data file the graph doesn't list, and not for notes", async () => {
+      mocks.files.mainDoc = "main.typ";
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        id: "typst",
+        source_extensions: ["typ"],
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst" },
+      };
+      graph([edge("include", "main.typ", "chapter.typ")]);
+      // #let d = json("data.json") reads the file from code, without an edge.
+      for (const path of ["data.json", "results.toml", "table.cbor", "plugin.wasm"]) {
+        mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path, reason: "disk full" }]));
+        await expect(saveAllForCompile(), path).rejects.toBeInstanceOf(SaveFlushError);
+      }
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).resolves.toBeUndefined();
+    });
+
+    it("stops for any failed save while the engine isn't known", async () => {
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "none" },
+      };
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).rejects.toBeInstanceOf(SaveFlushError);
     });
 
     it("stops when the graph belongs to another project", async () => {

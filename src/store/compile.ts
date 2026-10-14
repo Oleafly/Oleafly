@@ -10,6 +10,7 @@ import {
   withEventListener,
   type CompileError,
   type CompileResult,
+  type DocumentEngineDescriptor,
   type LogDiagnostic,
   type MainDecision,
 } from "@/lib/tauri";
@@ -40,7 +41,11 @@ import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { explainCodedCompileErrors } from "@/lib/compile-error-codes";
-import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
+import {
+  locationErrorAvailability,
+  projectFolderAvailable,
+  reportLocationError,
+} from "@/store/project-availability";
 import { SaveFlushError, codedSaveFailure } from "@/store/save-flush-error";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
@@ -900,10 +905,55 @@ function filesTheCompileReads(projectId: string | null, mainDoc: string): Set<st
   return reads;
 }
 
-function saveFailureStopsCompile(error: unknown, projectId: string | null, mainDoc: string): boolean {
-  if (!(error instanceof SaveFlushError) || codedSaveFailure(error) !== null) return true;
+// The graph has no edge for files an engine finds by name: LaTeX packages,
+// classes and bibliography styles, data that Typst code loads, Markdown
+// filters and styles. A file with one of these extensions counts as read by
+// the build even when the graph doesn't list it.
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps", "bmp", "tif", "tiff"];
+const BUILD_READ_EXTENSIONS: Readonly<Record<"latex" | "typst" | "markdown", ReadonlySet<string>>> = {
+  // latexmkrc stands for both latexmkrc and .latexmkrc, see fileExtension.
+  latex: new Set([
+    ...["tex", "ltx", "sty", "cls", "bst", "bbx", "cbx", "lbx", "def", "cfg", "clo", "fd", "bib"],
+    ...["tikz", "pgf", "csv", "dat", "txt", "pdf", "latexmkrc", ...IMAGE_EXTENSIONS],
+  ]),
+  typst: new Set([
+    ...["typ", "bib", "yaml", "yml", "json", "toml", "csv", "xml", "cbor", "txt", "wasm", "pdf"],
+    ...IMAGE_EXTENSIONS,
+  ]),
+  markdown: new Set(["md", "yaml", "yml", "json", "bib", "csl", "lua", "tex", ...IMAGE_EXTENSIONS]),
+};
+
+function fileExtension(path: string): string {
+  const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  return name.slice(name.lastIndexOf(".") + 1);
+}
+
+function engineReadsExtensions(engine: DocumentEngineDescriptor | null): ReadonlySet<string> | null {
+  const profile = engine?.capabilities.formatting_profile;
+  return profile === "latex" || profile === "typst" || profile === "markdown"
+    ? BUILD_READ_EXTENSIONS[profile]
+    : null;
+}
+
+// A failed save stops the compile when the build may read that file: the
+// graph names it, or the engine reads files of its kind. A failure that says
+// the project folder itself is gone stops it whatever the file.
+function saveFailureStopsCompile(
+  error: unknown,
+  projectId: string | null,
+  mainDoc: string,
+  engine: DocumentEngineDescriptor | null,
+): boolean {
+  if (!(error instanceof SaveFlushError)) return true;
   const reads = filesTheCompileReads(projectId, mainDoc);
-  return reads === null || error.failures.some((failure) => reads.has(failure.path));
+  const readable = engineReadsExtensions(engine);
+  if (reads === null || readable === null) return true;
+  return error.failures.some(
+    (failure) =>
+      reads.has(failure.path) ||
+      readable.has(fileExtension(failure.path)) ||
+      locationErrorAvailability(failure.reason) !== null,
+  );
 }
 
 // Saves every open file. A file the build doesn't read that can't be saved,
@@ -916,7 +966,9 @@ export async function saveAllForCompile(
   try {
     await saveAllDirtyRetryingConflicts();
   } catch (error) {
-    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc)) throw error;
+    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc, files.engine)) {
+      throw error;
+    }
     reportCompileSaveFailure("save before compile", useFilesStore.getState(), error, options.explicit);
   }
   await collabCompileBarrier(useFilesStore.getState().projectId);
