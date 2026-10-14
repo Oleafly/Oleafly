@@ -283,10 +283,19 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
 
   return (event: CollabSecurityEvent) => {
     const detail = detailOf(event);
+    const target = targetOf(event, detail);
+    // A refused sign-in has no account behind it. The login, address or
+    // device that was refused is who the row is about, not the server.
+    const targetIsSubject = event.actor === null && target !== null && SIGN_IN_KINDS.has(event.kind);
+    const nobody = event.actor === null && target === null && event.kind === "sign_in_refused";
+    let subject: string | null = null;
+    if (targetIsSubject) subject = target;
+    else if (nobody) subject = t(($) => $.collab.admin.log.unknownAccount);
     return {
       label: t(($) => $.collab.admin.log.kinds[labelKey(event, detail)]),
       facts: factsOf(event, detail),
-      target: targetOf(event, detail),
+      subject,
+      target: targetIsSubject ? null : target,
     };
   };
 }
@@ -371,11 +380,11 @@ export function SecurityLogTab({
     return (
       <ol className="divide-y rounded-lg border bg-card">
         {events.map((event) => {
-          const { label, facts, target } = describe(event);
+          const { label, facts, subject, target } = describe(event);
           return (
             <li key={event.id} className="space-y-0.5 px-3 py-2">
               <p className="text-xs">
-                <span className="font-medium">{actorName(event.actor)}</span>
+                <span className="font-medium">{subject ?? actorName(event.actor)}</span>
                 <span className="text-muted-foreground">{" · "}</span>
                 <span>{label}</span>
               </p>
@@ -388,7 +397,7 @@ export function SecurityLogTab({
                     {t(($) => $.collab.admin.log.target, { target })}
                   </span>
                 ) : null}
-                {event.ip ? (
+                {event.ip && event.ip !== subject ? (
                   <span>
                     {" · "}
                     {t(($) => $.collab.admin.log.ip, { ip: event.ip })}
