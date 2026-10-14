@@ -222,6 +222,36 @@ describe("IPC helpers with client-side logic", () => {
     mocks.channels[0].onmessage({ phase: "copying" });
     expect(onProgress).not.toHaveBeenCalled();
   });
+
+  it("opens a live document over a message channel", async () => {
+    const onMessage = vi.fn();
+    mocks.invoke.mockResolvedValue(null);
+    await expect(tauri.collabDocOpen("p", "main.tex", onMessage)).resolves.toBeNull();
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_open", {
+      projectId: "p",
+      path: "main.tex",
+      channel: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ kind: "text" });
+    expect(onMessage).toHaveBeenCalledWith({ kind: "text" });
+  });
+
+  it.each([
+    ["without a setup code", undefined, null],
+    ["with a setup code", "K7QX-2MPL", "K7QX-2MPL"],
+  ])("signs in to a server with a code %s", async (_label, setupCode, sent) => {
+    const onCode = vi.fn();
+    const server = { server_id: "s" };
+    mocks.invoke.mockResolvedValue(server);
+    await expect(tauri.collabServerCodeSignIn("https://uni.edu", setupCode, onCode)).resolves.toBe(server);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_server_code_sign_in", {
+      url: "https://uni.edu",
+      setupCode: sent,
+      onCode: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ code: "ABCD" });
+    expect(onCode).toHaveBeenCalledWith({ code: "ABCD" });
+  });
 });
 
 describe("MCP renderer session bookkeeping", () => {

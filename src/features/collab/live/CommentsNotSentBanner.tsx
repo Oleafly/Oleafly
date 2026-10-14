@@ -18,7 +18,7 @@ export function notSentText(comments: readonly CollabCommentNotSent[]): string {
             .map((line) => `> ${line}`)
             .join("\n")
         : null;
-      return [comment.path, quoted, comment.body].filter((part) => part).join("\n");
+      return [comment.path, quoted, comment.body].filter(Boolean).join("\n");
     })
     .join("\n\n");
 }

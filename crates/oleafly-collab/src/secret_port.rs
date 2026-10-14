@@ -1,6 +1,6 @@
 use crate::error::CollabError;
 use std::collections::HashMap;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 pub trait SecretPort: Send + Sync {
     fn get(&self, account: &str) -> Result<Option<String>, CollabError>;
@@ -19,9 +19,7 @@ impl MemorySecrets {
     }
 
     fn values(&self) -> MutexGuard<'_, HashMap<String, String>> {
-        self.values
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.values.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

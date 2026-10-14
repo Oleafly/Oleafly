@@ -216,5 +216,8 @@
     "git_token_invalid": "这看起来不像 Overleaf Git 令牌。请复制完整的令牌后重试。",
     "git_token_rejected": "Overleaf 未接受此 Git 令牌，它可能已过期。请在 Overleaf 账户设置中创建新的令牌。",
     "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。"
+  },
+  "collab": {
+    "turned_off": "实时协作已关闭。请在设置的“实验功能”中开启。"
   }
 }

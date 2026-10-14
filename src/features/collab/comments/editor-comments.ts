@@ -131,6 +131,10 @@ function mapRange<T extends CommentDraftRange>(range: T, changes: ChangeDesc): T
   return { ...range, from, to: Math.max(from, changes.mapPos(range.to, -1)) };
 }
 
+function clampedDraft(doc: Text, draft: CommentDraftRange | null): CommentDraftRange | null {
+  return draft ? clampRange(doc, draft) : null;
+}
+
 function commentIcon(): SVGSVGElement {
   const icon = document.createElementNS(SVG, "svg");
   icon.setAttribute("viewBox", "0 0 24 24");
@@ -158,7 +162,7 @@ class CommentMarker extends GutterMarker {
   toDOM(): Node {
     const marker = document.createElement("span");
     marker.className = "cm-comment-marker";
-    marker.setAttribute("data-comment-ids", this.ids.join(" "));
+    marker.dataset.commentIds = this.ids.join(" ");
     marker.title = i18n.t(($) => $.collab.comments.marker);
     marker.appendChild(commentIcon());
     return marker;
@@ -233,7 +237,7 @@ function placed(
   return incoming.map((span) => {
     const before = reported.get(span.id);
     const mine = kept.get(span.id);
-    if (mine && before && before.from === span.from && before.to === span.to) {
+    if (mine && before?.from === span.from && before.to === span.to) {
       return { ...span, from: mine.from, to: mine.to };
     }
     return clampRange(doc, span);
@@ -282,7 +286,7 @@ const commentField = StateField.define<CommentField>({
         selected = effect.value;
         changed = true;
       } else if (effect.is(setDraft)) {
-        draft = effect.value ? clampRange(doc, effect.value) : null;
+        draft = clampedDraft(doc, effect.value);
         changed = true;
       } else if (effect.is(setFlash)) {
         flash = effect.value;

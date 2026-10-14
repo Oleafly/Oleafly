@@ -61,13 +61,13 @@ export const REMOTE_FLASH_MS = 1_200;
 const setRemoteCursors = StateEffect.define<readonly RemoteCursor[]>();
 const setRemoteFlash = StateEffect.define<string | null>();
 
-function isLowSurrogate(code: number): boolean {
-  return code >= 0xdc00 && code <= 0xdfff;
+function isLowSurrogate(code: number | undefined): boolean {
+  return code !== undefined && code >= 0xdc00 && code <= 0xdfff;
 }
 
 function clampPosition(doc: Text, position: number): number {
   const clamped = Math.max(0, Math.min(doc.length, Number.isFinite(position) ? Math.trunc(position) : 0));
-  if (clamped > 0 && clamped < doc.length && isLowSurrogate(doc.sliceString(clamped, clamped + 1).charCodeAt(0))) {
+  if (clamped > 0 && clamped < doc.length && isLowSurrogate(doc.sliceString(clamped, clamped + 1).codePointAt(0))) {
     return clamped - 1;
   }
   return clamped;

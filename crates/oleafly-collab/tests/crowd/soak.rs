@@ -152,6 +152,8 @@ impl ServerProcess {
             .env("OLEAFLY_MAX_MEMBERS_PER_PROJECT", "1000")
             .env("OLEAFLY_MAX_PROJECT_MB", "4000")
             .env("OLEAFLY_LOG_LEVEL", "warn")
+            .env("OLEAFLY_GITHUB_CLIENT_ID", "soak")
+            .env("OLEAFLY_GITHUB_CLIENT_SECRET", "soak")
             .stdout(Stdio::null())
             .stderr(log)
             .spawn()
@@ -244,84 +246,96 @@ async fn observe(
                 person.on_status(status);
             }
             LiveEvent::Changed => {
-                let seen = lock(&person.live).doc().version();
-                let now = Instant::now();
-                let away = person.expect_offline.load(Ordering::SeqCst);
-                let back = *lock(&person.reconnected_at);
-                let known: Vec<_> = lock(&logs).clone();
-                let mut fresh = Vec::new();
-                for (index, log) in known {
-                    if index == person.index {
-                        continue;
-                    }
-                    let peer = log.peer.load(Ordering::SeqCst);
-                    let Some(end) = (peer != 0).then(|| seen.get(&peer).copied()).flatten() else {
-                        continue;
-                    };
-                    let last = seen_end.entry(index).or_insert(i32::MIN);
-                    if end <= *last {
-                        continue;
-                    }
-                    let entries = lock(&log.entries);
-                    let start = entries.partition_point(|edit| edit.end <= *last);
-                    for edit in entries[start..].iter().take_while(|edit| edit.end <= end) {
-                        let missed = away || back.is_some_and(|back| edit.at < back);
-                        if !edit.offline && !missed {
-                            fresh.push(micros(now.duration_since(edit.at)));
-                        }
-                    }
-                    *last = end;
-                }
-                if !fresh.is_empty() {
-                    let mut totals = lock(&totals);
-                    for sample in fresh {
-                        if long_poll {
-                            totals.poll.record(sample);
-                            totals.window_poll.record(sample);
-                        } else {
-                            totals.socket.record(sample);
-                            totals.window_socket.record(sample);
-                        }
-                    }
-                }
+                let fresh = seen_latencies(&person, &logs, &mut seen_end);
+                record_seen(&totals, fresh, long_poll);
             }
-            LiveEvent::Acknowledged => {
-                let peer = person.log.peer.load(Ordering::SeqCst);
-                if peer == 0 {
-                    continue;
-                }
-                let (end, pending) = {
-                    let live = lock(&person.live);
-                    (
-                        live.doc().version().get(&peer).copied(),
-                        live.pending_changes(),
-                    )
-                };
-                let Some(end) = end else { continue };
-                let confirmed = i64::from(end) - i64::try_from(pending).unwrap_or(i64::MAX);
-                let confirmed = i32::try_from(confirmed).unwrap_or(i32::MIN);
-                if confirmed <= acked_end {
-                    continue;
-                }
-                let now = Instant::now();
-                let samples: Vec<u64> = {
-                    let entries = lock(&person.log.entries);
-                    let start = entries.partition_point(|edit| edit.end <= acked_end);
-                    entries[start..]
-                        .iter()
-                        .take_while(|edit| edit.end <= confirmed)
-                        .filter(|edit| !edit.offline)
-                        .map(|edit| micros(now.duration_since(edit.at)))
-                        .collect()
-                };
-                acked_end = confirmed;
-                let mut totals = lock(&totals);
-                for sample in samples {
-                    totals.ack.record(sample);
-                }
-            }
+            LiveEvent::Acknowledged => record_acknowledged(&person, &totals, &mut acked_end),
             _ => {}
         }
+    }
+}
+
+fn seen_latencies(person: &Person, logs: &Logs, seen_end: &mut HashMap<usize, i32>) -> Vec<u64> {
+    let seen = lock(&person.live).doc().version();
+    let now = Instant::now();
+    let away = person.expect_offline.load(Ordering::SeqCst);
+    let back = *lock(&person.reconnected_at);
+    let known: Vec<_> = lock(logs).clone();
+    let mut fresh = Vec::new();
+    for (index, log) in known {
+        if index == person.index {
+            continue;
+        }
+        let peer = log.peer.load(Ordering::SeqCst);
+        let Some(end) = (peer != 0).then(|| seen.get(&peer).copied()).flatten() else {
+            continue;
+        };
+        let last = seen_end.entry(index).or_insert(i32::MIN);
+        if end <= *last {
+            continue;
+        }
+        let entries = lock(&log.entries);
+        let start = entries.partition_point(|edit| edit.end <= *last);
+        for edit in entries[start..].iter().take_while(|edit| edit.end <= end) {
+            let missed = away || back.is_some_and(|back| edit.at < back);
+            if !edit.offline && !missed {
+                fresh.push(micros(now.duration_since(edit.at)));
+            }
+        }
+        *last = end;
+    }
+    fresh
+}
+
+fn record_seen(totals: &Mutex<Totals>, fresh: Vec<u64>, long_poll: bool) {
+    if fresh.is_empty() {
+        return;
+    }
+    let mut totals = lock(totals);
+    for sample in fresh {
+        if long_poll {
+            totals.poll.record(sample);
+            totals.window_poll.record(sample);
+        } else {
+            totals.socket.record(sample);
+            totals.window_socket.record(sample);
+        }
+    }
+}
+
+fn record_acknowledged(person: &Person, totals: &Mutex<Totals>, acked_end: &mut i32) {
+    let peer = person.log.peer.load(Ordering::SeqCst);
+    if peer == 0 {
+        return;
+    }
+    let (end, pending) = {
+        let live = lock(&person.live);
+        (
+            live.doc().version().get(&peer).copied(),
+            live.pending_changes(),
+        )
+    };
+    let Some(end) = end else { return };
+    let confirmed = i64::from(end) - i64::try_from(pending).unwrap_or(i64::MAX);
+    let confirmed = i32::try_from(confirmed).unwrap_or(i32::MIN);
+    if confirmed <= *acked_end {
+        return;
+    }
+    let now = Instant::now();
+    let samples: Vec<u64> = {
+        let entries = lock(&person.log.entries);
+        let start = entries.partition_point(|edit| edit.end <= *acked_end);
+        entries[start..]
+            .iter()
+            .take_while(|edit| edit.end <= confirmed)
+            .filter(|edit| !edit.offline)
+            .map(|edit| micros(now.duration_since(edit.at)))
+            .collect()
+    };
+    *acked_end = confirmed;
+    let mut totals = lock(totals);
+    for sample in samples {
+        totals.ack.record(sample);
     }
 }
 
@@ -559,6 +573,30 @@ struct Cast {
     events: Vec<UnboundedReceiver<LiveEvent>>,
 }
 
+impl Cast {
+    fn join(
+        &mut self,
+        admitted: Result<(Arc<Person>, UnboundedReceiver<LiveEvent>), String>,
+        long_poll: bool,
+        problems: &mut Vec<String>,
+    ) {
+        match admitted {
+            Ok((person, events)) => {
+                if long_poll {
+                    person.expect_offline.store(true, Ordering::SeqCst);
+                }
+                self.people.push(person);
+                self.events.push(events);
+            }
+            Err(problem) => problems.push(problem),
+        }
+    }
+}
+
+fn long_polls(index: usize, long_poll: usize) -> bool {
+    index >= 1 && index <= long_poll
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn admit(
     index: usize,
@@ -672,8 +710,7 @@ async fn head_over_http(
         .map_or(0, |summary| summary.head_seq)
 }
 
-pub async fn run(plan: SoakPlan) -> SoakReport {
-    let wall = Instant::now();
+fn data_folder(plan: &SoakPlan) -> (Option<tempfile::TempDir>, PathBuf) {
     let scratch = match &plan.data_dir {
         Some(_) => None,
         None => Some(tempfile::tempdir().expect("a data folder")),
@@ -683,6 +720,130 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
         (None, Some(scratch)) => scratch.path().to_path_buf(),
         (None, None) => unreachable!(),
     };
+    (scratch, data)
+}
+
+async fn seed_identities(state: &AppState, people: usize) -> Vec<(Arc<DeviceKey>, SessionTokens)> {
+    let mut identities = Vec::new();
+    identities.push(identity(state, NAMES[0], ServerRole::Admin).await);
+    for name in NAMES.iter().take(people).skip(1) {
+        identities.push(identity(state, name, ServerRole::Member).await);
+    }
+    identities
+}
+
+async fn wait_for_everyone(
+    people: &[Arc<Person>],
+    ready: fn(&Person) -> bool,
+    poll: Duration,
+    problem: &str,
+    problems: &mut Vec<String>,
+) {
+    let by = Instant::now() + Duration::from_secs(60);
+    while people.iter().any(|person| !ready(person)) {
+        if Instant::now() > by {
+            problems.push(problem.to_owned());
+            break;
+        }
+        tokio::time::sleep(poll).await;
+    }
+}
+
+fn record_sample(pid: u32, started: Instant, now: Instant, samples: &mut Vec<ServerSample>) {
+    if let Some((rss_kb, cpu_ms)) = sample(pid) {
+        samples.push(ServerSample {
+            at: now.duration_since(started),
+            rss_kb,
+            cpu_ms,
+        });
+    }
+}
+
+fn start_cut(
+    people: &[Arc<Person>],
+    rng: &mut Rng,
+    cut_for_ms: (u64, u64),
+    totals: &Arc<Mutex<Totals>>,
+) -> Option<JoinHandle<()>> {
+    let target = Arc::clone(rng.pick(people));
+    if !target.online.load(Ordering::SeqCst) {
+        return None;
+    }
+    let pause = Duration::from_millis(rng.between(cut_for_ms.0, cut_for_ms.1));
+    let totals = Arc::clone(totals);
+    lock(&totals).cuts += 1;
+    Some(tokio::spawn(cut_network(target, pause, totals)))
+}
+
+async fn cut_network(target: Arc<Person>, pause: Duration, totals: Arc<Mutex<Totals>>) {
+    let Some(relay) = target.relay.as_ref() else {
+        return;
+    };
+    target.expect_offline.store(true, Ordering::SeqCst);
+    relay.go_offline();
+    tokio::time::sleep(pause).await;
+    let back = Instant::now();
+    relay.go_online();
+    let give_up = back + Duration::from_secs(60);
+    while Instant::now() < give_up {
+        let reconnected = *lock(&target.reconnected_at);
+        if let Some(at) = reconnected.filter(|at| *at >= back) {
+            lock(&totals)
+                .reconnects
+                .record(micros(at.duration_since(back)));
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    target.problem("did not come back within a minute of a network cut".to_owned());
+}
+
+async fn add_one_figure(people: &[Arc<Person>], totals: &Mutex<Totals>, rng: &mut Rng, kb: usize) {
+    let number = {
+        let totals = lock(totals);
+        totals.figures + totals.figure_failures
+    };
+    let author = Arc::clone(rng.pick(people));
+    let uploaded = if author.online.load(Ordering::SeqCst) {
+        upload_figure(&author, number, kb, rng).await
+    } else {
+        Err("offline".to_owned())
+    };
+    let mut totals = lock(totals);
+    match uploaded {
+        Ok(()) => totals.figures += 1,
+        Err(_) => totals.figure_failures += 1,
+    }
+}
+
+async fn gather_editors(
+    typists: Vec<JoinHandle<Editor>>,
+    problems: &mut Vec<String>,
+) -> Vec<(usize, Editor)> {
+    let mut editors: Vec<(usize, Editor)> = Vec::new();
+    for (position, typist) in typists.into_iter().enumerate() {
+        match typist.await {
+            Ok(editor) => editors.push((position, editor)),
+            Err(error) => problems.push(format!("a typist task failed: {error}")),
+        }
+    }
+    editors
+}
+
+async fn stop_sessions(people: &[Arc<Person>]) {
+    let stopping: Vec<JoinHandle<()>> = people
+        .iter()
+        .filter_map(|person| lock(&person.handle).take())
+        .map(|handle| tokio::spawn(handle.stopped()))
+        .collect();
+    for task in stopping {
+        let _ = tokio::time::timeout(Duration::from_secs(15), task).await;
+    }
+}
+
+pub async fn run(plan: SoakPlan) -> SoakReport {
+    let wall = Instant::now();
+    let (scratch, data) = data_folder(&plan);
     std::fs::create_dir_all(&data).expect("the data folder");
     let plan_line = format!(
         "crowd soak: {} people ({} on long-poll behind a proxy that blocks WebSockets) over {} files for {:.1} min, {}-{} ms between keystrokes, a network cut every {:?}, a {} KB figure every {:?}, seed {}",
@@ -704,11 +865,7 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
     let state = AppState::new(config, Arc::new(SystemClock))
         .await
         .expect("open the server database");
-    let mut identities = Vec::new();
-    identities.push(identity(&state, NAMES[0], ServerRole::Admin).await);
-    for name in NAMES.iter().take(plan.people).skip(1) {
-        identities.push(identity(&state, name, ServerRole::Member).await);
-    }
+    let identities = seed_identities(&state, plan.people).await;
     let server_id = state.server_id;
     drop(state);
     let mut server = match ServerProcess::start(&plan.server_bin, &data).await {
@@ -748,13 +905,13 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
         events: Vec::new(),
     };
     for (index, (key, tokens)) in identities.iter().enumerate() {
-        let long_poll = index >= 1 && index <= plan.long_poll;
+        let long_poll = long_polls(index, plan.long_poll);
         let upstream = if long_poll {
             proxy.address()
         } else {
             server.addr
         };
-        match admit(
+        let admitted = admit(
             index,
             Arc::clone(key),
             tokens,
@@ -764,22 +921,13 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
             (&owner_client, &owner_access),
             &logs,
         )
-        .await
-        {
-            Ok((person, events)) => {
-                if long_poll {
-                    person.expect_offline.store(true, Ordering::SeqCst);
-                }
-                cast.people.push(person);
-                cast.events.push(events);
-            }
-            Err(problem) => problems.push(problem),
-        }
+        .await;
+        cast.join(admitted, long_poll, &mut problems);
     }
     let totals = Arc::new(Mutex::new(Totals::default()));
     let mut watchers: Vec<JoinHandle<()>> = Vec::new();
     for (person, events) in cast.people.iter().zip(cast.events.drain(..)) {
-        let long_poll = person.index >= 1 && person.index <= plan.long_poll;
+        let long_poll = long_polls(person.index, plan.long_poll);
         watchers.push(tokio::spawn(observe(
             Arc::clone(person),
             events,
@@ -789,18 +937,14 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
         )));
         person.go_live();
     }
-    let online_by = Instant::now() + Duration::from_secs(60);
-    while cast
-        .people
-        .iter()
-        .any(|person| !person.online.load(Ordering::SeqCst))
-    {
-        if Instant::now() > online_by {
-            problems.push("not everyone came online within a minute".to_owned());
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
+    wait_for_everyone(
+        &cast.people,
+        |person| person.online.load(Ordering::SeqCst),
+        Duration::from_millis(50),
+        "not everyone came online within a minute",
+        &mut problems,
+    )
+    .await;
     let polling = proxy.refused();
     println!(
         "  everyone is online after {:.1} s, {polling} WebSocket upgrades refused by the proxy",
@@ -843,64 +987,16 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
     while Instant::now() < deadline {
         let now = Instant::now();
         if now >= next_sample {
-            if let Some((rss_kb, cpu_ms)) = sample(pid) {
-                samples.push(ServerSample {
-                    at: now.duration_since(started),
-                    rss_kb,
-                    cpu_ms,
-                });
-            }
+            record_sample(pid, started, now, &mut samples);
             next_sample = now + SAMPLE_EVERY;
         }
         if next_cut.is_some_and(|at| now >= at) {
             next_cut = Some(now + plan.cut_every);
-            let target = Arc::clone(rng.pick(&cast.people));
-            if target.online.load(Ordering::SeqCst) {
-                let pause =
-                    Duration::from_millis(rng.between(plan.cut_for_ms.0, plan.cut_for_ms.1));
-                let totals = Arc::clone(&totals);
-                lock(&totals).cuts += 1;
-                cutting.push(tokio::spawn(async move {
-                    let Some(relay) = target.relay.as_ref() else {
-                        return;
-                    };
-                    target.expect_offline.store(true, Ordering::SeqCst);
-                    relay.go_offline();
-                    tokio::time::sleep(pause).await;
-                    let back = Instant::now();
-                    relay.go_online();
-                    let give_up = back + Duration::from_secs(60);
-                    while Instant::now() < give_up {
-                        let reconnected = *lock(&target.reconnected_at);
-                        if let Some(at) = reconnected.filter(|at| *at >= back) {
-                            lock(&totals)
-                                .reconnects
-                                .record(micros(at.duration_since(back)));
-                            return;
-                        }
-                        tokio::time::sleep(Duration::from_millis(20)).await;
-                    }
-                    target.problem("did not come back within a minute of a network cut".to_owned());
-                }));
-            }
+            cutting.extend(start_cut(&cast.people, &mut rng, plan.cut_for_ms, &totals));
         }
         if next_figure.is_some_and(|at| now >= at) {
             next_figure = Some(now + plan.figure_every);
-            let number = {
-                let totals = lock(&totals);
-                totals.figures + totals.figure_failures
-            };
-            let author = Arc::clone(rng.pick(&cast.people));
-            let uploaded = if author.online.load(Ordering::SeqCst) {
-                upload_figure(&author, number, plan.figure_kb, &mut rng).await
-            } else {
-                Err("offline".to_owned())
-            };
-            let mut totals = lock(&totals);
-            match uploaded {
-                Ok(()) => totals.figures += 1,
-                Err(_) => totals.figure_failures += 1,
-            }
+            add_one_figure(&cast.people, &totals, &mut rng, plan.figure_kb).await;
         }
         if now >= next_report {
             next_report = now + plan.report_every;
@@ -913,9 +1009,7 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
             let head = head_over_http(&owner_client, &owner_sessions, server_id, project).await;
             let disk = storage(&data);
             let ran = now.duration_since(started);
-            if storage_warm.is_none() && ran >= WARM_UP {
-                storage_warm = Some((ran, disk));
-            }
+            storage_warm = storage_warm.or((ran >= WARM_UP).then_some((ran, disk)));
             let (socket, poll, onlines) = {
                 let mut totals = lock(&totals);
                 let window = (
@@ -965,18 +1059,14 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
         person.halt.store(true, Ordering::SeqCst);
     }
     let typing_stopped = Instant::now();
-    let done_by = Instant::now() + Duration::from_secs(60);
-    while cast
-        .people
-        .iter()
-        .any(|person| !person.done.load(Ordering::SeqCst))
-    {
-        if Instant::now() > done_by {
-            problems.push("some typists did not stop within a minute".to_owned());
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
+    wait_for_everyone(
+        &cast.people,
+        |person| person.done.load(Ordering::SeqCst),
+        Duration::from_millis(20),
+        "some typists did not stop within a minute",
+        &mut problems,
+    )
+    .await;
     let settled = settle_on(
         || head_over_http(&owner_client, &owner_sessions, server_id, project),
         &cast.people,
@@ -984,13 +1074,7 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
     )
     .await;
     let _ = stop.send(true);
-    let mut editors: Vec<(usize, Editor)> = Vec::new();
-    for (position, typist) in typists.into_iter().enumerate() {
-        match typist.await {
-            Ok(editor) => editors.push((position, editor)),
-            Err(error) => problems.push(format!("a typist task failed: {error}")),
-        }
-    }
+    let editors = gather_editors(typists, &mut problems).await;
     let convergence = match &settled {
         Ok(at) => Some(at.saturating_duration_since(typing_stopped)),
         Err(problem) => {
@@ -1012,15 +1096,7 @@ pub async fn run(plan: SoakPlan) -> SoakReport {
     let head = head_over_http(&owner_client, &owner_sessions, server_id, project).await;
     let final_sample = sample(pid);
     let storage_end = storage(&data);
-    let stopping: Vec<JoinHandle<()>> = cast
-        .people
-        .iter()
-        .filter_map(|person| lock(&person.handle).take())
-        .map(|handle| tokio::spawn(handle.stopped()))
-        .collect();
-    for task in stopping {
-        let _ = tokio::time::timeout(Duration::from_secs(15), task).await;
-    }
+    stop_sessions(&cast.people).await;
     let storage_closed = settled_storage(&data).await;
     let snapshot_files = files_under(&data.join("snapshots"));
     for watcher in &watchers {

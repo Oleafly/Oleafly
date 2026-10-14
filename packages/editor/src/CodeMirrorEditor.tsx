@@ -380,14 +380,14 @@ class EditorSessions {
   }
 
   prune(): void {
-    for (const path of [...this.background.keys()]) {
+    for (const path of Array.from(this.background.keys())) {
       if (!this.states.has(path)) this.takeBackground(path);
     }
   }
 
   releaseAll(): void {
     this.release(null);
-    for (const path of [...this.background.keys()]) this.takeBackground(path);
+    for (const path of Array.from(this.background.keys())) this.takeBackground(path);
   }
 
   private keepInBackground(path: string, session: DocumentSession): void {

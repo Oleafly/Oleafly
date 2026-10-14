@@ -1,9 +1,10 @@
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use oleafly_collab_protocol::capabilities::ProviderInfo;
+use oleafly_collab_protocol::page::{document_in, status};
 
-use oleafly_collab_protocol::page::{document, status};
-
+use crate::auth::email_link;
+use crate::i18n::{Key, Locale};
 use crate::mail::messages::{escape, platform_label};
 
 pub use oleafly_collab_protocol::page::Tone;
@@ -81,23 +82,28 @@ pub fn device_label(name: &str, platform: &str) -> String {
     format!("{name} ({})", platform_label(platform))
 }
 
-pub fn provider_button(provider: &ProviderInfo) -> String {
-    format!("Continue with {}", provider.label)
+pub fn provider_button(locale: Locale, provider: &ProviderInfo) -> String {
+    if provider.id == email_link::PROVIDER_ID {
+        return locale.text(Key::ContinueWithEmail).to_owned();
+    }
+    locale.fill(Key::ContinueWith, &[("provider", &provider.label)])
 }
 
 pub fn render(
+    locale: Locale,
     status: StatusCode,
     title: &str,
     body: &str,
     cookie: Option<HeaderValue>,
 ) -> Response {
-    let page = document(title, body, None);
+    let page = document_in(locale.tag(), title, body, None);
     let mut response = (status, page).into_response();
     let headers = response.headers_mut();
     headers.insert(
         header::CONTENT_TYPE,
         HeaderValue::from_static("text/html; charset=utf-8"),
     );
+    headers.insert(header::VARY, HeaderValue::from_static("accept-language"));
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     headers.insert(
         header::REFERRER_POLICY,
@@ -118,12 +124,35 @@ pub fn render(
     response
 }
 
-pub fn message(status_code: StatusCode, tone: Tone, title: &str, text: &str) -> Response {
+pub fn message(
+    locale: Locale,
+    status_code: StatusCode,
+    tone: Tone,
+    title: &str,
+    text: &str,
+) -> Response {
     render(
+        locale,
         status_code,
         title,
         &format!("{}{}{}", status(tone), heading(title), paragraph(text)),
         None,
+    )
+}
+
+pub fn notice(
+    locale: Locale,
+    status_code: StatusCode,
+    tone: Tone,
+    title: Key,
+    text: Key,
+) -> Response {
+    message(
+        locale,
+        status_code,
+        tone,
+        locale.text(title),
+        locale.text(text),
     )
 }
 
@@ -159,6 +188,7 @@ mod tests {
     #[tokio::test]
     async fn pages_are_never_cached_framed_or_sniffed() {
         let response = message(
+            Locale::ENGLISH,
             StatusCode::BAD_REQUEST,
             Tone::Problem,
             "Expired",
@@ -187,7 +217,7 @@ mod tests {
             (Tone::Problem, "status problem"),
             (Tone::Notice, "status notice"),
         ] {
-            let response = message(StatusCode::OK, tone, "Title", "Body.");
+            let response = message(Locale::ENGLISH, StatusCode::OK, tone, "Title", "Body.");
             let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
                 .await
                 .unwrap();
@@ -201,7 +231,13 @@ mod tests {
 
     #[tokio::test]
     async fn pages_let_their_own_forms_name_the_server_but_tell_no_one_else() {
-        let response = message(StatusCode::OK, Tone::Notice, "Sign in", "Enter the code.");
+        let response = message(
+            Locale::ENGLISH,
+            StatusCode::OK,
+            Tone::Notice,
+            "Sign in",
+            "Enter the code.",
+        );
         assert_eq!(response.headers()[header::REFERRER_POLICY], "same-origin");
         let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
             .await
@@ -209,5 +245,54 @@ mod tests {
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("<meta name=\"referrer\" content=\"same-origin\">"));
         assert!(!text.contains("no-referrer"));
+    }
+
+    #[tokio::test]
+    async fn pages_name_their_language_and_tell_caches_it_matters() {
+        let german = Locale::named("de").expect("german");
+        let response = notice(
+            german,
+            StatusCode::OK,
+            Tone::Notice,
+            Key::CodeStoppedTitle,
+            Key::CodeStoppedBody,
+        );
+        assert_eq!(response.headers()[header::VARY], "accept-language");
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let text = String::from_utf8_lossy(&body);
+        assert!(
+            text.starts_with("<!doctype html><html lang=\"de\">"),
+            "{text}"
+        );
+        assert!(text.contains(&escape(german.text(Key::CodeStoppedTitle))));
+        assert!(!text.contains("Sign-in stopped"), "{text}");
+    }
+
+    #[test]
+    fn the_email_option_is_named_in_the_page_language() {
+        let email = email_link::provider_info();
+        let github = ProviderInfo {
+            id: "github".to_owned(),
+            kind: oleafly_collab_protocol::capabilities::ProviderKind::Github,
+            label: "GitHub".to_owned(),
+        };
+        let japanese = Locale::named("ja").expect("japanese");
+        assert_eq!(
+            provider_button(Locale::ENGLISH, &email),
+            "Continue with Email"
+        );
+        assert_eq!(
+            provider_button(Locale::ENGLISH, &github),
+            "Continue with GitHub"
+        );
+        assert_eq!(
+            provider_button(japanese, &email),
+            japanese.text(Key::ContinueWithEmail)
+        );
+        assert_ne!(provider_button(japanese, &email), "Continue with Email");
+        assert!(provider_button(japanese, &github).contains("GitHub"));
+        assert_ne!(provider_button(japanese, &github), "Continue with GitHub");
     }
 }

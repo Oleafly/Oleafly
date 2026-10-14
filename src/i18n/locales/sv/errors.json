@@ -216,5 +216,8 @@
     "git_token_invalid": "Det ser inte ut som en Git-token från Overleaf. Kopiera hela token och försök igen.",
     "git_token_rejected": "Overleaf godkände inte Git-token. Den kan ha gått ut. Skapa en ny i dina kontoinställningar på Overleaf.",
     "git_unavailable": "Overleafs Git-integration är inte tillgänglig för det här projektet. Projektets ägare behöver ett betalt abonnemang eller ett universitetsabonnemang."
+  },
+  "collab": {
+    "turned_off": "Samarbete i realtid är avstängt. Slå på det i Inställningar under Experiment."
   }
 }

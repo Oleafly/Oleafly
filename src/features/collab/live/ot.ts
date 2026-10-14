@@ -30,13 +30,14 @@ function isHighSurrogate(code: number): boolean {
   return code >= 0xd800 && code <= 0xdbff;
 }
 
-function isLowSurrogate(code: number): boolean {
-  return code >= 0xdc00 && code <= 0xdfff;
+function isLowSurrogate(code: number | undefined): boolean {
+  return code !== undefined && code >= 0xdc00 && code <= 0xdfff;
 }
 
 export function splitsSurrogatePair(text: string, at: number): boolean {
   if (at <= 0 || at >= text.length) return false;
-  return isHighSurrogate(text.charCodeAt(at - 1)) && isLowSurrogate(text.charCodeAt(at));
+  const point = text.codePointAt(at - 1);
+  return point !== undefined && point > 0xffff;
 }
 
 function splitAt(text: string, at: number): [string, string] {
@@ -46,6 +47,90 @@ function splitAt(text: string, at: number): [string, string] {
 
 function checkCount(count: number): void {
   if (!Number.isSafeInteger(count) || count < 0) throw new OtError("invalid");
+}
+
+function stepLength(step: Step): number {
+  return typeof step === "string" ? step.length : Math.abs(step);
+}
+
+function remainder(step: Step, count: number): Step | null {
+  if (typeof step === "string") return step.length > count ? splitAt(step, count)[1] : null;
+  if (step > 0) return step > count ? step - count : null;
+  return -step > count ? step + count : null;
+}
+
+class StepReader {
+  current: Step | undefined;
+  private index = 1;
+
+  constructor(private readonly steps: readonly Step[]) {
+    this.current = steps[0];
+  }
+
+  advance(): void {
+    this.current = this.steps[this.index++];
+  }
+
+  resume(rest: Step | null): void {
+    if (rest === null) this.advance();
+    else this.current = rest;
+  }
+}
+
+function composeStep(result: TextOperation, left: StepReader, right: StepReader): void {
+  const a = left.current;
+  const b = right.current;
+  if (isDelete(a)) {
+    result.delete(-a);
+    left.advance();
+    return;
+  }
+  if (isInsert(b)) {
+    result.insert(b);
+    right.advance();
+    return;
+  }
+  if (a === undefined || b === undefined) throw new OtError("incompatible");
+  const step = Math.min(stepLength(a), stepLength(b));
+  if (isRetain(a) && isRetain(b)) result.retain(step);
+  else if (isInsert(a) && isRetain(b)) result.insert(a.slice(0, step));
+  else if (isRetain(a) && isDelete(b)) result.delete(step);
+  left.resume(remainder(a, step));
+  right.resume(remainder(b, step));
+}
+
+function transformStep(
+  clientPrime: TextOperation,
+  serverPrime: TextOperation,
+  left: StepReader,
+  right: StepReader,
+): void {
+  const a = left.current;
+  const b = right.current;
+  if (isInsert(a)) {
+    serverPrime.retain(a.length);
+    clientPrime.insert(a);
+    left.advance();
+    return;
+  }
+  if (isInsert(b)) {
+    clientPrime.retain(b.length);
+    serverPrime.insert(b);
+    right.advance();
+    return;
+  }
+  if (a === undefined || b === undefined) throw new OtError("incompatible");
+  const step = Math.min(stepLength(a), stepLength(b));
+  if (isRetain(a) && isRetain(b)) {
+    clientPrime.retain(step);
+    serverPrime.retain(step);
+  } else if (isDelete(a) && isRetain(b)) {
+    clientPrime.delete(step);
+  } else if (isRetain(a) && isDelete(b)) {
+    serverPrime.delete(step);
+  }
+  left.resume(remainder(a, step));
+  right.resume(remainder(b, step));
 }
 
 export class TextOperation {
@@ -74,7 +159,7 @@ export class TextOperation {
     } else if (isDelete(last)) {
       const previous = steps.at(-2);
       if (isInsert(previous)) steps[steps.length - 2] = previous + text;
-      else steps.splice(steps.length - 1, 0, text);
+      else steps.splice(-1, 0, text);
     } else {
       steps.push(text);
     }
@@ -144,46 +229,9 @@ export class TextOperation {
   compose(other: TextOperation): TextOperation {
     if (this.targetLength !== other.baseLength) throw new OtError("length_mismatch");
     const result = new TextOperation();
-    const first = this.steps;
-    const second = other.steps;
-    let i = 0;
-    let j = 0;
-    let a: Step | undefined = first[i++];
-    let b: Step | undefined = second[j++];
-    while (a !== undefined || b !== undefined) {
-      if (isDelete(a)) {
-        result.delete(-a);
-        a = first[i++];
-        continue;
-      }
-      if (isInsert(b)) {
-        result.insert(b);
-        b = second[j++];
-        continue;
-      }
-      if (a === undefined || b === undefined) throw new OtError("incompatible");
-      if (isRetain(a) && isRetain(b)) {
-        const step = Math.min(a, b);
-        result.retain(step);
-        a = a > step ? a - step : first[i++];
-        b = b > step ? b - step : second[j++];
-      } else if (isInsert(a) && isDelete(b)) {
-        const step = Math.min(a.length, -b);
-        a = a.length > step ? splitAt(a, step)[1] : first[i++];
-        b = -b > step ? b + step : second[j++];
-      } else if (isInsert(a) && isRetain(b)) {
-        const step = Math.min(a.length, b);
-        const [head, tail] = splitAt(a, step);
-        result.insert(head);
-        a = a.length > step ? tail : first[i++];
-        b = b > step ? b - step : second[j++];
-      } else if (isRetain(a) && isDelete(b)) {
-        const step = Math.min(a, -b);
-        result.delete(step);
-        a = a > step ? a - step : first[i++];
-        b = -b > step ? b + step : second[j++];
-      }
-    }
+    const left = new StepReader(this.steps);
+    const right = new StepReader(other.steps);
+    while (left.current !== undefined || right.current !== undefined) composeStep(result, left, right);
     return result;
   }
 
@@ -191,47 +239,10 @@ export class TextOperation {
     if (client.baseLength !== server.baseLength) throw new OtError("length_mismatch");
     const clientPrime = new TextOperation();
     const serverPrime = new TextOperation();
-    const first = client.steps;
-    const second = server.steps;
-    let i = 0;
-    let j = 0;
-    let a: Step | undefined = first[i++];
-    let b: Step | undefined = second[j++];
-    while (a !== undefined || b !== undefined) {
-      if (isInsert(a)) {
-        serverPrime.retain(a.length);
-        clientPrime.insert(a);
-        a = first[i++];
-        continue;
-      }
-      if (isInsert(b)) {
-        clientPrime.retain(b.length);
-        serverPrime.insert(b);
-        b = second[j++];
-        continue;
-      }
-      if (a === undefined || b === undefined) throw new OtError("incompatible");
-      if (isRetain(a) && isRetain(b)) {
-        const step = Math.min(a, b);
-        clientPrime.retain(step);
-        serverPrime.retain(step);
-        a = a > step ? a - step : first[i++];
-        b = b > step ? b - step : second[j++];
-      } else if (isDelete(a) && isDelete(b)) {
-        const step = Math.min(-a, -b);
-        a = -a > step ? a + step : first[i++];
-        b = -b > step ? b + step : second[j++];
-      } else if (isDelete(a) && isRetain(b)) {
-        const step = Math.min(-a, b);
-        clientPrime.delete(step);
-        a = -a > step ? a + step : first[i++];
-        b = b > step ? b - step : second[j++];
-      } else if (isRetain(a) && isDelete(b)) {
-        const step = Math.min(a, -b);
-        serverPrime.delete(step);
-        a = a > step ? a - step : first[i++];
-        b = -b > step ? b + step : second[j++];
-      }
+    const left = new StepReader(client.steps);
+    const right = new StepReader(server.steps);
+    while (left.current !== undefined || right.current !== undefined) {
+      transformStep(clientPrime, serverPrime, left, right);
     }
     return [clientPrime, serverPrime];
   }
@@ -271,7 +282,7 @@ export function editsFromOperation(operation: TextOperation): Utf16Edit[] {
       position += step;
     } else {
       const last = edits.at(-1);
-      if (last && last.to === position) last.to = position - step;
+      if (last?.to === position) last.to = position - step;
       else edits.push({ from: position, to: position - step, insert: "" });
       position -= step;
     }
@@ -291,7 +302,7 @@ export function replacementOperation(before: string, after: string): TextOperati
   ) {
     suffix += 1;
   }
-  if (suffix > 0 && isLowSurrogate(before.charCodeAt(before.length - suffix))) suffix -= 1;
+  if (suffix > 0 && isLowSurrogate(before.codePointAt(before.length - suffix))) suffix -= 1;
   return new TextOperation()
     .retain(prefix)
     .insert(after.slice(prefix, after.length - suffix))

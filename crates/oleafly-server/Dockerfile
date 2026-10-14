@@ -7,7 +7,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 COPY --from=xx / /
-RUN apk add --no-cache clang lld file
+RUN apk add --no-cache clang file lld
 ARG TARGETPLATFORM
 RUN xx-apk add --no-cache gcc musl-dev \
     && xx-cargo --setup-target-triple

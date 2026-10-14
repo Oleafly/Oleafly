@@ -80,12 +80,12 @@ export class LiveSessions {
 
   forget(path: string): void {
     const covered = (known: string) => known === path || known.startsWith(`${path}/`);
-    for (const [known, session] of [...this.sessions.entries()]) {
+    for (const [known, session] of this.sessions.entries()) {
       if (!covered(known)) continue;
       this.sessions.delete(known);
       void session.settled().then(() => session.close());
     }
-    for (const known of [...this.local]) {
+    for (const known of this.local) {
       if (covered(known)) this.local.delete(known);
     }
   }

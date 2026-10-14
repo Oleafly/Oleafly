@@ -167,34 +167,44 @@ fn parse_options(args: impl Iterator<Item = String>) -> Result<Options, String> 
             Some(value) => value,
             None => args.next().ok_or_else(|| format!("{flag} needs a value"))?,
         };
-        match flag.as_str() {
-            "--server" => options.server = Some(value),
-            "--mailpit" => options.mailpit = Some(value),
-            "--peers" => options.peers = number(&flag, &value)?,
-            "--email-domain" => {
-                options.email_domain = Some(value.trim().trim_start_matches('@').to_lowercase());
-            }
-            "--name-prefix" => options.name_prefix = value.trim().to_owned(),
-            "--link" => options.link = Some(value),
-            "--file" => options.file = value.trim().trim_start_matches("./").to_owned(),
-            "--rate" => options.rate = number(&flag, &value)?,
-            "--duration" => options.duration = seconds(&flag, &value)?,
-            "--ramp" => options.ramp = seconds(&flag, &value)?,
-            "--churn" => options.churn = number(&flag, &value)?,
-            "--settle" => options.settle = seconds(&flag, &value)?,
-            "--report" => options.report = Some(PathBuf::from(value)),
-            "--state-dir" => options.state_dir = Some(PathBuf::from(value)),
-            "--sign-in-concurrency" => options.sign_in_concurrency = number(&flag, &value)?,
-            "--sign-in-spacing" => options.sign_in_spacing = seconds(&flag, &value)?,
-            "--sign-in-timeout" => options.sign_in_timeout = seconds(&flag, &value)?,
-            "--mail-timeout" => options.mail_timeout = seconds(&flag, &value)?,
-            "--seed" => options.seed = number(&flag, &value)?,
-            "--save-text" => options.save_text = Some(PathBuf::from(value)),
-            "--local-stack" => options.local_stack = Some(value.trim().to_owned()),
-            "--local-data" => options.local_data = Some(PathBuf::from(value)),
-            other => return Err(format!("unknown option {other}\n{USAGE}")),
-        }
+        apply_option(&mut options, &flag, value)?;
     }
+    validate_options(&options)?;
+    Ok(options)
+}
+
+fn apply_option(options: &mut Options, flag: &str, value: String) -> Result<(), String> {
+    match flag {
+        "--server" => options.server = Some(value),
+        "--mailpit" => options.mailpit = Some(value),
+        "--peers" => options.peers = number(flag, &value)?,
+        "--email-domain" => {
+            options.email_domain = Some(value.trim().trim_start_matches('@').to_lowercase());
+        }
+        "--name-prefix" => options.name_prefix = value.trim().to_owned(),
+        "--link" => options.link = Some(value),
+        "--file" => options.file = value.trim().trim_start_matches("./").to_owned(),
+        "--rate" => options.rate = number(flag, &value)?,
+        "--duration" => options.duration = seconds(flag, &value)?,
+        "--ramp" => options.ramp = seconds(flag, &value)?,
+        "--churn" => options.churn = number(flag, &value)?,
+        "--settle" => options.settle = seconds(flag, &value)?,
+        "--report" => options.report = Some(PathBuf::from(value)),
+        "--state-dir" => options.state_dir = Some(PathBuf::from(value)),
+        "--sign-in-concurrency" => options.sign_in_concurrency = number(flag, &value)?,
+        "--sign-in-spacing" => options.sign_in_spacing = seconds(flag, &value)?,
+        "--sign-in-timeout" => options.sign_in_timeout = seconds(flag, &value)?,
+        "--mail-timeout" => options.mail_timeout = seconds(flag, &value)?,
+        "--seed" => options.seed = number(flag, &value)?,
+        "--save-text" => options.save_text = Some(PathBuf::from(value)),
+        "--local-stack" => options.local_stack = Some(value.trim().to_owned()),
+        "--local-data" => options.local_data = Some(PathBuf::from(value)),
+        other => return Err(format!("unknown option {other}\n{USAGE}")),
+    }
+    Ok(())
+}
+
+fn validate_options(options: &Options) -> Result<(), String> {
     if options.peers == 0 || options.peers > 999 {
         return Err("--peers must be between 1 and 999".to_owned());
     }
@@ -225,7 +235,7 @@ fn parse_options(args: impl Iterator<Item = String>) -> Result<Options, String> 
             return Err(format!("--email-domain is required\n{USAGE}"));
         }
     }
-    Ok(options)
+    Ok(())
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {

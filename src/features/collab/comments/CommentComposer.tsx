@@ -142,8 +142,8 @@ export function CommentComposer({
       await onSubmit(message);
       setBody("");
       setCaret(0);
-    } catch (failure) {
-      setError(commentFailure(failure));
+    } catch (error_) {
+      setError(commentFailure(error_));
     } finally {
       setBusy(false);
     }

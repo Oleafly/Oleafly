@@ -123,11 +123,16 @@ pub fn status(tone: Tone) -> &'static str {
 }
 
 pub fn document(title: &str, card: &str, footer: Option<&str>) -> String {
+    document_in("en", title, card, footer)
+}
+
+pub fn document_in(lang: &str, title: &str, card: &str, footer: Option<&str>) -> String {
     let footer = footer
         .map(|text| format!("<footer class=\"foot\">{}</footer>", escape(text)))
         .unwrap_or_default();
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"same-origin\"><meta name=\"color-scheme\" content=\"light dark\"><title>{}</title><style>{STYLE}</style></head><body><main class=\"shell\"><div class=\"brand\">{LOGO}<span>Oleafly</span></div><section class=\"card\">{card}</section>{footer}</main></body></html>",
+        "<!doctype html><html lang=\"{}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"same-origin\"><meta name=\"color-scheme\" content=\"light dark\"><title>{}</title><style>{STYLE}</style></head><body><main class=\"shell\"><div class=\"brand\">{LOGO}<span>Oleafly</span></div><section class=\"card\">{card}</section>{footer}</main></body></html>",
+        escape(lang),
         escape(title)
     )
 }
@@ -147,6 +152,19 @@ mod tests {
         assert!(html.contains("<section class=\"card\"><h1>Done</h1></section>"));
         assert!(html.contains("<footer class=\"foot\">Oleafly Lab</footer>"));
         assert!(!document("Title", "<p>Body</p>", None).contains("<footer"));
+    }
+
+    #[test]
+    fn the_page_names_its_language() {
+        assert!(document("Title", "<p>Body</p>", None)
+            .starts_with("<!doctype html><html lang=\"en\"><head>"));
+        assert!(document_in("pt-BR", "Título", "<p>Olá</p>", None)
+            .starts_with("<!doctype html><html lang=\"pt-BR\"><head>"));
+        assert!(
+            document_in("zh-Hans", "标题", "<p>你好</p>", None).contains("<html lang=\"zh-Hans\">")
+        );
+        assert!(document_in("x\"><script>", "T", "", None)
+            .contains("<html lang=\"x&quot;&gt;&lt;script&gt;\">"));
     }
 
     #[test]

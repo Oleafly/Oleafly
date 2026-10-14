@@ -52,9 +52,9 @@ export function EmailPreferencesRow({ serverId }: Readonly<{ serverId: string }>
     try {
       const patch = choice === "mentions" ? { mentions: value } : { shared_with_you: value };
       setPreferences(await collabSetEmailPreferences(serverId, patch));
-    } catch (failure) {
+    } catch (error_) {
       setPreferences(previous);
-      setError(collabErrorMessage(collabErrorCode(failure)));
+      setError(collabErrorMessage(collabErrorCode(error_)));
     } finally {
       setSaving(false);
     }

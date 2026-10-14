@@ -92,6 +92,14 @@ async function reach(server: CollabServer, link: OpenLink, agreed: boolean): Pro
   }
 }
 
+function openComment(link: OpenLink, localId: string): void {
+  if (link.comment) void openLinkedComment(localId, link.comment);
+}
+
+function failureNotice(code: CollabErrorCode): Notice {
+  return code === "not_found" ? { kind: "noAccess" } : { kind: "error", code };
+}
+
 async function openLocal(localId: string): Promise<void> {
   if (useFilesStore.getState().projectId === localId) return;
   await useFilesStore.getState().refreshProjects();
@@ -234,7 +242,7 @@ function createFlow(ui: FlowUi) {
         return outcome;
       });
       if ("localId" in reached) {
-        if (link.comment) void openLinkedComment(reached.localId, link.comment);
+        openComment(link, reached.localId);
         return;
       }
       if ("preview" in reached) {
@@ -247,7 +255,7 @@ function createFlow(ui: FlowUi) {
         server = await askForServer(current.url);
         continue;
       }
-      return show(reached.code === "not_found" ? { kind: "noAccess" } : { kind: "error", code: reached.code });
+      return show(failureNotice(reached.code));
     }
   };
 
@@ -312,7 +320,6 @@ export function LinkIntake({
   const [working, setWorking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<Step>({ kind: "idle" });
-  const [tick, setTick] = useState(0);
   const flow = useRef<ReturnType<typeof createFlow> | null>(null);
   flow.current ??= createFlow({ setStep, setBusy, setPending });
   const ingested = useRef<readonly string[] | null>(null);
@@ -330,19 +337,21 @@ export function LinkIntake({
   }, [servers, step]);
 
   useEffect(() => {
-    if (!waiting) return;
-    const timer = window.setInterval(() => setTick((count) => count + 1), READY_POLL_MS);
+    if (!waiting || !catalog || !loaded) return;
+    const start = () => {
+      if (modalOpen()) return false;
+      const started = flow.current?.next();
+      if (!started) return false;
+      setWorking(true);
+      void started.finally(() => setWorking(false));
+      return true;
+    };
+    if (start()) return;
+    const timer = window.setInterval(() => {
+      if (start()) window.clearInterval(timer);
+    }, READY_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [waiting]);
-
-  useEffect(() => {
-    void tick;
-    if (!waiting || !catalog || !loaded || modalOpen()) return;
-    const started = flow.current?.next();
-    if (!started) return;
-    setWorking(true);
-    void started.finally(() => setWorking(false));
-  }, [waiting, catalog, loaded, tick]);
+  }, [waiting, catalog, loaded]);
 
   return (
     <>

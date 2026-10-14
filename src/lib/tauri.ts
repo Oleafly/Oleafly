@@ -54,18 +54,42 @@ import type {
   CheckpointStoreInspection,
   CheckpointStoreStats,
   CheckpointSummary,
+  CollabAccessLogPage,
+  CollabAccessLogStatus,
+  CollabAdminOverview,
+  CollabAdminProject,
+  CollabAdminProjectsPage,
+  CollabAdminProjectsQuery,
   CollabAllowlistEntry,
   CollabCapabilities,
   CollabCommandError,
+  CollabCommentCount,
+  CollabCommentError,
+  CollabCommentErrorCode,
+  CollabCommentMember,
+  CollabCommentMessage,
+  CollabCommentsChanged,
+  CollabCommentsNotSent,
+  CollabCommentsStatus,
+  CollabCommentsStatusChanged,
+  CollabCommentThread,
+  CollabCommentThreadList,
   CollabConnectionCheck,
   CollabDevice,
   CollabDomainRule,
+  CollabEmailPreferences,
+  CollabEmailPreferencesPatch,
+  CollabEmailStatus,
+  CollabEmailTestResult,
   CollabErrorCode,
+  CollabGuestInvitation,
+  CollabGuestInviteResult,
   CollabMember,
   CollabMemberPatch,
   CollabNewAllowlistEntry,
   CollabNewDomainRule,
   CollabPage,
+  CollabProjectGuestInvitations,
   CollabRuntimeSettings,
   CollabRuntimeSettingsPatch,
   CollabSecurityEvent,
@@ -89,6 +113,7 @@ import type {
   CollabShareInfo,
   CollabSharedWithMe,
   CollabShareProgress,
+  CollabSignInCode,
   CollabTextOperation,
   CompileResult,
   ComponentInfo,
@@ -1792,7 +1817,7 @@ export async function collabDocOpen(
 ): Promise<CollabDocOpened | null> {
   const channel = new Channel<CollabDocMessage>();
   channel.onmessage = onMessage;
-  return invoke<CollabDocOpened | null>("collab_doc_open", { projectId, path, channel });
+  return await invoke<CollabDocOpened | null>("collab_doc_open", { projectId, path, channel });
 }
 
 export const collabDocChange = (
@@ -2166,13 +2191,6 @@ export const collabLocalCopyBringIn = (projectId: string, copyId: string) =>
 export const collabLocalCopyDecline = (projectId: string, copyId: string) =>
   invoke<void>("collab_local_copy_decline", { projectId, copyId });
 
-import type {
-  CollabAdminOverview,
-  CollabAdminProject,
-  CollabAdminProjectsPage,
-  CollabAdminProjectsQuery,
-} from "@oleafly/backend-port";
-
 export const collabAdminOverview = (serverId: string) =>
   invoke<CollabAdminOverview>("collab_admin_overview", { serverId });
 export const collabAdminProjects = (serverId: string, query: CollabAdminProjectsQuery) =>
@@ -2181,13 +2199,6 @@ export const collabAdminArchiveProject = (serverId: string, projectId: string) =
   invoke<CollabAdminProject>("collab_admin_archive_project", { serverId, projectId });
 export const collabAdminUnarchiveProject = (serverId: string, projectId: string) =>
   invoke<CollabAdminProject>("collab_admin_unarchive_project", { serverId, projectId });
-
-import type {
-  CollabEmailPreferences,
-  CollabEmailPreferencesPatch,
-  CollabEmailStatus,
-  CollabEmailTestResult,
-} from "@oleafly/backend-port";
 
 export const collabAdminEmailStatus = (serverId: string) =>
   invoke<CollabEmailStatus>("collab_admin_email_status", { serverId });
@@ -2210,16 +2221,6 @@ export function onCollabSyncPaused(handler: (payload: CollabSyncPaused) => void)
 export function onCollabSyncResumed(handler: (payload: CollabSyncResumed) => void): Promise<UnlistenFn> {
   return listen<CollabSyncResumed>(COLLAB_SYNC_RESUMED_EVENT, ({ payload }) => handler(payload));
 }
-
-import type {
-  CollabCommentMember,
-  CollabCommentMessage,
-  CollabCommentsChanged,
-  CollabCommentsNotSent,
-  CollabCommentsStatus,
-  CollabCommentsStatusChanged,
-  CollabCommentThread,
-} from "@oleafly/backend-port";
 
 export const COLLAB_COMMENTS_CHANGED_EVENT = "collab-comments-changed";
 export const COLLAB_COMMENTS_STATUS_EVENT = "collab-comments-status";
@@ -2268,20 +2269,12 @@ export function onCollabCommentsNotSent(handler: (payload: CollabCommentsNotSent
   return listen<CollabCommentsNotSent>(COLLAB_COMMENTS_NOT_SENT_EVENT, ({ payload }) => handler(payload));
 }
 
-import type { CollabAccessLogPage, CollabAccessLogStatus } from "@oleafly/backend-port";
-
 export const collabAccessLogStatus = (projectId: string) =>
   invoke<CollabAccessLogStatus>("collab_access_log_status", { projectId });
 export const collabAccessLogSetEnabled = (projectId: string, enabled: boolean) =>
   invoke<CollabProjectSummary>("collab_access_log_set_enabled", { projectId, enabled });
 export const collabAccessLogPage = (projectId: string, cursor: string | null) =>
   invoke<CollabAccessLogPage>("collab_access_log_page", { projectId, cursor });
-
-import type {
-  CollabGuestInvitation,
-  CollabGuestInviteResult,
-  CollabProjectGuestInvitations,
-} from "@oleafly/backend-port";
 
 export type {
   CollabGuestInvitation,
@@ -2305,8 +2298,6 @@ export const collabAdminGuestDecline = (serverId: string, invitationId: string) 
 export const collabAdminGuestRevoke = (serverId: string, invitationId: string) =>
   invoke<void>("collab_admin_guest_revoke", { serverId, invitationId });
 
-import type { CollabSignInCode } from "@oleafly/backend-port";
-
 export type { CollabSignInCode, CollabSignOut, CollabUnsentProject } from "@oleafly/backend-port";
 
 export async function collabServerCodeSignIn(
@@ -2316,15 +2307,8 @@ export async function collabServerCodeSignIn(
 ): Promise<CollabServer> {
   const channel = new Channel<CollabSignInCode>();
   channel.onmessage = onCode;
-  return invoke<CollabServer>("collab_server_code_sign_in", { url, setupCode: setupCode ?? null, onCode: channel });
+  return await invoke<CollabServer>("collab_server_code_sign_in", { url, setupCode: setupCode ?? null, onCode: channel });
 }
-
-import type {
-  CollabCommentCount,
-  CollabCommentError,
-  CollabCommentErrorCode,
-  CollabCommentThreadList,
-} from "@oleafly/backend-port";
 
 export const collabCommentThreadList = (projectId: string, path: string) =>
   invoke<CollabCommentThreadList>("collab_comment_thread_list", { projectId, path });

@@ -10,8 +10,7 @@ function useClamped(text: string, expanded: boolean) {
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element || expanded) return;
-    void text;
-    const measure = () => setClamped(element.scrollHeight > element.clientHeight + 1);
+    const measure = () => setClamped(text !== "" && element.scrollHeight > element.clientHeight + 1);
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);

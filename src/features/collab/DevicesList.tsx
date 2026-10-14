@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Laptop, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,25 +38,29 @@ export function DevicesList({
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<CollabDevice | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [request, setRequest] = useState(0);
+  const generation = useRef(0);
   const own = variant === "own";
 
-  useEffect(() => {
-    let active = true;
-    void request;
+  const fetchDevices = useCallback(() => {
+    generation.current += 1;
+    const current = generation.current;
     setLoadError(null);
     loadRef.current().then(
       (next) => {
-        if (active) setDevices(next);
+        if (generation.current === current) setDevices(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (generation.current === current) setLoadError(collabErrorMessage(collabErrorCode(error)));
       },
     );
+  }, []);
+
+  useEffect(() => {
+    fetchDevices();
     return () => {
-      active = false;
+      generation.current += 1;
     };
-  }, [request]);
+  }, [fetchDevices]);
 
   const signOutDevice = async (device: CollabDevice) => {
     setConfirming(null);
@@ -82,7 +86,7 @@ export function DevicesList({
               : t(($) => $.collab.admin.members.devicesLoadFailed)
           }
           reason={loadError}
-          onRetry={() => setRequest((value) => value + 1)}
+          onRetry={fetchDevices}
         />
       );
     }

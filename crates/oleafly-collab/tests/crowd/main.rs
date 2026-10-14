@@ -956,73 +956,73 @@ async fn watch_events(
     while let Some(event) = events.recv().await {
         match event {
             LiveEvent::Status(status) => person.on_status(status),
-            LiveEvent::Changed if observe => {
-                let seen = lock(&person.live).doc().version();
-                let now = Instant::now();
-                let known: Vec<(usize, Arc<EditLog>)> = lock(&logs).clone();
-                let mut fresh = Vec::new();
-                let mut fresh_offline = Vec::new();
-                for (index, log) in known {
-                    if index == person.index {
-                        continue;
-                    }
-                    let peer = log.peer.load(Ordering::SeqCst);
-                    let Some(end) = (peer != 0).then(|| seen.get(&peer).copied()).flatten() else {
-                        continue;
-                    };
-                    let entries = lock(&log.entries);
-                    let cursor = cursors.entry(index).or_insert(0);
-                    while *cursor < entries.len() && entries[*cursor].end <= end {
-                        let edit = entries[*cursor];
-                        let micros = u64::try_from(now.duration_since(edit.at).as_micros())
-                            .unwrap_or(u64::MAX);
-                        if edit.offline {
-                            fresh_offline.push(micros);
-                        } else {
-                            fresh.push(micros);
-                        }
-                        *cursor += 1;
-                    }
-                }
-                if !fresh_offline.is_empty() {
-                    *lock(&person.offline_seen_at) = Some(now);
-                    lock(&person.offline_latency).extend(fresh_offline);
-                }
-                lock(&person.latency).extend(fresh);
-            }
-            LiveEvent::Acknowledged => {
-                let peer = person.log.peer.load(Ordering::SeqCst);
-                if peer == 0 {
-                    continue;
-                }
-                let (end, pending) = {
-                    let live = lock(&person.live);
-                    (
-                        live.doc().version().get(&peer).copied(),
-                        live.pending_changes(),
-                    )
-                };
-                let Some(end) = end else { continue };
-                let confirmed = i64::from(end) - i64::try_from(pending).unwrap_or(i64::MAX);
-                let now = Instant::now();
-                let entries = lock(&person.log.entries);
-                let mut fresh = Vec::new();
-                while own_acked < entries.len() && i64::from(entries[own_acked].end) <= confirmed {
-                    let edit = entries[own_acked];
-                    if !edit.offline {
-                        fresh.push(
-                            u64::try_from(now.duration_since(edit.at).as_micros())
-                                .unwrap_or(u64::MAX),
-                        );
-                    }
-                    own_acked += 1;
-                }
-                drop(entries);
-                lock(&person.ack_latency).extend(fresh);
-            }
+            LiveEvent::Changed if observe => record_seen(&person, &logs, &mut cursors),
+            LiveEvent::Acknowledged => record_acknowledged(&person, &mut own_acked),
             _ => {}
         }
     }
+}
+
+fn record_seen(person: &Person, logs: &Logs, cursors: &mut HashMap<usize, usize>) {
+    let seen = lock(&person.live).doc().version();
+    let now = Instant::now();
+    let known: Vec<(usize, Arc<EditLog>)> = lock(logs).clone();
+    let mut fresh = Vec::new();
+    let mut fresh_offline = Vec::new();
+    for (index, log) in known {
+        if index == person.index {
+            continue;
+        }
+        let peer = log.peer.load(Ordering::SeqCst);
+        let Some(end) = (peer != 0).then(|| seen.get(&peer).copied()).flatten() else {
+            continue;
+        };
+        let entries = lock(&log.entries);
+        let cursor = cursors.entry(index).or_insert(0);
+        while *cursor < entries.len() && entries[*cursor].end <= end {
+            let edit = entries[*cursor];
+            let micros = u64::try_from(now.duration_since(edit.at).as_micros()).unwrap_or(u64::MAX);
+            if edit.offline {
+                fresh_offline.push(micros);
+            } else {
+                fresh.push(micros);
+            }
+            *cursor += 1;
+        }
+    }
+    if !fresh_offline.is_empty() {
+        *lock(&person.offline_seen_at) = Some(now);
+        lock(&person.offline_latency).extend(fresh_offline);
+    }
+    lock(&person.latency).extend(fresh);
+}
+
+fn record_acknowledged(person: &Person, own_acked: &mut usize) {
+    let peer = person.log.peer.load(Ordering::SeqCst);
+    if peer == 0 {
+        return;
+    }
+    let (end, pending) = {
+        let live = lock(&person.live);
+        (
+            live.doc().version().get(&peer).copied(),
+            live.pending_changes(),
+        )
+    };
+    let Some(end) = end else { return };
+    let confirmed = i64::from(end) - i64::try_from(pending).unwrap_or(i64::MAX);
+    let now = Instant::now();
+    let entries = lock(&person.log.entries);
+    let mut fresh = Vec::new();
+    while *own_acked < entries.len() && i64::from(entries[*own_acked].end) <= confirmed {
+        let edit = entries[*own_acked];
+        if !edit.offline {
+            fresh.push(u64::try_from(now.duration_since(edit.at).as_micros()).unwrap_or(u64::MAX));
+        }
+        *own_acked += 1;
+    }
+    drop(entries);
+    lock(&person.ack_latency).extend(fresh);
 }
 
 struct Crowd {
@@ -1132,51 +1132,7 @@ where
         let mut reasons = Vec::new();
         let mut reference: Option<VersionVector> = None;
         for person in people {
-            if !person.done.load(Ordering::SeqCst) {
-                reasons.push(format!("{} is still typing", person.name));
-            }
-            if !person.online.load(Ordering::SeqCst) {
-                reasons.push(format!("{} is not online", person.name));
-            }
-            let queued = person.queued.load(Ordering::SeqCst);
-            let handled = person.handled.load(Ordering::SeqCst);
-            if queued != handled {
-                reasons.push(format!(
-                    "{}'s editor has {} unread messages",
-                    person.name,
-                    queued - handled
-                ));
-            }
-            if !person.synced.load(Ordering::SeqCst) {
-                reasons.push(format!(
-                    "{}'s editor waits for an acknowledgement",
-                    person.name
-                ));
-            }
-            let live = lock(&person.live);
-            if live.has_unsent() {
-                reasons.push(format!(
-                    "{} has {} unconfirmed changes",
-                    person.name,
-                    live.pending_changes()
-                ));
-            }
-            if live.last_seq() != head {
-                reasons.push(format!(
-                    "{} is at seq {} of {head}",
-                    person.name,
-                    live.last_seq()
-                ));
-            }
-            let version = live.doc().version();
-            drop(live);
-            match &reference {
-                None => reference = Some(version),
-                Some(first) if *first != version => {
-                    reasons.push(format!("{} has a different version", person.name));
-                }
-                Some(_) => {}
-            }
+            unsettled_reasons(person, head, &mut reference, &mut reasons);
         }
         if reasons.is_empty() {
             if quiet_once {
@@ -1194,6 +1150,59 @@ where
             ));
         }
         tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+}
+
+fn unsettled_reasons(
+    person: &Person,
+    head: u64,
+    reference: &mut Option<VersionVector>,
+    reasons: &mut Vec<String>,
+) {
+    if !person.done.load(Ordering::SeqCst) {
+        reasons.push(format!("{} is still typing", person.name));
+    }
+    if !person.online.load(Ordering::SeqCst) {
+        reasons.push(format!("{} is not online", person.name));
+    }
+    let queued = person.queued.load(Ordering::SeqCst);
+    let handled = person.handled.load(Ordering::SeqCst);
+    if queued != handled {
+        reasons.push(format!(
+            "{}'s editor has {} unread messages",
+            person.name,
+            queued - handled
+        ));
+    }
+    if !person.synced.load(Ordering::SeqCst) {
+        reasons.push(format!(
+            "{}'s editor waits for an acknowledgement",
+            person.name
+        ));
+    }
+    let live = lock(&person.live);
+    if live.has_unsent() {
+        reasons.push(format!(
+            "{} has {} unconfirmed changes",
+            person.name,
+            live.pending_changes()
+        ));
+    }
+    if live.last_seq() != head {
+        reasons.push(format!(
+            "{} is at seq {} of {head}",
+            person.name,
+            live.last_seq()
+        ));
+    }
+    let version = live.doc().version();
+    drop(live);
+    match reference {
+        None => *reference = Some(version),
+        Some(first) if *first != version => {
+            reasons.push(format!("{} has a different version", person.name));
+        }
+        Some(_) => {}
     }
 }
 

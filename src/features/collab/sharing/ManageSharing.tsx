@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, DoorOpen, Link2, MessageSquare, ScrollText, Trash2, UserPlus } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
@@ -107,8 +107,8 @@ function AddPeople({
         (people) => {
           if (active) setSearch({ kind: "done", people });
         },
-        (failure: unknown) => {
-          if (active) setSearch({ kind: "failed", message: collabErrorMessage(collabErrorCode(failure)) });
+        (error_: unknown) => {
+          if (active) setSearch({ kind: "failed", message: collabErrorMessage(collabErrorCode(error_)) });
         },
       );
     }, SEARCH_DELAY_MS);
@@ -124,8 +124,8 @@ function AddPeople({
     try {
       onAdded(await collabMemberSet(projectId, person.account_id, role));
       setQuery("");
-    } catch (failure) {
-      setError(collabErrorMessage(collabErrorCode(failure)));
+    } catch (error_) {
+      setError(collabErrorMessage(collabErrorCode(error_)));
     } finally {
       setAdding(null);
     }
@@ -230,8 +230,8 @@ function LinkSharing({
     setError(null);
     try {
       onSummary(await collabLinkSharingSet(projectId, enabled, role));
-    } catch (failure) {
-      setError(collabErrorMessage(collabErrorCode(failure)));
+    } catch (error_) {
+      setError(collabErrorMessage(collabErrorCode(error_)));
     } finally {
       setSaving(false);
     }
@@ -314,8 +314,8 @@ function CommentsSetting({
     setError(null);
     try {
       onSummary(await collabCommentsSetEnabled(projectId, next));
-    } catch (failure) {
-      setError(collabErrorMessage(collabErrorCode(failure)));
+    } catch (error_) {
+      setError(collabErrorMessage(collabErrorCode(error_)));
     } finally {
       setSaving(false);
     }
@@ -369,8 +369,8 @@ function AccessLogSetting({
       const updated = await collabAccessLogSetEnabled(projectId, next);
       onSummary(updated);
       useAccessLogSwitches.getState().set(projectId, { serverAllowed: true, enabled: updated.access_log ?? next });
-    } catch (failure) {
-      setError(collabErrorMessage(collabErrorCode(failure)));
+    } catch (error_) {
+      setError(collabErrorMessage(collabErrorCode(error_)));
     } finally {
       setSaving(false);
     }
@@ -421,11 +421,12 @@ export function ManageSharing({
     }
   };
 
+  const load = useMemo(() => ({ projectId, request }), [projectId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    Promise.all([collabProjectSummary(projectId), collabMembersList(projectId)]).then(
+    Promise.all([collabProjectSummary(load.projectId), collabMembersList(load.projectId)]).then(
       ([nextSummary, nextMembers]) => {
         if (!active) return;
         setSummary(nextSummary);
@@ -438,7 +439,7 @@ export function ManageSharing({
     return () => {
       active = false;
     };
-  }, [projectId, request]);
+  }, [load]);
 
   const runRow = async (member: CollabProjectMember, action: () => Promise<void>) => {
     const accountId = member.person.account_id;

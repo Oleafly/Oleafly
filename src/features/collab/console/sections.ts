@@ -51,5 +51,5 @@ export function visibleConsoleSections(role: ServerRole): ConsoleSection[] {
 }
 
 export function isConsoleSection(value: unknown): value is ConsoleSection {
-  return CONSOLE_SECTIONS.some((section) => section === value);
+  return (CONSOLE_SECTIONS as readonly unknown[]).includes(value);
 }

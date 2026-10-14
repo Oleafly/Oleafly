@@ -22,7 +22,7 @@ export function consoleGeometryKey(serverId: string): string {
 
 export function readConsoleServerId(search: string): string | null {
   const id = new URLSearchParams(search).get("server");
-  return id ? id : null;
+  return id || null;
 }
 
 export async function openAdminConsole(server: Pick<CollabServer, "server_id" | "name">): Promise<void> {

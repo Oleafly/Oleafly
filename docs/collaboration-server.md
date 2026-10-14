@@ -571,6 +571,8 @@ People sign in through providers you configure, so the server never handles pass
 
 If `OLEAFLY_PUBLIC_URL` has a path, so does the callback address, for example `https://www.cs.example.edu/oleafly/auth/callback/github`.
 
+The server's sign-in pages follow the browser's language when Oleafly has it, and show English otherwise.
+
 ### GitHub
 
 1. On GitHub, click your profile picture, then **Settings › Developer settings › OAuth apps**, and select **New OAuth App**. For an app owned by an organization, use **Developer settings** in the organization's settings instead.

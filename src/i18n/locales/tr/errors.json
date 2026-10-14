@@ -216,5 +216,8 @@
     "git_token_invalid": "Bu bir Overleaf Git belirtecine benzemiyor. Belirtecin tamamını kopyalayıp yeniden deneyin.",
     "git_token_rejected": "Overleaf Git belirtecini kabul etmedi. Süresi dolmuş olabilir. Overleaf hesap ayarlarınızda yeni bir belirteç oluşturun.",
     "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir."
+  },
+  "collab": {
+    "turned_off": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın."
   }
 }

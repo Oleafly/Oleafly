@@ -14,6 +14,7 @@ pub mod secrets_adapter;
 pub mod settings;
 pub mod share;
 pub mod state;
+pub mod switch;
 #[cfg(test)]
 pub(crate) mod testing;
 pub mod tree;

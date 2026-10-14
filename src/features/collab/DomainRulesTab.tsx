@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +36,12 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminDomainRules(serverId).then(
+    collabAdminDomainRules(load.serverId).then(
       (next) => {
         if (active) setRules(next);
       },
@@ -51,7 +52,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const addRule = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

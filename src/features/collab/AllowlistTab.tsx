@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -42,11 +42,12 @@ export function AllowlistTab({
   const loginProviders = providers.filter((item) => item.kind === "github");
   const provider = providerId ?? loginProviders[0]?.id ?? null;
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminAllowlist(serverId).then(
+    collabAdminAllowlist(load.serverId).then(
       (next) => {
         if (active) setEntries(next);
       },
@@ -57,7 +58,7 @@ export function AllowlistTab({
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const providerName = (id: string) => providers.find((item) => item.id === id)?.label ?? id;
 

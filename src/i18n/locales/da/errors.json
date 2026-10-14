@@ -216,5 +216,8 @@
     "git_token_invalid": "Det ligner ikke et Git-token fra Overleaf. Kopiér hele tokenet, og prøv igen.",
     "git_token_rejected": "Overleaf accepterede ikke Git-tokenet. Det er måske udløbet. Opret et nyt i dine kontoindstillinger på Overleaf.",
     "git_unavailable": "Overleafs Git-integration er ikke tilgængelig for dette projekt. Projektets ejer skal have et betalt abonnement eller et universitetsabonnement."
+  },
+  "collab": {
+    "turned_off": "Samarbejde i realtid er slået fra. Slå det til i Indstillinger under Eksperimenter."
   }
 }

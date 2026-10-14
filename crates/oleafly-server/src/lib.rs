@@ -10,6 +10,7 @@ pub mod db;
 pub mod error;
 pub mod guests;
 pub mod healthcheck;
+pub mod i18n;
 pub mod mail;
 pub mod members;
 pub mod mentions;

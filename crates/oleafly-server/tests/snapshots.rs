@@ -89,7 +89,7 @@ impl Store {
                     .join("snapshots")
                     .join(project.to_string()),
             )
-            .map(|entries| entries.count())
+            .map(Iterator::count)
             .unwrap_or(0),
             Store::Bucket(bucket) => bucket
                 .keys()

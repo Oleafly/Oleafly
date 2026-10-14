@@ -22,6 +22,7 @@ use crate::auth::{
     browser_binding, db_error, device_code, devices, email_link, nonce, setup, ExternalIdentity,
 };
 use crate::error::ServerError;
+use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::notify;
 use crate::members;
 use crate::routes::sign_in_pages::{self, Tone};
@@ -175,15 +176,17 @@ pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, Serve
 
 async fn start(
     State(state): State<AppState>,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Query(query): Query<AuthStartQuery>,
 ) -> Result<Response, ServerError> {
     let Some(redirect) = loopback_redirect(&query.redirect_uri) else {
-        return Ok(sign_in_pages::message(
+        return Ok(sign_in_pages::notice(
+            locale,
             StatusCode::BAD_REQUEST,
             Tone::Problem,
-            "This sign-in link doesn't work",
-            "It doesn't lead back to Oleafly. Start signing in again from Oleafly.",
+            Key::BadLinkTitle,
+            Key::BadLinkBody,
         ));
     };
     if !well_formed(&query) {
@@ -222,7 +225,7 @@ async fn start(
         device_authorization: None,
     };
     let Some(provider) = provider else {
-        return email_sign_in::ask_for_address(&state, &headers, pending, now).await;
+        return email_sign_in::ask_for_address(locale, &state, &headers, pending, now).await;
     };
     let callback = callback_url(&state, &pending.provider_id);
     let authorize = provider
@@ -255,6 +258,7 @@ struct CallbackQuery {
 }
 
 async fn refuse_other_browser(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     ip: Option<String>,
@@ -276,19 +280,20 @@ async fn refuse_other_browser(
         .db
         .call(move |conn| security_log::record(conn, now, event).map(|_| ()))
         .await?;
-    conclude(state, pending, Err(AuthErrorCode::InvalidCode))
+    conclude(locale, state, pending, Err(AuthErrorCode::InvalidCode))
 }
 
 async fn callback(
     State(state): State<AppState>,
     Path(provider_id): Path<String>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Query(query): Query<CallbackQuery>,
 ) -> Result<Response, ServerError> {
     let now = state.clock.now_ms();
     let Some(pending_id) = query.state else {
-        return Ok(sign_in_already_over());
+        return Ok(sign_in_already_over(locale));
     };
     let Some(pending) = state
         .db
@@ -296,22 +301,32 @@ async fn callback(
         .await?
         .filter(|pending| pending.provider_id == provider_id)
     else {
-        return Ok(sign_in_already_over());
+        return Ok(sign_in_already_over(locale));
     };
     if pending.device_authorization.is_some()
         && !browser_binding::holds(&headers, &state.config, &pending.code_challenge)
     {
-        return refuse_other_browser(&state, &pending, ip, now).await;
+        return refuse_other_browser(locale, &state, &pending, ip, now).await;
     }
     let Some(provider) = state.providers.get(&provider_id) else {
-        return conclude(&state, &pending, Err(AuthErrorCode::UnknownProvider));
+        return conclude(
+            locale,
+            &state,
+            &pending,
+            Err(AuthErrorCode::UnknownProvider),
+        );
     };
     let code = match (query.code, query.error.as_deref()) {
         (Some(code), None) => code,
         (_, Some("access_denied")) => {
-            return conclude(&state, &pending, Err(AuthErrorCode::SignInCancelled))
+            return conclude(
+                locale,
+                &state,
+                &pending,
+                Err(AuthErrorCode::SignInCancelled),
+            )
         }
-        _ => return conclude(&state, &pending, Err(AuthErrorCode::ProviderFailed)),
+        _ => return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed)),
     };
     let callback = callback_url(&state, &provider_id);
     let exchanged = provider
@@ -323,7 +338,7 @@ async fn callback(
         )
         .await;
     let Ok(identity) = exchanged else {
-        return conclude(&state, &pending, Err(AuthErrorCode::ProviderFailed));
+        return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed));
     };
     let account = account_label(&identity);
     let finishing = pending.clone();
@@ -332,7 +347,7 @@ async fn callback(
         .db
         .call(move |conn| complete_sign_in(conn, &identity, &finishing, ip, max_members, now))
         .await?;
-    conclude_naming(&state, &pending, outcome, Some(&account))
+    conclude_naming(locale, &state, &pending, outcome, Some(&account))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -342,24 +357,27 @@ pub(crate) enum Finish {
     DeviceGone,
 }
 
-fn sign_in_already_over() -> Response {
-    sign_in_pages::message(
+fn sign_in_already_over(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
         StatusCode::BAD_REQUEST,
         Tone::Notice,
-        "This sign-in already finished or expired",
-        "If Oleafly says you're signed in, you're all set. Otherwise go back to Oleafly and start signing in again.",
+        Key::OverTitle,
+        Key::OverBody,
     )
 }
 
 pub(crate) fn conclude(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
 ) -> Result<Response, ServerError> {
-    conclude_naming(state, pending, outcome, None)
+    conclude_naming(locale, state, pending, outcome, None)
 }
 
 pub(crate) fn conclude_naming(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
@@ -367,7 +385,7 @@ pub(crate) fn conclude_naming(
 ) -> Result<Response, ServerError> {
     if pending.device_authorization.is_some() {
         return Ok(code_sign_in::finished_naming(
-            state, pending, outcome, account,
+            locale, state, pending, outcome, account,
         ));
     }
     let redirect = Url::parse(&pending.redirect_uri)

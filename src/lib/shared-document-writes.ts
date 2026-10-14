@@ -21,10 +21,15 @@ export async function writeSharedText(
   }
 }
 
+function errorText(message: unknown, code: unknown): string {
+  if (typeof message === "string" && message) return message;
+  return typeof code === "string" ? code : "";
+}
+
 function sharedWriteError(error: unknown): unknown {
   if (error instanceof Error || typeof error !== "object" || error === null) return error;
   const { message, code } = error as { message?: unknown; code?: unknown };
-  const text = typeof message === "string" && message ? message : typeof code === "string" ? code : "";
+  const text = errorText(message, code);
   return text ? new Error(text) : error;
 }
 

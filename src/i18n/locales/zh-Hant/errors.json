@@ -216,5 +216,8 @@
     "git_token_invalid": "這看起來不像 Overleaf Git 權杖。請複製完整的權杖後再試一次。",
     "git_token_rejected": "Overleaf 不接受這個 Git 權杖，它可能已過期。請在 Overleaf 帳號設定中建立新的權杖。",
     "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。"
+  },
+  "collab": {
+    "turned_off": "即時協作已關閉。請在設定的「實驗功能」中開啟。"
   }
 }

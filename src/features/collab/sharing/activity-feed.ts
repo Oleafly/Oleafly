@@ -102,8 +102,7 @@ function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number)
 
 function sharingChanged(state: CollabLiveStoreState, previous: CollabLiveStoreState | null): boolean {
   return (
-    previous === null ||
-    previous.projectId !== state.projectId ||
+    previous?.projectId !== state.projectId ||
     previous.share !== state.share ||
     previous.role !== state.role ||
     previous.members !== state.members
@@ -115,7 +114,12 @@ interface FeedMemory {
   offline: boolean;
 }
 
-function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, memory: FeedMemory, at: number) {
+function connectionEntries(
+  state: CollabLiveStoreState,
+  previous: CollabLiveStoreState,
+  memory: FeedMemory,
+  at: number,
+): NewActivity[] {
   const found: NewActivity[] = [];
   const before = previous.status?.state ?? null;
   const after = state.status?.state ?? null;
@@ -127,6 +131,11 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
     memory.offline = false;
     found.push({ kind: "online", at });
   }
+  return found;
+}
+
+function projectEntries(state: CollabLiveStoreState, previous: CollabLiveStoreState, at: number): NewActivity[] {
+  const found: NewActivity[] = [];
   if (state.merged && state.merged !== previous.merged) {
     const { files, authors, review } = state.merged;
     found.push({ kind: "merged", at, files, authors, review });
@@ -138,6 +147,16 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
   if (previous.share && previous.role && state.role && previous.role !== state.role) {
     found.push({ kind: "role", at, role: state.role });
   }
+  return found;
+}
+
+function membershipEntries(
+  state: CollabLiveStoreState,
+  previous: CollabLiveStoreState,
+  memory: FeedMemory,
+  at: number,
+): NewActivity[] {
+  const found: NewActivity[] = [];
   if (state.memberChange && state.memberChange !== previous.memberChange) {
     const entry = memberEntry(state, at);
     if (entry) found.push(entry);
@@ -146,17 +165,30 @@ function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, me
     const entry = endedEntry(state, memory, at);
     if (entry) found.push(entry);
   }
-  if (!state.ended && after !== "ended") {
-    const was = presentAccounts(previous);
-    const now = presentAccounts(state);
-    for (const [accountId, peer] of was) {
-      if (!now.has(accountId)) found.push({ kind: "left", at, accountId, name: nameOf(peer, state.members) });
-    }
-    for (const [accountId, peer] of now) {
-      if (!was.has(accountId)) found.push({ kind: "joined", at, accountId, name: nameOf(peer, state.members) });
-    }
+  return found;
+}
+
+function presenceEntries(state: CollabLiveStoreState, previous: CollabLiveStoreState, at: number): NewActivity[] {
+  const found: NewActivity[] = [];
+  if (state.ended || state.status?.state === "ended") return found;
+  const was = presentAccounts(previous);
+  const now = presentAccounts(state);
+  for (const [accountId, peer] of was) {
+    if (!now.has(accountId)) found.push({ kind: "left", at, accountId, name: nameOf(peer, state.members) });
+  }
+  for (const [accountId, peer] of now) {
+    if (!was.has(accountId)) found.push({ kind: "joined", at, accountId, name: nameOf(peer, state.members) });
   }
   return found;
+}
+
+function changes(state: CollabLiveStoreState, previous: CollabLiveStoreState, memory: FeedMemory, at: number) {
+  return [
+    ...connectionEntries(state, previous, memory, at),
+    ...projectEntries(state, previous, at),
+    ...membershipEntries(state, previous, memory, at),
+    ...presenceEntries(state, previous, at),
+  ];
 }
 
 function renamedEntry(payload: CollabLiveRenamed): NewActivity | null {
@@ -191,7 +223,7 @@ export function startCollabActivity(): () => void {
     activity.open(state.projectId);
     if (state.share) memory.server = state.share.server_name;
     const at = Date.now();
-    if (previous && previous.projectId === state.projectId) {
+    if (previous?.projectId === state.projectId) {
       for (const entry of changes(state, previous, memory, at)) useCollabActivity.getState().add(entry);
       if (state.status?.state === "offline" && previous.pending !== state.pending) {
         useCollabActivity.getState().setPending(state.pending);

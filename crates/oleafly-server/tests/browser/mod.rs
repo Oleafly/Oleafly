@@ -13,13 +13,14 @@ use oleafly_server::settings;
 use oleafly_server::test_support::{
     api_error_code, challenge_nonce, no_redirect_client, TestDevice, TestServer,
 };
-use reqwest::header::{COOKIE, LOCATION, SET_COOKIE};
+use reqwest::header::{ACCEPT_LANGUAGE, COOKIE, LOCATION, SET_COOKIE, VARY};
 use url::Url;
 
 pub struct Page {
     pub url: Url,
     pub status: u16,
     pub location: Option<Url>,
+    pub vary: Option<String>,
     pub body: String,
 }
 
@@ -33,6 +34,7 @@ pub struct Form {
 pub struct Browser {
     client: reqwest::Client,
     cookies: Mutex<BTreeMap<String, String>>,
+    language: Option<String>,
 }
 
 impl Default for Browser {
@@ -46,6 +48,14 @@ impl Browser {
         Browser {
             client: no_redirect_client(),
             cookies: Mutex::new(BTreeMap::new()),
+            language: None,
+        }
+    }
+
+    pub fn speaking(accept_language: &str) -> Browser {
+        Browser {
+            language: Some(accept_language.to_owned()),
+            ..Browser::new()
         }
     }
 
@@ -81,11 +91,17 @@ impl Browser {
             .get(LOCATION)
             .and_then(|value| value.to_str().ok())
             .map(|value| url.join(value).expect("location"));
+        let vary = response
+            .headers()
+            .get(VARY)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let body = response.text().await.expect("page body");
         Page {
             url,
             status,
             location,
+            vary,
             body,
         }
     }
@@ -95,6 +111,9 @@ impl Browser {
         if let Some(cookie) = self.cookie_header() {
             request = request.header(COOKIE, cookie);
         }
+        if let Some(language) = &self.language {
+            request = request.header(ACCEPT_LANGUAGE, language);
+        }
         let response = request.send().await.expect("get");
         self.finish(url.clone(), response).await
     }
@@ -103,6 +122,9 @@ impl Browser {
         let mut request = self.client.post(url.clone()).form(fields);
         if let Some(cookie) = self.cookie_header() {
             request = request.header(COOKIE, cookie);
+        }
+        if let Some(language) = &self.language {
+            request = request.header(ACCEPT_LANGUAGE, language);
         }
         let response = request.send().await.expect("post");
         self.finish(url.clone(), response).await

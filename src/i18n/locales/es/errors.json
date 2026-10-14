@@ -216,5 +216,8 @@
     "git_token_invalid": "Eso no parece un token de Git de Overleaf. Copia el token completo y vuelve a intentarlo.",
     "git_token_rejected": "Overleaf no aceptó el token de Git. Puede que haya caducado. Crea uno nuevo en la configuración de tu cuenta de Overleaf.",
     "git_unavailable": "La integración con Git de Overleaf no está disponible para este proyecto. El propietario del proyecto necesita un plan de pago o universitario."
+  },
+  "collab": {
+    "turned_off": "La colaboración en tiempo real está desactivada. Actívala en Ajustes, en Experimentación."
   }
 }

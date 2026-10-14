@@ -216,5 +216,8 @@
     "git_token_invalid": "Ceci ne ressemble pas à un jeton Git Overleaf. Copiez le jeton en entier et réessayez.",
     "git_token_rejected": "Overleaf n'a pas accepté le jeton Git. Il a peut-être expiré. Créez-en un nouveau dans les paramètres de votre compte Overleaf.",
     "git_unavailable": "L'intégration Git d'Overleaf n'est pas disponible pour ce projet. Elle nécessite un abonnement payant ou universitaire pour le propriétaire du projet."
+  },
+  "collab": {
+    "turned_off": "La collaboration en direct est désactivée. Activez-la dans Paramètres, sous Expérimentation."
   }
 }

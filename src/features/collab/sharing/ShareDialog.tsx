@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CopyPlus, Eye, Share2, X } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
@@ -168,12 +168,13 @@ function ShareStep({
   const [upload, setUpload] = useState<UploadState>({ kind: "idle" });
   const chosenId = server.server_id;
 
+  const load = useMemo(() => ({ projectId, chosenId, request: checkRequest }), [projectId, chosenId, checkRequest]);
+
   useEffect(() => {
     let active = true;
-    void checkRequest;
     setCheck({ kind: "checking" });
     setUpload({ kind: "idle" });
-    collabShareCheck(projectId, chosenId).then(
+    collabShareCheck(load.projectId, load.chosenId).then(
       (result) => {
         if (active) setCheck({ kind: "ready", check: result });
       },
@@ -184,7 +185,7 @@ function ShareStep({
     return () => {
       active = false;
     };
-  }, [projectId, chosenId, checkRequest]);
+  }, [load]);
 
   const ready = check.kind === "ready" ? check.check : null;
   const blocked = ready === null || ready.cloud_synced || ready.too_large.length > 0;
@@ -310,11 +311,12 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
     if (serversStatus === "idle") void loadServers();
   }, [serversStatus, loadServers]);
 
+  const load = useMemo(() => ({ projectId, request: shareRequest }), [projectId, shareRequest]);
+
   useEffect(() => {
     let active = true;
-    void shareRequest;
     setShareError(null);
-    collabShareInfo(projectId).then(
+    collabShareInfo(load.projectId).then(
       (info) => {
         if (active) setShare(info);
       },
@@ -325,7 +327,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
     return () => {
       active = false;
     };
-  }, [projectId, shareRequest]);
+  }, [load]);
 
   const signedIn = servers.filter((entry) => entry.signed_in);
   const serversKnown = serversStatus === "ready" || serversStatus === "failed" || signedIn.length > 0;

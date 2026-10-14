@@ -8,7 +8,7 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
-import { collabServerDevices, collabServerSignOutDevice, type CollabServer } from "@/lib/tauri";
+import { collabServerDevices, collabServerSignOutDevice, type CollabAccount, type CollabServer } from "@/lib/tauri";
 import { openAdminConsole } from "./console/open-console";
 import { ConnectionChecks } from "./ConnectionChecks";
 import { DevicesList } from "./DevicesList";
@@ -16,9 +16,37 @@ import { EmailPreferencesRow } from "./EmailPreferencesRow";
 import { collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
 import { accountDetail, accountPerson } from "./people";
-import { canManageServer, toServerRole } from "./roles";
+import { canManageServer, toServerRole, type ServerRole } from "./roles";
 import { useCollabStore } from "./store";
-import { useConnectionTest } from "./use-connection-test";
+import { useConnectionTest, type ConnectionTest } from "./use-connection-test";
+
+function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; role: ServerRole | null }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <div className="flex items-center gap-3">
+      <Avatar person={accountPerson(account)} size="md" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {t(($) => $.collab.section.server.signedInAs, { name: account.display_name })}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">{accountDetail(account)}</p>
+        {role ? (
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.collab.section.server.role, { role: t(($) => $.collab.roles[role]) })}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ConnectionTestResult({ test }: Readonly<{ test: ConnectionTest }>) {
+  const { t } = useTranslation(["collab"]);
+  if (test.state === "running") return <LoadingState size="compact" label={t(($) => $.collab.section.checks.running)} />;
+  if (test.state === "done") return <ConnectionChecks checks={test.checks} />;
+  if (test.state === "failed") return <InlineAlert>{test.message}</InlineAlert>;
+  return null;
+}
 
 export function ServerCard({
   server,
@@ -41,6 +69,7 @@ export function ServerCard({
   const role = toServerRole(account?.server_role);
   const ended = server.signed_in ? null : (server.ended ?? null);
   const formerGuest = server.account?.server_role === "guest";
+  const canManage = account !== null && canManageServer(role);
 
   const signedOutBadge = () => {
     if (ended === "account_suspended") return t(($) => $.collab.section.server.paused);
@@ -101,20 +130,7 @@ export function ServerCard({
         }
       >
         {account ? (
-          <div className="flex items-center gap-3">
-            <Avatar person={accountPerson(account)} size="md" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
-                {t(($) => $.collab.section.server.signedInAs, { name: account.display_name })}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">{accountDetail(account)}</p>
-              {role ? (
-                <p className="text-xs text-muted-foreground">
-                  {t(($) => $.collab.section.server.role, { role: t(($) => $.collab.roles[role]) })}
-                </p>
-              ) : null}
-            </div>
-          </div>
+          <SignedInSummary account={account} role={role} />
         ) : (
           <p className="text-xs text-muted-foreground">{signedOutHint()}</p>
         )}
@@ -147,17 +163,17 @@ export function ServerCard({
             <Activity aria-hidden />
             {t(($) => $.collab.section.server.test)}
           </Button>
-          {account && canManageServer(role) ? (
-            <Button type="button" variant="outline" size="sm" onClick={onManage}>
-              <ShieldCheck aria-hidden />
-              {t(($) => $.collab.section.server.manage)}
-            </Button>
-          ) : null}
-          {account && canManageServer(role) ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
-              <AppWindow aria-hidden />
-              {t(($) => $.collab.console.open)}
-            </Button>
+          {canManage ? (
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={onManage}>
+                <ShieldCheck aria-hidden />
+                {t(($) => $.collab.section.server.manage)}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
+                <AppWindow aria-hidden />
+                {t(($) => $.collab.console.open)}
+              </Button>
+            </>
           ) : null}
           <Button
             type="button"
@@ -172,11 +188,7 @@ export function ServerCard({
           </Button>
         </div>
         {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
-        {test.state === "running" ? (
-          <LoadingState size="compact" label={t(($) => $.collab.section.checks.running)} />
-        ) : null}
-        {test.state === "done" ? <ConnectionChecks checks={test.checks} /> : null}
-        {test.state === "failed" ? <InlineAlert>{test.message}</InlineAlert> : null}
+        <ConnectionTestResult test={test} />
         {account ? <EmailPreferencesRow key={`emails-${serverId}`} serverId={serverId} /> : null}
         {account ? (
           <DevicesList

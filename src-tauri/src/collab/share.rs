@@ -252,8 +252,6 @@ fn build_document(root: &Path, meta: &crate::project::ProjectMeta) -> Result<Bui
         }
         hashes.insert(path.clone(), hash);
     }
-    doc.set_meta("main_doc", &meta.main_doc)?;
-    doc.set_meta("engine", &meta.engine)?;
     super::settings::seed(&mut doc, meta)?;
     Ok(Built { doc, blobs, hashes })
 }
@@ -873,7 +871,7 @@ pub async fn collab_link_preview(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oleafly_collab::settings::Setting;
+    use oleafly_collab::settings::Engine;
 
     #[test]
     fn links_from_the_landing_page_and_the_app_scheme_parse() {
@@ -965,8 +963,11 @@ mod tests {
         assert_eq!(built.blobs.len(), 1);
         assert_eq!(built.doc.meta("engine").as_deref(), Some("tectonic"));
         let shared = built.doc.settings();
-        assert_eq!(shared[&Setting::Engine], "tectonic");
-        assert_eq!(&shared[&Setting::MainDoc], main);
+        assert_eq!(shared.engine().map(Engine::as_str), Some("tectonic"));
+        assert_eq!(
+            shared.main_doc().map(|id| id.to_string()).as_ref(),
+            Some(main)
+        );
         assert_eq!(built.hashes.len(), 2);
     }
 

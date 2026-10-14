@@ -165,6 +165,7 @@ where
     R: tauri::Runtime,
     F: Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
 {
+    let handler = collab::switch::gated(handler);
     move |invoke| {
         let command = invoke.message.command().to_string();
         let _traced = crate::stall_trace::watch(|| format!("command {command}"));
@@ -364,6 +365,7 @@ pub fn run() {
         open_request::OpenSource::Launch,
     );
     i18n::startup();
+    collab::switch::startup();
     let mut builder = tauri::Builder::default();
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
@@ -446,6 +448,7 @@ pub fn run() {
         // fails the launch instead of silently skipping the seed.
         let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
         let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
+        collab::switch::adopt_seeds(every_load.as_ref(), once_per_launch.as_ref());
         if every_load.is_some() || once_per_launch.is_some() {
             let empty = serde_json::Value::Object(serde_json::Map::new());
             let launch = format!(
@@ -706,6 +709,7 @@ pub fn run() {
             github::gh_create_repo,
             github::gh_public_repo_stats,
             github::gh_import_repo,
+            collab::switch::collab_live_collaboration_set,
             collab::commands::collab_servers_list,
             collab::commands::collab_server_probe,
             collab::commands::collab_server_sign_in,
@@ -761,15 +765,15 @@ pub fn run() {
             collab::share::collab_join_project,
             collab::share::collab_open_link,
             collab::share::collab_link_preview,
-            collab::live::collab_live_start,
-            collab::live::collab_live_stop,
-            collab::live::collab_live_flush,
-            collab::live::collab_doc_open,
-            collab::live::collab_doc_change,
-            collab::live::collab_doc_close,
-            collab::live::collab_presence_set,
-            collab::live::collab_presence_leave,
-            collab::live::collab_sync_resume,
+            collab::live::commands::collab_live_start,
+            collab::live::commands::collab_live_stop,
+            collab::live::commands::collab_live_flush,
+            collab::live::commands::collab_doc_open,
+            collab::live::commands::collab_doc_change,
+            collab::live::commands::collab_doc_close,
+            collab::live::commands::collab_presence_set,
+            collab::live::commands::collab_presence_leave,
+            collab::live::commands::collab_sync_resume,
             collab::live::write::collab_write_text,
             collab::live::uploads::collab_upload_list,
             collab::live::uploads::collab_upload_retry,

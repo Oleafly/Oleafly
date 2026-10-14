@@ -32,6 +32,20 @@ const STATUS_BADGE = {
   removed: "muted",
 } as const satisfies Record<CollabMemberStatus, BadgeVariant>;
 
+function SuspendButton({
+  suspended,
+  disabled,
+  onToggle,
+}: Readonly<{ suspended: boolean; disabled: boolean; onToggle: () => void }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onToggle}>
+      {suspended ? <UserCheck aria-hidden /> : <UserX aria-hidden />}
+      {suspended ? t(($) => $.collab.admin.members.reactivate) : t(($) => $.collab.admin.members.suspend)}
+    </Button>
+  );
+}
+
 export function MembersTab({
   serverId,
   actor,
@@ -147,16 +161,11 @@ export function MembersTab({
         ) : null}
         {editable && !isSelf ? (
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
+            <SuspendButton
+              suspended={suspended}
               disabled={busy}
-              onClick={() => void patch(member, { status: suspended ? "active" : "suspended" })}
-            >
-              {suspended ? <UserCheck aria-hidden /> : <UserX aria-hidden />}
-              {suspended ? t(($) => $.collab.admin.members.reactivate) : t(($) => $.collab.admin.members.suspend)}
-            </Button>
+              onToggle={() => void patch(member, { status: suspended ? "active" : "suspended" })}
+            />
             <Button
               type="button"
               variant="ghost"

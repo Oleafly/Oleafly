@@ -280,7 +280,7 @@ function SectionGroup({
   };
 
   const sizes = defaultSizes(initialCollapsed, collapsedSize);
-  const last = sections[sections.length - 1];
+  const last = sections.at(-1);
 
   return (
     <div ref={stackRef} data-testid={testId} className={cn("h-full min-h-0", last?.collapsed && "pb-2.5")}>

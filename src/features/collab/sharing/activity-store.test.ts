@@ -126,7 +126,7 @@ describe("useCollabActivity", () => {
     useCollabActivity.setState({ projectId: null, entries: [], unread: true });
     useCollabActivity.getState().markRead();
     expect(useCollabActivity.getState().unread).toBe(false);
-    expect(localStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
   });
 
   it("closes the feed when no project is open", () => {

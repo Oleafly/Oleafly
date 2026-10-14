@@ -47,6 +47,19 @@ pub(crate) fn split_utf16(text: &str, at: usize) -> Result<(&str, &str), OtError
     }
 }
 
+fn remainder(
+    count: usize,
+    step: usize,
+    rebuild: fn(usize) -> Component,
+    rest: &mut impl Iterator<Item = Component>,
+) -> Option<Component> {
+    if count > step {
+        Some(rebuild(count - step))
+    } else {
+        rest.next()
+    }
+}
+
 impl TextOperation {
     pub fn new() -> TextOperation {
         TextOperation::default()
@@ -201,16 +214,8 @@ impl TextOperation {
                 (Some(Component::Retain(x)), Some(Component::Retain(y))) => {
                     let step = x.min(y);
                     result.retain(step);
-                    a = if x > step {
-                        Some(Component::Retain(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Retain(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Retain, &mut first);
+                    b = remainder(y, step, Component::Retain, &mut second);
                 }
                 (Some(Component::Insert(text)), Some(Component::Delete(y))) => {
                     let length = utf16_len(&text);
@@ -220,11 +225,7 @@ impl TextOperation {
                     } else {
                         first.next()
                     };
-                    b = if y > step {
-                        Some(Component::Delete(y - step))
-                    } else {
-                        second.next()
-                    };
+                    b = remainder(y, step, Component::Delete, &mut second);
                 }
                 (Some(Component::Insert(text)), Some(Component::Retain(y))) => {
                     let length = utf16_len(&text);
@@ -236,25 +237,13 @@ impl TextOperation {
                     } else {
                         first.next()
                     };
-                    b = if y > step {
-                        Some(Component::Retain(y - step))
-                    } else {
-                        second.next()
-                    };
+                    b = remainder(y, step, Component::Retain, &mut second);
                 }
                 (Some(Component::Retain(x)), Some(Component::Delete(y))) => {
                     let step = x.min(y);
                     result.delete(step);
-                    a = if x > step {
-                        Some(Component::Retain(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Delete(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Retain, &mut first);
+                    b = remainder(y, step, Component::Delete, &mut second);
                 }
             }
         }
@@ -294,57 +283,25 @@ impl TextOperation {
                     let step = x.min(y);
                     client_prime.retain(step);
                     server_prime.retain(step);
-                    a = if x > step {
-                        Some(Component::Retain(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Retain(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Retain, &mut first);
+                    b = remainder(y, step, Component::Retain, &mut second);
                 }
                 (Some(Component::Delete(x)), Some(Component::Delete(y))) => {
                     let step = x.min(y);
-                    a = if x > step {
-                        Some(Component::Delete(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Delete(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Delete, &mut first);
+                    b = remainder(y, step, Component::Delete, &mut second);
                 }
                 (Some(Component::Delete(x)), Some(Component::Retain(y))) => {
                     let step = x.min(y);
                     client_prime.delete(step);
-                    a = if x > step {
-                        Some(Component::Delete(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Retain(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Delete, &mut first);
+                    b = remainder(y, step, Component::Retain, &mut second);
                 }
                 (Some(Component::Retain(x)), Some(Component::Delete(y))) => {
                     let step = x.min(y);
                     server_prime.delete(step);
-                    a = if x > step {
-                        Some(Component::Retain(x - step))
-                    } else {
-                        first.next()
-                    };
-                    b = if y > step {
-                        Some(Component::Delete(y - step))
-                    } else {
-                        second.next()
-                    };
+                    a = remainder(x, step, Component::Retain, &mut first);
+                    b = remainder(y, step, Component::Delete, &mut second);
                 }
             }
         }

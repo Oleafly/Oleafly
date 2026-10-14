@@ -50,7 +50,7 @@ export function avatarHue(seed: string): number {
 
 function initials(name: string, letters: number): string {
   const words = name.trim().split(/\s+/u).filter(Boolean);
-  const picked = words.length > 1 ? [words[0], words[words.length - 1]] : words;
+  const picked = words.filter((_, index) => index === 0 || index === words.length - 1);
   return picked
     .slice(0, letters)
     .map((word) => String.fromCodePoint(word.codePointAt(0) ?? 0))

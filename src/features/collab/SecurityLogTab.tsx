@@ -137,19 +137,25 @@ export function eventKindKey(kind: string): KindKey {
   return Object.hasOwn(KIND_KEYS, kind) ? KIND_KEYS[kind as keyof typeof KIND_KEYS] : "unknown";
 }
 
+function projectSettingsLabel(detail: Detail): LabelKey | null {
+  const accessLog = flag(detail, "access_log");
+  if (accessLog !== null) return accessLog ? "projectAccessLogOn" : "projectAccessLogOff";
+  const comments = flag(detail, "comments_enabled");
+  if (comments !== null) return comments ? "projectCommentsOn" : "projectCommentsOff";
+  return null;
+}
+
+function projectAccessLabel(detail: Detail): LabelKey | null {
+  if (Object.hasOwn(detail, "project")) return null;
+  const linkSharing = flag(detail, "link_sharing");
+  if (linkSharing !== null) return linkSharing ? "projectLinkSharingOn" : "projectLinkSharingOff";
+  return text(detail, "link_role") === null ? null : "projectLinkRoleChanged";
+}
+
 function labelKey(event: CollabSecurityEvent, detail: Detail): LabelKey {
   const key = eventKindKey(event.kind);
-  if (key === "projectSettingsChanged") {
-    const accessLog = flag(detail, "access_log");
-    if (accessLog !== null) return accessLog ? "projectAccessLogOn" : "projectAccessLogOff";
-    const comments = flag(detail, "comments_enabled");
-    if (comments !== null) return comments ? "projectCommentsOn" : "projectCommentsOff";
-  }
-  if (key === "projectAccessChanged" && !Object.hasOwn(detail, "project")) {
-    const linkSharing = flag(detail, "link_sharing");
-    if (linkSharing !== null) return linkSharing ? "projectLinkSharingOn" : "projectLinkSharingOff";
-    if (text(detail, "link_role") !== null) return "projectLinkRoleChanged";
-  }
+  if (key === "projectSettingsChanged") return projectSettingsLabel(detail) ?? key;
+  if (key === "projectAccessChanged") return projectAccessLabel(detail) ?? key;
   if (key === "projectAccessRemoved" && flag(detail, "left") === true) return "projectLeft";
   return key;
 }
@@ -243,26 +249,36 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
     return facts.filter((fact): fact is string => fact !== null);
   };
 
-  const targetOf = (event: CollabSecurityEvent, detail: Detail): string | null => {
-    if (INVITATION_KINDS.has(event.kind)) return text(detail, "email");
-    if (event.kind === "allowlist_added" || event.kind === "allowlist_removed") {
-      const email = text(detail, "email");
-      const login = text(detail, "login");
-      const provider = text(detail, "provider");
-      if (email) return email;
-      if (login && provider) return t(($) => $.collab.admin.allowlist.loginEntry, { login, provider });
-    }
-    if (event.kind === "domain_rule_added" || event.kind === "domain_rule_removed") {
-      const domain = text(detail, "domain");
-      if (domain) return domain;
-    }
-    if (DEVICE_KINDS.has(event.kind)) return text(detail, "name") ? null : (event.device_name ?? null);
+  const allowlistTarget = (detail: Detail): string | null => {
+    const email = text(detail, "email");
+    const login = text(detail, "login");
+    const provider = text(detail, "provider");
+    if (email) return email;
+    if (login && provider) return t(($) => $.collab.admin.allowlist.loginEntry, { login, provider });
+    return null;
+  };
+
+  const ruleTarget = (event: CollabSecurityEvent, detail: Detail): string | null => {
+    if (event.kind === "allowlist_added" || event.kind === "allowlist_removed") return allowlistTarget(detail);
+    if (event.kind === "domain_rule_added" || event.kind === "domain_rule_removed") return text(detail, "domain");
+    return null;
+  };
+
+  const accountTarget = (event: CollabSecurityEvent, detail: Detail): string | null => {
     const target = event.target;
     if (target === null) return null;
     const aboutProject = isProjectKind(event.kind) && !Object.hasOwn(detail, "project");
     if (aboutProject && projectTitle(event, detail)) return null;
     const removedName = event.kind === "member_removed" ? text(detail, "display_name") : null;
     return names.get(target) ?? removedName ?? target;
+  };
+
+  const targetOf = (event: CollabSecurityEvent, detail: Detail): string | null => {
+    if (INVITATION_KINDS.has(event.kind)) return text(detail, "email");
+    const rule = ruleTarget(event, detail);
+    if (rule !== null) return rule;
+    if (DEVICE_KINDS.has(event.kind)) return text(detail, "name") ? null : (event.device_name ?? null);
+    return accountTarget(event, detail);
   };
 
   return (event: CollabSecurityEvent) => {
@@ -292,11 +308,12 @@ export function SecurityLogTab({
   );
   const describe = useEventDescription(names);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminSecurityLog(serverId).then(
+    collabAdminSecurityLog(load.serverId).then(
       (page) => {
         if (!active) return;
         setEvents(page.items);
@@ -309,7 +326,7 @@ export function SecurityLogTab({
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const loadMore = async () => {
     if (!cursor) return;

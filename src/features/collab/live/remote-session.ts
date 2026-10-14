@@ -242,7 +242,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.content = operation.apply(this.content);
     this.localVersion += 1;
     const change: RemoteChange = { edits, version: this.localVersion };
-    for (const listener of [...this.listeners]) listener(change);
+    for (const listener of Array.from(this.listeners)) listener(change);
     this.options.onText?.(this.content);
   }
 

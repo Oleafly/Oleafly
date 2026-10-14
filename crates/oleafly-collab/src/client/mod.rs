@@ -7,6 +7,7 @@ pub mod e2e_route;
 mod guests;
 mod http;
 mod loopback;
+mod loopback_text;
 mod poll;
 mod session;
 mod sign_in;

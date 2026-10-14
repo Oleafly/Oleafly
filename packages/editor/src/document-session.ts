@@ -18,16 +18,9 @@ export interface DocumentSession {
   subscribe(listener: (change: RemoteChange) => void): () => void;
 }
 
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
-}
-
-function isLowSurrogate(code: number): boolean {
-  return code >= 0xdc00 && code <= 0xdfff;
-}
-
 function splitsSurrogatePair(text: string, position: number): boolean {
-  return isHighSurrogate(text.charCodeAt(position - 1)) && isLowSurrogate(text.charCodeAt(position));
+  const point = text.codePointAt(position - 1);
+  return point !== undefined && point > 0xffff;
 }
 
 function checkEdits(text: string, edits: readonly Utf16Edit[]): void {
@@ -93,7 +86,7 @@ export class LocalDocumentSession implements DocumentSession {
   pushRemote(edits: Utf16Edit[]): void {
     if (!this.apply(edits)) return;
     const change: RemoteChange = { edits: edits.map((edit) => ({ ...edit })), version: this.revision };
-    for (const listener of [...this.listeners]) listener(change);
+    for (const listener of Array.from(this.listeners)) listener(change);
   }
 
   subscribe(listener: (change: RemoteChange) => void): () => void {

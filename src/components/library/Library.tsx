@@ -142,6 +142,10 @@ function keyedExports(exports: ProjectInfo["exports"]) {
   });
 }
 
+function latestProject(projects: readonly ProjectInfo[], project: ProjectInfo | null): ProjectInfo | null {
+  return (project && projects.find((item) => item.id === project.id)) || project;
+}
+
 function cacheThumbnail(key: string, png: string) {
   thumbCache.delete(key);
   thumbCache.set(key, png);
@@ -332,10 +336,8 @@ export function Library() {
     }
     void openProject(project.id);
   };
-  const currentDetailsProject =
-    detailsProject && projects.find((project) => project.id === detailsProject.id) || detailsProject;
-  const currentHistoryProject =
-    historyProject && projects.find((project) => project.id === historyProject.id) || historyProject;
+  const currentDetailsProject = latestProject(projects, detailsProject);
+  const currentHistoryProject = latestProject(projects, historyProject);
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
   const releasePointerLock = () => {
     const release = (observer?: MutationObserver) => {

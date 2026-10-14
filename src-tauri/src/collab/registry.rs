@@ -1,7 +1,7 @@
 use oleafly_collab::{load_binding, CollabPaths};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{LazyLock, Mutex, MutexGuard};
+use std::sync::{LazyLock, Mutex, MutexGuard, PoisonError};
 
 static REGISTRY: LazyLock<ShareRegistry> = LazyLock::new(ShareRegistry::default);
 
@@ -43,9 +43,7 @@ impl ShareRegistry {
     }
 
     fn cache(&self) -> MutexGuard<'_, HashMap<(PathBuf, String), bool>> {
-        self.cache
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.cache.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

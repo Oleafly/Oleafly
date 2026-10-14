@@ -6,8 +6,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use oleafly_collab_protocol::capabilities::ProviderKind;
-use oleafly_collab_protocol::page::{document, escape, status, Tone};
+use oleafly_collab_protocol::page::{document_in, escape, status, Tone};
 
+use super::loopback_text::{Language, Text};
 use crate::CollabError;
 
 const MAX_REQUEST_BYTES: usize = 8192;
@@ -36,159 +37,193 @@ pub(crate) struct Callback {
 struct HeldReply {
     stream: TcpStream,
     pages: Pages,
+    language: Language,
 }
 
 impl Callback {
     pub(crate) async fn answer(self, result: Result<(), &CollabError>) {
-        let Some(HeldReply { mut stream, pages }) = self.reply else {
+        let Some(HeldReply {
+            mut stream,
+            pages,
+            language,
+        }) = self.reply
+        else {
             return;
         };
+        let speaking = pages.speaking(language);
         let page = match result {
-            Ok(()) => pages.signed_in(),
-            Err(error) => pages.not_finished(error),
+            Ok(()) => speaking.signed_in(),
+            Err(error) => speaking.not_finished(error),
         };
         respond(&mut stream, "200 OK", &page).await;
     }
 }
 
 struct Pages {
+    server: Option<String>,
+    provider: Option<String>,
+    by_email: bool,
+}
+
+impl Pages {
+    fn speaking(&self, language: Language) -> Speaking {
+        Speaking {
+            language,
+            server: self
+                .server
+                .clone()
+                .unwrap_or_else(|| language.text(Text::DefaultServer).to_owned()),
+            provider: self
+                .provider
+                .clone()
+                .unwrap_or_else(|| language.text(Text::DefaultProvider).to_owned()),
+            by_email: self.by_email,
+        }
+    }
+}
+
+struct Speaking {
+    language: Language,
     server: String,
     provider: String,
     by_email: bool,
 }
 
-impl Pages {
-    fn card(tone: Tone, heading: &str, reason: &str, next: Option<&str>) -> String {
-        let next = next
-            .map(|text| format!("<p class=\"next\">{text}</p>"))
-            .unwrap_or_default();
-        format!("{}<h1>{heading}</h1><p>{reason}</p>{next}", status(tone))
+impl Speaking {
+    fn html(&self, text: Text) -> String {
+        self.with_account(text, None)
     }
 
-    fn page(&self, title: &str, card: String) -> String {
-        document(title, &card, Some(&self.server))
+    fn with_account(&self, text: Text, account: Option<&str>) -> String {
+        let server = escape(&self.server);
+        let provider = escape(&self.provider);
+        let account = account
+            .map(|account| format!("<strong>{}</strong>", escape(account)))
+            .unwrap_or_default();
+        self.language.html(
+            text,
+            &[
+                ("server", &server),
+                ("provider", &provider),
+                ("account", &account),
+            ],
+        )
+    }
+
+    fn page(
+        &self,
+        title: Text,
+        tone: Tone,
+        heading: Text,
+        reason: String,
+        next: Option<Text>,
+    ) -> String {
+        let title = self.language.plain(
+            title,
+            &[("server", &self.server), ("provider", &self.provider)],
+        );
+        let next = next
+            .map(|text| format!("<p class=\"next\">{}</p>", self.html(text)))
+            .unwrap_or_default();
+        let card = format!(
+            "{}<h1>{}</h1><p>{reason}</p>{next}",
+            status(tone),
+            self.html(heading)
+        );
+        document_in(self.language.tag(), &title, &card, Some(&self.server))
     }
 
     fn signed_in(&self) -> String {
-        let server = escape(&self.server);
         self.page(
-            "You're signed in",
-            Pages::card(
-                Tone::Success,
-                "You're signed in",
-                &format!("Oleafly is now connected to {server}."),
-                Some("Go back to Oleafly to keep going. You can close this tab."),
-            ),
+            Text::SignedInTitle,
+            Tone::Success,
+            Text::SignedInTitle,
+            self.html(Text::SignedInBody),
+            Some(Text::SignedInNext),
+        )
+    }
+
+    fn not_admitted(&self, account: Option<&str>) -> String {
+        let (with_account, without, next) = if self.by_email {
+            (
+                Text::RefusedEmailAccount,
+                Text::RefusedEmail,
+                Text::RefusedEmailNext,
+            )
+        } else {
+            (
+                Text::RefusedProviderAccount,
+                Text::RefusedProvider,
+                Text::RefusedProviderNext,
+            )
+        };
+        let reason = match account {
+            Some(account) => self.with_account(with_account, Some(account)),
+            None => self.html(without),
+        };
+        self.page(
+            Text::RefusedTitle,
+            Tone::Problem,
+            Text::RefusedHeading,
+            reason,
+            Some(next),
         )
     }
 
     fn refused(&self, code: &str, account: Option<&str>) -> String {
-        let server = escape(&self.server);
-        let provider = escape(&self.provider);
-        let (title, card) = match code {
-            "not_admitted" if self.by_email => {
-                let reason = match account {
-                    Some(account) => format!(
-                        "You signed in with <strong>{}</strong>, and that address isn't on this server's list.",
-                        escape(account)
-                    ),
-                    None => "That email address isn't on this server's list.".to_string(),
-                };
-                (
-                    format!("Not allowed on {}", self.server),
-                    Pages::card(
-                        Tone::Problem,
-                        &format!("{server} didn't let you in"),
-                        &reason,
-                        Some("Ask the server's admin to add it, or start again in Oleafly with an address they added."),
-                    ),
-                )
-            }
-            "not_admitted" => {
-                let reason = match account {
-                    Some(account) => format!(
-                        "You signed in to {provider} as <strong>{}</strong>, and that account isn't on this server's list.",
-                        escape(account)
-                    ),
-                    None => format!("Your {provider} account isn't on this server's list."),
-                };
-                (
-                    format!("Not allowed on {}", self.server),
-                    Pages::card(
-                        Tone::Problem,
-                        &format!("{server} didn't let you in"),
-                        &reason,
-                        Some(&format!(
-                            "Ask the server's admin to add you. To use a different account, sign out of {provider} in this browser, then try again in Oleafly."
-                        )),
-                    ),
-                )
-            }
+        let (title, tone, heading, reason, next) = match code {
+            "not_admitted" => return self.not_admitted(account),
             "sign_in_cancelled" => (
-                "Sign-in cancelled".to_string(),
-                Pages::card(
-                    Tone::Notice,
-                    "Sign-in cancelled",
-                    &format!("You didn't let {server} use your {provider} account."),
-                    Some("Go back to Oleafly if you want to try again."),
-                ),
+                Text::CancelledTitle,
+                Tone::Notice,
+                Text::CancelledTitle,
+                Text::CancelledBody,
+                Text::CancelledNext,
             ),
             "setup_code_invalid" => (
-                "The setup code didn't work".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    "The setup code didn't work",
-                    "It's wrong, or someone already used it.",
-                    Some("Copy the newest Setup code line from the server's log, then try again in Oleafly."),
-                ),
+                Text::SetupCodeTitle,
+                Tone::Problem,
+                Text::SetupCodeTitle,
+                Text::SetupCodeBody,
+                Text::SetupCodeNext,
             ),
             "provider_failed" => (
-                "Sign-in didn't finish".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    &format!("{provider} didn't finish signing you in"),
-                    &format!("The sign-in stopped before {server} heard back from {provider}."),
-                    Some("Go back to Oleafly and try again. If it keeps happening, tell the server's admin."),
-                ),
+                Text::UnfinishedTitle,
+                Tone::Problem,
+                Text::ProviderFailedHeading,
+                Text::ProviderFailedBody,
+                Text::ProviderFailedNext,
             ),
             "invalid_code" | "expired_nonce" => (
-                "This sign-in expired".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    "This sign-in expired",
-                    "It took too long, or it was already used.",
-                    Some("Go back to Oleafly and start signing in again."),
-                ),
+                Text::ExpiredTitle,
+                Tone::Problem,
+                Text::ExpiredTitle,
+                Text::ExpiredBody,
+                Text::StartAgain,
             ),
             "device_in_use" => (
-                "Linked to another account".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    "This computer is linked to another account",
-                    &format!("{server} has this computer on another person's account."),
-                    Some("Go back to Oleafly and sign in again. Your next try sets this computer up for you."),
-                ),
+                Text::DeviceInUseTitle,
+                Tone::Problem,
+                Text::DeviceInUseHeading,
+                Text::DeviceInUseBody,
+                Text::DeviceInUseNext,
             ),
             "unknown_provider" => (
-                "This sign-in option is off".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    "This sign-in option is off",
-                    &format!("{server} doesn't offer {provider} sign-in any more."),
-                    Some("Go back to Oleafly and choose another way to sign in."),
-                ),
+                Text::OptionOffTitle,
+                Tone::Problem,
+                Text::OptionOffTitle,
+                Text::OptionOffBody,
+                Text::OptionOffNext,
             ),
             _ => (
-                "Sign-in didn't finish".to_string(),
-                Pages::card(
-                    Tone::Problem,
-                    "Sign-in didn't finish",
-                    &format!("{server} stopped the sign-in before it was done."),
-                    Some("Go back to Oleafly and try again."),
-                ),
+                Text::UnfinishedTitle,
+                Tone::Problem,
+                Text::UnfinishedTitle,
+                Text::UnfinishedBody,
+                Text::UnfinishedNext,
             ),
         };
-        self.page(&title, card)
+        self.page(title, tone, heading, self.html(reason), Some(next))
     }
 
     fn not_finished(&self, error: &CollabError) -> String {
@@ -202,13 +237,11 @@ impl Pages {
 
     fn out_of_date(&self) -> String {
         self.page(
-            "This sign-in is out of date",
-            Pages::card(
-                Tone::Problem,
-                "This sign-in is out of date",
-                "This page belongs to an earlier sign-in.",
-                Some("Go back to Oleafly and start signing in again."),
-            ),
+            Text::OutOfDateTitle,
+            Tone::Problem,
+            Text::OutOfDateTitle,
+            self.html(Text::OutOfDateBody),
+            Some(Text::StartAgain),
         )
     }
 
@@ -218,15 +251,18 @@ impl Pages {
 
     fn elsewhere(&self) -> String {
         self.page(
-            "Oleafly sign-in",
-            Pages::card(
-                Tone::Notice,
-                "Nothing to show here",
-                "Oleafly uses this address only while you sign in to a collaboration server.",
-                None,
-            ),
+            Text::ElsewhereTitle,
+            Tone::Notice,
+            Text::ElsewhereHeading,
+            self.html(Text::ElsewhereBody),
+            None,
         )
     }
+}
+
+struct Request {
+    target: Url,
+    language: Language,
 }
 
 impl LoopbackListener {
@@ -246,8 +282,8 @@ impl LoopbackListener {
             listener,
             port,
             pages: Pages {
-                server: "the server".to_string(),
-                provider: "your sign-in provider".to_string(),
+                server: None,
+                provider: None,
                 by_email: false,
             },
         })
@@ -260,8 +296,8 @@ impl LoopbackListener {
         kind: ProviderKind,
     ) -> LoopbackListener {
         self.pages = Pages {
-            server: server.to_string(),
-            provider: provider.to_string(),
+            server: Some(server.to_string()),
+            provider: Some(provider.to_string()),
             by_email: kind == ProviderKind::EmailLink,
         };
         self
@@ -287,30 +323,35 @@ impl LoopbackListener {
         };
         Ok(Callback {
             outcome,
-            reply: held.map(|stream| HeldReply { stream, pages }),
+            reply: held.map(|(stream, language)| HeldReply {
+                stream,
+                pages,
+                language,
+            }),
         })
     }
 
     async fn serve(
         &self,
         expected_state: &str,
-    ) -> Result<(CallbackOutcome, Option<TcpStream>), CollabError> {
+    ) -> Result<(CallbackOutcome, Option<(TcpStream, Language)>), CollabError> {
         loop {
             let (mut stream, _) = self
                 .listener
                 .accept()
                 .await
                 .map_err(|error| CollabError::Io(error.to_string()))?;
-            let Some(target) = read_target(&mut stream).await else {
+            let Some(Request { target, language }) = read_request(&mut stream).await else {
                 continue;
             };
+            let speaking = self.pages.speaking(language);
             if target.path() != "/callback" {
-                respond(&mut stream, "404 Not Found", &self.pages.elsewhere()).await;
+                respond(&mut stream, "404 Not Found", &speaking.elsewhere()).await;
                 continue;
             }
             let query: HashMap<String, String> = target.query_pairs().into_owned().collect();
             if query.get("state").map(String::as_str) != Some(expected_state) {
-                respond(&mut stream, "400 Bad Request", &self.pages.out_of_date()).await;
+                respond(&mut stream, "400 Bad Request", &speaking.out_of_date()).await;
                 return Err(CollabError::Unauthorized);
             }
             if let Some(code) = query.get("error") {
@@ -318,7 +359,7 @@ impl LoopbackListener {
                     .get("account")
                     .map(String::as_str)
                     .filter(|account| !account.is_empty());
-                respond(&mut stream, "200 OK", &self.pages.refused(code, account)).await;
+                respond(&mut stream, "200 OK", &speaking.refused(code, account)).await;
                 return Ok((
                     CallbackOutcome::Error {
                         code: code.clone(),
@@ -328,9 +369,12 @@ impl LoopbackListener {
                 ));
             }
             return match query.get("code").filter(|code| !code.is_empty()) {
-                Some(code) => Ok((CallbackOutcome::Code(code.clone()), Some(stream))),
+                Some(code) => Ok((
+                    CallbackOutcome::Code(code.clone()),
+                    Some((stream, language)),
+                )),
                 None => {
-                    respond(&mut stream, "400 Bad Request", &self.pages.unfinished()).await;
+                    respond(&mut stream, "400 Bad Request", &speaking.unfinished()).await;
                     Err(CollabError::Unauthorized)
                 }
             };
@@ -338,7 +382,17 @@ impl LoopbackListener {
     }
 }
 
-async fn read_target(stream: &mut TcpStream) -> Option<Url> {
+fn accept_language<'a>(headers: impl Iterator<Item = &'a str>) -> String {
+    headers
+        .take_while(|line| !line.is_empty())
+        .filter_map(|line| line.split_once(':'))
+        .filter(|(name, _)| name.trim().eq_ignore_ascii_case("accept-language"))
+        .map(|(_, value)| value.trim())
+        .collect::<Vec<&str>>()
+        .join(",")
+}
+
+async fn read_request(stream: &mut TcpStream) -> Option<Request> {
     let mut head = Vec::with_capacity(1024);
     let mut chunk = [0u8; 1024];
     let reading = async {
@@ -358,13 +412,17 @@ async fn read_target(stream: &mut TcpStream) -> Option<Url> {
     };
     tokio::time::timeout(READ_TIMEOUT, reading).await.ok()??;
     let text = String::from_utf8_lossy(&head);
-    let mut parts = text.lines().next()?.split_whitespace();
+    let mut lines = text.lines();
+    let mut parts = lines.next()?.split_whitespace();
     let method = parts.next()?;
     let target = parts.next()?;
     if method != "GET" || !target.starts_with('/') {
         return None;
     }
-    Url::parse(&format!("http://127.0.0.1{target}")).ok()
+    Some(Request {
+        target: Url::parse(&format!("http://127.0.0.1{target}")).ok()?,
+        language: Language::of_request(&accept_language(lines)),
+    })
 }
 
 async fn respond(stream: &mut TcpStream, status: &str, page: &str) {
@@ -442,7 +500,7 @@ mod tests {
         if let Ok(callback) = listener.wait("s1", Duration::from_secs(5)).await {
             callback.answer(result).await;
         }
-        browser.await.expect("browser").text().await.expect("body")
+        readable(browser.await.expect("browser").text().await.expect("body"))
     }
 
     async fn page_after(listener: LoopbackListener, query: &str) -> String {
@@ -465,7 +523,7 @@ mod tests {
             "the browser got a page before the token exchange finished"
         );
         callback.answer(Ok(())).await;
-        let page = browser.await.expect("browser").text().await.expect("body");
+        let page = readable(browser.await.expect("browser").text().await.expect("body"));
         assert!(page.contains("<h1>You're signed in</h1>"), "{page}");
     }
 
@@ -509,6 +567,103 @@ mod tests {
             "Email",
             ProviderKind::EmailLink,
         )
+    }
+
+    async fn get_in(url: String, accept_language: String) -> reqwest::Response {
+        reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("client")
+            .get(url)
+            .header(reqwest::header::ACCEPT_LANGUAGE, accept_language)
+            .send()
+            .await
+            .expect("response")
+    }
+
+    async fn page_in(listener: LoopbackListener, query: &str, accept_language: &str) -> String {
+        let url = format!("{}?{query}", listener.redirect_uri());
+        let browser = tokio::spawn(get_in(url, accept_language.to_owned()));
+        if let Ok(callback) = listener.wait("s1", Duration::from_secs(5)).await {
+            callback.answer(Ok(())).await;
+        }
+        readable(browser.await.expect("browser").text().await.expect("body"))
+    }
+
+    fn readable(page: String) -> String {
+        page.replace("&#39;", "'")
+    }
+
+    fn heading(page: &str) -> &str {
+        page.split_once("<h1>")
+            .and_then(|(_, rest)| rest.split_once("</h1>"))
+            .map_or("", |(heading, _)| heading)
+    }
+
+    #[tokio::test]
+    async fn a_browser_in_another_language_reads_the_page_in_that_language() {
+        let page = page_in(lab().await, "code=abc&state=s1", "de-DE,de;q=0.9,en;q=0.5").await;
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"de\">"),
+            "{page}"
+        );
+        assert!(page.contains("class=\"status success\""), "{page}");
+        assert!(!heading(&page).is_empty());
+        assert_ne!(heading(&page), "You're signed in");
+        assert_eq!(
+            heading(&page),
+            readable(escape(Language::of_request("de").text(Text::SignedInTitle)))
+        );
+        assert!(page.contains("Oleafly Lab"), "{page}");
+        let page = page_in(
+            lab().await,
+            "error=not_admitted&account=%40carol&state=s1",
+            "zh-TW",
+        )
+        .await;
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"zh-Hant\">"),
+            "{page}"
+        );
+        assert!(page.contains("<strong>@carol</strong>"), "{page}");
+        assert!(!page.contains("didn't let you in"), "{page}");
+        let page = page_in(lab().await, "error=revoked&state=s1", "pt, en;q=0.1").await;
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"pt-BR\">"),
+            "{page}"
+        );
+        assert!(!page.contains("Sign-in didn't finish"), "{page}");
+        let listener = lab().await;
+        let elsewhere = format!("http://127.0.0.1:{}/favicon.ico", port_of(&listener));
+        let callback = format!("{}?code=abc&state=s1", listener.redirect_uri());
+        let requests = tokio::spawn(async move {
+            let page = get_in(elsewhere, "ja-JP".to_owned()).await;
+            let page = readable(page.text().await.expect("body"));
+            get(callback).await;
+            page
+        });
+        if let Ok(callback) = listener.wait("s1", Duration::from_secs(5)).await {
+            callback.answer(Ok(())).await;
+        }
+        let page = requests.await.expect("requests");
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"ja\">"),
+            "{page}"
+        );
+        assert_ne!(heading(&page), "Nothing to show here");
+    }
+
+    #[tokio::test]
+    async fn a_browser_in_a_language_oleafly_does_not_speak_reads_english() {
+        for accept_language in ["tlh-KL, xx;q=0.5", "", "*", "de;q=0"] {
+            let page = page_in(lab().await, "code=abc&state=s1", accept_language).await;
+            assert!(
+                page.starts_with("<!doctype html><html lang=\"en\">"),
+                "{accept_language:?}: {page}"
+            );
+            assert_eq!(heading(&page), "You're signed in", "{accept_language:?}");
+            assert!(page.contains("Oleafly is now connected to Oleafly Lab."));
+        }
     }
 
     #[tokio::test]

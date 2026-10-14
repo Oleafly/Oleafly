@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, Mail, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -20,7 +20,7 @@ import { InlineAlert } from "../feedback";
 import { GuestBadge } from "../GuestBadge";
 import type { GrantableRole } from "./ProjectRolePicker";
 
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const WHITESPACE = /\s/;
 
 type ListedStatus = "awaiting_approval" | "invited" | "declined";
 
@@ -35,7 +35,11 @@ function listedStatus(status: CollabGuestInvitation["status"]): ListedStatus | n
 }
 
 export function looksLikeEmail(text: string): boolean {
-  return EMAIL_SHAPE.test(text.trim());
+  const address = text.trim();
+  const at = address.indexOf("@");
+  if (at < 1 || address.includes("@", at + 1) || WHITESPACE.test(address)) return false;
+  const dot = address.indexOf(".", at + 2);
+  return dot !== -1 && dot < address.length - 1;
 }
 
 export interface ProjectGuests {
@@ -48,11 +52,12 @@ export function useProjectGuests(projectId: string, enabled: boolean): ProjectGu
   const [info, setInfo] = useState<CollabProjectGuestInvitations | null>(null);
   const [request, setRequest] = useState(0);
 
+  const load = useMemo(() => ({ projectId, enabled, request }), [projectId, enabled, request]);
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!load.enabled) return;
     let active = true;
-    void request;
-    collabGuestInvitations(projectId).then(
+    collabGuestInvitations(load.projectId).then(
       (next) => {
         if (active) setInfo(next);
       },
@@ -61,7 +66,7 @@ export function useProjectGuests(projectId: string, enabled: boolean): ProjectGu
     return () => {
       active = false;
     };
-  }, [projectId, enabled, request]);
+  }, [load]);
 
   const reload = useCallback(() => setRequest((count) => count + 1), []);
   const remove = useCallback(
@@ -108,8 +113,8 @@ export function GuestInviteOffer({
     setError(null);
     try {
       onInvited({ email, result: await collabGuestInvite(projectId, email, role) });
-    } catch (failure) {
-      setError(inviteError(failure, t));
+    } catch (error_) {
+      setError(inviteError(error_, t));
     } finally {
       setBusy(false);
     }
@@ -174,7 +179,7 @@ export function InviteOutcomeNote({ outcome, server }: Readonly<{ outcome: Invit
   const linkId = useId();
   const showLink = !outcome.result.emailed && outcome.result.invitation.status !== "accepted";
   return (
-    <div role="status" className="space-y-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+    <output className="block space-y-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
       <p>{outcomeText(outcome, server, t)}</p>
       {showLink ? (
         <div className="flex items-center gap-2">
@@ -189,7 +194,7 @@ export function InviteOutcomeNote({ outcome, server }: Readonly<{ outcome: Invit
           <CopyLinkButton link={outcome.result.add_link} />
         </div>
       ) : null}
-    </div>
+    </output>
   );
 }
 
@@ -217,8 +222,8 @@ export function GuestInvitationList({
     try {
       await collabGuestInvitationRevoke(projectId, entry.id);
       onWithdrawn(entry.id);
-    } catch (failure) {
-      setRowError({ id: entry.id, message: collabErrorMessage(collabErrorCode(failure)) });
+    } catch (error_) {
+      setRowError({ id: entry.id, message: collabErrorMessage(collabErrorCode(error_)) });
     } finally {
       setBusyId(null);
     }

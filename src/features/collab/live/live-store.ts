@@ -52,7 +52,7 @@ const placesFor = new WeakMap<PeerPlaces, PeerPlaces>();
 let lastPlaces: PeerPlaces = {};
 
 function samePlace(a: PeerPlace | undefined, b: PeerPlace): boolean {
-  return a !== undefined && a.accountId === b.accountId && a.person === b.person && a.path === b.path && a.hue === b.hue;
+  return a?.accountId === b.accountId && a.person === b.person && a.path === b.path && a.hue === b.hue;
 }
 
 function samePlaces(a: PeerPlaces, b: PeerPlaces): boolean {

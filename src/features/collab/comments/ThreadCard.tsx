@@ -42,7 +42,7 @@ function useFailure() {
   const [error, setError] = useState<string | null>(null);
   const run = (action: () => Promise<void>) => {
     setError(null);
-    action().catch((failure: unknown) => setError(commentFailure(failure)));
+    action().catch((error_: unknown) => setError(commentFailure(error_)));
   };
   return [error, run] as const;
 }
@@ -102,6 +102,11 @@ function MessageRow({
     : t(($) => $.collab.comments.unverifiedAuthor);
   const own = message.verified && message.author === context.self;
   const actions = t(($) => $.collab.comments.messageActions);
+  const posted = message.deleted ? (
+    <p className="text-xs italic text-muted-foreground">{t(($) => $.collab.comments.deleted)}</p>
+  ) : (
+    <MessageBody message={message} members={context.members} />
+  );
   return (
     <li className="flex gap-2">
       <Avatar
@@ -165,10 +170,8 @@ function MessageRow({
             }}
             onCancel={() => setEditing(false)}
           />
-        ) : message.deleted ? (
-          <p className="text-xs italic text-muted-foreground">{t(($) => $.collab.comments.deleted)}</p>
         ) : (
-          <MessageBody message={message} members={context.members} />
+          posted
         )}
         {error ? <InlineAlert>{error}</InlineAlert> : null}
       </div>

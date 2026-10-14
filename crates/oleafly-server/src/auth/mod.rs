@@ -127,7 +127,7 @@ impl ProviderRegistry {
         self.providers
             .iter()
             .find(|provider| provider.id() == id)
-            .map(|provider| provider.as_ref())
+            .map(AsRef::as_ref)
     }
 }
 

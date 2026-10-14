@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv6Addr};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use axum::extract::{Request, State};
 use axum::middleware::Next;
@@ -58,10 +58,7 @@ impl RateLimiter {
     }
 
     pub fn allow(&self, key: &str, now: i64) -> bool {
-        let mut buckets = self
-            .buckets
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut buckets = self.buckets.lock().unwrap_or_else(PoisonError::into_inner);
         if !buckets.contains_key(key) && buckets.len() >= self.max_tracked {
             buckets.retain(|_, bucket| self.refilled(*bucket, now) < self.capacity);
             if buckets.len() >= self.max_tracked {
@@ -85,7 +82,7 @@ impl RateLimiter {
     pub fn tracked(&self) -> usize {
         self.buckets
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(PoisonError::into_inner)
             .len()
     }
 
@@ -105,10 +102,7 @@ impl RateLimiter {
     }
 
     pub fn refund(&self, key: &str, now: i64) {
-        let mut buckets = self
-            .buckets
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut buckets = self.buckets.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(bucket) = buckets.get_mut(key) {
             let units = self.refilled(*bucket, now);
             *bucket = Bucket {

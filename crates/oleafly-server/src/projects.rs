@@ -1288,14 +1288,10 @@ pub fn delete_project(
 ) -> Result<Deleted, ServerError> {
     let transaction = conn.transaction()?;
     let snapshots = snapshots(&transaction, project)?;
-    let hashes = {
-        let mut statement =
-            transaction.prepare("SELECT hash FROM project_blobs WHERE project_id = ?1")?;
-        let rows = statement
-            .query_map([project.to_string()], |row| row.get::<_, String>(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-        rows
-    };
+    let hashes = transaction
+        .prepare("SELECT hash FROM project_blobs WHERE project_id = ?1")?
+        .query_map([project.to_string()], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
     transaction.execute("DELETE FROM projects WHERE id = ?1", [project.to_string()])?;
     let mut orphan_blobs = Vec::new();
     for hash in hashes {

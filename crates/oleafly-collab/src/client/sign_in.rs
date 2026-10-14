@@ -446,7 +446,7 @@ mod tests {
         .await
         .expect("sign in");
         let page = last_page(&pages).await;
-        assert!(page.contains("<h1>You're signed in</h1>"), "{page}");
+        assert!(page.contains("<h1>You&#39;re signed in</h1>"), "{page}");
     }
 
     #[test]

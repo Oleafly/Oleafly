@@ -23,10 +23,10 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use super::super::{
-    initial_bases, lock, pump, writer_loop, Active, LiveHost, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    guard, initial_bases, lock, pump, writer_loop, Active, LiveHost, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
 };
-use super::*;
+use super::{attach, UploadFile, UploadState, UploadsPayload};
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
 

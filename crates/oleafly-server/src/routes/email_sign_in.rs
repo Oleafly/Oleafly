@@ -13,6 +13,7 @@ use crate::auth::email_link::{self, Link};
 use crate::auth::pending::{self, PendingSignIn};
 use crate::auth::throttle::{self, Throttle};
 use crate::error::ServerError;
+use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::{deliverable, messages, EmailKind, OutgoingEmail};
 use crate::members;
 use crate::rate_limit::client_key;
@@ -25,18 +26,14 @@ use crate::routes::ClientIp;
 use crate::security_log::{self, NewSecurityEvent};
 use crate::state::AppState;
 
-const INVALID_ADDRESS: &str = "Enter a valid email address, such as ada@uni.edu.";
-const TYPE_THE_CODE: &str = "Type the code Oleafly shows on the computer you're signing in on.";
-const ONLY_IF_YOU_STARTED: &str = "Only continue if you started this sign-in yourself. If someone gave you a code to type, stop. They're trying to get into your account.";
-
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/auth/email-link", post(request_link))
         .route("/auth/email-link/verify", get(show_link).post(use_link))
 }
 
-fn title(state: &AppState) -> String {
-    format!("Sign in to {}", state.config.server_name)
+fn title(locale: Locale, state: &AppState) -> String {
+    locale.fill(Key::SignInTitle, &[("server", &state.config.server_name)])
 }
 
 fn path(state: &AppState, route: &str) -> String {
@@ -44,19 +41,23 @@ fn path(state: &AppState, route: &str) -> String {
 }
 
 fn address_form(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     csrf: &str,
     email: &str,
-    problem: Option<&str>,
+    problem: Option<Key>,
 ) -> String {
-    let mut body = sign_in_pages::heading(&title(state));
-    body.push_str(&sign_in_pages::paragraph(&format!(
-        "Enter your email address. We'll send you a link that signs you in to Oleafly on {}.",
-        device_label(&pending.device_name, &pending.platform)
+    let mut body = sign_in_pages::heading(&title(locale, state));
+    body.push_str(&sign_in_pages::paragraph(&locale.fill(
+        Key::EmailEnterAddress,
+        &[(
+            "device",
+            &device_label(&pending.device_name, &pending.platform),
+        )],
     )));
     if let Some(problem) = problem {
-        body.push_str(&sign_in_pages::error(problem));
+        body.push_str(&sign_in_pages::error(locale.text(problem)));
     }
     body.push_str(&sign_in_pages::form(
         &path(state, "/auth/email-link"),
@@ -71,81 +72,78 @@ fn address_form(
             },
         ],
         Some(Input {
-            label: "Email address",
+            label: locale.text(Key::EmailAddressLabel),
             name: "email",
             kind: "email",
             value: email,
             autocomplete: "email",
         }),
-        "Email me a link",
+        locale.text(Key::EmailSend),
         true,
     ));
     body
 }
 
 pub(crate) async fn ask_for_address(
+    locale: Locale,
     state: &AppState,
     headers: &HeaderMap,
     pending: PendingSignIn,
     now: i64,
 ) -> Result<Response, ServerError> {
     let csrf = csrf::token(headers);
-    let body = address_form(state, &pending, &csrf, "", None);
+    let body = address_form(locale, state, &pending, &csrf, "", None);
     state
         .db
         .call(move |conn| pending::insert(conn, &pending, now))
         .await?;
     Ok(sign_in_pages::render(
+        locale,
         StatusCode::OK,
-        &title(state),
+        &title(locale, state),
         &body,
         Some(csrf::cookie(&state.config, &csrf)),
     ))
 }
 
-pub(crate) fn page_expired() -> Response {
-    sign_in_pages::message(
+pub(crate) fn page_expired(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
         StatusCode::FORBIDDEN,
         sign_in_pages::Tone::Problem,
-        "This page has expired",
-        "It was open for more than an hour, or this browser blocked its cookie. Go back to Oleafly and start signing in again.",
+        Key::PageExpiredTitle,
+        Key::PageExpiredBody,
     )
 }
 
-fn sign_in_expired() -> Response {
-    sign_in_pages::message(
+fn sign_in_expired(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
         StatusCode::BAD_REQUEST,
         sign_in_pages::Tone::Problem,
-        "This sign-in has expired",
-        "Go back to Oleafly and start signing in again.",
+        Key::SignInExpiredTitle,
+        Key::SignInExpiredBody,
     )
 }
 
-fn email_sign_in_off() -> Response {
-    sign_in_pages::message(
+fn email_sign_in_off(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
         StatusCode::BAD_REQUEST,
         sign_in_pages::Tone::Notice,
-        "Email sign-in is off",
-        "This server doesn't sign people in by email any more. Go back to Oleafly and choose another way to sign in.",
+        Key::EmailOffTitle,
+        Key::EmailOffBody,
     )
 }
 
-fn link_problem(link: &Link) -> Response {
+fn link_problem(locale: Locale, link: &Link) -> Response {
     let (title, text) = match link {
-        Link::Used => (
-            "This link was already used",
-            "Each sign-in link works once. Start signing in again in Oleafly to get a new one.",
-        ),
-        Link::Expired => (
-            "This link has expired",
-            "Sign-in links work for 15 minutes. Start signing in again in Oleafly to get a new one.",
-        ),
-        Link::Valid { .. } | Link::Invalid => (
-            "This link doesn't work",
-            "It may be incomplete, or a newer link replaced it. Start signing in again in Oleafly to get a new one.",
-        ),
+        Link::Used => (Key::LinkUsedTitle, Key::LinkUsedBody),
+        Link::Expired => (Key::LinkExpiredTitle, Key::LinkExpiredBody),
+        Link::Valid { .. } | Link::Invalid => (Key::LinkInvalidTitle, Key::LinkInvalidBody),
     };
-    sign_in_pages::message(
+    sign_in_pages::notice(
+        locale,
         StatusCode::BAD_REQUEST,
         sign_in_pages::Tone::Problem,
         title,
@@ -218,11 +216,12 @@ fn lockout(
 async fn request_link(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Form(form): Form<LinkRequest>,
 ) -> Result<Response, ServerError> {
     if !csrf::verify(&headers, &state.config, &form.csrf) {
-        return Ok(page_expired());
+        return Ok(page_expired(locale));
     }
     let now = state.clock.now_ms();
     let pending_id = form.pending.clone();
@@ -232,22 +231,24 @@ async fn request_link(
         .await?
         .filter(|pending| pending.provider_id == email_link::PROVIDER_ID)
     else {
-        return Ok(sign_in_expired());
+        return Ok(sign_in_expired(locale));
     };
     if !email_link_available(&state).await? {
-        return Ok(email_sign_in_off());
+        return Ok(email_sign_in_off(locale));
     }
     let Some(address) = valid_address(&form.email) else {
         let body = address_form(
+            locale,
             &state,
             &pending,
             &form.csrf,
             form.email.trim(),
-            Some(INVALID_ADDRESS),
+            Some(Key::EmailInvalidAddress),
         );
         return Ok(sign_in_pages::render(
+            locale,
             StatusCode::BAD_REQUEST,
-            &title(&state),
+            &title(locale, &state),
             &body,
             None,
         ));
@@ -284,11 +285,12 @@ async fn request_link(
         })
         .await?;
     let Some(token) = issued else {
-        return Ok(sign_in_pages::message(
+        return Ok(sign_in_pages::notice(
+            locale,
             StatusCode::TOO_MANY_REQUESTS,
             sign_in_pages::Tone::Notice,
-            "Too many sign-in emails",
-            "Wait 15 minutes, then try again.",
+            Key::TooManyEmailsTitle,
+            Key::TooManyEmailsBody,
         ));
     };
     let same_device = pending.device_authorization.is_none();
@@ -301,19 +303,21 @@ async fn request_link(
         .mailer
         .enqueue(link_email(address.clone(), content, now));
     let next = if same_device {
-        "Open it on this computer within 15 minutes. You can close this tab."
+        Key::EmailSentSameDevice
     } else {
-        "Open it within 15 minutes and type the code Oleafly shows. You can close this tab."
+        Key::EmailSentOtherDevice
     };
+    let sent = locale.text(Key::EmailSentTitle);
     let body = format!(
         "{}{}{}",
-        sign_in_pages::heading("Check your email"),
-        sign_in_pages::paragraph(&format!("We sent a sign-in link to {address}.")),
-        sign_in_pages::paragraph(next)
+        sign_in_pages::heading(sent),
+        sign_in_pages::paragraph(&locale.fill(Key::EmailSentBody, &[("address", &address)])),
+        sign_in_pages::paragraph(locale.text(next))
     );
     Ok(sign_in_pages::render(
+        locale,
         StatusCode::OK,
-        "Check your email",
+        sent,
         &body,
         None,
     ))
@@ -326,6 +330,7 @@ struct TokenQuery {
 
 async fn show_link(
     State(state): State<AppState>,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Query(query): Query<TokenQuery>,
 ) -> Result<Response, ServerError> {
@@ -344,45 +349,50 @@ async fn show_link(
         })
         .await?;
     if !matches!(link, Link::Valid { .. }) {
-        return Ok(link_problem(&link));
+        return Ok(link_problem(locale, &link));
     }
     let Some(pending) = pending else {
-        return Ok(sign_in_expired());
+        return Ok(sign_in_expired(locale));
     };
     let csrf = csrf::token(&headers);
     Ok(sign_in_pages::render(
+        locale,
         StatusCode::OK,
-        &title(&state),
-        &confirm_body(&state, &pending, &token, &csrf, None),
+        &title(locale, &state),
+        &confirm_body(locale, &state, &pending, &token, &csrf, None),
         Some(csrf::cookie(&state.config, &csrf)),
     ))
 }
 
 fn confirm_body(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     token: &str,
     csrf: &str,
-    problem: Option<&str>,
+    problem: Option<Key>,
 ) -> String {
-    let mut body = sign_in_pages::heading(&title(state));
+    let mut body = sign_in_pages::heading(&title(locale, state));
     let input = if pending.device_authorization.is_some() {
-        body.push_str(&sign_in_pages::paragraph(TYPE_THE_CODE));
-        body.push_str(&sign_in_pages::paragraph(ONLY_IF_YOU_STARTED));
+        body.push_str(&sign_in_pages::paragraph(locale.text(Key::EmailTypeCode)));
+        body.push_str(&sign_in_pages::paragraph(locale.text(Key::EmailOnlyIfYou)));
         if let Some(problem) = problem {
-            body.push_str(&sign_in_pages::error(problem));
+            body.push_str(&sign_in_pages::error(locale.text(problem)));
         }
         Some(Input {
-            label: "Code",
+            label: locale.text(Key::CodeLabel),
             name: "user_code",
             kind: "text",
             value: "",
             autocomplete: "off",
         })
     } else {
-        body.push_str(&sign_in_pages::paragraph(&format!(
-            "Finish signing in to Oleafly on {}.",
-            device_label(&pending.device_name, &pending.platform)
+        body.push_str(&sign_in_pages::paragraph(&locale.fill(
+            Key::EmailFinish,
+            &[(
+                "device",
+                &device_label(&pending.device_name, &pending.platform),
+            )],
         )));
         None
     };
@@ -399,7 +409,7 @@ fn confirm_body(
             },
         ],
         input,
-        "Sign in",
+        locale.text(Key::SignInButton),
         true,
     ));
     body
@@ -448,14 +458,15 @@ fn typed_code_problem(
 async fn use_link(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Form(form): Form<UseLink>,
 ) -> Result<Response, ServerError> {
     if !csrf::verify(&headers, &state.config, &form.csrf) {
-        return Ok(page_expired());
+        return Ok(page_expired(locale));
     }
     if !email_link_available(&state).await? {
-        return Ok(email_sign_in_off());
+        return Ok(email_sign_in_off(locale));
     }
     let now = state.clock.now_ms();
     let token = form.token.clone();
@@ -498,23 +509,27 @@ async fn use_link(
         })
         .await?;
     match outcome {
-        Ok((pending, finished, email)) => conclude_naming(&state, &pending, finished, Some(&email)),
-        Err(Used::Link(link)) => Ok(link_problem(&link)),
-        Err(Used::Gone) => Ok(sign_in_expired()),
-        Err(Used::CodeGone(pending)) => conclude(&state, &pending, Ok(Finish::DeviceGone)),
+        Ok((pending, finished, email)) => {
+            conclude_naming(locale, &state, &pending, finished, Some(&email))
+        }
+        Err(Used::Link(link)) => Ok(link_problem(locale, &link)),
+        Err(Used::Gone) => Ok(sign_in_expired(locale)),
+        Err(Used::CodeGone(pending)) => conclude(locale, &state, &pending, Ok(Finish::DeviceGone)),
         Err(Used::WrongCode(pending)) => Ok(sign_in_pages::render(
+            locale,
             StatusCode::BAD_REQUEST,
-            &title(&state),
+            &title(locale, &state),
             &confirm_body(
+                locale,
                 &state,
                 &pending,
                 &form.token,
                 &form.csrf,
-                Some(code_sign_in::WRONG_CODE),
+                Some(Key::CodeWrong),
             ),
             None,
         )),
-        Err(Used::LockedOut) => Ok(code_sign_in::locked_out()),
+        Err(Used::LockedOut) => Ok(code_sign_in::locked_out(locale)),
     }
 }
 

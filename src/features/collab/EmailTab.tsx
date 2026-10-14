@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, Mail, MailX, Send } from "lucide-react";
 import { SettingsNote } from "@/components/settings/SettingsNote";
@@ -28,8 +28,14 @@ type TestState =
   | { state: "refused"; detail: string | null }
   | { state: "failed"; message: string };
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 export function addServerLink(serverUrl: string): string {
-  const address = serverUrl.trim().replace(/\/+$/, "");
+  const address = withoutTrailingSlashes(serverUrl.trim());
   return `oleafly://server/add?url=${encodeURIComponent(address)}`;
 }
 
@@ -141,10 +147,10 @@ function TestEmail({
         <p className="text-xs text-muted-foreground">{t(($) => $.collab.admin.email.test.sending)}</p>
       ) : null}
       {test.state === "sent" ? (
-        <p role="status" className="flex items-start gap-1.5 text-xs text-foreground">
+        <output className="flex items-start gap-1.5 text-xs text-foreground">
           <Check aria-hidden className="mt-px size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           {t(($) => $.collab.admin.email.test.sent, { address: test.to.join(", ") })}
-        </p>
+        </output>
       ) : null}
       {test.state === "refused" ? (
         <InlineAlert>
@@ -168,11 +174,12 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminEmailStatus(serverId).then(
+    collabAdminEmailStatus(load.serverId).then(
       (next) => {
         if (active) setStatus(next);
       },
@@ -183,7 +190,7 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const changeNotifications = async (value: boolean) => {
     if (!status || saving) return;

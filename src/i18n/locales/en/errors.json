@@ -216,5 +216,8 @@
     "git_token_invalid": "That doesn't look like an Overleaf Git token. Copy the whole token and try again.",
     "git_token_rejected": "Overleaf didn't accept the Git token. It may have expired. Create a new one in your Overleaf account settings.",
     "git_unavailable": "Overleaf's Git integration isn't available for this project. It needs a paid or university plan for the project's owner."
+  },
+  "collab": {
+    "turned_off": "Live collaboration is turned off. Turn it on in Settings, under Experimentation."
   }
 }

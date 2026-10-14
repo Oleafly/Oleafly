@@ -360,7 +360,7 @@ describe("collab live store", () => {
     ]);
     emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer" });
     await settle();
-    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    expect(mocks.collabMembersList.mock.calls).toHaveLength(before + 1);
     expect(useCollabLiveStore.getState().members[0]).toMatchObject({ role: "viewer" });
   });
 
@@ -641,7 +641,7 @@ describe("collab live store", () => {
     emit("presence", { ...bob, cursor: 2 });
     emit("presence", { ...bob, cursor: 3 });
     await settle();
-    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    expect(mocks.collabMembersList.mock.calls).toHaveLength(before + 1);
     expect(useCollabLiveStore.getState().peers.d.person?.display_name).toBe("Bob Jones");
     expect(useCollabLiveStore.getState().members.map((entry) => entry.person.display_name)).toEqual([
       "Alice Chen",
@@ -663,7 +663,7 @@ describe("collab live store", () => {
       review: { before: "b", after: "a" },
     });
     await settle();
-    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 1);
+    expect(mocks.collabMembersList.mock.calls).toHaveLength(before + 1);
     mocks.collabMembersList.mockResolvedValueOnce([
       member(ALICE, "Alice Chen"),
       member(BOB, "Bob Jones"),
@@ -672,7 +672,7 @@ describe("collab live store", () => {
     emit<CollabLiveNewDevice>("newDevice", { projectId: PROJECT, accountId: carol, deviceId: "tablet" });
     emit<CollabLiveNewDevice>("newDevice", { projectId: PROJECT, accountId: BOB, deviceId: "phone" });
     await settle();
-    expect(mocks.collabMembersList.mock.calls.length).toBe(before + 2);
+    expect(mocks.collabMembersList.mock.calls).toHaveLength(before + 2);
     expect(useCollabLiveStore.getState().members).toHaveLength(3);
   });
 

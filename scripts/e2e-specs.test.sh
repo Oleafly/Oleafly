@@ -17,7 +17,8 @@ check() {
 }
 
 peer() {
-  if e2e_needs_collab_peer "$1"; then echo yes; else echo no; fi
+  local spec="$1"
+  if e2e_needs_collab_peer "$spec"; then echo yes; else echo no; fi
 }
 
 check "a peer spec needs the collaboration peer" yes "$(peer e2e/tests/109-live-collaboration-peer.spec.ts)"

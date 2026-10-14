@@ -1,14 +1,17 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex, PoisonError};
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout};
-use oleafly_collab::settings::{Setting, Settings};
+use oleafly_collab::settings::{
+    DictionaryLocale, Engine, LegacySettings, ProjectPath, Setting, SettingValue, Settings,
+    TexFlavor, TypstVersion,
+};
 use oleafly_collab::sync::SharedLive;
 use oleafly_collab::{load_binding, write_atomic, CollabError, CollabPaths};
-use oleafly_collab_protocol::ids::AccountId;
+use oleafly_collab_protocol::ids::{AccountId, FileId};
 use oleafly_collab_protocol::projects::ProjectRole;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +20,6 @@ use crate::typst_options::TypstOptionsUpdate;
 
 pub const LIVE_SETTINGS_EVENT: &str = "collab-live-settings";
 const BASE_FILE: &str = "compile-settings.json";
-const MAX_NAME_CHARS: usize = 64;
 const LATEXMK: &str = "latexmk";
 
 static TURN: LazyLock<Mutex<()>> = LazyLock::new(Mutex::default);
@@ -93,109 +95,54 @@ fn recall(file: &Path) -> Option<Base> {
     serde_json::from_slice(&std::fs::read(file).ok()?).ok()
 }
 
-fn json<T: Serialize>(value: &T) -> String {
-    serde_json::to_string(value).unwrap_or_default()
-}
-
-fn portable_path(path: &str) -> Option<String> {
-    let trimmed = path.trim().replace('\\', "/");
-    let relative = Path::new(&trimmed);
-    let inside = !trimmed.is_empty()
-        && !relative.has_root()
-        && !trimmed.contains(':')
-        && relative.components().all(|component| {
-            matches!(
-                component,
-                std::path::Component::Normal(_) | std::path::Component::CurDir
-            )
-        });
-    inside.then_some(trimmed)
-}
-
-fn plain_name(value: &str, extra: &[char]) -> bool {
-    !value.is_empty()
-        && value.chars().count() <= MAX_NAME_CHARS
-        && value
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || extra.contains(&character))
-}
-
-pub fn shared_of(meta: &ProjectMeta, main_id: Option<&str>) -> Settings {
+pub fn shared_of(meta: &ProjectMeta, main_id: Option<FileId>) -> Settings {
     let typst = meta.typst.clone().unwrap_or_default();
-    let fonts: Vec<String> = typst
+    let fonts = typst
         .font_paths
         .iter()
-        .filter_map(|path| portable_path(path))
+        .filter_map(|path| ProjectPath::parse(path))
         .collect();
-    let variants: BTreeMap<&String, &BTreeMap<String, String>> = typst
+    let variants = typst
         .variants
         .iter()
-        .map(|(name, variant)| (name, &variant.inputs))
+        .map(|(name, variant)| (name.clone(), variant.inputs.clone()))
         .collect();
-    let mut settings = Settings::new();
-    if let Some(id) = main_id {
-        settings.insert(Setting::MainDoc, id.to_owned());
-    }
-    settings.insert(Setting::Engine, meta.engine.clone());
-    settings.insert(
-        Setting::TexFlavor,
-        meta.tex_flavor.clone().unwrap_or_default(),
-    );
-    settings.insert(
-        Setting::DictionaryLocale,
-        meta.dictionary_locale.clone().unwrap_or_default(),
-    );
-    settings.insert(
-        Setting::TypstVersion,
-        meta.typst_version_pin().unwrap_or_default().to_owned(),
-    );
-    settings.insert(
-        Setting::TypstVendorPackages,
-        typst.vendor_packages.to_string(),
-    );
-    settings.insert(Setting::TypstSystemFonts, typst.system_fonts.to_string());
-    settings.insert(Setting::TypstReproducible, typst.reproducible.to_string());
-    settings.insert(Setting::TypstFontPaths, json(&fonts));
-    settings.insert(Setting::TypstInputs, json(&typst.inputs));
-    settings.insert(Setting::TypstVariants, json(&variants));
-    settings
-}
-
-fn flag(shared: &Settings, setting: Setting) -> Option<bool> {
-    match shared.get(&setting).map(String::as_str) {
-        Some("true") => Some(true),
-        Some("false") => Some(false),
-        _ => None,
-    }
-}
-
-fn parsed<T: serde::de::DeserializeOwned>(shared: &Settings, setting: Setting) -> Option<T> {
-    serde_json::from_str(shared.get(&setting)?).ok()
+    [
+        main_id.map(SettingValue::MainDoc),
+        Engine::parse(&meta.engine).map(SettingValue::Engine),
+        TexFlavor::of(meta.tex_flavor.as_deref()).map(SettingValue::TexFlavor),
+        DictionaryLocale::of(meta.dictionary_locale.as_deref()).map(SettingValue::DictionaryLocale),
+        TypstVersion::of(meta.typst_version_pin()).map(SettingValue::TypstVersion),
+        Some(SettingValue::TypstVendorPackages(typst.vendor_packages)),
+        Some(SettingValue::TypstSystemFonts(typst.system_fonts)),
+        Some(SettingValue::TypstReproducible(typst.reproducible)),
+        Some(SettingValue::TypstFontPaths(fonts)),
+        Some(SettingValue::TypstInputs(typst.inputs)),
+        Some(SettingValue::TypstVariants(variants)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn adopt_typst(meta: &mut ProjectMeta, shared: &Settings) {
     let mut spec = meta.typst.clone().unwrap_or_default();
-    if let Some(version) = shared.get(&Setting::TypstVersion) {
-        let version = version.trim();
-        if version.is_empty() {
-            spec.version = None;
-        } else if plain_name(version, &['.', '-', '+']) {
-            spec.version = Some(version.to_owned());
-        }
+    if let Some(version) = shared.typst_version() {
+        spec.version = version.pin().map(str::to_owned);
     }
-    if let Some(vendor) = flag(shared, Setting::TypstVendorPackages) {
+    if let Some(vendor) = shared.typst_vendor_packages() {
         spec.vendor_packages = vendor;
     }
-    let fonts = parsed::<Vec<String>>(shared, Setting::TypstFontPaths).map(|paths| {
+    let fonts = shared.typst_font_paths().map(|paths| {
         paths
             .iter()
-            .filter_map(|path| portable_path(path))
+            .map(|path| path.as_str().to_owned())
             .collect::<Vec<String>>()
     });
     let updates = [
         TypstOptionsUpdate {
-            system_fonts: flag(shared, Setting::TypstSystemFonts),
-            reproducible: flag(shared, Setting::TypstReproducible),
+            system_fonts: shared.typst_system_fonts(),
+            reproducible: shared.typst_reproducible(),
             ..TypstOptionsUpdate::default()
         },
         TypstOptionsUpdate {
@@ -203,11 +150,11 @@ fn adopt_typst(meta: &mut ProjectMeta, shared: &Settings) {
             ..TypstOptionsUpdate::default()
         },
         TypstOptionsUpdate {
-            inputs: parsed(shared, Setting::TypstInputs),
+            inputs: shared.typst_inputs().cloned(),
             ..TypstOptionsUpdate::default()
         },
         TypstOptionsUpdate {
-            variants: parsed(shared, Setting::TypstVariants),
+            variants: shared.typst_variants().cloned(),
             ..TypstOptionsUpdate::default()
         },
     ];
@@ -220,12 +167,22 @@ fn adopt_typst(meta: &mut ProjectMeta, shared: &Settings) {
     meta.typst = (!spec.is_empty()).then_some(spec);
 }
 
-fn locale(value: &str) -> Option<Option<String>> {
-    let value = value.trim();
-    if value.is_empty() {
-        return Some(None);
+fn adopted_flavor(
+    engine: &str,
+    shared: Option<&TexFlavor>,
+    before: &ProjectMeta,
+) -> Option<String> {
+    let kept = || {
+        crate::project::validate_tex_flavor(engine, before.tex_flavor.as_deref())
+            .ok()
+            .flatten()
+    };
+    match shared {
+        Some(flavor) => {
+            crate::project::validate_tex_flavor(engine, flavor.name()).unwrap_or_else(|_| kept())
+        }
+        None => kept(),
     }
-    plain_name(value, &['_', '-']).then(|| Some(value.to_owned()))
 }
 
 fn differences(before: &ProjectMeta, after: &ProjectMeta) -> BTreeSet<Setting> {
@@ -233,7 +190,7 @@ fn differences(before: &ProjectMeta, after: &ProjectMeta) -> BTreeSet<Setting> {
     let now = shared_of(after, None);
     let mut changed: BTreeSet<Setting> = Setting::ALL
         .into_iter()
-        .filter(|setting| was.get(setting) != now.get(setting))
+        .filter(|setting| was.get(*setting) != now.get(*setting))
         .collect();
     if before.main_doc != after.main_doc {
         changed.insert(Setting::MainDoc);
@@ -251,24 +208,14 @@ pub fn adopt(
         meta.main_doc = path.to_owned();
     }
     let wanted = shared
-        .get(&Setting::Engine)
-        .cloned()
-        .unwrap_or_else(|| before.engine.clone());
-    meta.engine = crate::project::engine_for_main_document(&wanted, &meta.main_doc)
+        .engine()
+        .map_or(before.engine.as_str(), Engine::as_str);
+    meta.engine = crate::project::engine_for_main_document(wanted, &meta.main_doc)
         .or_else(|_| crate::project::engine_for_main_document(&before.engine, &meta.main_doc))
         .unwrap_or_else(|_| before.engine.clone());
-    let flavor = shared
-        .get(&Setting::TexFlavor)
-        .map(String::as_str)
-        .or(before.tex_flavor.as_deref());
-    meta.tex_flavor = crate::project::validate_tex_flavor(&meta.engine, flavor)
-        .ok()
-        .flatten();
-    if let Some(next) = shared
-        .get(&Setting::DictionaryLocale)
-        .and_then(|value| locale(value))
-    {
-        meta.dictionary_locale = next;
+    meta.tex_flavor = adopted_flavor(&meta.engine, shared.tex_flavor(), &before);
+    if let Some(locale) = shared.dictionary_locale() {
+        meta.dictionary_locale = locale.name().map(str::to_owned);
     }
     adopt_typst(meta, shared);
     if meta.engine != LATEXMK {
@@ -277,16 +224,25 @@ pub fn adopt(
     differences(&before, meta)
 }
 
-fn file_at(layout: &Layout, path: &str) -> Option<String> {
+fn adopt_legacy(meta: &mut ProjectMeta, legacy: &LegacySettings) {
+    if let Some(main) = &legacy.main_doc {
+        meta.main_doc = main.as_str().to_owned();
+    }
+    if let Some(engine) = &legacy.engine {
+        meta.engine = engine.as_str().to_owned();
+    }
+}
+
+fn file_at(layout: &Layout, path: &str) -> Option<FileId> {
     layout
         .iter()
         .find(|(_, placed)| placed.kind != NodeKind::Dir && placed.path == path)
-        .map(|(id, _)| id.clone())
+        .and_then(|(id, _)| id.parse().ok())
 }
 
-fn path_of(layout: &Layout, id: &str) -> Option<String> {
+fn path_of(layout: &Layout, id: FileId) -> Option<String> {
     layout
-        .get(id)
+        .get(&id.to_string())
         .filter(|placed| placed.kind != NodeKind::Dir)
         .map(|placed| placed.path.clone())
 }
@@ -296,8 +252,12 @@ fn on_disk(root: &Path, path: &str) -> bool {
 }
 
 pub fn seed(doc: &mut ProjectDoc, meta: &ProjectMeta) -> Result<Base, CollabError> {
+    doc.set_legacy_settings(&LegacySettings {
+        main_doc: ProjectPath::parse(&meta.main_doc),
+        engine: Engine::parse(&meta.engine),
+    })?;
     let layout = materialize::layout(&doc.nodes()?);
-    let settings = shared_of(meta, file_at(&layout, &meta.main_doc).as_deref());
+    let settings = shared_of(meta, file_at(&layout, &meta.main_doc));
     doc.set_settings(&settings)?;
     let shared = doc.settings();
     Ok(Base {
@@ -310,21 +270,151 @@ pub fn joined(doc: &ProjectDoc, meta: &mut ProjectMeta) -> Result<Base, CollabEr
     let layout = materialize::layout(&doc.nodes()?);
     let shared = doc.settings();
     if shared.is_empty() {
-        if let Some(main) = doc.meta("main_doc").filter(|main| !main.is_empty()) {
-            meta.main_doc = main;
-        }
-        if let Some(engine) = doc.meta("engine").filter(|engine| !engine.is_empty()) {
-            meta.engine = engine;
-        }
+        adopt_legacy(meta, &doc.legacy_settings());
     } else {
-        let main = shared
-            .get(&Setting::MainDoc)
-            .and_then(|id| path_of(&layout, id));
+        let main = shared.main_doc().and_then(|id| path_of(&layout, id));
         adopt(meta, &shared, main.as_deref());
     }
     meta.allow_shell_escape = false;
-    let local = shared_of(meta, file_at(&layout, &meta.main_doc).as_deref());
+    let local = shared_of(meta, file_at(&layout, &meta.main_doc));
     Ok(Base { shared, local })
+}
+
+struct Sides<'a> {
+    local: &'a Settings,
+    shared: &'a Settings,
+    unreadable: &'a BTreeSet<Setting>,
+    base: Option<&'a Base>,
+    can_edit: bool,
+    seeds: bool,
+}
+
+#[derive(Debug, Default)]
+struct Plan {
+    take: Settings,
+    push: Settings,
+    remote: BTreeSet<Setting>,
+}
+
+impl Plan {
+    fn first_time(
+        &mut self,
+        ours: Option<&SettingValue>,
+        theirs: Option<&SettingValue>,
+        seeds: bool,
+    ) {
+        match (theirs, ours) {
+            (Some(theirs), _) => {
+                self.take.insert(theirs.clone());
+            }
+            (None, Some(ours)) if seeds => {
+                self.push.insert(ours.clone());
+            }
+            _ => {}
+        }
+    }
+
+    fn since(&mut self, sides: &Sides<'_>, base: &Base, setting: Setting, seeds: bool) {
+        let ours = sides.local.get(setting);
+        let theirs = sides.shared.get(setting);
+        let moved_there = theirs.is_some() && theirs != base.shared.get(setting);
+        let moved_here = ours.is_some() && ours != base.local.get(setting) && ours != theirs;
+        match (theirs, ours) {
+            (Some(theirs), _) if moved_there => {
+                self.take.insert(theirs.clone());
+                self.remote.insert(setting);
+            }
+            (_, Some(ours)) if moved_here && sides.can_edit => {
+                self.push.insert(ours.clone());
+            }
+            (Some(theirs), Some(_)) if moved_here => {
+                self.take.insert(theirs.clone());
+            }
+            (None, Some(ours)) if seeds => {
+                self.push.insert(ours.clone());
+            }
+            _ => {}
+        }
+    }
+}
+
+fn plan(sides: &Sides<'_>) -> Plan {
+    let mut plan = Plan::default();
+    for setting in Setting::ALL {
+        let seeds = sides.seeds && !sides.unreadable.contains(&setting);
+        match sides.base {
+            None => plan.first_time(sides.local.get(setting), sides.shared.get(setting), seeds),
+            Some(base) => plan.since(sides, base, setting, seeds),
+        }
+    }
+    plan
+}
+
+fn main_path_of(take: &mut Settings, layout: &Layout) -> (Option<String>, bool) {
+    let Some(id) = take.main_doc() else {
+        return (None, false);
+    };
+    match path_of(layout, id) {
+        Some(path) => (Some(path), false),
+        None => {
+            take.remove(Setting::MainDoc);
+            (None, true)
+        }
+    }
+}
+
+fn renamed_main(
+    meta: &ProjectMeta,
+    shared: &Settings,
+    layout: &Layout,
+    root: &Path,
+) -> Option<String> {
+    shared
+        .main_doc()
+        .and_then(|id| path_of(layout, id))
+        .filter(|path| {
+            *path != meta.main_doc
+                && file_at(layout, &meta.main_doc).is_none()
+                && !on_disk(root, &meta.main_doc)
+                && on_disk(root, path)
+        })
+}
+
+fn announcements(
+    doc: &ProjectDoc,
+    base: &Base,
+    plan: &Plan,
+    changed: &BTreeSet<Setting>,
+    me: Option<AccountId>,
+) -> Vec<(Option<AccountId>, Setting)> {
+    let own_peer = doc.peer_id();
+    plan.take
+        .keys()
+        .filter(|setting| {
+            plan.remote.contains(setting)
+                && changed.contains(setting)
+                && base.shared.contains(*setting)
+                && doc.setting_writer(*setting) != Some(own_peer)
+        })
+        .filter_map(|setting| {
+            let author = doc.setting_author(setting);
+            (author.is_none() || author != me).then_some((author, setting))
+        })
+        .collect()
+}
+
+fn next_shared(mut shared: Settings, base: Option<&Base>, deferred: bool) -> Settings {
+    if deferred {
+        match base.and_then(|base| base.shared.get(Setting::MainDoc)) {
+            Some(previous) => {
+                shared.insert(previous.clone());
+            }
+            None => {
+                shared.remove(Setting::MainDoc);
+            }
+        }
+    }
+    shared
 }
 
 pub fn follow(
@@ -336,109 +426,38 @@ pub fn follow(
 ) -> Result<Followed, CollabError> {
     let layout = materialize::layout(&live.doc().nodes()?);
     let shared = live.doc().settings();
-    let local = shared_of(meta, file_at(&layout, &meta.main_doc).as_deref());
+    let unreadable = live.doc().unreadable_settings();
+    let local = shared_of(meta, file_at(&layout, &meta.main_doc));
     let can_edit = live.can_edit();
-    let seeds = can_edit && live.role() == ProjectRole::Owner;
-    let mut take = Settings::new();
-    let mut push = Settings::new();
-    let mut remote = BTreeSet::new();
-    for setting in Setting::ALL {
-        let ours = local.get(&setting);
-        let theirs = shared.get(&setting);
-        let Some(base) = base else {
-            match (theirs, ours) {
-                (Some(theirs), _) => {
-                    take.insert(setting, theirs.clone());
-                }
-                (None, Some(ours)) if seeds => {
-                    push.insert(setting, ours.clone());
-                }
-                _ => {}
-            }
-            continue;
-        };
-        let moved_there = theirs.is_some() && theirs != base.shared.get(&setting);
-        let moved_here = ours.is_some() && ours != base.local.get(&setting) && ours != theirs;
-        match (theirs, ours) {
-            (Some(theirs), _) if moved_there => {
-                take.insert(setting, theirs.clone());
-                remote.insert(setting);
-            }
-            (_, Some(ours)) if moved_here && can_edit => {
-                push.insert(setting, ours.clone());
-            }
-            (Some(theirs), Some(_)) if moved_here => {
-                take.insert(setting, theirs.clone());
-            }
-            (None, Some(ours)) if seeds => {
-                push.insert(setting, ours.clone());
-            }
-            _ => {}
-        }
-    }
-    let mut deferred = false;
-    let mut main_path = None;
-    if let Some(id) = take.get(&Setting::MainDoc) {
-        main_path = path_of(&layout, id);
-        if main_path.is_none() {
-            take.remove(&Setting::MainDoc);
-            deferred = true;
-        }
-    }
+    let mut plan = plan(&Sides {
+        local: &local,
+        shared: &shared,
+        unreadable: &unreadable,
+        base,
+        can_edit,
+        seeds: can_edit && live.role() == ProjectRole::Owner,
+    });
+    let (main_path, deferred) = main_path_of(&mut plan.take, &layout);
     let mut changed = BTreeSet::new();
-    if !take.is_empty() {
-        changed = adopt(meta, &take, main_path.as_deref());
+    if !plan.take.is_empty() {
+        changed = adopt(meta, &plan.take, main_path.as_deref());
     }
-    if !take.contains_key(&Setting::MainDoc) {
-        let renamed = shared
-            .get(&Setting::MainDoc)
-            .and_then(|id| path_of(&layout, id))
-            .filter(|path| {
-                *path != meta.main_doc
-                    && file_at(&layout, &meta.main_doc).is_none()
-                    && !on_disk(root, &meta.main_doc)
-                    && on_disk(root, path)
-            });
-        if let Some(path) = renamed {
+    if !plan.take.contains(Setting::MainDoc) {
+        if let Some(path) = renamed_main(meta, &shared, &layout, root) {
             changed.extend(adopt(meta, &Settings::new(), Some(&path)));
         }
     }
-    let pushed = can_edit && !push.is_empty() && live.doc_mut().set_settings(&push)?;
-    let mut announced = Vec::new();
-    if let Some(base) = base {
-        let own_peer = live.doc().peer_id();
-        for setting in take.keys().filter(|setting| remote.contains(*setting)) {
-            if !changed.contains(setting) || !base.shared.contains_key(setting) {
-                continue;
-            }
-            if live.doc().setting_writer(*setting) == Some(own_peer) {
-                continue;
-            }
-            let author = live.doc().setting_author(*setting);
-            if author.is_some() && author == me {
-                continue;
-            }
-            announced.push((author, *setting));
-        }
-    }
-    let mut next_shared = live.doc().settings();
-    if deferred {
-        match base.and_then(|base| base.shared.get(&Setting::MainDoc)) {
-            Some(previous) => {
-                next_shared.insert(Setting::MainDoc, previous.clone());
-            }
-            None => {
-                next_shared.remove(&Setting::MainDoc);
-            }
-        }
-    }
+    let pushed = live.write_settings(&plan.push)?;
+    let announced = base
+        .map(|base| announcements(live.doc(), base, &plan, &changed, me))
+        .unwrap_or_default();
     Ok(Followed {
         changed,
         announced,
         pushed,
         base: Base {
-            shared: next_shared,
-            local: shared_of(meta, file_at(&layout, &meta.main_doc).as_deref()),
+            shared: next_shared(live.doc().settings(), base, deferred),
+            local: shared_of(meta, file_at(&layout, &meta.main_doc)),
         },
     })
 }
@@ -572,8 +591,9 @@ mod tests {
     use crate::collab::testing::TempLibrary;
     use oleafly_collab::doc::NodeKind;
     use oleafly_collab::materialize;
-    use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
+    use oleafly_collab_protocol::ids::{FileId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
+    use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
 
     fn meta(main: &str, engine: &str) -> ProjectMeta {
@@ -583,6 +603,20 @@ mod tests {
             engine: engine.into(),
             ..ProjectMeta::default()
         }
+    }
+
+    fn wire(entries: &[(Setting, &str)]) -> Settings {
+        entries
+            .iter()
+            .map(|(setting, value)| {
+                SettingValue::parse(*setting, value)
+                    .unwrap_or_else(|| panic!("{value:?} is a readable {setting:?}"))
+            })
+            .collect()
+    }
+
+    fn raw(settings: &Settings, setting: Setting) -> Option<String> {
+        settings.get(setting).map(SettingValue::encode)
     }
 
     fn id_of(doc: &ProjectDoc, path: &str) -> String {
@@ -687,11 +721,7 @@ mod tests {
 
     impl Alice {
         fn change(&mut self, entries: &[(Setting, &str)]) {
-            let settings: Settings = entries
-                .iter()
-                .map(|(setting, value)| (*setting, (*value).to_owned()))
-                .collect();
-            self.live.doc_mut().set_settings(&settings).unwrap();
+            self.live.doc_mut().set_settings(&wire(entries)).unwrap();
         }
 
         fn send(&mut self, bob: &Bob) {
@@ -776,24 +806,41 @@ mod tests {
         owner.hidden = true;
         owner.forked_from = Some("elsewhere".into());
         let base = seed(&mut doc, &owner).unwrap();
-        let expected: Settings = [
-            (Setting::MainDoc, id_of(&doc, "main.tex")),
-            (Setting::Engine, "latexmk".to_owned()),
-            (Setting::TexFlavor, "xelatex".to_owned()),
-            (Setting::DictionaryLocale, "en_GB".to_owned()),
-            (Setting::TypstVersion, "0.13.1".to_owned()),
-            (Setting::TypstVendorPackages, "false".to_owned()),
-            (Setting::TypstSystemFonts, "false".to_owned()),
-            (Setting::TypstReproducible, "true".to_owned()),
-            (Setting::TypstFontPaths, r#"["fonts"]"#.to_owned()),
-            (Setting::TypstInputs, r#"{"draft":"true"}"#.to_owned()),
-            (
-                Setting::TypstVariants,
+        let main = id_of(&doc, "main.tex");
+        let expected = wire(&[
+            (Setting::MainDoc, &main),
+            (Setting::Engine, "latexmk"),
+            (Setting::TexFlavor, "xelatex"),
+            (Setting::DictionaryLocale, "en_GB"),
+            (Setting::TypstVersion, "0.13.1"),
+            (Setting::TypstVendorPackages, "false"),
+            (Setting::TypstSystemFonts, "false"),
+            (Setting::TypstReproducible, "true"),
+            (Setting::TypstFontPaths, r#"["fonts"]"#),
+            (Setting::TypstInputs, r#"{"draft":"true"}"#),
+            (Setting::TypstVariants, r#"{"camera":{"draft":"false"}}"#),
+        ]);
+        assert_eq!(
+            expected
+                .values()
+                .map(SettingValue::encode)
+                .collect::<Vec<String>>(),
+            vec![
+                main.clone(),
+                "latexmk".to_owned(),
+                "xelatex".to_owned(),
+                "en_GB".to_owned(),
+                "0.13.1".to_owned(),
+                "false".to_owned(),
+                "false".to_owned(),
+                "true".to_owned(),
+                r#"["fonts"]"#.to_owned(),
+                r#"{"draft":"true"}"#.to_owned(),
                 r#"{"camera":{"draft":"false"}}"#.to_owned(),
-            ),
-        ]
-        .into_iter()
-        .collect();
+            ]
+        );
+        assert_eq!(doc.meta("main_doc").as_deref(), Some("main.tex"));
+        assert_eq!(doc.meta("engine").as_deref(), Some("latexmk"));
         assert_eq!(doc.settings(), expected);
         assert_eq!(base.shared, expected);
         assert_eq!(base.local, expected);
@@ -932,7 +979,7 @@ mod tests {
         let applied = bob.follow();
         assert!(applied.notices.is_empty());
         assert_eq!(bob.meta().main_doc, "thesis.tex");
-        assert_eq!(bob.settings()[&Setting::MainDoc], main);
+        assert_eq!(raw(&bob.settings(), Setting::MainDoc), Some(main));
         assert!(!applied.pushed);
     }
 
@@ -1050,14 +1097,141 @@ mod tests {
         assert!(applied.meta.is_none());
         alice.hear(&bob);
         let shared = alice.live.doc().settings();
-        assert_eq!(shared[&Setting::Engine], "latexmk");
-        assert_eq!(shared[&Setting::TexFlavor], "pdflatex");
-        assert_eq!(shared[&Setting::DictionaryLocale], "es_ES");
+        assert_eq!(raw(&shared, Setting::Engine).as_deref(), Some("latexmk"));
+        assert_eq!(
+            raw(&shared, Setting::TexFlavor).as_deref(),
+            Some("pdflatex")
+        );
+        assert_eq!(
+            raw(&shared, Setting::DictionaryLocale).as_deref(),
+            Some("es_ES")
+        );
         assert_eq!(
             alice.live.doc().setting_author(Setting::Engine),
             Some(bob.account)
         );
         assert!(!bob.follow().pushed);
+    }
+
+    #[test]
+    fn a_peer_setting_this_version_does_not_support_leaves_project_json_alone() {
+        let library = TempLibrary::new();
+        let files = ["main.tex"];
+        let mut owner = meta("main.tex", "latexmk");
+        owner.tex_flavor = Some("xelatex".into());
+        owner.dictionary_locale = Some("en_GB".into());
+        owner.typst = Some(typst_spec());
+        let doc = seeded(&files, &owner);
+        let mut alice = alice(&doc);
+        let bob = join(
+            &library,
+            "bob-unsupported",
+            &files,
+            &doc,
+            ProjectRole::Editor,
+        );
+        let before = serde_json::to_value(bob.meta()).unwrap();
+        alice.change(&[
+            (Setting::Engine, "quantum"),
+            (Setting::TexFlavor, "bogus"),
+            (Setting::TypstInputs, r#"{"draft=yes":"x"}"#),
+            (Setting::TypstVariants, r#"{" ":{"draft":"x"}}"#),
+        ]);
+        alice.send(&bob);
+        let applied = bob.follow();
+        assert!(applied.meta.is_none());
+        assert!(applied.notices.is_empty());
+        assert!(!applied.pushed);
+        assert_eq!(serde_json::to_value(bob.meta()).unwrap(), before);
+        assert!(!bob.follow().pushed);
+    }
+
+    #[test]
+    fn the_owner_never_seeds_over_a_value_this_version_cannot_read() {
+        let local = wire(&[(Setting::Engine, "latexmk"), (Setting::TexFlavor, "")]);
+        let nothing = Settings::new();
+        let unreadable: BTreeSet<Setting> = [Setting::Engine].into();
+        let synced = Base {
+            shared: Settings::new(),
+            local: local.clone(),
+        };
+        for base in [None, Some(&synced)] {
+            let planned = plan(&Sides {
+                local: &local,
+                shared: &nothing,
+                unreadable: &unreadable,
+                base,
+                can_edit: true,
+                seeds: true,
+            });
+            assert_eq!(planned.push, wire(&[(Setting::TexFlavor, "")]));
+            assert!(planned.take.is_empty());
+        }
+        let edited = wire(&[(Setting::Engine, "xetex"), (Setting::TexFlavor, "")]);
+        let planned = plan(&Sides {
+            local: &edited,
+            shared: &nothing,
+            unreadable: &unreadable,
+            base: Some(&synced),
+            can_edit: true,
+            seeds: true,
+        });
+        assert_eq!(
+            planned.push,
+            wire(&[(Setting::Engine, "xetex"), (Setting::TexFlavor, "")])
+        );
+    }
+
+    #[test]
+    fn a_legacy_document_with_an_unsafe_main_document_or_engine_is_ignored() {
+        let mut legacy = document(&["main.tex"]);
+        legacy.set_meta("main_doc", "../../etc/passwd").unwrap();
+        legacy.set_meta("engine", "rm -rf ~").unwrap();
+        let mut here = meta("main.tex", "xetex");
+        let base = joined(&legacy, &mut here).unwrap();
+        assert_eq!(here.main_doc, "main.tex");
+        assert_eq!(here.engine, "xetex");
+        assert!(base.shared.is_empty());
+    }
+
+    #[test]
+    fn a_settings_base_from_the_previous_release_still_loads() {
+        let scratch = tempfile::tempdir().unwrap();
+        let file = scratch.path().join(BASE_FILE);
+        let main = FileId::new_v7().to_string();
+        let stored = serde_json::json!({
+            "shared": {
+                "main_doc": main,
+                "engine": "latexmk",
+                "tex_flavor": "",
+                "typst_font_paths": "[\"fonts\"]",
+                "typst_features": "[\"html\"]"
+            },
+            "local": {
+                "engine": "latexmk",
+                "typst_reproducible": "true"
+            }
+        });
+        std::fs::write(&file, serde_json::to_vec_pretty(&stored).unwrap()).unwrap();
+        let base = recall(&file).expect("the base still loads");
+        assert_eq!(
+            base.shared,
+            wire(&[
+                (Setting::MainDoc, &main),
+                (Setting::Engine, "latexmk"),
+                (Setting::TexFlavor, ""),
+                (Setting::TypstFontPaths, r#"["fonts"]"#),
+            ])
+        );
+        assert_eq!(
+            base.local,
+            wire(&[
+                (Setting::Engine, "latexmk"),
+                (Setting::TypstReproducible, "true"),
+            ])
+        );
+        remember(&file, &base).unwrap();
+        assert_eq!(recall(&file), Some(base));
     }
 
     #[test]
@@ -1077,7 +1251,10 @@ mod tests {
         crate::project::write_meta("owner-legacy", &local).unwrap();
         assert!(owner.follow().pushed);
         let shared = owner.settings();
-        assert_eq!(shared[&Setting::Engine], "latexmk");
-        assert_eq!(shared[&Setting::MainDoc], id_of(&doc, "main.tex"));
+        assert_eq!(raw(&shared, Setting::Engine).as_deref(), Some("latexmk"));
+        assert_eq!(
+            raw(&shared, Setting::MainDoc),
+            Some(id_of(&doc, "main.tex"))
+        );
     }
 }

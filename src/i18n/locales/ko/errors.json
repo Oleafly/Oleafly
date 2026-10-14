@@ -216,5 +216,8 @@
     "git_token_invalid": "Overleaf Git 토큰이 아닌 것 같습니다. 토큰 전체를 복사한 뒤 다시 시도하세요.",
     "git_token_rejected": "Overleaf가 Git 토큰을 받아들이지 않았습니다. 만료되었을 수 있습니다. Overleaf 계정 설정에서 새 토큰을 만드세요.",
     "git_unavailable": "이 프로젝트에서는 Overleaf의 Git 연동을 사용할 수 없습니다. 프로젝트 소유자에게 유료 요금제나 대학 요금제가 필요합니다."
+  },
+  "collab": {
+    "turned_off": "실시간 공동 작업이 꺼져 있습니다. 설정의 실험 기능에서 켜세요."
   }
 }

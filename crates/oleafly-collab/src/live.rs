@@ -131,6 +131,33 @@ fn held_by_server(confirmed: &mut VersionVector, meta: &ImportBlobMetadata) {
     }
 }
 
+fn receive(arrival: Arrival, known: &mut VersionVector) -> Received {
+    let meta = update_meta(&arrival.payload);
+    let mut introduced = Vec::new();
+    let mut spans = Vec::new();
+    for (peer, end) in meta.iter().flat_map(|meta| meta.partial_end_vv.iter()) {
+        let had = known.get(peer).copied().unwrap_or(0);
+        if had < *end {
+            let from = meta
+                .as_ref()
+                .and_then(|meta| meta.partial_start_vv.get(peer).copied())
+                .unwrap_or(0);
+            introduced.push(*peer);
+            spans.push((*peer, had.max(from), *end));
+            known.set_end(ID::new(*peer, *end));
+        }
+    }
+    if arrival.device.is_none() && arrival.author.is_none() {
+        introduced.clear();
+    }
+    Received {
+        arrival,
+        meta,
+        introduced,
+        spans,
+    }
+}
+
 pub struct LiveProject {
     doc: ProjectDoc,
     last_seq: u64,
@@ -706,36 +733,10 @@ impl LiveProject {
         let mut known = self.doc.version();
         let mut fresh: Vec<Received> = Vec::new();
         for arrival in arrivals {
-            let repeated = arrival.seq <= self.last_seq
-                || self.seen.contains(&arrival.seq)
-                || fresh.iter().any(|kept| kept.arrival.seq == arrival.seq);
-            if repeated {
+            if self.is_repeated(arrival.seq, &fresh) {
                 continue;
             }
-            let meta = update_meta(&arrival.payload);
-            let mut introduced = Vec::new();
-            let mut spans = Vec::new();
-            for (peer, end) in meta.iter().flat_map(|meta| meta.partial_end_vv.iter()) {
-                let had = known.get(peer).copied().unwrap_or(0);
-                if had < *end {
-                    let from = meta
-                        .as_ref()
-                        .and_then(|meta| meta.partial_start_vv.get(peer).copied())
-                        .unwrap_or(0);
-                    introduced.push(*peer);
-                    spans.push((*peer, had.max(from), *end));
-                    known.set_end(ID::new(*peer, *end));
-                }
-            }
-            if arrival.device.is_none() && arrival.author.is_none() {
-                introduced.clear();
-            }
-            fresh.push(Received {
-                arrival,
-                meta,
-                introduced,
-                spans,
-            });
+            fresh.push(receive(arrival, &mut known));
         }
         if fresh.is_empty() {
             return Ok(0);
@@ -745,22 +746,7 @@ impl LiveProject {
             .map(|received| received.arrival.payload.as_slice())
             .collect();
         let imported = self.doc.import_all(&payloads)?;
-        for received in &fresh {
-            if let Some(device) = received.arrival.device {
-                if self.devices.bind_peers(&received.introduced, device) {
-                    self.devices_dirty = true;
-                }
-            }
-            if let Some(account) = received.arrival.author {
-                if self
-                    .doc
-                    .authors_mut()
-                    .witness(received.introduced.iter().copied(), account)
-                {
-                    self.authors_dirty = true;
-                }
-            }
-        }
+        self.witness_arrivals(&fresh);
         advance(&mut self.confirmed, &imported.arrived);
         for received in &fresh {
             if let Some(meta) = &received.meta {
@@ -782,6 +768,31 @@ impl LiveProject {
             }
         }
         Ok(fresh.len())
+    }
+
+    fn is_repeated(&self, seq: u64, fresh: &[Received]) -> bool {
+        seq <= self.last_seq
+            || self.seen.contains(&seq)
+            || fresh.iter().any(|kept| kept.arrival.seq == seq)
+    }
+
+    fn witness_arrivals(&mut self, fresh: &[Received]) {
+        for received in fresh {
+            if let Some(device) = received.arrival.device {
+                if self.devices.bind_peers(&received.introduced, device) {
+                    self.devices_dirty = true;
+                }
+            }
+            if let Some(account) = received.arrival.author {
+                if self
+                    .doc
+                    .authors_mut()
+                    .witness(received.introduced.iter().copied(), account)
+                {
+                    self.authors_dirty = true;
+                }
+            }
+        }
     }
 
     pub fn skip_update(&mut self, seq: u64) {

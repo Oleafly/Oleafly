@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { collabAdminMembers, type CollabMember } from "@/lib/tauri";
 import { collabErrorCode, collabErrorMessage } from "./errors";
 import type { MembersUpdate } from "./MembersTab";
@@ -15,11 +15,12 @@ export function useServerMembers(serverId: string): ServerMembers {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminMembers(serverId).then(
+    collabAdminMembers(load.serverId).then(
       (next) => {
         if (active) setMembers(next);
       },
@@ -30,7 +31,7 @@ export function useServerMembers(serverId: string): ServerMembers {
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const retry = useCallback(() => setRequest((count) => count + 1), []);
   const update = useCallback<MembersUpdate>(

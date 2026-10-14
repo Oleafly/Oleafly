@@ -13,4 +13,5 @@ e2e_launch_seed_for() {
     live="1"
   fi
   printf '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"%s"}' "$live"
+  return "$?"
 }

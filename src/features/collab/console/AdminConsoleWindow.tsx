@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LogIn, ServerOff, ShieldX } from "lucide-react";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
@@ -41,10 +41,11 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
   const [request, setRequest] = useState(0);
   useWindowGeometry(serverId ? consoleGeometryKey(serverId) : null);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
-    openServer(serverId).then(
+    openServer(load.serverId).then(
       (server) => {
         if (active) setState({ status: "ready", server });
       },
@@ -55,7 +56,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   useTauriEvent<CollabServerChanged>(COLLAB_SERVER_CHANGED_EVENT, (payload) => {
     if (payload.serverId !== serverId) return;

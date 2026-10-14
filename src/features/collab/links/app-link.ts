@@ -12,6 +12,12 @@ export type AppLink =
 
 const PROJECT_ID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 function serverKey(address: string): string | null {
   const candidate = normalizeServerAddress(address);
   if (candidate === "") return null;
@@ -22,7 +28,7 @@ function serverKey(address: string): string | null {
     return null;
   }
   if ((url.protocol !== "https:" && url.protocol !== "http:") || url.hostname === "") return null;
-  return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/u, "")}`;
+  return `${url.protocol}//${url.host}${withoutTrailingSlashes(url.pathname)}`;
 }
 
 export function sameServer(left: string, right: string): boolean {
@@ -51,7 +57,7 @@ export function parseAppLink(raw: string): AppLink {
     return malformed;
   }
   if (url.protocol !== "oleafly:") return malformed;
-  const place = `${url.host}${url.pathname.replace(/\/+$/u, "")}`.toLowerCase();
+  const place = `${url.host}${withoutTrailingSlashes(url.pathname)}`.toLowerCase();
   if (place === "server/add") {
     const target = parameter(url, "url");
     return serverKey(target) === null ? malformed : { kind: "addServer", url: target };

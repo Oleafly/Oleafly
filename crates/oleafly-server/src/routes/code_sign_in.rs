@@ -21,6 +21,7 @@ use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::throttle::{self, Throttle};
 use crate::auth::{browser_binding, csrf, db_error, devices, nonce, refresh};
 use crate::error::ServerError;
+use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::messages::escape;
 use crate::mail::notify;
 use crate::members;
@@ -37,8 +38,6 @@ use crate::tokens::random_token;
 use oleafly_collab_protocol::page::status;
 
 const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Oleafly.";
-pub(crate) const WRONG_CODE: &str =
-    "That code is wrong or has expired. Check the code Oleafly shows and try again.";
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -49,8 +48,8 @@ pub fn router() -> Router<AppState> {
         .route("/auth/device/deny", post(deny))
 }
 
-fn title(state: &AppState) -> String {
-    format!("Sign in to {}", state.config.server_name)
+fn title(locale: Locale, state: &AppState) -> String {
+    locale.fill(Key::SignInTitle, &[("server", &state.config.server_name)])
 }
 
 fn path(state: &AppState, route: &str) -> String {
@@ -259,13 +258,17 @@ async fn token(
     Ok(Json(poll))
 }
 
-fn entry_body(state: &AppState, csrf: &str, code: &str, problem: Option<&str>) -> String {
-    let mut body = sign_in_pages::heading(&title(state));
-    body.push_str(&sign_in_pages::paragraph(
-        "Enter the code that Oleafly shows on the device you're signing in on.",
-    ));
+fn entry_body(
+    locale: Locale,
+    state: &AppState,
+    csrf: &str,
+    code: &str,
+    problem: Option<Key>,
+) -> String {
+    let mut body = sign_in_pages::heading(&title(locale, state));
+    body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeEnter)));
     if let Some(problem) = problem {
-        body.push_str(&sign_in_pages::error(problem));
+        body.push_str(&sign_in_pages::error(locale.text(problem)));
     }
     body.push_str(&sign_in_pages::form(
         &path(state, "/auth/device"),
@@ -274,13 +277,13 @@ fn entry_body(state: &AppState, csrf: &str, code: &str, problem: Option<&str>) -
             value: csrf,
         }],
         Some(Input {
-            label: "Code",
+            label: locale.text(Key::CodeLabel),
             name: "user_code",
             kind: "text",
             value: code,
             autocomplete: "off",
         }),
-        "Continue",
+        locale.text(Key::Continue),
         true,
     ));
     body
@@ -293,6 +296,7 @@ struct EntryQuery {
 
 async fn entry(
     State(state): State<AppState>,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Query(query): Query<EntryQuery>,
 ) -> Response {
@@ -303,9 +307,10 @@ async fn entry(
         .and_then(device_code::normalize_user_code)
         .unwrap_or_default();
     sign_in_pages::render(
+        locale,
         StatusCode::OK,
-        &title(&state),
-        &entry_body(&state, &csrf, &code, None),
+        &title(locale, &state),
+        &entry_body(locale, &state, &csrf, &code, None),
         Some(csrf::cookie(&state.config, &csrf)),
     )
 }
@@ -404,33 +409,36 @@ pub(crate) fn check_typed_code(
     Ok(TypedCode::Wrong)
 }
 
-pub(crate) fn locked_out() -> Response {
-    sign_in_pages::message(
+pub(crate) fn locked_out(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
         StatusCode::TOO_MANY_REQUESTS,
         sign_in_pages::Tone::Notice,
-        "Too many wrong codes",
-        "Wait 10 minutes, then try again.",
+        Key::CodeLockedTitle,
+        Key::CodeLockedBody,
     )
 }
 
 async fn found_or_page(
+    locale: Locale,
     state: &AppState,
     ip: Option<String>,
     headers: &HeaderMap,
     form: &CodeForm,
 ) -> Result<Result<Authorization, Response>, ServerError> {
     if !csrf::verify(headers, &state.config, &form.csrf) {
-        return Ok(Err(page_expired()));
+        return Ok(Err(page_expired(locale)));
     }
     Ok(match lookup(state, ip, &form.user_code).await? {
         Lookup::Found(authorization) => Ok(authorization),
-        Lookup::LockedOut => Err(locked_out()),
+        Lookup::LockedOut => Err(locked_out(locale)),
         Lookup::Wrong => {
             let typed = form.user_code.trim().chars().take(32).collect::<String>();
             Err(sign_in_pages::render(
+                locale,
                 StatusCode::BAD_REQUEST,
-                &title(state),
-                &entry_body(state, &form.csrf, &typed, Some(WRONG_CODE)),
+                &title(locale, state),
+                &entry_body(locale, state, &form.csrf, &typed, Some(Key::CodeWrong)),
                 None,
             ))
         }
@@ -440,29 +448,26 @@ async fn found_or_page(
 async fn check(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Form(form): Form<CodeForm>,
 ) -> Result<Response, ServerError> {
-    let authorization = match found_or_page(&state, ip, &headers, &form).await? {
+    let authorization = match found_or_page(locale, &state, ip, &headers, &form).await? {
         Ok(authorization) => authorization,
         Err(page) => return Ok(page),
     };
     let user_code = device_code::normalize_user_code(&form.user_code).unwrap_or_default();
     let device = device_label(&authorization.device_name, &authorization.platform);
-    let mut body = sign_in_pages::heading(&title(&state));
-    body.push_str(&sign_in_pages::paragraph(&format!(
-        "Oleafly on {device} asked to sign in with this code:"
-    )));
-    body.push_str(&sign_in_pages::code(&user_code));
+    let mut body = sign_in_pages::heading(&title(locale, &state));
     body.push_str(&sign_in_pages::paragraph(
-        "Only continue if you started this sign-in yourself, on that device.",
+        &locale.fill(Key::CodeAsked, &[("device", &device)]),
     ));
+    body.push_str(&sign_in_pages::code(&user_code));
+    body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeOnlyIfYou)));
     let runtime_email = email_link_available(&state).await?;
     let providers = email_link::with_email_link(state.providers.infos(), runtime_email);
     if providers.is_empty() {
-        body.push_str(&sign_in_pages::paragraph(
-            "This server has no way to sign in yet. Ask its admin to set one up.",
-        ));
+        body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeNoProviders)));
     }
     for provider in &providers {
         body.push_str(&sign_in_pages::form(
@@ -482,7 +487,7 @@ async fn check(
                 },
             ],
             None,
-            &provider_button(provider),
+            &provider_button(locale, provider),
             true,
         ));
     }
@@ -499,12 +504,13 @@ async fn check(
             },
         ],
         None,
-        "Stop, this wasn't me",
+        locale.text(Key::CodeDeny),
         false,
     ));
     Ok(sign_in_pages::render(
+        locale,
         StatusCode::OK,
-        &title(&state),
+        &title(locale, &state),
         &body,
         None,
     ))
@@ -542,10 +548,11 @@ fn device_pending(authorization: &Authorization, provider: &str, now: i64) -> Pe
 async fn continue_with(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Form(form): Form<CodeForm>,
 ) -> Result<Response, ServerError> {
-    let authorization = match found_or_page(&state, ip, &headers, &form).await? {
+    let authorization = match found_or_page(locale, &state, ip, &headers, &form).await? {
         Ok(authorization) => authorization,
         Err(page) => return Ok(page),
     };
@@ -567,6 +574,7 @@ async fn continue_with(
             .await
         else {
             return Ok(finished(
+                locale,
                 &state,
                 &pending,
                 Err(AuthErrorCode::ProviderFailed),
@@ -584,9 +592,10 @@ async fn continue_with(
         return Ok(response);
     }
     if form.provider == email_link::PROVIDER_ID && email_link_available(&state).await? {
-        return email_sign_in::ask_for_address(&state, &headers, pending, now).await;
+        return email_sign_in::ask_for_address(locale, &state, &headers, pending, now).await;
     }
     Ok(finished(
+        locale,
         &state,
         &pending,
         Err(AuthErrorCode::UnknownProvider),
@@ -596,10 +605,11 @@ async fn continue_with(
 async fn deny(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Form(form): Form<CodeForm>,
 ) -> Result<Response, ServerError> {
-    let authorization = match found_or_page(&state, ip.clone(), &headers, &form).await? {
+    let authorization = match found_or_page(locale, &state, ip.clone(), &headers, &form).await? {
         Ok(authorization) => authorization,
         Err(page) => return Ok(page),
     };
@@ -627,32 +637,81 @@ async fn deny(
             Ok(())
         })
         .await?;
-    Ok(sign_in_pages::message(
+    Ok(sign_in_pages::notice(
+        locale,
         StatusCode::OK,
         sign_in_pages::Tone::Notice,
-        "Sign-in stopped",
-        "Nobody can use this code now. If you meant to sign in, start again in Oleafly.",
+        Key::CodeStoppedTitle,
+        Key::CodeStoppedBody,
     ))
 }
 
 pub(crate) fn finished(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
 ) -> Response {
-    finished_naming(state, pending, outcome, None)
+    finished_naming(locale, state, pending, outcome, None)
 }
 
-fn provider_label(state: &AppState, provider_id: &str) -> String {
+fn provider_label(locale: Locale, state: &AppState, provider_id: &str) -> String {
     state
         .providers
         .infos()
         .into_iter()
         .find(|info| info.id == provider_id)
-        .map_or_else(|| "your sign-in provider".to_owned(), |info| info.label)
+        .map_or_else(
+            || locale.text(Key::SomeProvider).to_owned(),
+            |info| info.label,
+        )
+}
+
+fn refused(
+    locale: Locale,
+    state: &AppState,
+    pending: &PendingSignIn,
+    account: Option<&str>,
+) -> Response {
+    let by_email = pending.provider_id == email_link::PROVIDER_ID;
+    let provider = provider_label(locale, state, &pending.provider_id);
+    let who = account
+        .map(|account| {
+            let account = format!("<strong>{}</strong>", escape(account));
+            let named = if by_email {
+                locale.fill_html(Key::RefusedEmailAccount, &[("account", &account)])
+            } else {
+                locale.fill_html(
+                    Key::RefusedProviderAccount,
+                    &[("provider", &escape(&provider)), ("account", &account)],
+                )
+            };
+            format!("<p>{named}</p>")
+        })
+        .unwrap_or_default();
+    let advice = if by_email {
+        locale.text(Key::RefusedEmailAdvice).to_owned()
+    } else {
+        locale.fill(Key::RefusedProviderAdvice, &[("provider", &provider)])
+    };
+    let title = locale.text(Key::RefusedTitle);
+    sign_in_pages::render(
+        locale,
+        StatusCode::FORBIDDEN,
+        title,
+        &format!(
+            "{}{}{who}{}{}",
+            status(Tone::Problem),
+            heading(title),
+            paragraph(locale.auth_error(AuthErrorCode::NotAdmitted)),
+            next(&advice),
+        ),
+        None,
+    )
 }
 
 pub(crate) fn finished_naming(
+    locale: Locale,
     state: &AppState,
     pending: &PendingSignIn,
     outcome: Result<Finish, AuthErrorCode>,
@@ -660,72 +719,137 @@ pub(crate) fn finished_naming(
 ) -> Response {
     match outcome {
         Ok(Finish::DeviceApproved) => sign_in_pages::message(
+            locale,
             StatusCode::OK,
             sign_in_pages::Tone::Success,
-            "You're signed in",
-            &format!(
-                "Go back to Oleafly on {}. It finishes signing in by itself. You can close this tab.",
-                device_label(&pending.device_name, &pending.platform)
+            locale.text(Key::CodeDoneTitle),
+            &locale.fill(
+                Key::CodeDoneBody,
+                &[(
+                    "device",
+                    &device_label(&pending.device_name, &pending.platform),
+                )],
             ),
         ),
-        Ok(Finish::DeviceGone | Finish::Code(_)) => sign_in_pages::message(
+        Ok(Finish::DeviceGone | Finish::Code(_)) => sign_in_pages::notice(
+            locale,
             StatusCode::BAD_REQUEST,
             sign_in_pages::Tone::Problem,
-            "This code has expired",
-            "Start signing in again in Oleafly to get a new code.",
+            Key::CodeExpiredTitle,
+            Key::CodeExpiredBody,
         ),
-        Err(AuthErrorCode::NotAdmitted) => {
-            let by_email = pending.provider_id == email_link::PROVIDER_ID;
-            let provider = provider_label(state, &pending.provider_id);
-            let who = account
-                .map(|account| {
-                    if by_email {
-                        format!("<p>You signed in with <strong>{}</strong>.</p>", escape(account))
-                    } else {
-                        format!(
-                            "<p>You signed in to {} as <strong>{}</strong>.</p>",
-                            escape(&provider),
-                            escape(account)
-                        )
-                    }
-                })
-                .unwrap_or_default();
-            let advice = if by_email {
-                "To use a different address, start again in Oleafly with one the admin added."
-                    .to_owned()
-            } else {
-                format!(
-                    "To use a different account, sign out of {provider} in this browser, then start again in Oleafly."
-                )
-            };
-            sign_in_pages::render(
-                StatusCode::FORBIDDEN,
-                "You can't sign in here yet",
-                &format!(
-                    "{}{}{who}{}{}",
-                    status(Tone::Problem),
-                    heading("You can't sign in here yet"),
-                    paragraph(&ServerError::Auth(AuthErrorCode::NotAdmitted).public_message()),
-                    next(&advice),
-                ),
-                None,
-            )
-        }
+        Err(AuthErrorCode::NotAdmitted) => refused(locale, state, pending, account),
         Err(code @ AuthErrorCode::SetupCodeInvalid) => sign_in_pages::message(
+            locale,
             StatusCode::FORBIDDEN,
             sign_in_pages::Tone::Problem,
-            "You can't sign in here yet",
-            &ServerError::Auth(code).public_message(),
+            locale.text(Key::RefusedTitle),
+            locale.auth_error(code),
         ),
         Err(code) => sign_in_pages::message(
+            locale,
             StatusCode::BAD_REQUEST,
             sign_in_pages::Tone::Problem,
-            "Sign-in didn't finish",
-            &format!(
-                "{} To try again, open {} and enter the code from Oleafly.",
-                ServerError::Auth(code).public_message(),
-                verification_uri(state)
+            locale.text(Key::NotFinishedTitle),
+            &locale.fill(
+                Key::CodeRetry,
+                &[
+                    ("reason", locale.auth_error(code)),
+                    ("link", &verification_uri(state)),
+                ],
             ),
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::test_app;
+
+    fn pending(provider: &str) -> PendingSignIn {
+        PendingSignIn {
+            id: "pending".to_owned(),
+            provider_id: provider.to_owned(),
+            client_state: String::new(),
+            redirect_uri: String::new(),
+            code_challenge: String::new(),
+            device_public_key: String::new(),
+            device_name: "Lab PC".to_owned(),
+            platform: "linux".to_owned(),
+            setup_code_hash: None,
+            provider_verifier: String::new(),
+            provider_nonce: String::new(),
+            expires_at: 0,
+            device_authorization: Some("authorization".to_owned()),
+        }
+    }
+
+    async fn text_of(response: Response) -> String {
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        String::from_utf8_lossy(&body).into_owned()
+    }
+
+    #[tokio::test]
+    async fn a_used_setup_code_is_explained_in_the_page_language() {
+        let app = test_app().await;
+        let romanian = Locale::named("ro").expect("romanian");
+        let response = finished(
+            romanian,
+            &app.state,
+            &pending("github"),
+            Err(AuthErrorCode::SetupCodeInvalid),
+        );
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        let page = text_of(response).await;
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"ro\">"),
+            "{page}"
+        );
+        assert!(
+            page.contains(&escape(romanian.text(Key::RefusedTitle))),
+            "{page}"
+        );
+        assert!(
+            page.contains(&escape(
+                romanian.auth_error(AuthErrorCode::SetupCodeInvalid)
+            )),
+            "{page}"
+        );
+        assert!(!page.contains("setup code"), "{page}");
+    }
+
+    #[tokio::test]
+    async fn a_provider_that_is_gone_is_named_in_the_page_language() {
+        let app = test_app().await;
+        let turkish = Locale::named("tr").expect("turkish");
+        let response = finished_naming(
+            turkish,
+            &app.state,
+            &pending("gitlab"),
+            Err(AuthErrorCode::NotAdmitted),
+            Some("@ada"),
+        );
+        let page = text_of(response).await;
+        let provider = turkish.text(Key::SomeProvider);
+        assert!(
+            page.contains(&turkish.fill_html(
+                Key::RefusedProviderAccount,
+                &[
+                    ("provider", &escape(provider)),
+                    ("account", "<strong>@ada</strong>")
+                ]
+            )),
+            "{page}"
+        );
+        assert!(
+            page.contains(&escape(
+                &turkish.fill(Key::RefusedProviderAdvice, &[("provider", provider)])
+            )),
+            "{page}"
+        );
+        assert!(!page.contains("your sign-in provider"), "{page}");
     }
 }

@@ -54,8 +54,8 @@ export function SharedWithYou() {
       (next) => {
         if (active) setItems(next.filter((item) => item.local_project_id === null));
       },
-      (failure: unknown) => {
-        void logError("collab shared with me", failure);
+      (error_: unknown) => {
+        void logError("collab shared with me", error_);
       },
     );
     return () => {
@@ -72,8 +72,8 @@ export function SharedWithYou() {
       const files = useFilesStore.getState();
       await files.refreshProjects();
       await files.openProject(localId);
-    } catch (failure) {
-      setError({ key, message: collabErrorMessage(collabErrorCode(failure)) });
+    } catch (error_) {
+      setError({ key, message: collabErrorMessage(collabErrorCode(error_)) });
     } finally {
       setOpening(null);
     }

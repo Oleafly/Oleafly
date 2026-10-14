@@ -5,9 +5,10 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::ids::SharedProjectId;
-use oleafly_collab_protocol::page::{document, status, Tone};
+use oleafly_collab_protocol::page::{document_in, status, Tone};
 use url::Url;
 
+use crate::i18n::{Key, PageLocale};
 use crate::routes::path_id;
 use crate::state::AppState;
 
@@ -47,6 +48,7 @@ fn escape(text: &str) -> String {
 
 async fn landing(
     State(state): State<AppState>,
+    PageLocale(locale): PageLocale,
     path: Result<Path<String>, PathRejection>,
 ) -> Response {
     let Ok(project) = path_id::<SharedProjectId>(path) else {
@@ -54,19 +56,29 @@ async fn landing(
     };
     let open = escape(&open_link(&state.config.public_url, project));
     let server = escape(&state.config.server_name);
-    let page = document(
-        "A shared Oleafly project",
+    let title = locale.text(Key::LandingTitle);
+    let page = document_in(
+        locale.tag(),
+        title,
         &format!(
-            "{}<h1>A shared Oleafly project</h1><p>Someone on {server} shared a project with this link. Open it in Oleafly to see it.</p><p class=\"next\">You need to be added by its owner, or the owner needs to turn on link sharing.</p><div class=\"actions\"><a class=\"button primary\" href=\"{open}\">Open in Oleafly</a><a class=\"button\" href=\"{DOWNLOAD_URL}\">Get Oleafly</a></div>",
-            status(Tone::Info)
+            "{}<h1>{}</h1><p>{}</p><p class=\"next\">{}</p><div class=\"actions\"><a class=\"button primary\" href=\"{open}\">{}</a><a class=\"button\" href=\"{DOWNLOAD_URL}\">{}</a></div>",
+            status(Tone::Info),
+            escape(title),
+            locale.fill_html(Key::LandingBody, &[("server", &server)]),
+            escape(locale.text(Key::LandingNext)),
+            escape(locale.text(Key::LandingOpen)),
+            escape(locale.text(Key::LandingGet)),
         ),
         Some(&state.config.server_name),
     );
     (
-        [(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/html; charset=utf-8"),
-        )],
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/html; charset=utf-8"),
+            ),
+            (header::VARY, HeaderValue::from_static("accept-language")),
+        ],
         page,
     )
         .into_response()

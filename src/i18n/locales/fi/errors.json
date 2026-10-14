@@ -216,5 +216,8 @@
     "git_token_invalid": "Tämä ei näytä Overleafin Git-tokenilta. Kopioi koko tokeni ja yritä uudelleen.",
     "git_token_rejected": "Overleaf ei hyväksynyt Git-tokenia. Se on ehkä vanhentunut. Luo uusi Overleafin tiliasetuksissa.",
     "git_unavailable": "Overleafin Git-integraatio ei ole käytettävissä tälle projektille. Projektin omistaja tarvitsee maksullisen tai yliopiston tilauksen."
+  },
+  "collab": {
+    "turned_off": "Reaaliaikainen yhteistyö on pois päältä. Ota se käyttöön Asetusten kohdassa Kokeilut."
   }
 }

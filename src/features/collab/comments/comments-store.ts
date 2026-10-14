@@ -462,7 +462,7 @@ function othersWrote(before: readonly CollabCommentThread[], after: readonly Col
     return thread.messages.some((message) => {
       if (message.author === self && message.verified) return false;
       const old = messages.get(message.id);
-      return !old || old.editedAt !== message.editedAt || old.deleted !== message.deleted;
+      return old?.editedAt !== message.editedAt || old.deleted !== message.deleted;
     });
   });
 }
@@ -552,19 +552,23 @@ function selectionMoved(error: unknown): boolean {
   return isCollabCommentError(error) && error.code === "comment_selection_changed";
 }
 
-async function createAtEditor(projectId: string, draft: CommentRequest, body: string): Promise<CollabCommentThread> {
-  for (let attempt = 1; ; attempt += 1) {
-    await settled(draft.path);
-    const range = draftRangeInEditor(draft);
-    const session = openSession(draft.path);
-    const rev = session?.synchronized ? session.revision : null;
-    try {
-      return await collabCommentCreate(projectId, draft.path, range.from, range.to, rev, body, commentMembers());
-    } catch (error) {
-      if (!session || !selectionMoved(error) || attempt >= CREATE_ATTEMPTS) throw error;
-      await catchUp(draft.path, session, "behind");
-    }
+async function createAtEditor(
+  projectId: string,
+  draft: CommentRequest,
+  body: string,
+  attempt = 1,
+): Promise<CollabCommentThread> {
+  await settled(draft.path);
+  const range = draftRangeInEditor(draft);
+  const session = openSession(draft.path);
+  const rev = session?.synchronized ? session.revision : null;
+  try {
+    return await collabCommentCreate(projectId, draft.path, range.from, range.to, rev, body, commentMembers());
+  } catch (error) {
+    if (!session || !selectionMoved(error) || attempt >= CREATE_ATTEMPTS) throw error;
+    await catchUp(draft.path, session, "behind");
   }
+  return createAtEditor(projectId, draft, body, attempt + 1);
 }
 
 export async function createThread(body: string): Promise<void> {
@@ -822,10 +826,7 @@ export function startComments(): () => void {
   const stopLive = useCollabLiveStore.subscribe((live, previous) => {
     if (live.projectId !== previous.projectId || live.share !== previous.share) openProject();
     if (live.commentsNotSent && live.commentsNotSent !== previous.commentsNotSent) void refreshStatus();
-    if (live.role !== previous.role) {
-      syncRail();
-      void refreshStatus();
-    } else if (live.status?.state === "online" && previous.status?.state !== "online") {
+    if (live.role !== previous.role || (live.status?.state === "online" && previous.status?.state !== "online")) {
       syncRail();
       void refreshStatus();
     } else if (live.status?.state !== previous.status?.state) {

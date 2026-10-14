@@ -75,7 +75,7 @@ function toolReadKey(projectId: string, path: string): string {
 }
 
 function forgetToolReads(projectId: string): void {
-  for (const key of [...toolReads.keys()]) {
+  for (const key of toolReads.keys()) {
     if (key.startsWith(`${projectId}\0`)) toolReads.delete(key);
   }
 }

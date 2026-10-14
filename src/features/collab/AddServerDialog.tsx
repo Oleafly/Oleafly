@@ -128,9 +128,9 @@ export function AddServerDialog({
       const capabilities = await collabServerProbe(url);
       if (current !== attempt.current) return;
       setStep({ kind: "server", url, capabilities });
-    } catch (failure) {
+    } catch (error_) {
       if (current !== attempt.current) return;
-      setError(collabErrorMessage(collabErrorCode(failure)));
+      setError(collabErrorMessage(collabErrorCode(error_)));
       setStep({ kind: "address" });
     }
   }, []);
@@ -144,9 +144,9 @@ export function AddServerDialog({
       const server = await signIn(url, provider.id, capabilities.needs_setup ? setupCode.trim() : undefined);
       if (current !== attempt.current) return;
       setStep({ kind: "done", server });
-    } catch (failure) {
+    } catch (error_) {
       if (current !== attempt.current) return;
-      const code = collabErrorCode(failure);
+      const code = collabErrorCode(error_);
       setError(collabErrorMessage(code));
       setCodeHint(code === "sign_in_timed_out");
       setStep({ kind: "server", url, capabilities });
@@ -168,9 +168,9 @@ export function AddServerDialog({
       );
       if (current !== attempt.current) return;
       setStep({ kind: "done", server });
-    } catch (failure) {
+    } catch (error_) {
       if (current !== attempt.current) return;
-      setError(collabErrorMessage(collabErrorCode(failure)));
+      setError(collabErrorMessage(collabErrorCode(error_)));
       setStep({ kind: "server", url, capabilities });
     }
   };

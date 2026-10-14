@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
@@ -51,11 +51,12 @@ export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: str
   const [saving, setSaving] = useState(false);
   const [request, setRequest] = useState(0);
 
+  const load = useMemo(() => ({ serverId, request }), [serverId, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setLoadError(null);
-    collabAdminSettings(serverId).then(
+    collabAdminSettings(load.serverId).then(
       (next) => {
         if (active) setSettings(next);
       },
@@ -66,7 +67,7 @@ export function RuntimeSettingsTab({ serverId, actor }: Readonly<{ serverId: str
     return () => {
       active = false;
     };
-  }, [serverId, request]);
+  }, [load]);
 
   const change = async (field: RuntimeSettingField, value: boolean) => {
     if (!settings || saving) return;

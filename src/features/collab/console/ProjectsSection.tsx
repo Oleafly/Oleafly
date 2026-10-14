@@ -66,6 +66,10 @@ function ariaSort(sorting: Sorting, column: Column): "ascending" | "descending" 
   return sorting.order === "asc" ? "ascending" : "descending";
 }
 
+function SortArrow({ order }: Readonly<{ order: Sorting["order"] }>) {
+  return order === "asc" ? <ArrowUp aria-hidden /> : <ArrowDown aria-hidden />;
+}
+
 function StatusBadge({ status }: Readonly<{ status: CollabProjectStatus }>) {
   const { t } = useTranslation(["collab"]);
   if (status === "active") return null;
@@ -110,11 +114,12 @@ export function ProjectsSection({
     [searched, filter, sorting],
   );
 
+  const load = useMemo(() => ({ serverId, query, request }), [serverId, query, request]);
+
   useEffect(() => {
     let active = true;
-    void request;
     setMoreError(null);
-    collabAdminProjects(serverId, query).then(
+    collabAdminProjects(load.serverId, load.query).then(
       (page) => {
         if (active) setList({ status: "ready", items: page.items, next: page.next_cursor, total: page.total });
       },
@@ -125,7 +130,7 @@ export function ProjectsSection({
     return () => {
       active = false;
     };
-  }, [serverId, query, request]);
+  }, [load]);
 
   const loadMore = async () => {
     if (list.status !== "ready" || !list.next) return;
@@ -284,13 +289,7 @@ export function ProjectsSection({
                     onClick={() => sortBy(column)}
                   >
                     {t(($) => $.collab.console.projects.columns[column])}
-                    {sorting.column === column ? (
-                      sorting.order === "asc" ? (
-                        <ArrowUp aria-hidden />
-                      ) : (
-                        <ArrowDown aria-hidden />
-                      )
-                    ) : null}
+                    {sorting.column === column ? <SortArrow order={sorting.order} /> : null}
                   </Button>
                 </TableHead>
               ))}
