@@ -587,3 +587,104 @@ fn a_figure_added_while_the_link_is_down_reaches_the_other_person_after_reconnec
         assert_eq!(alice.host.last_uploads(), Some(Vec::new()));
     });
 }
+
+#[test]
+fn a_figure_whose_download_failed_arrives_later_and_after_a_restart_without_another_edit() {
+    run(async {
+        let server = TestServer::start(test_config()).await;
+        let server_id = server.state().server_id;
+        let (alice_key, alice_tokens) = person(&server, "Alice", ServerRole::Admin).await;
+        let (bob_key, bob_tokens) = person(&server, "Bob", ServerRole::Member).await;
+        let client = ServerClient::new(ServerUrl::parse(&server.url()).unwrap()).unwrap();
+        let access = &alice_tokens.access_token;
+        let mut doc = ProjectDoc::create().unwrap();
+        doc.add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .unwrap()
+            .project_id;
+        client
+            .put_snapshot(access, project, 0, doc.snapshot().unwrap())
+            .await
+            .unwrap();
+        client.commit_project(access, project).await.unwrap();
+        client
+            .grant_member(access, project, bob_tokens.account_id, ProjectRole::Editor)
+            .await
+            .unwrap();
+        let (seq, snapshot) = client.get_snapshot(access, project).await.unwrap();
+        let joined = |role| LiveProject::new(ProjectDoc::load(&snapshot).unwrap(), seq, role);
+        let relay = crate::collab::testing::Relay::start(
+            server.url().trim_start_matches("http://").to_owned(),
+        )
+        .await;
+        let alice = side(
+            Seat {
+                url: &server.url(),
+                server_id,
+                project,
+                key: alice_key,
+                tokens: &alice_tokens,
+            },
+            joined(ProjectRole::Owner),
+            &[("main.tex", "abc")],
+            true,
+        )
+        .await;
+        let bob_seat = || Seat {
+            url: &relay.url,
+            server_id,
+            project,
+            key: Arc::clone(&bob_key),
+            tokens: &bob_tokens,
+        };
+        let bob = side(
+            bob_seat(),
+            joined(ProjectRole::Editor),
+            &[("main.tex", "abc")],
+            true,
+        )
+        .await;
+        until("both online", || {
+            alice.host.status() == Some(LiveStatus::Online)
+                && bob.host.status() == Some(LiveStatus::Online)
+        })
+        .await;
+        relay.refuse(Some("/blobs/"));
+        let figure = [0x89, b'P', b'N', b'G', 4, 5, 6];
+        alice.write("figures/late.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/late.png".to_owned()]))
+            .await
+            .unwrap();
+        until("bob's download refused", || relay.refusals() > 0).await;
+        assert!(!bob.root.join("figures/late.png").exists());
+        relay.refuse(None);
+        until("the figure on bob's disk", || {
+            std::fs::read(bob.root.join("figures/late.png"))
+                .ok()
+                .as_deref()
+                == Some(&figure[..])
+        })
+        .await;
+        let seen = lock(&bob.active.live).doc().snapshot().unwrap();
+        drop(bob);
+        let again = side(
+            bob_seat(),
+            LiveProject::new(ProjectDoc::load(&seen).unwrap(), 0, ProjectRole::Editor),
+            &[("main.tex", "abc")],
+            false,
+        )
+        .await;
+        assert!(!again.root.join("figures/late.png").exists());
+        lock(&again.active.live).mark_all_dirty().unwrap();
+        again.active.write_out().await.unwrap();
+        assert_eq!(
+            std::fs::read(again.root.join("figures/late.png")).unwrap(),
+            figure
+        );
+    });
+}

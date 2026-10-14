@@ -17,6 +17,7 @@ mod session;
 mod settings;
 mod sync_hold;
 mod unsent;
+pub mod unwritten;
 pub mod uploads;
 
 pub use editor::document_snapshot;

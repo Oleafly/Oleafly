@@ -761,6 +761,7 @@ mod tests {
                 next,
                 &texts,
                 &crlf,
+                &|_| false,
             )
             .unwrap()
         }

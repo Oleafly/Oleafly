@@ -519,6 +519,15 @@ pub(super) fn apply_kept_edits(
 pub(super) struct Shaped {
     pub(super) conflicts: Vec<String>,
     merged: Vec<(String, KeptText)>,
+    held: Option<Hold>,
+}
+
+impl Shaped {
+    pub(super) fn blocks(&self, path: &str) -> bool {
+        self.held
+            .as_ref()
+            .is_some_and(|hold| hold.holds(path) || hold.kind(path).is_some())
+    }
 }
 
 pub(super) fn shape(
@@ -597,6 +606,7 @@ pub(super) fn shape(
     if hold != before {
         let _ = hold.save(dir);
     }
+    shaped.held = Some(hold);
     shaped
 }
 

@@ -781,3 +781,138 @@ fn writing_out_leaves_the_live_document_free_while_the_disk_is_written() {
         "typing and comment reads waited for the change log to reach the disk"
     );
 }
+
+#[derive(Default)]
+struct Watching {
+    changes: Mutex<Vec<FolderChange>>,
+    unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
+}
+
+impl Watching {
+    fn changed_paths(&self) -> Vec<String> {
+        guard(&self.changes)
+            .iter()
+            .flat_map(|change| change.paths.clone())
+            .collect()
+    }
+
+    fn told(&self) -> Option<Vec<super::unwritten::UnwrittenFile>> {
+        guard(&self.unwritten)
+            .last()
+            .map(|payload| payload.files.clone())
+    }
+}
+
+impl LiveHost for Watching {
+    fn status(&self, _: StatusPayload) {}
+    fn role(&self, _: RolePayload) {}
+    fn merged(&self, _: MergedPayload) {}
+    fn presence(&self, _: PresencePayload) {}
+    fn presence_left(&self, _: PresenceLeftPayload) {}
+    fn folder_changed(&self, change: FolderChange) {
+        guard(&self.changes).push(change);
+    }
+    fn new_device(&self, _: NewDevicePayload) {}
+    fn unwritten(&self, payload: super::unwritten::UnwrittenPayload) {
+        guard(&self.unwritten).push(payload);
+    }
+}
+
+fn watched_rig(
+    project_id: &str,
+    files: &[(&str, &str)],
+) -> (
+    tempfile::TempDir,
+    std::path::PathBuf,
+    Arc<Watching>,
+    write::rig::LiveRig,
+) {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let host = Arc::new(Watching::default());
+    let rig = write::rig::LiveRig::heard_by(
+        project_id,
+        &root,
+        files,
+        Arc::clone(&host) as Arc<dyn LiveHost>,
+    );
+    (dir, root, host, rig)
+}
+
+#[test]
+fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
+    let (_dir, root, host, rig) = watched_rig("echo", &[("main.tex", "abc"), ("refs.bib", "@a")]);
+    let (main, rev) = rig.open("main.tex");
+    rig.typed(&main, rev, "d");
+    rig.remote("refs.bib", "@b");
+    rig.settle();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abcd"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("refs.bib")).unwrap(),
+        "@b"
+    );
+    let changed = host.changed_paths();
+    assert!(!changed.contains(&"main.tex".to_owned()), "{changed:?}");
+    assert!(changed.contains(&"refs.bib".to_owned()), "{changed:?}");
+}
+
+#[test]
+fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_it_can_be() {
+    let (_dir, root, _host, rig) = watched_rig("blocked", &[("main.tex", "abc")]);
+    rig.remote_new("table.tex", "T");
+    std::fs::create_dir_all(root.join("table.tex/inner")).unwrap();
+    rig.remote("main.tex", "abcd");
+    rig.settle();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abcd"
+    );
+    assert!(root.join("table.tex").is_dir());
+    std::fs::remove_dir_all(root.join("table.tex")).unwrap();
+    rig.settle();
+    assert_eq!(
+        std::fs::read_to_string(root.join("table.tex")).unwrap(),
+        "T"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_file_in_a_folder_that_refuses_writes_is_retried_reported_and_written_once_it_can_be() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_dir, root, host, rig) = watched_rig("locked", &[("main.tex", "abc")]);
+    rig.remote_new_dir("locked");
+    rig.settle();
+    let locked = root.join("locked");
+    assert!(locked.is_dir());
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o555)).unwrap();
+    if std::fs::write(locked.join("probe"), "x").is_ok() {
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        return;
+    }
+    rig.remote_new_in("locked", "a.tex", "A");
+    rig.remote("main.tex", "abcd");
+    rig.settle();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abcd"
+    );
+    assert!(!locked.join("a.tex").exists());
+    rig.settle();
+    let told = host.told();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(
+        told,
+        Some(vec![super::unwritten::UnwrittenFile {
+            path: "locked/a.tex".to_owned(),
+            reason: super::unwritten::UnwrittenReason::ReadOnly,
+        }])
+    );
+    rig.settle();
+    assert_eq!(std::fs::read_to_string(locked.join("a.tex")).unwrap(), "A");
+    assert_eq!(host.told(), Some(Vec::new()));
+}

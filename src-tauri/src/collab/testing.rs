@@ -178,6 +178,8 @@ pub(crate) struct Relay {
     pub(crate) url: String,
     down: std::sync::Arc<std::sync::atomic::AtomicBool>,
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
+    refused: std::sync::Arc<Mutex<Option<String>>>,
+    refusals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Relay {
@@ -191,13 +193,17 @@ impl Relay {
         let url = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
         let down = Arc::new(AtomicBool::new(false));
         let seen = Arc::new(Mutex::new(Vec::new()));
+        let refused: Arc<Mutex<Option<String>>> = Arc::default();
+        let refusals = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let (gate, log) = (Arc::clone(&down), Arc::clone(&seen));
+        let (refusing, counted) = (Arc::clone(&refused), Arc::clone(&refusals));
         tokio::spawn(async move {
             while let Ok((client, _)) = listener.accept().await {
                 if gate.load(Ordering::SeqCst) {
                     continue;
                 }
                 let (gate, log, upstream) = (Arc::clone(&gate), Arc::clone(&log), upstream.clone());
+                let (refusing, counted) = (Arc::clone(&refusing), Arc::clone(&counted));
                 tokio::spawn(async move {
                     let Ok(server) = tokio::net::TcpStream::connect(upstream).await else {
                         return;
@@ -209,6 +215,16 @@ impl Relay {
                         let mut buffer = [0u8; 16384];
                         while let Ok(count) = client_read.read(&mut buffer).await {
                             if count == 0 || upward_gate.load(Ordering::SeqCst) {
+                                break;
+                            }
+                            let chunk = String::from_utf8_lossy(&buffer[..count]);
+                            let refuse = refusing
+                                .lock()
+                                .unwrap_or_else(PoisonError::into_inner)
+                                .as_ref()
+                                .is_some_and(|needle| chunk.contains(needle.as_str()));
+                            if refuse {
+                                counted.fetch_add(1, Ordering::SeqCst);
                                 break;
                             }
                             log.lock()
@@ -236,7 +252,21 @@ impl Relay {
                 });
             }
         });
-        Relay { url, down, seen }
+        Relay {
+            url,
+            down,
+            seen,
+            refused,
+            refusals,
+        }
+    }
+
+    pub(crate) fn refuse(&self, needle: Option<&str>) {
+        *self.refused.lock().unwrap_or_else(PoisonError::into_inner) = needle.map(str::to_owned);
+    }
+
+    pub(crate) fn refusals(&self) -> usize {
+        self.refusals.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     pub(crate) fn set_down(&self, down: bool) {

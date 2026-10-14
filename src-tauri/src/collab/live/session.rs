@@ -19,13 +19,13 @@ use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
 use super::import::{apply_local_import, read_local_changes};
 use super::payloads::StatusPayload;
+use super::unwritten::{reason_of, Settled, UnwrittenReason};
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
 use crate::collab::commands::with_access;
 use crate::collab::disk::{sha256_hex, write_file_over, DiskState, Stamp, WriteOutcome};
 use crate::folder_watch::FolderChange;
 
 const WRITE_DEBOUNCE: Duration = Duration::from_millis(120);
-const BLOB_RETRY: Duration = Duration::from_secs(3);
 
 struct Outgoing {
     work: DiskWork,
@@ -208,16 +208,22 @@ impl Active {
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
+        let blocked = |path: &str| shaped.blocks(path);
         let DiskPass {
             mut changed,
             mut conflicts,
             blobs,
             moved,
             removed,
+            written,
+            done,
+            failed,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
-            apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts, &crlf)?
+            apply_to_disk(
+                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
+            )?
         };
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
@@ -229,18 +235,22 @@ impl Active {
         }
         self.announce_removed(&previous, &removed);
         self.note_arrivals(&previous, &changed);
-        let missing = self
-            .fetch_blobs(blobs, &mut conflicts, &mut changed)
-            .await?;
-        let _ = guard(&self.disk).save(&self.disk_file);
-        if missing {
-            lock(&self.live).mark_all_dirty()?;
-            let writer = self.writer.clone();
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(BLOB_RETRY).await;
-                let _ = writer.send(WriterSignal::Kick);
-            });
-        }
+        let mut settled = Settled {
+            done,
+            failed,
+            conflicts: Vec::new(),
+        };
+        self.fetch_blobs(blobs, &mut conflicts, &mut changed, &mut settled)
+            .await;
+        let layout = {
+            let disk = guard(&self.disk);
+            let _ = disk.save(&self.disk_file);
+            disk.layout.clone()
+        };
+        settled.conflicts.clone_from(&conflicts);
+        self.settle_unwritten(&layout, settled);
+        let typed_here = self.open_texts(&layout, &written, &moved);
+        changed.retain(|path| !typed_here.contains(path));
         if !changed.is_empty() || structural {
             self.host.folder_changed(FolderChange {
                 project_id: self.project_id.clone(),
@@ -311,16 +321,34 @@ impl Active {
         }))
     }
 
+    fn open_texts(
+        &self,
+        layout: &Layout,
+        written: &BTreeSet<String>,
+        moved: &[(String, String)],
+    ) -> BTreeSet<String> {
+        let live = lock(&self.live);
+        layout
+            .iter()
+            .filter(|(id, placed)| {
+                placed.kind == NodeKind::Text
+                    && written.contains(&placed.path)
+                    && !moved
+                        .iter()
+                        .any(|(from, to)| *from == placed.path || *to == placed.path)
+                    && live.is_open(id)
+            })
+            .map(|(_, placed)| placed.path.clone())
+            .collect()
+    }
+
     async fn fetch_blobs(
         &self,
         blobs: Vec<(String, String, Option<Stamp>)>,
         conflicts: &mut Vec<String>,
         changed: &mut BTreeSet<String>,
-    ) -> Result<bool, CollabError> {
-        let mut missing = false;
-        if blobs.is_empty() {
-            return Ok(missing);
-        }
+        settled: &mut Settled,
+    ) {
         let project = self.link.project;
         for (path, hash, stamp) in blobs {
             let fetched = with_access(
@@ -336,21 +364,20 @@ impl Active {
             .ok()
             .filter(|bytes| sha256_hex(bytes) == hash);
             let Some(bytes) = fetched else {
-                missing = true;
+                settled.failed.push((path, UnwrittenReason::NotDownloaded));
                 continue;
             };
             let mut disk = guard(&self.disk);
-            match write_file_over(&self.root, &path, &bytes, stamp.as_ref())
-                .map_err(CollabError::Io)?
-            {
-                WriteOutcome::ChangedOutside => conflicts.push(path),
-                _ => {
+            match write_file_over(&self.root, &path, &bytes, stamp.as_ref()) {
+                Ok(WriteOutcome::ChangedOutside) => conflicts.push(path),
+                Ok(_) => {
                     disk.hashes.insert(path.clone(), hash);
-                    changed.insert(path);
+                    changed.insert(path.clone());
+                    settled.done.insert(path);
                 }
+                Err(error) => settled.failed.push((path, reason_of(&error))),
             }
         }
-        Ok(missing)
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {

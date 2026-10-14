@@ -1,0 +1,232 @@
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::{LazyLock, Mutex};
+use std::time::Duration;
+
+use oleafly_collab::materialize::Layout;
+use serde::Serialize;
+
+use super::session::{guard, lock, Active, WriterSignal};
+
+pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
+const FIRST_RETRY: Duration = Duration::from_secs(2);
+const LONGEST_RETRY: Duration = Duration::from_secs(60);
+const RETRIES: u32 = 6;
+const TELL_AFTER: u32 = 2;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnwrittenReason {
+    Locked,
+    ReadOnly,
+    NoSpace,
+    NotDownloaded,
+    Other,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct UnwrittenFile {
+    pub path: String,
+    pub reason: UnwrittenReason,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnwrittenPayload {
+    pub project_id: String,
+    pub files: Vec<UnwrittenFile>,
+}
+
+#[derive(Default)]
+struct Failing {
+    attempts: BTreeMap<String, (u32, Option<UnwrittenReason>)>,
+    told: Vec<UnwrittenFile>,
+    timer: bool,
+}
+
+static FAILING: LazyLock<Mutex<HashMap<String, Failing>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+#[cfg(windows)]
+fn reason_of_code(code: i32) -> UnwrittenReason {
+    match code {
+        32 | 33 => UnwrittenReason::Locked,
+        5 | 19 => UnwrittenReason::ReadOnly,
+        39 | 112 => UnwrittenReason::NoSpace,
+        _ => UnwrittenReason::Other,
+    }
+}
+
+#[cfg(not(windows))]
+fn reason_of_code(code: i32) -> UnwrittenReason {
+    match code {
+        11 | 16 | 26 => UnwrittenReason::Locked,
+        1 | 13 | 30 => UnwrittenReason::ReadOnly,
+        28 | 69 | 122 => UnwrittenReason::NoSpace,
+        _ => UnwrittenReason::Other,
+    }
+}
+
+pub(super) fn reason_of(error: &str) -> UnwrittenReason {
+    error
+        .rsplit_once("(os error ")
+        .and_then(|(_, code)| code.trim_end_matches(')').parse().ok())
+        .map_or(UnwrittenReason::Other, reason_of_code)
+}
+
+fn backoff(attempts: u32) -> Duration {
+    FIRST_RETRY
+        .saturating_mul(1 << attempts.saturating_sub(1).min(8))
+        .min(LONGEST_RETRY)
+}
+
+#[derive(Default)]
+pub(super) struct Settled {
+    pub(super) done: BTreeSet<String>,
+    pub(super) failed: Vec<(String, UnwrittenReason)>,
+    pub(super) conflicts: Vec<String>,
+}
+
+impl Active {
+    pub(super) fn settle_unwritten(&self, layout: &Layout, settled: Settled) {
+        let (retry, payload, delay) = {
+            let mut all = guard(&FAILING);
+            let failing = all.entry(self.project_id.clone()).or_default();
+            let present: BTreeSet<&str> =
+                layout.values().map(|placed| placed.path.as_str()).collect();
+            failing
+                .attempts
+                .retain(|path, _| present.contains(path.as_str()) && !settled.done.contains(path));
+            let failed = settled
+                .failed
+                .into_iter()
+                .map(|(path, reason)| (path, Some(reason)));
+            let conflicts = settled.conflicts.into_iter().map(|path| (path, None));
+            let mut retry = BTreeSet::new();
+            for (path, reason) in failed.chain(conflicts) {
+                let entry = failing.attempts.entry(path.clone()).or_insert((0, None));
+                entry.0 += 1;
+                if reason.is_some() {
+                    entry.1 = reason;
+                }
+                if entry.0 <= RETRIES {
+                    retry.insert(path);
+                }
+            }
+            let told: Vec<UnwrittenFile> = failing
+                .attempts
+                .iter()
+                .filter(|(_, (attempts, _))| *attempts >= TELL_AFTER)
+                .filter_map(|(path, (_, reason))| {
+                    reason.map(|reason| UnwrittenFile {
+                        path: path.clone(),
+                        reason,
+                    })
+                })
+                .collect();
+            let payload = (told != failing.told).then(|| UnwrittenPayload {
+                project_id: self.project_id.clone(),
+                files: told.clone(),
+            });
+            failing.told = told;
+            let most = retry
+                .iter()
+                .filter_map(|path| failing.attempts.get(path))
+                .map(|(attempts, _)| *attempts)
+                .max();
+            let delay = most.filter(|_| !failing.timer).map(backoff);
+            failing.timer |= delay.is_some();
+            (retry, payload, delay)
+        };
+        if !retry.is_empty() {
+            let mut live = lock(&self.live);
+            for (id, placed) in layout {
+                if retry.contains(&placed.path) {
+                    live.mark_dirty(id);
+                }
+            }
+        }
+        if let Some(payload) = payload {
+            for file in &payload.files {
+                let _ = crate::project::append_app_log(format!(
+                    "Live collaboration could not write {} in project {} ({:?}); it tries again",
+                    file.path, self.project_id, file.reason
+                ));
+            }
+            self.host.unwritten(payload);
+        }
+        if let Some(delay) = delay {
+            let writer = self.writer.clone();
+            let project_id = self.project_id.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(delay).await;
+                if let Some(failing) = guard(&FAILING).get_mut(&project_id) {
+                    failing.timer = false;
+                }
+                let _ = writer.send(WriterSignal::Kick);
+            });
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn os_errors_read_as_the_reasons_the_window_explains() {
+        #[cfg(not(windows))]
+        {
+            assert_eq!(
+                reason_of("Permission denied (os error 13)"),
+                UnwrittenReason::ReadOnly
+            );
+            assert_eq!(
+                reason_of("could not stage main.tex: No space left on device (os error 28)"),
+                UnwrittenReason::NoSpace
+            );
+            assert_eq!(
+                reason_of("Read-only file system (os error 30)"),
+                UnwrittenReason::ReadOnly
+            );
+        }
+        #[cfg(windows)]
+        {
+            assert_eq!(
+                reason_of("The process cannot access the file because it is being used by another process. (os error 32)"),
+                UnwrittenReason::Locked
+            );
+            assert_eq!(
+                reason_of("There is not enough space on the disk. (os error 112)"),
+                UnwrittenReason::NoSpace
+            );
+        }
+        assert_eq!(reason_of("refused to write x"), UnwrittenReason::Other);
+    }
+
+    #[test]
+    fn retries_back_off_to_a_minute() {
+        assert_eq!(backoff(1), Duration::from_secs(2));
+        assert_eq!(backoff(2), Duration::from_secs(4));
+        assert_eq!(backoff(4), Duration::from_secs(16));
+        assert_eq!(backoff(30), LONGEST_RETRY);
+    }
+
+    #[test]
+    fn the_notice_names_each_file_and_why_in_snake_case() {
+        let payload = UnwrittenPayload {
+            project_id: "paper".to_owned(),
+            files: vec![UnwrittenFile {
+                path: "data/results.csv".to_owned(),
+                reason: UnwrittenReason::NotDownloaded,
+            }],
+        };
+        assert_eq!(LIVE_UNWRITTEN_EVENT, "collab-live-unwritten");
+        assert_eq!(
+            serde_json::to_value(&payload).unwrap(),
+            serde_json::json!({
+                "projectId": "paper",
+                "files": [{ "path": "data/results.csv", "reason": "not_downloaded" }],
+            })
+        );
+    }
+}

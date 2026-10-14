@@ -9,7 +9,7 @@ use super::payloads::{
     LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT,
     PRESENCE_LEFT_EVENT,
 };
-use super::{kept, uploads};
+use super::{kept, unwritten, uploads};
 use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
 
@@ -31,6 +31,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
+    fn unwritten(&self, _payload: unwritten::UnwrittenPayload) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
@@ -120,6 +121,10 @@ impl LiveHost for AppLiveHost {
 
     fn uploads(&self, payload: uploads::UploadsPayload) {
         let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
+    }
+
+    fn unwritten(&self, payload: unwritten::UnwrittenPayload) {
+        let _ = self.app.emit(unwritten::LIVE_UNWRITTEN_EVENT, payload);
     }
 
     fn settings_changed(&self, applied: crate::collab::settings::Applied) {

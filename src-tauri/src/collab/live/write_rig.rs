@@ -58,6 +58,15 @@ pub(crate) struct LiveRig {
 
 impl LiveRig {
     pub(crate) fn start(project_id: &str, root: &Path, files: &[(&str, &str)]) -> LiveRig {
+        LiveRig::heard_by(project_id, root, files, Arc::new(Quiet))
+    }
+
+    pub(crate) fn heard_by(
+        project_id: &str,
+        root: &Path,
+        files: &[(&str, &str)],
+        host: Arc<dyn LiveHost>,
+    ) -> LiveRig {
         let dir = tempfile::tempdir().unwrap();
         let mut doc = ProjectDoc::create().unwrap();
         let mut hashes = BTreeMap::new();
@@ -108,7 +117,7 @@ impl LiveRig {
                 handle,
                 link,
                 disk: Mutex::new(disk),
-                host: Arc::new(Quiet),
+                host,
                 writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
@@ -179,8 +188,37 @@ impl LiveRig {
         });
     }
 
+    pub(crate) fn remote_new_dir(&self, path: &str) {
+        self.arrive(|peer| {
+            peer.add_node(None, path, NodeKind::Dir, None, "").unwrap();
+        });
+    }
+
+    pub(crate) fn remote_new_in(&self, folder: &str, name: &str, text: &str) {
+        let parent = self.id_of(folder).expect("the folder is shared");
+        self.arrive(|peer| {
+            peer.add_node(Some(&parent), name, NodeKind::Text, None, text)
+                .unwrap();
+        });
+    }
+
     pub(crate) fn set_role(&self, role: ProjectRole) {
         lock(&self.active.live).set_role(role);
+    }
+
+    pub(crate) fn open(&self, path: &str) -> (String, u64) {
+        let id = self.id_of(path).expect("the opened path is shared");
+        let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+        let opened = lock(&self.active.live).open_file(&id, sink).unwrap();
+        (id, opened.rev)
+    }
+
+    pub(crate) fn typed(&self, id: &str, rev: u64, at_end: &str) {
+        let mut live = lock(&self.active.live);
+        let text = live.doc().text(id).unwrap();
+        let mut operation = oleafly_collab::ot::TextOperation::new();
+        operation.retain(text.encode_utf16().count()).insert(at_end);
+        live.editor_change(id, rev, operation).unwrap();
     }
 
     pub(crate) fn go_live(&self) -> LiveNow {
