@@ -1221,3 +1221,57 @@ async fn maintainers_cannot_list_or_sign_out_staff_devices() {
     );
     assert_eq!(of_kind(&logged(&app).await, "device_signed_out").len(), 1);
 }
+
+#[tokio::test]
+async fn the_member_list_says_how_many_shared_projects_each_person_owns() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let (owner_id, now) = (owner.account_id, app.clock.now_ms());
+    app.state
+        .db
+        .call(move |conn| {
+            use oleafly_collab_protocol::projects::ProjectStatus;
+            use oleafly_server::projects;
+            for (title, status) in [
+                ("Thesis", ProjectStatus::Active),
+                ("Paper", ProjectStatus::Active),
+                ("Old poster", ProjectStatus::Archived),
+                ("Still uploading", ProjectStatus::Pending),
+            ] {
+                let project = projects::create_pending(conn, owner_id, title, now)?;
+                if status != ProjectStatus::Pending {
+                    projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                }
+                if status == ProjectStatus::Archived {
+                    projects::set_status(conn, project, status, now)?;
+                }
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let listed: Vec<MemberSummary> = parse(expect_status(
+        support::send_get(&app.router, MEMBERS, token(&admin)).await,
+        StatusCode::OK,
+    ));
+    let owned = |account: AccountId| {
+        listed
+            .iter()
+            .find(|member| member.account.account_id == account)
+            .map(|member| member.owned_projects)
+    };
+    assert_eq!(owned(owner.account_id), Some(2));
+    assert_eq!(owned(admin.account_id), Some(0));
+    let suspended: MemberSummary = parse(expect_status(
+        support::send_patch(
+            &app.router,
+            &member_path(owner.account_id),
+            token(&admin),
+            status_patch(MemberStatus::Suspended),
+        )
+        .await,
+        StatusCode::OK,
+    ));
+    assert_eq!(suspended.owned_projects, 2);
+}

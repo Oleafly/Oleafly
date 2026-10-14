@@ -367,6 +367,13 @@ pub fn has_candidate(conn: &Connection, emails: &[String]) -> Result<bool, Serve
     Ok(false)
 }
 
+fn owner_present(conn: &Connection, project: SharedProjectId) -> Result<bool, ServerError> {
+    let Some(row) = projects::project_row(conn, project)? else {
+        return Ok(false);
+    };
+    Ok(members::account_status(conn, row.owner)? == Some(MemberStatus::Active))
+}
+
 pub fn admissible(
     conn: &Connection,
     emails: &[String],
@@ -377,7 +384,9 @@ pub fn admissible(
         return Ok(false);
     }
     for invitation in usable(conn, emails, now)? {
-        if projects::member_count(conn, invitation.project)? < max_members {
+        if owner_present(conn, invitation.project)?
+            && projects::member_count(conn, invitation.project)? < max_members
+        {
             return Ok(true);
         }
     }
@@ -408,6 +417,9 @@ fn accept(
     max_members: u32,
     now: i64,
 ) -> Result<Option<Accepted>, ServerError> {
+    if !owner_present(conn, invitation.project)? {
+        return Ok(None);
+    }
     let existing = projects::role_of(conn, invitation.project, account)?;
     if existing.is_none() && projects::member_count(conn, invitation.project)? >= max_members {
         return Ok(None);

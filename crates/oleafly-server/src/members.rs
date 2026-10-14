@@ -220,15 +220,24 @@ pub fn member_summary(
     let Some(summary) = account_summary(conn, account)? else {
         return Ok(None);
     };
-    let (status, created_at) = conn.query_row(
-        "SELECT status, created_at FROM accounts WHERE id = ?1",
+    let (status, created_at, owned) = conn.query_row(
+        "SELECT status, created_at, \
+         (SELECT COUNT(*) FROM projects p WHERE p.owner_account = accounts.id AND p.status = 'active') \
+         FROM accounts WHERE id = ?1",
         [account.to_string()],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        },
     )?;
     Ok(Some(MemberSummary {
         account: summary,
         status: status_from_str(&status)?,
         created_at,
+        owned_projects: u32::try_from(owned).unwrap_or(u32::MAX),
     }))
 }
 

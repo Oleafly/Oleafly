@@ -293,6 +293,51 @@ async fn a_matching_verified_email_is_admitted_once_as_a_guest_off_the_allowlist
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_guest_waits_while_the_owner_who_invited_them_is_away() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, false).await;
+    let project = share_project(&stage.server, &stage.alice, "Alice's paper").await;
+    invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let alice = format!("/api/v1/admin/members/{}", stage.alice.tokens.account_id);
+    let suspended = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "suspended" })),
+    )
+    .await;
+    assert_eq!(suspended.status(), StatusCode::OK);
+    assert_eq!(
+        sign_in_as(stage, "dana-gh").await.err().as_deref(),
+        Some("not_admitted")
+    );
+    let back = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "active" })),
+    )
+    .await;
+    assert_eq!(back.status(), StatusCode::OK);
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("dana gets in once the owner is back");
+    let listed = projects_of(stage, &dana).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].project_id, project.project_id);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_owner_can_change_a_guests_role_but_not_add_a_guest_by_account() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
