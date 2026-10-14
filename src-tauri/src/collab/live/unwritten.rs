@@ -70,7 +70,7 @@ pub(super) fn reason_of(error: &str) -> UnwrittenReason {
         .map_or(UnwrittenReason::Other, reason_of_code)
 }
 
-fn backoff(attempts: u32) -> Duration {
+pub(super) fn backoff(attempts: u32) -> Duration {
     FIRST_RETRY
         .saturating_mul(1 << attempts.saturating_sub(1).min(8))
         .min(LONGEST_RETRY)

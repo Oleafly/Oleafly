@@ -212,7 +212,7 @@ impl Active {
         }) = self.take_outgoing(&mut previous, &hashes)?
         else {
             if self.save_owed() && self.save_due(urgent) {
-                self.persist().await?;
+                self.save_document().await;
             }
             return Ok(Vec::new());
         };
@@ -221,7 +221,7 @@ impl Active {
             self.refresh_pending();
         }
         if self.save_due(urgent) {
-            self.persist().await?;
+            self.save_document().await;
         }
         let mut plan = materialize::plan(&previous, &next);
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);

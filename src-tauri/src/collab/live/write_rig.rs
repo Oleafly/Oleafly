@@ -144,6 +144,10 @@ impl LiveRig {
         Arc::clone(&self.active)
     }
 
+    pub(crate) fn document_dir(&self) -> PathBuf {
+        self.active.document_dir.clone()
+    }
+
     fn id_of(&self, path: &str) -> Option<String> {
         let live = lock(&self.active.live);
         materialize::layout(&live.doc().nodes().unwrap())

@@ -1085,6 +1085,27 @@ fn quitting_right_after_typing_offline_keeps_the_edit_in_the_document_and_on_dis
 }
 
 #[test]
+fn typing_reaches_the_disk_while_the_shared_document_cannot_be_saved() {
+    let (_dir, root, _host, rig) = watched_rig("unsaved", &[("main.tex", "abc")]);
+    let (main, rev) = rig.open("main.tex");
+    let document = rig.document_dir();
+    let _ = std::fs::remove_dir_all(&document);
+    std::fs::write(&document, "in the way").unwrap();
+    rig.typed(&main, rev, " typed while the document cannot be saved");
+    rig.settle();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc typed while the document cannot be saved"
+    );
+    std::fs::remove_file(&document).unwrap();
+    rig.settle();
+    assert_eq!(
+        rig.saved_text("main.tex").as_deref(),
+        Some("abc typed while the document cannot be saved")
+    );
+}
+
+#[test]
 fn reading_a_folder_for_an_import_leaves_the_shared_document_free() {
     let (_dir, root, _host, rig) = watched_rig("lock-free", &[("main.tex", "abc")]);
     std::fs::create_dir_all(root.join("figs")).unwrap();

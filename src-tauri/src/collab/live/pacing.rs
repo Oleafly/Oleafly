@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use oleafly_collab::materialize::Layout;
 
 use super::session::{guard, lock, Active, WriterSignal};
+use super::unwritten::backoff;
 use crate::collab::disk::{sha256_hex, DiskState};
 
 const PACE: Duration = Duration::from_secs(1);
@@ -14,6 +15,7 @@ const PACE: Duration = Duration::from_secs(1);
 pub(super) struct Pace {
     saved: Option<Instant>,
     owed: bool,
+    failures: u32,
     written: HashMap<String, Instant>,
     index: Option<String>,
     timer: Arc<AtomicBool>,
@@ -39,8 +41,13 @@ impl Active {
     }
 
     pub(super) fn save_due(&self, urgent: bool) -> bool {
-        let due = self.paced(|pace| {
-            let due = urgent || pace.saved.is_none_or(|at| at.elapsed() >= PACE);
+        let (due, gap) = self.paced(|pace| {
+            let gap = if pace.failures == 0 {
+                PACE
+            } else {
+                backoff(pace.failures)
+            };
+            let due = urgent || pace.saved.is_none_or(|at| at.elapsed() >= gap);
             if due {
                 pace.saved = Some(Instant::now());
                 pace.owed = false;
@@ -51,12 +58,35 @@ impl Active {
             } else {
                 pace.owed = true;
             }
-            due
+            (due, gap)
         });
         if !due {
-            self.come_back_later();
+            self.come_back_in(gap);
         }
         due
+    }
+
+    pub(super) async fn save_document(&self) {
+        let saved = self.persist().await;
+        let failures = self.paced(|pace| {
+            if saved.is_ok() {
+                pace.failures = 0;
+            } else {
+                pace.failures = pace.failures.saturating_add(1);
+                pace.owed = true;
+            }
+            pace.failures
+        });
+        let Err(error) = saved else {
+            return;
+        };
+        if failures == 1 {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not save the shared document of project {}: {error}; it tries again",
+                self.project_id
+            ));
+        }
+        self.come_back_in(backoff(failures));
     }
 
     pub(super) fn hold_back_typing(&self, next: &Layout, texts: &mut Vec<(String, String)>) {
@@ -92,7 +122,7 @@ impl Active {
             }
         }
         if !held.is_empty() {
-            self.come_back_later();
+            self.come_back_in(PACE);
         }
     }
 
@@ -128,14 +158,14 @@ impl Active {
         }
     }
 
-    fn come_back_later(&self) {
+    fn come_back_in(&self, delay: Duration) {
         let timer = self.paced(|pace| Arc::clone(&pace.timer));
         if timer.swap(true, Ordering::SeqCst) {
             return;
         }
         let writer = self.writer.clone();
         tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(PACE).await;
+            tokio::time::sleep(delay).await;
             timer.store(false, Ordering::SeqCst);
             let _ = writer.send(WriterSignal::Kick);
         });
