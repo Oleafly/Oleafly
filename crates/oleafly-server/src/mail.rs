@@ -381,6 +381,12 @@ fn spoken(delay: Duration) -> String {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Failure {
+    message: String,
+    permanent: bool,
+}
+
 impl Delivery {
     fn scrub(&self, text: String) -> String {
         match self.secret.as_deref().filter(|secret| !secret.is_empty()) {
@@ -408,28 +414,37 @@ impl Delivery {
             .map_err(|error| format!("could not build the email: {error}"))
     }
 
-    async fn deliver(&self, email: &OutgoingEmail) -> Result<(), String> {
+    async fn deliver(&self, email: &OutgoingEmail) -> Result<(), Failure> {
         let outcome = match self.message(email) {
             Ok(message) => {
                 match tokio::time::timeout(self.timeout, self.transport.send(message)).await {
                     Ok(Ok(_)) => Ok(()),
-                    Ok(Err(error)) => Err(self.scrub(describe(&error))),
-                    Err(_) => Err(format!(
-                        "the mail server did not answer within {}",
-                        spoken(self.timeout)
-                    )),
+                    Ok(Err(error)) => Err(Failure {
+                        permanent: error.is_permanent(),
+                        message: self.scrub(describe(&error)),
+                    }),
+                    Err(_) => Err(Failure {
+                        message: format!(
+                            "the mail server did not answer within {}",
+                            spoken(self.timeout)
+                        ),
+                        permanent: false,
+                    }),
                 }
             }
-            Err(error) => Err(error),
+            Err(message) => Err(Failure {
+                message,
+                permanent: true,
+            }),
         };
         let mut stats = locked(&self.stats);
         match &outcome {
             Ok(()) => stats.delivered += 1,
-            Err(message) => {
+            Err(failure) => {
                 stats.failed_attempts += 1;
                 stats.last_failure = Some(EmailFailure {
                     at: self.clock.now_ms(),
-                    message: message.clone(),
+                    message: failure.message.clone(),
                 });
             }
         }
@@ -441,6 +456,7 @@ struct Lane {
     delivery: Delivery,
     retry: mpsc::WeakSender<Job>,
     policy: Arc<RetryPolicy>,
+    waiting: Arc<Semaphore>,
 }
 
 fn give_up(stats: &Mutex<MailStats>, kind: &str) {
@@ -457,9 +473,17 @@ impl Lane {
             give_up(&self.delivery.stats, kind);
             return;
         }
-        let Err(error) = self.delivery.deliver(&job.email).await else {
+        let Err(failure) = self.delivery.deliver(&job.email).await else {
             return;
         };
+        let error = failure.message;
+        if failure.permanent {
+            locked(&self.delivery.stats).abandoned += 1;
+            tracing::error!(
+                "Gave up sending the {kind} email because it can't be sent as it is: {error}"
+            );
+            return;
+        }
         let attempts = self.policy.delays.len() + 1;
         let attempt = job.attempt + 1;
         let Some(delay) = self.policy.delays.get(job.attempt).copied() else {
@@ -483,10 +507,18 @@ impl Lane {
             "Could not send the {kind} email (attempt {attempt} of {attempts}): {error}. Trying again in {}.",
             spoken(delay)
         );
+        let Ok(held) = Arc::clone(&self.waiting).try_acquire_owned() else {
+            locked(&self.delivery.stats).dropped += 1;
+            tracing::warn!(
+                "Dropped the {kind} email because too many emails are already waiting to be tried again."
+            );
+            return;
+        };
         job.attempt = attempt;
         let retry = self.retry.clone();
         let stats = Arc::clone(&self.delivery.stats);
         tokio::spawn(async move {
+            let _held = held;
             tokio::time::sleep(delay).await;
             let queued = match retry.upgrade() {
                 Some(queue) => queue.try_send(job).is_ok(),
@@ -523,6 +555,7 @@ fn lane(delivery: &Delivery, policy: &Arc<RetryPolicy>, slots: usize) -> mpsc::S
         delivery: delivery.clone(),
         retry: queue.downgrade(),
         policy: Arc::clone(policy),
+        waiting: Arc::new(Semaphore::new(QUEUE_CAPACITY)),
     };
     tokio::spawn(work(lane, receiver, slots));
     queue
@@ -632,7 +665,11 @@ impl Mailer {
 
     pub async fn send_now(&self, email: OutgoingEmail) -> Result<(), String> {
         match &self.inner {
-            Some(inner) => inner.delivery.deliver(&email).await,
+            Some(inner) => inner
+                .delivery
+                .deliver(&email)
+                .await
+                .map_err(|failure| failure.message),
             None => Err("this server has no email settings".to_string()),
         }
     }
@@ -780,6 +817,61 @@ mod tests {
         settle(&mailer, Duration::from_secs(5)).await;
         assert_eq!(smtp.sessions(), 2);
         assert_eq!(mailer.stats().abandoned, 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_recipient_the_mail_server_refuses_for_good_is_tried_once() {
+        let smtp = MockSmtp::start().await;
+        smtp.fail_next(1, MockSmtpFault::RejectRecipient);
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("typo@uni.edu"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 1);
+        let stats = mailer.stats();
+        assert_eq!(
+            (stats.failed_attempts, stats.abandoned, stats.delivered),
+            (1, 1, 0)
+        );
+        let failure = stats.last_failure.expect("the refusal is kept");
+        assert!(failure.message.contains("550"), "{}", failure.message);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn an_email_that_cannot_be_built_is_never_retried() {
+        let smtp = MockSmtp::start().await;
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("not an address"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 0);
+        let stats = mailer.stats();
+        assert_eq!((stats.failed_attempts, stats.abandoned), (1, 1));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_mail_server_that_asks_to_try_later_is_tried_again() {
+        let smtp = MockSmtp::start().await;
+        smtp.fail_next(2, MockSmtpFault::RejectMail);
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("ada@uni.edu"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 3);
+        let stats = mailer.stats();
+        assert_eq!((stats.failed_attempts, stats.delivered), (2, 1));
     }
 
     #[test]
