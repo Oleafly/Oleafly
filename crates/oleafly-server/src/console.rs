@@ -72,6 +72,7 @@ pub fn counts(conn: &Connection) -> Result<ServerCounts, ServerError> {
         pending_projects: of("pending"),
         open_rooms: 0,
         people_online: 0,
+        pending_guest_approvals: 0,
     })
 }
 

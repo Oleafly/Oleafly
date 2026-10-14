@@ -45,6 +45,8 @@ pub struct ServerCounts {
     pub pending_projects: u32,
     pub open_rooms: u32,
     pub people_online: u32,
+    #[serde(default)]
+    pub pending_guest_approvals: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -207,7 +209,8 @@ mod tests {
                 "archived_projects": 1,
                 "pending_projects": 0,
                 "open_rooms": 1,
-                "people_online": 2
+                "people_online": 2,
+                "pending_guest_approvals": 3
             },
             "storage": {
                 "database_bytes": 4096,
@@ -222,6 +225,7 @@ mod tests {
             "archive_days": 30
         });
         let overview: AdminOverview = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(overview.counts.pending_guest_approvals, 3);
         assert_eq!(overview.health.status, HealthStatus::Warning);
         assert_eq!(overview.storage.unwrap().files_location, FilesLocation::S3);
         assert_eq!(serde_json::to_value(&overview).unwrap(), wire);
@@ -235,8 +239,13 @@ mod tests {
         assert_eq!(parsed.storage, None);
         let mut older = serde_json::to_value(&parsed).unwrap();
         older.as_object_mut().unwrap().remove("archive_days");
+        older["counts"]
+            .as_object_mut()
+            .unwrap()
+            .remove("pending_guest_approvals");
         let without: AdminOverview = serde_json::from_value(older).unwrap();
         assert_eq!(without.archive_days, 0);
+        assert_eq!(without.counts.pending_guest_approvals, 0);
         let tape: FilesLocation = serde_json::from_value(json!("tape")).unwrap();
         assert_eq!(tape, FilesLocation::Unknown);
     }
