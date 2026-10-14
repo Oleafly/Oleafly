@@ -832,3 +832,99 @@ async fn a_thread_written_and_deleted_offline_emails_nobody() {
     let sent = mention_emails(&stage.server, &smtp).await;
     assert!(sent.is_empty(), "{sent:?}");
 }
+
+async fn scans_waiting(server: &TestServer) -> i64 {
+    server
+        .state()
+        .db
+        .call(
+            |conn| Ok(conn.query_row("SELECT COUNT(*) FROM mention_scans", [], |row| row.get(0))?),
+        )
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn words_typed_into_a_file_never_start_a_scan() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    alice
+        .send(&stage.alice, project, |doc| {
+            type_text(
+                doc,
+                " As Smith mentions in [3], the body of work was later deleted.",
+            );
+        })
+        .await;
+    let state = stage.server.state();
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(scans_waiting(&stage.server).await, 0);
+    assert_eq!(state.mentions.documents_built(), 0);
+}
+
+#[tokio::test]
+async fn a_second_scan_advances_the_document_it_kept_instead_of_rebuilding_it() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    let state = stage.server.state();
+    for body in ["@Bob Smith first", "@Bob Smith second"] {
+        alice
+            .send(&stage.alice, project, |doc| {
+                start_thread(
+                    doc,
+                    &new_id(),
+                    account(&stage.alice),
+                    body,
+                    &[account(&stage.bob)],
+                );
+            })
+            .await;
+        tokio::time::timeout(WAIT, state.mentions.settled())
+            .await
+            .unwrap();
+    }
+    assert_eq!(state.mentions.documents_built(), 1);
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert_eq!(sent.len(), 1, "{sent:?}");
+    let text = sent[0].text();
+    assert!(text.contains("Comment: @Bob Smith first"), "{text}");
+    assert!(text.contains("Comment: @Bob Smith second"), "{text}");
+}
+
+#[tokio::test]
+async fn with_email_notifications_off_comments_are_not_scanned() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let off = call(
+        &stage.server,
+        Method::PATCH,
+        "/api/v1/admin/settings",
+        stage.bob.token(),
+        Some(json!({ "email_notifications": false })),
+    )
+    .await;
+    assert_eq!(off.status(), StatusCode::OK);
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    alice
+        .send(&stage.alice, project, |doc| {
+            start_thread(
+                doc,
+                &new_id(),
+                account(&stage.alice),
+                "@Bob Smith while email is off",
+                &[account(&stage.bob)],
+            );
+        })
+        .await;
+    let state = stage.server.state();
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(scans_waiting(&stage.server).await, 0);
+    assert_eq!(state.mentions.documents_built(), 0);
+    assert!(mention_emails(&stage.server, &smtp).await.is_empty());
+}

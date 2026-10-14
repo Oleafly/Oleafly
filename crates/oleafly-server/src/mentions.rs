@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use loro::{
     Container, ContainerID, ContainerTrait, LoroDoc, LoroMap, LoroValue, TreeID, TreeParentId,
@@ -12,7 +12,7 @@ use oleafly_collab_protocol::projects::ProjectStatus;
 use rusqlite::{params, Connection};
 use tokio::sync::Notify;
 
-use crate::db::parse_id;
+use crate::db::{parse_id, Db};
 use crate::error::ServerError;
 use crate::mail::messages::{self, Mention};
 use crate::mail::{notify, preferences, EmailKind, OutgoingEmail};
@@ -20,6 +20,7 @@ use crate::members;
 use crate::peers::{self, Reach};
 use crate::projects;
 use crate::settings;
+use crate::snapshots::{self, Replay};
 use crate::state::AppState;
 
 pub type Span = (u64, i32, i32);
@@ -29,6 +30,8 @@ const SCAN_PAGE: i64 = 64;
 const MAX_ATTEMPTS: i64 = 5;
 const RETRY: Duration = Duration::from_secs(60);
 const KEPT_CHARS: usize = 2_000;
+const KEPT_DOCUMENTS: usize = 4;
+const KEPT_IDLE: Duration = Duration::from_secs(5 * 60);
 
 const WATCHED_KEYS: [&[u8]; 3] = [b"\x08mentions", b"\x07deleted", b"\x04body"];
 const COMMENTS: &str = "comments";
@@ -275,7 +278,7 @@ pub fn queue(
         })
         .filter(|(_, start, end)| start < end)
         .collect();
-    if spans.is_empty() {
+    if spans.is_empty() || !settings::load(conn)?.email_notifications {
         return Ok(());
     }
     let spans = serde_json::to_string(&spans).map_err(|error| {
@@ -296,6 +299,14 @@ struct Inner {
     delivering: AtomicBool,
     due: Notify,
     sending: tokio::sync::Mutex<()>,
+    kept: Mutex<HashMap<SharedProjectId, Kept>>,
+    built: AtomicUsize,
+}
+
+struct Kept {
+    replay: Replay,
+    seq: u64,
+    used: Instant,
 }
 
 #[derive(Clone, Default)]
@@ -355,6 +366,42 @@ impl Mentions {
         }
     }
 
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn documents_built(&self) -> usize {
+        self.inner.built.load(Ordering::SeqCst)
+    }
+
+    fn take_kept(&self, project: SharedProjectId) -> Option<(Replay, u64)> {
+        let mut kept = locked(&self.inner.kept);
+        let now = Instant::now();
+        kept.retain(|_, document| now.duration_since(document.used) < KEPT_IDLE);
+        kept.remove(&project)
+            .map(|document| (document.replay, document.seq))
+    }
+
+    fn keep(&self, project: SharedProjectId, replay: Replay, seq: u64) {
+        let mut kept = locked(&self.inner.kept);
+        let now = Instant::now();
+        kept.retain(|_, document| now.duration_since(document.used) < KEPT_IDLE);
+        if !kept.contains_key(&project) && kept.len() >= KEPT_DOCUMENTS {
+            let oldest = kept
+                .iter()
+                .min_by_key(|(_, document)| document.used)
+                .map(|(key, _)| *key);
+            if let Some(oldest) = oldest {
+                kept.remove(&oldest);
+            }
+        }
+        kept.insert(
+            project,
+            Kept {
+                replay,
+                seq,
+                used: now,
+            },
+        );
+    }
+
     fn deliver_soon(&self, state: &AppState) {
         if !self.inner.delivering.swap(true, Ordering::SeqCst) {
             tokio::spawn(delivery_loop(state.clone()));
@@ -367,6 +414,13 @@ fn waiting_scans(
     conn: &Connection,
     project: SharedProjectId,
 ) -> Result<Vec<(u64, Vec<Span>)>, ServerError> {
+    if !settings::load(conn)?.email_notifications {
+        conn.execute(
+            "DELETE FROM mention_scans WHERE project_id = ?1",
+            [project.to_string()],
+        )?;
+        return Ok(Vec::new());
+    }
     let mut statement = conn.prepare_cached(
         "SELECT seq, spans FROM mention_scans WHERE project_id = ?1 ORDER BY seq LIMIT ?2",
     )?;
@@ -416,23 +470,64 @@ async fn scan(state: &AppState, project: SharedProjectId) {
     }
 }
 
+async fn caught_up(
+    db: &Db,
+    project: SharedProjectId,
+    kept: Option<(Replay, u64)>,
+) -> Result<Option<(Replay, u64)>, ServerError> {
+    let Some((replay, seq)) = kept else {
+        return Ok(None);
+    };
+    let (head, bindings) = db
+        .call(move |conn| {
+            Ok((
+                projects::project_row(conn, project)?.map_or(0, |row| row.head_seq),
+                peers::bound_devices(conn, project)?,
+            ))
+        })
+        .await?;
+    if head < seq {
+        return Ok(None);
+    }
+    let advanced = snapshots::advance(db, project, replay, seq, head, &Arc::new(bindings)).await?;
+    Ok(advanced.map(|replay| (replay, head)))
+}
+
+async fn document(
+    state: &AppState,
+    project: SharedProjectId,
+) -> Result<(Replay, u64), ServerError> {
+    let kept = state.mentions.take_kept(project);
+    if let Some(current) = caught_up(&state.db, project, kept).await? {
+        return Ok(current);
+    }
+    state.mentions.inner.built.fetch_add(1, Ordering::SeqCst);
+    state
+        .snapshots
+        .current(&state.db, project)
+        .await?
+        .ok_or_else(|| {
+            ServerError::Internal("the project's document could not be read".to_string())
+        })
+}
+
 async fn scan_page(
     state: &AppState,
     project: SharedProjectId,
     waiting: &[(u64, Vec<Span>)],
 ) -> Result<usize, ServerError> {
-    let Some((replay, _)) = state.snapshots.current(&state.db, project).await? else {
-        return Err(ServerError::Internal(
-            "the project's document could not be read".to_string(),
-        ));
-    };
+    let (replay, seq) = document(state, project).await?;
     let spans: Vec<Span> = waiting
         .iter()
         .flat_map(|(_, spans)| spans.iter().copied())
         .collect();
-    let found = tokio::task::spawn_blocking(move || found_in(replay.doc(), &spans))
-        .await
-        .map_err(|error| ServerError::Internal(format!("looking for mentions failed: {error}")))?;
+    let (found, replay) = tokio::task::spawn_blocking(move || {
+        let found = found_in(replay.doc(), &spans);
+        (found, replay)
+    })
+    .await
+    .map_err(|error| ServerError::Internal(format!("looking for mentions failed: {error}")))?;
+    state.mentions.keep(project, replay, seq);
     let seqs: Vec<u64> = waiting.iter().map(|(seq, _)| *seq).collect();
     let now = state.clock.now_ms();
     state
