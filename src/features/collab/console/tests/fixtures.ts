@@ -22,6 +22,7 @@ export function overview(overrides: Partial<CollabAdminOverview> = {}): CollabAd
       pending_projects: 1,
       open_rooms: 2,
       people_online: 3,
+      pending_guest_approvals: 0,
     },
     storage: { database_bytes: 4096, snapshot_bytes: 3 * 1024 * 1024, file_bytes: 1536, files_location: "disk" },
     email_configured: false,

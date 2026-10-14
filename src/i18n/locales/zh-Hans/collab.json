@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server 管理控制台",
     "title": "管理控制台",
     "sectionsLabel": "管理控制台栏目",
+    "pendingGuestsBadge": "等待批准：{{number}}",
     "sections": {
       "overview": "概览",
       "people": "人员",
@@ -758,7 +759,9 @@
         "onlineDetail": "打开的项目：{{number}}",
         "started": "启动时间",
         "version": "版本",
-        "protocol": "协议 {{protocol}}"
+        "protocol": "协议 {{protocol}}",
+        "pendingGuests": "等待批准的访客邀请：{{number}}",
+        "reviewGuests": "在“人员”中查看"
       },
       "storage": {
         "title": "存储",

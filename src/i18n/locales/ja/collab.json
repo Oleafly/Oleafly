@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server 管理コンソール",
     "title": "管理コンソール",
     "sectionsLabel": "管理コンソールのセクション",
+    "pendingGuestsBadge": "承認待ち: {{number}}",
     "sections": {
       "overview": "概要",
       "people": "ユーザー",
@@ -758,7 +759,9 @@
         "onlineDetail": "開いているプロジェクト: {{number}}",
         "started": "起動日時",
         "version": "バージョン",
-        "protocol": "プロトコル {{protocol}}"
+        "protocol": "プロトコル {{protocol}}",
+        "pendingGuests": "承認待ちのゲスト招待: {{number}}",
+        "reviewGuests": "ユーザーで確認"
       },
       "storage": {
         "title": "保存領域",

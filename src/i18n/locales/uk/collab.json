@@ -699,6 +699,7 @@
     "windowTitle": "Консоль адміністратора Oleafly Server",
     "title": "Консоль адміністратора",
     "sectionsLabel": "Розділи консолі адміністратора",
+    "pendingGuestsBadge": "Чекають на схвалення: {{number}}",
     "sections": {
       "overview": "Огляд",
       "people": "Люди",
@@ -758,7 +759,9 @@
         "onlineDetail": "Відкритих проєктів: {{number}}",
         "started": "Запущено",
         "version": "Версія",
-        "protocol": "Протокол {{protocol}}"
+        "protocol": "Протокол {{protocol}}",
+        "pendingGuests": "Запрошення гостей, що чекають на схвалення: {{number}}",
+        "reviewGuests": "Переглянути в розділі «Люди»"
       },
       "storage": {
         "title": "Сховище",

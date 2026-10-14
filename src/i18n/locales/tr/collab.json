@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server yönetici konsolu",
     "title": "Yönetici konsolu",
     "sectionsLabel": "Yönetici konsolu bölümleri",
+    "pendingGuestsBadge": "Onay bekleyen: {{number}}",
     "sections": {
       "overview": "Genel bakış",
       "people": "Kişiler",
@@ -758,7 +759,9 @@
         "onlineDetail": "Açık projeler: {{number}}",
         "started": "Başlatıldı",
         "version": "Sürüm",
-        "protocol": "Protokol {{protocol}}"
+        "protocol": "Protokol {{protocol}}",
+        "pendingGuests": "Onay bekleyen konuk davetleri: {{number}}",
+        "reviewGuests": "Kişiler bölümünde incele"
       },
       "storage": {
         "title": "Depolama",

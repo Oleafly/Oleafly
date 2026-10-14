@@ -699,6 +699,7 @@
     "windowTitle": "Consola de administrare Oleafly Server",
     "title": "Consola de administrare",
     "sectionsLabel": "Secțiunile consolei de administrare",
+    "pendingGuestsBadge": "Așteaptă aprobarea: {{number}}",
     "sections": {
       "overview": "Prezentare generală",
       "people": "Persoane",
@@ -758,7 +759,9 @@
         "onlineDetail": "Proiecte deschise: {{number}}",
         "started": "Pornit",
         "version": "Versiune",
-        "protocol": "Protocol {{protocol}}"
+        "protocol": "Protocol {{protocol}}",
+        "pendingGuests": "Invitații pentru invitați care așteaptă aprobarea: {{number}}",
+        "reviewGuests": "Verifică în Persoane"
       },
       "storage": {
         "title": "Stocare",

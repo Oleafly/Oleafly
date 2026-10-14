@@ -1779,6 +1779,8 @@ export interface CollabServerCounts {
     pending_projects: number;
     open_rooms: number;
     people_online: number;
+    // Guest invitations an admin or maintainer still has to approve.
+    pending_guest_approvals: number;
 }
 export interface CollabStorageUsage {
     database_bytes: number;

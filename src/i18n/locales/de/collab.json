@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server Admin-Konsole",
     "title": "Admin-Konsole",
     "sectionsLabel": "Bereiche der Admin-Konsole",
+    "pendingGuestsBadge": "Warten auf Freigabe: {{number}}",
     "sections": {
       "overview": "Überblick",
       "people": "Personen",
@@ -758,7 +759,9 @@
         "onlineDetail": "Offene Projekte: {{number}}",
         "started": "Gestartet",
         "version": "Version",
-        "protocol": "Protokoll {{protocol}}"
+        "protocol": "Protokoll {{protocol}}",
+        "pendingGuests": "Gasteinladungen, die auf Freigabe warten: {{number}}",
+        "reviewGuests": "Unter Personen prüfen"
       },
       "storage": {
         "title": "Speicher",

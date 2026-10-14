@@ -243,6 +243,25 @@ describe("AdminConsole", () => {
     expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(`Alice Chen · ${enCollab.admin.log.kinds.signIn}`);
   });
 
+  it("marks People with the number of guest invitations waiting for approval", async () => {
+    const waiting = overview();
+    waiting.counts = { ...waiting.counts, pending_guest_approvals: 3 };
+    mocks.collabAdminOverview.mockResolvedValue(waiting);
+    const user = userEvent.setup();
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    const badge = await screen.findByTestId("console-people-badge");
+    expect(badge).toHaveTextContent("3");
+    expect(within(badge).getByText(fill(copy.pendingGuestsBadge, { number: "3" }))).toHaveClass("sr-only");
+    await user.click(screen.getByRole("button", { name: copy.overview.glance.reviewGuests }));
+    expect(screen.getByTestId("console-section-people")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("shows no badge on People when nothing waits for approval", async () => {
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    await screen.findByTestId("console-overview");
+    expect(screen.queryByTestId("console-people-badge")).toBeNull();
+  });
+
   it("follows the overview's links to email and settings", async () => {
     const user = userEvent.setup();
     render(<AdminConsole server={ADMIN} actor="admin" />);

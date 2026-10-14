@@ -699,6 +699,7 @@
     "windowTitle": "Consola de administración de Oleafly Server",
     "title": "Consola de administración",
     "sectionsLabel": "Secciones de la consola de administración",
+    "pendingGuestsBadge": "Pendientes de aprobación: {{number}}",
     "sections": {
       "overview": "Resumen",
       "people": "Personas",
@@ -758,7 +759,9 @@
         "onlineDetail": "Proyectos abiertos: {{number}}",
         "started": "Iniciado",
         "version": "Versión",
-        "protocol": "Protocolo {{protocol}}"
+        "protocol": "Protocolo {{protocol}}",
+        "pendingGuests": "Invitaciones de invitados pendientes de aprobación: {{number}}",
+        "reviewGuests": "Revisar en Personas"
       },
       "storage": {
         "title": "Almacenamiento",

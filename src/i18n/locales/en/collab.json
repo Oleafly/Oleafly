@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server Admin Console",
     "title": "Admin console",
     "sectionsLabel": "Admin console sections",
+    "pendingGuestsBadge": "Waiting for approval: {{number}}",
     "sections": {
       "overview": "Overview",
       "people": "People",
@@ -758,7 +759,9 @@
         "onlineDetail": "Open projects: {{number}}",
         "started": "Started",
         "version": "Version",
-        "protocol": "Protocol {{protocol}}"
+        "protocol": "Protocol {{protocol}}",
+        "pendingGuests": "Guest invitations waiting for approval: {{number}}",
+        "reviewGuests": "Review in People"
       },
       "storage": {
         "title": "Storage",

@@ -63,6 +63,21 @@ describe("OverviewSection", () => {
     expect(stat("people").querySelectorAll("dd")).toHaveLength(1);
   });
 
+  it("names guest invitations waiting for approval and leads to People", async () => {
+    const waiting = overview();
+    waiting.counts = { ...waiting.counts, pending_guest_approvals: 2 };
+    const { onNavigate } = renderReady({ state: { status: "ready", overview: waiting } });
+    const row = screen.getByTestId("console-pending-guests");
+    expect(row).toHaveTextContent(fill(copy.glance.pendingGuests, { number: "2" }));
+    await userEvent.setup().click(within(row).getByRole("button", { name: copy.glance.reviewGuests }));
+    expect(onNavigate).toHaveBeenCalledWith("people");
+  });
+
+  it("says nothing about guest approvals when none are waiting", () => {
+    renderReady();
+    expect(screen.queryByTestId("console-pending-guests")).toBeNull();
+  });
+
   it("shows storage use to admins with where the files live", () => {
     renderReady();
     expect(within(stat("database")).getByText(formatBytes(4096))).toBeInTheDocument();

@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server 관리 콘솔",
     "title": "관리 콘솔",
     "sectionsLabel": "관리 콘솔 섹션",
+    "pendingGuestsBadge": "승인 대기 중: {{number}}",
     "sections": {
       "overview": "개요",
       "people": "사용자",
@@ -758,7 +759,9 @@
         "onlineDetail": "열린 프로젝트: {{number}}",
         "started": "시작 시각",
         "version": "버전",
-        "protocol": "프로토콜 {{protocol}}"
+        "protocol": "프로토콜 {{protocol}}",
+        "pendingGuests": "승인 대기 중인 게스트 초대: {{number}}",
+        "reviewGuests": "사용자에서 검토"
       },
       "storage": {
         "title": "저장소",

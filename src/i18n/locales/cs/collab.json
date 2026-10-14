@@ -699,6 +699,7 @@
     "windowTitle": "Konzole pro správu Oleafly Server",
     "title": "Konzole pro správu",
     "sectionsLabel": "Sekce konzole pro správu",
+    "pendingGuestsBadge": "Čeká na schválení: {{number}}",
     "sections": {
       "overview": "Přehled",
       "people": "Lidé",
@@ -758,7 +759,9 @@
         "onlineDetail": "Otevřené projekty: {{number}}",
         "started": "Spuštěno",
         "version": "Verze",
-        "protocol": "Protokol {{protocol}}"
+        "protocol": "Protokol {{protocol}}",
+        "pendingGuests": "Pozvánky hostů čekající na schválení: {{number}}",
+        "reviewGuests": "Zkontrolovat v sekci Lidé"
       },
       "storage": {
         "title": "Úložiště",

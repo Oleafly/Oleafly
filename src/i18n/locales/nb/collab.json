@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server administrasjonskonsoll",
     "title": "Administrasjonskonsoll",
     "sectionsLabel": "Deler av administrasjonskonsollen",
+    "pendingGuestsBadge": "Venter på godkjenning: {{number}}",
     "sections": {
       "overview": "Oversikt",
       "people": "Personer",
@@ -758,7 +759,9 @@
         "onlineDetail": "Åpne prosjekter: {{number}}",
         "started": "Startet",
         "version": "Versjon",
-        "protocol": "Protokoll {{protocol}}"
+        "protocol": "Protokoll {{protocol}}",
+        "pendingGuests": "Gjesteinvitasjoner som venter på godkjenning: {{number}}",
+        "reviewGuests": "Se gjennom under Personer"
       },
       "storage": {
         "title": "Lagring",

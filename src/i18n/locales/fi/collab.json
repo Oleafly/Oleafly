@@ -699,6 +699,7 @@
     "windowTitle": "Oleafly Server -hallintakonsoli",
     "title": "Hallintakonsoli",
     "sectionsLabel": "Hallintakonsolin osiot",
+    "pendingGuestsBadge": "Odottaa hyväksyntää: {{number}}",
     "sections": {
       "overview": "Yleiskatsaus",
       "people": "Henkilöt",
@@ -758,7 +759,9 @@
         "onlineDetail": "Avoimia projekteja: {{number}}",
         "started": "Käynnistetty",
         "version": "Versio",
-        "protocol": "Protokolla {{protocol}}"
+        "protocol": "Protokolla {{protocol}}",
+        "pendingGuests": "Hyväksyntää odottavat vieraskutsut: {{number}}",
+        "reviewGuests": "Tarkista kohdassa Henkilöt"
       },
       "storage": {
         "title": "Tallennustila",
