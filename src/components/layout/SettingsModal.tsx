@@ -55,7 +55,6 @@ import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
-import { CloudTab } from "@/components/settings/cloud/CloudTab";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
@@ -76,6 +75,7 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
+import { useCloudStore } from "@/store/cloud";
 import { useTemplateLinkStore } from "@/store/template-link";
 import {
   appVersion,
@@ -142,8 +142,18 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 const SettingsFileCard = lazy(() =>
   Promise.all([
     import("@/components/settings/SettingsFileCard"),
-    import("@/i18n/lazy-namespaces").then((module) => module.loadNamespace("settingsFile")),
+    import("@/i18n/lazy-namespaces").then((module) =>
+      Promise.all([module.loadNamespace("settingsFile"), module.loadNamespace("cloud")]),
+    ),
   ]).then(([module]) => module),
+);
+const CloudTab = lazy(() =>
+  Promise.all([
+    import("@/components/settings/cloud/CloudTab"),
+    import("@/i18n/lazy-namespaces")
+      .then((module) => module.loadNamespace("cloud"))
+      .catch((error: unknown) => logError("load cloud sync strings", error)),
+  ]).then(([module]) => ({ default: module.CloudTab })),
 );
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
@@ -302,8 +312,8 @@ export function SettingsModal() {
 
   const [section, setSection] = useState<Section>("general");
   const [dataTab, setDataTab] = useState("local");
-  const settingsNavRequest = useSettingsStore((s) => s.settingsNavRequest);
-  const requestSettingsNav = useSettingsStore((s) => s.requestSettingsNav);
+  const settingsNavRequest = useCloudStore((s) => s.navRequest);
+  const requestSettingsNav = useCloudStore((s) => s.requestNav);
   useEffect(() => {
     if (!settingsNavRequest) return;
     if (settingsNavRequest === "data-cloud") {
@@ -408,9 +418,15 @@ export function SettingsModal() {
     setSection("downloads");
   }, [templateLinkSerial]);
 
+  const cloudLibraryRevision = useCloudStore((s) => s.libraryRevision);
+  useEffect(() => {
+    if (!open) useCloudStore.getState().clearSettingsImport();
+  }, [open]);
+
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
     void storageRefreshKey;
+    void cloudLibraryRevision;
     let cancelled = false;
     setStorageLoading(true);
     setStorageError("");
@@ -430,7 +446,7 @@ export function SettingsModal() {
     return () => {
       cancelled = true;
     };
-  }, [open, section, storageRefreshKey]);
+  }, [open, section, storageRefreshKey, cloudLibraryRevision]);
 
   const restoreProject = async (project: RecycledProjectInfo) => {
     setRecycleActionId(project.id);
@@ -1008,7 +1024,9 @@ export function SettingsModal() {
         </section>
         </TabsContent>
         <TabsContent value="cloud">
-          <CloudTab />
+          <Suspense fallback={null}>
+            <CloudTab />
+          </Suspense>
         </TabsContent>
       </Tabs>
     )

@@ -94,9 +94,12 @@ fn update_at<T>(
     change: impl FnOnce(&mut Bindings) -> Result<T, String>,
 ) -> Result<T, String> {
     let _lock = lock_store(path)?;
-    let mut bindings = read_bindings_at(path)?;
+    let before = read_bindings_at(path)?;
+    let mut bindings = before.clone();
     let value = change(&mut bindings)?;
-    write_bindings_at(path, &bindings)?;
+    if bindings != before {
+        write_bindings_at(path, &bindings)?;
+    }
     Ok(value)
 }
 
@@ -109,6 +112,11 @@ fn read_at<T>(path: &Path, read: impl FnOnce(&Bindings) -> T) -> Result<T, Strin
 pub fn binding(local_id: &str) -> Result<Option<ProjectBinding>, String> {
     let path = store_path()?;
     read_at(&path, |bindings| bindings.get(local_id).cloned())
+}
+
+pub fn all_bindings() -> Result<BTreeMap<String, ProjectBinding>, String> {
+    let path = store_path()?;
+    read_at(&path, Clone::clone)
 }
 
 fn mint_at(
@@ -192,6 +200,9 @@ pub(crate) fn mint_in(
 }
 
 pub fn ensure(local_id: &str, root: &Path) -> Result<ProjectBinding, String> {
+    if let Some(existing) = binding(local_id)?.filter(|binding| binding.origin_digest.is_some()) {
+        return Ok(existing);
+    }
     let binding = mint(local_id, None)?;
     if binding.origin_digest.is_some() {
         return Ok(binding);
@@ -234,7 +245,6 @@ fn set_cloud_at(
     })
 }
 
-#[allow(dead_code)]
 fn bound_local_id_at(path: &Path, project: ProjectId) -> Result<Option<String>, String> {
     read_at(path, |bindings| {
         bindings
@@ -375,7 +385,7 @@ pub fn rfc3339_from_unix_ms(ms: u64) -> String {
     )
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn unix_ms_from_rfc3339(value: &str) -> Option<u64> {
     let bytes = value.as_bytes();
     if bytes.len() != 24
@@ -441,6 +451,7 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     (if month <= 2 { year + 1 } else { year }, month, day)
 }
 
+#[cfg(test)]
 fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let year = if month <= 2 { year - 1 } else { year };
     let era = year.div_euclid(400);

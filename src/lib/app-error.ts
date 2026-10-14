@@ -52,11 +52,18 @@ export function describeError(value: unknown): string {
   return displayText(errorSentence(value));
 }
 
+function errorKey(code: string): string | null {
+  const dot = code.indexOf(".");
+  const keys = [`errors:${code}`];
+  if (dot > 0) keys.push(`${code.slice(0, dot)}:errors.${code.slice(dot + 1)}`);
+  return keys.find((key) => dynamic.exists(key)) ?? null;
+}
+
 function errorSentence(value: unknown): string {
   const app = decodeAppError(value);
   if (app) {
-    const key = `errors:${app.code}`;
-    const message = dynamic.exists(key) ? dynamic.t(key, app.params) : i18n.t(($) => $.errors.unknown);
+    const key = errorKey(app.code);
+    const message = key ? dynamic.t(key, app.params) : i18n.t(($) => $.errors.unknown);
     return app.detail ? i18n.t(($) => $.errors.withDetail, { message, detail: app.detail }) : message;
   }
   if (value instanceof Error && value.message) return value.message;

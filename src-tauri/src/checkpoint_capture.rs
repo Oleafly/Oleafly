@@ -140,7 +140,7 @@ fn walk_project_once(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct FileStamp {
+pub(crate) struct FileStamp {
     len: u64,
     modified: Option<SystemTime>,
     changed: Option<(i64, i64)>,
@@ -149,7 +149,7 @@ struct FileStamp {
 
 impl FileStamp {
     #[cfg(unix)]
-    fn of(metadata: &std::fs::Metadata) -> Self {
+    pub(crate) fn of(metadata: &std::fs::Metadata) -> Self {
         use std::os::unix::fs::MetadataExt;
         Self {
             len: metadata.len(),
@@ -160,7 +160,7 @@ impl FileStamp {
     }
 
     #[cfg(not(unix))]
-    fn of(metadata: &std::fs::Metadata) -> Self {
+    pub(crate) fn of(metadata: &std::fs::Metadata) -> Self {
         Self {
             len: metadata.len(),
             modified: metadata.modified().ok(),
@@ -217,7 +217,7 @@ fn remember_hash(path: &Path, stamp: FileStamp, hash: ContentHash, hashed_at: Sy
     );
 }
 
-fn cached_capture_hash(
+pub(crate) fn cached_capture_hash(
     path: &Path,
     relative: &str,
     metadata: &std::fs::Metadata,

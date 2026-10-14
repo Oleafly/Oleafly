@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { ChevronRight, Download, Upload, X } from "lucide-react";
+import { ChevronRight, Cloud, Download, HardDrive, Upload, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cloudSettingsApplied, cloudSettingsDownload } from "@/lib/cloud";
+import { cloudSettingsDownload } from "@/lib/cloud";
+import { readCloudSettings } from "@/lib/cloud-settings";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { useCloudStore } from "@/store/cloud";
 import { useSettingsStore } from "@/store/settings";
 import { highlightSnippet } from "@/components/settings/snippet";
-import { i18n } from "@/i18n";
+import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -59,7 +61,7 @@ interface PendingImport {
   plan: SettingsPlan;
   changed: number;
   ignored: string[];
-  stamp?: number;
+  stamp?: string;
 }
 
 interface ImportProblem {
@@ -248,24 +250,14 @@ function SettingsJsonView() {
   );
 }
 
-function useCatalogUpdates(): void {
-  const [, refresh] = useReducer((count: number) => count + 1, 0);
-  useEffect(() => {
-    const onAdded = (_language: string, namespace: string) => {
-      if (namespace === "settingsFile") refresh();
-    };
-    i18n.store.on("added", onAdded);
-    return () => i18n.store.off("added", onAdded);
-  }, []);
-}
-
 export default function SettingsFileCard() {
   const { t } = useTranslation(["settingsFile", "common"]);
-  useCatalogUpdates();
+  useCatalogUpdates("settingsFile");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [problem, setProblem] = useState<ImportProblem | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
+  const cloudSync = useSettingsStore((s) => s.cloudSync);
 
   const exportSettings = async () => {
     setBusy(true);
@@ -320,15 +312,16 @@ export default function SettingsFileCard() {
     if (!pending) return;
     const { plan, stamp } = pending;
     setPending(null);
-    applySettingsPlan(plan, THEME).then(
-      async () => {
-        if (stamp !== undefined) {
-          await cloudSettingsApplied(stamp).catch((error: unknown) =>
-            logError("mark cloud settings applied", error),
-          );
-        }
-        toast.success(t(($) => $.settingsFile.toast.imported));
-      },
+    const cloud = useCloudStore.getState();
+    const apply =
+      stamp === undefined
+        ? applySettingsPlan(plan, THEME)
+        : cloud.whileApplyingSettings(async () => {
+            await applySettingsPlan(plan, THEME);
+            await cloud.settingsImported(stamp);
+          });
+    apply.then(
+      () => toast.success(t(($) => $.settingsFile.toast.imported)),
       (error: unknown) => {
         void logError("apply imported settings", error);
         toast.error(t(($) => $.settingsFile.toast.applyFailed));
@@ -338,11 +331,10 @@ export default function SettingsFileCard() {
 
   const importFromCloud = useCallback(async () => {
     const cloud = useCloudStore.getState();
-    if (!useSettingsStore.getState().cloudSync || cloud.status !== "connected") {
-      useSettingsStore.getState().setCloudSync(true);
+    if (cloud.status === "unknown") await cloud.refresh();
+    if (useCloudStore.getState().status !== "connected") {
       cloud.requestSettingsImport();
-      useSettingsStore.getState().requestSettingsNav("data-cloud");
-      void cloud.refresh();
+      useCloudStore.getState().requestNav("data-cloud");
       return;
     }
     setProblem(null);
@@ -350,45 +342,45 @@ export default function SettingsFileCard() {
     try {
       const { values, stamp } = await cloudSettingsDownload();
       if (!values) {
-        toast.error(t(($) => $.settingsFile.toast.cloudEmpty));
+        toast.info(t(($) => $.settingsFile.toast.cloudEmpty));
         return;
       }
-      const result = readSettingsFile(
-        JSON.stringify(values),
+      const result = readCloudSettings(
+        values,
         readLocalSnapshot(await readConfigPreferences(), getStoredPreference()),
       );
-      const name = t(($) => $.settingsFile.importFromCloud);
       if (!result.ok) {
-        setProblem({ name, reason: result.reason, problems: result.reason === "invalid" ? result.problems : [] });
+        toast.error(t(($) => $.settingsFile.toast.cloudUnreadable));
         return;
       }
+      const name = t(($) => $.settingsFile.cloudSource);
       if (result.changed.length === 0) {
-        await cloudSettingsApplied(stamp).catch(() => {});
+        await cloud.settingsImported(stamp);
         toast.info(t(($) => $.settingsFile.toast.unchanged, { name }));
         return;
       }
       setPending({ name, plan: result.plan, changed: result.changed.length, ignored: result.ignored, stamp });
     } catch (error) {
       void logError("import settings from cloud", error);
-      toast.error(t(($) => $.settingsFile.toast.cloudLoadFailed));
+      toast.error(decodeAppError(error) ? describeError(error) : t(($) => $.settingsFile.toast.cloudLoadFailed));
     } finally {
       setBusy(false);
     }
   }, [t]);
 
-  const cloudStatus = useCloudStore((s) => s.status);
-  const pendingCloudImport = useCloudStore((s) => s.pendingSettingsImport);
+  const settingsImport = useCloudStore((s) => s.settingsImport);
   useEffect(() => {
-    if (cloudStatus === "connected" && pendingCloudImport) {
-      useCloudStore.getState().clearSettingsImport();
+    if (settingsImport === "resume" && useCloudStore.getState().takeSettingsImport()) {
       void importFromCloud();
     }
-  }, [cloudStatus, pendingCloudImport, importFromCloud]);
+  }, [settingsImport, importFromCloud]);
 
   const confirmDescription = useMemo(() => {
     if (!pending) return "";
     const parts = [
-      t(($) => $.settingsFile.confirm.description, { name: pending.name }),
+      pending.stamp === undefined
+        ? t(($) => $.settingsFile.confirm.description, { name: pending.name })
+        : t(($) => $.settingsFile.confirm.cloudDescription),
       t(($) => $.settingsFile.confirm.changes, { count: pending.changed }),
     ];
     if (pending.ignored.length > 0) {
@@ -425,22 +417,38 @@ export default function SettingsFileCard() {
             <Download aria-hidden className="size-3.5" />
             {t(($) => $.settingsFile.export)}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="secondary" size="sm" disabled={busy} data-testid="settings-file-import">
-                <Upload aria-hidden className="size-3.5" />
-                {t(($) => $.settingsFile.import)}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="z-[100]">
-              <DropdownMenuItem data-testid="settings-file-import-local" onSelect={() => void importSettings()}>
-                {t(($) => $.settingsFile.importFromLocal)}
-              </DropdownMenuItem>
-              <DropdownMenuItem data-testid="settings-file-import-cloud" onSelect={() => void importFromCloud()}>
-                {t(($) => $.settingsFile.importFromCloud)}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {cloudSync ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="secondary" size="sm" disabled={busy} data-testid="settings-file-import">
+                  <Upload aria-hidden className="size-3.5" />
+                  {t(($) => $.settingsFile.import)}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100]">
+                <DropdownMenuItem data-testid="settings-file-import-local" onSelect={() => void importSettings()}>
+                  <HardDrive aria-hidden className="size-4" />
+                  {t(($) => $.settingsFile.importFromLocal)}
+                </DropdownMenuItem>
+                <DropdownMenuItem data-testid="settings-file-import-cloud" onSelect={() => void importFromCloud()}>
+                  <Cloud aria-hidden className="size-4" />
+                  {t(($) => $.settingsFile.importFromCloud)}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              data-testid="settings-file-import"
+              onClick={() => void importSettings()}
+            >
+              <Upload aria-hidden className="size-3.5" />
+              {t(($) => $.settingsFile.import)}
+            </Button>
+          )}
         </div>
       </div>
       {problem && <ProblemNotice problem={problem} onDismiss={() => setProblem(null)} />}

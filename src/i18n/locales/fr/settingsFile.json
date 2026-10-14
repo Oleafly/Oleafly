@@ -20,15 +20,17 @@
     "imported": "Paramètres importés.",
     "unchanged": "Vos paramètres correspondent déjà à {{name}}.",
     "applyFailed": "Certains paramètres n'ont pas pu être enregistrés. Relancez l'import.",
-    "cloudEmpty": "Aucun paramètre dans le cloud pour l'instant. Synchronisez d'abord depuis votre autre ordinateur.",
-    "cloudLoadFailed": "Impossible de charger les paramètres depuis le cloud."
+    "cloudEmpty": "Votre Dropbox ne contient pas encore de paramètres Oleafly. Activez d'abord la synchronisation cloud sur un autre ordinateur.",
+    "cloudLoadFailed": "Impossible de charger les paramètres depuis votre Dropbox.",
+    "cloudUnreadable": "Impossible de lire les paramètres de votre Dropbox."
   },
   "confirm": {
     "title": "Remplacer vos paramètres ?",
     "description": "Les paramètres du fichier {{name}} vont remplacer les vôtres. Tout ce que le fichier ne contient pas reste inchangé.",
     "changes": "Paramètres qui vont changer : {{count}}",
     "ignored": "Non reconnus, ils seront ignorés :",
-    "action": "Importer"
+    "action": "Importer",
+    "cloudDescription": "Les paramètres de votre Dropbox vont remplacer les vôtres. Tout ce qu'ils ne contiennent pas reste inchangé."
   },
   "error": {
     "title": "{{name}} n'a pas été importé",
@@ -57,5 +59,6 @@
     "editorKey": "doit être une touche comme Mod-d, \"\" pour aucune, ou \"default\""
   },
   "importFromLocal": "Importer depuis cet appareil",
-  "importFromCloud": "Importer depuis le cloud"
+  "importFromCloud": "Importer depuis le cloud",
+  "cloudSource": "votre Dropbox"
 }

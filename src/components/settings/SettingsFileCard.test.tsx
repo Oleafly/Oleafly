@@ -8,6 +8,8 @@ import type { AppConfig } from "@/lib/tauri";
 const mocks = vi.hoisted(() => ({
   cloudSettingsDownload: vi.fn(),
   cloudSettingsApplied: vi.fn(async () => undefined),
+  cloudState: vi.fn(),
+  cloudConnectCancel: vi.fn(async () => undefined),
   getConfig: vi.fn(),
   setConfig: vi.fn(),
   appVersion: vi.fn(async () => "0.4.6"),
@@ -20,7 +22,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/cloud", () => ({
   cloudSettingsDownload: mocks.cloudSettingsDownload,
   cloudSettingsApplied: mocks.cloudSettingsApplied,
+  cloudState: mocks.cloudState,
+  cloudConnectCancel: mocks.cloudConnectCancel,
 }));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => undefined) }));
 vi.mock("@/lib/tauri", () => ({
   getConfig: mocks.getConfig,
   setConfig: mocks.setConfig,
@@ -34,6 +39,7 @@ vi.mock("@/i18n/desktop", () => ({ changeLocalePreference: vi.fn(async () => und
 
 import { loadNamespace } from "@/i18n/lazy-namespaces";
 import { base64ToBytes } from "@/lib/base64";
+import { useCloudStore } from "@/store/cloud";
 import { useSettingsStore } from "@/store/settings";
 import { ThemeProvider } from "@/lib/theme";
 import SettingsFileCardView from "./SettingsFileCard";
@@ -47,6 +53,7 @@ function SettingsFileCard() {
 }
 
 const initialSettings = useSettingsStore.getState();
+const initialCloud = useCloudStore.getState();
 
 const config = {
   ai_system_prompt: "",
@@ -59,7 +66,14 @@ const config = {
 
 async function chooseLocalImport() {
   await userEvent.click(screen.getByTestId("settings-file-import"));
-  await userEvent.click(await screen.findByTestId("settings-file-import-local"));
+  if (useSettingsStore.getState().cloudSync) {
+    await userEvent.click(await screen.findByTestId("settings-file-import-local"));
+  }
+}
+
+function connectedCloud() {
+  useSettingsStore.setState({ cloudSync: true });
+  useCloudStore.setState({ status: "connected" });
 }
 
 async function chooseCloudImport() {
@@ -78,6 +92,7 @@ beforeAll(async () => {
 beforeEach(() => {
   localStorage.clear();
   useSettingsStore.setState(initialSettings, true);
+  useCloudStore.setState(initialCloud, true);
   mocks.getConfig.mockResolvedValue(config);
   mocks.setConfig.mockResolvedValue(undefined);
 });
@@ -221,31 +236,104 @@ describe("SettingsFileCard", () => {
     expect(screen.queryByTestId("settings-file-json")).not.toBeInTheDocument();
   });
 
-  it("imports settings from the cloud through the same confirmation", async () => {
-    const { useCloudStore } = await import("@/store/cloud");
-    useCloudStore.setState({ status: "connected" });
-    useSettingsStore.getState().setCloudSync(true);
+  it("keeps a single Import button that opens the file picker while cloud sync is off", async () => {
+    mocks.pickSettingsFile.mockResolvedValue(null);
+    render(<SettingsFileCard />);
+    await userEvent.click(screen.getByTestId("settings-file-import"));
+    await waitFor(() => expect(mocks.pickSettingsFile).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId("settings-file-import-cloud")).not.toBeInTheDocument();
+    expect(useSettingsStore.getState().cloudSync).toBe(false);
+  });
+
+  it("offers this device and the cloud while cloud sync is on", async () => {
+    useSettingsStore.setState({ cloudSync: true });
+    mocks.pickSettingsFile.mockResolvedValue(settingsFile({ appearance: { app: { fontSize: 16 } } }));
+    render(<SettingsFileCard />);
+    await userEvent.click(screen.getByTestId("settings-file-import"));
+    expect(await screen.findByTestId("settings-file-import-cloud")).toHaveTextContent("Import from cloud");
+    await userEvent.click(screen.getByTestId("settings-file-import-local"));
+    await waitFor(() => expect(mocks.toast.info).toHaveBeenCalledWith("Your settings already match class.json."));
+  });
+
+  it("imports the valid settings from Dropbox and records the string stamp", async () => {
+    connectedCloud();
     mocks.cloudSettingsDownload.mockResolvedValue({
-      values: { appearance: { app: { fontSize: 18 } } },
-      stamp: 4242,
+      values: {
+        appearance: { app: { fontSize: 18 }, editor: { lineWrap: "maybe" } },
+        experimentation: { cloudSync: false },
+      },
+      stamp: "18446744073709551615",
     });
     render(<SettingsFileCard />);
     await chooseCloudImport();
     const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Settings from your Dropbox will replace yours.");
+    expect(dialog).toHaveTextContent("Settings that will change: 1");
     await userEvent.click(within(dialog).getByRole("button", { name: /^Import/ }));
     await waitFor(() => expect(useSettingsStore.getState().appFontSize).toBe(18));
-    expect(mocks.cloudSettingsApplied).toHaveBeenCalledWith(4242);
-    useCloudStore.setState({ status: "unknown" });
+    await waitFor(() => expect(mocks.cloudSettingsApplied).toHaveBeenCalledTimes(1));
+    const [stamp, values] = mocks.cloudSettingsApplied.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(stamp).toBe("18446744073709551615");
+    expect(values).toMatchObject({ appearance: { app: { fontSize: 18 } } });
+    expect(values).not.toHaveProperty("experimentation.cloudSync");
+    expect(useSettingsStore.getState().cloudSync).toBe(true);
+    expect(useCloudStore.getState().applyingSettings).toBe(false);
+    expect(mocks.toast.success).toHaveBeenCalledWith("Settings imported.");
   });
 
-  it("routes to connect when cloud import is chosen while disconnected", async () => {
-    const { useCloudStore } = await import("@/store/cloud");
-    useCloudStore.setState({ status: "disconnected", pendingSettingsImport: false });
+  it("names your Dropbox when its settings already match", async () => {
+    connectedCloud();
+    mocks.cloudSettingsDownload.mockResolvedValue({ values: { appearance: { app: { fontSize: 16 } } }, stamp: "7" });
     render(<SettingsFileCard />);
     await chooseCloudImport();
-    expect(useCloudStore.getState().pendingSettingsImport).toBe(true);
-    expect(useSettingsStore.getState().settingsNavRequest).toBe("data-cloud");
+    await waitFor(() => expect(mocks.toast.info).toHaveBeenCalledWith("Your settings already match your Dropbox."));
+    expect(mocks.cloudSettingsApplied).toHaveBeenCalledWith("7", expect.any(Object));
+  });
+
+  it("says so when Dropbox has no settings yet", async () => {
+    connectedCloud();
+    mocks.cloudSettingsDownload.mockResolvedValue({ values: null, stamp: "0" });
+    render(<SettingsFileCard />);
+    await chooseCloudImport();
+    await waitFor(() =>
+      expect(mocks.toast.info).toHaveBeenCalledWith(
+        "Your Dropbox has no Oleafly settings yet. Turn on cloud sync on another computer first.",
+      ),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("routes to Cloud sync when cloud import is chosen while disconnected", async () => {
+    useSettingsStore.setState({ cloudSync: true });
+    mocks.cloudState.mockResolvedValue({ status: "disconnected", projects: [] });
+    render(<SettingsFileCard />);
+    await chooseCloudImport();
+    await waitFor(() => expect(useCloudStore.getState().navRequest).toBe("data-cloud"));
+    expect(useCloudStore.getState().settingsImport).toBe("awaitingConnect");
     expect(mocks.cloudSettingsDownload).not.toHaveBeenCalled();
-    useCloudStore.setState({ status: "unknown", pendingSettingsImport: false });
+    expect(useSettingsStore.getState().cloudSync).toBe(true);
+  });
+
+  it("resumes the import once the connect flow it waited for succeeds", async () => {
+    connectedCloud();
+    useCloudStore.setState({ settingsImport: "resume" });
+    mocks.cloudSettingsDownload.mockResolvedValue({ values: { appearance: { app: { fontSize: 18 } } }, stamp: "9" });
+    render(<SettingsFileCard />);
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Settings from your Dropbox will replace yours.");
+    expect(mocks.cloudSettingsDownload).toHaveBeenCalledTimes(1);
+    expect(useCloudStore.getState().settingsImport).toBeNull();
+  });
+
+  it("never runs a pending import after the connect flow is cancelled", async () => {
+    useSettingsStore.setState({ cloudSync: true });
+    useCloudStore.getState().requestSettingsImport();
+    useCloudStore.setState({ connectFlow: { flowId: "f1", authUrl: "https://a", paste: false } });
+    useCloudStore.getState().cancelConnect();
+    expect(useCloudStore.getState().settingsImport).toBeNull();
+    expect(mocks.cloudConnectCancel).toHaveBeenCalledWith("f1");
+    useCloudStore.setState({ status: "connected" });
+    render(<SettingsFileCard />);
+    await act(async () => {});
+    expect(mocks.cloudSettingsDownload).not.toHaveBeenCalled();
   });
 });

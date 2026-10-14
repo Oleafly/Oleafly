@@ -5,23 +5,49 @@ export interface CloudSpace {
   allocated: number;
 }
 
+export type CloudStatus = "connected" | "disconnected" | "revoked";
+
+export type CloudProjectMode = "sync" | "pause" | "download" | "held" | "removed";
+
+export interface CloudHold {
+  kind: "massDelete";
+  count: number;
+  total: number;
+}
+
 export interface CloudProject {
   localId: string | null;
   cloudId: string;
   name: string;
-  mode: "sync" | "pause" | "download";
+  mode: CloudProjectMode;
   lastSyncedMs: number;
+  sizeBytes: number;
+  error: string | null;
+  conflicts: number;
+  skipped: number;
+  hold: CloudHold | null;
+  recycled: boolean;
+  removedBy: string | null;
 }
 
 export interface CloudState {
-  status: "connected" | "disconnected";
+  status: CloudStatus;
   email: string | null;
   displayName: string | null;
   deviceName: string;
   enabled: boolean;
   lastEmail: string | null;
-  space: CloudSpace | null;
+  lastSyncedMs: number;
+  lastError: string | null;
+  quotaFull: boolean;
+  linkedCount: number;
   projects: CloudProject[];
+}
+
+export interface CloudDetails {
+  space: CloudSpace | null;
+  remote: CloudProject[];
+  error: string | null;
 }
 
 export interface SyncProjectReport {
@@ -31,12 +57,20 @@ export interface SyncProjectReport {
   deletedRemote: number;
   deletedLocal: number;
   conflicts: number;
+  skipped: number;
+  held: boolean;
   error: string | null;
 }
 
 export interface SyncReport {
   projects: SyncProjectReport[];
   lastSyncedMs: number;
+  error: string | null;
+}
+
+export interface CloudDirtyFile {
+  localId: string;
+  path: string;
 }
 
 export interface ConnectBegin {
@@ -45,8 +79,28 @@ export interface ConnectBegin {
   paste: boolean;
 }
 
+export interface DownloadDone {
+  localId: string;
+  restored: boolean;
+}
+
+export type SettingsSyncOutcome =
+  | { outcome: "current" }
+  | { outcome: "pushed" }
+  | { outcome: "apply"; values: Record<string, unknown>; stamp: string }
+  | { outcome: "choose"; values: Record<string, unknown>; stamp: string };
+
+export interface CloudSettingsDownload {
+  values: Record<string, unknown> | null;
+  stamp: string;
+}
+
 export function cloudState(): Promise<CloudState> {
   return invoke<CloudState>("cloud_state");
+}
+
+export function cloudDetails(): Promise<CloudDetails> {
+  return invoke<CloudDetails>("cloud_details");
 }
 
 export function cloudConnectBegin(paste: boolean): Promise<ConnectBegin> {
@@ -77,26 +131,38 @@ export function cloudSetDeviceName(name: string): Promise<void> {
   return invoke<void>("cloud_set_device_name", { name });
 }
 
-export function cloudSyncNow(): Promise<SyncReport> {
-  return invoke<SyncReport>("cloud_sync_now");
+export function cloudSyncNow(dirty: CloudDirtyFile[]): Promise<SyncReport> {
+  return invoke<SyncReport>("cloud_sync_now", { dirty });
 }
 
 export function cloudProjectSetMode(localId: string, mode: "sync" | "pause"): Promise<void> {
   return invoke<void>("cloud_project_set_mode", { localId, mode });
 }
 
-export function cloudDownloadProject(cloudId: string): Promise<{ localId: string }> {
-  return invoke<{ localId: string }>("cloud_download_project", { cloudId });
+export function cloudProjectResolveHold(localId: string, choice: "restore" | "delete"): Promise<SyncProjectReport> {
+  return invoke<SyncProjectReport>("cloud_project_resolve_hold", { localId, choice });
 }
 
-export function cloudSettingsSync(values: Record<string, unknown>): Promise<{ applied: Record<string, unknown> | null }> {
-  return invoke<{ applied: Record<string, unknown> | null }>("cloud_settings_sync", { values });
+export function cloudProjectRemove(localId: string): Promise<void> {
+  return invoke<void>("cloud_project_remove", { localId });
 }
 
-export function cloudSettingsDownload(): Promise<{ values: Record<string, unknown> | null; stamp: number }> {
-  return invoke<{ values: Record<string, unknown> | null; stamp: number }>("cloud_settings_download");
+export function cloudDownloadProject(cloudId: string): Promise<DownloadDone> {
+  return invoke<DownloadDone>("cloud_download_project", { cloudId });
 }
 
-export function cloudSettingsApplied(stamp: number): Promise<void> {
-  return invoke<void>("cloud_settings_applied", { stamp });
+export function cloudSettingsSync(values: Record<string, unknown>): Promise<SettingsSyncOutcome> {
+  return invoke<SettingsSyncOutcome>("cloud_settings_sync", { values });
+}
+
+export function cloudSettingsDownload(): Promise<CloudSettingsDownload> {
+  return invoke<CloudSettingsDownload>("cloud_settings_download");
+}
+
+export function cloudSettingsApplied(stamp: string, values: Record<string, unknown>): Promise<void> {
+  return invoke<void>("cloud_settings_applied", { stamp, values });
+}
+
+export function cloudSettingsKeepLocal(values: Record<string, unknown>): Promise<void> {
+  return invoke<void>("cloud_settings_keep_local", { values });
 }

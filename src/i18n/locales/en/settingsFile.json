@@ -20,15 +20,17 @@
     "imported": "Settings imported.",
     "unchanged": "Your settings already match {{name}}.",
     "applyFailed": "Some settings couldn't be saved. Try the import again.",
-    "cloudEmpty": "No settings in the cloud yet. Sync from your other computer first.",
-    "cloudLoadFailed": "Couldn't load settings from the cloud."
+    "cloudEmpty": "Your Dropbox has no Oleafly settings yet. Turn on cloud sync on another computer first.",
+    "cloudLoadFailed": "Couldn't load settings from your Dropbox.",
+    "cloudUnreadable": "The settings in your Dropbox couldn't be read."
   },
   "confirm": {
     "title": "Replace your settings?",
     "description": "Settings from {{name}} will replace yours. Anything the file leaves out stays as it is.",
     "changes": "Settings that will change: {{count}}",
     "ignored": "Not recognized, so they'll be skipped:",
-    "action": "Import"
+    "action": "Import",
+    "cloudDescription": "Settings from your Dropbox will replace yours. Anything they leave out stays as it is."
   },
   "error": {
     "title": "{{name}} wasn't imported",
@@ -57,5 +59,6 @@
     "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\""
   },
   "importFromLocal": "Import from this device",
-  "importFromCloud": "Import from cloud"
+  "importFromCloud": "Import from cloud",
+  "cloudSource": "your Dropbox"
 }

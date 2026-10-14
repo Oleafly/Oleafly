@@ -215,16 +215,5 @@
     "git_token_invalid": "Bu bir Overleaf Git belirtecine benzemiyor. Belirtecin tamamını kopyalayıp yeniden deneyin.",
     "git_token_rejected": "Overleaf Git belirtecini kabul etmedi. Süresi dolmuş olabilir. Overleaf hesap ayarlarınızda yeni bir belirteç oluşturun.",
     "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir."
-  },
-  "cloud": {
-    "code_invalid": "O kod çalışmadı. Tekrar deneyin.",
-    "connect_frozen": "Dropbox şu anda Oleafly için yeni bağlantı kabul etmiyor. Birkaç gün sonra tekrar deneyin.",
-    "device_name_empty": "Bir ad girin.",
-    "device_name_invalid": "Bilgisayar adı \\ / : * ? \" < > | içeremez ve en fazla 32 karakterdir.",
-    "network": "Dropbox'a ulaşılamadı. Bağlantınızı kontrol edin.",
-    "not_connected": "Dropbox bağlı değil.",
-    "revoked": "Dropbox erişimi iptal edildi. Yeniden bağlanın.",
-    "sign_in_cancelled": "Dropbox oturum açma iptal edildi.",
-    "sign_in_timeout": "Oturum açma çok uzun sürdü. Tekrar deneyin."
   }
 }

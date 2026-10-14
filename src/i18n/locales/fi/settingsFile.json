@@ -20,15 +20,17 @@
     "imported": "Asetukset tuotiin.",
     "unchanged": "Asetuksesi vastaavat jo tiedostoa {{name}}.",
     "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen.",
-    "cloudEmpty": "Pilvessä ei ole vielä asetuksia. Synkronoi ensin toiselta tietokoneeltasi.",
-    "cloudLoadFailed": "Asetuksia ei voitu ladata pilvestä."
+    "cloudEmpty": "Dropboxissasi ei ole vielä Oleafly-asetuksia. Ota pilvisynkronointi ensin käyttöön toisella tietokoneella.",
+    "cloudLoadFailed": "Asetuksia ei voitu ladata Dropboxistasi.",
+    "cloudUnreadable": "Dropboxisi asetuksia ei voitu lukea."
   },
   "confirm": {
     "title": "Korvataanko asetuksesi?",
     "description": "Tiedoston {{name}} asetukset korvaavat omasi. Kaikki, mitä tiedostossa ei ole, pysyy ennallaan.",
     "changes": "Muuttuvia asetuksia: {{count}}",
     "ignored": "Näitä ei tunnistettu, joten ne ohitetaan:",
-    "action": "Tuo"
+    "action": "Tuo",
+    "cloudDescription": "Dropboxisi asetukset korvaavat omasi. Kaikki, mitä niissä ei ole, pysyy ennallaan."
   },
   "error": {
     "title": "Tiedostoa {{name}} ei tuotu",
@@ -57,5 +59,6 @@
     "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\""
   },
   "importFromLocal": "Tuo tältä laitteelta",
-  "importFromCloud": "Tuo pilvestä"
+  "importFromCloud": "Tuo pilvestä",
+  "cloudSource": "Dropboxissasi"
 }

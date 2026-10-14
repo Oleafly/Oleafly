@@ -6019,7 +6019,14 @@ impl ProjectDirectoryReservation {
 
     pub(crate) fn commit(mut self) -> Result<String, String> {
         if let Some(store) = &self.identity_store {
-            crate::project_ids::finalize_origin_at(store, &self.project_id, &self.path)?;
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, &self.path)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
         }
         self.committed = true;
         Ok(self.project_id.clone())
@@ -6046,7 +6053,14 @@ impl ProjectDirectoryReservation {
         drop(current);
         drop(self.identity.take());
         if let Some(store) = &self.identity_store {
-            crate::project_ids::finalize_origin_at(store, &self.project_id, staged)?;
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, staged)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
         }
         std::fs::remove_dir(&self.path)
             .map_err(|error| format!("failed to release project reservation: {error}"))?;
@@ -6133,6 +6147,12 @@ fn try_reserve_project_directory_adopting(
             crate::project_ids::mint_in(&store, project_id, adopted).map(|_| store)
         }) {
             Ok(store) => Some(store),
+            Err(error) if adopted.is_none() => {
+                let _ = append_app_log(format!(
+                    "project {project_id} was created without a sync identity; it will get one when it first syncs: {error}"
+                ));
+                None
+            }
             Err(error) => {
                 let _ = std::fs::remove_dir(&path);
                 return Err(format!(
@@ -7890,8 +7910,16 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             write_meta(&new_id, &meta)
         })();
         duplicated?;
-        let source_binding = crate::project_ids::ensure(&project_id, &src)?;
-        crate::project_ids::set_duplicated_from(&new_id, source_binding.project)?;
+        match crate::project_ids::mint(&project_id, None)
+            .and_then(|source| crate::project_ids::set_duplicated_from(&new_id, source.project))
+        {
+            Ok(()) => {}
+            Err(error) => {
+                let _ = append_app_log(format!(
+                    "could not record that {new_id} was duplicated from {project_id}: {error}"
+                ));
+            }
+        }
         let created = reservation.commit()?;
         initialize_git_for_new_project(&created);
         Ok(created)

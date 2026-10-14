@@ -215,16 +215,5 @@
     "git_token_invalid": "这看起来不像 Overleaf Git 令牌。请复制完整的令牌后重试。",
     "git_token_rejected": "Overleaf 未接受此 Git 令牌，它可能已过期。请在 Overleaf 账户设置中创建新的令牌。",
     "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。"
-  },
-  "cloud": {
-    "code_invalid": "该代码无效。请重试。",
-    "connect_frozen": "Dropbox 目前不接受 Oleafly 的新连接。请过几天再试。",
-    "device_name_empty": "请输入名称。",
-    "device_name_invalid": "电脑名称不能包含 \\ / : * ? \" < > |，且最多 32 个字符。",
-    "network": "无法连接到 Dropbox。请检查你的网络连接。",
-    "not_connected": "Dropbox 未连接。",
-    "revoked": "Dropbox 访问权限已被撤销。请重新连接。",
-    "sign_in_cancelled": "Dropbox 登录已取消。",
-    "sign_in_timeout": "登录耗时过长。请重试。"
   }
 }

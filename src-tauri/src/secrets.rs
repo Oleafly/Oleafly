@@ -378,7 +378,6 @@ pub fn resolve_secret(account: &str, config_value: &str) -> Result<String, Strin
     Ok(config_value.to_string())
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SecretBackend {
@@ -448,7 +447,6 @@ fn cloud_backend_choice() -> BackendChoice {
     )
 }
 
-#[allow(dead_code)]
 pub fn cloud_secret_backend() -> BackendChoice {
     CLOUD_BACKEND.get_or_init(cloud_backend_choice).clone()
 }
@@ -504,7 +502,6 @@ fn keychain_get(account: &str) -> Result<Option<String>, String> {
     }
 }
 
-#[allow(dead_code)]
 pub fn set_cloud_secret(account: &str, value: &str) -> Result<BackendChoice, String> {
     let choice = cloud_secret_backend();
     if choice.backend == SecretBackend::Keychain {
@@ -520,7 +517,6 @@ pub fn set_cloud_secret(account: &str, value: &str) -> Result<BackendChoice, Str
     Ok(choice)
 }
 
-#[allow(dead_code)]
 pub fn get_cloud_secret(account: &str, backend: SecretBackend) -> Result<Option<String>, String> {
     match backend {
         SecretBackend::Keychain => keychain_get(account),
@@ -528,7 +524,6 @@ pub fn get_cloud_secret(account: &str, backend: SecretBackend) -> Result<Option<
     }
 }
 
-#[allow(dead_code)]
 pub fn delete_cloud_secret(account: &str, backend: SecretBackend) -> Result<(), String> {
     match backend {
         SecretBackend::Keychain => keychain_set(account, ""),

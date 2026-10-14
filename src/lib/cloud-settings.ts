@@ -3,7 +3,11 @@ import {
   buildSettingsDocument,
   captureSettingsSnapshot,
   readSettingsFile,
+  validSettingsSubset,
+  type SettingsFileRead,
 } from "@/lib/settings-file/transfer";
+import type { SettingsSnapshot } from "@/lib/settings-file/schema";
+import { isRecord } from "@/lib/settings-file/values";
 import { getStoredPreference, requestThemePreference, type ThemePreference } from "@/lib/theme";
 
 const THEME = {
@@ -13,15 +17,25 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
-export async function gatherCloudSettings(): Promise<Record<string, unknown>> {
-  return buildSettingsDocument(await captureSettingsSnapshot(getStoredPreference()));
+export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
+  const experimentation = document.experimentation;
+  if (!isRecord(experimentation) || !Object.hasOwn(experimentation, "cloudSync")) return document;
+  const kept = Object.fromEntries(Object.entries(experimentation).filter(([key]) => key !== "cloudSync"));
+  const copy = Object.fromEntries(Object.entries(document).filter(([key]) => key !== "experimentation"));
+  return Object.keys(kept).length > 0 ? { ...copy, experimentation: kept } : copy;
 }
 
-export async function applyCloudSettings(document: Record<string, unknown>): Promise<void> {
-  const snapshot = await captureSettingsSnapshot(getStoredPreference());
-  const read = readSettingsFile(JSON.stringify(document), snapshot);
-  if (!read.ok) {
-    throw new Error("cloud settings document is not valid");
-  }
-  await applySettingsPlan(read.plan, THEME);
+export async function gatherCloudSettings(): Promise<Record<string, unknown>> {
+  return withoutLocalOnlySettings(buildSettingsDocument(await captureSettingsSnapshot(getStoredPreference())));
+}
+
+export function readCloudSettings(values: Record<string, unknown>, snapshot: SettingsSnapshot): SettingsFileRead {
+  const subset = validSettingsSubset(withoutLocalOnlySettings(values));
+  return readSettingsFile(JSON.stringify(subset), snapshot);
+}
+
+export async function applyCloudSettings(values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const read = readCloudSettings(values, await captureSettingsSnapshot(getStoredPreference()));
+  if (read.ok && read.changed.length > 0) await applySettingsPlan(read.plan, THEME);
+  return gatherCloudSettings();
 }

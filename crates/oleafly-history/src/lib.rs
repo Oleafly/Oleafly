@@ -19,7 +19,6 @@ use rand::RngCore;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use unicode_normalization::UnicodeNormalization;
 
 const FORMAT_VERSION: u32 = 2;
 const UNSTORED_MANIFEST_VERSION: u32 = 2;
@@ -188,7 +187,7 @@ pub enum ProjectManifestBytes<'a> {
 }
 
 pub fn portable_fold(path: &str) -> String {
-    path.nfc().flat_map(char::to_lowercase).collect()
+    oleafly_core::portable::fold(path)
 }
 
 pub fn conflicting_portable_paths<'a>(
@@ -4473,46 +4472,19 @@ fn validate_existing_format(root: &Path) -> Result<u32> {
 }
 
 fn validate_portable_relative_path(path: &str) -> Result<()> {
-    if path.is_empty()
-        || path.starts_with('/')
-        || path.starts_with('\\')
-        || path.contains('\\')
-        || path.contains(':')
-        || path.chars().any(char::is_control)
-    {
-        return Err(HistoryError::InvalidInput(format!(
+    use oleafly_core::portable::PortableProblem;
+    match oleafly_core::portable::relative_problem(path) {
+        None => Ok(()),
+        Some(PortableProblem::NotPortable) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is not a portable project-relative path"
-        )));
-    }
-    let components = path.split('/').collect::<Vec<_>>();
-    if components.iter().any(|component| {
-        component.is_empty()
-            || *component == "."
-            || *component == ".."
-            || component.ends_with(['.', ' '])
-            || is_windows_reserved_component(component)
-    }) {
-        return Err(HistoryError::InvalidInput(format!(
+        ))),
+        Some(PortableProblem::NotNormalized) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is not a normalized project-relative path"
-        )));
-    }
-    let first = components.first().copied().unwrap_or_default();
-    if first.eq_ignore_ascii_case(".git") || first.eq_ignore_ascii_case(".oleafly") {
-        return Err(HistoryError::InvalidInput(format!(
+        ))),
+        Some(PortableProblem::ProtectedRoot) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is inside a protected project-internal root"
-        )));
+        ))),
     }
-    Ok(())
-}
-
-fn is_windows_reserved_component(component: &str) -> bool {
-    let stem = component.split('.').next().unwrap_or_default();
-    let upper = stem.to_ascii_uppercase();
-    matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-        || upper
-            .strip_prefix("COM")
-            .or_else(|| upper.strip_prefix("LPT"))
-            .is_some_and(|suffix| suffix.len() == 1 && matches!(suffix.as_bytes()[0], b'1'..=b'9'))
 }
 
 fn validate_portable_path_set<'a>(paths: impl IntoIterator<Item = &'a str>) -> Result<()> {

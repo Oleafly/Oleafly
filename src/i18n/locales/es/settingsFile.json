@@ -20,15 +20,17 @@
     "imported": "Ajustes importados.",
     "unchanged": "Tus ajustes ya coinciden con {{name}}.",
     "applyFailed": "Algunos ajustes no se pudieron guardar. Vuelve a intentar la importación.",
-    "cloudEmpty": "Aún no hay ajustes en la nube. Sincroniza primero desde tu otro ordenador.",
-    "cloudLoadFailed": "No se pudieron cargar los ajustes de la nube."
+    "cloudEmpty": "Tu Dropbox aún no tiene ajustes de Oleafly. Activa primero la sincronización en la nube en otro ordenador.",
+    "cloudLoadFailed": "No se pudieron cargar los ajustes de tu Dropbox.",
+    "cloudUnreadable": "No se pudieron leer los ajustes de tu Dropbox."
   },
   "confirm": {
     "title": "¿Reemplazar tus ajustes?",
     "description": "Los ajustes de {{name}} reemplazarán los tuyos. Lo que el archivo no incluya se queda como está.",
     "changes": "Ajustes que cambiarán: {{count}}",
     "ignored": "No se reconocen, así que se omitirán:",
-    "action": "Importar"
+    "action": "Importar",
+    "cloudDescription": "Los ajustes de tu Dropbox reemplazarán los tuyos. Lo que no incluyan se queda como está."
   },
   "error": {
     "title": "No se importó {{name}}",
@@ -57,5 +59,6 @@
     "editorKey": "debe ser una tecla como Mod-d, \"\" para ninguna, o \"default\""
   },
   "importFromLocal": "Importar desde este dispositivo",
-  "importFromCloud": "Importar desde la nube"
+  "importFromCloud": "Importar desde la nube",
+  "cloudSource": "tu Dropbox"
 }

@@ -47,6 +47,23 @@ impl ContentHash {
     }
 }
 
+#[derive(Default)]
+pub struct ContentHasher(blake3::Hasher);
+
+impl ContentHasher {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn update(&mut self, bytes: &[u8]) {
+        self.0.update(bytes);
+    }
+
+    pub fn finish(&self) -> ContentHash {
+        ContentHash::from_bytes(*self.0.finalize().as_bytes())
+    }
+}
+
 impl fmt::Display for ContentHash {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&encode_hex(&self.0))

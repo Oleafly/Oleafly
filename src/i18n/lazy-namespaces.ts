@@ -5,7 +5,7 @@ type CatalogGlob = Record<string, () => Promise<Catalog>>;
 
 function catalogGlob(): CatalogGlob {
   try {
-    return import.meta.glob<Catalog>("./locales/*/settingsFile.json", { import: "default" });
+    return import.meta.glob<Catalog>(["./locales/*/settingsFile.json", "./locales/*/cloud.json"], { import: "default" });
   } catch {
     return {};
   }
@@ -14,7 +14,7 @@ function catalogGlob(): CatalogGlob {
 const catalogs = catalogGlob();
 const requested = new Set<string>();
 
-export const LAZY_NAMESPACES: readonly string[] = ["settingsFile"];
+export const LAZY_NAMESPACES: readonly string[] = ["settingsFile", "cloud"];
 
 export function loadCatalog(locale: string, namespace: string): Promise<Catalog> | null {
   return catalogs[`./locales/${locale}/${namespace}.json`]?.() ?? null;

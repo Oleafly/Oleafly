@@ -131,12 +131,6 @@ pub(crate) fn authorize_url(
     url.to_string()
 }
 
-pub(crate) fn should_refresh(now_ms: u64, issued_ms: u64, expires_in_s: u64) -> bool {
-    let total_ms = expires_in_s.saturating_mul(1_000);
-    let remaining_ms = total_ms.saturating_sub(now_ms.saturating_sub(issued_ms));
-    remaining_ms.saturating_mul(10) <= total_ms
-}
-
 #[derive(Clone)]
 pub(crate) struct LoopbackPages {
     pub(crate) success: String,
@@ -374,21 +368,15 @@ pub(crate) struct DropboxAuthClient {
     api_base: String,
 }
 
-fn http_client() -> OAuthResult<reqwest::Client> {
-    reqwest::Client::builder()
-        .user_agent("Oleafly")
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|error| OAuthError::Network(format!("could not build HTTP client: {error}")))
-}
+const AUTH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 impl DropboxAuthClient {
-    pub(crate) fn new() -> OAuthResult<Self> {
-        Ok(Self {
-            http: http_client()?,
+    pub(crate) fn new() -> Self {
+        Self {
+            http: super::store::http().clone(),
             token_url: TOKEN_URL.into(),
             api_base: API_BASE.into(),
-        })
+        }
     }
 
     async fn read_capped(&self, mut response: reqwest::Response) -> OAuthResult<Vec<u8>> {
@@ -410,6 +398,7 @@ impl DropboxAuthClient {
         let response = self
             .http
             .post(&self.token_url)
+            .timeout(AUTH_TIMEOUT)
             .form(&form)
             .send()
             .await
@@ -484,6 +473,7 @@ impl DropboxAuthClient {
         let response = self
             .http
             .post(format!("{}/auth/token/revoke", self.api_base))
+            .timeout(AUTH_TIMEOUT)
             .bearer_auth(access_token)
             .send()
             .await
@@ -502,6 +492,7 @@ impl DropboxAuthClient {
         let response = self
             .http
             .post(format!("{}/users/get_space_usage", self.api_base))
+            .timeout(AUTH_TIMEOUT)
             .bearer_auth(access_token)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body("null")
@@ -537,6 +528,7 @@ impl DropboxAuthClient {
         let response = self
             .http
             .post(format!("{}/users/get_current_account", self.api_base))
+            .timeout(AUTH_TIMEOUT)
             .bearer_auth(access_token)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body("null")
@@ -567,8 +559,8 @@ impl DropboxAuthClient {
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_url, bind_loopback, query_value, redirect_uri, should_refresh, DropboxAuthClient,
-        LoopbackPages, OAuthError, PkceFlow,
+        authorize_url, bind_loopback, query_value, redirect_uri, DropboxAuthClient, LoopbackPages,
+        OAuthError, PkceFlow,
     };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
     use sha2::{Digest, Sha256};
@@ -615,14 +607,6 @@ mod tests {
         assert!(!url.contains("client_secret"));
         let paste = authorize_url("key123", &flow, None, None);
         assert!(!paste.contains("redirect_uri"));
-    }
-
-    #[test]
-    fn refresh_is_due_only_in_the_last_tenth_of_a_token_life() {
-        assert!(!should_refresh(0, 0, 14_400));
-        assert!(!should_refresh(10_000_000, 0, 14_400));
-        assert!(should_refresh(13_000_000, 0, 14_400));
-        assert!(should_refresh(20_000_000, 0, 14_400));
     }
 
     #[tokio::test]

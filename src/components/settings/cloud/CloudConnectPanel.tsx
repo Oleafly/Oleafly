@@ -1,15 +1,28 @@
+import { IntegrationBusyButton, IntegrationError } from "@/components/settings/IntegrationCard";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { describeError } from "@/lib/app-error";
+import { logError } from "@/lib/log";
 import { useCloudStore } from "@/store/cloud";
 import { open } from "@tauri-apps/plugin-shell";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+async function reopenSignIn(url: string) {
+  try {
+    await open(url);
+  } catch (error) {
+    void logError("cloud open sign-in", error);
+  }
+}
+
 export function CloudConnectPanel() {
-  const { t } = useTranslation(["common", "shell"]);
+  const { t } = useTranslation(["common", "cloud"]);
   const flow = useCloudStore((s) => s.connectFlow);
+  const connectBusy = useCloudStore((s) => s.connectBusy);
+  const pasteBusy = useCloudStore((s) => s.pasteBusy);
   const connectError = useCloudStore((s) => s.connectError);
   const beginConnect = useCloudStore((s) => s.beginConnect);
   const submitPasteCode = useCloudStore((s) => s.submitPasteCode);
@@ -19,65 +32,87 @@ export function CloudConnectPanel() {
 
   if (!flow) return null;
 
-  const openPaste = (next: boolean) => {
+  const pasteReady = flow.paste;
+
+  const togglePaste = (next: boolean) => {
     setPasteOpen(next);
-    if (next && !flow.paste) void beginConnect(true);
+    if (next && !flow.paste && !connectBusy) void beginConnect(true);
+  };
+
+  const submit = () => {
+    if (!pasteReady || pasteBusy || !code.trim()) return;
+    void submitPasteCode(code);
   };
 
   return (
-    <div className="space-y-3 rounded-lg border bg-background p-4">
+    <div data-testid="cloud-connect-panel" className="space-y-3 rounded-lg border bg-background p-4">
       <div>
-        <div className="text-sm font-semibold">{t(($) => $.shell.settings.data.cloud.finishInBrowser)}</div>
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <p className="text-sm font-semibold text-foreground">{t(($) => $.cloud.finishInBrowser)}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Spinner size="sm" />
-          {t(($) => $.shell.settings.data.cloud.waiting)}
-        </div>
+          {t(($) => $.cloud.waiting)}
+        </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" onClick={cancelConnect}>
+        <Button type="button" size="sm" variant="outline" onClick={cancelConnect}>
           {t(($) => $.common.actions.cancel)}
         </Button>
-        <button
+        <Button
           type="button"
-          className="text-xs font-medium text-primary hover:underline"
-          onClick={() => void open(flow.authUrl)}
+          size="sm"
+          variant="link"
+          className="h-auto px-1 py-0.5"
+          onClick={() => void reopenSignIn(flow.authUrl)}
         >
-          {t(($) => $.shell.settings.data.cloud.browserDidntOpen)}
-        </button>
+          {t(($) => $.cloud.browserDidntOpen)}
+        </Button>
       </div>
       <CollapsibleSection
         id="cloud-paste-code"
-        title={t(($) => $.shell.settings.data.cloud.pasteInstead)}
-        open={pasteOpen}
-        onOpenChange={openPaste}
+        title={t(($) => $.cloud.pasteInstead)}
+        open={pasteOpen || flow.paste}
+        onOpenChange={togglePaste}
       >
         <div className="space-y-2 pt-1">
-          <p className="text-xs text-muted-foreground">{t(($) => $.shell.settings.data.cloud.pasteHint)}</p>
-          <label className="block text-xs font-medium" htmlFor="cloud-paste-input">
-            {t(($) => $.shell.settings.data.cloud.codeLabel)}
+          {pasteReady ? (
+            <p className="text-xs text-muted-foreground">{t(($) => $.cloud.pasteHint)}</p>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Spinner size="sm" />
+              {t(($) => $.cloud.pastePreparing)}
+            </p>
+          )}
+          <label className="block text-xs font-medium text-foreground" htmlFor="cloud-paste-input">
+            {t(($) => $.cloud.codeLabel)}
           </label>
-          <div className="flex items-center gap-2">
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
             <Input
               id="cloud-paste-input"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submitPasteCode(code);
-              }}
+              disabled={!pasteReady}
+              onChange={(event) => setCode(event.target.value)}
               autoComplete="off"
-              className="max-w-sm"
+              spellCheck={false}
+              className="h-8 max-w-sm"
             />
-            <Button size="sm" disabled={!code.trim()} onClick={() => void submitPasteCode(code)}>
-              {t(($) => $.shell.settings.data.cloud.connect)}
-            </Button>
-          </div>
+            <IntegrationBusyButton
+              busy={pasteBusy}
+              disabled={!pasteReady || !code.trim()}
+              testId="cloud-paste-submit"
+              onClick={submit}
+            >
+              {t(($) => $.cloud.connect)}
+            </IntegrationBusyButton>
+          </form>
         </div>
       </CollapsibleSection>
-      {connectError ? (
-        <p role="alert" className="text-xs text-destructive">
-          {connectError}
-        </p>
-      ) : null}
+      {connectError ? <IntegrationError>{describeError(connectError)}</IntegrationError> : null}
     </div>
   );
 }

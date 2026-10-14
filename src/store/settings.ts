@@ -981,8 +981,6 @@ interface SettingsState {
   // never re-triggers on a later, unrelated open.
   settingsScrollTarget: string | null;
   setSettingsScrollTarget: (v: string | null) => void;
-  settingsNavRequest: string | null;
-  requestSettingsNav: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
   // Make the editor pane visible (opening a file from the tree): reveal the
@@ -1699,8 +1697,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
-  settingsNavRequest: null,
-  requestSettingsNav: (v) => set({ settingsNavRequest: v }),
   viewMode: "editor",
   // Choosing an explicit editor/split/pdf view always reveals the workspace.
   setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),

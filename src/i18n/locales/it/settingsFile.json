@@ -20,15 +20,17 @@
     "imported": "Impostazioni importate.",
     "unchanged": "Le tue impostazioni corrispondono già a {{name}}.",
     "applyFailed": "Non è stato possibile salvare alcune impostazioni. Riprova l'importazione.",
-    "cloudEmpty": "Ancora nessuna impostazione nel cloud. Sincronizza prima dall'altro computer.",
-    "cloudLoadFailed": "Impossibile caricare le impostazioni dal cloud."
+    "cloudEmpty": "Il tuo Dropbox non contiene ancora impostazioni di Oleafly. Attiva prima la sincronizzazione cloud su un altro computer.",
+    "cloudLoadFailed": "Impossibile caricare le impostazioni dal tuo Dropbox.",
+    "cloudUnreadable": "Non è stato possibile leggere le impostazioni nel tuo Dropbox."
   },
   "confirm": {
     "title": "Vuoi sostituire le tue impostazioni?",
     "description": "Le impostazioni del file {{name}} sostituiranno le tue. Tutto ciò che il file non include resta com'è.",
     "changes": "Impostazioni che cambieranno: {{count}}",
     "ignored": "Non riconosciute, quindi verranno saltate:",
-    "action": "Importa"
+    "action": "Importa",
+    "cloudDescription": "Le impostazioni del tuo Dropbox sostituiranno le tue. Tutto ciò che non includono resta com'è."
   },
   "error": {
     "title": "{{name}} non è stato importato",
@@ -57,5 +59,6 @@
     "editorKey": "deve essere un tasto come Mod-d, \"\" per nessuno, oppure \"default\""
   },
   "importFromLocal": "Importa da questo dispositivo",
-  "importFromCloud": "Importa dal cloud"
+  "importFromCloud": "Importa dal cloud",
+  "cloudSource": "Dropbox"
 }

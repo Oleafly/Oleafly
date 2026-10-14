@@ -215,16 +215,5 @@
     "git_token_invalid": "Dat lijkt geen Git-token van Overleaf. Kopieer het hele token en probeer het opnieuw.",
     "git_token_rejected": "Overleaf heeft het Git-token niet geaccepteerd. Het is misschien verlopen. Maak een nieuw token aan in je Overleaf-accountinstellingen.",
     "git_unavailable": "De Git-integratie van Overleaf is niet beschikbaar voor dit project. De eigenaar van het project heeft daarvoor een betaald abonnement of een universiteitsabonnement nodig."
-  },
-  "cloud": {
-    "code_invalid": "Die code werkte niet. Probeer het opnieuw.",
-    "connect_frozen": "Dropbox accepteert nu geen nieuwe verbindingen voor Oleafly. Probeer het over een paar dagen opnieuw.",
-    "device_name_empty": "Voer een naam in.",
-    "device_name_invalid": "Een computernaam mag geen \\ / : * ? \" < > | bevatten en is maximaal 32 tekens.",
-    "network": "Dropbox was niet bereikbaar. Controleer je verbinding.",
-    "not_connected": "Dropbox is niet verbonden.",
-    "revoked": "De toegang tot Dropbox is ingetrokken. Verbind opnieuw.",
-    "sign_in_cancelled": "Inloggen bij Dropbox is geannuleerd.",
-    "sign_in_timeout": "Inloggen duurde te lang. Probeer het opnieuw."
   }
 }

@@ -215,16 +215,5 @@
     "git_token_invalid": "Tämä ei näytä Overleafin Git-tokenilta. Kopioi koko tokeni ja yritä uudelleen.",
     "git_token_rejected": "Overleaf ei hyväksynyt Git-tokenia. Se on ehkä vanhentunut. Luo uusi Overleafin tiliasetuksissa.",
     "git_unavailable": "Overleafin Git-integraatio ei ole käytettävissä tälle projektille. Projektin omistaja tarvitsee maksullisen tai yliopiston tilauksen."
-  },
-  "cloud": {
-    "code_invalid": "Koodi ei toiminut. Yritä uudelleen.",
-    "connect_frozen": "Dropbox ei juuri nyt hyväksy uusia Oleafly-yhteyksiä. Yritä muutaman päivän kuluttua uudelleen.",
-    "device_name_empty": "Anna nimi.",
-    "device_name_invalid": "Tietokoneen nimessä ei saa olla merkkejä \\ / : * ? \" < > |, ja se on enintään 32 merkkiä.",
-    "network": "Dropboxiin ei saatu yhteyttä. Tarkista yhteytesi.",
-    "not_connected": "Dropboxia ei ole yhdistetty.",
-    "revoked": "Dropboxin käyttöoikeus peruttiin. Yhdistä uudelleen.",
-    "sign_in_cancelled": "Dropbox-kirjautuminen peruutettiin.",
-    "sign_in_timeout": "Kirjautuminen kesti liian kauan. Yritä uudelleen."
   }
 }

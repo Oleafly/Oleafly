@@ -11,6 +11,7 @@ mod image_check;
 mod latexmk_env;
 pub mod locking;
 mod manifest;
+pub mod portable;
 mod tex_flavor;
 mod tree;
 pub mod typst_log;
