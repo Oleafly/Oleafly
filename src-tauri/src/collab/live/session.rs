@@ -381,7 +381,12 @@ impl Active {
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {
-        local_copy::keep_origin(paths, &self.project_id, lock(&self.live).doc());
+        local_copy::keep_origin(
+            paths,
+            &self.project_id,
+            lock(&self.live).doc(),
+            &self.document_dir,
+        );
         let _ = remove_binding(paths, &self.project_id);
         crate::collab::registry::invalidate(&self.project_id);
         local_copy::name_local_copy(&self.project_id);

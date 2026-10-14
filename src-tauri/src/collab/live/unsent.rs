@@ -159,6 +159,7 @@ pub(crate) async fn keep_local_copies(
         .collect();
     tauri::async_runtime::spawn_blocking(move || {
         for id in ids {
+            local_copy::keep_stored_origin(&paths, &id);
             remove_binding(&paths, &id)?;
             super::super::registry::invalidate(&id);
             local_copy::name_local_copy(&id);
@@ -185,9 +186,9 @@ pub(crate) async fn detach_projects(
     }
     tauri::async_runtime::spawn_blocking(move || {
         let mut detached = Vec::new();
-        for (project_id, role) in bound {
+        for (project_id, _) in bound {
             let name = name_of(&project_id);
-            local_copy::keep_stored_origin(&paths, &project_id, role);
+            local_copy::keep_stored_origin(&paths, &project_id);
             remove_binding(&paths, &project_id)?;
             super::super::registry::invalidate(&project_id);
             local_copy::name_local_copy(&project_id);
@@ -303,7 +304,7 @@ mod tests {
         server: ServerId,
         root: PathBuf,
         later: Option<FutureFrames>,
-        _test_server: TestServer,
+        test_server: TestServer,
         _github: MockGithub,
         _dir: tempfile::TempDir,
         _turn: MutexGuard<'static, ()>,
@@ -400,7 +401,7 @@ mod tests {
                 server,
                 root,
                 later,
-                _test_server: test_server,
+                test_server,
                 _github: github,
                 _dir: dir,
                 _turn: turn,
@@ -479,6 +480,43 @@ mod tests {
 
         fn signed_in(&self) -> bool {
             self.state.has_session(self.server).unwrap()
+        }
+
+        fn shared_id(&self) -> oleafly_collab_protocol::ids::SharedProjectId {
+            load_binding(self.state.paths().unwrap(), PROJECT)
+                .unwrap()
+                .expect("the project is shared")
+                .shared_project_id
+        }
+
+        fn join_again(
+            &self,
+            shared: oleafly_collab_protocol::ids::SharedProjectId,
+        ) -> Option<local_copy::LocalCopyOffer> {
+            tauri::async_runtime::block_on(async {
+                if !self.signed_in() {
+                    sign_in_server(
+                        &self.state,
+                        &Browser,
+                        &self.test_server.url(),
+                        "github".to_owned(),
+                        None,
+                        Duration::from_secs(20),
+                    )
+                    .await
+                    .unwrap();
+                }
+                let joined = crate::collab::share::join_project(
+                    &self.state,
+                    &Browser,
+                    &|_| {},
+                    self.server,
+                    shared,
+                )
+                .await
+                .unwrap();
+                local_copy::offer(self.state.paths().unwrap(), &joined).unwrap()
+            })
         }
 
         fn switch_comments_elsewhere(&self, server_wide: bool, on: bool) {
@@ -714,6 +752,7 @@ mod tests {
     #[test]
     fn keeping_a_local_copy_signs_out_and_leaves_the_unsent_text_on_disk() {
         let lab = Lab::new(false);
+        let shared = lab.shared_id();
         lab.type_text("hello\nwritten offline\n");
         let outcome = lab.sign_out(UnsentChoice::KeepLocalCopy);
         assert!(outcome.signed_out);
@@ -738,5 +777,36 @@ mod tests {
             crate::project::read_meta(PROJECT).unwrap().name,
             local_copy::local_copy_name_in(crate::i18n::current(), "R3 Paper")
         );
+        let offer = lab
+            .join_again(shared)
+            .expect("the copy kept at sign-out is offered");
+        assert_eq!(offer.copy_id, PROJECT);
+        assert_eq!(offer.files, vec!["main.tex".to_owned()]);
+    }
+
+    #[test]
+    fn a_shared_project_deleted_with_unsent_changes_offers_them_back_once_restored() {
+        let lab = Lab::new(false);
+        let shared = lab.shared_id();
+        lab.type_text("hello\nwritten offline\n");
+        let paths = lab.state.paths().unwrap().clone();
+        tauri::async_runtime::block_on(stop(PROJECT));
+        let recycled = lab.root.with_file_name("r3-paper-recycled");
+        std::fs::rename(&lab.root, &recycled).unwrap();
+        tauri::async_runtime::block_on(crate::collab::share::let_go_keeping_origin(
+            PROJECT, &paths,
+        ));
+        assert!(load_binding(&paths, PROJECT).unwrap().is_none());
+        assert!(!paths.document_dir(PROJECT).unwrap().exists());
+        std::fs::rename(&recycled, &lab.root).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(lab.root.join("main.tex")).unwrap(),
+            "hello\nwritten offline\n"
+        );
+        let offer = lab
+            .join_again(shared)
+            .expect("the restored copy is offered");
+        assert_eq!(offer.copy_id, PROJECT);
+        assert_eq!(offer.files, vec!["main.tex".to_owned()]);
     }
 }

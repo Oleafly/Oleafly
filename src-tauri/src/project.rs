@@ -8301,6 +8301,7 @@ async fn recycle_project_synchronized(
     )?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
+    crate::collab::live::stop(&project_id).await;
     let recycled_id = project_id.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let ((), _) = admission.run_with_change_status(|| {
@@ -8325,7 +8326,7 @@ async fn recycle_project_synchronized(
     })
     .await
     .map_err(|e| e.to_string())??;
-    crate::collab::share::forget_local(&recycled_id).await;
+    crate::collab::share::forget_local_keeping_origin(&recycled_id).await;
     Ok(())
 }
 

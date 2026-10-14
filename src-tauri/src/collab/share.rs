@@ -826,6 +826,24 @@ pub async fn forget_local(project_id: &str) {
     }
 }
 
+pub(crate) async fn let_go_keeping_origin(project_id: &str, paths: &CollabPaths) {
+    super::live::stop(project_id).await;
+    let paths = paths.clone();
+    let id = project_id.to_owned();
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        super::live::local_copy::keep_stored_origin(&paths, &id);
+        super::live::local_copy::forget_all_but_origin(&paths, &id);
+    })
+    .await;
+    super::registry::invalidate(project_id);
+}
+
+pub async fn forget_local_keeping_origin(project_id: &str) {
+    if let Ok(root) = crate::paths::collab_root() {
+        let_go_keeping_origin(project_id, &CollabPaths::new(root)).await;
+    }
+}
+
 #[tauri::command]
 pub async fn collab_share_info(
     state: tauri::State<'_, CollabState>,
