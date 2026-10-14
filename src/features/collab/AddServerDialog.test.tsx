@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   collabServersList: vi.fn(),
   collabServerSignOut: vi.fn(),
   collabServerRemove: vi.fn(),
+  collabServerTest: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -173,11 +174,63 @@ describe("AddServerDialog", () => {
     const user = userEvent.setup();
     renderDialog();
     await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
+    const notAServer = new Set(["not_found", "server", "invalid"]);
     for (const code of COLLAB_ERROR_CODES) {
       mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));
       await user.click(screen.getByRole("button", { name: copy.continue }));
-      expect(await screen.findByRole("alert")).toHaveTextContent(collabErrorText(collabError(code)));
+      const expected = notAServer.has(code) ? copy.notAServer : collabErrorText(collabError(code));
+      expect(await screen.findByRole("alert")).toHaveTextContent(expected);
     }
+  });
+
+  it.each(["not_found", "server", "invalid"])(
+    "says no Oleafly server answered when the address gives %s, and what to check",
+    async (code) => {
+      mocks.collabServerProbe.mockRejectedValueOnce(collabError(code, "<html>Welcome to our lab</html>"));
+      const user = userEvent.setup();
+      renderDialog();
+      await user.type(screen.getByLabelText(copy.addressLabel), "lab.uni.edu");
+      await user.click(screen.getByRole("button", { name: copy.continue }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(copy.notAServer);
+      expect(screen.queryByText(enCollab.errors.server)).toBeNull();
+    },
+  );
+
+  it("names the address a redirect points at and tries it in one click", async () => {
+    mocks.collabServerProbe
+      .mockRejectedValueOnce(collabError("server", "https://www.uni.edu/collab/.well-known/oleafly-server"))
+      .mockResolvedValueOnce(capabilities());
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(copy.addressLabel), "uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(fill(copy.moved, { target: "https://www.uni.edu/collab" }));
+    await user.click(screen.getByRole("button", { name: copy.useMoved }));
+    expect(mocks.collabServerProbe).toHaveBeenLastCalledWith("https://www.uni.edu/collab");
+    expect(await screen.findByRole("heading", { name: fill(copy.serverTitle, { server: "Smith Lab" }) })).toBeInTheDocument();
+  });
+
+  it("treats a redirect somewhere else, like a sign-in page, as no server", async () => {
+    mocks.collabServerProbe.mockRejectedValueOnce(collabError("server", "https://login.uni.edu/sso?next=/"));
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(copy.addressLabel), "uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.notAServer);
+    expect(screen.queryByRole("button", { name: copy.useMoved })).toBeNull();
+  });
+
+  it("offers the connection test inline when the address can't be reached", async () => {
+    mocks.collabServerProbe.mockRejectedValueOnce(collabError("unreachable", "certificate verify failed"));
+    mocks.collabServerTest.mockResolvedValueOnce([{ id: "https", status: "fail", detail: null }]);
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    await user.click(screen.getByRole("button", { name: enCollab.section.server.test }));
+    expect(mocks.collabServerTest).toHaveBeenCalledWith("https://collab.uni.edu");
+    expect(await screen.findByText(enCollab.section.checks.items.https.fail)).toBeInTheDocument();
   });
 
   it("keeps the sign-in options when the server has not added you", async () => {

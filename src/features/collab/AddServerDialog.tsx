@@ -20,13 +20,16 @@ import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import {
   collabServerProbe,
   collabServerSignInCancel,
+  isCollabCommandError,
   type CollabCapabilities,
   type CollabProvider,
   type CollabServer,
   type CollabSignInCode,
 } from "@/lib/tauri";
+import { ConnectionChecks } from "./ConnectionChecks";
 import { collabErrorCode, collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
+import { useConnectionTest } from "./use-connection-test";
 import { accountDetail, accountPerson } from "./people";
 import { canManageServer, serverRoleAllows, toServerRole } from "./roles";
 import { useCollabStore } from "./store";
@@ -56,6 +59,29 @@ export function normalizeServerAddress(input: string): string {
   if (trimmed === "") return "";
   const address = addLinkTarget(trimmed) ?? trimmed;
   return SCHEME.test(address) ? address : `https://${address}`;
+}
+
+const WELL_KNOWN = "/.well-known/oleafly-server";
+
+// What went wrong when the first request to an address failed, in terms of
+// what the person can do next. Most first-run mistakes reach the app as
+// generic codes: a website answers 404, a captive portal answers with HTML,
+// and a redirect arrives as `server` carrying the new location.
+export type ProbeTrouble =
+  | { kind: "notAServer" }
+  | { kind: "moved"; target: string }
+  | { kind: "unreachable" }
+  | { kind: "other"; message: string };
+
+export function probeTrouble(error: unknown): ProbeTrouble {
+  const code = collabErrorCode(error);
+  const location = isCollabCommandError(error) ? error.message.trim() : "";
+  if (code === "server" && location.startsWith("https://") && location.endsWith(WELL_KNOWN)) {
+    return { kind: "moved", target: location.slice(0, -WELL_KNOWN.length) };
+  }
+  if (code === "not_found" || code === "server" || code === "invalid") return { kind: "notAServer" };
+  if (code === "unreachable") return { kind: "unreachable" };
+  return { kind: "other", message: collabErrorText(error) };
 }
 
 function ProviderIcon({ provider }: Readonly<{ provider: CollabProvider }>) {
@@ -114,15 +140,18 @@ export function AddServerDialog({
   const [setupCode, setSetupCode] = useState("");
   const [step, setStep] = useState<Step>({ kind: "address" });
   const [error, setError] = useState<string | null>(null);
+  const [trouble, setTrouble] = useState<ProbeTrouble | null>(null);
   const [codeHint, setCodeHint] = useState(false);
   const [offerCode, setOfferCode] = useState(false);
   const waiting = step.kind === "signingIn";
+  const { test: connectionTest, run: runConnectionTest } = useConnectionTest(normalizeServerAddress(address));
 
   const probe = useCallback(async (raw: string) => {
     const url = normalizeServerAddress(raw);
     if (url === "") return;
     const current = ++attempt.current;
     setError(null);
+    setTrouble(null);
     setStep({ kind: "checking" });
     try {
       const capabilities = await collabServerProbe(url);
@@ -130,10 +159,50 @@ export function AddServerDialog({
       setStep({ kind: "server", url, capabilities });
     } catch (error_) {
       if (current !== attempt.current) return;
-      setError(collabErrorText(error_));
+      setTrouble(probeTrouble(error_));
       setStep({ kind: "address" });
     }
   }, []);
+
+  const tryMoved = (target: string) => {
+    setAddress(target);
+    void probe(target);
+  };
+
+  const renderTrouble = () => {
+    if (!trouble) return null;
+    if (trouble.kind === "other") return <InlineAlert>{trouble.message}</InlineAlert>;
+    if (trouble.kind === "notAServer") return <InlineAlert>{t(($) => $.collab.addServer.notAServer)}</InlineAlert>;
+    if (trouble.kind === "moved") {
+      return (
+        <div className="space-y-2">
+          <InlineAlert>{t(($) => $.collab.addServer.moved, { target: trouble.target })}</InlineAlert>
+          <Button type="button" variant="outline" size="sm" onClick={() => tryMoved(trouble.target)}>
+            {t(($) => $.collab.addServer.useMoved)}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <InlineAlert>{collabErrorMessage("unreachable")}</InlineAlert>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={connectionTest.state === "running"}
+          onClick={() => void runConnectionTest()}
+        >
+          {t(($) => $.collab.section.server.test)}
+        </Button>
+        {connectionTest.state === "running" ? (
+          <LoadingState size="compact" label={t(($) => $.collab.section.checks.running)} />
+        ) : null}
+        {connectionTest.state === "done" ? <ConnectionChecks checks={connectionTest.checks} /> : null}
+        {connectionTest.state === "failed" ? <InlineAlert>{connectionTest.message}</InlineAlert> : null}
+      </div>
+    );
+  };
 
   const startSignIn = async (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => {
     const current = ++attempt.current;
@@ -184,6 +253,7 @@ export function AddServerDialog({
   const goTo = (next: Step) => {
     attempt.current += 1;
     setError(null);
+    setTrouble(null);
     setCodeHint(false);
     setStep(next);
   };
@@ -205,6 +275,7 @@ export function AddServerDialog({
     setAddress(initialUrl ?? "");
     setSetupCode("");
     setError(null);
+    setTrouble(null);
     setCodeHint(false);
     setStep({ kind: "address" });
     if (initialUrl) void probe(initialUrl);
@@ -251,6 +322,7 @@ export function AddServerDialog({
       {step.kind === "checking" ? (
         <LoadingState size="compact" label={t(($) => $.collab.addServer.checking)} />
       ) : null}
+      {step.kind === "address" ? renderTrouble() : null}
       {error ? <InlineAlert>{error}</InlineAlert> : null}
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={close}>
