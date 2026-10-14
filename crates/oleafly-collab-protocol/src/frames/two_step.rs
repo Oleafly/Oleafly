@@ -1,9 +1,8 @@
 // Serde reads an internally tagged enum by first copying the whole frame into
 // a tree of its own, which for a padded frame costs many times its size.
 // These parsers read `type` alone, then only the fields of that frame, and
-// skip everything else without keeping it.
-
-use std::borrow::Cow;
+// skip everything else without keeping it. The type is read into a fieldless
+// kind, so even an escaped type name is never copied into a string.
 
 use serde::Deserialize;
 
@@ -15,13 +14,47 @@ use crate::projects::PresenceState;
 use crate::roles::ProjectRole;
 
 #[derive(Deserialize)]
-struct Tag<'a> {
-    #[serde(rename = "type", borrow)]
-    kind: Cow<'a, str>,
+struct Tag<K> {
+    #[serde(rename = "type")]
+    kind: K,
 }
 
-fn kind(text: &str) -> Result<Cow<'_, str>, serde_json::Error> {
-    serde_json::from_str::<Tag>(text).map(|tag| tag.kind)
+fn kind<'a, K: Deserialize<'a>>(text: &'a str) -> Result<K, serde_json::Error> {
+    serde_json::from_str::<Tag<K>>(text).map(|tag| tag.kind)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ClientKind {
+    Hello,
+    Ping,
+    Subscribe,
+    Unsubscribe,
+    Update,
+    Presence,
+    PresenceLeave,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ServerKind {
+    Challenge,
+    Welcome,
+    Pong,
+    Error,
+    SessionRevoked,
+    Subscribed,
+    Update,
+    Ack,
+    SnapshotRequired,
+    Presence,
+    PresenceLeft,
+    AccessChanged,
+    ProjectArchived,
+    #[serde(other)]
+    Other,
 }
 
 fn body<'a, T: Deserialize<'a>>(text: &'a str) -> Result<T, serde_json::Error> {
@@ -69,8 +102,8 @@ struct SentPresenceBody {
 
 impl ClientFrame {
     pub fn from_json(text: &str) -> Result<ClientFrame, serde_json::Error> {
-        Ok(match kind(text)?.as_ref() {
-            "hello" => {
+        Ok(match kind::<ClientKind>(text)? {
+            ClientKind::Hello => {
                 let hello: HelloBody = body(text)?;
                 ClientFrame::Hello {
                     protocol: hello.protocol,
@@ -81,37 +114,37 @@ impl ClientFrame {
                     understands: hello.understands,
                 }
             }
-            "ping" => ClientFrame::Ping {
+            ClientKind::Ping => ClientFrame::Ping {
                 id: body::<IdBody>(text)?.id,
             },
-            "subscribe" => {
+            ClientKind::Subscribe => {
                 let subscribe: SubscribeBody = body(text)?;
                 ClientFrame::Subscribe {
                     project_id: subscribe.project_id,
                     since_seq: subscribe.since_seq,
                 }
             }
-            "unsubscribe" => ClientFrame::Unsubscribe {
+            ClientKind::Unsubscribe => ClientFrame::Unsubscribe {
                 project_id: body::<ProjectBody>(text)?.project_id,
             },
-            "update" => {
+            ClientKind::Update => {
                 let update: SentUpdateBody = body(text)?;
                 ClientFrame::Update {
                     project_id: update.project_id,
                     envelope: update.envelope,
                 }
             }
-            "presence" => {
+            ClientKind::Presence => {
                 let presence: SentPresenceBody = body(text)?;
                 ClientFrame::Presence {
                     project_id: presence.project_id,
                     state: presence.state,
                 }
             }
-            "presence_leave" => ClientFrame::PresenceLeave {
+            ClientKind::PresenceLeave => ClientFrame::PresenceLeave {
                 project_id: body::<ProjectBody>(text)?.project_id,
             },
-            _ => ClientFrame::Unknown,
+            ClientKind::Other => ClientFrame::Unknown,
         })
     }
 }
@@ -191,35 +224,35 @@ struct AccessChangedBody {
 
 impl ServerFrame {
     pub fn from_json(text: &str) -> Result<ServerFrame, serde_json::Error> {
-        Ok(match kind(text)?.as_ref() {
-            "challenge" => {
+        Ok(match kind::<ServerKind>(text)? {
+            ServerKind::Challenge => {
                 let challenge: ChallengeBody = body(text)?;
                 ServerFrame::Challenge {
                     nonce: challenge.nonce,
                     server_id: challenge.server_id,
                 }
             }
-            "welcome" => {
+            ServerKind::Welcome => {
                 let welcome: WelcomeBody = body(text)?;
                 ServerFrame::Welcome {
                     protocol: welcome.protocol,
                     account_id: welcome.account_id,
                 }
             }
-            "pong" => ServerFrame::Pong {
+            ServerKind::Pong => ServerFrame::Pong {
                 id: body::<IdBody>(text)?.id,
             },
-            "error" => {
+            ServerKind::Error => {
                 let error: ErrorBody = body(text)?;
                 ServerFrame::Error {
                     code: error.code,
                     message: error.message,
                 }
             }
-            "session_revoked" => ServerFrame::SessionRevoked {
+            ServerKind::SessionRevoked => ServerFrame::SessionRevoked {
                 reason: body::<RevokedBody>(text)?.reason,
             },
-            "subscribed" => {
+            ServerKind::Subscribed => {
                 let subscribed: SubscribedBody = body(text)?;
                 ServerFrame::Subscribed {
                     project_id: subscribed.project_id,
@@ -228,7 +261,7 @@ impl ServerFrame {
                     since_batch: subscribed.since_batch,
                 }
             }
-            "update" => {
+            ServerKind::Update => {
                 let update: UpdateBody = body(text)?;
                 ServerFrame::Update {
                     project_id: update.project_id,
@@ -237,7 +270,7 @@ impl ServerFrame {
                     envelope: update.envelope,
                 }
             }
-            "ack" => {
+            ServerKind::Ack => {
                 let ack: AckBody = body(text)?;
                 ServerFrame::Ack {
                     project_id: ack.project_id,
@@ -245,10 +278,10 @@ impl ServerFrame {
                     seq: ack.seq,
                 }
             }
-            "snapshot_required" => ServerFrame::SnapshotRequired {
+            ServerKind::SnapshotRequired => ServerFrame::SnapshotRequired {
                 project_id: body::<ProjectBody>(text)?.project_id,
             },
-            "presence" => {
+            ServerKind::Presence => {
                 let presence: PresenceBody = body(text)?;
                 ServerFrame::Presence {
                     project_id: presence.project_id,
@@ -257,14 +290,14 @@ impl ServerFrame {
                     state: presence.state,
                 }
             }
-            "presence_left" => {
+            ServerKind::PresenceLeft => {
                 let left: PresenceLeftBody = body(text)?;
                 ServerFrame::PresenceLeft {
                     project_id: left.project_id,
                     device_id: left.device_id,
                 }
             }
-            "access_changed" => {
+            ServerKind::AccessChanged => {
                 let changed: AccessChangedBody = body(text)?;
                 ServerFrame::AccessChanged {
                     project_id: changed.project_id,
@@ -273,10 +306,10 @@ impl ServerFrame {
                     comments: changed.comments,
                 }
             }
-            "project_archived" => ServerFrame::ProjectArchived {
+            ServerKind::ProjectArchived => ServerFrame::ProjectArchived {
                 project_id: body::<ProjectBody>(text)?.project_id,
             },
-            _ => ServerFrame::Unknown,
+            ServerKind::Other => ServerFrame::Unknown,
         })
     }
 }

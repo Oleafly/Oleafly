@@ -118,3 +118,66 @@ fn a_post_of_many_small_frames_stops_at_the_limit_without_piling_up() {
     );
     assert!(extra < BUDGET, "a post of small frames took {extra} bytes");
 }
+
+fn twice_the_input(text: &str, extra: usize, what: &str) {
+    assert!(
+        extra < 2 * text.len(),
+        "{what} of {} bytes took {extra} bytes",
+        text.len()
+    );
+}
+
+#[test]
+fn deep_nesting_and_long_escapes_cost_at_most_twice_the_input() {
+    let _alone = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let depth = 1024 * 1024;
+    let mut nested = String::with_capacity(2 * depth + 64);
+    nested.push_str(r#"{"type":"ping","id":7,"x":"#);
+    nested.push_str(&"[".repeat(depth));
+    nested.push_str(&"]".repeat(depth));
+    nested.push('}');
+    let (read, extra) = peak_while(|| ClientFrame::from_json(&nested));
+    assert_eq!(read.unwrap(), ClientFrame::Ping { id: 7 });
+    twice_the_input(&nested, extra, "a deeply nested ping");
+    let (read, extra) = peak_while(|| ServerFrame::from_json(&nested.replace("ping", "pong")));
+    assert_eq!(read.unwrap(), ServerFrame::Pong { id: 7 });
+    twice_the_input(&nested, extra, "a deeply nested pong");
+    drop(nested);
+
+    let escapes = 256 * 1024;
+    let long_key = format!(
+        r#"{{"type":"ping","id":7,"{}":0}}"#,
+        r"\u0061".repeat(escapes)
+    );
+    let (read, extra) = peak_while(|| ClientFrame::from_json(&long_key));
+    assert_eq!(read.unwrap(), ClientFrame::Ping { id: 7 });
+    twice_the_input(&long_key, extra, "a ping with a long escaped key");
+
+    let long_type = format!(r#"{{"type":"{}","id":7}}"#, r"\u0061".repeat(escapes));
+    let (read, extra) = peak_while(|| ClientFrame::from_json(&long_type));
+    assert_eq!(read.unwrap(), ClientFrame::Unknown);
+    twice_the_input(&long_type, extra, "a frame with a long escaped type");
+}
+
+#[test]
+fn the_derived_parser_needs_far_more_than_the_budget_for_a_padded_hello() {
+    let _alone = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut hello = String::with_capacity(256 * 1024 + 64);
+    hello.push_str(r#"{"type":"hello","x":["#);
+    while hello.len() < 256 * 1024 {
+        hello.push_str("[0],");
+    }
+    hello.push_str("[0]]}");
+    let (read, extra) = peak_while(|| serde_json::from_str::<ClientFrame>(&hello));
+    assert!(read.is_err(), "a hello without its fields is refused");
+    assert!(
+        extra > BUDGET,
+        "the derived parse took only {extra} bytes, so the budget proves nothing"
+    );
+    let (_, extra) = peak_while(|| ClientFrame::from_json(&hello));
+    assert!(extra < BUDGET, "the two-step parse took {extra} bytes");
+}
