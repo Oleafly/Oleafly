@@ -479,10 +479,7 @@ impl Source<'_> {
                         ),
                     )
                 })?;
-                let value = contents
-                    .strip_suffix("\r\n")
-                    .or_else(|| contents.strip_suffix('\n'))
-                    .unwrap_or(&contents);
+                let value = contents.trim();
                 if value.is_empty() {
                     return Err(ConfigError::new(
                         file_variable.as_str(),
@@ -1509,17 +1506,17 @@ mod tests {
     }
 
     #[test]
-    fn secrets_accept_file_variants_with_one_trailing_newline_removed() {
+    fn secrets_from_files_are_trimmed_like_the_same_value_in_a_variable() {
         let read = |path: &Path| -> std::io::Result<String> {
             match path.to_str() {
-                Some("/run/secrets/github") => Ok("gh-secret\n".to_string()),
+                Some("/run/secrets/github") => Ok("gh-secret \n".to_string()),
                 Some("/run/secrets/setup") => Ok("ABCD-EFGH-JKMN-PQRS\r\n".to_string()),
                 Some("/run/secrets/smtp") => {
                     Ok("smtps://mailer:pw@smtp.example.edu:465".to_string())
                 }
                 Some("/run/secrets/oidc") => Ok("oidc-secret\n\n".to_string()),
                 Some("/run/secrets/blobs") => Ok("s3://lab-bucket\n".to_string()),
-                Some("/run/secrets/s3-id") => Ok("AKIDFROMFILE\n".to_string()),
+                Some("/run/secrets/s3-id") => Ok("  AKIDFROMFILE\r\n\r\n".to_string()),
                 Some("/run/secrets/s3-secret") => Ok("s3-secret-from-file\n".to_string()),
                 _ => Err(std::io::Error::new(std::io::ErrorKind::NotFound, "missing")),
             }
@@ -1568,7 +1565,7 @@ mod tests {
                 ..
             }] => {
                 assert_eq!(client_secret, "gh-secret");
-                assert_eq!(oidc_secret, "oidc-secret\n");
+                assert_eq!(oidc_secret, "oidc-secret");
             }
             other => panic!("unexpected providers: {other:?}"),
         }
