@@ -13,6 +13,7 @@ import {
   onCollabLiveNewDevice,
   onCollabLiveRole,
   onCollabLiveStatus,
+  onCollabLiveUnwritten,
   onCollabPresence,
   onCollabPresenceLeft,
   onCollabServerChanged,
@@ -26,6 +27,7 @@ import {
   type CollabLiveRole,
   type CollabLiveSyncState,
   type CollabLiveStatus,
+  type CollabLiveUnwritten,
   type CollabPerson,
   type CollabPresence,
   type CollabPresenceLeft,
@@ -99,6 +101,8 @@ export interface CollabLiveStoreState {
   ended: CollabLiveEndedReason | null;
   accessNotice: AccessNotice | null;
   commentsNotSent: CollabCommentNotSent[] | null;
+  // Files of the live project that couldn't be written to this computer.
+  unwritten: CollabLiveUnwritten["files"];
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
@@ -146,6 +150,7 @@ function emptyLive(projectId: string | null): LiveData {
     ended: null,
     accessNotice: null,
     commentsNotSent: null,
+    unwritten: [],
   };
 }
 
@@ -488,6 +493,11 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState((state) => ({ commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments] }));
   };
 
+  const onUnwritten = (payload: CollabLiveUnwritten) => {
+    if (payload.projectId !== current()) return;
+    store.setState({ unwritten: payload.files });
+  };
+
   const expirePeers = () => {
     const peers = store.getState().peers;
     const cutoff = Date.now() - PEER_TTL_MS;
@@ -506,6 +516,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabPresenceLeft(onLeft),
     onCollabCommentsNotSent(onCommentsNotSent),
     onCollabServerChanged(onServerChanged),
+    onCollabLiveUnwritten(onUnwritten),
   ].map((pending) =>
     pending.catch((error) => {
       void logError("collab live listen", error);

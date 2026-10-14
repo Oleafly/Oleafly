@@ -623,6 +623,17 @@
     "deleted": "最近删除",
     "deletedEmpty": "最近没有删除任何内容。",
     "deletedLoadFailed": "Oleafly 无法加载最近删除的文件。",
+    "unwritten": {
+      "title": "有些文件无法写入这台电脑",
+      "hint": "Oleafly 会继续尝试。在此期间，共享项目中有最新的文本。",
+      "reasons": {
+        "locked": "无法写入 {{path}}：另一个程序正打开着它。",
+        "read_only": "无法写入 {{path}}：文件或其文件夹是只读的。",
+        "no_space": "无法写入 {{path}}：磁盘已满。",
+        "not_downloaded": "无法写入 {{path}}：云服务还没有把它下载到这台电脑。",
+        "other": "无法写入 {{path}}。"
+      }
+    },
     "accessLog": "访问日志",
     "status": "同步状态",
     "waiting": "等待同步的更改：{{number}}"

@@ -66,6 +66,7 @@ vi.mock("@/lib/tauri", () => ({
   onCollabPresence: listener("presence"),
   onCollabPresenceLeft: listener("left"),
   onCollabCommentsNotSent: listener("notSent"),
+  onCollabLiveUnwritten: listener("unwritten"),
 }));
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -839,6 +840,26 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState()).toMatchObject({ share: null, role: null, status: null });
   });
 
+  it("keeps the files the project couldn't write, until they are written or the project changes", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const files = [
+      { path: "main.tex", reason: "locked" },
+      { path: "figures/plot.png", reason: "not_downloaded" },
+    ];
+    mocks.handlers.unwritten?.({ projectId: "other-project", files });
+    expect(useCollabLiveStore.getState().unwritten).toEqual([]);
+    mocks.handlers.unwritten?.({ projectId: PROJECT, files });
+    expect(useCollabLiveStore.getState().unwritten).toEqual(files);
+    mocks.handlers.unwritten?.({ projectId: PROJECT, files: [] });
+    expect(useCollabLiveStore.getState().unwritten).toEqual([]);
+    mocks.handlers.unwritten?.({ projectId: PROJECT, files });
+    openProject("thesis");
+    await settle();
+    expect(useCollabLiveStore.getState().unwritten).toEqual([]);
+  });
+
   it("stops live sync, listeners and timers when the lifecycle ends", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -847,7 +868,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(9);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(10);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });
@@ -1000,7 +1021,7 @@ describe("collab live store edges", () => {
     stop();
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledOnce();
-    expect(mocks.unlisten).toHaveBeenCalledTimes(9);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(10);
   });
 });
 

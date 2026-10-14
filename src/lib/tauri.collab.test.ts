@@ -196,6 +196,17 @@ describe("collaboration IPC helpers", () => {
     expect(seen).toEqual([payload]);
   });
 
+  it("forwards the files a live project couldn't write", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabLiveUnwritten((payload) => seen.push(payload));
+    expect(tauri.COLLAB_LIVE_UNWRITTEN_EVENT).toBe("collab-live-unwritten");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-live-unwritten", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { projectId: "grant", files: [{ path: "main.tex", reason: "locked" }] };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
+  });
+
   it("forwards server change events", async () => {
     const seen: string[] = [];
     const unlisten = await tauri.onCollabServerChanged((payload) => seen.push(payload.serverId));

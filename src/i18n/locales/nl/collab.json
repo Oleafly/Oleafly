@@ -623,6 +623,17 @@
     "deleted": "Onlangs verwijderd",
     "deletedEmpty": "Er is de laatste tijd niets verwijderd.",
     "deletedLoadFailed": "Oleafly kon de onlangs verwijderde bestanden niet laden.",
+    "unwritten": {
+      "title": "Sommige bestanden konden niet naar deze computer worden geschreven",
+      "hint": "Oleafly blijft het proberen. Het gedeelde project heeft intussen de nieuwste tekst.",
+      "reasons": {
+        "locked": "Kan {{path}} niet schrijven: een ander programma heeft het geopend.",
+        "read_only": "Kan {{path}} niet schrijven: het bestand of de map is alleen-lezen.",
+        "no_space": "Kan {{path}} niet schrijven: de schijf is vol.",
+        "not_downloaded": "Kan {{path}} niet schrijven: een clouddienst heeft het nog niet naar deze computer gedownload.",
+        "other": "Kan {{path}} niet schrijven."
+      }
+    },
     "accessLog": "Toegangslogboek",
     "status": "Synchronisatiestatus",
     "waiting": "Wachtende wijzigingen: {{number}}"

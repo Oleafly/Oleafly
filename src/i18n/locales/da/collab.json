@@ -623,6 +623,17 @@
     "deleted": "Slettet for nylig",
     "deletedEmpty": "Intet er slettet for nylig.",
     "deletedLoadFailed": "Oleafly kunne ikke indlæse de filer, der er slettet for nylig.",
+    "unwritten": {
+      "title": "Nogle filer kunne ikke skrives til denne computer",
+      "hint": "Oleafly bliver ved med at prøve. Det delte projekt har den nyeste tekst imens.",
+      "reasons": {
+        "locked": "Kan ikke skrive {{path}}: et andet program har den åben.",
+        "read_only": "Kan ikke skrive {{path}}: filen eller dens mappe er skrivebeskyttet.",
+        "no_space": "Kan ikke skrive {{path}}: disken er fuld.",
+        "not_downloaded": "Kan ikke skrive {{path}}: en cloudtjeneste har ikke hentet den til denne computer endnu.",
+        "other": "Kan ikke skrive {{path}}."
+      }
+    },
     "accessLog": "Adgangslog",
     "status": "Synkroniseringsstatus",
     "waiting": "Ventende ændringer: {{number}}"

@@ -564,6 +564,38 @@ function SyncStatus() {
   );
 }
 
+const UNWRITTEN_REASONS = ["locked", "read_only", "no_space", "not_downloaded", "other"] as const;
+
+// Files the live project couldn't write to this computer, next to what is
+// still waiting to upload, each with the reason in words.
+function UnwrittenFiles() {
+  const { t } = useTranslation(["collab"]);
+  const unwritten = useCollabLiveStore((state) => state.unwritten);
+  if (unwritten.length === 0) return null;
+  return (
+    <div
+      role="alert"
+      className="mx-2 mt-2 shrink-0 select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive"
+      data-testid="collab-unwritten"
+    >
+      <p className="font-medium">{t(($) => $.collab.pane.unwritten.title)}</p>
+      <ul className="mt-1 space-y-0.5">
+        {unwritten.map((file) => {
+          const reason = (UNWRITTEN_REASONS as readonly string[]).includes(file.reason) ? file.reason : "other";
+          return (
+            <li key={file.path} className="break-words">
+              {t(($) => $.collab.pane.unwritten.reasons[reason as (typeof UNWRITTEN_REASONS)[number]], {
+                path: file.path,
+              })}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1">{t(($) => $.collab.pane.unwritten.hint)}</p>
+    </div>
+  );
+}
+
 const COLLAB_GROUP_ID = "sidebar-collab-sections-v1";
 const SECTION_OPEN = "h-full flex-1";
 const SECTION_SHUT = "shrink-0";
@@ -683,6 +715,7 @@ export function CollabPane() {
           ) : null}
         </span>
       </SidebarPanelHeader>
+      <UnwrittenFiles />
       <div className="min-h-0 flex-1">
         <SidebarSectionStack
           groupId={COLLAB_GROUP_ID}

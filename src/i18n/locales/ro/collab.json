@@ -623,6 +623,17 @@
     "deleted": "Șterse recent",
     "deletedEmpty": "Nu s-a șters nimic în ultima vreme.",
     "deletedLoadFailed": "Oleafly nu a putut încărca fișierele șterse recent.",
+    "unwritten": {
+      "title": "Unele fișiere nu au putut fi scrise pe acest computer",
+      "hint": "Oleafly încearcă în continuare. Între timp, proiectul partajat are cel mai nou text.",
+      "reasons": {
+        "locked": "Nu se poate scrie {{path}}: alt program îl are deschis.",
+        "read_only": "Nu se poate scrie {{path}}: fișierul sau folderul lui este doar în citire.",
+        "no_space": "Nu se poate scrie {{path}}: discul este plin.",
+        "not_downloaded": "Nu se poate scrie {{path}}: un serviciu cloud nu l-a descărcat încă pe acest computer.",
+        "other": "Nu se poate scrie {{path}}."
+      }
+    },
     "accessLog": "Jurnal de acces",
     "status": "Starea sincronizării",
     "waiting": "Modificări în așteptare: {{number}}"

@@ -623,6 +623,17 @@
     "deleted": "Eliminati di recente",
     "deletedEmpty": "Nulla è stato eliminato di recente.",
     "deletedLoadFailed": "Oleafly non è riuscito a caricare i file eliminati di recente.",
+    "unwritten": {
+      "title": "Non è stato possibile scrivere alcuni file su questo computer",
+      "hint": "Oleafly continua a provare. Nel frattempo il progetto condiviso ha il testo più recente.",
+      "reasons": {
+        "locked": "Impossibile scrivere {{path}}: un altro programma lo tiene aperto.",
+        "read_only": "Impossibile scrivere {{path}}: il file o la sua cartella sono di sola lettura.",
+        "no_space": "Impossibile scrivere {{path}}: il disco è pieno.",
+        "not_downloaded": "Impossibile scrivere {{path}}: un servizio cloud non l'ha ancora scaricato su questo computer.",
+        "other": "Impossibile scrivere {{path}}."
+      }
+    },
     "accessLog": "Registro degli accessi",
     "status": "Stato della sincronizzazione",
     "waiting": "Modifiche in attesa: {{number}}"

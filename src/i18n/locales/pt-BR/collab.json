@@ -623,6 +623,17 @@
     "deleted": "Excluídos recentemente",
     "deletedEmpty": "Nada foi excluído recentemente.",
     "deletedLoadFailed": "O Oleafly não conseguiu carregar os arquivos excluídos recentemente.",
+    "unwritten": {
+      "title": "Não foi possível gravar alguns arquivos neste computador",
+      "hint": "O Oleafly continua tentando. Enquanto isso, o projeto compartilhado tem o texto mais recente.",
+      "reasons": {
+        "locked": "Não é possível gravar {{path}}: outro programa está com ele aberto.",
+        "read_only": "Não é possível gravar {{path}}: o arquivo ou a pasta dele é somente leitura.",
+        "no_space": "Não é possível gravar {{path}}: o disco está cheio.",
+        "not_downloaded": "Não é possível gravar {{path}}: um serviço de nuvem ainda não o baixou para este computador.",
+        "other": "Não é possível gravar {{path}}."
+      }
+    },
     "accessLog": "Registro de acesso",
     "status": "Status da sincronização",
     "waiting": "Alterações pendentes: {{number}}"

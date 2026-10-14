@@ -1715,6 +1715,14 @@ export interface CollabChangeSkipped {
   seq: number;
   deviceId: string | null;
 }
+// Why a file of a live project couldn't be written to this computer.
+export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_downloaded" | "other";
+// Files that still couldn't be written after a second try. An empty list
+// means every file is written again.
+export interface CollabLiveUnwritten {
+  projectId: string;
+  files: { path: string; reason: CollabUnwrittenReason }[];
+}
 export type CollabSettingNotice =
   | { kind: "mainDocument"; path: string }
   | { kind: "compiler"; engine: string; flavor: string | null }

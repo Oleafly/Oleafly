@@ -623,6 +623,17 @@
     "deleted": "Son silinenler",
     "deletedEmpty": "Son zamanlarda hiçbir şey silinmedi.",
     "deletedLoadFailed": "Oleafly son silinen dosyaları yükleyemedi.",
+    "unwritten": {
+      "title": "Bazı dosyalar bu bilgisayara yazılamadı",
+      "hint": "Oleafly denemeye devam ediyor. Bu arada paylaşılan projede en güncel metin var.",
+      "reasons": {
+        "locked": "{{path}} yazılamıyor: başka bir program dosyayı açık tutuyor.",
+        "read_only": "{{path}} yazılamıyor: dosya veya klasörü salt okunur.",
+        "no_space": "{{path}} yazılamıyor: disk dolu.",
+        "not_downloaded": "{{path}} yazılamıyor: bir bulut hizmeti dosyayı henüz bu bilgisayara indirmedi.",
+        "other": "{{path}} yazılamıyor."
+      }
+    },
     "accessLog": "Erişim günlüğü",
     "status": "Eşitleme durumu",
     "waiting": "Bekleyen değişiklikler: {{number}}"

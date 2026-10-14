@@ -623,6 +623,17 @@
     "deleted": "Recently deleted",
     "deletedEmpty": "Nothing deleted recently.",
     "deletedLoadFailed": "Oleafly couldn't load the recently deleted files.",
+    "unwritten": {
+      "title": "Some files couldn't be written to this computer",
+      "hint": "Oleafly keeps trying. The shared project has the latest text in the meantime.",
+      "reasons": {
+        "locked": "Can't write {{path}}: another program has it open.",
+        "read_only": "Can't write {{path}}: the file or its folder is read-only.",
+        "no_space": "Can't write {{path}}: the disk is full.",
+        "not_downloaded": "Can't write {{path}}: a cloud service hasn't downloaded it to this computer yet.",
+        "other": "Can't write {{path}}."
+      }
+    },
     "accessLog": "Access log",
     "status": "Sync status",
     "waiting": "Changes waiting: {{number}}"

@@ -623,6 +623,17 @@
     "deleted": "最近刪除",
     "deletedEmpty": "最近沒有刪除任何內容。",
     "deletedLoadFailed": "Oleafly 無法載入最近刪除的檔案。",
+    "unwritten": {
+      "title": "有些檔案無法寫入這台電腦",
+      "hint": "Oleafly 會繼續嘗試。在此期間，分享的專案中有最新的文字。",
+      "reasons": {
+        "locked": "無法寫入 {{path}}：另一個程式正開著它。",
+        "read_only": "無法寫入 {{path}}：檔案或其資料夾是唯讀的。",
+        "no_space": "無法寫入 {{path}}：磁碟已滿。",
+        "not_downloaded": "無法寫入 {{path}}：雲端服務還沒有把它下載到這台電腦。",
+        "other": "無法寫入 {{path}}。"
+      }
+    },
     "accessLog": "存取記錄",
     "status": "同步狀態",
     "waiting": "等待同步的變更：{{number}}"

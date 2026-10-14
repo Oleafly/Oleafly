@@ -122,6 +122,7 @@ beforeEach(() => {
     merged: null,
     newDevice: null,
     ended: null,
+    unwritten: [],
   });
   feed([]);
 });
@@ -138,6 +139,30 @@ function sectionToggle(name: string): HTMLElement {
 }
 
 describe("CollabPane", () => {
+  it("lists the files it couldn't write to this computer, each with the reason, until they are written", () => {
+    useCollabLiveStore.setState({
+      unwritten: [
+        { path: "main.tex", reason: "locked" },
+        { path: "notes/plan.md", reason: "read_only" },
+        { path: "figures/big.png", reason: "no_space" },
+        { path: "refs.bib", reason: "not_downloaded" },
+        { path: "odd.txt", reason: "something_new" as never },
+      ],
+    });
+    render(<CollabPane />);
+    const alert = screen.getByTestId("collab-unwritten");
+    expect(alert).toHaveTextContent(pane.unwritten.title);
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.locked, { path: "main.tex" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.read_only, { path: "notes/plan.md" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.no_space, { path: "figures/big.png" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.not_downloaded, { path: "refs.bib" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.other, { path: "odd.txt" }));
+    expect(alert).toHaveTextContent(pane.unwritten.hint);
+    expect(alert.className).not.toMatch(/\b(ring|outline)-/);
+    act(() => useCollabLiveStore.setState({ unwritten: [] }));
+    expect(screen.queryByTestId("collab-unwritten")).toBeNull();
+  });
+
   it("shows the sync state as an icon left of the Share button instead of a status block", () => {
     render(<CollabPane />);
     const header = screen.getByRole("heading", { name: pane.title }).closest("header") as HTMLElement;

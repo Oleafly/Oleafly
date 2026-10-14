@@ -623,6 +623,17 @@
     "deleted": "Nedávno smazané",
     "deletedEmpty": "V poslední době nebylo nic smazáno.",
     "deletedLoadFailed": "Oleafly nemohl načíst nedávno smazané soubory.",
+    "unwritten": {
+      "title": "Některé soubory nešlo do tohoto počítače zapsat",
+      "hint": "Oleafly to zkouší dál. Sdílený projekt má mezitím nejnovější text.",
+      "reasons": {
+        "locked": "Soubor {{path}} nejde zapsat: má ho otevřený jiný program.",
+        "read_only": "Soubor {{path}} nejde zapsat: soubor nebo jeho složka jsou jen pro čtení.",
+        "no_space": "Soubor {{path}} nejde zapsat: disk je plný.",
+        "not_downloaded": "Soubor {{path}} nejde zapsat: cloudová služba ho do tohoto počítače ještě nestáhla.",
+        "other": "Soubor {{path}} nejde zapsat."
+      }
+    },
     "accessLog": "Protokol přístupu",
     "status": "Stav synchronizace",
     "waiting": "Čekající změny: {{number}}"

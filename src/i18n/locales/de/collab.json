@@ -623,6 +623,17 @@
     "deleted": "Zuletzt gelöscht",
     "deletedEmpty": "In letzter Zeit wurde nichts gelöscht.",
     "deletedLoadFailed": "Oleafly konnte die zuletzt gelöschten Dateien nicht laden.",
+    "unwritten": {
+      "title": "Einige Dateien konnten nicht auf diesen Computer geschrieben werden",
+      "hint": "Oleafly versucht es weiter. Das geteilte Projekt hat bis dahin den neuesten Text.",
+      "reasons": {
+        "locked": "{{path}} kann nicht geschrieben werden: Ein anderes Programm hat die Datei geöffnet.",
+        "read_only": "{{path}} kann nicht geschrieben werden: Die Datei oder ihr Ordner ist schreibgeschützt.",
+        "no_space": "{{path}} kann nicht geschrieben werden: Der Datenträger ist voll.",
+        "not_downloaded": "{{path}} kann nicht geschrieben werden: Ein Cloud-Dienst hat die Datei noch nicht auf diesen Computer geladen.",
+        "other": "{{path}} kann nicht geschrieben werden."
+      }
+    },
     "accessLog": "Zugriffsprotokoll",
     "status": "Synchronisierungsstatus",
     "waiting": "Wartende Änderungen: {{number}}"

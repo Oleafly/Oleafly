@@ -623,6 +623,17 @@
     "deleted": "Ostatnio usunięte",
     "deletedEmpty": "Ostatnio nic nie usunięto.",
     "deletedLoadFailed": "Oleafly nie mógł wczytać ostatnio usuniętych plików.",
+    "unwritten": {
+      "title": "Nie udało się zapisać niektórych plików na tym komputerze",
+      "hint": "Oleafly nadal próbuje. W tym czasie udostępniony projekt ma najnowszy tekst.",
+      "reasons": {
+        "locked": "Nie można zapisać {{path}}: inny program ma go otwartego.",
+        "read_only": "Nie można zapisać {{path}}: plik lub jego folder jest tylko do odczytu.",
+        "no_space": "Nie można zapisać {{path}}: dysk jest pełny.",
+        "not_downloaded": "Nie można zapisać {{path}}: usługa w chmurze jeszcze go nie pobrała na ten komputer.",
+        "other": "Nie można zapisać {{path}}."
+      }
+    },
     "accessLog": "Dziennik dostępu",
     "status": "Stan synchronizacji",
     "waiting": "Oczekujące zmiany: {{number}}"

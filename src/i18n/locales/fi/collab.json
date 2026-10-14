@@ -623,6 +623,17 @@
     "deleted": "Äskettäin poistetut",
     "deletedEmpty": "Mitään ei ole poistettu viime aikoina.",
     "deletedLoadFailed": "Oleafly ei voinut ladata äskettäin poistettuja tiedostoja.",
+    "unwritten": {
+      "title": "Joitakin tiedostoja ei voitu kirjoittaa tälle koneelle",
+      "hint": "Oleafly yrittää edelleen. Jaetussa projektissa on sillä välin uusin teksti.",
+      "reasons": {
+        "locked": "Tiedostoa {{path}} ei voi kirjoittaa: toinen ohjelma pitää sitä auki.",
+        "read_only": "Tiedostoa {{path}} ei voi kirjoittaa: tiedosto tai sen kansio on vain luku -tilassa.",
+        "no_space": "Tiedostoa {{path}} ei voi kirjoittaa: levy on täynnä.",
+        "not_downloaded": "Tiedostoa {{path}} ei voi kirjoittaa: pilvipalvelu ei ole vielä ladannut sitä tälle koneelle.",
+        "other": "Tiedostoa {{path}} ei voi kirjoittaa."
+      }
+    },
     "accessLog": "Käyttöloki",
     "status": "Synkronoinnin tila",
     "waiting": "Odottavia muutoksia: {{number}}"
