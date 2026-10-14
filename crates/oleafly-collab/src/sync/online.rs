@@ -188,6 +188,7 @@ async fn online(
     let mut refreshed = Refreshed::default();
     let mut burst = 0u32;
     let mut held: Option<ServerFrame> = None;
+    let mut missing_since: Option<tokio::time::Instant> = None;
     loop {
         tokio::select! {
             biased;
@@ -316,6 +317,19 @@ async fn online(
                 if too_quiet(last_heard.elapsed(), in_flight, pace.quiet_for) {
                     return retry;
                 }
+                let missing = lock(project).missing_changes();
+                missing_since = match (missing, missing_since) {
+                    (false, _) => None,
+                    (true, None) => Some(tokio::time::Instant::now()),
+                    (true, Some(since)) if catching_up.is_none() && since.elapsed() > pace.quiet_for => {
+                        let reload = lock(project).request_resync();
+                        if reload {
+                            return retry;
+                        }
+                        Some(since)
+                    }
+                    (true, since) => since,
+                };
                 ping_id += 1;
                 if wire.send(&ClientFrame::Ping { id: ping_id }).await.is_err() {
                     return retry;

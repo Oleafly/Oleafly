@@ -112,6 +112,7 @@ pub struct Imported {
     pub changes: DocChanges,
     pub arrived: Vec<(u64, i32)>,
     pub pending: bool,
+    pub waiting: Vec<(u64, i32)>,
 }
 
 #[derive(Debug)]
@@ -125,6 +126,16 @@ fn arrived_in(status: &loro::ImportStatus) -> Vec<(u64, i32)> {
         .success
         .iter()
         .map(|(peer, (_, end))| (*peer, *end))
+        .collect()
+}
+
+type Spans = Vec<(u64, i32)>;
+
+fn waiting_in(status: &loro::ImportStatus) -> Spans {
+    status
+        .pending
+        .iter()
+        .flat_map(|range| range.iter().map(|(peer, (_, end))| (*peer, *end)))
         .collect()
 }
 
@@ -143,6 +154,7 @@ impl Imported {
         self.changes.comments.extend(later.changes.comments);
         self.arrived.extend(later.arrived);
         self.pending |= later.pending;
+        self.waiting.extend(later.waiting);
     }
 }
 
@@ -812,7 +824,7 @@ impl ProjectDoc {
         let before = self.doc.oplog_vv();
         let (status, changes) =
             self.recording(|doc| doc.import_batch(&payloads).map_err(doc_error));
-        let status = status.map(|status| (arrived_in(&status), status.pending.is_some()));
+        let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
         self.keep(imported, &before, status, changes)
     }
 
@@ -820,18 +832,19 @@ impl ProjectDoc {
         &mut self,
         imported: &mut Imported,
         before: &VersionVector,
-        status: Result<(Vec<(u64, i32)>, bool), CollabError>,
+        status: Result<(Spans, Spans), CollabError>,
         changes: DocChanges,
     ) -> Result<(), CollabError> {
         let tree = changes.tree;
-        let (arrived, pending, failed) = match status {
-            Ok((arrived, pending)) => (arrived, pending, None),
-            Err(error) => (grown(before, &self.doc.oplog_vv()), false, Some(error)),
+        let (arrived, waiting, failed) = match status {
+            Ok((arrived, waiting)) => (arrived, waiting, None),
+            Err(error) => (grown(before, &self.doc.oplog_vv()), Vec::new(), Some(error)),
         };
         imported.absorb(Imported {
             changes,
             arrived,
-            pending,
+            pending: !waiting.is_empty(),
+            waiting,
         });
         if tree {
             self.reindex()?;
@@ -866,11 +879,11 @@ impl ProjectDoc {
                     }
                     Ok(())
                 });
-                (done.map(|()| (staged.arrived, false)), changes)
+                (done.map(|()| (staged.arrived, Vec::new())), changes)
             }
             None => {
                 let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error));
-                let status = status.map(|status| (arrived_in(&status), status.pending.is_some()));
+                let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
                 (status, changes)
             }
         };

@@ -77,6 +77,7 @@ impl DiskWork {
 pub enum PeerCheck {
     Fine,
     Refused,
+    Unreadable,
     Unknown(Vec<u64>),
 }
 
@@ -207,6 +208,8 @@ pub struct LiveProject {
     repaired: bool,
     resync_needed: bool,
     unreadable: Vec<(u64, Option<DeviceId>)>,
+    waiting: VersionVector,
+    resynced_for: Option<VersionVector>,
 }
 
 struct ChangeLog {
@@ -394,6 +397,8 @@ impl LiveProject {
             repaired: false,
             resync_needed: false,
             unreadable: Vec::new(),
+            waiting: VersionVector::new(),
+            resynced_for: None,
         }
     }
 
@@ -553,6 +558,9 @@ impl LiveProject {
     }
 
     pub fn check_peers(&self, payload: &[u8], device: DeviceId) -> PeerCheck {
+        if LoroDoc::decode_import_blob_meta(payload, true).is_err() {
+            return PeerCheck::Unreadable;
+        }
         let Ok(introduced) = self.doc.introduced_peers(payload) else {
             return PeerCheck::Refused;
         };
@@ -784,6 +792,49 @@ impl LiveProject {
         self.anchor
     }
 
+    fn note_waiting(&mut self, waiting: &[(u64, i32)]) {
+        advance(&mut self.waiting, waiting);
+        let have = self.doc.version();
+        let drained: Vec<u64> = self
+            .waiting
+            .iter()
+            .filter(|(peer, end)| have.get(peer).copied().unwrap_or(0) >= **end)
+            .map(|(peer, _)| *peer)
+            .collect();
+        if !drained.is_empty() {
+            let mut left = VersionVector::new();
+            for (peer, end) in self.waiting.iter() {
+                if !drained.contains(peer) {
+                    left.set_end(ID::new(*peer, *end));
+                }
+            }
+            self.waiting = left;
+        }
+    }
+
+    // Changes Loro holds back because something they build on never
+    // arrived, for example a change skipped as forged that later ones build
+    // on. They never apply by themselves, so the session reloads from the
+    // server's snapshot when they are still waiting after a while.
+    pub fn missing_changes(&self) -> bool {
+        let have = self.doc.version();
+        self.waiting
+            .iter()
+            .any(|(peer, end)| have.get(peer).copied().unwrap_or(0) < *end)
+    }
+
+    // Asks for one reload per set of held-back changes. When the server's
+    // snapshot did not bring what they wait for, asking again would only
+    // reconnect in a loop.
+    pub fn request_resync(&mut self) -> bool {
+        if self.resynced_for.as_ref() == Some(&self.waiting) {
+            return false;
+        }
+        self.resynced_for = Some(self.waiting.clone());
+        self.resync_needed = true;
+        true
+    }
+
     pub fn diverged(&self, head: u64, at_since: Option<BatchId>) -> bool {
         self.resync_needed
             || head < self.last_seq
@@ -804,6 +855,7 @@ impl LiveProject {
         self.anchor = None;
         self.outgoing = None;
         self.resync_needed = false;
+        self.note_waiting(&imported.waiting);
         self.route(imported.changes, None)
     }
 
@@ -882,6 +934,7 @@ impl LiveProject {
         let fresh = readable;
         self.witness_arrivals(&fresh);
         advance(&mut self.confirmed, &imported.arrived);
+        self.note_waiting(&imported.waiting);
         for received in &fresh {
             if let Some(meta) = &received.meta {
                 held_by_server(&mut self.confirmed, meta);
@@ -961,6 +1014,7 @@ impl LiveProject {
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
         let imported = self.doc.import(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
+        self.note_waiting(&imported.waiting);
         if seq > self.last_seq {
             self.last_seq = seq;
             self.moved_to(seq);
@@ -1854,6 +1908,32 @@ mod tests {
     }
 
     #[test]
+    fn a_change_built_on_a_skipped_one_is_held_back_until_the_copy_reloads_from_the_server() {
+        let (mut bob, mut alice, main) = pair();
+        bob.local_text(&main, "abcd").unwrap();
+        let first = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(first.batch, 1);
+        bob.local_text(&main, "abcde").unwrap();
+        let second = bob.next_outgoing().unwrap().unwrap();
+        bob.acknowledged(second.batch, 2);
+        alice.skip_update(1);
+        assert!(!alice.missing_changes());
+        assert!(alice.import_update(2, &second.payload).unwrap());
+        assert_eq!(alice.doc().text(&main).unwrap(), "abc");
+        assert!(alice.missing_changes());
+        assert!(!alice.import_update(1, &first.payload).unwrap());
+        assert!(alice.missing_changes());
+        assert!(!alice.diverged(2, alice.anchor()));
+        assert!(alice.request_resync());
+        assert!(!alice.request_resync());
+        assert!(alice.diverged(2, alice.anchor()));
+        alice.rebase(2, &bob.doc().snapshot().unwrap()).unwrap();
+        assert!(!alice.missing_changes());
+        assert!(!alice.diverged(2, None));
+        assert_eq!(alice.doc().text(&main).unwrap(), "abcde");
+    }
+
+    #[test]
     fn a_catch_up_that_brings_nothing_reports_nothing() {
         let (_bob, mut alice, _main) = pair();
         alice.begin_catch_up();
@@ -2330,7 +2410,7 @@ mod tests {
         assert_eq!(alice.check_peers(&fresh, mallory), PeerCheck::Fine);
         assert_eq!(
             alice.check_peers(b"not a change", laptop),
-            PeerCheck::Refused
+            PeerCheck::Unreadable
         );
         assert_eq!(alice.check_peers(&base, laptop), PeerCheck::Refused);
     }

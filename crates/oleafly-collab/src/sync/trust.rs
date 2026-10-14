@@ -62,6 +62,7 @@ pub(super) async fn peer_trust(
     let unknown = match lock(project).check_peers(&envelope.payload, envelope.device_id) {
         PeerCheck::Fine => return Trust::Signed(None),
         PeerCheck::Refused => return Trust::Refused,
+        PeerCheck::Unreadable => return Trust::Unreadable,
         PeerCheck::Unknown(unknown) => unknown,
     };
     if unknown.iter().all(|peer| refreshed.contains(peer)) {
@@ -82,6 +83,7 @@ pub(super) async fn peer_trust(
             live.pin_peers(listed);
             match live.check_peers(&envelope.payload, envelope.device_id) {
                 PeerCheck::Refused => Trust::Refused,
+                PeerCheck::Unreadable => Trust::Unreadable,
                 PeerCheck::Fine | PeerCheck::Unknown(_) => Trust::Signed(None),
             }
         }
