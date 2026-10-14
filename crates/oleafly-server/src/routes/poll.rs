@@ -137,6 +137,13 @@ async fn open(
         .unwrap_or_default();
     let now = state.clock.now_ms();
     let server_id = state.server_id;
+    // Registered before the proof, like a socket, so a sign-out that lands
+    // while the proof runs still reaches this session.
+    let ticket = state.sockets.register(device);
+    let refuse = |error: ServerError| {
+        state.sockets.unregister(device, ticket.id);
+        error
+    };
     let proved = state
         .db
         .call(move |conn| {
@@ -145,14 +152,18 @@ async fn open(
             }
             proves_device(conn, server_id, now, device, &token, &echoed, &signature)
         })
-        .await
-        .inspect_err(|_| state.connects.forgive(address, now))?;
-    let (account, public_key) = proved.ok_or(ServerError::Unauthorized)?;
-    if !state.connects.admitted(address, device, now) {
-        return Err(ServerError::RateLimited);
-    }
-    if state.polls.count() >= polls::MAX_POLL_SESSIONS {
-        return Err(ServerError::RateLimited);
+        .await;
+    #[cfg(any(test, feature = "test-support"))]
+    state.polls.after_proof().await;
+    let proved = proved.map_err(|error| {
+        state.connects.forgive(address, now);
+        refuse(error)
+    })?;
+    let (account, public_key) = proved.ok_or_else(|| refuse(ServerError::Unauthorized))?;
+    if !state.connects.admitted(address, device, now)
+        || state.polls.count() >= polls::MAX_POLL_SESSIONS
+    {
+        return Err(refuse(ServerError::RateLimited));
     }
     for stale in state.polls.opened_by(device, project) {
         polls::close(state, &stale);
@@ -160,7 +171,6 @@ async fn open(
     for oldest in state.polls.beyond_account_cap(account) {
         polls::close(state, &oldest);
     }
-    let ticket = state.sockets.register(device);
     state.sockets.admit(device, ticket.id);
     let (frames, outbound) = polls::channel();
     let member = RoomMember {

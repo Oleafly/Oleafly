@@ -1081,6 +1081,63 @@ async fn posted_frames_whose_body_stops_arriving_end_after_the_upload_time() {
 }
 
 #[tokio::test]
+async fn a_device_signed_out_while_its_long_poll_opens_is_told_its_session_ended() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let state = stage.server.state();
+    let pause = state.polls.pause_next_open();
+    let device = stage.alice.tokens.device_id;
+    let sign_out = async {
+        pause.reached.notified().await;
+        state.revoke_device(device).await.expect("sign out");
+        pause.resume.notify_one();
+    };
+    let ((poller, frames), ()) =
+        tokio::join!(open(&stage.server, &stage.alice, project, 0), sign_out);
+    assert!(
+        matches!(frames.first(), Some(ServerFrame::Subscribed { .. })),
+        "{frames:?}"
+    );
+    let mut poller = poller.expect("the open finished before the sign-out reached it");
+    assert_eq!(
+        poller.next().await,
+        ServerFrame::SessionRevoked { reason: None }
+    );
+}
+
+#[tokio::test]
+async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
+    let stage = stage().await;
+    quick(&stage);
+    stage
+        .server
+        .state()
+        .polls
+        .set_revocation_check(Duration::from_millis(100));
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut alice = opened(&stage.server, &stage.alice, project).await;
+    let device = stage.alice.tokens.device_id;
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            conn.execute(
+                "UPDATE devices SET revoked_at = 1 WHERE id = ?1",
+                [device.to_string()],
+            )?;
+            Ok(())
+        })
+        .await
+        .expect("revoke quietly");
+    assert_eq!(
+        alice.next().await,
+        ServerFrame::SessionRevoked { reason: None }
+    );
+}
+
+#[tokio::test]
 async fn a_long_poll_that_falls_far_behind_is_dropped_and_can_catch_up() {
     let stage = stage().await;
     quick(&stage);

@@ -20,6 +20,7 @@ use crate::tokens::random_token;
 
 pub const POLL_HOLD: Duration = Duration::from_secs(25);
 pub const POLL_IDLE: Duration = Duration::from_secs(30);
+pub const REVOCATION_CHECK: Duration = Duration::from_secs(5 * 60);
 pub const MAX_POLL_SESSIONS: usize = 10_000;
 pub const MAX_POLL_SESSIONS_PER_ACCOUNT: usize = 64;
 pub const MAX_BATCH_BYTES: usize = 4 * 1024 * 1024;
@@ -28,8 +29,18 @@ pub struct PollHub {
     sessions: Mutex<HashMap<String, Arc<PollSession>>>,
     hold_ms: AtomicU64,
     idle_ms: AtomicU64,
+    revocation_check_ms: AtomicU64,
     stopping: AtomicBool,
     account_cap: AtomicUsize,
+    #[cfg(any(test, feature = "test-support"))]
+    pause: Mutex<Option<OpenPause>>,
+}
+
+#[cfg(any(test, feature = "test-support"))]
+#[derive(Clone, Default)]
+pub struct OpenPause {
+    pub reached: Arc<tokio::sync::Notify>,
+    pub resume: Arc<tokio::sync::Notify>,
 }
 
 impl Default for PollHub {
@@ -44,8 +55,42 @@ impl PollHub {
             sessions: Mutex::new(HashMap::new()),
             hold_ms: AtomicU64::new(millis(POLL_HOLD)),
             idle_ms: AtomicU64::new(millis(POLL_IDLE)),
+            revocation_check_ms: AtomicU64::new(millis(REVOCATION_CHECK)),
             stopping: AtomicBool::new(false),
             account_cap: AtomicUsize::new(MAX_POLL_SESSIONS_PER_ACCOUNT),
+            #[cfg(any(test, feature = "test-support"))]
+            pause: Mutex::new(None),
+        }
+    }
+
+    pub fn set_revocation_check(&self, every: Duration) {
+        self.revocation_check_ms
+            .store(millis(every), Ordering::SeqCst);
+    }
+
+    fn revocation_check(&self) -> Duration {
+        Duration::from_millis(self.revocation_check_ms.load(Ordering::SeqCst))
+    }
+
+    // Holds the next long poll open right after its device proof, until the
+    // test resumes it.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn pause_next_open(&self) -> OpenPause {
+        let pause = OpenPause::default();
+        *self.pause.lock().unwrap_or_else(PoisonError::into_inner) = Some(pause.clone());
+        pause
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
+    pub(crate) async fn after_proof(&self) {
+        let pause = self
+            .pause
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        if let Some(pause) = pause {
+            pause.reached.notify_one();
+            pause.resume.notified().await;
         }
     }
 
@@ -354,11 +399,27 @@ pub(crate) async fn start(
     })
 }
 
+async fn device_revoked(state: &AppState, device: DeviceId) -> bool {
+    state
+        .db
+        .read(move |conn| {
+            Ok(rusqlite::OptionalExtension::optional(conn.query_row(
+                "SELECT revoked_at IS NOT NULL FROM devices WHERE id = ?1",
+                [device.to_string()],
+                |row| row.get::<_, bool>(0),
+            ))?
+            .unwrap_or(true))
+        })
+        .await
+        .unwrap_or(false)
+}
+
 async fn keep(
     state: AppState,
     session: Arc<PollSession>,
     mut control: UnboundedReceiver<SocketControl>,
 ) {
+    let mut checked = Instant::now();
     loop {
         let idle = state.polls.idle();
         let check = (idle / 4).clamp(Duration::from_millis(20), Duration::from_secs(5));
@@ -377,6 +438,12 @@ async fn keep(
                 if session.quiet_for(idle) {
                     close(&state, &session);
                     return;
+                }
+                if !session.is_ended() && checked.elapsed() >= state.polls.revocation_check() {
+                    checked = Instant::now();
+                    if device_revoked(&state, session.device).await {
+                        end(&state, &session, Some(ServerFrame::SessionRevoked { reason: None }));
+                    }
                 }
             }
         }
