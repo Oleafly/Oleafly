@@ -407,8 +407,12 @@ pub(crate) async fn authed<T, F>(
 where
     F: for<'a> Fn(&'a ServerClient, &'a str) -> ApiCall<'a, T>,
 {
-    let client = client_for(&known(state, server)?)?;
-    verify_pin(&client, server).await?;
+    let client = state.client(&known(state, server)?)?;
+    if state.verified_manifest(server).is_none() {
+        let manifest = client.capabilities().await?;
+        check_pin(Some(server), manifest.server_id)?;
+        state.note_verified(server, manifest);
+    }
     let keys = state.keys().await?;
     let first = match keys.sessions.access_token(server, &client).await {
         Ok(access) => call(&client, access.as_str()).await,
@@ -431,7 +435,10 @@ where
         }
     }
     match result {
-        Err(error) => Err(settle_revocation(state, host, server, error).await),
+        Err(error) => {
+            state.forget_verified(server);
+            Err(settle_revocation(state, host, server, error).await)
+        }
         ok => ok,
     }
 }
@@ -2131,6 +2138,24 @@ mod tests {
             role_of(&list_servers(&state).expect("list")),
             Some(ServerRole::Member)
         ));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn admin_calls_in_a_row_share_one_connection_and_one_server_check() {
+        let lab = crate::collab::testing::Lab::start().await;
+        let relay = crate::collab::testing::Relay::start(lab.address()).await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let server = lab.sign_in(&state, &relay.url, true).await;
+        relay.forget_seen();
+        let before = relay.connections();
+        let host = TestHost::following();
+        for _ in 0..2 {
+            admin_members(&state, &host, server).await.expect("members");
+        }
+        assert_eq!(relay.requests("GET /.well-known/oleafly-server"), 1);
+        assert_eq!(relay.requests("GET /api/v1/admin/members"), 2);
+        assert_eq!(relay.connections() - before, 1);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

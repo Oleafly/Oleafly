@@ -33,17 +33,21 @@ pub async fn access_log_status(
     project_id: &str,
 ) -> Result<AccessLogStatus, CollabError> {
     let (server, shared) = bound(state, project_id)?;
-    authed(state, host, server, |client, access| {
-        Box::pin(async move {
-            let manifest = client.capabilities().await?;
-            let summary = client.project(access, shared).await?;
-            Ok(AccessLogStatus {
-                server_allowed: manifest.features.access_logs,
-                enabled: summary.access_log,
-            })
-        })
+    let summary = authed(state, host, server, |client, access| {
+        Box::pin(async move { client.project(access, shared).await })
     })
-    .await
+    .await?;
+    let manifest = match state.verified_manifest(server) {
+        Some(manifest) => manifest,
+        None => {
+            let entry = super::commands::known(state, server)?;
+            state.client(&entry)?.capabilities().await?
+        }
+    };
+    Ok(AccessLogStatus {
+        server_allowed: manifest.features.access_logs,
+        enabled: summary.access_log,
+    })
 }
 
 pub async fn set_access_log(

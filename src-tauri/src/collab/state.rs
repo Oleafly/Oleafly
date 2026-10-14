@@ -1,10 +1,12 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, Instant};
 
 use oleafly_collab::{
-    session_account, CollabError, CollabPaths, DeviceKey, SecretPort, ServerRegistry,
-    SessionManager,
+    session_account, CollabError, CollabPaths, DeviceKey, SecretPort, ServerClient, ServerEntry,
+    ServerRegistry, ServerUrl, SessionManager,
 };
+use oleafly_collab_protocol::capabilities::CapabilityManifest;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use tokio::sync::{oneshot, watch, OnceCell};
 
@@ -17,6 +19,14 @@ pub struct CollabKeys {
 
 type JoinKey = (ServerId, SharedProjectId);
 
+const PIN_KEPT: Duration = Duration::from_secs(120);
+
+struct Connection {
+    url: String,
+    client: Arc<ServerClient>,
+    verified: Option<(CapabilityManifest, Instant)>,
+}
+
 pub struct CollabState {
     paths: Result<CollabPaths, String>,
     secrets: Arc<dyn SecretPort>,
@@ -25,6 +35,7 @@ pub struct CollabState {
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
     sharing: Mutex<BTreeSet<String>>,
     joins: Mutex<HashMap<JoinKey, Arc<JoinSlot>>>,
+    connections: Mutex<HashMap<ServerId, Connection>>,
 }
 
 pub(crate) struct ShareTurn<'a> {
@@ -99,6 +110,47 @@ impl CollabState {
             sign_in: Mutex::new(None),
             sharing: Mutex::new(BTreeSet::new()),
             joins: Mutex::new(HashMap::new()),
+            connections: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub(crate) fn client(&self, entry: &ServerEntry) -> Result<Arc<ServerClient>, CollabError> {
+        let mut connections = locked(&self.connections);
+        if let Some(known) = connections
+            .get(&entry.server_id)
+            .filter(|known| known.url == entry.url)
+        {
+            return Ok(Arc::clone(&known.client));
+        }
+        let client = Arc::new(ServerClient::new(ServerUrl::parse(&entry.url)?)?);
+        connections.insert(
+            entry.server_id,
+            Connection {
+                url: entry.url.clone(),
+                client: Arc::clone(&client),
+                verified: None,
+            },
+        );
+        Ok(client)
+    }
+
+    pub(crate) fn verified_manifest(&self, server: ServerId) -> Option<CapabilityManifest> {
+        locked(&self.connections)
+            .get(&server)
+            .and_then(|known| known.verified.as_ref())
+            .filter(|(_, at)| at.elapsed() < PIN_KEPT)
+            .map(|(manifest, _)| manifest.clone())
+    }
+
+    pub(crate) fn note_verified(&self, server: ServerId, manifest: CapabilityManifest) {
+        if let Some(known) = locked(&self.connections).get_mut(&server) {
+            known.verified = Some((manifest, Instant::now()));
+        }
+    }
+
+    pub(crate) fn forget_verified(&self, server: ServerId) {
+        if let Some(known) = locked(&self.connections).get_mut(&server) {
+            known.verified = None;
         }
     }
 

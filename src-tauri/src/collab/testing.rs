@@ -179,6 +179,7 @@ pub(crate) struct Relay {
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
     refused: std::sync::Arc<Mutex<Option<String>>>,
     refusals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    accepted: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Relay {
@@ -196,11 +197,14 @@ impl Relay {
         let refusals = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let (gate, log) = (Arc::clone(&down), Arc::clone(&seen));
         let (refusing, counted) = (Arc::clone(&refused), Arc::clone(&refusals));
+        let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let connected = Arc::clone(&accepted);
         tokio::spawn(async move {
             while let Ok((client, _)) = listener.accept().await {
                 if gate.load(Ordering::SeqCst) {
                     continue;
                 }
+                connected.fetch_add(1, Ordering::SeqCst);
                 let (gate, log, upstream) = (Arc::clone(&gate), Arc::clone(&log), upstream.clone());
                 let (refusing, counted) = (Arc::clone(&refusing), Arc::clone(&counted));
                 tokio::spawn(async move {
@@ -257,7 +261,12 @@ impl Relay {
             seen,
             refused,
             refusals,
+            accepted,
         }
+    }
+
+    pub(crate) fn connections(&self) -> usize {
+        self.accepted.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     pub(crate) fn refuse(&self, needle: Option<&str>) {
