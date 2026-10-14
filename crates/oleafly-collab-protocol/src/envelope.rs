@@ -9,6 +9,8 @@ const SIGNING_DOMAIN: &[u8] = b"oleafly-envelope/v1\0";
 pub enum EnvelopeMode {
     Plain,
     E2ee,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,9 +35,12 @@ impl Envelope {
         bytes.extend_from_slice(self.project_id.as_uuid().as_bytes());
         bytes.extend_from_slice(self.batch_id.as_uuid().as_bytes());
         bytes.extend_from_slice(self.device_id.as_uuid().as_bytes());
+        // A mode this build can't read has no known byte, so its signature
+        // never checks out. Readers skip such an envelope before checking it.
         bytes.push(match self.mode {
             EnvelopeMode::Plain => 0,
             EnvelopeMode::E2ee => 1,
+            EnvelopeMode::Unknown => u8::MAX,
         });
         match self.key_epoch {
             None => bytes.push(0),
@@ -210,5 +215,30 @@ mod tests {
         assert_eq!(serde_json::to_value(EnvelopeMode::E2ee).unwrap(), "e2ee");
         let padded = json.replace("\"YWJj\"", "\"YWI=\"");
         assert!(serde_json::from_str::<Envelope>(&padded).is_err());
+    }
+
+    #[test]
+    fn a_mode_from_a_later_version_reads_as_unknown_and_signs_like_no_known_mode() {
+        let json = format!(
+            r#"{{"v":1,"project_id":"{PROJECT}","batch_id":"{BATCH}","device_id":"{DEVICE}","mode":"sealed","key_epoch":3,"payload":"YWJj","signature":"AQID"}}"#
+        );
+        let read: Envelope = serde_json::from_str(&json).unwrap();
+        assert_eq!(read.mode, EnvelopeMode::Unknown);
+        assert_eq!(read.payload, b"abc");
+        assert_eq!(
+            serde_json::to_value(EnvelopeMode::Unknown).unwrap(),
+            "unknown"
+        );
+        let unknown = Envelope {
+            mode: EnvelopeMode::Unknown,
+            ..envelope()
+        };
+        for known in [EnvelopeMode::Plain, EnvelopeMode::E2ee] {
+            let signed = Envelope {
+                mode: known,
+                ..envelope()
+            };
+            assert_ne!(unknown.signing_bytes(), signed.signing_bytes(), "{known:?}");
+        }
     }
 }

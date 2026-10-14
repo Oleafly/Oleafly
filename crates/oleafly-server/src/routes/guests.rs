@@ -155,7 +155,7 @@ async fn invite(
 ) -> Result<(StatusCode, Json<GuestInviteResult>), ServerError> {
     let project: SharedProjectId = path_id(path)?;
     let request = json_body(body)?;
-    if request.role == ProjectRole::Owner {
+    if matches!(request.role, ProjectRole::Owner | ProjectRole::Unknown) {
         return Err(ServerError::BadRequest(
             "A guest can be an Editor or a Viewer.".to_string(),
         ));

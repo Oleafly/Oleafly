@@ -47,6 +47,7 @@ pub fn role_to_str(role: ProjectRole) -> &'static str {
         ProjectRole::Owner => "owner",
         ProjectRole::Editor => "editor",
         ProjectRole::Viewer => "viewer",
+        ProjectRole::Unknown => "unknown",
     }
 }
 

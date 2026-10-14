@@ -231,6 +231,11 @@ async fn update(
             "A link can give Editor or Viewer access, not Owner.".to_string(),
         ));
     }
+    if matches!(patch.link_role, Some(ProjectRole::Unknown)) {
+        return Err(ServerError::BadRequest(
+            "A link can give Editor or Viewer access.".to_string(),
+        ));
+    }
     if let Some(title) = &patch.title {
         let trimmed = title.trim();
         if trimmed.is_empty() || trimmed.chars().count() > MAX_TITLE_CHARS {
@@ -865,7 +870,7 @@ async fn get_snapshot(
 
 pub(crate) fn sees_emails(role: ServerRole, settings: &RuntimeSettings) -> bool {
     match role {
-        ServerRole::Guest => false,
+        ServerRole::Guest | ServerRole::Unknown => false,
         ServerRole::Admin | ServerRole::Maintainer => true,
         ServerRole::Member => settings.directory_shows_email,
     }
@@ -936,6 +941,11 @@ async fn grant_member(
     if role == ProjectRole::Owner {
         return Err(ServerError::BadRequest(
             "Ownership cannot be given away yet. Choose Editor or Viewer.".to_string(),
+        ));
+    }
+    if role == ProjectRole::Unknown {
+        return Err(ServerError::BadRequest(
+            "This server doesn't know that role. Choose Editor or Viewer.".to_string(),
         ));
     }
     auth.require(ServerAction::ShareProjects)?;

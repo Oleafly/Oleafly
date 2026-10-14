@@ -393,4 +393,37 @@ mod tests {
             ProjectAction::UploadSnapshot
         ));
     }
+
+    #[test]
+    fn a_project_role_from_a_later_server_reads_as_unknown_and_can_only_read() {
+        let role: ProjectRole = serde_json::from_value(json!("commenter")).unwrap();
+        assert_eq!(role, ProjectRole::Unknown);
+        assert!(project_role_allows(role, ProjectAction::Read));
+        for action in [
+            ProjectAction::Edit,
+            ProjectAction::UploadSnapshot,
+            ProjectAction::ManageMembers,
+            ProjectAction::ChangeLinkSharing,
+            ProjectAction::StopSharing,
+        ] {
+            assert!(!project_role_allows(role, action), "{action:?}");
+        }
+        assert_eq!(serde_json::to_value(role).unwrap(), json!("unknown"));
+        let summary = json!({
+            "project_id": PROJECT,
+            "title": "Grant proposal",
+            "owner": serde_json::to_value(carol()).unwrap(),
+            "role": "commenter",
+            "status": "active",
+            "created_at": 5,
+            "link_sharing": true,
+            "link_role": "commenter",
+            "head_seq": 0
+        });
+        let read: ProjectSummary = serde_json::from_value(summary).unwrap();
+        assert_eq!(
+            (read.role, read.link_role),
+            (ProjectRole::Unknown, ProjectRole::Unknown)
+        );
+    }
 }

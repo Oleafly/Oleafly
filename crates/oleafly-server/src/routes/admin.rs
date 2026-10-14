@@ -25,6 +25,7 @@ use crate::settings;
 use crate::state::AppState;
 
 const LAST_ADMIN: &str = "This is the server's only admin. Make someone else an admin first.";
+const UNKNOWN_ROLE: &str = "This server doesn't know that role.";
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -151,6 +152,9 @@ async fn patch_member(
         return Err(ServerError::BadRequest(
             "To take someone off the server, remove them instead.".to_string(),
         ));
+    }
+    if matches!(change.role, Some(ServerRole::Unknown)) {
+        return Err(ServerError::BadRequest(UNKNOWN_ROLE.to_string()));
     }
     let now = state.clock.now_ms();
     let (summary, signed_out) = state
@@ -357,6 +361,9 @@ async fn add_allowlist(
 ) -> Result<(StatusCode, Json<AllowlistEntry>), ServerError> {
     auth.require(ServerAction::ManageMembers)?;
     let entry = json_body(body)?;
+    if entry.role == ServerRole::Unknown {
+        return Err(ServerError::BadRequest(UNKNOWN_ROLE.to_string()));
+    }
     if members::is_staff(entry.role) {
         auth.require(ServerAction::ManageStaff)?;
     }

@@ -21,6 +21,7 @@ pub fn role_to_str(role: ServerRole) -> &'static str {
         ServerRole::Maintainer => "maintainer",
         ServerRole::Member => "member",
         ServerRole::Guest => "guest",
+        ServerRole::Unknown => "unknown",
     }
 }
 

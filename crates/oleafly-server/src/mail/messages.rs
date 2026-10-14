@@ -109,7 +109,7 @@ fn server_role_words(role: ServerRole) -> &'static str {
     match role {
         ServerRole::Admin => "an admin",
         ServerRole::Maintainer => "a maintainer",
-        ServerRole::Member => "a member",
+        ServerRole::Member | ServerRole::Unknown => "a member",
         ServerRole::Guest => "a guest",
     }
 }
@@ -118,7 +118,9 @@ fn project_role_words(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "You're its owner.",
         ProjectRole::Editor => "You're an editor, so you can change it.",
-        ProjectRole::Viewer => "You're a viewer, so you can read it but not change it.",
+        ProjectRole::Viewer | ProjectRole::Unknown => {
+            "You're a viewer, so you can read it but not change it."
+        }
     }
 }
 

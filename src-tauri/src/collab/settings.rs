@@ -572,7 +572,7 @@ pub fn refuse_viewer(project_id: &str) -> Result<(), String> {
         return Ok(());
     }
     match role_of(project_id) {
-        Some(ProjectRole::Viewer) => {
+        Some(ProjectRole::Viewer | ProjectRole::Unknown) => {
             Err(crate::app_error::AppError::new("project.shared_settings_viewer").into())
         }
         _ => Ok(()),
@@ -1062,6 +1062,9 @@ mod tests {
             refused.contains("project.shared_settings_viewer"),
             "{refused}"
         );
+        oleafly_collab::save_binding(&paths, "bob-viewer", &binding(ProjectRole::Unknown)).unwrap();
+        crate::collab::registry::invalidate("bob-viewer");
+        assert!(refuse_viewer("bob-viewer").is_err());
         oleafly_collab::save_binding(&paths, "bob-viewer", &binding(ProjectRole::Editor)).unwrap();
         crate::collab::registry::invalidate("bob-viewer");
         assert!(refuse_viewer("bob-viewer").is_ok());

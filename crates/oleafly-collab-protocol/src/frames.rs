@@ -706,6 +706,56 @@ mod tests {
     }
 
     #[test]
+    fn frames_with_a_role_or_mode_from_a_later_server_stay_readable() {
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({
+                "type": "subscribed",
+                "project_id": PROJECT,
+                "role": "commenter",
+                "head_seq": 9
+            }))
+            .unwrap(),
+            ServerFrame::Subscribed {
+                project_id: PROJECT.parse().unwrap(),
+                role: ProjectRole::Unknown,
+                head_seq: 9,
+                since_batch: None,
+            }
+        );
+        assert_eq!(
+            serde_json::from_value::<ServerFrame>(json!({
+                "type": "access_changed",
+                "project_id": PROJECT,
+                "role": "commenter"
+            }))
+            .unwrap(),
+            ServerFrame::AccessChanged {
+                project_id: PROJECT.parse().unwrap(),
+                role: Some(ProjectRole::Unknown),
+                change: None,
+                comments: None,
+            }
+        );
+        let mut sealed = serde_json::to_value(envelope()).unwrap();
+        sealed["mode"] = json!("sealed");
+        let read = serde_json::from_value::<ServerFrame>(json!({
+            "type": "update",
+            "project_id": PROJECT,
+            "seq": 10,
+            "envelope": sealed
+        }))
+        .unwrap();
+        assert!(
+            matches!(
+                &read,
+                ServerFrame::Update { envelope, .. }
+                    if envelope.mode == crate::envelope::EnvelopeMode::Unknown
+            ),
+            "{read:?}"
+        );
+    }
+
+    #[test]
     fn an_update_frame_does_not_print_its_payload() {
         let frame = ClientFrame::Update {
             project_id: PROJECT.parse().unwrap(),

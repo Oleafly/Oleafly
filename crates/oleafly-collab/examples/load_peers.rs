@@ -24,7 +24,9 @@ use oleafly_collab_protocol::admin::{NewDomainRule, RuntimeSettingsPatch};
 use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::capabilities::ProviderKind;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
-use oleafly_collab_protocol::projects::{PresenceState, ProjectPatch, ProjectRole};
+use oleafly_collab_protocol::projects::{
+    project_role_allows, PresenceState, ProjectAction, ProjectPatch, ProjectRole,
+};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::clock::SystemClock;
 use oleafly_server::config::ServerConfig;
@@ -1622,7 +1624,7 @@ impl Session {
             acked: 0,
             online: false,
             ended: false,
-            can_edit: summary.role != ProjectRole::Viewer,
+            can_edit: project_role_allows(summary.role, ProjectAction::Edit),
             joined_at: Some(started),
             down_since: None,
             reconnecting_since: None,
@@ -1751,7 +1753,7 @@ impl Session {
     fn on_event(&mut self, event: LiveEvent) {
         match event {
             LiveEvent::Status(status) => self.on_status(status),
-            LiveEvent::Role(role) => self.can_edit = role != ProjectRole::Viewer,
+            LiveEvent::Role(role) => self.can_edit = project_role_allows(role, ProjectAction::Edit),
             LiveEvent::Acknowledged => self.confirm(),
             LiveEvent::Unsendable => self.peer.error(
                 "live:unsendable",

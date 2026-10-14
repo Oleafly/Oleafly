@@ -316,3 +316,28 @@ async fn a_relayed_resend_from_an_honest_editor_still_converges() {
     assert_eq!(text(&alice, &main), "!abc and Bob!");
     assert!(!lock(&bob.live).has_unsent());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_update_in_a_mode_this_build_cannot_read_is_skipped_without_calling_it_forged() {
+    let pair = two_people().await;
+    let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+    let mut sealed = signed_envelope(&pair.alice, project, b"sealed for later".to_vec());
+    sealed.mode = EnvelopeMode::Unknown;
+    store_on_server(&pair, &pair.alice, sealed).await;
+    alice_live.local_text(&main, "abcX").unwrap();
+    let honest = alice_live.next_outgoing().unwrap().unwrap().payload;
+    store_on_server(
+        &pair,
+        &pair.alice,
+        signed_envelope(&pair.alice, project, honest),
+    )
+    .await;
+    let mut bob = side(bob_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_text(&bob, &main, "abcX").await;
+    assert_eq!(lock(&bob.live).last_seq(), 2);
+    while let Ok(event) = bob.events.try_recv() {
+        assert!(!matches!(event, LiveEvent::Untrusted { .. }), "{event:?}");
+    }
+    assert!(!bob.handle.as_ref().unwrap().is_finished());
+}

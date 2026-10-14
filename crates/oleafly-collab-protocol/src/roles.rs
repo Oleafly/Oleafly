@@ -7,6 +7,8 @@ pub enum ServerRole {
     Maintainer,
     Member,
     Guest,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -15,6 +17,8 @@ pub enum ProjectRole {
     Owner,
     Editor,
     Viewer,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -49,7 +53,7 @@ pub fn server_role_allows(role: ServerRole, action: ServerAction) -> bool {
         ServerRole::Admin => true,
         ServerRole::Maintainer => maintainer,
         ServerRole::Member => member,
-        ServerRole::Guest => false,
+        ServerRole::Guest | ServerRole::Unknown => false,
     }
 }
 
@@ -142,6 +146,19 @@ mod tests {
             serde_json::from_str::<ProjectRole>("\"viewer\"").unwrap(),
             ProjectRole::Viewer
         );
-        assert!(serde_json::from_str::<ServerRole>("\"Admin\"").is_err());
+        assert_eq!(
+            serde_json::from_str::<ServerRole>("\"Admin\"").unwrap(),
+            ServerRole::Unknown
+        );
+    }
+
+    #[test]
+    fn a_server_role_from_a_later_server_reads_as_unknown_and_allows_nothing() {
+        let role: ServerRole = serde_json::from_str("\"auditor\"").unwrap();
+        assert_eq!(role, ServerRole::Unknown);
+        for (action, _, _) in TRUTH_TABLE {
+            assert!(!server_role_allows(role, action), "unknown {action:?}");
+        }
+        assert_eq!(serde_json::to_value(role).unwrap(), "unknown");
     }
 }
