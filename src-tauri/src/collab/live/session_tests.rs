@@ -18,9 +18,9 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::import_tests::project;
 use super::{
-    guard, pump, start, write, Active, LiveHost, MembersPayload, MergeMarks, MergedAuthor,
-    MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload,
-    StatusPayload, WrittenTexts, ACTIVE,
+    guard, pump, start, write, Active, ChangeSkippedPayload, LiveHost, MembersPayload, MergeMarks,
+    MergedAuthor, MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload,
+    PresencePayload, RolePayload, StatusPayload, WrittenTexts, ACTIVE,
 };
 #[cfg(unix)]
 use super::{lock, WriterSignal};
@@ -108,6 +108,7 @@ fn starting_live_again_for_a_live_project_answers() {
 struct RecordingHost {
     new_devices: Mutex<Vec<NewDevicePayload>>,
     merged: Mutex<Vec<MergedPayload>>,
+    skipped: Mutex<Vec<ChangeSkippedPayload>>,
 }
 
 impl LiveHost for RecordingHost {
@@ -121,6 +122,9 @@ impl LiveHost for RecordingHost {
     fn folder_changed(&self, _: FolderChange) {}
     fn new_device(&self, payload: NewDevicePayload) {
         guard(&self.new_devices).push(payload);
+    }
+    fn change_skipped(&self, payload: ChangeSkippedPayload) {
+        guard(&self.skipped).push(payload);
     }
 }
 
@@ -417,6 +421,107 @@ fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks(
                 before: oleafly_collab::review::encode_mark(&[1, 2]),
                 after: oleafly_collab::review::encode_mark(&[3]),
             }
+        );
+    });
+}
+
+#[test]
+fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let dir = tempfile::tempdir().unwrap();
+        let state = CollabState::new(
+            oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+            Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+        );
+        let keys = state.keys().await.unwrap();
+        let link = LiveLink {
+            client: Arc::new(
+                ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+            ),
+            server_id: ServerId::new_v7(),
+            project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+            device_id: DeviceId::new_v7(),
+            key: Arc::clone(&keys.key),
+            sessions: Arc::clone(&keys.sessions),
+        };
+        let root = dir.path().join("project");
+        std::fs::create_dir_all(&root).unwrap();
+        let (live, disk, _main) = project(&root);
+        let shared: SharedLive = Arc::new(Mutex::new(live));
+        let (unused, _unused) = mpsc::unbounded_channel();
+        let (writer, _writer) = mpsc::unbounded_channel();
+        let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+        let host = Arc::new(RecordingHost::default());
+        let active = Arc::new(Active {
+            project_id: "skipping".to_owned(),
+            root,
+            document_dir: dir.path().join("document"),
+            disk_file: dir.path().join("disk.json"),
+            live: shared,
+            handle,
+            link,
+            disk: Mutex::new(disk),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+            writer,
+            account_id: AccountId::new_v7(),
+            quiet_merge: AtomicBool::new(false),
+            waiting: AtomicBool::new(false),
+            last_status: Mutex::new(LiveStatus::Connecting),
+            bases: Mutex::new(WrittenTexts::default()),
+        });
+        let (events, receiver) = mpsc::unbounded_channel();
+        let pumping = tokio::spawn(pump(
+            Arc::downgrade(&active),
+            receiver,
+            state.paths().unwrap().clone(),
+        ));
+        let laptop = DeviceId::new_v7();
+        events
+            .send(LiveEvent::Unreadable {
+                seq: 7,
+                device_id: Some(laptop),
+            })
+            .unwrap();
+        events
+            .send(LiveEvent::Unreadable {
+                seq: 9,
+                device_id: None,
+            })
+            .unwrap();
+        drop(events);
+        pumping.await.unwrap();
+        active.handle.stop();
+        let skipped = guard(&host.skipped).clone();
+        assert_eq!(
+            skipped,
+            vec![
+                ChangeSkippedPayload {
+                    project_id: "skipping".to_owned(),
+                    seq: 7,
+                    device_id: Some(laptop),
+                },
+                ChangeSkippedPayload {
+                    project_id: "skipping".to_owned(),
+                    seq: 9,
+                    device_id: None,
+                },
+            ]
+        );
+        assert_eq!(
+            serde_json::to_value(&skipped[1]).unwrap(),
+            serde_json::json!({ "projectId": "skipping", "seq": 9, "deviceId": null })
+        );
+        assert_eq!(
+            serde_json::to_value(&skipped[0]).unwrap()["deviceId"],
+            serde_json::json!(laptop.to_string())
+        );
+        assert_eq!(
+            super::payloads::CHANGE_SKIPPED_EVENT,
+            "collab-change-skipped"
         );
     });
 }

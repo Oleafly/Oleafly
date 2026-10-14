@@ -4,9 +4,10 @@ use tauri::Emitter;
 
 use super::moves::{RemovedPayload, LIVE_REMOVED_EVENT};
 use super::payloads::{
-    MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
-    RolePayload, StatusPayload, LIVE_MEMBERS_EVENT, LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT,
-    LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT, PRESENCE_LEFT_EVENT,
+    ChangeSkippedPayload, MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload,
+    PresencePayload, RolePayload, StatusPayload, CHANGE_SKIPPED_EVENT, LIVE_MEMBERS_EVENT,
+    LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT,
+    PRESENCE_LEFT_EVENT,
 };
 use super::{kept, uploads};
 use crate::collab::state::CollabState;
@@ -25,6 +26,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn comments_not_sent(&self, _payload: crate::collab::comments::CommentsNotSentPayload) {}
     fn comments_status(&self, _payload: crate::collab::comments::CommentsStatusPayload) {}
     fn members(&self, _payload: MembersPayload) {}
+    fn change_skipped(&self, _payload: ChangeSkippedPayload) {}
     fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
@@ -102,6 +104,10 @@ impl LiveHost for AppLiveHost {
 
     fn members(&self, payload: MembersPayload) {
         let _ = self.app.emit(LIVE_MEMBERS_EVENT, payload);
+    }
+
+    fn change_skipped(&self, payload: ChangeSkippedPayload) {
+        let _ = self.app.emit(CHANGE_SKIPPED_EVENT, payload);
     }
 
     fn removed(&self, payload: RemovedPayload) {

@@ -42,8 +42,8 @@ use session::{guard, lock, not_live, WriterSignal, ACTIVE};
 pub use lifecycle::start;
 #[cfg(test)]
 pub use payloads::{
-    MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
 };
 
 #[cfg(test)]
