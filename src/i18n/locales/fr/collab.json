@@ -891,6 +891,14 @@
     "resolve": "Résoudre",
     "reopen": "Rouvrir",
     "deleteThread": "Supprimer la discussion",
+    "deleteThreadConfirm": {
+      "title": "Supprimer cette discussion ?",
+      "description": "Le commentaire et ses réponses sont supprimés pour tout le monde dans ce projet. Cette action est définitive."
+    },
+    "deleteMessageConfirm": {
+      "title": "Supprimer ce commentaire ?",
+      "description": "Il est supprimé pour tout le monde dans ce projet. Cette action est définitive."
+    },
     "messageActions": "Autres actions pour ce commentaire",
     "threadActions": "Autres actions pour cette discussion",
     "showInEditor": "Afficher dans l'éditeur",

@@ -891,6 +891,14 @@
     "resolve": "Rozwiąż",
     "reopen": "Otwórz ponownie",
     "deleteThread": "Usuń wątek",
+    "deleteThreadConfirm": {
+      "title": "Usunąć ten wątek?",
+      "description": "Komentarz i odpowiedzi na niego zostaną usunięte dla wszystkich w tym projekcie. Tego nie można cofnąć."
+    },
+    "deleteMessageConfirm": {
+      "title": "Usunąć ten komentarz?",
+      "description": "Zostanie usunięty dla wszystkich w tym projekcie. Tego nie można cofnąć."
+    },
     "messageActions": "Więcej działań dla tego komentarza",
     "threadActions": "Więcej działań dla tego wątku",
     "showInEditor": "Pokaż w edytorze",

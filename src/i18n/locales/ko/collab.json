@@ -891,6 +891,14 @@
     "resolve": "해결",
     "reopen": "다시 열기",
     "deleteThread": "스레드 삭제",
+    "deleteThreadConfirm": {
+      "title": "이 스레드를 삭제할까요?",
+      "description": "댓글과 답글이 이 프로젝트의 모든 사람에게서 삭제됩니다. 되돌릴 수 없습니다."
+    },
+    "deleteMessageConfirm": {
+      "title": "이 댓글을 삭제할까요?",
+      "description": "이 프로젝트의 모든 사람에게서 삭제됩니다. 되돌릴 수 없습니다."
+    },
     "messageActions": "이 댓글의 추가 작업",
     "threadActions": "이 스레드의 추가 작업",
     "showInEditor": "편집기에서 보기",

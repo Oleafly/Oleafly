@@ -891,6 +891,14 @@
     "resolve": "解决",
     "reopen": "重新打开",
     "deleteThread": "删除讨论",
+    "deleteThreadConfirm": {
+      "title": "删除这个讨论吗？",
+      "description": "这条评论及其回复会对本项目中的所有人删除。此操作无法撤销。"
+    },
+    "deleteMessageConfirm": {
+      "title": "删除这条评论吗？",
+      "description": "它会对本项目中的所有人删除。此操作无法撤销。"
+    },
     "messageActions": "此评论的更多操作",
     "threadActions": "此讨论的更多操作",
     "showInEditor": "在编辑器中显示",

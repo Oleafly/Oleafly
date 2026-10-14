@@ -891,6 +891,14 @@
     "resolve": "Løs",
     "reopen": "Åpne igjen",
     "deleteThread": "Slett tråd",
+    "deleteThreadConfirm": {
+      "title": "Slette denne tråden?",
+      "description": "Kommentaren og svarene på den slettes for alle i prosjektet. Dette kan ikke angres."
+    },
+    "deleteMessageConfirm": {
+      "title": "Slette denne kommentaren?",
+      "description": "Den slettes for alle i prosjektet. Dette kan ikke angres."
+    },
     "messageActions": "Flere handlinger for denne kommentaren",
     "threadActions": "Flere handlinger for denne tråden",
     "showInEditor": "Vis i editoren",

@@ -891,6 +891,14 @@
     "resolve": "Ratkaise",
     "reopen": "Avaa uudelleen",
     "deleteThread": "Poista keskustelu",
+    "deleteThreadConfirm": {
+      "title": "Poistetaanko tämä keskustelu?",
+      "description": "Kommentti ja sen vastaukset poistetaan kaikilta tämän projektin jäseniltä. Tätä ei voi perua."
+    },
+    "deleteMessageConfirm": {
+      "title": "Poistetaanko tämä kommentti?",
+      "description": "Se poistetaan kaikilta tämän projektin jäseniltä. Tätä ei voi perua."
+    },
     "messageActions": "Lisää toimintoja tälle kommentille",
     "threadActions": "Lisää toimintoja tälle keskustelulle",
     "showInEditor": "Näytä editorissa",

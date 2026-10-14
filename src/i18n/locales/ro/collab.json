@@ -891,6 +891,14 @@
     "resolve": "Rezolvă",
     "reopen": "Redeschide",
     "deleteThread": "Șterge discuția",
+    "deleteThreadConfirm": {
+      "title": "Ștergi această discuție?",
+      "description": "Comentariul și răspunsurile la el se șterg pentru toată lumea din acest proiect. Acțiunea nu poate fi anulată."
+    },
+    "deleteMessageConfirm": {
+      "title": "Ștergi acest comentariu?",
+      "description": "Se șterge pentru toată lumea din acest proiect. Acțiunea nu poate fi anulată."
+    },
     "messageActions": "Mai multe acțiuni pentru acest comentariu",
     "threadActions": "Mai multe acțiuni pentru această discuție",
     "showInEditor": "Arată în editor",

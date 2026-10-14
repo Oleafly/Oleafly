@@ -891,6 +891,14 @@
     "resolve": "Erledigen",
     "reopen": "Wieder öffnen",
     "deleteThread": "Unterhaltung löschen",
+    "deleteThreadConfirm": {
+      "title": "Diese Unterhaltung löschen?",
+      "description": "Der Kommentar und seine Antworten werden für alle in diesem Projekt gelöscht. Das lässt sich nicht rückgängig machen."
+    },
+    "deleteMessageConfirm": {
+      "title": "Diesen Kommentar löschen?",
+      "description": "Er wird für alle in diesem Projekt gelöscht. Das lässt sich nicht rückgängig machen."
+    },
     "messageActions": "Weitere Aktionen für diesen Kommentar",
     "threadActions": "Weitere Aktionen für diese Unterhaltung",
     "showInEditor": "Im Editor anzeigen",

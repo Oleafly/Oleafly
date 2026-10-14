@@ -891,6 +891,14 @@
     "resolve": "Løs",
     "reopen": "Genåbn",
     "deleteThread": "Slet tråd",
+    "deleteThreadConfirm": {
+      "title": "Slet denne tråd?",
+      "description": "Kommentaren og dens svar slettes for alle i projektet. Det kan ikke fortrydes."
+    },
+    "deleteMessageConfirm": {
+      "title": "Slet denne kommentar?",
+      "description": "Den slettes for alle i projektet. Det kan ikke fortrydes."
+    },
     "messageActions": "Flere handlinger for denne kommentar",
     "threadActions": "Flere handlinger for denne tråd",
     "showInEditor": "Vis i editoren",

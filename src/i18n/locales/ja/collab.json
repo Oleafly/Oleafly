@@ -891,6 +891,14 @@
     "resolve": "解決",
     "reopen": "再開",
     "deleteThread": "スレッドを削除",
+    "deleteThreadConfirm": {
+      "title": "このスレッドを削除しますか？",
+      "description": "コメントとその返信は、このプロジェクトの全員に対して削除されます。元に戻すことはできません。"
+    },
+    "deleteMessageConfirm": {
+      "title": "このコメントを削除しますか？",
+      "description": "このプロジェクトの全員に対して削除されます。元に戻すことはできません。"
+    },
     "messageActions": "このコメントのその他の操作",
     "threadActions": "このスレッドのその他の操作",
     "showInEditor": "エディターで表示",

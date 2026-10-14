@@ -891,6 +891,14 @@
     "resolve": "Risolvi",
     "reopen": "Riapri",
     "deleteThread": "Elimina conversazione",
+    "deleteThreadConfirm": {
+      "title": "Eliminare questa conversazione?",
+      "description": "Il commento e le sue risposte vengono eliminati per tutti in questo progetto. Non si può annullare."
+    },
+    "deleteMessageConfirm": {
+      "title": "Eliminare questo commento?",
+      "description": "Viene eliminato per tutti in questo progetto. Non si può annullare."
+    },
     "messageActions": "Altre azioni per questo commento",
     "threadActions": "Altre azioni per questa conversazione",
     "showInEditor": "Mostra nell'editor",

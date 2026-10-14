@@ -891,6 +891,14 @@
     "resolve": "Çöz",
     "reopen": "Yeniden aç",
     "deleteThread": "Konuyu sil",
+    "deleteThreadConfirm": {
+      "title": "Bu konu silinsin mi?",
+      "description": "Yorum ve yanıtları bu projedeki herkes için silinir. Bu işlem geri alınamaz."
+    },
+    "deleteMessageConfirm": {
+      "title": "Bu yorum silinsin mi?",
+      "description": "Bu projedeki herkes için silinir. Bu işlem geri alınamaz."
+    },
     "messageActions": "Bu yorum için diğer işlemler",
     "threadActions": "Bu konu için diğer işlemler",
     "showInEditor": "Düzenleyicide göster",

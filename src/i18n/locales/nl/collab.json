@@ -891,6 +891,14 @@
     "resolve": "Oplossen",
     "reopen": "Heropenen",
     "deleteThread": "Gesprek verwijderen",
+    "deleteThreadConfirm": {
+      "title": "Dit gesprek verwijderen?",
+      "description": "De opmerking en de antwoorden erop worden voor iedereen in dit project verwijderd. Dit kun je niet ongedaan maken."
+    },
+    "deleteMessageConfirm": {
+      "title": "Deze opmerking verwijderen?",
+      "description": "Ze wordt voor iedereen in dit project verwijderd. Dit kun je niet ongedaan maken."
+    },
     "messageActions": "Meer acties voor deze opmerking",
     "threadActions": "Meer acties voor dit gesprek",
     "showInEditor": "Tonen in de editor",

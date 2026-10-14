@@ -891,6 +891,14 @@
     "resolve": "Vyřešit",
     "reopen": "Znovu otevřít",
     "deleteThread": "Smazat vlákno",
+    "deleteThreadConfirm": {
+      "title": "Smazat toto vlákno?",
+      "description": "Komentář i jeho odpovědi se smažou pro všechny v tomto projektu. Tento krok nelze vrátit."
+    },
+    "deleteMessageConfirm": {
+      "title": "Smazat tento komentář?",
+      "description": "Smaže se pro všechny v tomto projektu. Tento krok nelze vrátit."
+    },
     "messageActions": "Další akce pro tento komentář",
     "threadActions": "Další akce pro toto vlákno",
     "showInEditor": "Zobrazit v editoru",

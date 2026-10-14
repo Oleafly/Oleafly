@@ -891,6 +891,14 @@
     "resolve": "Lös",
     "reopen": "Öppna igen",
     "deleteThread": "Ta bort tråd",
+    "deleteThreadConfirm": {
+      "title": "Ta bort den här tråden?",
+      "description": "Kommentaren och svaren på den tas bort för alla i projektet. Det går inte att ångra."
+    },
+    "deleteMessageConfirm": {
+      "title": "Ta bort den här kommentaren?",
+      "description": "Den tas bort för alla i projektet. Det går inte att ångra."
+    },
     "messageActions": "Fler åtgärder för den här kommentaren",
     "threadActions": "Fler åtgärder för den här tråden",
     "showInEditor": "Visa i redigeraren",

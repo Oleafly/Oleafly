@@ -891,6 +891,14 @@
     "resolve": "Resolve",
     "reopen": "Reopen",
     "deleteThread": "Delete thread",
+    "deleteThreadConfirm": {
+      "title": "Delete this thread?",
+      "description": "The comment and its replies are deleted for everyone in this project. This can't be undone."
+    },
+    "deleteMessageConfirm": {
+      "title": "Delete this comment?",
+      "description": "It's deleted for everyone in this project. This can't be undone."
+    },
     "messageActions": "More actions for this comment",
     "threadActions": "More actions for this thread",
     "showInEditor": "Show in the editor",

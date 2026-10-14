@@ -38,6 +38,12 @@ import { CommentsPane } from "./CommentsPane";
 
 const copy = enCollab.comments;
 const actions = enCommon.actions;
+
+async function confirmDelete(title: string, confirm: string) {
+  const dialog = await screen.findByRole("alertdialog", { name: title });
+  fireEvent.click(within(dialog).getByRole("button", { name: confirm }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+}
 const MEMBERS = [projectMember(person(), "editor"), projectMember(BOB, "owner"), projectMember(CAROL, "viewer")];
 const COMMENT_MEMBERS = [
   { accountId: ALICE_ID, displayName: "Alice Chen", login: "alice-chen" },
@@ -254,6 +260,7 @@ describe("Comments tab", () => {
     await waitFor(() => expect(card("quick")).toHaveTextContent("Yes, checked twice"));
     openMenu(card("quick"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.delete }));
+    await confirmDelete(copy.deleteMessageConfirm.title, actions.delete);
     expect(mocks.collabCommentDelete).toHaveBeenCalledWith("paper", INTRO_FILE, "t-quick", "m-alice");
     await waitFor(() => expect(card("quick")).toHaveTextContent(copy.deleted));
   });
@@ -270,6 +277,15 @@ describe("Comments tab", () => {
     expect(within(card("quick")).queryByRole("button", { name: copy.threadActions })).not.toBeInTheDocument();
     openMenu(card("brown"), copy.threadActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.deleteThreadConfirm.title });
+    expect(dialog).toHaveTextContent(copy.deleteThreadConfirm.description);
+    expect(mocks.collabCommentThreadDelete).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${actions.cancel}`) }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mocks.collabCommentThreadDelete).not.toHaveBeenCalled();
+    openMenu(card("brown"), copy.threadActions);
+    await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
+    await confirmDelete(copy.deleteThreadConfirm.title, copy.deleteThread);
     expect(mocks.collabCommentThreadDelete).toHaveBeenCalledWith("paper", INTRO_FILE, "t-mine");
   });
 
@@ -417,6 +433,7 @@ describe("Comments tab", () => {
     show([mine]);
     openMenu(card("brown"), copy.threadActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
+    await confirmDelete(copy.deleteThreadConfirm.title, copy.deleteThread);
     const alerts = () => within(card("brown")).queryAllByRole("alert").map((alert) => alert.textContent);
     await waitFor(() => expect(alerts()).toHaveLength(1));
     expect(alerts()[0]).toBe(copy.refusals.someoneReplied);
@@ -642,6 +659,7 @@ describe("people who left and loads that failed", () => {
     show([conversation]);
     openMenu(card("quick"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.delete }));
+    await confirmDelete(copy.deleteMessageConfirm.title, actions.delete);
     await waitFor(() => expect(within(card("quick")).getByRole("alert")).toHaveTextContent(copy.refusals.messageDeleted));
     expect(card("quick")).toHaveTextContent("Yes, I checked @Bob Smith");
   });

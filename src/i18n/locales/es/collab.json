@@ -891,6 +891,14 @@
     "resolve": "Resolver",
     "reopen": "Volver a abrir",
     "deleteThread": "Eliminar conversación",
+    "deleteThreadConfirm": {
+      "title": "¿Eliminar esta conversación?",
+      "description": "El comentario y sus respuestas se eliminan para todas las personas de este proyecto. No se puede deshacer."
+    },
+    "deleteMessageConfirm": {
+      "title": "¿Eliminar este comentario?",
+      "description": "Se elimina para todas las personas de este proyecto. No se puede deshacer."
+    },
     "messageActions": "Más acciones para este comentario",
     "threadActions": "Más acciones para esta conversación",
     "showInEditor": "Mostrar en el editor",

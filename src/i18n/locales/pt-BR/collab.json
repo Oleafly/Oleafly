@@ -891,6 +891,14 @@
     "resolve": "Resolver",
     "reopen": "Reabrir",
     "deleteThread": "Excluir conversa",
+    "deleteThreadConfirm": {
+      "title": "Excluir esta conversa?",
+      "description": "O comentário e as respostas são excluídos para todas as pessoas deste projeto. Não é possível desfazer."
+    },
+    "deleteMessageConfirm": {
+      "title": "Excluir este comentário?",
+      "description": "Ele é excluído para todas as pessoas deste projeto. Não é possível desfazer."
+    },
     "messageActions": "Mais ações para este comentário",
     "threadActions": "Mais ações para esta conversa",
     "showInEditor": "Mostrar no editor",

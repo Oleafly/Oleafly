@@ -891,6 +891,14 @@
     "resolve": "解決",
     "reopen": "重新開啟",
     "deleteThread": "刪除討論",
+    "deleteThreadConfirm": {
+      "title": "刪除這個討論嗎？",
+      "description": "這則評論及其回覆會對本專案中的所有人刪除。此動作無法復原。"
+    },
+    "deleteMessageConfirm": {
+      "title": "刪除這則評論嗎？",
+      "description": "它會對本專案中的所有人刪除。此動作無法復原。"
+    },
     "messageActions": "這則評論的更多操作",
     "threadActions": "這個討論的更多操作",
     "showInEditor": "在編輯器中顯示",
