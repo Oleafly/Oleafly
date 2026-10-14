@@ -140,6 +140,32 @@ describe("LiveSessions", () => {
     expect(fresh).not.toBe(session);
   });
 
+  it("holds only the files it has a shared document for, without opening one to check", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel));
+    expect(sessions.holds("main.tex")).toBe(false);
+    sessions.documentSession("main.tex");
+    expect(sessions.holds("main.tex")).toBe(true);
+    expect(sessions.holds("intro.tex")).toBe(false);
+    await flush();
+    expect(channel.opens).toHaveLength(1);
+    sessions.close();
+    expect(sessions.holds("main.tex")).toBe(false);
+  });
+
+  it("stops holding a file that turns out not to be shared", async () => {
+    const sessions = new LiveSessions({
+      transport: { open: async () => null, change: vi.fn(), close: vi.fn() },
+      readOnly: () => false,
+      initialText: () => "local",
+      mirror: vi.fn(),
+      detached: vi.fn(),
+    });
+    sessions.documentSession("notes.txt");
+    await flush();
+    expect(sessions.holds("notes.txt")).toBe(false);
+  });
+
   it("closes every file and opens nothing more once closed", async () => {
     const channel = new FakeChannel("abc");
     const sessions = new LiveSessions(options(channel));

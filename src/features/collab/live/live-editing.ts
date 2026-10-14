@@ -123,6 +123,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   const uninstallPort = installCollabEditorPort({
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
+    holds: (path) => useFilesStore.getState().projectId === projectId && sessions.holds(path),
     flush: (id) => (id === projectId ? sessions.flush(() => collabLiveFlush(projectId)) : Promise.resolve()),
   });
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });

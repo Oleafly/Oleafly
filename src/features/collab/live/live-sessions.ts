@@ -44,6 +44,10 @@ export class LiveSessions {
     return session;
   }
 
+  holds(path: string): boolean {
+    return !this.closed && this.sessions.has(path);
+  }
+
   async flush(write: () => Promise<void>): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<void>((resolve) => {

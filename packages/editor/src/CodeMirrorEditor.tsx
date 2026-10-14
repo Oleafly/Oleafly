@@ -485,6 +485,15 @@ function dispatchDocumentSync(
   });
 }
 
+const NON_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
+
+function typingElsewhere(view: EditorView): boolean {
+  const active = view.dom.ownerDocument.activeElement;
+  if (!(active instanceof HTMLElement) || view.dom.contains(active)) return false;
+  if (active instanceof HTMLTextAreaElement || active.isContentEditable) return true;
+  return active instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(active.type);
+}
+
 function restorePathHistory(
   view: EditorView,
   compartment: Compartment,
@@ -1297,7 +1306,12 @@ export function CodeMirrorEditor({
     queueMicrotask(() => {
       suppressSyncRef.current = false;
     });
-    view.focus();
+    // Opening a file moves the focus here, but a resync of the same file must
+    // leave it alone: a disk reload or a shared session can bump the version
+    // while the person types somewhere else. A switch never takes the focus
+    // out of another text field either, since a collaborator's rename or
+    // delete can switch the file.
+    if (pathChanged && !typingElsewhere(view)) view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
   useEffect(() => synchronizeRef.current(), [activePath, docVersion]);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   invalidateWysiwygProjectSession: vi.fn(),
   notifyProjectFilesChanged: vi.fn(),
   rebuildFromDisk: vi.fn(),
+  updateFile: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -84,9 +85,10 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 vi.mock("@/store/project-index", () => ({
-  useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk }) },
+  useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk, updateFile: mocks.updateFile }) },
 }));
 
+import { installCollabEditorPort } from "@/lib/collab-live-bridge";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
@@ -552,6 +554,60 @@ describe("folder changes and the file tree", () => {
 
     expect(mocks.listFiles).not.toHaveBeenCalled();
     expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+});
+
+describe("folder changes for files a live session holds", () => {
+  const change = (paths: string[], rescan = false) => ({ projectId: "project", paths, rescan });
+  let uninstall: () => void = () => {};
+
+  beforeEach(() => {
+    useFilesStore.setState({
+      activePath: "main.tex",
+      files: {
+        "main.tex": { content: "typed by Bob\n", dirty: false },
+        "references.bib": { content: "old\n", dirty: false },
+      },
+    });
+    uninstall = installCollabEditorPort({
+      documentSession: () => null,
+      holds: (path) => path === "main.tex",
+      flush: async () => {},
+    });
+  });
+
+  afterEach(() => uninstall());
+
+  it("does not read back, reload or rebuild the index for a file the session wrote", async () => {
+    const before = useFilesStore.getState().docVersion;
+
+    applyFolderChange(change(["main.tex"]));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().docVersion).toBe(before);
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("typed by Bob\n");
+    expect(mocks.updateFile).toHaveBeenCalledWith("main.tex", "typed by Bob\n");
+  });
+
+  it("still reloads the other files the same change names", async () => {
+    mocks.readFileContent.mockResolvedValue("new on disk\n");
+
+    applyFolderChange(change(["main.tex", "references.bib"]));
+
+    await vi.waitFor(() => expect(useFilesStore.getState().files["references.bib"].content).toBe("new on disk\n"));
+    expect(mocks.readFileContent).toHaveBeenCalledTimes(1);
+    expect(mocks.readFileContent).toHaveBeenCalledWith("project", "references.bib");
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1));
+  });
+
+  it("leaves a held file alone even when the whole folder is scanned again", async () => {
+    applyFolderChange(change([], true));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.readFileContent).not.toHaveBeenCalledWith("project", "main.tex");
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("typed by Bob\n");
   });
 });
 

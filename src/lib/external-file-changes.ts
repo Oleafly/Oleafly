@@ -6,6 +6,7 @@ import {
 } from "@/store/files";
 import { projectFolderAvailable } from "@/store/project-availability";
 import { useIndexStore } from "@/store/project-index";
+import { collabHoldsDocument } from "@/lib/collab-live-bridge";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 
 export type ExternalFileChange =
@@ -58,6 +59,17 @@ async function refreshAfterFolderChange(
   await useIndexStore.getState().rebuildFromDisk();
 }
 
+// A file a live document session holds was written from text this window
+// already has: the session mirrors it into the store as it arrives. Reading it
+// back would only cost IPC, hashing and a document resync on every keystroke.
+function updateIndexFromHeld(paths: readonly string[]): void {
+  const files = useFilesStore.getState().files;
+  for (const path of paths) {
+    const file = files[path];
+    if (file && isProjectIntelligencePath(path)) useIndexStore.getState().updateFile(path, file.content);
+  }
+}
+
 export function applyFolderChange(change: FolderChangePayload): void {
   if (!change.projectId || change.projectId !== useFilesStore.getState().projectId) return;
   if (!projectFolderAvailable(change.projectId)) return;
@@ -73,13 +85,16 @@ export function applyFolderChange(change: FolderChangePayload): void {
     change.rescan ||
     change.structural === true ||
     change.paths.some((path) => !known.has(path));
-  const sourcesChanged = change.rescan || change.paths.some(isProjectIntelligencePath);
+  const held = change.paths.filter(collabHoldsDocument);
+  const fromDisk = change.paths.filter((path) => !held.includes(path));
+  const sourcesChanged = change.rescan || fromDisk.some(isProjectIntelligencePath);
+  updateIndexFromHeld(held);
   void refreshAfterFolderChange(change.projectId, listAgain, sourcesChanged).catch(() => {});
   const affected = (path: string) =>
     change.rescan ||
     change.paths.some((changed) => path === changed || path.startsWith(`${changed}/`));
   for (const [path, file] of Object.entries(files.files)) {
-    if (!affected(path)) continue;
+    if (!affected(path) || collabHoldsDocument(path)) continue;
     if (file.dirty) void detectDiskChange(change.projectId, path);
     else refreshExternalFile(change.projectId, path, file);
   }

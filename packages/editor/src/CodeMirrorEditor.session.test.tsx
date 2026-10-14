@@ -377,6 +377,59 @@ describe("carriage returns in a shared document", () => {
   });
 });
 
+describe("where the focus goes when the document changes", () => {
+  function outsideField(tag: "textarea" | "input"): HTMLElement {
+    const field = document.createElement(tag);
+    document.body.append(field);
+    field.focus();
+    return field;
+  }
+
+  afterEach(() => {
+    for (const field of Array.from(document.body.querySelectorAll(":scope > textarea, :scope > input"))) field.remove();
+  });
+
+  it("leaves the focus in another field when the open file is resynced", async () => {
+    const { store } = await mountEditor({ activePath: "main.tex", docVersion: 0, files: { "main.tex": "a" } }, new Map());
+    const comment = outsideField("textarea");
+
+    await act(async () => store.setState((s) => ({ files: { ...s.files, "main.tex": "a reloaded" } })));
+    await bumpVersion(store);
+
+    expect(view().state.doc.toString()).toBe("a reloaded");
+    expect(document.activeElement).toBe(comment);
+    expect(view().hasFocus).toBe(false);
+  });
+
+  it("does not take the focus out of a text field when the open file switches", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b" } },
+      new Map(),
+    );
+    const search = outsideField("input");
+
+    await open(store, "b.tex");
+
+    expect(view().state.doc.toString()).toBe("b");
+    expect(document.activeElement).toBe(search);
+  });
+
+  it("still takes the focus when a file is opened from somewhere that isn't a text field", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b" } },
+      new Map(),
+    );
+    const treeRow = document.createElement("button");
+    document.body.append(treeRow);
+    treeRow.focus();
+
+    await open(store, "b.tex");
+
+    expect(view().hasFocus).toBe(true);
+    treeRow.remove();
+  });
+});
+
 describe("switching between session files", () => {
   it("follows the session of the file it switches to", async () => {
     const a = new LocalDocumentSession("a.tex", "alpha");
