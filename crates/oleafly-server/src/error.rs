@@ -12,6 +12,11 @@ pub enum ServerError {
     Forbidden,
     NotFound,
     Conflict(String),
+    Refused {
+        status: StatusCode,
+        code: &'static str,
+        message: String,
+    },
     DeviceInUse,
     RateLimited,
     Auth(AuthErrorCode),
@@ -20,6 +25,22 @@ pub enum ServerError {
 }
 
 impl ServerError {
+    pub fn invalid(code: &'static str, message: impl Into<String>) -> ServerError {
+        ServerError::Refused {
+            status: StatusCode::BAD_REQUEST,
+            code,
+            message: message.into(),
+        }
+    }
+
+    pub fn refused(code: &'static str, message: impl Into<String>) -> ServerError {
+        ServerError::Refused {
+            status: StatusCode::CONFLICT,
+            code,
+            message: message.into(),
+        }
+    }
+
     pub fn status(&self) -> StatusCode {
         match self {
             ServerError::BadRequest(_) => StatusCode::BAD_REQUEST,
@@ -27,6 +48,7 @@ impl ServerError {
             ServerError::Forbidden => StatusCode::FORBIDDEN,
             ServerError::NotFound => StatusCode::NOT_FOUND,
             ServerError::Conflict(_) | ServerError::DeviceInUse => StatusCode::CONFLICT,
+            ServerError::Refused { status, .. } => *status,
             ServerError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             ServerError::Auth(code) => auth_status(code),
             ServerError::SessionEnded(_) => StatusCode::UNAUTHORIZED,
@@ -41,6 +63,7 @@ impl ServerError {
             ServerError::Forbidden => "forbidden",
             ServerError::NotFound => "not_found",
             ServerError::Conflict(_) => "conflict",
+            ServerError::Refused { code, .. } => code,
             ServerError::DeviceInUse => "device_in_use",
             ServerError::RateLimited => "rate_limited",
             ServerError::Auth(code) => auth_code_name(code),
@@ -51,7 +74,9 @@ impl ServerError {
 
     pub fn public_message(&self) -> String {
         match self {
-            ServerError::BadRequest(message) | ServerError::Conflict(message) => message.clone(),
+            ServerError::BadRequest(message)
+            | ServerError::Conflict(message)
+            | ServerError::Refused { message, .. } => message.clone(),
             ServerError::Unauthorized => "Sign in to this server again.".to_string(),
             ServerError::Forbidden => "Your role on this server doesn't allow that.".to_string(),
             ServerError::NotFound => "Not found.".to_string(),
@@ -251,6 +276,43 @@ mod tests {
             assert_eq!(body["message"], message);
         }
     }
+
+    #[tokio::test]
+    async fn a_refusal_a_person_can_cause_carries_its_own_code_and_status() {
+        let cases = [
+            (
+                ServerError::invalid("invalid_email", "That email address doesn't look right."),
+                StatusCode::BAD_REQUEST,
+                "invalid_email",
+                "That email address doesn't look right.",
+            ),
+            (
+                ServerError::refused("last_admin", LAST_ADMIN_TEXT.to_string()),
+                StatusCode::CONFLICT,
+                "last_admin",
+                LAST_ADMIN_TEXT,
+            ),
+        ];
+        for (error, status, code, message) in cases {
+            assert_eq!(error.status(), status);
+            assert_eq!(error.code(), code);
+            assert_eq!(error.public_message(), message);
+            assert_eq!(error.to_string(), format!("{code}: {message}"));
+            let response = error.into_response();
+            assert_eq!(response.status(), status);
+            let bytes = axum::body::to_bytes(response.into_body(), 4096)
+                .await
+                .unwrap();
+            let body: Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(
+                body,
+                serde_json::json!({ "code": code, "message": message })
+            );
+        }
+    }
+
+    const LAST_ADMIN_TEXT: &str =
+        "This is the server's only admin. Make someone else an admin first.";
 
     #[test]
     fn every_auth_code_has_a_wire_name_status_and_message() {
