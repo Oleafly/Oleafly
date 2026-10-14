@@ -1184,6 +1184,39 @@ mod tests {
     }
 
     #[test]
+    fn a_kept_file_being_typed_is_merged_once_it_is_written_and_never_read_as_changed_outside() {
+        run(async {
+            let rig = rig(&[
+                ("main.tex", "alpha\nbeta\n"),
+                ("a.tex", "a"),
+                ("b.tex", "b"),
+            ])
+            .await;
+            rig.write("main.tex", "alpha\nlocal\nbeta\n");
+            rig.outside(&["main.tex"], pause_of(&["main.tex"], 3)).await;
+            rig.active.decide(SyncDecision::KeepLocal).await.unwrap();
+            let main = rig.id_of("main.tex").unwrap();
+            let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            lock(&rig.active.live).open_file(&main, quiet).unwrap();
+            rig.active.note_written([&"main.tex".to_owned()]);
+
+            rig.remote("main.tex", "alpha\nbeta\nremote\n");
+            let typing = rig.active.write_out_paced(false).await.unwrap();
+            let held = rig.on_disk("main.tex");
+            let written = rig.active.write_out().await.unwrap();
+            rig.stop();
+
+            assert!(typing.is_empty(), "{typing:?}");
+            assert_eq!(held.as_deref(), Some("alpha\nlocal\nbeta\n"));
+            assert!(written.is_empty(), "{written:?}");
+            assert_eq!(
+                rig.on_disk("main.tex").as_deref(),
+                Some("alpha\nlocal\nbeta\nremote\n")
+            );
+        });
+    }
+
+    #[test]
     fn remote_changes_that_arrive_while_the_decision_waits_reach_the_kept_copy() {
         run(async {
             let rig = rig(&[

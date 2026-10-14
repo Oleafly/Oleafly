@@ -224,10 +224,10 @@ impl Active {
             self.save_document().await;
         }
         let mut plan = materialize::plan(&previous, &next);
-        let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         if !urgent {
             self.hold_back_typing(&next, &mut texts);
         }
+        let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
