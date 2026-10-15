@@ -124,6 +124,18 @@ pub(crate) struct Lab {
 
 impl Lab {
     pub(crate) async fn start() -> Lab {
+        Lab::at(None).await
+    }
+
+    /// A lab whose server is reached through `relay`, the address its
+    /// sign-in redirects name, as behind a reverse proxy.
+    pub(crate) async fn behind(relay: &Relay) -> Lab {
+        let lab = Lab::at(Some(&relay.url)).await;
+        relay.point_at(lab.address());
+        lab
+    }
+
+    async fn at(public_url: Option<&str>) -> Lab {
         use oleafly_server::test_support::{test_config, MockGithub, MockGithubUser, TestServer};
         let github = MockGithub::start(vec![MockGithubUser {
             id: 1,
@@ -143,8 +155,12 @@ impl Lab {
                 web_url: github.web_url(),
                 api_url: github.api_url(),
             });
+        let server = match public_url {
+            Some(url) => TestServer::start_at(config, url).await,
+            None => TestServer::start(config).await,
+        };
         Lab {
-            server: TestServer::start(config).await,
+            server,
             _github: github,
         }
     }
@@ -175,6 +191,7 @@ impl Lab {
 
 pub(crate) struct Relay {
     pub(crate) url: String,
+    upstream: std::sync::Arc<Mutex<String>>,
     down: std::sync::Arc<std::sync::atomic::AtomicBool>,
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
     refused: std::sync::Arc<Mutex<Option<String>>>,
@@ -186,6 +203,14 @@ pub(crate) struct Relay {
 
 impl Relay {
     pub(crate) async fn start(upstream: String) -> Relay {
+        let relay = Relay::bind().await;
+        relay.point_at(upstream);
+        relay
+    }
+
+    /// A relay that listens before it knows where to forward, so a server
+    /// can be started with the relay's address as its public URL first.
+    pub(crate) async fn bind() -> Relay {
         use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -193,6 +218,8 @@ impl Relay {
             .await
             .unwrap();
         let url = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let upstream: Arc<Mutex<String>> = Arc::default();
+        let target = Arc::clone(&upstream);
         let down = Arc::new(AtomicBool::new(false));
         let seen = Arc::new(Mutex::new(Vec::new()));
         let refused: Arc<Mutex<Option<String>>> = Arc::default();
@@ -210,7 +237,11 @@ impl Relay {
                     continue;
                 }
                 connected.fetch_add(1, Ordering::SeqCst);
-                let (gate, log, upstream) = (Arc::clone(&gate), Arc::clone(&log), upstream.clone());
+                let upstream = target
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .clone();
+                let (gate, log) = (Arc::clone(&gate), Arc::clone(&log));
                 let (refusing, counted) = (Arc::clone(&refusing), Arc::clone(&counted));
                 let (stalling, held) = (Arc::clone(&stalling), Arc::clone(&held));
                 tokio::spawn(async move {
@@ -272,6 +303,7 @@ impl Relay {
         });
         Relay {
             url,
+            upstream,
             down,
             seen,
             refused,
@@ -280,6 +312,10 @@ impl Relay {
             stalls,
             accepted,
         }
+    }
+
+    pub(crate) fn point_at(&self, upstream: String) {
+        *self.upstream.lock().unwrap_or_else(PoisonError::into_inner) = upstream;
     }
 
     pub(crate) fn connections(&self) -> usize {

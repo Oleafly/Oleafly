@@ -36,6 +36,95 @@ fn paths_of(live: &LiveProject) -> Vec<String> {
     paths
 }
 
+fn laid_out(live: &LiveProject, kind: NodeKind, wanted: impl Fn(&str) -> bool) -> String {
+    materialize::layout(&live.doc().nodes().unwrap())
+        .into_values()
+        .find(|placed| placed.kind == kind && wanted(&placed.path))
+        .map(|placed| placed.path)
+        .expect("the node is laid out")
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_file_and_a_folder_the_layout_renames_move_on_disk_and_are_imported_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let (mut live, mut disk, _main) = project(root);
+    std::fs::write(root.join("aux.tex"), "aux text").unwrap();
+    std::fs::create_dir_all(root.join("con")).unwrap();
+    std::fs::write(root.join("con/notes.tex"), "notes").unwrap();
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    let (changed, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    assert!(changed);
+    let file = laid_out(&live, NodeKind::Text, |path| {
+        path.starts_with("unnamed-") && !path.contains('/')
+    });
+    let folder = laid_out(&live, NodeKind::Dir, |path| path.starts_with("unnamed-"));
+    let mut expected = vec![
+        ("aux.tex".to_owned(), file.clone()),
+        ("con".to_owned(), folder.clone()),
+    ];
+    let mut renamed = renamed;
+    renamed.sort();
+    expected.sort();
+    assert_eq!(renamed, expected);
+    assert!(!root.join("aux.tex").exists());
+    assert!(!root.join("con").exists());
+    assert_eq!(
+        std::fs::read_to_string(root.join(&file)).unwrap(),
+        "aux text"
+    );
+    let notes = format!("{folder}/notes.tex");
+    assert_eq!(std::fs::read_to_string(root.join(&notes)).unwrap(), "notes");
+    assert!(disk.hashes.contains_key(&file) && disk.hashes.contains_key(&notes));
+    assert!(!disk.hashes.contains_key("aux.tex") && !disk.hashes.contains_key("con/notes.tex"));
+    let nodes = live.doc().nodes().unwrap().len();
+    let again = read_local_changes(root, &disk, &live, None).unwrap();
+    assert!(
+        again.is_empty(),
+        "a second scan found the renamed files again"
+    );
+    apply_local_import(&mut live, &mut disk, &mut bases, again, root).unwrap();
+    assert_eq!(live.doc().nodes().unwrap().len(), nodes);
+}
+
+#[test]
+fn a_second_spelling_of_a_name_moves_beside_it_and_is_imported_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let (mut live, mut disk, _main) = project(root);
+    std::fs::write(root.join("Main.tex"), "other").unwrap();
+    if std::fs::read_to_string(root.join("main.tex")).unwrap() != "abc" {
+        return;
+    }
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    let (_, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    let beside = laid_out(&live, NodeKind::Text, |path| {
+        path.starts_with("Main (") && path.ends_with(".tex")
+    });
+    assert_eq!(renamed, vec![("Main.tex".to_owned(), beside.clone())]);
+    assert_eq!(
+        std::fs::read_to_string(root.join(&beside)).unwrap(),
+        "other"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc"
+    );
+    let nodes = live.doc().nodes().unwrap().len();
+    let again = read_local_changes(root, &disk, &live, None).unwrap();
+    assert!(
+        again.is_empty(),
+        "a second scan found the second spelling again"
+    );
+    apply_local_import(&mut live, &mut disk, &mut bases, again, root).unwrap();
+    assert_eq!(live.doc().nodes().unwrap().len(), nodes);
+}
+
 #[test]
 fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_one() {
     let dir = tempfile::tempdir().unwrap();

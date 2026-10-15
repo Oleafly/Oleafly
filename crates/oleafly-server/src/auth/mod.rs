@@ -17,6 +17,7 @@ pub mod throttle;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::future::Future;
+use std::ops::RangeInclusive;
 use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
@@ -214,6 +215,17 @@ impl ProviderRegistry {
             .remove(provider);
     }
 
+    // Whether a failure the server saw itself is still recent. A browser's
+    // report can sit in the list, but on its own it never says that sign-in
+    // is failing.
+    pub fn failing(&self, now: i64) -> bool {
+        self.problems
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .any(|noted| noted.seen_by_server && now - noted.problem.at < PROBLEM_TTL_MS)
+    }
+
     pub fn problems(&self, now: i64) -> Vec<SignInProblem> {
         let mut problems = self.problems.lock().unwrap_or_else(PoisonError::into_inner);
         problems.retain(|_, noted| now - noted.problem.at < PROBLEM_TTL_MS);
@@ -234,25 +246,55 @@ pub fn error_code(text: &str) -> Option<&str> {
     well_formed.then_some(text)
 }
 
+// Unicode's bidirectional controls and line and paragraph separators,
+// which reorder text or break it into lines.
+const REORDERING: [RangeInclusive<char>; 4] = [
+    '\u{061c}'..='\u{061c}',
+    '\u{200e}'..='\u{200f}',
+    '\u{2028}'..='\u{202e}',
+    '\u{2066}'..='\u{2069}',
+];
+
+// Format characters nobody can see: zero-width spaces and joiners, word
+// joiners and invisible operators, the deprecated format controls, the byte
+// order mark and the tag characters.
+const INVISIBLE: [RangeInclusive<char>; 5] = [
+    '\u{200b}'..='\u{200d}',
+    '\u{2060}'..='\u{2064}',
+    '\u{206a}'..='\u{206f}',
+    '\u{feff}'..='\u{feff}',
+    '\u{e0000}'..='\u{e007f}',
+];
+
 // Text from a provider or a browser, made safe for one log line: control
 // characters such as CR and LF, and the marks that reorder or break lines,
-// become spaces.
+// become spaces, and invisible format characters are dropped.
 pub fn plain(text: &str) -> String {
-    text.chars().map(printable).collect()
+    text.chars().filter_map(printable).collect()
 }
 
 pub fn short(text: &str) -> String {
-    text.chars().map(printable).take(DETAIL_CHARS).collect()
+    text.chars()
+        .filter_map(printable)
+        .take(DETAIL_CHARS)
+        .collect()
 }
 
-fn printable(character: char) -> char {
-    let reorders_or_breaks = matches!(character, '\u{200e}' | '\u{200f}' | '\u{2028}' | '\u{2029}')
-        || ('\u{202a}'..='\u{202e}').contains(&character)
-        || ('\u{2066}'..='\u{2069}').contains(&character);
-    if character.is_control() || reorders_or_breaks {
-        ' '
+// A device name or system as the app sent it, cleaned the same way and with
+// its spaces collapsed, before it is stored or logged.
+pub fn clean_label(text: &str) -> String {
+    plain(text).split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn printable(character: char) -> Option<char> {
+    let within =
+        |ranges: &[RangeInclusive<char>]| ranges.iter().any(|range| range.contains(&character));
+    if within(&INVISIBLE) {
+        None
+    } else if character.is_control() || within(&REORDERING) {
+        Some(' ')
     } else {
-        character
+        Some(character)
     }
 }
 
@@ -382,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn provider_text_reaches_a_log_line_without_line_breaks_or_reordering_marks() {
+    fn provider_text_reaches_a_log_line_without_line_breaks_or_hidden_marks() {
         let forged = concat!(
             "bad_code\r\n2026-10-14T03:12:00Z  INFO admin signed in",
             "\u{202e}txt.exe\u{2028}\u{1b}[2J\tend"
@@ -401,6 +443,41 @@ mod tests {
             short(&"x".repeat(DETAIL_CHARS + 5)).chars().count(),
             DETAIL_CHARS
         );
+        for mark in ['\u{061c}', '\u{200e}', '\u{2029}', '\u{202a}', '\u{2069}'] {
+            assert_eq!(plain(&format!("a{mark}b")), "a b", "{mark:?}");
+        }
+        let hidden = [
+            '\u{200b}',
+            '\u{200c}',
+            '\u{200d}',
+            '\u{2060}',
+            '\u{2064}',
+            '\u{206a}',
+            '\u{206f}',
+            '\u{feff}',
+            '\u{e0000}',
+            '\u{e0041}',
+            '\u{e007f}',
+        ];
+        for mark in hidden {
+            assert_eq!(plain(&format!("in{mark}visible")), "invisible", "{mark:?}");
+        }
+        let tagged: String = hidden.iter().collect();
+        assert_eq!(short(&format!("{tagged}ok")), "ok");
+        assert_eq!(plain("Ådne’s café, 東京"), "Ådne’s café, 東京");
+    }
+
+    #[test]
+    fn a_device_name_keeps_its_words_and_loses_breaks_marks_and_extra_spaces() {
+        assert_eq!(
+            clean_label("  Ada's\tLaptop\r\n\u{202e}exe.txt\u{200b}  "),
+            "Ada's Laptop exe.txt"
+        );
+        assert_eq!(
+            clean_label("Bjørn’s  ThinkPad (lab)"),
+            "Bjørn’s ThinkPad (lab)"
+        );
+        assert_eq!(clean_label("\u{200b}\r\n\u{2066}\u{feff}"), "");
     }
 
     #[test]
@@ -434,6 +511,7 @@ mod tests {
         registry.note_reported_error("github", 1_000, "invalid_client");
         let reported = registry.problems(1_000);
         assert_eq!(reported.len(), 1);
+        assert!(!registry.failing(1_000));
         assert_eq!(
             reported[0].reason,
             "invalid_client, as reported by the browser. The server could not check it."
@@ -445,6 +523,7 @@ mod tests {
         );
         registry.note_reported_error("github", 3_000, "server_error");
         let seen = registry.problems(3_000);
+        assert!(registry.failing(3_000));
         assert_eq!(seen.len(), 1);
         assert_eq!(seen[0].at, 2_000);
         assert!(
@@ -453,6 +532,7 @@ mod tests {
         );
         registry.note_reported_error("github", 2_000 + PROBLEM_TTL_MS, "server_error");
         let later = registry.problems(2_000 + PROBLEM_TTL_MS);
+        assert!(!registry.failing(2_000 + PROBLEM_TTL_MS));
         assert_eq!(later.len(), 1);
         assert!(
             later[0].reason.starts_with("server_error, as reported"),

@@ -21,8 +21,8 @@ use crate::auth::admission::{self, Applied, Via};
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::refresh::{self, RefreshOutcome};
 use crate::auth::{
-    browser_binding, db_error, device_code, devices, email_link, error_code, nonce, noting_failure,
-    plain, setup, short, ExternalIdentity,
+    browser_binding, clean_label, db_error, device_code, devices, email_link, error_code, nonce,
+    noting_failure, plain, setup, short, ExternalIdentity,
 };
 use crate::config::ServerConfig;
 use crate::error::ServerError;
@@ -160,8 +160,9 @@ fn well_formed(query: &AuthStartQuery) -> bool {
     let challenge = a_pkce_challenge(&query.code_challenge);
     let key = b64url_decode(&query.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
     let client_state = !query.state.is_empty() && query.state.len() <= 512;
-    let name = !query.device_name.trim().is_empty() && query.device_name.chars().count() <= 100;
-    let platform = !query.platform.trim().is_empty() && query.platform.chars().count() <= 40;
+    let name =
+        !clean_label(&query.device_name).is_empty() && query.device_name.chars().count() <= 100;
+    let platform = !clean_label(&query.platform).is_empty() && query.platform.chars().count() <= 40;
     challenge && key && client_state && name && platform
 }
 
@@ -304,8 +305,8 @@ async fn start(
         redirect_uri: redirect.to_string(),
         code_challenge: query.code_challenge.clone(),
         device_public_key: query.device_public_key.clone(),
-        device_name: query.device_name.trim().to_owned(),
-        platform: query.platform.trim().to_owned(),
+        device_name: clean_label(&query.device_name),
+        platform: clean_label(&query.platform),
         setup_code_hash,
         provider_verifier: random_token(),
         provider_nonce: random_token(),
