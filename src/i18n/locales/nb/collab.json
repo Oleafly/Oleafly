@@ -220,7 +220,7 @@
     "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
-    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer akkurat nå. Spør en administrator av serveren.",
+    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer før eierens konto er aktiv igjen.",
     "wrong_server": "Serveren sendte innloggingssiden sin fra en annen adresse, så Oleafly stoppet. Sjekk serveradressen, eller spør den som drifter serveren.",
     "not_a_link": "Det er ikke en lenke til et delt prosjekt. Kopier hele lenken, og prøv igjen.",
     "signed_out": "Du er logget ut av denne serveren. Logg inn igjen for å synkronisere prosjektet.",

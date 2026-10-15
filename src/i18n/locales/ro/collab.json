@@ -220,7 +220,7 @@
     "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
     "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
     "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
-    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi acum. Întreabă un administrator al serverului.",
+    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi până când contul său devine din nou activ.",
     "wrong_server": "Acest server a trimis pagina de autentificare de la altă adresă, așa că Oleafly s-a oprit. Verifică adresa serverului sau întreabă persoana care îl administrează.",
     "not_a_link": "Acesta nu este un link către un proiect partajat. Copiază tot linkul, apoi încearcă din nou.",
     "signed_out": "Ești deconectat de la acest server. Autentifică-te din nou ca să sincronizezi acest proiect.",

@@ -220,7 +220,7 @@
     "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
-    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi nyt ottaa uusia henkilöitä. Kysy palvelimen ylläpitäjältä.",
+    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi ottaa uusia henkilöitä ennen kuin omistajan tili on taas aktiivinen.",
     "wrong_server": "Tämä palvelin lähetti kirjautumissivunsa eri osoitteesta, joten Oleafly keskeytti. Tarkista palvelimen osoite tai kysy palvelimen ylläpitäjältä.",
     "not_a_link": "Tämä ei ole linkki jaettuun projektiin. Kopioi koko linkki ja yritä sitten uudelleen.",
     "signed_out": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään, niin projekti synkronoituu.",

@@ -220,7 +220,7 @@
     "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
     "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
     "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
-    "owner_away": "De eigenaar van het project is op deze server geschorst of weggehaald, dus het project kan nu geen nieuwe mensen opnemen. Vraag het een beheerder van de server.",
+    "owner_away": "De eigenaar van het project is op deze server geschorst of weggehaald, dus het project kan geen nieuwe mensen opnemen totdat het account van de eigenaar weer actief is.",
     "wrong_server": "Deze server stuurde zijn aanmeldpagina vanaf een ander adres, dus Oleafly is gestopt. Controleer het serveradres of vraag het aan wie de server beheert.",
     "not_a_link": "Dat is geen link naar een gedeeld project. Kopieer de hele link en probeer het opnieuw.",
     "signed_out": "Je bent afgemeld bij deze server. Meld je opnieuw aan om dit project te synchroniseren.",

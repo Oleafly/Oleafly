@@ -220,7 +220,7 @@
     "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
-    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może teraz przyjąć nowych osób. Zapytaj administratora serwera.",
+    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może przyjąć nowych osób, dopóki jego konto nie będzie znowu aktywne.",
     "wrong_server": "Ten serwer wysłał stronę logowania z innego adresu, więc Oleafly przerwał. Sprawdź adres serwera albo zapytaj osobę, która go prowadzi.",
     "not_a_link": "To nie jest link do udostępnionego projektu. Skopiuj cały link i spróbuj ponownie.",
     "signed_out": "Wylogowano Cię z tego serwera. Zaloguj się ponownie, aby synchronizować ten projekt.",

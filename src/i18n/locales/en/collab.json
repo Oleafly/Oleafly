@@ -220,7 +220,7 @@
     "already_member": "That person already has an account. Change their role under People.",
     "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
     "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
-    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people right now. Ask an admin of the server.",
+    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people until their account is active again.",
     "wrong_server": "This server sent its sign-in page from a different address, so Oleafly stopped. Check the server address, or ask the person who runs it.",
     "not_a_link": "That isn't a link to a shared project. Copy the whole link, then try again.",
     "signed_out": "You're signed out of this server. Sign in again to sync this project.",

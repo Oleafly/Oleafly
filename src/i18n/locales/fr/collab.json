@@ -220,7 +220,7 @@
     "already_member": "Cette personne a déjà un compte. Changez son rôle dans Personnes.",
     "project_not_shared": "Ce projet n'est pas encore partagé. Partagez-le d'abord, puis invitez des personnes.",
     "project_full": "Ce projet compte déjà autant de personnes que le serveur le permet. Retirez d'abord quelqu'un, ou demandez à l'administrateur du serveur.",
-    "owner_away": "La personne propriétaire du projet est suspendue ou retirée de ce serveur, le projet ne peut donc pas accueillir de nouvelles personnes pour l'instant. Demandez à un administrateur du serveur.",
+    "owner_away": "La personne propriétaire du projet est suspendue ou retirée de ce serveur, le projet ne peut donc pas accueillir de nouvelles personnes tant que son compte n'est pas de nouveau actif.",
     "wrong_server": "Ce serveur a envoyé sa page de connexion depuis une autre adresse, Oleafly s'est donc arrêté. Vérifiez l'adresse du serveur ou demandez à la personne qui le gère.",
     "not_a_link": "Ce n'est pas un lien vers un projet partagé. Copiez le lien en entier, puis réessayez.",
     "signed_out": "Vous êtes déconnecté de ce serveur. Reconnectez-vous pour synchroniser ce projet.",
