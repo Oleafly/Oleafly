@@ -120,6 +120,43 @@ describe("AllowlistTab", () => {
     expect(screen.getByRole("textbox", { name: copy.match.email })).toHaveValue("dan@uni.edu");
   });
 
+  it("names a mistyped email address or sign-in name without asking the server", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await screen.findByText(copy.empty);
+    await user.type(screen.getByRole("textbox", { name: copy.match.email }), "ada@uni");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.invalid_email);
+    expect(mocks.collabAdminAddAllowlist).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["invalid_email", enCollab.errors.invalid_email],
+    ["already_member", enCollab.errors.already_member],
+    ["duplicate_entry", copy.duplicate],
+  ])("explains the server's %s refusal in its own words", async (code, words) => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    mocks.collabAdminAddAllowlist.mockRejectedValue(collabError(code));
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await screen.findByText(copy.empty);
+    await user.type(screen.getByRole("textbox", { name: copy.match.email }), "dan@uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(words);
+  });
+
+  it("shows the server's own sentence for a refusal it has no code for", async () => {
+    mocks.collabAdminAllowlist.mockResolvedValue([]);
+    mocks.collabAdminAddAllowlist.mockRejectedValue(collabError("invalid", "Choose a sign-in provider for that name."));
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await screen.findByText(copy.empty);
+    await user.type(screen.getByRole("textbox", { name: copy.match.email }), "dan@uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a sign-in provider for that name.");
+  });
+
   it("removes an entry", async () => {
     mocks.collabAdminAllowlist.mockResolvedValue([allowlistEntry()]);
     mocks.collabAdminRemoveAllowlist.mockResolvedValue(undefined);

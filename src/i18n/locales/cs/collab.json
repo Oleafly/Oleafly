@@ -27,7 +27,7 @@
       "signedOutHint": "Tento počítač není k tomuto serveru přihlášený.",
       "paused": "Pozastaveno",
       "noAccess": "Bez přístupu",
-      "pausedHint": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Až bude účet znovu aktivní, můžete se přihlásit.",
+      "pausedHint": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Jakmile administrátor účet znovu aktivuje, můžete se přihlásit.",
       "endedHint": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstanou v tomto počítači jako běžné projekty. Pokud vás správce znovu přidá, přihlaste se znovu.",
       "endedGuestHint": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstanou v tomto počítači jako běžné projekty. Pokud dostanete novou pozvánku, přihlaste se znovu.",
       "role": "Vaše role: {{role}}",
@@ -35,17 +35,23 @@
       "signOut": "Odhlásit se",
       "remove": "Odebrat",
       "manage": "Spravovat server",
+      "manageHint": "Spravovat server zobrazí lidi, pravidla přístupu a nastavení serveru přímo tady. Konzole pro správu se otevře ve vlastním okně a má navíc přehled, projekty a kontroly připojení.",
       "test": "Otestovat připojení",
       "removeConfirm": {
         "title": "Odebrat {{name}}?",
-        "description": "Oleafly se z tohoto serveru odhlásí a zapomene ho. Projekty, které už jsou v tomto počítači, zůstanou tam, kde jsou.",
+        "description": "Oleafly se odhlásí ze serveru {{name}} a zapomene ho. Sdílené projekty ze serveru {{name}} se přestanou synchronizovat a zůstanou v tomto počítači jako běžné projekty.",
         "confirm": "Odebrat server"
       },
+      "detached": "Tyto sdílené projekty ze serveru {{server}} se přestaly synchronizovat. Zůstávají v tomto počítači jako běžné projekty.",
       "unsent": {
         "title": "Některé změny ještě nebyly odeslány",
-        "description": "Sdílené projekty se změnami, které server ještě nemá: {{count}}. Oleafly může každý z nich ponechat v tomto počítači jako místní kopii. Případně se neodhlašujte a zkuste to později.",
+        "description": "Tyto sdílené projekty mají změny, které server ještě nemá. Když ponecháte místní kopii, každý z nich se přestane synchronizovat a zůstane v tomto počítači pod názvem uvedeným níže. Případně se neodhlašujte a zkuste to později.",
+        "removeDescription": "Tyto sdílené projekty mají změny, které server ještě nemá. Když ponecháte místní kopii, každý z nich se přestane synchronizovat a zůstane v tomto počítači pod názvem uvedeným níže. Případně si server ponechte a zkuste to později.",
+        "changes": "Neodeslané změny: {{changes}}",
+        "staysAs": "Zůstane jako {{name}}",
         "keep": "Ponechat místní kopii",
-        "stay": "Neodhlašovat se"
+        "stay": "Neodhlašovat se",
+        "keepServer": "Ponechat server"
       },
       "emails": {
         "label": "Poslat mi e-mail, když se mnou někdo sdílí projekt",
@@ -145,11 +151,14 @@
     "addressPlaceholder": "collab.example.edu",
     "continue": "Pokračovat",
     "checking": "Kontroluje se server…",
+    "notAServer": "Na této adrese neodpověděl žádný server Oleafly. Ověřte adresu u toho, kdo server spravuje. Na hotelové nebo univerzitní Wi-Fi nejdřív otevřete libovolnou webovou stránku, protože síť může chtít, abyste se přihlásili.",
+    "moved": "Tato adresa vás přesměruje na {{target}}. Zkuste tuto adresu.",
+    "useMoved": "Použít tuto adresu",
     "version": "Verze {{version}}",
     "serverTitle": "Přihlášení k serveru {{server}}",
     "serverDescription": "O tom, kdo se může připojit, rozhoduje tento server. Vyberte způsob přihlášení.",
     "setupTitle": "Nastavení serveru {{server}}",
-    "setupDescription": "Zatím se tu nikdo nepřihlásil. Zadejte kód pro nastavení z logu serveru. Kdo se s tímto kódem přihlásí jako první, stane se administrátorem serveru.",
+    "setupDescription": "Tento server ještě nikdo nenastavil. Pokud jste ho instalovali vy, zadejte kód pro nastavení, který vám ukázal instalační program. Najdete ho také v logu serveru. Kdo se s tímto kódem přihlásí jako první, stane se administrátorem serveru. Pokud jste ho neinstalovali, požádejte toho, kdo server spravuje, aby nastavení nejdřív dokončil.",
     "setupCodeLabel": "Kód pro nastavení",
     "signInDescription": "Otevře se váš prohlížeč, abyste se mohli přihlásit tam. Oleafly vaše heslo nikdy nevidí.",
     "continueWith": "Pokračovat přes {{provider}}",
@@ -183,7 +192,7 @@
     "not_https": "Tato adresa nepoužívá zabezpečené připojení. Servery pro spolupráci potřebují adresu, která začíná na https.",
     "client_too_old": "Tento server vyžaduje novější verzi Oleafly. Aktualizujte Oleafly a zkuste to znovu.",
     "server_too_old": "Tento server potřebuje aktualizaci, aby fungoval s touto verzí Oleafly. Požádejte jeho administrátora.",
-    "not_admitted": "Zatím nejste na seznamu tohoto serveru. Požádejte jeho administrátora, aby vás přidal.",
+    "not_admitted": "Tento server vás zatím nepouští dovnitř. Požádejte jeho administrátora, aby vás přidal.",
     "sign_in_cancelled": "Přihlášení bylo zrušeno.",
     "sign_in_timed_out": "Přihlášení trvalo příliš dlouho. Zkuste to znovu.",
     "unauthorized": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu.",
@@ -198,13 +207,33 @@
     "duplicate_server": "Tento server už máte v seznamu pod jinou adresou. Pokud se přesunul, nejdřív odeberte starou položku a potom ho přidejte znovu.",
     "device_in_use": "Z tohoto uživatelského účtu v počítači se k tomuto serveru už přihlásil někdo jiný. Každý, kdo se chce přihlásit, potřebuje v počítači vlastní uživatelský účet.",
     "server_unknown": "Tento odkaz vede na server, který jste ještě nepřidali. Přidejte ho v Nastavení v sekci Spolupráce a pak odkaz otevřete znovu.",
-    "too_large": "Některé soubory jsou větší, než tento server povoluje. Zmenšete je nebo je odeberte a zkuste to znovu."
+    "too_large": "Některé soubory jsou větší, než tento server povoluje. Zmenšete je nebo je odeberte a zkuste to znovu.",
+    "invalid": "Server to nepřijal. Zkontrolujte, co jste zadali, a zkuste to znovu.",
+    "invalid_domain": "To není název domény. Použijte tvar jako cs.example.edu.",
+    "invalid_email": "Tato e-mailová adresa nevypadá správně. Zkontrolujte ji a zkuste to znovu.",
+    "invalid_login": "Toto přihlašovací jméno nevypadá správně. Zkontrolujte ho a zkuste to znovu.",
+    "guests_off": "Tento server nepovoluje hosty. Požádejte jeho administrátora, aby hosty povolil.",
+    "link_sharing_off": "Tento server nepovoluje sdílení odkazem. Požádejte jeho administrátora, aby ho povolil.",
+    "access_log_off": "Tento server nepovoluje protokoly přístupu. Požádejte jeho administrátora, aby je povolil.",
+    "last_admin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
+    "duplicate_entry": "To už na seznamu je.",
+    "already_member": "Tento člověk už má účet. Jeho roli změníte v sekci Lidé.",
+    "project_not_shared": "Tento projekt ještě není sdílený. Nejdřív ho sdílejte a pak pozvěte lidi.",
+    "project_full": "Tento projekt už má tolik lidí, kolik server dovoluje. Nejdřív někoho odeberte, nebo se obraťte na administrátora serveru.",
+    "owner_away": "Vlastník tohoto projektu teď na tomto serveru není aktivní, takže projekt nemůže přijmout nové lidi.",
+    "not_a_link": "To není odkaz na sdílený projekt. Zkopírujte celý odkaz a zkuste to znovu.",
+    "signed_out": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu, aby se projekt synchronizoval.",
+    "server_removed": "Server tohoto projektu už ve vašem seznamu není. Ponechte si projekt jako místní kopii, nebo server přidejte znovu.",
+    "share_in_progress": "Tento projekt se už sdílí. Počkejte, až to skončí.",
+    "cancelled": "Otevírání sdíleného projektu bylo zrušeno.",
+    "cloud_synced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje cloudová služba. Pokud chcete sdílet projekty nebo se k nim připojit, přesuňte ji mimo Dropbox, OneDrive nebo iCloud Drive."
   },
   "roles": {
     "admin": "Administrátor",
     "maintainer": "Správce",
     "member": "Člen",
-    "guest": "Host"
+    "guest": "Host",
+    "unknown": "Neznámá role"
   },
   "admin": {
     "title": "Spravovat {{name}}",
@@ -212,7 +241,7 @@
     "loadFailed": "Oleafly to nemohl ze serveru načíst.",
     "added": "Přidáno {{date}}",
     "tabs": {
-      "members": "Členové",
+      "members": "Lidé",
       "allowlist": "Povolení lidé",
       "domains": "Domény",
       "settings": "Nastavení serveru",
@@ -222,8 +251,8 @@
     "members": {
       "description": "Všichni, kdo se k tomuto serveru přihlásili.",
       "addPeople": "Přidat lidi",
-      "addHint": "Nového člověka pustíte dovnitř v sekci Pravidla přístupu.",
-      "loading": "Načítají se členové…",
+      "addHint": "Nového člověka pustíte dovnitř v sekci Povolení lidé.",
+      "loading": "Načítají se lidé…",
       "empty": "Zatím se nikdo nepřihlásil.",
       "you": "Vy",
       "active": "Aktivní",
@@ -239,10 +268,22 @@
       "devicesLoading": "Načítají se zařízení…",
       "devicesLoadFailed": "Oleafly nemohl načíst tato zařízení.",
       "lastAdmin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
+      "ownedOne": "{{name}} vlastní sdílený projekt. Dokud {{name}} chybí, nikdo jiný ho nemůže spravovat.",
+      "ownedMany": "{{name}} vlastní sdílené projekty: {{number}}. Dokud {{name}} chybí, nikdo jiný je nemůže spravovat.",
       "removeConfirm": {
         "title": "Odebrat {{name}} z tohoto serveru?",
         "description": "Zařízení tohoto člena se okamžitě odhlásí. Projekty, které vlastní, zůstanou na serveru a člena můžete později přidat zpět.",
         "confirm": "Odebrat člena"
+      },
+      "suspendConfirm": {
+        "title": "Pozastavit {{name}}?",
+        "description": "{{name}} se nemůže přihlásit ani synchronizovat, dokud administrátor účet znovu neaktivuje.",
+        "confirm": "Pozastavit člena"
+      },
+      "selfRoleConfirm": {
+        "title": "Změnit vlastní roli na {{role}}?",
+        "description": "Přijdete o administrátorská práva na tomto serveru a vrátit vám je může jen jiný administrátor.",
+        "confirm": "Změnit moji roli"
       },
       "deviceSignOutConfirm": {
         "title": "Odhlásit {{name}}?",
@@ -345,8 +386,8 @@
         "memberSuspended": "Pozastavení člena",
         "memberReactivated": "Opětovná aktivace člena",
         "roleChanged": "Změna role",
-        "allowlistAdded": "Přidání na seznam povolených",
-        "allowlistRemoved": "Odebrání ze seznamu povolených",
+        "allowlistAdded": "Přidání do seznamu povolených lidí",
+        "allowlistRemoved": "Odebrání ze seznamu povolených lidí",
         "domainRuleAdded": "Přidání pravidla domény",
         "domainRuleRemoved": "Odebrání pravidla domény",
         "settingsChanged": "Změna nastavení serveru",
@@ -438,7 +479,8 @@
   "projectRoles": {
     "owner": "Vlastník",
     "editor": "Editor",
-    "viewer": "Čtenář"
+    "viewer": "Čtenář",
+    "unknown": "Neznámá role"
   },
   "share": {
     "button": "Sdílet",
@@ -461,8 +503,11 @@
     "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
     "excluded": "Nesdílí se: výstup sestavení, nastavení Oleafly a historie Gitu.",
     "start": "Sdílet",
-    "uploading": "Nahrávání souborů: {{done}} z {{total}}",
-    "failed": "Sdílení se nedokončilo, takže se nic nesdílelo."
+    "preparing": "Připravuje se projekt…",
+    "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
+    "saving": "Projekt se ukládá na server…",
+    "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
+    "trustAgain": "Teď když tento projekt mohou upravovat i další lidé, Oleafly se vás před spuštěním jeho nástrojů v tomto počítači znovu zeptá."
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",
@@ -485,6 +530,11 @@
       "roleLabel": "Role pro přidané lidi",
       "searching": "Hledá se…",
       "noResults": "Na serveru {{server}} nikdo neodpovídá.",
+      "noResultsTryEmail": "Na serveru {{server}} nikdo neodpovídá. Zkuste celou e-mailovou adresu.",
+      "alreadyMember": "{{name}} už má přístup.",
+      "allMembers": "Všichni, kdo odpovídají, už mají přístup.",
+      "noAccountNoGuests": "Adresu {{email}} zatím na serveru {{server}} nikdo nepoužívá. Požádejte administrátora serveru {{server}}, aby tohoto člověka pustil dovnitř, a až se jednou přihlásí, přidejte ho sem.",
+      "guestCheckFailed": "Oleafly nemohl ověřit, zda server {{server}} povoluje hosty.",
       "add": "Přidat",
       "addNamed": "Přidat {{name}}"
     },
@@ -528,7 +578,11 @@
     "accessEnded": "Bez přístupu",
     "removed": "Přístup odebrán",
     "archived": "Sdílení ukončeno",
-    "paused": "Pozastaveno"
+    "paused": "Pozastaveno",
+    "serverRemoved": "Server odebrán",
+    "clientTooOld": "Oleafly potřebuje aktualizaci",
+    "serverTooOld": "Server potřebuje aktualizaci",
+    "serverChanged": "Jiný server"
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
@@ -545,9 +599,11 @@
   "library": {
     "kind": "sdílený",
     "location": "Sdílené projekty",
+    "locationNotShared": "V Oleafly, nesdílené",
     "flag": "Sdílený",
     "sharedWithYou": {
       "title": "Sdíleno s vámi",
+      "loadFailed": "Oleafly nemohl zjistit, jaké projekty s vámi někdo sdílí.",
       "from": "{{owner}} na serveru {{server}}",
       "open": "Otevřít",
       "openNamed": "Otevřít {{name}}"
@@ -559,7 +615,6 @@
       "label": "Odkaz na projekt",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Otevřít",
-      "serverUnknown": "Server {{server}} zatím není ve vašem seznamu serverů. Přidejte ho v Nastavení v sekci Spolupráce a pak odkaz otevřete znovu.",
       "noAccess": "K tomuto projektu nemáte přístup. Požádejte jeho vlastníka."
     }
   },
@@ -575,6 +630,18 @@
     "away": "Teď tu není",
     "deleted": "Nedávno smazané",
     "deletedEmpty": "V poslední době nebylo nic smazáno.",
+    "deletedLoadFailed": "Oleafly nemohl načíst nedávno smazané soubory.",
+    "unwritten": {
+      "title": "Některé soubory nešlo do tohoto počítače zapsat",
+      "hint": "Oleafly to zkouší dál. Sdílený projekt má mezitím nejnovější text.",
+      "reasons": {
+        "locked": "Soubor {{path}} nejde zapsat: má ho otevřený jiný program.",
+        "read_only": "Soubor {{path}} nejde zapsat: soubor nebo jeho složka jsou jen pro čtení.",
+        "no_space": "Soubor {{path}} nejde zapsat: disk je plný.",
+        "not_downloaded": "Soubor {{path}} nejde zapsat: cloudová služba ho do tohoto počítače ještě nestáhla.",
+        "other": "Soubor {{path}} nejde zapsat."
+      }
+    },
     "accessLog": "Protokol přístupu",
     "status": "Stav synchronizace",
     "waiting": "Čekající změny: {{number}}"
@@ -609,7 +676,10 @@
     "removedBy": "Uživatel {{name}} vás odebral z tohoto sdíleného projektu. Vaše kopie tu zůstane jako běžný projekt.",
     "archived": "Vlastník přestal tento projekt sdílet. Vaše kopie tu zůstane jako běžný projekt.",
     "signedOut": "Jste odhlášeni ze serveru {{server}}, takže se tento projekt nesynchronizuje. Vaše změny zůstanou v tomto počítači.",
-    "suspended": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Až bude účet znovu aktivní, můžete se přihlásit.",
+    "suspended": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Jakmile administrátor účet znovu aktivuje, můžete se přihlásit.",
+    "clientTooOld": "Aktualizujte Oleafly, abyste mohli dál pracovat na serveru {{server}}. Vaše změny zůstanou v tomto počítači.",
+    "serverTooOld": "Server {{server}} potřebuje aktualizaci, aby fungoval s touto verzí Oleafly. Požádejte toho, kdo ho spravuje. Vaše změny zůstanou v tomto počítači.",
+    "serverChanged": "Adresa serveru {{server}} teď vede na jiný server. Odeberte ho v nastavení spolupráce a přidejte ho znovu. Vaše změny zůstanou v tomto počítači.",
     "accessEnded": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "accessEndedGuest": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "signIn": "Přihlásit se",
@@ -622,6 +692,8 @@
     "newDevice": "Uživatel {{name}} se přihlásil na novém zařízení",
     "review": "Zkontrolovat",
     "renamed": "Uživatel {{name}} přejmenoval {{before}} na {{theirs}} poté, co jste soubor pojmenovali {{ours}}",
+    "skipped": "Změnu od uživatele {{name}} se nepodařilo přečíst, a tak byla přeskočena.",
+    "skippedUnknown": "Změnu od někoho se nepodařilo přečíst, a tak byla přeskočena.",
     "mentioned": "Zmínka od {{name}} v komentáři v souboru {{path}}",
     "mentionedHere": "Zmínka od {{name}} v komentáři",
     "showComment": "Zobrazit komentář",
@@ -664,12 +736,13 @@
     "windowTitle": "Konzole pro správu Oleafly Server",
     "title": "Konzole pro správu",
     "sectionsLabel": "Sekce konzole pro správu",
+    "pendingGuestsBadge": "Čeká na schválení: {{number}}",
     "sections": {
       "overview": "Přehled",
       "people": "Lidé",
       "access": "Pravidla přístupu",
       "projects": "Projekty",
-      "settings": "Nastavení",
+      "settings": "Nastavení serveru",
       "email": "E-mail",
       "log": "Protokol zabezpečení",
       "checks": "Kontroly připojení"
@@ -689,7 +762,9 @@
       "signedOutTitle": "Jste z tohoto serveru odhlášeni",
       "signedOutDescription": "Přihlaste se znovu v Nastavení a pak otevřete konzoli pro správu z karty serveru.",
       "refusedTitle": "Konzole pro správu je určena administrátorům a správcům",
-      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora."
+      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora.",
+      "turnedOffTitle": "Živá spolupráce je vypnutá",
+      "turnedOffDescription": "Pokud chcete tento server spravovat tady, znovu ji zapněte v Nastavení v části Experimenty."
     },
     "overview": {
       "loading": "Načítá se přehled…",
@@ -697,6 +772,7 @@
         "title": "Stav",
         "okLabel": "Vše funguje",
         "okDescription": "Lidé se mohou přihlásit a server může ukládat soubory.",
+        "problem": "Přihlášení přes {{provider}} selhává od {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikdo se nemůže přihlásit",
@@ -705,6 +781,14 @@
           "storageNotWritable": {
             "label": "Server nemůže ukládat soubory",
             "description": "Zkontrolujte, že jeho datová složka existuje a že do ní server může zapisovat."
+          },
+          "signInFailing": {
+            "label": "Přihlášení selhává",
+            "description": "Přes jednu z možností přihlášení na serveru se lidé nemohou přihlásit. Seznam níže uvádí kterou a odkdy."
+          },
+          "signInEmailsPaused": {
+            "label": "Přihlašovací e-maily jsou pozastavené",
+            "description": "Server už poslal tolik přihlašovacích e-mailů, kolik za tuto hodinu dovoluje. Znovu je začne posílat, až hodina skončí."
           },
           "unknown": {
             "label": "Server nahlásil problém",
@@ -723,7 +807,9 @@
         "onlineDetail": "Otevřené projekty: {{number}}",
         "started": "Spuštěno",
         "version": "Verze",
-        "protocol": "Protokol {{protocol}}"
+        "protocol": "Protokol {{protocol}}",
+        "pendingGuests": "Pozvánky hostů čekající na schválení: {{number}}",
+        "reviewGuests": "Zkontrolovat v sekci Lidé"
       },
       "storage": {
         "title": "Úložiště",
@@ -810,6 +896,8 @@
     "openSettings": "Otevřít nastavení",
     "malformed": "Oleafly tento odkaz nedokáže otevřít. Požádejte odesílatele o nový.",
     "opening": "Otevírá se sdílený projekt…",
+    "downloading": "Stahování souborů: {{done}} z {{total}}",
+    "cancelNamed": "Přestat otevírat {{name}}",
     "confirm": {
       "title": "Připojit se ke sdílenému projektu?",
       "body": "Připojením se stanete členem projektu a jeho soubory se zkopírují do tohoto počítače. Připojte se, jen pokud víte, kdo vám odkaz poslal.",
@@ -845,6 +933,14 @@
     "resolve": "Vyřešit",
     "reopen": "Znovu otevřít",
     "deleteThread": "Smazat vlákno",
+    "deleteThreadConfirm": {
+      "title": "Smazat toto vlákno?",
+      "description": "Komentář i jeho odpovědi se smažou pro všechny v tomto projektu. Tento krok nelze vrátit."
+    },
+    "deleteMessageConfirm": {
+      "title": "Smazat tento komentář?",
+      "description": "Smaže se pro všechny v tomto projektu. Tento krok nelze vrátit."
+    },
     "messageActions": "Další akce pro tento komentář",
     "threadActions": "Další akce pro toto vlákno",
     "showInEditor": "Zobrazit v editoru",
@@ -920,6 +1016,7 @@
     "pending": {
       "title": "Čekající hosté",
       "description": "Vlastníci projektů pozvali tyto lidi jako hosty. Host vidí jen projekty, do kterých je pozvaný, a nemůže je sdílet.",
+      "loadFailed": "Oleafly nemohl načíst pozvánky hostů, které čekají na schválení.",
       "invitedBy": "{{inviter}} je pozval do projektu {{project}}",
       "approve": "Schválit",
       "approveNamed": "Schválit {{email}}",
@@ -930,6 +1027,9 @@
   "access": {
     "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
+    "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
+    "unsentReadOnly": "Vaše poslední změny v souboru {{path}} se neodeslaly, protože tento projekt teď můžete jen prohlížet.",
+    "unsentRefused": "Oleafly nemohl odeslat vaše poslední změny v souboru {{path}}, a tak byly zahozeny.",
     "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
     "removed": "Byli jste odebráni z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená."
   },

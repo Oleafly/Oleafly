@@ -207,6 +207,17 @@ describe("pending range under other people's edits", () => {
     expect(session()?.phase).toBe("withdrawn");
   });
 
+  it.each(["prompting", "error"] as const)(
+    "keeps the prompt open while %s when someone edits the text, and follows it",
+    (phase) => {
+      open(6, 11, "world");
+      update({ phase, instruction: "Make it formal", error: phase === "error" ? "failed" : undefined });
+      remote({ from: 8, insert: "x" });
+      remote({ from: 0, insert: "Oh, " });
+      expect(session()).toMatchObject({ phase, instruction: "Make it formal", from: 10, to: 16 });
+    },
+  );
+
   it("withdraws a suggestion that is still streaming", () => {
     open(6, 11, "world");
     update({ phase: "streaming", proposed: "the" });
@@ -220,6 +231,7 @@ describe("pending range under other people's edits", () => {
 
   it("keeps following the text after it is withdrawn", () => {
     open(6, 11, "world");
+    update({ phase: "reviewing", proposed: "there" });
     remote({ from: 8, insert: "x" });
     remote({ from: 0, insert: "Oh, " });
     expect(session()).toMatchObject({ phase: "withdrawn", from: 10, to: 16 });

@@ -73,6 +73,35 @@ export function parseAppLink(raw: string): AppLink {
   return malformed;
 }
 
+// A link someone pasted: an app link, or the web address of a project page
+// (https://server/p/<project>). Returns the app link to open, or null when
+// the text isn't a link to a shared project.
+export function pastedProjectLink(raw: string): string | null {
+  const text = raw.trim();
+  const app = parseAppLink(text);
+  if (app.kind === "openProject") return app.link;
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  const path = withoutTrailingSlashes(url.pathname);
+  const at = path.lastIndexOf("/p/");
+  if (at < 0) return null;
+  const project = path.slice(at + 3);
+  const server = `${url.protocol}//${url.host}${path.slice(0, at)}`;
+  if (!PROJECT_ID.test(project) || serverKey(server) === null) return null;
+  const query = new URLSearchParams({ server, project: project.toLowerCase() });
+  const comment = commentIn(url);
+  if (comment) {
+    query.set("file", comment.fileId);
+    query.set("thread", comment.threadId);
+  }
+  return `oleafly://open?${query.toString()}`;
+}
+
 export function linkKey(link: AppLink): string {
   switch (link.kind) {
     case "addServer":

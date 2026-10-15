@@ -112,9 +112,18 @@ function followPendingRange(update: ViewUpdate): void {
   if (!session) return;
   let range: PendingRange = { from: session.from, to: session.to };
   let withdrawn = session.phase === "withdrawn";
+  // Only a suggestion can go stale. While the instruction is still being
+  // typed, or after an error, the range just follows the edit, and the run
+  // reads the text again when it starts.
+  const suggesting = session.phase === "streaming" || session.phase === "reviewing";
   for (const tr of update.transactions) {
     if (!tr.docChanged) continue;
-    if (!withdrawn && tr.annotation(remoteChange) === true && changeTouchesRange(tr.changes, range)) {
+    if (
+      suggesting &&
+      !withdrawn &&
+      tr.annotation(remoteChange) === true &&
+      changeTouchesRange(tr.changes, range)
+    ) {
       withdrawn = true;
     }
     range = mapPendingRange(tr.changes, range);

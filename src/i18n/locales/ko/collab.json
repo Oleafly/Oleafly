@@ -25,9 +25,9 @@
       "signedOut": "로그아웃됨",
       "signedInAs": "{{name}}(으)로 로그인됨",
       "signedOutHint": "이 컴퓨터는 이 서버에 로그인되어 있지 않습니다.",
-      "paused": "일시 중지됨",
+      "paused": "정지됨",
       "noAccess": "접근 권한 없음",
-      "pausedHint": "관리자가 {{server}}에서 내 계정을 일시 중지했습니다. 변경 내용은 이 컴퓨터에 남아 있습니다. 계정이 다시 켜지면 다시 로그인할 수 있습니다.",
+      "pausedHint": "관리자가 {{server}}에서 내 계정을 정지했습니다. 변경 내용은 이 컴퓨터에 남아 있습니다. 관리자가 계정을 다시 활성화하면 다시 로그인할 수 있습니다.",
       "endedHint": "더 이상 {{server}}에 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다. 관리자가 다시 추가하면 다시 로그인하세요.",
       "endedGuestHint": "{{server}}의 어떤 공유 프로젝트에도 속해 있지 않아 더 이상 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다. 다시 초대받으면 다시 로그인하세요.",
       "role": "내 역할: {{role}}",
@@ -35,17 +35,23 @@
       "signOut": "로그아웃",
       "remove": "제거",
       "manage": "서버 관리",
+      "manageHint": "서버 관리에서는 사용자, 접근 규칙, 서버 설정을 여기에서 관리합니다. 관리 콘솔은 별도 창에서 열리며 개요, 프로젝트, 연결 점검도 있습니다.",
       "test": "연결 테스트",
       "removeConfirm": {
         "title": "{{name}}을(를) 제거할까요?",
-        "description": "Oleafly가 이 서버에서 로그아웃하고 목록에서 지웁니다. 이 컴퓨터에 이미 있는 프로젝트는 그대로 남습니다.",
+        "description": "Oleafly가 {{name}}에서 로그아웃하고 이 서버를 목록에서 지웁니다. {{name}}의 공유 프로젝트는 동기화가 중단되고 일반 프로젝트로 이 컴퓨터에 남습니다.",
         "confirm": "서버 제거"
       },
+      "detached": "{{server}}의 이 공유 프로젝트들은 더 이상 동기화되지 않습니다. 일반 프로젝트로 이 컴퓨터에 남아 있습니다.",
       "unsent": {
         "title": "아직 보내지 않은 변경 내용이 있습니다",
-        "description": "서버에 아직 도달하지 않은 변경 내용이 있는 공유 프로젝트: {{count}}개. Oleafly가 각 프로젝트를 이 컴퓨터에 로컬 사본으로 보관할 수 있습니다. 로그인 상태를 유지하고 나중에 다시 시도할 수도 있습니다.",
+        "description": "이 공유 프로젝트들에는 서버에 아직 도달하지 않은 변경 내용이 있습니다. 로컬 사본을 보관하면 각 프로젝트는 동기화를 멈추고 아래에 표시된 이름으로 이 컴퓨터에 남습니다. 로그인 상태를 유지하고 나중에 다시 시도할 수도 있습니다.",
+        "removeDescription": "이 공유 프로젝트들에는 서버에 아직 도달하지 않은 변경 내용이 있습니다. 로컬 사본을 보관하면 각 프로젝트는 동기화를 멈추고 아래에 표시된 이름으로 이 컴퓨터에 남습니다. 서버를 유지하고 나중에 다시 시도할 수도 있습니다.",
+        "changes": "보내지 않은 변경 내용: {{changes}}개",
+        "staysAs": "{{name}}(으)로 남습니다",
         "keep": "로컬 사본 보관",
-        "stay": "로그인 유지"
+        "stay": "로그인 유지",
+        "keepServer": "서버 유지"
       },
       "emails": {
         "label": "누군가 프로젝트를 공유하면 이메일로 알려 주기",
@@ -145,11 +151,14 @@
     "addressPlaceholder": "collab.example.edu",
     "continue": "계속",
     "checking": "서버를 확인하는 중…",
+    "notAServer": "이 주소에서 응답한 Oleafly 서버가 없습니다. 서버를 운영하는 사람에게 주소를 확인하세요. 호텔이나 캠퍼스 Wi-Fi에서는 네트워크 로그인이 필요할 수 있으니 먼저 아무 웹 페이지나 열어 보세요.",
+    "moved": "이 주소는 {{target}}(으)로 연결됩니다. 그 주소를 사용해 보세요.",
+    "useMoved": "이 주소 사용",
     "version": "버전 {{version}}",
     "serverTitle": "{{server}}에 로그인",
     "serverDescription": "참여할 수 있는 사람은 이 서버가 정합니다. 로그인 방법을 선택하세요.",
     "setupTitle": "{{server}} 설정",
-    "setupDescription": "아직 이 서버에 로그인한 사람이 없습니다. 서버 로그에 있는 설정 코드를 입력하세요. 이 코드로 가장 먼저 로그인하는 사람이 서버 관리자가 됩니다.",
+    "setupDescription": "아직 아무도 이 서버를 설정하지 않았습니다. 직접 설치했다면 설치 프로그램이 보여 준 설정 코드를 입력하세요. 서버 로그에도 있습니다. 이 코드로 가장 먼저 로그인하는 사람이 서버 관리자가 됩니다. 직접 설치하지 않았다면 서버를 운영하는 사람에게 먼저 설정을 마쳐 달라고 요청하세요.",
     "setupCodeLabel": "설정 코드",
     "signInDescription": "브라우저가 열리면 거기서 로그인하세요. Oleafly는 비밀번호를 볼 수 없습니다.",
     "continueWith": "{{provider}}(으)로 계속",
@@ -183,7 +192,7 @@
     "not_https": "이 주소는 보안 연결을 사용하지 않습니다. 공동 작업 서버 주소는 https로 시작해야 합니다.",
     "client_too_old": "이 서버를 쓰려면 더 새로운 버전의 Oleafly가 필요합니다. Oleafly를 업데이트한 다음 다시 시도하세요.",
     "server_too_old": "이 버전의 Oleafly와 함께 쓰려면 서버를 업데이트해야 합니다. 서버 관리자에게 문의하세요.",
-    "not_admitted": "아직 이 서버의 허용 목록에 없습니다. 서버 관리자에게 추가를 요청하세요.",
+    "not_admitted": "아직 이 서버에 들어갈 수 없습니다. 서버 관리자에게 추가를 요청하세요.",
     "sign_in_cancelled": "로그인이 취소되었습니다.",
     "sign_in_timed_out": "로그인하는 데 시간이 너무 오래 걸렸습니다. 다시 시도하세요.",
     "unauthorized": "이 서버에서 로그아웃되었습니다. 다시 로그인하세요.",
@@ -198,13 +207,33 @@
     "duplicate_server": "이 서버는 이미 다른 주소로 목록에 있습니다. 서버가 옮겨졌다면 먼저 이전 항목을 제거한 다음 다시 추가하세요.",
     "device_in_use": "다른 사람이 이미 이 컴퓨터의 사용자 계정으로 이 서버에 로그인했습니다. 로그인하려면 사람마다 이 컴퓨터에 자신의 사용자 계정이 있어야 합니다.",
     "server_unknown": "아직 추가하지 않은 서버의 링크입니다. 공동 작업 설정에서 서버를 추가한 다음 링크를 다시 여세요.",
-    "too_large": "일부 파일이 이 서버에서 허용하는 크기보다 큽니다. 파일 크기를 줄이거나 파일을 제거한 다음 다시 시도하세요."
+    "too_large": "일부 파일이 이 서버에서 허용하는 크기보다 큽니다. 파일 크기를 줄이거나 파일을 제거한 다음 다시 시도하세요.",
+    "invalid": "서버에서 받아들이지 않았습니다. 입력한 내용을 확인한 다음 다시 시도하세요.",
+    "invalid_domain": "도메인 이름이 아닙니다. cs.example.edu 같은 형식으로 입력하세요.",
+    "invalid_email": "이메일 주소가 올바르지 않은 것 같습니다. 확인한 다음 다시 시도하세요.",
+    "invalid_login": "사용자 이름이 올바르지 않은 것 같습니다. 확인한 다음 다시 시도하세요.",
+    "guests_off": "이 서버에서는 게스트를 허용하지 않습니다. 서버 관리자에게 게스트 허용을 요청하세요.",
+    "link_sharing_off": "이 서버에서는 링크 공유를 허용하지 않습니다. 서버 관리자에게 켜 달라고 요청하세요.",
+    "access_log_off": "이 서버에서는 접근 로그를 허용하지 않습니다. 서버 관리자에게 켜 달라고 요청하세요.",
+    "last_admin": "이 서버에는 관리자가 한 명 이상 있어야 합니다. 먼저 다른 사람을 관리자로 지정하세요.",
+    "duplicate_entry": "이미 목록에 있습니다.",
+    "already_member": "이 사람은 이미 계정이 있습니다. 역할은 사용자에서 바꾸세요.",
+    "project_not_shared": "이 프로젝트는 아직 공유되지 않았습니다. 먼저 공유한 다음 사람을 초대하세요.",
+    "project_full": "이 프로젝트에는 서버가 허용하는 최대 인원이 이미 있습니다. 먼저 다른 사람을 제거하거나 서버 관리자에게 문의하세요.",
+    "owner_away": "이 프로젝트의 소유자가 지금 이 서버에서 활성 상태가 아니어서 새 사람을 받을 수 없습니다.",
+    "not_a_link": "공유 프로젝트 링크가 아닙니다. 링크 전체를 복사한 다음 다시 시도하세요.",
+    "signed_out": "이 서버에서 로그아웃되었습니다. 이 프로젝트를 동기화하려면 다시 로그인하세요.",
+    "server_removed": "이 프로젝트의 서버가 더 이상 목록에 없습니다. 프로젝트를 로컬 사본으로 보관하거나 서버를 다시 추가하세요.",
+    "share_in_progress": "이 프로젝트는 이미 공유하는 중입니다. 끝날 때까지 기다리세요.",
+    "cancelled": "공유 프로젝트 열기가 취소되었습니다.",
+    "cloud_synced": "Oleafly 라이브러리가 클라우드 서비스가 동기화하는 폴더에 있습니다. 프로젝트를 공유하거나 참여하려면 Dropbox, OneDrive 또는 iCloud Drive 밖으로 옮기세요."
   },
   "roles": {
     "admin": "관리자",
     "maintainer": "유지 관리자",
     "member": "멤버",
-    "guest": "게스트"
+    "guest": "게스트",
+    "unknown": "알 수 없는 역할"
   },
   "admin": {
     "title": "{{name}} 관리",
@@ -212,7 +241,7 @@
     "loadFailed": "Oleafly가 서버에서 이 정보를 불러오지 못했습니다.",
     "added": "{{date}}에 추가됨",
     "tabs": {
-      "members": "멤버",
+      "members": "사용자",
       "allowlist": "허용된 사람",
       "domains": "도메인",
       "settings": "서버 설정",
@@ -222,8 +251,8 @@
     "members": {
       "description": "이 서버에 로그인한 적이 있는 모든 사람입니다.",
       "addPeople": "사람 추가",
-      "addHint": "새로운 사람을 들이려면 접근 규칙에서 추가하세요.",
-      "loading": "멤버 목록을 불러오는 중…",
+      "addHint": "새로운 사람을 들이려면 허용된 사람에서 추가하세요.",
+      "loading": "사용자 목록을 불러오는 중…",
       "empty": "아직 로그인한 사람이 없습니다.",
       "you": "나",
       "active": "활성",
@@ -239,10 +268,22 @@
       "devicesLoading": "기기 목록을 불러오는 중…",
       "devicesLoadFailed": "Oleafly가 이 기기 목록을 불러오지 못했습니다.",
       "lastAdmin": "이 서버에는 관리자가 한 명 이상 있어야 합니다. 먼저 다른 사람을 관리자로 지정하세요.",
+      "ownedOne": "{{name}} 님이 공유 프로젝트의 소유자입니다. {{name}} 님이 없는 동안에는 다른 사람이 관리할 수 없습니다.",
+      "ownedMany": "{{name}} 님이 소유한 공유 프로젝트: {{number}}개. {{name}} 님이 없는 동안에는 다른 사람이 관리할 수 없습니다.",
       "removeConfirm": {
         "title": "{{name}}을(를) 이 서버에서 제거할까요?",
         "description": "이 사람의 기기는 바로 로그아웃됩니다. 이 사람이 소유한 프로젝트는 서버에 그대로 남고, 나중에 이 사람을 다시 추가할 수 있습니다.",
         "confirm": "멤버 제거"
+      },
+      "suspendConfirm": {
+        "title": "{{name}} 님을 정지할까요?",
+        "description": "관리자가 계정을 다시 활성화할 때까지 {{name}} 님은 로그인하거나 동기화할 수 없습니다.",
+        "confirm": "멤버 정지"
+      },
+      "selfRoleConfirm": {
+        "title": "내 역할을 {{role}}(으)로 바꿀까요?",
+        "description": "이 서버의 관리자 권한을 잃게 되며, 다른 관리자만 다시 부여할 수 있습니다.",
+        "confirm": "내 역할 바꾸기"
       },
       "deviceSignOutConfirm": {
         "title": "{{name}}에서 로그아웃할까요?",
@@ -345,8 +386,8 @@
         "memberSuspended": "멤버를 정지함",
         "memberReactivated": "멤버를 다시 활성화함",
         "roleChanged": "역할을 변경함",
-        "allowlistAdded": "허용 목록에 사람을 추가함",
-        "allowlistRemoved": "허용 목록에서 사람을 제거함",
+        "allowlistAdded": "허용된 사람 목록에 사람을 추가함",
+        "allowlistRemoved": "허용된 사람 목록에서 사람을 제거함",
         "domainRuleAdded": "도메인 규칙을 추가함",
         "domainRuleRemoved": "도메인 규칙을 제거함",
         "settingsChanged": "서버 설정을 변경함",
@@ -438,7 +479,8 @@
   "projectRoles": {
     "owner": "소유자",
     "editor": "편집자",
-    "viewer": "뷰어"
+    "viewer": "뷰어",
+    "unknown": "알 수 없는 역할"
   },
   "share": {
     "button": "공유",
@@ -461,8 +503,11 @@
     "renamed": "일부 파일 이름은 컴퓨터에 따라 쓸 수 없습니다. 다른 사람에게는 이 파일들이 조금 다른 이름으로 전달됩니다.",
     "excluded": "공유하지 않는 항목: 빌드 출력, Oleafly 설정, Git 기록.",
     "start": "공유",
-    "uploading": "파일 업로드 중: {{total}}개 중 {{done}}개",
-    "failed": "공유가 끝나지 않아 아무것도 공유되지 않았습니다."
+    "preparing": "프로젝트를 준비하는 중…",
+    "uploading": "그림과 기타 파일 업로드 중: {{total}}개 중 {{done}}개",
+    "saving": "프로젝트를 서버에 저장하는 중…",
+    "failed": "공유가 끝나지 않아 아무것도 공유되지 않았습니다.",
+    "trustAgain": "이제 다른 사람도 이 프로젝트를 편집할 수 있으므로, Oleafly는 이 컴퓨터에서 프로젝트 도구를 실행하기 전에 다시 묻습니다."
   },
   "manage": {
     "sharedOn": "{{server}}에서 공유 중",
@@ -485,6 +530,11 @@
       "roleLabel": "추가할 사람의 역할",
       "searching": "검색하는 중…",
       "noResults": "{{server}}에 일치하는 사람이 없습니다.",
+      "noResultsTryEmail": "{{server}}에 일치하는 사람이 없습니다. 전체 이메일 주소로 검색해 보세요.",
+      "alreadyMember": "{{name}} 님은 이미 접근 권한이 있습니다.",
+      "allMembers": "일치하는 사람은 모두 이미 접근 권한이 있습니다.",
+      "noAccountNoGuests": "{{server}}에서 아직 {{email}}을(를) 쓰는 사람이 없습니다. {{server}} 관리자에게 이 사람의 접근을 허용해 달라고 요청한 다음, 이 사람이 한 번 로그인하면 여기에서 추가하세요.",
+      "guestCheckFailed": "Oleafly가 {{server}}에서 게스트를 허용하는지 확인하지 못했습니다.",
       "add": "추가",
       "addNamed": "{{name}} 추가"
     },
@@ -524,11 +574,15 @@
     "offline": "오프라인. 대기 중인 변경 사항: {{number}}",
     "reconnecting": "다시 연결하는 중",
     "signedOut": "로그아웃됨",
-    "suspended": "계정 일시 중지됨",
+    "suspended": "계정 정지됨",
     "accessEnded": "접근 권한 없음",
     "removed": "접근 권한 제거됨",
     "archived": "공유 중지됨",
-    "paused": "일시 중지됨"
+    "paused": "일시 중지됨",
+    "serverRemoved": "서버 제거됨",
+    "clientTooOld": "Oleafly 업데이트 필요",
+    "serverTooOld": "서버 업데이트 필요",
+    "serverChanged": "다른 서버"
   },
   "toolbar": {
     "noFile": "열린 파일 없음",
@@ -545,9 +599,11 @@
   "library": {
     "kind": "공유",
     "location": "공유 프로젝트",
+    "locationNotShared": "Oleafly 안, 공유되지 않음",
     "flag": "공유됨",
     "sharedWithYou": {
       "title": "나와 공유된 프로젝트",
+      "loadFailed": "Oleafly가 나와 공유된 프로젝트를 확인하지 못했습니다.",
       "from": "{{server}}의 {{owner}}",
       "open": "열기",
       "openNamed": "{{name}} 열기"
@@ -559,7 +615,6 @@
       "label": "프로젝트 링크",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "열기",
-      "serverUnknown": "{{server}}은(는) 아직 서버 목록에 없습니다. 공동 작업 설정에서 추가한 다음 링크를 다시 여세요.",
       "noAccess": "이 프로젝트에 접근할 권한이 없습니다. 프로젝트 소유자에게 요청하세요."
     }
   },
@@ -575,6 +630,18 @@
     "away": "지금 여기 없음",
     "deleted": "최근 삭제한 항목",
     "deletedEmpty": "최근에 삭제된 항목이 없습니다.",
+    "deletedLoadFailed": "Oleafly가 최근 삭제한 파일을 불러오지 못했습니다.",
+    "unwritten": {
+      "title": "일부 파일을 이 컴퓨터에 쓰지 못했습니다",
+      "hint": "Oleafly가 계속 시도합니다. 그동안 공유 프로젝트에는 최신 텍스트가 있습니다.",
+      "reasons": {
+        "locked": "{{path}}을(를) 쓸 수 없습니다: 다른 프로그램이 열고 있습니다.",
+        "read_only": "{{path}}을(를) 쓸 수 없습니다: 파일 또는 폴더가 읽기 전용입니다.",
+        "no_space": "{{path}}을(를) 쓸 수 없습니다: 디스크가 가득 찼습니다.",
+        "not_downloaded": "{{path}}을(를) 쓸 수 없습니다: 클라우드 서비스가 아직 이 컴퓨터로 내려받지 않았습니다.",
+        "other": "{{path}}을(를) 쓸 수 없습니다."
+      }
+    },
     "accessLog": "접근 로그",
     "status": "동기화 상태",
     "waiting": "대기 중인 변경 사항: {{number}}"
@@ -609,7 +676,10 @@
     "removedBy": "{{name}} 님이 이 공유 프로젝트에서 나를 제거했습니다. 내 사본은 일반 프로젝트로 여기에 남습니다.",
     "archived": "소유자가 이 프로젝트 공유를 중지했습니다. 내 사본은 일반 프로젝트로 여기에 남습니다.",
     "signedOut": "{{server}}에서 로그아웃되어 이 프로젝트가 동기화되지 않습니다. 변경 내용은 이 컴퓨터에 남아 있습니다.",
-    "suspended": "관리자가 {{server}}에서 내 계정을 일시 중지했습니다. 변경 내용은 이 컴퓨터에 남아 있습니다. 계정이 다시 켜지면 다시 로그인할 수 있습니다.",
+    "suspended": "관리자가 {{server}}에서 내 계정을 정지했습니다. 변경 내용은 이 컴퓨터에 남아 있습니다. 관리자가 계정을 다시 활성화하면 다시 로그인할 수 있습니다.",
+    "clientTooOld": "{{server}}에서 계속 작업하려면 Oleafly를 업데이트하세요. 변경 내용은 이 컴퓨터에 남아 있습니다.",
+    "serverTooOld": "{{server}} 서버를 이 버전의 Oleafly에서 사용하려면 서버 업데이트가 필요합니다. 서버를 운영하는 사람에게 문의하세요. 변경 내용은 이 컴퓨터에 남아 있습니다.",
+    "serverChanged": "{{server}} 주소가 이제 다른 서버를 가리킵니다. 공동 작업 설정에서 서버를 제거한 다음 다시 추가하세요. 변경 내용은 이 컴퓨터에 남아 있습니다.",
     "accessEnded": "더 이상 {{server}}에 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "accessEndedGuest": "{{server}}의 어떤 공유 프로젝트에도 속해 있지 않아 더 이상 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "signIn": "로그인",
@@ -622,6 +692,8 @@
     "newDevice": "{{name}} 님이 새 기기에서 로그인했습니다",
     "review": "검토",
     "renamed": "내가 {{ours}}(으)로 이름을 바꾼 뒤 {{name}} 님이 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다",
+    "skipped": "{{name}} 님의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
+    "skippedUnknown": "다른 사람의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
     "mentioned": "{{name}} 님이 {{path}}의 댓글에서 회원님을 멘션했습니다",
     "mentionedHere": "{{name}} 님이 댓글에서 회원님을 멘션했습니다",
     "showComment": "댓글 보기",
@@ -664,12 +736,13 @@
     "windowTitle": "Oleafly Server 관리 콘솔",
     "title": "관리 콘솔",
     "sectionsLabel": "관리 콘솔 섹션",
+    "pendingGuestsBadge": "승인 대기 중: {{number}}",
     "sections": {
       "overview": "개요",
       "people": "사용자",
       "access": "접근 규칙",
       "projects": "프로젝트",
-      "settings": "설정",
+      "settings": "서버 설정",
       "email": "이메일",
       "log": "보안 로그",
       "checks": "연결 점검"
@@ -689,7 +762,9 @@
       "signedOutTitle": "이 서버에서 로그아웃되어 있습니다",
       "signedOutDescription": "설정에서 다시 로그인한 다음 서버 카드에서 관리 콘솔을 여세요.",
       "refusedTitle": "관리 콘솔은 관리자와 유지 관리자만 쓸 수 있습니다",
-      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요."
+      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요.",
+      "turnedOffTitle": "실시간 공동 작업이 꺼져 있습니다",
+      "turnedOffDescription": "여기에서 이 서버를 관리하려면 설정의 실험 기능에서 다시 켜세요."
     },
     "overview": {
       "loading": "개요를 불러오는 중…",
@@ -697,6 +772,7 @@
         "title": "상태",
         "okLabel": "모두 정상입니다",
         "okDescription": "사용자가 로그인할 수 있고 서버가 파일을 저장할 수 있습니다.",
+        "problem": "{{provider}} 로그인이 {{time}}부터 실패하고 있습니다",
         "issues": {
           "noSignInProvider": {
             "label": "아무도 로그인할 수 없습니다",
@@ -705,6 +781,14 @@
           "storageNotWritable": {
             "label": "서버가 파일을 저장할 수 없습니다",
             "description": "서버의 데이터 폴더가 있는지, 서버가 그 폴더에 쓸 수 있는지 확인하세요."
+          },
+          "signInFailing": {
+            "label": "로그인이 실패하고 있습니다",
+            "description": "서버의 로그인 방법 중 하나로 로그인할 수 없습니다. 아래 목록에서 어느 것인지, 언제부터인지 볼 수 있습니다."
+          },
+          "signInEmailsPaused": {
+            "label": "로그인 이메일이 일시 중지되었습니다",
+            "description": "서버가 이번 시간에 허용된 만큼 로그인 이메일을 보냈습니다. 이번 시간이 지나면 다시 보냅니다."
           },
           "unknown": {
             "label": "서버가 문제를 보고했습니다",
@@ -723,7 +807,9 @@
         "onlineDetail": "열린 프로젝트: {{number}}",
         "started": "시작 시각",
         "version": "버전",
-        "protocol": "프로토콜 {{protocol}}"
+        "protocol": "프로토콜 {{protocol}}",
+        "pendingGuests": "승인 대기 중인 게스트 초대: {{number}}",
+        "reviewGuests": "사용자에서 검토"
       },
       "storage": {
         "title": "저장소",
@@ -810,6 +896,8 @@
     "openSettings": "설정 열기",
     "malformed": "Oleafly에서 이 링크를 열 수 없습니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
     "opening": "공유 프로젝트를 여는 중…",
+    "downloading": "파일 다운로드 중: {{total}}개 중 {{done}}개",
+    "cancelNamed": "{{name}} 열기 중지",
     "confirm": {
       "title": "이 공유 프로젝트에 참여할까요?",
       "body": "참여하면 프로젝트에 추가되고 프로젝트 파일이 이 컴퓨터로 복사됩니다. 링크를 보낸 사람을 아는 경우에만 참여하세요.",
@@ -845,6 +933,14 @@
     "resolve": "해결",
     "reopen": "다시 열기",
     "deleteThread": "스레드 삭제",
+    "deleteThreadConfirm": {
+      "title": "이 스레드를 삭제할까요?",
+      "description": "댓글과 답글이 이 프로젝트의 모든 사람에게서 삭제됩니다. 되돌릴 수 없습니다."
+    },
+    "deleteMessageConfirm": {
+      "title": "이 댓글을 삭제할까요?",
+      "description": "이 프로젝트의 모든 사람에게서 삭제됩니다. 되돌릴 수 없습니다."
+    },
     "messageActions": "이 댓글의 추가 작업",
     "threadActions": "이 스레드의 추가 작업",
     "showInEditor": "편집기에서 보기",
@@ -920,6 +1016,7 @@
     "pending": {
       "title": "대기 중인 게스트",
       "description": "프로젝트 소유자가 이 사람들을 게스트로 초대했습니다. 게스트는 초대받은 프로젝트만 볼 수 있고 공유할 수 없습니다.",
+      "loadFailed": "Oleafly가 승인을 기다리는 게스트 초대를 불러오지 못했습니다.",
       "invitedBy": "{{inviter}} 님이 {{project}}에 초대했습니다",
       "approve": "승인",
       "approveNamed": "{{email}} 승인",
@@ -930,6 +1027,9 @@
   "access": {
     "viewerBy": "{{name}} 님이 나를 뷰어로 변경했습니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
     "viewer": "이제 뷰어입니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "viewOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다.",
+    "unsentReadOnly": "이제 이 프로젝트를 보기만 할 수 있어서 {{path}}의 마지막 변경 내용을 보내지 못했습니다.",
+    "unsentRefused": "Oleafly가 {{path}}의 마지막 변경 내용을 보내지 못해 변경 내용을 버렸습니다.",
     "removedBy": "{{name}} 님이 이 프로젝트에서 나를 제거했습니다. 내 사본은 이 컴퓨터에 남고 더 이상 공유되지 않습니다.",
     "removed": "이 프로젝트에서 제거되었습니다. 내 사본은 이 컴퓨터에 남고 더 이상 공유되지 않습니다."
   },

@@ -5,8 +5,6 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useTauriEvent } from "@/hooks/use-tauri-event";
-import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { COLLAB_PRESENCE_OPTIONS, type CollabPresence, useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "./AddServerDialog";
 import { collabErrorMessage } from "./errors";
@@ -15,7 +13,31 @@ import { useAddServerRequest } from "./links/add-server-request";
 import { ManageServerPanel } from "./ManageServerPanel";
 import { canManageServer, toServerRole } from "./roles";
 import { ServerCard } from "./ServerCard";
-import { useCollabStore } from "./store";
+import { useCollabStore, watchServers } from "./store";
+
+// After Remove, the shared projects that server held stay as ordinary
+// projects. Name them, so nobody wonders where their sync went.
+function DetachedProjects() {
+  const { t } = useTranslation(["collab", "common"]);
+  const detached = useCollabStore((state) => state.detached);
+  const dismiss = useCollabStore((state) => state.dismissDetached);
+  if (!detached) return null;
+  return (
+    <div role="status" className="space-y-2 rounded-lg border bg-card px-3 py-2.5 text-xs">
+      <p>{t(($) => $.collab.section.server.detached, { server: detached.server })}</p>
+      <ul className="max-h-28 select-text space-y-0.5 overflow-y-auto font-medium">
+        {detached.projects.map((project) => (
+          <li key={project.project_id} className="truncate">
+            {project.name}
+          </li>
+        ))}
+      </ul>
+      <Button type="button" variant="outline" size="sm" onClick={dismiss}>
+        {t(($) => $.common.actions.ok)}
+      </Button>
+    </div>
+  );
+}
 
 function PresenceChoice() {
   const { t } = useTranslation(["collab"]);
@@ -69,9 +91,7 @@ export function CollaborationSection() {
     if (url !== null) setAdding({ url });
   }, [requestedUrl]);
 
-  useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => {
-    void load();
-  });
+  useEffect(() => watchServers(), []);
 
   const managed = managing === null ? null : (servers.find((entry) => entry.server_id === managing) ?? null);
   if (managed?.signed_in && canManageServer(toServerRole(managed.account?.server_role))) {
@@ -125,6 +145,7 @@ export function CollaborationSection() {
           onRetry={() => void load()}
         />
       ) : null}
+      <DetachedProjects />
       {renderServers()}
       <PresenceChoice />
       <AddServerDialog open={adding !== null} initialUrl={adding?.url ?? null} onClose={() => setAdding(null)} />

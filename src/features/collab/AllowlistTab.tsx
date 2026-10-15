@@ -15,7 +15,8 @@ import {
   type CollabNewAllowlistEntry,
   type CollabProvider,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { looksLikeEmailAddress, looksLikeLogin } from "./address-checks";
+import { collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
 import { toServerRole, type ServerRole } from "./roles";
@@ -52,7 +53,7 @@ export function AllowlistTab({
         if (active) setEntries(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -76,6 +77,10 @@ export function AllowlistTab({
     event.preventDefault();
     const trimmed = value.trim();
     if (trimmed === "" || (kind === "login" && provider === null)) return;
+    if (kind === "email" ? !looksLikeEmailAddress(trimmed) : !looksLikeLogin(trimmed)) {
+      setFormError(collabErrorMessage(kind === "email" ? "invalid_email" : "invalid_login"));
+      return;
+    }
     const entry: CollabNewAllowlistEntry = {
       matcher:
         kind === "email"
@@ -90,7 +95,7 @@ export function AllowlistTab({
       setEntries((current) => [...(current ?? []), created]);
       setValue("");
     } catch (error) {
-      setFormError(collabErrorMessage(collabErrorCode(error), "allowlist"));
+      setFormError(collabErrorText(error, "allowlist"));
     } finally {
       setSaving(false);
     }
@@ -103,7 +108,7 @@ export function AllowlistTab({
       await collabAdminRemoveAllowlist(serverId, entry.id);
       setEntries((current) => current?.filter((item) => item.id !== entry.id) ?? null);
     } catch (error) {
-      setRowError(collabErrorMessage(collabErrorCode(error), "allowlist"));
+      setRowError(collabErrorText(error, "allowlist"));
     } finally {
       setBusyId(null);
     }

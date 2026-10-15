@@ -648,6 +648,7 @@
     "endOfDocument": "文档结尾",
     "hidePreamble": "隐藏文档导言区",
     "showPreamble": "显示文档导言区",
+    "sharedReadOnly": "在共享项目中，可视化模式只显示文件。要编辑，请切换到源码视图。",
     "findingLabel": "{{message}}。打开校对建议。",
     "rawBlockFindings_other": "此原始块中有 {{count}} 条校对发现。{{message}}。打开建议。"
   },

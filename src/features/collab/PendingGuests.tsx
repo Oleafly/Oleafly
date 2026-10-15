@@ -12,8 +12,8 @@ import {
   collabAdminGuestRevoke,
   type CollabGuestInvitation,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
-import { InlineAlert } from "./feedback";
+import { collabErrorText } from "./errors";
+import { InlineAlert, LoadFailed } from "./feedback";
 import { GuestBadge } from "./GuestBadge";
 
 function stillPending(entry: CollabGuestInvitation): boolean {
@@ -23,23 +23,30 @@ function stillPending(entry: CollabGuestInvitation): boolean {
 export function PendingGuests({ serverId }: Readonly<{ serverId: string }>) {
   const { t } = useTranslation(["collab"]);
   const [pending, setPending] = useState<CollabGuestInvitation[] | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [request, setRequest] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
     let active = true;
+    void request;
     collabAdminGuestInvitations(serverId).then(
       (next) => {
-        if (active) setPending(next.filter(stillPending));
+        if (!active) return;
+        setPending(next.filter(stillPending));
+        setFailure(null);
       },
-      () => {
-        if (active) setPending(null);
+      (error: unknown) => {
+        if (!active) return;
+        setPending(null);
+        setFailure(collabErrorText(error));
       },
     );
     return () => {
       active = false;
     };
-  }, [serverId]);
+  }, [serverId, request]);
 
   const run = async (entry: CollabGuestInvitation, action: () => Promise<CollabGuestInvitation | null>) => {
     setBusyId(entry.id);
@@ -52,13 +59,25 @@ export function PendingGuests({ serverId }: Readonly<{ serverId: string }>) {
         return current.filter((item) => item.id !== entry.id);
       });
     } catch (error) {
-      setRowError({ id: entry.id, message: collabErrorMessage(collabErrorCode(error)) });
+      setRowError({ id: entry.id, message: collabErrorText(error) });
     } finally {
       setBusyId(null);
     }
   };
 
   const title = t(($) => $.collab.guests.pending.title);
+  if (failure !== null) {
+    return (
+      <section className="space-y-2">
+        <h3 className="text-sm font-medium">{title}</h3>
+        <LoadFailed
+          message={t(($) => $.collab.guests.pending.loadFailed)}
+          reason={failure}
+          onRetry={() => setRequest((count) => count + 1)}
+        />
+      </section>
+    );
+  }
   if (!pending || pending.length === 0) return null;
 
   return (

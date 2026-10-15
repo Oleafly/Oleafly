@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 
 const mocks = vi.hoisted(() => ({
   collabWriteText: vi.fn(),
@@ -7,7 +9,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({ collabWriteText: mocks.collabWriteText }));
 
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
-import { sharedBaseOption, sharedDocumentLive, writeSharedText } from "./shared-document-writes";
+import { SharedReadOnlyError, sharedBaseOption, sharedDocumentLive, writeSharedText } from "./shared-document-writes";
+
+beforeAll(async () => {
+  await loadNamespace("collab");
+});
 
 beforeEach(() => {
   mocks.collabWriteText.mockReset().mockResolvedValue({ handled: true });
@@ -42,16 +48,36 @@ describe("writing through the shared document", () => {
     expect(mocks.collabWriteText).toHaveBeenCalledWith("paper", "refs.bib", "old", "new");
   });
 
+  it("sends LF text and an LF base whatever line endings the writer used", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    await writeSharedText("paper", "refs.bib", "@book{a,\r\n}\r\n@book{b,\r}\r", "@book{a,\r\n}\r\n");
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("paper", "refs.bib", "@book{a,\n}\n", "@book{a,\n}\n@book{b,\n}\n");
+  });
+
   it("sends no base when the writer has none", async () => {
     useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
     await writeSharedText("paper", "figures/a.tex", "body");
     expect(mocks.collabWriteText).toHaveBeenCalledWith("paper", "figures/a.tex", null, "body");
   });
 
-  it("reports a write the shared document did not take so the caller writes the disk", async () => {
-    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+  it("reports a file the shared document doesn't hold so the caller writes the disk", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
     mocks.collabWriteText.mockResolvedValue({ handled: false });
-    await expect(writeSharedText("paper", "main.tex", "new", "old")).resolves.toBe(false);
+    await expect(writeSharedText("paper", "notes.txt", "new", "old")).resolves.toBe(false);
+  });
+
+  it("refuses a write the shared document turned down because this person can only view", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });
+    mocks.collabWriteText.mockResolvedValue({ handled: false, reason: "read_only" });
+    const failure = await writeSharedText("paper", "refs.bib", "new", "old").catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(SharedReadOnlyError);
+    expect(String(failure)).toContain(enCollab.access.viewOnly);
+  });
+
+  it("refuses a viewer's write without asking the shared document", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+    await expect(writeSharedText("paper", "main.tex", "new", "old")).rejects.toBeInstanceOf(SharedReadOnlyError);
+    expect(mocks.collabWriteText).not.toHaveBeenCalled();
   });
 
   it("passes a failed shared write on to the caller", async () => {

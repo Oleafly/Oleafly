@@ -7,6 +7,7 @@ import {
   assignableRoles,
   canChangeMember,
   canManageServer,
+  isReadOnlyProjectRole,
   isStaffRole,
   serverRoleAllows,
   toServerRole,
@@ -53,7 +54,13 @@ describe("serverRoleAllows", () => {
   it("names the same actions and roles, in the same order, as the protocol crate", () => {
     const source = readFileSync(ROLES_RS, "utf8");
     expect(rustVariants(source, "ServerAction").map(camel)).toEqual([...SERVER_ACTIONS]);
-    expect(rustVariants(source, "ServerRole").map(camel)).toEqual([...SERVER_ROLES]);
+    // `Unknown` stands for a role from a later server. It is never granted, so
+    // the app lists only the roles it can pick and reads the rest as no role.
+    expect(
+      rustVariants(source, "ServerRole")
+        .map(camel)
+        .filter((role) => role !== "unknown"),
+    ).toEqual([...SERVER_ROLES]);
     expect(Object.keys(TRUTH_TABLE).sort()).toEqual([...SERVER_ACTIONS].sort());
   });
 });
@@ -87,5 +94,19 @@ describe("role helpers", () => {
     expect(toServerRole("maintainer")).toBe("maintainer");
     expect(toServerRole("owner")).toBeNull();
     expect(toServerRole(undefined)).toBeNull();
+  });
+
+  it("gives a server role from a later server no rights at all", () => {
+    const role = toServerRole("unknown");
+    expect(role).toBeNull();
+    expect(canManageServer(role)).toBe(false);
+  });
+
+  it("treats a project role from a later server as read-only, like a viewer", () => {
+    expect(isReadOnlyProjectRole("unknown")).toBe(true);
+    expect(isReadOnlyProjectRole("viewer")).toBe(true);
+    expect(isReadOnlyProjectRole("editor")).toBe(false);
+    expect(isReadOnlyProjectRole("owner")).toBe(false);
+    expect(isReadOnlyProjectRole(null)).toBe(false);
   });
 });

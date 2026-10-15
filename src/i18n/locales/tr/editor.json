@@ -658,6 +658,7 @@
     "endOfDocument": "Belgenin sonu",
     "hidePreamble": "Belge ön bölümünü gizle",
     "showPreamble": "Belge ön bölümünü göster",
+    "sharedReadOnly": "Paylaşılan bir projede görsel mod dosyayı yalnızca gösterir. Düzenlemek için kaynak görünümüne geçin.",
     "findingLabel": "{{message}}. Düzeltme önerilerini aç.",
     "rawBlockFindings_one": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç.",
     "rawBlockFindings_other": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç."

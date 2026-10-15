@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -69,8 +69,14 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "./files";
+
+beforeAll(async () => {
+  await loadNamespace("collab");
+});
 
 function goLive(): void {
   useCollabEditorGate.setState({ projectId: "project", viewer: false, connecting: false });
@@ -118,23 +124,31 @@ describe("a file written by the app in a live shared project", () => {
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
-  it("keeps CRLF line endings in both the text and its base", async () => {
+  it("sends LF text and an LF base for a CRLF file, since the shared document restores CRLF on disk", async () => {
     goLive();
+    mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "one\r\ntwo\r\nthree\r\n", {
+      base: "one\r\ntwo\r\n",
+    });
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("project", "main.tex", "one\ntwo\n", "one\ntwo\nthree\n");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
+      content: "one\ntwo\nthree\n",
+      dirty: false,
+    });
+  });
+
+  it("still writes CRLF to disk when the shared document does not take a CRLF file", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false });
     mocks.readFileContent.mockResolvedValue("one\r\ntwo\r\n");
     await useFilesStore.getState().openFile("main.tex");
     await useFilesStore.getState().writeProjectFile("project", "main.tex", "one\ntwo\nthree\n", {
       base: "one\ntwo\n",
     });
-    expect(mocks.collabWriteText).toHaveBeenCalledWith(
-      "project",
-      "main.tex",
-      "one\r\ntwo\r\n",
-      "one\r\ntwo\r\nthree\r\n",
-    );
-    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({
-      content: "one\ntwo\nthree\n",
-      dirty: false,
-    });
+    expect(mocks.collabWriteText).toHaveBeenCalledWith("project", "main.tex", "one\ntwo\n", "one\ntwo\nthree\n");
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "one\r\ntwo\r\nthree\r\n", 3);
   });
 
   it("is written to disk when the shared document does not take it", async () => {
@@ -144,6 +158,23 @@ describe("a file written by the app in a live shared project", () => {
       base: "@book{old}\n",
     });
     expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "refs.bib", "@book{new}\n", 3);
+  });
+
+  it("is refused for a viewer instead of being written to disk", async () => {
+    useCollabEditorGate.setState({ projectId: "project", viewer: true, connecting: false });
+    await expect(
+      useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n", { base: "@book{old}\n" }),
+    ).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("is refused when the shared document says this person can only view", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false, reason: "read_only" });
+    await expect(
+      useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n", { base: "@book{old}\n" }),
+    ).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
   it("is written to disk in a project that is not shared, as before", async () => {
@@ -174,6 +205,23 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 
+  it("merges from the base a writer passes when it built the new text from an older copy", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("older\nlabel\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "newer from Bob\nolder\nlabel\n", dirty: false } },
+    }));
+    useFilesStore.getState().setContent("main.tex", "older\nrenamed\n", { base: "older\nlabel\n" });
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "older\nlabel\n",
+      "older\nrenamed\n",
+    );
+  });
+
   it("starts the next save from the text the previous save sent", async () => {
     goLive();
     mocks.readFileContent.mockResolvedValue("a\n");
@@ -189,6 +237,44 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
+  it("saves an open CRLF file through the shared document as LF text from an LF base", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\nb\n");
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("keeps CRLF for the direct disk save when the shared document does not take an open CRLF file", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false });
+    mocks.readFileContent.mockResolvedValue("a\r\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\nb\n");
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "a\r\nb\r\n",
+      3,
+      expect.any(String),
+    );
+  });
+
+  it("fails to save and stays unsaved for a viewer, never writing the disk", async () => {
+    goLive();
+    mocks.collabWriteText.mockResolvedValue({ handled: false, reason: "read_only" });
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toThrow(enCollab.access.viewOnly);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+  });
+
   it("is saved to disk in a project that is not shared, as before", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");
@@ -196,6 +282,29 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
     await useFilesStore.getState().saveFile("main.tex");
     expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
     expect(mocks.collabWriteText).not.toHaveBeenCalled();
+  });
+});
+
+describe("text a live session hands back to local editing", () => {
+  it("is saved even though the buffer already shows it", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\ntyped\n", dirty: false } },
+    }));
+    expect(useFilesStore.getState().setContent("main.tex", "a\ntyped\n")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    useFilesStore.getState().setContent("main.tex", "a\ntyped\n", { unsaved: true });
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "a\ntyped\n", 3, expect.any(String));
+  });
+
+  it("stays saved when the disk already has it", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\n", { unsaved: true });
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 });
 

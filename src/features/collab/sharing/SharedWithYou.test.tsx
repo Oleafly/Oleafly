@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -13,6 +14,7 @@ import {
   SERVER_ID,
   SHARED_ID,
   collabError,
+  deferred,
   fill,
   projectSummary,
   server,
@@ -22,6 +24,7 @@ import {
 const mocks = vi.hoisted(() => ({
   collabSharedWithMe: vi.fn(),
   collabJoinProject: vi.fn(),
+  collabJoinCancel: vi.fn(),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
 }));
 
@@ -35,6 +38,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   collabSharedWithMe: mocks.collabSharedWithMe,
   collabJoinProject: mocks.collabJoinProject,
+  collabJoinCancel: mocks.collabJoinCancel,
 }));
 
 import { SharedWithYou } from "./SharedWithYou";
@@ -76,7 +80,7 @@ describe("SharedWithYou", () => {
     expect(screen.queryByText("Already here")).toBeNull();
   });
 
-  it("checks again when the window regains focus and on a timer, so new shares appear while the app is open", async () => {
+  it("checks again when the window is shown and on a timer, so new shares appear while the app is open", async () => {
     mocks.collabSharedWithMe.mockResolvedValue([]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -84,7 +88,7 @@ describe("SharedWithYou", () => {
       await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
       mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
       act(() => {
-        window.dispatchEvent(new Event("focus"));
+        document.dispatchEvent(new Event("visibilitychange"));
       });
       expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
       const calls = mocks.collabSharedWithMe.mock.calls.length;
@@ -94,6 +98,34 @@ describe("SharedWithYou", () => {
       expect(mocks.collabSharedWithMe.mock.calls.length).toBeGreaterThan(calls);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("doesn't check while the window is hidden, and catches up once it's shown", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([]);
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<SharedWithYou />);
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
+      visibility = "hidden";
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+        mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } });
+        await vi.advanceTimersByTimeAsync(5 * 60_000);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1);
+      visibility = "visible";
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      Reflect.deleteProperty(document, "visibilityState");
     }
   });
 
@@ -108,6 +140,32 @@ describe("SharedWithYou", () => {
     expect(refreshProjects).toHaveBeenCalled();
   });
 
+  it("shows the download on that row and stops it with Cancel", async () => {
+    const join = deferred<string>();
+    mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe(), thesis]);
+    mocks.collabJoinProject.mockReturnValue(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<SharedWithYou />);
+    await user.click(await screen.findByRole("button", { name: fill(copy.openNamed, { name: "Grant proposal" }) }));
+    const rows = within(screen.getByRole("list", { name: copy.title })).getAllByRole("listitem");
+    const progress = within(rows[0]).getByTestId("collab-join-progress");
+    expect(within(rows[1]).queryByTestId("collab-join-progress")).toBeNull();
+    await waitFor(() => expect(mocks.listeners.has("collab-join-progress")).toBe(true));
+    act(() =>
+      mocks.listeners.get("collab-join-progress")?.({
+        payload: { serverId: SERVER_ID, sharedProjectId: SHARED_ID, done: 1, total: 4 },
+      }),
+    );
+    expect(progress).toHaveTextContent(fill(enCollab.links.downloading, { done: "1", total: "4" }));
+    await user.click(within(progress).getByRole("button", { name: fill(enCollab.links.cancelNamed, { name: "Grant proposal" }) }));
+    expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, SHARED_ID);
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-join-progress")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
   it("explains a failed open on that row", async () => {
     mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
     mocks.collabJoinProject.mockRejectedValue(collabError("forbidden"));
@@ -118,22 +176,69 @@ describe("SharedWithYou", () => {
     expect(openProject).not.toHaveBeenCalled();
   });
 
-  it("shows nothing when nothing is shared or the list cannot load", async () => {
-    mocks.collabSharedWithMe.mockRejectedValue(collabError("unreachable"));
+  it("shows nothing when nothing is shared", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([]);
     const { container } = render(<SharedWithYou />);
     await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("refreshes when a server changes or the server list changes", async () => {
-    mocks.collabSharedWithMe.mockResolvedValue([]);
+  it("explains a list that can't be checked and checks again on Retry", async () => {
+    mocks.collabSharedWithMe.mockRejectedValueOnce(collabError("unreachable")).mockResolvedValue([sharedWithMe()]);
+    const user = userEvent.setup();
     render(<SharedWithYou />);
-    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
-    mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
-    act(() => mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } }));
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
-    act(() => useCollabStore.setState({ servers: [server()] }));
-    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3));
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+  });
+
+  it("keeps the projects it found when a later check fails", async () => {
+    mocks.collabSharedWithMe.mockResolvedValueOnce([sharedWithMe()]).mockRejectedValue(collabError("unreachable"));
+    render(<SharedWithYou />);
+    expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Grant proposal")).toBeInTheDocument();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+  });
+
+  it("refreshes once after a burst of server changes, and when a server is added or signs in or out", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<SharedWithYou />);
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.listeners.has(COLLAB_SERVER_CHANGED_EVENT)).toBe(true));
+      mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe()]);
+      await act(async () => {
+        for (let index = 0; index < 3; index += 1) {
+          mocks.listeners.get(COLLAB_SERVER_CHANGED_EVENT)?.({ payload: { serverId: SERVER_ID } });
+          await vi.advanceTimersByTimeAsync(200);
+        }
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText("Grant proposal")).toBeInTheDocument();
+
+      act(() => useCollabStore.setState({ servers: [server()] }));
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3));
+      act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab renamed" })] }));
+      act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab renamed" })] }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(3);
+      act(() => useCollabStore.setState({ servers: [server({ signed_in: false, account: null })] }));
+      await waitFor(() => expect(mocks.collabSharedWithMe).toHaveBeenCalledTimes(4));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

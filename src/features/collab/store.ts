@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { logError } from "@/lib/log";
 import {
   collabServerCodeSignIn,
   collabServerRefresh,
@@ -6,7 +7,9 @@ import {
   collabServerSignIn,
   collabServerSignOut,
   collabServersList,
+  onCollabServerChanged,
   type CollabErrorCode,
+  type CollabDetachedProject,
   type CollabServer,
   type CollabSignInCode,
   type CollabSignOut,
@@ -23,12 +26,19 @@ export interface UnsentWork {
   projects: readonly CollabUnsentProject[];
 }
 
+// The shared projects a removed server left behind as ordinary projects.
+export interface DetachedNotice {
+  server: string;
+  projects: readonly CollabDetachedProject[];
+}
+
 interface CollabStore {
   servers: CollabServer[];
   status: CollabServersStatus;
   loadError: CollabErrorCode | null;
   pending: Readonly<Record<string, CollabServerAction>>;
   unsent: Readonly<Record<string, UnsentWork>>;
+  detached: DetachedNotice | null;
   load: () => Promise<void>;
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   signInWithCode: (
@@ -40,6 +50,7 @@ interface CollabStore {
   remove: (serverId: string) => Promise<CollabErrorCode | null>;
   keepLocalCopies: (serverId: string) => Promise<CollabErrorCode | null>;
   stay: (serverId: string) => void;
+  dismissDetached: () => void;
   refreshAccounts: () => Promise<void>;
 }
 
@@ -67,6 +78,7 @@ async function end(
 ): Promise<CollabErrorCode | null> {
   const store = useCollabStore;
   if (store.getState().pending[serverId]) return null;
+  const serverName = store.getState().servers.find((entry) => entry.server_id === serverId)?.name ?? "";
   store.setState((state) => ({
     pending: { ...state.pending, [serverId]: action },
     unsent: without(state.unsent, serverId),
@@ -89,12 +101,50 @@ async function end(
     return null;
   }
   loadRequest += 1;
+  const detached = outcome.detached ?? [];
   store.setState((state) => ({
     servers: ended(state.servers, serverId, action),
     pending: without(state.pending, serverId),
+    detached: detached.length > 0 ? { server: serverName, projects: detached } : state.detached,
   }));
-  if (outcome.unsent.length > 0) void followLocalCopies(outcome.unsent.map((project) => project.project_id));
+  const local = [...outcome.unsent, ...detached].map((project) => project.project_id);
+  if (local.length > 0) void followLocalCopies(local);
   return null;
+}
+
+// One listener reloads the list whenever the backend says a server changed,
+// for as long as anything watches. Without it, a session that ended while
+// Settings was closed still looks signed in everywhere else.
+let watchers = 0;
+let listening: { stop: (() => void) | null; released: boolean } | null = null;
+
+export function watchServers(): () => void {
+  watchers += 1;
+  if (watchers === 1) {
+    const current = { stop: null as (() => void) | null, released: false };
+    listening = current;
+    onCollabServerChanged(() => {
+      if (useCollabStore.getState().status !== "idle") void useCollabStore.getState().load();
+    }).then(
+      (unlisten) => {
+        if (current.released) unlisten();
+        else current.stop = unlisten;
+      },
+      (error: unknown) => {
+        void logError("collab server listener", error);
+      },
+    );
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    watchers -= 1;
+    if (watchers > 0 || !listening) return;
+    listening.released = true;
+    listening.stop?.();
+    listening = null;
+  };
 }
 
 export const useCollabStore = create<CollabStore>((set, get) => ({
@@ -103,6 +153,7 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   loadError: null,
   pending: {},
   unsent: {},
+  detached: null,
   load: async () => {
     const request = ++loadRequest;
     set((state) => ({ status: state.status === "ready" ? "ready" : "loading", loadError: null }));
@@ -135,11 +186,23 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
     return end(serverId, waiting.action, true);
   },
   stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
+  dismissDetached: () => set({ detached: null }),
   refreshAccounts: async () => {
+    // Apply each answer as it comes, and only while nothing has changed the
+    // list since: a refresh started before a sign-out must not sign back in.
+    const started = loadRequest;
     const signedIn = get().servers.filter((entry) => entry.signed_in);
-    const results = await Promise.allSettled(signedIn.map((entry) => collabServerRefresh(entry.server_id)));
-    const fresh = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-    if (fresh.length === 0) return;
-    set((state) => ({ servers: fresh.reduce((servers, server) => upsert(servers, server), state.servers) }));
+    await Promise.all(
+      signedIn.map(async (entry) => {
+        let fresh: CollabServer;
+        try {
+          fresh = await collabServerRefresh(entry.server_id);
+        } catch {
+          return;
+        }
+        if (loadRequest !== started || get().pending[entry.server_id]) return;
+        set((state) => ({ servers: upsert(state.servers, fresh) }));
+      }),
+    );
   },
 }));

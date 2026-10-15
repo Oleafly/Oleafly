@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { collabServerTest, type CollabConnectionCheck } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 
 export type ConnectionTest =
   | { state: "idle" }
@@ -15,7 +15,7 @@ export function useConnectionTest(url: string): { test: ConnectionTest; run: () 
     try {
       setTest({ state: "done", checks: await collabServerTest(url) });
     } catch (error) {
-      setTest({ state: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+      setTest({ state: "failed", message: collabErrorText(error) });
     }
   }, [url]);
   return { test, run };

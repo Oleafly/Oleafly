@@ -1,57 +1,34 @@
 import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link2, X } from "lucide-react";
+import { useLinkInbox } from "@/components/collab/link-inbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { Spinner } from "@/components/ui/spinner";
-import { collabOpenLink, isCollabCommandError } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
-import { collabErrorCode, collabErrorMessage } from "../errors";
 import { InlineAlert } from "../feedback";
+import { pastedProjectLink } from "../links/app-link";
 
-type Failure = { kind: "serverUnknown"; server: string } | { kind: "message"; text: string };
-
+// Hands the pasted link to the same flow as links opened from outside the
+// app, which signs in, adds an unknown server with its address filled in,
+// asks before joining and shows the download.
 export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();
   const inputId = useId();
   const [link, setLink] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [notALink, setNotALink] = useState(false);
   const trimmed = link.trim();
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (trimmed === "" || busy) return;
-    setBusy(true);
-    setFailure(null);
-    try {
-      const projectId = await collabOpenLink(trimmed);
-      const files = useFilesStore.getState();
-      await files.refreshProjects();
-      await files.openProject(projectId);
-      onClose();
-    } catch (error) {
-      const code = collabErrorCode(error);
-      if (code === "server_unknown") {
-        setFailure({ kind: "serverUnknown", server: isCollabCommandError(error) ? error.message : "" });
-      } else if (code === "not_found") {
-        setFailure({ kind: "message", text: t(($) => $.collab.library.openLink.noAccess) });
-      } else {
-        setFailure({ kind: "message", text: collabErrorMessage(code) });
-      }
-    } finally {
-      setBusy(false);
+    if (trimmed === "") return;
+    const app = pastedProjectLink(trimmed);
+    if (app === null) {
+      setNotALink(true);
+      return;
     }
-  };
-
-  const openSettings = () => {
+    useLinkInbox.getState().add(app);
     onClose();
-    const settings = useSettingsStore.getState();
-    settings.setSettingsInitialSection("collaboration");
-    settings.setSettingsOpen(true);
   };
 
   return (
@@ -82,7 +59,7 @@ export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
           <X aria-hidden className="size-4" />
         </Button>
       </div>
-      <form className="space-y-3" onSubmit={(event) => void submit(event)}>
+      <form className="space-y-3" onSubmit={submit}>
         <label htmlFor={inputId} className="text-sm font-medium">
           {t(($) => $.collab.library.openLink.label)}
         </label>
@@ -93,24 +70,19 @@ export function OpenLinkDialog({ onClose }: Readonly<{ onClose: () => void }>) {
           autoComplete="off"
           spellCheck={false}
           placeholder={t(($) => $.collab.library.openLink.placeholder)}
-          onChange={(event) => setLink(event.target.value)}
+          onChange={(event) => {
+            setLink(event.target.value);
+            setNotALink(false);
+          }}
           className="text-sm"
         />
-        {failure?.kind === "serverUnknown" ? (
-          <div className="space-y-2">
-            <InlineAlert>{t(($) => $.collab.library.openLink.serverUnknown, { server: failure.server })}</InlineAlert>
-            <Button type="button" variant="outline" size="sm" onClick={openSettings}>
-              {t(($) => $.collab.share.openSettings)}
-            </Button>
-          </div>
-        ) : null}
-        {failure?.kind === "message" ? <InlineAlert>{failure.text}</InlineAlert> : null}
+        {notALink ? <InlineAlert>{t(($) => $.collab.errors.not_a_link)}</InlineAlert> : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             {t(($) => $.common.actions.cancel)}
           </Button>
-          <Button type="submit" disabled={trimmed === "" || busy}>
-            {busy ? <Spinner /> : <Link2 aria-hidden />}
+          <Button type="submit" disabled={trimmed === ""}>
+            <Link2 aria-hidden />
             {t(($) => $.collab.library.openLink.open)}
           </Button>
         </div>

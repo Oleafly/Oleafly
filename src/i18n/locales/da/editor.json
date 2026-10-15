@@ -658,6 +658,7 @@
     "endOfDocument": "Dokumentets slutning",
     "hidePreamble": "Skjul dokumentets præambel",
     "showPreamble": "Vis dokumentets præambel",
+    "sharedReadOnly": "I et delt projekt viser den visuelle tilstand kun filen. Skift til kildevisning for at redigere den.",
     "findingLabel": "{{message}}. Åbn korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag."

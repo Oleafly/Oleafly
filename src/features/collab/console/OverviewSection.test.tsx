@@ -63,6 +63,21 @@ describe("OverviewSection", () => {
     expect(stat("people").querySelectorAll("dd")).toHaveLength(1);
   });
 
+  it("names guest invitations waiting for approval and leads to People", async () => {
+    const waiting = overview();
+    waiting.counts = { ...waiting.counts, pending_guest_approvals: 2 };
+    const { onNavigate } = renderReady({ state: { status: "ready", overview: waiting } });
+    const row = screen.getByTestId("console-pending-guests");
+    expect(row).toHaveTextContent(fill(copy.glance.pendingGuests, { number: "2" }));
+    await userEvent.setup().click(within(row).getByRole("button", { name: copy.glance.reviewGuests }));
+    expect(onNavigate).toHaveBeenCalledWith("people");
+  });
+
+  it("says nothing about guest approvals when none are waiting", () => {
+    renderReady();
+    expect(screen.queryByTestId("console-pending-guests")).toBeNull();
+  });
+
   it("shows storage use to admins with where the files live", () => {
     renderReady();
     expect(within(stat("database")).getByText(formatBytes(4096))).toBeInTheDocument();
@@ -99,7 +114,10 @@ describe("OverviewSection", () => {
       state: {
         status: "ready",
         overview: overview({
-          health: { status: "warning", issues: ["no_sign_in_provider", "storage_not_writable", "unknown"] },
+          health: {
+            status: "warning",
+            issues: ["no_sign_in_provider", "storage_not_writable", "sign_in_failing", "sign_in_emails_paused", "unknown"],
+          },
         }),
       },
     });
@@ -108,6 +126,34 @@ describe("OverviewSection", () => {
       expect(screen.getByText(issue.description)).toBeInTheDocument();
     }
     expect(screen.queryByText(copy.health.okLabel)).not.toBeInTheDocument();
+  });
+
+  it("says which sign-in option is failing and since when, in the provider's own words", () => {
+    const since = STARTED + 3_600_000;
+    renderReady({
+      state: {
+        status: "ready",
+        overview: overview({
+          health: { status: "warning", issues: ["sign_in_failing", "sign_in_emails_paused"] },
+          providers: [
+            { id: "github", kind: "github", label: "GitHub" },
+            { id: "uni", kind: "oidc", label: "University sign-in" },
+          ],
+          sign_in_problems: [
+            { provider: "uni", at: since, reason: "unauthorized_client: The client is not allowed." },
+            { provider: "gone", at: since, reason: "" },
+          ],
+        }),
+      },
+    });
+    expect(screen.getByText(copy.health.issues.signInFailing.label)).toBeInTheDocument();
+    expect(screen.getByText(copy.health.issues.signInEmailsPaused.description)).toBeInTheDocument();
+    const problems = screen.getByTestId("console-sign-in-problems");
+    expect(problems).toHaveTextContent(
+      fill(copy.health.problem, { provider: "University sign-in", time: formatDateTime(since) }),
+    );
+    expect(problems).toHaveTextContent("unauthorized_client: The client is not allowed.");
+    expect(problems).toHaveTextContent(fill(copy.health.problem, { provider: "gone", time: formatDateTime(since) }));
   });
 
   it("reads a problem a newer server reports as a general problem", () => {

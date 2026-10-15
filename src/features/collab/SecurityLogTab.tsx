@@ -11,7 +11,7 @@ import {
   type CollabSecurityEvent,
   type CollabSecurityLogKind,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { toServerRole } from "./roles";
 import { RUNTIME_SETTING_COPY } from "./RuntimeSettingsTab";
@@ -283,10 +283,19 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
 
   return (event: CollabSecurityEvent) => {
     const detail = detailOf(event);
+    const target = targetOf(event, detail);
+    // A refused sign-in has no account behind it. The login, address or
+    // device that was refused is who the row is about, not the server.
+    const targetIsSubject = event.actor === null && target !== null && SIGN_IN_KINDS.has(event.kind);
+    const nobody = event.actor === null && target === null && event.kind === "sign_in_refused";
+    let subject: string | null = null;
+    if (targetIsSubject) subject = target;
+    else if (nobody) subject = t(($) => $.collab.admin.log.unknownAccount);
     return {
       label: t(($) => $.collab.admin.log.kinds[labelKey(event, detail)]),
       facts: factsOf(event, detail),
-      target: targetOf(event, detail),
+      subject,
+      target: targetIsSubject ? null : target,
     };
   };
 }
@@ -320,7 +329,7 @@ export function SecurityLogTab({
         setCursor(page.next_cursor ?? null);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -337,7 +346,7 @@ export function SecurityLogTab({
       setEvents((current) => [...(current ?? []), ...page.items]);
       setCursor(page.next_cursor ?? null);
     } catch (error) {
-      setMoreError(collabErrorMessage(collabErrorCode(error)));
+      setMoreError(collabErrorText(error));
     } finally {
       setLoadingMore(false);
     }
@@ -371,11 +380,11 @@ export function SecurityLogTab({
     return (
       <ol className="divide-y rounded-lg border bg-card">
         {events.map((event) => {
-          const { label, facts, target } = describe(event);
+          const { label, facts, subject, target } = describe(event);
           return (
             <li key={event.id} className="space-y-0.5 px-3 py-2">
               <p className="text-xs">
-                <span className="font-medium">{actorName(event.actor)}</span>
+                <span className="font-medium">{subject ?? actorName(event.actor)}</span>
                 <span className="text-muted-foreground">{" · "}</span>
                 <span>{label}</span>
               </p>
@@ -388,7 +397,7 @@ export function SecurityLogTab({
                     {t(($) => $.collab.admin.log.target, { target })}
                   </span>
                 ) : null}
-                {event.ip ? (
+                {event.ip && event.ip !== subject ? (
                   <span>
                     {" · "}
                     {t(($) => $.collab.admin.log.ip, { ip: event.ip })}

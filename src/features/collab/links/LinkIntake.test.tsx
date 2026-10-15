@@ -6,31 +6,46 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import type { CollabShareInfo } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
   BOB,
   collabError,
   deferred,
+  fill,
+  libraryProject,
   projectSummary,
   SERVER_ID,
   server,
+  shareInfo,
   signedOutServer,
 } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabCommentFilePath: vi.fn(),
   collabJoinProject: vi.fn(),
+  collabJoinCancel: vi.fn(),
   collabLinkPreview: vi.fn(),
   collabOpenLink: vi.fn(),
   collabServersList: vi.fn(),
   collabServerProbe: vi.fn(),
   collabServerSignInCancel: vi.fn(),
+  collabShareInfo: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
+}));
+
+const events = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>());
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, handler: (event: { payload: unknown }) => void) => {
+    events.set(event, handler);
+    return () => events.delete(event);
+  }),
 }));
 
 import { useCommentsRail } from "@/components/collab/comments-rail";
@@ -60,6 +75,21 @@ const refreshProjects = vi.fn(async () => undefined);
 const openProject = vi.fn(async (_id: string) => undefined);
 const openFile = vi.fn(async (_path: string) => undefined);
 const onTaken = vi.fn();
+
+// The shared project is already on this computer as library project `id`.
+function inLibrary(id: string) {
+  useFilesStore.setState({
+    projects: [libraryProject({ id, name: "Reef survey", shared: { server_name: "Smith Lab", role: "editor" } })],
+  });
+  mocks.collabShareInfo.mockImplementation(async (projectId: string) =>
+    projectId === id ? shareInfo({ project_id: id, server_id: SERVER_ID, shared_project_id: PROJECT }) : null,
+  );
+}
+
+async function joinWhenAsked(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = await screen.findByRole("dialog", { name: copy.confirm.title });
+  await user.click(within(dialog).getByRole("button", { name: copy.confirm.join }));
+}
 
 function deliver(links: readonly string[]) {
   return render(<LinkIntake links={links} onTaken={onTaken} />);
@@ -93,6 +123,8 @@ beforeEach(() => {
   useCommentsRail.setState({ reveal: null });
   useCollabStore.setState({ servers: [server()], status: "ready", loadError: null, pending: {} });
   useAddServerRequest.setState({ url: null });
+  useFilesStore.setState({ projects: [] });
+  mocks.collabShareInfo.mockResolvedValue(null);
   mocks.collabServerProbe.mockReturnValue(deferred().promise);
   mocks.collabServerSignInCancel.mockResolvedValue(undefined);
 });
@@ -109,10 +141,11 @@ describe("LinkIntake", () => {
   });
 
   it("opens a project that is already in the library", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-1");
+    inLibrary("local-1");
     deliver([OPEN]);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-1"));
-    expect(mocks.collabJoinProject).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    expect(mocks.collabShareInfo).toHaveBeenCalledWith("local-1");
+    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
     expect(refreshProjects).toHaveBeenCalled();
     expect(mocks.collabOpenLink).not.toHaveBeenCalled();
     expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
@@ -120,7 +153,7 @@ describe("LinkIntake", () => {
   });
 
   it("opens the comment a link points at once the project is open", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-1");
+    inLibrary("local-1");
     mocks.collabCommentFilePath.mockResolvedValue("chapters/intro.tex");
     openProject.mockImplementationOnce(async (id: string) => {
       useComments.setState({ projectId: id });
@@ -135,7 +168,7 @@ describe("LinkIntake", () => {
   });
 
   it("waits for the comments of the opened project before showing the comment", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-1");
+    inLibrary("local-1");
     mocks.collabCommentFilePath.mockResolvedValue("chapters/intro.tex");
     deliver([COMMENT]);
     await waitFor(() => expect(mocks.collabCommentFilePath).toHaveBeenCalledWith("local-1", FILE));
@@ -148,7 +181,7 @@ describe("LinkIntake", () => {
   });
 
   it("opens just the project when the commented file is gone", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-1");
+    inLibrary("local-1");
     mocks.collabCommentFilePath.mockResolvedValue(null);
     useComments.setState({ projectId: "local-1" });
     deliver([COMMENT]);
@@ -162,14 +195,28 @@ describe("LinkIntake", () => {
 
   it("opens a project already in the library while signed out without asking to sign in", async () => {
     useCollabStore.setState({ servers: [signedOutServer()] });
-    mocks.collabJoinProject.mockResolvedValue("local-1");
+    inLibrary("local-1");
     deliver([OPEN]);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-1"));
     expect(screen.queryByRole("heading", { name: enCollab.addServer.title })).not.toBeInTheDocument();
   });
 
+  it("asks before downloading a project the person is a member of but has not opened on this computer", async () => {
+    mocks.collabLinkPreview.mockResolvedValue({ ...PREVIEW, role: "viewer" });
+    mocks.collabOpenLink.mockResolvedValue("local-14");
+    const user = userEvent.setup();
+    deliver([OPEN]);
+    const dialog = await screen.findByRole("dialog", { name: copy.confirm.title });
+    expect(fact(dialog, copy.confirm.role)).toHaveTextContent(enCollab.projectRoles.viewer);
+    await sleep(50);
+    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabOpenLink).not.toHaveBeenCalled();
+    expect(openProject).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: copy.confirm.join }));
+    await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-14"));
+  });
+
   it("asks before joining a project the person is not a member of yet, then joins and opens it", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     mocks.collabOpenLink.mockResolvedValue("local-2");
     const user = userEvent.setup();
@@ -195,7 +242,6 @@ describe("LinkIntake", () => {
   });
 
   it("leaves everything alone when the person decides not to join", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     const user = userEvent.setup();
     deliver([OPEN]);
@@ -209,7 +255,6 @@ describe("LinkIntake", () => {
   });
 
   it("treats Escape as not joining", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     const user = userEvent.setup();
     deliver([OPEN]);
@@ -221,7 +266,6 @@ describe("LinkIntake", () => {
   });
 
   it("runs the next link only after the person answers", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     const user = userEvent.setup();
     deliver([OPEN, "oleafly://nonsense"]);
@@ -233,7 +277,6 @@ describe("LinkIntake", () => {
   });
 
   it("says when the person has no access without asking first, and the message closes", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockRejectedValue(collabError("not_found"));
     const user = userEvent.setup();
     deliver([OPEN]);
@@ -246,7 +289,6 @@ describe("LinkIntake", () => {
   });
 
   it("explains in words when the project cannot be looked up", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockRejectedValue(collabError("unreachable"));
     deliver([OPEN]);
     expect(await screen.findByText(enCollab.errors.unreachable)).toBeInTheDocument();
@@ -254,7 +296,6 @@ describe("LinkIntake", () => {
   });
 
   it("says when access ends between the question and the join", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("not_found"));
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     mocks.collabOpenLink.mockRejectedValue(collabError("not_found"));
     const user = userEvent.setup();
@@ -267,10 +308,7 @@ describe("LinkIntake", () => {
 
   it("asks a signed-out person to sign in, then asks before joining", async () => {
     useCollabStore.setState({ servers: [signedOutServer()] });
-    mocks.collabJoinProject
-      .mockRejectedValueOnce(collabError("unauthorized"))
-      .mockRejectedValueOnce(collabError("not_found"));
-    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabLinkPreview.mockRejectedValueOnce(collabError("unauthorized")).mockResolvedValue(PREVIEW);
     mocks.collabOpenLink.mockResolvedValue("local-13");
     const user = userEvent.setup();
     deliver([OPEN]);
@@ -282,12 +320,46 @@ describe("LinkIntake", () => {
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-13"));
   });
 
-  it("explains other failures in words", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("unreachable"));
+  it("explains in words when the download fails", async () => {
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockRejectedValue(collabError("unreachable"));
+    const user = userEvent.setup();
     deliver([OPEN]);
+    await joinWhenAsked(user);
     expect(await screen.findByText(enCollab.errors.unreachable)).toBeInTheDocument();
-    expect(mocks.collabOpenLink).not.toHaveBeenCalled();
-    expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
+  it("says when the project is full instead of calling it a clash", async () => {
+    mocks.collabLinkPreview.mockRejectedValue(
+      collabError("project_full", "A project on this server can have at most 20 people."),
+    );
+    deliver([OPEN]);
+    expect(await screen.findByText(enCollab.errors.project_full)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.errors.conflict)).not.toBeInTheDocument();
+  });
+
+  it("says when the project's owner is away instead of calling it missing", async () => {
+    mocks.collabLinkPreview.mockRejectedValue(collabError("owner_away", "The owner is suspended."));
+    deliver([OPEN]);
+    expect(await screen.findByText(enCollab.errors.owner_away)).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.library.openLink.noAccess)).not.toBeInTheDocument();
+  });
+
+  it("says to move a library a cloud service syncs before joining", async () => {
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockRejectedValue(collabError("cloud_synced", "library is synced"));
+    const user = userEvent.setup();
+    deliver([OPEN]);
+    await joinWhenAsked(user);
+    expect(await screen.findByText(enCollab.errors.cloud_synced)).toBeInTheDocument();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's own sentence for a refusal it has no code for", async () => {
+    mocks.collabLinkPreview.mockRejectedValue(collabError("invalid", "That invitation was withdrawn."));
+    deliver([OPEN]);
+    expect(await screen.findByText("That invitation was withdrawn.")).toBeInTheDocument();
   });
 
   it("explains when the server list cannot be read", async () => {
@@ -301,35 +373,67 @@ describe("LinkIntake", () => {
 
   it("shows that the project is opening while it downloads", async () => {
     const join = deferred<string>();
-    mocks.collabJoinProject.mockReturnValue(join.promise);
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockReturnValue(join.promise);
+    const user = userEvent.setup();
     deliver([OPEN]);
+    await joinWhenAsked(user);
     expect(await screen.findByText(copy.opening)).toBeInTheDocument();
     await act(async () => join.resolve("local-3"));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-3"));
     expect(screen.queryByText(copy.opening)).not.toBeInTheDocument();
   });
 
+  it("shows how far the download got and stops it with Cancel, without an error", async () => {
+    const user = userEvent.setup();
+    const join = deferred<string>();
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockReturnValue(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    deliver([OPEN]);
+    await joinWhenAsked(user);
+    const opening = await screen.findByTestId("collab-link-opening");
+    expect(within(opening).getByRole("progressbar")).toHaveAttribute("data-state", "indeterminate");
+    await waitFor(() => expect(events.has("collab-join-progress")).toBe(true));
+    const report = (sharedProjectId: string, done: number, total: number) =>
+      act(() => events.get("collab-join-progress")?.({ payload: { serverId: SERVER_ID, sharedProjectId, done, total } }));
+    report(PROJECT, 3, 12);
+    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
+    expect(within(opening).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    report("01920000-0000-7000-8000-0000000000bb", 9, 9);
+    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
+    await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
+    expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
+    expect(screen.queryByTestId("collab-link-notice")).toBeNull();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
   it("adds an unknown server first, then opens the project", async () => {
     useCollabStore.setState({ servers: [] });
-    mocks.collabJoinProject.mockResolvedValue("local-4");
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockResolvedValue("local-4");
+    const user = userEvent.setup();
     deliver([OPEN]);
     expect(await screen.findByRole("textbox", { name: enCollab.addServer.addressLabel })).toHaveValue(ADDRESS);
     expect(mocks.collabServerProbe).toHaveBeenCalledWith(ADDRESS);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
     act(() => useCollabStore.setState({ servers: [server()] }));
+    await joinWhenAsked(user);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-4"));
-    expect(mocks.collabJoinProject).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    expect(mocks.collabLinkPreview).toHaveBeenCalledWith(SERVER_ID, PROJECT);
     expect(screen.queryByRole("heading", { name: enCollab.addServer.title })).not.toBeInTheDocument();
   });
 
   it("keeps the Add server step open until the new server is signed in", async () => {
     useCollabStore.setState({ servers: [] });
-    mocks.collabJoinProject.mockResolvedValue("local-7");
+    inLibrary("local-7");
     deliver([OPEN]);
     await screen.findByRole("heading", { name: enCollab.addServer.title });
     act(() => useCollabStore.setState({ servers: [signedOutServer()] }));
     await sleep(50);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: enCollab.addServer.title })).toBeInTheDocument();
     act(() => useCollabStore.setState({ servers: [server()] }));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-7"));
@@ -346,38 +450,44 @@ describe("LinkIntake", () => {
     );
     act(() => useCollabStore.setState({ servers: [server()] }));
     await sleep(50);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabLinkPreview).not.toHaveBeenCalled();
     expect(screen.queryByTestId("collab-link-notice")).not.toBeInTheDocument();
   });
 
   it("asks a signed-out person to sign in, then opens the project", async () => {
     useCollabStore.setState({ servers: [signedOutServer()] });
-    mocks.collabJoinProject.mockRejectedValueOnce(collabError("unauthorized")).mockResolvedValueOnce("local-5");
+    mocks.collabLinkPreview.mockRejectedValueOnce(collabError("unauthorized")).mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockResolvedValue("local-5");
+    const user = userEvent.setup();
     deliver([OPEN]);
     expect(await screen.findByRole("textbox", { name: enCollab.addServer.addressLabel })).toHaveValue(ADDRESS);
     expect(openProject).not.toHaveBeenCalled();
     act(() => useCollabStore.setState({ servers: [server()] }));
+    await joinWhenAsked(user);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-5"));
-    expect(mocks.collabJoinProject).toHaveBeenCalledTimes(2);
+    expect(mocks.collabLinkPreview).toHaveBeenCalledTimes(2);
   });
 
   it("asks to sign in again when the session ran out, waiting for the new sign-in", async () => {
-    mocks.collabJoinProject.mockRejectedValueOnce(collabError("unauthorized")).mockResolvedValueOnce("local-6");
+    mocks.collabLinkPreview.mockRejectedValueOnce(collabError("unauthorized")).mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockResolvedValue("local-6");
+    const user = userEvent.setup();
     deliver([OPEN]);
     await screen.findByRole("heading", { name: enCollab.addServer.title });
     await sleep(50);
-    expect(mocks.collabJoinProject).toHaveBeenCalledTimes(1);
+    expect(mocks.collabLinkPreview).toHaveBeenCalledTimes(1);
     act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab again" })] }));
+    await joinWhenAsked(user);
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-6"));
   });
 
   it("asks to sign in only once per link and then says what went wrong", async () => {
-    mocks.collabJoinProject.mockRejectedValue(collabError("unauthorized"));
+    mocks.collabLinkPreview.mockRejectedValue(collabError("unauthorized"));
     deliver([OPEN]);
     await screen.findByRole("heading", { name: enCollab.addServer.title });
     act(() => useCollabStore.setState({ servers: [server({ name: "Smith Lab again" })] }));
     expect(await screen.findByText(enCollab.errors.unauthorized)).toBeInTheDocument();
-    expect(mocks.collabJoinProject).toHaveBeenCalledTimes(2);
+    expect(mocks.collabLinkPreview).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("heading", { name: enCollab.addServer.title })).not.toBeInTheDocument();
   });
 
@@ -426,71 +536,74 @@ describe("LinkIntake", () => {
   });
 
   it("runs duplicate deliveries of the same link once", async () => {
-    const join = deferred<string>();
-    mocks.collabJoinProject.mockReturnValue(join.promise);
+    const looked = deferred<CollabShareInfo | null>();
+    inLibrary("local-7");
+    mocks.collabShareInfo.mockReturnValue(looked.promise);
     const view = deliver([OPEN, OPEN_SLASHED, OPEN]);
-    await waitFor(() => expect(mocks.collabJoinProject).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.collabShareInfo).toHaveBeenCalledTimes(1));
     view.rerender(<LinkIntake links={[OPEN]} onTaken={onTaken} />);
-    await act(async () => join.resolve("local-7"));
+    await act(async () =>
+      looked.resolve(shareInfo({ project_id: "local-7", server_id: SERVER_ID, shared_project_id: PROJECT })),
+    );
     await waitFor(() => expect(openProject).toHaveBeenCalledOnce());
     view.rerender(<LinkIntake links={[OPEN_SLASHED]} onTaken={onTaken} />);
     await sleep(400);
-    expect(mocks.collabJoinProject).toHaveBeenCalledTimes(1);
+    expect(mocks.collabShareInfo).toHaveBeenCalledTimes(1);
     expect(openProject).toHaveBeenCalledOnce();
   });
 
   it("waits while a dialog is open and runs the link once it closes", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-8");
+    inLibrary("local-8");
     const modal = document.createElement("div");
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
     document.body.append(modal);
     deliver([OPEN]);
     await sleep(600);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
     modal.remove();
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-8"));
     await sleep(400);
-    expect(mocks.collabJoinProject).toHaveBeenCalledOnce();
+    expect(mocks.collabShareInfo).toHaveBeenCalledOnce();
   });
 
   it("waits until the library has loaded", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-9");
+    inLibrary("local-9");
     useFilesStore.setState({ projectsLoaded: false });
     deliver([OPEN]);
     await sleep(400);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
     act(() => useFilesStore.setState({ projectsLoaded: true }));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-9"));
-    expect(mocks.collabJoinProject).toHaveBeenCalledOnce();
+    expect(mocks.collabShareInfo).toHaveBeenCalledOnce();
   });
 
   it("waits while a project is opening", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-10");
+    inLibrary("local-10");
     useFilesStore.setState({ loading: true });
     deliver([OPEN]);
     await sleep(400);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
     act(() => useFilesStore.setState({ loading: false }));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-10"));
   });
 
   it("leaves the project alone when it is already open", async () => {
     useFilesStore.setState({ projectId: "local-11" });
-    mocks.collabJoinProject.mockResolvedValue("local-11");
+    inLibrary("local-11");
     deliver([OPEN]);
-    await waitFor(() => expect(mocks.collabJoinProject).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.collabShareInfo).toHaveBeenCalledOnce());
     await sleep(50);
     expect(openProject).not.toHaveBeenCalled();
   });
 
   it("runs the next link after the person closes the message for the first", async () => {
-    mocks.collabJoinProject.mockResolvedValue("local-12");
+    inLibrary("local-12");
     const user = userEvent.setup();
     deliver(["oleafly://nonsense", OPEN]);
     expect(await screen.findByText(copy.malformed)).toBeInTheDocument();
     await sleep(400);
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
+    expect(mocks.collabShareInfo).not.toHaveBeenCalled();
     await user.click(within(screen.getByTestId("collab-link-notice")).getByRole("button", { name: enCommon.actions.close }));
     await waitFor(() => expect(openProject).toHaveBeenCalledWith("local-12"));
   });

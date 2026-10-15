@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -9,7 +9,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabMember } from "@/lib/tauri";
 import type { ServerRole } from "./roles";
-import { ALICE_ID, BOB_ID, CAROL_ID, SERVER_ID, collabError, device, fill, member } from "./tests/fixtures";
+import { ALICE_ID, BOB_ID, CAROL_ID, SERVER_ID, collabError, deferred, device, fill, member } from "./tests/fixtures";
 import { allowRadixSelect, chooseOption } from "./tests/select";
 
 const mocks = vi.hoisted(() => ({
@@ -133,6 +133,55 @@ describe("MembersTab", () => {
     expect(await within(rowOf(BOB_ID)).findByText(copy.active)).toBeInTheDocument();
   });
 
+  it("keeps a row busy until its own action ends, whatever another row does", async () => {
+    const DAVE_ID = "0192a0b0-0000-7000-8000-0000000000d4";
+    const dave = member({ account_id: DAVE_ID, display_name: "Dave Ng", emails: ["dave@uni.edu"], logins: [] });
+    const forBob = deferred<CollabMember>();
+    const forDave = deferred<CollabMember>();
+    mocks.collabAdminPatchMember.mockImplementation((_server: string, accountId: string) =>
+      accountId === BOB_ID ? forBob.promise : forDave.promise,
+    );
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob, dave]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend }));
+    await user.click(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.suspend }));
+    expect(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend })).toBeDisabled();
+    await act(async () => {
+      forBob.resolve(member(bob.account, "suspended"));
+      await forBob.promise;
+    });
+    expect(within(rowOf(BOB_ID)).getByRole("button", { name: copy.reactivate })).toBeEnabled();
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.suspend })).toBeDisabled();
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.remove })).toBeDisabled();
+    await act(async () => {
+      forDave.resolve(member(dave.account, "suspended"));
+      await forDave.promise;
+    });
+    expect(within(rowOf(DAVE_ID)).getByRole("button", { name: copy.reactivate })).toBeEnabled();
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledTimes(2);
+  });
+
+  it("says what suspending means for the shared projects someone owns, and suspends only after a yes", async () => {
+    const owner = { ...bob, owned_projects: 2 };
+    mocks.collabAdminPatchMember.mockResolvedValue(member(bob.account, "suspended"));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, owner]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend }));
+    const dialog = await screen.findByRole("alertdialog", { name: fill(copy.suspendConfirm.title, { name: "Bob Smith" }) });
+    expect(dialog).toHaveTextContent(fill(copy.ownedMany, { name: "Bob Smith", number: "2" }));
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: copy.suspendConfirm.confirm }));
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, BOB_ID, { status: "suspended" });
+  });
+
+  it("names the one shared project someone owns before removing them", async () => {
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, { ...bob, owned_projects: 1 }]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.remove }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(fill(copy.ownedOne, { name: "Bob Smith" }));
+  });
+
   it("keeps staff rows read-only for a maintainer", () => {
     render(<Harness actor="maintainer" initial={[alice, carol, bob]} selfId={CAROL_ID} />);
     expect(within(rowOf(ALICE_ID)).queryByRole("combobox")).toBeNull();
@@ -154,10 +203,49 @@ describe("MembersTab", () => {
     const user = userEvent.setup();
     render(<Harness actor="admin" initial={[alice, bob]} />);
     await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.member);
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.selfRoleConfirm.confirm }),
+    );
     expect(await within(rowOf(ALICE_ID)).findByRole("alert")).toHaveTextContent(copy.lastAdmin);
     expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
       roles.admin,
     );
+  });
+
+  it("asks before you change your own role, and keeps it when you cancel", async () => {
+    mocks.collabAdminPatchMember.mockResolvedValue(member({ ...alice.account, server_role: "maintainer" }));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob]} />);
+    await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.maintainer);
+    const dialog = await screen.findByRole("alertdialog", {
+      name: fill(copy.selfRoleConfirm.title, { role: roles.maintainer }),
+    });
+    expect(dialog).toHaveTextContent(copy.selfRoleConfirm.description);
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
+      roles.admin,
+    );
+    await chooseOption(user, fill(copy.roleLabel, { name: "Alice Chen" }), roles.maintainer);
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.selfRoleConfirm.confirm }),
+    );
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, ALICE_ID, { role: "maintainer" });
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: fill(copy.roleLabel, { name: "Alice Chen" }) })).toHaveTextContent(
+        roles.maintainer,
+      ),
+    );
+  });
+
+  it("changes someone else's role without asking", async () => {
+    mocks.collabAdminPatchMember.mockResolvedValue(member({ ...bob.account, server_role: "maintainer" }));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, bob]} />);
+    await chooseOption(user, fill(copy.roleLabel, { name: "Bob Smith" }), roles.maintainer);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, BOB_ID, { role: "maintainer" });
   });
 
   it("never offers to suspend or remove yourself", () => {
@@ -214,10 +302,10 @@ describe("MembersTab", () => {
     ).toBeNull();
   });
 
-  it("shows a role this version does not know as the server wrote it, without a picker", () => {
-    const later = member({ ...bob.account, server_role: "auditor" as never });
+  it("shows a role from a later server as an unknown role, without a picker", () => {
+    const later = member({ ...bob.account, server_role: "unknown" });
     render(<Harness actor="admin" initial={[alice, later]} />);
-    expect(within(rowOf(BOB_ID)).getByText("auditor")).toBeInTheDocument();
+    expect(within(rowOf(BOB_ID)).getByText(enCollab.roles.unknown)).toBeInTheDocument();
     expect(within(rowOf(BOB_ID)).queryByRole("combobox")).toBeNull();
     expect(within(rowOf(BOB_ID)).queryByRole("button", { name: copy.suspend })).toBeNull();
   });

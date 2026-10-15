@@ -5,6 +5,7 @@ import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { NavItem } from "@/components/ui/nav-item";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { formatNumber } from "@/lib/intl";
 import type { CollabServer } from "@/lib/tauri";
 import { AllowlistTab } from "../AllowlistTab";
 import { DomainRulesTab } from "../DomainRulesTab";
@@ -44,13 +45,31 @@ function healthOf(state: OverviewState): Health | null {
   return state.code === "unreachable" || state.code === "server" ? "unreachable" : null;
 }
 
+function NavLabel({ section, pendingGuests }: Readonly<{ section: ConsoleSection; pendingGuests: number }>) {
+  const { t } = useTranslation(["collab"]);
+  const label = t(($) => $.collab.console.sections[section]);
+  if (section !== "people" || pendingGuests <= 0) return label;
+  const count = formatNumber(pendingGuests);
+  return (
+    <>
+      {label}
+      <Badge variant="warning" size="sm" className="ml-auto" data-testid="console-people-badge">
+        <span aria-hidden>{count}</span>
+        <span className="sr-only">{t(($) => $.collab.console.pendingGuestsBadge, { number: count })}</span>
+      </Badge>
+    </>
+  );
+}
+
 function ConsoleNav({
   sections,
   current,
+  pendingGuests,
   onSelect,
 }: Readonly<{
   sections: readonly ConsoleSection[];
   current: ConsoleSection;
+  pendingGuests: number;
   onSelect: (section: ConsoleSection) => void;
 }>) {
   const { t } = useTranslation(["collab"]);
@@ -82,7 +101,8 @@ function ConsoleNav({
               else items.current.delete(section);
             }}
             icon={SECTION_ICONS[section]}
-            label={t(($) => $.collab.console.sections[section])}
+            label={<NavLabel section={section} pendingGuests={pendingGuests} />}
+            labelClassName="flex flex-1 items-center gap-2"
             active={section === current}
             tabIndex={section === current ? 0 : -1}
             data-testid={`console-section-${section}`}
@@ -203,7 +223,12 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
       data-testid="admin-console"
       className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-sidebar text-sm text-foreground md:flex-row"
     >
-      <ConsoleNav sections={sections} current={section} onSelect={select} />
+      <ConsoleNav
+        sections={sections}
+        current={section}
+        pendingGuests={ready?.counts.pending_guest_approvals ?? 0}
+        onSelect={select}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <ConsoleHeader server={server} actor={actor} health={healthOf(overview)} />
         <main aria-labelledby={headingId} className="min-h-0 flex-1 overflow-auto p-5">

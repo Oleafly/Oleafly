@@ -178,7 +178,10 @@ export function CommentComposer({
     if (event.key === "Escape" && onCancel) {
       event.preventDefault();
       event.stopPropagation();
-      onCancel();
+      // Escape is how people close popups, so it never throws away typing:
+      // with text the field only lets go of focus, and Cancel discards it.
+      if (body.trim() === "" || body === initial) onCancel();
+      else field.current?.blur();
     }
   };
 

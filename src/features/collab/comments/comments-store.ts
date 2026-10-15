@@ -32,10 +32,12 @@ import {
   type CollabErrorCode,
   type CollabLiveState,
   type CollabProjectMember,
+  type CollabProjectRole,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";
+import { isReadOnlyProjectRole } from "../roles";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
 import {
@@ -112,7 +114,13 @@ export function canWriteComments(
   role: string | null,
   live: CollabLiveState["state"] | null,
 ): boolean {
-  return commentsShown(status) && status?.canComment === true && role !== "viewer" && live !== null && live !== "ended";
+  return (
+    commentsShown(status) &&
+    status?.canComment === true &&
+    !isReadOnlyProjectRole(role as CollabProjectRole | null) &&
+    live !== null &&
+    live !== "ended"
+  );
 }
 
 export function commentMember(member: CollabProjectMember): CollabCommentMember {

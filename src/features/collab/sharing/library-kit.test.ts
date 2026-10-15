@@ -65,6 +65,7 @@ describe("libraryKit", () => {
       kind: enCollab.library.kind,
       share: enCollab.share.button,
       copyAndShare: enCollab.share.copyAndShare,
+      libraryLocation: enCollab.library.locationNotShared,
       location: enCollab.library.location,
       openLink: enCollab.library.openLink.menu,
     });

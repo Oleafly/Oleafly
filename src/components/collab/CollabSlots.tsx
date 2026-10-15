@@ -3,13 +3,13 @@ import { Files, MessageSquare, RadioTower } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";
-import { i18n, loadNamespace } from "@/i18n";
+import { i18n } from "@/i18n";
 import type { QueryMeta } from "@/lib/query-suggestions";
 import type { ProjectInfo } from "@/lib/tauri";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
+import { useCollabReady } from "./collab-ready";
 import { useCollabRail } from "./collab-rail";
 import { useCommentsRail } from "./comments-rail";
 import { useShareDialog } from "./share-dialog";
@@ -30,6 +30,8 @@ export interface CollabLibraryKit {
   share: string;
   copyAndShare: string;
   location: string;
+  // With sharing on, the library option leaves shared projects out.
+  libraryLocation: string;
   openLink: string;
   extension: ProjectSearchExtension;
   readLocation: (query: ProjectQuery) => FacetState;
@@ -66,24 +68,7 @@ const AdminConsoleWindow = lazy(() =>
   import("@/features/collab/console/AdminConsoleWindow").then((module) => ({ default: module.AdminConsoleWindow })),
 );
 
-export function useCollabReady(): boolean {
-  const enabled = useSettingsStore((state) => state.liveCollaboration);
-  const [loaded, setLoaded] = useState(() => i18n.hasResourceBundle("en", "collab"));
-  useEffect(() => {
-    if (!enabled || loaded) return;
-    let active = true;
-    loadNamespace("collab").then(
-      () => {
-        if (active) setLoaded(true);
-      },
-      () => undefined,
-    );
-    return () => {
-      active = false;
-    };
-  }, [enabled, loaded]);
-  return enabled && loaded;
-}
+export { useCollabReady };
 
 export function useCollabLibraryKit(): CollabLibraryKit | null {
   const ready = useCollabReady();
@@ -146,16 +131,17 @@ export function CollabTreeClashSlot() {
   );
 }
 
-export function TreeRowClash({ path }: Readonly<{ path: string }>) {
-  return (
-    <Gate>
-      <RowClash path={path} />
-    </Gate>
-  );
+const NO_CLASHES: ReadonlyMap<string, string> = new Map();
+
+// The renamed-on-disk labels for the whole tree, read once by the tree so
+// each row needs no subscription of its own. Empty while collaboration is off.
+export function useTreeClashLabels(): ReadonlyMap<string, string> {
+  const ready = useCollabReady();
+  const labels = useTreeClashes((state) => state.labels);
+  return ready ? labels : NO_CLASHES;
 }
 
-function RowClash({ path }: Readonly<{ path: string }>) {
-  const label = useTreeClashes((state) => state.labels.get(path));
+export function TreeRowClash({ label }: Readonly<{ label: string | undefined }>) {
   if (!label) return null;
   return (
     <Tooltip label={label} wide>

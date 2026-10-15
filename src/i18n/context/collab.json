@@ -66,7 +66,8 @@
     "admin": "Server role with full control of the server",
     "maintainer": "Server role that can manage members but cannot change server settings",
     "member": "Server role for a regular person on the server",
-    "guest": "Server role for someone from outside who can only open projects shared with them"
+    "guest": "Server role for someone from outside who can only open projects shared with them",
+    "unknown": "Shown in place of a server role that a newer server uses and this version of the app doesn't know. The person gets no rights from it."
   },
   "admin": {
     "tabs": {
@@ -176,7 +177,8 @@
   },
   "projectRoles": {
     "editor": "Role on one shared project: can change files. Different from the server roles under roles.",
-    "viewer": "Role on one shared project: can open and read it but not change it."
+    "viewer": "Role on one shared project: can open and read it but not change it.",
+    "unknown": "Shown in place of a project role that a newer server uses and this version of the app doesn't know. The person can only read the project."
   },
   "share": {
     "copyAndShare": "Button on a project that is a folder outside Oleafly. It copies the folder into the library, then shares the copy.",

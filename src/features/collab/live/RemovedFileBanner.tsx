@@ -7,6 +7,7 @@ import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspac
 import { basename } from "@/lib/path-utils";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
+import { isReadOnlyProjectRole } from "../roles";
 import { useCollabLiveStore } from "./live-store";
 import { PathMessage } from "./PathMessage";
 import { type RemovedNotice, useRemovedNotices } from "./removed-notices";
@@ -78,7 +79,7 @@ export function RemovedFileBanner() {
           key={notice.id}
           notice={notice}
           name={(notice.by ? names.get(notice.by) : undefined) || someone}
-          canRestore={people.role !== "viewer"}
+          canRestore={!isReadOnlyProjectRole(people.role)}
         />
       ))}
     </div>

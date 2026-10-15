@@ -69,6 +69,7 @@ vi.mock("@/store/files", async () => {
   const store = create(() => ({
     projectId: null as string | null,
     activePath: null as string | null,
+    openTabs: [] as string[],
     files: {} as Record<string, { content: string; dirty: boolean }>,
     docVersion: 0,
     setContent: vi.fn((path: string, content: string) => {
@@ -100,7 +101,7 @@ const PROJECT = "project-1";
 let channels: Map<string, (message: CollabDocMessage) => void>;
 let release: (() => void) | null = null;
 
-function start(role: "owner" | "editor" | "viewer" = "editor") {
+function start(role: "owner" | "editor" | "viewer" | "unknown" = "editor") {
   useCollabLiveStore.setState({ projectId: PROJECT, role });
   release = startLiveEditing({ projectId: PROJECT, role, accountId: "alice", deviceId: "device-me" });
 }
@@ -121,7 +122,7 @@ beforeEach(() => {
   mocks.collabDocOpen.mockImplementation(async (_projectId: string, path: string, onMessage) => {
     if (path === "excluded.log") return null;
     channels.set(`id-${path}`, onMessage);
-    return { file_id: `id-${path}`, rev: 4, text: "shared" };
+    return { file_id: `id-${path}`, rev: 4, text: "shared", session: 1 };
   });
   mocks.collabDocChange.mockResolvedValue(undefined);
   mocks.collabDocClose.mockResolvedValue(undefined);
@@ -132,6 +133,7 @@ beforeEach(() => {
   useFilesStore.setState({
     projectId: PROJECT,
     activePath: "main.tex",
+    openTabs: ["main.tex"],
     files: { "main.tex": { content: "shared", dirty: false }, "excluded.log": { content: "log", dirty: false } },
     docVersion: 0,
   });
@@ -184,11 +186,27 @@ describe("live editing", () => {
     await settle();
     for (const listener of mocks.pathDeletes) listener({ projectId: PROJECT, path: "main.tex" });
     await settle();
-    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex");
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex", 1);
     expect(collabDocumentSession("main.tex")).not.toBe(session);
     release?.();
     release = null;
     expect(mocks.pathDeletes.size).toBe(0);
+  });
+
+  it("closes the shared document of a tab that closes, and only that one", async () => {
+    useFilesStore.setState((state) => ({
+      openTabs: ["main.tex", "intro.tex"],
+      files: { ...state.files, "intro.tex": { content: "shared", dirty: false } },
+    }));
+    start();
+    collabDocumentSession("main.tex");
+    const intro = collabDocumentSession("intro.tex");
+    await settle();
+    useFilesStore.setState({ openTabs: ["main.tex"] });
+    await settle();
+    expect(mocks.collabDocClose).toHaveBeenCalledTimes(1);
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-intro.tex", 1);
+    expect(collabDocumentSession("intro.tex")).not.toBe(intro);
   });
 
   it("sends editor changes and keeps the files store current without marking it unsaved", async () => {
@@ -220,6 +238,15 @@ describe("live editing", () => {
     expect(mocks.collabLiveFlush).not.toHaveBeenCalled();
     await collabCompileBarrier(PROJECT);
     expect(mocks.collabLiveFlush).toHaveBeenCalledWith(PROJECT);
+  });
+
+  it("makes a role from a later server read-only, like a viewer", () => {
+    start("unknown");
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    useCollabLiveStore.setState({ role: "editor" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    useCollabLiveStore.setState({ role: "unknown" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
   });
 
   it("makes viewers read-only and follows role changes", () => {
@@ -314,7 +341,7 @@ describe("live editing", () => {
     const version = useFilesStore.getState().docVersion;
     release?.();
     release = null;
-    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex");
+    expect(mocks.collabDocClose).toHaveBeenCalledWith(PROJECT, "id-main.tex", 1);
     expect(collabDocumentSession("main.tex")).toBeNull();
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
     expect(collabVisualReadOnly(PROJECT)).toBe(false);
@@ -338,7 +365,7 @@ describe("live editing edges", () => {
     const session = collabDocumentSession("excluded.log");
     session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     await settle();
-    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!");
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!", { unsaved: true });
     expect(useFilesStore.getState().docVersion).toBe(version);
   });
 

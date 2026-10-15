@@ -28,7 +28,8 @@ import {
   type CollabProjectSummary,
   type CollabShareInfo,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { useBusyRows } from "../busy-rows";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
 import { useAccessLogSwitches } from "./access-log-store";
@@ -41,6 +42,7 @@ import {
   looksLikeEmail,
   useProjectGuests,
   type InviteOutcome,
+  type ProjectGuests,
 } from "./GuestInvitations";
 import { ProjectRolePicker, toGrantableRole, type GrantableRole } from "./ProjectRolePicker";
 
@@ -68,18 +70,18 @@ function AddPeople({
   projectId,
   server,
   members,
-  guestsEnabled,
+  guests,
   onAdded,
   onInvited,
 }: Readonly<{
   projectId: string;
   server: string;
   members: readonly CollabProjectMember[];
-  guestsEnabled: boolean;
+  guests: ProjectGuests;
   onAdded: (member: CollabProjectMember) => void;
   onInvited: (outcome: InviteOutcome) => void;
 }>) {
-  const { t } = useTranslation(["collab"]);
+  const { t } = useTranslation(["collab", "common"]);
   const inputId = useId();
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<GrantableRole>("editor");
@@ -108,7 +110,7 @@ function AddPeople({
           if (active) setSearch({ kind: "done", people });
         },
         (error_: unknown) => {
-          if (active) setSearch({ kind: "failed", message: collabErrorMessage(collabErrorCode(error_)) });
+          if (active) setSearch({ kind: "failed", message: collabErrorText(error_) });
         },
       );
     }, SEARCH_DELAY_MS);
@@ -125,7 +127,7 @@ function AddPeople({
       onAdded(await collabMemberSet(projectId, person.account_id, role));
       setQuery("");
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setAdding(null);
     }
@@ -133,26 +135,42 @@ function AddPeople({
 
   const present = new Set(members.map((member) => member.person.account_id));
 
-  const renderResults = () => {
-    if (search.kind === "searching") {
-      return <p className="text-xs text-muted-foreground">{t(($) => $.collab.manage.add.searching)}</p>;
+  const quiet = (text: string) => <p className="text-xs text-muted-foreground">{text}</p>;
+
+  // Nobody has that address on the server yet: invite them as a guest, or
+  // say who can let them in when guests are off.
+  const renderNewAddress = (email: string) => {
+    if (guests.failed) {
+      return (
+        <div className="space-y-2">
+          <InlineAlert>{t(($) => $.collab.manage.add.guestCheckFailed, { server })}</InlineAlert>
+          <Button type="button" variant="outline" size="sm" onClick={guests.reload}>
+            {t(($) => $.common.actions.retry)}
+          </Button>
+        </div>
+      );
     }
+    if (!guests.info) return quiet(t(($) => $.collab.manage.add.searching));
+    if (!guests.info.guests_enabled) return quiet(t(($) => $.collab.manage.add.noAccountNoGuests, { server, email }));
+    return <GuestInviteOffer projectId={projectId} server={server} email={email} role={role} onInvited={invited} />;
+  };
+
+  const renderResults = () => {
+    if (search.kind === "searching") return quiet(t(($) => $.collab.manage.add.searching));
     if (search.kind === "failed") return <InlineAlert>{search.message}</InlineAlert>;
     if (search.kind !== "done") return null;
     const people = search.people.filter((person) => !present.has(person.account_id));
-    if (people.length === 0 && search.people.length === 0 && guestsEnabled && looksLikeEmail(trimmed)) {
-      return (
-        <GuestInviteOffer
-          projectId={projectId}
-          server={server}
-          email={trimmed.toLowerCase()}
-          role={role}
-          onInvited={invited}
-        />
-      );
+    if (people.length === 0 && search.people.length > 0) {
+      const [only] = search.people;
+      return search.people.length === 1
+        ? quiet(t(($) => $.collab.manage.add.alreadyMember, { name: only.display_name }))
+        : quiet(t(($) => $.collab.manage.add.allMembers));
     }
+    if (people.length === 0 && looksLikeEmail(trimmed)) return renderNewAddress(trimmed.toLowerCase());
     if (people.length === 0) {
-      return <p className="text-xs text-muted-foreground">{t(($) => $.collab.manage.add.noResults, { server })}</p>;
+      // Without the member directory the server matches only a whole email
+      // address, so a name finds nobody.
+      return quiet(t(($) => $.collab.manage.add.noResultsTryEmail, { server }));
     }
     return (
       <ul className="divide-y rounded-lg border bg-card">
@@ -231,7 +249,7 @@ function LinkSharing({
     try {
       onSummary(await collabLinkSharingSet(projectId, enabled, role));
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -315,7 +333,7 @@ function CommentsSetting({
     try {
       onSummary(await collabCommentsSetEnabled(projectId, next));
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -370,7 +388,7 @@ function AccessLogSetting({
       onSummary(updated);
       useAccessLogSwitches.getState().set(projectId, { serverAllowed: true, enabled: updated.access_log ?? next });
     } catch (error_) {
-      setError(collabErrorMessage(collabErrorCode(error_)));
+      setError(collabErrorText(error_));
     } finally {
       setSaving(false);
     }
@@ -404,7 +422,7 @@ export function ManageSharing({
   const [members, setMembers] = useState<CollabProjectMember[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabProjectMember | null>(null);
   const [ending, setEnding] = useState(false);
@@ -433,7 +451,7 @@ export function ManageSharing({
         setMembers(ownerFirst(nextMembers));
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -441,18 +459,17 @@ export function ManageSharing({
     };
   }, [load]);
 
-  const runRow = async (member: CollabProjectMember, action: () => Promise<void>) => {
+  const runRow = (member: CollabProjectMember, action: () => Promise<void>) => {
     const accountId = member.person.account_id;
-    setBusyId(accountId);
-    setRowError(null);
-    try {
-      await action();
-      syncMembersChange(projectId);
-    } catch (error) {
-      setRowError({ accountId, message: collabErrorMessage(collabErrorCode(error)) });
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(accountId, async () => {
+      setRowError((current) => (current?.accountId === accountId ? null : current));
+      try {
+        await action();
+        syncMembersChange(projectId);
+      } catch (error) {
+        setRowError({ accountId, message: collabErrorText(error) });
+      }
+    });
   };
 
   const changeRole = (member: CollabProjectMember, role: GrantableRole) =>
@@ -479,7 +496,7 @@ export function ManageSharing({
       if (isOwner) await collabStopSharing(projectId);
       else await collabLeaveProject(projectId);
     } catch (error) {
-      setEndError(collabErrorMessage(collabErrorCode(error)));
+      setEndError(collabErrorText(error));
       setEndBusy(false);
       return;
     }
@@ -511,7 +528,7 @@ export function ManageSharing({
           <>
             <ProjectRolePicker
               value={grantable}
-              disabled={busyId === accountId}
+              disabled={rows.busy.has(accountId)}
               label={t(($) => $.collab.manage.roleLabel, { name: person.display_name })}
               onChange={(role) => {
                 if (role !== member.role) void changeRole(member, role);
@@ -522,7 +539,7 @@ export function ManageSharing({
               variant="ghost"
               size="sm"
               className="hover:bg-destructive/10 hover:text-destructive"
-              disabled={busyId === accountId}
+              disabled={rows.busy.has(accountId)}
               aria-label={t(($) => $.collab.manage.removeNamed, { name: person.display_name })}
               onClick={() => setRemoving(member)}
             >
@@ -562,7 +579,7 @@ export function ManageSharing({
             projectId={projectId}
             server={server}
             members={members}
-            guestsEnabled={guests.info?.guests_enabled ?? false}
+            guests={guests}
             onAdded={(member) => {
               setMembers((current) => (current ? upsertMember(current, member) : current));
               syncMembersChange(projectId);

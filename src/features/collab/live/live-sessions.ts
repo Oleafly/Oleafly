@@ -1,5 +1,5 @@
 import { isBinaryProjectPath } from "@/lib/project-paths";
-import { RemoteDocumentSession, type RemoteSessionTransport } from "./remote-session";
+import { type DiscardReason, RemoteDocumentSession, type RemoteSessionTransport } from "./remote-session";
 
 export interface LiveSessionsOptions {
   transport: RemoteSessionTransport;
@@ -7,6 +7,10 @@ export interface LiveSessionsOptions {
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
   detached(path: string, text: string, edited: boolean): void;
+  discarded?(path: string, reason: DiscardReason): void;
+  // Whether a tab still shows the file. A file whose tab closed and opened
+  // again before its typing was confirmed keeps its session.
+  shown?(path: string): boolean;
   settleTimeoutMs?: number;
 }
 
@@ -38,10 +42,15 @@ export class LiveSessions {
       onPhase: (phase) => {
         if (phase === "detached") this.detach(session.path, session);
       },
+      onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
     });
     this.sessions.set(path, session);
     void session.open();
     return session;
+  }
+
+  holds(path: string): boolean {
+    return !this.closed && this.sessions.has(path);
   }
 
   async flush(write: () => Promise<void>): Promise<void> {
@@ -90,6 +99,20 @@ export class LiveSessions {
     }
   }
 
+  // The tab for `path` closed. Once the shared document has every change,
+  // the session closes, so a file nobody shows no longer costs a copy of
+  // its text and a round of work for every remote edit. Opening the file
+  // again starts a fresh session from the shared text.
+  release(path: string): void {
+    const session = this.sessions.get(path);
+    if (!session) return;
+    void session.settled().then(() => {
+      if (this.sessions.get(session.path) !== session || this.options.shown?.(session.path)) return;
+      this.sessions.delete(session.path);
+      session.close();
+    });
+  }
+
   close(): void {
     this.closed = true;
     for (const session of this.sessions.values()) session.close();
@@ -99,7 +122,9 @@ export class LiveSessions {
 
   private detach(path: string, session: RemoteDocumentSession): void {
     if (this.sessions.get(path) !== session) return;
-    const edited = !session.synchronized;
+    // Typing Rust never confirmed has to be saved locally now. A reopen keeps
+    // it as pending, so "synchronized" alone can't tell.
+    const edited = session.unconfirmed;
     this.sessions.delete(path);
     this.local.add(path);
     session.close();

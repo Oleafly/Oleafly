@@ -1696,6 +1696,26 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "device_in_use",
   "server_unknown",
   "too_large",
+  "invalid",
+  "invalid_domain",
+  "invalid_email",
+  "invalid_login",
+  "guests_off",
+  "link_sharing_off",
+  "access_log_off",
+  "last_admin",
+  "duplicate_entry",
+  "already_member",
+  "project_not_shared",
+  "project_full",
+  "not_a_link",
+  "signed_out",
+  "server_removed",
+  "share_in_progress",
+  "cancelled",
+  "turned_off",
+  "cloud_synced",
+  "owner_away",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -1798,6 +1818,20 @@ export const collabLeaveProject = (projectId: string) =>
 export const collabSharedWithMe = () => invoke<CollabSharedWithMe[]>("collab_shared_with_me");
 export const collabJoinProject = (serverId: string, sharedProjectId: string) =>
   invoke<string>("collab_join_project", { serverId, sharedProjectId });
+// Stops a running join and removes what it downloaded. The join then fails
+// with the code "cancelled".
+export const collabJoinCancel = (serverId: string, sharedProjectId: string) =>
+  invoke<void>("collab_join_cancel", { serverId, sharedProjectId });
+
+export const COLLAB_JOIN_PROGRESS_EVENT = "collab-join-progress";
+
+export function onCollabJoinProgress(
+  handler: (payload: import("@oleafly/backend-port").CollabJoinProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabJoinProgress>(COLLAB_JOIN_PROGRESS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
 export const collabOpenLink = (link: string) => invoke<string>("collab_open_link", { link });
 export const collabPendingLinks = () => invoke<string[]>("collab_pending_links");
 
@@ -1826,8 +1860,8 @@ export const collabDocChange = (
   rev: number,
   op: CollabTextOperation,
 ) => invoke<void>("collab_doc_change", { projectId, fileId, rev, op });
-export const collabDocClose = (projectId: string, fileId: string) =>
-  invoke<void>("collab_doc_close", { projectId, fileId });
+export const collabDocClose = (projectId: string, fileId: string, session: number) =>
+  invoke<void>("collab_doc_close", { projectId, fileId, session });
 export const collabPresenceSet = (
   projectId: string,
   path: string | null,
@@ -2028,7 +2062,9 @@ export const budgetSet = (projectId: string, budgetUsd: number | null) =>
   invoke<void>("budget_set_cmd", { projectId, budgetUsd });
 
 export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
-export const approvalsWriteRaw = (text: string) => invoke<void>("approvals_write_raw", { text });
+// Saves the approvals file and returns warnings about it, already in the
+// app's language, such as a tool name it doesn't know.
+export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
 export const approvalsList = (projectId: string) =>
   invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
 export const approvalsSet = (
@@ -2115,7 +2151,7 @@ export const synctexMapLine = (
   });
 
 export const collabWriteText = (projectId: string, path: string, base: string | null, text: string) =>
-  invoke<{ handled: boolean }>("collab_write_text", { projectId, path, base, text });
+  invoke<import("@oleafly/backend-port").CollabWriteOutcome>("collab_write_text", { projectId, path, base, text });
 
 export const COLLAB_LIVE_RENAMED_EVENT = "collab-live-renamed";
 
@@ -2130,6 +2166,25 @@ export function onCollabLiveRenamed(
   handler: (payload: import("@oleafly/backend-port").CollabLiveRenamed) => void,
 ): Promise<UnlistenFn> {
   return listen<import("@oleafly/backend-port").CollabLiveRenamed>(COLLAB_LIVE_RENAMED_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
+export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
+
+export function onCollabLiveUnwritten(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveUnwritten) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveUnwritten>(COLLAB_LIVE_UNWRITTEN_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export function onCollabChangeSkipped(
+  handler: (payload: import("@oleafly/backend-port").CollabChangeSkipped) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabChangeSkipped>(COLLAB_CHANGE_SKIPPED_EVENT, ({ payload }) =>
     handler(payload),
   );
 }

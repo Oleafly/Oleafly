@@ -1,8 +1,10 @@
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { logError } from "@/lib/log";
 import {
+  onCollabChangeSkipped,
   onCollabLiveRenamed,
   onCollabLiveSettings,
+  type CollabChangeSkipped,
   type CollabLiveRenamed,
   type CollabLiveSettings,
   type CollabProjectMember,
@@ -95,6 +97,12 @@ function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number)
       return { kind: "removed", at, by: removedBy(state) };
     case "archived":
       return { kind: "archived", at };
+    case "client_too_old":
+      return { kind: "clientTooOld", at, server: memory.server };
+    case "server_too_old":
+      return { kind: "serverTooOld", at, server: memory.server };
+    case "server_changed":
+      return { kind: "serverChanged", at, server: memory.server };
     default:
       return null;
   }
@@ -208,6 +216,14 @@ function settingEntries(payload: CollabLiveSettings): NewActivity[] {
   return payload.changes.map((change) => ({ kind: "setting", at, accountId, name, change }));
 }
 
+function skippedEntry(payload: CollabChangeSkipped): NewActivity | null {
+  const live = useCollabLiveStore.getState();
+  if (payload.projectId !== live.projectId) return null;
+  const peer = payload.deviceId ? live.peers[payload.deviceId] : undefined;
+  const name = peer ? nameOf(peer, live.members) : "";
+  return { kind: "skipped", at: Date.now(), deviceId: payload.deviceId, name };
+}
+
 function syncRail() {
   const live = useCollabLiveStore.getState();
   const visible = live.projectId !== null && (live.share !== null || live.status?.state === "ended");
@@ -251,12 +267,21 @@ export function startCollabActivity(): () => void {
     void logError("collab settings listen", error);
     return () => undefined;
   });
+  // Quiet: the feed records it without marking the pane unread.
+  const stopSkipped = onCollabChangeSkipped((payload) => {
+    const entry = skippedEntry(payload);
+    if (entry) useCollabActivity.getState().add(entry, { quiet: true });
+  }).catch((error: unknown) => {
+    void logError("collab skipped listen", error);
+    return () => undefined;
+  });
   sync(useCollabLiveStore.getState(), null);
   return () => {
     stopLive();
     stopActivity();
     void stopRenamed.then((unlisten) => unlisten());
     void stopSettings.then((unlisten) => unlisten());
+    void stopSkipped.then((unlisten) => unlisten());
     useCollabRail.setState({ visible: false, unread: false });
   };
 }

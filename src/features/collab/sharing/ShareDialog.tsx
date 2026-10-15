@@ -22,7 +22,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabStore } from "../store";
 import { syncShareChange } from "./after-change";
@@ -32,12 +32,12 @@ import { ManageSharing } from "./ManageSharing";
 type CheckState =
   | { kind: "checking" }
   | { kind: "ready"; check: CollabShareCheck }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string; signedOut: boolean };
 
 type UploadState =
   | { kind: "idle" }
-  | { kind: "sharing"; done: number; total: number }
-  | { kind: "failed"; message: string };
+  | { kind: "sharing"; done: number; total: number; reported: boolean }
+  | { kind: "failed"; message: string; elsewhere: boolean };
 
 function openCollaborationSettings() {
   useShareDialog.getState().close();
@@ -179,7 +179,13 @@ function ShareStep({
         if (active) setCheck({ kind: "ready", check: result });
       },
       (error: unknown) => {
-        if (active) setCheck({ kind: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+        if (!active) return;
+        const code = collabErrorCode(error);
+        setCheck({
+          kind: "failed",
+          message: collabErrorText(error),
+          signedOut: code === "unauthorized" || code === "signed_out",
+        });
       },
     );
     return () => {
@@ -193,21 +199,27 @@ function ShareStep({
 
   const start = async () => {
     if (!ready || blocked || sharing) return;
-    setUpload({ kind: "sharing", done: 0, total: ready.file_count });
+    setUpload({ kind: "sharing", done: 0, total: 0, reported: false });
+    useShareDialog.getState().setSharing(true);
     let unlisten: (() => void) | null = null;
     let shared: CollabShareInfo;
     try {
       unlisten = await onCollabShareProgress((progress) => {
         if (progress.projectId === projectId) {
-          setUpload({ kind: "sharing", done: progress.done, total: progress.total });
+          setUpload({ kind: "sharing", done: progress.done, total: progress.total, reported: true });
         }
       });
       shared = await collabShareProject(projectId, chosenId);
     } catch (error) {
-      setUpload({ kind: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+      setUpload({
+        kind: "failed",
+        message: collabErrorText(error),
+        elsewhere: collabErrorCode(error) === "share_in_progress",
+      });
       return;
     } finally {
       unlisten?.();
+      useShareDialog.getState().setSharing(false);
     }
     await syncShareChange(projectId);
     onShared(shared);
@@ -219,11 +231,18 @@ function ShareStep({
     }
     if (check.kind === "failed") {
       return (
-        <LoadFailed
-          message={t(($) => $.collab.share.checkFailed)}
-          reason={check.message}
-          onRetry={() => setCheckRequest((count) => count + 1)}
-        />
+        <div className="space-y-3">
+          <LoadFailed
+            message={t(($) => $.collab.share.checkFailed)}
+            reason={check.message}
+            onRetry={() => setCheckRequest((count) => count + 1)}
+          />
+          {check.signedOut ? (
+            <Button type="button" variant="outline" size="sm" onClick={openCollaborationSettings}>
+              {t(($) => $.collab.share.openSettings)}
+            </Button>
+          ) : null}
+        </div>
       );
     }
     return <CheckSummary check={check.check} server={server.name} />;
@@ -231,20 +250,29 @@ function ShareStep({
 
   const renderUpload = () => {
     if (upload.kind === "sharing") {
-      const percent = upload.total > 0 ? (upload.done / upload.total) * 100 : 0;
+      // The backend counts only figures and other non-text files. Before its
+      // first report, and once they are all up and the project itself is
+      // being saved, there is nothing to count, so the bar just shows activity.
+      const counting = upload.reported && upload.total > 0 && upload.done < upload.total;
+      let phase = t(($) => $.collab.share.preparing);
+      if (counting) {
+        phase = t(($) => $.collab.share.uploading, {
+          done: formatNumber(upload.done),
+          total: formatNumber(upload.total),
+        });
+      } else if (upload.reported) {
+        phase = t(($) => $.collab.share.saving);
+      }
       return (
         <div className="space-y-1.5">
-          <Progress value={percent} />
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.collab.share.uploading, {
-              done: formatNumber(upload.done),
-              total: formatNumber(upload.total),
-            })}
-          </p>
+          <Progress value={counting ? (upload.done / upload.total) * 100 : 0} indeterminate={!counting} />
+          <p className="text-xs text-muted-foreground">{phase}</p>
         </div>
       );
     }
     if (upload.kind === "failed") {
+      // Another share of this project is still running, so this one didn't fail as such.
+      if (upload.elsewhere) return <InlineAlert>{upload.message}</InlineAlert>;
       return (
         <InlineAlert>
           {t(($) => $.collab.share.failed)} {upload.message}
@@ -297,12 +325,15 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();
   const close = useShareDialog((state) => state.close);
+  const sharing = useShareDialog((state) => state.sharing);
   const fromCopy = useShareDialog((state) => state.fromCopy);
   const project = useFilesStore((state) => state.projects.find((entry) => entry.id === projectId) ?? null);
   const servers = useCollabStore((state) => state.servers);
   const serversStatus = useCollabStore((state) => state.status);
   const loadServers = useCollabStore((state) => state.load);
   const [share, setShare] = useState<CollabShareInfo | null | undefined>(undefined);
+  // Set once this dialog shared the project, for the note about trust.
+  const [justShared, setJustShared] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareRequest, setShareRequest] = useState(0);
   const name = project?.name ?? "";
@@ -321,7 +352,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
         if (active) setShare(info);
       },
       (error: unknown) => {
-        if (active) setShareError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setShareError(collabErrorText(error));
       },
     );
     return () => {
@@ -343,11 +374,32 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
       );
     }
     if (share === undefined) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
-    if (share) return <ManageSharing projectId={projectId} name={name} share={share} />;
+    if (share) {
+      return (
+        <>
+          {justShared ? (
+            <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-foreground" data-testid="collab-share-trust">
+              {t(($) => $.collab.share.trustAgain)}
+            </p>
+          ) : null}
+          <ManageSharing projectId={projectId} name={name} share={share} />
+        </>
+      );
+    }
     if (!serversKnown) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
     if (signedIn.length === 0) return <NoServers />;
     if (project && isFolderProject(project)) return <CopyStep projectId={projectId} name={name} />;
-    return <ShareStep projectId={projectId} servers={signedIn} fromCopy={fromCopy} onShared={setShare} />;
+    return (
+      <ShareStep
+        projectId={projectId}
+        servers={signedIn}
+        fromCopy={fromCopy}
+        onShared={(shared) => {
+          setJustShared(true);
+          setShare(shared);
+        }}
+      />
+    );
   };
 
   return (
@@ -373,6 +425,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
           size="icon"
           className="size-7 shrink-0"
           aria-label={t(($) => $.common.actions.close)}
+          disabled={sharing}
           onClick={close}
         >
           <X aria-hidden className="size-4" />

@@ -668,6 +668,7 @@
     "endOfDocument": "Fim do documento",
     "hidePreamble": "Ocultar o preâmbulo do documento",
     "showPreamble": "Mostrar o preâmbulo do documento",
+    "sharedReadOnly": "Em um projeto compartilhado, o modo visual só mostra o arquivo. Mude para a visualização de código-fonte para editá-lo.",
     "findingLabel": "{{message}}. Abrir sugestões de revisão.",
     "rawBlockFindings_one": "{{count}} apontamento de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
     "rawBlockFindings_many": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões.",

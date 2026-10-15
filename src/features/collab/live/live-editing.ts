@@ -1,7 +1,9 @@
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
 import { setCollabEditorExtension } from "@/components/editor/cm/collab-slot";
 import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
+import { toast } from "@/lib/toast";
 import {
   collabDocChange,
   collabDocClose,
@@ -11,6 +13,7 @@ import {
   collabPresenceSet,
 } from "@/lib/tauri";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
+import { isReadOnlyProjectRole } from "../roles";
 import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
@@ -94,12 +97,12 @@ function currentPresence(projectId: string): Presence {
 
 export function startLiveEditing(live: LiveSession): () => void {
   const { projectId } = live;
-  const isViewer = () => useCollabLiveStore.getState().role === "viewer";
+  const isViewer = () => isReadOnlyProjectRole(useCollabLiveStore.getState().role);
   const sessions = new LiveSessions({
     transport: {
       open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
       change: (fileId, rev, op) => collabDocChange(projectId, fileId, rev, op),
-      close: (fileId) => collabDocClose(projectId, fileId),
+      close: (fileId, session) => collabDocClose(projectId, fileId, session),
     },
     readOnly: isViewer,
     initialText: (path) => {
@@ -110,8 +113,21 @@ export function startLiveEditing(live: LiveSession): () => void {
     detached: (path, text, edited) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;
-      if (edited) files.setContent(path, text);
+      // The mirror already put this text in the buffer as saved, so say it
+      // isn't, or the typing would never reach the disk.
+      if (edited) files.setContent(path, text, { unsaved: true });
       if (files.activePath === path) files.bumpDocVersion();
+    },
+    shown: (path) => {
+      const files = useFilesStore.getState();
+      return files.projectId === projectId && (files.openTabs.includes(path) || files.activePath === path);
+    },
+    discarded: (path, reason) => {
+      toast.info(
+        reason === "read_only"
+          ? i18n.t(($) => $.collab.access.unsentReadOnly, { path })
+          : i18n.t(($) => $.collab.access.unsentRefused, { path }),
+      );
     },
   });
   const stopMoves = onPathsMoved((moved) => {
@@ -123,11 +139,12 @@ export function startLiveEditing(live: LiveSession): () => void {
   const uninstallPort = installCollabEditorPort({
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
+    holds: (path) => useFilesStore.getState().projectId === projectId && sessions.holds(path),
     flush: (id) => (id === projectId ? sessions.flush(() => collabLiveFlush(projectId)) : Promise.resolve()),
   });
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: state.role === "viewer" });
+    if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: isReadOnlyProjectRole(state.role) });
   });
 
   const queue = inOrder();
@@ -139,6 +156,12 @@ export function startLiveEditing(live: LiveSession): () => void {
   const unsubscribeActive = useFilesStore.subscribe((state, previous) => {
     if (state.activePath !== previous.activePath) presence.schedule();
   });
+  const unsubscribeTabs = useFilesStore.subscribe((state, previous) => {
+    if (state.openTabs === previous.openTabs || state.projectId !== projectId) return;
+    for (const path of previous.openTabs) {
+      if (!state.openTabs.includes(path)) sessions.release(path);
+    }
+  });
   const unsubscribeVisibility = useSettingsStore.subscribe((state, previous) => {
     if (state.collabPresence !== previous.collabPresence) presence.schedule();
   });
@@ -149,6 +172,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   return () => {
     presence.dispose();
     unsubscribeActive();
+    unsubscribeTabs();
     unsubscribeVisibility();
     unsubscribeRole();
     releaseCursors();

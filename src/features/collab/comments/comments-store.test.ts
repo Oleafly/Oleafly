@@ -217,6 +217,14 @@ describe("comments for a shared project", () => {
     expect(useCommentsRail.getState()).toMatchObject({ visible: true, canCompose: false });
   });
 
+  it("never offers writing to a role from a later server, even when the server would allow comments", async () => {
+    useCollabLiveStore.setState({ role: "unknown" });
+    mocks.collabCommentThreadList.mockResolvedValue(threadList([commentThread("t1", { from: 0, to: 4 })]));
+    start();
+    await loaded(1);
+    expect(useCommentsRail.getState()).toMatchObject({ visible: true, canCompose: false });
+  });
+
   it("offers writing only while the project is live", async () => {
     useCollabLiveStore.setState({ status: null });
     start();

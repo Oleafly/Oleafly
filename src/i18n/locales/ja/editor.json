@@ -648,6 +648,7 @@
     "endOfDocument": "文書の終わり",
     "hidePreamble": "文書のプリアンブルを隠す",
     "showPreamble": "文書のプリアンブルを表示",
+    "sharedReadOnly": "共有プロジェクトでは、ビジュアルモードはファイルを表示するだけです。編集するにはソース表示に切り替えてください。",
     "findingLabel": "{{message}}。校正の候補を開きます。",
     "rawBlockFindings_other": "この未加工ブロックに校正の指摘が {{count}} 件あります。{{message}}。候補を開きます。"
   },

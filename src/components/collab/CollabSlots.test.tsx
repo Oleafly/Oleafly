@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import { useFilesStore } from "@/store/files";
@@ -92,6 +92,7 @@ import {
   SharedWithYouSlot,
   TreeRowClash,
   TreeRowPeers,
+  useTreeClashLabels,
 } from "./CollabSlots";
 import { useShareDialog } from "./share-dialog";
 import { useTreeClashes } from "./tree-clashes";
@@ -236,17 +237,23 @@ describe("TreeRowClash", () => {
     useTreeClashes.setState({ labels: new Map() });
   });
 
-  it("draws nothing while live collaboration is off, even for a renamed file", () => {
+  it("gives the tree no labels while live collaboration is off, even for a renamed file", () => {
     useSettingsStore.setState({ liveCollaboration: false });
     useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", "label"]]) });
-    const { container } = render(<TreeRowClash path="figs/plot (from Bob Smith).png" />);
-    expect(container).toBeEmptyDOMElement();
+    const { result } = renderHook(() => useTreeClashLabels());
+    expect(result.current.size).toBe(0);
+  });
+
+  it("gives the tree every label once collaboration is ready", () => {
+    const labels = new Map([["figs/plot (from Bob Smith).png", "label"]]);
+    useTreeClashes.setState({ labels });
+    const { result } = renderHook(() => useTreeClashLabels());
+    expect(result.current).toBe(labels);
   });
 
   it("marks a renamed file with a tinted badge whose app tooltip names the other file", async () => {
     const label = "figs/plot.png also has the name plot.png, so this file got a new name on disk.";
-    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", label]]) });
-    render(<TreeRowClash path="figs/plot (from Bob Smith).png" />);
+    render(<TreeRowClash label={label} />);
     const badge = screen.getByRole("img", { name: label });
     expect(badge).not.toHaveAttribute("title");
     expect(badge.className).toContain("bg-amber-500/15");
@@ -257,8 +264,7 @@ describe("TreeRowClash", () => {
   });
 
   it("draws nothing for a file that kept its name", () => {
-    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", "label"]]) });
-    const { container } = render(<TreeRowClash path="figs/plot.png" />);
+    const { container } = render(<TreeRowClash label={undefined} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

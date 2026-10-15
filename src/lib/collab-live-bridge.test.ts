@@ -5,6 +5,7 @@ import {
   collabDocumentSession,
   collabProjectReadOnly,
   collabVisualReadOnly,
+  collabHoldsDocument,
   installCollabEditorPort,
   useCollabEditorGate,
 } from "./collab-live-bridge";
@@ -34,6 +35,21 @@ describe("collab live bridge", () => {
     expect(port.flush).toHaveBeenCalledTimes(1);
     uninstall();
     expect(collabDocumentSession("main.tex")).toBeNull();
+  });
+
+  it("says which files a live session holds without opening one", () => {
+    expect(collabHoldsDocument("main.tex")).toBe(false);
+    const documentSession = vi.fn(() => null);
+    const uninstall = installCollabEditorPort({
+      documentSession,
+      holds: (path) => path === "main.tex",
+      flush: async () => {},
+    });
+    expect(collabHoldsDocument("main.tex")).toBe(true);
+    expect(collabHoldsDocument("intro.tex")).toBe(false);
+    expect(documentSession).not.toHaveBeenCalled();
+    uninstall();
+    expect(collabHoldsDocument("main.tex")).toBe(false);
   });
 
   it("keeps a newer port when an older one uninstalls", () => {

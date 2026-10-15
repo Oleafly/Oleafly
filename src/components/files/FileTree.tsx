@@ -87,6 +87,7 @@ import {
   CollabTreePresenceSlot,
   TreeRowClash,
   TreeRowPeers,
+  useTreeClashLabels,
   type PeerMarks,
 } from "@/components/collab/CollabSlots";
 
@@ -304,6 +305,7 @@ interface TreeCtx {
   onMove: (from: string, toDir: string) => void;
   git: GitDecorations;
   peers: PeerMarks;
+  clashes: ReadonlyMap<string, string>;
   focusSibling: (path: string, step: 1 | -1) => void;
 }
 
@@ -342,6 +344,7 @@ export function FileTree({
 
   const loading = useFilesStore((s) => s.loading);
   const [peerMarks, setPeerMarks] = useState<PeerMarks>(NO_PEERS);
+  const clashLabels = useTreeClashLabels();
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(readSidebarView(projectId, "files")?.expanded),
   );
@@ -949,6 +952,7 @@ export function FileTree({
     onMove: move,
     git,
     peers: peerMarks,
+    clashes: clashLabels,
     focusSibling: (path, step) => {
       const start = flatIndex.get(path);
       if (start === undefined) return;
@@ -1602,7 +1606,7 @@ function TreeRow({
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
       )}
       <span className="ml-auto flex shrink-0 items-center gap-1">
-        <TreeRowClash path={node.path} />
+        <TreeRowClash label={ctx.clashes.get(node.path)} />
         <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />
         {unreadable && (
           <span className="text-[0.6875rem] text-muted-foreground">

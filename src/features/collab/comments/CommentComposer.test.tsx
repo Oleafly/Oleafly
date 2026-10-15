@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentMember } from "@/lib/tauri";
 import { CommentComposer } from "./CommentComposer";
@@ -37,6 +38,58 @@ beforeAll(async () => {
 });
 
 describe("comment composer", () => {
+  it("keeps typed text on Escape and leaves discarding it to Cancel", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(
+      <CommentComposer
+        label={copy.newLabel}
+        submitLabel={copy.post}
+        autoFocus
+        members={MEMBERS}
+        self="alice"
+        onSubmit={vi.fn(async () => undefined)}
+        onCancel={onCancel}
+      />,
+    );
+    const field = screen.getByRole("textbox", { name: copy.newLabel });
+    await user.type(field, "A long thought about this paragraph");
+    const outside = vi.fn();
+    window.addEventListener("keydown", outside);
+    await user.keyboard("{Escape}");
+    window.removeEventListener("keydown", outside);
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(outside).not.toHaveBeenCalled();
+    expect(field).toHaveValue("A long thought about this paragraph");
+    expect(field).not.toHaveFocus();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.cancel }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes an edit on Escape when nothing was changed", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(
+      <CommentComposer
+        label={copy.editLabel}
+        submitLabel={enCommon.actions.save}
+        initial="Checked twice"
+        autoFocus
+        members={MEMBERS}
+        self="alice"
+        onSubmit={vi.fn(async () => undefined)}
+        onCancel={onCancel}
+      />,
+    );
+    await user.keyboard("{Escape}");
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    onCancel.mockClear();
+    await user.type(screen.getByRole("textbox", { name: copy.editLabel }), " and again");
+    await user.keyboard("{Escape}");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: copy.editLabel })).toHaveValue("Checked twice and again");
+  });
+
   it("shows a login next to a name only for members who have one", async () => {
     const user = userEvent.setup();
     const field = compose();

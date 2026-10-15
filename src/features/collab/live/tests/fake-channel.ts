@@ -25,6 +25,7 @@ export class FakeChannel {
   readonly clients = new Map<string, Client>();
   readonly opens: string[] = [];
   readonly closes: string[] = [];
+  readonly closeTokens: number[] = [];
   readonly sent: Change[] = [];
   private next = 0;
 
@@ -38,15 +39,16 @@ export class FakeChannel {
         const id = `file-${this.next++}`;
         this.clients.set(id, { id, onMessage, outbox: [], open: true });
         this.opens.push(id);
-        return { file_id: id, rev: this.rev, text: this.text };
+        return { file_id: id, rev: this.rev, text: this.text, session: this.next };
       },
       change: (fileId, rev, op) => {
         const change = { client: fileId, rev, op };
         this.sent.push(change);
         this.inbox.push(change);
       },
-      close: (fileId) => {
+      close: (fileId, session) => {
         this.closes.push(fileId);
+        this.closeTokens.push(session);
         const client = this.clients.get(fileId);
         if (client) client.open = false;
       },

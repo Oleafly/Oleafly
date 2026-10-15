@@ -658,6 +658,7 @@
     "endOfDocument": "Dokumentin loppu",
     "hidePreamble": "Piilota dokumentin esittelyosa",
     "showPreamble": "Näytä dokumentin esittelyosa",
+    "sharedReadOnly": "Jaetussa projektissa visuaalinen tila vain näyttää tiedoston. Vaihda lähdekoodinäkymään, jos haluat muokata sitä.",
     "findingLabel": "{{message}}. Avaa oikolukuehdotukset.",
     "rawBlockFindings_one": "{{count}} oikolukuhavainto tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
     "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset."

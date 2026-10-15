@@ -668,6 +668,7 @@
     "endOfDocument": "Sfârșitul documentului",
     "hidePreamble": "Ascunde preambulul documentului",
     "showPreamble": "Arată preambulul documentului",
+    "sharedReadOnly": "Într-un proiect partajat, modul vizual doar afișează fișierul. Treci la vizualizarea sursei ca să-l editezi.",
     "findingLabel": "{{message}}. Deschide sugestiile de corectură.",
     "rawBlockFindings_one": "{{count}} observație de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
     "rawBlockFindings_few": "{{count}} observații de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",

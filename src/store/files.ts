@@ -472,7 +472,16 @@ interface FilesStore {
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
   closeTabs: (paths: readonly string[]) => void;
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
+  // `base` is the text the caller built `content` from, when that may be older
+  // than the buffer. A live project merges the change from it, so edits that
+  // reached the buffer since are kept.
+  // `unsaved` marks text the buffer may already hold but the disk doesn't,
+  // such as typing a shared file's session never had confirmed.
+  setContent: (
+    path: string,
+    content: string,
+    opts?: { bumpVersion?: boolean; base?: string; unsaved?: boolean },
+  ) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
@@ -809,9 +818,10 @@ function enqueueWrite(
     .then(async (expectedGeneration) => {
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
+      // The shared document takes LF text and restores CRLF on disk itself, so
+      // only the direct disk write below uses the file's own line endings.
       const bytes = crlf ? crlfBytes(content) : content;
-      const base = sharedBase === undefined || !crlf ? sharedBase : crlfBytes(sharedBase);
-      if (await writeSharedText(projectId, path, bytes, base)) {
+      if (await writeSharedText(projectId, path, content, sharedBase)) {
         diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
         settleDiskConflict(key);
         return rememberMutationGeneration(projectId, expectedGeneration);
@@ -1997,10 +2007,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     const before = get().files[path];
-    if (before?.content === content) return true;
+    const same = before?.content === content;
+    if (same && (!opts?.unsaved || before.dirty)) return true;
     const saved = matchesSavedDiskText(projectId, path, content);
+    if (same && saved) return true;
     if (!saved && before && !before.dirty && projectId && sharedDocumentLive(projectId)) {
-      sharedSaveBases.set(writeKey(projectId, path), before.content);
+      sharedSaveBases.set(writeKey(projectId, path), opts?.base ?? before.content);
     }
     set((s) => ({
       files: {
@@ -2404,12 +2416,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
-    const shared = await writeSharedText(
-      projectId,
-      path,
-      bytes,
-      base === undefined || !crlf ? base : crlfBytes(base),
-    );
+    // LF into the shared document; CRLF only for the direct disk write.
+    const shared = await writeSharedText(projectId, path, canonicalContent, base);
     const result = shared
       ? null
       : await writeFileContent(

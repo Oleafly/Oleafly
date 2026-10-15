@@ -648,6 +648,7 @@
     "endOfDocument": "文件結尾",
     "hidePreamble": "隱藏文件序言區",
     "showPreamble": "顯示文件序言區",
+    "sharedReadOnly": "在分享的專案中，視覺化模式只會顯示檔案。若要編輯，請切換到原始碼檢視。",
     "findingLabel": "{{message}}。開啟校對建議。",
     "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。"
   },

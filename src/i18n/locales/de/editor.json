@@ -658,6 +658,7 @@
     "endOfDocument": "Ende des Dokuments",
     "hidePreamble": "Präambel des Dokuments ausblenden",
     "showPreamble": "Präambel des Dokuments anzeigen",
+    "sharedReadOnly": "In einem geteilten Projekt zeigt der visuelle Modus die Datei nur an. Wechseln Sie zur Quelltextansicht, um sie zu bearbeiten.",
     "findingLabel": "{{message}}. Korrekturvorschläge öffnen.",
     "rawBlockFindings_one": "{{count}} Korrekturhinweis in diesem Rohblock. {{message}}. Vorschläge öffnen.",
     "rawBlockFindings_other": "{{count}} Korrekturhinweise in diesem Rohblock. {{message}}. Vorschläge öffnen."

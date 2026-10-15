@@ -4,6 +4,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabEmailPreferences } from "@/lib/tauri";
 import { SERVER_ID, collabError } from "./tests/fixtures";
@@ -151,6 +152,16 @@ describe("EmailPreferencesRow", () => {
     await act(async () => failEarlier(collabError("unreachable")));
     expect(screen.queryByText(copy.loadFailed)).toBeNull();
     expect(toggle()).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("tries again from the quiet failure line", async () => {
+    mocks.collabEmailPreferences.mockRejectedValueOnce(collabError("unreachable")).mockResolvedValue(preferences());
+    const user = userEvent.setup();
+    render(<EmailPreferencesRow serverId={SERVER_ID} />);
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(await screen.findByRole("switch", { name: copy.label })).toBeInTheDocument();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
   });
 
   it("says so quietly when the setting cannot load", async () => {

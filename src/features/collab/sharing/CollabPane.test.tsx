@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Profiler } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatDateTime } from "@/lib/intl";
@@ -20,6 +21,9 @@ import { useAccessLogSwitches } from "./access-log-store";
 import { useCollabActivity, type ActivityEntry, type NewActivity } from "./activity-store";
 
 const spies = vi.hoisted(() => ({
+  openUpdateWindow: vi.fn(async () => undefined),
+  collabLeaveProject: vi.fn(async () => undefined),
+  collabShareInfo: vi.fn(async () => null),
   relativeTime: vi.fn(),
   person: vi.fn(),
   review: vi.fn(),
@@ -37,7 +41,11 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   collabTrashRestore: vi.fn(async () => undefined),
   collabAccessLogStatus: vi.fn(async () => ({ serverAllowed: true, enabled: true })),
   collabAccessLogPage: vi.fn(async () => ({ items: [], next_cursor: null })),
+  collabLeaveProject: spies.collabLeaveProject,
+  collabShareInfo: spies.collabShareInfo,
 }));
+
+vi.mock("@/lib/updater", () => ({ openUpdateWindow: spies.openUpdateWindow }));
 
 vi.mock("./MergeReviewDialog", () => ({
   MergeReviewDialog: (props: { projectId: string; entry: unknown; onClose: () => void }) => {
@@ -93,6 +101,7 @@ function feed(entries: (NewActivity & { count: number })[]) {
 beforeAll(async () => {
   await loadNamespace("collab");
   await loadNamespace("workspace");
+  await loadNamespace("shell");
 });
 
 beforeEach(() => {
@@ -113,6 +122,7 @@ beforeEach(() => {
     merged: null,
     newDevice: null,
     ended: null,
+    unwritten: [],
   });
   feed([]);
 });
@@ -129,6 +139,30 @@ function sectionToggle(name: string): HTMLElement {
 }
 
 describe("CollabPane", () => {
+  it("lists the files it couldn't write to this computer, each with the reason, until they are written", () => {
+    useCollabLiveStore.setState({
+      unwritten: [
+        { path: "main.tex", reason: "locked" },
+        { path: "notes/plan.md", reason: "read_only" },
+        { path: "figures/big.png", reason: "no_space" },
+        { path: "refs.bib", reason: "not_downloaded" },
+        { path: "odd.txt", reason: "something_new" as never },
+      ],
+    });
+    render(<CollabPane />);
+    const alert = screen.getByTestId("collab-unwritten");
+    expect(alert).toHaveTextContent(pane.unwritten.title);
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.locked, { path: "main.tex" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.read_only, { path: "notes/plan.md" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.no_space, { path: "figures/big.png" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.not_downloaded, { path: "refs.bib" }));
+    expect(alert).toHaveTextContent(fill(pane.unwritten.reasons.other, { path: "odd.txt" }));
+    expect(alert).toHaveTextContent(pane.unwritten.hint);
+    expect(alert.className).not.toMatch(/\b(ring|outline)-/);
+    act(() => useCollabLiveStore.setState({ unwritten: [] }));
+    expect(screen.queryByTestId("collab-unwritten")).toBeNull();
+  });
+
   it("shows the sync state as an icon left of the Share button instead of a status block", () => {
     render(<CollabPane />);
     const header = screen.getByRole("heading", { name: pane.title }).closest("header") as HTMLElement;
@@ -183,6 +217,20 @@ describe("CollabPane", () => {
     [{ status: { state: "ended", reason: "stopped" }, pending: 0 }, enCollab.sync.paused, "circle-pause", "text-muted-foreground"],
     [{ status: { state: "ended", reason: "access_ended" }, pending: 0 }, enCollab.sync.accessEnded, "ban", "text-destructive"],
     [{ status: { state: "ended", reason: "signed_out" }, pending: 0 }, enCollab.sync.signedOut, "log-out", "text-destructive"],
+    [
+      { status: { state: "ended", reason: "server_removed" }, pending: 0 },
+      enCollab.sync.serverRemoved,
+      "server-off",
+      "text-destructive",
+    ],
+    [
+      { status: { state: "ended", reason: "client_too_old" }, pending: 0 },
+      enCollab.sync.clientTooOld,
+      "circle-arrow-up",
+      "text-destructive",
+    ],
+    [{ status: { state: "ended", reason: "server_too_old" }, pending: 0 }, enCollab.sync.serverTooOld, "server-cog", "text-destructive"],
+    [{ status: { state: "ended", reason: "server_changed" }, pending: 0 }, enCollab.sync.serverChanged, "replace", "text-destructive"],
   ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);
@@ -518,6 +566,18 @@ describe("CollabPane", () => {
     );
   });
 
+  it("says whose change it couldn't read, or that it was someone's", () => {
+    feed([
+      { kind: "skipped", at: NOW, deviceId: "bob-laptop", name: "Bob Smith", count: 1 },
+      { kind: "skipped", at: NOW - 1000, deviceId: null, name: "", count: 1 },
+    ]);
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(fill(activity.skipped, { name: "Bob Smith" }));
+    expect(rows[0].querySelector("svg.lucide-triangle-alert")).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent(activity.skippedUnknown);
+  });
+
   it("says who changed a shared compile setting and what it is now", () => {
     const setting = (change: Extract<NewActivity, { kind: "setting" }>["change"], name = "Bob Smith"): ActivityEntry => ({
       kind: "setting",
@@ -603,6 +663,68 @@ describe("CollabPane", () => {
     expect(within(header).getByRole("button", { name: words }).querySelector("svg")).toBeInTheDocument();
     expect(screen.queryByTestId("collab-people")).toBeNull();
     expect(sectionToggle(pane.activity)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("offers to keep a local copy, not Sign in, when the project's server was removed", async () => {
+    useCollabLiveStore.setState({
+      share: shareInfo({ role: "editor", account_id: ALICE_ID, server_name: "" }),
+      status: { state: "ended", reason: "server_removed" },
+      ended: "server_removed",
+    });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverRemoved }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(enCollab.errors.server_removed);
+    expect(within(details).queryByRole("button", { name: activity.signIn })).toBeNull();
+    expect(details).not.toHaveTextContent(fill(enCollab.manage.sharedOn, { server: "" }));
+    await user.click(within(details).getByRole("button", { name: enCollab.section.server.unsent.keep }));
+    expect(spies.collabLeaveProject).toHaveBeenCalledWith("grant");
+    await vi.waitFor(() => expect(spies.collabShareInfo).toHaveBeenCalledWith("grant"));
+  });
+
+  it("shows why keeping a local copy failed", async () => {
+    spies.collabLeaveProject.mockRejectedValueOnce({ code: "invalid", message: "That project is busy." });
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_removed" }, ended: "server_removed" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverRemoved }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    await user.click(within(details).getByRole("button", { name: enCollab.section.server.unsent.keep }));
+    expect(await within(details).findByRole("alert")).toHaveTextContent("That project is busy.");
+  });
+
+  it("asks for an Oleafly update when the server needs a newer app", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "client_too_old" }, ended: "client_too_old" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.clientTooOld }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.clientTooOld, { server: "Smith Lab" }));
+    expect(within(details).queryByRole("button", { name: activity.signIn })).toBeNull();
+    await user.click(within(details).getByRole("button", { name: enShell.updateChecker.check }));
+    expect(spies.openUpdateWindow).toHaveBeenCalledWith({ manual: true });
+  });
+
+  it("says the server needs an update and offers nothing it can't do", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_too_old" }, ended: "server_too_old" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverTooOld }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.serverTooOld, { server: "Smith Lab" }));
+    expect(within(details).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("sends the person to Collaboration settings when the address points at a different server", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_changed" }, ended: "server_changed" });
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    await user.click(screen.getByRole("button", { name: enCollab.sync.serverChanged }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(fill(activity.serverChanged, { server: "Smith Lab" }));
+    await user.click(within(details).getByRole("button", { name: enCollab.share.openSettings }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
   });
 
   it("offers Sign in in the status details while signed out", async () => {

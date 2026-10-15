@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, CheckCircle2, MoreHorizontal, Pencil, RotateCcw, ShieldQuestion, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,6 +96,7 @@ function MessageRow({
 }: Readonly<{ thread: CollabCommentThread; message: CollabCommentMessage; context: ThreadContext }>) {
   const { t } = useTranslation(["collab", "common"]);
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, run] = useFailure();
   const person = message.verified ? context.people.get(message.author) : undefined;
   const name = message.verified
@@ -148,7 +150,7 @@ function MessageRow({
                   <Pencil aria-hidden className="size-4" />
                   {t(($) => $.common.actions.edit)}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => run(() => deleteMessage(thread, message.id))}>
+                <DropdownMenuItem onSelect={() => setConfirming(true)}>
                   <Trash2 aria-hidden className="size-4" />
                   {t(($) => $.common.actions.delete)}
                 </DropdownMenuItem>
@@ -175,6 +177,18 @@ function MessageRow({
         )}
         {error ? <InlineAlert>{error}</InlineAlert> : null}
       </div>
+      <ConfirmationDialog
+        open={confirming}
+        title={t(($) => $.collab.comments.deleteMessageConfirm.title)}
+        description={t(($) => $.collab.comments.deleteMessageConfirm.description)}
+        confirmLabel={t(($) => $.common.actions.delete)}
+        destructive
+        onConfirm={() => {
+          setConfirming(false);
+          run(() => deleteMessage(thread, message.id));
+        }}
+        onCancel={() => setConfirming(false)}
+      />
     </li>
   );
 }
@@ -182,6 +196,21 @@ function MessageRow({
 function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread; self: string | null }>) {
   const { t } = useTranslation(["collab"]);
   const [error, run] = useFailure();
+  const [confirming, setConfirming] = useState(false);
+  // Resolve and Reopen send once: a second click while one is in flight does nothing.
+  const [toggling, setToggling] = useState(false);
+  const inFlight = useRef(false);
+  const toggle = (action: () => Promise<void>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setToggling(true);
+    run(() =>
+      action().finally(() => {
+        inFlight.current = false;
+        setToggling(false);
+      }),
+    );
+  };
   const resolve = t(($) => $.collab.comments.resolve);
   const reopen = t(($) => $.collab.comments.reopen);
   const more = t(($) => $.collab.comments.threadActions);
@@ -200,7 +229,8 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
               size="icon"
               aria-label={reopen}
               className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => run(() => reopenThread(thread))}
+              disabled={toggling}
+              onClick={() => toggle(() => reopenThread(thread))}
             >
               <RotateCcw aria-hidden className="size-3.5" />
             </Button>
@@ -213,7 +243,8 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
               size="icon"
               aria-label={resolve}
               className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => run(() => resolveThread(thread))}
+              disabled={toggling}
+              onClick={() => toggle(() => resolveThread(thread))}
             >
               <Check aria-hidden className="size-3.5" />
             </Button>
@@ -233,7 +264,7 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => run(() => deleteThread(thread))}>
+              <DropdownMenuItem onSelect={() => setConfirming(true)}>
                 <Trash2 aria-hidden className="size-4" />
                 {t(($) => $.collab.comments.deleteThread)}
               </DropdownMenuItem>
@@ -246,6 +277,18 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
           <InlineAlert>{error}</InlineAlert>
         </div>
       ) : null}
+      <ConfirmationDialog
+        open={confirming}
+        title={t(($) => $.collab.comments.deleteThreadConfirm.title)}
+        description={t(($) => $.collab.comments.deleteThreadConfirm.description)}
+        confirmLabel={t(($) => $.collab.comments.deleteThread)}
+        destructive
+        onConfirm={() => {
+          setConfirming(false);
+          run(() => deleteThread(thread));
+        }}
+        onCancel={() => setConfirming(false)}
+      />
     </>
   );
 }

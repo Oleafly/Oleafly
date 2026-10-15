@@ -153,6 +153,18 @@ describe("collaboration IPC contract", () => {
       "collab_link_preview",
       { serverId: SERVER, sharedProjectId: ACCOUNT },
     ],
+    [
+      "collabJoinProject",
+      () => tauri.collabJoinProject(SERVER, ACCOUNT),
+      "collab_join_project",
+      { serverId: SERVER, sharedProjectId: ACCOUNT },
+    ],
+    [
+      "collabJoinCancel",
+      () => tauri.collabJoinCancel(SERVER, ACCOUNT),
+      "collab_join_cancel",
+      { serverId: SERVER, sharedProjectId: ACCOUNT },
+    ],
   ] as const)("sends %s", async (_label, call, command, args) => {
     await call();
     if (args === undefined) expect(mocks.invoke).toHaveBeenCalledWith(command);
@@ -164,10 +176,35 @@ describe("collaboration IPC helpers", () => {
   it("recognises the structured command error", () => {
     expect(tauri.isCollabCommandError({ code: "not_admitted", message: "" })).toBe(true);
     expect(tauri.isCollabCommandError({ code: "server_changed", message: "a b" })).toBe(true);
+    for (const code of ["invalid", "project_full", "not_a_link", "signed_out", "server_removed", "turned_off"]) {
+      expect(tauri.isCollabCommandError({ code, message: "" }), code).toBe(true);
+    }
     expect(tauri.isCollabCommandError({ code: "teapot", message: "" })).toBe(false);
     expect(tauri.isCollabCommandError({ code: "server" })).toBe(false);
     expect(tauri.isCollabCommandError("unreachable")).toBe(false);
     expect(tauri.isCollabCommandError(null)).toBe(false);
+  });
+
+  it("forwards join progress with the server and project it belongs to", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabJoinProgress((payload) => seen.push(payload));
+    expect(tauri.COLLAB_JOIN_PROGRESS_EVENT).toBe("collab-join-progress");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-join-progress", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { serverId: SERVER, sharedProjectId: ACCOUNT, done: 2, total: 5 };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
+  });
+
+  it("forwards the files a live project couldn't write", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabLiveUnwritten((payload) => seen.push(payload));
+    expect(tauri.COLLAB_LIVE_UNWRITTEN_EVENT).toBe("collab-live-unwritten");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-live-unwritten", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { projectId: "grant", files: [{ path: "main.tex", reason: "locked" }] };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
   });
 
   it("forwards server change events", async () => {

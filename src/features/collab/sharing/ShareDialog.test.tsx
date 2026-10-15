@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -102,7 +102,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useShareDialog.setState({ projectId: null, fromCopy: false });
+  useShareDialog.setState({ projectId: null, fromCopy: false, sharing: false });
 });
 
 describe("ShareDialog before sharing", () => {
@@ -137,6 +137,7 @@ describe("ShareDialog before sharing", () => {
     finish(shareInfo());
     expect(await screen.findByText(fill(manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(await screen.findByRole("textbox", { name: manage.add.label })).toBeInTheDocument();
+    expect(screen.getByTestId("collab-share-trust")).toHaveTextContent(share.trustAgain);
     expect(refreshProjects).toHaveBeenCalled();
     expect(refreshShare).toHaveBeenCalled();
     expect(unlistenProgress).toHaveBeenCalled();
@@ -167,6 +168,61 @@ describe("ShareDialog before sharing", () => {
     await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
     expect(await screen.findByText(fill(manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(mocks.collabShareProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays open while the files upload, so the upload can't be lost or started twice", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    let finish: (value: unknown) => void = () => undefined;
+    mocks.collabShareProject.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    mocks.collabProjectSummary.mockResolvedValue(projectSummary());
+    mocks.collabMembersList.mockResolvedValue([projectMember(BOB, "owner")]);
+    const user = userEvent.setup();
+    openDialog();
+    await user.click(await screen.findByRole("button", { name: share.start }));
+    await waitFor(() => expect(useShareDialog.getState().sharing).toBe(true));
+
+    const dialog = screen.getByRole("dialog");
+    const header = within(dialog).getByRole("button", { name: enCommon.actions.close });
+    expect(header).toBeDisabled();
+    const backdrop = screen.getAllByRole("button", { name: enCommon.actions.close }).find((button) => button !== header);
+    fireEvent.mouseDown(backdrop as HTMLElement);
+    await user.keyboard("{Escape}");
+    useShareDialog.getState().close();
+    expect(useShareDialog.getState().projectId).toBe("grant");
+    expect(screen.getByRole("button", { name: enCommon.actions.cancel })).toBeDisabled();
+
+    finish(shareInfo());
+    expect(await screen.findByText(fill(manage.sharedOn, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(useShareDialog.getState().sharing).toBe(false);
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: enCommon.actions.close })).toBeEnabled();
+    useShareDialog.getState().close();
+    expect(useShareDialog.getState().projectId).toBeNull();
+  });
+
+  it("lets the dialog close again after a share fails", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    mocks.collabShareProject.mockRejectedValueOnce(collabError("unreachable"));
+    const user = userEvent.setup();
+    openDialog();
+    await user.click(await screen.findByRole("button", { name: share.start }));
+    await screen.findByRole("alert");
+    expect(useShareDialog.getState().sharing).toBe(false);
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: enCommon.actions.close }));
+    expect(useShareDialog.getState().projectId).toBeNull();
+  });
+
+  it("says another share of the project is still running without calling it a failure", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    mocks.collabShareProject.mockRejectedValueOnce(collabError("share_in_progress"));
+    const user = userEvent.setup();
+    openDialog();
+    await user.click(await screen.findByRole("button", { name: share.start }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(enCollab.errors.share_in_progress);
+    expect(alert).not.toHaveTextContent(share.failed);
   });
 
   it("points to Collaboration settings when no server is signed in", async () => {
@@ -229,6 +285,7 @@ describe("ShareDialog once shared", () => {
     expect(rows[0]).toHaveTextContent(manage.you);
     expect(rows[0]).toHaveTextContent(roles.owner);
     expect(rows[1]).toHaveTextContent("alice@uni.edu");
+    expect(screen.queryByTestId("collab-share-trust")).toBeNull();
 
     await chooseOption(user, fill(manage.roleLabel, { name: "Alice Chen" }), roles.viewer);
     expect(mocks.collabMemberSet).toHaveBeenCalledWith("grant", alice.person.account_id, "viewer");
@@ -263,7 +320,7 @@ describe("ShareDialog once shared", () => {
     const user = userEvent.setup();
     openDialog();
     await user.type(await screen.findByRole("textbox", { name: manage.add.label }), "zed");
-    expect(await screen.findByText(fill(manage.add.noResults, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(await screen.findByText(fill(manage.add.noResultsTryEmail, { server: "Smith Lab" }))).toBeInTheDocument();
   });
 
   it("copies the link and turns link sharing on with a role", async () => {

@@ -7,6 +7,8 @@ import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { useVisualModeStore } from "@/store/visual-mode";
+import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import {
   flushWysiwygPendingEdits,
   getWysiwygDocumentContext,
@@ -613,6 +615,47 @@ describe("Visual Markdown in a live shared project", () => {
       expect(useFilesStore.getState().files["notes.md"]).toEqual({ content: NOTES, dirty: false });
       act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
       expect(editor.isEditable).toBe(true);
+    } finally {
+      mounted.unmount();
+      useCollabEditorGate.setState({ projectId: null, viewer: false });
+      useFilesStore.setState({ projectId: null });
+    }
+  });
+
+  it("says why it can't be edited and switches to the source view on request", () => {
+    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
+    useVisualModeStore.setState({ projectId: null, enabled: true });
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    try {
+      const notice = screen.getByTestId("visual-shared-notice");
+      expect(notice).toHaveTextContent(enEditor.visual.sharedReadOnly);
+      fireEvent.click(screen.getByRole("button", { name: enEditor.toolbar.switchToSource }));
+      expect(useVisualModeStore.getState().enabled).toBe(false);
+      act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
+      expect(screen.queryByTestId("visual-shared-notice")).toBeNull();
+    } finally {
+      mounted.unmount();
+      useCollabEditorGate.setState({ projectId: null, viewer: false });
+      useFilesStore.setState({ projectId: null });
+    }
+  });
+
+  it("follows a collaborator's edits that reach the store without a version bump", async () => {
+    useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
+    const mounted = render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+    try {
+      const before = useFilesStore.getState().docVersion;
+      act(() =>
+        useFilesStore.setState((state) => ({
+          files: { ...state.files, "notes.md": { content: `${NOTES}\nAdded by Bob.\n`, dirty: false } },
+        })),
+      );
+      expect(useFilesStore.getState().docVersion).toBe(before);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      });
+      expect(editor.getText()).toContain("Added by Bob.");
     } finally {
       mounted.unmount();
       useCollabEditorGate.setState({ projectId: null, viewer: false });

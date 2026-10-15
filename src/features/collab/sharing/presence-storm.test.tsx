@@ -36,6 +36,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   collabDocOpen: vi.fn(async () => null),
   collabDocChange: vi.fn(async () => undefined),
   collabDocClose: vi.fn(async () => undefined),
+  collabTrashList: vi.fn(async () => []),
   onCollabLiveStatus: listener("status"),
   onCollabLiveRole: listener("role"),
   onCollabLiveMerged: listener("merged"),

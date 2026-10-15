@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
+import { useLinkInbox } from "@/components/collab/link-inbox";
 import { logError } from "@/lib/log";
 import { collabPendingLinks, onCollabOpenLink } from "@/lib/tauri";
 
@@ -10,6 +11,13 @@ const LinkIntake = lazy(() =>
 export function CollabLinkKeeper() {
   const [inbox, setInbox] = useState<readonly string[] | null>(null);
   const taken = useCallback((count: number) => setInbox((links) => links?.slice(count) ?? links), []);
+  const pasted = useLinkInbox((state) => state.links);
+
+  useEffect(() => {
+    if (pasted.length === 0) return;
+    setInbox((current) => [...(current ?? []), ...pasted]);
+    useLinkInbox.getState().take(pasted.length);
+  }, [pasted]);
 
   useEffect(() => {
     if (!isTauri()) return;

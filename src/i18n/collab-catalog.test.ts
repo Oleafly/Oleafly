@@ -24,6 +24,25 @@ const ERROR_CODES = [
   "device_in_use",
   "server_unknown",
   "too_large",
+  "invalid",
+  "invalid_domain",
+  "invalid_email",
+  "invalid_login",
+  "guests_off",
+  "link_sharing_off",
+  "access_log_off",
+  "last_admin",
+  "duplicate_entry",
+  "already_member",
+  "project_not_shared",
+  "project_full",
+  "not_a_link",
+  "signed_out",
+  "server_removed",
+  "share_in_progress",
+  "cancelled",
+  "cloud_synced",
+  "owner_away",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];
@@ -95,7 +114,8 @@ describe("collab catalog", () => {
   });
 
   it("names every server role, security event and runtime setting", () => {
-    expect(Object.keys(collab.roles)).toEqual(["admin", "maintainer", "member", "guest"]);
+    expect(Object.keys(collab.roles)).toEqual(["admin", "maintainer", "member", "guest", "unknown"]);
+    expect(Object.keys(collab.projectRoles)).toEqual(["owner", "editor", "viewer", "unknown"]);
     expect(Object.keys(collab.admin.log.kinds).sort()).toEqual([...EVENT_KINDS].sort());
     for (const key of RUNTIME_SETTINGS) {
       expect(flat.get(`admin.settings.${key}.label`), key).toBeTruthy();
@@ -109,6 +129,29 @@ describe("collab catalog", () => {
       expect(value.trim(), key).toBe(value);
       expect(key, key).not.toMatch(/_(zero|one|two|few|many|other)$/u);
     }
+  });
+
+  it("calls each collaboration idea by one name on every screen", () => {
+    // Admins suspend and reactivate accounts, so members see the same word.
+    expect(collab.section.server.paused).toBe(collab.admin.members.suspended);
+    expect(collab.sync.suspended).toMatch(/suspended/u);
+    expect(collab.section.server.pausedHint).toMatch(/suspended/u);
+    expect(collab.activity.suspended).toBe(collab.section.server.pausedHint);
+    // One name for the list of people let in, the people list and server settings.
+    expect(collab.admin.members.addHint).toContain(collab.admin.tabs.allowlist);
+    expect(collab.admin.log.kinds.allowlistAdded).toContain(collab.admin.tabs.allowlist);
+    expect(collab.admin.log.kinds.allowlistRemoved).toContain(collab.admin.tabs.allowlist);
+    expect(collab.errors.not_admitted).not.toMatch(/list/u);
+    expect(collab.admin.tabs.members).toBe(collab.console.sections.people);
+    expect(collab.admin.tabs.settings).toBe(collab.console.sections.settings);
+    for (const [key, value] of flat) expect(value, key).not.toMatch(/paused your account|allowed list|Account paused/u);
+  });
+
+  it("says where the setup code comes from, and what to do when the server isn't yours", () => {
+    const setup = collab.addServer.setupDescription;
+    expect(setup).toMatch(/the installer showed you/u);
+    expect(setup).toMatch(/server's log/u);
+    expect(setup).toMatch(/If you didn't install it, ask the person who runs it/u);
   });
 
   it("only explains keys the catalog has", () => {

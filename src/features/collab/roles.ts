@@ -1,4 +1,4 @@
-import type { CollabServerRole } from "@/lib/tauri";
+import type { CollabProjectRole, CollabServerRole } from "@/lib/tauri";
 
 export const SERVER_ROLES = ["admin", "maintainer", "member", "guest"] as const satisfies readonly CollabServerRole[];
 
@@ -66,4 +66,9 @@ export function canChangeMember(actor: ServerRole, target: ServerRole): boolean 
 
 export function canManageServer(role: ServerRole | null): boolean {
   return role !== null && serverRoleAllows(role, "manageMembers");
+}
+
+// A project role a later server sends as "unknown" can only read, like a viewer.
+export function isReadOnlyProjectRole(role: CollabProjectRole | null | undefined): boolean {
+  return role === "viewer" || role === "unknown";
 }

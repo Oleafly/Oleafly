@@ -15,7 +15,7 @@ import {
   type CollabEmailStatus,
   type CollabServer,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { serverRoleAllows, type ServerRole } from "./roles";
 
@@ -118,7 +118,7 @@ function TestEmail({
       const result = await collabAdminEmailTest(serverId);
       setTest(result.delivered ? { state: "sent", to: result.sent_to } : { state: "refused", detail: result.error });
     } catch (error) {
-      setTest({ state: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+      setTest({ state: "failed", message: collabErrorText(error) });
     }
   };
 
@@ -184,7 +184,7 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
         if (active) setStatus(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {
@@ -203,7 +203,7 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
       setStatus((current) => (current ? { ...current, notifications: settings.email_notifications } : current));
     } catch (error) {
       setStatus(previous);
-      setSaveError(collabErrorMessage(collabErrorCode(error)));
+      setSaveError(collabErrorText(error));
     } finally {
       setSaving(false);
     }

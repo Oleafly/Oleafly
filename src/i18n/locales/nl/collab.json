@@ -25,9 +25,9 @@
       "signedOut": "Afgemeld",
       "signedInAs": "Aangemeld als {{name}}",
       "signedOutHint": "Deze computer is niet aangemeld bij deze server.",
-      "paused": "Gepauzeerd",
+      "paused": "Geschorst",
       "noAccess": "Geen toegang",
-      "pausedHint": "Een beheerder heeft je account op {{server}} gepauzeerd. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra het weer is ingeschakeld.",
+      "pausedHint": "Een beheerder heeft je account op {{server}} geschorst. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra een beheerder het weer activeert.",
       "endedHint": "Je hebt geen toegang meer tot {{server}}. Je kopieën blijven op deze computer als gewone projecten. Als een beheerder je weer toevoegt, meld je dan opnieuw aan.",
       "endedGuestHint": "Je hebt geen toegang meer tot {{server}} omdat je in geen van de gedeelde projecten daar zit. Je kopieën blijven op deze computer als gewone projecten. Als je opnieuw wordt uitgenodigd, meld je dan opnieuw aan.",
       "role": "Je rol: {{role}}",
@@ -35,17 +35,23 @@
       "signOut": "Afmelden",
       "remove": "Weghalen",
       "manage": "Server beheren",
+      "manageHint": "Server beheren toont hier mensen, toegangsregels en serverinstellingen. De beheerconsole opent in een eigen venster en heeft ook een overzicht, projecten en verbindingscontroles.",
       "test": "Verbinding testen",
       "removeConfirm": {
         "title": "{{name}} weghalen?",
-        "description": "Oleafly meldt zich af bij deze server en vergeet hem. Projecten die al op deze computer staan, blijven waar ze zijn.",
+        "description": "Oleafly meldt zich af bij {{name}} en vergeet deze server. Gedeelde projecten van {{name}} synchroniseren niet meer en blijven op deze computer als gewone projecten.",
         "confirm": "Server weghalen"
       },
+      "detached": "Deze gedeelde projecten van {{server}} synchroniseren niet meer. Ze blijven op deze computer als gewone projecten.",
       "unsent": {
         "title": "Sommige wijzigingen zijn nog niet verzonden",
-        "description": "Gedeelde projecten met wijzigingen die de server nog niet heeft: {{count}}. Oleafly kan van elk project een lokale kopie op deze computer bewaren, of je blijft aangemeld en probeert het later opnieuw.",
+        "description": "Deze gedeelde projecten hebben wijzigingen die de server nog niet heeft. Als je een lokale kopie bewaart, synchroniseert elk project niet meer en blijft het op deze computer onder de naam hieronder. Je kunt ook aangemeld blijven en het later opnieuw proberen.",
+        "removeDescription": "Deze gedeelde projecten hebben wijzigingen die de server nog niet heeft. Als je een lokale kopie bewaart, synchroniseert elk project niet meer en blijft het op deze computer onder de naam hieronder. Je kunt ook de server houden en het later opnieuw proberen.",
+        "changes": "Niet-verzonden wijzigingen: {{changes}}",
+        "staysAs": "Blijft als {{name}}",
         "keep": "Lokale kopie bewaren",
-        "stay": "Aangemeld blijven"
+        "stay": "Aangemeld blijven",
+        "keepServer": "Server houden"
       },
       "emails": {
         "label": "Mail me als iemand een project deelt",
@@ -145,11 +151,14 @@
     "addressPlaceholder": "collab.example.edu",
     "continue": "Doorgaan",
     "checking": "De server controleren…",
+    "notAServer": "Er antwoordde geen Oleafly-server op dit adres. Controleer het adres bij wie de server beheert. Open op wifi in een hotel of op een campus eerst een willekeurige webpagina, voor het geval het netwerk wil dat je je aanmeldt.",
+    "moved": "Dit adres stuurt je door naar {{target}}. Probeer dat adres.",
+    "useMoved": "Dat adres gebruiken",
     "version": "Versie {{version}}",
     "serverTitle": "Aanmelden bij {{server}}",
     "serverDescription": "Deze server bepaalt wie mag meedoen. Kies hoe je je wilt aanmelden.",
     "setupTitle": "{{server}} instellen",
-    "setupDescription": "Hier heeft zich nog niemand aangemeld. Vul de installatiecode uit het logboek van de server in. Wie zich als eerste met de code aanmeldt, wordt beheerder van de server.",
+    "setupDescription": "Niemand heeft deze server nog ingesteld. Heb je hem zelf geïnstalleerd, vul dan de installatiecode in die het installatieprogramma je liet zien. Die staat ook in het logboek van de server. Wie zich als eerste met de code aanmeldt, wordt beheerder van de server. Heb je hem niet geïnstalleerd, vraag dan degene die de server beheert om eerst de installatie af te ronden.",
     "setupCodeLabel": "Installatiecode",
     "signInDescription": "Je browser opent zodat je je daar kunt aanmelden. Oleafly ziet je wachtwoord nooit.",
     "continueWith": "Doorgaan met {{provider}}",
@@ -183,7 +192,7 @@
     "not_https": "Dit adres gebruikt geen beveiligde verbinding. Samenwerkingsservers hebben een adres nodig dat met https begint.",
     "client_too_old": "Deze server heeft een nieuwere versie van Oleafly nodig. Werk Oleafly bij en probeer het opnieuw.",
     "server_too_old": "Deze server moet worden bijgewerkt voordat hij met deze versie van Oleafly werkt. Vraag het aan de beheerder.",
-    "not_admitted": "Je staat nog niet op de lijst van deze server. Vraag de beheerder om je toe te voegen.",
+    "not_admitted": "Deze server laat je nog niet binnen. Vraag de beheerder om je toe te voegen.",
     "sign_in_cancelled": "Het aanmelden is geannuleerd.",
     "sign_in_timed_out": "Het aanmelden duurde te lang. Probeer het opnieuw.",
     "unauthorized": "Je bent afgemeld bij deze server. Meld je opnieuw aan.",
@@ -198,13 +207,33 @@
     "duplicate_server": "Deze server staat al in je lijst onder een ander adres. Is hij verhuisd, haal dan eerst de oude vermelding weg en voeg hem daarna opnieuw toe.",
     "device_in_use": "Iemand anders heeft zich al vanaf dit gebruikersaccount op de computer aangemeld bij deze server. Iedereen heeft een eigen gebruikersaccount op de computer nodig om zich aan te melden.",
     "server_unknown": "Deze link hoort bij een server die je nog niet hebt toegevoegd. Voeg hem toe in de samenwerkingsinstellingen en open de link daarna opnieuw.",
-    "too_large": "Sommige bestanden zijn groter dan deze server toestaat. Maak ze kleiner of haal ze weg en probeer het opnieuw."
+    "too_large": "Sommige bestanden zijn groter dan deze server toestaat. Maak ze kleiner of haal ze weg en probeer het opnieuw.",
+    "invalid": "De server heeft dit niet geaccepteerd. Controleer wat je hebt ingevoerd en probeer het opnieuw.",
+    "invalid_domain": "Dat is geen domeinnaam. Gebruik een vorm als cs.example.edu.",
+    "invalid_email": "Dat e-mailadres lijkt niet te kloppen. Controleer het en probeer het opnieuw.",
+    "invalid_login": "Die aanmeldnaam lijkt niet te kloppen. Controleer hem en probeer het opnieuw.",
+    "guests_off": "Deze server staat geen gasten toe. Vraag de beheerder om gasten toe te staan.",
+    "link_sharing_off": "Deze server staat delen via link niet toe. Vraag de beheerder om het aan te zetten.",
+    "access_log_off": "Deze server staat geen toegangslogboeken toe. Vraag de beheerder om ze aan te zetten.",
+    "last_admin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
+    "duplicate_entry": "Dat staat al op de lijst.",
+    "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
+    "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
+    "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
+    "owner_away": "De eigenaar van dit project is op dit moment niet actief op deze server, dus het project kan geen nieuwe mensen opnemen.",
+    "not_a_link": "Dat is geen link naar een gedeeld project. Kopieer de hele link en probeer het opnieuw.",
+    "signed_out": "Je bent afgemeld bij deze server. Meld je opnieuw aan om dit project te synchroniseren.",
+    "server_removed": "De server van dit project staat niet meer in je lijst. Bewaar het project als lokale kopie of voeg de server opnieuw toe.",
+    "share_in_progress": "Dit project wordt al gedeeld. Wacht tot dat klaar is.",
+    "cancelled": "Het openen van het gedeelde project is geannuleerd.",
+    "cloud_synced": "Je Oleafly-bibliotheek staat in een map die een clouddienst synchroniseert. Haal hem uit Dropbox, OneDrive of iCloud Drive om projecten te delen of eraan mee te doen."
   },
   "roles": {
     "admin": "Beheerder",
     "maintainer": "Onderhouder",
     "member": "Lid",
-    "guest": "Gast"
+    "guest": "Gast",
+    "unknown": "Onbekende rol"
   },
   "admin": {
     "title": "{{name}} beheren",
@@ -212,7 +241,7 @@
     "loadFailed": "Oleafly kon dit niet van de server laden.",
     "added": "Toegevoegd op {{date}}",
     "tabs": {
-      "members": "Leden",
+      "members": "Mensen",
       "allowlist": "Toegestane personen",
       "domains": "Domeinen",
       "settings": "Serverinstellingen",
@@ -222,8 +251,8 @@
     "members": {
       "description": "Iedereen die zich bij deze server heeft aangemeld.",
       "addPeople": "Mensen toevoegen",
-      "addHint": "Wil je iemand nieuw binnenlaten, voeg die persoon dan toe onder Toegangsregels.",
-      "loading": "Leden laden…",
+      "addHint": "Wil je iemand nieuw binnenlaten, voeg die persoon dan toe onder Toegestane personen.",
+      "loading": "Mensen laden…",
       "empty": "Er heeft zich nog niemand aangemeld.",
       "you": "Jij",
       "active": "Actief",
@@ -239,10 +268,22 @@
       "devicesLoading": "Apparaten laden…",
       "devicesLoadFailed": "Oleafly kon deze apparaten niet laden.",
       "lastAdmin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
+      "ownedOne": "{{name}} is eigenaar van een gedeeld project. Niemand anders kan het beheren zolang {{name}} weg is.",
+      "ownedMany": "{{name}} is eigenaar van gedeelde projecten: {{number}}. Niemand anders kan ze beheren zolang {{name}} weg is.",
       "removeConfirm": {
         "title": "{{name}} van deze server weghalen?",
         "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
         "confirm": "Lid weghalen"
+      },
+      "suspendConfirm": {
+        "title": "{{name}} schorsen?",
+        "description": "{{name}} kan niet aanmelden of synchroniseren tot een beheerder het account weer activeert.",
+        "confirm": "Lid schorsen"
+      },
+      "selfRoleConfirm": {
+        "title": "Je eigen rol wijzigen in {{role}}?",
+        "description": "Je verliest je beheerdersrechten op deze server, en alleen een andere beheerder kan ze je teruggeven.",
+        "confirm": "Mijn rol wijzigen"
       },
       "deviceSignOutConfirm": {
         "title": "{{name}} afmelden?",
@@ -438,7 +479,8 @@
   "projectRoles": {
     "owner": "Eigenaar",
     "editor": "Bewerker",
-    "viewer": "Lezer"
+    "viewer": "Lezer",
+    "unknown": "Onbekende rol"
   },
   "share": {
     "button": "Delen",
@@ -461,8 +503,11 @@
     "renamed": "Sommige namen werken niet op elke computer. Anderen krijgen deze bestanden onder een iets andere naam.",
     "excluded": "Niet gedeeld: buildbestanden, Oleafly-instellingen en Git-geschiedenis.",
     "start": "Delen",
-    "uploading": "Bestanden uploaden: {{done}} van {{total}}",
-    "failed": "Het delen is niet afgerond, dus er is niets gedeeld."
+    "preparing": "Het project wordt voorbereid…",
+    "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
+    "saving": "Het project wordt op de server opgeslagen…",
+    "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
+    "trustAgain": "Nu anderen dit project kunnen bewerken, vraagt Oleafly het je opnieuw voordat het de hulpmiddelen ervan op deze computer uitvoert."
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",
@@ -485,6 +530,11 @@
       "roleLabel": "Rol voor mensen die je toevoegt",
       "searching": "Zoeken…",
       "noResults": "Niemand op {{server}} komt overeen.",
+      "noResultsTryEmail": "Niemand op {{server}} komt overeen. Probeer het volledige e-mailadres.",
+      "alreadyMember": "{{name}} heeft al toegang.",
+      "allMembers": "Iedereen die overeenkomt, heeft al toegang.",
+      "noAccountNoGuests": "Niemand op {{server}} gebruikt {{email}} nog. Vraag een beheerder van {{server}} om deze persoon toe te laten en voeg die hier toe zodra die zich één keer heeft aangemeld.",
+      "guestCheckFailed": "Oleafly kon niet controleren of {{server}} gasten toestaat.",
       "add": "Toevoegen",
       "addNamed": "{{name}} toevoegen"
     },
@@ -524,11 +574,15 @@
     "offline": "Offline. Wachtende wijzigingen: {{number}}",
     "reconnecting": "Opnieuw verbinden",
     "signedOut": "Afgemeld",
-    "suspended": "Account gepauzeerd",
+    "suspended": "Account geschorst",
     "accessEnded": "Geen toegang",
     "removed": "Toegang ingetrokken",
     "archived": "Delen gestopt",
-    "paused": "Gepauzeerd"
+    "paused": "Gepauzeerd",
+    "serverRemoved": "Server weggehaald",
+    "clientTooOld": "Oleafly moet worden bijgewerkt",
+    "serverTooOld": "Server moet worden bijgewerkt",
+    "serverChanged": "Andere server"
   },
   "toolbar": {
     "noFile": "Geen bestand open",
@@ -545,9 +599,11 @@
   "library": {
     "kind": "gedeeld",
     "location": "Gedeelde projecten",
+    "locationNotShared": "In Oleafly, niet gedeeld",
     "flag": "Gedeeld",
     "sharedWithYou": {
       "title": "Met jou gedeeld",
+      "loadFailed": "Oleafly kon niet nagaan welke projecten met je zijn gedeeld.",
       "from": "{{owner}} op {{server}}",
       "open": "Openen",
       "openNamed": "{{name}} openen"
@@ -559,7 +615,6 @@
       "label": "Projectlink",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Openen",
-      "serverUnknown": "{{server}} staat nog niet in je lijst met servers. Voeg hem toe in de samenwerkingsinstellingen en open de link daarna opnieuw.",
       "noAccess": "Je hebt geen toegang tot dit project. Vraag het aan de eigenaar."
     }
   },
@@ -575,6 +630,18 @@
     "away": "Nu niet hier",
     "deleted": "Onlangs verwijderd",
     "deletedEmpty": "Er is de laatste tijd niets verwijderd.",
+    "deletedLoadFailed": "Oleafly kon de onlangs verwijderde bestanden niet laden.",
+    "unwritten": {
+      "title": "Sommige bestanden konden niet naar deze computer worden geschreven",
+      "hint": "Oleafly blijft het proberen. Het gedeelde project heeft intussen de nieuwste tekst.",
+      "reasons": {
+        "locked": "Kan {{path}} niet schrijven: een ander programma heeft het geopend.",
+        "read_only": "Kan {{path}} niet schrijven: het bestand of de map is alleen-lezen.",
+        "no_space": "Kan {{path}} niet schrijven: de schijf is vol.",
+        "not_downloaded": "Kan {{path}} niet schrijven: een clouddienst heeft het nog niet naar deze computer gedownload.",
+        "other": "Kan {{path}} niet schrijven."
+      }
+    },
     "accessLog": "Toegangslogboek",
     "status": "Synchronisatiestatus",
     "waiting": "Wachtende wijzigingen: {{number}}"
@@ -609,7 +676,10 @@
     "removedBy": "{{name}} heeft je uit dit gedeelde project verwijderd. Je kopie blijft hier als gewoon project staan.",
     "archived": "De eigenaar deelt dit project niet meer. Je kopie blijft hier als gewoon project staan.",
     "signedOut": "Je bent afgemeld bij {{server}}, dus dit project synchroniseert niet. Je wijzigingen blijven op deze computer.",
-    "suspended": "Een beheerder heeft je account op {{server}} gepauzeerd. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra het weer is ingeschakeld.",
+    "suspended": "Een beheerder heeft je account op {{server}} geschorst. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra een beheerder het weer activeert.",
+    "clientTooOld": "Werk Oleafly bij om verder te werken op {{server}}. Je wijzigingen blijven op deze computer.",
+    "serverTooOld": "{{server}} moet worden bijgewerkt voordat hij werkt met deze versie van Oleafly. Vraag het aan wie hem beheert. Je wijzigingen blijven op deze computer.",
+    "serverChanged": "Het adres van {{server}} wijst nu naar een andere server. Haal hem weg in de samenwerkingsinstellingen en voeg hem opnieuw toe. Je wijzigingen blijven op deze computer.",
     "accessEnded": "Je hebt geen toegang meer tot {{server}}. Je kopie blijft op deze computer als gewoon project.",
     "accessEndedGuest": "Je hebt geen toegang meer tot {{server}} omdat je in geen van de gedeelde projecten daar zit. Je kopie blijft op deze computer als gewoon project.",
     "signIn": "Aanmelden",
@@ -622,6 +692,8 @@
     "newDevice": "{{name}} heeft zich aangemeld op een nieuw apparaat",
     "review": "Bekijken",
     "renamed": "{{name}} heeft {{before}} hernoemd naar {{theirs}} nadat jij het {{ours}} had genoemd",
+    "skipped": "Een wijziging van {{name}} kon niet worden gelezen en is overgeslagen.",
+    "skippedUnknown": "Een wijziging van iemand kon niet worden gelezen en is overgeslagen.",
     "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
     "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
     "showComment": "Opmerking tonen",
@@ -664,12 +736,13 @@
     "windowTitle": "Oleafly Server beheerconsole",
     "title": "Beheerconsole",
     "sectionsLabel": "Onderdelen van de beheerconsole",
+    "pendingGuestsBadge": "Wacht op goedkeuring: {{number}}",
     "sections": {
       "overview": "Overzicht",
       "people": "Mensen",
       "access": "Toegangsregels",
       "projects": "Projecten",
-      "settings": "Instellingen",
+      "settings": "Serverinstellingen",
       "email": "E-mail",
       "log": "Beveiligingslogboek",
       "checks": "Verbindingscontroles"
@@ -689,7 +762,9 @@
       "signedOutTitle": "Je bent afgemeld bij deze server",
       "signedOutDescription": "Meld je opnieuw aan in Instellingen en open de beheerconsole daarna vanaf de kaart van de server.",
       "refusedTitle": "De beheerconsole is voor beheerders en onderhouders",
-      "refusedDescription": "Je rol op deze server is {{role}}. Moet je de server beheren, vraag het dan aan een beheerder."
+      "refusedDescription": "Je rol op deze server is {{role}}. Moet je de server beheren, vraag het dan aan een beheerder.",
+      "turnedOffTitle": "Live samenwerken staat uit",
+      "turnedOffDescription": "Zet het weer aan in Instellingen, onder Experimenten, om deze server hier te beheren."
     },
     "overview": {
       "loading": "Het overzicht laden…",
@@ -697,6 +772,7 @@
         "title": "Status",
         "okLabel": "Alles werkt",
         "okDescription": "Mensen kunnen zich aanmelden en de server kan bestanden opslaan.",
+        "problem": "Aanmelden met {{provider}} mislukt sinds {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kan zich aanmelden",
@@ -705,6 +781,14 @@
           "storageNotWritable": {
             "label": "De server kan geen bestanden opslaan",
             "description": "Controleer of de gegevensmap van de server bestaat en of de server erin kan schrijven."
+          },
+          "signInFailing": {
+            "label": "Aanmelden mislukt",
+            "description": "Met een van de aanmeldopties van de server kan niemand zich aanmelden. De lijst hieronder laat zien welke en sinds wanneer."
+          },
+          "signInEmailsPaused": {
+            "label": "Aanmeldmails zijn gepauzeerd",
+            "description": "De server heeft dit uur zoveel aanmeldmails verstuurd als hij toestaat. Ze gaan weer verder als het uur voorbij is."
           },
           "unknown": {
             "label": "De server meldde een probleem",
@@ -723,7 +807,9 @@
         "onlineDetail": "Geopende projecten: {{number}}",
         "started": "Gestart",
         "version": "Versie",
-        "protocol": "Protocol {{protocol}}"
+        "protocol": "Protocol {{protocol}}",
+        "pendingGuests": "Gastuitnodigingen die op goedkeuring wachten: {{number}}",
+        "reviewGuests": "Bekijken bij Mensen"
       },
       "storage": {
         "title": "Opslag",
@@ -810,6 +896,8 @@
     "openSettings": "Instellingen openen",
     "malformed": "Oleafly kan deze link niet openen. Vraag degene die hem stuurde om een nieuwe.",
     "opening": "Het gedeelde project wordt geopend…",
+    "downloading": "Bestanden downloaden: {{done}} van {{total}}",
+    "cancelNamed": "Openen van {{name}} stoppen",
     "confirm": {
       "title": "Deelnemen aan dit gedeelde project?",
       "body": "Als je deelneemt, word je aan het project toegevoegd en worden de bestanden naar deze computer gekopieerd. Neem alleen deel als je weet wie je de link heeft gestuurd.",
@@ -845,6 +933,14 @@
     "resolve": "Oplossen",
     "reopen": "Heropenen",
     "deleteThread": "Gesprek verwijderen",
+    "deleteThreadConfirm": {
+      "title": "Dit gesprek verwijderen?",
+      "description": "De opmerking en de antwoorden erop worden voor iedereen in dit project verwijderd. Dit kun je niet ongedaan maken."
+    },
+    "deleteMessageConfirm": {
+      "title": "Deze opmerking verwijderen?",
+      "description": "Ze wordt voor iedereen in dit project verwijderd. Dit kun je niet ongedaan maken."
+    },
     "messageActions": "Meer acties voor deze opmerking",
     "threadActions": "Meer acties voor dit gesprek",
     "showInEditor": "Tonen in de editor",
@@ -920,6 +1016,7 @@
     "pending": {
       "title": "Wachtende gasten",
       "description": "Projecteigenaren hebben deze mensen als gast uitgenodigd. Een gast ziet alleen de projecten waarvoor die is uitgenodigd en kan ze niet delen.",
+      "loadFailed": "Oleafly kon de gastuitnodigingen die op goedkeuring wachten niet laden.",
       "invitedBy": "{{inviter}} heeft ze uitgenodigd voor {{project}}",
       "approve": "Goedkeuren",
       "approveNamed": "{{email}} goedkeuren",
@@ -930,6 +1027,9 @@
   "access": {
     "viewerBy": "{{name}} heeft je lezer gemaakt. Je kunt dit project lezen, maar niet bewerken.",
     "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
+    "viewOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken.",
+    "unsentReadOnly": "Je laatste wijzigingen in {{path}} zijn niet verstuurd, omdat je dit project nu alleen kunt bekijken.",
+    "unsentRefused": "Oleafly kon je laatste wijzigingen in {{path}} niet versturen, dus ze zijn verworpen.",
     "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
     "removed": "Je bent uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld."
   },

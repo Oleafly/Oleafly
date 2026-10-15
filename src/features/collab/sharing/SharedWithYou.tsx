@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderDown } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -11,11 +11,13 @@ import {
   COLLAB_SERVER_CHANGED_EVENT,
   collabJoinProject,
   collabSharedWithMe,
+  type CollabServer,
   type CollabSharedWithMe,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { collabErrorCode, collabErrorMessage } from "../errors";
-import { InlineAlert } from "../feedback";
+import { collabErrorCode, collabErrorText } from "../errors";
+import { InlineAlert, LoadFailed } from "../feedback";
+import { JoinProgress } from "../links/JoinProgress";
 import { collabPerson } from "../people";
 import { useCollabStore } from "../store";
 
@@ -24,25 +26,54 @@ function itemKey(item: CollabSharedWithMe): string {
 }
 
 const REFRESH_EVERY_MS = 30_000;
+// Settings can refresh every account at once, which reports one change per
+// server. Wait for them to settle and fetch the list once.
+const SERVER_CHANGE_DELAY_MS = 1_000;
+
+// Only which servers there are and whether each is signed in decide what can
+// be listed, so a store update that changes neither doesn't fetch again.
+function serversKey(servers: readonly CollabServer[]): string {
+  return servers.map((server) => `${server.server_id}:${server.signed_in ? "in" : "out"}`).join(",");
+}
+
+function hidden(): boolean {
+  return document.visibilityState === "hidden";
+}
 
 export function SharedWithYou() {
   const { t } = useTranslation(["collab"]);
   const titleId = useId();
-  const servers = useCollabStore((state) => state.servers);
+  const servers = useCollabStore((state) => serversKey(state.servers));
   const [items, setItems] = useState<CollabSharedWithMe[]>([]);
+  const [failure, setFailure] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState<{ key: string; message: string } | null>(null);
+  const serverChange = useRef<number | null>(null);
 
-  useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => setRequest((count) => count + 1));
+  useTauriEvent(COLLAB_SERVER_CHANGED_EVENT, () => {
+    if (serverChange.current !== null) window.clearTimeout(serverChange.current);
+    serverChange.current = window.setTimeout(() => {
+      serverChange.current = null;
+      // A hidden window catches up when it's shown again.
+      if (!hidden()) setRequest((count) => count + 1);
+    }, SERVER_CHANGE_DELAY_MS);
+  });
 
   useEffect(() => {
     const again = () => setRequest((count) => count + 1);
-    const timer = window.setInterval(again, REFRESH_EVERY_MS);
-    window.addEventListener("focus", again);
+    const tick = () => {
+      if (!hidden()) again();
+    };
+    const shown = () => {
+      if (!hidden()) again();
+    };
+    const timer = window.setInterval(tick, REFRESH_EVERY_MS);
+    document.addEventListener("visibilitychange", shown);
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", shown);
+      if (serverChange.current !== null) window.clearTimeout(serverChange.current);
     };
   }, []);
 
@@ -52,10 +83,13 @@ export function SharedWithYou() {
     void servers;
     collabSharedWithMe().then(
       (next) => {
-        if (active) setItems(next.filter((item) => item.local_project_id === null));
+        if (!active) return;
+        setItems(next.filter((item) => item.local_project_id === null));
+        setFailure(null);
       },
       (error_: unknown) => {
         void logError("collab shared with me", error_);
+        if (active) setFailure(collabErrorText(error_));
       },
     );
     return () => {
@@ -73,12 +107,27 @@ export function SharedWithYou() {
       await files.refreshProjects();
       await files.openProject(localId);
     } catch (error_) {
-      setError({ key, message: collabErrorMessage(collabErrorCode(error_)) });
+      // Stopping the download on purpose isn't a failure.
+      if (collabErrorCode(error_) !== "cancelled") setError({ key, message: collabErrorText(error_) });
     } finally {
       setOpening(null);
     }
   };
 
+  if (items.length === 0 && failure !== null) {
+    return (
+      <section aria-labelledby={titleId} className="mb-5 space-y-2" data-testid="collab-shared-with-you">
+        <h2 id={titleId} className="text-sm font-semibold">
+          {t(($) => $.collab.library.sharedWithYou.title)}
+        </h2>
+        <LoadFailed
+          message={t(($) => $.collab.library.sharedWithYou.loadFailed)}
+          reason={failure}
+          onRetry={() => setRequest((count) => count + 1)}
+        />
+      </section>
+    );
+  }
   if (items.length === 0) return null;
 
   return (
@@ -116,6 +165,14 @@ export function SharedWithYou() {
                 {opening === key ? <Spinner /> : <FolderDown aria-hidden />}
                 {t(($) => $.collab.library.sharedWithYou.open)}
               </Button>
+              {opening === key && item.local_project_id === null ? (
+                <div className="basis-full">
+                  <JoinProgress
+                    target={{ serverId: item.server_id, sharedProjectId: project.project_id }}
+                    name={project.title}
+                  />
+                </div>
+              ) : null}
               {error?.key === key ? (
                 <div className="basis-full">
                   <InlineAlert>{error.message}</InlineAlert>

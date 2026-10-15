@@ -73,6 +73,40 @@ describe("SecurityLogTab", () => {
     expect(screen.queryByRole("button", { name: copy.loadMore })).toBeNull();
   });
 
+  it("names who was refused at sign-in instead of the server", async () => {
+    mocks.collabAdminSecurityLog.mockResolvedValueOnce({
+      items: [
+        securityEvent({
+          id: 1,
+          actor: null,
+          kind: "sign_in_refused",
+          target: "octocat",
+          detail: { provider: "github", reason: "not_admitted" },
+        }),
+        securityEvent({
+          id: 2,
+          actor: null,
+          kind: "sign_in_refused",
+          target: "203.0.113.7",
+          detail: { flow: "device_code", reason: "locked_out", limit: "ip" },
+        }),
+        securityEvent({ id: 3, actor: null, kind: "sign_in_refused", detail: { reason: "suspended" } }),
+      ],
+      next_cursor: null,
+    });
+    render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    const items = await screen.findAllByRole("listitem");
+    expect(items[0]).toHaveTextContent(`octocat · ${copy.kinds.signInRefused}`);
+    expect(items[0]).toHaveTextContent(copy.details.reasons.notAdmitted);
+    expect(items[0]).not.toHaveTextContent(copy.server);
+    expect(items[0]).not.toHaveTextContent(fill(copy.target, { target: "octocat" }));
+    expect(items[0]).toHaveTextContent(fill(copy.ip, { ip: "203.0.113.7" }));
+    expect(items[1]).toHaveTextContent(`203.0.113.7 · ${copy.kinds.signInRefused}`);
+    expect(items[1]).not.toHaveTextContent(fill(copy.ip, { ip: "203.0.113.7" }));
+    expect(items[2]).toHaveTextContent(`${copy.unknownAccount} · ${copy.kinds.signInRefused}`);
+    expect(items[2]).not.toHaveTextContent(copy.server);
+  });
+
   it("maps every security event kind to a label, and anything else to the neutral one", () => {
     for (const kind of [
       "setup_completed",
@@ -278,7 +312,7 @@ describe("SecurityLogTab", () => {
     expect(items[3]).toHaveTextContent(`${github} · ${details.via.guest}`);
     expect(items[4]).toHaveTextContent(`${copy.kinds.setupCompleted}${github}`);
     expect(items[5]).toHaveTextContent(`${details.providerEmailLink} · ${details.reasons.lockedOutAddress}`);
-    expect(items[5]).toHaveTextContent(fill(copy.target, { target: "dana@field.org" }));
+    expect(items[5]).toHaveTextContent(`dana@field.org · ${copy.kinds.signInRefused}`);
     expect(items[6]).toHaveTextContent(details.reasons.lockedOutIp);
     expect(items[7]).toHaveTextContent(`${details.signInCode} · ${details.reasons.stoppedByPerson}`);
     expect(items[8]).toHaveTextContent(`${fill(details.provider, { provider: "uni" })} · ${details.reasons.notAdmitted}`);
@@ -338,7 +372,7 @@ describe("SecurityLogTab", () => {
       `${fill(details.provider, { provider: "uni" })} · ${details.signInCode} · ${details.reasons.otherBrowser}`,
     );
     expect(items[1]).toHaveTextContent(`${details.providerEmailLink} · ${details.reasons.inactiveAccountAddress}`);
-    expect(items[1]).toHaveTextContent(fill(copy.target, { target: "mallory@uni.edu" }));
+    expect(items[1]).toHaveTextContent(`mallory@uni.edu · ${copy.kinds.signInRefused}`);
     expect(items[2]).toHaveTextContent(`${details.signInCode} · ${details.reasons.lockedOutIp}`);
     expect(items[3]).toHaveTextContent(`${details.signInCode} · ${details.reasons.stoppedByPerson}`);
   });

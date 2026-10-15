@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enNative from "@/i18n/locales/en/native.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabServer } from "@/lib/tauri";
 import { account, check, collabError, device, fill, server, SERVER_ID, signedOutServer } from "./tests/fixtures";
@@ -148,7 +149,8 @@ describe("ServerCard", () => {
     renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.remove }));
     const dialog = screen.getByRole("alertdialog", { name: fill(copy.server.removeConfirm.title, { name: "Smith Lab" }) });
-    expect(dialog).toHaveTextContent(copy.server.removeConfirm.description);
+    expect(dialog).toHaveTextContent(fill(copy.server.removeConfirm.description, { name: "Smith Lab" }));
+    expect(dialog).toHaveTextContent("Shared projects from Smith Lab stop syncing");
     await user.click(within(dialog).getByRole("button", { name: copy.server.removeConfirm.confirm }));
     expect(mocks.collabServerRemove).toHaveBeenCalledWith(SERVER_ID, false);
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Smith Lab" })).toBeNull());
@@ -165,6 +167,43 @@ describe("ServerCard", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(mocks.collabServerSignOut).toHaveBeenCalledTimes(1);
     expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+  });
+
+  it("lists each project with its unsent changes and the name it keeps, in words that match Remove", async () => {
+    const thesis = { project_id: "thesis", name: "Thesis", changes: 1 };
+    mocks.collabServerRemove.mockResolvedValue({ signed_out: false, unsent: [UNSENT, thesis] });
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.remove }));
+    await user.click(screen.getByRole("button", { name: copy.server.removeConfirm.confirm }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.server.unsent.title });
+    expect(dialog).toHaveTextContent(copy.server.unsent.removeDescription);
+    const rows = within(within(dialog).getByTestId("collab-unsent-projects")).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("R3 Paper");
+    expect(rows[0]).toHaveTextContent(fill(copy.server.unsent.changes, { changes: "3" }));
+    expect(rows[0]).toHaveTextContent(
+      fill(copy.server.unsent.staysAs, { name: fill(enNative.collab.localCopy, { name: "R3 Paper" }) }),
+    );
+    expect(rows[1]).toHaveTextContent("Thesis");
+    expect(rows[1]).toHaveTextContent(fill(copy.server.unsent.changes, { changes: "1" }));
+    expect(within(dialog).queryByRole("button", { name: new RegExp(`^${copy.server.unsent.stay}`) })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.keepServer}`) }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.collabServerRemove).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
+  });
+
+  it("says Stay signed in, not Keep the server, after Sign out", async () => {
+    mocks.collabServerSignOut.mockResolvedValue({ signed_out: false, unsent: [UNSENT] });
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: copy.server.signOut }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.server.unsent.title });
+    expect(dialog).toHaveTextContent(copy.server.unsent.description);
+    expect(dialog).toHaveTextContent("R3 Paper");
+    expect(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.stay}`) })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: new RegExp(`^${copy.server.unsent.keepServer}`) })).toBeNull();
   });
 
   it("keeps a local copy and signs out when the person chooses that", async () => {
@@ -281,6 +320,14 @@ describe("ServerCard admin console", () => {
     renderCard(entry);
     await user.click(screen.getByRole("button", { name: enCollab.console.open }));
     expect(consoleMocks.openAdminConsole).toHaveBeenCalledWith(entry);
+  });
+
+  it("says how Manage server and the admin console differ, only to people who have both", () => {
+    renderCard(server({ account: account({ server_role: "maintainer" }) }));
+    expect(screen.getByText(copy.server.manageHint)).toBeInTheDocument();
+    cleanup();
+    renderCard(server({ account: account({ server_role: "member" }) }));
+    expect(screen.queryByText(copy.server.manageHint)).toBeNull();
   });
 
   it("keeps the admin console from members and signed out computers", () => {

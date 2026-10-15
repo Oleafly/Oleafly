@@ -979,7 +979,8 @@ export interface SynctexHit {
     column: number;
 }
 
-export type CollabServerRole = "admin" | "maintainer" | "member" | "guest";
+// "unknown" is a role from a later server: no rights at all.
+export type CollabServerRole = "admin" | "maintainer" | "member" | "guest" | "unknown";
 export type CollabProviderKind = "github" | "oidc" | "email_link" | "unknown";
 export interface CollabProvider {
     id: string;
@@ -1039,6 +1040,8 @@ export interface CollabMember {
     account: CollabAccount;
     status: CollabMemberStatus;
     created_at: number;
+    // Shared projects this person owns. Older servers leave it out.
+    owned_projects?: number;
 }
 export interface CollabMemberPatch {
     role?: CollabServerRole | null;
@@ -1146,7 +1149,27 @@ export type CollabErrorCode =
     | "duplicate_server"
     | "device_in_use"
     | "server_unknown"
-    | "too_large";
+    | "too_large"
+    | "invalid"
+    | "invalid_domain"
+    | "invalid_email"
+    | "invalid_login"
+    | "guests_off"
+    | "link_sharing_off"
+    | "access_log_off"
+    | "last_admin"
+    | "duplicate_entry"
+    | "already_member"
+    | "project_not_shared"
+    | "project_full"
+    | "not_a_link"
+    | "signed_out"
+    | "server_removed"
+    | "share_in_progress"
+    | "cancelled"
+    | "turned_off"
+    | "cloud_synced"
+    | "owner_away";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
@@ -1154,7 +1177,8 @@ export interface CollabCommandError {
 export interface CollabServerChanged {
     serverId: string;
 }
-export type CollabProjectRole = "owner" | "editor" | "viewer";
+// "unknown" is a role from a later server: read-only, like a viewer.
+export type CollabProjectRole = "owner" | "editor" | "viewer" | "unknown";
 export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
 export interface CollabPerson {
     account_id: string;
@@ -1200,12 +1224,26 @@ export interface CollabShareProgress {
     done: number;
     total: number;
 }
-export type CollabLiveEndReason = "removed" | "archived" | "signed_out" | "stopped";
+// Downloading a shared project: `total` files to fetch, `done` fetched so far.
+export interface CollabJoinProgress {
+    serverId: string;
+    sharedProjectId: string;
+    done: number;
+    total: number;
+}
+export type CollabLiveEndReason =
+    | "removed"
+    | "archived"
+    | "signed_out"
+    | "stopped"
+    | "client_too_old"
+    | "server_too_old"
+    | "server_changed";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
     | { state: "offline"; retry_in_ms: number }
-    | { state: "ended"; reason: CollabLiveEndReason };
+    | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
 export interface CollabLiveStatus {
     projectId: string;
     status: CollabLiveState;
@@ -1267,6 +1305,9 @@ export interface CollabDocOpened {
     file_id: string;
     rev: number;
     text: string;
+    // Identifies the channel this open registered. Closing passes it back so
+    // a late close can't shut a channel the same file opened since.
+    session: number;
 }
 export interface ProjectSharing {
     server_name: string;
@@ -1580,6 +1621,7 @@ export interface BackendPort {
   collabLeaveProject: (projectId: string) => Promise<void>;
   collabSharedWithMe: () => Promise<CollabSharedWithMe[]>;
   collabJoinProject: (serverId: string, sharedProjectId: string) => Promise<string>;
+  collabJoinCancel: (serverId: string, sharedProjectId: string) => Promise<void>;
   collabOpenLink: (link: string) => Promise<string>;
   collabPendingLinks: () => Promise<string[]>;
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
@@ -1587,11 +1629,11 @@ export interface BackendPort {
   collabLiveFlush: (projectId: string) => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
-  collabDocClose: (projectId: string, fileId: string) => Promise<void>;
+  collabDocClose: (projectId: string, fileId: string, session: number) => Promise<void>;
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
   collabPresenceLeave: (projectId: string) => Promise<void>;
   collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
-  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<{ handled: boolean }>;
+  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<CollabWriteOutcome>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
@@ -1668,6 +1710,21 @@ export interface CollabLiveRenamed {
   ours: string;
   theirs: string;
 }
+// A change the app couldn't import, even on its own, so it was skipped and
+// syncing went on. `deviceId` names the device that made it when known.
+export interface CollabChangeSkipped {
+  projectId: string;
+  seq: number;
+  deviceId: string | null;
+}
+// Why a file of a live project couldn't be written to this computer.
+export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_downloaded" | "other";
+// Files that still couldn't be written after a second try. An empty list
+// means every file is written again.
+export interface CollabLiveUnwritten {
+  projectId: string;
+  files: { path: string; reason: CollabUnwrittenReason }[];
+}
 export type CollabSettingNotice =
   | { kind: "mainDocument"; path: string }
   | { kind: "compiler"; engine: string; flavor: string | null }
@@ -1684,9 +1741,23 @@ export interface CollabUnsentProject {
   name: string;
   changes: number;
 }
+// `handled` is false when the shared document didn't take the write.
+// `reason` says why when it was refused rather than not shared: "read_only"
+// when this person can only view the project.
+export interface CollabWriteOutcome {
+  handled: boolean;
+  reason?: string;
+}
+export interface CollabDetachedProject {
+  project_id: string;
+  name: string;
+}
 export interface CollabSignOut {
   signed_out: boolean;
   unsent: CollabUnsentProject[];
+  // Projects that stopped syncing because their server was removed. They stay
+  // on this computer as ordinary projects. Always empty after a sign-out.
+  detached: CollabDetachedProject[];
 }
 export interface CollabLiveRemovedFile {
   path: string;
@@ -1729,7 +1800,19 @@ export interface CollabLocalCopyOffer {
 }
 
 export type CollabHealthStatus = "ok" | "warning" | "unknown";
-export type CollabHealthIssue = "no_sign_in_provider" | "storage_not_writable" | "unknown";
+export type CollabHealthIssue =
+    | "no_sign_in_provider"
+    | "storage_not_writable"
+    | "sign_in_failing"
+    | "sign_in_emails_paused"
+    | "unknown";
+// A sign-in option that keeps failing: its provider id, when it started and
+// the provider's own message.
+export interface CollabSignInProblem {
+    provider: string;
+    at: number;
+    reason: string;
+}
 export type CollabFilesLocation = "disk" | "s3" | "unknown";
 export interface CollabServerCounts {
     people: number;
@@ -1740,6 +1823,8 @@ export interface CollabServerCounts {
     pending_projects: number;
     open_rooms: number;
     people_online: number;
+    // Guest invitations an admin or maintainer still has to approve.
+    pending_guest_approvals: number;
 }
 export interface CollabStorageUsage {
     database_bytes: number;
@@ -1761,6 +1846,7 @@ export interface CollabAdminOverview {
     settings: CollabRuntimeSettings;
     limits: CollabCapabilities["limits"];
     archive_days: number;
+    sign_in_problems?: CollabSignInProblem[];
 }
 export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
 export type CollabSortOrder = "asc" | "desc";
@@ -2076,7 +2162,9 @@ export interface BackendPort {
 }
 
 export type CollabSessionEnd = "account_suspended" | "access_ended";
-export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd;
+// `server_removed` never arrives in a status event: the app shows it when a
+// live start is refused because the project's server is no longer listed.
+export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd | "server_removed";
 export type CollabLiveSyncState =
     | Exclude<CollabLiveState, { state: "ended" }>
     | { state: "ended"; reason: CollabLiveEndedReason };

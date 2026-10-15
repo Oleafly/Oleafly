@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkKey, parseAppLink, sameServer } from "./app-link";
+import { linkKey, parseAppLink, pastedProjectLink, sameServer } from "./app-link";
 
 const PROJECT = "01920000-0000-7000-8000-0000000000aa";
 const OPEN = `oleafly://open?server=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly&project=${PROJECT}`;
@@ -123,5 +123,48 @@ describe("sameServer", () => {
     expect(sameServer("https://collab.uni.edu:8443", "https://collab.uni.edu")).toBe(false);
     expect(sameServer("http://collab.uni.edu", "https://collab.uni.edu")).toBe(false);
     expect(sameServer("not a server", "https://collab.uni.edu")).toBe(false);
+  });
+});
+
+describe("pastedProjectLink", () => {
+  const project = "0192A0B0-0000-7000-8000-0000000000AA";
+  const id = project.toLowerCase();
+
+  it("turns the web address of a project page into the app link that opens it", () => {
+    const opened = pastedProjectLink(`https://collab.uni.edu/p/${project}`);
+    expect(opened).toBe(`oleafly://open?server=https%3A%2F%2Fcollab.uni.edu&project=${id}`);
+    expect(parseAppLink(opened ?? "")).toMatchObject({ kind: "openProject", server: "https://collab.uni.edu", project: id });
+  });
+
+  it("keeps a server that lives under a path, and a comment the link points at", () => {
+    const file = "01920000-0000-7000-8000-0000000000f1";
+    const thread = "01920000-0000-7000-8000-0000000000c1";
+    const opened = pastedProjectLink(`https://uni.edu/oleafly/p/${id}/?file=${file}&thread=${thread}`);
+    expect(parseAppLink(opened ?? "")).toEqual({
+      kind: "openProject",
+      server: "https://uni.edu/oleafly",
+      project: id,
+      link: opened,
+      comment: { fileId: file, threadId: thread },
+    });
+  });
+
+  it("passes an app link through unchanged", () => {
+    const link = `oleafly://open?server=https%3A%2F%2Fcollab.uni.edu&project=${id}`;
+    expect(pastedProjectLink(`  ${link} `)).toBe(link);
+  });
+
+  it("says no to anything that isn't a link to a shared project", () => {
+    for (const text of [
+      "",
+      `collab.uni.edu/p/${id}`,
+      "https://collab.uni.edu/p/0192a0b0",
+      `https://collab.uni.edu/projects/${id}`,
+      `ftp://collab.uni.edu/p/${id}`,
+      "oleafly://server/add?url=https%3A%2F%2Fcollab.uni.edu",
+      "not a link",
+    ]) {
+      expect(pastedProjectLink(text), text).toBeNull();
+    }
   });
 });

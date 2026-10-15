@@ -309,3 +309,135 @@ export function replacementOperation(before: string, after: string): TextOperati
     .delete(before.length - suffix - prefix)
     .retain(suffix);
 }
+
+// More differing lines than this and the diff falls back to one replacement,
+// which keeps the work bounded on the UI thread.
+const MAX_LINE_EDITS = 400;
+
+type LineStep = "equal" | "delete" | "insert";
+
+function linesOf(text: string): string[] {
+  const lines: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = text.indexOf("\n", start);
+    if (end < 0) {
+      lines.push(text.slice(start));
+      break;
+    }
+    lines.push(text.slice(start, end + 1));
+    start = end + 1;
+  }
+  return lines;
+}
+
+function walkBack(trace: readonly Int32Array[], n: number, m: number, offset: number, last: number): LineStep[] {
+  const steps: LineStep[] = [];
+  let x = n;
+  let y = m;
+  for (let d = last; d > 0; d -= 1) {
+    const v = trace[d];
+    const k = x - y;
+    const down = k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1]);
+    const previousK = down ? k + 1 : k - 1;
+    const previousX = v[offset + previousK];
+    const previousY = previousX - previousK;
+    while (x > previousX && y > previousY) {
+      steps.push("equal");
+      x -= 1;
+      y -= 1;
+    }
+    steps.push(down ? "insert" : "delete");
+    if (down) y -= 1;
+    else x -= 1;
+  }
+  while (x > 0 && y > 0) {
+    steps.push("equal");
+    x -= 1;
+    y -= 1;
+  }
+  return steps.reverse();
+}
+
+// Myers' diff over lines: the shortest list of kept, removed and added lines,
+// or null when more than `limit` lines differ.
+function lineScript(a: readonly string[], b: readonly string[], limit: number): LineStep[] | null {
+  const n = a.length;
+  const m = b.length;
+  const max = Math.min(n + m, limit);
+  const offset = max + 1;
+  const v = new Int32Array(2 * max + 3);
+  const trace: Int32Array[] = [];
+  for (let d = 0; d <= max; d += 1) {
+    trace.push(v.slice());
+    for (let k = -d; k <= d; k += 2) {
+      const down = k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1]);
+      let x = down ? v[offset + k + 1] : v[offset + k - 1] + 1;
+      let y = x - k;
+      while (x < n && y < m && a[x] === b[y]) {
+        x += 1;
+        y += 1;
+      }
+      v[offset + k] = x;
+      if (x >= n && y >= m) return walkBack(trace, n, m, offset, d);
+    }
+  }
+  return null;
+}
+
+function appendReplacement(operation: TextOperation, removed: string, added: string): void {
+  replacementOperation(removed, added).forEachStep((step) => {
+    if (typeof step === "string") operation.insert(step);
+    else if (step > 0) operation.retain(step);
+    else operation.delete(-step);
+  });
+}
+
+// Turns `before` into `after` changing only the lines that differ, and within
+// a changed run of lines only the characters that differ. Positions in
+// unchanged lines, such as a cursor or typing made meanwhile, stay put.
+export function diffOperation(before: string, after: string): TextOperation {
+  if (before === after) return new TextOperation().retain(before.length);
+  const a = linesOf(before);
+  const b = linesOf(after);
+  let head = 0;
+  while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
+  let tail = 0;
+  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) {
+    tail += 1;
+  }
+  const script = lineScript(a.slice(head, a.length - tail), b.slice(head, b.length - tail), MAX_LINE_EDITS);
+  if (script === null) return replacementOperation(before, after);
+  const operation = new TextOperation();
+  let kept = 0;
+  for (let index = 0; index < head; index += 1) kept += a[index].length;
+  operation.retain(kept);
+  let i = head;
+  let j = head;
+  let step = 0;
+  while (step < script.length) {
+    if (script[step] === "equal") {
+      operation.retain(a[i].length);
+      i += 1;
+      j += 1;
+      step += 1;
+      continue;
+    }
+    let removed = "";
+    let added = "";
+    while (step < script.length && script[step] !== "equal") {
+      if (script[step] === "delete") {
+        removed += a[i];
+        i += 1;
+      } else {
+        added += b[j];
+        j += 1;
+      }
+      step += 1;
+    }
+    appendReplacement(operation, removed, added);
+  }
+  let rest = 0;
+  for (let index = a.length - tail; index < a.length; index += 1) rest += a[index].length;
+  return operation.retain(rest);
+}

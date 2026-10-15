@@ -13,8 +13,10 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
 import {
   ASSET_PROGRESS_EVENT,
+  COLLAB_CHANGE_SKIPPED_EVENT,
   isSkillAssetProgress,
   onAssetProgress,
+  onCollabChangeSkipped,
   withAssetProgress,
   withEventListener,
 } from "./tauri";
@@ -120,5 +122,16 @@ describe("asset progress", () => {
     });
     expect(onComponent).toHaveBeenCalledExactlyOnceWith(component);
     expect(mocks.unlisten).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("skipped collaboration changes", () => {
+  it("hands each skipped change to the handler", async () => {
+    const seen: unknown[] = [];
+    const unlisten = await onCollabChangeSkipped((payload) => seen.push(payload));
+    expect(COLLAB_CHANGE_SKIPPED_EVENT).toBe("collab-change-skipped");
+    emit("collab-change-skipped", { projectId: "p", seq: 4, deviceId: null });
+    expect(seen).toEqual([{ projectId: "p", seq: 4, deviceId: null }]);
+    expect(unlisten).toBe(mocks.unlisten);
   });
 });

@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 import { account, capabilities, collabError, server, signedOutServer } from "./tests/fixtures";
 
@@ -22,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   collabServerTest: vi.fn(),
   collabAdminMembers: vi.fn(),
   collabServerRefresh: vi.fn(),
+  onCollabServerChanged: vi.fn(),
+  serverChanged: null as (() => void) | null,
 }));
 
 const events = vi.hoisted(() => ({ useTauriEvent: vi.fn() }));
@@ -43,8 +44,15 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {} });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, detached: null });
   mocks.collabServerDevices.mockResolvedValue([]);
+  mocks.serverChanged = null;
+  mocks.onCollabServerChanged.mockImplementation(async (handler: () => void) => {
+    mocks.serverChanged = handler;
+    return () => {
+      if (mocks.serverChanged === handler) mocks.serverChanged = null;
+    };
+  });
   mocks.collabServerRefresh.mockImplementation(async (serverId: string) =>
     useCollabStore.getState().servers.find((entry) => entry.server_id === serverId),
   );
@@ -69,6 +77,29 @@ describe("CollaborationSection", () => {
     expect(screen.getByText(copy.server.signedOut)).toBeInTheDocument();
   });
 
+  it("names the shared projects a removed server left behind as ordinary projects", async () => {
+    mocks.collabServersList.mockResolvedValue([server()]);
+    mocks.collabServerRemove.mockResolvedValue({
+      signed_out: true,
+      unsent: [],
+      detached: [
+        { project_id: "thesis", name: "Thesis" },
+        { project_id: "grant", name: "Grant proposal" },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<CollaborationSection />);
+    await user.click(await screen.findByRole("button", { name: copy.server.remove }));
+    await user.click(screen.getByRole("button", { name: copy.server.removeConfirm.confirm }));
+
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(copy.server.detached.replace("{{server}}", "Smith Lab"));
+    expect(within(notice).getByText("Thesis")).toBeInTheDocument();
+    expect(within(notice).getByText("Grant proposal")).toBeInTheDocument();
+    await user.click(within(notice).getByRole("button", { name: enCommon.actions.ok }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("shows what to do when there are no servers", async () => {
     mocks.collabServersList.mockResolvedValue([]);
     render(<CollaborationSection />);
@@ -91,10 +122,10 @@ describe("CollaborationSection", () => {
     mocks.collabServersList.mockResolvedValueOnce([]).mockResolvedValueOnce([server()]);
     render(<CollaborationSection />);
     await screen.findByText(copy.servers.empty.title);
-    expect(events.useTauriEvent).toHaveBeenCalledWith(COLLAB_SERVER_CHANGED_EVENT, expect.any(Function));
-    const handler = events.useTauriEvent.mock.calls.at(-1)?.[1] as () => void;
-    act(() => handler());
+    await waitFor(() => expect(mocks.serverChanged).not.toBeNull());
+    act(() => mocks.serverChanged?.());
     expect(await screen.findByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
+    expect(mocks.onCollabServerChanged).toHaveBeenCalledTimes(1);
   });
 
   it("opens Add server", async () => {

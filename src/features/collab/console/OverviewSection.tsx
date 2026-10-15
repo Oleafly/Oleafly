@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert, UserRoundPlus } from "lucide-react";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,8 @@ import type { OverviewState } from "./use-admin-overview";
 const ISSUE_KEYS = {
   no_sign_in_provider: "noSignInProvider",
   storage_not_writable: "storageNotWritable",
+  sign_in_failing: "signInFailing",
+  sign_in_emails_paused: "signInEmailsPaused",
   unknown: "unknown",
 } as const satisfies Record<CollabHealthIssue, string>;
 
@@ -56,20 +58,70 @@ function Health({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
       />
     );
   }
+  const providerName = (id: string) => overview.providers.find((provider) => provider.id === id)?.label || id;
   return (
     <div className="space-y-2">
       {issues.map((issue) => {
         const key = ISSUE_KEYS[issue] ?? "unknown";
         return (
-          <SettingsRow
-            key={issue}
-            icon={<TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />}
-            label={t(($) => $.collab.console.overview.health.issues[key].label)}
-            description={t(($) => $.collab.console.overview.health.issues[key].description)}
-          />
+          <div key={issue} className="space-y-1">
+            <SettingsRow
+              icon={<TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+              label={t(($) => $.collab.console.overview.health.issues[key].label)}
+              description={t(($) => $.collab.console.overview.health.issues[key].description)}
+            />
+            {issue === "sign_in_failing" ? <SignInProblems overview={overview} name={providerName} /> : null}
+          </div>
         );
       })}
     </div>
+  );
+}
+
+// Which sign-in option fails, since when, and the provider's own words.
+function SignInProblems({
+  overview,
+  name,
+}: Readonly<{ overview: CollabAdminOverview; name: (provider: string) => string }>) {
+  const { t } = useTranslation(["collab"]);
+  const problems = overview.sign_in_problems ?? [];
+  if (problems.length === 0) return null;
+  return (
+    <ul className="ml-6 space-y-1 text-xs" data-testid="console-sign-in-problems">
+      {problems.map((problem) => (
+        <li key={`${problem.provider}-${problem.at}`} className="space-y-0.5">
+          <p className="font-medium">
+            {t(($) => $.collab.console.overview.health.problem, {
+              provider: name(problem.provider),
+              time: formatDateTime(problem.at),
+            })}
+          </p>
+          {problem.reason ? <p className="select-text break-words text-muted-foreground">{problem.reason}</p> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Nobody is told by email when an invitation waits for approval, so the
+// overview names the count and leads to the list.
+function PendingGuests({
+  count,
+  onNavigate,
+}: Readonly<{ count: number; onNavigate: (section: ConsoleSection) => void }>) {
+  const { t } = useTranslation(["collab"]);
+  if (count <= 0) return null;
+  return (
+    <SettingsRow
+      testId="console-pending-guests"
+      icon={<UserRoundPlus aria-hidden className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+      label={t(($) => $.collab.console.overview.glance.pendingGuests, { number: formatNumber(count) })}
+      control={
+        <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("people")}>
+          {t(($) => $.collab.console.overview.glance.reviewGuests)}
+        </Button>
+      }
+    />
   );
 }
 
@@ -274,6 +326,7 @@ export function OverviewSection({
         <Health overview={overview} />
       </Block>
       <Block title={t(($) => $.collab.console.overview.glance.title)}>
+        <PendingGuests count={overview.counts.pending_guest_approvals ?? 0} onNavigate={onNavigate} />
         <Glance overview={overview} />
       </Block>
       <Block title={t(($) => $.collab.console.overview.storage.title)}>

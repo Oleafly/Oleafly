@@ -7,6 +7,7 @@ import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabServer } from "@/lib/tauri";
+import { LIVE_COLLABORATION_KEY, useSettingsStore } from "@/store/settings";
 import { SERVER_ID, account, collabError, deferred, fill, server, signedOutServer } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -45,6 +46,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   changed = null;
   document.title = "Oleafly";
+  // The console only opens while collaboration is on.
+  useSettingsStore.setState({ liveCollaboration: true });
   mocks.collabServersList.mockResolvedValue([ADMIN]);
   mocks.collabServerRefresh.mockResolvedValue(ADMIN);
   mocks.listen.mockImplementation(async (_event: string, handler: typeof changed) => {
@@ -54,6 +57,26 @@ beforeEach(() => {
 });
 
 describe("AdminConsoleWindow", () => {
+  it("says collaboration is off when the main window turns it off, and comes back when it's on again", async () => {
+    render(<AdminConsoleWindow search={SEARCH} />);
+    expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: LIVE_COLLABORATION_KEY, newValue: "0" }));
+    });
+    expect(screen.getByText(copy.turnedOffTitle)).toBeInTheDocument();
+    expect(screen.getByText(copy.turnedOffDescription)).toBeInTheDocument();
+    expect(screen.queryByText("Console for Smith Lab as admin")).toBeNull();
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "oleafly.theme", newValue: "dark" }));
+    });
+    expect(screen.getByText(copy.turnedOffTitle)).toBeInTheDocument();
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: LIVE_COLLABORATION_KEY, newValue: "1" }));
+    });
+    expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
+    expect(mocks.collabServersList).toHaveBeenCalledTimes(2);
+  });
+
   it("opens the console for an admin with a fresh role and names the window", async () => {
     render(<AdminConsoleWindow search={SEARCH} />);
     expect(screen.getByText(copy.loading)).toBeInTheDocument();
@@ -100,12 +123,14 @@ describe("AdminConsoleWindow", () => {
     expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
   });
 
-  it("refuses a role this version does not know", async () => {
-    const later = server({ account: account({ server_role: "auditor" as never }) });
+  it("refuses a role from a later server, naming it as unknown", async () => {
+    const later = server({ account: account({ server_role: "unknown" }) });
     mocks.collabServersList.mockResolvedValue([later]);
     mocks.collabServerRefresh.mockResolvedValue(later);
     render(<AdminConsoleWindow search={SEARCH} />);
-    expect(await screen.findByText(fill(copy.refusedDescription, { role: "auditor" }))).toBeInTheDocument();
+    expect(
+      await screen.findByText(fill(copy.refusedDescription, { role: enCollab.roles.unknown })),
+    ).toBeInTheDocument();
   });
 
   it("says when this computer is signed out of the server", async () => {

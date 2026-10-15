@@ -3,12 +3,16 @@ import { useTranslation } from "react-i18next";
 import {
   Archive,
   Ban,
+  CircleArrowUp,
   CirclePause,
   CloudCheck,
   CloudOff,
   CloudUpload,
   LogOut,
   RefreshCw,
+  Replace,
+  ServerCog,
+  ServerOff,
   UserLock,
   UserX,
 } from "lucide-react";
@@ -29,6 +33,10 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   removed: UserX,
   archived: Archive,
   paused: CirclePause,
+  serverRemoved: ServerOff,
+  clientTooOld: CircleArrowUp,
+  serverTooOld: ServerCog,
+  serverChanged: Replace,
 };
 
 const SYNC_TONES: Readonly<Record<SyncState, string>> = {
@@ -42,6 +50,10 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   removed: "text-destructive",
   archived: "text-muted-foreground",
   paused: "text-muted-foreground",
+  serverRemoved: "text-destructive",
+  clientTooOld: "text-destructive",
+  serverTooOld: "text-destructive",
+  serverChanged: "text-destructive",
 };
 
 export function SyncStateIcon({ state, className }: Readonly<{ state: SyncState; className?: string }>) {

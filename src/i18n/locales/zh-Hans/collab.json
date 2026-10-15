@@ -25,9 +25,9 @@
       "signedOut": "未登录",
       "signedInAs": "已以 {{name}} 的身份登录",
       "signedOutHint": "这台电脑尚未登录此服务器。",
-      "paused": "已暂停",
+      "paused": "已停用",
       "noAccess": "无访问权限",
-      "pausedHint": "管理员暂停了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。账户恢复后，你可以重新登录。",
+      "pausedHint": "管理员停用了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。管理员重新启用后，你可以重新登录。",
       "endedHint": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。如果管理员重新添加了你，请重新登录。",
       "endedGuestHint": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。如果你再次受到邀请，请重新登录。",
       "role": "你的角色：{{role}}",
@@ -35,17 +35,23 @@
       "signOut": "退出登录",
       "remove": "移除",
       "manage": "管理服务器",
+      "manageHint": "管理服务器会在这里显示人员、访问规则和服务器设置。管理控制台在单独的窗口中打开，还包含概览、项目和连接检查。",
       "test": "测试连接",
       "removeConfirm": {
         "title": "要移除 {{name}} 吗？",
-        "description": "Oleafly 会退出此服务器的登录，并不再记住它。这台电脑上已有的项目会原样保留。",
+        "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，并作为普通项目保留在这台电脑上。",
         "confirm": "移除服务器"
       },
+      "detached": "这些来自 {{server}} 的共享项目已停止同步。它们会作为普通项目保留在这台电脑上。",
       "unsent": {
         "title": "有些更改还没有发送",
-        "description": "有尚未到达服务器的更改的共享项目：{{count}} 个。Oleafly 可以把每个项目作为本地副本保留在这台电脑上，你也可以保持登录，稍后再试。",
+        "description": "这些共享项目有服务器还没有的更改。如果保留本地副本，每个项目都会停止同步，并以下方显示的名称保留在这台电脑上。你也可以保持登录，稍后再试。",
+        "removeDescription": "这些共享项目有服务器还没有的更改。如果保留本地副本，每个项目都会停止同步，并以下方显示的名称保留在这台电脑上。你也可以保留服务器，稍后再试。",
+        "changes": "未发送的更改：{{changes}} 个",
+        "staysAs": "保留为 {{name}}",
         "keep": "保留本地副本",
-        "stay": "保持登录"
+        "stay": "保持登录",
+        "keepServer": "保留服务器"
       },
       "emails": {
         "label": "有人共享项目时给我发邮件",
@@ -145,11 +151,14 @@
     "addressPlaceholder": "collab.example.edu",
     "continue": "继续",
     "checking": "正在检查服务器…",
+    "notAServer": "此地址上没有 Oleafly 服务器响应。请向服务器的运行者确认地址。如果你在使用酒店或校园 Wi-Fi，请先打开任意网页，以防网络要求你登录。",
+    "moved": "此地址会跳转到 {{target}}。请试试那个地址。",
+    "useMoved": "使用该地址",
     "version": "版本 {{version}}",
     "serverTitle": "登录 {{server}}",
     "serverDescription": "谁可以加入由此服务器决定。请选择登录方式。",
     "setupTitle": "设置 {{server}}",
-    "setupDescription": "还没有人在这里登录过。请输入服务器日志中的设置码。第一个使用该设置码登录的人将成为服务器的管理员。",
+    "setupDescription": "还没有人设置过这个服务器。如果服务器是你安装的，请输入安装程序显示给你的设置码。设置码也在服务器日志中。第一个使用该设置码登录的人将成为服务器的管理员。如果不是你安装的，请先让运行服务器的人完成设置。",
     "setupCodeLabel": "设置码",
     "signInDescription": "你的浏览器会打开，请在浏览器中登录。Oleafly 永远不会看到你的密码。",
     "continueWith": "使用 {{provider}} 继续",
@@ -183,7 +192,7 @@
     "not_https": "此地址未使用安全连接。协作服务器的地址必须以 https 开头。",
     "client_too_old": "此服务器需要更新版本的 Oleafly。请更新 Oleafly，然后重试。",
     "server_too_old": "此服务器需要更新后才能与此版本的 Oleafly 配合使用。请联系其管理员。",
-    "not_admitted": "你还不在此服务器的名单上。请让其管理员添加你。",
+    "not_admitted": "此服务器还没有允许你进入。请让其管理员添加你。",
     "sign_in_cancelled": "已取消登录。",
     "sign_in_timed_out": "登录耗时过长。请重试。",
     "unauthorized": "你已退出此服务器的登录。请重新登录。",
@@ -198,13 +207,33 @@
     "duplicate_server": "此服务器已在你的列表中，但使用的是另一个地址。如果服务器已迁移，请先移除旧条目，再重新添加。",
     "device_in_use": "已有其他人通过这台电脑上的此用户账户登录了此服务器。每个人都需要在这台电脑上拥有自己的用户账户才能登录。",
     "server_unknown": "此链接来自你尚未添加的服务器。请在协作设置中添加该服务器，然后重新打开链接。",
-    "too_large": "部分文件超出了此服务器允许的大小。请缩小或移除这些文件，然后重试。"
+    "too_large": "部分文件超出了此服务器允许的大小。请缩小或移除这些文件，然后重试。",
+    "invalid": "服务器未接受该内容。请检查你输入的内容，然后重试。",
+    "invalid_domain": "这不是域名。请使用类似 cs.example.edu 的格式。",
+    "invalid_email": "该电子邮件地址看起来不正确。请检查后重试。",
+    "invalid_login": "该登录名看起来不正确。请检查后重试。",
+    "guests_off": "此服务器不允许访客。请让其管理员开启访客功能。",
+    "link_sharing_off": "此服务器不允许链接共享。请让其管理员开启该功能。",
+    "access_log_off": "此服务器不允许访问日志。请让其管理员开启该功能。",
+    "last_admin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
+    "duplicate_entry": "该条目已在列表中。",
+    "already_member": "此人已经有账户。请在人员中更改其角色。",
+    "project_not_shared": "此项目尚未共享。请先共享，再邀请其他人。",
+    "project_full": "此项目的人数已达到服务器允许的上限。请先移除某人，或联系服务器的管理员。",
+    "owner_away": "这个项目的所有者目前在此服务器上不可用，所以项目无法接纳新成员。",
+    "not_a_link": "这不是共享项目的链接。请复制完整链接，然后重试。",
+    "signed_out": "你已退出此服务器的登录。请重新登录以同步此项目。",
+    "server_removed": "此项目的服务器已不在你的列表中。请将项目保留为本地副本，或重新添加该服务器。",
+    "share_in_progress": "此项目正在共享中。请等待其完成。",
+    "cancelled": "已取消打开共享项目。",
+    "cloud_synced": "你的 Oleafly 库位于由云服务同步的文件夹中。要共享或加入项目，请把它移出 Dropbox、OneDrive 或 iCloud Drive。"
   },
   "roles": {
     "admin": "管理员",
     "maintainer": "维护者",
     "member": "成员",
-    "guest": "访客"
+    "guest": "访客",
+    "unknown": "未知角色"
   },
   "admin": {
     "title": "管理 {{name}}",
@@ -212,7 +241,7 @@
     "loadFailed": "Oleafly 无法从服务器加载此内容。",
     "added": "添加于 {{date}}",
     "tabs": {
-      "members": "成员",
+      "members": "人员",
       "allowlist": "允许的人员",
       "domains": "域名",
       "settings": "服务器设置",
@@ -222,8 +251,8 @@
     "members": {
       "description": "所有登录过此服务器的人。",
       "addPeople": "添加成员",
-      "addHint": "要让新成员加入，请在访问规则中添加。",
-      "loading": "正在加载成员…",
+      "addHint": "要让新成员加入，请在允许的人员中添加。",
+      "loading": "正在加载人员…",
       "empty": "还没有人登录过。",
       "you": "你",
       "active": "已启用",
@@ -239,10 +268,22 @@
       "devicesLoading": "正在加载设备…",
       "devicesLoadFailed": "Oleafly 无法加载这些设备。",
       "lastAdmin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
+      "ownedOne": "{{name}} 拥有一个共享项目。{{name}} 不在期间，其他人无法管理它。",
+      "ownedMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 不在期间，其他人无法管理它们。",
       "removeConfirm": {
         "title": "要将 {{name}} 从此服务器中移除吗？",
         "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
         "confirm": "移除成员"
+      },
+      "suspendConfirm": {
+        "title": "要停用 {{name}} 吗？",
+        "description": "在管理员重新启用账户之前，{{name}} 无法登录或同步。",
+        "confirm": "停用成员"
+      },
+      "selfRoleConfirm": {
+        "title": "要把你自己的角色改为 {{role}} 吗？",
+        "description": "你会失去此服务器上的管理员权限，只有其他管理员才能把权限还给你。",
+        "confirm": "更改我的角色"
       },
       "deviceSignOutConfirm": {
         "title": "要退出 {{name}} 的登录吗？",
@@ -345,8 +386,8 @@
         "memberSuspended": "停用了一名成员",
         "memberReactivated": "重新启用了一名成员",
         "roleChanged": "更改了角色",
-        "allowlistAdded": "将某人添加到了允许名单",
-        "allowlistRemoved": "将某人从允许名单中移除",
+        "allowlistAdded": "将某人添加为允许的人员",
+        "allowlistRemoved": "将某人从允许的人员中移除",
         "domainRuleAdded": "添加了一条域名规则",
         "domainRuleRemoved": "移除了一条域名规则",
         "settingsChanged": "更改了服务器设置",
@@ -379,7 +420,7 @@
         "providerEmailLink": "通过电子邮件链接",
         "signInCode": "使用了登录码",
         "via": {
-          "allowlist": "因允许名单而获准进入",
+          "allowlist": "作为允许的人员获准进入",
           "domain": "因域名规则而获准进入",
           "setup": "使用了设置码",
           "guest": "以访客身份获准进入",
@@ -438,7 +479,8 @@
   "projectRoles": {
     "owner": "所有者",
     "editor": "编辑者",
-    "viewer": "查看者"
+    "viewer": "查看者",
+    "unknown": "未知角色"
   },
   "share": {
     "button": "共享",
@@ -461,8 +503,11 @@
     "renamed": "有些名称并非在所有电脑上都可用。其他人收到的这些文件，名称会略有不同。",
     "excluded": "不会共享：构建输出、Oleafly 设置和 Git 历史。",
     "start": "共享",
-    "uploading": "正在上传文件：{{done}}/{{total}}",
-    "failed": "共享未完成，因此没有共享任何内容。"
+    "preparing": "正在准备项目…",
+    "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
+    "saving": "正在把项目保存到服务器…",
+    "failed": "共享未完成，因此没有共享任何内容。",
+    "trustAgain": "现在其他人也能编辑这个项目了，Oleafly 在这台电脑上运行它的工具前会再次征求你的同意。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",
@@ -485,6 +530,11 @@
       "roleLabel": "所添加人员的角色",
       "searching": "正在搜索…",
       "noResults": "{{server}} 上没有匹配的人员。",
+      "noResultsTryEmail": "{{server}} 上没有匹配的人员。请尝试输入对方的完整电子邮件地址。",
+      "alreadyMember": "{{name}} 已有访问权限。",
+      "allMembers": "所有匹配的人都已有访问权限。",
+      "noAccountNoGuests": "{{server}} 上还没有人使用 {{email}}。请让 {{server}} 的管理员允许此人加入，等对方登录一次后再在这里添加。",
+      "guestCheckFailed": "Oleafly 无法确认 {{server}} 是否允许访客。",
       "add": "添加",
       "addNamed": "添加 {{name}}"
     },
@@ -524,11 +574,15 @@
     "offline": "离线。等待同步的更改：{{number}}",
     "reconnecting": "正在重新连接",
     "signedOut": "未登录",
-    "suspended": "账户已暂停",
+    "suspended": "账户已停用",
     "accessEnded": "无访问权限",
     "removed": "访问权限已移除",
     "archived": "共享已停止",
-    "paused": "已暂停"
+    "paused": "已暂停",
+    "serverRemoved": "服务器已移除",
+    "clientTooOld": "Oleafly 需要更新",
+    "serverTooOld": "服务器需要更新",
+    "serverChanged": "其他服务器"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -545,9 +599,11 @@
   "library": {
     "kind": "共享",
     "location": "共享项目",
+    "locationNotShared": "Oleafly 中（未共享）",
     "flag": "已共享",
     "sharedWithYou": {
       "title": "与你共享的项目",
+      "loadFailed": "Oleafly 无法检查与你共享的项目。",
       "from": "{{server}} 上的 {{owner}}",
       "open": "打开",
       "openNamed": "打开 {{name}}"
@@ -559,7 +615,6 @@
       "label": "项目链接",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "打开",
-      "serverUnknown": "{{server}} 还不在你的服务器列表中。请在协作设置中添加它，然后重新打开链接。",
       "noAccess": "你没有此项目的访问权限。请联系项目所有者。"
     }
   },
@@ -575,6 +630,18 @@
     "away": "当前不在此项目中",
     "deleted": "最近删除",
     "deletedEmpty": "最近没有删除任何内容。",
+    "deletedLoadFailed": "Oleafly 无法加载最近删除的文件。",
+    "unwritten": {
+      "title": "有些文件无法写入这台电脑",
+      "hint": "Oleafly 会继续尝试。在此期间，共享项目中有最新的文本。",
+      "reasons": {
+        "locked": "无法写入 {{path}}：另一个程序正打开着它。",
+        "read_only": "无法写入 {{path}}：文件或其文件夹是只读的。",
+        "no_space": "无法写入 {{path}}：磁盘已满。",
+        "not_downloaded": "无法写入 {{path}}：云服务还没有把它下载到这台电脑。",
+        "other": "无法写入 {{path}}。"
+      }
+    },
     "accessLog": "访问日志",
     "status": "同步状态",
     "waiting": "等待同步的更改：{{number}}"
@@ -609,7 +676,10 @@
     "removedBy": "{{name}} 已将你移出此共享项目。你的副本会作为普通项目保留在这里。",
     "archived": "所有者已停止共享此项目。你的副本会作为普通项目保留在这里。",
     "signedOut": "你已退出 {{server}} 的登录，因此此项目没有同步。你的更改会保留在这台电脑上。",
-    "suspended": "管理员暂停了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。账户恢复后，你可以重新登录。",
+    "suspended": "管理员停用了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。管理员重新启用后，你可以重新登录。",
+    "clientTooOld": "请更新 Oleafly，才能继续在 {{server}} 上工作。你的更改会保留在这台电脑上。",
+    "serverTooOld": "{{server}} 需要更新后才能与此版本的 Oleafly 配合使用。请联系服务器的运行者。你的更改会保留在这台电脑上。",
+    "serverChanged": "{{server}} 的地址现在指向另一台服务器。请在协作设置中移除它，然后重新添加。你的更改会保留在这台电脑上。",
     "accessEnded": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。",
     "accessEndedGuest": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。",
     "signIn": "登录",
@@ -622,6 +692,8 @@
     "newDevice": "{{name}} 在新设备上登录了",
     "review": "查看",
     "renamed": "你将它命名为 {{ours}} 之后，{{name}} 把 {{before}} 重命名为 {{theirs}}",
+    "skipped": "无法读取来自 {{name}} 的一项更改，已跳过。",
+    "skippedUnknown": "无法读取来自某人的一项更改，已跳过。",
     "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
     "mentionedHere": "{{name}} 在评论中提及了你",
     "showComment": "查看评论",
@@ -664,12 +736,13 @@
     "windowTitle": "Oleafly Server 管理控制台",
     "title": "管理控制台",
     "sectionsLabel": "管理控制台栏目",
+    "pendingGuestsBadge": "等待批准：{{number}}",
     "sections": {
       "overview": "概览",
       "people": "人员",
       "access": "访问规则",
       "projects": "项目",
-      "settings": "设置",
+      "settings": "服务器设置",
       "email": "电子邮件",
       "log": "安全日志",
       "checks": "连接检查"
@@ -689,7 +762,9 @@
       "signedOutTitle": "你未登录此服务器",
       "signedOutDescription": "请在设置中重新登录，然后从服务器卡片打开管理控制台。",
       "refusedTitle": "管理控制台仅供管理员和维护者使用",
-      "refusedDescription": "你在此服务器上的角色是 {{role}}。如果需要管理此服务器，请询问管理员。"
+      "refusedDescription": "你在此服务器上的角色是 {{role}}。如果需要管理此服务器，请询问管理员。",
+      "turnedOffTitle": "实时协作已关闭",
+      "turnedOffDescription": "如需在这里管理此服务器，请在设置的实验功能中重新开启。"
     },
     "overview": {
       "loading": "正在加载概览…",
@@ -697,6 +772,7 @@
         "title": "运行状况",
         "okLabel": "一切正常",
         "okDescription": "用户可以登录，服务器也可以保存文件。",
+        "problem": "{{provider}} 登录从 {{time}} 起一直失败",
         "issues": {
           "noSignInProvider": {
             "label": "无人可以登录",
@@ -705,6 +781,14 @@
           "storageNotWritable": {
             "label": "服务器无法保存文件",
             "description": "请检查服务器的数据文件夹是否存在，以及服务器能否写入该文件夹。"
+          },
+          "signInFailing": {
+            "label": "登录失败",
+            "description": "通过服务器的某个登录方式无法登录。下方列表会说明是哪一个以及从什么时候开始。"
+          },
+          "signInEmailsPaused": {
+            "label": "登录邮件已暂停",
+            "description": "服务器本小时发送的登录邮件已达上限。这一小时过去后会恢复发送。"
           },
           "unknown": {
             "label": "服务器报告了一个问题",
@@ -723,7 +807,9 @@
         "onlineDetail": "打开的项目：{{number}}",
         "started": "启动时间",
         "version": "版本",
-        "protocol": "协议 {{protocol}}"
+        "protocol": "协议 {{protocol}}",
+        "pendingGuests": "等待批准的访客邀请：{{number}}",
+        "reviewGuests": "在“人员”中查看"
       },
       "storage": {
         "title": "存储",
@@ -810,6 +896,8 @@
     "openSettings": "打开设置",
     "malformed": "Oleafly 无法打开此链接。请向发送者索取新链接。",
     "opening": "正在打开共享项目…",
+    "downloading": "正在下载文件：{{done}}/{{total}}",
+    "cancelNamed": "停止打开 {{name}}",
     "confirm": {
       "title": "要加入这个共享项目吗？",
       "body": "加入后，你会被添加到项目中，项目文件也会复制到这台电脑。只有在你知道是谁发来链接时才加入。",
@@ -845,6 +933,14 @@
     "resolve": "解决",
     "reopen": "重新打开",
     "deleteThread": "删除讨论",
+    "deleteThreadConfirm": {
+      "title": "删除这个讨论吗？",
+      "description": "这条评论及其回复会对本项目中的所有人删除。此操作无法撤销。"
+    },
+    "deleteMessageConfirm": {
+      "title": "删除这条评论吗？",
+      "description": "它会对本项目中的所有人删除。此操作无法撤销。"
+    },
     "messageActions": "此评论的更多操作",
     "threadActions": "此讨论的更多操作",
     "showInEditor": "在编辑器中显示",
@@ -920,6 +1016,7 @@
     "pending": {
       "title": "待处理的访客",
       "description": "项目所有者将这些人邀请为访客。访客只能看到受邀的项目，且不能共享这些项目。",
+      "loadFailed": "Oleafly 无法加载等待批准的访客邀请。",
       "invitedBy": "{{inviter}} 邀请他们加入 {{project}}",
       "approve": "批准",
       "approveNamed": "批准 {{email}}",
@@ -930,6 +1027,9 @@
   "access": {
     "viewerBy": "{{name}} 已将你设为查看者。你可以阅读此项目，但不能编辑。",
     "viewer": "你现在是查看者。你可以阅读此项目，但不能编辑。",
+    "viewOnly": "你可以查看这个共享项目，但不能编辑。",
+    "unsentReadOnly": "你现在只能查看此项目，因此你对 {{path}} 的最后更改没有发送。",
+    "unsentRefused": "Oleafly 无法发送你对 {{path}} 的最后更改，因此已将其丢弃。",
     "removedBy": "{{name}} 已将你移出此项目。你的副本会保留在这台电脑上，不再共享。",
     "removed": "你已被移出此项目。你的副本会保留在这台电脑上，不再共享。"
   },

@@ -1272,6 +1272,10 @@ export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
 
 export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
 
+// Where the Live collaboration switch is kept. Other windows, such as the
+// admin console, follow it through the storage event.
+export const LIVE_COLLABORATION_KEY = "oleafly.liveCollaboration";
+
 // What each Settings section's Reset button restores, mapped to the storage key
 // that persists it (null: kept for the session only). The reset and
 // sectionDiffersFromDefaults both read this map, so they cannot drift apart.
@@ -1353,7 +1357,7 @@ export const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     webBrowser: "oleafly.webBrowser",
-    liveCollaboration: "oleafly.liveCollaboration",
+    liveCollaboration: LIVE_COLLABORATION_KEY,
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2017,9 +2021,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // Turning the browser off must also close any open browser dock.
     set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
   },
-  liveCollaboration: ls("oleafly.liveCollaboration", "0") === "1",
+  liveCollaboration: ls(LIVE_COLLABORATION_KEY, "0") === "1",
   setLiveCollaboration: (v) => {
-    saveLs("oleafly.liveCollaboration", v ? "1" : "0");
+    saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
     set({ liveCollaboration: v });
   },
   collabPresence: readCollabPresence(ls("oleafly.collab.presence", "cursor")),

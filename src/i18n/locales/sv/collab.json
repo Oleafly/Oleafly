@@ -25,9 +25,9 @@
       "signedOut": "Utloggad",
       "signedInAs": "Inloggad som {{name}}",
       "signedOutHint": "Den här datorn är inte inloggad på den här servern.",
-      "paused": "Pausad",
+      "paused": "Avstängt",
       "noAccess": "Ingen åtkomst",
-      "pausedHint": "En administratör har pausat ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när kontot är aktiverat igen.",
+      "pausedHint": "En administratör har stängt av ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när en administratör återaktiverar det.",
       "endedHint": "Du har inte längre åtkomst till {{server}}. Dina kopior ligger kvar på den här datorn som vanliga projekt. Om en administratör lägger till dig igen loggar du in på nytt.",
       "endedGuestHint": "Du har inte längre åtkomst till {{server}} eftersom du inte är med i något av dess delade projekt. Dina kopior ligger kvar på den här datorn som vanliga projekt. Om du blir inbjuden igen loggar du in på nytt.",
       "role": "Din roll: {{role}}",
@@ -35,17 +35,23 @@
       "signOut": "Logga ut",
       "remove": "Ta bort",
       "manage": "Hantera servern",
+      "manageHint": "Hantera servern visar personer, åtkomstregler och serverinställningar här. Administratörskonsolen öppnas i ett eget fönster och har också översikt, projekt och anslutningskontroller.",
       "test": "Testa anslutningen",
       "removeConfirm": {
         "title": "Ta bort {{name}}?",
-        "description": "Oleafly loggar ut från den här servern och glömmer den. Projekt som redan finns på den här datorn ligger kvar där de är.",
+        "description": "Oleafly loggar ut från {{name}} och glömmer den. Delade projekt från {{name}} slutar synkas och stannar på den här datorn som vanliga projekt.",
         "confirm": "Ta bort servern"
       },
+      "detached": "De här delade projekten från {{server}} synkas inte längre. De stannar på den här datorn som vanliga projekt.",
       "unsent": {
         "title": "Vissa ändringar har inte skickats än",
-        "description": "Delade projekt med ändringar som servern inte har än: {{count}}. Oleafly kan behålla en lokal kopia av varje projekt på den här datorn, eller så kan du förbli inloggad och försöka igen senare.",
+        "description": "De här delade projekten har ändringar som servern inte har än. Om du behåller en lokal kopia slutar varje projekt att synkas och stannar på den här datorn med namnet nedan. Du kan också förbli inloggad och försöka igen senare.",
+        "removeDescription": "De här delade projekten har ändringar som servern inte har än. Om du behåller en lokal kopia slutar varje projekt att synkas och stannar på den här datorn med namnet nedan. Du kan också behålla servern och försöka igen senare.",
+        "changes": "Ej skickade ändringar: {{changes}}",
+        "staysAs": "Stannar som {{name}}",
         "keep": "Behåll en lokal kopia",
-        "stay": "Förbli inloggad"
+        "stay": "Förbli inloggad",
+        "keepServer": "Behåll servern"
       },
       "emails": {
         "label": "Mejla mig när någon delar ett projekt",
@@ -145,11 +151,14 @@
     "addressPlaceholder": "collab.example.edu",
     "continue": "Fortsätt",
     "checking": "Kontrollerar servern…",
+    "notAServer": "Ingen Oleafly-server svarade på den här adressen. Kontrollera adressen med den som driver servern. På hotell- eller campus-wifi kan du behöva öppna en valfri webbsida först, ifall nätverket vill att du loggar in.",
+    "moved": "Den här adressen skickar dig vidare till {{target}}. Prova den adressen.",
+    "useMoved": "Använd den adressen",
     "version": "Version {{version}}",
     "serverTitle": "Logga in på {{server}}",
     "serverDescription": "Den här servern bestämmer vem som får vara med. Välj hur du vill logga in.",
     "setupTitle": "Konfigurera {{server}}",
-    "setupDescription": "Ingen har loggat in här än. Ange konfigurationskoden från serverns logg. Den som först loggar in med koden blir serverns administratör.",
+    "setupDescription": "Ingen har konfigurerat den här servern än. Om du installerade den anger du konfigurationskoden som installationsprogrammet visade dig. Den finns också i serverns logg. Den som först loggar in med koden blir serverns administratör. Om du inte installerade den ber du den som driver servern att slutföra konfigurationen först.",
     "setupCodeLabel": "Konfigurationskod",
     "signInDescription": "Din webbläsare öppnas så att du kan logga in där. Oleafly ser aldrig ditt lösenord.",
     "continueWith": "Fortsätt med {{provider}}",
@@ -183,7 +192,7 @@
     "not_https": "Den här adressen använder inte en säker anslutning. Samarbetsservrar behöver en adress som börjar med https.",
     "client_too_old": "Den här servern kräver en nyare version av Oleafly. Uppdatera Oleafly och försök sedan igen.",
     "server_too_old": "Den här servern behöver uppdateras innan den fungerar med den här versionen av Oleafly. Fråga dess administratör.",
-    "not_admitted": "Du finns inte på serverns lista än. Be dess administratör att lägga till dig.",
+    "not_admitted": "Den här servern släpper inte in dig än. Be dess administratör att lägga till dig.",
     "sign_in_cancelled": "Inloggningen avbröts.",
     "sign_in_timed_out": "Inloggningen tog för lång tid. Försök igen.",
     "unauthorized": "Du är utloggad från den här servern. Logga in igen.",
@@ -198,13 +207,33 @@
     "duplicate_server": "Den här servern finns redan i din lista under en annan adress. Om den har flyttat tar du först bort den gamla posten och lägger sedan till den igen.",
     "device_in_use": "Någon annan har redan loggat in på den här servern från det här användarkontot på datorn. Varje person behöver ett eget användarkonto på datorn för att logga in.",
     "server_unknown": "Den här länken gäller en server som du inte har lagt till än. Lägg till den i samarbetsinställningarna och öppna sedan länken igen.",
-    "too_large": "Vissa filer är större än den här servern tillåter. Gör dem mindre eller ta bort dem och försök sedan igen."
+    "too_large": "Vissa filer är större än den här servern tillåter. Gör dem mindre eller ta bort dem och försök sedan igen.",
+    "invalid": "Servern godtog inte det. Kontrollera det du skrev och försök sedan igen.",
+    "invalid_domain": "Det är inte ett domännamn. Använd en form som cs.example.edu.",
+    "invalid_email": "E-postadressen ser inte rätt ut. Kontrollera den och försök sedan igen.",
+    "invalid_login": "Användarnamnet ser inte rätt ut. Kontrollera det och försök sedan igen.",
+    "guests_off": "Den här servern tillåter inte gäster. Be dess administratör att slå på gäster.",
+    "link_sharing_off": "Den här servern tillåter inte länkdelning. Be dess administratör att slå på den.",
+    "access_log_off": "Den här servern tillåter inte åtkomstloggar. Be dess administratör att slå på dem.",
+    "last_admin": "Den här servern behöver minst en administratör. Gör någon annan till administratör först.",
+    "duplicate_entry": "Det finns redan på listan.",
+    "already_member": "Den personen har redan ett konto. Ändra rollen under Personer.",
+    "project_not_shared": "Projektet är inte delat än. Dela det först och bjud sedan in personer.",
+    "project_full": "Projektet har redan så många personer som servern tillåter. Ta bort någon först, eller fråga serverns administratör.",
+    "owner_away": "Ägaren till det här projektet är inte aktiv på servern just nu, så projektet kan inte ta emot nya personer.",
+    "not_a_link": "Det är ingen länk till ett delat projekt. Kopiera hela länken och försök sedan igen.",
+    "signed_out": "Du är utloggad från den här servern. Logga in igen för att synkronisera projektet.",
+    "server_removed": "Projektets server finns inte längre i din lista. Behåll projektet som en lokal kopia eller lägg till servern igen.",
+    "share_in_progress": "Projektet håller redan på att delas. Vänta tills det är klart.",
+    "cancelled": "Öppnandet av det delade projektet avbröts.",
+    "cloud_synced": "Ditt Oleafly-bibliotek ligger i en mapp som en molntjänst synkar. Flytta det ut ur Dropbox, OneDrive eller iCloud Drive för att dela projekt eller gå med i dem."
   },
   "roles": {
     "admin": "Administratör",
     "maintainer": "Underhållare",
     "member": "Medlem",
-    "guest": "Gäst"
+    "guest": "Gäst",
+    "unknown": "Okänd roll"
   },
   "admin": {
     "title": "Hantera {{name}}",
@@ -212,7 +241,7 @@
     "loadFailed": "Oleafly kunde inte läsa in det här från servern.",
     "added": "Tillagd {{date}}",
     "tabs": {
-      "members": "Medlemmar",
+      "members": "Personer",
       "allowlist": "Tillåtna personer",
       "domains": "Domäner",
       "settings": "Serverinställningar",
@@ -222,8 +251,8 @@
     "members": {
       "description": "Alla som har loggat in på den här servern.",
       "addPeople": "Lägg till personer",
-      "addHint": "Vill du släppa in någon ny lägger du till personen under Åtkomstregler.",
-      "loading": "Läser in medlemmar…",
+      "addHint": "Vill du släppa in någon ny lägger du till personen under Tillåtna personer.",
+      "loading": "Läser in personer…",
       "empty": "Ingen har loggat in än.",
       "you": "Du",
       "active": "Aktiv",
@@ -239,10 +268,22 @@
       "devicesLoading": "Läser in enheter…",
       "devicesLoadFailed": "Oleafly kunde inte läsa in de här enheterna.",
       "lastAdmin": "Den här servern behöver minst en administratör. Gör någon annan till administratör först.",
+      "ownedOne": "{{name}} äger ett delat projekt. Ingen annan kan hantera det medan {{name}} är borta.",
+      "ownedMany": "{{name}} äger delade projekt: {{number}}. Ingen annan kan hantera dem medan {{name}} är borta.",
       "removeConfirm": {
         "title": "Ta bort {{name}} från den här servern?",
         "description": "Medlemmens enheter loggas ut direkt. Projekt som medlemmen äger ligger kvar på servern, och du kan lägga till medlemmen igen senare.",
         "confirm": "Ta bort medlemmen"
+      },
+      "suspendConfirm": {
+        "title": "Stänga av {{name}}?",
+        "description": "{{name}} kan inte logga in eller synka förrän en administratör återaktiverar kontot.",
+        "confirm": "Stäng av medlem"
+      },
+      "selfRoleConfirm": {
+        "title": "Ändra din egen roll till {{role}}?",
+        "description": "Du förlorar dina administratörsrättigheter på den här servern, och bara en annan administratör kan ge dig dem igen.",
+        "confirm": "Ändra min roll"
       },
       "deviceSignOutConfirm": {
         "title": "Logga ut {{name}}?",
@@ -438,7 +479,8 @@
   "projectRoles": {
     "owner": "Ägare",
     "editor": "Redigerare",
-    "viewer": "Läsare"
+    "viewer": "Läsare",
+    "unknown": "Okänd roll"
   },
   "share": {
     "button": "Dela",
@@ -461,8 +503,11 @@
     "renamed": "Vissa namn fungerar inte på alla datorer. Andra får de här filerna under ett något annorlunda namn.",
     "excluded": "Delas inte: byggfiler, Oleafly-inställningar och Git-historik.",
     "start": "Dela",
-    "uploading": "Laddar upp filer: {{done}} av {{total}}",
-    "failed": "Delningen slutfördes inte, så inget delades."
+    "preparing": "Förbereder projektet…",
+    "uploading": "Laddar upp figurer och andra filer: {{done}} av {{total}}",
+    "saving": "Sparar projektet på servern…",
+    "failed": "Delningen slutfördes inte, så inget delades.",
+    "trustAgain": "Nu när andra kan redigera projektet frågar Oleafly dig igen innan projektets verktyg körs på den här datorn."
   },
   "manage": {
     "sharedOn": "Delat på {{server}}",
@@ -485,6 +530,11 @@
       "roleLabel": "Roll för personer du lägger till",
       "searching": "Söker…",
       "noResults": "Ingen på {{server}} matchar.",
+      "noResultsTryEmail": "Ingen på {{server}} matchar. Prova personens fullständiga e-postadress.",
+      "alreadyMember": "{{name}} har redan åtkomst.",
+      "allMembers": "Alla som matchar har redan åtkomst.",
+      "noAccountNoGuests": "Ingen på {{server}} använder {{email}} än. Be en administratör för {{server}} att släppa in personen och lägg sedan till personen här när hen har loggat in en gång.",
+      "guestCheckFailed": "Oleafly kunde inte kontrollera om {{server}} tillåter gäster.",
       "add": "Lägg till",
       "addNamed": "Lägg till {{name}}"
     },
@@ -524,11 +574,15 @@
     "offline": "Offline. Väntande ändringar: {{number}}",
     "reconnecting": "Ansluter igen",
     "signedOut": "Utloggad",
-    "suspended": "Kontot pausat",
+    "suspended": "Kontot avstängt",
     "accessEnded": "Ingen åtkomst",
     "removed": "Åtkomst borttagen",
     "archived": "Delning stoppad",
-    "paused": "Pausad"
+    "paused": "Pausad",
+    "serverRemoved": "Servern borttagen",
+    "clientTooOld": "Oleafly behöver uppdateras",
+    "serverTooOld": "Servern behöver uppdateras",
+    "serverChanged": "En annan server"
   },
   "toolbar": {
     "noFile": "Ingen fil öppen",
@@ -545,9 +599,11 @@
   "library": {
     "kind": "delat",
     "location": "Delade projekt",
+    "locationNotShared": "I Oleafly, inte delade",
     "flag": "Delat",
     "sharedWithYou": {
       "title": "Delat med dig",
+      "loadFailed": "Oleafly kunde inte se efter vilka projekt som delats med dig.",
       "from": "{{owner}} på {{server}}",
       "open": "Öppna",
       "openNamed": "Öppna {{name}}"
@@ -559,7 +615,6 @@
       "label": "Projektlänk",
       "placeholder": "https://collab.example.edu/p/1234",
       "open": "Öppna",
-      "serverUnknown": "{{server}} finns inte i din lista över servrar än. Lägg till den i samarbetsinställningarna och öppna sedan länken igen.",
       "noAccess": "Du har inte åtkomst till det här projektet. Fråga projektets ägare."
     }
   },
@@ -575,6 +630,18 @@
     "away": "Inte här just nu",
     "deleted": "Nyligen raderade",
     "deletedEmpty": "Inget har raderats nyligen.",
+    "deletedLoadFailed": "Oleafly kunde inte läsa in de nyligen raderade filerna.",
+    "unwritten": {
+      "title": "Vissa filer kunde inte skrivas till den här datorn",
+      "hint": "Oleafly fortsätter att försöka. Det delade projektet har den senaste texten under tiden.",
+      "reasons": {
+        "locked": "Det går inte att skriva {{path}}: ett annat program har den öppen.",
+        "read_only": "Det går inte att skriva {{path}}: filen eller mappen är skrivskyddad.",
+        "no_space": "Det går inte att skriva {{path}}: disken är full.",
+        "not_downloaded": "Det går inte att skriva {{path}}: en molntjänst har inte laddat ned den till den här datorn än.",
+        "other": "Det går inte att skriva {{path}}."
+      }
+    },
     "accessLog": "Åtkomstlogg",
     "status": "Synkroniseringsstatus",
     "waiting": "Väntande ändringar: {{number}}"
@@ -609,7 +676,10 @@
     "removedBy": "{{name}} tog bort dig från det här delade projektet. Din kopia ligger kvar här som ett vanligt projekt.",
     "archived": "Ägaren har slutat dela det här projektet. Din kopia ligger kvar här som ett vanligt projekt.",
     "signedOut": "Du är utloggad från {{server}}, så det här projektet synkas inte. Dina ändringar stannar på den här datorn.",
-    "suspended": "En administratör har pausat ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när kontot är aktiverat igen.",
+    "suspended": "En administratör har stängt av ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när en administratör återaktiverar det.",
+    "clientTooOld": "Uppdatera Oleafly för att fortsätta arbeta på {{server}}. Dina ändringar stannar på den här datorn.",
+    "serverTooOld": "{{server}} behöver uppdateras innan den fungerar med den här versionen av Oleafly. Fråga den som driver den. Dina ändringar stannar på den här datorn.",
+    "serverChanged": "Adressen till {{server}} leder nu till en annan server. Ta bort den i samarbetsinställningarna och lägg till den igen. Dina ändringar stannar på den här datorn.",
     "accessEnded": "Du har inte längre åtkomst till {{server}}. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "accessEndedGuest": "Du har inte längre åtkomst till {{server}} eftersom du inte är med i något av dess delade projekt. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "signIn": "Logga in",
@@ -622,6 +692,8 @@
     "newDevice": "{{name}} loggade in på en ny enhet",
     "review": "Granska",
     "renamed": "{{name}} bytte namn på {{before}} till {{theirs}} efter att du hade döpt den till {{ours}}",
+    "skipped": "En ändring från {{name}} kunde inte läsas och hoppades över.",
+    "skippedUnknown": "En ändring från någon kunde inte läsas och hoppades över.",
     "mentioned": "{{name}} nämnde dig i en kommentar i {{path}}",
     "mentionedHere": "{{name}} nämnde dig i en kommentar",
     "showComment": "Visa kommentar",
@@ -664,12 +736,13 @@
     "windowTitle": "Oleafly Server administratörskonsol",
     "title": "Administratörskonsol",
     "sectionsLabel": "Avsnitt i administratörskonsolen",
+    "pendingGuestsBadge": "Väntar på godkännande: {{number}}",
     "sections": {
       "overview": "Översikt",
       "people": "Personer",
       "access": "Åtkomstregler",
       "projects": "Projekt",
-      "settings": "Inställningar",
+      "settings": "Serverinställningar",
       "email": "E-post",
       "log": "Säkerhetslogg",
       "checks": "Anslutningskontroller"
@@ -689,7 +762,9 @@
       "signedOutTitle": "Du är utloggad från den här servern",
       "signedOutDescription": "Logga in igen i Inställningar och öppna sedan administratörskonsolen från serverns kort.",
       "refusedTitle": "Administratörskonsolen är till för administratörer och underhållare",
-      "refusedDescription": "Din roll på den här servern är {{role}}. Fråga en administratör om du behöver hantera den."
+      "refusedDescription": "Din roll på den här servern är {{role}}. Fråga en administratör om du behöver hantera den.",
+      "turnedOffTitle": "Samarbete i realtid är avstängt",
+      "turnedOffDescription": "Slå på det igen i Inställningar under Experiment för att hantera servern här."
     },
     "overview": {
       "loading": "Läser in översikten…",
@@ -697,6 +772,7 @@
         "title": "Hälsa",
         "okLabel": "Allt fungerar",
         "okDescription": "Personer kan logga in och servern kan spara filer.",
+        "problem": "Inloggning med {{provider}} har misslyckats sedan {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logga in",
@@ -705,6 +781,14 @@
           "storageNotWritable": {
             "label": "Servern kan inte spara filer",
             "description": "Kontrollera att serverns datamapp finns och att servern kan skriva till den."
+          },
+          "signInFailing": {
+            "label": "Inloggningen misslyckas",
+            "description": "Det går inte att logga in med ett av serverns inloggningssätt. Listan nedan visar vilket och sedan när."
+          },
+          "signInEmailsPaused": {
+            "label": "Inloggningsmejl är pausade",
+            "description": "Servern har skickat så många inloggningsmejl som den tillåter den här timmen. De börjar skickas igen när timmen är slut."
           },
           "unknown": {
             "label": "Servern rapporterade ett problem",
@@ -723,7 +807,9 @@
         "onlineDetail": "Öppna projekt: {{number}}",
         "started": "Startad",
         "version": "Version",
-        "protocol": "Protokoll {{protocol}}"
+        "protocol": "Protokoll {{protocol}}",
+        "pendingGuests": "Gästinbjudningar som väntar på godkännande: {{number}}",
+        "reviewGuests": "Granska under Personer"
       },
       "storage": {
         "title": "Lagring",
@@ -810,6 +896,8 @@
     "openSettings": "Öppna Inställningar",
     "malformed": "Oleafly kan inte öppna den här länken. Be den som skickade den om en ny.",
     "opening": "Öppnar det delade projektet…",
+    "downloading": "Laddar ned filer: {{done}} av {{total}}",
+    "cancelNamed": "Sluta öppna {{name}}",
     "confirm": {
       "title": "Gå med i det här delade projektet?",
       "body": "När du går med läggs du till i projektet och dess filer kopieras till den här datorn. Gå bara med om du vet vem som skickade länken till dig.",
@@ -845,6 +933,14 @@
     "resolve": "Lös",
     "reopen": "Öppna igen",
     "deleteThread": "Ta bort tråd",
+    "deleteThreadConfirm": {
+      "title": "Ta bort den här tråden?",
+      "description": "Kommentaren och svaren på den tas bort för alla i projektet. Det går inte att ångra."
+    },
+    "deleteMessageConfirm": {
+      "title": "Ta bort den här kommentaren?",
+      "description": "Den tas bort för alla i projektet. Det går inte att ångra."
+    },
     "messageActions": "Fler åtgärder för den här kommentaren",
     "threadActions": "Fler åtgärder för den här tråden",
     "showInEditor": "Visa i redigeraren",
@@ -920,6 +1016,7 @@
     "pending": {
       "title": "Väntande gäster",
       "description": "Projektägare har bjudit in de här personerna som gäster. En gäst ser bara de projekt den är inbjuden till och kan inte dela dem.",
+      "loadFailed": "Oleafly kunde inte läsa in gästinbjudningarna som väntar på godkännande.",
       "invitedBy": "{{inviter}} bjöd in dem till {{project}}",
       "approve": "Godkänn",
       "approveNamed": "Godkänn {{email}}",
@@ -930,6 +1027,9 @@
   "access": {
     "viewerBy": "{{name}} har gjort dig till läsare. Du kan läsa projektet men inte redigera det.",
     "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
+    "viewOnly": "Du kan visa det här delade projektet men inte redigera det.",
+    "unsentReadOnly": "Dina senaste ändringar i {{path}} skickades inte eftersom du nu bara kan visa det här projektet.",
+    "unsentRefused": "Oleafly kunde inte skicka dina senaste ändringar i {{path}}, så de kastades.",
     "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",
     "removed": "Du har tagits bort från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre."
   },

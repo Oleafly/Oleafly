@@ -3,13 +3,12 @@ import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { Spinner } from "@/components/ui/spinner";
 import { i18n, loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
 import {
-  collabJoinProject,
   collabLinkPreview,
   collabOpenLink,
+  collabShareInfo,
   type CollabErrorCode,
   type CollabProjectSummary,
   type CollabServer,
@@ -17,11 +16,12 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "../AddServerDialog";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { collabErrorCode, collabErrorMessage, collabErrorText } from "../errors";
 import { useCollabStore } from "../store";
 import { useAddServerRequest } from "./add-server-request";
 import { linkKey, parseAppLink, sameServer, type AppLink } from "./app-link";
 import { JoinLinkDialog } from "./JoinLinkDialog";
+import { JoinProgress, type JoinTarget } from "./JoinProgress";
 import { openLinkedComment } from "./open-comment";
 
 const DUPLICATE_WINDOW_MS = 5_000;
@@ -29,14 +29,22 @@ const READY_POLL_MS = 250;
 const BUSY_DELAY_MS = 300;
 const MODAL_OPEN = '[aria-modal="true"], [role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
 
-type Notice = { kind: "off" } | { kind: "malformed" } | { kind: "noAccess" } | { kind: "error"; code: CollabErrorCode };
+type Notice =
+  | { kind: "off" }
+  | { kind: "malformed" }
+  | { kind: "noAccess" }
+  | { kind: "error"; code: CollabErrorCode; text: string };
 type Step =
   | { kind: "idle" }
   | { kind: "notice"; notice: Notice }
   | { kind: "server"; url: string; baseline: readonly CollabServer[] }
   | { kind: "join"; server: CollabServer; project: CollabProjectSummary };
 type OpenLink = Extract<AppLink, { kind: "openProject" }>;
-type Reached = { localId: string } | { preview: CollabProjectSummary } | { code: CollabErrorCode };
+type Reached = { localId: string } | { preview: CollabProjectSummary } | { code: CollabErrorCode; text: string };
+
+function refused(error: unknown): { code: CollabErrorCode; text: string } {
+  return { code: collabErrorCode(error), text: collabErrorText(error) };
+}
 
 function modalOpen(): boolean {
   return document.querySelector(MODAL_OPEN) !== null;
@@ -71,24 +79,38 @@ function findServer(address: string): CollabServer | undefined {
   return useCollabStore.getState().servers.find((entry) => sameServer(entry.url, address));
 }
 
+// The library project that is this shared project on this computer, if any.
+async function localCopyOf(server: CollabServer, sharedProjectId: string): Promise<string | null> {
+  const shared = useFilesStore.getState().projects.filter((project) => project.shared);
+  for (const project of shared) {
+    let info: Awaited<ReturnType<typeof collabShareInfo>>;
+    try {
+      info = await collabShareInfo(project.id);
+    } catch {
+      continue;
+    }
+    if (info?.shared_project_id === sharedProjectId && info.server_id === server.server_id) return project.id;
+  }
+  return null;
+}
+
 async function reach(server: CollabServer, link: OpenLink, agreed: boolean): Promise<Reached> {
   if (agreed) {
     try {
       return { localId: await collabOpenLink(link.link) };
     } catch (error) {
-      return { code: collabErrorCode(error) };
+      return refused(error);
     }
   }
-  try {
-    return { localId: await collabJoinProject(server.server_id, link.project) };
-  } catch (error) {
-    const code = collabErrorCode(error);
-    if (code !== "not_found") return { code };
-  }
+  // A link can come from any web page. A project already on this computer
+  // opens without asking, and anything that would download one, even for
+  // someone who is already a member, is shown first for the person to decide.
+  const local = await localCopyOf(server, link.project);
+  if (local !== null) return { localId: local };
   try {
     return { preview: await collabLinkPreview(server.server_id, link.project) };
   } catch (error) {
-    return { code: collabErrorCode(error) };
+    return refused(error);
   }
 }
 
@@ -96,8 +118,8 @@ function openComment(link: OpenLink, localId: string): void {
   if (link.comment) void openLinkedComment(localId, link.comment);
 }
 
-function failureNotice(code: CollabErrorCode): Notice {
-  return code === "not_found" ? { kind: "noAccess" } : { kind: "error", code };
+function failureNotice(code: CollabErrorCode, text = collabErrorMessage(code)): Notice {
+  return code === "not_found" ? { kind: "noAccess" } : { kind: "error", code, text };
 }
 
 async function openLocal(localId: string): Promise<void> {
@@ -125,7 +147,7 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
       case "noAccess":
         return t(($) => $.collab.library.openLink.noAccess);
       case "error":
-        return collabErrorMessage(notice.code);
+        return notice.text;
     }
   })();
   const openSetting = () => {
@@ -168,19 +190,20 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
   );
 }
 
-function OpeningStatus() {
-  const { t } = useTranslation(["collab"]);
+function OpeningStatus({ target, onCancel }: Readonly<{ target: JoinTarget; onCancel: () => void }>) {
   return (
-    <output className="fixed bottom-4 left-1/2 z-[85] flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm text-foreground shadow-lg">
-      <Spinner />
-      {t(($) => $.collab.links.opening)}
-    </output>
+    <div
+      className="fixed bottom-4 left-1/2 z-[85] w-80 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border bg-background px-3 py-2 text-foreground shadow-lg"
+      data-testid="collab-link-opening"
+    >
+      <JoinProgress target={target} name={null} onCancel={onCancel} />
+    </div>
   );
 }
 
 interface FlowUi {
   setStep: (step: Step) => void;
-  setBusy: (busy: boolean) => void;
+  setBusy: (busy: JoinTarget | null) => void;
   setPending: (count: number) => void;
 }
 
@@ -189,6 +212,9 @@ function createFlow(ui: FlowUi) {
   const seen = new Map<string, number>();
   let serverWait: ((server: CollabServer | null) => void) | null = null;
   let joinWait: ((join: boolean) => void) | null = null;
+  // Set when the person stops the download, so whatever answer comes back
+  // for that link is dropped instead of opening the project or an error.
+  let stopped = false;
 
   const show = (notice: Notice) => ui.setStep({ kind: "notice", notice });
 
@@ -218,29 +244,32 @@ function createFlow(ui: FlowUi) {
       ui.setStep({ kind: "server", url, baseline: useCollabStore.getState().servers });
     });
 
-  const whileBusy = async <T,>(work: () => Promise<T>): Promise<T> => {
-    const timer = window.setTimeout(() => ui.setBusy(true), BUSY_DELAY_MS);
+  const whileBusy = async <T,>(target: JoinTarget, work: () => Promise<T>): Promise<T> => {
+    const timer = window.setTimeout(() => ui.setBusy(target), BUSY_DELAY_MS);
     try {
       return await work();
     } finally {
       window.clearTimeout(timer);
-      ui.setBusy(false);
+      ui.setBusy(null);
     }
   };
 
   const openProject = async (link: OpenLink): Promise<void> => {
     const failed = await serversReady();
-    if (failed) return show({ kind: "error", code: failed });
+    if (failed) return show({ kind: "error", code: failed, text: collabErrorMessage(failed) });
     let server = findServer(link.server) ?? (await askForServer(link.server));
     let asked = false;
     let agreed = false;
     while (server) {
       const current: CollabServer = server;
-      const reached = await whileBusy(async () => {
+      stopped = false;
+      const target = { serverId: current.server_id, sharedProjectId: link.project };
+      const reached = await whileBusy(target, async () => {
         const outcome = await reach(current, link, agreed);
-        if ("localId" in outcome) await openLocal(outcome.localId);
+        if ("localId" in outcome && !stopped) await openLocal(outcome.localId);
         return outcome;
       });
+      if (stopped || ("code" in reached && reached.code === "cancelled")) return;
       if ("localId" in reached) {
         openComment(link, reached.localId);
         return;
@@ -255,7 +284,7 @@ function createFlow(ui: FlowUi) {
         server = await askForServer(current.url);
         continue;
       }
-      return show(failureNotice(reached.code));
+      return show(failureNotice(reached.code, reached.text));
     }
   };
 
@@ -299,6 +328,9 @@ function createFlow(ui: FlowUi) {
           seen.set(linkKey(link), Date.now());
         });
     },
+    stop() {
+      stopped = true;
+    },
     serverChanged(servers: readonly CollabServer[], step: Step) {
       if (step.kind !== "server" || servers === step.baseline) return;
       const match = servers.find((entry) => entry.signed_in && sameServer(entry.url, step.url));
@@ -318,7 +350,7 @@ export function LinkIntake({
   const servers = useCollabStore((state) => state.servers);
   const [pending, setPending] = useState(0);
   const [working, setWorking] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<JoinTarget | null>(null);
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const flow = useRef<ReturnType<typeof createFlow> | null>(null);
   flow.current ??= createFlow({ setStep, setBusy, setPending });
@@ -366,7 +398,7 @@ export function LinkIntake({
           onAnswer={(join) => flow.current?.answerJoin(join)}
         />
       ) : null}
-      {busy ? <OpeningStatus /> : null}
+      {busy ? <OpeningStatus target={busy} onCancel={() => flow.current?.stop()} /> : null}
     </>
   );
 }

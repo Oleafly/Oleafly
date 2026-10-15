@@ -3,6 +3,9 @@ import type { DocumentSession } from "@oleafly/editor/document-session";
 
 export interface CollabEditorPort {
   documentSession(path: string): DocumentSession | null;
+  // True while a live document session holds the file's text, without
+  // opening one. Disk writes of such a file only mirror text the window has.
+  holds?(path: string): boolean;
   flush(projectId: string): Promise<void>;
 }
 
@@ -29,6 +32,10 @@ export function installCollabEditorPort(next: CollabEditorPort): () => void {
 
 export function collabDocumentSession(path: string): DocumentSession | null {
   return port?.documentSession(path) ?? null;
+}
+
+export function collabHoldsDocument(path: string): boolean {
+  return port?.holds?.(path) ?? false;
 }
 
 export async function collabCompileBarrier(projectId: string | null): Promise<void> {

@@ -6,7 +6,18 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   presence: vi.fn(),
   clashes: new Map<string, string>(),
+  readyChecks: 0,
 }));
+
+vi.mock("@/components/collab/collab-ready", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/collab/collab-ready")>();
+  return {
+    useCollabReady: () => {
+      mocks.readyChecks += 1;
+      return actual.useCollabReady();
+    },
+  };
+});
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (command: string, args?: unknown) =>
@@ -110,6 +121,23 @@ describe("FileTree collaboration presence", () => {
     expect(await within(refs).findByRole("img", { name: label })).toBeInTheDocument();
     const main = screen.getByRole("treeitem", { name: /^main\.tex/ });
     expect(within(main).queryByRole("img", { name: label })).toBeNull();
+  });
+
+  it("checks whether collaboration is ready once per tree render, not once per row", async () => {
+    const tree = Array.from({ length: 300 }, (_, index) => ({ path: `chapter-${index}.tex`, is_dir: false }));
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_files") return tree;
+      if (command === "project_mutation_generation") return 0;
+      if (command === "project_engine") return LATEX_ENGINE;
+      return undefined;
+    });
+    useFilesStore.setState({ tree, mainDoc: "chapter-0.tex" });
+    mocks.readyChecks = 0;
+    render(<FileTree />);
+    await screen.findByRole("treeitem", { name: /^chapter-0\.tex/ });
+    const rows = screen.getAllByRole("treeitem").length;
+    expect(rows).toBeGreaterThanOrEqual(50);
+    expect(mocks.readyChecks).toBeLessThan(rows / 4);
   });
 
   it("loads no presence while live collaboration is off", async () => {

@@ -16,6 +16,7 @@ import {
   Archive,
   AtSign,
   Ban,
+  CircleArrowUp,
   CloudCheck,
   CloudOff,
   GitMerge,
@@ -23,8 +24,11 @@ import {
   MonitorSmartphone,
   PencilLine,
   RadioTower,
+  Replace,
+  ServerCog,
   Share2,
   SlidersHorizontal,
+  TriangleAlert,
   UserCog,
   UserLock,
   UserMinus,
@@ -45,11 +49,14 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
-import type { CollabProjectMember } from "@/lib/tauri";
+import { collabLeaveProject, type CollabProjectMember } from "@/lib/tauri";
+import { openUpdateWindow } from "@/lib/updater";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
+import { collabErrorText } from "../errors";
+import { InlineAlert } from "../feedback";
 import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
@@ -62,7 +69,7 @@ import { RecentlyDeleted } from "./RecentlyDeleted";
 import { settingActivityText } from "./setting-activity";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
-import { syncState } from "./sync-state";
+import { syncState, type SyncState } from "./sync-state";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -79,12 +86,16 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   signedOut: LogOut,
   suspended: UserLock,
   accessEnded: Ban,
+  clientTooOld: CircleArrowUp,
+  serverTooOld: ServerCog,
+  serverChanged: Replace,
   memberAdded: UserRoundPlus,
   memberRemoved: UserRoundMinus,
   newDevice: MonitorSmartphone,
   renamed: PencilLine,
   mentioned: AtSign,
   setting: SlidersHorizontal,
+  skipped: TriangleAlert,
 };
 
 const TICK_MS = 60_000;
@@ -259,6 +270,12 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.signedOut, { server: entry.server });
     case "suspended":
       return t(($) => $.collab.activity.suspended, { server: entry.server });
+    case "clientTooOld":
+      return t(($) => $.collab.activity.clientTooOld, { server: entry.server });
+    case "serverTooOld":
+      return t(($) => $.collab.activity.serverTooOld, { server: entry.server });
+    case "serverChanged":
+      return t(($) => $.collab.activity.serverChanged, { server: entry.server });
     case "accessEnded":
       return entry.guest
         ? t(($) => $.collab.activity.accessEndedGuest, { server: entry.server })
@@ -281,11 +298,19 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
         : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
     case "setting":
       return settingActivityText(entry.change, entry.name || unknown, t);
+    case "skipped":
+      return entry.name
+        ? t(($) => $.collab.activity.skipped, { name: entry.name })
+        : t(($) => $.collab.activity.skippedUnknown);
   }
 }
 
+function checkForUpdates() {
+  void openUpdateWindow({ manual: true });
+}
+
 const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: ActivityEntry; now: number }>) {
-  const { t } = useTranslation(["collab"]);
+  const { t } = useTranslation(["collab", "shell"]);
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const projectId = useCollabActivity((state) => state.projectId);
@@ -340,6 +365,22 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               onClick={openCollaborationSettings}
             >
               {t(($) => $.collab.activity.signIn)}
+            </Button>
+          ) : null}
+          {entry.kind === "clientTooOld" ? (
+            <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={checkForUpdates}>
+              {t(($) => $.shell.updateChecker.check)}
+            </Button>
+          ) : null}
+          {entry.kind === "serverChanged" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={openCollaborationSettings}
+            >
+              {t(($) => $.collab.share.openSettings)}
             </Button>
           ) : null}
           {entry.kind === "mentioned" && entry.path ? (
@@ -398,6 +439,76 @@ function useSectionOpen(projectId: string | null) {
   return [sectionOpen, setSectionOpen] as const;
 }
 
+// The project's server is no longer in the list, so signing in can't help.
+// Leaving makes the project an ordinary one on this computer.
+function ServerRemovedActions({ projectId }: Readonly<{ projectId: string }>) {
+  const { t } = useTranslation(["collab"]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const keep = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await collabLeaveProject(projectId);
+      await useCollabLiveStore.getState().refreshShare();
+    } catch (error_) {
+      setError(collabErrorText(error_));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground">{t(($) => $.collab.errors.server_removed)}</p>
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={busy} onClick={() => void keep()}>
+          {t(($) => $.collab.section.server.unsent.keep)}
+        </Button>
+        <PopoverClose asChild>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={openCollaborationSettings}>
+            {t(($) => $.collab.share.openSettings)}
+          </Button>
+        </PopoverClose>
+      </div>
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
+    </div>
+  );
+}
+
+// Why syncing stopped for good, and what the person can do about it.
+function EndedDetails({ state, server }: Readonly<{ state: SyncState; server: string }>) {
+  const { t } = useTranslation(["collab", "shell"]);
+  const button = "h-7 text-xs";
+  if (state === "clientTooOld") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.clientTooOld, { server })}</p>
+        <PopoverClose asChild>
+          <Button type="button" variant="outline" size="sm" className={button} onClick={checkForUpdates}>
+            {t(($) => $.shell.updateChecker.check)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
+  }
+  if (state === "serverTooOld") {
+    return <p className="text-muted-foreground">{t(($) => $.collab.activity.serverTooOld, { server })}</p>;
+  }
+  if (state === "serverChanged") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.serverChanged, { server })}</p>
+        <PopoverClose asChild>
+          <Button type="button" variant="outline" size="sm" className={button} onClick={openCollaborationSettings}>
+            {t(($) => $.collab.share.openSettings)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
+  }
+  return null;
+}
+
 function SyncStatus() {
   const { t } = useTranslation(["collab"]);
   const live = useCollabLiveStore(
@@ -434,11 +545,15 @@ function SyncStatus() {
             </Button>
           </PopoverClose>
         ) : null}
+        {state === "serverRemoved" && live.share ? <ServerRemovedActions projectId={live.share.project_id} /> : null}
+        <EndedDetails state={state} server={live.share?.server_name ?? ""} />
         {live.share ? (
           <div className="space-y-0.5 border-t pt-2 text-muted-foreground">
-            <p className="break-words font-medium text-foreground">
-              {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
-            </p>
+            {live.share.server_name ? (
+              <p className="break-words font-medium text-foreground">
+                {t(($) => $.collab.manage.sharedOn, { server: live.share.server_name })}
+              </p>
+            ) : null}
             <p className="select-text break-all">{live.share.server_url}</p>
             {role ? <p>{t(($) => $.collab.manage.yourRole, { role: t(($) => $.collab.projectRoles[role]) })}</p> : null}
             <p className="tabular-nums">{t(($) => $.collab.pane.waiting, { number: formatNumber(live.pending) })}</p>
@@ -446,6 +561,38 @@ function SyncStatus() {
         ) : null}
       </div>
     </Popover>
+  );
+}
+
+const UNWRITTEN_REASONS = ["locked", "read_only", "no_space", "not_downloaded", "other"] as const;
+
+// Files the live project couldn't write to this computer, next to what is
+// still waiting to upload, each with the reason in words.
+function UnwrittenFiles() {
+  const { t } = useTranslation(["collab"]);
+  const unwritten = useCollabLiveStore((state) => state.unwritten);
+  if (unwritten.length === 0) return null;
+  return (
+    <div
+      role="alert"
+      className="mx-2 mt-2 shrink-0 select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive"
+      data-testid="collab-unwritten"
+    >
+      <p className="font-medium">{t(($) => $.collab.pane.unwritten.title)}</p>
+      <ul className="mt-1 space-y-0.5">
+        {unwritten.map((file) => {
+          const reason = (UNWRITTEN_REASONS as readonly string[]).includes(file.reason) ? file.reason : "other";
+          return (
+            <li key={file.path} className="break-words">
+              {t(($) => $.collab.pane.unwritten.reasons[reason as (typeof UNWRITTEN_REASONS)[number]], {
+                path: file.path,
+              })}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1">{t(($) => $.collab.pane.unwritten.hint)}</p>
+    </div>
   );
 }
 
@@ -568,6 +715,7 @@ export function CollabPane() {
           ) : null}
         </span>
       </SidebarPanelHeader>
+      <UnwrittenFiles />
       <div className="min-h-0 flex-1">
         <SidebarSectionStack
           groupId={COLLAB_GROUP_ID}

@@ -21,6 +21,10 @@ describe("syncState", () => {
   it.each<[CollabLiveEndedReason, (typeof SYNC_STATES)[number]]>([
     ["account_suspended", "suspended"],
     ["access_ended", "accessEnded"],
+    ["server_removed", "serverRemoved"],
+    ["client_too_old", "clientTooOld"],
+    ["server_too_old", "serverTooOld"],
+    ["server_changed", "serverChanged"],
   ])("reads a session that ended with %s as %s", (reason, expected) => {
     const status: CollabLiveSyncState = { state: "ended", reason };
     expect(syncState(status, 0)).toBe(expected);

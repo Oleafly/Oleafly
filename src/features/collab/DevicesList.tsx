@@ -7,7 +7,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { formatDate, formatDateTime } from "@/lib/intl";
 import type { CollabDevice } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 
 const PLATFORM_NAMES: Readonly<Record<string, string>> = {
@@ -50,7 +50,7 @@ export function DevicesList({
         if (generation.current === current) setDevices(next);
       },
       (error: unknown) => {
-        if (generation.current === current) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (generation.current === current) setLoadError(collabErrorText(error));
       },
     );
   }, []);
@@ -70,7 +70,7 @@ export function DevicesList({
       await signOut(device.device_id);
       setDevices((current) => current?.filter((item) => item.device_id !== device.device_id) ?? null);
     } catch (error) {
-      setActionError(collabErrorMessage(collabErrorCode(error)));
+      setActionError(collabErrorText(error));
     } finally {
       setBusyId(null);
     }

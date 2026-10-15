@@ -76,6 +76,41 @@ describe("LiveSessions", () => {
     expect(sessions.documentSession("notes.txt")).toBeNull();
   });
 
+  it("hands back typing a failed reopen left unconfirmed, as edited", async () => {
+    let opens = 0;
+    const detached = vi.fn();
+    const sessions = new LiveSessions({
+      transport: {
+        open: async () => (opens++ === 0 ? { file_id: "main", rev: 0, text: "abc", session: 1 } : null),
+        change: () => Promise.reject(new Error("the file is not open")),
+        close: vi.fn(),
+      },
+      readOnly: () => false,
+      initialText: () => "abc",
+      mirror: vi.fn(),
+      detached,
+    });
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    await flush();
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc!", true);
+  });
+
+  it("passes on that typing had to be dropped, naming the file", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    let viewer = false;
+    const sessions = new LiveSessions(options(channel, { readOnly: () => viewer, discarded }));
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    viewer = true;
+    channel.refuseChanges = true;
+    channel.drain();
+    expect(discarded).toHaveBeenCalledExactlyOnceWith("main.tex", "read_only");
+  });
+
   it("waits for confirmed changes before writing them out", async () => {
     const channel = new FakeChannel("abc");
     const sessions = new LiveSessions(options(channel));
@@ -138,6 +173,73 @@ describe("LiveSessions", () => {
     expect(session?.phase).toBe("closed");
     const fresh = sessions.documentSession("sections/results.tex");
     expect(fresh).not.toBe(session);
+  });
+
+  it("closes a file's document when its tab closes, once its typing reached the shared project", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel, { shown: () => false }));
+    const quiet = sessions.documentSession("intro.tex");
+    const typed = sessions.documentSession("results.tex");
+    const kept = sessions.documentSession("main.tex");
+    await flush();
+    typed?.applyLocal([{ from: 3, to: 3, insert: "!" }], typed.version());
+    sessions.release("intro.tex");
+    sessions.release("results.tex");
+    await flush();
+    expect(channel.opens).toHaveLength(3);
+    expect(channel.closes).toEqual([channel.opens[0]]);
+    expect(quiet?.phase).toBe("closed");
+    expect(typed?.phase).toBe("open");
+    channel.drain();
+    await flush();
+    expect(channel.text).toBe("abc!");
+    expect(channel.closes).toEqual([channel.opens[0], channel.opens[1]]);
+    expect(kept?.phase).toBe("open");
+    expect(sessions.holds("intro.tex")).toBe(false);
+    const fresh = sessions.documentSession("intro.tex");
+    expect(fresh).not.toBe(quiet);
+    expect(fresh).not.toBeNull();
+  });
+
+  it("keeps the document of a file whose tab opened again before its typing was confirmed", async () => {
+    const channel = new FakeChannel("abc");
+    let shown = false;
+    const sessions = new LiveSessions(options(channel, { shown: () => shown }));
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    sessions.release("main.tex");
+    shown = true;
+    channel.drain();
+    await flush();
+    expect(channel.closes).toEqual([]);
+    expect(sessions.documentSession("main.tex")).toBe(session);
+  });
+
+  it("holds only the files it has a shared document for, without opening one to check", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel));
+    expect(sessions.holds("main.tex")).toBe(false);
+    sessions.documentSession("main.tex");
+    expect(sessions.holds("main.tex")).toBe(true);
+    expect(sessions.holds("intro.tex")).toBe(false);
+    await flush();
+    expect(channel.opens).toHaveLength(1);
+    sessions.close();
+    expect(sessions.holds("main.tex")).toBe(false);
+  });
+
+  it("stops holding a file that turns out not to be shared", async () => {
+    const sessions = new LiveSessions({
+      transport: { open: async () => null, change: vi.fn(), close: vi.fn() },
+      readOnly: () => false,
+      initialText: () => "local",
+      mirror: vi.fn(),
+      detached: vi.fn(),
+    });
+    sessions.documentSession("notes.txt");
+    await flush();
+    expect(sessions.holds("notes.txt")).toBe(false);
   });
 
   it("closes every file and opens nothing more once closed", async () => {
@@ -206,7 +308,7 @@ describe("LiveSessions with files kept local", () => {
   it("does not hand back a deleted file whose document then turns out not to be shared", async () => {
     let fail: (error: Error) => void = () => {};
     const open = vi.fn(async (): Promise<CollabDocOpened | null> => null);
-    open.mockResolvedValueOnce({ file_id: "notes", rev: 0, text: "abc" });
+    open.mockResolvedValueOnce({ file_id: "notes", rev: 0, text: "abc", session: 1 });
     const detached = vi.fn();
     const sessions = new LiveSessions({
       transport: { open, change: () => new Promise<void>((_, reject) => (fail = reject)), close: vi.fn() },

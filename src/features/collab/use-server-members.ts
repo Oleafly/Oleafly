@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collabAdminMembers, type CollabMember } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import type { MembersUpdate } from "./MembersTab";
 
 export interface ServerMembers {
@@ -25,7 +25,7 @@ export function useServerMembers(serverId: string): ServerMembers {
         if (active) setMembers(next);
       },
       (error: unknown) => {
-        if (active) setLoadError(collabErrorMessage(collabErrorCode(error)));
+        if (active) setLoadError(collabErrorText(error));
       },
     );
     return () => {

@@ -23,6 +23,13 @@ describe("collaboration translations", () => {
     expect([...catalog(locale, "collab").keys()]).toEqual(english);
   });
 
+  it.each(others)("%s names the people list and server settings the same in Settings and the console", (locale) => {
+    const keys = catalog(locale, "collab");
+    expect(keys.get("admin.tabs.members")).toBe(keys.get("console.sections.people"));
+    expect(keys.get("admin.tabs.settings")).toBe(keys.get("console.sections.settings"));
+    expect(keys.get("activity.suspended")).toBe(keys.get("section.server.pausedHint"));
+  });
+
   it.each(others)("%s has the four new shell keys", (locale) => {
     const shell = catalog(locale, "shell");
     for (const key of SHELL_KEYS) expect(shell.get(key), key).toBeTruthy();

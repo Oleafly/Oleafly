@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
+import { cn } from "@/lib/utils";
 import {
   collabAdminArchiveProject,
   collabAdminProjects,
@@ -24,7 +25,8 @@ import {
   type CollabProjectStatus,
   type CollabSortOrder,
 } from "@/lib/tauri";
-import { collabErrorCode, collabErrorMessage } from "../errors";
+import { useBusyRows } from "../busy-rows";
+import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson } from "../people";
 import { serverRoleAllows, type ServerRole } from "../roles";
@@ -51,15 +53,28 @@ interface Sorting {
   readonly order: CollabSortOrder;
 }
 
+interface Load {
+  readonly serverId: string;
+  readonly query: CollabAdminProjectsQuery;
+  readonly request: number;
+}
+
+// Each answer keeps the request it answers, so a later page is only added to
+// the list it continues, and a list for an older search reads as loading.
 type ListState =
   | { readonly status: "loading" }
-  | { readonly status: "failed"; readonly message: string }
+  | { readonly status: "failed"; readonly load: Load; readonly message: string }
   | {
       readonly status: "ready";
+      readonly load: Load;
       readonly items: CollabAdminProject[];
       readonly next: string | null;
       readonly total: number;
     };
+
+type MoreState =
+  | { readonly status: "loading"; readonly load: Load }
+  | { readonly status: "failed"; readonly load: Load; readonly message: string };
 
 function ariaSort(sorting: Sorting, column: Column): "ascending" | "descending" | "none" {
   if (sorting.column !== column) return "none";
@@ -96,9 +111,8 @@ export function ProjectsSection({
   const [sorting, setSorting] = useState<Sorting>({ column: "activity", order: "desc" });
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [request, setRequest] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [moreError, setMoreError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [more, setMore] = useState<MoreState | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [confirming, setConfirming] = useState<CollabAdminProject | null>(null);
 
@@ -114,17 +128,16 @@ export function ProjectsSection({
     [searched, filter, sorting],
   );
 
-  const load = useMemo(() => ({ serverId, query, request }), [serverId, query, request]);
+  const load = useMemo<Load>(() => ({ serverId, query, request }), [serverId, query, request]);
 
   useEffect(() => {
     let active = true;
-    setMoreError(null);
     collabAdminProjects(load.serverId, load.query).then(
       (page) => {
-        if (active) setList({ status: "ready", items: page.items, next: page.next_cursor, total: page.total });
+        if (active) setList({ status: "ready", load, items: page.items, next: page.next_cursor, total: page.total });
       },
       (error: unknown) => {
-        if (active) setList({ status: "failed", message: collabErrorMessage(collabErrorCode(error)) });
+        if (active) setList({ status: "failed", load, message: collabErrorText(error) });
       },
     );
     return () => {
@@ -132,21 +145,28 @@ export function ProjectsSection({
     };
   }, [load]);
 
+  // The list on screen answers an earlier search, filter or sort.
+  const refreshing = list.status === "ready" && list.load !== load;
+  const loadingMore = list.status === "ready" && more?.status === "loading" && more.load === list.load;
+  const moreError =
+    list.status === "ready" && more?.status === "failed" && more.load === list.load ? more.message : null;
+
   const loadMore = async () => {
     if (list.status !== "ready" || !list.next) return;
-    setLoadingMore(true);
-    setMoreError(null);
+    const from = list;
+    setMore({ status: "loading", load: from.load });
     try {
-      const page = await collabAdminProjects(serverId, { ...query, cursor: list.next });
+      const page = await collabAdminProjects(from.load.serverId, { ...from.load.query, cursor: from.next });
       setList((current) =>
-        current.status === "ready"
-          ? { status: "ready", items: [...current.items, ...page.items], next: page.next_cursor, total: page.total }
+        current.status === "ready" && current.load === from.load && current.next === from.next
+          ? { ...current, items: [...current.items, ...page.items], next: page.next_cursor, total: page.total }
           : current,
       );
+      setMore((current) => (current?.load === from.load ? null : current));
     } catch (error) {
-      setMoreError(collabErrorMessage(collabErrorCode(error)));
-    } finally {
-      setLoadingMore(false);
+      setMore((current) =>
+        current?.load === from.load ? { status: "failed", load: from.load, message: collabErrorText(error) } : current,
+      );
     }
   };
 
@@ -160,21 +180,19 @@ export function ProjectsSection({
         : current,
     );
 
-  const change = async (project: CollabAdminProject, archive: boolean) => {
+  const change = (project: CollabAdminProject, archive: boolean) => {
     setConfirming(null);
-    setBusyId(project.project_id);
-    setRowError(null);
-    try {
-      replace(
-        archive
-          ? await collabAdminArchiveProject(serverId, project.project_id)
-          : await collabAdminUnarchiveProject(serverId, project.project_id),
-      );
-    } catch (error) {
-      setRowError({ id: project.project_id, message: collabErrorMessage(collabErrorCode(error)) });
-    } finally {
-      setBusyId(null);
-    }
+    const id = project.project_id;
+    return rows.run(id, async () => {
+      setRowError((current) => (current?.id === id ? null : current));
+      try {
+        replace(
+          archive ? await collabAdminArchiveProject(serverId, id) : await collabAdminUnarchiveProject(serverId, id),
+        );
+      } catch (error) {
+        setRowError({ id, message: collabErrorText(error) });
+      }
+    });
   };
 
   const sortBy = (column: Column) =>
@@ -187,7 +205,7 @@ export function ProjectsSection({
   const columnCount = columns.length + (canArchive ? 1 : 0);
 
   const renderAction = (project: CollabAdminProject) => {
-    const busy = busyId === project.project_id;
+    const busy = rows.busy.has(project.project_id);
     if (project.status === "archived") {
       return (
         <Button
@@ -249,7 +267,7 @@ export function ProjectsSection({
   );
 
   const renderList = () => {
-    if (list.status === "loading") {
+    if (list.status === "loading" || (list.status === "failed" && list.load !== load)) {
       return <LoadingState size="compact" label={t(($) => $.collab.console.projects.loading)} />;
     }
     if (list.status === "failed") {
@@ -273,7 +291,10 @@ export function ProjectsSection({
     }
     return (
       <>
-        <Table containerClassName="rounded-lg border">
+        <Table
+          containerClassName={cn("rounded-lg border", refreshing && "opacity-60")}
+          aria-busy={refreshing || undefined}
+        >
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
@@ -321,7 +342,13 @@ export function ProjectsSection({
             })}
           </p>
           {list.next ? (
-            <Button type="button" variant="outline" size="sm" disabled={loadingMore} onClick={() => void loadMore()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loadingMore || refreshing}
+              onClick={() => void loadMore()}
+            >
               {loadingMore ? <Spinner /> : null}
               {t(($) => $.collab.console.projects.loadMore)}
             </Button>
@@ -363,6 +390,7 @@ export function ProjectsSection({
             </Button>
           ))}
         </ButtonGroup>
+        {refreshing ? <LoadingState size="compact" label={t(($) => $.collab.console.projects.loading)} /> : null}
       </div>
       {renderList()}
       <ConfirmationDialog

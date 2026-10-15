@@ -16,6 +16,11 @@ export interface DocumentSession {
   text(): string;
   applyLocal(edits: Utf16Edit[], baseVersion: number): void;
   subscribe(listener: (change: RemoteChange) => void): () => void;
+  // While an input method is composing, local edits are kept but not sent,
+  // so others don't see each intermediate candidate. Releasing sends them as
+  // one change. Sessions that send nothing anywhere can leave these out.
+  holdLocal?(): void;
+  releaseLocal?(): void;
 }
 
 function splitsSurrogatePair(text: string, position: number): boolean {

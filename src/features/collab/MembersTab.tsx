@@ -6,6 +6,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
+import { formatNumber } from "@/lib/intl";
 import {
   collabAdminMemberDevices,
   collabAdminPatchMember,
@@ -15,8 +16,9 @@ import {
   type CollabMemberPatch,
   type CollabMemberStatus,
 } from "@/lib/tauri";
+import { useBusyRows } from "./busy-rows";
 import { DevicesList } from "./DevicesList";
-import { collabErrorCode, collabErrorMessage } from "./errors";
+import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { GuestBadge } from "./GuestBadge";
 import { PendingGuests } from "./PendingGuests";
@@ -25,6 +27,21 @@ import { RolePicker } from "./RolePicker";
 import { canChangeMember, isStaffRole, serverRoleAllows, toServerRole, type ServerRole } from "./roles";
 
 export type MembersUpdate = (update: (members: CollabMember[]) => CollabMember[]) => void;
+
+// What suspending or removing someone means for the shared projects they own.
+function OwnedProjects({ member }: Readonly<{ member: CollabMember }>) {
+  const { t } = useTranslation(["collab"]);
+  const owned = member.owned_projects ?? 0;
+  if (owned <= 0) return null;
+  const name = member.account.display_name;
+  return (
+    <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-foreground" data-testid="collab-owned-projects">
+      {owned === 1
+        ? t(($) => $.collab.admin.members.ownedOne, { name })
+        : t(($) => $.collab.admin.members.ownedMany, { name, number: formatNumber(owned) })}
+    </p>
+  );
+}
 
 const STATUS_BADGE = {
   active: "success",
@@ -66,23 +83,26 @@ export function MembersTab({
   onAddPeople?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabMember | null>(null);
+  // Suspending someone who owns shared projects waits for a yes.
+  const [suspending, setSuspending] = useState<CollabMember | null>(null);
+  // A change to your own role takes your admin rights away, so it waits for a yes.
+  const [stepping, setStepping] = useState<{ member: CollabMember; role: ServerRole } | null>(null);
   const [devicesFor, setDevicesFor] = useState<string | null>(null);
   const canSeeDevices = serverRoleAllows(actor, "signOutAnyDevice");
 
-  const run = async (member: CollabMember, action: () => Promise<void>) => {
+  const run = (member: CollabMember, action: () => Promise<void>) => {
     const accountId = member.account.account_id;
-    setBusyId(accountId);
-    setRowError(null);
-    try {
-      await action();
-    } catch (error) {
-      setRowError({ accountId, message: collabErrorMessage(collabErrorCode(error), "members") });
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(accountId, async () => {
+      setRowError((current) => (current?.accountId === accountId ? null : current));
+      try {
+        await action();
+      } catch (error) {
+        setRowError({ accountId, message: collabErrorText(error, "members") });
+      }
+    });
   };
 
   const patch = (member: CollabMember, change: CollabMemberPatch) =>
@@ -108,7 +128,7 @@ export function MembersTab({
     const isSelf = accountId === selfId;
     const removed = member.status === "removed";
     const suspended = member.status === "suspended";
-    const busy = busyId === accountId;
+    const busy = rows.busy.has(accountId);
     const editable = !removed && role !== null && canChangeMember(actor, role);
     const devicesShown =
       canSeeDevices &&
@@ -139,12 +159,14 @@ export function MembersTab({
             disabled={busy}
             label={t(($) => $.collab.admin.members.roleLabel, { name })}
             onChange={(next) => {
-              if (next !== role) void patch(member, { role: next });
+              if (next === role) return;
+              if (isSelf) setStepping({ member, role: next });
+              else void patch(member, { role: next });
             }}
           />
         ) : (
           <Badge variant="muted" size="sm">
-            {role === null ? member.account.server_role : t(($) => $.collab.roles[role])}
+            {role === null ? t(($) => $.collab.roles.unknown) : t(($) => $.collab.roles[role])}
           </Badge>
         )}
         {devicesShown ? (
@@ -164,7 +186,10 @@ export function MembersTab({
             <SuspendButton
               suspended={suspended}
               disabled={busy}
-              onToggle={() => void patch(member, { status: suspended ? "active" : "suspended" })}
+              onToggle={() => {
+                if (!suspended && (member.owned_projects ?? 0) > 0) setSuspending(member);
+                else void patch(member, { status: suspended ? "active" : "suspended" });
+              }}
             />
             <Button
               type="button"
@@ -218,7 +243,7 @@ export function MembersTab({
 
   return (
     <div className="space-y-2">
-      {serverRoleAllows(actor, "approveGuests") ? <PendingGuests serverId={serverId} /> : null}
+      {serverRoleAllows(actor, "approveGuests") && !loadError ? <PendingGuests serverId={serverId} /> : null}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <p>{t(($) => $.collab.admin.members.description)}</p>
@@ -242,6 +267,38 @@ export function MembersTab({
           if (removing) void remove(removing);
         }}
         onCancel={() => setRemoving(null)}
+      >
+        {removing ? <OwnedProjects member={removing} /> : null}
+      </ConfirmationDialog>
+      <ConfirmationDialog
+        open={suspending !== null}
+        title={t(($) => $.collab.admin.members.suspendConfirm.title, { name: suspending?.account.display_name ?? "" })}
+        description={t(($) => $.collab.admin.members.suspendConfirm.description, {
+          name: suspending?.account.display_name ?? "",
+        })}
+        confirmLabel={t(($) => $.collab.admin.members.suspendConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (suspending) void patch(suspending, { status: "suspended" });
+          setSuspending(null);
+        }}
+        onCancel={() => setSuspending(null)}
+      >
+        {suspending ? <OwnedProjects member={suspending} /> : null}
+      </ConfirmationDialog>
+      <ConfirmationDialog
+        open={stepping !== null}
+        title={t(($) => $.collab.admin.members.selfRoleConfirm.title, {
+          role: stepping ? t(($) => $.collab.roles[stepping.role]) : "",
+        })}
+        description={t(($) => $.collab.admin.members.selfRoleConfirm.description)}
+        confirmLabel={t(($) => $.collab.admin.members.selfRoleConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (stepping) void patch(stepping.member, { role: stepping.role });
+          setStepping(null);
+        }}
+        onCancel={() => setStepping(null)}
       />
     </div>
   );

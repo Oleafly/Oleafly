@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   collabServerSignOut: vi.fn(),
   collabServerRemove: vi.fn(),
   collabServerRefresh: vi.fn(),
+  onCollabServerChanged: vi.fn(),
 }));
 
 const copies = vi.hoisted(() => ({ followLocalCopies: vi.fn() }));
@@ -20,15 +21,50 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 
 vi.mock("./live/removed-notices", () => copies);
 
-const DONE = { signed_out: true, unsent: [] };
+const DONE = { signed_out: true, unsent: [], detached: [] };
 const PAPER = { project_id: "r3-paper", name: "R3 Paper", changes: 4 };
 
-import { useCollabStore } from "./store";
+import { useCollabStore, watchServers } from "./store";
 
 beforeEach(() => {
   vi.clearAllMocks();
   copies.followLocalCopies.mockResolvedValue(undefined);
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {} });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {}, detached: null });
+});
+
+describe("watching for server changes", () => {
+  it("reloads a list that was loaded whenever a server changes, with one listener for every watcher", async () => {
+    let changed: () => void = () => undefined;
+    const unlisten = vi.fn();
+    mocks.onCollabServerChanged.mockImplementation(async (handler: () => void) => {
+      changed = handler;
+      return unlisten;
+    });
+    const first = watchServers();
+    const second = watchServers();
+    expect(mocks.onCollabServerChanged).toHaveBeenCalledTimes(1);
+    changed();
+    expect(mocks.collabServersList).not.toHaveBeenCalled();
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServersList.mockResolvedValue([signedOutServer()]);
+    changed();
+    await vi.waitFor(() => expect(useCollabStore.getState().servers[0]?.signed_in).toBe(false));
+    first();
+    first();
+    expect(unlisten).not.toHaveBeenCalled();
+    second();
+    await vi.waitFor(() => expect(unlisten).toHaveBeenCalledTimes(1));
+  });
+
+  it("lets go of a listener that starts after the last watcher left", async () => {
+    let started: (unlisten: () => void) => void = () => undefined;
+    mocks.onCollabServerChanged.mockReturnValue(new Promise((resolve) => (started = resolve)));
+    const stop = watchServers();
+    stop();
+    const unlisten = vi.fn();
+    started(unlisten);
+    await vi.waitFor(() => expect(unlisten).toHaveBeenCalledTimes(1));
+  });
 });
 
 describe("collab store", () => {
@@ -126,6 +162,27 @@ describe("collab store", () => {
     expect(useCollabStore.getState().servers).toEqual([]);
   });
 
+  it("names the shared projects a removed server left as ordinary projects, until dismissed", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    const thesis = { project_id: "thesis", name: "Thesis" };
+    mocks.collabServerRemove.mockResolvedValueOnce({ ...DONE, detached: [thesis] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    expect(useCollabStore.getState().detached).toEqual({ server: server().name, projects: [thesis] });
+    expect(copies.followLocalCopies).toHaveBeenCalledWith(["thesis"]);
+    useCollabStore.getState().dismissDetached();
+    expect(useCollabStore.getState().detached).toBeNull();
+  });
+
+  it("names nothing after a sign-out, or after a remove that left no projects", async () => {
+    useCollabStore.setState({ servers: [server()], status: "ready" });
+    mocks.collabServerSignOut.mockResolvedValueOnce(DONE);
+    await useCollabStore.getState().signOut(SERVER_ID);
+    mocks.collabServerRemove.mockResolvedValueOnce({ signed_out: true, unsent: [] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    expect(useCollabStore.getState().detached).toBeNull();
+    expect(copies.followLocalCopies).not.toHaveBeenCalled();
+  });
+
   it("asks before signing out while a shared project still has changes the server lacks", async () => {
     useCollabStore.setState({ servers: [server()], status: "ready" });
     mocks.collabServerSignOut.mockResolvedValueOnce({ signed_out: false, unsent: [PAPER] });
@@ -213,5 +270,36 @@ describe("collab store", () => {
     await useCollabStore.getState().refreshAccounts();
     expect(useCollabStore.getState().servers[0]?.account?.server_role).toBe("maintainer");
     expect(useCollabStore.getState().servers).toHaveLength(2);
+  });
+
+  it("keeps a server signed out when its refresh, started before the sign-out, answers later", async () => {
+    const other = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), other], status: "ready" });
+    const slow = deferred<CollabServer>();
+    mocks.collabServerRefresh.mockImplementation((serverId: string) =>
+      serverId === SERVER_ID ? slow.promise : Promise.resolve(other),
+    );
+    const refreshing = useCollabStore.getState().refreshAccounts();
+    mocks.collabServerSignOut.mockResolvedValueOnce(DONE);
+    await useCollabStore.getState().signOut(SERVER_ID);
+    expect(useCollabStore.getState().servers[0]?.signed_in).toBe(false);
+
+    slow.resolve(server());
+    await refreshing;
+
+    expect(useCollabStore.getState().servers[0]).toMatchObject({ server_id: SERVER_ID, signed_in: false, account: null });
+  });
+
+  it("applies a quick refresh without waiting for a slow one", async () => {
+    const other = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), other], status: "ready" });
+    const slow = deferred<CollabServer>();
+    mocks.collabServerRefresh.mockImplementation((serverId: string) =>
+      serverId === SERVER_ID ? slow.promise : Promise.resolve({ ...other, name: "Jones Lab renamed" }),
+    );
+    const refreshing = useCollabStore.getState().refreshAccounts();
+    await vi.waitFor(() => expect(useCollabStore.getState().servers[1]?.name).toBe("Jones Lab renamed"));
+    slow.resolve(server());
+    await refreshing;
   });
 });

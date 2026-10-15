@@ -5,6 +5,7 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   flashRemoteCursor,
+  labelLightness,
   REMOTE_CURSOR_STYLES,
   REMOTE_FLASH_MS,
   remoteCursors,
@@ -158,6 +159,44 @@ describe("remote cursors", () => {
     await tick();
     expect(flashRemoteCursor(view, "device-nobody")).toBe(false);
     expect(view.contentDOM.querySelector(".cm-remote-flash")).toBeNull();
+  });
+});
+
+// Worked out here from the WCAG definitions, separately from the code under test.
+function whiteContrast(hue: number, saturation: number, lightness: number): number {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const a = s * Math.min(l, 1 - l);
+  const part = (n: number) => {
+    const k = (n + hue / 30) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  const linear = (value: number) => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * linear(part(0)) + 0.7152 * linear(part(8)) + 0.0722 * linear(part(4));
+  return 1.05 / (luminance + 0.05);
+}
+
+describe("remote cursor label contrast", () => {
+  it("keeps white name text at 4.5:1 or better on every peer colour", () => {
+    for (let hue = 0; hue < 360; hue += 1) {
+      expect(whiteContrast(hue, 70, labelLightness(hue)), `hue ${hue}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("darkens only the colours that need it, so most labels match their caret", () => {
+    expect(whiteContrast(60, 70, 45)).toBeLessThan(4.5);
+    expect(labelLightness(60)).toBeLessThan(45);
+    for (const hue of [0, 220, 240, 270, 300]) expect(labelLightness(hue), `hue ${hue}`).toBe(45);
+  });
+
+  it("gives each label its shade and draws it from that shade", async () => {
+    const source = new Source();
+    source.list = [{ id: "device-ada", name: "Ada", hue: 60, head: 2, anchor: 2 }];
+    const view = editor(source);
+    await tick();
+    const label = view.contentDOM.querySelector(".cm-remote-caret-label") as HTMLElement;
+    expect(label.style.getPropertyValue("--remote-label-lightness")).toBe(`${labelLightness(60)}%`);
+    expect(REMOTE_CURSOR_STYLES[".cm-remote-caret-label"].backgroundColor).toContain("var(--remote-label-lightness");
   });
 });
 

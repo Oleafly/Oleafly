@@ -9,7 +9,7 @@ import { Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
 import { editBackgroundDocument, getEditorView, waitForEditorDocument } from "./controller";
-import { LocalDocumentSession, type DocumentSession } from "./document-session";
+import { LocalDocumentSession, type DocumentSession, type RemoteChange, type Utf16Edit } from "./document-session";
 import { englishEditorMessage } from "./test-messages";
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
@@ -95,6 +95,59 @@ function typeAt(pos: number, text: string): void {
   });
 }
 
+// Takes remote text exactly as sent, carriage returns included, the way a
+// shared document fed by an older client can. Local edits must be LF.
+class UncheckedRemoteSession implements DocumentSession {
+  path: string;
+  readonly readOnly = false;
+  private content: string;
+  private revision = 0;
+  private readonly listeners = new Set<(change: RemoteChange) => void>();
+
+  constructor(path: string, text: string) {
+    this.path = path;
+    this.content = text;
+  }
+
+  version(): number {
+    return this.revision;
+  }
+
+  text(): string {
+    return this.content;
+  }
+
+  applyLocal(edits: Utf16Edit[], baseVersion: number): void {
+    if (baseVersion !== this.revision) throw new Error("stale edit");
+    if (edits.some((edit) => edit.insert.includes("\r"))) throw new RangeError("Edits must use LF line breaks.");
+    this.content = applied(this.content, edits);
+    this.revision += 1;
+  }
+
+  pushRemote(edits: Utf16Edit[]): void {
+    this.content = applied(this.content, edits);
+    this.revision += 1;
+    for (const listener of Array.from(this.listeners)) listener({ edits, version: this.revision });
+  }
+
+  subscribe(listener: (change: RemoteChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+}
+
+function applied(text: string, edits: readonly Utf16Edit[]): string {
+  let result = "";
+  let position = 0;
+  for (const edit of edits) {
+    result += text.slice(position, edit.from) + edit.insert;
+    position = edit.to;
+  }
+  return result + text.slice(position);
+}
+
 function sessionsOf(...sessions: DocumentSession[]): Map<string, DocumentSession> {
   return new Map(sessions.map((session) => [session.path, session] as const));
 }
@@ -112,6 +165,64 @@ function listeners(session: LocalDocumentSession): () => number {
   });
   return () => live;
 }
+
+// Records what reaches the session and in what state, like a shared session
+// that holds typing while an input method composes.
+class HoldingSession extends LocalDocumentSession {
+  readonly calls: string[] = [];
+  holding = false;
+
+  override applyLocal(edits: Utf16Edit[], baseVersion: number): void {
+    super.applyLocal(edits, baseVersion);
+    this.calls.push(`${this.holding ? "held" : "sent"} ${this.text()}`);
+  }
+
+  holdLocal(): void {
+    this.holding = true;
+  }
+
+  releaseLocal(): void {
+    if (this.holding) this.calls.push(`release ${this.text()}`);
+    this.holding = false;
+  }
+}
+
+describe("an editor composing with an input method", () => {
+  it("holds the session's typing while composing and releases it once, with the committed text", async () => {
+    const session = new HoldingSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    let composing = true;
+    Object.defineProperty(view(), "compositionStarted", { configurable: true, get: () => composing });
+    await act(async () => view().dispatch({ changes: { from: 2, insert: "n" } }));
+    await act(async () => view().dispatch({ changes: { from: 2, to: 3, insert: "ni" } }));
+    await act(async () => view().dispatch({ changes: { from: 2, to: 4, insert: "nihao" } }));
+    expect(session.calls).toEqual(["held abn", "held abni", "held abnihao"]);
+    composing = false;
+    await act(async () => view().dispatch({ changes: { from: 2, to: 7, insert: "你好" } }));
+    expect(session.calls).toEqual(["held abn", "held abni", "held abnihao", "held ab你好", "release ab你好"]);
+    await act(async () => view().dispatch({ changes: { from: 4, insert: "!" } }));
+    expect(session.calls.at(-1)).toBe("sent ab你好!");
+  });
+
+  it("releases typing when a composition ends without a last change", async () => {
+    const session = new HoldingSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    let composing = true;
+    Object.defineProperty(view(), "compositionStarted", { configurable: true, get: () => composing });
+    await act(async () => view().dispatch({ changes: { from: 2, insert: "k" } }));
+    expect(session.holding).toBe(true);
+    composing = false;
+    vi.useFakeTimers();
+    try {
+      view().contentDOM.dispatchEvent(new Event("compositionend", { bubbles: true }));
+      vi.runAllTimers();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(session.holding).toBe(false);
+    expect(session.calls.at(-1)).toBe("release abk");
+  });
+});
 
 describe("an editor bound to a document session", () => {
   it("sends minimal local edits and applies remote edits without feedback", async () => {
@@ -265,6 +376,154 @@ describe("an editor bound to a document session", () => {
   });
 });
 
+describe("carriage returns in a shared document", () => {
+  it("counts a remote CRLF as two characters so the editor stays as long as the session", async () => {
+    const session = new UncheckedRemoteSession("refs.bib", "@book{a,\n  title={A}\n}\n");
+    await mountEditor({ activePath: "refs.bib", docVersion: 0, files: {} }, sessionsOf(session));
+    const end = session.text().length;
+
+    await act(async () => session.pushRemote([{ from: end, to: end, insert: "@article{b,\r\n  title={B}\r\n}\r\n" }]));
+    expect(view().state.doc.length).toBe(session.text().length);
+
+    await act(async () => typeAt(view().state.doc.length, "X"));
+    expect(session.text()).toBe("@book{a,\n  title={A}\n}\n@article{b,\r\n  title={B}\r\n}\r\nX");
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("opens a session text that holds CRLF without shifting later edits", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "one\r\ntwo\r\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    expect(view().state.doc.length).toBe(session.text().length);
+
+    await act(async () => session.pushRemote([{ from: 5, to: 8, insert: "TWO" }]));
+    expect(view().state.doc.toString()).toBe("one\r\nTWO\r\n");
+  });
+
+  it("sends a local insert that carries CRLF as LF and keeps the editor on the session text", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "end\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+
+    await act(async () => view().dispatch({ changes: { from: 0, insert: "x\r\ny\r\n" } }));
+    expect(session.text()).toBe("x\ny\nend\n");
+    expect(view().state.doc.toString()).toBe(session.text());
+
+    await act(async () => typeAt(view().state.doc.length, "!"));
+    expect(session.text()).toBe("x\ny\nend\n!");
+  });
+
+  it("still reads CRLF as one line break in a file without a session", async () => {
+    const session = new UncheckedRemoteSession("shared.tex", "a\r\nb");
+    const { store, setContent } = await mountEditor(
+      { activePath: "shared.tex", docVersion: 0, files: { "solo.tex": "solo\n" } },
+      sessionsOf(session),
+    );
+    await open(store, "solo.tex");
+
+    await act(async () => view().dispatch({ changes: { from: 0, insert: "x\r\ny\r\n" } }));
+    expect(view().state.doc.toString()).toBe("x\ny\nsolo\n");
+    expect(setContent).toHaveBeenLastCalledWith("solo.tex", "x\ny\nsolo\n");
+  });
+
+  it("puts the session's text back when a remote change does not fit the editor", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "abc");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => session.pushRemote([{ from: 3, to: 3, insert: "d" }, { from: 9, to: 9, insert: "?" }]));
+
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+});
+
+describe("a local edit the session refuses", () => {
+  it("puts the session's text back and sends the next edit at the right offset", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "a😀b\n");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    const refuse = vi.spyOn(session, "applyLocal").mockImplementationOnce(() => {
+      throw new RangeError("Edits must not split a surrogate pair.");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => view().dispatch({ changes: { from: 2, to: 4, insert: "x" } }));
+    expect(view().state.doc.toString()).toBe(session.text());
+    expect(session.text()).toBe("a😀b\n");
+
+    refuse.mockRestore();
+    await act(async () => typeAt(view().state.doc.length, "!"));
+    expect(session.text()).toBe("a😀b\n!");
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("drops the rest of a batch that was built on the refused edit", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "abc");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    vi.spyOn(session, "applyLocal").mockImplementationOnce(() => {
+      throw new Error("stale edit");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const first = view().state.update({ changes: { from: 0, insert: "1" } });
+    const second = first.state.update({ changes: { from: 4, insert: "2" } });
+
+    await act(async () => view().dispatch([first, second]));
+
+    expect(session.text()).toBe("abc");
+    expect(view().state.doc.toString()).toBe("abc");
+  });
+});
+
+describe("where the focus goes when the document changes", () => {
+  function outsideField(tag: "textarea" | "input"): HTMLElement {
+    const field = document.createElement(tag);
+    document.body.append(field);
+    field.focus();
+    return field;
+  }
+
+  afterEach(() => {
+    for (const field of Array.from(document.body.querySelectorAll(":scope > textarea, :scope > input"))) field.remove();
+  });
+
+  it("leaves the focus in another field when the open file is resynced", async () => {
+    const { store } = await mountEditor({ activePath: "main.tex", docVersion: 0, files: { "main.tex": "a" } }, new Map());
+    const comment = outsideField("textarea");
+
+    await act(async () => store.setState((s) => ({ files: { ...s.files, "main.tex": "a reloaded" } })));
+    await bumpVersion(store);
+
+    expect(view().state.doc.toString()).toBe("a reloaded");
+    expect(document.activeElement).toBe(comment);
+    expect(view().hasFocus).toBe(false);
+  });
+
+  it("does not take the focus out of a text field when the open file switches", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b" } },
+      new Map(),
+    );
+    const search = outsideField("input");
+
+    await open(store, "b.tex");
+
+    expect(view().state.doc.toString()).toBe("b");
+    expect(document.activeElement).toBe(search);
+  });
+
+  it("still takes the focus when a file is opened from somewhere that isn't a text field", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b" } },
+      new Map(),
+    );
+    const treeRow = document.createElement("button");
+    document.body.append(treeRow);
+    treeRow.focus();
+
+    await open(store, "b.tex");
+
+    expect(view().hasFocus).toBe(true);
+    treeRow.remove();
+  });
+});
+
 describe("switching between session files", () => {
   it("follows the session of the file it switches to", async () => {
     const a = new LocalDocumentSession("a.tex", "alpha");
@@ -319,6 +578,63 @@ describe("switching between session files", () => {
       undo(view());
     });
     expect(a.text()).toBe("first line\nsecond line\nthird line\n");
+  });
+
+  it("keeps the undo history of a large background file through many remote edits", async () => {
+    const big = Array.from({ length: 300 }, (_, index) => `Line ${index} of a long chapter.`).join("\n");
+    const a = new LocalDocumentSession("a.tex", big);
+    const b = new LocalDocumentSession("b.tex", "b");
+    const { store } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessionsOf(a, b));
+    await act(async () => typeAt(0, "% "));
+    await open(store, "b.tex");
+
+    await act(async () => {
+      for (let index = 0; index < 200; index += 1) {
+        const end = a.text().length;
+        a.pushRemote([{ from: end, to: end, insert: index % 2 === 0 ? "x" : "\n" }]);
+      }
+    });
+    await open(store, "a.tex");
+
+    expect(view().state.doc.toString()).toBe(a.text());
+    expect(view().state.selection.main.head).toBe(2);
+    expect(undoDepth(view().state)).toBe(1);
+    await act(async () => {
+      undo(view());
+    });
+    expect(a.text().startsWith("Line 0 of a long chapter.")).toBe(true);
+  });
+
+  it("carries a background file's undo history to its new name when the file is renamed", async () => {
+    const a = new UncheckedRemoteSession("a.tex", "first line\n");
+    const b = new UncheckedRemoteSession("b.tex", "b");
+    const sessions = sessionsOf(a, b);
+    const listening = vi.fn();
+    const subscribe = a.subscribe.bind(a);
+    let live = 0;
+    vi.spyOn(a, "subscribe").mockImplementation((listener) => {
+      live += 1;
+      listening(live);
+      const stop = subscribe(listener);
+      return () => {
+        live -= 1;
+        stop();
+      };
+    });
+    const { store } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessions);
+    await act(async () => typeAt(0, "% "));
+    await open(store, "b.tex");
+
+    a.path = "renamed.tex";
+    sessions.delete("a.tex");
+    sessions.set("renamed.tex", a);
+    const end = a.text().length;
+    await act(async () => a.pushRemote([{ from: end, to: end, insert: "second line\n" }]));
+    await open(store, "renamed.tex");
+
+    expect(view().state.doc.toString()).toBe("% first line\nsecond line\n");
+    expect(undoDepth(view().state)).toBe(1);
+    expect(live).toBe(1);
   });
 
   it("declines background edits to a file a session holds", async () => {
