@@ -96,7 +96,13 @@ const limits = {
   // again, and Explorer Git badges and skill search took its room. The
   // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
   // Windows.
-  totalJavaScript: 19_985_000,
+  // +70 KB for Dropbox cloud sync: the cloud store, the Cloud sync settings
+  // tab, the sync keeper that follows saves and Dropbox changes, transfer
+  // progress and conflict notices. All of it loads with Settings or once
+  // cloud sync is on, except about 0.5 KB in the entry. Main measured
+  // 19.90 MB on Linux and 19.92 MB on Windows; with cloud sync the combined
+  // graph measures 19.97 MB on macOS and Linux and 19.99 MB on Windows.
+  totalJavaScript: 20_000_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice
