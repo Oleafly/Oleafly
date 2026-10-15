@@ -944,9 +944,14 @@ impl Peer<'_> {
             Err(ServerError::BadRequest(_)) => {
                 frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
             }
-            Err(ServerError::Refused { message, .. }) => {
-                frame_error(FrameErrorCode::TooLarge, &message)
-            }
+            Err(ServerError::Refused {
+                code: "project_too_large",
+                message,
+                ..
+            }) => frame_error(
+                self.code_for(FrameErrorCode::ProjectTooLarge, FrameErrorCode::TooLarge),
+                &message,
+            ),
             Err(_) => stored_failed,
         }
     }
@@ -1024,8 +1029,8 @@ impl Peer<'_> {
                 if !checked && !comments_on(&transaction, &row)? {
                     return Ok(None);
                 }
-                let after = projects::stored_bytes(&transaction, project)?
-                    .saturating_add(stored.len() as u64);
+                let after =
+                    projects::log_bytes(&transaction, project)?.saturating_add(stored.len() as u64);
                 if after > limit_mb.saturating_mul(1024 * 1024) {
                     return Err(projects::too_large_for(limit_mb));
                 }

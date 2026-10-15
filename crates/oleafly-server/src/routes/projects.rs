@@ -701,7 +701,8 @@ async fn put_blob(
         })
         .await?;
     let now = state.clock.now_ms();
-    crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, now).await?;
+    crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, limit_mb, now)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

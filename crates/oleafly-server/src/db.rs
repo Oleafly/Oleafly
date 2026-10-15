@@ -9,10 +9,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 12;
+pub const SCHEMA_VERSION: i64 = 13;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 12] = [
+const MIGRATIONS: [&str; 13] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -25,6 +25,7 @@ const MIGRATIONS: [&str; 12] = [
     include_str!("../migrations/0010_storage_cleanup.sql"),
     include_str!("../migrations/0011_mention_emails.sql"),
     include_str!("../migrations/0012_device_code_network.sql"),
+    include_str!("../migrations/0013_s2_project_sizes.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
@@ -321,6 +322,47 @@ mod tests {
             conn.execute_batch(&format!("PRAGMA user_version = {};", index + 1))
                 .unwrap();
         }
+    }
+
+    #[test]
+    fn project_sizes_start_from_what_is_stored_and_follow_every_write() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        migrated_to(&mut conn, 12);
+        conn.execute_batch(
+            "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES ('a1', 'Ada', 'member', 1, 1);
+             INSERT INTO projects (id, owner_account, title, status, created_at) VALUES ('p1', 'a1', 'Thesis', 'active', 1), ('p2', 'a1', 'Notes', 'active', 1);
+             INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 1, 'b1', 'd1', 'a1', zeroblob(100), 1), ('p1', 2, 'b2', 'd1', 'a1', zeroblob(50), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h1', 10, 1), ('p1', 'h2', 20, 1);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let sizes = |conn: &Connection, project: &str| -> (i64, i64) {
+            conn.query_row(
+                "SELECT log_bytes, file_bytes FROM projects WHERE id = ?1",
+                [project],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap()
+        };
+        assert_eq!(sizes(&conn, "p1"), (150, 30));
+        assert_eq!(sizes(&conn, "p2"), (0, 0));
+        conn.execute_batch(
+            "INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 3, 'b3', 'd1', 'a1', zeroblob(25), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h3', 5, 1) ON CONFLICT (project_id, hash) DO UPDATE SET used_at = excluded.used_at;
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h1', 10, 2) ON CONFLICT (project_id, hash) DO UPDATE SET used_at = excluded.used_at;",
+        )
+        .unwrap();
+        assert_eq!(sizes(&conn, "p1"), (175, 35));
+        conn.execute_batch(
+            "DELETE FROM project_updates WHERE project_id = 'p1' AND seq <= 2;
+             DELETE FROM project_blobs WHERE project_id = 'p1' AND hash = 'h2';",
+        )
+        .unwrap();
+        assert_eq!(sizes(&conn, "p1"), (25, 15));
+        conn.execute("DELETE FROM projects WHERE id = 'p1'", [])
+            .unwrap();
+        assert_eq!(count(&conn, "project_updates"), 0);
     }
 
     #[test]

@@ -627,15 +627,29 @@ pub fn drop_unused_blob(
 }
 
 // What a project keeps on this server: its files and its change log.
-// Snapshots are left out because they are rebuilt from those.
+// Snapshots are left out because they are rebuilt from those. Triggers
+// keep both totals, so this reads one row.
 pub fn stored_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
-    let bytes: i64 = conn.query_row(
-        "SELECT (SELECT COALESCE(SUM(size), 0) FROM project_blobs WHERE project_id = ?1) \
-         + (SELECT COALESCE(SUM(length(envelope)), 0) FROM project_updates WHERE project_id = ?1)",
-        [project.to_string()],
-        |row| row.get(0),
-    )?;
-    Ok(seq_from(bytes))
+    let (log, files) = sizes(conn, project)?;
+    Ok(log.saturating_add(files))
+}
+
+// Changes count only the change log against the project's size limit, so
+// a project whose files fill it can still take typing.
+pub fn log_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
+    Ok(sizes(conn, project)?.0)
+}
+
+fn sizes(conn: &Connection, project: SharedProjectId) -> Result<(u64, u64), ServerError> {
+    let sizes: Option<(i64, i64)> = conn
+        .query_row(
+            "SELECT log_bytes, file_bytes FROM projects WHERE id = ?1",
+            [project.to_string()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let (log, files) = sizes.unwrap_or((0, 0));
+    Ok((seq_from(log), seq_from(files)))
 }
 
 pub fn too_large_for(limit_mb: u64) -> ServerError {
