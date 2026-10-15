@@ -12,7 +12,7 @@ use oleafly_collab_protocol::poll::{
     POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
 use oleafly_collab_protocol::projects::ProjectRole;
-use oleafly_server::snapshots::Budget;
+use oleafly_server::snapshots::{read_cost, Budget, Keep};
 use oleafly_server::test_support::challenge_nonce;
 use people::{
     call, connect, connect_understanding, first_snapshot, grant, next_frame, raw_envelope,
@@ -434,4 +434,72 @@ async fn with_comments_off_typing_is_saved_even_when_the_project_is_too_large_to
         matches!(again, ServerFrame::Ack { seq: 2, .. }),
         "{again:?}"
     );
+}
+
+async fn read_cost_of(stage: &Stage, project: SharedProjectId) -> u64 {
+    let size = stage
+        .server
+        .state()
+        .db
+        .call(move |conn| oleafly_server::projects::snapshot_size(conn, project, 0))
+        .await
+        .expect("the snapshot size")
+        .expect("a stored snapshot");
+    read_cost(size, 0)
+}
+
+#[tokio::test]
+async fn with_comments_off_a_project_larger_than_a_quarter_of_the_budget_is_read_once() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_project_comments(&stage, project, false).await;
+    let needed = read_cost_of(&stage, project).await;
+    let snapshots = &stage.server.state().snapshots;
+    snapshots.set_budget(Budget {
+        memory_bytes: 3 * needed,
+        ..Budget::default()
+    });
+    let reads = snapshots.document_reads();
+    let mut typist = Writer::open(&stage, &stage.alice, project, 42).await;
+    for expected in 1..=5 {
+        let typed = typist.send(&stage.alice, project, type_text).await;
+        assert!(
+            matches!(typed, ServerFrame::Ack { seq, .. } if seq == expected),
+            "{typed:?}"
+        );
+    }
+    assert_eq!(
+        snapshots.document_reads() - reads,
+        1,
+        "the project was read again for later changes"
+    );
+}
+
+#[tokio::test]
+async fn a_document_kept_for_mention_scans_never_lets_a_comment_through_unchecked() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let other = share_project(&stage.server, &stage.bob, "Notes")
+        .await
+        .project_id;
+    set_project_comments(&stage, project, false).await;
+    let needed = read_cost_of(&stage, project).await;
+    assert_eq!(read_cost_of(&stage, other).await, needed);
+    let state = stage.server.state();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: needed,
+        ..Budget::default()
+    });
+    let (document, head) = state
+        .snapshots
+        .current(&state.db, other)
+        .await
+        .expect("a read")
+        .expect("the other project fits the budget");
+    state
+        .snapshots
+        .keep(Keep::MentionScans, other, document, head);
+    let mut writer = Writer::open(&stage, &stage.alice, project, 43).await;
+    let refused = writer.send(&stage.alice, project, add_thread).await;
+    assert!(refused_for_comments(&refused), "{refused:?}");
 }

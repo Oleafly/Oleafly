@@ -83,8 +83,8 @@ async fn overview(
     if !console::data_dir_writable(state.config.data_dir.clone()).await {
         issues.push(HealthIssue::StorageNotWritable);
     }
-    let sign_in_problems = state.providers.problems();
-    if !sign_in_problems.is_empty() {
+    let sign_in_problems = state.providers.problems(now);
+    if state.providers.failing(now) {
         issues.push(HealthIssue::SignInFailing);
     }
     if emails_paused {

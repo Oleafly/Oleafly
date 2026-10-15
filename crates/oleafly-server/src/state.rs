@@ -132,14 +132,17 @@ impl AppState {
         if let Some(line) = setup_line {
             tracing::warn!("{line}");
         }
+        // OLEAFLY_SNAPSHOT_MEMORY_MB bounds documents and large transfers
+        // together: a quarter goes to transfers and the rest to documents.
+        let memory = config.snapshot_memory_mb.saturating_mul(1024 * 1024);
+        let transfer_budget = memory / 4;
         let snapshots = Snapshots::new(blobs.clone(), &config.data_dir);
         snapshots.set_budget(Budget {
-            memory_bytes: config.snapshot_memory_mb.saturating_mul(1024 * 1024),
+            memory_bytes: memory - transfer_budget,
             max_snapshot_bytes: config.limits.max_project_mb.saturating_mul(1024 * 1024),
         });
         snapshots.move_legacy_files(&database).await?;
         let polls = Arc::new(PollHub::with_hold(config.poll_hold));
-        let transfer_budget = config.snapshot_memory_mb.saturating_mul(1024 * 1024) / 2;
         let rate_limiter = Arc::new(RateLimiter::new(
             config.sign_in.requests_burst,
             config.sign_in.requests_per_minute,

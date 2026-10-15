@@ -33,8 +33,8 @@ pub(crate) use self::poll::{
 pub use self::session::{session_account, SessionManager};
 pub use self::sign_in::{sign_in, sign_in_as, SignInRequest};
 pub use self::url::ServerUrl;
-pub(crate) use self::ws::Socket;
 pub use self::ws::{connect_socket, SocketConnection};
+pub(crate) use self::ws::{Heard, Socket};
 
 pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const SLOWEST_UPLINK_BYTES_PER_SECOND: f64 = 16.0 * 1024.0;

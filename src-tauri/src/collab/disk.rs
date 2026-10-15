@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
+use oleafly_collab::doc::{FileNode, NodeKind, NodeParent};
 use oleafly_collab::materialize::Layout;
 use oleafly_collab::{write_atomic, CollabError};
 use ring::digest::{digest, SHA256};
@@ -162,7 +163,8 @@ impl ShareRules {
         let segments: Vec<&str> = relative.split('/').collect();
         let name = segments.last().copied().unwrap_or(relative);
         self.skips(name, relative, is_dir)
-            || (1..segments.len()).any(|end| ignored(&self.0, &segments[..end].join("/"), true))
+            || (1..segments.len())
+                .any(|end| self.skips(segments[end - 1], &segments[..end].join("/"), true))
     }
 }
 
@@ -389,6 +391,92 @@ pub fn write_file_over(
     staged.commit()?;
     crate::folder_watch::note_own_write(&target);
     Ok(WriteOutcome::Written)
+}
+
+// The path a node's own names spell out, which is where a file found on
+// disk sat when it was added. The layout may place the node elsewhere: a
+// Windows device name like aux.tex or a character Windows refuses gets a
+// safe name, and a second spelling of a taken name gets a suffix.
+pub(crate) fn found_path(nodes: &[FileNode], id: &str) -> Option<String> {
+    let by_id: BTreeMap<&str, &FileNode> =
+        nodes.iter().map(|node| (node.id.as_str(), node)).collect();
+    let mut current = *by_id.get(id)?;
+    let mut names = vec![current.name.as_str()];
+    for _ in 0..by_id.len() {
+        match &current.parent {
+            NodeParent::Root => {
+                names.reverse();
+                return Some(names.join("/"));
+            }
+            NodeParent::Node(parent) => {
+                current = by_id
+                    .get(parent.as_str())
+                    .filter(|holder| holder.kind == NodeKind::Dir)?;
+                names.push(current.name.as_str());
+            }
+            NodeParent::Trash => return None,
+        }
+    }
+    None
+}
+
+// Moves each file or folder found at the first path of a pair to the
+// second, the path the layout gives its node, parents first, so the next
+// scan finds it under its node instead of importing it again. A target
+// that is taken stays as it is. Returns the moves made.
+pub(crate) fn follow_layout(
+    root: &Path,
+    mut wanted: Vec<(String, String)>,
+) -> Vec<(String, String)> {
+    wanted.retain(|(found, laid)| found != laid);
+    wanted.sort_by_key(|(found, _)| found.matches('/').count());
+    let mut moved: Vec<(String, String)> = Vec::new();
+    for (found, laid) in wanted {
+        let mut current = found;
+        for (from, to) in &moved {
+            if let Some(rest) = current.strip_prefix(from.as_str()) {
+                if rest.starts_with('/') {
+                    current = format!("{to}{rest}");
+                }
+            }
+        }
+        if current != laid && move_path(root, &current, &laid) {
+            moved.push((current, laid));
+        }
+    }
+    moved
+}
+
+// Moves every key at or under `from` to the same place under `to` and
+// returns the old and new keys.
+pub(crate) fn rekey_moved(
+    hashes: &mut BTreeMap<String, String>,
+    from: &str,
+    to: &str,
+) -> Vec<(String, String)> {
+    let inside: Vec<String> = hashes
+        .keys()
+        .filter(|path| moved_key(path, from, to).is_some())
+        .cloned()
+        .collect();
+    let mut moved = Vec::new();
+    for path in inside {
+        let (Some(hash), Some(key)) = (hashes.remove(&path), moved_key(&path, from, to)) else {
+            continue;
+        };
+        hashes.insert(key.clone(), hash);
+        moved.push((path, key));
+    }
+    moved
+}
+
+fn moved_key(path: &str, from: &str, to: &str) -> Option<String> {
+    if path == from {
+        return Some(to.to_owned());
+    }
+    path.strip_prefix(from)
+        .filter(|rest| rest.starts_with('/'))
+        .map(|rest| format!("{to}{rest}"))
 }
 
 pub fn remove_path(root: &Path, relative: &str) {
@@ -621,8 +709,20 @@ mod tests {
         assert!(rules.leaves_out("main.aux", false));
         assert!(rules.leaves_out("build/out/main.log", false));
         assert!(rules.leaves_out("chapters/.intro.tex.swp", false));
+        assert!(rules.leaves_out("backup~/main.tex", false));
         assert!(!rules.leaves_out("chapters/intro.tex", false));
         assert!(!rules.leaves_out("builder/main.tex", false));
+        write(root, "backup~/main.tex", "an editor's backup folder");
+        let files: Vec<String> = scan_folder(root)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+        assert!(
+            !files.iter().any(|path| path.starts_with("backup~")),
+            "{files:?}"
+        );
     }
 
     #[test]

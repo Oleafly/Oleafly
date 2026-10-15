@@ -1411,6 +1411,58 @@ async fn an_invitation_cannot_be_approved_while_guests_are_off_and_nothing_is_em
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_invitation_waits_for_its_owner_before_it_can_be_approved_and_emailed() {
+    let smtp = MockSmtp::start().await;
+    let guests = guest_stage(mail_config(&smtp)).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Editor,
+    )
+    .await;
+    let alice = format!("/api/v1/admin/members/{}", stage.alice.tokens.account_id);
+    let away = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "suspended" })),
+    )
+    .await;
+    assert_eq!(away.status(), StatusCode::OK);
+    let refused = decide(stage, &stage.bob, &waiting.invitation.id, "approve").await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "owner_away");
+    stage.server.state().mailer.settled().await;
+    let to_dana = |smtp: &MockSmtp| {
+        smtp.messages()
+            .into_iter()
+            .filter(|email| email.rcpt_to == ["dana@field.org"])
+            .count()
+    };
+    assert_eq!(to_dana(&smtp), 0, "{:?}", smtp.messages());
+    let back = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "active" })),
+    )
+    .await;
+    assert_eq!(back.status(), StatusCode::OK);
+    let approved: GuestInvitation =
+        read(decide(stage, &stage.bob, &waiting.invitation.id, "approve").await).await;
+    assert_eq!(approved.status, GuestInvitationStatus::Invited);
+    stage.server.state().mailer.settled().await;
+    assert_eq!(to_dana(&smtp), 1, "{:?}", smtp.messages());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_approved_invitation_gets_its_full_fourteen_days_from_the_approval() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;

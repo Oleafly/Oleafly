@@ -63,6 +63,18 @@ impl Browser {
         }
     }
 
+    // The same cookies and settings, sending another User-Agent: a page
+    // loaded one way and then submitted from a phone.
+    pub fn as_user_agent(&self, agent: &str) -> Browser {
+        Browser {
+            client: no_redirect_client(),
+            cookies: Mutex::new(self.cookies.lock().expect("cookies").clone()),
+            language: self.language.clone(),
+            address: self.address.clone(),
+            agent: Some(agent.to_owned()),
+        }
+    }
+
     pub fn from_address(address: &str) -> Browser {
         Browser {
             address: Some(address.to_owned()),
