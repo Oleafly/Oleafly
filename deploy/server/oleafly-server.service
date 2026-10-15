@@ -1,0 +1,46 @@
+[Unit]
+Description=Oleafly Server
+Documentation=https://github.com/Oleafly/Oleafly/blob/main/docs/collaboration-server.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/local/bin/oleafly-server
+EnvironmentFile=/etc/oleafly-server/oleafly-server.env
+Environment=OLEAFLY_DATA_DIR=/var/lib/oleafly-server
+DynamicUser=yes
+StateDirectory=oleafly-server
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=5
+# Each open WebSocket, long poll and database file needs a descriptor.
+LimitNOFILE=65536
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

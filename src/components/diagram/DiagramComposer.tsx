@@ -45,6 +45,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
 
 // E2E / devtools hook: the native bridge cannot drive a real file input, so
 // specs can queue the next pick's result here instead of opening a picker
@@ -128,20 +129,33 @@ function describedWriteFailure(error: unknown): unknown {
   return decodeAppError(error) ? new Error(describeError(error)) : error;
 }
 
+// A viewer can't change a shared project, and while it goes live the role
+// isn't known yet. The shared document isn't live then, so the save would
+// fall back to the local file.
+function assertSharedWritable(projectId: string): void {
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) throw refusal;
+}
+
 const HOST: DiagramHost = {
   compileIsolated: (projectId, source) =>
     compileIsolated(projectId, source, useSettingsStore.getState().offline),
   readIsolatedPdf,
   pdfToPng: pdfPageToPng,
   listFiles,
-  writeFileContent: (projectId, path, content) =>
-    writeFileContent(projectId, path, content).catch((error: unknown) => {
+  writeFileContent: async (projectId, path, content) => {
+    assertSharedWritable(projectId);
+    if (await writeSharedText(projectId, path, content)) return {};
+    return writeFileContent(projectId, path, content).catch((error: unknown) => {
       throw describedWriteFailure(error);
-    }),
-  writeProjectBytes: (projectId, relPath, dataBase64) =>
-    writeProjectBytes(projectId, relPath, dataBase64).catch((error: unknown) => {
+    });
+  },
+  writeProjectBytes: async (projectId, relPath, dataBase64) => {
+    assertSharedWritable(projectId);
+    return writeProjectBytes(projectId, relPath, dataBase64).catch((error: unknown) => {
       throw describedWriteFailure(error);
-    }),
+    });
+  },
   insertAtCursor,
   getMainDoc: () => useFilesStore.getState().mainDoc,
   applyExternalWrite: (projectId, path, content) =>

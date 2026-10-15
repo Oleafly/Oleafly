@@ -2,10 +2,16 @@ import { cn } from "@/lib/utils";
 
 export function Progress({
   value,
+  indeterminate = false,
+  label,
   className,
   indicatorClassName,
 }: Readonly<{
   value: number;
+  // Work is happening but how much is left isn't known yet.
+  indeterminate?: boolean;
+  // What the bar measures, for screen readers.
+  label?: string;
   className?: string;
   indicatorClassName?: string;
 }>) {
@@ -14,13 +20,22 @@ export function Progress({
     <div
       className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
       role="progressbar"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={Math.round(percent)}
+      aria-valuenow={indeterminate ? undefined : Math.round(percent)}
+      aria-busy={indeterminate || undefined}
+      data-state={indeterminate ? "indeterminate" : "determinate"}
     >
       <div
-        className={cn("h-full rounded-full bg-[#4285F4] transition-[width] duration-200", indicatorClassName)}
-        style={{ width: `${percent}%` }}
+        className={cn(
+          "h-full rounded-full bg-[#4285F4]",
+          indeterminate
+            ? "w-full animate-pulse opacity-60 motion-reduce:animate-none"
+            : "transition-[width] duration-200",
+          indicatorClassName,
+        )}
+        style={indeterminate ? undefined : { width: `${percent}%` }}
       />
     </div>
   );

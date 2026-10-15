@@ -34,7 +34,7 @@ function editorText(): string {
 describe("ApprovalsFileEditor", () => {
   beforeEach(() => {
     mockRead.mockReset().mockResolvedValue('["$approval_modes"]\nproj-1 = "custom"\n');
-    mockWrite.mockReset().mockResolvedValue(undefined);
+    mockWrite.mockReset().mockResolvedValue([]);
     useFilesStore.setState({ projectId: "proj-1", projectName: "Grant proposal" });
   });
 
@@ -64,6 +64,27 @@ describe("ApprovalsFileEditor", () => {
         enSettings.ai.approvals.file.saved,
       ),
     );
+  });
+
+  it("shows each warning the backend has about a file it saved, next to Saved", async () => {
+    mockWrite.mockResolvedValue([
+      "The tool name write_files isn't one Oleafly knows, so the rule does nothing.",
+      "The project nope-123 isn't in your library.",
+    ]);
+    renderEditor();
+    await waitFor(() => expect(editorText()).toContain("$approval_modes"));
+    fireEvent.click(screen.getByTestId("approvals-file-example"));
+    await waitFor(() => expect(screen.getByTestId("approvals-file-save")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("approvals-file-save"));
+    await waitFor(() =>
+      expect(screen.getByTestId("approvals-file-message").textContent).toContain(enSettings.ai.approvals.file.saved),
+    );
+    const warnings = screen.getByTestId("approvals-file-warnings");
+    expect(warnings).toHaveTextContent("The tool name write_files isn't one Oleafly knows");
+    expect(warnings).toHaveTextContent("The project nope-123 isn't in your library.");
+    for (const item of warnings.querySelectorAll("li")) expect(item.className).not.toMatch(/\b(ring|outline)-/);
+    fireEvent.click(screen.getByTestId("approvals-file-reload"));
+    await waitFor(() => expect(screen.queryByTestId("approvals-file-warnings")).toBeNull());
   });
 
   it("shows the backend's validation error and keeps the text", async () => {

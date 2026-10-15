@@ -18,6 +18,7 @@ import {
   Link,
   List,
   MessageSquareCode,
+  MessageSquarePlus,
   Pencil,
   Quote,
   Rows3,
@@ -42,6 +43,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
+import { commentTarget, requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { formatWithLanguageService, type FormatScope } from "./cm/language-service-format";
 import {
@@ -160,6 +163,27 @@ function RenameFileMenuItem({ separator = false }: Readonly<{ separator?: boolea
   );
 }
 
+function CommentMenuEntry() {
+  const { t } = useTranslation(["collab"]);
+  const target = commentTarget(getEditorView());
+  return (
+    <ContextMenuItem
+      data-testid="context-comment"
+      disabled={!target}
+      onClick={() => requestComment(getEditorView())}
+    >
+      <MessageSquarePlus className="mr-2 size-4" /> {t(($) => $.collab.comments.add)}
+      <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘⌥M")}</span>
+    </ContextMenuItem>
+  );
+}
+
+function CommentMenuItem() {
+  const ready = useCollabReady();
+  const canCompose = useCommentsRail((state) => state.canCompose);
+  return ready && canCompose ? <CommentMenuEntry /> : null;
+}
+
 function TypstNavigationItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const definition = typstLanguageServiceOffers("definition");
@@ -213,6 +237,7 @@ function TypstMenuItems({
         <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
         <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
       </ContextMenuItem>
+      <CommentMenuItem />
       <ContextMenuSeparator />
       <TypstNavigationItems pdfSync={pdfSync} />
       <ContextMenuItem onClick={insertTypstBold}>
@@ -371,6 +396,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <ContextMenuItem onClick={() => { const view = getEditorView(); if (view) openInlineEdit(view); }}>
             <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
           </ContextMenuItem>
+          <CommentMenuItem />
           <ContextMenuSeparator />
           <RenameFileMenuItem separator />
           <ContextMenuItem onClick={() => wrapSelection("**", "**")}>
@@ -404,6 +430,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
         </ContextMenuItem>
+        <CommentMenuItem />
         <ContextMenuSeparator />
         {syncTexSupported && (
           <ContextMenuItem onClick={goToSyncTex}>

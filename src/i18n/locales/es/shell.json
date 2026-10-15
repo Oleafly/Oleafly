@@ -447,7 +447,8 @@
       "title": "Variante (este proyecto)",
       "help": "Una variante pasa sus propios valores a sys.inputs, como una versión de borrador o la definitiva. La variante que elijas se queda en este equipo. Añade o edita variantes en Ajustes del documento.",
       "none": "Sin variante"
-    }
+    },
+    "sharedViewer": "Los lectores no pueden cambiar estos ajustes en un proyecto compartido."
   },
   "datePicker": {
     "placeholder": "Elige una fecha"
@@ -859,6 +860,10 @@
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Edita proyectos con otras personas a través de un servidor de colaboración que gestionas tú o tu grupo. Añade una sección Colaboración a los Ajustes. Desactivado por omisión mientras esté en beta.",
+        "label": "Colaboración en tiempo real"
+      },
       "warning": "Estas funciones son experimentales y siguen en beta. Todavía no están probadas del todo y pueden cambiar, romperse o desaparecer en una versión futura. Actívalas solo si quieres probar trabajo en curso.",
       "webBrowser": {
         "description": "Muestra el navegador web integrado (su botón del panel y su atajo) y deja que la IA lo maneje con uso del ordenador. Desactivado por omisión mientras esté en beta. Cuando está desactivado, no hay botón de navegador y la IA no tiene herramienta de navegador.",
@@ -940,6 +945,7 @@
     "nav": {
       "ai": "Asistente de IA",
       "appearance": "Apariencia",
+      "collaboration": "Colaboración",
       "data": "Almacenamiento de datos",
       "dictionary": "Diccionario",
       "downloads": "Descargas",
@@ -955,6 +961,7 @@
       "keywords": {
         "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
         "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
+        "collaboration": "servidores, iniciar sesión, dispositivos, miembros, mantenedores, compartir, equipos, laboratorios, edición en tiempo real, tiempo real, registro de seguridad",
         "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
         "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",
         "downloads": "paquetes, fuentes, diccionarios, archivos sin conexión",
@@ -1437,6 +1444,14 @@
     "hideLog": "Ocultar el registro de compilación",
     "showLog": "Mostrar el registro de compilación"
   },
+  "collabSync": {
+    "paused_one": "{{count}} archivo cambió fuera de Oleafly. ¿Enviar este cambio a todos o mantenerlo en local?",
+    "paused_many": "{{count}} archivos cambiaron fuera de Oleafly. ¿Enviar estos cambios a todos o mantenerlos en local?",
+    "paused_other": "{{count}} archivos cambiaron fuera de Oleafly. ¿Enviar estos cambios a todos o mantenerlos en local?",
+    "send": "Enviar",
+    "keepLocal": "Mantener en local",
+    "unavailable": "La carpeta del proyecto no está disponible, así que la sincronización está en pausa. Se reanuda cuando la carpeta vuelva."
+  },
   "overleafSync": {
     "button": "Sincronización con Overleaf",
     "title": "Sincronizar con Overleaf",
@@ -1488,5 +1503,9 @@
       "allTheirs": "Usar todas las de Overleaf",
       "apply": "Aplicar y sincronizar"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly recargó esta ventana porque dejó de responder durante 30 segundos. Puede que los cambios hechos justo antes no se hayan guardado.",
+    "reloadedAgain": "Oleafly volvió a recargar esta ventana porque dejó de responder otra vez. No volvió a abrir tu proyecto, por si algo en él causó el problema."
   }
 }

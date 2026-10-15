@@ -349,6 +349,12 @@
       "title": "Duplicitní záznamy bibliografie: {{keys}}",
       "detail": "Tyto záznamy sdílejí DOI {{doi}}, takže jde o tutéž referenci pod různými klíči. Ponechte jeden a citujte jej, jinak ji bibliografie uvede dvakrát."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Citační klíč „{{key}}“ je definován víc než jednou",
+      "detail": "Definován v {{places}}. BibTeX použije jen první záznam s tímto klíčem a při porovnávání klíčů nerozlišuje velká a malá písmena. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají.",
+      "detailBiber": "Definován v {{places}}. Když biber sestavuje bibliografii, použije jen první záznam s tímto klíčem. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají.",
+      "detailTypst": "Definován v {{places}}. Typst zastaví kompilaci, když mají dva záznamy bibliografie stejný klíč. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají."
+    },
     "submission-path-case": {
       "title": "Velikost písmen v názvu souboru nesouhlasí: {{target}}",
       "detailFigure": "Tento obrázek se najde jen na souborovém systému, který nerozlišuje velikost písmen. Projekt obsahuje „{{match}}“, takže před odesláním do sestavovacích systémů na Linuxu zapište velikost písmen přesně stejně.",

@@ -51,6 +51,7 @@ describe("GithubMenu", () => {
       user: { login: "octocat", avatar_url: "https://example.test/a.png" },
     } as unknown as ReturnType<typeof useGithubStore.getState>);
     renderMenu();
+    expect(document.querySelector('img[data-slot="avatar"]')).toHaveClass("size-5", "rounded-full", "object-cover");
     const user = userEvent.setup();
     await user.click(
       screen.getByLabelText(copy.accountAriaLabel.replace("{{login}}", "octocat")),
@@ -74,6 +75,7 @@ describe("GithubMenu", () => {
       screen.getByLabelText(copy.accountAriaLabel.replace("{{login}}", "octocat")),
     ).toBeInTheDocument();
     expect(document.querySelector("img")).toBeNull();
+    expect(document.querySelector('[data-slot="avatar"]')).toHaveClass("size-5", "bg-foreground", "[&_svg]:size-3");
   });
 
   it("opens the repository and copies its link", async () => {

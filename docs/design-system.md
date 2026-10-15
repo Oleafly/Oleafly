@@ -69,6 +69,15 @@ Tab strips are a `TabsList` from `ui/tabs.tsx`. Pass `scrollable` when the
 triggers can grow wider than the strip, so it scrolls instead of clipping, and
 `fill` when the triggers should split the full width.
 
+A list of sections down the side of a window, like the one in Settings or in
+the server admin console, is made of `NavItem`s from `ui/nav-item.tsx`. The
+current item gets `aria-current="page"` and a border. The others tint on hover
+and on keyboard focus.
+
+A row of figures, like the storage summary in Settings or the numbers on the
+admin console overview, is a `StatGrid` from `ui/stat-grid.tsx`. Each figure
+has a label, a value and, if it needs one, a short detail line.
+
 A search box that takes qualifiers such as `engine:typst` is a `QuerySearch`
 from `ui/query-search.tsx`. Give it a schema from `@oleafly/search-query` and
 the analysed query; it brings the highlighting, the suggestion dropdown, the

@@ -390,7 +390,9 @@
     "unifiedView": "한 열로 보기",
     "loading": "diff를 불러오는 중…",
     "previewTooLarge": "파일이 너무 커서 diff를 미리 볼 수 없습니다.",
-    "diskHeading": "디스크 ↔ 내 편집"
+    "diskHeading": "디스크 ↔ 내 편집",
+    "sharedReadOnly": "공유 프로젝트에서는 이 diff가 읽기 전용입니다. 파일은 편집기에서 수정하세요.",
+    "viewerReadOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다."
   },
   "hotkeys": {
     "title": "키보드 단축키",
@@ -467,6 +469,7 @@
     "openInAgent": "프로젝트 도구를 모두 쓸 수 있는 AI 어시스턴트에서 이어가기",
     "generateFailed": "편집안을 만들지 못했습니다. {{message}}",
     "dismiss": "닫기",
+    "withdrawn": "다른 사람이 이 텍스트를 편집해서 이 제안을 적용할 수 없습니다.",
     "setUpProvider": "AI 제공자 설정",
     "setUpProviderHint": "인라인 AI 편집을 쓰려면 API 키를 추가하거나 로컬 Ollama를 연결하세요.",
     "openAiSettings": "설정 → AI 열기"
@@ -645,6 +648,7 @@
     "endOfDocument": "문서 끝",
     "hidePreamble": "문서 프리앰블 숨기기",
     "showPreamble": "문서 프리앰블 표시",
+    "sharedReadOnly": "공유 프로젝트에서는 비주얼 모드가 파일을 보여 주기만 합니다. 편집하려면 소스 보기로 전환하세요.",
     "findingLabel": "{{message}}. 교정 제안을 엽니다.",
     "rawBlockFindings_other": "이 원시 블록에 교정 항목이 {{count}}개 있습니다. {{message}}. 제안을 엽니다."
   },
@@ -1473,5 +1477,6 @@
     "keyInvalid": "값 이름은 비워 둘 수 없고 등호를 포함할 수 없습니다.",
     "keyTaken": "한 변형에서 같은 이름을 두 번 설정할 수 없습니다.",
     "saveFailed": "변형을 저장하지 못했습니다."
-  }
+  },
+  "sharedSettingsViewer": "공유 프로젝트에서 뷰어는 이 항목을 변경할 수 없습니다."
 }

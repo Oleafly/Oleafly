@@ -4,9 +4,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 interface PreviewGeometry { x: number; y: number; width: number; height: number }
 const key = (projectId: string) => `oleafly.preview.geometry.${projectId}`;
 
-export function readPreviewGeometry(projectId: string): PreviewGeometry | null {
+export function readWindowGeometry(storageKey: string): PreviewGeometry | null {
   try {
-    const value = JSON.parse(localStorage.getItem(key(projectId)) ?? "null");
+    const value = JSON.parse(localStorage.getItem(storageKey) ?? "null");
     if (!value || ![value.x, value.y, value.width, value.height].every(Number.isFinite)) return null;
     if (value.width < 320 || value.height < 240 || value.width > 8192 || value.height > 8192 ||
       Math.abs(value.x) > 65536 || Math.abs(value.y) > 65536) return null;
@@ -14,9 +14,28 @@ export function readPreviewGeometry(projectId: string): PreviewGeometry | null {
   } catch { return null; }
 }
 
-export function usePreviewGeometry(projectId: string, enabled: boolean): void {
+interface ScreenArea {
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  scaleFactor: number;
+}
+
+export function geometryOnScreen(geometry: PreviewGeometry, monitors: readonly ScreenArea[]): boolean {
+  return monitors.some((monitor) => {
+    const x = monitor.position.x / monitor.scaleFactor;
+    const y = monitor.position.y / monitor.scaleFactor;
+    return geometry.x + geometry.width > x + 80 && geometry.x < x + monitor.size.width / monitor.scaleFactor - 80 &&
+      geometry.y >= y && geometry.y < y + monitor.size.height / monitor.scaleFactor - 80;
+  });
+}
+
+export function readPreviewGeometry(projectId: string): PreviewGeometry | null {
+  return readWindowGeometry(key(projectId));
+}
+
+export function useWindowGeometry(storageKey: string | null): void {
   useEffect(() => {
-    if (!enabled || !projectId) return;
+    if (!storageKey) return;
     let disposed = false;
     const win = getCurrentWindow();
     const save = async () => {
@@ -24,7 +43,7 @@ export function usePreviewGeometry(projectId: string, enabled: boolean): void {
         const [position, size, scale] = await Promise.all([win.outerPosition(), win.innerSize(), win.scaleFactor()]);
         if (disposed) return;
         const geometry = { x: position.x / scale, y: position.y / scale, width: size.width / scale, height: size.height / scale };
-        localStorage.setItem(key(projectId), JSON.stringify(geometry));
+        localStorage.setItem(storageKey, JSON.stringify(geometry));
       } catch { /* Window teardown and unavailable storage require no action. */ }
     };
     const moved = win.onMoved(() => void save());
@@ -35,5 +54,9 @@ export function usePreviewGeometry(projectId: string, enabled: boolean): void {
       void moved.then((off) => off());
       void resized.then((off) => off());
     };
-  }, [projectId, enabled]);
+  }, [storageKey]);
+}
+
+export function usePreviewGeometry(projectId: string, enabled: boolean): void {
+  useWindowGeometry(enabled && projectId ? key(projectId) : null);
 }

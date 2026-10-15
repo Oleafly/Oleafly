@@ -48,7 +48,7 @@ import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
-import { decodeAppError } from "@/lib/app-error";
+import { decodeAppError, SHELL_ESCAPE_DECLINED } from "@/lib/app-error";
 import { SaveFlushError, type SaveFailure } from "@/store/save-flush-error";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading, releaseIdleProofreadingWorker } from "@/lib/proofreading/client";
@@ -75,9 +75,16 @@ import {
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
+import { collabHandBack } from "@/lib/collab-live-bridge";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
+import {
+  SharedConnectingError,
+  sharedDocumentLive,
+  sharedWriteRefusal,
+  writeSharedText,
+} from "@/lib/shared-document-writes";
 
 export { SaveFlushError, type SaveFailure };
 
@@ -246,6 +253,9 @@ interface SaveFailureNotice {
   paths: Set<string>;
   toastId: number | null;
 }
+
+const VIEW_ONLY_TOAST = "collab-view-only";
+const CONNECTING_TOAST = "collab-connecting";
 
 let saveFailureNotice: SaveFailureNotice | null = null;
 const saveFailureWarned = new Set<string>();
@@ -471,10 +481,20 @@ interface FilesStore {
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
   closeTabs: (paths: readonly string[]) => void;
-  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
+  // `base` is the text the caller built `content` from, when that may be older
+  // than the buffer. A live project merges the change from it, so edits that
+  // reached the buffer since are kept.
+  // `unsaved` marks text the buffer may already hold but the disk doesn't,
+  // such as typing a shared file's session never had confirmed.
+  setContent: (
+    path: string,
+    content: string,
+    opts?: { bumpVersion?: boolean; base?: string; unsaved?: boolean },
+  ) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
+  saveAllDirty: () => Promise<void>;
   reloadFromDisk: (path: string) => Promise<void>;
   keepLocalVersion: (path: string) => Promise<void>;
   createFile: (
@@ -496,7 +516,7 @@ interface FilesStore {
     projectId: string,
     path: string,
     content: string,
-    options?: { crlf?: boolean },
+    options?: { crlf?: boolean; base?: string },
   ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
@@ -505,7 +525,11 @@ interface FilesStore {
     options?: OpenFileOptions,
   ) => boolean;
   applyExternalReload: (projectId: string, path: string, content: string) => boolean;
-  applyExternalDelete: (projectId: string, path: string) => boolean;
+  applyExternalDelete: (
+    projectId: string,
+    path: string,
+    options?: { leaveEmpty?: boolean },
+  ) => boolean;
   applyExternalRename: (projectId: string, from: string, to: string) => boolean;
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
@@ -529,12 +553,59 @@ const entryRenamed = createEmitter<[event: EntryRenamedEvent]>();
 
 export const onEntryRenamed = entryRenamed.subscribe;
 
+export interface PathsMovedEvent {
+  readonly projectId: string;
+  readonly from: string;
+  readonly to: string;
+}
+
+const pathsMoved = createEmitter<[event: PathsMovedEvent]>();
+
+export const onPathsMoved = pathsMoved.subscribe;
+
+export interface PathsDeletedEvent {
+  readonly projectId: string;
+  readonly path: string;
+}
+
+const pathsDeleted = createEmitter<[event: PathsDeletedEvent]>();
+
+export const onPathsDeleted = pathsDeleted.subscribe;
+
+function notifyPathsDeleted(event: PathsDeletedEvent): void {
+  try {
+    pathsDeleted.emit(event);
+  } catch (error) {
+    void logError("forget deleted paths", error);
+  }
+}
+
+function notifyPathsMoved(event: PathsMovedEvent): void {
+  if (event.from === event.to) return;
+  try {
+    pathsMoved.emit(event);
+  } catch (error) {
+    void logError("follow moved paths", error);
+  }
+}
+
 function notifyEntryRenamed(event: EntryRenamedEvent): void {
   try {
     entryRenamed.emit(event);
   } catch (error) {
     void logError("follow renamed entry", error);
   }
+}
+
+function activeAfterDelete(
+  activePath: string | null,
+  files: Record<string, FileState>,
+  openTabs: string[],
+  leaveEmpty: boolean,
+): string | null {
+  if (activePath && files[activePath]) return activePath;
+  if (leaveEmpty) return null;
+  return openTabs.at(-1) ?? null;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -547,6 +618,7 @@ const pendingSaves = new Set<string>();
 // content back on disk.
 const pendingWrites = new Map<string, Promise<number>>();
 const diskSnapshots = new Map<string, DiskSnapshot>();
+const sharedSaveBases = new Map<string, string>();
 const diskConflicts = new Map<string, { warned: boolean; toastId?: number }>();
 let knownMutationProjectId: string | null = null;
 let knownMutationGeneration: number | null = null;
@@ -636,6 +708,43 @@ function noteChangedOnDisk(projectId: string, path: string): void {
   useFilesStore.setState({ changedOnDisk: [...state.changedOnDisk, path] });
 }
 
+function snapshotHolds(snapshot: DiskSnapshot, content: string): boolean {
+  const bytes = snapshot.crlf ? crlfBytes(content) : content;
+  return bytes.length === snapshot.length && diskHash(bytes) === snapshot.hash;
+}
+
+// A live session that stopped wrote these files while editors had them open,
+// and the window doesn't hear about such writes, so its disk snapshots of them
+// are out of date. Each comes with the snapshot of what the disk holds now,
+// so a save that follows isn't taken for a change made outside Oleafly.
+//
+// A snapshot is taken only for text the window has: a file with no buffer,
+// the buffer itself, or the base a handed-back buffer merges from. Anything
+// else on disk, such as a collaborator's change the session never applied,
+// keeps the old snapshot, and its path is returned so the caller checks the
+// file like any outside change.
+export function refreshDiskSnapshots(
+  projectId: string,
+  files: readonly ({ path: string } & DiskSnapshot)[],
+): string[] {
+  const state = useFilesStore.getState();
+  const changed: string[] = [];
+  for (const { path, hash, crlf, length } of files) {
+    const key = writeKey(projectId, path);
+    const snapshot = { hash, crlf, length };
+    const open = state.projectId === projectId ? state.files[path] : undefined;
+    const base = sharedSaveBases.get(key);
+    const known = !open || snapshotHolds(snapshot, open.content) || (base !== undefined && snapshotHolds(snapshot, base));
+    if (!known) {
+      changed.push(path);
+      continue;
+    }
+    diskSnapshots.set(key, snapshot);
+    settleDiskConflict(key);
+  }
+  return changed;
+}
+
 export async function detectDiskChange(projectId: string, path: string): Promise<boolean> {
   const key = writeKey(projectId, path);
   if (!diskSnapshots.has(key) || pendingWrites.has(key)) return false;
@@ -668,6 +777,7 @@ function projectKeysWhere(
 function resetDiskState(): void {
   for (const key of Array.from(diskConflicts.keys())) settleDiskConflict(key);
   diskSnapshots.clear();
+  sharedSaveBases.clear();
 }
 
 function forgetDiskStateUnder(projectId: string, isForgotten: (path: string) => boolean): void {
@@ -740,6 +850,7 @@ function enqueueWrite(
   path: string,
   content: string,
   overwrite = false,
+  sharedBase?: string,
 ): Promise<void> {
   const key = writeKey(projectId, path);
   const baseline =
@@ -753,7 +864,14 @@ function enqueueWrite(
     .then(async (expectedGeneration) => {
       const snapshot = diskSnapshots.get(key);
       const crlf = snapshot?.crlf ?? false;
+      // The shared document takes LF text and restores CRLF on disk itself, so
+      // only the direct disk write below uses the file's own line endings.
       const bytes = crlf ? crlfBytes(content) : content;
+      if (await writeSharedText(projectId, path, content, sharedBase)) {
+        diskSnapshots.set(key, { hash: diskHash(bytes), crlf, length: bytes.length });
+        settleDiskConflict(key);
+        return rememberMutationGeneration(projectId, expectedGeneration);
+      }
       const expectedHash = overwrite ? undefined : snapshot?.hash;
       const result = expectedHash === undefined
         ? await writeFileContent(projectId, path, bytes, expectedGeneration)
@@ -1211,6 +1329,7 @@ async function prepareProjectSwitch(
     set({ loading: true });
     try {
       flushWysiwygPendingEdits();
+      await collabHandBack(previousProjectId);
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
@@ -1707,6 +1826,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set({ loading: true });
       try {
         flushWysiwygPendingEdits();
+        await collabHandBack(projectId);
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });
@@ -1767,13 +1887,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () => enqueueProjectTransition(async () => {
-    const projectId = get().projectId;
-    if (!projectId) return;
-    flushWysiwygPendingEdits();
-    await flushDirtyBuffers(projectId, get);
-    await drainProjectWrites(projectId);
-  }),
+  flushForQuit: () =>
+    enqueueProjectTransition(async () => {
+      await collabHandBack(get().projectId);
+      await get().saveAllDirty();
+    }),
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -1940,8 +2058,23 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   setContent: (path, content, opts) => {
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
-    if (get().files[path]?.content === content) return true;
+    const before = get().files[path];
+    // A viewer can't change a shared project, and while it goes live the role
+    // isn't known yet. Refusing here keeps the buffer as it was instead of
+    // leaving a tab that can never be saved, or one saved to the local file.
+    const refusal = sharedWriteRefusal(projectId);
+    if (refusal) {
+      const key = refusal instanceof SharedConnectingError ? CONNECTING_TOAST : VIEW_ONLY_TOAST;
+      if (before?.content !== content) toast.infoUnique(key, refusal.message);
+      return false;
+    }
+    const same = before?.content === content;
+    if (same && (!opts?.unsaved || before.dirty)) return true;
     const saved = matchesSavedDiskText(projectId, path, content);
+    if (same && saved) return true;
+    if (!saved && before && !before.dirty && projectId && sharedDocumentLive(projectId)) {
+      sharedSaveBases.set(writeKey(projectId, path), opts?.base ?? before.content);
+    }
     set((s) => ({
       files: {
         ...s.files,
@@ -1982,7 +2115,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const key = writeKey(projectId, path);
     const overwrite = options?.overwrite === true && diskConflicts.get(key)?.warned === true;
     try {
-      await enqueueWrite(projectId, path, written, overwrite);
+      await enqueueWrite(projectId, path, written, overwrite, sharedSaveBases.get(key));
     } catch (error) {
       recordFailedSave(projectId, path, error, get);
       throw error;
@@ -2001,6 +2134,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return { files: { ...s.files, [path]: { ...cur, dirty: false } } };
     });
     const current = get();
+    if (current.projectId === projectId && current.files[path]?.dirty && sharedDocumentLive(projectId)) {
+      sharedSaveBases.set(key, written);
+    } else {
+      sharedSaveBases.delete(key);
+    }
     if (current.projectId === projectId && current.files[path]?.dirty) {
       pendingSaves.add(path);
       scheduleAutosave(get);
@@ -2018,6 +2156,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     fileReloadRevision++;
     rememberDiskSnapshot(projectId, path, snapshot);
     settleDiskConflict(writeKey(projectId, path));
+    sharedSaveBases.delete(writeKey(projectId, path));
     set((s) => {
       if (s.projectId !== projectId || !s.files[path]) return {};
       return {
@@ -2078,6 +2217,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         rememberMutationGeneration(projectId, result.generation);
       }
       deleted = true;
+      notifyPathsDeleted({ projectId, path });
       if (get().projectId !== projectId) return;
 
       set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
@@ -2122,6 +2262,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (conflictStrategy === "replace") {
       forgetDiskStateUnder(projectId, (p) => isWithin(p, to) && !isWithin(p, from));
     }
+    notifyPathsMoved({ projectId, from, to: destination });
     remapDiskState(projectId, remap);
     set((s) => {
       const files: Record<string, FileState> = {};
@@ -2247,12 +2388,19 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   }),
 
+  saveAllDirty: async () => {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    flushWysiwygPendingEdits();
+    await flushDirtyBuffers(projectId, get);
+    await drainProjectWrites(projectId);
+  },
+
   prepareExternalMutation: async (projectId) => {
     if (get().projectId !== projectId) {
       throw new Error("Project changed before the external mutation could run.");
     }
-    await flushDirtyBuffers(projectId, get);
-    await drainProjectWrites(projectId);
+    await get().saveAllDirty();
     if (get().projectId !== projectId) {
       throw new Error("Project changed before the external mutation could run.");
     }
@@ -2321,6 +2469,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   writeProjectFile: async (projectId, path, content, options) => {
     if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
+    // A shared project still going live would take this write on the local
+    // file, so it is refused like a viewer's until the role is known.
+    const refusal = sharedWriteRefusal(projectId);
+    if (refusal) throw refusal;
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
@@ -2328,21 +2480,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const canonicalContent = normalizeTextContent(content);
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
-    const result = await writeFileContent(
-      projectId,
-      path,
-      bytes,
-      expectedGeneration,
-    );
+    const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
+    // LF into the shared document; CRLF only for the direct disk write.
+    const shared = await writeSharedText(projectId, path, canonicalContent, base);
+    const result = shared
+      ? null
+      : await writeFileContent(
+          projectId,
+          path,
+          bytes,
+          expectedGeneration,
+        );
     rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
-    if (Number.isSafeInteger(result?.generation)) {
+    if (result && Number.isSafeInteger(result.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
     if (get().projectId !== projectId) return;
     const current = get().files[path];
     if (adoptable(current)) {
       pendingSaves.delete(path);
+      sharedSaveBases.delete(writeKey(projectId, path));
       set((s) => {
         if (s.projectId !== projectId || !adoptable(s.files[path])) return {};
         return {
@@ -2402,12 +2560,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (currentFile?.dirty) {
       const localContent = currentFile.content;
       pendingSaves.delete(path);
-      void enqueueWrite(projectId, path, localContent)
+      void enqueueWrite(projectId, path, localContent, false, canonicalContent)
         .then(() => {
           if (
             get().projectId === projectId &&
             get().files[path]?.content === localContent
           ) {
+            sharedSaveBases.delete(writeKey(projectId, path));
             set((s) => ({
               files: {
                 ...s.files,
@@ -2440,6 +2599,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
     const mustFollowPendingWrite = pendingWrites.has(writeKey(projectId, path));
     pendingSaves.delete(path);
+    sharedSaveBases.delete(writeKey(projectId, path));
     set((s) => {
       const activatesPath = !s.activePath || s.activePath === path;
       return {
@@ -2471,8 +2631,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return true;
   },
 
-  applyExternalDelete: (projectId, path) => {
+  applyExternalDelete: (projectId, path, options) => {
     if (get().projectId !== projectId) return false;
+    notifyPathsDeleted({ projectId, path });
     void refreshMutationGeneration(projectId).catch(() => {});
     invalidateAllPendingFileOpens();
     const isDeletedPath = (candidate: string) =>
@@ -2499,7 +2660,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         tabOrder,
         openTabs,
         assistantTabs: keepAssistantTabs(s.assistantTabs, openTabs),
-        activePath: s.activePath && files[s.activePath] ? s.activePath : openTabs.at(-1) ?? null,
+        activePath: activeAfterDelete(s.activePath, files, openTabs, options?.leaveEmpty === true),
       };
     });
     for (const [preservedPath, file] of preserved) {
@@ -2550,6 +2711,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const remappedActivePath = (path: string | null) =>
       path?.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
     const renamedPending = [...pendingSaves].map(remap);
+    notifyPathsMoved({ projectId, from, to });
     remapDiskState(projectId, remap);
     pendingSaves.clear();
     for (const path of renamedPending) pendingSaves.add(path);
@@ -2796,7 +2958,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }));
     } catch (error) {
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
-      void logError(allow ? "allow external TeX commands" : "block external TeX commands", error);
+      if (decodeAppError(error)?.code !== SHELL_ESCAPE_DECLINED) {
+        void logError(allow ? "allow external TeX commands" : "block external TeX commands", error);
+      }
       throw error;
     }
   },

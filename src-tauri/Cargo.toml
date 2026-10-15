@@ -19,6 +19,8 @@ tauri-build = { version = "2", features = [] }
 aho-corasick = "1"
 oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-cli = { path = "../crates/oleafly-cli" }
+oleafly-collab = { path = "../crates/oleafly-collab" }
+oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
 oleafly-core = { path = "../crates/oleafly-core" }
 oleafly-history = { path = "../crates/oleafly-history" }
 # `unstable` unlocks the multi-webview APIs (Window::add_child) that the
@@ -82,6 +84,7 @@ statrs = "0.18.0"
 rapidfuzz = "0.5.0"
 muda = { version = "0.19", default-features = false }
 notify = "8.2"
+open = "5"
 trash = "5.2.9"
 fontdb = "0.24"
 skrifa = { version = "0.48", default-features = false, features = ["std"] }
@@ -125,11 +128,12 @@ liblzma = { version = "=0.4.8", default-features = false, features = ["static"] 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 # E2E automation bridge (Playwright socket server); never in release builds.
-e2e-testing = ["dep:tauri-plugin-playwright"]
+e2e-testing = ["dep:tauri-plugin-playwright", "oleafly-collab/e2e-hooks"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 plist = "1"
+oleafly-server = { path = "../crates/oleafly-server", features = ["test-support"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = [

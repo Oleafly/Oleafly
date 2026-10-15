@@ -1,4 +1,5 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
+import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { activeFileReadOnly, useActiveFileReadOnly } from "@/lib/read-only-files";
 import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
@@ -28,6 +29,9 @@ import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
 import { cursorSignalExtension } from "./cm/cursor-signal";
+import { collabEditorSlot } from "./cm/collab-slot";
+import { commentsEditorSlot } from "./cm/comments-slot";
+import { requestComment } from "@/components/collab/comments-rail";
 import { historySignalExtension } from "./history-signal";
 import { recompileShortcutBinding } from "./cm/recompile-shortcut";
 import { codeIntel } from "./cm/code-intel";
@@ -257,6 +261,7 @@ const HOST: EditorHost = {
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
+  documentSession: collabDocumentSession,
   saveActive: saveActiveFromKeymap,
   isEditLocked: () =>
     isEditorMutationLocked(useFilesStore.getState().projectId) || activeFileReadOnly(),
@@ -334,6 +339,7 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   ...latexListKeymap,
   ...latexStructureKeymap,
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
+  { key: "Mod-Alt-m", run: requestComment },
 ];
 
 export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean }>) {
@@ -359,7 +365,7 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
     <CodeMirrorEditorCore
       active={active}
       host={HOST}
-      extraExtensions={SHELL_EXTENSIONS}
+      extraExtensions={[...SHELL_EXTENSIONS, collabEditorSlot(), commentsEditorSlot()]}
       extraExtensionsForPath={(path) => {
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
           return [];

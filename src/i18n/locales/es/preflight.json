@@ -334,6 +334,12 @@
       "title": "Entradas de bibliografía duplicadas: {{keys}}",
       "detail": "Estas entradas comparten el DOI {{doi}}, así que son la misma referencia con claves distintas. Quédate con una y cítala, o tu bibliografía la listará dos veces."
     },
+    "refs-duplicate-bib-key": {
+      "title": "La clave de cita \"{{key}}\" está definida más de una vez",
+      "detail": "Definida en {{places}}. BibTeX usa solo la primera entrada con esta clave y no distingue mayúsculas de minúsculas al comparar claves. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan.",
+      "detailBiber": "Definida en {{places}}. Cuando biber crea la bibliografía, solo usa la primera entrada con esta clave. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan.",
+      "detailTypst": "Definida en {{places}}. Typst detiene la compilación cuando dos entradas de la bibliografía comparten clave. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan."
+    },
     "submission-path-case": {
       "title": "Las mayúsculas del nombre de archivo no coinciden: {{target}}",
       "detailFigure": "Esta figura solo se resuelve en un sistema de archivos que no distingue mayúsculas. El proyecto contiene \"{{match}}\", así que usa exactamente esas mayúsculas antes de enviarlo a sistemas de compilación basados en Linux.",

@@ -397,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Laster diffen…",
     "previewTooLarge": "Filen er for stor til å forhåndsvise en diff.",
-    "diskHeading": "På disken ↔ Dine endringer"
+    "diskHeading": "På disken ↔ Dine endringer",
+    "sharedReadOnly": "I et delt prosjekt er diffen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte prosjektet, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Hurtigtaster",
@@ -474,6 +476,7 @@
     "openInAgent": "Fortsett i AI-assistenten med alle prosjektverktøyene",
     "generateFailed": "Kunne ikke lage endringen. {{message}}",
     "dismiss": "Lukk",
+    "withdrawn": "Noen andre har redigert denne teksten, så forslaget kan ikke lenger brukes.",
     "setUpProvider": "Sett opp en AI-leverandør",
     "setUpProviderHint": "Legg inn en API-nøkkel (eller lokal Ollama) for å bruke AI-endringer i linjen.",
     "openAiSettings": "Åpne Innstillinger → AI"
@@ -655,6 +658,7 @@
     "endOfDocument": "Slutten av dokumentet",
     "hidePreamble": "Skjul innledningen i dokumentet",
     "showPreamble": "Vis innledningen i dokumentet",
+    "sharedReadOnly": "I et delt prosjekt viser visuell modus bare filen. Bytt til kildevisning for å redigere den.",
     "findingLabel": "{{message}}. Åpne korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag."
@@ -1494,5 +1498,6 @@
     "keyInvalid": "Verdinavn kan ikke være tomme eller inneholde likhetstegn.",
     "keyTaken": "En variant kan ikke sette samme navn to ganger.",
     "saveFailed": "Kunne ikke lagre variantene."
-  }
+  },
+  "sharedSettingsViewer": "Lesere kan ikke endre dette i et delt prosjekt."
 }

@@ -1,0 +1,11 @@
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >>/stub/log
+case $1 in
+	enable | start)
+		if [ -f /stub/state/docker-start-fails ]; then
+			exit 1
+		fi
+		touch /stub/state/docker-running
+		;;
+	is-enabled) echo enabled ;;
+esac

@@ -40,6 +40,7 @@ import {
   Star,
   Trash2,
   TriangleAlert,
+  Users,
   X,
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
@@ -47,11 +48,14 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
+import { NavItem } from "@/components/ui/nav-item";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { LoadingState } from "@/components/ui/empty";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
@@ -90,7 +94,7 @@ import {
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
-import { currentLocale, i18n } from "@/i18n";
+import { currentLocale, i18n, loadNamespace } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import {
   dictionaryLabel,
@@ -142,11 +146,17 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 const SettingsFileCard = lazy(() =>
   Promise.all([
     import("@/components/settings/SettingsFileCard"),
-    import("@/i18n/lazy-namespaces").then((module) => module.loadNamespace("settingsFile")),
+    loadNamespace("settingsFile"),
   ]).then(([module]) => module),
 );
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
+
+const CollaborationSection = lazy(() =>
+  Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(
+    ([module]) => ({ default: module.CollaborationSection }),
+  ),
 );
 
 type Section = SettingsSearchSection;
@@ -221,6 +231,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     icon: Blocks,
   },
   {
+    id: "collaboration",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.collaboration);
+    },
+    icon: Users,
+  },
+  {
     id: "shortcuts",
     get label() {
       return i18n.t(($) => $.shell.settings.nav.shortcuts);
@@ -242,6 +259,8 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     icon: LifeBuoy,
   },
 ];
+
+const NAV_WITHOUT_COLLABORATION = NAV.filter((item) => item.id !== "collaboration");
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -289,6 +308,8 @@ export function SettingsModal() {
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
+  const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
+  const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
@@ -300,9 +321,7 @@ export function SettingsModal() {
 
   const [section, setSection] = useState<Section>("general");
   useEffect(() => {
-    import("@/i18n/lazy-namespaces")
-      .then((module) => module.loadNamespace("settingsFile"))
-      .catch((error: unknown) => void logError("load settings file strings", error));
+    loadNamespace("settingsFile").catch((error: unknown) => void logError("load settings file strings", error));
   }, []);
   const [developerSettings, setDeveloperSettings] =
     useState<DeveloperSettingsModule | null>(null);
@@ -332,13 +351,14 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
+  const sectionNav = liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
   const navigation = developerSettings
     ? [
-        ...NAV.slice(0, -1),
+        ...sectionNav.slice(0, -1),
         developerSettings.DEVELOPER_NAV_ITEM,
-        ...NAV.slice(-1),
+        ...sectionNav.slice(-1),
       ]
-    : NAV;
+    : sectionNav;
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
   const closeSettings = () => {
     if (useTourStore.getState().activeTourId === "settings") return;
@@ -378,7 +398,8 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const next = NAV.some((item) => item.id === settingsInitialSection)
+    const available = useSettingsStore.getState().liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
+    const next = available.some((item) => item.id === settingsInitialSection)
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
@@ -392,6 +413,10 @@ export function SettingsModal() {
     seenTemplateLink.current = templateLinkSerial;
     setSection("downloads");
   }, [templateLinkSerial]);
+
+  useEffect(() => {
+    if (!liveCollaboration && section === "collaboration") setSection("general");
+  }, [liveCollaboration, section]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -562,8 +587,8 @@ export function SettingsModal() {
     }
     if (storageSummary) {
       return (
-        <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
-          {[
+        <StatGrid
+          stats={[
             {
               id: "projects",
               label: t(($) => $.shell.settings.data.storage.stats.projects),
@@ -614,18 +639,8 @@ export function SettingsModal() {
               value: formatBytes(storageSummary.app_data_bytes),
               detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
             },
-          ].map((item) => (
-            <div key={item.id} className="min-w-0 bg-card px-3 py-3">
-              <dt className="text-muted-foreground">{item.label}</dt>
-              <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                {item.value}
-              </dd>
-              <dd className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
-                {item.detail}
-              </dd>
-            </div>
-          ))}
-        </dl>
+          ]}
+        />
       );
     }
     return (
@@ -739,6 +754,13 @@ export function SettingsModal() {
           checked={webBrowser}
           onChange={setWebBrowser}
         />
+        <SettingsToggleRow
+          testId="settings-live-collaboration"
+          label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
+          description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
+          checked={liveCollaboration}
+          onChange={setLiveCollaboration}
+        />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={resetExperimentationPreferences}
@@ -748,6 +770,12 @@ export function SettingsModal() {
     )
   );
 
+  const renderCollaborationSection = () =>
+    section === "collaboration" && liveCollaboration ? (
+      <Suspense fallback={<LoadingState size="compact" label={t(($) => $.common.state.loading)} />}>
+        <CollaborationSection />
+      </Suspense>
+    ) : null;
   const renderSettingsBody = () => (
     <div
       ref={settingsBodyRef}
@@ -768,6 +796,8 @@ export function SettingsModal() {
       {section === "downloads" && <DownloadsSection />}
 
       {section === "integrations" && <IntegrationsSection />}
+
+      {renderCollaborationSection()}
 
       {section === "shortcuts" && <ShortcutsSection />}
 
@@ -1275,22 +1305,13 @@ export function SettingsModal() {
             <div id={sectionListId} className="flex flex-col gap-0.5">
             {visibleNavigation.map(({ id, label, icon: Icon }) => (
             <Fragment key={id}>
-            <button
-              type="button"
-              aria-current={section === id ? "page" : undefined}
+            <NavItem
+              icon={Icon}
+              label={label}
+              active={section === id}
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
-              className={cn(
-                // Every row carries a border so the active one can show it without shifting.
-                "flex items-center gap-2.5 whitespace-nowrap rounded-md border px-2.5 py-2 text-sm transition-colors",
-                section === id
-                  ? "border-border bg-background font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
-            </button>
+            />
             <SettingsSearchRows
               label={label}
               rows={searchRows.get(id) ?? []}

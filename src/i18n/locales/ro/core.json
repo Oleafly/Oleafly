@@ -69,7 +69,10 @@
       "localNotFound": "Pachetul local {{spec}} nu este instalat. Pune-l în folderul de pachete Typst al Oleafly sau în folderul typst-packages al proiectului.",
       "versionMissing": "Acest pachet nu are versiunea {{version}}. Cea mai nouă versiune este {{latest}}.",
       "versionMissingNoLatest": "Acest pachet nu are versiunea {{version}}. Verifică versiunea din import."
-    }
+    },
+    "saveFailed": "{{path}} nu a putut fi salvat, așa că Oleafly nu a compilat. Verifică acel fișier, apoi compilează din nou.",
+    "saveFailedSeveral": "{{path}} și alte fișiere nu au putut fi salvate, așa că Oleafly nu a compilat. Verifică acele fișiere, apoi compilează din nou.",
+    "saveFailedOther": "Documentul nu a putut fi salvat, așa că Oleafly nu a compilat. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -287,7 +290,9 @@
     "yearRangeInvalid": "Anul de început nu poate fi după anul de sfârșit."
   },
   "mcp": {
+    "deniedByRules": "Refuzat de o regulă deny din approvals.toml",
     "openProjectSummary": "Deschide proiectul {{id}}",
+    "rulesUnreadable": "Refuzat deoarece approvals.toml nu a putut fi citit",
     "useToolSummary": "Folosește {{tool}} de pe serverul MCP {{server}}"
   },
   "mcpConfig": {

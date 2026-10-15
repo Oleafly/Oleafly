@@ -302,7 +302,7 @@ describe("Settings search", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
-    const everySection = SETTINGS_SEARCH_SECTIONS.filter((id) => id !== "developer").map(
+    const everySection = SETTINGS_SEARCH_SECTIONS.filter((id) => id !== "developer" && id !== "collaboration").map(
       (id) => `settings-section-${id}`,
     );
     await waitFor(() => expect(visibleSections()).toEqual(expect.arrayContaining(everySection)));

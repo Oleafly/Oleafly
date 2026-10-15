@@ -1,0 +1,35 @@
+[package]
+name = "oleafly-collab"
+version = "0.1.0"
+description = "Device-local collaboration state, device key and share bindings for Oleafly"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.89"
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+httpdate = "1"
+hyper-util = { version = "0.1.20", default-features = false, features = ["client-proxy", "client-proxy-system"] }
+loro = "=1.16.2"
+oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-native-certs = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["rustls-tls-webpki-roots"] }
+unicode-normalization = "0.1"
+url = "2.5"
+webpki-roots = "1"
+
+[features]
+e2e-hooks = []
+
+[dev-dependencies]
+oleafly-server = { path = "../oleafly-server", features = ["test-support"] }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { importCompatFinding } from "@oleafly/latex";
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { CompileError } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
@@ -85,6 +86,24 @@ describe("ShellCommandsBanner", () => {
         }),
       ]),
     );
+    expect(recompile).not.toHaveBeenCalled();
+  });
+
+  it("stays put without a toast or a compile when the person cancels the shared project warning", async () => {
+    setShellEscape.mockRejectedValue(
+      `${APP_ERROR_PREFIX}${JSON.stringify({
+        code: "project.shell_escape_declined",
+        params: {},
+        detail: null,
+      })}`,
+    );
+    project(SYSTEM_TEX, [blocked]);
+    render(<ShellCommandsBanner />);
+    await userEvent.setup().click(screen.getByRole("button", { name: copy.allow }));
+    await waitFor(() => expect(screen.getByRole("button", { name: copy.allow })).toBeEnabled());
+    expect(setShellEscape).toHaveBeenCalledExactlyOnceWith(true);
+    expect(screen.getByTestId("shell-commands-banner")).toHaveTextContent(copy.banner);
+    expect(useToastStore.getState().toasts).toEqual([]);
     expect(recompile).not.toHaveBeenCalled();
   });
 

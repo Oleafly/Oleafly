@@ -40,6 +40,38 @@ describe("inline edit store", () => {
   it("mutations are no-ops when there is no open session", () => {
     s().appendProposed("nope");
     s().finishReviewing();
+    s().relocate(1, 2);
+    s().withdraw();
     expect(s().session).toBeNull();
+  });
+
+  it("relocates the target range without touching the rest of the session", () => {
+    s().open({ from: 5, to: 12, original: "old txt", instruction: "improve" });
+    s().startStreaming();
+    s().relocate(9, 16);
+    expect(s().session).toMatchObject({
+      phase: "streaming",
+      from: 9,
+      to: 16,
+      original: "old txt",
+      instruction: "improve",
+    });
+  });
+
+  it("withdraws a session so streaming, review and errors can no longer move it", () => {
+    s().open({ from: 0, to: 3, original: "abc" });
+    s().startStreaming();
+    s().appendProposed("AB");
+    s().withdraw();
+    expect(s().session?.phase).toBe("withdrawn");
+    s().setInstruction("again");
+    s().startStreaming();
+    s().appendProposed("ABC!");
+    s().finishReviewing();
+    s().fail("late failure");
+    expect(s().session).toMatchObject({ phase: "withdrawn", proposed: "AB", instruction: "" });
+    expect(s().session?.error).toBeUndefined();
+    s().relocate(4, 7);
+    expect(s().session).toMatchObject({ phase: "withdrawn", from: 4, to: 7 });
   });
 });

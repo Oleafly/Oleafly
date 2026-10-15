@@ -1,0 +1,1079 @@
+{
+  "section": {
+    "intro": "Editează proiecte împreună cu alte persoane, în timp real. Proiectele se sincronizează printr-un server de colaborare administrat de tine sau de grupul tău, iar acel server decide cine se poate alătura.",
+    "servers": {
+      "title": "Servere",
+      "add": "Adaugă server",
+      "loading": "Se încarcă serverele tale…",
+      "loadFailed": "Oleafly nu a putut încărca serverele tale.",
+      "empty": {
+        "title": "Niciun server încă",
+        "description": "Cere-i adresa persoanei care administrează serverul grupului tău, apoi adaug-o aici."
+      }
+    },
+    "presence": {
+      "label": "Ce văd ceilalți",
+      "description": "Alege ce văd persoanele din proiectele tale partajate cât timp lucrezi. Se setează separat pe fiecare computer.",
+      "options": {
+        "cursor": "Arată cursorul meu",
+        "file": "Arată doar fișierul în care sunt",
+        "hidden": "Ascunde-mă"
+      }
+    },
+    "server": {
+      "signedIn": "Autentificat",
+      "signedOut": "Deconectat",
+      "signedInAs": "Autentificat ca {{name}}",
+      "signedOutHint": "Acest computer nu este autentificat pe acest server.",
+      "suspended": "Suspendat",
+      "noAccess": "Fără acces",
+      "suspendedHint": "Un administrator ți-a suspendat contul pe {{server}}. Modificările tale rămân pe acest computer. Te poți autentifica din nou după ce un administrator îl reactivează.",
+      "endedHint": "Nu mai ai acces la {{server}}. Copiile tale rămân pe acest computer ca proiecte obișnuite. Dacă un administrator te adaugă din nou, autentifică-te din nou.",
+      "endedGuestHint": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copiile tale rămân pe acest computer ca proiecte obișnuite. Dacă ești invitat din nou, autentifică-te din nou.",
+      "role": "Rolul tău: {{role}}",
+      "signIn": "Autentifică-te",
+      "signOut": "Deconectează-te",
+      "remove": "Elimină",
+      "manage": "Gestionează serverul",
+      "manageHint": "Gestionează serverul arată aici Persoane, Persoane permise, Domenii, Setările serverului, E-mail și Jurnal de securitate. Consola de administrare se deschide într-o fereastră separată și are în plus o prezentare generală, proiectele și verificările de conexiune.",
+      "test": "Testează conexiunea",
+      "removeConfirm": {
+        "title": "Elimini {{name}}?",
+        "description": "Oleafly se deconectează de la {{name}} și îl uită. Proiectele partajate de pe {{name}} nu se mai sincronizează și rămân pe acest computer ca proiecte obișnuite, fiecare redenumit ca copie locală.",
+        "confirm": "Elimină serverul"
+      },
+      "detached": "Aceste proiecte partajate de pe {{server}} nu se mai sincronizează. Rămân pe acest computer ca proiecte obișnuite.",
+      "unsent": {
+        "title": "Unele modificări nu au fost trimise încă",
+        "description": "Aceste proiecte partajate au modificări pe care serverul nu le are încă. Dacă păstrezi o copie locală, fiecare nu se mai sincronizează și rămâne pe acest computer cu numele de mai jos. Poți și să rămâi autentificat și să încerci din nou mai târziu.",
+        "removeDescription": "Aceste proiecte partajate au modificări pe care serverul nu le are încă. Dacă păstrezi o copie locală, fiecare nu se mai sincronizează și rămâne pe acest computer cu numele de mai jos. Poți și să păstrezi serverul și să încerci din nou mai târziu.",
+        "changes": "Modificări netrimise: {{changes}}",
+        "staysAs": "Rămâne ca {{name}}",
+        "keep": "Păstrează o copie locală",
+        "stay": "Rămâi autentificat",
+        "keepServer": "Păstrează serverul"
+      },
+      "emails": {
+        "label": "Trimite-mi un e-mail când cineva partajează un proiect",
+        "description": "E-mailul numește proiectul și are un link pentru a-l deschide.",
+        "mentionsLabel": "Trimite-mi un e-mail când cineva mă menționează într-un comentariu",
+        "mentionsDescription": "E-mailul citează comentariul și are un link pentru a-l deschide.",
+        "noMail": "Acest server nu trimite e-mailuri. Proiectele partajate cu tine apar în continuare în biblioteca ta, la Partajate cu tine.",
+        "paused": "Administratorul serverului a dezactivat e-mailul pentru toată lumea.",
+        "loadFailed": "Oleafly nu a putut încărca setările tale de e-mail."
+      }
+    },
+    "devices": {
+      "title": "Dispozitivele tale",
+      "description": "Computerele autentificate pe acest server cu contul tău. Deconectează-le pe cele pe care nu le mai folosești.",
+      "loading": "Se încarcă dispozitivele tale…",
+      "loadFailed": "Oleafly nu a putut încărca dispozitivele tale.",
+      "current": "Acest computer",
+      "added": "Adăugat: {{date}}",
+      "lastSeen": "Văzut ultima dată: {{date}}",
+      "neverSeen": "Nevăzut încă",
+      "empty": "Niciun dispozitiv nu este autentificat.",
+      "signOut": "Deconectează",
+      "signOutNamed": "Deconectează {{name}}",
+      "signOutConfirm": {
+        "title": "Deconectezi {{name}}?",
+        "description": "Acel computer nu se mai sincronizează cu acest server până când cineva se autentifică din nou pe el.",
+        "confirm": "Deconectează dispozitivul"
+      }
+    },
+    "checks": {
+      "title": "Test de conexiune",
+      "running": "Se testează conexiunea…",
+      "clockSkew": "Diferența de timp în secunde: {{seconds}}",
+      "status": {
+        "pass": "Reușit",
+        "fail": "Eșuat",
+        "info": "Notă",
+        "skipped": "Omis"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresă",
+          "pass": "Serverul a răspuns.",
+          "fail": "Oleafly nu a putut accesa această adresă. Verifică adresa și rețeaua.",
+          "info": "Serverul a răspuns, dar încet.",
+          "skipped": "Neverificat."
+        },
+        "https": {
+          "label": "Conexiune securizată",
+          "pass": "Conexiunea este criptată, iar certificatul este valid.",
+          "fail": "Certificatul serverului nu este valid sau adresa nu folosește https.",
+          "info": "Acesta este un server de test de pe acest computer, așa că rulează fără https.",
+          "skipped": "Neverificat, pentru că adresa nu a răspuns."
+        },
+        "protocol": {
+          "label": "Versiune",
+          "pass": "Această versiune de Oleafly funcționează cu serverul.",
+          "fail": "Oleafly și serverul au nevoie de versiuni diferite. Unul dintre ele trebuie actualizat.",
+          "info": "Serverul este mai nou decât această versiune de Oleafly, dar funcționează în continuare cu ea.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "webSocket": {
+          "label": "Conexiune în timp real",
+          "pass": "Editările în timp real pot trece.",
+          "fail": "Ceva dintre tine și server blochează editările în timp real. Un firewall sau un proxy ar putea avea nevoie de o modificare.",
+          "info": "Editările în timp real merg pe o cale mai lentă, pentru că această rețea o blochează pe cea obișnuită. Ajung totuși.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "signInProviders": {
+          "label": "Opțiuni de autentificare",
+          "pass": "Serverul are cel puțin o metodă de autentificare.",
+          "fail": "Serverul nu are încă nicio metodă de autentificare. Întreabă-l pe administratorul lui.",
+          "info": "Serverul are o metodă de autentificare, dar unele opțiuni sunt dezactivate.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "Serverul poate trimite e-mailuri.",
+          "fail": "Setările de e-mail ale serverului nu funcționează.",
+          "info": "E-mailul nu este configurat pe acest server. Persoanele sunt adăugate fără e-mail.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "clock": {
+          "label": "Ceas",
+          "pass": "Ceasul tău și ceasul serverului sunt sincronizate.",
+          "fail": "Ceasul tău și ceasul serverului diferă mult. Verifică data și ora pe acest computer.",
+          "info": "Ceasul tău este puțin decalat față de cel al serverului.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Adaugă un server de colaborare",
+    "description": "Introdu adresa primită de la grupul tău. Oleafly verifică serverul înainte să te autentifici.",
+    "addressLabel": "Adresa serverului",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continuă",
+    "checking": "Se verifică serverul…",
+    "notAServer": "Niciun server Oleafly nu a răspuns la această adresă. Verifică adresa cu persoana care administrează serverul. Pe Wi-Fi de hotel sau de campus, deschide mai întâi orice pagină web, în caz că rețeaua îți cere să te autentifici.",
+    "moved": "Această adresă te trimite la {{target}}. Încearcă acea adresă.",
+    "useMoved": "Folosește acea adresă",
+    "version": "Versiunea {{version}}",
+    "serverTitle": "Autentifică-te pe {{server}}",
+    "serverDescription": "Acest server decide cine se poate alătura. Alege cum te autentifici.",
+    "setupTitle": "Configurează {{server}}",
+    "setupDescription": "Nimeni nu a configurat încă acest server. Dacă l-ai instalat tu, introdu codul de configurare pe care ți l-a arătat programul de instalare. Îl găsești și în jurnalul serverului. Prima persoană care se autentifică cu acest cod devine administratorul serverului. Dacă nu l-ai instalat tu, cere-i persoanei care îl administrează să termine mai întâi configurarea.",
+    "setupCodeLabel": "Cod de configurare",
+    "signInDescription": "Browserul tău se deschide ca să te autentifici acolo. Oleafly nu îți vede niciodată parola.",
+    "continueWith": "Continuă cu {{provider}}",
+    "noProviders": "Acest server nu are încă nicio metodă de autentificare. Cere-i administratorului să configureze una.",
+    "signingInTitle": "Termină autentificarea",
+    "waitingTitle": "Se așteaptă browserul",
+    "waitingDescription": "Autentifică-te cu {{provider}} în fereastra de browser care s-a deschis, apoi revino aici.",
+    "waitingEmailDescription": "Introdu adresa de e-mail în browser, apoi deschide pe acest computer linkul pe care ți-l trimitem.",
+    "cancel": "Anulează",
+    "back": "Înapoi",
+    "doneTitle": "Conectat la {{server}}",
+    "doneDescription": "Te-ai autentificat ca {{name}}. Acum poți partaja proiecte și le poți deschide pe cele partajate cu tine.",
+    "doneManageDescription": "Te-ai autentificat ca {{name}}. Acum poți partaja proiecte și le poți deschide pe cele partajate cu tine. Poți și să gestionezi serverul din consola de administrare.",
+    "doneGuestDescription": "Te-ai autentificat ca {{name}}. Ca invitat, poți deschide proiectele la care ești invitat.",
+    "done": "Gata",
+    "codeSignIn": "Autentifică-te cu un cod",
+    "codeSignInDescription": "Folosește asta când browserul nu poate reveni în Oleafly sau ca să te autentifici pe alt dispozitiv.",
+    "codeTitle": "Autentifică-te cu un cod",
+    "codeRequesting": "Se obține un cod…",
+    "codeSteps": "Pe orice telefon sau computer, deschide această adresă și introdu codul.",
+    "codeAddressLabel": "Adresă",
+    "codeLabel": "Cod",
+    "codeExpires": "Codul nu mai funcționează după ora {{time}}.",
+    "codeWaiting": "Se așteaptă autentificarea ta",
+    "codeOpen": "Deschide în browser",
+    "codeOffer": "Browserul nu a revenit în Oleafly?",
+    "codeHint": "Dacă browserul nu a putut ajunge la Oleafly, autentifică-te cu un cod."
+  },
+  "errors": {
+    "unreachable": "Oleafly nu a putut accesa serverul. Verifică adresa și conexiunea, apoi încearcă din nou.",
+    "not_https": "Această adresă nu folosește o conexiune securizată. Serverele de colaborare au nevoie de o adresă care începe cu https.",
+    "client_too_old": "Acest server are nevoie de o versiune mai nouă de Oleafly. Actualizează Oleafly, apoi încearcă din nou.",
+    "server_too_old": "Acest server trebuie actualizat înainte să funcționeze cu această versiune de Oleafly. Întreabă-l pe administratorul lui.",
+    "not_admitted": "Acest server nu te lasă încă să intri. Cere-i administratorului să te adauge.",
+    "sign_in_cancelled": "Autentificarea a fost anulată.",
+    "sign_in_timed_out": "Autentificarea a durat prea mult. Încearcă din nou.",
+    "unauthorized": "Ești deconectat de la acest server. Autentifică-te din nou.",
+    "forbidden": "Rolul tău pe acest server nu permite acest lucru.",
+    "not_found": "Serverul nu a găsit ce ai cerut. Poate nu mai există.",
+    "conflict": "Asta intră în conflict cu o modificare făcută de altcineva. Reîncarcă și încearcă din nou.",
+    "rate_limited": "Serverul este ocupat. Așteaptă un minut, apoi încearcă din nou.",
+    "setup_code_invalid": "Codul de configurare nu se potrivește. Caută codul corect în jurnalul serverului.",
+    "server": "Serverul a întâmpinat o problemă. Încearcă din nou mai târziu sau întreabă-l pe administratorul lui.",
+    "internal": "Ceva nu a mers bine în Oleafly. Încearcă din nou.",
+    "server_changed": "Această adresă aparține acum altui server, așa că Oleafly nu i-a trimis nimic. Dacă ai încredere în noul server, elimină-l pe acesta și adaugă-l din nou.",
+    "duplicate_server": "Acest server este deja în lista ta cu altă adresă. Dacă s-a mutat, elimină mai întâi intrarea veche, apoi adaugă-l din nou.",
+    "device_in_use": "Altcineva s-a autentificat deja pe acest server din acest cont de utilizator al computerului. Fiecare persoană are nevoie de propriul cont de utilizator pe computer ca să se autentifice.",
+    "server_unknown": "Acest link este pentru un server pe care nu l-ai adăugat încă. Adaugă-l în setările de Colaborare, apoi deschide din nou linkul.",
+    "too_large": "Unele fișiere sunt mai mari decât permite acest server. Micșorează-le sau elimină-le, apoi încearcă din nou.",
+    "invalid": "Serverul nu a acceptat asta. Verifică ce ai introdus, apoi încearcă din nou.",
+    "invalid_domain": "Acesta nu este un nume de domeniu. Folosește o formă ca cs.example.edu.",
+    "invalid_email": "Adresa de e-mail nu pare corectă. Verific-o, apoi încearcă din nou.",
+    "invalid_login": "Numele de utilizator nu pare corect. Verifică-l, apoi încearcă din nou.",
+    "guests_off": "Acest server nu permite invitați. Cere-i administratorului să permită invitații.",
+    "link_sharing_off": "Acest server nu permite partajarea prin link. Cere-i administratorului să o activeze.",
+    "access_log_off": "Acest server nu permite jurnale de acces. Cere-i administratorului să le activeze.",
+    "last_admin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
+    "duplicate_entry": "Această intrare există deja.",
+    "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
+    "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
+    "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
+    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi până când contul său devine din nou activ.",
+    "wrong_server": "Acest server a trimis pagina de autentificare de la altă adresă, așa că Oleafly s-a oprit. Verifică adresa serverului sau întreabă persoana care îl administrează.",
+    "not_a_link": "Acesta nu este un link către un proiect partajat. Copiază tot linkul, apoi încearcă din nou.",
+    "signed_out": "Ești deconectat de la acest server. Autentifică-te din nou ca să sincronizezi acest proiect.",
+    "server_removed": "Serverul acestui proiect nu mai este în lista ta. Păstrează proiectul ca o copie locală sau adaugă din nou serverul.",
+    "share_in_progress": "Acest proiect se partajează deja. Așteaptă să se termine.",
+    "cancelled": "Deschiderea proiectului partajat a fost anulată.",
+    "cloud_synced": "Biblioteca ta Oleafly se află într-un folder sincronizat de un serviciu cloud. Mut-o din Dropbox, OneDrive sau iCloud Drive ca să poți partaja proiecte sau să te alături lor."
+  },
+  "roles": {
+    "admin": "Administrator",
+    "maintainer": "Coordonator",
+    "member": "Membru",
+    "guest": "Invitat",
+    "unknown": "Rol necunoscut"
+  },
+  "admin": {
+    "title": "Gestionează {{name}}",
+    "back": "Înapoi la servere",
+    "loadFailed": "Oleafly nu a putut încărca aceste date de pe server.",
+    "added": "Adăugat: {{date}}",
+    "tabs": {
+      "members": "Persoane",
+      "allowlist": "Persoane permise",
+      "domains": "Domenii",
+      "settings": "Setările serverului",
+      "log": "Jurnal de securitate",
+      "email": "E-mail"
+    },
+    "members": {
+      "description": "Toți cei care s-au autentificat pe acest server.",
+      "addPeople": "Adaugă persoane",
+      "addHint": "Ca să lași pe cineva nou să intre, adaugă persoana la Persoane permise.",
+      "loading": "Se încarcă persoanele…",
+      "empty": "Nimeni nu s-a autentificat încă.",
+      "you": "Tu",
+      "active": "Activ",
+      "suspended": "Suspendat",
+      "removed": "Eliminat",
+      "roleLabel": "Rol pentru {{name}}",
+      "suspend": "Suspendă",
+      "reactivate": "Reactivează",
+      "remove": "Elimină",
+      "devices": "Dispozitive",
+      "devicesTitle": "Dispozitive pentru {{name}}",
+      "devicesDescription": "Deconectează un dispozitiv pierdut sau care nu mai este folosit.",
+      "devicesLoading": "Se încarcă dispozitivele…",
+      "devicesLoadFailed": "Oleafly nu a putut încărca aceste dispozitive.",
+      "lastAdmin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
+      "owned": {
+        "suspendOne": "{{name}} deține un proiect partajat. Nimeni altcineva nu îl poate gestiona cât timp {{name}} are contul suspendat.",
+        "suspendMany": "Proiecte partajate deținute de {{name}}: {{number}}. Nimeni altcineva nu le poate gestiona cât timp {{name}} are contul suspendat.",
+        "removeOne": "{{name}} deține un proiect partajat. După eliminarea utilizatorului {{name}}, nimeni altcineva nu îl va mai putea gestiona.",
+        "removeMany": "Proiecte partajate deținute de {{name}}: {{number}}. După eliminarea utilizatorului {{name}}, nimeni altcineva nu le va mai putea gestiona."
+      },
+      "removeConfirm": {
+        "title": "Elimini {{name}} de pe acest server?",
+        "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
+        "confirm": "Elimină de pe server"
+      },
+      "suspendConfirm": {
+        "title": "Suspenzi {{name}}?",
+        "description": "{{name}} nu se poate autentifica și nu poate sincroniza până când un administrator reactivează contul.",
+        "confirm": "Suspendă contul"
+      },
+      "selfRoleConfirm": {
+        "title": "Îți schimbi propriul rol în {{role}}?",
+        "description": "Îți pierzi drepturile de administrator pe acest server, și doar alt administrator ți le poate da înapoi.",
+        "confirm": "Schimbă-mi rolul"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Deconectezi {{name}}?",
+        "description": "Acel dispozitiv nu se mai sincronizează cu acest server până când proprietarul lui se autentifică din nou pe el.",
+        "confirm": "Deconectează dispozitivul"
+      }
+    },
+    "allowlist": {
+      "description": "Persoanele pe care le adaugi aici se pot autentifica pe server cu rolul pe care îl alegi.",
+      "matchLabel": "Potrivire după",
+      "match": {
+        "email": "Adresă de e-mail",
+        "login": "Nume de utilizator"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Opțiune de autentificare",
+      "roleLabel": "Rol",
+      "add": "Adaugă",
+      "loading": "Se încarcă persoanele permise…",
+      "empty": "Încă nu a fost adăugat nimeni.",
+      "loginEntry": "{{login}} pe {{provider}}",
+      "bound": "S-a autentificat",
+      "unbound": "Nu s-a autentificat încă",
+      "remove": "Elimină",
+      "removeNamed": "Elimină {{entry}}",
+      "duplicate": "Această persoană este deja permisă."
+    },
+    "domains": {
+      "description": "Oricine are o adresă de e-mail verificată pe aceste domenii se poate autentifica cu rolul pe care îl alegi.",
+      "domainLabel": "Domeniu",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rol",
+      "add": "Adaugă",
+      "loading": "Se încarcă regulile de domeniu…",
+      "empty": "Nicio regulă de domeniu încă.",
+      "remove": "Elimină",
+      "removeNamed": "Elimină {{domain}}",
+      "duplicate": "Acest domeniu are deja o regulă."
+    },
+    "settings": {
+      "description": "Aceste setări se aplică tuturor celor de pe acest server.",
+      "adminOnly": "Doar administratorii pot schimba aceste setări.",
+      "loading": "Se încarcă setările…",
+      "guestsEnabled": {
+        "label": "Permite invitați",
+        "description": "Membrii pot invita persoane din afara serverului la proiectele pe care le dețin."
+      },
+      "guestApprovalRequired": {
+        "label": "Aprobare prealabilă pentru invitați",
+        "description": "Un coordonator sau un administrator aprobă fiecare invitație înainte ca ea să funcționeze."
+      },
+      "directoryVisible": {
+        "label": "Lista membrilor",
+        "description": "Membrii se pot căuta unii pe alții după nume când partajează un proiect."
+      },
+      "directoryShowsEmail": {
+        "label": "Arată adresele de e-mail în lista membrilor",
+        "description": "Membrii văd adresele de e-mail ale celorlalți când caută pe cineva."
+      },
+      "linkSharingAllowed": {
+        "label": "Permite partajarea prin link",
+        "description": "Proprietarii de proiecte pot permite oricărui membru să deschidă un proiect din linkul lui."
+      },
+      "accessLogsAllowed": {
+        "label": "Permite jurnale de acces la proiecte",
+        "description": "Proprietarii de proiecte pot păstra un jurnal cu cei care le-au deschis proiectul."
+      },
+      "commentsAllowed": {
+        "label": "Permite comentariile",
+        "description": "Persoanele din proiectele partajate pot comenta textul și pot răspunde. Dezactivat, comentariile sunt ascunse peste tot și rămân salvate."
+      },
+      "emailNotifications": {
+        "label": "Notificări prin e-mail",
+        "description": "Trimite aceste e-mailuri. Dezactivează pentru a le opri pentru toți cei de pe server."
+      },
+      "emailLinkSignIn": {
+        "label": "Autentificare prin e-mail",
+        "description": "Oamenii se pot autentifica printr-un link trimis la adresa lor de e-mail. E nevoie de setările de e-mail ale serverului. Regulile tale de acces decid în continuare cine intră."
+      }
+    },
+    "log": {
+      "description": "Autentificări, modificări de dispozitive și acțiuni ale administratorilor pe acest server.",
+      "loading": "Se încarcă jurnalul…",
+      "empty": "Nu s-a întâmplat încă nimic.",
+      "loadMore": "Arată intrările mai vechi",
+      "server": "Server",
+      "unknownAccount": "Cont necunoscut",
+      "target": "Pentru {{target}}",
+      "ip": "De la {{ip}}",
+      "kinds": {
+        "setupCompleted": "A terminat configurarea serverului",
+        "signIn": "S-a autentificat",
+        "signInRefused": "Autentificare refuzată",
+        "deviceAdded": "A adăugat un dispozitiv",
+        "deviceSignedOut": "A deconectat un dispozitiv",
+        "refreshReuseDetected": "A refolosit o autentificare veche, așa că dispozitivul a fost deconectat",
+        "memberAdded": "A adăugat un membru",
+        "memberRemoved": "A eliminat un membru",
+        "memberSuspended": "A suspendat un membru",
+        "memberReactivated": "A reactivat un membru",
+        "roleChanged": "A schimbat un rol",
+        "allowlistAdded": "A adăugat pe cineva pe lista persoanelor permise",
+        "allowlistRemoved": "A eliminat pe cineva de pe lista persoanelor permise",
+        "domainRuleAdded": "A adăugat o regulă de domeniu",
+        "domainRuleRemoved": "A eliminat o regulă de domeniu",
+        "settingsChanged": "A schimbat setările serverului",
+        "projectShared": "A partajat un proiect",
+        "projectAccessGranted": "A dat cuiva acces la un proiect",
+        "projectAccessChanged": "A schimbat accesul cuiva la un proiect",
+        "projectAccessRemoved": "A eliminat pe cineva dintr-un proiect",
+        "projectLeft": "A părăsit un proiect",
+        "projectLinkSharingOn": "A activat partajarea prin link pentru un proiect",
+        "projectLinkSharingOff": "A dezactivat partajarea prin link pentru un proiect",
+        "projectLinkRoleChanged": "A schimbat ce permite linkul unui proiect",
+        "projectArchived": "A arhivat un proiect",
+        "projectUnarchived": "A restaurat un proiect arhivat",
+        "projectSettingsChanged": "A schimbat setările unui proiect",
+        "projectAccessLogOn": "A activat jurnalul de acces al unui proiect",
+        "projectAccessLogOff": "A dezactivat jurnalul de acces al unui proiect",
+        "projectCommentsOn": "A activat comentariile într-un proiect",
+        "projectCommentsOff": "A dezactivat comentariile într-un proiect",
+        "projectRejoinRefused": "A încercat să revină într-un proiect din care fusese eliminat",
+        "commentsChangedWhileOff": "A modificat comentariile cât timp erau dezactivate",
+        "guestInvited": "A trimis o invitație pentru un invitat",
+        "guestInvitationApproved": "A aprobat o invitație pentru un invitat",
+        "guestInvitationDeclined": "A refuzat o invitație pentru un invitat",
+        "guestInvitationRevoked": "A retras o invitație pentru un invitat",
+        "guestAdmissionEnded": "A încheiat accesul unui invitat la server",
+        "unknown": "Alt eveniment pe server"
+      },
+      "details": {
+        "project": "Proiect: {{title}}",
+        "provider": "Cu {{provider}}",
+        "providerEmailLink": "Cu un link prin e-mail",
+        "signInCode": "A folosit un cod de autentificare",
+        "via": {
+          "allowlist": "Admis prin lista persoanelor permise",
+          "domain": "Admis printr-o regulă de domeniu",
+          "setup": "A folosit codul de configurare",
+          "guest": "Admis ca invitat",
+          "link": "Prin linkul proiectului",
+          "invitation": "Printr-o invitație pentru invitați"
+        },
+        "newAccount": "Cont nou",
+        "reactivated": "Cont reactivat",
+        "reasons": {
+          "suspended": "Contul este suspendat",
+          "notAdmitted": "Nicio regulă de acces nu îl admite",
+          "setupCodeInvalid": "Cod de configurare greșit",
+          "guestInvitationUnusable": "Invitația pentru invitat nu mai funcționează",
+          "lockedOutIp": "Prea multe încercări de la o singură adresă de rețea",
+          "lockedOutAddress": "Prea multe e-mailuri de autentificare către o singură adresă",
+          "stoppedByPerson": "Oprit pe pagina de autentificare",
+          "otherBrowser": "Finalizat în alt browser decât cel în care a început",
+          "inactiveAccountAddress": "Adresa de e-mail aparține unui cont eliminat sau suspendat",
+          "noProjectsLeft": "Nu mai are proiecte"
+        },
+        "role": "Rol: {{role}}",
+        "roleChange": "De la {{from}} la {{to}}",
+        "device": "Dispozitiv: {{name}}",
+        "byAdmin": "Din consola de administrare",
+        "settingOn": "{{setting}}: activat",
+        "settingOff": "{{setting}}: dezactivat"
+      }
+    },
+    "email": {
+      "description": "Serverul trimite e-mailuri persoanelor când le adaugi, când cineva partajează un proiect cu ele și când contul lor se conectează pe un dispozitiv nou.",
+      "loading": "Se încarcă setările de e-mail…",
+      "on": {
+        "title": "E-mailul este activat",
+        "from": "E-mailurile vin de la {{from}}."
+      },
+      "off": {
+        "title": "E-mailul este dezactivat",
+        "description": "Acest server nu are setări de e-mail. Pentru a activa e-mailul, setează OLEAFLY_SMTP_URL și OLEAFLY_MAIL_FROM pe server, apoi repornește-l.",
+        "copyPath": "Până atunci, trimite tu acest link persoanelor noi. Adaugă serverul în Oleafly.",
+        "address": "Pot introduce și această adresă la Adaugă server:"
+      },
+      "needsSettings": "Activează mai întâi e-mailul pentru server.",
+      "lastFailure": "Ultimul e-mail eșuat a fost pe {{date}}. Serverul de e-mail a răspuns:",
+      "test": {
+        "title": "E-mail de test",
+        "description": "Trimite un e-mail de test la {{address}} ca să verifici că setările funcționează.",
+        "send": "Trimite e-mail de test",
+        "sending": "Se trimite…",
+        "sent": "Trimis la {{address}}. Dacă nu e în inbox, uită-te în dosarul de spam.",
+        "failed": "Serverul de e-mail nu a acceptat e-mailul de test.",
+        "noAddress": "Contul tău nu are nicio adresă de e-mail verificată, deci nu există unde să trimiți un test.",
+        "adminOnly": "Doar administratorii pot trimite un e-mail de test."
+      }
+    }
+  },
+  "projectRoles": {
+    "owner": "Proprietar",
+    "editor": "Editor",
+    "viewer": "Cititor",
+    "unknown": "Rol necunoscut"
+  },
+  "share": {
+    "button": "Partajează",
+    "copyAndShare": "Copiază în Oleafly și partajează",
+    "title": "Partajează {{name}}",
+    "description": "Lucrează la acest proiect cu alte persoane printr-un server de colaborare.",
+    "loading": "Se încarcă…",
+    "linked": "Acest proiect este un folder din afara Oleafly. Oleafly îl copiază în biblioteca ta și partajează copia. Folderul original nu este modificat.",
+    "editCopy": "Aceasta este copia partajată. De acum înainte editează această copie, nu folderul original.",
+    "serverLabel": "Server",
+    "noServers": "Autentifică-te mai întâi pe un server de colaborare, apoi revino ca să partajezi.",
+    "openSettings": "Deschide setările de Colaborare",
+    "checking": "Se verifică proiectul…",
+    "checkFailed": "Oleafly nu a putut verifica acest proiect.",
+    "files": "Fișiere",
+    "size": "Dimensiune",
+    "disclosure": "{{server}} poate citi fișierele acestui proiect.",
+    "cloudSynced": "Biblioteca ta Oleafly se află într-un folder sincronizat de iCloud, Dropbox sau un serviciu similar. Două servicii de sincronizare și-ar disputa aceleași fișiere, așa că Oleafly nu poate partaja de acolo. Mută mai întâi biblioteca în afara acelui folder.",
+    "tooLarge": "Aceste fișiere depășesc limita serverului, de {{size}} MB. Micșorează-le sau elimină-le înainte să partajezi.",
+    "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
+    "excluded": "Nu se partajează: fișierele de compilare, setările Oleafly și istoricul Git.",
+    "start": "Partajează",
+    "preparing": "Se pregătește proiectul…",
+    "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
+    "saving": "Se salvează proiectul pe server…",
+    "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
+    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape."
+  },
+  "manage": {
+    "sharedOn": "Partajat pe {{server}}",
+    "yourRole": "Rolul tău: {{role}}",
+    "loading": "Se încarcă cine are acces…",
+    "loadFailed": "Oleafly nu a putut încărca cine are acces.",
+    "people": "Persoane cu acces",
+    "you": "Tu",
+    "inactive": "Eliminat sau suspendat",
+    "ownerInactive": "Proprietar eliminat sau suspendat",
+    "roleLabel": "Rol pentru {{name}}",
+    "remove": "Elimină",
+    "removeNamed": "Elimină {{name}}",
+    "removeConfirm": {
+      "title": "Elimini {{name}} din acest proiect?",
+      "description": "Copia acestei persoane nu se mai sincronizează și rămâne pe computerul ei ca proiect obișnuit.",
+      "confirm": "Elimină"
+    },
+    "add": {
+      "label": "Adaugă persoane",
+      "placeholder": "Nume, nume de utilizator sau e-mail",
+      "roleLabel": "Rol pentru persoanele pe care le adaugi",
+      "searching": "Se caută…",
+      "noResultsTryEmail": "Nimeni de pe {{server}} nu se potrivește. Încearcă adresa de e-mail completă a persoanei.",
+      "alreadyMember": "{{name}} are deja acces.",
+      "allMembers": "Toate persoanele găsite au deja acces.",
+      "noAccountNoGuests": "Nimeni de pe {{server}} nu folosește încă {{email}}. Cere-i unui administrator al {{server}} să permită accesul acestei persoane, apoi adaug-o aici după ce se autentifică o dată.",
+      "guestCheckFailed": "Oleafly nu a putut verifica dacă {{server}} permite invitați.",
+      "add": "Adaugă",
+      "addNamed": "Adaugă {{name}}"
+    },
+    "link": {
+      "copy": "Copiază linkul",
+      "copied": "Linkul a fost copiat",
+      "copyFailed": "Linkul nu a putut fi copiat",
+      "sharing": "Partajare prin link",
+      "sharingDescription": "Oricine este autentificat pe {{server}} și are linkul poate deschide acest proiect.",
+      "roleLabel": "Rol pentru cei care deschid linkul"
+    },
+    "comments": {
+      "label": "Comentarii",
+      "description": "Oricine poate edita poate comenta textul din acest proiect. Dacă dezactivezi opțiunea, comentariile sunt ascunse, dar nu sunt șterse.",
+      "serverOff": "Comentariile sunt dezactivate pe {{server}}. Cere-i administratorului să le activeze."
+    },
+    "stop": "Oprește partajarea",
+    "stopConfirm": {
+      "title": "Oprești partajarea pentru {{name}}?",
+      "description": "Copiile tuturor nu se mai sincronizează și devin proiecte obișnuite. Serverul păstrează copia partajată o vreme, apoi o șterge.",
+      "confirm": "Oprește partajarea"
+    },
+    "leave": "Părăsește proiectul",
+    "leaveConfirm": {
+      "title": "Părăsești {{name}}?",
+      "description": "Copia ta nu se mai sincronizează și rămâne pe acest computer ca proiect obișnuit.",
+      "confirm": "Părăsește"
+    },
+    "accessLog": {
+      "label": "Jurnal de acces",
+      "description": "Serverul notează cine deschide acest proiect, i se alătură sau descarcă o copie, de pe ce dispozitiv și când. Doar tu vezi această listă, în panoul Colaborare în timp real."
+    }
+  },
+  "sync": {
+    "upToDate": "Actualizat",
+    "syncing": "Se sincronizează",
+    "offline": "Offline. Modificări în așteptare: {{number}}",
+    "reconnecting": "Se reconectează",
+    "signedOut": "Deconectat",
+    "suspended": "Cont suspendat",
+    "accessEnded": "Fără acces",
+    "removed": "Acces eliminat",
+    "archived": "Partajare oprită",
+    "paused": "Întrerupt",
+    "serverRemoved": "Server eliminat",
+    "clientTooOld": "Oleafly trebuie actualizat",
+    "serverTooOld": "Serverul trebuie actualizat",
+    "serverChanged": "Server nou la această adresă",
+    "failed": "Oprit după o eroare",
+    "engineSpent": "Este nevoie de repornire"
+  },
+  "toolbar": {
+    "noFile": "Niciun fișier deschis",
+    "unknownPerson": "Cineva",
+    "viewing": "Vizualizează {{path}}",
+    "editing": "Editează {{path}}",
+    "goTo": "Mergi la {{name}}",
+    "nowhere": "Nu este în niciun fișier, deci nu ai unde să mergi"
+  },
+  "tree": {
+    "here": "{{name}} are acest fișier deschis",
+    "clash": "Și {{other}} se numește {{name}}, așa că acest fișier a primit un nume nou pe disc."
+  },
+  "library": {
+    "kind": "partajat",
+    "location": "Proiecte partajate",
+    "locationNotShared": "În Oleafly, nepartajate",
+    "flag": "Partajat",
+    "sharedWithYou": {
+      "title": "Partajate cu tine",
+      "loadFailed": "Oleafly nu a putut verifica proiectele partajate cu tine.",
+      "from": "{{owner}} pe {{server}}",
+      "open": "Deschide",
+      "openNamed": "Deschide {{name}}"
+    },
+    "openLink": {
+      "menu": "Deschide linkul unui proiect partajat…",
+      "title": "Deschide un proiect partajat",
+      "description": "Lipește linkul pe care ți l-a trimis cineva.",
+      "label": "Linkul proiectului",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Deschide",
+      "noAccess": "Nu ai acces la acest proiect. Cere-i acces proprietarului."
+    }
+  },
+  "pane": {
+    "title": "Colaborare în timp real",
+    "titleUnread": "Colaborare în timp real, activitate nouă",
+    "manage": "Gestionează partajarea",
+    "people": "Persoane",
+    "activity": "Activitate",
+    "empty": "Nu s-a întâmplat încă nimic.",
+    "here": "Aici acum",
+    "hereIn": "Acum în {{path}}",
+    "away": "Nu este aici acum",
+    "deleted": "Șterse recent",
+    "deletedEmpty": "Nu s-a șters nimic în ultima vreme.",
+    "deletedLoadFailed": "Oleafly nu a putut încărca fișierele șterse recent.",
+    "unwritten": {
+      "title": "Unele fișiere nu au putut fi scrise pe acest computer",
+      "hint": "Oleafly încearcă în continuare. Între timp, proiectul partajat are cel mai nou text.",
+      "reasons": {
+        "locked": "Nu se poate scrie {{path}}: alt program îl are deschis.",
+        "read_only": "Nu se poate scrie {{path}}: fișierul sau folderul lui este doar în citire.",
+        "no_space": "Nu se poate scrie {{path}}: discul este plin.",
+        "not_downloaded": "{{path}} nu a putut fi descărcat încă de pe server. Oleafly încearcă în continuare.",
+        "other": "Nu se poate scrie {{path}}."
+      }
+    },
+    "accessLog": "Jurnal de acces",
+    "status": "Starea sincronizării",
+    "waiting": "Modificări în așteptare: {{number}}"
+  },
+  "deleted": {
+    "restore": "Restaurează",
+    "restoreLabel": "Restaurează {{name}}",
+    "inFolder": "Era în {{folder}}",
+    "inProject": "Era în dosarul proiectului",
+    "byYou": "Șters de tine",
+    "by": "Șters de {{name}}"
+  },
+  "removed": {
+    "deletedBy": "{{name}} a șters {{file}}.",
+    "yoursDeleted": "Modificările tale din {{file}} sunt în Șterse recent, pentru că {{name}} a șters fișierul.",
+    "dismiss": "Închide"
+  },
+  "activity": {
+    "welcomeEdit": "Partajat de {{owner}} pe {{server}}. Poți edita.",
+    "welcomeView": "Partajat de {{owner}} pe {{server}}. Poți vizualiza.",
+    "joined": "{{name}} a deschis proiectul",
+    "left": "{{name}} a închis proiectul",
+    "rejoined": "{{name}} a redeschis proiectul",
+    "visited": "{{name}} a deschis și a închis proiectul",
+    "online": "Din nou online",
+    "merged": "Modificări ale altora îmbinate cât ai lipsit: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Arată fișierele",
+    "hideFiles": "Ascunde fișierele",
+    "role": "Noul tău rol: {{role}}",
+    "removed": "Nu mai ai acces la acest proiect partajat. Copia ta rămâne aici ca proiect obișnuit.",
+    "removedBy": "{{name}} te-a eliminat din acest proiect partajat. Copia ta rămâne aici ca proiect obișnuit.",
+    "archived": "Proprietarul a oprit partajarea acestui proiect. Copia ta rămâne aici ca proiect obișnuit.",
+    "signedOut": "Ești deconectat de la {{server}}, așa că acest proiect nu se sincronizează. Modificările tale rămân pe acest computer.",
+    "suspended": "Un administrator ți-a suspendat contul pe {{server}}. Modificările tale rămân pe acest computer. Te poți autentifica din nou după ce un administrator îl reactivează.",
+    "clientTooOld": "Actualizează Oleafly ca să lucrezi în continuare pe {{server}}. Modificările tale rămân pe acest computer.",
+    "serverTooOld": "{{server}} trebuie actualizat ca să funcționeze cu această versiune de Oleafly. Întreabă persoana care îl administrează. Modificările tale rămân pe acest computer.",
+    "serverChanged": "Adresa {{server}} duce acum la alt server. Elimină-l din setările de Colaborare și adaugă-l din nou. Modificările tale rămân pe acest computer.",
+    "failed": "Sincronizarea acestui proiect s-a oprit după o eroare. Pornește-o din nou ca să continui.",
+    "goLiveAgain": "Sincronizează din nou",
+    "engineSpent": "Repornește Oleafly ca să continui sincronizarea acestui proiect.",
+    "restartApp": "Repornește Oleafly",
+    "accessEnded": "Nu mai ai acces la {{server}}. Copia ta rămâne pe acest computer ca proiect obișnuit.",
+    "accessEndedGuest": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copia ta rămâne pe acest computer ca proiect obișnuit.",
+    "signIn": "Autentifică-te",
+    "memberAdded": "{{by}} a adăugat persoana {{name}}",
+    "memberAddedByYou": "Ai adăugat persoana {{name}}",
+    "memberJoined": "{{name}} s-a alăturat prin linkul proiectului",
+    "memberRemoved": "{{by}} a eliminat persoana {{name}}",
+    "memberRemovedByYou": "Ai eliminat persoana {{name}}",
+    "memberLeft": "{{name}} a părăsit acest proiect partajat",
+    "newDevice": "{{name}} s-a conectat pe un dispozitiv nou",
+    "review": "Examinează",
+    "renamed": "{{name}} a redenumit {{before}} în {{theirs}} după ce i-ai dat numele {{ours}}",
+    "renamedPortable": "{{before}} a fost redenumit în {{theirs}} ca să funcționeze pe orice computer.",
+    "skipped": "O modificare de la {{name}} nu a putut fi citită și a fost omisă.",
+    "skippedUnknown": "O modificare de la cineva nu a putut fi citită și a fost omisă.",
+    "mentioned": "{{name}} te-a menționat într-un comentariu din {{path}}",
+    "mentionedHere": "{{name}} te-a menționat într-un comentariu",
+    "showComment": "Arată comentariul",
+    "settings": {
+      "mainDocument": "{{name}} a setat {{path}} ca document principal",
+      "mainDocumentNow": "{{path}} este acum documentul principal",
+      "compiler": "{{name}} a setat compilatorul la {{compiler}}",
+      "spellingLanguage": "{{name}} a setat limba verificării ortografice la {{language}}",
+      "spellingCleared": "{{name}} a eliminat limba verificării ortografice a proiectului",
+      "typstVersion": "{{name}} a setat versiunea Typst la {{version}}",
+      "typstDefault": "{{name}} a readus versiunea Typst la cea implicită",
+      "typstOptions": "{{name}} a modificat opțiunile Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automat",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
+  },
+  "mergeReview": {
+    "title": "Modificări îmbinate cât ai lipsit",
+    "description": "Ce au schimbat alții cât ai fost offline. Această vizualizare este doar pentru citire.",
+    "people": "După persoană",
+    "person": "{{name}}: {{number}}",
+    "files": "După fișier",
+    "loading": "Se încarcă modificările",
+    "failed": "Modificările nu au putut fi încărcate. Încearcă din nou mai târziu.",
+    "noText": "Niciun text nu s-a schimbat, deci nu este nimic de comparat.",
+    "newFile": "Fișier nou",
+    "removedFile": "Eliminat",
+    "closedOldest": "Doar {{number}} fișiere rămân deschise în același timp, așa că {{path}} a fost închis.",
+    "diffLabel": "Modificări în {{path}}"
+  },
+  "console": {
+    "open": "Deschide consola de administrare",
+    "windowTitle": "Consola de administrare Oleafly Server",
+    "title": "Consola de administrare",
+    "sectionsLabel": "Secțiunile consolei de administrare",
+    "pendingGuestsBadge": "Așteaptă aprobarea: {{number}}",
+    "sections": {
+      "overview": "Prezentare generală",
+      "people": "Persoane",
+      "access": "Reguli de acces",
+      "projects": "Proiecte",
+      "settings": "Setările serverului",
+      "email": "E-mail",
+      "log": "Jurnal de securitate",
+      "checks": "Verificări de conexiune"
+    },
+    "health": {
+      "label": "Starea serverului: {{status}}",
+      "checking": "Se verifică",
+      "ok": "În regulă",
+      "warning": "Necesită atenție",
+      "unreachable": "Inaccesibil"
+    },
+    "states": {
+      "loading": "Se deschide consola de administrare…",
+      "loadFailed": "Oleafly nu a putut deschide consola de administrare.",
+      "unknownTitle": "Acest server nu este în lista ta",
+      "unknownDescription": "Adaugă din nou serverul în Setări, apoi deschide consola de administrare de pe cardul lui.",
+      "signedOutTitle": "Ești deconectat de la acest server",
+      "signedOutDescription": "Autentifică-te din nou în Setări, apoi deschide consola de administrare de pe cardul serverului.",
+      "refusedTitle": "Consola de administrare este pentru administratori și coordonatori",
+      "refusedDescription": "Rolul tău pe acest server este {{role}}. Dacă trebuie să gestionezi serverul, adresează-te unui administrator.",
+      "turnedOffTitle": "Colaborarea în timp real este dezactivată",
+      "turnedOffDescription": "Activeaz-o din nou din Setări, la Experimente, ca să gestionezi aici acest server."
+    },
+    "overview": {
+      "loading": "Se încarcă prezentarea generală…",
+      "health": {
+        "title": "Stare",
+        "okLabel": "Totul funcționează",
+        "okDescription": "Persoanele se pot autentifica, iar serverul poate salva fișiere.",
+        "problem": "Autentificarea prin {{provider}} eșuează din {{time}}",
+        "commentChange": "{{project}}, modificat de {{name}} pe {{time}}",
+        "commentChangeUnknown": "{{project}}, modificat pe {{time}}",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Nimeni nu se poate autentifica",
+            "description": "Configurează pe server autentificarea prin GitHub sau OpenID și repornește-l. Dacă serverul trimite e-mailuri, poți activa în schimb Autentificare prin e-mail din Setări."
+          },
+          "storageNotWritable": {
+            "label": "Serverul nu poate salva fișiere",
+            "description": "Verifică dacă dosarul de date al serverului există și dacă serverul poate scrie în el."
+          },
+          "signInFailing": {
+            "label": "Autentificarea eșuează",
+            "description": "Nimeni nu se poate autentifica prin una dintre opțiunile serverului. Lista de mai jos arată care și de când."
+          },
+          "signInEmailsPaused": {
+            "label": "E-mailurile de autentificare sunt în pauză",
+            "description": "Serverul a trimis câte e-mailuri de autentificare permite în această oră. Se reiau după ce trece ora."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentarii modificate cât timp erau dezactivate",
+            "description": "Serverul a găsit modificări ale comentariilor pe care le-a salvat înainte să le poată verifica, cât timp comentariile erau dezactivate. Proiectele sunt mai jos, iar jurnalul de securitate are fiecare modificare."
+          },
+          "unknown": {
+            "label": "Serverul a raportat o problemă",
+            "description": "Actualizează Oleafly ca să vezi despre ce este vorba."
+          }
+        }
+      },
+      "glance": {
+        "title": "Pe scurt",
+        "people": "Persoane",
+        "suspended": "Suspendate: {{number}}",
+        "devices": "Dispozitive",
+        "projects": "Proiecte partajate",
+        "projectsDetail": "Arhivate: {{archived}}, în curs de încărcare: {{pending}}",
+        "online": "Online acum",
+        "onlineDetail": "Proiecte deschise: {{number}}",
+        "started": "Pornit",
+        "version": "Versiune",
+        "protocol": "Protocol {{protocol}}",
+        "pendingGuests": "Invitații pentru invitați care așteaptă aprobarea: {{number}}",
+        "reviewGuests": "Verifică în Persoane"
+      },
+      "storage": {
+        "title": "Stocare",
+        "adminOnly": "Doar administratorii pot vedea cât spațiu de stocare folosește serverul.",
+        "database": "Bază de date",
+        "databaseDetail": "Conturi, setări și jurnalul",
+        "snapshots": "Instantanee ale proiectelor",
+        "snapshotsDetail": "Copii salvate ale fiecărui proiect",
+        "files": "Fișiere",
+        "location": {
+          "disk": "Pe discul serverului",
+          "s3": "În stocarea S3",
+          "unknown": "În altă stocare"
+        }
+      },
+      "services": {
+        "title": "E-mail și autentificare",
+        "email": "E-mail",
+        "emailOn": "Configurat",
+        "emailOff": "Neconfigurat",
+        "emailOnDescription": "Serverul poate trimite e-mailuri.",
+        "emailOffDescription": "Serverul nu poate trimite încă e-mailuri, așa că nimeni nu primește notificări prin e-mail.",
+        "openEmail": "Setări de e-mail",
+        "signIn": "Opțiuni de autentificare",
+        "signInNone": "Niciuna încă. Nimeni nu se poate autentifica până nu este configurată una.",
+        "emailLinkOption": "Link prin e-mail"
+      },
+      "settings": {
+        "title": "Setările serverului",
+        "on": "Activat",
+        "off": "Dezactivat",
+        "change": "Schimbă setările"
+      },
+      "limits": "Limite: {{project}} pe proiect, {{file}} pe fișier. Persoane pe proiect: {{people}}."
+    },
+    "projects": {
+      "description": "Toate proiectele partajate pe acest server.",
+      "searchLabel": "Caută proiecte",
+      "searchPlaceholder": "Caută după titlu sau proprietar",
+      "filterLabel": "Arată proiectele",
+      "filter": {
+        "all": "Toate",
+        "active": "Partajate",
+        "archived": "Arhivate",
+        "pending": "În curs de încărcare"
+      },
+      "columns": {
+        "title": "Proiect",
+        "owner": "Proprietar",
+        "members": "Persoane",
+        "size": "Dimensiune",
+        "activity": "Ultima activitate",
+        "actions": "Acțiuni"
+      },
+      "sortBy": "Sortează după {{column}}",
+      "status": {
+        "archived": "Arhivat",
+        "pending": "Se încarcă",
+        "unknown": "Necunoscut"
+      },
+      "loading": "Se încarcă proiectele…",
+      "empty": "Încă nu este partajat niciun proiect pe acest server.",
+      "noMatches": "Niciun proiect nu se potrivește căutării.",
+      "count": "Proiecte afișate: {{shown}} din {{total}}",
+      "loadMore": "Arată mai mult",
+      "archive": "Arhivează",
+      "archiveNamed": "Arhivează {{title}}",
+      "restore": "Restaurează",
+      "restoreNamed": "Restaurează {{title}}",
+      "archiveConfirm": {
+        "title": "Arhivezi {{title}}?",
+        "description": "Proiectul nu se mai sincronizează pentru nimeni, iar fiecare își păstrează propria copie. Dacă nu îl restaurezi, serverul îl șterge. Zile până la ștergere: {{days}}.",
+        "descriptionLater": "Proiectul nu se mai sincronizează pentru nimeni, iar fiecare își păstrează propria copie. Serverul șterge proiectele arhivate după o vreme, dacă nu le restaurezi.",
+        "confirm": "Arhivează proiectul"
+      },
+      "adminOnly": "Doar administratorii pot arhiva sau restaura proiecte."
+    },
+    "checks": {
+      "description": "Verifică conexiunea dintre acest computer și server."
+    }
+  },
+  "links": {
+    "turnedOff": "Colaborarea în timp real este dezactivată. Activeaz-o în Setări, la Experimente, apoi deschide din nou linkul.",
+    "openSettings": "Deschide Setări",
+    "malformed": "Oleafly nu poate deschide acest link. Cere unul nou persoanei care ți l-a trimis.",
+    "opening": "Se deschide proiectul partajat…",
+    "downloading": "Se descarcă fișierele: {{done}} din {{total}}",
+    "cancelNamed": "Anulează deschiderea {{name}}",
+    "cancelling": "Se anulează…",
+    "confirm": {
+      "title": "Te alături acestui proiect partajat?",
+      "body": "Alăturarea te adaugă în proiect și copiază fișierele lui pe acest computer. Alătură-te doar dacă știi cine ți-a trimis linkul.",
+      "project": "Proiect",
+      "owner": "Proprietar",
+      "server": "Server",
+      "role": "Rolul tău",
+      "join": "Alătură-te"
+    }
+  },
+  "comments": {
+    "title": "Comentarii",
+    "titleUnread": "Comentarii, activitate nouă",
+    "add": "Adaugă comentariu",
+    "showResolved": "Arată comentariile rezolvate",
+    "hideResolved": "Ascunde comentariile rezolvate",
+    "empty": "Încă nu există comentarii.",
+    "emptyCanWrite": "Încă nu există comentarii. Selectează un text și alege Adaugă comentariu ca să începi unul.",
+    "allResolved": "Toate comentariile sunt rezolvate.",
+    "loadFailed": "Comentariile acestui fișier nu s-au putut încărca.",
+    "detached": "Detașate",
+    "detachedHint": "Textul la care se refereau aceste comentarii a fost șters.",
+    "resolvedBy": "Rezolvat de {{name}}",
+    "edited": "Editat",
+    "deleted": "Acest comentariu a fost șters.",
+    "newLabel": "Comentariu nou",
+    "newPlaceholder": "Scrie un comentariu. Tastează @ ca să menționezi pe cineva.",
+    "replyLabel": "Răspuns",
+    "replyPlaceholder": "Scrie un răspuns. Tastează @ ca să menționezi pe cineva.",
+    "editLabel": "Editează comentariul",
+    "post": "Comentează",
+    "reply": "Răspunde",
+    "resolve": "Rezolvă",
+    "reopen": "Redeschide",
+    "deleteThread": "Șterge discuția",
+    "deleteThreadConfirm": {
+      "title": "Ștergi această discuție?",
+      "description": "Comentariul și răspunsurile la el se șterg pentru toată lumea din acest proiect. Acțiunea nu poate fi anulată."
+    },
+    "deleteMessageConfirm": {
+      "title": "Ștergi acest comentariu?",
+      "description": "Se șterge pentru toată lumea din acest proiect. Acțiunea nu poate fi anulată."
+    },
+    "messageActions": "Mai multe acțiuni pentru acest comentariu",
+    "threadActions": "Mai multe acțiuni pentru această discuție",
+    "showInEditor": "Arată în editor",
+    "thread": "Comentariu de la {{name}}",
+    "mentionList": "Persoane pe care le poți menționa",
+    "marker": "Arată comentariile de pe acest rând",
+    "unverifiedAuthor": "Nu s-a putut verifica cine a scris asta",
+    "unverifiedThread": "Comentariu de la cineva pe care Oleafly nu l-a putut verifica",
+    "resolvedUnverified": "Rezolvat de cineva pe care Oleafly nu l-a putut verifica",
+    "notSent": {
+      "written": "Comentariile sunt dezactivate pentru acest proiect, așa că comentariile pe care le-ai scris nu au fost trimise.",
+      "changed": "Comentariile sunt dezactivate pentru acest proiect, așa că modificările tale la comentarii nu au fost trimise.",
+      "show": "Arată ce ai scris",
+      "hide": "Ascunde ce ai scris",
+      "copy": "Copiază textul",
+      "copyFailed": "Nu s-a putut copia",
+      "list": "Comentarii care nu au fost trimise"
+    },
+    "refusals": {
+      "notLive": "Acest proiect nu este conectat acum. Încearcă din nou după ce se reconectează.",
+      "notYours": "Doar persoana care a scris acest comentariu îl poate modifica.",
+      "offServer": "Comentariile sunt dezactivate pe acest server.",
+      "offProject": "Comentariile sunt dezactivate pentru acest proiect. Roagă proprietarul să le activeze din nou.",
+      "viewer": "Aici poți citi comentarii, dar nu poți scrie. Cere proprietarului acces de editare.",
+      "someoneReplied": "Altcineva a răspuns, așa că discuția rămâne. O poți rezolva în schimb.",
+      "messageDeleted": "Acest comentariu a fost șters, așa că nu îl poți edita.",
+      "selectionChanged": "Textul selectat s-a schimbat. Selectează-l din nou și adaugă comentariul.",
+      "tooLong": "Acest comentariu este prea lung. Scurtează-l și încearcă din nou.",
+      "empty": "Scrie ceva înainte să publici."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} a deschis proiectul",
+    "joinedLink": "{{name}} s-a alăturat prin link",
+    "joinedShare": "{{name}} s-a alăturat după ce ai partajat proiectul",
+    "downloaded": "{{name}} a descărcat o copie",
+    "unknown": "{{name}} a folosit proiectul",
+    "unknownDevice": "Dispozitiv necunoscut",
+    "span": "{{from}} până la {{to}}",
+    "more": "Arată mai vechi",
+    "loading": "Se încarcă jurnalul de acces…",
+    "loadFailed": "Oleafly nu a putut încărca jurnalul de acces.",
+    "empty": "Nimic înregistrat încă."
+  },
+  "guests": {
+    "badge": "Invitat",
+    "invite": {
+      "noAccount": "Nimeni de pe {{server}} nu folosește {{email}}. Invită persoana ca invitat și va vedea doar proiectele la care e invitată.",
+      "button": "Invită ca invitat",
+      "buttonNamed": "Invită {{email}} ca invitat",
+      "duplicate": "Adresa are deja o invitație la acest proiect.",
+      "tooMany": "Ai trimis multe invitații în ultima oră. Încearcă din nou mai târziu."
+    },
+    "sent": {
+      "emailed": "Invitație trimisă la {{email}}.",
+      "emailedAfterApproval": "Un administrator trebuie să aprobe această invitație. {{email}} primește un e-mail după ce e aprobată.",
+      "added": "{{email}} are deja un cont pe {{server}}, așa că are acces acum.",
+      "sendLink": "{{server}} nu trimite e-mailuri, așa că trimite tu acest link la {{email}}. Cu el adaugă serverul și se conectează cu acea adresă.",
+      "sendLinkAfterApproval": "Un administrator trebuie mai întâi să aprobe această invitație. {{server}} nu trimite e-mailuri, așa că trimite tu acest link la {{email}}. Va funcționa după ce invitația e aprobată.",
+      "linkLabel": "Link pentru adăugarea {{server}}"
+    },
+    "list": {
+      "title": "Invitații",
+      "status": {
+        "awaiting_approval": "Așteaptă aprobarea",
+        "invited": "Invitat",
+        "declined": "Refuzată"
+      },
+      "expires": "Expiră pe {{date}}",
+      "withdraw": "Retrage",
+      "withdrawNamed": "Retrage invitația pentru {{email}}"
+    },
+    "pending": {
+      "title": "Invitați în așteptare",
+      "description": "Proprietarii de proiecte au invitat aceste persoane ca invitați. Un invitat vede doar proiectele la care e invitat și nu le poate partaja.",
+      "loadFailed": "Oleafly nu a putut încărca invitațiile pentru invitați care așteaptă aprobarea.",
+      "invitedBy": "{{inviter}} i-a invitat la {{project}}",
+      "approve": "Aprobă",
+      "approveNamed": "Aprobă {{email}}",
+      "decline": "Refuză",
+      "declineNamed": "Refuză {{email}}"
+    }
+  },
+  "access": {
+    "viewerBy": "{{name}} te-a făcut cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "viewOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita.",
+    "connecting": "Acest proiect partajat încă se conectează, așa că nu poate fi modificat încă. Încearcă din nou peste câteva momente.",
+    "unsentReadOnly": "Ultimele tale modificări din {{path}} nu au fost trimise, pentru că acum poți doar să vezi acest proiect.",
+    "unsentRefused": "Oleafly nu a putut trimite ultimele tale modificări din {{path}}, așa că au fost abandonate.",
+    "removedBy": "{{name}} te-a eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată.",
+    "removed": "Ai fost eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată."
+  },
+  "files": {
+    "waiting": "Așteaptă să fie partajat: {{files}}",
+    "failed": "Nu s-a putut partaja: {{files}}",
+    "uploading": "Se încarcă {{file}}: {{done}} din {{total}}",
+    "tooLarge": "{{file}} are {{size}}, mai mult decât permite acest server ({{limit}}). Rămâne doar pe acest computer.",
+    "tooLargeUnknown": "{{file}} este mai mare decât permite acest server. Rămâne doar pe acest computer.",
+    "projectTooLarge": "{{file}} rămâne pe acest computer pentru că proiectul a atins limita de mărime a serverului, de {{limit}}. Roagă persoana care administrează serverul să o mărească.",
+    "projectTooLargeUnknown": "{{file}} rămâne pe acest computer pentru că proiectul a atins limita de mărime a serverului. Roagă persoana care administrează serverul să o mărească.",
+    "projectFull": "Acest proiect a atins limita de mărime a serverului, așa că modificările tale rămân deocamdată pe acest computer. Roagă persoana care administrează serverul să o mărească.",
+    "replaced": "{{name}} a înlocuit {{file}} în același timp cu tine. Versiunea ta este păstrată ca {{copy}}.",
+    "added": "{{file}} se numește acum {{copy}}, pentru că {{name}} a adăugat un fișier cu același nume.",
+    "beside": "{{name}} are și un fișier numit {{file}}. Acesta este păstrat ca {{copy}}.",
+    "localCopy": "Ai modificat {{files}} în {{name}} cât timp nu ai avut acces la acest proiect.",
+    "bringIn": "Adu modificările",
+    "keepSeparate": "Păstrează separat",
+    "broughtIn": "Modificările tale din {{name}} sunt acum în acest proiect.",
+    "retry": "Reîncearcă",
+    "dismiss": "Închide"
+  }
+}

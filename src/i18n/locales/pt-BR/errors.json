@@ -36,7 +36,8 @@
     "not_removable": "Só pastas abertas no próprio local podem ser removidas do Oleafly.",
     "trash_unavailable": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Talvez esta unidade não tenha uma.",
     "linked_replace_folder": "{{path}} é uma pasta, então o Oleafly não vai substituí-la. Mova ou renomeie antes.",
-    "folder_read_only": "O Oleafly não pode fazer esta alteração porque {{name}} ou a pasta onde fica é somente leitura. Copie para a biblioteca a pasta que você abriu e edite-a lá."
+    "folder_read_only": "O Oleafly não pode fazer esta alteração porque {{name}} ou a pasta onde fica é somente leitura. Copie para a biblioteca a pasta que você abriu e edite-a lá.",
+    "shared_settings_viewer": "Leitores não podem alterar as configurações de um projeto compartilhado."
   },
   "settings": {
     "locale_unsupported": "O idioma {{locale}} não está disponível."
@@ -215,5 +216,8 @@
     "git_token_invalid": "Isso não parece um token Git do Overleaf. Copie o token inteiro e tente de novo.",
     "git_token_rejected": "O Overleaf não aceitou o token Git. Ele pode ter expirado. Crie um novo nas configurações da sua conta do Overleaf.",
     "git_unavailable": "A integração com Git do Overleaf não está disponível para este projeto. O dono do projeto precisa de um plano pago ou universitário."
+  },
+  "collab": {
+    "turned_off": "A colaboração em tempo real está desativada. Ative-a em Configurações, na seção Experimentação."
   }
 }

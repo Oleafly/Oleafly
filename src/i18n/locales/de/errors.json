@@ -36,7 +36,8 @@
     "not_removable": "Nur direkt am Speicherort geöffnete Ordner können aus Oleafly entfernt werden.",
     "trash_unavailable": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Das Laufwerk hat möglicherweise keinen.",
     "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um.",
-    "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort."
+    "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
+    "shared_settings_viewer": "Betrachter können die Einstellungen eines geteilten Projekts nicht ändern."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
@@ -215,5 +216,8 @@
     "git_token_invalid": "Das sieht nicht wie ein Overleaf-Git-Token aus. Kopieren Sie das ganze Token und versuchen Sie es erneut.",
     "git_token_rejected": "Overleaf hat das Git-Token nicht akzeptiert. Möglicherweise ist es abgelaufen. Erstellen Sie in Ihren Overleaf-Kontoeinstellungen ein neues.",
     "git_unavailable": "Die Git-Integration von Overleaf ist für dieses Projekt nicht verfügbar. Dafür braucht der Eigentümer des Projekts einen kostenpflichtigen Tarif oder einen Hochschultarif."
+  },
+  "collab": {
+    "turned_off": "Live-Zusammenarbeit ist ausgeschaltet. Schalten Sie sie in den Einstellungen unter Experimente ein."
   }
 }

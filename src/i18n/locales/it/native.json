@@ -45,6 +45,11 @@
       "message": "Con l'accesso completo l'assistente può eseguire comandi shell e modificare i file senza chiederti ogni volta l'approvazione. Vuoi abilitare l'accesso completo?",
       "confirm": "Abilita l'accesso completo"
     },
+    "sharedShellEscape": {
+      "title": "Consentire i comandi esterni in questo progetto condiviso?",
+      "message": "Chiunque possa modificare questo progetto potrebbe eseguire programmi su questo computer quando compili. Consentilo solo se ti fidi di tutte le persone del progetto.",
+      "confirm": "Consenti su questo computer"
+    },
     "cookieImport": {
       "title": "Conferma l'importazione dei cookie",
       "messageHost": "Vuoi importare i cookie di {{hostname}} dal profilo \"{{profile}}\" di {{browser}} nel browser integrato di Oleafly? I cookie importati possono farti accedere automaticamente ai siti web.",
@@ -111,5 +116,13 @@
   "systemIntegration": {
     "openInOleafly": "Apri in Oleafly",
     "openWithOleafly": "Apri con Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (copia locale)"
+  },
+  "approvals": {
+    "helperRefused": "Rifiutato dalla regola {{tool}} in approvals.toml",
+    "unknownTool": "Nessuno strumento si chiama {{name}}, quindi la regola non fa nulla.",
+    "unknownToolSuggestion": "Nessuno strumento si chiama {{name}}, quindi la regola non fa nulla. Intendevi {{suggestion}}?"
   }
 }

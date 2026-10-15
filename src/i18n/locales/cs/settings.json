@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Vlastní režim schvalování čte tento soubor. Leží v ~/.oleafly/approvals.toml a platí pro každý projekt v tomto zařízení.",
+        "description": "Soubor leží v ~/.oleafly/approvals.toml a platí pro každý projekt v tomto zařízení. Pravidla deny blokují nástroj ve všech režimech schvalování. Pravidla allow se uplatní jen ve vlastním režimu.",
         "discard": "Zahodit změny",
         "emptyFile": "Soubor je zatím prázdný.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "První tabulka, <modesTable>[\"$approval_modes\"]</modesTable>, nastavuje režim schvalování pro každý projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> nebo <custom>\"custom\"</custom>. Projekt, který není uveden, používá Schvalovat za mě.",
           "openProject": "Otevřený projekt, {{name}}, má id <projectId>{{id}}</projectId>.",
           "projectIds": "Id projektů jsou názvy složek v ~/.oleafly/projects.",
-          "rules": "Pak jedna tabulka na id projektu, s jedním pravidlem pro každý nástroj: <allow>\"allow\"</allow> nástroj spustí bez dotazu a <deny>\"deny\"</deny> jej odmítne. Pravidla deny platí ve všech režimech, pravidla allow se uplatní ve vlastním režimu a u run_command přeskočí dotaz i v ostatních režimech.",
+          "rules": "Pak jedna tabulka na id projektu, s jedním pravidlem pro každý nástroj: <allow>\"allow\"</allow> nástroj spustí bez dotazu a <deny>\"deny\"</deny> jej odmítne. Pravidla deny platí ve všech režimech včetně režimu Úplný přístup. Pravidla allow se uplatní jen ve vlastním režimu.",
           "toolNames": "Názvy nástrojů, které můžete použít: <names>{{names}}</names> a jakýkoli nástroj MCP pod jeho úplným názvem ze seznamu Nástroje."
         },
         "helpToggle": "Jak soubor funguje",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Vždy povoleno",
         "denied": "Vždy zamítnuto",
-        "description": "Uložená pravidla pro {{name}}. Platí, když je režim schvalování Vlastní. Odebráním pravidla se u daného nástroje vrátí standardní politika rizika.",
+        "description": "Uložená pravidla pro {{name}}. Zakázané nástroje zůstanou blokované ve všech režimech schvalování. Povolené nástroje přeskočí dotaz jen v režimu Vlastní. Odebráním pravidla se u daného nástroje vrátí standardní politika rizika.",
         "empty": "Zatím žádná uložená pravidla. Přidejte je volbou „Vždy v tomto projektu“ v dotazu na schválení.",
         "removeRule": "Odebrat pravidlo pro {{tool}}",
         "thisProject": "tento projekt",

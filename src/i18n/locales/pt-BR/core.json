@@ -69,7 +69,10 @@
       "localNotFound": "O pacote local {{spec}} não está instalado. Coloque-o na pasta de pacotes Typst do Oleafly ou na pasta typst-packages do projeto.",
       "versionMissing": "Este pacote não tem a versão {{version}}. A mais recente é {{latest}}.",
       "versionMissingNoLatest": "Este pacote não tem a versão {{version}}. Confira a versão na importação."
-    }
+    },
+    "saveFailed": "Não foi possível salvar {{path}}, então o Oleafly não compilou. Verifique esse arquivo e compile de novo.",
+    "saveFailedSeveral": "Não foi possível salvar {{path}} e outros arquivos, então o Oleafly não compilou. Verifique esses arquivos e compile de novo.",
+    "saveFailedOther": "Não foi possível salvar o documento, então o Oleafly não compilou. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -287,7 +290,9 @@
     "yearRangeInvalid": "O ano inicial não pode ser posterior ao ano final."
   },
   "mcp": {
+    "deniedByRules": "Recusado por uma regra deny em approvals.toml",
     "openProjectSummary": "Abrir o projeto {{id}}",
+    "rulesUnreadable": "Recusado porque não foi possível ler approvals.toml",
     "useToolSummary": "Usar {{tool}} do servidor MCP {{server}}"
   },
   "mcpConfig": {

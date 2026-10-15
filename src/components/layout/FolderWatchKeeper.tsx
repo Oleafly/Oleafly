@@ -3,8 +3,13 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { applyFolderChange, type FolderChangePayload } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
-import { unwatchProjectFolder, watchProjectFolder } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import {
+  COLLAB_LIVE_WRITTEN_EVENT,
+  type CollabLiveWritten,
+  unwatchProjectFolder,
+  watchProjectFolder,
+} from "@/lib/tauri";
+import { refreshDiskSnapshots, useFilesStore } from "@/store/files";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
 
 export const FOLDER_CHANGED_EVENT = "project-folder-changed";
@@ -30,7 +35,6 @@ function FolderWatch({ projectId }: Readonly<{ projectId: string }>) {
 
 export function FolderWatchKeeper() {
   const projectId = useFilesStore((state) => state.projectId);
-  const openedInPlace = useFilesStore((state) => state.manifestHome !== "library");
   const reachable = useProjectAvailabilityStore(
     (state) => state.projectId !== projectId || folderReachable(state.availability),
   );
@@ -44,6 +48,20 @@ export function FolderWatchKeeper() {
     isTauri(),
   );
 
-  if (!isTauri() || !projectId || !openedInPlace || !reachable) return null;
+  // A live session that stopped names the open files it wrote, which the
+  // folder watch never reported. Heard here rather than in the live session,
+  // since it can arrive after Live collaboration was switched off. A file the
+  // disk holds other text for is checked like any outside change.
+  useTauriEvent<CollabLiveWritten>(
+    COLLAB_LIVE_WRITTEN_EVENT,
+    (payload) => {
+      if (!payload) return;
+      const changed = refreshDiskSnapshots(payload.projectId, payload.files);
+      if (changed.length > 0) applyFolderChange({ projectId: payload.projectId, paths: changed, rescan: false });
+    },
+    isTauri(),
+  );
+
+  if (!isTauri() || !projectId || !reachable) return null;
   return <FolderWatch key={`${projectId}:${relocations}`} projectId={projectId} />;
 }

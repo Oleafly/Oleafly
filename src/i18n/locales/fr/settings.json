@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Le mode d'autorisation Personnalisé lit ce fichier. Il se trouve dans ~/.oleafly/approvals.toml et s'applique à tous les projets de cet appareil.",
+        "description": "Le fichier se trouve dans ~/.oleafly/approvals.toml et s'applique à tous les projets de cet appareil. Les règles deny bloquent un outil dans tous les modes d'autorisation. Les règles allow ne prennent effet qu'en mode Personnalisé.",
         "discard": "Abandonner les modifications",
         "emptyFile": "Le fichier est encore vide.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "La première table, <modesTable>[\"$approval_modes\"]</modesTable>, définit le mode d'autorisation par projet : <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> ou <custom>\"custom\"</custom>. Un projet absent de la liste utilise Autoriser à ma place.",
           "openProject": "Le projet ouvert, {{name}}, a l'identifiant <projectId>{{id}}</projectId>.",
           "projectIds": "Les identifiants de projet sont les noms de dossier sous ~/.oleafly/projects.",
-          "rules": "Ensuite, une table par identifiant de projet, avec une règle par outil : <allow>\"allow\"</allow> exécute l'outil sans demander, et <deny>\"deny\"</deny> le refuse. Les règles deny s'appliquent dans tous les modes. Les règles allow prennent effet en mode Personnalisé et, pour run_command, elles évitent aussi la demande dans les autres modes.",
+          "rules": "Ensuite, une table par identifiant de projet, avec une règle par outil : <allow>\"allow\"</allow> exécute l'outil sans demander, et <deny>\"deny\"</deny> le refuse. Les règles deny s'appliquent dans tous les modes, Accès complet compris. Les règles allow ne prennent effet qu'en mode Personnalisé.",
           "toolNames": "Noms d'outils utilisables : <names>{{names}}</names> ainsi que tout outil MCP par son nom complet dans la liste Outils."
         },
         "helpToggle": "Comment fonctionne le fichier",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Toujours autorisé",
         "denied": "Toujours refusé",
-        "description": "Règles enregistrées pour {{name}}. Elles s'appliquent quand le mode d'autorisation est Personnalisé. Retirez une règle pour revenir à la politique de risque standard pour cet outil.",
+        "description": "Règles enregistrées pour {{name}}. Les outils refusés restent bloqués dans tous les modes d'autorisation. Les outils autorisés ne s'exécutent sans demande qu'en mode Personnalisé. Retirez une règle pour revenir à la politique de risque standard pour cet outil.",
         "empty": "Aucune règle enregistrée. Utilisez « Toujours dans ce projet » sur une demande d'autorisation pour en ajouter une.",
         "removeRule": "Retirer la règle pour {{tool}}",
         "thisProject": "ce projet",

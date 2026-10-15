@@ -445,7 +445,8 @@
       "title": "Varyant (bu proje)",
       "help": "Bir varyant, taslak veya baskıya hazır derleme gibi kendi değerlerini sys.inputs içine aktarır. Seçtiğiniz varyant bu bilgisayarda kalır. Varyantları Belge ayarlarında ekleyin veya düzenleyin.",
       "none": "Varyant yok"
-    }
+    },
+    "sharedViewer": "Paylaşılan bir projede görüntüleyenler bu ayarları değiştiremez."
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -844,6 +845,10 @@
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
       },
+      "liveCollaboration": {
+        "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "Canlı iş birliği"
+      },
       "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
       "webBrowser": {
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
@@ -923,6 +928,7 @@
     "nav": {
       "ai": "Yapay Zeka Asistanı",
       "appearance": "Görünüm",
+      "collaboration": "İş Birliği",
       "data": "Veri Depolama",
       "dictionary": "Sözlük",
       "downloads": "İndirilenler",
@@ -938,6 +944,7 @@
       "keywords": {
         "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
         "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
+        "collaboration": "sunucular, oturum açma, cihazlar, üyeler, sorumlular, paylaşım, ekipler, laboratuvarlar, canlı düzenleme, gerçek zamanlı, güvenlik günlüğü",
         "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
         "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",
         "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar",
@@ -1404,6 +1411,13 @@
     "hideLog": "Derleme günlüğünü gizle",
     "showLog": "Derleme günlüğünü göster"
   },
+  "collabSync": {
+    "paused_one": "{{count}} dosya Oleafly dışında değişti. Bu değişiklik herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "paused_other": "{{count}} dosya Oleafly dışında değişti. Bu değişiklikler herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "send": "Gönder",
+    "keepLocal": "Yerelde tut",
+    "unavailable": "Proje klasörü kullanılamıyor, bu yüzden eşitleme duraklatıldı. Klasör geri geldiğinde yeniden başlar."
+  },
   "overleafSync": {
     "button": "Overleaf eşitlemesi",
     "title": "Overleaf ile eşitle",
@@ -1453,5 +1467,9 @@
       "allTheirs": "Tümünde Overleaf'tekini kullan",
       "apply": "Uygula ve eşitle"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Bu pencere 30 saniye yanıt vermediği için Oleafly onu yeniden yükledi. Hemen öncesinde yaptığınız değişiklikler kaydedilmemiş olabilir.",
+    "reloadedAgain": "Bu pencere yine yanıt vermeyi bıraktığı için Oleafly onu tekrar yeniden yükledi. Sorunun nedeni projedeki bir şey olabileceğinden projeniz yeniden açılmadı."
   }
 }

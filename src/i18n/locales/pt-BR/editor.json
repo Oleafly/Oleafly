@@ -404,7 +404,9 @@
     "unifiedView": "Coluna única",
     "loading": "Carregando a comparação…",
     "previewTooLarge": "Arquivo grande demais para uma prévia da comparação.",
-    "diskHeading": "No disco ↔ Suas edições"
+    "diskHeading": "No disco ↔ Suas edições",
+    "sharedReadOnly": "Em um projeto compartilhado, esta comparação é somente leitura. Edite o arquivo no editor.",
+    "viewerReadOnly": "Você pode ver este projeto compartilhado, mas não pode editá-lo."
   },
   "hotkeys": {
     "title": "Atalhos de teclado",
@@ -481,6 +483,7 @@
     "openInAgent": "Continuar no assistente de IA com todas as ferramentas do projeto",
     "generateFailed": "Não foi possível gerar a edição. {{message}}",
     "dismiss": "Dispensar",
+    "withdrawn": "Outra pessoa editou este texto, então a sugestão não pode mais ser aplicada.",
     "setUpProvider": "Configurar um provedor de IA",
     "setUpProviderHint": "Adicione uma chave de API (ou o Ollama local) para usar as edições de IA em linha.",
     "openAiSettings": "Abrir Configurações → IA"
@@ -665,6 +668,7 @@
     "endOfDocument": "Fim do documento",
     "hidePreamble": "Ocultar o preâmbulo do documento",
     "showPreamble": "Mostrar o preâmbulo do documento",
+    "sharedReadOnly": "Em um projeto compartilhado, o modo visual só mostra o arquivo. Mude para a visualização de código-fonte para editá-lo.",
     "findingLabel": "{{message}}. Abrir sugestões de revisão.",
     "rawBlockFindings_one": "{{count}} apontamento de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
     "rawBlockFindings_many": "{{count}} apontamentos de revisão neste bloco bruto. {{message}}. Abrir sugestões.",
@@ -1515,5 +1519,6 @@
     "keyInvalid": "Os nomes de valor não podem ficar vazios nem conter um sinal de igual.",
     "keyTaken": "Uma variante não pode definir o mesmo nome duas vezes.",
     "saveFailed": "Não foi possível salvar as variantes."
-  }
+  },
+  "sharedSettingsViewer": "Leitores não podem alterar isso em um projeto compartilhado."
 }

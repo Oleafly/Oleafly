@@ -76,11 +76,20 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { cn, isWindows } from "@/lib/utils";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
 import { logError } from "@/lib/log";
 import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/features/dropped-files";
+import {
+  CollabTreeClashSlot,
+  CollabTreePresenceSlot,
+  TreeRowClash,
+  TreeRowPeers,
+  useTreeClashLabels,
+  type PeerMarks,
+} from "@/components/collab/CollabSlots";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
   const picked = await pickOpenPath(
@@ -295,8 +304,12 @@ interface TreeCtx {
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
   git: GitDecorations;
+  peers: PeerMarks;
+  clashes: ReadonlyMap<string, string>;
   focusSibling: (path: string, step: 1 | -1) => void;
 }
+
+const NO_PEERS: PeerMarks = new Map();
 
 export function FileTree({
   collapsed: controlledCollapsed,
@@ -324,10 +337,14 @@ export function FileTree({
   const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const noMainDocument = useFilesStore(mainDocumentMissing);
   const linkedFolder = useFilesStore((s) => isLinkedHome(s.manifestHome));
+  const sharedViewer = useCollabSettingsLocked(projectId);
   let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
   if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
+  if (sharedViewer) mainExtensions = EMPTY_EXTENSIONS;
 
   const loading = useFilesStore((s) => s.loading);
+  const [peerMarks, setPeerMarks] = useState<PeerMarks>(NO_PEERS);
+  const clashLabels = useTreeClashLabels();
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(readSidebarView(projectId, "files")?.expanded),
   );
@@ -934,6 +951,8 @@ export function FileTree({
     setDragOver: updateDragOver,
     onMove: move,
     git,
+    peers: peerMarks,
+    clashes: clashLabels,
     focusSibling: (path, step) => {
       const start = flatIndex.get(path);
       if (start === undefined) return;
@@ -1021,6 +1040,8 @@ export function FileTree({
 
   return (
     <>
+      <CollabTreePresenceSlot onChange={setPeerMarks} />
+      <CollabTreeClashSlot />
       <SidebarSection
         id="source-tree"
         title={t(($) => $.workspace.files.title)}
@@ -1585,6 +1606,8 @@ function TreeRow({
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
       )}
       <span className="ml-auto flex shrink-0 items-center gap-1">
+        <TreeRowClash label={ctx.clashes.get(node.path)} />
+        <TreeRowPeers marks={node.isDir ? undefined : ctx.peers.get(node.path)} />
         {unreadable && (
           <span className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.workspace.files.unreadable)}

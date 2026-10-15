@@ -1,0 +1,1079 @@
+{
+  "section": {
+    "intro": "Edite projetos com outras pessoas em tempo real. Os projetos sincronizam por um servidor de colaboração que você ou o seu grupo mantém, e é esse servidor que decide quem pode entrar.",
+    "servers": {
+      "title": "Servidores",
+      "add": "Adicionar servidor",
+      "loading": "Carregando os seus servidores…",
+      "loadFailed": "O Oleafly não conseguiu carregar os seus servidores.",
+      "empty": {
+        "title": "Nenhum servidor ainda",
+        "description": "Peça o endereço à pessoa que mantém o servidor do seu grupo e depois adicione o servidor aqui."
+      }
+    },
+    "presence": {
+      "label": "O que os outros veem",
+      "description": "Escolha o que as pessoas dos seus projetos compartilhados veem enquanto você trabalha. Configure separadamente em cada computador.",
+      "options": {
+        "cursor": "Mostrar meu cursor",
+        "file": "Mostrar só o arquivo em que estou",
+        "hidden": "Me ocultar"
+      }
+    },
+    "server": {
+      "signedIn": "Conectado",
+      "signedOut": "Desconectado",
+      "signedInAs": "Conectado como {{name}}",
+      "signedOutHint": "Este computador não está conectado a este servidor.",
+      "suspended": "Suspensa",
+      "noAccess": "Sem acesso",
+      "suspendedHint": "Um administrador suspendeu a sua conta em {{server}}. As suas alterações ficam neste computador. Você poderá entrar de novo quando um administrador a reativar.",
+      "endedHint": "Você não tem mais acesso a {{server}}. As suas cópias ficam neste computador como projetos comuns. Se um administrador adicionar você de novo, entre novamente.",
+      "endedGuestHint": "Você não tem mais acesso a {{server}} porque não participa de nenhum dos projetos compartilhados dele. As suas cópias ficam neste computador como projetos comuns. Se você for convidado de novo, entre novamente.",
+      "role": "Sua função: {{role}}",
+      "signIn": "Fazer login",
+      "signOut": "Encerrar sessão",
+      "remove": "Remover",
+      "manage": "Gerenciar servidor",
+      "manageHint": "Gerenciar servidor mostra aqui Pessoas, Pessoas permitidas, Domínios, Configurações do servidor, E-mail e Registro de segurança. O console de administração abre em uma janela própria e também tem visão geral, projetos e testes de conexão.",
+      "test": "Testar conexão",
+      "removeConfirm": {
+        "title": "Remover {{name}}?",
+        "description": "O Oleafly sai de {{name}} e o esquece. Os projetos compartilhados de {{name}} param de sincronizar e ficam neste computador como projetos comuns, cada um renomeado como cópia local.",
+        "confirm": "Remover servidor"
+      },
+      "detached": "Estes projetos compartilhados de {{server}} pararam de sincronizar. Eles ficam neste computador como projetos comuns.",
+      "unsent": {
+        "title": "Algumas alterações ainda não foram enviadas",
+        "description": "Estes projetos compartilhados têm alterações que o servidor ainda não tem. Se você mantiver uma cópia local, cada um para de sincronizar e fica neste computador com o nome mostrado abaixo. Você também pode continuar conectado e tentar de novo mais tarde.",
+        "removeDescription": "Estes projetos compartilhados têm alterações que o servidor ainda não tem. Se você mantiver uma cópia local, cada um para de sincronizar e fica neste computador com o nome mostrado abaixo. Você também pode manter o servidor e tentar de novo mais tarde.",
+        "changes": "Alterações não enviadas: {{changes}}",
+        "staysAs": "Fica como {{name}}",
+        "keep": "Manter uma cópia local",
+        "stay": "Continuar conectado",
+        "keepServer": "Manter o servidor"
+      },
+      "emails": {
+        "label": "Me avisar por e-mail quando alguém compartilhar um projeto",
+        "description": "O e-mail diz qual é o projeto e traz um link para abri-lo.",
+        "mentionsLabel": "Me avisar por e-mail quando alguém me mencionar em um comentário",
+        "mentionsDescription": "O e-mail cita o comentário e traz um link para abri-lo.",
+        "noMail": "Este servidor não envia e-mails. Projetos compartilhados com você continuam aparecendo na sua biblioteca em Compartilhados com você.",
+        "paused": "O administrador do servidor desativou o e-mail para todos.",
+        "loadFailed": "O Oleafly não conseguiu carregar suas configurações de e-mail."
+      }
+    },
+    "devices": {
+      "title": "Seus dispositivos",
+      "description": "Computadores conectados a este servidor com a sua conta. Encerre a sessão dos que você não usa mais.",
+      "loading": "Carregando os seus dispositivos…",
+      "loadFailed": "O Oleafly não conseguiu carregar os seus dispositivos.",
+      "current": "Este computador",
+      "added": "Adicionado em {{date}}",
+      "lastSeen": "Visto pela última vez em {{date}}",
+      "neverSeen": "Ainda não visto",
+      "empty": "Nenhum dispositivo está conectado.",
+      "signOut": "Encerrar sessão",
+      "signOutNamed": "Encerrar a sessão de {{name}}",
+      "signOutConfirm": {
+        "title": "Encerrar a sessão de {{name}}?",
+        "description": "Aquele computador para de sincronizar com este servidor até alguém fazer login nele de novo.",
+        "confirm": "Encerrar sessão do dispositivo"
+      }
+    },
+    "checks": {
+      "title": "Teste de conexão",
+      "running": "Testando a conexão…",
+      "clockSkew": "Diferença de horário em segundos: {{seconds}}",
+      "status": {
+        "pass": "Passou",
+        "fail": "Falhou",
+        "info": "Nota",
+        "skipped": "Ignorado"
+      },
+      "items": {
+        "reachable": {
+          "label": "Endereço",
+          "pass": "O servidor respondeu.",
+          "fail": "O Oleafly não conseguiu acessar este endereço. Confira o endereço e a sua rede.",
+          "info": "O servidor respondeu, mas devagar.",
+          "skipped": "Não verificado."
+        },
+        "https": {
+          "label": "Conexão segura",
+          "pass": "A conexão é criptografada e o certificado é válido.",
+          "fail": "O certificado do servidor não é válido ou o endereço não usa https.",
+          "info": "Este é um servidor de teste neste computador, então ele roda sem https.",
+          "skipped": "Não verificado porque o endereço não respondeu."
+        },
+        "protocol": {
+          "label": "Versão",
+          "pass": "Esta versão do Oleafly funciona com o servidor.",
+          "fail": "O Oleafly e o servidor precisam de versões diferentes. Um dos dois precisa ser atualizado.",
+          "info": "O servidor é mais novo que esta versão do Oleafly, mas ainda funciona com ela.",
+          "skipped": "Não verificado porque uma verificação anterior falhou."
+        },
+        "webSocket": {
+          "label": "Conexão ao vivo",
+          "pass": "As edições ao vivo conseguem passar.",
+          "fail": "Algo entre você e o servidor bloqueia as edições ao vivo. Talvez seja preciso ajustar um firewall ou proxy.",
+          "info": "As edições ao vivo seguem por um caminho mais lento porque esta rede bloqueia o caminho de sempre. Elas continuam chegando.",
+          "skipped": "Não verificado porque uma verificação anterior falhou."
+        },
+        "signInProviders": {
+          "label": "Opções de login",
+          "pass": "O servidor tem pelo menos uma forma de login.",
+          "fail": "O servidor ainda não tem nenhuma forma de login. Fale com o administrador dele.",
+          "info": "O servidor tem uma forma de login, mas algumas opções estão desativadas.",
+          "skipped": "Não verificado porque uma verificação anterior falhou."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "O servidor consegue enviar e-mails.",
+          "fail": "As configurações de e-mail do servidor não funcionam.",
+          "info": "O e-mail não está configurado neste servidor. As pessoas são adicionadas sem e-mail.",
+          "skipped": "Não verificado porque uma verificação anterior falhou."
+        },
+        "clock": {
+          "label": "Relógio",
+          "pass": "O seu relógio e o do servidor estão de acordo.",
+          "fail": "O seu relógio e o do servidor estão muito diferentes. Confira a data e a hora neste computador.",
+          "info": "O seu relógio está um pouco diferente do relógio do servidor.",
+          "skipped": "Não verificado porque uma verificação anterior falhou."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Adicionar um servidor de colaboração",
+    "description": "Digite o endereço que o seu grupo passou para você. O Oleafly verifica o servidor antes de você fazer login.",
+    "addressLabel": "Endereço do servidor",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continuar",
+    "checking": "Verificando o servidor…",
+    "notAServer": "Nenhum servidor do Oleafly respondeu neste endereço. Confira o endereço com quem administra o servidor. Em Wi-Fi de hotel ou de campus, abra antes qualquer página da web, caso a rede peça para você entrar.",
+    "moved": "Este endereço redireciona para {{target}}. Tente esse endereço.",
+    "useMoved": "Usar esse endereço",
+    "version": "Versão {{version}}",
+    "serverTitle": "Fazer login em {{server}}",
+    "serverDescription": "Este servidor decide quem pode entrar. Escolha como fazer login.",
+    "setupTitle": "Configurar {{server}}",
+    "setupDescription": "Ninguém configurou este servidor ainda. Se foi você quem o instalou, digite o código de configuração que o instalador mostrou. Ele também aparece no log do servidor. Quem fizer login primeiro com o código se torna o administrador do servidor. Se não foi você quem o instalou, peça à pessoa que cuida dele para concluir a configuração primeiro.",
+    "setupCodeLabel": "Código de configuração",
+    "signInDescription": "O seu navegador abre para você fazer login nele. O Oleafly nunca vê a sua senha.",
+    "continueWith": "Continuar com {{provider}}",
+    "noProviders": "Este servidor ainda não tem nenhuma forma de login. Peça ao administrador dele para configurar uma.",
+    "signingInTitle": "Concluir o login",
+    "waitingTitle": "Aguardando o seu navegador",
+    "waitingDescription": "Faça login com {{provider}} na janela do navegador que abriu e depois volte aqui.",
+    "waitingEmailDescription": "Digite seu endereço de e-mail no navegador e depois abra neste computador o link que enviarmos.",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "doneTitle": "Conectado a {{server}}",
+    "doneDescription": "Você está conectado como {{name}}. Agora você pode compartilhar projetos e abrir os que forem compartilhados com você.",
+    "doneManageDescription": "Você está conectado como {{name}}. Agora você pode compartilhar projetos e abrir os que forem compartilhados com você. Você também pode gerenciar o servidor no console de administração.",
+    "doneGuestDescription": "Você está conectado como {{name}}. Como convidado, você pode abrir os projetos para os quais foi convidado.",
+    "done": "Concluir",
+    "codeSignIn": "Fazer login com um código",
+    "codeSignInDescription": "Use quando o navegador não conseguir voltar para o Oleafly ou para fazer login em outro dispositivo.",
+    "codeTitle": "Fazer login com um código",
+    "codeRequesting": "Obtendo um código…",
+    "codeSteps": "Em qualquer celular ou computador, abra este endereço e digite o código.",
+    "codeAddressLabel": "Endereço",
+    "codeLabel": "Código",
+    "codeExpires": "O código para de funcionar às {{time}}.",
+    "codeWaiting": "Esperando você fazer login",
+    "codeOpen": "Abrir no navegador",
+    "codeOffer": "O navegador não voltou para o Oleafly?",
+    "codeHint": "Se o navegador não conseguiu chegar ao Oleafly, faça login com um código."
+  },
+  "errors": {
+    "unreachable": "O Oleafly não conseguiu acessar o servidor. Confira o endereço e a sua conexão e tente de novo.",
+    "not_https": "Este endereço não usa uma conexão segura. Os servidores de colaboração precisam de um endereço que comece com https.",
+    "client_too_old": "Este servidor precisa de uma versão mais nova do Oleafly. Atualize o Oleafly e tente de novo.",
+    "server_too_old": "Este servidor precisa ser atualizado antes de funcionar com esta versão do Oleafly. Fale com o administrador dele.",
+    "not_admitted": "Este servidor ainda não deixa você entrar. Peça ao administrador dele para adicionar você.",
+    "sign_in_cancelled": "O login foi cancelado.",
+    "sign_in_timed_out": "O login demorou demais. Tente de novo.",
+    "unauthorized": "A sua sessão neste servidor foi encerrada. Faça login de novo.",
+    "forbidden": "A sua função neste servidor não permite isso.",
+    "not_found": "O servidor não encontrou isso. Talvez já tenha sido removido.",
+    "conflict": "Isso entra em conflito com uma mudança feita por outra pessoa. Recarregue e tente de novo.",
+    "rate_limited": "O servidor está ocupado. Espere um minuto e tente de novo.",
+    "setup_code_invalid": "Esse código de configuração não confere. Veja o código certo no log do servidor.",
+    "server": "O servidor teve um problema. Tente de novo mais tarde ou fale com o administrador dele.",
+    "internal": "Algo deu errado no Oleafly. Tente de novo.",
+    "server_changed": "Este endereço agora pertence a outro servidor, então o Oleafly não enviou nada a ele. Se você confia no novo servidor, remova este e adicione-o de novo.",
+    "duplicate_server": "Este servidor já está na sua lista com outro endereço. Se ele mudou de endereço, remova primeiro a entrada antiga e depois adicione-o de novo.",
+    "device_in_use": "Outra pessoa já fez login neste servidor a partir desta conta de usuário do computador. Cada pessoa precisa da própria conta de usuário no computador para fazer login.",
+    "server_unknown": "Este link é de um servidor que você ainda não adicionou. Adicione-o nas configurações de Colaboração e abra o link de novo.",
+    "too_large": "Alguns arquivos são maiores do que este servidor permite. Diminua ou remova esses arquivos e tente de novo.",
+    "invalid": "O servidor não aceitou isso. Confira o que você digitou e tente de novo.",
+    "invalid_domain": "Isso não é um nome de domínio. Use um formato como cs.example.edu.",
+    "invalid_email": "Esse endereço de e-mail não parece correto. Confira e tente de novo.",
+    "invalid_login": "Esse nome de usuário não parece correto. Confira e tente de novo.",
+    "guests_off": "Este servidor não permite convidados. Peça ao administrador dele para ativá-los.",
+    "link_sharing_off": "Este servidor não permite compartilhamento por link. Peça ao administrador dele para ativá-lo.",
+    "access_log_off": "Este servidor não permite registros de acesso. Peça ao administrador dele para ativá-los.",
+    "last_admin": "Este servidor precisa de pelo menos um administrador. Promova outra pessoa a administrador primeiro.",
+    "duplicate_entry": "Essa entrada já existe.",
+    "already_member": "Essa pessoa já tem uma conta. Mude a função dela em Pessoas.",
+    "project_not_shared": "Este projeto ainda não está compartilhado. Compartilhe primeiro e depois convide pessoas.",
+    "project_full": "Este projeto já tem o número máximo de pessoas que o servidor permite. Remova alguém primeiro ou fale com o administrador do servidor.",
+    "owner_away": "A pessoa dona do projeto está suspensa ou foi removida deste servidor, então o projeto não pode receber novas pessoas até que a conta dela volte a ficar ativa.",
+    "wrong_server": "Este servidor enviou a página de login de outro endereço, então o Oleafly parou. Confira o endereço do servidor ou pergunte a quem o administra.",
+    "not_a_link": "Isso não é um link para um projeto compartilhado. Copie o link inteiro e tente de novo.",
+    "signed_out": "A sua sessão neste servidor foi encerrada. Faça login de novo para sincronizar este projeto.",
+    "server_removed": "O servidor deste projeto não está mais na sua lista. Mantenha o projeto como cópia local ou adicione o servidor de novo.",
+    "share_in_progress": "Este projeto já está sendo compartilhado. Aguarde até terminar.",
+    "cancelled": "A abertura do projeto compartilhado foi cancelada.",
+    "cloud_synced": "A sua biblioteca do Oleafly está em uma pasta sincronizada por um serviço de nuvem. Tire-a do Dropbox, OneDrive ou iCloud Drive para compartilhar projetos ou participar deles."
+  },
+  "roles": {
+    "admin": "Administrador",
+    "maintainer": "Mantenedor",
+    "member": "Membro",
+    "guest": "Convidado",
+    "unknown": "Função desconhecida"
+  },
+  "admin": {
+    "title": "Gerenciar {{name}}",
+    "back": "Voltar aos servidores",
+    "loadFailed": "O Oleafly não conseguiu carregar isso do servidor.",
+    "added": "Adicionado em {{date}}",
+    "tabs": {
+      "members": "Pessoas",
+      "allowlist": "Pessoas permitidas",
+      "domains": "Domínios",
+      "settings": "Configurações do servidor",
+      "log": "Registro de segurança",
+      "email": "E-mail"
+    },
+    "members": {
+      "description": "Todos que já fizeram login neste servidor.",
+      "addPeople": "Adicionar pessoas",
+      "addHint": "Para deixar alguém novo entrar, adicione a pessoa em Pessoas permitidas.",
+      "loading": "Carregando as pessoas…",
+      "empty": "Ninguém fez login ainda.",
+      "you": "Você",
+      "active": "Ativo",
+      "suspended": "Suspenso",
+      "removed": "Removido",
+      "roleLabel": "Função de {{name}}",
+      "suspend": "Suspender",
+      "reactivate": "Reativar",
+      "remove": "Remover",
+      "devices": "Dispositivos",
+      "devicesTitle": "Dispositivos de {{name}}",
+      "devicesDescription": "Encerre a sessão de um dispositivo perdido ou que não é mais usado.",
+      "devicesLoading": "Carregando os dispositivos…",
+      "devicesLoadFailed": "O Oleafly não conseguiu carregar estes dispositivos.",
+      "lastAdmin": "Este servidor precisa de pelo menos um administrador. Promova outra pessoa a administrador primeiro.",
+      "owned": {
+        "suspendOne": "Um projeto compartilhado está no nome de {{name}}. Ninguém mais pode gerenciá-lo enquanto a conta de {{name}} estiver suspensa.",
+        "suspendMany": "Projetos compartilhados no nome de {{name}}: {{number}}. Ninguém mais pode gerenciá-los enquanto a conta de {{name}} estiver suspensa.",
+        "removeOne": "Um projeto compartilhado está no nome de {{name}}. Depois que a conta de {{name}} for removida, ninguém mais poderá gerenciá-lo.",
+        "removeMany": "Projetos compartilhados no nome de {{name}}: {{number}}. Depois que a conta de {{name}} for removida, ninguém mais poderá gerenciá-los."
+      },
+      "removeConfirm": {
+        "title": "Remover {{name}} deste servidor?",
+        "description": "A sessão dos dispositivos dessa pessoa é encerrada na hora. Os projetos dela continuam no servidor, e você pode adicioná-la de novo depois.",
+        "confirm": "Remover do servidor"
+      },
+      "suspendConfirm": {
+        "title": "Suspender {{name}}?",
+        "description": "{{name}} não poderá entrar nem sincronizar até que um administrador reative a conta.",
+        "confirm": "Suspender a conta"
+      },
+      "selfRoleConfirm": {
+        "title": "Mudar a sua própria função para {{role}}?",
+        "description": "Você vai perder os direitos de administrador neste servidor, e só outro administrador poderá devolvê-los.",
+        "confirm": "Mudar minha função"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Encerrar a sessão de {{name}}?",
+        "description": "Aquele dispositivo para de sincronizar com este servidor até o dono fazer login nele de novo.",
+        "confirm": "Encerrar sessão do dispositivo"
+      }
+    },
+    "allowlist": {
+      "description": "As pessoas que você adicionar aqui podem fazer login no servidor com a função que você escolher.",
+      "matchLabel": "Identificar por",
+      "match": {
+        "email": "Endereço de e-mail",
+        "login": "Nome de usuário"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Opção de login",
+      "roleLabel": "Função",
+      "add": "Adicionar",
+      "loading": "Carregando as pessoas permitidas…",
+      "empty": "Ninguém foi adicionado ainda.",
+      "loginEntry": "{{login}} em {{provider}}",
+      "bound": "Já fez login",
+      "unbound": "Ainda não fez login",
+      "remove": "Remover",
+      "removeNamed": "Remover {{entry}}",
+      "duplicate": "Essa pessoa já está permitida."
+    },
+    "domains": {
+      "description": "Qualquer pessoa com um endereço de e-mail verificado nestes domínios pode fazer login com a função que você escolher.",
+      "domainLabel": "Domínio",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Função",
+      "add": "Adicionar",
+      "loading": "Carregando as regras de domínio…",
+      "empty": "Nenhuma regra de domínio ainda.",
+      "remove": "Remover",
+      "removeNamed": "Remover {{domain}}",
+      "duplicate": "Esse domínio já tem uma regra."
+    },
+    "settings": {
+      "description": "Estas configurações valem para todos neste servidor.",
+      "adminOnly": "Só administradores podem mudar estas configurações.",
+      "loading": "Carregando as configurações…",
+      "guestsEnabled": {
+        "label": "Permitir convidados",
+        "description": "Os membros podem convidar pessoas de fora do servidor para os projetos deles."
+      },
+      "guestApprovalRequired": {
+        "label": "Aprovar convidados antes",
+        "description": "Um mantenedor ou administrador aprova cada convite de convidado antes que ele funcione."
+      },
+      "directoryVisible": {
+        "label": "Diretório de membros",
+        "description": "Os membros podem procurar uns aos outros pelo nome quando compartilham um projeto."
+      },
+      "directoryShowsEmail": {
+        "label": "Mostrar endereços de e-mail no diretório",
+        "description": "Os membros veem os endereços de e-mail uns dos outros quando procuram alguém."
+      },
+      "linkSharingAllowed": {
+        "label": "Permitir compartilhamento por link",
+        "description": "Os donos de projetos podem deixar qualquer membro abrir um projeto pelo link."
+      },
+      "accessLogsAllowed": {
+        "label": "Permitir registros de acesso a projetos",
+        "description": "Os donos de projetos podem manter um registro de quem abriu o projeto."
+      },
+      "commentsAllowed": {
+        "label": "Permitir comentários",
+        "description": "Pessoas em projetos compartilhados podem comentar o texto e responder. Desativado, os comentários ficam ocultos em todo lugar e continuam salvos."
+      },
+      "emailNotifications": {
+        "label": "Notificações por e-mail",
+        "description": "Enviar estes e-mails. Desative para pará-los para todos no servidor."
+      },
+      "emailLinkSignIn": {
+        "label": "Login por e-mail",
+        "description": "As pessoas podem fazer login com um link enviado para o e-mail delas. Isso exige as configurações de e-mail do servidor. Suas regras de acesso continuam decidindo quem entra."
+      }
+    },
+    "log": {
+      "description": "Logins, mudanças de dispositivos e ações de administradores neste servidor.",
+      "loading": "Carregando o registro…",
+      "empty": "Nada aconteceu ainda.",
+      "loadMore": "Mostrar entradas mais antigas",
+      "server": "Servidor",
+      "unknownAccount": "Conta desconhecida",
+      "target": "Alvo: {{target}}",
+      "ip": "De {{ip}}",
+      "kinds": {
+        "setupCompleted": "Concluiu a configuração do servidor",
+        "signIn": "Fez login",
+        "signInRefused": "Teve o login recusado",
+        "deviceAdded": "Adicionou um dispositivo",
+        "deviceSignedOut": "Encerrou a sessão de um dispositivo",
+        "refreshReuseDetected": "Reutilizou um login antigo, então a sessão do dispositivo foi encerrada",
+        "memberAdded": "Adicionou um membro",
+        "memberRemoved": "Removeu um membro",
+        "memberSuspended": "Suspendeu um membro",
+        "memberReactivated": "Reativou um membro",
+        "roleChanged": "Mudou uma função",
+        "allowlistAdded": "Adicionou alguém à lista de pessoas permitidas",
+        "allowlistRemoved": "Removeu alguém da lista de pessoas permitidas",
+        "domainRuleAdded": "Adicionou uma regra de domínio",
+        "domainRuleRemoved": "Removeu uma regra de domínio",
+        "settingsChanged": "Mudou as configurações do servidor",
+        "projectShared": "Compartilhou um projeto",
+        "projectAccessGranted": "Deu acesso a um projeto para alguém",
+        "projectAccessChanged": "Mudou o acesso de alguém a um projeto",
+        "projectAccessRemoved": "Removeu alguém de um projeto",
+        "projectLeft": "Saiu de um projeto",
+        "projectLinkSharingOn": "Ativou o compartilhamento por link de um projeto",
+        "projectLinkSharingOff": "Desativou o compartilhamento por link de um projeto",
+        "projectLinkRoleChanged": "Mudou o que o link de um projeto permite",
+        "projectArchived": "Arquivou um projeto",
+        "projectUnarchived": "Restaurou um projeto arquivado",
+        "projectSettingsChanged": "Mudou as configurações de um projeto",
+        "projectAccessLogOn": "Ativou o registro de acesso de um projeto",
+        "projectAccessLogOff": "Desativou o registro de acesso de um projeto",
+        "projectCommentsOn": "Ativou os comentários em um projeto",
+        "projectCommentsOff": "Desativou os comentários em um projeto",
+        "projectRejoinRefused": "Tentou voltar a um projeto do qual foi removido",
+        "commentsChangedWhileOff": "Alterou comentários enquanto estavam desativados",
+        "guestInvited": "Enviou um convite de convidado",
+        "guestInvitationApproved": "Aprovou um convite de convidado",
+        "guestInvitationDeclined": "Recusou um convite de convidado",
+        "guestInvitationRevoked": "Retirou um convite de convidado",
+        "guestAdmissionEnded": "Encerrou o acesso de um convidado ao servidor",
+        "unknown": "Outro evento do servidor"
+      },
+      "details": {
+        "project": "Projeto: {{title}}",
+        "provider": "Com {{provider}}",
+        "providerEmailLink": "Com um link por e-mail",
+        "signInCode": "Usou um código de login",
+        "via": {
+          "allowlist": "Admitido pela lista de pessoas permitidas",
+          "domain": "Admitido por uma regra de domínio",
+          "setup": "Usou o código de configuração",
+          "guest": "Admitido como convidado",
+          "link": "Pelo link do projeto",
+          "invitation": "Por um convite de convidado"
+        },
+        "newAccount": "Conta nova",
+        "reactivated": "Conta reativada",
+        "reasons": {
+          "suspended": "A conta está suspensa",
+          "notAdmitted": "Nenhuma regra de acesso permite a entrada",
+          "setupCodeInvalid": "Código de configuração errado",
+          "guestInvitationUnusable": "O convite de convidado não funciona mais",
+          "lockedOutIp": "Tentativas demais de um mesmo endereço de rede",
+          "lockedOutAddress": "E-mails de login demais para um mesmo endereço",
+          "stoppedByPerson": "Interrompido na página de login",
+          "otherBrowser": "Concluído em um navegador diferente daquele em que começou",
+          "inactiveAccountAddress": "O e-mail pertence a uma conta removida ou suspensa",
+          "noProjectsLeft": "Nenhum projeto restante"
+        },
+        "role": "Função: {{role}}",
+        "roleChange": "De {{from}} para {{to}}",
+        "device": "Dispositivo: {{name}}",
+        "byAdmin": "Pelo console de administração",
+        "settingOn": "{{setting}}: ativado",
+        "settingOff": "{{setting}}: desativado"
+      }
+    },
+    "email": {
+      "description": "O servidor envia e-mails às pessoas quando você as adiciona, quando alguém compartilha um projeto com elas e quando a conta delas entra em um dispositivo novo.",
+      "loading": "Carregando as configurações de e-mail…",
+      "on": {
+        "title": "O e-mail está ativado",
+        "from": "Os e-mails vêm de {{from}}."
+      },
+      "off": {
+        "title": "O e-mail está desativado",
+        "description": "Este servidor não tem configurações de e-mail. Para ativar o e-mail, defina OLEAFLY_SMTP_URL e OLEAFLY_MAIL_FROM no servidor e depois reinicie-o.",
+        "copyPath": "Até lá, envie você mesmo este link para as pessoas novas. Ele adiciona o servidor ao Oleafly.",
+        "address": "Elas também podem digitar este endereço em Adicionar servidor:"
+      },
+      "needsSettings": "Primeiro ative o e-mail no servidor.",
+      "lastFailure": "O último e-mail que falhou foi em {{date}}. O servidor de e-mail respondeu:",
+      "test": {
+        "title": "E-mail de teste",
+        "description": "Envie um e-mail de teste para {{address}} para conferir se as configurações funcionam.",
+        "send": "Enviar e-mail de teste",
+        "sending": "Enviando…",
+        "sent": "Enviado para {{address}}. Se não estiver na caixa de entrada, veja na pasta de spam.",
+        "failed": "O servidor de e-mail não aceitou o e-mail de teste.",
+        "noAddress": "Sua conta não tem um endereço de e-mail verificado, então não há para onde enviar um teste.",
+        "adminOnly": "Só administradores podem enviar um e-mail de teste."
+      }
+    }
+  },
+  "projectRoles": {
+    "owner": "Proprietário",
+    "editor": "Editor",
+    "viewer": "Leitor",
+    "unknown": "Função desconhecida"
+  },
+  "share": {
+    "button": "Compartilhar",
+    "copyAndShare": "Copiar para o Oleafly e compartilhar",
+    "title": "Compartilhar {{name}}",
+    "description": "Trabalhe neste projeto com outras pessoas por um servidor de colaboração.",
+    "loading": "Carregando…",
+    "linked": "Este projeto é uma pasta fora do Oleafly. O Oleafly copia a pasta para a sua biblioteca e compartilha essa cópia. A pasta original não é alterada.",
+    "editCopy": "Esta é a cópia compartilhada. De agora em diante, edite esta, não a pasta original.",
+    "serverLabel": "Servidor",
+    "noServers": "Primeiro faça login em um servidor de colaboração e depois volte para compartilhar.",
+    "openSettings": "Abrir as configurações de Colaboração",
+    "checking": "Verificando o projeto…",
+    "checkFailed": "O Oleafly não conseguiu verificar este projeto.",
+    "files": "Arquivos",
+    "size": "Tamanho",
+    "disclosure": "{{server}} pode ler os arquivos deste projeto.",
+    "cloudSynced": "A sua biblioteca do Oleafly está em uma pasta sincronizada pelo iCloud, Dropbox ou um serviço parecido. Dois serviços de sincronização disputariam os mesmos arquivos, então o Oleafly não pode compartilhar a partir daí. Primeiro tire a biblioteca dessa pasta.",
+    "tooLarge": "Estes arquivos passam do limite do servidor, que é de {{size}} MB. Diminua ou remova os arquivos antes de compartilhar.",
+    "renamed": "Alguns nomes não funcionam em todos os computadores. As outras pessoas recebem esses arquivos com um nome um pouco diferente.",
+    "excluded": "Não compartilhados: arquivos de compilação, configurações do Oleafly e histórico do Git.",
+    "start": "Compartilhar",
+    "preparing": "Preparando o projeto…",
+    "uploading": "Enviando figuras e outros arquivos: {{done}} de {{total}}",
+    "saving": "Salvando o projeto no servidor…",
+    "failed": "O compartilhamento não terminou, então nada foi compartilhado.",
+    "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele."
+  },
+  "manage": {
+    "sharedOn": "Compartilhado em {{server}}",
+    "yourRole": "Sua função: {{role}}",
+    "loading": "Carregando quem tem acesso…",
+    "loadFailed": "O Oleafly não conseguiu carregar quem tem acesso.",
+    "people": "Pessoas com acesso",
+    "you": "Você",
+    "inactive": "Removido ou suspenso",
+    "ownerInactive": "Proprietário removido ou suspenso",
+    "roleLabel": "Função de {{name}}",
+    "remove": "Remover",
+    "removeNamed": "Remover {{name}}",
+    "removeConfirm": {
+      "title": "Remover {{name}} deste projeto?",
+      "description": "A cópia dessa pessoa para de sincronizar e fica no computador dela como um projeto comum.",
+      "confirm": "Remover"
+    },
+    "add": {
+      "label": "Adicionar pessoas",
+      "placeholder": "Nome, nome de usuário ou e-mail",
+      "roleLabel": "Função das pessoas que você adicionar",
+      "searching": "Procurando…",
+      "noResultsTryEmail": "Ninguém em {{server}} corresponde. Tente o endereço de e-mail completo da pessoa.",
+      "alreadyMember": "{{name}} já tem acesso.",
+      "allMembers": "Todas as pessoas encontradas já têm acesso.",
+      "noAccountNoGuests": "Ninguém em {{server}} usa {{email}} ainda. Peça a um administrador de {{server}} para liberar a entrada dessa pessoa e adicione-a aqui depois que ela entrar pela primeira vez.",
+      "guestCheckFailed": "O Oleafly não conseguiu verificar se {{server}} permite convidados.",
+      "add": "Adicionar",
+      "addNamed": "Adicionar {{name}}"
+    },
+    "link": {
+      "copy": "Copiar link",
+      "copied": "Link copiado",
+      "copyFailed": "Não foi possível copiar o link",
+      "sharing": "Compartilhamento por link",
+      "sharingDescription": "Qualquer pessoa conectada a {{server}} que tenha o link pode abrir este projeto.",
+      "roleLabel": "Função de quem abrir o link"
+    },
+    "comments": {
+      "label": "Comentários",
+      "description": "Quem pode editar pode comentar o texto deste projeto. Se você desativar isso, os comentários ficam ocultos, mas não são excluídos.",
+      "serverOff": "Os comentários estão desativados em {{server}}. Peça ao administrador dele para ativá-los."
+    },
+    "stop": "Parar de compartilhar",
+    "stopConfirm": {
+      "title": "Parar de compartilhar {{name}}?",
+      "description": "A cópia de cada pessoa para de sincronizar e vira um projeto comum. O servidor guarda a cópia compartilhada por um tempo e depois a exclui.",
+      "confirm": "Parar de compartilhar"
+    },
+    "leave": "Sair do projeto",
+    "leaveConfirm": {
+      "title": "Sair de {{name}}?",
+      "description": "A sua cópia para de sincronizar e fica neste computador como um projeto comum.",
+      "confirm": "Sair"
+    },
+    "accessLog": {
+      "label": "Registro de acesso",
+      "description": "O servidor anota quem abre este projeto, entra nele ou baixa uma cópia, de qual dispositivo e quando. Só você vê esta lista, no painel Colaboração em tempo real."
+    }
+  },
+  "sync": {
+    "upToDate": "Atualizado",
+    "syncing": "Sincronizando",
+    "offline": "Offline. Alterações pendentes: {{number}}",
+    "reconnecting": "Reconectando",
+    "signedOut": "Desconectado",
+    "suspended": "Conta suspensa",
+    "accessEnded": "Sem acesso",
+    "removed": "Acesso removido",
+    "archived": "Compartilhamento encerrado",
+    "paused": "Pausado",
+    "serverRemoved": "Servidor removido",
+    "clientTooOld": "O Oleafly precisa ser atualizado",
+    "serverTooOld": "O servidor precisa ser atualizado",
+    "serverChanged": "Novo servidor neste endereço",
+    "failed": "Parado após um erro",
+    "engineSpent": "É preciso reiniciar"
+  },
+  "toolbar": {
+    "noFile": "Nenhum arquivo aberto",
+    "unknownPerson": "Alguém",
+    "viewing": "Vendo {{path}}",
+    "editing": "Editando {{path}}",
+    "goTo": "Ir até {{name}}",
+    "nowhere": "Não está em nenhum arquivo, então não há para onde ir"
+  },
+  "tree": {
+    "here": "{{name}} está com este arquivo aberto",
+    "clash": "{{other}} também se chama {{name}}, então este arquivo ganhou um nome novo no disco."
+  },
+  "library": {
+    "kind": "compartilhado",
+    "location": "Projetos compartilhados",
+    "locationNotShared": "No Oleafly, não compartilhados",
+    "flag": "Compartilhado",
+    "sharedWithYou": {
+      "title": "Compartilhados com você",
+      "loadFailed": "O Oleafly não conseguiu verificar os projetos compartilhados com você.",
+      "from": "{{owner}} em {{server}}",
+      "open": "Abrir",
+      "openNamed": "Abrir {{name}}"
+    },
+    "openLink": {
+      "menu": "Abrir link de projeto compartilhado…",
+      "title": "Abrir um projeto compartilhado",
+      "description": "Cole o link que enviaram para você.",
+      "label": "Link do projeto",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Abrir",
+      "noAccess": "Você não tem acesso a este projeto. Peça ao proprietário dele."
+    }
+  },
+  "pane": {
+    "title": "Colaboração em tempo real",
+    "titleUnread": "Colaboração em tempo real, nova atividade",
+    "manage": "Gerenciar compartilhamento",
+    "people": "Pessoas",
+    "activity": "Atividade",
+    "empty": "Nada aconteceu ainda.",
+    "here": "Aqui agora",
+    "hereIn": "Agora em {{path}}",
+    "away": "Não está aqui agora",
+    "deleted": "Excluídos recentemente",
+    "deletedEmpty": "Nada foi excluído recentemente.",
+    "deletedLoadFailed": "O Oleafly não conseguiu carregar os arquivos excluídos recentemente.",
+    "unwritten": {
+      "title": "Não foi possível gravar alguns arquivos neste computador",
+      "hint": "O Oleafly continua tentando. Enquanto isso, o projeto compartilhado tem o texto mais recente.",
+      "reasons": {
+        "locked": "Não é possível gravar {{path}}: outro programa está com ele aberto.",
+        "read_only": "Não é possível gravar {{path}}: o arquivo ou a pasta dele é somente leitura.",
+        "no_space": "Não é possível gravar {{path}}: o disco está cheio.",
+        "not_downloaded": "Ainda não foi possível baixar {{path}} do servidor. O Oleafly continua tentando.",
+        "other": "Não é possível gravar {{path}}."
+      }
+    },
+    "accessLog": "Registro de acesso",
+    "status": "Status da sincronização",
+    "waiting": "Alterações pendentes: {{number}}"
+  },
+  "deleted": {
+    "restore": "Restaurar",
+    "restoreLabel": "Restaurar {{name}}",
+    "inFolder": "Estava em {{folder}}",
+    "inProject": "Estava na pasta do projeto",
+    "byYou": "Excluído por você",
+    "by": "Excluído por {{name}}"
+  },
+  "removed": {
+    "deletedBy": "{{name}} excluiu {{file}}.",
+    "yoursDeleted": "Suas alterações em {{file}} estão em Excluídos recentemente porque {{name}} excluiu o arquivo.",
+    "dismiss": "Dispensar"
+  },
+  "activity": {
+    "welcomeEdit": "Compartilhado por {{owner}} em {{server}}. Você pode editar.",
+    "welcomeView": "Compartilhado por {{owner}} em {{server}}. Você pode visualizar.",
+    "joined": "{{name}} abriu o projeto",
+    "left": "{{name}} fechou o projeto",
+    "rejoined": "{{name}} abriu o projeto de novo",
+    "visited": "{{name}} abriu e fechou o projeto",
+    "online": "Online de novo",
+    "merged": "Alterações de outras pessoas mescladas enquanto você estava fora: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Mostrar arquivos",
+    "hideFiles": "Ocultar arquivos",
+    "role": "Sua nova função: {{role}}",
+    "removed": "Você não tem mais acesso a este projeto compartilhado. A sua cópia continua aqui como um projeto comum.",
+    "removedBy": "{{name}} removeu você deste projeto compartilhado. A sua cópia continua aqui como um projeto comum.",
+    "archived": "O proprietário parou de compartilhar este projeto. A sua cópia continua aqui como um projeto comum.",
+    "signedOut": "Você está desconectado de {{server}}, então este projeto não está sincronizando. As suas alterações ficam neste computador.",
+    "suspended": "Um administrador suspendeu a sua conta em {{server}}. As suas alterações ficam neste computador. Você poderá entrar de novo quando um administrador a reativar.",
+    "clientTooOld": "Atualize o Oleafly para continuar trabalhando em {{server}}. As suas alterações ficam neste computador.",
+    "serverTooOld": "{{server}} precisa ser atualizado para funcionar com esta versão do Oleafly. Fale com quem administra o servidor. As suas alterações ficam neste computador.",
+    "serverChanged": "O endereço de {{server}} agora leva a outro servidor. Remova-o nas configurações de Colaboração e adicione-o de novo. As suas alterações ficam neste computador.",
+    "failed": "A sincronização deste projeto parou após um erro. Sincronize de novo para continuar.",
+    "goLiveAgain": "Sincronizar de novo",
+    "engineSpent": "Reinicie o Oleafly para continuar sincronizando este projeto.",
+    "restartApp": "Reiniciar o Oleafly",
+    "accessEnded": "Você não tem mais acesso a {{server}}. A sua cópia fica neste computador como um projeto comum.",
+    "accessEndedGuest": "Você não tem mais acesso a {{server}} porque não participa de nenhum dos projetos compartilhados dele. A sua cópia fica neste computador como um projeto comum.",
+    "signIn": "Fazer login",
+    "memberAdded": "{{by}} adicionou {{name}}",
+    "memberAddedByYou": "Você adicionou {{name}}",
+    "memberJoined": "{{name}} entrou pelo link do projeto",
+    "memberRemoved": "{{by}} removeu {{name}}",
+    "memberRemovedByYou": "Você removeu {{name}}",
+    "memberLeft": "{{name}} saiu deste projeto compartilhado",
+    "newDevice": "{{name}} entrou em um novo dispositivo",
+    "review": "Revisar",
+    "renamed": "{{name}} renomeou {{before}} para {{theirs}} depois que você o chamou de {{ours}}",
+    "renamedPortable": "{{before}} foi renomeado para {{theirs}} para funcionar em qualquer computador.",
+    "skipped": "Não foi possível ler uma alteração de {{name}}, então ela foi ignorada.",
+    "skippedUnknown": "Não foi possível ler uma alteração de alguém, então ela foi ignorada.",
+    "mentioned": "{{name}} mencionou você em um comentário em {{path}}",
+    "mentionedHere": "{{name}} mencionou você em um comentário",
+    "showComment": "Ver comentário",
+    "settings": {
+      "mainDocument": "{{name}} definiu {{path}} como documento principal",
+      "mainDocumentNow": "{{path}} agora é o documento principal",
+      "compiler": "{{name}} mudou o compilador para {{compiler}}",
+      "spellingLanguage": "{{name}} mudou o idioma da verificação ortográfica para {{language}}",
+      "spellingCleared": "{{name}} removeu o idioma da verificação ortográfica do projeto",
+      "typstVersion": "{{name}} mudou a versão do Typst para {{version}}",
+      "typstDefault": "{{name}} voltou a versão do Typst para a padrão",
+      "typstOptions": "{{name}} alterou as opções do Typst",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Automático",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
+  },
+  "mergeReview": {
+    "title": "Alterações mescladas enquanto você estava fora",
+    "description": "O que outras pessoas alteraram enquanto você estava offline. Esta visualização é somente leitura.",
+    "people": "Por pessoa",
+    "person": "{{name}}: {{number}}",
+    "files": "Por arquivo",
+    "loading": "Carregando alterações",
+    "failed": "Não foi possível carregar as alterações. Tente novamente mais tarde.",
+    "noText": "Nenhum texto mudou, então não há nada para comparar.",
+    "newFile": "Arquivo novo",
+    "removedFile": "Removido",
+    "closedOldest": "Só {{number}} arquivos ficam abertos ao mesmo tempo, então {{path}} foi fechado.",
+    "diffLabel": "Alterações em {{path}}"
+  },
+  "console": {
+    "open": "Abrir o console de administração",
+    "windowTitle": "Console de administração do Oleafly Server",
+    "title": "Console de administração",
+    "sectionsLabel": "Seções do console de administração",
+    "pendingGuestsBadge": "Aguardando aprovação: {{number}}",
+    "sections": {
+      "overview": "Visão geral",
+      "people": "Pessoas",
+      "access": "Regras de acesso",
+      "projects": "Projetos",
+      "settings": "Configurações do servidor",
+      "email": "E-mail",
+      "log": "Registro de segurança",
+      "checks": "Testes de conexão"
+    },
+    "health": {
+      "label": "Estado do servidor: {{status}}",
+      "checking": "Verificando",
+      "ok": "Tudo certo",
+      "warning": "Precisa de atenção",
+      "unreachable": "Inacessível"
+    },
+    "states": {
+      "loading": "Abrindo o console de administração…",
+      "loadFailed": "O Oleafly não conseguiu abrir o console de administração.",
+      "unknownTitle": "Este servidor não está na sua lista",
+      "unknownDescription": "Adicione o servidor de novo em Configurações e depois abra o console de administração pelo cartão dele.",
+      "signedOutTitle": "Você está desconectado deste servidor",
+      "signedOutDescription": "Faça login de novo em Configurações e depois abra o console de administração pelo cartão do servidor.",
+      "refusedTitle": "O console de administração é para administradores e mantenedores",
+      "refusedDescription": "A sua função neste servidor é {{role}}. Se você precisar gerenciá-lo, fale com um administrador.",
+      "turnedOffTitle": "A colaboração em tempo real está desativada",
+      "turnedOffDescription": "Ative-a de novo em Configurações, na seção Experimentação, para gerenciar este servidor aqui."
+    },
+    "overview": {
+      "loading": "Carregando a visão geral…",
+      "health": {
+        "title": "Estado",
+        "okLabel": "Tudo está funcionando",
+        "okDescription": "As pessoas conseguem fazer login e o servidor consegue salvar arquivos.",
+        "problem": "O login com {{provider}} está falhando desde {{time}}",
+        "commentChange": "{{project}}, alterado por {{name}} em {{time}}",
+        "commentChangeUnknown": "{{project}}, alterado em {{time}}",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Ninguém consegue fazer login",
+            "description": "Configure o login com GitHub ou OpenID no servidor e reinicie-o. Se o servidor envia e-mails, você também pode ativar Login por e-mail em Configurações."
+          },
+          "storageNotWritable": {
+            "label": "O servidor não consegue salvar arquivos",
+            "description": "Confira se a pasta de dados do servidor existe e se ele consegue gravar nela."
+          },
+          "signInFailing": {
+            "label": "O login está falhando",
+            "description": "Ninguém consegue entrar com uma das opções de login do servidor. A lista abaixo diz qual e desde quando."
+          },
+          "signInEmailsPaused": {
+            "label": "Os e-mails de login estão pausados",
+            "description": "O servidor já enviou todos os e-mails de login que permite nesta hora. O envio volta quando a hora acabar."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentários alterados enquanto estavam desativados",
+            "description": "O servidor encontrou alterações em comentários que salvou antes de conseguir verificá-las, enquanto os comentários estavam desativados. Os projetos aparecem abaixo, e o registro de segurança tem cada alteração."
+          },
+          "unknown": {
+            "label": "O servidor relatou um problema",
+            "description": "Atualize o Oleafly para ver qual é."
+          }
+        }
+      },
+      "glance": {
+        "title": "Resumo",
+        "people": "Pessoas",
+        "suspended": "Suspensas: {{number}}",
+        "devices": "Dispositivos",
+        "projects": "Projetos compartilhados",
+        "projectsDetail": "Arquivados: {{archived}}, em envio: {{pending}}",
+        "online": "Online agora",
+        "onlineDetail": "Projetos abertos: {{number}}",
+        "started": "Iniciado",
+        "version": "Versão",
+        "protocol": "Protocolo {{protocol}}",
+        "pendingGuests": "Convites de convidados aguardando aprovação: {{number}}",
+        "reviewGuests": "Revisar em Pessoas"
+      },
+      "storage": {
+        "title": "Armazenamento",
+        "adminOnly": "Só administradores podem ver quanto armazenamento o servidor usa.",
+        "database": "Banco de dados",
+        "databaseDetail": "Contas, configurações e o registro",
+        "snapshots": "Snapshots de projetos",
+        "snapshotsDetail": "Cópias salvas de cada projeto",
+        "files": "Arquivos",
+        "location": {
+          "disk": "No disco do servidor",
+          "s3": "No armazenamento S3",
+          "unknown": "Em outro armazenamento"
+        }
+      },
+      "services": {
+        "title": "E-mail e login",
+        "email": "E-mail",
+        "emailOn": "Configurado",
+        "emailOff": "Não configurado",
+        "emailOnDescription": "O servidor consegue enviar e-mails.",
+        "emailOffDescription": "O servidor ainda não consegue enviar e-mails, então ninguém recebe notificações por e-mail.",
+        "openEmail": "Configurações de e-mail",
+        "signIn": "Opções de login",
+        "signInNone": "Nenhuma ainda. Ninguém consegue fazer login até que uma seja configurada.",
+        "emailLinkOption": "Link por e-mail"
+      },
+      "settings": {
+        "title": "Configurações do servidor",
+        "on": "Ativado",
+        "off": "Desativado",
+        "change": "Alterar configurações"
+      },
+      "limits": "Limites: {{project}} por projeto, {{file}} por arquivo, {{people}} pessoas por projeto."
+    },
+    "projects": {
+      "description": "Todos os projetos compartilhados neste servidor.",
+      "searchLabel": "Buscar projetos",
+      "searchPlaceholder": "Buscar por título ou proprietário",
+      "filterLabel": "Mostrar projetos",
+      "filter": {
+        "all": "Todos",
+        "active": "Compartilhados",
+        "archived": "Arquivados",
+        "pending": "Em envio"
+      },
+      "columns": {
+        "title": "Projeto",
+        "owner": "Proprietário",
+        "members": "Pessoas",
+        "size": "Tamanho",
+        "activity": "Última atividade",
+        "actions": "Ações"
+      },
+      "sortBy": "Ordenar por {{column}}",
+      "status": {
+        "archived": "Arquivado",
+        "pending": "Em envio",
+        "unknown": "Desconhecido"
+      },
+      "loading": "Carregando os projetos…",
+      "empty": "Nenhum projeto foi compartilhado neste servidor ainda.",
+      "noMatches": "Nenhum projeto corresponde à sua busca.",
+      "count": "Mostrando {{shown}} de {{total}}",
+      "loadMore": "Mostrar mais",
+      "archive": "Arquivar",
+      "archiveNamed": "Arquivar {{title}}",
+      "restore": "Restaurar",
+      "restoreNamed": "Restaurar {{title}}",
+      "archiveConfirm": {
+        "title": "Arquivar {{title}}?",
+        "description": "Ninguém mais sincroniza o projeto e cada pessoa fica com a própria cópia. O servidor exclui o projeto depois de {{days}} dias, a menos que você o restaure.",
+        "descriptionLater": "Ninguém mais sincroniza o projeto e cada pessoa fica com a própria cópia. O servidor exclui projetos arquivados depois de um tempo, a menos que você os restaure.",
+        "confirm": "Arquivar projeto"
+      },
+      "adminOnly": "Só administradores podem arquivar ou restaurar projetos."
+    },
+    "checks": {
+      "description": "Verifique a conexão deste computador com o servidor."
+    }
+  },
+  "links": {
+    "turnedOff": "A colaboração em tempo real está desativada. Ative-a em Configurações, na seção Experimentação, e abra o link de novo.",
+    "openSettings": "Abrir Configurações",
+    "malformed": "O Oleafly não consegue abrir este link. Peça um novo a quem enviou.",
+    "opening": "Abrindo o projeto compartilhado…",
+    "downloading": "Baixando arquivos: {{done}} de {{total}}",
+    "cancelNamed": "Cancelar a abertura de {{name}}",
+    "cancelling": "Cancelando…",
+    "confirm": {
+      "title": "Participar deste projeto compartilhado?",
+      "body": "Participar adiciona você ao projeto e copia os arquivos dele para este computador. Só participe se souber quem enviou o link para você.",
+      "project": "Projeto",
+      "owner": "Proprietário",
+      "server": "Servidor",
+      "role": "Sua função",
+      "join": "Participar"
+    }
+  },
+  "comments": {
+    "title": "Comentários",
+    "titleUnread": "Comentários, nova atividade",
+    "add": "Adicionar comentário",
+    "showResolved": "Mostrar comentários resolvidos",
+    "hideResolved": "Ocultar comentários resolvidos",
+    "empty": "Ainda não há comentários.",
+    "emptyCanWrite": "Ainda não há comentários. Selecione um texto e escolha Adicionar comentário para começar.",
+    "allResolved": "Todos os comentários estão resolvidos.",
+    "loadFailed": "Não foi possível carregar os comentários deste arquivo.",
+    "detached": "Desvinculados",
+    "detachedHint": "O texto destes comentários foi excluído.",
+    "resolvedBy": "Resolvido por {{name}}",
+    "edited": "Editado",
+    "deleted": "Este comentário foi excluído.",
+    "newLabel": "Novo comentário",
+    "newPlaceholder": "Escreva um comentário. Digite @ para mencionar alguém.",
+    "replyLabel": "Resposta",
+    "replyPlaceholder": "Escreva uma resposta. Digite @ para mencionar alguém.",
+    "editLabel": "Editar comentário",
+    "post": "Comentar",
+    "reply": "Responder",
+    "resolve": "Resolver",
+    "reopen": "Reabrir",
+    "deleteThread": "Excluir conversa",
+    "deleteThreadConfirm": {
+      "title": "Excluir esta conversa?",
+      "description": "O comentário e as respostas são excluídos para todas as pessoas deste projeto. Não é possível desfazer."
+    },
+    "deleteMessageConfirm": {
+      "title": "Excluir este comentário?",
+      "description": "Ele é excluído para todas as pessoas deste projeto. Não é possível desfazer."
+    },
+    "messageActions": "Mais ações para este comentário",
+    "threadActions": "Mais ações para esta conversa",
+    "showInEditor": "Mostrar no editor",
+    "thread": "Comentário de {{name}}",
+    "mentionList": "Pessoas para mencionar",
+    "marker": "Mostrar os comentários desta linha",
+    "unverifiedAuthor": "Não foi possível verificar quem escreveu isto",
+    "unverifiedThread": "Comentário de alguém que o Oleafly não conseguiu verificar",
+    "resolvedUnverified": "Resolvido por alguém que o Oleafly não conseguiu verificar",
+    "notSent": {
+      "written": "Os comentários estão desativados neste projeto, então os comentários que você escreveu não foram enviados.",
+      "changed": "Os comentários estão desativados neste projeto, então suas alterações nos comentários não foram enviadas.",
+      "show": "Mostrar o que você escreveu",
+      "hide": "Ocultar o que você escreveu",
+      "copy": "Copiar texto",
+      "copyFailed": "Não foi possível copiar",
+      "list": "Comentários que não foram enviados"
+    },
+    "refusals": {
+      "notLive": "Este projeto não está conectado agora. Tente de novo quando ele se reconectar.",
+      "notYours": "Só quem escreveu este comentário pode alterá-lo.",
+      "offServer": "Os comentários estão desativados neste servidor.",
+      "offProject": "Os comentários estão desativados neste projeto. Peça ao proprietário para ativá-los de novo.",
+      "viewer": "Você pode ler comentários aqui, mas não pode escrevê-los. Peça ao proprietário acesso de edição.",
+      "someoneReplied": "Outra pessoa respondeu, então esta conversa fica. Em vez disso, você pode resolvê-la.",
+      "messageDeleted": "Este comentário foi excluído, então você não pode editá-lo.",
+      "selectionChanged": "O texto que você selecionou mudou. Selecione-o de novo e adicione seu comentário.",
+      "tooLong": "Este comentário é longo demais. Encurte-o e tente de novo.",
+      "empty": "Escreva algo antes de publicar."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} abriu o projeto",
+    "joinedLink": "{{name}} entrou pelo link",
+    "joinedShare": "{{name}} entrou depois que você compartilhou o projeto",
+    "downloaded": "{{name}} baixou uma cópia",
+    "unknown": "{{name}} usou o projeto",
+    "unknownDevice": "Dispositivo desconhecido",
+    "span": "De {{from}} a {{to}}",
+    "more": "Mostrar anteriores",
+    "loading": "Carregando o registro de acesso…",
+    "loadFailed": "O Oleafly não conseguiu carregar o registro de acesso.",
+    "empty": "Nada registrado ainda."
+  },
+  "guests": {
+    "badge": "Convidado",
+    "invite": {
+      "noAccount": "Ninguém em {{server}} usa {{email}}. Convide essa pessoa como convidada e ela verá só os projetos para os quais for convidada.",
+      "button": "Convidar como convidado",
+      "buttonNamed": "Convidar {{email}} como convidado",
+      "duplicate": "Esse endereço já tem um convite para este projeto.",
+      "tooMany": "Você enviou muitos convites na última hora. Tente de novo mais tarde."
+    },
+    "sent": {
+      "emailed": "Convite enviado para {{email}}.",
+      "emailedAfterApproval": "Um administrador precisa aprovar este convite. {{email}} vai receber um e-mail quando ele for aprovado.",
+      "added": "{{email}} já tem uma conta em {{server}}, então já tem acesso.",
+      "sendLink": "{{server}} não envia e-mails, então envie você mesmo este link para {{email}}. Com ele, a pessoa adiciona o servidor e entra com esse endereço.",
+      "sendLinkAfterApproval": "Um administrador precisa aprovar este convite primeiro. {{server}} não envia e-mails, então envie você mesmo este link para {{email}}. Ele vai funcionar quando o convite for aprovado.",
+      "linkLabel": "Link para adicionar {{server}}"
+    },
+    "list": {
+      "title": "Convites",
+      "status": {
+        "awaiting_approval": "Aguardando aprovação",
+        "invited": "Convidado",
+        "declined": "Recusado"
+      },
+      "expires": "Expira em {{date}}",
+      "withdraw": "Retirar",
+      "withdrawNamed": "Retirar o convite de {{email}}"
+    },
+    "pending": {
+      "title": "Convidados pendentes",
+      "description": "Donos de projetos convidaram estas pessoas como convidadas. Um convidado vê só os projetos para os quais foi convidado e não pode compartilhá-los.",
+      "loadFailed": "O Oleafly não conseguiu carregar os convites de convidados que aguardam aprovação.",
+      "invitedBy": "{{inviter}} convidou para {{project}}",
+      "approve": "Aprovar",
+      "approveNamed": "Aprovar {{email}}",
+      "decline": "Recusar",
+      "declineNamed": "Recusar {{email}}"
+    }
+  },
+  "access": {
+    "viewerBy": "{{name}} tornou você leitor. Você pode ler este projeto, mas não editá-lo.",
+    "viewer": "Agora você é leitor. Você pode ler este projeto, mas não editá-lo.",
+    "viewOnly": "Você pode ver este projeto compartilhado, mas não pode editá-lo.",
+    "connecting": "Este projeto compartilhado ainda está se conectando, então ainda não pode ser alterado. Tente de novo em instantes.",
+    "unsentReadOnly": "Suas últimas alterações em {{path}} não foram enviadas porque agora você só pode ver este projeto.",
+    "unsentRefused": "O Oleafly não conseguiu enviar suas últimas alterações em {{path}}, então elas foram descartadas.",
+    "removedBy": "{{name}} removeu você deste projeto. A sua cópia continua neste computador e não é mais compartilhada.",
+    "removed": "Você foi removido deste projeto. A sua cópia continua neste computador e não é mais compartilhada."
+  },
+  "files": {
+    "waiting": "Aguardando compartilhamento: {{files}}",
+    "failed": "Não foi possível compartilhar: {{files}}",
+    "uploading": "Enviando {{file}}: {{done}} de {{total}}",
+    "tooLarge": "{{file}} tem {{size}}, mais do que este servidor permite ({{limit}}). Ele fica só neste computador.",
+    "tooLargeUnknown": "{{file}} é maior do que este servidor permite. Ele fica só neste computador.",
+    "projectTooLarge": "{{file}} fica neste computador porque o projeto chegou ao limite de tamanho do servidor, de {{limit}}. Peça a quem administra o servidor para aumentá-lo.",
+    "projectTooLargeUnknown": "{{file}} fica neste computador porque o projeto chegou ao limite de tamanho do servidor. Peça a quem administra o servidor para aumentá-lo.",
+    "projectFull": "Este projeto chegou ao limite de tamanho do servidor, então suas alterações ficam neste computador por enquanto. Peça a quem administra o servidor para aumentá-lo.",
+    "replaced": "{{name}} substituiu {{file}} ao mesmo tempo que você. A sua versão foi guardada como {{copy}}.",
+    "added": "{{file}} agora se chama {{copy}} porque {{name}} adicionou um arquivo com o mesmo nome.",
+    "beside": "{{name}} também tem um arquivo chamado {{file}}. Ele foi guardado como {{copy}}.",
+    "localCopy": "Você alterou {{files}} em {{name}} enquanto não tinha acesso a este projeto.",
+    "bringIn": "Trazer alterações",
+    "keepSeparate": "Manter separado",
+    "broughtIn": "Suas alterações de {{name}} já estão neste projeto.",
+    "retry": "Tentar novamente",
+    "dismiss": "Dispensar"
+  }
+}

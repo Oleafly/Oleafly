@@ -3,10 +3,16 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { brotliCompressSync, deflateSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { dropNativeDecompression } from "./worker-decompression";
 
 type PdfJs = typeof import("pdfjs-dist");
 type LoadedFont = { name?: string; missingFile?: boolean; data?: Uint8Array };
+type DecompressionStreamCtor = new (format: string) => object;
+
+const MAC_WKWEBVIEW =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
 
 const ITERATOR = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object;
 
@@ -123,6 +129,111 @@ async function loadedFonts(fixture: string) {
     log.mockRestore();
   }
 }
+
+function onePagePdf(filter: string, encoded: Uint8Array) {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  const offsets: number[] = [];
+  let length = 0;
+  const push = (part: Uint8Array | string) => {
+    const bytes = typeof part === "string" ? encoder.encode(part) : part;
+    parts.push(bytes);
+    length += bytes.length;
+  };
+  const object = (body: string) => {
+    offsets.push(length);
+    push(`${offsets.length} 0 obj\n${body}\nendobj\n`);
+  };
+  push("%PDF-1.7\n");
+  object("<< /Type /Catalog /Pages 2 0 R >>");
+  object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 100] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>");
+  object("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  offsets.push(length);
+  push(`5 0 obj\n<< /Length ${encoded.length} /Filter /${filter} >>\nstream\n`);
+  push(encoded);
+  push("\nendstream\nendobj\n");
+  const xref = length;
+  push(`xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`);
+  for (const offset of offsets) push(`${String(offset).padStart(10, "0")} 00000 n \n`);
+  push(`trailer\n<< /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const pdf = new Uint8Array(length);
+  let at = 0;
+  for (const part of parts) {
+    pdf.set(part, at);
+    at += part.length;
+  }
+  return pdf;
+}
+
+async function readFirstPage(data: Uint8Array) {
+  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  try {
+    const task = pdfjs.getDocument({ data, fontExtraProperties: true });
+    const page = await (await task.promise).getPage(1);
+    const operators = await page.getOperatorList();
+    const fonts: { name?: string; data?: Uint8Array }[] = [];
+    operators.fnArray.forEach((operator, index) => {
+      if (operator !== pdfjs.OPS.setFont) return;
+      const font = page.commonObjs.get(String((operators.argsArray[index] as unknown[])[0])) as LoadedFont;
+      fonts.push({ name: font.name, data: font.data });
+    });
+    const text = (await page.getTextContent()).items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join("");
+    await task.destroy();
+    return { fonts, text };
+  } finally {
+    log.mockRestore();
+  }
+}
+
+async function withDecompression<T>(mode: "native" | "dropped", run: () => Promise<T>) {
+  const scope = globalThis as { DecompressionStream?: DecompressionStreamCtor };
+  const native = Object.getOwnPropertyDescriptor(globalThis, "DecompressionStream");
+  const Native = scope.DecompressionStream;
+  if (!native || !Native) throw new Error("this Node has no DecompressionStream to compare against");
+  const formats: string[] = [];
+  try {
+    if (mode === "native") {
+      scope.DecompressionStream = class extends Native {
+        constructor(format: string) {
+          formats.push(format);
+          super(format);
+        }
+      };
+    } else {
+      expect(dropNativeDecompression(globalThis, MAC_WKWEBVIEW)).toBe(true);
+    }
+    return { result: await run(), formats };
+  } finally {
+    Object.defineProperty(globalThis, "DecompressionStream", native);
+  }
+}
+
+describe("pdf.js without the native DecompressionStream", () => {
+  it("inflates a LaTeX PDF in JavaScript to the same fonts and text as the native stream", async () => {
+    const data = readFileSync(new URL("./__fixtures__/embedded-fonts.pdf", import.meta.url));
+    const native = await withDecompression("native", () => readFirstPage(new Uint8Array(data)));
+    const javascript = await withDecompression("dropped", () => readFirstPage(new Uint8Array(data)));
+    expect(native.formats).toContain("deflate");
+    expect(javascript.formats).toEqual([]);
+    expect(javascript.result.text).toContain("Playfair heading");
+    expect(javascript.result.fonts.length).toBeGreaterThan(0);
+    for (const font of javascript.result.fonts) expect(font.data?.length, font.name).toBeGreaterThan(0);
+    expect(javascript.result).toEqual(native.result);
+  });
+
+  it.each([
+    ["FlateDecode", deflateSync],
+    ["BrotliDecode", brotliCompressSync],
+  ] as const)("reads a %s content stream with its JavaScript decoder", async (filter, compress) => {
+    const content = new TextEncoder().encode("BT /F1 12 Tf 20 40 Td (Decoded in JavaScript) Tj ET");
+    const pdf = onePagePdf(filter, new Uint8Array(compress(content)));
+    const { result } = await withDecompression("dropped", () => readFirstPage(pdf));
+    expect(result.text).toBe("Decoded in JavaScript");
+  });
+});
 
 describe("pdf.js on a WebView without the newest JavaScript built-ins", () => {
   it.each([

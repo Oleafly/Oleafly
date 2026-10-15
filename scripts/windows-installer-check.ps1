@@ -14,6 +14,7 @@ $VerbKeys = @(
   "Software\Classes\Directory\Background\shell\Oleafly"
 )
 $InstallKey = "Software\Oleafly"
+$SchemeKey = "Software\Classes\oleafly"
 $AppExe = "oleafly.exe"
 $ForeignExe = "C:\Elsewhere\oleafly.exe"
 $InstallerTimeoutMs = 300000
@@ -85,8 +86,61 @@ function Write-Verbs([string]$exe) {
 }
 
 function Clear-Leftovers {
-  foreach ($key in @($VerbKeys) + @($InstallKey)) {
+  foreach ($key in @($VerbKeys) + @($InstallKey) + @($SchemeKey)) {
     Remove-RegistryTree $key
+  }
+  [Microsoft.Win32.Registry]::LocalMachine.DeleteSubKeyTree($SchemeKey, $false)
+}
+
+function Get-SchemeHive([string]$kind) {
+  if ($kind -eq "NSIS") { return [Microsoft.Win32.Registry]::CurrentUser }
+  return [Microsoft.Win32.Registry]::LocalMachine
+}
+
+function Get-SchemeHiveName([string]$kind) {
+  if ($kind -eq "NSIS") { return "HKCU" }
+  return "HKLM"
+}
+
+function Get-SchemeValue([string]$kind, [string]$key, [string]$name) {
+  $handle = (Get-SchemeHive $kind).OpenSubKey($key)
+  if ($null -eq $handle) { return $null }
+  try { return $handle.GetValue($name) } finally { $handle.Close() }
+}
+
+function Test-SchemeRegistered([string]$label, [string]$kind, [string]$exe) {
+  $hive = Get-SchemeHiveName $kind
+  $expected = "`"$exe`" `"%1`""
+  $actual = Get-SchemeValue $kind "$SchemeKey\shell\open\command" ""
+  if ($actual -ne $expected) {
+    Add-Failure "$label did not register oleafly:// links in $hive\$SchemeKey to open $exe (command is '$actual')"
+  }
+  if ($null -eq (Get-SchemeValue $kind $SchemeKey "URL Protocol")) {
+    Add-Failure "$label did not mark $hive\$SchemeKey as a URL protocol"
+  }
+}
+
+function Test-SchemeRemoved([string]$label, [string]$kind) {
+  $hive = Get-SchemeHiveName $kind
+  $command = Get-SchemeValue $kind "$SchemeKey\shell\open\command" ""
+  if ($null -ne $command) {
+    Add-Failure "$label left oleafly:// links registered in $hive\$SchemeKey after the uninstall ('$command')"
+  }
+}
+
+function Show-Scheme([string]$label) {
+  foreach ($kind in @("NSIS", "MSI")) {
+    $hive = Get-SchemeHiveName $kind
+    try {
+      $command = Get-SchemeValue $kind "$SchemeKey\shell\open\command" ""
+      if ($null -eq $command) {
+        Write-Host "  $hive\$SchemeKey is absent ($label)"
+      } else {
+        Write-Host "  $hive\$SchemeKey\shell\open\command = $command ($label)"
+      }
+    } catch {
+      Write-Host "  $hive\$SchemeKey could not be read ($($_.Exception.Message))"
+    }
   }
 }
 
@@ -189,6 +243,8 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
     Add-Failure "$label did not install $exe"
     return
   }
+  Show-Scheme "after the $label install"
+  Test-SchemeRegistered $label $kind $exe
   if ($own) { Write-Verbs $exe } else { Write-Verbs $ForeignExe }
   Show-Verbs "before the $label uninstall"
   if ($kind -eq "NSIS") {
@@ -202,7 +258,9 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
   if ($code -ne 0 -and $code -ne 3010) {
     Add-Failure "$label uninstall exited with $code"
   }
+  Show-Scheme "after the $label uninstall"
   if ($own) { Test-Removed $label } else { Test-Kept $label }
+  Test-SchemeRemoved $label $kind
   Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -220,10 +278,13 @@ function Invoke-InstallerCheck {
   if (-not (Test-Elevated)) {
     throw "the MSI installs per machine, so run this from an elevated PowerShell"
   }
-  foreach ($key in @($VerbKeys) + @($InstallKey)) {
+  foreach ($key in @($VerbKeys) + @($InstallKey) + @($SchemeKey)) {
     if (Test-RegistryKey $key) {
       throw "HKCU\$key already exists, so Oleafly is installed for this user. Run the check on a clean machine."
     }
+  }
+  if ($null -ne (Get-SchemeValue "MSI" "$SchemeKey\shell\open\command" "")) {
+    throw "HKLM\$SchemeKey already opens oleafly:// links, so Oleafly is installed on this machine. Run the check on a clean machine."
   }
   $null = New-Item -ItemType Directory -Force -Path $WorkDir
   $null = New-Item -ItemType Directory -Force -Path $LogDir
@@ -261,5 +322,5 @@ if ($Failures.Count -gt 0) {
   foreach ($failure in $Failures) { Write-Host "  $failure" }
   exit 1
 }
-Write-Host "Both installers remove this install's Explorer verbs on uninstall and keep another copy's."
+Write-Host "Both installers register oleafly:// links, remove this install's Explorer verbs and links on uninstall, and keep another copy's verbs."
 exit 0

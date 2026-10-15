@@ -29,6 +29,7 @@ const SETTINGS_SECTIONS = new Set([
   "engine",
   "downloads",
   "integrations",
+  "collaboration",
   "shortcuts",
   "experimentation",
   "help",
@@ -73,6 +74,8 @@ export type RailTab =
   | "preflight"
   | "refs"
   | "research"
+  | "collab"
+  | "comments"
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";
@@ -1078,6 +1081,10 @@ interface SettingsState {
   // entry point is gated on this.
   webBrowser: boolean;
   setWebBrowser: (v: boolean) => void;
+  liveCollaboration: boolean;
+  setLiveCollaboration: (v: boolean) => void;
+  collabPresence: CollabPresence;
+  setCollabPresence: (v: CollabPresence) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -1094,6 +1101,13 @@ export type DefaultLatexEngine = "tectonic" | "latexmk";
 
 function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
   return raw === "latexmk" ? "latexmk" : "tectonic";
+}
+
+export const COLLAB_PRESENCE_OPTIONS = ["cursor", "file", "hidden"] as const;
+export type CollabPresence = (typeof COLLAB_PRESENCE_OPTIONS)[number];
+
+function readCollabPresence(raw: string): CollabPresence {
+  return COLLAB_PRESENCE_OPTIONS.find((option) => option === raw) ?? "cursor";
 }
 
 function readEditorKeymap(): EditorKeymapMode {
@@ -1248,6 +1262,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
+  liveCollaboration: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1256,6 +1271,10 @@ type PrefKey = keyof typeof PREF_DEFAULTS;
 export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
 
 export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
+
+// Where the Live collaboration switch is kept. Other windows, such as the
+// admin console, follow it through the storage event.
+export const LIVE_COLLABORATION_KEY = "oleafly.liveCollaboration";
 
 // What each Settings section's Reset button restores, mapped to the storage key
 // that persists it (null: kept for the session only). The reset and
@@ -1338,6 +1357,7 @@ export const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     webBrowser: "oleafly.webBrowser",
+    liveCollaboration: LIVE_COLLABORATION_KEY,
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2000,6 +2020,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.webBrowser", v ? "1" : "0");
     // Turning the browser off must also close any open browser dock.
     set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
+  },
+  liveCollaboration: ls(LIVE_COLLABORATION_KEY, "0") === "1",
+  setLiveCollaboration: (v) => {
+    saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
+    set({ liveCollaboration: v });
+  },
+  collabPresence: readCollabPresence(ls("oleafly.collab.presence", "cursor")),
+  setCollabPresence: (v) => {
+    const presence = readCollabPresence(v);
+    saveLs("oleafly.collab.presence", presence);
+    set({ collabPresence: presence });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

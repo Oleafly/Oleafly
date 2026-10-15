@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Godkendelsestilstanden Egne regler læser denne fil. Den ligger i ~/.oleafly/approvals.toml og gælder for alle projekter på denne enhed.",
+        "description": "Filen ligger i ~/.oleafly/approvals.toml og gælder for alle projekter på denne enhed. Deny-regler blokerer et værktøj i alle godkendelsestilstande. Allow-regler virker kun i tilstanden Egne regler.",
         "discard": "Kasser ændringerne",
         "emptyFile": "Filen er tom indtil videre.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Den første tabel, <modesTable>[\"$approval_modes\"]</modesTable>, sætter godkendelsestilstanden for hvert projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Et projekt, der ikke står på listen, bruger Godkend for mig.",
           "openProject": "Det åbne projekt, {{name}}, har id'et <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-id'er er navnene på mapperne under ~/.oleafly/projects.",
-          "rules": "Derefter én tabel pr. projekt-id med en regel for hvert værktøj: <allow>\"allow\"</allow> kører værktøjet uden at spørge, og <deny>\"deny\"</deny> afviser det. Deny-regler gælder i alle tilstande. Allow-regler virker i tilstanden Egne regler, og for run_command springer de også spørgsmålet over i de andre tilstande.",
+          "rules": "Derefter én tabel pr. projekt-id med en regel for hvert værktøj: <allow>\"allow\"</allow> kører værktøjet uden at spørge, og <deny>\"deny\"</deny> afviser det. Deny-regler gælder i alle tilstande, også Fuld adgang. Allow-regler virker kun i tilstanden Egne regler.",
           "toolNames": "Værktøjsnavne, du kan bruge: <names>{{names}}</names> og ethvert MCP-værktøj med dets fulde navn fra listen Værktøjer."
         },
         "helpToggle": "Sådan virker filen",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Altid tilladt",
         "denied": "Altid afvist",
-        "description": "Gemte regler for {{name}}. De gælder, når godkendelsestilstanden er Egne regler. Fjern en regel for at bruge den almindelige risikopolitik for det værktøj.",
+        "description": "Gemte regler for {{name}}. Afviste værktøjer forbliver blokeret i alle godkendelsestilstande. Tilladte værktøjer springer kun spørgsmålet over i tilstanden Egne regler. Fjern en regel for at bruge den almindelige risikopolitik for det værktøj.",
         "empty": "Der er endnu ingen gemte regler. Brug »Altid i dette projekt« på et godkendelsesspørgsmål for at tilføje en.",
         "removeRule": "Fjern reglen for {{tool}}",
         "thisProject": "dette projekt",

@@ -404,7 +404,9 @@
     "unifiedView": "Vista unificada",
     "loading": "Cargando la comparación…",
     "previewTooLarge": "El archivo es demasiado grande para ver una comparación.",
-    "diskHeading": "En disco ↔ Tus cambios"
+    "diskHeading": "En disco ↔ Tus cambios",
+    "sharedReadOnly": "En un proyecto compartido, esta comparación es de solo lectura. Edita el archivo en el editor.",
+    "viewerReadOnly": "Puedes ver este proyecto compartido, pero no editarlo."
   },
   "hotkeys": {
     "title": "Atajos de teclado",
@@ -481,6 +483,7 @@
     "openInAgent": "Continuar en el asistente de IA con todas las herramientas del proyecto",
     "generateFailed": "No se pudo generar la edición. {{message}}",
     "dismiss": "Cerrar",
+    "withdrawn": "Otra persona editó este texto, así que la sugerencia ya no se puede aplicar.",
     "setUpProvider": "Configurar un proveedor de IA",
     "setUpProviderHint": "Añade una clave de API (u Ollama en local) para usar las ediciones con IA en línea.",
     "openAiSettings": "Abrir Ajustes → IA"
@@ -665,6 +668,7 @@
     "endOfDocument": "Fin del documento",
     "hidePreamble": "Ocultar el preámbulo del documento",
     "showPreamble": "Mostrar el preámbulo del documento",
+    "sharedReadOnly": "En un proyecto compartido, el modo visual solo muestra el archivo. Cambia a la vista de código para editarlo.",
     "findingLabel": "{{message}}. Abrir sugerencias de corrección.",
     "rawBlockFindings_one": "{{count}} hallazgo de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
     "rawBlockFindings_many": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
@@ -1515,5 +1519,6 @@
     "keyInvalid": "Los nombres de valor no pueden estar vacíos ni contener un signo igual.",
     "keyTaken": "Una variante no puede definir el mismo nombre dos veces.",
     "saveFailed": "No se pudieron guardar las variantes."
-  }
+  },
+  "sharedSettingsViewer": "Los lectores no pueden cambiar esto en un proyecto compartido."
 }

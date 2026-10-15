@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "De modus Aangepast leest dit bestand. Het staat in ~/.oleafly/approvals.toml en geldt voor elk project op dit apparaat.",
+        "description": "Het bestand staat in ~/.oleafly/approvals.toml en geldt voor elk project op dit apparaat. Deny-regels blokkeren een tool in elke goedkeuringsmodus. Allow-regels werken alleen in de modus Aangepast.",
         "discard": "Wijzigingen weggooien",
         "emptyFile": "Het bestand is nog leeg.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "De eerste tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stelt de goedkeuringsmodus per project in: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> of <custom>\"custom\"</custom>. Een project dat er niet in staat gebruikt Voor mij goedkeuren.",
           "openProject": "Het geopende project, {{name}}, heeft het id <projectId>{{id}}</projectId>.",
           "projectIds": "Project-id's zijn de mapnamen onder ~/.oleafly/projects.",
-          "rules": "Daarna één tabel per project-id, met een regel per tool: <allow>\"allow\"</allow> voert de tool uit zonder te vragen en <deny>\"deny\"</deny> weigert hem. Deny-regels gelden in elke modus. Allow-regels werken in de modus Aangepast, en bij run_command slaan ze ook in de andere modi de vraag over.",
+          "rules": "Daarna één tabel per project-id, met een regel per tool: <allow>\"allow\"</allow> voert de tool uit zonder te vragen en <deny>\"deny\"</deny> weigert hem. Deny-regels gelden in elke modus, ook bij Volledige toegang. Allow-regels werken alleen in de modus Aangepast.",
           "toolNames": "Toolnamen die je kunt gebruiken: <names>{{names}}</names> en elke MCP-tool onder zijn volledige naam uit de lijst Tools."
         },
         "helpToggle": "Hoe het bestand werkt",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Altijd toegestaan",
         "denied": "Altijd geweigerd",
-        "description": "Bewaarde regels voor {{name}}. Ze gelden wanneer de goedkeuringsmodus Aangepast is. Haal een regel weg om voor die tool het gewone risicobeleid te gebruiken.",
+        "description": "Bewaarde regels voor {{name}}. Geweigerde tools blijven in elke goedkeuringsmodus geblokkeerd. Toegestane tools slaan de vraag alleen in de modus Aangepast over. Haal een regel weg om voor die tool het gewone risicobeleid te gebruiken.",
         "empty": "Nog geen bewaarde regels. Gebruik \"Altijd in dit project\" op een goedkeuringsvraag om er een toe te voegen.",
         "removeRule": "Regel voor {{tool}} weghalen",
         "thisProject": "dit project",

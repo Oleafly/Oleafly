@@ -6,6 +6,7 @@ import { SubagentActivity } from "./SubagentActivity";
 import { useAgentTurnsStore } from "@/store/agent-turns";
 import type { AgentEvent } from "@oleafly/ai-core";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import { avatarHue } from "@/components/ui/avatar";
 
 const subagents = enAi.subagents;
 
@@ -204,6 +205,10 @@ describe("SubagentActivity", () => {
     render(<SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />);
 
     const chip1 = screen.getByTestId("subagent-chip-agent-1");
+    const avatar = chip1.querySelector('[data-slot="avatar"]');
+    expect(avatar).toHaveTextContent(/^S$/);
+    expect(avatar).toHaveClass("size-4", "text-[0.5625rem]", "font-bold", "text-white");
+    expect(avatar).toHaveStyle({ backgroundColor: `hsl(${avatarHue("agent-1")} 55% 45%)` });
     expect(chip1).toHaveAttribute("data-subagent-status", "active");
     const chip2 = screen.getByTestId("subagent-chip-agent-2");
     expect(chip2).toHaveAttribute("data-subagent-status", "completed");

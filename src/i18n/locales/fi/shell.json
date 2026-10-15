@@ -445,7 +445,8 @@
       "title": "Muunnelma (tämä projekti)",
       "help": "Muunnelma välittää omat arvonsa kohteeseen sys.inputs, esimerkiksi luonnosta tai lopullista painoversiota varten. Valitsemasi muunnelma säilyy tällä tietokoneella. Lisää tai muokkaa muunnelmia kohdassa Dokumentin asetukset.",
       "none": "Ei muunnelmaa"
-    }
+    },
+    "sharedViewer": "Katselijat eivät voi muuttaa näitä asetuksia jaetussa projektissa."
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -844,6 +845,10 @@
         "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
         "label": "LaTeX-työkalut"
       },
+      "liveCollaboration": {
+        "description": "Muokkaa projekteja muiden kanssa yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää. Lisää asetuksiin Yhteistyö-osion. Oletuksena pois, koska ominaisuus on vielä beta-vaiheessa.",
+        "label": "Reaaliaikainen yhteistyö"
+      },
       "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä.",
       "webBrowser": {
         "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
@@ -923,6 +928,7 @@
     "nav": {
       "ai": "Tekoälyavustaja",
       "appearance": "Ulkoasu",
+      "collaboration": "Yhteistyö",
       "data": "Tietojen tallennus",
       "dictionary": "Sanakirja",
       "downloads": "Lataukset",
@@ -938,6 +944,7 @@
       "keywords": {
         "ai": "avustaja, keskustelu, chat, mallit, palveluntarjoajat, API-avaimet, agentit, kehotteet, budjetti, MCP-palvelimet",
         "appearance": "teema, ulkoasu, tumma tila, vaalea tila, väri, värit, fontit, tekstin koko, zoomaus, asettelu",
+        "collaboration": "palvelimet, kirjautuminen, kirjaudu sisään, laitteet, jäsenet, valvojat, jakaminen, tiimit, laboratoriot, reaaliaikainen muokkaus, reaaliaika, tietoturvaloki",
         "data": "varmuuskopio, kirjastokansio, projektikansio, tallennustila, levytila, roskakori, poista projekteja, tarkistuspisteet",
         "dictionary": "oikeinkirjoitus, omat sanat, ohitetut sanat, oikoluku, kielioppisäännöt",
         "downloads": "paketit, fontit, sanakirjat, offline-tiedostot",
@@ -1404,6 +1411,13 @@
     "hideLog": "Piilota käännöslokit",
     "showLog": "Näytä käännöslokit"
   },
+  "collabSync": {
+    "paused_one": "{{count}} tiedosto muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutos kaikille vai pidetäänkö se paikallisena?",
+    "paused_other": "{{count}} tiedostoa muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutokset kaikille vai pidetäänkö ne paikallisina?",
+    "send": "Lähetä",
+    "keepLocal": "Pidä paikallisena",
+    "unavailable": "Projektikansio ei ole käytettävissä, joten synkronointi on keskeytetty. Se jatkuu, kun kansio on taas käytettävissä."
+  },
   "overleafSync": {
     "button": "Overleaf-synkronointi",
     "title": "Synkronoi Overleafin kanssa",
@@ -1453,5 +1467,9 @@
       "allTheirs": "Käytä kaikkia Overleafin",
       "apply": "Käytä ja synkronoi"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly latasi tämän ikkunan uudelleen, koska se ei vastannut 30 sekuntiin. Juuri ennen sitä tehdyt muutokset eivät ehkä tallentuneet.",
+    "reloadedAgain": "Oleafly latasi tämän ikkunan uudelleen, koska se lakkasi taas vastaamasta. Projektiasi ei avattu uudelleen siltä varalta, että ongelma johtuu jostakin siinä."
   }
 }

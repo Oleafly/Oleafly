@@ -94,6 +94,12 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
   });
 
+  it("accepts the Collaboration section", () => {
+    useSettingsStore.getState().setSettingsInitialSection("collaboration");
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("collaboration");
+    useSettingsStore.getState().setSettingsInitialSection("general");
+  });
+
   it("setDockPlacement updates state and persists to localStorage", () => {
     useSettingsStore.getState().setDockPlacement("bottom");
     expect(useSettingsStore.getState().dockPlacement).toBe("bottom");
@@ -924,6 +930,7 @@ describe("section reset checks", () => {
     ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
     ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
     ["experimentation", { webBrowser: true }, "resetExperimentationPreferences"],
+    ["experimentation", { liveCollaboration: true }, "resetExperimentationPreferences"],
     ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
   ];
 

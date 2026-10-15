@@ -110,7 +110,7 @@ fn os_target(arg: &OsStr, cwd: Option<&Path>, rules: ParseRules) -> Option<Launc
 }
 
 fn text_target(raw: &str, cwd: Option<&Path>, rules: ParseRules) -> Option<LaunchTarget> {
-    if raw.is_empty() {
+    if raw.is_empty() || crate::collab::links::is_link(raw) {
         return None;
     }
     let text = if rules.windows_paths {

@@ -78,5 +78,9 @@
       "invalidNumber": "{{value}} ist keine Zahl",
       "sortNegated": "{{key}} lässt sich nicht ausschließen"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} weitere Person",
+    "more_other": "{{count}} weitere Personen"
   }
 }

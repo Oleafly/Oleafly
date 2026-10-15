@@ -121,13 +121,17 @@ impl LinkInbox {
     }
 }
 
+pub(crate) fn reported(rejection: Rejection, raw: &str) -> bool {
+    rejection == Rejection::Malformed && !crate::collab::links::is_link(raw)
+}
+
 pub(crate) fn receive<R: Runtime>(app: &AppHandle<R>, raw: &str) {
     match parse(raw) {
         Ok(link) => deliver(app, link),
-        Err(Rejection::OtherScheme) => {}
-        Err(Rejection::Malformed) => {
+        Err(rejection) if reported(rejection, raw) => {
             let _ = crate::project::append_app_log(ignored_message(raw));
         }
+        Err(_) => {}
     }
 }
 

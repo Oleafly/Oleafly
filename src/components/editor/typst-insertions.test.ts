@@ -32,6 +32,7 @@ vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: vi.fn() }));
 
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import {
   addTypstLabel,
   addTypstNumberingRule,
@@ -356,5 +357,24 @@ describe("typst symbols in the editor", () => {
     const view = mount("$|$");
     insertTypstSymbolFor("\\circledast", "⊛");
     expect(view.state.doc.toString()).toBe("$⊛$");
+  });
+});
+
+describe("citing from a chapter in a live shared project", () => {
+  it("merges the bibliography line into the closed main file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: false, connecting: false });
+    try {
+      mount("See |.");
+      project({ "chapters/one.typ": "See ." }, "chapters/one.typ", "main.typ");
+      await insertTypstCitation("k", "refs.bib");
+      expect(useFilesStore.getState().writeProjectFile).toHaveBeenCalledWith(
+        "p1",
+        "main.typ",
+        '= Main\n\n#bibliography("refs.bib")\n',
+        { base: "= Main\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

@@ -45,6 +45,11 @@
       "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
       "confirm": "Enable full access"
     },
+    "sharedShellEscape": {
+      "title": "Allow external commands in this shared project?",
+      "message": "Anyone who can edit this project could then run programs on this computer when you compile. Only allow this if you trust everyone in the project.",
+      "confirm": "Allow on this computer"
+    },
     "cookieImport": {
       "title": "Confirm cookie import",
       "messageHost": "Import cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
@@ -111,5 +116,13 @@
   "systemIntegration": {
     "openInOleafly": "Open in Oleafly",
     "openWithOleafly": "Open with Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (local copy)"
+  },
+  "approvals": {
+    "helperRefused": "Refused by the {{tool}} rule in approvals.toml",
+    "unknownTool": "No tool is named {{name}}, so its rule does nothing.",
+    "unknownToolSuggestion": "No tool is named {{name}}, so its rule does nothing. Did you mean {{suggestion}}?"
   }
 }

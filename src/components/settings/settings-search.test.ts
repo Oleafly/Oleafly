@@ -315,3 +315,13 @@ describe("Zen mode settings in the search", () => {
     expect(settingsTabFor(["shortcuts", "actions", "toggleZenMode"])).toBe("application");
   });
 });
+
+describe("Collaboration settings in the search", () => {
+  it("finds the section by the words people use for it", () => {
+    for (const query of ["collaboration", "maintainers", "live editing", "security log", "lab server"]) {
+      expect(matchSettingsSections(index, SECTIONS, query), query).toContain("collaboration");
+    }
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "collaboration"))).toBe("collaboration");
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "maintainers"))).toBe("collaboration");
+  });
+});

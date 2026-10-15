@@ -349,6 +349,12 @@
       "title": "Zduplikowane pozycje bibliografii: {{keys}}",
       "detail": "Te pozycje mają wspólny DOI {{doi}}, więc są tym samym odwołaniem pod różnymi kluczami. Zostaw jedną i ją cytuj, bo inaczej bibliografia wypisze ją dwa razy."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Klucz cytowania \"{{key}}\" jest zdefiniowany więcej niż raz",
+      "detail": "Zdefiniowany w {{places}}. BibTeX używa tylko pierwszej pozycji z tym kluczem i przy porównywaniu kluczy nie rozróżnia wielkich i małych liter. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
+      "detailBiber": "Zdefiniowany w {{places}}. Gdy biber tworzy bibliografię, używa tylko pierwszej pozycji z tym kluczem. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
+      "detailTypst": "Zdefiniowany w {{places}}. Typst przerywa kompilację, gdy dwie pozycje bibliografii mają ten sam klucz. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają."
+    },
     "submission-path-case": {
       "title": "Wielkość liter w nazwie pliku się nie zgadza: {{target}}",
       "detailFigure": "Ten rysunek daje się odnaleźć tylko w systemie plików nierozróżniającym wielkości liter. Projekt zawiera \"{{match}}\", więc dopasuj tę pisownię dokładnie przed wysłaniem do systemów budowania opartych na Linuksie.",

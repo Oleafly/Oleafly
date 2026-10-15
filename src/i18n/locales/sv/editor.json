@@ -397,7 +397,9 @@
     "unifiedView": "Sammanslagen vy",
     "loading": "Läser in jämförelsen…",
     "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse.",
-    "diskHeading": "På disken ↔ Dina ändringar"
+    "diskHeading": "På disken ↔ Dina ändringar",
+    "sharedReadOnly": "I ett delat projekt är jämförelsen skrivskyddad. Redigera filen i redigeraren.",
+    "viewerReadOnly": "Du kan visa det här delade projektet men inte redigera det."
   },
   "hotkeys": {
     "title": "Kortkommandon",
@@ -474,6 +476,7 @@
     "openInAgent": "Fortsätt i AI-assistenten med projektets alla verktyg",
     "generateFailed": "Det gick inte att generera ändringen. {{message}}",
     "dismiss": "Stäng",
+    "withdrawn": "Någon annan har redigerat texten, så förslaget kan inte längre användas.",
     "setUpProvider": "Konfigurera en AI-leverantör",
     "setUpProviderHint": "Lägg till en API-nyckel (eller lokal Ollama) för att använda AI-ändringar i löptext.",
     "openAiSettings": "Öppna Inställningar → AI"
@@ -655,6 +658,7 @@
     "endOfDocument": "Dokumentets slut",
     "hidePreamble": "Dölj dokumentets ingress",
     "showPreamble": "Visa dokumentets ingress",
+    "sharedReadOnly": "I ett delat projekt visar det visuella läget bara filen. Byt till källkodsvyn för att redigera den.",
     "findingLabel": "{{message}}. Öppna korrekturförslag.",
     "rawBlockFindings_one": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
     "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag."
@@ -1494,5 +1498,6 @@
     "keyInvalid": "Värdenamn får inte vara tomma eller innehålla ett likhetstecken.",
     "keyTaken": "En variant kan inte ange samma namn två gånger.",
     "saveFailed": "Det gick inte att spara varianterna."
-  }
+  },
+  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt."
 }

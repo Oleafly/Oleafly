@@ -39,6 +39,8 @@ import { toast } from "@/lib/toast";
 import { typstProjectFonts } from "@/lib/typst-options";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 
 const DEFAULT_OPTION = "__default__";
 
@@ -85,7 +87,7 @@ async function writeMainText(
   if (loaded !== undefined && useFilesStore.getState().setContent(mainDoc, next)) {
     await useFilesStore.getState().saveFile(mainDoc);
   } else {
-    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next);
+    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next, ...sharedBaseOption(projectId, text));
   }
   return true;
 }
@@ -130,6 +132,7 @@ export function DocumentSettingsDialog({ onClose }: Readonly<{ onClose: () => vo
   const [fonts, setFonts] = useState<FontFamilies>({ status: "idle" });
   const live = useRef(true);
   const variants = useTypstVariantsDraft(projectId, provider.id === "typst" && !!projectId);
+  const sharedViewer = useCollabSettingsLocked(projectId);
 
   useEffect(() => {
     live.current = true;
@@ -322,9 +325,12 @@ export function DocumentSettingsDialog({ onClose }: Readonly<{ onClose: () => vo
             <section data-testid="document-settings-variants" className="space-y-3">
               <SectionHeading>{t(($) => $.editor.typstVariants.title)}</SectionHeading>
               <p className="text-xs text-muted-foreground">{t(($) => $.editor.typstVariants.intro)}</p>
-              <TypstVariantsList variants={variants} className="rounded-md border" />
-              <VariantsAlert variants={variants} />
-              <AddVariantButton variants={variants} />
+              {sharedViewer && <p className="text-xs text-muted-foreground">{t(($) => $.editor.sharedSettingsViewer)}</p>}
+              <fieldset disabled={sharedViewer} className="m-0 min-w-0 space-y-3 border-0 p-0">
+                <TypstVariantsList variants={variants} className="rounded-md border" />
+                <VariantsAlert variants={variants} />
+                <AddVariantButton variants={variants} />
+              </fieldset>
             </section>
           )}
         </div>

@@ -390,7 +390,9 @@
     "unifiedView": "單欄檢視",
     "loading": "載入差異中…",
     "previewTooLarge": "檔案太大，無法預覽差異。",
-    "diskHeading": "磁碟上 ↔ 你的編輯"
+    "diskHeading": "磁碟上 ↔ 你的編輯",
+    "sharedReadOnly": "在分享的專案中，此差異為唯讀。請在編輯器中編輯檔案。",
+    "viewerReadOnly": "你可以檢視這個分享的專案，但不能編輯。"
   },
   "hotkeys": {
     "title": "鍵盤快捷鍵",
@@ -467,6 +469,7 @@
     "openInAgent": "在 AI 助理中繼續，並使用完整的專案工具",
     "generateFailed": "無法產生這項修改。{{message}}",
     "dismiss": "關閉",
+    "withdrawn": "其他人編輯了這段文字，因此這項建議無法套用。",
     "setUpProvider": "設定 AI 供應商",
     "setUpProviderHint": "加入 API 金鑰（或本機 Ollama）即可使用行內 AI 編輯。",
     "openAiSettings": "開啟設定 → AI"
@@ -645,6 +648,7 @@
     "endOfDocument": "文件結尾",
     "hidePreamble": "隱藏文件序言區",
     "showPreamble": "顯示文件序言區",
+    "sharedReadOnly": "在分享的專案中，視覺化模式只會顯示檔案。若要編輯，請切換到原始碼檢視。",
     "findingLabel": "{{message}}。開啟校對建議。",
     "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。"
   },
@@ -1473,5 +1477,6 @@
     "keyInvalid": "值名稱不可空白，也不可包含等號。",
     "keyTaken": "同一個變體不能設定同一個名稱兩次。",
     "saveFailed": "無法儲存變體。"
-  }
+  },
+  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。"
 }

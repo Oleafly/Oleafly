@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Volledige toegang",
-        "description": "Voert tool-acties uit zonder om goedkeuring te vragen."
+        "description": "Voert tool-acties uit zonder te vragen, behalve tools die een deny-regel blokkeert."
       },
       "custom": {
         "label": "Aangepast (approvals.toml)",

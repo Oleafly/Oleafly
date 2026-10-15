@@ -27,6 +27,7 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime, isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
+import { CollabRemovedFileSlot } from "@/components/collab/CollabSlots";
 import {
   formattingForPath,
   formattingProfileForPath,
@@ -482,6 +483,7 @@ export function Editor() {
           </div>
         </div>
       )}
+      <CollabRemovedFileSlot />
       {!diffFocused ? (
         <ProofreadingNotifications
           path={activePath}

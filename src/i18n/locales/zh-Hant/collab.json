@@ -1,0 +1,1079 @@
+{
+  "section": {
+    "intro": "與其他人即時共同編輯專案。專案會透過你或你的團隊架設的協作伺服器同步，由該伺服器決定誰可以加入。",
+    "servers": {
+      "title": "伺服器",
+      "add": "新增伺服器",
+      "loading": "正在載入你的伺服器…",
+      "loadFailed": "Oleafly 無法載入你的伺服器。",
+      "empty": {
+        "title": "尚未新增伺服器",
+        "description": "請向負責你團隊伺服器的人索取位址，然後在這裡新增。"
+      }
+    },
+    "presence": {
+      "label": "其他人能看到什麼",
+      "description": "選擇你在分享的專案中工作時，其他人能看到的內容。每台電腦需要分別設定。",
+      "options": {
+        "cursor": "顯示我的游標",
+        "file": "只顯示我所在的檔案",
+        "hidden": "隱藏我"
+      }
+    },
+    "server": {
+      "signedIn": "已登入",
+      "signedOut": "已登出",
+      "signedInAs": "已以 {{name}} 的身分登入",
+      "signedOutHint": "這台電腦尚未登入這個伺服器。",
+      "suspended": "已停權",
+      "noAccess": "無存取權",
+      "suspendedHint": "管理員已將你在 {{server}} 上的帳號停權。你的變更會留在這台電腦上。管理員重新啟用後，你可以重新登入。",
+      "endedHint": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。如果管理員重新加入你，請重新登入。",
+      "endedGuestHint": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。如果你再次受邀，請重新登入。",
+      "role": "你的角色：{{role}}",
+      "signIn": "登入",
+      "signOut": "登出",
+      "remove": "移除",
+      "manage": "管理伺服器",
+      "manageHint": "管理伺服器會在這裡顯示人員、允許名單、網域、伺服器設定、電子郵件和安全性記錄。管理主控台會在獨立視窗中開啟，另外還有總覽、專案和連線檢查。",
+      "test": "測試連線",
+      "removeConfirm": {
+        "title": "要移除 {{name}} 嗎？",
+        "description": "Oleafly 會登出 {{name}} 並忘記這個伺服器。來自 {{name}} 的分享專案會停止同步，各自改名為本機副本，並以一般專案的形式留在這台電腦上。",
+        "confirm": "移除伺服器"
+      },
+      "detached": "這些來自 {{server}} 的分享專案已停止同步。它們會以一般專案的形式留在這台電腦上。",
+      "unsent": {
+        "title": "有些變更還沒有傳送",
+        "description": "這些共用專案有伺服器還沒有的變更。如果保留本機副本，每個專案都會停止同步，並以下方顯示的名稱留在這台電腦上。你也可以保持登入，稍後再試。",
+        "removeDescription": "這些共用專案有伺服器還沒有的變更。如果保留本機副本，每個專案都會停止同步，並以下方顯示的名稱留在這台電腦上。你也可以保留伺服器，稍後再試。",
+        "changes": "未傳送的變更：{{changes}} 個",
+        "staysAs": "保留為 {{name}}",
+        "keep": "保留本機副本",
+        "stay": "保持登入",
+        "keepServer": "保留伺服器"
+      },
+      "emails": {
+        "label": "有人分享專案時寄郵件給我",
+        "description": "郵件會寫明專案名稱，並附上開啟它的連結。",
+        "mentionsLabel": "有人在評論中提及我時寄郵件給我",
+        "mentionsDescription": "郵件會引用這則評論，並附上開啟它的連結。",
+        "noMail": "此伺服器不寄送電子郵件。與你分享的專案仍會顯示在你的專案庫的「與你分享的專案」中。",
+        "paused": "伺服器管理員已為所有人關閉電子郵件。",
+        "loadFailed": "Oleafly 無法載入你的郵件設定。"
+      }
+    },
+    "devices": {
+      "title": "你的裝置",
+      "description": "以你的帳號登入這個伺服器的電腦。請登出不再使用的電腦。",
+      "loading": "正在載入你的裝置…",
+      "loadFailed": "Oleafly 無法載入你的裝置。",
+      "current": "這台電腦",
+      "added": "新增於 {{date}}",
+      "lastSeen": "上次連線於 {{date}}",
+      "neverSeen": "尚未連線",
+      "empty": "沒有已登入的裝置。",
+      "signOut": "登出",
+      "signOutNamed": "登出 {{name}}",
+      "signOutConfirm": {
+        "title": "要登出 {{name}} 嗎？",
+        "description": "那台電腦會停止與這個伺服器同步，直到有人在上面重新登入。",
+        "confirm": "登出裝置"
+      }
+    },
+    "checks": {
+      "title": "連線測試",
+      "running": "正在測試連線…",
+      "clockSkew": "時間差（秒）：{{seconds}}",
+      "status": {
+        "pass": "通過",
+        "fail": "失敗",
+        "info": "提示",
+        "skipped": "已略過"
+      },
+      "items": {
+        "reachable": {
+          "label": "位址",
+          "pass": "伺服器有回應。",
+          "fail": "Oleafly 無法連線到這個位址。請檢查位址與你的網路。",
+          "info": "伺服器有回應，但回應較慢。",
+          "skipped": "未檢查。"
+        },
+        "https": {
+          "label": "安全連線",
+          "pass": "連線已加密，而且憑證有效。",
+          "fail": "伺服器的憑證無效，或位址未使用 https。",
+          "info": "這是在這台電腦上執行的測試伺服器，所以不使用 https。",
+          "skipped": "位址沒有回應，因此未檢查。"
+        },
+        "protocol": {
+          "label": "版本",
+          "pass": "這個版本的 Oleafly 可以與伺服器搭配使用。",
+          "fail": "Oleafly 與伺服器需要不同的版本。其中一方需要更新。",
+          "info": "伺服器比這個版本的 Oleafly 新，但仍可搭配使用。",
+          "skipped": "先前的檢查失敗，因此未檢查。"
+        },
+        "webSocket": {
+          "label": "即時連線",
+          "pass": "即時編輯可以順利傳送。",
+          "fail": "你與伺服器之間有東西阻擋了即時編輯。可能需要調整防火牆或代理伺服器。",
+          "info": "此網路封鎖了一般通道，所以即時編輯改走較慢的通道。編輯仍會送達。",
+          "skipped": "先前的檢查失敗，因此未檢查。"
+        },
+        "signInProviders": {
+          "label": "登入方式",
+          "pass": "伺服器至少提供一種登入方式。",
+          "fail": "伺服器尚未提供任何登入方式。請聯絡伺服器的管理員。",
+          "info": "伺服器有提供登入方式，但部分選項已關閉。",
+          "skipped": "先前的檢查失敗，因此未檢查。"
+        },
+        "email": {
+          "label": "電子郵件",
+          "pass": "伺服器可以寄送電子郵件。",
+          "fail": "伺服器的電子郵件設定無法運作。",
+          "info": "這個伺服器尚未設定電子郵件。新增人員時不會寄送電子郵件。",
+          "skipped": "先前的檢查失敗，因此未檢查。"
+        },
+        "clock": {
+          "label": "時鐘",
+          "pass": "你的時鐘與伺服器的時鐘一致。",
+          "fail": "你的時鐘與伺服器的時鐘相差太多。請檢查這台電腦的日期與時間。",
+          "info": "你的時鐘與伺服器的時鐘略有差距。",
+          "skipped": "先前的檢查失敗，因此未檢查。"
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "新增協作伺服器",
+    "description": "輸入你的團隊提供的位址。Oleafly 會在你登入前先檢查伺服器。",
+    "addressLabel": "伺服器位址",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "繼續",
+    "checking": "正在檢查伺服器…",
+    "notAServer": "這個位址沒有 Oleafly 伺服器回應。請向伺服器的管理者確認位址。如果你使用飯店或校園 Wi-Fi，請先開啟任何網頁，以免網路要求你登入。",
+    "moved": "這個位址會轉到 {{target}}。請試試那個位址。",
+    "useMoved": "使用該位址",
+    "version": "版本 {{version}}",
+    "serverTitle": "登入 {{server}}",
+    "serverDescription": "誰可以加入由這個伺服器決定。請選擇登入方式。",
+    "setupTitle": "設定 {{server}}",
+    "setupDescription": "還沒有人設定過這個伺服器。如果伺服器是你安裝的，請輸入安裝程式顯示給你的設定碼。設定碼也在伺服器記錄中。第一個使用這組設定碼登入的人會成為伺服器的管理員。如果不是你安裝的，請先請管理伺服器的人完成設定。",
+    "setupCodeLabel": "設定碼",
+    "signInDescription": "你的瀏覽器會開啟，讓你在那裡登入。Oleafly 不會看到你的密碼。",
+    "continueWith": "使用 {{provider}} 繼續",
+    "noProviders": "這個伺服器尚未提供任何登入方式。請聯絡伺服器的管理員設定一種。",
+    "signingInTitle": "完成登入",
+    "waitingTitle": "正在等待瀏覽器",
+    "waitingDescription": "請在已開啟的瀏覽器視窗中使用 {{provider}} 登入，然後回到這裡。",
+    "waitingEmailDescription": "請在瀏覽器中輸入你的電子郵件地址，然後在這台電腦上開啟我們寄出的連結。",
+    "cancel": "取消",
+    "back": "返回",
+    "doneTitle": "已連線到 {{server}}",
+    "doneDescription": "你已以 {{name}} 的身分登入。現在你可以分享專案，也可以開啟與你分享的專案。",
+    "doneManageDescription": "你已以 {{name}} 的身分登入。現在你可以分享專案，也可以開啟與你分享的專案。你也可以在管理主控台中管理這個伺服器。",
+    "doneGuestDescription": "你已以 {{name}} 的身分登入。身為訪客，你可以開啟受邀的專案。",
+    "done": "完成",
+    "codeSignIn": "用登入碼登入",
+    "codeSignInDescription": "當瀏覽器無法回到 Oleafly，或要在其他裝置上登入時使用。",
+    "codeTitle": "用登入碼登入",
+    "codeRequesting": "正在取得登入碼…",
+    "codeSteps": "在任何手機或電腦上開啟這個網址並輸入登入碼。",
+    "codeAddressLabel": "網址",
+    "codeLabel": "登入碼",
+    "codeExpires": "登入碼將於 {{time}} 失效。",
+    "codeWaiting": "正在等你登入",
+    "codeOpen": "在瀏覽器中開啟",
+    "codeOffer": "瀏覽器沒有回到 Oleafly？",
+    "codeHint": "如果瀏覽器無法連到 Oleafly，請改用登入碼登入。"
+  },
+  "errors": {
+    "unreachable": "Oleafly 無法連線到伺服器。請檢查位址與網路連線，然後再試一次。",
+    "not_https": "這個位址未使用安全連線。協作伺服器的位址必須以 https 開頭。",
+    "client_too_old": "這個伺服器需要較新版本的 Oleafly。請更新 Oleafly，然後再試一次。",
+    "server_too_old": "這個伺服器需要更新，才能與這個版本的 Oleafly 搭配使用。請聯絡伺服器的管理員。",
+    "not_admitted": "這個伺服器尚未允許你進入。請聯絡伺服器的管理員將你加入。",
+    "sign_in_cancelled": "已取消登入。",
+    "sign_in_timed_out": "登入逾時。請再試一次。",
+    "unauthorized": "你已登出這個伺服器。請重新登入。",
+    "forbidden": "你在這個伺服器上的角色不允許這項操作。",
+    "not_found": "伺服器找不到該項目。它可能已經不存在。",
+    "conflict": "這與其他人所做的變更衝突。請重新載入後再試一次。",
+    "rate_limited": "伺服器忙碌中。請等一分鐘後再試一次。",
+    "setup_code_invalid": "設定碼不符。請在伺服器記錄中查看正確的設定碼。",
+    "server": "伺服器發生問題。請稍後再試，或聯絡伺服器的管理員。",
+    "internal": "Oleafly 發生錯誤。請再試一次。",
+    "server_changed": "這個位址現在屬於另一個伺服器，因此 Oleafly 沒有傳送任何資料給它。如果你信任新的伺服器，請移除這個伺服器後再重新新增。",
+    "duplicate_server": "這個伺服器已在你的清單中，但使用的是另一個位址。如果伺服器已搬移，請先移除舊的項目，再重新新增。",
+    "device_in_use": "已有其他人透過這台電腦上的這個使用者帳號登入了這個伺服器。每個人都需要在這台電腦上有自己的使用者帳號才能登入。",
+    "server_unknown": "這個連結來自你尚未新增的伺服器。請在協作設定中新增該伺服器，然後再次開啟連結。",
+    "too_large": "部分檔案超過這個伺服器允許的大小。請縮小或移除這些檔案，然後再試一次。",
+    "invalid": "伺服器未接受這項內容。請檢查你輸入的內容，然後再試一次。",
+    "invalid_domain": "這不是網域名稱。請使用類似 cs.example.edu 的格式。",
+    "invalid_email": "這個電子郵件地址看起來不正確。請檢查後再試一次。",
+    "invalid_login": "這個登入名稱看起來不正確。請檢查後再試一次。",
+    "guests_off": "這個伺服器不允許訪客。請聯絡伺服器的管理員開啟訪客功能。",
+    "link_sharing_off": "這個伺服器不允許透過連結分享。請聯絡伺服器的管理員開啟這項功能。",
+    "access_log_off": "這個伺服器不允許存取記錄。請聯絡伺服器的管理員開啟這項功能。",
+    "last_admin": "這個伺服器至少需要一位管理員。請先將其他人設為管理員。",
+    "duplicate_entry": "這個項目已存在。",
+    "already_member": "這個人已經有帳戶。請在「人員」中變更其角色。",
+    "project_not_shared": "這個專案尚未分享。請先分享，再邀請其他人。",
+    "project_full": "這個專案的人數已達伺服器允許的上限。請先移除某人，或聯絡伺服器的管理員。",
+    "owner_away": "這個專案的擁有者在這個伺服器上已被停權或移除，所以在其帳號恢復啟用之前，專案無法接納新成員。",
+    "wrong_server": "這個伺服器從另一個位址傳來登入頁面，所以 Oleafly 已停止。請檢查伺服器位址，或詢問管理伺服器的人。",
+    "not_a_link": "這不是分享的專案連結。請複製完整連結，然後再試一次。",
+    "signed_out": "你已登出這個伺服器。請重新登入以同步這個專案。",
+    "server_removed": "這個專案的伺服器已不在你的清單中。請將專案保留為本機副本，或重新新增該伺服器。",
+    "share_in_progress": "這個專案正在分享中。請等待完成。",
+    "cancelled": "已取消開啟分享的專案。",
+    "cloud_synced": "你的 Oleafly 專案庫位於由雲端服務同步的資料夾中。要分享或加入專案，請把它移出 Dropbox、OneDrive 或 iCloud Drive。"
+  },
+  "roles": {
+    "admin": "管理員",
+    "maintainer": "維護者",
+    "member": "成員",
+    "guest": "訪客",
+    "unknown": "未知角色"
+  },
+  "admin": {
+    "title": "管理 {{name}}",
+    "back": "返回伺服器清單",
+    "loadFailed": "Oleafly 無法從伺服器載入這項資料。",
+    "added": "新增於 {{date}}",
+    "tabs": {
+      "members": "人員",
+      "allowlist": "允許名單",
+      "domains": "網域",
+      "settings": "伺服器設定",
+      "log": "安全性記錄",
+      "email": "電子郵件"
+    },
+    "members": {
+      "description": "所有曾登入這個伺服器的人。",
+      "addPeople": "新增成員",
+      "addHint": "要讓新成員加入，請在允許名單中新增。",
+      "loading": "正在載入人員…",
+      "empty": "還沒有人登入過。",
+      "you": "你",
+      "active": "啟用中",
+      "suspended": "已停權",
+      "removed": "已移除",
+      "roleLabel": "{{name}} 的角色",
+      "suspend": "停權",
+      "reactivate": "重新啟用",
+      "remove": "移除",
+      "devices": "裝置",
+      "devicesTitle": "{{name}} 的裝置",
+      "devicesDescription": "登出遺失或不再使用的裝置。",
+      "devicesLoading": "正在載入裝置…",
+      "devicesLoadFailed": "Oleafly 無法載入這些裝置。",
+      "lastAdmin": "這個伺服器至少需要一位管理員。請先將其他人設為管理員。",
+      "owned": {
+        "suspendOne": "{{name}} 擁有一個分享專案。{{name}} 被停權期間，其他人無法管理它。",
+        "suspendMany": "{{name}} 擁有的分享專案：{{number}} 個。{{name}} 被停權期間，其他人無法管理它們。",
+        "removeOne": "{{name}} 擁有一個分享專案。移除 {{name}} 後，其他人將無法管理它。",
+        "removeMany": "{{name}} 擁有的分享專案：{{number}} 個。移除 {{name}} 後，其他人將無法管理它們。"
+      },
+      "removeConfirm": {
+        "title": "要將 {{name}} 從這個伺服器移除嗎？",
+        "description": "對方的裝置會立即登出。對方擁有的專案會保留在伺服器上，你之後也可以再把對方加回來。",
+        "confirm": "從伺服器移除"
+      },
+      "suspendConfirm": {
+        "title": "要將 {{name}} 停權嗎？",
+        "description": "在管理員重新啟用帳號之前，{{name}} 無法登入或同步。",
+        "confirm": "將帳號停權"
+      },
+      "selfRoleConfirm": {
+        "title": "要把你自己的角色改為 {{role}} 嗎？",
+        "description": "你會失去這個伺服器上的管理員權限，只有其他管理員才能把權限還給你。",
+        "confirm": "變更我的角色"
+      },
+      "deviceSignOutConfirm": {
+        "title": "要登出 {{name}} 嗎？",
+        "description": "該裝置會停止與這個伺服器同步，直到它的擁有者在上面重新登入。",
+        "confirm": "登出裝置"
+      }
+    },
+    "allowlist": {
+      "description": "在這裡加入的人可以用你選擇的角色登入伺服器。",
+      "matchLabel": "比對依據",
+      "match": {
+        "email": "電子郵件地址",
+        "login": "登入名稱"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "登入方式",
+      "roleLabel": "角色",
+      "add": "新增",
+      "loading": "正在載入允許名單…",
+      "empty": "還沒有加入任何人。",
+      "loginEntry": "{{provider}} 上的 {{login}}",
+      "bound": "已登入過",
+      "unbound": "尚未登入過",
+      "remove": "移除",
+      "removeNamed": "移除 {{entry}}",
+      "duplicate": "這個人已在允許名單中。"
+    },
+    "domains": {
+      "description": "任何在這些網域擁有已驗證電子郵件地址的人，都可以用你選擇的角色登入。",
+      "domainLabel": "網域",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "角色",
+      "add": "新增",
+      "loading": "正在載入網域規則…",
+      "empty": "還沒有網域規則。",
+      "remove": "移除",
+      "removeNamed": "移除 {{domain}}",
+      "duplicate": "這個網域已經有規則了。"
+    },
+    "settings": {
+      "description": "這些設定適用於這個伺服器上的每個人。",
+      "adminOnly": "只有管理員可以變更這些設定。",
+      "loading": "正在載入設定…",
+      "guestsEnabled": {
+        "label": "允許訪客",
+        "description": "成員可以邀請伺服器以外的人加入自己擁有的專案。"
+      },
+      "guestApprovalRequired": {
+        "label": "訪客需先經核准",
+        "description": "每一份訪客邀請都需要維護者或管理員核准後才會生效。"
+      },
+      "directoryVisible": {
+        "label": "成員目錄",
+        "description": "成員分享專案時，可以依名稱查詢彼此。"
+      },
+      "directoryShowsEmail": {
+        "label": "在目錄中顯示電子郵件地址",
+        "description": "成員查詢他人時，可以看到彼此的電子郵件地址。"
+      },
+      "linkSharingAllowed": {
+        "label": "允許透過連結分享",
+        "description": "專案擁有者可以讓任何成員透過連結開啟專案。"
+      },
+      "accessLogsAllowed": {
+        "label": "允許專案存取記錄",
+        "description": "專案擁有者可以記錄有誰開啟過自己的專案。"
+      },
+      "commentsAllowed": {
+        "label": "允許留言",
+        "description": "共用專案中的成員可以對文字留言並回覆。關閉後，留言會在所有地方隱藏，但仍會保存。"
+      },
+      "emailNotifications": {
+        "label": "電子郵件通知",
+        "description": "寄送這些郵件。關閉後，伺服器上的所有人都不會再收到。"
+      },
+      "emailLinkSignIn": {
+        "label": "透過電子郵件登入",
+        "description": "使用者可以透過寄到其電子郵件地址的連結登入。這需要伺服器的電子郵件設定。誰能進入仍由你的存取規則決定。"
+      }
+    },
+    "log": {
+      "description": "這個伺服器上的登入、裝置變更與管理員操作。",
+      "loading": "正在載入記錄…",
+      "empty": "目前還沒有任何事件。",
+      "loadMore": "顯示較舊的項目",
+      "server": "伺服器",
+      "unknownAccount": "未知帳號",
+      "target": "對象：{{target}}",
+      "ip": "來源：{{ip}}",
+      "kinds": {
+        "setupCompleted": "完成伺服器設定",
+        "signIn": "登入",
+        "signInRefused": "登入遭拒",
+        "deviceAdded": "新增裝置",
+        "deviceSignedOut": "登出裝置",
+        "refreshReuseDetected": "重複使用了舊的登入資訊，因此裝置已被登出",
+        "memberAdded": "新增成員",
+        "memberRemoved": "移除成員",
+        "memberSuspended": "將成員停權",
+        "memberReactivated": "重新啟用成員",
+        "roleChanged": "變更角色",
+        "allowlistAdded": "將某人加入允許名單",
+        "allowlistRemoved": "將某人從允許名單移除",
+        "domainRuleAdded": "新增網域規則",
+        "domainRuleRemoved": "移除網域規則",
+        "settingsChanged": "變更伺服器設定",
+        "projectShared": "分享專案",
+        "projectAccessGranted": "授予專案存取權",
+        "projectAccessChanged": "變更專案存取權",
+        "projectAccessRemoved": "將人員移出專案",
+        "projectLeft": "離開專案",
+        "projectLinkSharingOn": "開啟專案的連結分享",
+        "projectLinkSharingOff": "關閉專案的連結分享",
+        "projectLinkRoleChanged": "變更專案連結的權限",
+        "projectArchived": "封存專案",
+        "projectUnarchived": "還原已封存的專案",
+        "projectSettingsChanged": "變更專案設定",
+        "projectAccessLogOn": "開啟專案存取記錄",
+        "projectAccessLogOff": "關閉專案存取記錄",
+        "projectCommentsOn": "開啟專案評論",
+        "projectCommentsOff": "關閉專案評論",
+        "projectRejoinRefused": "嘗試重新加入已被移出的專案",
+        "commentsChangedWhileOff": "在評論關閉期間變更了評論",
+        "guestInvited": "邀請訪客",
+        "guestInvitationApproved": "核准訪客邀請",
+        "guestInvitationDeclined": "拒絕訪客邀請",
+        "guestInvitationRevoked": "撤回訪客邀請",
+        "guestAdmissionEnded": "結束訪客對伺服器的存取",
+        "unknown": "其他伺服器事件"
+      },
+      "details": {
+        "project": "專案：{{title}}",
+        "provider": "透過 {{provider}}",
+        "providerEmailLink": "透過電子郵件連結",
+        "signInCode": "使用登入碼",
+        "via": {
+          "allowlist": "因允許名單而獲准進入",
+          "domain": "因網域規則而獲准進入",
+          "setup": "使用設定碼",
+          "guest": "以訪客身分獲准進入",
+          "link": "透過專案連結",
+          "invitation": "透過訪客邀請"
+        },
+        "newAccount": "新帳號",
+        "reactivated": "帳號已重新啟用",
+        "reasons": {
+          "suspended": "帳號已停權",
+          "notAdmitted": "沒有存取規則允許進入",
+          "setupCodeInvalid": "設定碼錯誤",
+          "guestInvitationUnusable": "訪客邀請已失效",
+          "lockedOutIp": "同一網路位址嘗試次數過多",
+          "lockedOutAddress": "寄往同一地址的登入郵件過多",
+          "stoppedByPerson": "已在登入頁面中止",
+          "otherBrowser": "在與開始時不同的瀏覽器中完成",
+          "inactiveAccountAddress": "其電子郵件屬於已移除或已停權的帳號",
+          "noProjectsLeft": "已沒有任何專案"
+        },
+        "role": "角色：{{role}}",
+        "roleChange": "從 {{from}} 改為 {{to}}",
+        "device": "裝置：{{name}}",
+        "byAdmin": "來自管理主控台",
+        "settingOn": "{{setting}}：開啟",
+        "settingOff": "{{setting}}：關閉"
+      }
+    },
+    "email": {
+      "description": "當你加入成員、有人與他們分享專案，或他們的帳號在新裝置上登入時，伺服器會寄送電子郵件給他們。",
+      "loading": "正在載入郵件設定…",
+      "on": {
+        "title": "電子郵件已開啟",
+        "from": "郵件寄件者：{{from}}。"
+      },
+      "off": {
+        "title": "電子郵件已關閉",
+        "description": "此伺服器沒有郵件設定。若要開啟電子郵件，請在伺服器上設定 OLEAFLY_SMTP_URL 和 OLEAFLY_MAIL_FROM，然後重新啟動伺服器。",
+        "copyPath": "在那之前，請自己把這個連結寄給新成員。它會把伺服器新增到 Oleafly。",
+        "address": "他們也可以在「新增伺服器」中輸入這個位址："
+      },
+      "needsSettings": "請先為伺服器開啟電子郵件。",
+      "lastFailure": "上一封寄送失敗的郵件：{{date}}。郵件伺服器的回覆：",
+      "test": {
+        "title": "測試郵件",
+        "description": "寄一封測試郵件到 {{address}}，確認設定是否有效。",
+        "send": "寄送測試郵件",
+        "sending": "正在寄送…",
+        "sent": "已寄到 {{address}}。如果收件匣裡沒有，請查看垃圾郵件資料夾。",
+        "failed": "郵件伺服器沒有接受測試郵件。",
+        "noAddress": "你的帳號沒有已驗證的電子郵件地址，因此無處寄送測試郵件。",
+        "adminOnly": "只有管理員可以寄送測試郵件。"
+      }
+    }
+  },
+  "projectRoles": {
+    "owner": "擁有者",
+    "editor": "編輯者",
+    "viewer": "檢視者",
+    "unknown": "未知角色"
+  },
+  "share": {
+    "button": "分享",
+    "copyAndShare": "複製到 Oleafly 並分享",
+    "title": "分享 {{name}}",
+    "description": "透過協作伺服器，與其他人一起編輯這個專案。",
+    "loading": "正在載入…",
+    "linked": "這個專案是位於 Oleafly 之外的資料夾。Oleafly 會將它複製到你的專案庫，並分享該副本。原本的資料夾不會被更動。",
+    "editCopy": "這是分享的副本。從現在起請編輯這份副本，而不是原本的資料夾。",
+    "serverLabel": "伺服器",
+    "noServers": "請先登入協作伺服器，再回到這裡分享。",
+    "openSettings": "開啟協作設定",
+    "checking": "正在檢查專案…",
+    "checkFailed": "Oleafly 無法檢查這個專案。",
+    "files": "檔案",
+    "size": "大小",
+    "disclosure": "{{server}} 可以讀取這個專案的檔案。",
+    "cloudSynced": "你的 Oleafly 專案庫位於由 iCloud、Dropbox 或類似服務同步的資料夾中。兩個同步服務會搶著處理同一批檔案，因此 Oleafly 無法從那裡分享。請先將專案庫移出該資料夾。",
+    "tooLarge": "這些檔案超過伺服器 {{size}} MB 的上限。請在分享前縮小或移除這些檔案。",
+    "renamed": "有些名稱無法在每台電腦上使用。其他人收到這些檔案時，名稱會略有不同。",
+    "excluded": "不會分享：建置輸出、Oleafly 設定與 Git 歷史記錄。",
+    "start": "分享",
+    "preparing": "正在準備專案…",
+    "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
+    "saving": "正在把專案儲存到伺服器…",
+    "failed": "分享未完成，因此沒有分享任何內容。",
+    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。"
+  },
+  "manage": {
+    "sharedOn": "已在 {{server}} 上分享",
+    "yourRole": "你的角色：{{role}}",
+    "loading": "正在載入有存取權的人…",
+    "loadFailed": "Oleafly 無法載入有存取權的人。",
+    "people": "有存取權的人",
+    "you": "你",
+    "inactive": "已移除或已停權",
+    "ownerInactive": "擁有者已移除或已停權",
+    "roleLabel": "{{name}} 的角色",
+    "remove": "移除",
+    "removeNamed": "移除 {{name}}",
+    "removeConfirm": {
+      "title": "要將 {{name}} 從這個專案移除嗎？",
+      "description": "對方的副本會停止同步，並以一般專案的形式留在對方的電腦上。",
+      "confirm": "移除"
+    },
+    "add": {
+      "label": "新增人員",
+      "placeholder": "名稱、登入名稱或電子郵件",
+      "roleLabel": "新增人員的角色",
+      "searching": "正在搜尋…",
+      "noResultsTryEmail": "{{server}} 上沒有符合的人。請試著輸入對方的完整電子郵件地址。",
+      "alreadyMember": "{{name}} 已有存取權。",
+      "allMembers": "所有符合的人都已有存取權。",
+      "noAccountNoGuests": "{{server}} 上還沒有人使用 {{email}}。請聯絡 {{server}} 的管理員允許此人加入，等對方登入一次後再在這裡新增。",
+      "guestCheckFailed": "Oleafly 無法確認 {{server}} 是否允許訪客。",
+      "add": "新增",
+      "addNamed": "新增 {{name}}"
+    },
+    "link": {
+      "copy": "複製連結",
+      "copied": "已複製連結",
+      "copyFailed": "無法複製連結",
+      "sharing": "透過連結分享",
+      "sharingDescription": "任何已登入 {{server}} 且擁有連結的人，都可以開啟這個專案。",
+      "roleLabel": "透過連結開啟的人的角色"
+    },
+    "comments": {
+      "label": "評論",
+      "description": "能編輯的人都可以評論這個專案中的文字。關閉後，評論會被隱藏，但不會被刪除。",
+      "serverOff": "{{server}} 已關閉評論。請聯絡伺服器的管理員開啟。"
+    },
+    "stop": "停止分享",
+    "stopConfirm": {
+      "title": "要停止分享 {{name}} 嗎？",
+      "description": "所有人的副本都會停止同步，成為一般專案。伺服器會將分享的副本保留一段時間，之後再刪除。",
+      "confirm": "停止分享"
+    },
+    "leave": "退出專案",
+    "leaveConfirm": {
+      "title": "要退出 {{name}} 嗎？",
+      "description": "你的副本會停止同步，並以一般專案的形式留在這台電腦上。",
+      "confirm": "退出"
+    },
+    "accessLog": {
+      "label": "存取記錄",
+      "description": "伺服器會記錄誰開啟了這個專案、加入了專案或下載了副本，以及所用裝置和時間。只有你能在「即時協作」面板中看到這份清單。"
+    }
+  },
+  "sync": {
+    "upToDate": "已是最新",
+    "syncing": "正在同步",
+    "offline": "離線。等待同步的變更：{{number}}",
+    "reconnecting": "正在重新連線",
+    "signedOut": "已登出",
+    "suspended": "帳號已停權",
+    "accessEnded": "無存取權",
+    "removed": "存取權已移除",
+    "archived": "分享已停止",
+    "paused": "已暫停",
+    "serverRemoved": "伺服器已移除",
+    "clientTooOld": "Oleafly 需要更新",
+    "serverTooOld": "伺服器需要更新",
+    "serverChanged": "這個位址已換成新伺服器",
+    "failed": "因出錯已停止",
+    "engineSpent": "需要重新啟動"
+  },
+  "toolbar": {
+    "noFile": "未開啟檔案",
+    "unknownPerson": "某人",
+    "viewing": "正在檢視 {{path}}",
+    "editing": "正在編輯 {{path}}",
+    "goTo": "前往 {{name}} 所在位置",
+    "nowhere": "未在任何檔案中，無法前往"
+  },
+  "tree": {
+    "here": "{{name}} 開啟了這個檔案",
+    "clash": "{{other}} 也叫 {{name}}，因此這個檔案在磁碟上使用了新名稱。"
+  },
+  "library": {
+    "kind": "已分享",
+    "location": "分享的專案",
+    "locationNotShared": "Oleafly 中（未分享）",
+    "flag": "已分享",
+    "sharedWithYou": {
+      "title": "與你分享的專案",
+      "loadFailed": "Oleafly 無法檢查與你分享的專案。",
+      "from": "{{server}} 上的 {{owner}}",
+      "open": "開啟",
+      "openNamed": "開啟 {{name}}"
+    },
+    "openLink": {
+      "menu": "開啟分享的專案連結…",
+      "title": "開啟分享的專案",
+      "description": "貼上別人傳給你的連結。",
+      "label": "專案連結",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "開啟",
+      "noAccess": "你沒有這個專案的存取權。請聯絡專案擁有者。"
+    }
+  },
+  "pane": {
+    "title": "即時協作",
+    "titleUnread": "即時協作，有新活動",
+    "manage": "管理分享",
+    "people": "人員",
+    "activity": "活動",
+    "empty": "目前還沒有任何活動。",
+    "here": "目前在這個專案中",
+    "hereIn": "目前在 {{path}} 中",
+    "away": "目前不在這個專案中",
+    "deleted": "最近刪除",
+    "deletedEmpty": "最近沒有刪除任何內容。",
+    "deletedLoadFailed": "Oleafly 無法載入最近刪除的檔案。",
+    "unwritten": {
+      "title": "有些檔案無法寫入這台電腦",
+      "hint": "Oleafly 會繼續嘗試。在此期間，分享的專案中有最新的文字。",
+      "reasons": {
+        "locked": "無法寫入 {{path}}：另一個程式正開著它。",
+        "read_only": "無法寫入 {{path}}：檔案或其資料夾是唯讀的。",
+        "no_space": "無法寫入 {{path}}：磁碟已滿。",
+        "not_downloaded": "暫時還無法從伺服器下載 {{path}}。Oleafly 會繼續嘗試。",
+        "other": "無法寫入 {{path}}。"
+      }
+    },
+    "accessLog": "存取記錄",
+    "status": "同步狀態",
+    "waiting": "等待同步的變更：{{number}}"
+  },
+  "deleted": {
+    "restore": "還原",
+    "restoreLabel": "還原 {{name}}",
+    "inFolder": "原位置：{{folder}}",
+    "inProject": "原位置：專案資料夾",
+    "byYou": "由你刪除",
+    "by": "由 {{name}} 刪除"
+  },
+  "removed": {
+    "deletedBy": "{{name}} 刪除了 {{file}}。",
+    "yoursDeleted": "你對 {{file}} 的變更在「最近刪除」中，因為 {{name}} 刪除了它。",
+    "dismiss": "關閉"
+  },
+  "activity": {
+    "welcomeEdit": "由 {{server}} 上的 {{owner}} 分享。你可以編輯。",
+    "welcomeView": "由 {{server}} 上的 {{owner}} 分享。你可以檢視。",
+    "joined": "{{name}} 開啟了專案",
+    "left": "{{name}} 關閉了專案",
+    "rejoined": "{{name}} 再次開啟了專案",
+    "visited": "{{name}} 開啟並關閉了專案",
+    "online": "已重新上線",
+    "merged": "你離開期間合併的他人變更：{{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "顯示檔案",
+    "hideFiles": "隱藏檔案",
+    "role": "你的角色已變更為 {{role}}",
+    "removed": "你已無法存取這個分享的專案。你的副本會以一般專案的形式留在這裡。",
+    "removedBy": "{{name}} 已將你移出這個分享的專案。你的副本會以一般專案的形式留在這裡。",
+    "archived": "擁有者已停止分享這個專案。你的副本會以一般專案的形式留在這裡。",
+    "signedOut": "你已登出 {{server}}，因此這個專案沒有同步。你的變更會留在這台電腦上。",
+    "suspended": "管理員已將你在 {{server}} 上的帳號停權。你的變更會留在這台電腦上。管理員重新啟用後，你可以重新登入。",
+    "clientTooOld": "請更新 Oleafly，才能繼續在 {{server}} 上工作。你的變更會留在這台電腦上。",
+    "serverTooOld": "{{server}} 需要更新後才能搭配這個版本的 Oleafly 使用。請聯絡伺服器的管理者。你的變更會留在這台電腦上。",
+    "serverChanged": "{{server}} 的位址現在指向另一個伺服器。請在協作設定中移除它，然後重新新增。你的變更會留在這台電腦上。",
+    "failed": "這個專案因出錯已停止同步。重新開始同步即可繼續。",
+    "goLiveAgain": "重新同步",
+    "engineSpent": "重新啟動 Oleafly，才能繼續同步這個專案。",
+    "restartApp": "重新啟動 Oleafly",
+    "accessEnded": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。",
+    "accessEndedGuest": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。",
+    "signIn": "登入",
+    "memberAdded": "{{by}} 新增了 {{name}}",
+    "memberAddedByYou": "你新增了 {{name}}",
+    "memberJoined": "{{name}} 透過專案連結加入了",
+    "memberRemoved": "{{by}} 移除了 {{name}}",
+    "memberRemovedByYou": "你移除了 {{name}}",
+    "memberLeft": "{{name}} 退出了這個分享的專案",
+    "newDevice": "{{name}} 在新裝置上登入了",
+    "review": "檢視",
+    "renamed": "你將它命名為 {{ours}} 之後，{{name}} 把 {{before}} 重新命名為 {{theirs}}",
+    "renamedPortable": "為了在每台電腦上都能使用，{{before}} 已重新命名為 {{theirs}}。",
+    "skipped": "無法讀取來自 {{name}} 的一項變更，已略過。",
+    "skippedUnknown": "無法讀取來自某人的一項變更，已略過。",
+    "mentioned": "{{name}} 在 {{path}} 的評論中提及了你",
+    "mentionedHere": "{{name}} 在評論中提及了你",
+    "showComment": "查看評論",
+    "settings": {
+      "mainDocument": "{{name}} 將 {{path}} 設為主要文件",
+      "mainDocumentNow": "{{path}} 現在是主要文件",
+      "compiler": "{{name}} 將編譯器設為 {{compiler}}",
+      "spellingLanguage": "{{name}} 將拼字檢查語言設為 {{language}}",
+      "spellingCleared": "{{name}} 清除了專案的拼字檢查語言",
+      "typstVersion": "{{name}} 將 Typst 版本設為 {{version}}",
+      "typstDefault": "{{name}} 將 Typst 版本還原為預設",
+      "typstOptions": "{{name}} 變更了 Typst 選項",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "自動",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
+  },
+  "mergeReview": {
+    "title": "你離開期間合併的變更",
+    "description": "你離線時其他人所做的變更。此檢視為唯讀。",
+    "people": "依人員",
+    "person": "{{name}}: {{number}}",
+    "files": "依檔案",
+    "loading": "正在載入變更",
+    "failed": "無法載入變更。請稍後再試。",
+    "noText": "沒有文字變更，因此沒有可比較的內容。",
+    "newFile": "新檔案",
+    "removedFile": "已移除",
+    "closedOldest": "同時只能開啟 {{number}} 個檔案，所以 {{path}} 已關閉。",
+    "diffLabel": "{{path}} 中的變更"
+  },
+  "console": {
+    "open": "開啟管理主控台",
+    "windowTitle": "Oleafly Server 管理主控台",
+    "title": "管理主控台",
+    "sectionsLabel": "管理主控台區段",
+    "pendingGuestsBadge": "等待核准：{{number}}",
+    "sections": {
+      "overview": "總覽",
+      "people": "人員",
+      "access": "存取規則",
+      "projects": "專案",
+      "settings": "伺服器設定",
+      "email": "電子郵件",
+      "log": "安全性記錄",
+      "checks": "連線檢查"
+    },
+    "health": {
+      "label": "伺服器狀態：{{status}}",
+      "checking": "正在檢查",
+      "ok": "正常",
+      "warning": "需要處理",
+      "unreachable": "無法連線"
+    },
+    "states": {
+      "loading": "正在開啟管理主控台…",
+      "loadFailed": "Oleafly 無法開啟管理主控台。",
+      "unknownTitle": "這個伺服器不在你的清單中",
+      "unknownDescription": "請在設定中重新新增這個伺服器，然後從它的卡片開啟管理主控台。",
+      "signedOutTitle": "你已登出這個伺服器",
+      "signedOutDescription": "請在設定中重新登入，然後從伺服器的卡片開啟管理主控台。",
+      "refusedTitle": "管理主控台僅供管理員和維護者使用",
+      "refusedDescription": "你在這個伺服器上的角色是 {{role}}。如果需要管理這個伺服器，請聯絡管理員。",
+      "turnedOffTitle": "即時協作已關閉",
+      "turnedOffDescription": "如需在這裡管理這個伺服器，請在設定的「實驗功能」中重新開啟。"
+    },
+    "overview": {
+      "loading": "正在載入總覽…",
+      "health": {
+        "title": "運作狀態",
+        "okLabel": "一切正常",
+        "okDescription": "使用者可以登入，伺服器也可以儲存檔案。",
+        "problem": "使用 {{provider}} 登入從 {{time}} 起一直失敗",
+        "commentChange": "{{project}}：{{name}} 於 {{time}} 變更",
+        "commentChangeUnknown": "{{project}}：於 {{time}} 變更",
+        "issues": {
+          "noSignInProvider": {
+            "label": "沒有人能登入",
+            "description": "請在伺服器上設定 GitHub 或 OpenID 登入，然後重新啟動伺服器。如果伺服器能寄送郵件，也可以改在設定中開啟「透過電子郵件登入」。"
+          },
+          "storageNotWritable": {
+            "label": "伺服器無法儲存檔案",
+            "description": "請確認伺服器的資料資料夾存在，而且伺服器可以寫入這個資料夾。"
+          },
+          "signInFailing": {
+            "label": "登入失敗",
+            "description": "透過伺服器的某個登入方式無法登入。下方清單會說明是哪一個以及從什麼時候開始。"
+          },
+          "signInEmailsPaused": {
+            "label": "登入郵件已暫停",
+            "description": "伺服器本小時傳送的登入郵件已達上限。這一小時過去後會恢復傳送。"
+          },
+          "commentsChangedWhileOff": {
+            "label": "評論在關閉期間遭到變更",
+            "description": "伺服器發現了評論關閉期間、在檢查之前就已儲存的評論變更。專案列在下方，每項變更都在安全性記錄中。"
+          },
+          "unknown": {
+            "label": "伺服器回報了問題",
+            "description": "請更新 Oleafly 以查看問題內容。"
+          }
+        }
+      },
+      "glance": {
+        "title": "概況",
+        "people": "人員",
+        "suspended": "已停權：{{number}}",
+        "devices": "裝置",
+        "projects": "分享的專案",
+        "projectsDetail": "已封存：{{archived}}，上傳中：{{pending}}",
+        "online": "目前在線上",
+        "onlineDetail": "開啟的專案：{{number}}",
+        "started": "啟動時間",
+        "version": "版本",
+        "protocol": "通訊協定 {{protocol}}",
+        "pendingGuests": "等待核准的訪客邀請：{{number}}",
+        "reviewGuests": "在「人員」中查看"
+      },
+      "storage": {
+        "title": "儲存空間",
+        "adminOnly": "只有管理員可以查看伺服器使用了多少儲存空間。",
+        "database": "資料庫",
+        "databaseDetail": "帳號、設定與記錄",
+        "snapshots": "專案快照",
+        "snapshotsDetail": "每個專案的已儲存副本",
+        "files": "檔案",
+        "location": {
+          "disk": "位於伺服器的磁碟",
+          "s3": "位於 S3 儲存空間",
+          "unknown": "位於其他儲存空間"
+        }
+      },
+      "services": {
+        "title": "電子郵件與登入",
+        "email": "電子郵件",
+        "emailOn": "已設定",
+        "emailOff": "未設定",
+        "emailOnDescription": "伺服器可以寄送電子郵件。",
+        "emailOffDescription": "伺服器還無法寄送電子郵件，因此不會有人收到郵件通知。",
+        "openEmail": "郵件設定",
+        "signIn": "登入方式",
+        "signInNone": "尚無。設定登入方式之前，沒有人能登入。",
+        "emailLinkOption": "電子郵件連結"
+      },
+      "settings": {
+        "title": "伺服器設定",
+        "on": "開啟",
+        "off": "關閉",
+        "change": "變更設定"
+      },
+      "limits": "限制：每個專案 {{project}}，每個檔案 {{file}}，每個專案 {{people}} 人。"
+    },
+    "projects": {
+      "description": "這個伺服器上分享的所有專案。",
+      "searchLabel": "搜尋專案",
+      "searchPlaceholder": "依標題或擁有者搜尋",
+      "filterLabel": "顯示專案",
+      "filter": {
+        "all": "全部",
+        "active": "分享中",
+        "archived": "已封存",
+        "pending": "上傳中"
+      },
+      "columns": {
+        "title": "專案",
+        "owner": "擁有者",
+        "members": "人員",
+        "size": "大小",
+        "activity": "最後活動",
+        "actions": "操作"
+      },
+      "sortBy": "依 {{column}} 排序",
+      "status": {
+        "archived": "已封存",
+        "pending": "上傳中",
+        "unknown": "未知"
+      },
+      "loading": "正在載入專案…",
+      "empty": "這個伺服器上還沒有分享的專案。",
+      "noMatches": "沒有符合搜尋條件的專案。",
+      "count": "顯示 {{total}} 個中的 {{shown}} 個",
+      "loadMore": "顯示更多",
+      "archive": "封存",
+      "archiveNamed": "封存 {{title}}",
+      "restore": "還原",
+      "restoreNamed": "還原 {{title}}",
+      "archiveConfirm": {
+        "title": "要封存 {{title}} 嗎？",
+        "description": "所有人都會停止同步這個專案，並保留自己的副本。除非你將它還原，否則伺服器會在 {{days}} 天後刪除這個專案。",
+        "descriptionLater": "所有人都會停止同步這個專案，並保留自己的副本。除非你將它們還原，否則伺服器會在一段時間後刪除已封存的專案。",
+        "confirm": "封存專案"
+      },
+      "adminOnly": "只有管理員可以封存或還原專案。"
+    },
+    "checks": {
+      "description": "檢查這台電腦與伺服器之間的連線。"
+    }
+  },
+  "links": {
+    "turnedOff": "即時協作已關閉。請在設定的「實驗功能」中開啟，然後再次開啟連結。",
+    "openSettings": "開啟設定",
+    "malformed": "Oleafly 無法開啟這個連結。請向傳送者索取新的連結。",
+    "opening": "正在開啟分享的專案…",
+    "downloading": "正在下載檔案：{{done}}/{{total}}",
+    "cancelNamed": "取消開啟 {{name}}",
+    "cancelling": "正在取消…",
+    "confirm": {
+      "title": "要加入這個分享的專案嗎？",
+      "body": "加入後，你會被新增到專案中，專案檔案也會複製到這台電腦。只有在你知道是誰傳來連結時才加入。",
+      "project": "專案",
+      "owner": "擁有者",
+      "server": "伺服器",
+      "role": "你的角色",
+      "join": "加入"
+    }
+  },
+  "comments": {
+    "title": "評論",
+    "titleUnread": "評論，有新動態",
+    "add": "新增評論",
+    "showResolved": "顯示已解決的評論",
+    "hideResolved": "隱藏已解決的評論",
+    "empty": "還沒有評論。",
+    "emptyCanWrite": "還沒有評論。選取一些文字，然後選擇「新增評論」即可開始。",
+    "allResolved": "所有評論都已解決。",
+    "loadFailed": "無法載入這個檔案的評論。",
+    "detached": "已脫離的評論",
+    "detachedHint": "這些評論所針對的文字已被刪除。",
+    "resolvedBy": "由 {{name}} 解決",
+    "edited": "已編輯",
+    "deleted": "這則評論已刪除。",
+    "newLabel": "新評論",
+    "newPlaceholder": "新增評論。輸入 @ 即可提及他人。",
+    "replyLabel": "回覆",
+    "replyPlaceholder": "寫下回覆。輸入 @ 即可提及他人。",
+    "editLabel": "編輯評論",
+    "post": "評論",
+    "reply": "回覆",
+    "resolve": "解決",
+    "reopen": "重新開啟",
+    "deleteThread": "刪除討論",
+    "deleteThreadConfirm": {
+      "title": "刪除這個討論嗎？",
+      "description": "這則評論及其回覆會對本專案中的所有人刪除。此動作無法復原。"
+    },
+    "deleteMessageConfirm": {
+      "title": "刪除這則評論嗎？",
+      "description": "它會對本專案中的所有人刪除。此動作無法復原。"
+    },
+    "messageActions": "這則評論的更多操作",
+    "threadActions": "這個討論的更多操作",
+    "showInEditor": "在編輯器中顯示",
+    "thread": "{{name}} 的評論",
+    "mentionList": "可提及的人",
+    "marker": "顯示這一行的評論",
+    "unverifiedAuthor": "無法確認是誰寫的",
+    "unverifiedThread": "來自 Oleafly 無法確認身分的人的評論",
+    "resolvedUnverified": "由 Oleafly 無法確認身分的人解決",
+    "notSent": {
+      "written": "這個專案已關閉評論，所以你寫的評論沒有送出。",
+      "changed": "這個專案已關閉評論，所以你對評論的變更沒有送出。",
+      "show": "顯示你寫的內容",
+      "hide": "隱藏你寫的內容",
+      "copy": "複製文字",
+      "copyFailed": "無法複製",
+      "list": "未送出的評論"
+    },
+    "refusals": {
+      "notLive": "這個專案目前沒有連線。請在重新連線後再試一次。",
+      "notYours": "只有寫這則評論的人才能修改它。",
+      "offServer": "這個伺服器已關閉評論。",
+      "offProject": "這個專案已關閉評論。請要求擁有者重新開啟。",
+      "viewer": "你可以在這裡閱讀評論，但不能發表。請向擁有者申請編輯權限。",
+      "someoneReplied": "其他人已經回覆，所以這個討論會保留。你可以改為將它標記為已解決。",
+      "messageDeleted": "這則評論已刪除，因此無法編輯。",
+      "selectionChanged": "你選取的文字已變更。請重新選取後再新增評論。",
+      "tooLong": "這則評論太長了。請縮短後再試一次。",
+      "empty": "發佈前請先寫點內容。"
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} 開啟了專案",
+    "joinedLink": "{{name}} 透過連結加入了專案",
+    "joinedShare": "{{name}} 在你分享後加入了專案",
+    "downloaded": "{{name}} 下載了副本",
+    "unknown": "{{name}} 使用了專案",
+    "unknownDevice": "未知裝置",
+    "span": "{{from}} 至 {{to}}",
+    "more": "顯示較早的記錄",
+    "loading": "正在載入存取記錄…",
+    "loadFailed": "Oleafly 無法載入存取記錄。",
+    "empty": "尚無記錄。"
+  },
+  "guests": {
+    "badge": "訪客",
+    "invite": {
+      "noAccount": "{{server}} 上沒有人使用 {{email}}。將對方邀請為訪客後，對方只會看到受邀的專案。",
+      "button": "邀請為訪客",
+      "buttonNamed": "邀請 {{email}} 為訪客",
+      "duplicate": "這個地址已經有此專案的邀請。",
+      "tooMany": "你在過去一小時內送出了很多邀請。請稍後再試。"
+    },
+    "sent": {
+      "emailed": "邀請已寄給 {{email}}。",
+      "emailedAfterApproval": "這個邀請需要管理員核准。核准後 {{email}} 會收到一封電子郵件。",
+      "added": "{{email}} 已經在 {{server}} 上有帳號，所以現在就能存取。",
+      "sendLink": "{{server}} 不會寄送電子郵件，請你自己把這個連結傳給 {{email}}。對方用它新增伺服器，再以該地址登入。",
+      "sendLinkAfterApproval": "這個邀請需要先由管理員核准。{{server}} 不會寄送電子郵件，請你自己把這個連結傳給 {{email}}。邀請核准後連結即可使用。",
+      "linkLabel": "新增 {{server}} 的連結"
+    },
+    "list": {
+      "title": "邀請",
+      "status": {
+        "awaiting_approval": "等待核准",
+        "invited": "已邀請",
+        "declined": "已拒絕"
+      },
+      "expires": "{{date}} 到期",
+      "withdraw": "撤回",
+      "withdrawNamed": "撤回給 {{email}} 的邀請"
+    },
+    "pending": {
+      "title": "待處理的訪客",
+      "description": "專案擁有者將這些人邀請為訪客。訪客只會看到受邀的專案，而且不能分享這些專案。",
+      "loadFailed": "Oleafly 無法載入等待核准的訪客邀請。",
+      "invitedBy": "{{inviter}} 邀請他們加入 {{project}}",
+      "approve": "核准",
+      "approveNamed": "核准 {{email}}",
+      "decline": "拒絕",
+      "declineNamed": "拒絕 {{email}}"
+    }
+  },
+  "access": {
+    "viewerBy": "{{name}} 已將你設為檢視者。你可以閱讀這個專案，但不能編輯。",
+    "viewer": "你現在是檢視者。你可以閱讀這個專案，但不能編輯。",
+    "viewOnly": "你可以檢視這個分享的專案，但不能編輯。",
+    "connecting": "這個分享的專案仍在連線，所以暫時無法變更。請稍後再試。",
+    "unsentReadOnly": "你現在只能檢視這個專案，因此你對 {{path}} 的最後變更沒有送出。",
+    "unsentRefused": "Oleafly 無法送出你對 {{path}} 的最後變更，因此已將其捨棄。",
+    "removedBy": "{{name}} 已將你移出這個專案。你的副本會保留在這台電腦上，不再分享。",
+    "removed": "你已被移出這個專案。你的副本會保留在這台電腦上，不再分享。"
+  },
+  "files": {
+    "waiting": "等待分享：{{files}}",
+    "failed": "無法分享：{{files}}",
+    "uploading": "正在上傳 {{file}}：{{done}}/{{total}}",
+    "tooLarge": "{{file}} 大小為 {{size}}，超過此伺服器允許的上限（{{limit}}）。它只會保留在這台電腦上。",
+    "tooLargeUnknown": "{{file}} 超過此伺服器允許的大小。它只會保留在這台電腦上。",
+    "projectTooLarge": "這個專案已達到伺服器的大小上限 {{limit}}，所以 {{file}} 會留在這台電腦上。請讓管理伺服器的人提高上限。",
+    "projectTooLargeUnknown": "這個專案已達到伺服器的大小上限，所以 {{file}} 會留在這台電腦上。請讓管理伺服器的人提高上限。",
+    "projectFull": "這個專案已達到伺服器的大小上限，所以你的變更暫時留在這台電腦上。請讓管理伺服器的人提高上限。",
+    "replaced": "{{name}} 與你同時替換了 {{file}}。你的版本已儲存為 {{copy}}。",
+    "added": "因為 {{name}} 新增了同名檔案，{{file}} 現在是 {{copy}}。",
+    "beside": "{{name}} 也有一個名為 {{file}} 的檔案。該檔案已儲存為 {{copy}}。",
+    "localCopy": "你在無法存取此專案期間，在 {{name}} 中修改了 {{files}}。",
+    "bringIn": "匯入這些變更",
+    "keepSeparate": "保持分開",
+    "broughtIn": "你在 {{name}} 中的變更現已加入此專案。",
+    "retry": "重試",
+    "dismiss": "關閉"
+  }
+}

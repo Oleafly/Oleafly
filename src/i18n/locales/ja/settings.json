@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "「カスタム」の承認モードは、このファイルを読みます。ファイルは ~/.oleafly/approvals.toml にあり、この端末のすべてのプロジェクトに適用されます。",
+        "description": "ファイルは ~/.oleafly/approvals.toml にあり、この端末のすべてのプロジェクトに適用されます。deny のルールは、どの承認モードでもツールをブロックします。allow のルールが効くのは「カスタム」モードのときだけです。",
         "discard": "変更を破棄",
         "emptyFile": "ファイルはまだ空です。",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "最初のテーブル <modesTable>[\"$approval_modes\"]</modesTable> は、プロジェクトごとの承認モードを設定します。<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full>、<custom>\"custom\"</custom> のいずれかです。記載のないプロジェクトは「自動で承認する」を使います。",
           "openProject": "開いているプロジェクト {{name}} の ID は <projectId>{{id}}</projectId> です。",
           "projectIds": "プロジェクトの ID は、~/.oleafly/projects 以下のフォルダ名です。",
-          "rules": "続いて、プロジェクトの ID ごとにテーブルを 1 つ置き、ツールごとにルールを書きます。<allow>\"allow\"</allow> は確認なしでツールを実行し、<deny>\"deny\"</deny> は拒否します。deny のルールはどのモードでも有効です。allow のルールはカスタムモードで効き、run_command についてはほかのモードでも確認を省きます。",
+          "rules": "続いて、プロジェクトの ID ごとにテーブルを 1 つ置き、ツールごとにルールを書きます。<allow>\"allow\"</allow> は確認なしでツールを実行し、<deny>\"deny\"</deny> は拒否します。deny のルールは「フルアクセス」を含むすべてのモードで有効です。allow のルールが効くのはカスタムモードのときだけです。",
           "toolNames": "使えるツール名: <names>{{names}}</names>。MCP のツールは、「ツール」の一覧にある正式名で指定できます。"
         },
         "helpToggle": "このファイルの仕組み",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "常に許可",
         "denied": "常に拒否",
-        "description": "{{name}} に保存されたルールです。承認モードが「カスタム」のときに適用されます。ルールを削除すると、そのツールには標準のリスク判定が使われます。",
+        "description": "{{name}} に保存されたルールです。拒否したツールは、どの承認モードでもブロックされたままです。許可したツールが確認なしで実行されるのは「カスタム」モードのときだけです。ルールを削除すると、そのツールには標準のリスク判定が使われます。",
         "empty": "保存されたルールはまだありません。承認の確認で「このプロジェクトでは常に許可」を選ぶと追加されます。",
         "removeRule": "{{tool}} のルールを削除",
         "thisProject": "このプロジェクト",

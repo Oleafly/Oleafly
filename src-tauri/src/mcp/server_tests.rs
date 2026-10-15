@@ -2,14 +2,14 @@ use super::{
     acquire_request_slot, activate_renderer_lease_at, admission_is_current,
     advance_published_epoch, authorized, bounded_activity_tool_name, claim_unexpected_serve_exit,
     clear_renderer_registry, collect_body_limited, collect_body_limited_with_timeout,
-    combine_cleanup_error, constant_time_eq, effective_policy, forward_route, host_allowed, json,
-    json_tool_error, linked_exposure_refusal, mark_renderer_expiration_revoked_at,
-    native_completion_is_reportable, oneshot, origin_allowed, publication_candidate,
-    remove_discovery_file_at, renderer_session_is_fresh_at, renew_renderer_lease_at,
-    serve_exit_is_current, signal_completion_before_cleanup, tool_disabled_by_read_only,
-    tool_route, watch, Arc, AtomicBool, Body, Bytes, Duration, Instant, McpState, Mutex, Ordering,
-    ServeInstance, StatusCode, ToolMeta, ToolRoute, MAX_ACTIVITY_TOOL_NAME_CHARS,
-    MAX_AUTHENTICATED_REQUESTS, RENDERER_LEASE_TTL,
+    combine_cleanup_error, constant_time_eq, denied_by_rules, effective_policy, forward_route,
+    host_allowed, json, json_tool_error, linked_exposure_refusal,
+    mark_renderer_expiration_revoked_at, native_completion_is_reportable, oneshot, origin_allowed,
+    publication_candidate, remove_discovery_file_at, renderer_session_is_fresh_at,
+    renew_renderer_lease_at, serve_exit_is_current, signal_completion_before_cleanup,
+    tool_disabled_by_read_only, tool_route, watch, Arc, AtomicBool, Body, Bytes, Duration, Instant,
+    McpState, Mutex, Ordering, ServeInstance, StatusCode, ToolMeta, ToolRoute, DENIED_BY_RULES,
+    MAX_ACTIVITY_TOOL_NAME_CHARS, MAX_AUTHENTICATED_REQUESTS, RENDERER_LEASE_TTL,
 };
 #[cfg(unix)]
 use super::{write_discovery_file_at, Value};
@@ -453,25 +453,101 @@ fn linked_folders_are_read_only_and_restricted_folders_are_closed_to_mcp_clients
 #[tokio::test]
 async fn forwarded_calls_for_a_restricted_open_folder_are_refused_before_routing() {
     let _restricted = crate::trust::testing::restrict("mcp-forward-restricted-project");
+    let rules = tempfile::tempdir().unwrap();
+    let root = || Some(rules.path().to_path_buf());
     let state = McpState::default();
     *state.active_project.lock().await = Some("mcp-forward-restricted-project".into());
     let policy = Some(("ask".to_string(), false));
     for name in ["read_file", "list_files", "write_file"] {
         assert_eq!(
-            forward_route(&state, 0, name, policy.clone()).await,
+            forward_route(&state, 0, name, policy.clone(), root()).await,
             Err("This folder is not trusted in Oleafly, so MCP clients cannot use it."),
             "{name}"
         );
     }
     *state.active_project.lock().await = Some("mcp-forward-trusted-project".into());
+    let trusted = Some("mcp-forward-trusted-project".to_string());
     assert_eq!(
-        forward_route(&state, 0, "read_file", policy.clone()).await,
-        Ok(ToolRoute::Native)
+        forward_route(&state, 0, "read_file", policy.clone(), root()).await,
+        Ok((ToolRoute::Native, trusted.clone()))
     );
     assert_eq!(
-        forward_route(&state, 0, "write_file", policy).await,
-        Ok(ToolRoute::RejectNoRenderer)
+        forward_route(&state, 0, "write_file", policy, root()).await,
+        Ok((ToolRoute::RejectNoRenderer, trusted))
     );
+}
+
+#[tokio::test]
+async fn deny_rules_refuse_native_and_forwarded_tools_for_the_open_project() {
+    let rules = tempfile::tempdir().unwrap();
+    std::fs::write(
+        rules.path().join("approvals.toml"),
+        "[\"$approval_modes\"]\nmcp-deny-project = \"full-access\"\n\n[mcp-deny-project]\nread_file = \"deny\"\nwrite_file = \"deny\"\nload_skill = \"deny\"\nlist_files = \"allow\"\n",
+    )
+    .unwrap();
+    let root = || Some(rules.path().to_path_buf());
+    let state = McpState::default();
+    *state.active_project.lock().await = Some("mcp-deny-project".into());
+    let trust = Some(("trust".to_string(), false));
+    for name in ["read_file", "write_file", "load_skill"] {
+        assert_eq!(
+            forward_route(&state, 0, name, trust.clone(), root()).await,
+            Err(DENIED_BY_RULES),
+            "{name}"
+        );
+    }
+    assert_eq!(
+        forward_route(&state, 0, "list_files", trust.clone(), root()).await,
+        Ok((ToolRoute::Native, Some("mcp-deny-project".into())))
+    );
+    *state.active_project.lock().await = Some("mcp-other-project".into());
+    assert_eq!(
+        forward_route(&state, 0, "read_file", trust, root()).await,
+        Ok((ToolRoute::Native, Some("mcp-other-project".into())))
+    );
+}
+
+#[tokio::test]
+async fn a_native_call_keeps_the_project_whose_rules_were_checked() {
+    let rules = tempfile::tempdir().unwrap();
+    std::fs::write(
+        rules.path().join("approvals.toml"),
+        "[mcp-switch-denied]\nread_file = \"deny\"\n",
+    )
+    .unwrap();
+    let state = McpState::default();
+    *state.active_project.lock().await = Some("mcp-switch-allowed".into());
+    let trust = Some(("trust".to_string(), false));
+
+    let routed = forward_route(
+        &state,
+        0,
+        "read_file",
+        trust,
+        Some(rules.path().to_path_buf()),
+    )
+    .await;
+    // The project whose rules deny read_file opens before the call runs. The
+    // call still runs on the project that was checked, not on this one.
+    *state.active_project.lock().await = Some("mcp-switch-denied".into());
+
+    assert_eq!(
+        routed,
+        Ok((ToolRoute::Native, Some("mcp-switch-allowed".into())))
+    );
+}
+
+#[test]
+fn unreadable_or_missing_rules_deny_every_tool() {
+    let rules = tempfile::tempdir().unwrap();
+    assert!(!denied_by_rules(Some(rules.path()), "proj", "read_file"));
+    std::fs::write(
+        rules.path().join("approvals.toml"),
+        "[proj\nread_file = deny",
+    )
+    .unwrap();
+    assert!(denied_by_rules(Some(rules.path()), "proj", "read_file"));
+    assert!(denied_by_rules(None, "proj", "read_file"));
 }
 
 #[tokio::test]

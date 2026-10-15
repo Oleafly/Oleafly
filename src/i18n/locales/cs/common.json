@@ -78,5 +78,11 @@
       "invalidNumber": "{{value}} není číslo",
       "sortNegated": "{{key}} nelze vyloučit"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} další osoba",
+    "more_few": "{{count}} další osoby",
+    "more_many": "{{count}} další osoby",
+    "more_other": "{{count}} dalších osob"
   }
 }

@@ -45,6 +45,11 @@
       "message": "Met volledige toegang kan de assistent shell-opdrachten uitvoeren en bestanden bewerken zonder telkens om goedkeuring te vragen. Volledige toegang inschakelen?",
       "confirm": "Volledige toegang inschakelen"
     },
+    "sharedShellEscape": {
+      "title": "Externe opdrachten toestaan in dit gedeelde project?",
+      "message": "Iedereen die dit project kan bewerken, kan dan programma's op deze computer uitvoeren wanneer je compileert. Sta dit alleen toe als je iedereen in het project vertrouwt.",
+      "confirm": "Toestaan op deze computer"
+    },
     "cookieImport": {
       "title": "Cookie-import bevestigen",
       "messageHost": "Cookies voor {{hostname}} importeren uit het {{browser}}-profiel \"{{profile}}\" naar de ingebouwde browser van Oleafly? Met geïmporteerde cookies kun je op websites aangemeld raken.",
@@ -111,5 +116,13 @@
   "systemIntegration": {
     "openInOleafly": "Openen in Oleafly",
     "openWithOleafly": "Openen met Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (lokale kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Geweigerd door de regel voor {{tool}} in approvals.toml",
+    "unknownTool": "Er is geen tool met de naam {{name}}, dus de regel doet niets.",
+    "unknownToolSuggestion": "Er is geen tool met de naam {{name}}, dus de regel doet niets. Bedoelde je {{suggestion}}?"
   }
 }

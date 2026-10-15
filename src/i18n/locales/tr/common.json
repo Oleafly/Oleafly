@@ -78,5 +78,9 @@
       "invalidNumber": "{{value}} bir sayı değil",
       "sortNegated": "{{key}} hariç tutulamaz"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} kişi daha",
+    "more_other": "{{count}} kişi daha"
   }
 }

@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import type { ProjectIntelligenceSnapshot } from "@/lib/project-intelligence/types";
 
 const mocks = vi.hoisted(() => ({
@@ -172,3 +173,29 @@ describe("TypstBibliographyStylePicker", () => {
   });
 });
 
+describe("TypstBibliographyStylePicker in a live shared project", () => {
+  it("merges the style into an unopened chapter file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "typst-project", viewer: false, connecting: false });
+    try {
+      const source = '= Refs\n#bibliography("refs.bib")';
+      setProject({ "main.typ": '#include "back.typ"', "back.typ": "" });
+      useFilesStore.setState({
+        files: { "main.typ": { content: '#include "back.typ"', dirty: false } } as never,
+      });
+      useIndexStore.setState({ texts: { "back.typ": source } });
+      mocks.readFileContent.mockResolvedValue(source);
+      render(<TypstBibliographyStylePicker snapshot={snapshotWith("back.typ")} />);
+      choose("apa");
+      await waitFor(() =>
+        expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+          "typst-project",
+          "back.typ",
+          '= Refs\n#bibliography("refs.bib", style: "apa")',
+          { base: source },
+        ),
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+});

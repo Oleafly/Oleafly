@@ -123,6 +123,7 @@ function preview(path: string): TaskFilePreview {
     after: content(`after ${path}`),
     projectSha256: "before",
     baseIsCurrent: true,
+    mergesWithShared: false,
   };
 }
 

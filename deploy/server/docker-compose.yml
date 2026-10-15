@@ -1,0 +1,59 @@
+name: oleafly-server
+
+services:
+  oleafly-server:
+    image: ghcr.io/oleafly/oleafly-server:0.1
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OLEAFLY_PUBLIC_URL: https://${OLEAFLY_DOMAIN:?Set OLEAFLY_DOMAIN in .env}
+      OLEAFLY_BIND: 0.0.0.0:8080
+      OLEAFLY_DATA_DIR: /data
+      OLEAFLY_BEHIND_PROXY: "true"
+    volumes:
+      - oleafly-data:/data
+
+  caddy:
+    image: caddy:2.11.7
+    restart: unless-stopped
+    depends_on:
+      - oleafly-server
+    environment:
+      OLEAFLY_DOMAIN: ${OLEAFLY_DOMAIN:?Set OLEAFLY_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  litestream:
+    image: litestream/litestream:0.5.17
+    profiles:
+      - litestream
+    restart: unless-stopped
+    user: "10001:10001"
+    depends_on:
+      oleafly-server:
+        condition: service_healthy
+    command: ["replicate", "-config", "/etc/litestream.yml"]
+    environment:
+      LITESTREAM_REPLICA_URL: ${LITESTREAM_REPLICA_URL:-}
+      LITESTREAM_ENDPOINT: ${LITESTREAM_ENDPOINT:-}
+      LITESTREAM_REGION: ${LITESTREAM_REGION:-us-east-1}
+      LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_ACCESS_KEY_ID:-}
+      LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_SECRET_ACCESS_KEY:-}
+    volumes:
+      - oleafly-data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+
+networks:
+  default:
+    enable_ipv6: ${OLEAFLY_IPV6:-false}
+
+volumes:
+  oleafly-data:
+  caddy-data:
+  caddy-config:

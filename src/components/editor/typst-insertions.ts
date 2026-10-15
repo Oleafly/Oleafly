@@ -16,6 +16,7 @@ import { logError } from "@/lib/log";
 import { readFileContent } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { useIndexStore } from "@/store/project-index";
 import { sanitizeTypstLabel, typstFigureAt } from "./typst-figure";
 import { matchTypstMath, typstStringLiteral } from "./typst-scan";
@@ -186,7 +187,7 @@ async function declareBibliographyElsewhere(target: string, bibliography: string
     if (loaded !== undefined && useFilesStore.getState().setContent(target, next)) {
       await useFilesStore.getState().saveFile(target);
     } else {
-      await useFilesStore.getState().writeProjectFile(projectId, target, next);
+      await useFilesStore.getState().writeProjectFile(projectId, target, next, ...sharedBaseOption(projectId, current));
     }
     toast.infoUnique(
       TYPST_BIBLIOGRAPHY_TOAST_KEY,

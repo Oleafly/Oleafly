@@ -375,6 +375,7 @@ pub async fn set_typst_project_options(
     project_id: String,
     update: TypstOptionsUpdate,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let owned = project_id.clone();
     let meta = tauri::async_runtime::spawn_blocking(move || {
@@ -391,6 +392,7 @@ pub async fn set_typst_project_options(
         false,
         crate::project::project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 

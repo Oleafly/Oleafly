@@ -13,6 +13,8 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   destructive?: boolean;
+  // Shown under the description, for details such as the items affected.
+  children?: ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -24,6 +26,7 @@ export function ConfirmationDialog({
   onConfirm,
   onCancel,
   destructive = false,
+  children,
 }: Readonly<ConfirmationDialogProps>) {
   const { t } = useTranslation(["common", "shell"]);
   const titleId = useId();
@@ -71,6 +74,7 @@ export function ConfirmationDialog({
       >
         {description}
       </p>
+      {children}
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
           {cancelLabel ?? t(($) => $.common.actions.cancel)}

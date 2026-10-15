@@ -14,6 +14,8 @@ import { railSections, railTabLabel, type AppContext, type RailTabContribution }
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { useCollabRail } from "@/components/collab/collab-rail";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
 import { toggleBrowser } from "@/lib/browser-window";
@@ -100,11 +102,23 @@ export function SidebarViews() {
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
   const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
+  const collabShown = useCollabRail((s) => s.visible);
+  useCollabRail((s) => s.unread);
+  const commentsShown = useCommentsRail((s) => s.visible);
+  useCommentsRail((s) => s.unread);
   const { theme } = useTheme();
 
   useEffect(() => {
     if (!mcpEnabled && railTab === "mcp") setRailTab("files");
   }, [mcpEnabled, railTab, setRailTab]);
+
+  useEffect(() => {
+    if (!collabShown && railTab === "collab") setRailTab("files");
+  }, [collabShown, railTab, setRailTab]);
+
+  useEffect(() => {
+    if (!commentsShown && railTab === "comments") setRailTab("files");
+  }, [commentsShown, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
     setRailTab(tab);

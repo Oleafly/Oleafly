@@ -84,7 +84,7 @@ jobs:
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
@@ -137,6 +137,12 @@ jobs:
 
       - name: Test the installer change check
         run: bash scripts/ci/installer-changes.test.sh
+
+      - name: Test the collaboration change check
+        run: bash scripts/ci/collab-changes.test.sh
+
+      - name: Test the e2e spec selection
+        run: bash scripts/e2e-specs.test.sh
 
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
@@ -348,7 +354,7 @@ jobs:
   rust-windows:
     name: Rust checks (Windows)
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v7
 
@@ -379,13 +385,16 @@ jobs:
       - name: Stage checksum-pinned Tinymist resource archive
         run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
 
+      # Oleafly Server ships as a Linux container and static Linux programs, so
+      # its own tests and lints run on the Linux job only. The desktop and sync
+      # engine tests here still build it as a dev-dependency.
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --all-targets --no-fail-fast
+        run: cargo test --workspace --exclude oleafly-server --all-targets --no-fail-fast
 
       - name: Lint all native Windows targets
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --exclude oleafly-server --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
@@ -608,8 +617,17 @@ jobs:
     needs: [frontend, rust]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    outputs:
+      collab: ${{ steps.collab-changes.outputs.run }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check whether collaboration code changed
+        id: collab-changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash scripts/ci/collab-changes.sh "$EVENT" "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -1058,6 +1076,92 @@ jobs:
           name: e2e-test-results-linux-shard-${{ matrix.shard }}
           # Only the small, useful debugging files. Avoids uploading the macOS
           # driver's ~1 GB per-run screencast blob that lives under test-results/.
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-collab-linux:
+    name: E2E (live collaboration, Linux)
+    needs: e2e-build-linux
+    if: needs.e2e-build-linux.outputs.collab == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the packaged e2e app
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-app-linux
+
+      - name: Install the packaged e2e app
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
+          pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
+          dpkg -L "$pkg" > installed-files.txt
+          if ! app_bin="$(bash scripts/ci/find-linux-app-binary.sh installed-files.txt)"; then
+            cat installed-files.txt >&2
+            exit 1
+          fi
+          echo "app binary: $app_bin"
+          echo "OLEAFLY_E2E_APP_BINARY=$app_bin" >> "$GITHUB_ENV"
+
+      - name: Install Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Build the headless collaboration peer
+        run: cargo build -p oleafly-collab --example e2e_peer
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/Library/Caches/ms-playwright
+            ~/.cache/ms-playwright
+            ~\AppData\Local\ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the live collaboration spec
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+          OLEAFLY_E2E_COLLAB_STACK: ${{ github.workspace }}/src-tauri/target/debug/examples/e2e_peer
+          OLEAFLY_E2E_BROWSER: ${{ github.workspace }}/scripts/e2e-collab-browser.sh
+        run: xvfb-run -a ./scripts/e2e.sh e2e/tests/109-live-collaboration-peer.spec.ts
+
+      - name: Upload failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-test-results-linux-collab
           path: |
             test-results/**/error-context.md
             test-results/**/trace.zip

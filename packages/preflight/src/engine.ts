@@ -118,7 +118,7 @@ function projectRefsFindings(
       ...(file.path ? { file: file.path } : {}),
     }).map((finding) => ({
       ...finding,
-      ...(file.path && finding.from !== undefined ? { file: file.path } : {}),
+      ...(file.path && finding.from !== undefined && finding.file === undefined ? { file: file.path } : {}),
     })),
   );
 }

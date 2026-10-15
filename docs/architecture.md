@@ -12,6 +12,9 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `crates/oleafly-history/` | Content-addressed compile checkpoints |
+| `crates/oleafly-collab-protocol/` | Messages shared by the app and the collaboration server |
+| `crates/oleafly-collab/` | Live collaboration client: the shared project document, sync and comments |
+| `crates/oleafly-server/` | The collaboration server, built on Axum and SQLite |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
 | `packages/wysiwyg/` | Tiptap schema and nodes for the visual editor |

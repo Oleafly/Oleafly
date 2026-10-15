@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   figureEnabled: true,
   api: {
     appendAppLog: vi.fn(async (_line: string) => {}),
+    approvalsList: vi.fn(async (_projectId: string): Promise<Record<string, string>> => ({})),
     appVersion: vi.fn(async () => "0.4.4"),
     getConfig: vi.fn(async () => ({ mcp_read_only: false, mcp_approval_policy: "ask" })),
     listProjects: vi.fn(async (): Promise<Array<{ id: string; name: string }>> => []),

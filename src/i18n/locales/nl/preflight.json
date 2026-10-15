@@ -319,6 +319,12 @@
       "title": "Dubbele bibliografie-items: {{keys}}",
       "detail": "Deze items delen de DOI {{doi}}, dus het is dezelfde referentie onder verschillende sleutels. Houd er één en citeer die, anders staat hij twee keer in je bibliografie."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Citatiesleutel \"{{key}}\" is meer dan één keer gedefinieerd",
+      "detail": "Gedefinieerd in {{places}}. BibTeX gebruikt alleen het eerste item met deze sleutel en maakt bij het vergelijken van sleutels geen onderscheid tussen hoofdletters en kleine letters. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
+      "detailBiber": "Gedefinieerd in {{places}}. Als biber de bibliografie maakt, gebruikt het alleen het eerste item met deze sleutel. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
+      "detailTypst": "Gedefinieerd in {{places}}. Typst stopt met compileren als twee bibliografie-items dezelfde sleutel hebben. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken."
+    },
     "submission-path-case": {
       "title": "Hoofdlettergebruik in de bestandsnaam klopt niet: {{target}}",
       "detailFigure": "Deze figuur wordt alleen gevonden op een bestandssysteem dat geen onderscheid maakt tussen hoofd- en kleine letters. Het project bevat \"{{match}}\", dus neem dat hoofdlettergebruik exact over voordat je inzendt bij buildsystemen op Linux.",

@@ -130,5 +130,9 @@
   },
   "citation": {
     "linkedBibliography": "Error when a citation cannot be added because the project's .bib file is a link to a file outside the opened folder, such as a Zotero Better BibTeX export"
+  },
+  "mcp": {
+    "deniedByRules": "Short summary in the MCP activity list when an outside agent's tool call was refused because approvals.toml has a deny rule for that tool. Keep the file name approvals.toml as is",
+    "rulesUnreadable": "Short summary in the MCP activity list when an outside agent's tool call was refused because Oleafly couldn't read the approval rules file. Keep the file name approvals.toml as is"
   }
 }

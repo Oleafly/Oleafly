@@ -447,7 +447,8 @@
       "title": "Variante (ce projet)",
       "help": "Une variante passe ses propres valeurs à sys.inputs, par exemple pour une version brouillon ou définitive. La variante choisie reste sur cet ordinateur. Ajoutez ou modifiez des variantes dans les Réglages du document.",
       "none": "Aucune variante"
-    }
+    },
+    "sharedViewer": "Les lecteurs ne peuvent pas modifier ces paramètres dans un projet partagé."
   },
   "datePicker": {
     "placeholder": "Choisir une date"
@@ -859,6 +860,10 @@
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
+        "label": "Collaboration en direct"
+      },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
       "webBrowser": {
         "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
@@ -940,6 +945,7 @@
     "nav": {
       "ai": "Assistant IA",
       "appearance": "Apparence",
+      "collaboration": "Collaboration",
       "data": "Stockage des données",
       "dictionary": "Dictionnaire",
       "downloads": "Téléchargements",
@@ -955,6 +961,7 @@
       "keywords": {
         "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
         "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
+        "collaboration": "serveurs, connexion, se connecter, appareils, membres, mainteneurs, partage, équipes, labos, laboratoires, édition en direct, temps réel, journal de sécurité",
         "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
         "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",
         "downloads": "paquets, polices, dictionnaires, fichiers hors ligne",
@@ -1437,6 +1444,14 @@
     "hideLog": "Masquer le journal de compilation",
     "showLog": "Afficher le journal de compilation"
   },
+  "collabSync": {
+    "paused_one": "{{count}} fichier a été modifié en dehors d'Oleafly. Envoyer cette modification à tout le monde ou la garder en local ?",
+    "paused_many": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "paused_other": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "send": "Envoyer",
+    "keepLocal": "Garder en local",
+    "unavailable": "Le dossier du projet n'est pas disponible, la synchronisation est donc en pause. Elle reprendra quand le dossier sera de retour."
+  },
   "overleafSync": {
     "button": "Synchronisation Overleaf",
     "title": "Synchroniser avec Overleaf",
@@ -1488,5 +1503,9 @@
       "allTheirs": "Prendre toutes celles d'Overleaf",
       "apply": "Appliquer et synchroniser"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly a rechargé cette fenêtre, car elle ne répondait plus depuis 30 secondes. Les modifications faites juste avant n'ont peut-être pas été enregistrées.",
+    "reloadedAgain": "Oleafly a de nouveau rechargé cette fenêtre, car elle ne répondait plus. Votre projet n'a pas été rouvert, au cas où quelque chose dedans serait en cause."
   }
 }

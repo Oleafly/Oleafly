@@ -10,10 +10,14 @@ import {
   type DecorationSet,
   EditorView,
   ViewPlugin,
+  type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { useInlineEditStore } from "@/store/inlineEdit";
+import { subscribeEditorDocument } from "@oleafly/editor";
+import { remoteChange } from "@oleafly/editor/collaboration";
+import { type Session, useInlineEditStore } from "@/store/inlineEdit";
 import { buildDecoSpans } from "./diff-ranges";
+import { changeTouchesRange, mapPendingRange, type PendingRange } from "./pending-range";
 import { promptWidget } from "./promptWidget";
 
 class AddWidget extends WidgetType {
@@ -86,31 +90,87 @@ function buildPanelSet(state: EditorState): DecorationSet {
   ]);
 }
 
+function repaint(view: EditorView): void {
+  view.dispatch({
+    effects: [setDiffDeco.of(buildDiffSet(view.state)), setPanelDeco.of(buildPanelSet(view.state))],
+  });
+}
+
+function onlyMoved(next: Session | null, previous: Session | null): boolean {
+  if (!next || !previous || next === previous) return false;
+  const keys = new Set([...Object.keys(next), ...Object.keys(previous)] as (keyof Session)[]);
+  for (const key of keys) {
+    if (key !== "from" && key !== "to" && next[key] !== previous[key]) return false;
+  }
+  return true;
+}
+
+function followPendingRange(update: ViewUpdate): void {
+  if (!update.docChanged) return;
+  const store = useInlineEditStore.getState();
+  const session = store.session;
+  if (!session) return;
+  let range: PendingRange = { from: session.from, to: session.to };
+  let withdrawn = session.phase === "withdrawn";
+  // Only a suggestion can go stale. While the instruction is still being
+  // typed, or after an error, the range just follows the edit, and the run
+  // reads the text again when it starts.
+  const suggesting = session.phase === "streaming" || session.phase === "reviewing";
+  for (const tr of update.transactions) {
+    if (!tr.docChanged) continue;
+    if (
+      suggesting &&
+      !withdrawn &&
+      tr.annotation(remoteChange) === true &&
+      changeTouchesRange(tr.changes, range)
+    ) {
+      withdrawn = true;
+    }
+    range = mapPendingRange(tr.changes, range);
+  }
+  if (range.from !== session.from || range.to !== session.to) store.relocate(range.from, range.to);
+  if (withdrawn && session.phase !== "withdrawn") store.withdraw();
+  if (useInlineEditStore.getState().session && update.view.state.field(panelField).size === 0) {
+    repaint(update.view);
+  }
+}
+
+const pendingRangeTracker = EditorView.updateListener.of(followPendingRange);
+
 const inlineDiffSubscriber = ViewPlugin.fromClass(
   class {
     private readonly unsub: () => void;
+    private readonly unsubDocument: () => void;
+    private documentPath: string | null | undefined = undefined;
     constructor(readonly view: EditorView) {
-      this.unsub = useInlineEditStore.subscribe(() => this.repaint());
-    }
-    private repaint() {
-      this.view.dispatch({
-        effects: [
-          setDiffDeco.of(buildDiffSet(this.view.state)),
-          setPanelDeco.of(buildPanelSet(this.view.state)),
-        ],
+      this.unsub = useInlineEditStore.subscribe((state, previous) => {
+        if (!onlyMoved(state.session, previous.session)) repaint(this.view);
       });
+      this.unsubDocument = subscribeEditorDocument((path) => this.followDocument(path));
+    }
+    private followDocument(path: string | null) {
+      const previous = this.documentPath;
+      this.documentPath = path;
+      if (previous === undefined || previous === path) return;
+      if (useInlineEditStore.getState().session) useInlineEditStore.getState().reset();
     }
     destroy() {
       this.unsub();
+      this.unsubDocument();
     }
   },
 );
 
-export const inlineDiffPlugin: Extension = [diffField, panelField, inlineDiffSubscriber];
+export const inlineDiffPlugin: Extension = [
+  diffField,
+  panelField,
+  inlineDiffSubscriber,
+  pendingRangeTracker,
+];
 
 export function acceptInlineEdit(view: EditorView): void {
   const s = useInlineEditStore.getState().session;
-  if (!s) return;
+  if (!s || s.phase === "withdrawn") return;
   view.dispatch({ changes: { from: s.from, to: s.to, insert: s.proposed } });
   useInlineEditStore.getState().reset();
 }

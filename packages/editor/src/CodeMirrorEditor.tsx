@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import {
+  Annotation,
   EditorState,
   Compartment,
   EditorSelection,
@@ -15,6 +16,7 @@ import {
   highlightActiveLineGutter,
   highlightSpecialChars,
   dropCursor,
+  logException,
   rectangularSelection,
   crosshairCursor,
   type KeyBinding,
@@ -32,7 +34,6 @@ import {
   historyField,
   historyKeymap,
   indentWithTab,
-  isolateHistory,
 } from "@codemirror/commands";
 import {
   autocompletion,
@@ -69,7 +70,6 @@ import {
   registerBackgroundDocumentEditor,
   setEditorDocumentPath,
   setEditorView,
-  type BackgroundDocumentChange,
 } from "./controller";
 import {
   cancelSourceProofreading,
@@ -94,8 +94,20 @@ import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { emacsModeExtension } from "./emacs-mode";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
+import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
+import {
+  capturePathViewState,
+  editedPathViewState,
+  holdsText,
+  type PathViewState,
+  rememberPathState,
+  remotePathViewState,
+  takeSavedPathState,
+} from "./path-view-state";
+import type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
+export type { DocumentSession, RemoteChange, Utf16Edit } from "./document-session";
 
 export type EditorKeymapMode = "default" | "vim" | "emacs";
 
@@ -109,6 +121,7 @@ export interface EditorHost {
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
+  documentSession?(path: string): DocumentSession | null;
   saveActive?(): void;
   isEditLocked?(): boolean;
   useEditLocked?(): boolean;
@@ -197,22 +210,6 @@ function indentExtensions(tabSize: number): Extension {
   return [indentUnit.of(" ".repeat(tabSize)), EditorState.tabSize.of(tabSize)];
 }
 
-interface PathViewState {
-  doc: string;
-  selection: EditorSelection;
-  history: unknown;
-  scroll: StateEffect<unknown>;
-}
-
-function clampedSelection(selection: EditorSelection, length: number): EditorSelection {
-  return EditorSelection.create(
-    selection.ranges.map((range) =>
-      EditorSelection.range(Math.min(range.anchor, length), Math.min(range.head, length)),
-    ),
-    selection.mainIndex,
-  );
-}
-
 function startsWithHighSurrogate(text: string, index: number): boolean {
   const code = text.codePointAt(index) ?? 0;
   return code > 0xffff || (code >= 0xd800 && code <= 0xdbff);
@@ -238,67 +235,226 @@ export function minimalReplacement(before: string, after: string) {
   };
 }
 
-function capturePathViewState(view: EditorView, doc: string): PathViewState {
-  return {
-    doc,
-    selection: view.state.selection,
-    history: view.state.field(historyField, false),
-    scroll: view.scrollSnapshot(),
-  };
+const documentLoad = Annotation.define<boolean>();
+
+const lfText = (text: string): string => text.replace(/\r\n?/gu, "\n");
+
+function lfEdits(edits: Utf16Edit[]): Utf16Edit[] {
+  return edits.map((edit) => (edit.insert.includes("\r") ? { ...edit, insert: lfText(edit.insert) } : edit));
 }
 
-function editedPathViewState(
-  saved: PathViewState,
-  changes: readonly BackgroundDocumentChange[],
-): PathViewState {
-  const state = EditorState.create({
-    doc: saved.doc,
-    selection: saved.selection,
-    extensions: [
-      EditorState.allowMultipleSelections.of(true),
-      saved.history ? [historyField.init(() => saved.history), history()] : history(),
-    ],
+// Local inserts into a session-bound editor are written with LF, so a pasted
+// CRLF or a lone carriage return can't make the editor and the session count
+// the text differently. Remote changes and the session's own text stay as the
+// session sent them.
+//
+// Undo and redo dispatch with `filter: false`, so they skip this filter, and
+// need nothing of their own. History records the change this filter already
+// rewrote, so a redo puts back line feeds. An undo puts back text the document
+// held, and a bound document never holds a carriage return: an unbound
+// editor splits lines on every break and keeps none, local inserts are
+// rewritten here, and the shared text is LF only, since the desktop writes
+// LF into it. If one ever got in, the length check after each change would
+// take the session's text back.
+const lfLocalInserts = EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
+    return transaction;
+  }
+  const fixes: { from: number; to: number; insert: string }[] = [];
+  transaction.changes.iterChanges((_fromA, _toA, fromB, _toB, inserted) => {
+    const text = inserted.toString();
+    for (let index = text.indexOf("\r"); index !== -1; index = text.indexOf("\r", index + 1)) {
+      const at = fromB + index;
+      fixes.push(text[index + 1] === "\n" ? { from: at, to: at + 1, insert: "" } : { from: at, to: at + 1, insert: "\n" });
+    }
   });
-  const transaction = state.update({
-    changes: [...changes],
-    annotations: isolateHistory.of("full"),
-  });
-  return {
-    doc: transaction.state.doc.toString(),
-    selection: transaction.state.selection,
-    history: transaction.state.field(historyField, false),
-    scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
-  };
+  return fixes.length === 0 ? transaction : [transaction, { changes: fixes, sequential: true }];
+});
+
+const boundLineBreaks = [sessionLineBreaks, lfLocalInserts];
+
+function matchSessionLineBreaks(view: EditorView, compartment: Compartment, bound: boolean): void {
+  if ((view.state.facet(EditorState.lineSeparator) === "\n") === bound) return;
+  view.dispatch({ effects: compartment.reconfigure(bound ? boundLineBreaks : []) });
 }
 
-const MAX_SAVED_PATH_STATES = 20;
+// Takes the session's text into the editor without sending it back.
+function realignWithSession(view: EditorView, session: DocumentSession): void {
+  const current = view.state.doc.toString();
+  const next = session.text();
+  if (current === next) return;
+  view.dispatch({
+    filter: false,
+    changes: minimalReplacement(current, next),
+    annotations: [Transaction.addToHistory.of(false), documentLoad.of(true)],
+  });
+}
 
-function rememberPathState(
-  states: Map<string, PathViewState>,
-  path: string,
-  state: PathViewState,
-): void {
-  states.delete(path);
-  states.set(path, state);
-  for (const oldest of states.keys()) {
-    if (states.size <= MAX_SAVED_PATH_STATES) break;
-    states.delete(oldest);
+interface BackgroundSession {
+  session: DocumentSession;
+  stop: () => void;
+}
+
+class EditorSessions {
+  private readonly states: Map<string, PathViewState>;
+  private readonly background = new Map<string, BackgroundSession>();
+  private current: DocumentSession | null = null;
+  private currentVersion = 0;
+  private stopCurrent: (() => void) | null = null;
+
+  constructor(states: Map<string, PathViewState>) {
+    this.states = states;
+  }
+
+  get active(): DocumentSession | null {
+    return this.current;
+  }
+
+  get readOnly(): boolean {
+    return this.current?.readOnly === true;
+  }
+
+  bind(session: DocumentSession, view: EditorView): void {
+    this.currentVersion = session.version();
+    if (this.current === session) return;
+    this.dropBackgroundOf(session);
+    this.current = session;
+    this.stopCurrent = session.subscribe((change) => {
+      this.currentVersion = change.version;
+      let applied = true;
+      try {
+        applyRemoteChange(view, change);
+      } catch (error) {
+        logException(view.state, error, "shared document");
+        applied = false;
+      }
+      this.keepAligned(view, session, !applied);
+    });
+  }
+
+  sendLocal(view: EditorView, transactions: readonly Transaction[]): boolean {
+    const session = this.current;
+    if (!session) return false;
+    // Text an input method is still composing goes to the session but waits
+    // there, so collaborators only see the characters that are committed.
+    if (view.compositionStarted) session.holdLocal?.();
+    for (const transaction of transactions) {
+      if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
+        continue;
+      }
+      try {
+        session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
+      } catch (error) {
+        // The editor already shows this change but the session refused it
+        // (read-only, stale, outside the text or splitting a character). Put
+        // the session's text back, or every later edit lands at the wrong
+        // offset for everyone.
+        logException(view.state, error, "shared document");
+        this.keepAligned(view, session, true);
+        return true;
+      }
+      this.currentVersion = session.version();
+    }
+    this.keepAligned(view, session, false);
+    if (!view.compositionStarted) session.releaseLocal?.();
+    return true;
+  }
+
+  // A composition can end without a last change, for example when it is
+  // cancelled, so the editor checks again once it has ended.
+  compositionEnded(view: EditorView): void {
+    if (!view.compositionStarted) this.current?.releaseLocal?.();
+  }
+
+  // Every local edit is sent with the editor's offsets, so the editor must
+  // hold exactly the session's text. Comparing lengths is cheap enough for
+  // every change and catches a line break the two count differently.
+  private keepAligned(view: EditorView, session: DocumentSession, force: boolean): void {
+    if (this.current !== session) return;
+    if (!force && view.state.doc.length === session.text().length) return;
+    realignWithSession(view, session);
+    this.currentVersion = session.version();
+  }
+
+  release(backgroundPath: string | null): void {
+    const session = this.current;
+    // Nothing composes into a file the editor no longer shows.
+    session?.releaseLocal?.();
+    this.stopCurrent?.();
+    this.stopCurrent = null;
+    this.current = null;
+    if (session && backgroundPath) this.keepInBackground(backgroundPath, session);
+  }
+
+  takeBackground(path: string): void {
+    this.background.get(path)?.stop();
+    this.background.delete(path);
+  }
+
+  hasBackground(path: string): boolean {
+    return this.background.has(path);
+  }
+
+  prune(): void {
+    for (const path of Array.from(this.background.keys())) {
+      if (!this.states.has(path)) this.takeBackground(path);
+    }
+  }
+
+  releaseAll(): void {
+    this.release(null);
+    for (const path of Array.from(this.background.keys())) this.takeBackground(path);
+  }
+
+  private dropBackgroundOf(session: DocumentSession): void {
+    for (const [path, entry] of Array.from(this.background)) {
+      if (entry.session === session) this.takeBackground(path);
+    }
+  }
+
+  private keepInBackground(path: string, session: DocumentSession): void {
+    this.dropBackgroundOf(session);
+    let key = path;
+    const followMove = () => {
+      if (session.path !== key) key = this.follow(key, session.path, entry);
+    };
+    const stopChanges = session.subscribe((change) => {
+      followMove();
+      const saved = this.states.get(key);
+      if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
+    });
+    // Follow a rename at once, so the file opens under its new name with its
+    // history instead of waiting for the next remote edit.
+    const stopMoves = session.subscribeMove?.(followMove) ?? (() => {});
+    const entry: BackgroundSession = {
+      session,
+      stop: () => {
+        stopChanges();
+        stopMoves();
+      },
+    };
+    this.background.set(path, entry);
+  }
+
+  // A rename moves the session to a new path. Carry the saved view along, so
+  // the old path doesn't keep a copy that every remote edit updates.
+  private follow(from: string, to: string, entry: BackgroundSession): string {
+    const saved = this.states.get(from);
+    this.states.delete(from);
+    if (saved) this.states.set(to, saved);
+    if (this.background.get(from) === entry) this.background.delete(from);
+    this.background.get(to)?.stop();
+    this.background.set(to, entry);
+    return to;
   }
 }
 
-function takeSavedPathState(
-  states: Map<string, PathViewState>,
-  path: string,
-  pathChanged: boolean,
-  content: string,
-): { restorable: PathViewState | undefined; selection: EditorSelection | undefined } {
-  const saved = pathChanged ? states.get(path) : undefined;
-  if (!saved) return { restorable: undefined, selection: undefined };
-  states.delete(path);
-  return {
-    restorable: saved.doc === content ? saved : undefined,
-    selection: clampedSelection(saved.selection, content.length),
-  };
+function applyRemoteChange(view: EditorView, change: RemoteChange): void {
+  view.dispatch({
+    changes: change.edits,
+    annotations: [remoteChange.of(true), Transaction.addToHistory.of(false)],
+    filter: false,
+  });
 }
 
 function dispatchDocumentSync(
@@ -319,6 +475,7 @@ function dispatchDocumentSync(
       changes: { from: 0, to: view.state.doc.length, insert: next },
       selection,
       effects,
+      annotations: documentLoad.of(true),
     });
     return;
   }
@@ -326,8 +483,22 @@ function dispatchDocumentSync(
     filter: false,
     changes: minimalReplacement(current, next),
     effects,
-    annotations: Transaction.addToHistory.of(false),
+    annotations: [Transaction.addToHistory.of(false), documentLoad.of(true)],
   });
+}
+
+const NON_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
+const FOCUS_HOLDERS = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"], dialog';
+
+// The person is working somewhere else: typing in another field, or in a
+// dialog or menu, which a collaborator's rename or delete must not pull the
+// focus out of when it switches the open file.
+function focusHeldElsewhere(view: EditorView): boolean {
+  const active = view.dom.ownerDocument.activeElement;
+  if (!(active instanceof HTMLElement) || view.dom.contains(active)) return false;
+  if (active.closest(FOCUS_HOLDERS)) return true;
+  if (active instanceof HTMLTextAreaElement || active.isContentEditable) return true;
+  return active instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(active.type);
 }
 
 function restorePathHistory(
@@ -335,12 +506,9 @@ function restorePathHistory(
   compartment: Compartment,
   restorable: PathViewState | undefined,
 ): void {
+  const saved = restorable?.state.field(historyField, false);
   view.dispatch({
-    effects: compartment.reconfigure(
-      restorable?.history
-        ? [historyField.init(() => restorable.history), history()]
-        : history(),
-    ),
+    effects: compartment.reconfigure(saved ? [historyField.init(() => saved), history()] : history()),
   });
   if (restorable) view.dispatch({ effects: restorable.scroll });
 }
@@ -699,6 +867,7 @@ export function CodeMirrorEditor({
   const pathStatesRef = useRef(new Map<string, PathViewState>());
   const suppressSyncRef = useRef(false);
   const synchronizeRef = useRef<() => void>(() => {});
+  const sessionsRef = useRef(new EditorSessions(pathStatesRef.current));
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
@@ -707,6 +876,7 @@ export function CodeMirrorEditor({
   const lineWrapCompartmentRef = useRef<Compartment | null>(null);
   const editorKeymapCompartmentRef = useRef<Compartment | null>(null);
   const visualCompartmentRef = useRef<Compartment | null>(null);
+  const lineBreakCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
   const visualActive = host.useVisualMode();
   const visualActiveRef = useRef(visualActive);
@@ -803,7 +973,8 @@ export function CodeMirrorEditor({
   useLayoutEffect(() => {
     if (!hostRef.current) return;
     const initialPath = host.getActivePath();
-    const initialContent = initialPath ? host.getContent(initialPath) : "";
+    const initialSession = initialPath ? (host.documentSession?.(initialPath) ?? null) : null;
+    const initialContent = initialSession?.text() ?? (initialPath ? host.getContent(initialPath) : "");
     const vimCompartment = new Compartment();
     vimCompartmentRef.current = vimCompartment;
     const spellCompartment = new Compartment();
@@ -828,6 +999,8 @@ export function CodeMirrorEditor({
     editorKeymapCompartmentRef.current = editorKeymapCompartment;
     const visualCompartment = new Compartment();
     visualCompartmentRef.current = visualCompartment;
+    const lineBreakCompartment = new Compartment();
+    lineBreakCompartmentRef.current = lineBreakCompartment;
     prevPathRef.current = initialPath;
     const initialVisual = visualRendersPath(
       initialPath,
@@ -844,6 +1017,8 @@ export function CodeMirrorEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
+        lineBreakCompartment.of(initialSession ? boundLineBreaks : []),
+        EditorView.clipboardInputFilter.of(lfText),
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
         centerWithinEditor,
@@ -892,9 +1067,9 @@ export function CodeMirrorEditor({
             mathPreview,
           ),
         ),
-        editability.of(editabilityExtensions(host.isEditLocked?.() ?? false)),
+        editability.of(editabilityExtensions((host.isEditLocked?.() ?? false) || initialSession?.readOnly === true)),
         EditorState.transactionFilter.of((transaction) =>
-          transaction.docChanged && host.isEditLocked?.() ? [] : transaction),
+          transaction.docChanged && (host.isEditLocked?.() || sessionsRef.current.readOnly) ? [] : transaction),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([...completionKeymap]),
@@ -913,8 +1088,14 @@ export function CodeMirrorEditor({
             ? spellLintExtensions({ spell: spellcheck, harper })
             : []
         ),
+        EditorView.domEventHandlers({
+          compositionend: (_event, view) => {
+            setTimeout(() => sessionsRef.current.compositionEnded(view), 0);
+          },
+        }),
         EditorView.updateListener.of((vu) => {
-          if (vu.docChanged && !suppressSyncRef.current) {
+          if (!vu.docChanged) sessionsRef.current.compositionEnded(vu.view);
+          if (vu.docChanged && !sessionsRef.current.sendLocal(vu.view, vu.transactions) && !suppressSyncRef.current) {
             const path = host.getActivePath();
             if (path) host.setContent(path, vu.state.doc.toString());
           }
@@ -929,6 +1110,7 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    if (initialSession) sessionsRef.current.bind(initialSession, view);
     applyVisualModeWhenLoaded(
       initialVisual,
       () => viewRef.current === view,
@@ -948,7 +1130,9 @@ export function CodeMirrorEditor({
     if (host.saveActive) registerHostSave(view, host.saveActive);
     const unregisterBackgroundEditor = registerBackgroundDocumentEditor((path, base, changes) => {
       const saved = pathStatesRef.current.get(path);
-      if (saved?.doc !== base || prevPathRef.current === path) return false;
+      if (!saved || !holdsText(saved, base) || prevPathRef.current === path || sessionsRef.current.hasBackground(path)) {
+        return false;
+      }
       pathStatesRef.current.set(path, editedPathViewState(saved, changes));
       return true;
     });
@@ -957,13 +1141,16 @@ export function CodeMirrorEditor({
     setEditorDocumentPath(initialPath);
     const unregisterMutationOwner = host.registerMutationOwner?.({
       setLocked: (locked) => view.dispatch({
-        effects: editability.reconfigure(editabilityExtensions(locked || (host.isEditLocked?.() ?? false))),
+        effects: editability.reconfigure(
+          editabilityExtensions(locked || (host.isEditLocked?.() ?? false) || sessionsRef.current.readOnly),
+        ),
       }),
       reconcile: () => synchronizeRef.current(),
     });
     view.focus();
 
     return () => {
+      sessionsRef.current.releaseAll();
       unregisterBackgroundEditor();
       unregisterMutationOwner?.();
       cancelSourceProofreading(prevPathRef.current ?? undefined);
@@ -1007,6 +1194,7 @@ export function CodeMirrorEditor({
       // `main.tex`).
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       pathStatesRef.current.clear();
+      sessionsRef.current.releaseAll();
       suppressSyncRef.current = true;
       clearEditorDocument(
         view,
@@ -1027,18 +1215,25 @@ export function CodeMirrorEditor({
       });
       return;
     }
-    const activeContent = host.getContent(activePath);
+    const session = host.documentSession?.(activePath) ?? null;
+    const activeContent = session ? session.text() : host.getContent(activePath);
     const pathChanged = prevPathRef.current !== activePath;
     const leavingPath = pathChanged ? prevPathRef.current : null;
     if (leavingPath) cancelSourceProofreading(leavingPath);
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
+    const sessions = sessionsRef.current;
     if (leavingPath) {
       rememberPathState(
         pathStatesRef.current,
         leavingPath,
-        capturePathViewState(view, current),
+        capturePathViewState(view, sessions.active !== null),
       );
+    }
+    if (pathChanged || sessions.active !== session) {
+      sessions.release(leavingPath);
+      sessions.takeBackground(activePath);
+      sessions.prune();
     }
     const { restorable, selection } = takeSavedPathState(
       pathStatesRef.current,
@@ -1108,20 +1303,27 @@ export function CodeMirrorEditor({
     if (editabilityCompartmentRef.current) {
       effects.push(
         editabilityCompartmentRef.current.reconfigure(
-          editabilityExtensions(host.isEditLocked?.() ?? false),
+          editabilityExtensions((host.isEditLocked?.() ?? false) || session?.readOnly === true),
         ),
       );
     }
+    matchSessionLineBreaks(view, lineBreakCompartmentRef.current!, session !== null);
     dispatchDocumentSync(view, current, activeContent, pathChanged, selection, effects);
     if (pathChanged) {
       restorePathHistory(view, historyCompartmentRef.current!, restorable);
     }
+    if (session) sessions.bind(session, view);
     prevPathRef.current = activePath;
     setEditorDocumentPath(activePath);
     queueMicrotask(() => {
       suppressSyncRef.current = false;
     });
-    view.focus();
+    // Opening a file moves the focus here, but a resync of the same file must
+    // leave it alone: a disk reload or a shared session can bump the version
+    // while the person types somewhere else. A switch never takes the focus
+    // out of another text field, a dialog or a menu either, since a
+    // collaborator's rename or delete can switch the file.
+    if (pathChanged && !focusHeldElsewhere(view)) view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
   useEffect(() => synchronizeRef.current(), [activePath, docVersion]);
@@ -1130,7 +1332,7 @@ export function CodeMirrorEditor({
     const view = viewRef.current;
     const compartment = editabilityCompartmentRef.current;
     if (!view || !compartment) return;
-    const locked = hostEditLocked || (host.isEditLocked?.() ?? false);
+    const locked = hostEditLocked || (host.isEditLocked?.() ?? false) || sessionsRef.current.readOnly;
     if (view.state.readOnly === locked) return;
     view.dispatch({ effects: compartment.reconfigure(editabilityExtensions(locked)) });
   }, [host, hostEditLocked]);

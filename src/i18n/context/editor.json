@@ -106,7 +106,8 @@
     "accept": "Keeps the AI's proposed edit",
     "reject": "Discards the AI's proposed edit",
     "retry": "Asks the AI for the edit again",
-    "dismiss": "Closes the error without retrying"
+    "dismiss": "Closes the error, or the note about a withdrawn suggestion, without retrying",
+    "withdrawn": "Replaces the inline AI suggestion after a collaborator edits the same text. The suggestion can no longer be accepted"
   },
   "citations": {
     "trigger": "Opens a picker that inserts a citation from the project bibliography"

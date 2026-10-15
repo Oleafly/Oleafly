@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "The Custom approval mode reads this file. It lives at ~/.oleafly/approvals.toml and applies to every project on this device.",
+        "description": "The file lives at ~/.oleafly/approvals.toml and covers every project on this device. Deny rules block a tool in every approval mode. Allow rules only take effect in Custom mode.",
         "discard": "Discard changes",
         "emptyFile": "The file is empty so far.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "The first table, <modesTable>[\"$approval_modes\"]</modesTable>, sets the approval mode per project: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> or <custom>\"custom\"</custom>. A project that is not listed uses Approve for me.",
           "openProject": "The open project, {{name}}, has the id <projectId>{{id}}</projectId>.",
           "projectIds": "Project ids are the folder names under ~/.oleafly/projects.",
-          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules are honoured in every mode. Allow rules take effect in Custom mode, and for run_command they also skip the prompt in the other modes.",
+          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules apply in every mode, Full access included. Allow rules only take effect in Custom mode.",
           "toolNames": "Tool names you can use: <names>{{names}}</names> and any MCP tool by its full name from the Tools list."
         },
         "helpToggle": "How the file works",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Always allowed",
         "denied": "Always denied",
-        "description": "Saved rules for {{name}}. They apply when the approval mode is Custom. Remove a rule to use the standard risk policy for that tool.",
+        "description": "Saved rules for {{name}}. Denied tools stay blocked in every approval mode. Allowed tools skip the prompt only in Custom mode. Remove a rule to use the standard risk policy for that tool.",
         "empty": "No saved rules yet. Use \"Always in this project\" on an approval prompt to add one.",
         "removeRule": "Remove rule for {{tool}}",
         "thisProject": "this project",

@@ -449,7 +449,8 @@
       "title": "Varianta (tento projekt)",
       "help": "Varianta předává do sys.inputs vlastní hodnoty, například pro koncept nebo finální verzi do tisku. Vybraná varianta zůstává v tomto počítači. Varianty přidáte nebo upravíte v Nastavení dokumentu.",
       "none": "Bez varianty"
-    }
+    },
+    "sharedViewer": "Čtenáři ve sdíleném projektu nemohou tato nastavení měnit."
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
@@ -874,6 +875,10 @@
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
+        "label": "Živá spolupráce"
+      },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
       "webBrowser": {
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
@@ -957,6 +962,7 @@
     "nav": {
       "ai": "Asistent AI",
       "appearance": "Vzhled",
+      "collaboration": "Spolupráce",
       "data": "Úložiště dat",
       "dictionary": "Slovník",
       "downloads": "Stahování",
@@ -972,6 +978,7 @@
       "keywords": {
         "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
         "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
+        "collaboration": "servery, přihlášení, zařízení, členové, správci, sdílení, týmy, laboratoře, živé úpravy, reálný čas, protokol zabezpečení",
         "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
         "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",
         "downloads": "balíčky, písma, slovníky, soubory offline",
@@ -1470,6 +1477,15 @@
     "hideLog": "Skrýt protokol kompilace",
     "showLog": "Zobrazit protokol kompilace"
   },
+  "collabSync": {
+    "paused_one": "{{count}} soubor se změnil mimo Oleafly. Odeslat tuto změnu všem, nebo ji ponechat jen místně?",
+    "paused_few": "{{count}} soubory se změnily mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_many": "{{count}} souboru se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_other": "{{count}} souborů se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "send": "Odeslat",
+    "keepLocal": "Ponechat místně",
+    "unavailable": "Složka projektu není dostupná, takže synchronizace je pozastavená. Znovu se spustí, až se složka vrátí."
+  },
   "overleafSync": {
     "button": "Synchronizace s Overleafem",
     "title": "Synchronizovat s Overleafem",
@@ -1523,5 +1539,9 @@
       "allTheirs": "Použít všechny z Overleafu",
       "apply": "Použít a synchronizovat"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly toto okno znovu načetlo, protože 30 sekund nereagovalo. Změny provedené těsně předtím se možná neuložily.",
+    "reloadedAgain": "Oleafly toto okno znovu načetlo, protože opět přestalo reagovat. Váš projekt tentokrát neotevřelo pro případ, že problém způsobuje něco v něm."
   }
 }

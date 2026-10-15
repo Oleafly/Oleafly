@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Täysi käyttöoikeus",
-        "description": "Suorita työkalutoiminnot kysymättä hyväksyntää."
+        "description": "Suorita työkalutoiminnot kysymättä, paitsi deny-säännöllä estetyt työkalut."
       },
       "custom": {
         "label": "Mukautettu (approvals.toml)",
