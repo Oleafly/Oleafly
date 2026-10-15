@@ -17,13 +17,13 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::import_tests::project;
+#[cfg(unix)]
+use super::WriterSignal;
 use super::{
-    guard, pump, start, write, Active, ChangeSkippedPayload, LiveHost, MembersPayload, MergeMarks,
-    MergedAuthor, MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload,
+    guard, lock, pump, start, write, Active, ChangeSkippedPayload, LiveHost, MembersPayload,
+    MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload,
     PresencePayload, RolePayload, StatusPayload, WrittenTexts, ACTIVE,
 };
-#[cfg(unix)]
-use super::{lock, WriterSignal};
 use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
 
