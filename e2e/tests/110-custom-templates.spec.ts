@@ -12,6 +12,7 @@ import {
   type Page,
 } from "../helpers";
 import { OVERLEAF_FIXTURE_TEMPLATE, startOverleafFixtureServer } from "../overleaf-fixture-server";
+import { scriptValue } from "../script-value";
 
 // Custom templates end to end: a ZIP becomes a template in the gallery, the
 // projects made from it are independent copies, a project is saved back as a
@@ -38,7 +39,7 @@ function writeZip(name: string, entries: Record<string, string>): string {
 async function customTemplate(page: Page, name: string) {
   return page.evaluate<{ id: string; category: string; license: { author: string } | null } | null>(
     `import("/src/lib/tauri.ts").then((m) => m.listTemplates()).then((all) => {
-      const found = all.find((t) => t.name === ${JSON.stringify(name)} && t.source === "custom");
+      const found = all.find((t) => t.name === ${scriptValue(name)} && t.source === "custom");
       return found ? { id: found.id, category: found.category, license: found.license } : null;
     })`,
   );
@@ -155,7 +156,7 @@ test("a library project is saved as a template from its menu", async ({ tauriPag
 test("a gallery link is imported through the signed-in account", async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await tauriPage.evaluate(
-    `import("/src/store/overleaf-import.ts").then((m) => m.useOverleafImportStore.getState().setServer(${JSON.stringify(server.base)}))`,
+    `import("/src/store/overleaf-import.ts").then((m) => m.useOverleafImportStore.getState().setServer(${scriptValue(server.base)}))`,
   );
   await openGallery(tauriPage);
   await tauriPage.click('[data-testid="import-template"]');
