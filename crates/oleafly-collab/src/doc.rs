@@ -73,6 +73,12 @@ pub(crate) fn blob_meta(bytes: &[u8], check_checksum: bool) -> Meta {
 // changes turned away for that reason are not blamed for it.
 pub(crate) const MOST_LEFT_DOCUMENTS: usize = 8;
 
+// A scratch copy left in memory per change that made Loro panic in it. At
+// this many for one open project it takes no more large changes, and the
+// live session ends, which bounds what a member's changes can cost every
+// other member.
+pub(crate) const MOST_SCRATCH_FAILURES: usize = 3;
+
 #[cfg(not(test))]
 static LEFT_DOCUMENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
@@ -1225,7 +1231,7 @@ impl ProjectDoc {
         {
             return Ok(None);
         }
-        if engine_budget_spent() {
+        if engine_budget_spent() || self.scratch_failures >= MOST_SCRATCH_FAILURES {
             return Err(engine_spent());
         }
         #[cfg(test)]

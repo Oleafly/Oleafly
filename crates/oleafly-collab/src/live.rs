@@ -154,10 +154,7 @@ struct Received {
     unreadable: bool,
 }
 
-// A scratch copy left in memory per change that made Loro panic in it; at
-// this many in one session the session ends, which bounds what a member's
-// changes can cost every other member.
-const SCRATCH_FAILURES_PER_SESSION: usize = 3;
+const SCRATCH_FAILURES_PER_SESSION: usize = crate::doc::MOST_SCRATCH_FAILURES;
 
 struct Piece {
     peer: u64,
@@ -1294,6 +1291,11 @@ impl LiveProject {
             if taken || unreadable.contains(&index) {
                 continue;
             }
+            if crate::doc::engine_budget_spent()
+                || self.doc.scratch_failures() >= SCRATCH_FAILURES_PER_SESSION
+            {
+                break;
+            }
             let alone = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 self.doc.import_keeping(&[*payload])
             }));
@@ -1400,17 +1402,33 @@ impl LiveProject {
     }
 
     // A snapshot from the server goes into the document like any change,
-    // so a panic there leaves the project damaged the same way.
+    // so a panic there leaves the project damaged the same way. So does one
+    // that panicked in its scratch copy, or found no room for another: the
+    // next reload would fetch the same snapshot and fail again, so the
+    // session ends instead of reloading it over and over.
     fn import_contained(&mut self, bytes: &[u8]) -> Result<crate::doc::Imported, CollabError> {
         if self.damaged {
             return Err(crate::doc::engine_failed());
         }
+        if crate::doc::engine_budget_spent() {
+            self.went_bad(false);
+            return Err(crate::doc::engine_spent());
+        }
         let taken =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.doc.import(bytes)));
-        taken.unwrap_or_else(|_| {
-            self.went_bad(true);
-            Err(crate::doc::engine_failed())
-        })
+        match taken {
+            Ok(Err(error))
+                if error == crate::doc::engine_failed() || error == crate::doc::engine_spent() =>
+            {
+                self.went_bad(false);
+                Err(error)
+            }
+            Ok(taken) => taken,
+            Err(_) => {
+                self.went_bad(true);
+                Err(crate::doc::engine_failed())
+            }
+        }
     }
 
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
@@ -2994,6 +3012,58 @@ mod tests {
             assert!(bob.skipped.contains(&seq), "round {round}");
         }
         assert!(bob.doc().text(&main).unwrap().contains(" carol"));
+    }
+
+    #[test]
+    fn a_backlog_of_large_changes_that_panic_in_scratch_copies_costs_at_most_three_copies() {
+        use crate::doc::failpoint::{forks, panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let mut backlog = Vec::new();
+        for seq in 1..=5u64 {
+            let large = sent_change(&mut alice, &main, &noise(100_000, 70 + seq), seq);
+            panic_on(&large, At::Scratch);
+            backlog.push(arrival(seq, &large));
+        }
+        let (before, left) = (forks(), crate::doc::left_documents());
+        assert!(bob.import_arrivals(backlog).is_err());
+        assert_eq!(forks() - before, SCRATCH_FAILURES_PER_SESSION);
+        assert_eq!(
+            crate::doc::left_documents() - left,
+            SCRATCH_FAILURES_PER_SESSION
+        );
+        assert!(bob.damaged());
+        assert_eq!(bob.skipped, BTreeSet::from([1, 2, 3]));
+    }
+
+    #[test]
+    fn a_large_snapshot_that_panics_in_its_scratch_copy_ends_the_session_instead_of_reloading() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        type_at_end(&mut alice, &main, &noise(100_000, 81));
+        let snapshot = alice.doc().snapshot().unwrap();
+        panic_on(&snapshot, At::Scratch);
+        assert!(bob.rebase(1, &snapshot).is_err());
+        assert!(bob.damaged());
+        assert_eq!(bob.doc().scratch_failures(), 1);
+    }
+
+    #[test]
+    fn once_the_engine_budget_is_spent_a_snapshot_is_not_taken_in_at_all() {
+        let (mut bob, alice, _main) = pair();
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        let left = crate::doc::left_documents();
+        assert_eq!(
+            bob.import_snapshot(1, &alice.doc().snapshot().unwrap()),
+            Err(crate::doc::engine_spent())
+        );
+        assert!(bob.damaged());
+        assert_eq!(crate::doc::left_documents(), left);
     }
 
     #[test]
