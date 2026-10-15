@@ -39,7 +39,7 @@
       "test": "Testa anslutningen",
       "removeConfirm": {
         "title": "Ta bort {{name}}?",
-        "description": "Oleafly loggar ut från {{name}} och glömmer den. Delade projekt från {{name}} slutar synkas och stannar på den här datorn som vanliga projekt.",
+        "description": "Oleafly loggar ut från {{name}} och glömmer den. Delade projekt från {{name}} slutar synkas och stannar på den här datorn som vanliga projekt, vart och ett omdöpt till en lokal kopia.",
         "confirm": "Ta bort servern"
       },
       "detached": "De här delade projekten från {{server}} synkas inte längre. De stannar på den här datorn som vanliga projekt.",

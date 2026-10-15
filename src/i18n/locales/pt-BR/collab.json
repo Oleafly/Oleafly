@@ -39,7 +39,7 @@
       "test": "Testar conexão",
       "removeConfirm": {
         "title": "Remover {{name}}?",
-        "description": "O Oleafly sai de {{name}} e o esquece. Os projetos compartilhados de {{name}} param de sincronizar e ficam neste computador como projetos comuns.",
+        "description": "O Oleafly sai de {{name}} e o esquece. Os projetos compartilhados de {{name}} param de sincronizar e ficam neste computador como projetos comuns, cada um renomeado como cópia local.",
         "confirm": "Remover servidor"
       },
       "detached": "Estes projetos compartilhados de {{server}} pararam de sincronizar. Eles ficam neste computador como projetos comuns.",

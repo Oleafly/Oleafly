@@ -39,7 +39,7 @@
       "test": "Testează conexiunea",
       "removeConfirm": {
         "title": "Elimini {{name}}?",
-        "description": "Oleafly se deconectează de la {{name}} și îl uită. Proiectele partajate de pe {{name}} nu se mai sincronizează și rămân pe acest computer ca proiecte obișnuite.",
+        "description": "Oleafly se deconectează de la {{name}} și îl uită. Proiectele partajate de pe {{name}} nu se mai sincronizează și rămân pe acest computer ca proiecte obișnuite, fiecare redenumit ca copie locală.",
         "confirm": "Elimină serverul"
       },
       "detached": "Aceste proiecte partajate de pe {{server}} nu se mai sincronizează. Rămân pe acest computer ca proiecte obișnuite.",

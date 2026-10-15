@@ -39,7 +39,7 @@
       "test": "Otestovat připojení",
       "removeConfirm": {
         "title": "Odebrat {{name}}?",
-        "description": "Oleafly se odhlásí ze serveru {{name}} a zapomene ho. Sdílené projekty ze serveru {{name}} se přestanou synchronizovat a zůstanou v tomto počítači jako běžné projekty.",
+        "description": "Oleafly se odhlásí ze serveru {{name}} a zapomene ho. Sdílené projekty ze serveru {{name}} se přestanou synchronizovat a zůstanou v tomto počítači jako běžné projekty, každý přejmenovaný na místní kopii.",
         "confirm": "Odebrat server"
       },
       "detached": "Tyto sdílené projekty ze serveru {{server}} se přestaly synchronizovat. Zůstávají v tomto počítači jako běžné projekty.",

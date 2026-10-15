@@ -39,7 +39,7 @@
       "test": "Probar la conexión",
       "removeConfirm": {
         "title": "¿Quitar {{name}}?",
-        "description": "Oleafly cierra la sesión en {{name}} y lo olvida. Los proyectos compartidos de {{name}} dejan de sincronizarse y se quedan en este equipo como proyectos normales.",
+        "description": "Oleafly cierra la sesión en {{name}} y lo olvida. Los proyectos compartidos de {{name}} dejan de sincronizarse y se quedan en este equipo como proyectos normales, cada uno con el nombre de copia local.",
         "confirm": "Quitar el servidor"
       },
       "detached": "Estos proyectos compartidos de {{server}} dejaron de sincronizarse. Se quedan en este equipo como proyectos normales.",

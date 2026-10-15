@@ -39,7 +39,7 @@
       "test": "Testuj połączenie",
       "removeConfirm": {
         "title": "Usunąć serwer {{name}}?",
-        "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty.",
+        "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty, każdy z nazwą kopii lokalnej.",
         "confirm": "Usuń serwer"
       },
       "detached": "Te udostępnione projekty z serwera {{server}} przestały się synchronizować. Zostają na tym komputerze jako zwykłe projekty.",

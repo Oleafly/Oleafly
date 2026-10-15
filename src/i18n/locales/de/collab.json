@@ -39,7 +39,7 @@
       "test": "Verbindung testen",
       "removeConfirm": {
         "title": "{{name}} entfernen?",
-        "description": "Oleafly meldet sich von {{name}} ab und vergisst den Server. Geteilte Projekte von {{name}} werden nicht mehr abgeglichen und bleiben als normale Projekte auf diesem Computer.",
+        "description": "Oleafly meldet sich von {{name}} ab und vergisst den Server. Geteilte Projekte von {{name}} werden nicht mehr abgeglichen und bleiben als normale Projekte auf diesem Computer, jeweils als lokale Kopie umbenannt.",
         "confirm": "Server entfernen"
       },
       "detached": "Diese geteilten Projekte von {{server}} werden nicht mehr abgeglichen. Sie bleiben als normale Projekte auf diesem Computer.",

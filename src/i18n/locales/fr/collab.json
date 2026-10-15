@@ -39,7 +39,7 @@
       "test": "Tester la connexion",
       "removeConfirm": {
         "title": "Retirer {{name}} ?",
-        "description": "Oleafly se déconnecte de {{name}} et l'oublie. Les projets partagés de {{name}} cessent de se synchroniser et restent sur cet ordinateur comme des projets ordinaires.",
+        "description": "Oleafly se déconnecte de {{name}} et l'oublie. Les projets partagés de {{name}} cessent de se synchroniser et restent sur cet ordinateur comme des projets ordinaires, chacun renommé en copie locale.",
         "confirm": "Retirer le serveur"
       },
       "detached": "Ces projets partagés de {{server}} ne se synchronisent plus. Ils restent sur cet ordinateur comme des projets ordinaires.",

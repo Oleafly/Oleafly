@@ -39,7 +39,7 @@
       "test": "Test connection",
       "removeConfirm": {
         "title": "Remove {{name}}?",
-        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects.",
+        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects, each renamed as a local copy.",
         "confirm": "Remove server"
       },
       "detached": "These shared projects from {{server}} stopped syncing. They stay on this computer as ordinary projects.",

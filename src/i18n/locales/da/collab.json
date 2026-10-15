@@ -39,7 +39,7 @@
       "test": "Test forbindelsen",
       "removeConfirm": {
         "title": "Vil du fjerne {{name}}?",
-        "description": "Oleafly logger ud af {{name}} og glemmer den. Delte projekter fra {{name}} holder op med at synkronisere og bliver på denne computer som almindelige projekter.",
+        "description": "Oleafly logger ud af {{name}} og glemmer den. Delte projekter fra {{name}} holder op med at synkronisere og bliver på denne computer som almindelige projekter, hver omdøbt til en lokal kopi.",
         "confirm": "Fjern serveren"
       },
       "detached": "Disse delte projekter fra {{server}} er holdt op med at synkronisere. De bliver på denne computer som almindelige projekter.",

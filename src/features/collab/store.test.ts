@@ -29,7 +29,7 @@ import { useCollabStore, watchServers } from "./store";
 beforeEach(() => {
   vi.clearAllMocks();
   copies.followLocalCopies.mockResolvedValue(undefined);
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {}, detached: null });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, unsent: {}, detached: [] });
 });
 
 describe("watching for server changes", () => {
@@ -167,10 +167,26 @@ describe("collab store", () => {
     const thesis = { project_id: "thesis", name: "Thesis" };
     mocks.collabServerRemove.mockResolvedValueOnce({ ...DONE, detached: [thesis] });
     await useCollabStore.getState().remove(SERVER_ID);
-    expect(useCollabStore.getState().detached).toEqual({ server: server().name, projects: [thesis] });
+    expect(useCollabStore.getState().detached).toEqual([{ server: server().name, projects: [thesis] }]);
     expect(copies.followLocalCopies).toHaveBeenCalledWith(["thesis"]);
     useCollabStore.getState().dismissDetached();
-    expect(useCollabStore.getState().detached).toBeNull();
+    expect(useCollabStore.getState().detached).toEqual([]);
+  });
+
+  it("adds what a second Remove left to the notice instead of replacing it", async () => {
+    const jones = server({ server_id: "0192a0b0-0000-7000-8000-0000000000b2", name: "Jones Lab" });
+    useCollabStore.setState({ servers: [server(), jones], status: "ready" });
+    const thesis = { project_id: "thesis", name: "Thesis" };
+    const grant = { project_id: "grant", name: "Grant proposal" };
+    mocks.collabServerRemove
+      .mockResolvedValueOnce({ ...DONE, detached: [thesis] })
+      .mockResolvedValueOnce({ ...DONE, detached: [grant] });
+    await useCollabStore.getState().remove(SERVER_ID);
+    await useCollabStore.getState().remove(jones.server_id);
+    expect(useCollabStore.getState().detached).toEqual([
+      { server: "Smith Lab", projects: [thesis] },
+      { server: "Jones Lab", projects: [grant] },
+    ]);
   });
 
   it("names nothing after a sign-out, or after a remove that left no projects", async () => {
@@ -179,7 +195,7 @@ describe("collab store", () => {
     await useCollabStore.getState().signOut(SERVER_ID);
     mocks.collabServerRemove.mockResolvedValueOnce({ signed_out: true, unsent: [] });
     await useCollabStore.getState().remove(SERVER_ID);
-    expect(useCollabStore.getState().detached).toBeNull();
+    expect(useCollabStore.getState().detached).toEqual([]);
     expect(copies.followLocalCopies).not.toHaveBeenCalled();
   });
 
