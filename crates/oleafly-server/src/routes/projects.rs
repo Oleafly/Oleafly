@@ -723,13 +723,13 @@ async fn get_blob(
         .await?;
     let room = state.transfers.hold(account, size).await?;
     let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
-    let bytes = room.keep_with(bytes);
+    let body = room.keep_with(bytes);
     Ok((
         [(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/octet-stream"),
         )],
-        bytes,
+        body,
     )
         .into_response())
 }

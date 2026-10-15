@@ -13,14 +13,14 @@ use crate::client::test_util::{device_key, http_response, sample_manifest};
 use crate::MemorySecrets;
 
 // A long-poll server whose project reached its size limit: it refuses
-// every change with project_too_large, and drops the poll once after the
-// first refusal so the session reconnects.
+// every change with project_too_large and answers pings, and drops the
+// poll when the test asks so the session reconnects.
 struct Full {
     project: SharedProjectId,
     manifest: String,
     opens: AtomicUsize,
     batches: Mutex<Vec<BatchId>>,
-    dropped: AtomicBool,
+    drop_poll: AtomicBool,
 }
 
 async fn request_of(stream: &mut TcpStream) -> Option<(String, String)> {
@@ -88,8 +88,7 @@ async fn serve_full(mut stream: TcpStream, full: Arc<Full>) {
         };
         answer(&serde_json::to_string(&batch).unwrap())
     } else if target.contains("/poll?cursor=") {
-        let refused = !full.batches.lock().unwrap().is_empty();
-        if refused && !full.dropped.swap(true, Ordering::SeqCst) {
+        if full.drop_poll.swap(false, Ordering::SeqCst) {
             http_response("404 Not Found", &[], "")
         } else {
             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -104,6 +103,11 @@ async fn serve_full(mut stream: TcpStream, full: Arc<Full>) {
         let posted: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
         let mut replies = Vec::new();
         for frame in posted["frames"].as_array().cloned().unwrap_or_default() {
+            if frame["type"] == "ping" {
+                if let Some(id) = frame["id"].as_u64() {
+                    replies.push(ServerFrame::Pong { id });
+                }
+            }
             if frame["type"] == "update" {
                 if let Ok(batch) = serde_json::from_value(frame["envelope"]["batch_id"].clone()) {
                     full.batches.lock().unwrap().push(batch);
@@ -123,7 +127,7 @@ async fn serve_full(mut stream: TcpStream, full: Arc<Full>) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_full_project_keeps_the_change_says_so_once_and_sends_it_again_after_a_reconnect() {
+async fn a_full_project_keeps_the_change_says_so_once_per_connection_and_stays_connected() {
     let server_id = ServerId::new_v7();
     let project = SharedProjectId::new_v7();
     let mut manifest = sample_manifest(ProtocolRange { min: 1, max: 1 });
@@ -133,7 +137,7 @@ async fn a_full_project_keeps_the_change_says_so_once_and_sends_it_again_after_a
         manifest: serde_json::to_string(&manifest).unwrap(),
         opens: AtomicUsize::new(0),
         batches: Mutex::new(Vec::new()),
-        dropped: AtomicBool::new(false),
+        drop_poll: AtomicBool::new(false),
     });
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -180,31 +184,48 @@ async fn a_full_project_keeps_the_change_says_so_once_and_sends_it_again_after_a
         .unwrap();
     let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
     lock(&side.live).local_text(&main, "abc kept").unwrap();
-    start_with(&mut side, link, quick());
+    let options = TransportOptions {
+        ping_every: Duration::from_millis(200),
+        quiet_for: Duration::from_millis(600),
+        ..quick()
+    };
+    start_with(&mut side, link, options);
     let mut heard = Vec::new();
-    tokio::time::timeout(Duration::from_secs(20), async {
-        while full.batches.lock().unwrap().len() < 2 {
-            while let Ok(event) = side.events.try_recv() {
-                heard.push(event);
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
+    let sent = |count: usize| {
+        let full = Arc::clone(&full);
+        async move {
+            tokio::time::timeout(Duration::from_secs(20), async {
+                while full.batches.lock().unwrap().len() < count {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+            })
+            .await
+            .unwrap_or_else(|_| panic!("the change did not go out {count} times"));
         }
-    })
-    .await
-    .unwrap_or_else(|_| panic!("the change went out only once, the session heard {heard:?}"));
-    tokio::time::sleep(Duration::from_millis(300)).await;
+    };
+    sent(1).await;
+    tokio::time::sleep(options.quiet_for * 5).await;
+    while let Ok(event) = side.events.try_recv() {
+        heard.push(event);
+    }
+    assert_eq!(full.opens.load(Ordering::SeqCst), 1, "{heard:?}");
+    assert_eq!(full.batches.lock().unwrap().len(), 1, "{heard:?}");
+    full.drop_poll.store(true, Ordering::SeqCst);
+    sent(2).await;
+    tokio::time::sleep(options.quiet_for * 5).await;
     while let Ok(event) = side.events.try_recv() {
         heard.push(event);
     }
     let batches = full.batches.lock().unwrap().clone();
+    assert_eq!(batches.len(), 2, "{heard:?}");
     assert_eq!(batches[0], batches[1]);
-    assert!(full.opens.load(Ordering::SeqCst) >= 2);
+    assert_eq!(full.opens.load(Ordering::SeqCst), 2, "{heard:?}");
     assert_eq!(
         heard
             .iter()
             .filter(|event| **event == LiveEvent::ProjectFull)
             .count(),
-        1,
+        2,
         "{heard:?}"
     );
     assert!(!heard.contains(&LiveEvent::Unsendable), "{heard:?}");

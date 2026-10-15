@@ -427,6 +427,70 @@ async fn a_change_that_builds_on_a_refused_one_is_fetched_again_from_the_servers
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_refused_base_is_reloaded_again_when_the_first_snapshot_still_lacked_it() {
+    let pair = two_people().await;
+    snapshot_often(&pair);
+    let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+    let mut typed = Vec::new();
+    for (seq, text) in [(1, "abcd"), (2, "abcde"), (3, "abcdef")] {
+        alice_live.local_text(&main, text).unwrap();
+        let outgoing = alice_live.next_outgoing().unwrap().unwrap();
+        alice_live.acknowledged(outgoing.batch, seq);
+        typed.push(outgoing.payload);
+    }
+    let mut forged = signed_envelope(&pair.alice, project, typed[0].clone());
+    forged.signature = crate::client::test_util::device_key()
+        .sign(&forged.signing_bytes())
+        .to_vec();
+    store_on_server(&pair, &pair.alice, forged).await;
+    store_on_server(
+        &pair,
+        &pair.alice,
+        signed_envelope(&pair.alice, project, typed[1].clone()),
+    )
+    .await;
+    let mut bob = side(bob_live, &main);
+    lock(&bob.live).resync_after(Duration::from_millis(500));
+    start_with(
+        &mut bob,
+        link(&pair, &pair.bob, project),
+        TransportOptions {
+            ping_every: Duration::from_millis(300),
+            quiet_for: Duration::from_secs(1),
+            ..quick()
+        },
+    );
+    for _ in 0..2 {
+        until_event(&mut bob, |event| {
+            matches!(event, LiveEvent::Untrusted { seq: 1, .. })
+        })
+        .await;
+    }
+    {
+        let live = lock(&bob.live);
+        assert_eq!(live.reloads(), 1);
+        assert!(live.missing_changes());
+        assert_eq!(live.doc().text(&main).unwrap(), "abc");
+    }
+    store_on_server(
+        &pair,
+        &pair.alice,
+        signed_envelope(&pair.alice, project, typed[2].clone()),
+    )
+    .await;
+    let client = ServerClient::new(pair.url.clone()).unwrap();
+    client
+        .snapshot_hint(&pair.alice.tokens.access_token, project, 2)
+        .await
+        .unwrap();
+    until_text(&bob, &main, "abcdef").await;
+    assert_eq!(lock(&bob.live).reloads(), 2);
+    assert!(!lock(&bob.live).missing_changes());
+    assert_eq!(lock(&bob.live).last_seq(), 3);
+    stopped(&mut bob).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_change_this_build_cannot_decode_is_reported_as_unreadable_not_as_untrusted() {
     let pair = two_people().await;
     let (project, main, bob_live, mut alice_live) = shared(&pair).await;
