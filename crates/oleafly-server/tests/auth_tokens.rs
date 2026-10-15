@@ -4,6 +4,7 @@ use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, SessionTokens, TokenRequest,
 };
+use oleafly_server::auth::refresh::REPLAY_MS;
 use oleafly_server::clock::Clock;
 use oleafly_server::members;
 use oleafly_server::test_support::{
@@ -283,15 +284,42 @@ async fn a_retried_refresh_gets_the_same_pair_while_the_new_one_is_unused() {
 }
 
 #[tokio::test]
-async fn an_old_refresh_presented_days_later_is_caught_as_reuse_even_if_the_new_one_was_never_used()
-{
+async fn a_laptop_that_slept_through_a_refresh_gets_the_same_pair_when_it_wakes() {
+    let (server, _github) = server().await;
+    let device = TestDevice::generate();
+    let other = TestDevice::generate();
+    let first = session(&server, &device).await;
+    let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
+        .await
+        .expect("rotate");
+    server.clock().advance(6 * 24 * 60 * 60 * 1000);
+    let unsigned = refresh_session(&server, &other, first.device_id, &first.refresh_token).await;
+    assert_eq!(unsigned.err().as_deref(), Some("invalid_signature"));
+    let woke = refresh_session(&server, &device, first.device_id, &first.refresh_token)
+        .await
+        .expect("the reply it never saved");
+    assert_eq!(woke.refresh_token, rotated.refresh_token);
+    assert!(access_is_live(&server, &woke.access_token).await);
+    let next = refresh_session(&server, &device, first.device_id, &woke.refresh_token)
+        .await
+        .expect("the saved pair rotates");
+    assert_ne!(next.refresh_token, woke.refresh_token);
+    let kinds = security_event_kinds(&server).await;
+    assert!(!kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::RefreshReuseDetected)));
+}
+
+#[tokio::test]
+async fn an_old_refresh_presented_after_a_week_is_caught_as_reuse_even_if_the_new_one_was_never_used(
+) {
     let (server, _github) = server().await;
     let device = TestDevice::generate();
     let first = session(&server, &device).await;
     let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
         .expect("rotate");
-    server.clock().advance(3 * 24 * 60 * 60 * 1000);
+    server.clock().advance(REPLAY_MS + 1);
     let copied = refresh_session(&server, &device, first.device_id, &first.refresh_token).await;
     assert_eq!(copied.err().as_deref(), Some("refresh_reused"));
     let after = refresh_session(&server, &device, first.device_id, &rotated.refresh_token).await;
