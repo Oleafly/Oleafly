@@ -28,11 +28,17 @@ pub async fn collab_live_start(
         stop(&project_id).await;
         return Err(crate::collab::switch::turned_off());
     }
+    settle_started(app, project_id).await;
+    Ok(info)
+}
+
+// What follows every start of a live session: tell the window about a sync
+// decision that still waits, and watch the folder.
+pub(crate) async fn settle_started(app: tauri::AppHandle, project_id: String) {
     announce(&project_id, &app);
     if !crate::folder_watch::is_watching(&project_id) {
         let _ = crate::folder_watch::watch_project_folder(app, project_id).await;
     }
-    Ok(info)
 }
 
 #[tauri::command]

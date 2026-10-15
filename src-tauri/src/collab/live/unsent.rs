@@ -757,22 +757,46 @@ mod tests {
     #[test]
     fn a_project_that_could_not_be_deleted_goes_live_again() {
         let lab = Lab::new(true);
-        let failed: Result<(), String> = tauri::async_runtime::block_on(
+        let (failed, restarted): (Result<(), String>, bool) = tauri::async_runtime::block_on(
             crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
                 stop(PROJECT).await;
                 Err("the recycle bin refused".to_owned())
             }),
         );
         assert!(failed.is_err());
+        assert!(restarted);
         assert!(active_for(PROJECT).is_some());
-        let deleted: Result<(), String> = tauri::async_runtime::block_on(
+        let (deleted, restarted): (Result<(), String>, bool) = tauri::async_runtime::block_on(
             crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
                 stop(PROJECT).await;
                 Ok(())
             }),
         );
         assert!(deleted.is_ok());
+        assert!(!restarted);
         assert!(active_for(PROJECT).is_none());
+    }
+
+    #[test]
+    fn a_failed_delete_never_stops_another_project_that_went_live_meanwhile() {
+        let lab = Lab::new(true);
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("other");
+        std::fs::create_dir_all(&root).unwrap();
+        let other =
+            crate::collab::live::write::rig::LiveRig::start("other", &root, &[("main.tex", "x")]);
+        let (failed, restarted): (Result<(), String>, bool) = tauri::async_runtime::block_on(
+            crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
+                stop(PROJECT).await;
+                *guard(&super::super::ACTIVE) = Some(other.active());
+                Err("the recycle bin refused".to_owned())
+            }),
+        );
+        assert!(failed.is_err());
+        assert!(!restarted);
+        assert!(active_for("other").is_some());
+        assert!(active_for(PROJECT).is_none());
+        *guard(&super::super::ACTIVE) = None;
     }
 
     #[test]

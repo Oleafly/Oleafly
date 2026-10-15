@@ -34,7 +34,16 @@ pub async fn start(
     host: Arc<dyn LiveHost>,
     project_id: &str,
 ) -> Result<LiveInfo, CollabError> {
-    let _lifecycle = LIFECYCLE.lock().await;
+    let lifecycle = LIFECYCLE.lock().await;
+    start_locked(lifecycle, state, host, project_id).await
+}
+
+async fn start_locked(
+    _lifecycle: tokio::sync::MutexGuard<'static, ()>,
+    state: &CollabState,
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+) -> Result<LiveInfo, CollabError> {
     if let Some(active) = active_for(project_id) {
         let role = lock(&active.live).role();
         let status = guard(&active.last_status).clone();
@@ -231,22 +240,35 @@ pub async fn stop(project_id: &str) {
     }
 }
 
+// Runs `work`, which stops the project's live session, and starts the
+// session again when `work` fails, unless another session went live in the
+// meantime: starting would stop that one. Says whether it started again.
 pub async fn resumed_if_failed<T, E>(
     state: &CollabState,
     host: Arc<dyn LiveHost>,
     project_id: &str,
     work: impl std::future::Future<Output = Result<T, E>>,
-) -> Result<T, E> {
+) -> (Result<T, E>, bool) {
     let was_live = active_for(project_id).is_some();
     let done = work.await;
-    if done.is_err() && was_live && active_for(project_id).is_none() {
-        if let Err(error) = start(state, host, project_id).await {
+    let restarted = done.is_err() && was_live && start_if_idle(state, host, project_id).await;
+    (done, restarted)
+}
+
+async fn start_if_idle(state: &CollabState, host: Arc<dyn LiveHost>, project_id: &str) -> bool {
+    let lifecycle = LIFECYCLE.lock().await;
+    if guard(&ACTIVE).is_some() {
+        return false;
+    }
+    match start_locked(lifecycle, state, host, project_id).await {
+        Ok(_) => true,
+        Err(error) => {
             let _ = crate::project::append_app_log(format!(
                 "Live collaboration could not start project {project_id} again after it stayed: {error}"
             ));
+            false
         }
     }
-    done
 }
 
 pub fn reconnect_now() -> bool {
