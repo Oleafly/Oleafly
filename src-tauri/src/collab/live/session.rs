@@ -194,7 +194,16 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        let failed = uploads::send(&self.link, &self.root, &import.blobs, self.online()).await;
+        let progress =
+            |path: &str| uploads::progress_for(Arc::clone(&self.host), &self.project_id, path);
+        let failed = uploads::send(
+            &self.link,
+            &self.root,
+            &import.blobs,
+            self.online(),
+            &progress,
+        )
+        .await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         self.announce_uploads();
         let (changed, renamed) = {
