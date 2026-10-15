@@ -32,16 +32,14 @@ Free forever · Open source · No Oleafly account · No tracking
 
 ## Why Oleafly
 
-Writing a paper with other people usually means a browser editor with plan limits, or a local setup where nobody sees each other's changes until someone sends a ZIP. Oleafly is a desktop editor with live collaboration built in. Your files live on your computer, and when you share a project, your coauthors edit it with you through a server your lab controls.
+Oleafly is a desktop editor with live collaboration built in. Your files live on your computer, and when you share a project, your coauthors edit it with you through a server your lab controls.
 
-| | Hosted online editors | Oleafly |
-| --- | --- | --- |
-| Where your files live | On the provider's servers | On your computer, and on your lab's server when you share |
-| How long a compile can run | Set by your plan | Your own computer does the work |
-| How many coauthors | Set by your plan | Everyone your server lets in |
-| Working offline | Needs a connection | Keep writing; your edits merge when you're back online |
-| AI | The provider's assistant | Claude Code, Codex, 12 more agents, or any model you connect, local ones included |
-| Price | Subscription for the full feature set | Free and open source (AGPL-3.0) |
+- Your papers stay on your computer, and on your lab's server when you share them.
+- Compiles run on your own machine, so a long thesis builds as fast as your computer allows.
+- Invite as many coauthors as your server lets in.
+- Keep writing offline. Your edits merge when you're back online.
+- Work with Claude Code, Codex and 12 more agents, or any model you connect, local ones included.
+- Free and open source under AGPL-3.0.
 
 ## Write together, live
 
