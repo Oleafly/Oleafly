@@ -751,6 +751,27 @@ mod tests {
     }
 
     #[test]
+    fn a_project_that_could_not_be_deleted_goes_live_again() {
+        let lab = Lab::new(true);
+        let failed: Result<(), String> = tauri::async_runtime::block_on(
+            crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
+                stop(PROJECT).await;
+                Err("the recycle bin refused".to_owned())
+            }),
+        );
+        assert!(failed.is_err());
+        assert!(active_for(PROJECT).is_some());
+        let deleted: Result<(), String> = tauri::async_runtime::block_on(
+            crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
+                stop(PROJECT).await;
+                Ok(())
+            }),
+        );
+        assert!(deleted.is_ok());
+        assert!(active_for(PROJECT).is_none());
+    }
+
+    #[test]
     fn opening_a_project_after_signing_out_says_signed_out_and_keeps_it_shared() {
         let lab = Lab::new(true);
         assert!(lab.sign_out(UnsentChoice::Ask).signed_out);

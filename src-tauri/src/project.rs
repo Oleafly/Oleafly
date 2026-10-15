@@ -8260,10 +8260,22 @@ fn clear_build_cache_blocking(project_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn recycle_project(
+    app: tauri::AppHandle,
     project_id: String,
     state: tauri::State<'_, crate::state::AppState>,
+    collab: tauri::State<'_, crate::collab::state::CollabState>,
 ) -> Result<(), String> {
-    recycle_project_synchronized(&state, project_id).await
+    let recycled = crate::collab::live::resumed_if_failed(
+        collab.inner(),
+        crate::collab::live::app_host(app),
+        &project_id,
+        recycle_project_synchronized(&state, project_id.clone()),
+    )
+    .await;
+    if recycled.is_err() && !crate::collab::switch::enabled() {
+        crate::collab::live::stop(&project_id).await;
+    }
+    recycled
 }
 
 fn recyclable_project_exists(dir: &Path) -> Result<bool, String> {

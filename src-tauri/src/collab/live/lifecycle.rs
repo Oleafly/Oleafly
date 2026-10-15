@@ -220,6 +220,24 @@ pub async fn stop(project_id: &str) {
     }
 }
 
+pub async fn resumed_if_failed<T, E>(
+    state: &CollabState,
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    work: impl std::future::Future<Output = Result<T, E>>,
+) -> Result<T, E> {
+    let was_live = active_for(project_id).is_some();
+    let done = work.await;
+    if done.is_err() && was_live && active_for(project_id).is_none() {
+        if let Err(error) = start(state, host, project_id).await {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not start project {project_id} again after it stayed: {error}"
+            ));
+        }
+    }
+    done
+}
+
 pub async fn flush(project_id: &str) {
     let Some(active) = active_for(project_id) else {
         return;
