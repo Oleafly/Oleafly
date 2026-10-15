@@ -15,6 +15,9 @@ test-support = []
 async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "query", "tokio", "ws"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+# The frame type a response body yields, so a large download can be sent
+# in pieces and stopped at its deadline. axum depends on it already.
+http-body = "1"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "rustls-native-certs"] }
 loro = "=1.16.2"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
