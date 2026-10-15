@@ -1126,6 +1126,44 @@ fn an_index_saved_outside_a_pass_is_never_taken_for_the_one_a_pass_would_write()
 }
 
 #[test]
+fn quitting_while_a_stop_is_still_writing_waits_for_it() {
+    let (_dir, root, _host, rig) = watched_rig("quit-mid-stop", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let (main, rev) = rig.open("main.tex");
+    let active = rig.active();
+    let held = guard(&active.disk);
+    rig.typed(&main, rev, " typed as the session stops");
+    let stopping = std::thread::spawn(|| {
+        tauri::async_runtime::block_on(super::stop("quit-mid-stop"));
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while super::active_for("quit-mid-stop").is_some() {
+        assert!(std::time::Instant::now() < deadline, "the stop never began");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let (quit, quitted) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        super::finish_for_quit(Duration::from_secs(10));
+        let _ = quit.send(());
+    });
+    let early = quitted.recv_timeout(Duration::from_millis(300)).is_ok();
+    drop(held);
+    quitted
+        .recv_timeout(Duration::from_secs(20))
+        .unwrap_or_else(|_| assert!(early, "quitting never finished"));
+    stopping.join().unwrap();
+    assert!(!early, "quitting returned while the stop was still writing");
+    assert_eq!(
+        rig.saved_text("main.tex").as_deref(),
+        Some("abc typed as the session stops")
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc typed as the session stops"
+    );
+}
+
+#[test]
 fn reading_a_folder_for_an_import_leaves_the_shared_document_free() {
     let (_dir, root, _host, rig) = watched_rig("lock-free", &[("main.tex", "abc")]);
     std::fs::create_dir_all(root.join("figs")).unwrap();

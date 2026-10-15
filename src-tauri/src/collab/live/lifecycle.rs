@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::sync::{spawn_live, EndReason, LiveLink, LiveStatus, SharedLive};
@@ -168,13 +168,15 @@ async fn stop_any() {
 pub const QUIT_WAIT: Duration = Duration::from_secs(2);
 
 pub fn finish_for_quit(wait: Duration) {
-    let Some(active) = guard(&ACTIVE).take() else {
-        return;
-    };
     tauri::async_runtime::block_on(async move {
+        let started = Instant::now();
+        let _lifecycle = tokio::time::timeout(wait, LIFECYCLE.lock()).await.ok();
+        let Some(active) = guard(&ACTIVE).take() else {
+            return;
+        };
         let (done, flushed) = oneshot::channel();
         let _ = active.writer.send(WriterSignal::Flush(done));
-        let _ = tokio::time::timeout(wait, flushed).await;
+        let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
         active.close_figures();
         active.save_now();
         active.handle.stop();
@@ -182,12 +184,16 @@ pub fn finish_for_quit(wait: Duration) {
 }
 
 pub fn stop_running_session() {
-    let Some(active) = guard(&ACTIVE).take() else {
-        return;
-    };
+    let held = LIFECYCLE.try_lock().ok();
+    let taken = held.as_ref().and_then(|_| guard(&ACTIVE).take());
     tauri::async_runtime::spawn(async move {
-        let _lifecycle = LIFECYCLE.lock().await;
-        finish(active).await;
+        let _lifecycle = match held {
+            Some(held) => held,
+            None => LIFECYCLE.lock().await,
+        };
+        if let Some(active) = taken.or_else(|| guard(&ACTIVE).take()) {
+            finish(active).await;
+        }
     });
 }
 
