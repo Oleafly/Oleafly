@@ -149,6 +149,57 @@ fn a_file_moved_on_disk_to_a_name_the_layout_changes_follows_the_layout() {
     assert_eq!(live.doc().nodes().unwrap().len(), nodes);
 }
 
+#[cfg(not(windows))]
+#[test]
+fn a_folder_moved_on_disk_to_a_name_the_layout_changes_follows_the_layout() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let (mut live, mut disk, _main) = project(root);
+    std::fs::create_dir_all(root.join("figs")).unwrap();
+    std::fs::write(root.join("figs/a.tex"), "a").unwrap();
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    apply_local_import(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    let folder = laid_out(&live, NodeKind::Dir, |path| path == "figs");
+    let folder_id = materialize::layout(&live.doc().nodes().unwrap())
+        .into_iter()
+        .find(|(_, placed)| placed.path == folder)
+        .map(|(id, _)| id)
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("con")).unwrap();
+    let mut import = read_local_changes(root, &disk, &live, None).unwrap();
+    super::moves::adopt_folder_moves(&mut live, &mut disk, &mut bases, &mut import).unwrap();
+    let (_, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    let layout = materialize::layout(&live.doc().nodes().unwrap());
+    let laid = layout[&folder_id].path.clone();
+    assert!(laid.starts_with("unnamed-"), "{laid}");
+    assert_eq!(
+        layout
+            .values()
+            .filter(|placed| placed.kind == NodeKind::Dir)
+            .count(),
+        1,
+        "{layout:?}"
+    );
+    assert_eq!(renamed, vec![("con".to_owned(), laid.clone())]);
+    assert_eq!(
+        std::fs::read_to_string(root.join(&laid).join("a.tex")).unwrap(),
+        "a"
+    );
+    assert!(!root.join("con").exists());
+    assert_eq!(disk.layout[&folder_id].path, laid);
+    assert!(disk.hashes.contains_key(&format!("{laid}/a.tex")));
+    let nodes = live.doc().nodes().unwrap().len();
+    let again = read_local_changes(root, &disk, &live, None).unwrap();
+    assert!(
+        again.is_empty(),
+        "a second scan found the moved folder again"
+    );
+    apply_local_import(&mut live, &mut disk, &mut bases, again, root).unwrap();
+    assert_eq!(live.doc().nodes().unwrap().len(), nodes);
+}
+
 #[cfg(unix)]
 #[test]
 fn a_folder_whose_move_fails_stays_whole_is_left_alone_and_moves_once_it_can() {

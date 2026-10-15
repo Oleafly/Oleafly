@@ -10,7 +10,7 @@ use super::bases::{merged_onto, WrittenTexts};
 use super::kept;
 use super::session::io;
 use crate::collab::disk::{
-    as_text, crlf_only, excluded_name, exists_exact, follow_layout, inside, rekey_moved,
+    as_text, crlf_only, excluded_name, exists_exact, follow_layout, inside, moved_key, rekey_moved,
     safe_target, scan_folder, scan_folder_within, sha256_hex, DiskState, FoundPaths, ShareRules,
 };
 
@@ -42,6 +42,8 @@ pub(super) struct LocalImport {
     pub(super) dirs: Vec<String>,
     pub(super) restamped: Vec<(String, String)>,
     pub(super) crlf: BTreeSet<String>,
+    // Folders whose nodes followed a move on disk, with where each is now.
+    pub(super) moved_dirs: Vec<(String, String)>,
 }
 
 impl LocalImport {
@@ -280,7 +282,15 @@ pub(super) fn import_renaming(
     let before = materialize::layout(&live.doc().nodes()?);
     let mut placed = by_path(&before);
     let mut import = import;
-    let adopted = adopt_moved_files(live, disk, bases, &mut placed, &mut import, root)?;
+    let mut adopted = std::mem::take(&mut import.moved_dirs);
+    adopted.extend(adopt_moved_files(
+        live,
+        disk,
+        bases,
+        &mut placed,
+        &mut import,
+        root,
+    )?);
     let mut changed = !adopted.is_empty();
     for path in import.dirs {
         ensure_dir(live, &mut placed, Some(&path))?;
@@ -431,6 +441,23 @@ fn follow_new_names(
         }
     }
     let followed = follow_layout(root, wanted);
+    // A folder that followed a move on disk was written down where it went,
+    // so its entries move on to where the layout puts it, as a new node's
+    // do, whether it got there now or still owes the move.
+    for (id, now) in adopted.iter() {
+        let Some(laid) = after
+            .get(id)
+            .filter(|placed| placed.kind == NodeKind::Dir && placed.path != *now)
+            .map(|placed| placed.path.as_str())
+        else {
+            continue;
+        };
+        for placed in disk.layout.values_mut() {
+            if let Some(moved) = moved_key(&placed.path, now, laid) {
+                placed.path = moved;
+            }
+        }
+    }
     for (from, to) in &followed.moved {
         for (old, new) in rekey_moved(&mut disk.hashes, from, to) {
             bases.rename(&old, &new);
