@@ -125,7 +125,8 @@ pub enum LiveEvent {
     },
     Unsendable,
     // The project reached the server's size limit, so changes stay on this
-    // computer for now. Said once per session.
+    // computer for now. Said once per connection, at the first refusal after
+    // each connect or reconnect.
     ProjectFull,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
     Comments(CommentSwitches),

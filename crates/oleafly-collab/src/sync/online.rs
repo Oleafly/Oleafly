@@ -291,9 +291,11 @@ async fn online(
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
                     ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
                     // The batch stays as it is, neither cut smaller nor given
-                    // up, and goes out again after the next reconnect.
+                    // up, and goes out again after the next reconnect. Until
+                    // then it waits for no answer, so it can't cut the
+                    // connection as overdue.
                     ServerFrame::Error { code: FrameErrorCode::ProjectTooLarge, .. } => {
-                        if lock(project).first_full_refusal() {
+                        if lock(project).refused_as_full() {
                             let _ = events.send(LiveEvent::ProjectFull);
                         }
                     }

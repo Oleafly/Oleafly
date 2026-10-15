@@ -57,6 +57,9 @@ pub struct Outgoing {
     version: VersionVector,
     sent: bool,
     sent_at: std::time::Instant,
+    // Refused because the project is full: it waits for the next connection
+    // without counting as on its way.
+    held: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -256,6 +259,7 @@ pub struct LiveProject {
     damaged: bool,
     skipped: BTreeSet<u64>,
     suspect: BTreeSet<u64>,
+    // The person heard on this connection that the project is full.
     told_full: bool,
 }
 
@@ -494,7 +498,14 @@ impl LiveProject {
         }
     }
 
-    pub(crate) fn first_full_refusal(&mut self) -> bool {
+    // The server refused the batch on its way because the project is full.
+    // It stays as it is and goes out again on the next connection, and
+    // until then it isn't waiting for an answer. True the first time on
+    // this connection, so the person hears it once per connection.
+    pub(crate) fn refused_as_full(&mut self) -> bool {
+        if let Some(outgoing) = self.outgoing.as_mut() {
+            outgoing.held = true;
+        }
         !std::mem::replace(&mut self.told_full, true)
     }
 
@@ -1569,6 +1580,7 @@ impl LiveProject {
             version,
             sent: false,
             sent_at: std::time::Instant::now(),
+            held: false,
         })
     }
 
@@ -1684,6 +1696,7 @@ impl LiveProject {
             version,
             sent: true,
             sent_at: std::time::Instant::now(),
+            held: false,
         };
         self.outgoing = Some(outgoing.clone());
         Ok(Some(outgoing))
@@ -1710,7 +1723,7 @@ impl LiveProject {
     pub fn in_flight(&self) -> Option<(BatchId, usize, std::time::Instant)> {
         self.outgoing
             .as_ref()
-            .filter(|outgoing| outgoing.sent)
+            .filter(|outgoing| outgoing.sent && !outgoing.held)
             .map(|outgoing| (outgoing.batch, outgoing.payload.len(), outgoing.sent_at))
     }
 
@@ -1809,8 +1822,10 @@ impl LiveProject {
 
     pub fn disconnected(&mut self) {
         self.connected = false;
+        self.told_full = false;
         if let Some(outgoing) = self.outgoing.as_mut() {
             outgoing.sent = false;
+            outgoing.held = false;
         }
     }
 
@@ -2562,6 +2577,26 @@ mod tests {
         alice.import_update(7, &built_on_it).unwrap();
         assert!(alice.missing_changes());
         assert!(alice.request_resync(after(121 + 242)));
+    }
+
+    #[test]
+    fn a_batch_refused_as_full_waits_for_the_next_connection_without_counting_as_on_its_way() {
+        let (_bob, mut alice, main) = pair();
+        alice.mark_connected();
+        alice.local_text(&main, "abc kept").unwrap();
+        let first = alice.next_outgoing().unwrap().unwrap();
+        assert!(alice.in_flight().is_some());
+        assert!(alice.refused_as_full());
+        assert!(alice.in_flight().is_none());
+        assert!(!alice.refused_as_full());
+        assert!(alice.next_outgoing().unwrap().is_none());
+        assert!(alice.has_unsent());
+        alice.disconnected();
+        alice.mark_connected();
+        let again = alice.next_outgoing().unwrap().unwrap();
+        assert_eq!(again.batch, first.batch);
+        assert!(alice.in_flight().is_some());
+        assert!(alice.refused_as_full());
     }
 
     #[test]
