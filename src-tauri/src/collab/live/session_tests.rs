@@ -873,7 +873,7 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
 }
 
 #[test]
-fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_it_can_be() {
+fn a_folder_where_a_shared_file_goes_moves_aside_without_holding_back_the_others() {
     let (_dir, root, _host, rig) = watched_rig("blocked", &[("main.tex", "abc")]);
     rig.remote_new("table.tex", "T");
     std::fs::create_dir_all(root.join("table.tex/inner")).unwrap();
@@ -883,12 +883,25 @@ fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_
         std::fs::read_to_string(root.join("main.tex")).unwrap(),
         "abcd"
     );
-    assert!(root.join("table.tex").is_dir());
-    std::fs::remove_dir_all(root.join("table.tex")).unwrap();
     rig.settle();
     assert_eq!(
         std::fs::read_to_string(root.join("table.tex")).unwrap(),
         "T"
+    );
+    let aside = rig
+        .paths()
+        .into_iter()
+        .find(|path| path.starts_with("table (") && !path.contains('/'))
+        .expect("the folder has a node of its own");
+    assert!(root.join(&aside).join("inner").is_dir());
+    assert_eq!(
+        rig.paths()
+            .iter()
+            .filter(|path| path.starts_with("table"))
+            .count(),
+        3,
+        "{:?}",
+        rig.paths()
     );
 }
 

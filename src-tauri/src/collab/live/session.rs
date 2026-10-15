@@ -17,7 +17,7 @@ use tokio::sync::oneshot;
 use super::bases::WrittenTexts;
 use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
-use super::import::{apply_local_import, placed_now, scan_local};
+use super::import::{import_renaming, placed_now, scan_local};
 use super::payloads::StatusPayload;
 use super::unwritten::Settled;
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
@@ -192,13 +192,13 @@ impl Active {
         let failed = uploads::send(&self.link, &self.root, &import.blobs, self.online()).await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         self.announce_uploads();
-        let changed = {
+        let (changed, renamed) = {
             let mut disk = guard(&self.disk);
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
             moves::adopt_folder_moves(&mut live, &mut disk, &mut bases, &mut import)?;
-            let imported =
-                apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?;
+            let (imported, renamed) =
+                import_renaming(&mut live, &mut disk, &mut bases, import, &self.root)?;
             let kept = sync_hold::apply_kept_edits(
                 &self.hold_dir(),
                 &self.root,
@@ -207,8 +207,9 @@ impl Active {
                 &mut bases,
                 edits,
             )?;
-            imported || kept
+            (imported || kept, renamed)
         };
+        self.announce_new_names(renamed);
         if changed {
             self.handle.flush();
             self.kick();
@@ -397,6 +398,32 @@ impl Active {
             })
             .map(|(_, placed)| placed.path.clone())
             .collect()
+    }
+
+    pub(super) fn announce_new_names(&self, renamed: Vec<(String, String)>) {
+        if renamed.is_empty() {
+            return;
+        }
+        for (from, to) in &renamed {
+            self.host.renamed(crate::collab::tree::RenamedPayload {
+                project_id: self.project_id.clone(),
+                account_id: None,
+                before: from.clone(),
+                ours: from.clone(),
+                theirs: to.clone(),
+            });
+        }
+        self.host.folder_changed(FolderChange {
+            project_id: self.project_id.clone(),
+            paths: renamed
+                .iter()
+                .flat_map(|(from, to)| [from.clone(), to.clone()])
+                .collect(),
+            rescan: false,
+            structural: true,
+            renamed,
+            deleted: Vec::new(),
+        });
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {

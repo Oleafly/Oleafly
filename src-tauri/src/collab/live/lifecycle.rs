@@ -114,6 +114,7 @@ pub async fn start(
         disk,
         bases,
         to_upload,
+        renamed,
     } = sync_hold::catch_up(root.clone(), hold_dir, live, disk).await?;
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
@@ -143,6 +144,7 @@ pub async fn start(
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Arc::clone(&active));
+    active.announce_new_names(renamed);
     settings::schedule(&active);
     uploads::attach(&active);
     active.announce_uploads();

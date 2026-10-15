@@ -39,9 +39,7 @@ pub(crate) use unsent::{
 
 use bases::{initial_bases, merged_onto, nearest, WrittenTexts};
 use disk_pass::{checked, writable};
-use import::{
-    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport,
-};
+use import::{by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport};
 use session::{guard, lock, not_live, WriterSignal, ACTIVE};
 
 pub fn app_host(app: tauri::AppHandle) -> std::sync::Arc<dyn LiveHost> {
@@ -60,6 +58,8 @@ pub use payloads::{
 use crate::collab::disk::sha256_hex;
 #[cfg(test)]
 use disk_pass::{apply_to_disk, DiskPass};
+#[cfg(test)]
+use import::apply_local_import;
 #[cfg(test)]
 use pump::pump;
 #[cfg(test)]

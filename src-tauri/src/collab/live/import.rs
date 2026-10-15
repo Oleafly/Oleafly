@@ -1,7 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
-use oleafly_collab::doc::NodeKind;
+use oleafly_collab::doc::{FileNode, NodeKind};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
@@ -10,8 +10,8 @@ use super::bases::{merged_onto, WrittenTexts};
 use super::kept;
 use super::session::io;
 use crate::collab::disk::{
-    as_text, crlf_only, excluded_name, exists_exact, safe_target, scan_folder, scan_folder_within,
-    sha256_hex, DiskState, ShareRules,
+    as_text, crlf_only, excluded_name, exists_exact, follow_layout, found_path, rekey_moved,
+    safe_target, scan_folder, scan_folder_within, sha256_hex, DiskState, ShareRules,
 };
 
 pub(super) fn parent_of(path: &str) -> Option<&str> {
@@ -254,6 +254,7 @@ pub(super) fn ensure_dir(
     Ok(Some(id))
 }
 
+#[cfg(test)]
 pub(super) fn apply_local_import(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -261,6 +262,20 @@ pub(super) fn apply_local_import(
     import: LocalImport,
     root: &Path,
 ) -> Result<bool, CollabError> {
+    Ok(import_renaming(live, disk, bases, import, root)?.0)
+}
+
+pub(super) type Renamed = Vec<(String, String)>;
+
+// Imports like apply_local_import and also returns the files it renamed on
+// disk to the names the layout gave them.
+pub(super) fn import_renaming(
+    live: &mut LiveProject,
+    disk: &mut DiskState,
+    bases: &mut WrittenTexts,
+    import: LocalImport,
+    root: &Path,
+) -> Result<(bool, Renamed), CollabError> {
     let before = materialize::layout(&live.doc().nodes()?);
     let mut placed = by_path(&before);
     let mut import = import;
@@ -355,12 +370,40 @@ pub(super) fn apply_local_import(
             changed = true;
         }
     }
+    let mut renamed = Vec::new();
     if changed {
-        let after = materialize::layout(&live.doc().nodes()?);
+        let nodes = live.doc().nodes()?;
+        let after = materialize::layout(&nodes);
+        renamed = follow_new_names(root, disk, bases, &nodes, &before, &after, &beside);
         record_local_change(&mut disk.layout, &before, &after);
         crate::collab::tree::keep_beside(&mut disk.layout, beside);
     }
-    Ok(changed)
+    Ok((changed, renamed))
+}
+
+fn follow_new_names(
+    root: &Path,
+    disk: &mut DiskState,
+    bases: &mut WrittenTexts,
+    nodes: &[FileNode],
+    before: &Layout,
+    after: &Layout,
+    beside: &[(String, String, String)],
+) -> Renamed {
+    let wanted = after
+        .iter()
+        .filter(|(id, _)| {
+            !before.contains_key(*id) && !beside.iter().any(|(ours, _, _)| ours == *id)
+        })
+        .filter_map(|(id, placed)| Some((found_path(nodes, id)?, placed.path.clone())))
+        .collect();
+    let renamed = follow_layout(root, wanted);
+    for (from, to) in &renamed {
+        for (old, new) in rekey_moved(&mut disk.hashes, from, to) {
+            bases.rename(&old, &new);
+        }
+    }
+    renamed
 }
 
 fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {
