@@ -145,6 +145,7 @@ pub(crate) mod failpoint {
         Scratch,
         ScratchExport,
         Applied,
+        Local,
     }
 
     static ARMED: Mutex<Vec<(Vec<u8>, At)>> = Mutex::new(Vec::new());

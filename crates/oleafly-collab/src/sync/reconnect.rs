@@ -8,7 +8,8 @@ use super::online::{serve, Pace};
 use super::wire::{connect, Wire};
 use super::writers::WriterRetry;
 use super::{
-    lock, EndReason, LiveCommand, LiveEvent, LiveLink, LiveStatus, SharedLive, TransportOptions,
+    failed_ending, lock, EndReason, LiveCommand, LiveEvent, LiveLink, LiveStatus, SharedLive,
+    TransportOptions,
 };
 use crate::client::client_protocol;
 use crate::CollabError;
@@ -198,6 +199,12 @@ pub(super) async fn run(
     };
     let mut quietly = false;
     loop {
+        if lock(&project).damaged() {
+            let _ = events.send(LiveEvent::Status(LiveStatus::Ended {
+                reason: failed_ending(),
+            }));
+            return;
+        }
         if !std::mem::take(&mut quietly) {
             let _ = events.send(LiveEvent::Status(LiveStatus::Connecting));
         }
@@ -266,7 +273,7 @@ pub(super) async fn run(
             let mut live = lock(&project);
             live.disconnected();
             if live.damaged() {
-                Exit::End(EndReason::Failed)
+                Exit::End(failed_ending())
             } else {
                 exit
             }

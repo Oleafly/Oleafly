@@ -566,6 +566,19 @@ impl LiveProject {
         if self.damaged {
             return Ok(self.damaged_save(dir));
         }
+        let saving = self.guarded(|live| live.saving(dir));
+        if self.damaged {
+            return Ok(self.damaged_save(dir));
+        }
+        saving
+    }
+
+    fn saving(&mut self, dir: &Path) -> Result<PendingSave, CollabError> {
+        #[cfg(test)]
+        crate::doc::failpoint::hit(
+            dir.as_os_str().as_encoded_bytes(),
+            crate::doc::failpoint::At::Local,
+        );
         self.dir = Some(dir.to_path_buf());
         let last_seq = self.last_seq;
         self.skipped.retain(|seq| *seq > last_seq);
@@ -807,6 +820,10 @@ impl LiveProject {
     }
 
     pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<OpenedFile, CollabError> {
+        self.guarded(|live| live.opening(id, sink))
+    }
+
+    fn opening(&mut self, id: &str, sink: DocSink) -> Result<OpenedFile, CollabError> {
         let text = self.doc.text(id)?;
         let start = self
             .editor_rev(id)
@@ -845,6 +862,15 @@ impl LiveProject {
     }
 
     pub fn editor_change(
+        &mut self,
+        id: &str,
+        base_rev: u64,
+        operation: TextOperation,
+    ) -> Result<(), CollabError> {
+        self.guarded(|live| live.taking_editor_change(id, base_rev, operation))
+    }
+
+    fn taking_editor_change(
         &mut self,
         id: &str,
         base_rev: u64,
@@ -1068,7 +1094,7 @@ impl LiveProject {
         self.outgoing = None;
         self.resync_needed = false;
         self.note_waiting(&imported.waiting);
-        self.route(imported.changes, None)
+        self.route_snapshot(imported.changes, snapshot)
     }
 
     pub fn import_update(&mut self, seq: u64, payload: &[u8]) -> Result<bool, CollabError> {
@@ -1457,7 +1483,19 @@ impl LiveProject {
         }
         self.seen.retain(|known| *known > seq);
         self.mark_seen(seq);
-        self.route(imported.changes, None)
+        self.route_snapshot(imported.changes, snapshot)
+    }
+
+    // Routing reads the document Loro just changed, so a panic there counts
+    // like one in the import of the snapshot.
+    fn route_snapshot(&mut self, changes: DocChanges, snapshot: &[u8]) -> Result<(), CollabError> {
+        #[cfg(not(test))]
+        let _ = snapshot;
+        self.guarded(|live| {
+            #[cfg(test)]
+            crate::doc::failpoint::hit(snapshot, crate::doc::failpoint::At::Applied);
+            live.route(changes, None)
+        })
     }
 
     // A reconnect halfway through keeps the catch-up already under way, so
@@ -1648,9 +1686,15 @@ impl LiveProject {
     }
 
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        self.guarded(|live| live.setting_text(id, content))
+    }
+
+    fn setting_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
         if self.damaged {
             return Ok(false);
         }
+        #[cfg(test)]
+        crate::doc::failpoint::hit(content.as_bytes(), crate::doc::failpoint::At::Local);
         let before = self.own_counter();
         let changes = self.doc.set_text(id, content)?;
         self.note_offline(id, before);
@@ -1664,6 +1708,10 @@ impl LiveProject {
         id: &str,
         operation: &TextOperation,
     ) -> Result<bool, CollabError> {
+        self.guarded(|live| live.applying(id, operation))
+    }
+
+    fn applying(&mut self, id: &str, operation: &TextOperation) -> Result<bool, CollabError> {
         if operation.is_noop() || self.damaged {
             return Ok(false);
         }
@@ -1945,7 +1993,28 @@ impl LiveProject {
         if events.is_empty() {
             return crate::comments::CommentChanges::default();
         }
-        self.doc.comment_changes(events)
+        self.guarded(|live| Ok(live.doc.comment_changes(events)))
+            .unwrap_or_default()
+    }
+
+    // Desktop threads change and read the shared document too: saving,
+    // local edits, the disk pass, review and comment edits. A panic in that
+    // work is contained the way one in the sync task is: the project is
+    // marked damaged, the document Loro may have panicked in is left in
+    // memory, and the live session ends as failed, so nothing keeps
+    // writing into it. The edits and saves here go through this already,
+    // and the desktop runs its other work on the project through it too.
+    pub fn guarded<T>(
+        &mut self,
+        work: impl FnOnce(&mut LiveProject) -> Result<T, CollabError>,
+    ) -> Result<T, CollabError> {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(self))) {
+            Ok(done) => done,
+            Err(_) => {
+                self.went_bad(true);
+                Err(crate::doc::engine_failed())
+            }
+        }
     }
 }
 
@@ -2862,6 +2931,60 @@ mod tests {
             bob.doc().at_version(&base).unwrap().text(&main).unwrap(),
             "abc"
         );
+    }
+
+    #[test]
+    fn a_panic_in_a_local_edit_marks_the_project_damaged_and_takes_no_more_edits() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, _alice, main) = pair();
+        let (_dir, mut bob) = saved_and_loaded(&mut bob);
+        panic_on(b"abc typed as Loro panics", At::Local);
+        assert_eq!(
+            bob.local_text(&main, "abc typed as Loro panics"),
+            Err(crate::doc::engine_failed())
+        );
+        assert!(bob.damaged());
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc");
+        assert!(!bob.local_text(&main, "abc typed after").unwrap());
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert!(bob.take_disk_work().is_empty());
+    }
+
+    #[test]
+    fn a_panic_while_the_project_is_saved_leaves_the_saved_copy_as_it_was() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, _alice, main) = pair();
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        type_at_end(&mut bob, &main, " unsaved");
+        panic_on(dir.path().as_os_str().as_encoded_bytes(), At::Local);
+        bob.save(dir.path()).unwrap();
+        assert!(bob.damaged());
+        let reopened = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(reopened.doc().text(&main).unwrap(), "abc");
+    }
+
+    #[test]
+    fn desktop_work_that_panics_in_the_project_marks_it_damaged() {
+        let (mut bob, _alice, _main) = pair();
+        let outcome: Result<(), CollabError> = bob.guarded(|_| panic!("a desktop thread failed"));
+        assert_eq!(outcome, Err(crate::doc::engine_failed()));
+        assert!(bob.damaged());
+        assert!(crate::sync::failed_ending() == crate::sync::EndReason::Failed);
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        assert!(crate::sync::failed_ending() == crate::sync::EndReason::EngineSpent);
+    }
+
+    #[test]
+    fn a_panic_while_editors_hear_of_a_snapshot_counts_like_one_in_its_import() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut alice, &main, " from the server");
+        let snapshot = alice.doc().snapshot().unwrap();
+        panic_on(&snapshot, At::Applied);
+        assert_eq!(bob.rebase(1, &snapshot), Err(crate::doc::engine_failed()));
+        assert!(bob.damaged());
     }
 
     #[test]
