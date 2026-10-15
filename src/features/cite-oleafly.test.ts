@@ -74,7 +74,7 @@ describe("citeOleafly with a Hayagriva bibliography", () => {
     const expected = `${content}
 oleafly:
   type: repository
-  title: "Oleafly: a local-first desktop workspace for research writing"
+  title: "Oleafly: a local-first workspace for research writing"
   author:
     - "Venkateshmurthy, Prajwal S."
     - name: "The Oleafly contributors"
@@ -85,7 +85,7 @@ oleafly:
     expect(writeProjectFile).toHaveBeenCalledWith("paper", "refs.yml", expected);
     expect(hayagrivaKeys(expected)).toEqual(new Set(["knuth1984", "oleafly"]));
     expect(hayagrivaEntries(expected).find((entry) => entry.key === "oleafly")?.title?.value).toBe(
-      "Oleafly: a local-first desktop workspace for research writing",
+      "Oleafly: a local-first workspace for research writing",
     );
     if (outcome.kind !== "added") throw new Error("unreachable");
     await outcome.undo();

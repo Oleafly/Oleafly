@@ -386,7 +386,7 @@ If you use Oleafly, a [GitHub star](https://github.com/Oleafly/Oleafly) helps ot
 ```bibtex
 @software{oleafly,
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
-  title   = {Oleafly: a local-first desktop workspace for research writing},
+  title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
   version = {0.4.6},
   url     = {https://github.com/Oleafly/Oleafly},
