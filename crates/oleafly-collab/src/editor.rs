@@ -35,6 +35,10 @@ pub enum ChannelError {
     Stale,
     #[error("the editor sent a change that does not fit: {0}")]
     Invalid(OtError),
+    // The editor made the change before the channel reset. It already has
+    // the reset text and sends its typing again on top of it.
+    #[error("the change was made before the editor was reset")]
+    BeforeReset,
 }
 
 impl From<OtError> for ChannelError {
@@ -47,6 +51,7 @@ pub struct EditorChannel {
     text: Pieces,
     rev: u64,
     first_rev: u64,
+    reset_at: Option<u64>,
     history: VecDeque<TextOperation>,
 }
 
@@ -60,6 +65,7 @@ impl EditorChannel {
             text: Pieces::new(&text),
             rev,
             first_rev: rev,
+            reset_at: None,
             history: VecDeque::new(),
         }
     }
@@ -97,6 +103,9 @@ impl EditorChannel {
         if base_rev > self.rev {
             return Err(ChannelError::Invalid(OtError::Incompatible));
         }
+        if self.reset_at.is_some_and(|reset| base_rev < reset) {
+            return Err(ChannelError::BeforeReset);
+        }
         if base_rev < self.first_rev {
             return Err(ChannelError::Stale);
         }
@@ -124,6 +133,7 @@ impl EditorChannel {
         self.text = Pieces::new(&text);
         self.rev += 1;
         self.first_rev = self.rev;
+        self.reset_at = Some(self.rev);
         self.history.clear();
         self.rev
     }
@@ -243,6 +253,19 @@ mod tests {
             "{:?}",
             times[100]
         );
+    }
+
+    #[test]
+    fn a_change_made_before_a_reset_is_dropped_and_one_made_after_it_counts() {
+        let mut channel = EditorChannel::new("abc".to_owned());
+        let rev = channel.reset("reset".to_owned());
+        assert_eq!(
+            channel.receive(0, insert_at(3, "!", 3)),
+            Err(ChannelError::BeforeReset)
+        );
+        assert_eq!(channel.text(), "reset");
+        assert!(channel.receive(rev, insert_at(5, "!", 5)).is_ok());
+        assert_eq!(channel.text(), "reset!");
     }
 
     #[test]

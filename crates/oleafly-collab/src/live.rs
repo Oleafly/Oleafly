@@ -842,6 +842,7 @@ impl LiveProject {
                 sink(message);
                 Ok(())
             }
+            Err(ChannelError::BeforeReset) => Ok(()),
             Err(ChannelError::Stale | ChannelError::Invalid(_)) => self.reset_file(id),
         }
     }
@@ -2376,6 +2377,36 @@ mod tests {
         bob.editor_change(&main, rev + 2, insert(5, "d", 5))
             .unwrap();
         assert_eq!(bob.doc().text(&main).unwrap(), "zzabcd");
+    }
+
+    #[test]
+    fn a_change_the_editor_sent_before_a_reset_is_dropped_without_another_reset() {
+        let (mut bob, _alice, main) = pair();
+        let (sink, seen) = recorder();
+        let rev = bob.open_file(&main, sink).unwrap().rev;
+        bob.comment_doc()
+            .text_of(&main)
+            .unwrap()
+            .insert_utf16(0, "zz")
+            .unwrap();
+        bob.comment_doc().loro().commit();
+        bob.editor_change(&main, rev, insert(3, "d", 3)).unwrap();
+        let resets = || {
+            seen.lock()
+                .unwrap()
+                .iter()
+                .filter(|message| matches!(message, DocMessage::Reset { .. }))
+                .count()
+        };
+        assert_eq!(resets(), 1);
+        bob.editor_change(&main, rev + 1, insert(4, "e", 4))
+            .unwrap();
+        assert_eq!(resets(), 1);
+        assert_eq!(bob.doc().text(&main).unwrap(), "zzabc");
+        bob.editor_change(&main, rev + 2, insert(5, "de", 5))
+            .unwrap();
+        assert_eq!(bob.doc().text(&main).unwrap(), "zzabcde");
+        assert_eq!(resets(), 1);
     }
 
     #[test]
