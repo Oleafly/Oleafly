@@ -1015,6 +1015,32 @@ mod tests {
     }
 
     #[test]
+    fn the_main_document_follows_a_move_that_takes_it_along_and_says_so() {
+        let library = TempLibrary::new();
+        library.project("moved-main", &[("con/thesis.tex", "x\n")]);
+        crate::project::write_meta("moved-main", &meta("con/thesis.tex", "latexmk")).unwrap();
+        let elsewhere = [("refs.bib".to_owned(), "unnamed-1".to_owned())];
+        assert!(follow_renamed_main("moved-main", &elsewhere).is_none());
+        let moved = [("con".to_owned(), "unnamed-2".to_owned())];
+        let applied = follow_renamed_main("moved-main", &moved).expect("the main file moved");
+        let here = crate::project::read_meta("moved-main").unwrap();
+        assert_eq!(here.main_doc, "unnamed-2/thesis.tex");
+        assert_eq!(here.engine, "latexmk");
+        assert_eq!(applied.meta.map(|meta| meta.main_doc), Some(here.main_doc));
+        assert_eq!(
+            applied.notices,
+            vec![SettingsChangedPayload {
+                project_id: "moved-main".to_owned(),
+                account_id: None,
+                changes: vec![SettingNotice::MainDocument {
+                    path: "unnamed-2/thesis.tex".to_owned()
+                }],
+            }]
+        );
+        assert!(follow_renamed_main("moved-main", &moved).is_none());
+    }
+
+    #[test]
     fn shell_escape_never_travels_in_either_direction() {
         let library = TempLibrary::new();
         let files = ["main.tex"];

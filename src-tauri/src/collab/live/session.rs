@@ -416,11 +416,33 @@ impl Active {
             return;
         }
         announce_renames(self.host.as_ref(), &self.project_id, &renamed);
+        if !self.moves_the_main_file(&renamed) {
+            return;
+        }
         if let Some(applied) =
             crate::collab::settings::follow_renamed_main(&self.project_id, &renamed)
         {
             self.host.settings_changed(applied);
         }
+    }
+
+    // Whether one of the moves took the shared main file along, so the
+    // project's main document may have to follow it.
+    fn moves_the_main_file(&self, renamed: &[(String, String)]) -> bool {
+        let live = lock(&self.live);
+        let Some(main) = live.doc().settings().main_doc() else {
+            return false;
+        };
+        let Ok(nodes) = live.doc().nodes() else {
+            return false;
+        };
+        materialize::layout(&nodes)
+            .get(&main.to_string())
+            .is_some_and(|placed| {
+                renamed
+                    .iter()
+                    .any(|(_, to)| crate::collab::disk::inside(&placed.path, to))
+            })
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {
