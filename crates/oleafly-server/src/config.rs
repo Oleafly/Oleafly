@@ -39,7 +39,9 @@ const GITHUB_VARIABLES: [&str; 6] = [
     "OLEAFLY_GITHUB_LABEL",
 ];
 const LOG_LEVELS: [&str; 5] = ["error", "warn", "info", "debug", "trace"];
-const FOR_OTHER_TOOLS: [&str; 1] = ["OLEAFLY_DOMAIN"];
+// Docker Compose reads these from the same .env file to set up Caddy and the
+// network, so the server sees them too but has no use for them.
+const FOR_OTHER_TOOLS: [&str; 2] = ["OLEAFLY_DOMAIN", "OLEAFLY_IPV6"];
 const CLOSE_ENOUGH: usize = 3;
 const S3_VARIABLES: [&str; 6] = [
     "OLEAFLY_S3_ENDPOINT",
@@ -1771,7 +1773,12 @@ mod tests {
         );
         assert!(!warning.contains("secret"), "{warning}");
         assert!(!format!("{config:?}").contains("smtp.example.edu"));
-        let clean = load(&[BASE, ("OLEAFLY_DOMAIN", "c.example.edu")]).unwrap();
+        let clean = load(&[
+            BASE,
+            ("OLEAFLY_DOMAIN", "c.example.edu"),
+            ("OLEAFLY_IPV6", "true"),
+        ])
+        .unwrap();
         assert!(clean.ignored_settings.is_empty());
         assert!(clean
             .startup_notes
