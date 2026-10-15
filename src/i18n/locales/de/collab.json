@@ -25,9 +25,9 @@
       "signedOut": "Abgemeldet",
       "signedInAs": "Angemeldet als {{name}}",
       "signedOutHint": "Dieser Computer ist bei diesem Server nicht angemeldet.",
-      "paused": "Gesperrt",
+      "suspended": "Gesperrt",
       "noAccess": "Kein Zugriff",
-      "pausedHint": "Ein Admin hat Ihr Konto auf {{server}} gesperrt. Ihre Änderungen bleiben auf diesem Computer. Sie können sich wieder anmelden, sobald ein Admin es reaktiviert.",
+      "suspendedHint": "Ein Admin hat Ihr Konto auf {{server}} gesperrt. Ihre Änderungen bleiben auf diesem Computer. Sie können sich wieder anmelden, sobald ein Admin es reaktiviert.",
       "endedHint": "Sie haben keinen Zugriff mehr auf {{server}}. Ihre Kopien bleiben als normale Projekte auf diesem Computer. Wenn ein Admin Sie wieder hinzufügt, melden Sie sich erneut an.",
       "endedGuestHint": "Sie haben keinen Zugriff mehr auf {{server}}, weil Sie zu keinem seiner geteilten Projekte gehören. Ihre Kopien bleiben als normale Projekte auf diesem Computer. Wenn Sie erneut eingeladen werden, melden Sie sich wieder an.",
       "role": "Ihre Rolle: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Abmelden",
       "remove": "Entfernen",
       "manage": "Server verwalten",
-      "manageHint": "Server verwalten zeigt Personen, Zugangsregeln und Servereinstellungen hier an. Die Admin-Konsole öffnet sich in einem eigenen Fenster und hat zusätzlich Überblick, Projekte und Verbindungstests.",
+      "manageHint": "Server verwalten zeigt hier Personen, Zugelassene Personen, Domains, Servereinstellungen, E-Mail und Sicherheitsprotokoll. Die Admin-Konsole öffnet sich in einem eigenen Fenster und hat zusätzlich Überblick, Projekte und Verbindungstests.",
       "test": "Verbindung testen",
       "removeConfirm": {
         "title": "{{name}} entfernen?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Dieser Server erlaubt kein Teilen per Link. Bitten Sie den Admin des Servers, es zu erlauben.",
     "access_log_off": "Dieser Server erlaubt keine Zugriffsprotokolle. Bitten Sie den Admin des Servers, sie zu erlauben.",
     "last_admin": "Dieser Server braucht mindestens einen Admin. Machen Sie zuerst eine andere Person zum Admin.",
-    "duplicate_entry": "Das steht bereits auf der Liste.",
+    "duplicate_entry": "Diesen Eintrag gibt es bereits.",
     "already_member": "Diese Person hat bereits ein Konto. Ändern Sie ihre Rolle unter Personen.",
     "project_not_shared": "Dieses Projekt ist noch nicht geteilt. Teilen Sie es zuerst und laden Sie dann Personen ein.",
     "project_full": "Dieses Projekt hat bereits so viele Personen, wie der Server erlaubt. Entfernen Sie zuerst jemanden oder fragen Sie den Admin des Servers.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "{{name}} von diesem Server entfernen?",
         "description": "Die Geräte dieser Person werden sofort abgemeldet. Projekte, die ihr gehören, bleiben auf dem Server, und Sie können die Person später wieder hinzufügen.",
-        "confirm": "Mitglied entfernen"
+        "confirm": "Vom Server entfernen"
       },
       "suspendConfirm": {
         "title": "{{name}} sperren?",
         "description": "{{name}} kann sich nicht anmelden oder abgleichen, bis ein Admin das Konto reaktiviert.",
-        "confirm": "Mitglied sperren"
+        "confirm": "Konto sperren"
       },
       "selfRoleConfirm": {
         "title": "Ihre eigene Rolle zu {{role}} ändern?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Personen auf dieser Liste können sich mit der Rolle, die Sie wählen, beim Server anmelden.",
+      "description": "Personen, die Sie hier hinzufügen, können sich mit der Rolle, die Sie wählen, beim Server anmelden.",
       "matchLabel": "Abgleich über",
       "match": {
         "email": "E-Mail-Adresse",
@@ -307,14 +307,14 @@
       "providerLabel": "Anmeldeoption",
       "roleLabel": "Rolle",
       "add": "Hinzufügen",
-      "loading": "Die Liste wird geladen…",
-      "empty": "Noch steht niemand auf der Liste.",
+      "loading": "Zugelassene Personen werden geladen…",
+      "empty": "Noch wurde niemand hinzugefügt.",
       "loginEntry": "{{login}} bei {{provider}}",
       "bound": "Hat sich angemeldet",
       "unbound": "Hat sich noch nicht angemeldet",
       "remove": "Entfernen",
       "removeNamed": "{{entry}} entfernen",
-      "duplicate": "Diese Person steht bereits auf der Liste."
+      "duplicate": "Diese Person ist bereits zugelassen."
     },
     "domains": {
       "description": "Alle mit einer bestätigten E-Mail-Adresse unter diesen Domains können sich mit der Rolle, die Sie wählen, anmelden.",

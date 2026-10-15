@@ -25,9 +25,9 @@
       "signedOut": "Odhlášeno",
       "signedInAs": "Přihlášeno jako {{name}}",
       "signedOutHint": "Tento počítač není k tomuto serveru přihlášený.",
-      "paused": "Pozastaveno",
+      "suspended": "Pozastaveno",
       "noAccess": "Bez přístupu",
-      "pausedHint": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Jakmile administrátor účet znovu aktivuje, můžete se přihlásit.",
+      "suspendedHint": "Administrátor pozastavil váš účet na serveru {{server}}. Vaše změny zůstanou v tomto počítači. Jakmile administrátor účet znovu aktivuje, můžete se přihlásit.",
       "endedHint": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstanou v tomto počítači jako běžné projekty. Pokud vás správce znovu přidá, přihlaste se znovu.",
       "endedGuestHint": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstanou v tomto počítači jako běžné projekty. Pokud dostanete novou pozvánku, přihlaste se znovu.",
       "role": "Vaše role: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Odhlásit se",
       "remove": "Odebrat",
       "manage": "Spravovat server",
-      "manageHint": "Spravovat server zobrazí lidi, pravidla přístupu a nastavení serveru přímo tady. Konzole pro správu se otevře ve vlastním okně a má navíc přehled, projekty a kontroly připojení.",
+      "manageHint": "Spravovat server tady zobrazí sekce Lidé, Povolení lidé, Domény, Nastavení serveru, E-mail a Protokol zabezpečení. Konzole pro správu se otevře ve vlastním okně a má navíc přehled, projekty a kontroly připojení.",
       "test": "Otestovat připojení",
       "removeConfirm": {
         "title": "Odebrat {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Tento server nepovoluje sdílení odkazem. Požádejte jeho administrátora, aby ho povolil.",
     "access_log_off": "Tento server nepovoluje protokoly přístupu. Požádejte jeho administrátora, aby je povolil.",
     "last_admin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
-    "duplicate_entry": "To už na seznamu je.",
+    "duplicate_entry": "Tato položka už existuje.",
     "already_member": "Tento člověk už má účet. Jeho roli změníte v sekci Lidé.",
     "project_not_shared": "Tento projekt ještě není sdílený. Nejdřív ho sdílejte a pak pozvěte lidi.",
     "project_full": "Tento projekt už má tolik lidí, kolik server dovoluje. Nejdřív někoho odeberte, nebo se obraťte na administrátora serveru.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Odebrat {{name}} z tohoto serveru?",
         "description": "Zařízení tohoto člena se okamžitě odhlásí. Projekty, které vlastní, zůstanou na serveru a člena můžete později přidat zpět.",
-        "confirm": "Odebrat člena"
+        "confirm": "Odebrat ze serveru"
       },
       "suspendConfirm": {
         "title": "Pozastavit {{name}}?",
         "description": "{{name}} se nemůže přihlásit ani synchronizovat, dokud administrátor účet znovu neaktivuje.",
-        "confirm": "Pozastavit člena"
+        "confirm": "Pozastavit účet"
       },
       "selfRoleConfirm": {
         "title": "Změnit vlastní roli na {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Lidé na tomto seznamu se mohou přihlásit k serveru s rolí, kterou vyberete.",
+      "description": "Lidé, které tady přidáte, se mohou přihlásit k serveru s rolí, kterou vyberete.",
       "matchLabel": "Porovnávat podle",
       "match": {
         "email": "E-mailová adresa",
@@ -307,14 +307,14 @@
       "providerLabel": "Možnost přihlášení",
       "roleLabel": "Role",
       "add": "Přidat",
-      "loading": "Načítá se seznam…",
-      "empty": "Na seznamu zatím nikdo není.",
+      "loading": "Načítají se povolení lidé…",
+      "empty": "Zatím tu nikdo není.",
       "loginEntry": "{{login}} ({{provider}})",
       "bound": "Již přihlášen",
       "unbound": "Zatím nepřihlášen",
       "remove": "Odebrat",
       "removeNamed": "Odebrat {{entry}}",
-      "duplicate": "Tento člověk už na seznamu je."
+      "duplicate": "Tento člověk už je povolený."
     },
     "domains": {
       "description": "Kdokoli s ověřenou e-mailovou adresou v těchto doménách se může přihlásit s rolí, kterou vyberete.",

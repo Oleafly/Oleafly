@@ -25,9 +25,9 @@
       "signedOut": "Desconectado",
       "signedInAs": "Conectado como {{name}}",
       "signedOutHint": "Este computador não está conectado a este servidor.",
-      "paused": "Suspensa",
+      "suspended": "Suspensa",
       "noAccess": "Sem acesso",
-      "pausedHint": "Um administrador suspendeu a sua conta em {{server}}. As suas alterações ficam neste computador. Você poderá entrar de novo quando um administrador a reativar.",
+      "suspendedHint": "Um administrador suspendeu a sua conta em {{server}}. As suas alterações ficam neste computador. Você poderá entrar de novo quando um administrador a reativar.",
       "endedHint": "Você não tem mais acesso a {{server}}. As suas cópias ficam neste computador como projetos comuns. Se um administrador adicionar você de novo, entre novamente.",
       "endedGuestHint": "Você não tem mais acesso a {{server}} porque não participa de nenhum dos projetos compartilhados dele. As suas cópias ficam neste computador como projetos comuns. Se você for convidado de novo, entre novamente.",
       "role": "Sua função: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Encerrar sessão",
       "remove": "Remover",
       "manage": "Gerenciar servidor",
-      "manageHint": "Gerenciar servidor mostra aqui as pessoas, as regras de acesso e as configurações do servidor. O console de administração abre em uma janela própria e também tem visão geral, projetos e testes de conexão.",
+      "manageHint": "Gerenciar servidor mostra aqui Pessoas, Pessoas permitidas, Domínios, Configurações do servidor, E-mail e Registro de segurança. O console de administração abre em uma janela própria e também tem visão geral, projetos e testes de conexão.",
       "test": "Testar conexão",
       "removeConfirm": {
         "title": "Remover {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Este servidor não permite compartilhamento por link. Peça ao administrador dele para ativá-lo.",
     "access_log_off": "Este servidor não permite registros de acesso. Peça ao administrador dele para ativá-los.",
     "last_admin": "Este servidor precisa de pelo menos um administrador. Promova outra pessoa a administrador primeiro.",
-    "duplicate_entry": "Isso já está na lista.",
+    "duplicate_entry": "Essa entrada já existe.",
     "already_member": "Essa pessoa já tem uma conta. Mude a função dela em Pessoas.",
     "project_not_shared": "Este projeto ainda não está compartilhado. Compartilhe primeiro e depois convide pessoas.",
     "project_full": "Este projeto já tem o número máximo de pessoas que o servidor permite. Remova alguém primeiro ou fale com o administrador do servidor.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Remover {{name}} deste servidor?",
         "description": "A sessão dos dispositivos dessa pessoa é encerrada na hora. Os projetos dela continuam no servidor, e você pode adicioná-la de novo depois.",
-        "confirm": "Remover membro"
+        "confirm": "Remover do servidor"
       },
       "suspendConfirm": {
         "title": "Suspender {{name}}?",
         "description": "{{name}} não poderá entrar nem sincronizar até que um administrador reative a conta.",
-        "confirm": "Suspender membro"
+        "confirm": "Suspender a conta"
       },
       "selfRoleConfirm": {
         "title": "Mudar a sua própria função para {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "As pessoas desta lista podem fazer login no servidor com a função que você escolher.",
+      "description": "As pessoas que você adicionar aqui podem fazer login no servidor com a função que você escolher.",
       "matchLabel": "Identificar por",
       "match": {
         "email": "Endereço de e-mail",
@@ -307,14 +307,14 @@
       "providerLabel": "Opção de login",
       "roleLabel": "Função",
       "add": "Adicionar",
-      "loading": "Carregando a lista…",
-      "empty": "Ainda não há ninguém na lista.",
+      "loading": "Carregando as pessoas permitidas…",
+      "empty": "Ninguém foi adicionado ainda.",
       "loginEntry": "{{login}} em {{provider}}",
       "bound": "Já fez login",
       "unbound": "Ainda não fez login",
       "remove": "Remover",
       "removeNamed": "Remover {{entry}}",
-      "duplicate": "Essa pessoa já está na lista."
+      "duplicate": "Essa pessoa já está permitida."
     },
     "domains": {
       "description": "Qualquer pessoa com um endereço de e-mail verificado nestes domínios pode fazer login com a função que você escolher.",

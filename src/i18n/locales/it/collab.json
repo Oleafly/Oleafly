@@ -25,9 +25,9 @@
       "signedOut": "Accesso non eseguito",
       "signedInAs": "Accesso eseguito come {{name}}",
       "signedOutHint": "Questo computer non ha eseguito l'accesso a questo server.",
-      "paused": "Sospeso",
+      "suspended": "Sospeso",
       "noAccess": "Nessun accesso",
-      "pausedHint": "Un amministratore ha sospeso il tuo account su {{server}}. Le tue modifiche restano su questo computer. Potrai accedere di nuovo quando un amministratore lo riattiverà.",
+      "suspendedHint": "Un amministratore ha sospeso il tuo account su {{server}}. Le tue modifiche restano su questo computer. Potrai accedere di nuovo quando un amministratore lo riattiverà.",
       "endedHint": "Non hai più accesso a {{server}}. Le tue copie restano su questo computer come normali progetti. Se un amministratore ti aggiunge di nuovo, accedi di nuovo.",
       "endedGuestHint": "Non hai più accesso a {{server}} perché non fai parte di nessuno dei suoi progetti condivisi. Le tue copie restano su questo computer come normali progetti. Se vieni invitato di nuovo, accedi di nuovo.",
       "role": "Il tuo ruolo: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Esci",
       "remove": "Rimuovi",
       "manage": "Gestisci il server",
-      "manageHint": "Gestisci il server mostra qui persone, regole di accesso e impostazioni del server. La console di amministrazione si apre in una finestra a parte e include anche panoramica, progetti e verifiche della connessione.",
+      "manageHint": "Gestisci il server mostra qui Persone, Persone autorizzate, Domini, Impostazioni del server, Email e Registro di sicurezza. La console di amministrazione si apre in una finestra a parte e include anche panoramica, progetti e verifiche della connessione.",
       "test": "Verifica la connessione",
       "removeConfirm": {
         "title": "Vuoi rimuovere il server {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Questo server non consente la condivisione tramite link. Chiedi al suo amministratore di attivarla.",
     "access_log_off": "Questo server non consente i registri degli accessi. Chiedi al suo amministratore di attivarli.",
     "last_admin": "Questo server deve avere almeno un amministratore. Prima rendi amministratore un'altra persona.",
-    "duplicate_entry": "È già nell'elenco.",
+    "duplicate_entry": "Questa voce esiste già.",
     "already_member": "Questa persona ha già un account. Cambia il suo ruolo in Persone.",
     "project_not_shared": "Questo progetto non è ancora condiviso. Prima condividilo, poi invita le persone.",
     "project_full": "Questo progetto ha già tutte le persone consentite dal server. Prima rimuovi qualcuno, oppure chiedi all'amministratore del server.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Vuoi rimuovere il membro {{name}} da questo server?",
         "description": "I suoi dispositivi vengono disconnessi subito. I progetti che possiede restano sul server, e potrai aggiungere di nuovo questa persona in seguito.",
-        "confirm": "Rimuovi il membro"
+        "confirm": "Rimuovi dal server"
       },
       "suspendConfirm": {
         "title": "Sospendere {{name}}?",
         "description": "{{name}} non potrà accedere né sincronizzare finché un amministratore non riattiverà l'account.",
-        "confirm": "Sospendi membro"
+        "confirm": "Sospendi l'account"
       },
       "selfRoleConfirm": {
         "title": "Cambiare il tuo ruolo in {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Le persone in questo elenco possono accedere al server con il ruolo che scegli.",
+      "description": "Le persone che aggiungi qui possono accedere al server con il ruolo che scegli.",
       "matchLabel": "Identifica tramite",
       "match": {
         "email": "Indirizzo email",
@@ -307,14 +307,14 @@
       "providerLabel": "Opzione di accesso",
       "roleLabel": "Ruolo",
       "add": "Aggiungi",
-      "loading": "Caricamento dell'elenco…",
-      "empty": "L'elenco è ancora vuoto.",
+      "loading": "Caricamento delle persone autorizzate…",
+      "empty": "Non è stato ancora aggiunto nessuno.",
       "loginEntry": "{{login}} su {{provider}}",
       "bound": "Ha eseguito l'accesso",
       "unbound": "Non ha ancora eseguito l'accesso",
       "remove": "Rimuovi",
       "removeNamed": "Rimuovi {{entry}}",
-      "duplicate": "Questa persona è già nell'elenco."
+      "duplicate": "Questa persona è già autorizzata."
     },
     "domains": {
       "description": "Chiunque abbia un indirizzo email verificato in questi domini può accedere con il ruolo che scegli.",

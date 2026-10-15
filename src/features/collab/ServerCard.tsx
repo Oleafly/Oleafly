@@ -100,14 +100,14 @@ export function ServerCard({
   const canManage = account !== null && canManageServer(role);
 
   const signedOutBadge = () => {
-    if (ended === "account_suspended") return t(($) => $.collab.section.server.paused);
+    if (ended === "account_suspended") return t(($) => $.collab.section.server.suspended);
     if (ended === "access_ended") return t(($) => $.collab.section.server.noAccess);
     return t(($) => $.collab.section.server.signedOut);
   };
 
   const signedOutHint = () => {
     const values = { server: server.name };
-    if (ended === "account_suspended") return t(($) => $.collab.section.server.pausedHint, values);
+    if (ended === "account_suspended") return t(($) => $.collab.section.server.suspendedHint, values);
     if (ended === "access_ended" && formerGuest) return t(($) => $.collab.section.server.endedGuestHint, values);
     if (ended === "access_ended") return t(($) => $.collab.section.server.endedHint, values);
     return t(($) => $.collab.section.server.signedOutHint);

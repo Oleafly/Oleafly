@@ -25,9 +25,9 @@
       "signedOut": "Afgemeld",
       "signedInAs": "Aangemeld als {{name}}",
       "signedOutHint": "Deze computer is niet aangemeld bij deze server.",
-      "paused": "Geschorst",
+      "suspended": "Geschorst",
       "noAccess": "Geen toegang",
-      "pausedHint": "Een beheerder heeft je account op {{server}} geschorst. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra een beheerder het weer activeert.",
+      "suspendedHint": "Een beheerder heeft je account op {{server}} geschorst. Je wijzigingen blijven op deze computer. Je kunt weer aanmelden zodra een beheerder het weer activeert.",
       "endedHint": "Je hebt geen toegang meer tot {{server}}. Je kopieën blijven op deze computer als gewone projecten. Als een beheerder je weer toevoegt, meld je dan opnieuw aan.",
       "endedGuestHint": "Je hebt geen toegang meer tot {{server}} omdat je in geen van de gedeelde projecten daar zit. Je kopieën blijven op deze computer als gewone projecten. Als je opnieuw wordt uitgenodigd, meld je dan opnieuw aan.",
       "role": "Je rol: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Afmelden",
       "remove": "Weghalen",
       "manage": "Server beheren",
-      "manageHint": "Server beheren toont hier mensen, toegangsregels en serverinstellingen. De beheerconsole opent in een eigen venster en heeft ook een overzicht, projecten en verbindingscontroles.",
+      "manageHint": "Server beheren toont hier Mensen, Toegestane personen, Domeinen, Serverinstellingen, E-mail en Beveiligingslogboek. De beheerconsole opent in een eigen venster en heeft ook een overzicht, projecten en verbindingscontroles.",
       "test": "Verbinding testen",
       "removeConfirm": {
         "title": "{{name}} weghalen?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Deze server staat delen via link niet toe. Vraag de beheerder om het aan te zetten.",
     "access_log_off": "Deze server staat geen toegangslogboeken toe. Vraag de beheerder om ze aan te zetten.",
     "last_admin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
-    "duplicate_entry": "Dat staat al op de lijst.",
+    "duplicate_entry": "Dat item bestaat al.",
     "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
     "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
     "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "{{name}} van deze server weghalen?",
         "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
-        "confirm": "Lid weghalen"
+        "confirm": "Van de server weghalen"
       },
       "suspendConfirm": {
         "title": "{{name}} schorsen?",
         "description": "{{name}} kan niet aanmelden of synchroniseren tot een beheerder het account weer activeert.",
-        "confirm": "Lid schorsen"
+        "confirm": "Account schorsen"
       },
       "selfRoleConfirm": {
         "title": "Je eigen rol wijzigen in {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Mensen op deze lijst kunnen zich bij de server aanmelden met de rol die je kiest.",
+      "description": "Mensen die je hier toevoegt, kunnen zich bij de server aanmelden met de rol die je kiest.",
       "matchLabel": "Herkennen aan",
       "match": {
         "email": "E-mailadres",
@@ -307,14 +307,14 @@
       "providerLabel": "Aanmeldoptie",
       "roleLabel": "Rol",
       "add": "Toevoegen",
-      "loading": "De lijst laden…",
-      "empty": "Er staat nog niemand op de lijst.",
+      "loading": "Toegestane personen laden…",
+      "empty": "Er is nog niemand toegevoegd.",
       "loginEntry": "{{login}} op {{provider}}",
       "bound": "Heeft zich aangemeld",
       "unbound": "Heeft zich nog niet aangemeld",
       "remove": "Weghalen",
       "removeNamed": "{{entry}} weghalen",
-      "duplicate": "Die persoon staat al op de lijst."
+      "duplicate": "Die persoon is al toegestaan."
     },
     "domains": {
       "description": "Iedereen met een geverifieerd e-mailadres op deze domeinen kan zich aanmelden met de rol die je kiest.",

@@ -25,9 +25,9 @@
       "signedOut": "Deconectat",
       "signedInAs": "Autentificat ca {{name}}",
       "signedOutHint": "Acest computer nu este autentificat pe acest server.",
-      "paused": "Suspendat",
+      "suspended": "Suspendat",
       "noAccess": "Fără acces",
-      "pausedHint": "Un administrator ți-a suspendat contul pe {{server}}. Modificările tale rămân pe acest computer. Te poți autentifica din nou după ce un administrator îl reactivează.",
+      "suspendedHint": "Un administrator ți-a suspendat contul pe {{server}}. Modificările tale rămân pe acest computer. Te poți autentifica din nou după ce un administrator îl reactivează.",
       "endedHint": "Nu mai ai acces la {{server}}. Copiile tale rămân pe acest computer ca proiecte obișnuite. Dacă un administrator te adaugă din nou, autentifică-te din nou.",
       "endedGuestHint": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copiile tale rămân pe acest computer ca proiecte obișnuite. Dacă ești invitat din nou, autentifică-te din nou.",
       "role": "Rolul tău: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Deconectează-te",
       "remove": "Elimină",
       "manage": "Gestionează serverul",
-      "manageHint": "Gestionează serverul arată aici persoanele, regulile de acces și setările serverului. Consola de administrare se deschide într-o fereastră separată și are în plus o prezentare generală, proiectele și verificările de conexiune.",
+      "manageHint": "Gestionează serverul arată aici Persoane, Persoane permise, Domenii, Setările serverului, E-mail și Jurnal de securitate. Consola de administrare se deschide într-o fereastră separată și are în plus o prezentare generală, proiectele și verificările de conexiune.",
       "test": "Testează conexiunea",
       "removeConfirm": {
         "title": "Elimini {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Acest server nu permite partajarea prin link. Cere-i administratorului să o activeze.",
     "access_log_off": "Acest server nu permite jurnale de acces. Cere-i administratorului să le activeze.",
     "last_admin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
-    "duplicate_entry": "Este deja pe listă.",
+    "duplicate_entry": "Această intrare există deja.",
     "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
     "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
     "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Elimini {{name}} de pe acest server?",
         "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
-        "confirm": "Elimină membrul"
+        "confirm": "Elimină de pe server"
       },
       "suspendConfirm": {
         "title": "Suspenzi {{name}}?",
         "description": "{{name}} nu se poate autentifica și nu poate sincroniza până când un administrator reactivează contul.",
-        "confirm": "Suspendă membrul"
+        "confirm": "Suspendă contul"
       },
       "selfRoleConfirm": {
         "title": "Îți schimbi propriul rol în {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Persoanele de pe această listă se pot autentifica pe server cu rolul pe care îl alegi.",
+      "description": "Persoanele pe care le adaugi aici se pot autentifica pe server cu rolul pe care îl alegi.",
       "matchLabel": "Potrivire după",
       "match": {
         "email": "Adresă de e-mail",
@@ -307,14 +307,14 @@
       "providerLabel": "Opțiune de autentificare",
       "roleLabel": "Rol",
       "add": "Adaugă",
-      "loading": "Se încarcă lista…",
-      "empty": "Nimeni nu este încă pe listă.",
+      "loading": "Se încarcă persoanele permise…",
+      "empty": "Încă nu a fost adăugat nimeni.",
       "loginEntry": "{{login}} pe {{provider}}",
       "bound": "S-a autentificat",
       "unbound": "Nu s-a autentificat încă",
       "remove": "Elimină",
       "removeNamed": "Elimină {{entry}}",
-      "duplicate": "Această persoană este deja pe listă."
+      "duplicate": "Această persoană este deja permisă."
     },
     "domains": {
       "description": "Oricine are o adresă de e-mail verificată pe aceste domenii se poate autentifica cu rolul pe care îl alegi.",

@@ -25,9 +25,9 @@
       "signedOut": "Signed out",
       "signedInAs": "Signed in as {{name}}",
       "signedOutHint": "This computer isn't signed in to this server.",
-      "paused": "Suspended",
+      "suspended": "Suspended",
       "noAccess": "No access",
-      "pausedHint": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
+      "suspendedHint": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
       "endedHint": "You no longer have access to {{server}}. Your copies stay on this computer as ordinary projects. If an admin adds you back, sign in again.",
       "endedGuestHint": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copies stay on this computer as ordinary projects. If you're invited again, sign in again.",
       "role": "Your role: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Sign out",
       "remove": "Remove",
       "manage": "Manage server",
-      "manageHint": "Manage server shows people, access rules and server settings here. The admin console opens in its own window and also has an overview, projects and connection checks.",
+      "manageHint": "Manage server shows People, Allowed people, Domains, Server settings, Email and Security log here. The admin console opens in its own window and also has an overview, projects and connection checks.",
       "test": "Test connection",
       "removeConfirm": {
         "title": "Remove {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "This server doesn't allow link sharing. Ask its admin to turn it on.",
     "access_log_off": "This server doesn't allow access logs. Ask its admin to turn them on.",
     "last_admin": "This server needs at least one admin. Make someone else an admin first.",
-    "duplicate_entry": "That's already on the list.",
+    "duplicate_entry": "That entry already exists.",
     "already_member": "That person already has an account. Change their role under People.",
     "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
     "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Remove {{name}} from this server?",
         "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
-        "confirm": "Remove member"
+        "confirm": "Remove from server"
       },
       "suspendConfirm": {
         "title": "Suspend {{name}}?",
         "description": "{{name}} can't sign in or sync until an admin reactivates the account.",
-        "confirm": "Suspend member"
+        "confirm": "Suspend account"
       },
       "selfRoleConfirm": {
         "title": "Change your own role to {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "People on this list can sign in to the server with the role you pick.",
+      "description": "People added here can sign in to the server with the role you pick.",
       "matchLabel": "Match by",
       "match": {
         "email": "Email address",
@@ -307,14 +307,14 @@
       "providerLabel": "Sign-in option",
       "roleLabel": "Role",
       "add": "Add",
-      "loading": "Loading the list…",
-      "empty": "Nobody is on the list yet.",
+      "loading": "Loading allowed people…",
+      "empty": "Nobody has been added yet.",
       "loginEntry": "{{login}} on {{provider}}",
       "bound": "Has signed in",
       "unbound": "Hasn't signed in yet",
       "remove": "Remove",
       "removeNamed": "Remove {{entry}}",
-      "duplicate": "That person is already on the list."
+      "duplicate": "That person is already allowed in."
     },
     "domains": {
       "description": "Anyone with a verified email address at these domains can sign in with the role you pick.",

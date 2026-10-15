@@ -25,9 +25,9 @@
       "signedOut": "Sesión cerrada",
       "signedInAs": "Sesión iniciada como {{name}}",
       "signedOutHint": "Este equipo no tiene la sesión iniciada en este servidor.",
-      "paused": "Suspendida",
+      "suspended": "Suspendida",
       "noAccess": "Sin acceso",
-      "pausedHint": "Un administrador suspendió tu cuenta en {{server}}. Tus cambios se quedan en este equipo. Podrás volver a iniciar sesión cuando un administrador la reactive.",
+      "suspendedHint": "Un administrador suspendió tu cuenta en {{server}}. Tus cambios se quedan en este equipo. Podrás volver a iniciar sesión cuando un administrador la reactive.",
       "endedHint": "Ya no tienes acceso a {{server}}. Tus copias se quedan en este equipo como proyectos normales. Si un administrador vuelve a añadirte, inicia sesión de nuevo.",
       "endedGuestHint": "Ya no tienes acceso a {{server}} porque no estás en ninguno de sus proyectos compartidos. Tus copias se quedan en este equipo como proyectos normales. Si vuelven a invitarte, inicia sesión de nuevo.",
       "role": "Tu rol: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Cerrar sesión",
       "remove": "Quitar",
       "manage": "Gestionar el servidor",
-      "manageHint": "Gestionar el servidor muestra aquí las personas, las reglas de acceso y los ajustes del servidor. La consola de administración se abre en su propia ventana y además tiene un resumen, los proyectos y las pruebas de conexión.",
+      "manageHint": "Gestionar el servidor muestra aquí Personas, Personas permitidas, Dominios, Ajustes del servidor, Correo y Registro de seguridad. La consola de administración se abre en su propia ventana y además tiene un resumen, los proyectos y las pruebas de conexión.",
       "test": "Probar la conexión",
       "removeConfirm": {
         "title": "¿Quitar {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Este servidor no permite compartir con enlace. Pide a su administrador que lo active.",
     "access_log_off": "Este servidor no permite registros de acceso. Pide a su administrador que los active.",
     "last_admin": "Este servidor necesita al menos un administrador. Primero haz administrador a otra persona.",
-    "duplicate_entry": "Eso ya está en la lista.",
+    "duplicate_entry": "Esa entrada ya existe.",
     "already_member": "Esa persona ya tiene una cuenta. Cambia su rol en Personas.",
     "project_not_shared": "Este proyecto aún no está compartido. Compártelo primero y luego invita a otras personas.",
     "project_full": "Este proyecto ya tiene tantas personas como permite el servidor. Quita a alguien primero o pregunta a su administrador.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "¿Quitar a {{name}} de este servidor?",
         "description": "Sus dispositivos cierran la sesión al momento. Los proyectos que le pertenecen se quedan en el servidor, y puedes volver a añadir a esta persona más tarde.",
-        "confirm": "Quitar al miembro"
+        "confirm": "Quitar del servidor"
       },
       "suspendConfirm": {
         "title": "¿Suspender a {{name}}?",
         "description": "{{name}} no podrá iniciar sesión ni sincronizar hasta que un administrador reactive la cuenta.",
-        "confirm": "Suspender miembro"
+        "confirm": "Suspender la cuenta"
       },
       "selfRoleConfirm": {
         "title": "¿Cambiar tu propio rol a {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Las personas de esta lista pueden iniciar sesión en el servidor con el rol que elijas.",
+      "description": "Las personas que añadas aquí pueden iniciar sesión en el servidor con el rol que elijas.",
       "matchLabel": "Identificar por",
       "match": {
         "email": "Dirección de correo",
@@ -307,14 +307,14 @@
       "providerLabel": "Opción de inicio de sesión",
       "roleLabel": "Rol",
       "add": "Añadir",
-      "loading": "Cargando la lista…",
-      "empty": "Todavía no hay nadie en la lista.",
+      "loading": "Cargando las personas permitidas…",
+      "empty": "Todavía no se ha añadido a nadie.",
       "loginEntry": "{{login}} en {{provider}}",
       "bound": "Ya inició sesión",
       "unbound": "Todavía no ha iniciado sesión",
       "remove": "Quitar",
       "removeNamed": "Quitar {{entry}}",
-      "duplicate": "Esa persona ya está en la lista."
+      "duplicate": "Esa persona ya está permitida."
     },
     "domains": {
       "description": "Cualquier persona con una dirección de correo verificada en estos dominios puede iniciar sesión con el rol que elijas.",

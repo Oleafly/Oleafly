@@ -25,9 +25,9 @@
       "signedOut": "Déconnecté",
       "signedInAs": "Connecté avec le compte {{name}}",
       "signedOutHint": "Cet ordinateur n'est pas connecté à ce serveur.",
-      "paused": "Suspendu",
+      "suspended": "Suspendu",
       "noAccess": "Sans accès",
-      "pausedHint": "Un administrateur a suspendu votre compte sur {{server}}. Vos modifications restent sur cet ordinateur. Vous pourrez vous reconnecter quand un administrateur le réactivera.",
+      "suspendedHint": "Un administrateur a suspendu votre compte sur {{server}}. Vos modifications restent sur cet ordinateur. Vous pourrez vous reconnecter quand un administrateur le réactivera.",
       "endedHint": "Vous n'avez plus accès à {{server}}. Vos copies restent sur cet ordinateur comme des projets ordinaires. Si un administrateur vous ajoute de nouveau, reconnectez-vous.",
       "endedGuestHint": "Vous n'avez plus accès à {{server}} car vous ne faites partie d'aucun de ses projets partagés. Vos copies restent sur cet ordinateur comme des projets ordinaires. Si vous êtes de nouveau invité, reconnectez-vous.",
       "role": "Votre rôle : {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Se déconnecter",
       "remove": "Retirer",
       "manage": "Gérer le serveur",
-      "manageHint": "Gérer le serveur affiche ici les personnes, les règles d'accès et les paramètres du serveur. La console d'administration s'ouvre dans sa propre fenêtre et propose aussi une vue d'ensemble, les projets et les tests de connexion.",
+      "manageHint": "Gérer le serveur affiche ici Personnes, Personnes autorisées, Domaines, Paramètres du serveur, Courriel et Journal de sécurité. La console d'administration s'ouvre dans sa propre fenêtre et propose aussi une vue d'ensemble, les projets et les tests de connexion.",
       "test": "Tester la connexion",
       "removeConfirm": {
         "title": "Retirer {{name}} ?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Ce serveur n'autorise pas le partage par lien. Demandez à son administrateur de l'activer.",
     "access_log_off": "Ce serveur n'autorise pas les journaux d'accès. Demandez à son administrateur de les activer.",
     "last_admin": "Ce serveur doit garder au moins un administrateur. Nommez d'abord quelqu'un d'autre administrateur.",
-    "duplicate_entry": "Cet élément figure déjà dans la liste.",
+    "duplicate_entry": "Cette entrée existe déjà.",
     "already_member": "Cette personne a déjà un compte. Changez son rôle dans Personnes.",
     "project_not_shared": "Ce projet n'est pas encore partagé. Partagez-le d'abord, puis invitez des personnes.",
     "project_full": "Ce projet compte déjà autant de personnes que le serveur le permet. Retirez d'abord quelqu'un, ou demandez à l'administrateur du serveur.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Retirer {{name}} de ce serveur ?",
         "description": "Ses appareils sont déconnectés immédiatement. Les projets dont cette personne est propriétaire restent sur le serveur, et vous pourrez l'ajouter de nouveau plus tard.",
-        "confirm": "Retirer le membre"
+        "confirm": "Retirer du serveur"
       },
       "suspendConfirm": {
         "title": "Suspendre {{name}} ?",
         "description": "{{name}} ne pourra ni se connecter ni synchroniser tant qu'un administrateur n'aura pas réactivé le compte.",
-        "confirm": "Suspendre le membre"
+        "confirm": "Suspendre le compte"
       },
       "selfRoleConfirm": {
         "title": "Changer votre propre rôle en {{role}} ?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Les personnes de cette liste peuvent se connecter au serveur avec le rôle que vous choisissez.",
+      "description": "Les personnes que vous ajoutez ici peuvent se connecter au serveur avec le rôle que vous choisissez.",
       "matchLabel": "Identifier par",
       "match": {
         "email": "Adresse électronique",
@@ -307,14 +307,14 @@
       "providerLabel": "Option de connexion",
       "roleLabel": "Rôle",
       "add": "Ajouter",
-      "loading": "Chargement de la liste…",
-      "empty": "Personne ne figure encore sur la liste.",
+      "loading": "Chargement des personnes autorisées…",
+      "empty": "Personne n'a encore été ajouté.",
       "loginEntry": "{{login}} sur {{provider}}",
       "bound": "S'est déjà connecté",
       "unbound": "Ne s'est pas encore connecté",
       "remove": "Retirer",
       "removeNamed": "Retirer {{entry}}",
-      "duplicate": "Cette personne figure déjà sur la liste."
+      "duplicate": "Cette personne est déjà autorisée."
     },
     "domains": {
       "description": "Toute personne ayant une adresse électronique vérifiée dans ces domaines peut se connecter avec le rôle que vous choisissez.",

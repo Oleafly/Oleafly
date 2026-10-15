@@ -25,9 +25,9 @@
       "signedOut": "Logget ut",
       "signedInAs": "Logget inn som {{name}}",
       "signedOutHint": "Denne maskinen er ikke logget inn på denne serveren.",
-      "paused": "Suspendert",
+      "suspended": "Suspendert",
       "noAccess": "Ingen tilgang",
-      "pausedHint": "En administrator har suspendert kontoen din på {{server}}. Endringene dine blir værende på denne maskinen. Du kan logge inn igjen når en administrator aktiverer den igjen.",
+      "suspendedHint": "En administrator har suspendert kontoen din på {{server}}. Endringene dine blir værende på denne maskinen. Du kan logge inn igjen når en administrator aktiverer den igjen.",
       "endedHint": "Du har ikke lenger tilgang til {{server}}. Kopiene dine blir liggende på denne maskinen som vanlige prosjekter. Hvis en administrator legger deg til igjen, logger du inn på nytt.",
       "endedGuestHint": "Du har ikke lenger tilgang til {{server}} fordi du ikke er med i noen av de delte prosjektene der. Kopiene dine blir liggende på denne maskinen som vanlige prosjekter. Hvis du blir invitert igjen, logger du inn på nytt.",
       "role": "Rollen din: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Logg ut",
       "remove": "Fjern",
       "manage": "Administrer serveren",
-      "manageHint": "Administrer serveren viser personer, tilgangsregler og serverinnstillinger her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
+      "manageHint": "Administrer serveren viser Personer, Tillatte personer, Domener, Serverinnstillinger, E-post og Sikkerhetslogg her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
       "test": "Test tilkoblingen",
       "removeConfirm": {
         "title": "Fjerne {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Denne serveren tillater ikke deling med lenke. Be administratoren om å slå det på.",
     "access_log_off": "Denne serveren tillater ikke tilgangslogger. Be administratoren om å slå dem på.",
     "last_admin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
-    "duplicate_entry": "Det står allerede på listen.",
+    "duplicate_entry": "Den finnes allerede.",
     "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Fjerne {{name}} fra denne serveren?",
         "description": "Enhetene deres logges ut med en gang. Prosjektene de eier, blir liggende på serveren. Du kan legge personen til igjen senere.",
-        "confirm": "Fjern medlemmet"
+        "confirm": "Fjern fra serveren"
       },
       "suspendConfirm": {
         "title": "Suspendere {{name}}?",
         "description": "{{name}} kan ikke logge inn eller synkronisere før en administrator aktiverer kontoen igjen.",
-        "confirm": "Suspender medlem"
+        "confirm": "Suspender kontoen"
       },
       "selfRoleConfirm": {
         "title": "Endre din egen rolle til {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Personer på denne listen kan logge inn på serveren med rollen du velger.",
+      "description": "Personer du legger til her, kan logge inn på serveren med rollen du velger.",
       "matchLabel": "Identifiser med",
       "match": {
         "email": "E-postadresse",
@@ -307,14 +307,14 @@
       "providerLabel": "Innloggingsmåte",
       "roleLabel": "Rolle",
       "add": "Legg til",
-      "loading": "Laster listen…",
-      "empty": "Ingen står på listen ennå.",
+      "loading": "Laster tillatte personer…",
+      "empty": "Ingen er lagt til ennå.",
       "loginEntry": "{{login}} på {{provider}}",
       "bound": "Har logget inn",
       "unbound": "Har ikke logget inn ennå",
       "remove": "Fjern",
       "removeNamed": "Fjern {{entry}}",
-      "duplicate": "Den personen står allerede på listen."
+      "duplicate": "Den personen er allerede tillatt."
     },
     "domains": {
       "description": "Alle med en bekreftet e-postadresse på disse domenene kan logge inn med rollen du velger.",

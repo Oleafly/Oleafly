@@ -25,9 +25,9 @@
       "signedOut": "已登出",
       "signedInAs": "已以 {{name}} 的身分登入",
       "signedOutHint": "這台電腦尚未登入這個伺服器。",
-      "paused": "已停權",
+      "suspended": "已停權",
       "noAccess": "無存取權",
-      "pausedHint": "管理員已將你在 {{server}} 上的帳號停權。你的變更會留在這台電腦上。管理員重新啟用後，你可以重新登入。",
+      "suspendedHint": "管理員已將你在 {{server}} 上的帳號停權。你的變更會留在這台電腦上。管理員重新啟用後，你可以重新登入。",
       "endedHint": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。如果管理員重新加入你，請重新登入。",
       "endedGuestHint": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。如果你再次受邀，請重新登入。",
       "role": "你的角色：{{role}}",
@@ -35,7 +35,7 @@
       "signOut": "登出",
       "remove": "移除",
       "manage": "管理伺服器",
-      "manageHint": "管理伺服器會在這裡顯示人員、存取規則和伺服器設定。管理主控台會在獨立視窗中開啟，另外還有總覽、專案和連線檢查。",
+      "manageHint": "管理伺服器會在這裡顯示人員、允許名單、網域、伺服器設定、電子郵件和安全性記錄。管理主控台會在獨立視窗中開啟，另外還有總覽、專案和連線檢查。",
       "test": "測試連線",
       "removeConfirm": {
         "title": "要移除 {{name}} 嗎？",
@@ -216,7 +216,7 @@
     "link_sharing_off": "這個伺服器不允許透過連結分享。請聯絡伺服器的管理員開啟這項功能。",
     "access_log_off": "這個伺服器不允許存取記錄。請聯絡伺服器的管理員開啟這項功能。",
     "last_admin": "這個伺服器至少需要一位管理員。請先將其他人設為管理員。",
-    "duplicate_entry": "這個項目已在名單中。",
+    "duplicate_entry": "這個項目已存在。",
     "already_member": "這個人已經有帳戶。請在「人員」中變更其角色。",
     "project_not_shared": "這個專案尚未分享。請先分享，再邀請其他人。",
     "project_full": "這個專案的人數已達伺服器允許的上限。請先移除某人，或聯絡伺服器的管理員。",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "要將 {{name}} 從這個伺服器移除嗎？",
         "description": "對方的裝置會立即登出。對方擁有的專案會保留在伺服器上，你之後也可以再把對方加回來。",
-        "confirm": "移除成員"
+        "confirm": "從伺服器移除"
       },
       "suspendConfirm": {
         "title": "要將 {{name}} 停權嗎？",
         "description": "在管理員重新啟用帳號之前，{{name}} 無法登入或同步。",
-        "confirm": "將成員停權"
+        "confirm": "將帳號停權"
       },
       "selfRoleConfirm": {
         "title": "要把你自己的角色改為 {{role}} 嗎？",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "這份名單上的人可以用你選擇的角色登入伺服器。",
+      "description": "在這裡加入的人可以用你選擇的角色登入伺服器。",
       "matchLabel": "比對依據",
       "match": {
         "email": "電子郵件地址",
@@ -307,14 +307,14 @@
       "providerLabel": "登入方式",
       "roleLabel": "角色",
       "add": "新增",
-      "loading": "正在載入名單…",
-      "empty": "名單上還沒有任何人。",
+      "loading": "正在載入允許名單…",
+      "empty": "還沒有加入任何人。",
       "loginEntry": "{{provider}} 上的 {{login}}",
       "bound": "已登入過",
       "unbound": "尚未登入過",
       "remove": "移除",
       "removeNamed": "移除 {{entry}}",
-      "duplicate": "這個人已經在名單上了。"
+      "duplicate": "這個人已在允許名單中。"
     },
     "domains": {
       "description": "任何在這些網域擁有已驗證電子郵件地址的人，都可以用你選擇的角色登入。",

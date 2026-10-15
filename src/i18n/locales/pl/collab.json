@@ -25,9 +25,9 @@
       "signedOut": "Wylogowano",
       "signedInAs": "Zalogowano jako {{name}}",
       "signedOutHint": "Ten komputer nie jest zalogowany do tego serwera.",
-      "paused": "Zawieszone",
+      "suspended": "Zawieszone",
       "noAccess": "Brak dostępu",
-      "pausedHint": "Administrator zawiesił Twoje konto na serwerze {{server}}. Twoje zmiany zostają na tym komputerze. Możesz zalogować się ponownie, gdy administrator aktywuje je ponownie.",
+      "suspendedHint": "Administrator zawiesił Twoje konto na serwerze {{server}}. Twoje zmiany zostają na tym komputerze. Możesz zalogować się ponownie, gdy administrator aktywuje je ponownie.",
       "endedHint": "Nie masz już dostępu do serwera {{server}}. Twoje kopie zostają na tym komputerze jako zwykłe projekty. Jeśli administrator doda Cię ponownie, zaloguj się jeszcze raz.",
       "endedGuestHint": "Nie masz już dostępu do serwera {{server}}, bo nie należysz do żadnego z jego udostępnionych projektów. Twoje kopie zostają na tym komputerze jako zwykłe projekty. Jeśli dostaniesz nowe zaproszenie, zaloguj się jeszcze raz.",
       "role": "Twoja rola: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Wyloguj się",
       "remove": "Usuń",
       "manage": "Zarządzaj serwerem",
-      "manageHint": "Zarządzaj serwerem pokazuje tutaj osoby, reguły dostępu i ustawienia serwera. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
+      "manageHint": "Zarządzaj serwerem pokazuje tutaj sekcje Osoby, Dozwolone osoby, Domeny, Ustawienia serwera, E-mail i Dziennik bezpieczeństwa. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
       "test": "Testuj połączenie",
       "removeConfirm": {
         "title": "Usunąć serwer {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Ten serwer nie zezwala na udostępnianie przez link. Poproś jego administratora o włączenie tej opcji.",
     "access_log_off": "Ten serwer nie zezwala na dzienniki dostępu. Poproś jego administratora o ich włączenie.",
     "last_admin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
-    "duplicate_entry": "To już jest na liście.",
+    "duplicate_entry": "Ten wpis już istnieje.",
     "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Usunąć użytkownika {{name}} z tego serwera?",
         "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
-        "confirm": "Usuń członka"
+        "confirm": "Usuń z serwera"
       },
       "suspendConfirm": {
         "title": "Zawiesić {{name}}?",
         "description": "{{name}} nie może się logować ani synchronizować, dopóki administrator nie aktywuje konta ponownie.",
-        "confirm": "Zawieś członka"
+        "confirm": "Zawieś konto"
       },
       "selfRoleConfirm": {
         "title": "Zmienić swoją rolę na {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Osoby z tej listy mogą logować się do serwera z rolą, którą wybierzesz.",
+      "description": "Osoby dodane tutaj mogą logować się do serwera z rolą, którą wybierzesz.",
       "matchLabel": "Dopasuj według",
       "match": {
         "email": "Adres e-mail",
@@ -307,14 +307,14 @@
       "providerLabel": "Opcja logowania",
       "roleLabel": "Rola",
       "add": "Dodaj",
-      "loading": "Wczytywanie listy…",
-      "empty": "Na liście nie ma jeszcze nikogo.",
+      "loading": "Wczytywanie dozwolonych osób…",
+      "empty": "Nikt nie został jeszcze dodany.",
       "loginEntry": "{{login}} w usłudze {{provider}}",
       "bound": "Zalogowano",
       "unbound": "Jeszcze nie zalogowano",
       "remove": "Usuń",
       "removeNamed": "Usuń wpis {{entry}}",
-      "duplicate": "Ta osoba jest już na liście."
+      "duplicate": "Ta osoba jest już dozwolona."
     },
     "domains": {
       "description": "Każdy, kto ma zweryfikowany adres e-mail w tych domenach, może się zalogować z rolą, którą wybierzesz.",

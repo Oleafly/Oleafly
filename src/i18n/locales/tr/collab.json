@@ -25,9 +25,9 @@
       "signedOut": "Oturum kapalı",
       "signedInAs": "{{name}} olarak oturum açıldı",
       "signedOutHint": "Bu bilgisayarda bu sunucu için oturum açık değil.",
-      "paused": "Askıya alındı",
+      "suspended": "Askıya alındı",
       "noAccess": "Erişim yok",
-      "pausedHint": "Bir yönetici {{server}} sunucusundaki hesabınızı askıya aldı. Değişiklikleriniz bu bilgisayarda kalır. Bir yönetici hesabınızı yeniden etkinleştirdiğinde tekrar oturum açabilirsiniz.",
+      "suspendedHint": "Bir yönetici {{server}} sunucusundaki hesabınızı askıya aldı. Değişiklikleriniz bu bilgisayarda kalır. Bir yönetici hesabınızı yeniden etkinleştirdiğinde tekrar oturum açabilirsiniz.",
       "endedHint": "{{server}} sunucusuna artık erişiminiz yok. Kopyalarınız bu bilgisayarda sıradan projeler olarak kalır. Bir yönetici sizi yeniden eklerse tekrar oturum açın.",
       "endedGuestHint": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyalarınız bu bilgisayarda sıradan projeler olarak kalır. Yeniden davet edilirseniz tekrar oturum açın.",
       "role": "Rolünüz: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Oturumu kapat",
       "remove": "Kaldır",
       "manage": "Sunucuyu yönet",
-      "manageHint": "Sunucuyu yönet seçeneği kişileri, erişim kurallarını ve sunucu ayarlarını burada gösterir. Yönetici konsolu kendi penceresinde açılır ve ayrıca genel bakış, projeler ve bağlantı denetimleri içerir.",
+      "manageHint": "Sunucuyu yönet seçeneği burada Kişiler, İzinli kişiler, Alan adları, Sunucu ayarları, E-posta ve Güvenlik günlüğü bölümlerini gösterir. Yönetici konsolu kendi penceresinde açılır ve ayrıca genel bakış, projeler ve bağlantı denetimleri içerir.",
       "test": "Bağlantıyı test et",
       "removeConfirm": {
         "title": "{{name}} kaldırılsın mı?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Bu sunucu bağlantıyla paylaşıma izin vermiyor. Sunucunun yöneticisinden bunu açmasını isteyin.",
     "access_log_off": "Bu sunucu erişim günlüklerine izin vermiyor. Sunucunun yöneticisinden bunları açmasını isteyin.",
     "last_admin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
-    "duplicate_entry": "Bu zaten listede.",
+    "duplicate_entry": "Bu kayıt zaten var.",
     "already_member": "Bu kişinin zaten bir hesabı var. Rolünü Kişiler bölümünden değiştirin.",
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "{{name}} bu sunucudan kaldırılsın mı?",
         "description": "Kişinin cihazlarındaki oturumlar hemen kapatılır. Sahibi olduğu projeler sunucuda kalır ve kişiyi daha sonra yeniden ekleyebilirsiniz.",
-        "confirm": "Üyeyi kaldır"
+        "confirm": "Sunucudan kaldır"
       },
       "suspendConfirm": {
         "title": "{{name}} askıya alınsın mı?",
         "description": "Bir yönetici hesabı yeniden etkinleştirene kadar {{name}} oturum açamaz ve eşitleme yapamaz.",
-        "confirm": "Üyeyi askıya al"
+        "confirm": "Hesabı askıya al"
       },
       "selfRoleConfirm": {
         "title": "Kendi rolünüz {{role}} olarak değiştirilsin mi?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Bu listedeki kişiler, seçtiğiniz rolle sunucuda oturum açabilir.",
+      "description": "Buraya eklediğiniz kişiler, seçtiğiniz rolle sunucuda oturum açabilir.",
       "matchLabel": "Eşleştirme ölçütü",
       "match": {
         "email": "E-posta adresi",
@@ -307,14 +307,14 @@
       "providerLabel": "Oturum açma seçeneği",
       "roleLabel": "Rol",
       "add": "Ekle",
-      "loading": "Liste yükleniyor…",
-      "empty": "Listede henüz kimse yok.",
+      "loading": "İzinli kişiler yükleniyor…",
+      "empty": "Henüz kimse eklenmedi.",
       "loginEntry": "{{provider}} üzerinde {{login}}",
       "bound": "Oturum açtı",
       "unbound": "Henüz oturum açmadı",
       "remove": "Kaldır",
       "removeNamed": "{{entry}} kaydını kaldır",
-      "duplicate": "Bu kişi zaten listede."
+      "duplicate": "Bu kişiye zaten izin verilmiş."
     },
     "domains": {
       "description": "Bu alan adlarında doğrulanmış bir e-posta adresi olan herkes, seçtiğiniz rolle oturum açabilir.",

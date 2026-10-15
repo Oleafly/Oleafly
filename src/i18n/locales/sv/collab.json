@@ -25,9 +25,9 @@
       "signedOut": "Utloggad",
       "signedInAs": "Inloggad som {{name}}",
       "signedOutHint": "Den här datorn är inte inloggad på den här servern.",
-      "paused": "Avstängt",
+      "suspended": "Avstängt",
       "noAccess": "Ingen åtkomst",
-      "pausedHint": "En administratör har stängt av ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när en administratör återaktiverar det.",
+      "suspendedHint": "En administratör har stängt av ditt konto på {{server}}. Dina ändringar stannar på den här datorn. Du kan logga in igen när en administratör återaktiverar det.",
       "endedHint": "Du har inte längre åtkomst till {{server}}. Dina kopior ligger kvar på den här datorn som vanliga projekt. Om en administratör lägger till dig igen loggar du in på nytt.",
       "endedGuestHint": "Du har inte längre åtkomst till {{server}} eftersom du inte är med i något av dess delade projekt. Dina kopior ligger kvar på den här datorn som vanliga projekt. Om du blir inbjuden igen loggar du in på nytt.",
       "role": "Din roll: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Logga ut",
       "remove": "Ta bort",
       "manage": "Hantera servern",
-      "manageHint": "Hantera servern visar personer, åtkomstregler och serverinställningar här. Administratörskonsolen öppnas i ett eget fönster och har också översikt, projekt och anslutningskontroller.",
+      "manageHint": "Hantera servern visar Personer, Tillåtna personer, Domäner, Serverinställningar, E-post och Säkerhetslogg här. Administratörskonsolen öppnas i ett eget fönster och har också översikt, projekt och anslutningskontroller.",
       "test": "Testa anslutningen",
       "removeConfirm": {
         "title": "Ta bort {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Den här servern tillåter inte länkdelning. Be dess administratör att slå på den.",
     "access_log_off": "Den här servern tillåter inte åtkomstloggar. Be dess administratör att slå på dem.",
     "last_admin": "Den här servern behöver minst en administratör. Gör någon annan till administratör först.",
-    "duplicate_entry": "Det finns redan på listan.",
+    "duplicate_entry": "Den finns redan.",
     "already_member": "Den personen har redan ett konto. Ändra rollen under Personer.",
     "project_not_shared": "Projektet är inte delat än. Dela det först och bjud sedan in personer.",
     "project_full": "Projektet har redan så många personer som servern tillåter. Ta bort någon först, eller fråga serverns administratör.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Ta bort {{name}} från den här servern?",
         "description": "Medlemmens enheter loggas ut direkt. Projekt som medlemmen äger ligger kvar på servern, och du kan lägga till medlemmen igen senare.",
-        "confirm": "Ta bort medlemmen"
+        "confirm": "Ta bort från servern"
       },
       "suspendConfirm": {
         "title": "Stänga av {{name}}?",
         "description": "{{name}} kan inte logga in eller synka förrän en administratör återaktiverar kontot.",
-        "confirm": "Stäng av medlem"
+        "confirm": "Stäng av kontot"
       },
       "selfRoleConfirm": {
         "title": "Ändra din egen roll till {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Personer på den här listan kan logga in på servern med den roll du väljer.",
+      "description": "Personer du lägger till här kan logga in på servern med den roll du väljer.",
       "matchLabel": "Matcha efter",
       "match": {
         "email": "E-postadress",
@@ -307,14 +307,14 @@
       "providerLabel": "Inloggningsalternativ",
       "roleLabel": "Roll",
       "add": "Lägg till",
-      "loading": "Läser in listan…",
-      "empty": "Ingen finns på listan än.",
+      "loading": "Läser in tillåtna personer…",
+      "empty": "Ingen har lagts till än.",
       "loginEntry": "{{login}} på {{provider}}",
       "bound": "Har loggat in",
       "unbound": "Har inte loggat in än",
       "remove": "Ta bort",
       "removeNamed": "Ta bort {{entry}}",
-      "duplicate": "Personen finns redan på listan."
+      "duplicate": "Personen är redan tillåten."
     },
     "domains": {
       "description": "Alla med en verifierad e-postadress på de här domänerna kan logga in med den roll du väljer.",

@@ -25,9 +25,9 @@
       "signedOut": "Ei kirjautunut",
       "signedInAs": "Kirjautunut käyttäjänä {{name}}",
       "signedOutHint": "Tämä kone ei ole kirjautunut tälle palvelimelle.",
-      "paused": "Jäädytetty",
+      "suspended": "Jäädytetty",
       "noAccess": "Ei pääsyä",
-      "pausedHint": "Ylläpitäjä jäädytti tilisi palvelimella {{server}}. Muutoksesi pysyvät tällä koneella. Voit kirjautua uudelleen, kun ylläpitäjä aktivoi tilin uudelleen.",
+      "suspendedHint": "Ylläpitäjä jäädytti tilisi palvelimella {{server}}. Muutoksesi pysyvät tällä koneella. Voit kirjautua uudelleen, kun ylläpitäjä aktivoi tilin uudelleen.",
       "endedHint": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyvät tällä koneella tavallisina projekteina. Jos ylläpitäjä lisää sinut takaisin, kirjaudu uudelleen sisään.",
       "endedGuestHint": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyvät tällä koneella tavallisina projekteina. Jos sinut kutsutaan uudelleen, kirjaudu uudelleen sisään.",
       "role": "Roolisi: {{role}}",
@@ -35,7 +35,7 @@
       "signOut": "Kirjaudu ulos",
       "remove": "Poista",
       "manage": "Hallitse palvelinta",
-      "manageHint": "Hallitse palvelinta näyttää henkilöt, pääsysäännöt ja palvelimen asetukset tässä. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
+      "manageHint": "Hallitse palvelinta näyttää tässä osiot Henkilöt, Sallitut henkilöt, Verkkotunnukset, Palvelimen asetukset, Sähköposti ja Tietoturvaloki. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
       "test": "Testaa yhteys",
       "removeConfirm": {
         "title": "Poistetaanko {{name}}?",
@@ -216,7 +216,7 @@
     "link_sharing_off": "Tämä palvelin ei salli linkkijakoa. Pyydä sen ylläpitäjää ottamaan se käyttöön.",
     "access_log_off": "Tämä palvelin ei salli käyttölokeja. Pyydä sen ylläpitäjää ottamaan ne käyttöön.",
     "last_admin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
-    "duplicate_entry": "Se on jo listalla.",
+    "duplicate_entry": "Tämä kohta on jo olemassa.",
     "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
@@ -277,12 +277,12 @@
       "removeConfirm": {
         "title": "Poistetaanko {{name}} tältä palvelimelta?",
         "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
-        "confirm": "Poista jäsen"
+        "confirm": "Poista palvelimelta"
       },
       "suspendConfirm": {
         "title": "Jäädytetäänkö {{name}}?",
         "description": "{{name}} ei voi kirjautua eikä synkronoida, ennen kuin ylläpitäjä aktivoi tilin uudelleen.",
-        "confirm": "Jäädytä jäsen"
+        "confirm": "Jäädytä tili"
       },
       "selfRoleConfirm": {
         "title": "Vaihdetaanko oma roolisi rooliin {{role}}?",
@@ -296,7 +296,7 @@
       }
     },
     "allowlist": {
-      "description": "Tämän listan henkilöt voivat kirjautua palvelimelle valitsemallasi roolilla.",
+      "description": "Tähän lisäämäsi henkilöt voivat kirjautua palvelimelle valitsemallasi roolilla.",
       "matchLabel": "Tunnistustapa",
       "match": {
         "email": "Sähköpostiosoite",
@@ -307,14 +307,14 @@
       "providerLabel": "Kirjautumistapa",
       "roleLabel": "Rooli",
       "add": "Lisää",
-      "loading": "Ladataan listaa…",
-      "empty": "Listalla ei ole vielä ketään.",
+      "loading": "Ladataan sallittuja henkilöitä…",
+      "empty": "Ketään ei ole vielä lisätty.",
       "loginEntry": "{{login}} palvelussa {{provider}}",
       "bound": "On kirjautunut",
       "unbound": "Ei ole vielä kirjautunut",
       "remove": "Poista",
       "removeNamed": "Poista {{entry}}",
-      "duplicate": "Tämä henkilö on jo listalla."
+      "duplicate": "Tämä henkilö on jo sallittu."
     },
     "domains": {
       "description": "Kuka tahansa, jolla on vahvistettu sähköpostiosoite näissä verkkotunnuksissa, voi kirjautua sisään valitsemallasi roolilla.",
