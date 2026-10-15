@@ -42,7 +42,23 @@ pub struct Appended {
     pub duplicate: bool,
 }
 
+impl Appended {
+    // A change made only of operations the server already holds is
+    // acknowledged with seq 0 and never stored, so it can't be logged twice.
+    pub fn nothing_new() -> Appended {
+        Appended {
+            seq: 0,
+            duplicate: true,
+        }
+    }
+}
+
 pub fn role_to_str(role: ProjectRole) -> &'static str {
+    debug_assert_ne!(
+        role,
+        ProjectRole::Unknown,
+        "a role this server does not know is never stored"
+    );
     match role {
         ProjectRole::Owner => "owner",
         ProjectRole::Editor => "editor",
@@ -81,22 +97,44 @@ fn seq_to(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
+// A savepoint works whether or not the caller already holds a transaction,
+// and undoes every statement of `work` if one of them fails.
+fn all_or_nothing<T>(
+    conn: &Connection,
+    name: &str,
+    work: impl FnOnce(&Connection) -> Result<T, ServerError>,
+) -> Result<T, ServerError> {
+    conn.execute_batch(&format!("SAVEPOINT {name}"))?;
+    match work(conn) {
+        Ok(value) => {
+            conn.execute_batch(&format!("RELEASE {name}"))?;
+            Ok(value)
+        }
+        Err(error) => {
+            let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
+            Err(error)
+        }
+    }
+}
+
 pub fn create_pending(
     conn: &Connection,
     owner: AccountId,
     title: &str,
     now: i64,
 ) -> Result<SharedProjectId, ServerError> {
-    let id = SharedProjectId::new_v7();
-    conn.execute(
-        "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, ?3, 'pending', ?4)",
-        params![id.to_string(), owner.to_string(), title, now],
-    )?;
-    conn.execute(
-        "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, 'owner', ?3, ?2)",
-        params![id.to_string(), owner.to_string(), now],
-    )?;
-    Ok(id)
+    all_or_nothing(conn, "create_project", |conn| {
+        let id = SharedProjectId::new_v7();
+        conn.execute(
+            "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, ?3, 'pending', ?4)",
+            params![id.to_string(), owner.to_string(), title, now],
+        )?;
+        conn.execute(
+            "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, 'owner', ?3, ?2)",
+            params![id.to_string(), owner.to_string(), now],
+        )?;
+        Ok(id)
+    })
 }
 
 pub fn project_row(
@@ -173,6 +211,7 @@ pub fn person(
     let Some(summary) = members::account_summary(conn, account)? else {
         return Ok(None);
     };
+    let active = members::account_status(conn, account)? == Some(MemberStatus::Active);
     Ok(Some(PersonSummary {
         account_id: summary.account_id,
         display_name: summary.display_name,
@@ -182,6 +221,7 @@ pub fn person(
             .flatten(),
         login: summary.logins.first().cloned(),
         guest: summary.server_role == oleafly_collab_protocol::roles::ServerRole::Guest,
+        active,
     }))
 }
 
@@ -256,6 +296,11 @@ pub fn apply_patch(
     project: SharedProjectId,
     patch: &ProjectPatch,
 ) -> Result<(), ServerError> {
+    if patch.link_role == Some(ProjectRole::Unknown) {
+        return Err(ServerError::BadRequest(
+            "A link can give Editor or Viewer access.".to_string(),
+        ));
+    }
     if let Some(title) = &patch.title {
         conn.execute(
             "UPDATE projects SET title = ?2 WHERE id = ?1",
@@ -321,9 +366,12 @@ pub fn members(
     Ok(list)
 }
 
+// People removed from or suspended on the server keep their grants, so
+// adding them back restores their projects, but they don't take a seat.
 pub fn member_count(conn: &Connection, project: SharedProjectId) -> Result<u32, ServerError> {
     let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM project_grants WHERE project_id = ?1",
+        "SELECT COUNT(*) FROM project_grants g JOIN accounts a ON a.id = g.account_id \
+         WHERE g.project_id = ?1 AND a.status = 'active'",
         [project.to_string()],
         |row| row.get(0),
     )?;
@@ -338,6 +386,11 @@ pub fn grant(
     by: AccountId,
     now: i64,
 ) -> Result<(), ServerError> {
+    if role == ProjectRole::Unknown {
+        return Err(ServerError::BadRequest(
+            "This server doesn't know that role.".to_string(),
+        ));
+    }
     conn.execute(
         "INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by) VALUES (?1, ?2, ?3, ?4, ?5) \
          ON CONFLICT (project_id, account_id) DO UPDATE SET role = excluded.role",
@@ -573,19 +626,41 @@ pub fn drop_unused_blob(
     Ok(orphan)
 }
 
-pub fn has_blob(
+// What a project keeps on this server: its files and its change log.
+// Snapshots are left out because they are rebuilt from those.
+pub fn stored_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
+    let bytes: i64 = conn.query_row(
+        "SELECT (SELECT COALESCE(SUM(size), 0) FROM project_blobs WHERE project_id = ?1) \
+         + (SELECT COALESCE(SUM(length(envelope)), 0) FROM project_updates WHERE project_id = ?1)",
+        [project.to_string()],
+        |row| row.get(0),
+    )?;
+    Ok(seq_from(bytes))
+}
+
+pub fn too_large_for(limit_mb: u64) -> ServerError {
+    ServerError::Refused {
+        status: axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+        code: "project_too_large",
+        message: format!(
+            "This project has reached this server's size limit of {limit_mb} MB. Ask the admin to raise OLEAFLY_MAX_PROJECT_MB."
+        ),
+    }
+}
+
+pub fn blob_size(
     conn: &Connection,
     project: SharedProjectId,
     hash: &str,
-) -> Result<bool, ServerError> {
+) -> Result<Option<u64>, ServerError> {
     Ok(conn
         .query_row(
-            "SELECT 1 FROM project_blobs WHERE project_id = ?1 AND hash = ?2",
+            "SELECT size FROM project_blobs WHERE project_id = ?1 AND hash = ?2",
             [project.to_string(), hash.to_string()],
-            |_| Ok(()),
+            |row| row.get::<_, i64>(0),
         )
         .optional()?
-        .is_some())
+        .map(seq_from))
 }
 
 pub fn append_update(
@@ -603,6 +678,21 @@ pub fn append_update(
     Ok(appended)
 }
 
+pub fn stored_batch(
+    conn: &Connection,
+    project: SharedProjectId,
+    batch: BatchId,
+) -> Result<Option<u64>, ServerError> {
+    Ok(conn
+        .query_row(
+            "SELECT seq FROM project_updates WHERE project_id = ?1 AND batch_id = ?2",
+            [project.to_string(), batch.to_string()],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .map(seq_from))
+}
+
 pub fn append_update_in(
     transaction: &Connection,
     project: SharedProjectId,
@@ -612,16 +702,9 @@ pub fn append_update_in(
     envelope: &[u8],
     now: i64,
 ) -> Result<Appended, ServerError> {
-    let existing = transaction
-        .query_row(
-            "SELECT seq FROM project_updates WHERE project_id = ?1 AND batch_id = ?2",
-            [project.to_string(), batch.to_string()],
-            |row| row.get::<_, i64>(0),
-        )
-        .optional()?;
-    if let Some(seq) = existing {
+    if let Some(seq) = stored_batch(transaction, project, batch)? {
         return Ok(Appended {
-            seq: seq_from(seq),
+            seq,
             duplicate: true,
         });
     }
@@ -1224,6 +1307,7 @@ pub fn directory(
                 .flatten(),
             login: summary.logins.first().cloned(),
             guest: false,
+            active: true,
         });
         if found.len() >= DIRECTORY_LIMIT {
             break;
@@ -1319,4 +1403,42 @@ pub fn delete_project(
         snapshots,
         orphan_blobs,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+    use oleafly_collab_protocol::roles::ServerRole;
+
+    #[tokio::test]
+    async fn a_role_this_server_does_not_know_is_never_written() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let owner = members::create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+                let other = members::create_account(conn, "Bo", None, ServerRole::Member, 1)?;
+                let project = create_pending(conn, owner, "Thesis", 1)?;
+                assert!(matches!(
+                    grant(conn, project, other, ProjectRole::Unknown, owner, 2),
+                    Err(ServerError::BadRequest(_))
+                ));
+                assert_eq!(role_of(conn, project, other)?, None);
+                let patch = ProjectPatch {
+                    title: Some("Renamed".to_string()),
+                    link_role: Some(ProjectRole::Unknown),
+                    ..ProjectPatch::default()
+                };
+                assert!(matches!(
+                    apply_patch(conn, project, &patch),
+                    Err(ServerError::BadRequest(_))
+                ));
+                let row = project_row(conn, project)?.expect("the project");
+                assert_eq!(row.title, "Thesis");
+                assert_eq!(row.link_role, ProjectRole::Viewer);
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
 }

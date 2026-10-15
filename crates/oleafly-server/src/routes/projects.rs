@@ -5,7 +5,7 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
-use oleafly_collab_protocol::admin::{RuntimeSettings, SecurityEventKind};
+use oleafly_collab_protocol::admin::{MemberStatus, RuntimeSettings, SecurityEventKind};
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::frames::{
@@ -33,13 +33,17 @@ use crate::members;
 use crate::peers;
 use crate::projects::{self, ProjectRow};
 use crate::removals;
-use crate::routes::{json_body, path_id, read_body_within, Authenticated, ClientIp};
+use crate::routes::{json_body, path_id, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::snapshots::{Signed, Upload};
 use crate::state::AppState;
+use crate::transfers::declared_length;
 
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
+// The app gives a hint 30 seconds. A build that takes longer goes on in the
+// background and the hint is answered 202 with the snapshot the server holds.
+const HINT_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_TITLE_CHARS: usize = 200;
 const REFUSALS_FOLDED_MS: i64 = crate::state::DAY_MS;
 
@@ -169,7 +173,7 @@ async fn list(
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| projects::list_for_account(conn, account))
+        .read(move |conn| projects::list_for_account(conn, account))
         .await?;
     Ok(Json(listed))
 }
@@ -209,7 +213,7 @@ async fn show(
     let account = auth.account_id;
     let shown = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             let (row, role) = access(conn, project, account)?;
             projects::summary(conn, &row, role)
         })
@@ -250,16 +254,20 @@ async fn update(
     let updated = state
         .db
         .call(move |conn| {
+            let transaction = conn.transaction()?;
+            let conn = &*transaction;
             let (_, role) = access(conn, project, account)?;
             require(role, ProjectAction::ChangeLinkSharing)?;
             if patch.link_sharing == Some(true) && !settings::load(conn)?.link_sharing_allowed {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow link sharing.".to_string(),
+                return Err(ServerError::refused(
+                    "link_sharing_off",
+                    "This server does not allow link sharing.",
                 ));
             }
             if patch.access_log == Some(true) && !settings::load(conn)?.access_logs_allowed {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow access logs.".to_string(),
+                return Err(ServerError::refused(
+                    "access_log_off",
+                    "This server does not allow access logs.",
                 ));
             }
             let trimmed = ProjectPatch {
@@ -307,7 +315,9 @@ async fn update(
                 )?;
             }
             let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
-            projects::summary(conn, &row, role)
+            let summary = projects::summary(conn, &row, role)?;
+            transaction.commit()?;
+            Ok(summary)
         })
         .await?;
     if comments_switched {
@@ -473,12 +483,30 @@ fn by_link(
         note_rejoin_refused(conn, project, account, ip, now)?;
         return Err(ServerError::NotFound);
     }
+    // Only the owner can manage the people a link brings in, so a project
+    // whose owner was removed or suspended takes no one new until they are
+    // back.
+    if members::account_status(conn, row.owner)? != Some(MemberStatus::Active) {
+        return Err(owner_away());
+    }
     if projects::member_count(conn, project)? >= limit {
-        return Err(ServerError::Conflict(format!(
-            "A project on this server can have at most {limit} people."
-        )));
+        return Err(project_full(limit));
     }
     Ok((row, None))
+}
+
+fn owner_away() -> ServerError {
+    ServerError::refused(
+        "owner_away",
+        "This project's owner is not active on this server right now, so it can't take new people.",
+    )
+}
+
+fn project_full(limit: u32) -> ServerError {
+    ServerError::refused(
+        "project_full",
+        format!("A project on this server can have at most {limit} people."),
+    )
 }
 
 fn note_rejoin_refused(
@@ -573,12 +601,24 @@ async fn join_by_link(
             if let Some(role) = member {
                 return Ok((projects::summary(conn, &row, role)?, false));
             }
-            projects::grant(conn, project, account, row.link_role, row.owner, now)?;
+            let transaction = conn.transaction()?;
+            projects::grant(
+                &transaction,
+                project,
+                account,
+                row.link_role,
+                row.owner,
+                now,
+            )?;
             access_log::quietly(access_log::joined_by_link(
-                conn, now, project, account, device,
+                &transaction,
+                now,
+                project,
+                account,
+                device,
             ));
             security_log::record(
-                conn,
+                &transaction,
                 now,
                 event(
                     account,
@@ -588,7 +628,9 @@ async fn join_by_link(
                     json!({ "role": projects::role_to_str(row.link_role), "via": "link" }),
                 ),
             )?;
-            Ok((projects::summary(conn, &row, row.link_role)?, true))
+            let summary = projects::summary(&transaction, &row, row.link_role)?;
+            transaction.commit()?;
+            Ok((summary, true))
         })
         .await?;
     if newly {
@@ -626,12 +668,34 @@ async fn put_blob(
             Ok(())
         })
         .await?;
-    let Some(body) = read_body_within(body, limit).await? else {
+    let _room = state
+        .transfers
+        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
+        .await;
+    let Some(body) = state.transfers.read_body(body, &headers, limit).await? else {
         return Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
             state.config.limits.max_file_mb
         )));
     };
+    let (size, held, limit_mb) = (
+        body.len() as u64,
+        hash.clone(),
+        state.config.limits.max_project_mb,
+    );
+    state
+        .db
+        .call(move |conn| {
+            if projects::blob_size(conn, project, &held)?.is_some() {
+                return Ok(());
+            }
+            let after = projects::stored_bytes(conn, project)?.saturating_add(size);
+            if after > limit_mb.saturating_mul(1024 * 1024) {
+                return Err(projects::too_large_for(limit_mb));
+            }
+            Ok(())
+        })
+        .await?;
     let now = state.clock.now_ms();
     crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, now).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -645,18 +709,16 @@ async fn get_blob(
     let (project, hash) = project_and_hash(path)?;
     let account = auth.account_id;
     let lookup = hash.clone();
-    state
+    let size = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
-            if projects::has_blob(conn, project, &lookup)? {
-                Ok(())
-            } else {
-                Err(ServerError::NotFound)
-            }
+            projects::blob_size(conn, project, &lookup)?.ok_or(ServerError::NotFound)
         })
         .await?;
+    let room = state.transfers.hold(size).await;
     let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
+    let bytes = room.keep_with(bytes);
     Ok((
         [(
             header::CONTENT_TYPE,
@@ -715,7 +777,7 @@ async fn put_snapshot(
     };
     content_length_within(&headers, limit)?;
     let (account, device) = (auth.account_id, auth.device_id);
-    let (first, public_key) = state
+    let (newest, public_key) = state
         .db
         .call(move |conn| {
             let (row, role) = access(conn, project, account)?;
@@ -730,16 +792,37 @@ async fn put_snapshot(
                     "A snapshot cannot cover updates the server has not stored.".to_string(),
                 ));
             }
-            let first = projects::latest_snapshot(conn, project)?.is_none();
+            let newest = projects::latest_snapshot(conn, project)?.map(|row| row.seq);
             let public_key = crate::auth::devices::find(conn, device)?
                 .map(|found| found.public_key)
                 .ok_or(ServerError::Unauthorized)?;
-            Ok((first, public_key))
+            Ok((newest, public_key))
         })
         .await?;
-    let bytes = read_body_within(body, limit).await?.ok_or_else(too_large)?;
     let now = state.clock.now_ms();
-    let held = if first {
+    if let Some(newest) = newest {
+        drop(body);
+        let built = state
+            .snapshots
+            .build_soon(&state.db, project, seq, account, now, HINT_WAIT)
+            .await?;
+        let (status, held) = match built {
+            Some(Upload::Stored) => (StatusCode::NO_CONTENT, seq),
+            Some(Upload::Held(held)) => (StatusCode::NO_CONTENT, held),
+            None => (StatusCode::ACCEPTED, newest),
+        };
+        return Ok((status, [(SNAPSHOT_SEQ_HEADER, seq_value(held)?)]).into_response());
+    }
+    let _room = state
+        .transfers
+        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
+        .await;
+    let bytes = state
+        .transfers
+        .read_body(body, &headers, limit)
+        .await?
+        .ok_or_else(too_large)?;
+    let held = {
         if bytes.is_empty() {
             return Err(too_large());
         }
@@ -768,15 +851,6 @@ async fn put_snapshot(
             Upload::Stored => 0,
             Upload::Held(held) => held,
         }
-    } else {
-        match state
-            .snapshots
-            .derive(&state.db, project, seq, account, now)
-            .await?
-        {
-            Upload::Stored => seq,
-            Upload::Held(held) => held,
-        }
     };
     Ok((
         StatusCode::NO_CONTENT,
@@ -799,7 +873,7 @@ async fn head_snapshot(
     let account = auth.account_id;
     let newest = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             projects::latest_snapshot(conn, project)?.ok_or(ServerError::NotFound)
         })
@@ -826,10 +900,17 @@ async fn get_snapshot(
     let Query(DownloadQuery { before }) =
         query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
     let account = auth.account_id;
-    state
+    let size = state
         .db
-        .call(move |conn| access(conn, project, account).map(|_| ()))
+        .read(move |conn| {
+            access(conn, project, account)?;
+            let Some(newest) = projects::latest_snapshot(conn, project)? else {
+                return Ok(0);
+            };
+            Ok(projects::snapshot_size(conn, project, newest.seq)?.unwrap_or(0))
+        })
         .await?;
+    let room = state.transfers.hold(size).await;
     let loaded = match before {
         Some(before) => {
             state
@@ -865,7 +946,7 @@ async fn get_snapshot(
             );
         }
     }
-    Ok((headers, loaded.bytes).into_response())
+    Ok((headers, room.keep_with(loaded.bytes)).into_response())
 }
 
 pub(crate) fn sees_emails(role: ServerRole, settings: &RuntimeSettings) -> bool {
@@ -886,7 +967,7 @@ async fn list_members(
     let server_role = auth.role;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             let emails = sees_emails(server_role, &settings::load(conn)?);
             projects::members(conn, project, emails)
@@ -904,7 +985,7 @@ async fn list_devices(
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
             projects::devices(conn, project)
         })
@@ -912,18 +993,53 @@ async fn list_devices(
     Ok(Json(listed))
 }
 
+pub const MAX_ASKED_PEERS: usize = 200;
+
+#[derive(Deserialize)]
+struct PeersQuery {
+    ids: Option<String>,
+}
+
+fn asked_peers(ids: &str) -> Result<Vec<u64>, ServerError> {
+    let asked = ids
+        .split(',')
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(|id| {
+            id.parse::<u64>().map_err(|_| {
+                ServerError::BadRequest(
+                    "Writer ids are decimal numbers separated by commas.".to_string(),
+                )
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if asked.len() > MAX_ASKED_PEERS {
+        return Err(ServerError::BadRequest(format!(
+            "Ask for at most {MAX_ASKED_PEERS} writers at a time."
+        )));
+    }
+    Ok(asked)
+}
+
 async fn list_peers(
     State(state): State<AppState>,
     auth: Authenticated,
     path: Result<Path<String>, PathRejection>,
+    query: Result<Query<PeersQuery>, QueryRejection>,
 ) -> Result<Json<Vec<ProjectPeer>>, ServerError> {
     let project: SharedProjectId = path_id(path)?;
+    let Query(PeersQuery { ids }) =
+        query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
+    let asked = ids.as_deref().map(asked_peers).transpose()?;
     let account = auth.account_id;
     let listed = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             access(conn, project, account)?;
-            peers::table(conn, project)
+            match asked {
+                Some(asked) => peers::rows_for(conn, project, &asked),
+                None => peers::table(conn, project),
+            }
         })
         .await?;
     Ok(Json(listed))
@@ -956,11 +1072,14 @@ async fn grant_member(
     let (granted, existing) = state
         .db
         .call(move |conn| {
+            let transaction = conn.transaction()?;
+            let conn = &*transaction;
             let (row, actor_role) = access(conn, project, account)?;
             require(actor_role, ProjectAction::ManageMembers)?;
             if row.status != ProjectStatus::Active {
-                return Err(ServerError::Conflict(
-                    "Share the project before adding people.".to_string(),
+                return Err(ServerError::refused(
+                    "project_not_shared",
+                    "Share the project before adding people.",
                 ));
             }
             if target == row.owner {
@@ -977,9 +1096,7 @@ async fn grant_member(
                 return Err(ServerError::NotFound);
             }
             if existing.is_none() && projects::member_count(conn, project)? >= limit {
-                return Err(ServerError::Conflict(format!(
-                    "A project on this server can have at most {limit} people."
-                )));
+                return Err(project_full(limit));
             }
             projects::grant(conn, project, target, role, account, now)?;
             removals::clear(conn, project, target)?;
@@ -1000,6 +1117,7 @@ async fn grant_member(
             )?;
             let emails = sees_emails(server_role, &settings::load(conn)?);
             let person = projects::person(conn, target, emails)?.ok_or(ServerError::NotFound)?;
+            transaction.commit()?;
             Ok((
                 ProjectMember {
                     person,
@@ -1124,10 +1242,13 @@ async fn remove_member(
             Ok(signed_out)
         })
         .await?;
+    // end_if_no_access signed these devices out inside the removal's
+    // transaction, so only their open connections are left to tell, and
+    // that can't fail after the removal has been committed.
     for device in signed_out {
         state
-            .end_device_session(device, SessionEndReason::AccessEnded)
-            .await?;
+            .sockets
+            .revoke(device, Some(SessionEndReason::AccessEnded));
     }
     let change = MemberChange {
         account_id: target,
@@ -1176,7 +1297,7 @@ async fn directory(
     let role = auth.role;
     let found = state
         .db
-        .call(move |conn| {
+        .read(move |conn| {
             let settings = settings::load(conn)?;
             let staff = matches!(role, ServerRole::Admin | ServerRole::Maintainer);
             if !settings.directory_visible && !staff {
@@ -1186,4 +1307,279 @@ async fn directory(
         })
         .await?;
     Ok(Json(found))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::Body;
+    use axum::http::{Method, Request, StatusCode};
+    use oleafly_collab_protocol::admin::RuntimeSettingsPatch;
+    use oleafly_collab_protocol::ids::SharedProjectId;
+    use oleafly_collab_protocol::projects::{ProjectPatch, ProjectStatus};
+    use oleafly_collab_protocol::roles::ServerRole;
+    use serde_json::{json, Value};
+    use tower::ServiceExt;
+
+    use crate::clock::Clock;
+    use crate::projects;
+    use crate::settings;
+    use crate::test_support::{seed_member, test_app_with, test_config, SeededMember, TestApp};
+
+    async fn refusal(
+        app: &TestApp,
+        method: Method,
+        path: &str,
+        token: &str,
+        body: Value,
+    ) -> (StatusCode, String) {
+        let request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header("authorization", format!("Bearer {token}"))
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .expect("request");
+        let response = app.router.clone().oneshot(request).await.expect("response");
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("body");
+        let body: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+        (status, body["code"].as_str().unwrap_or_default().to_owned())
+    }
+
+    async fn project(app: &TestApp, owner: &SeededMember, active: bool) -> SharedProjectId {
+        let (owner, now) = (owner.account_id, app.clock.now_ms());
+        app.state
+            .db
+            .call(move |conn| {
+                let project = projects::create_pending(conn, owner, "Thesis", now)?;
+                if active {
+                    projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                }
+                Ok(project)
+            })
+            .await
+            .expect("a project")
+    }
+
+    async fn allow(app: &TestApp, allowed: bool) {
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = RuntimeSettingsPatch {
+                    link_sharing_allowed: Some(allowed),
+                    access_logs_allowed: Some(allowed),
+                    ..RuntimeSettingsPatch::default()
+                };
+                settings::patch(conn, &patch).map(|_| ())
+            })
+            .await
+            .expect("settings");
+    }
+
+    #[tokio::test]
+    async fn reads_on_a_file_database_answer_from_its_read_connections() {
+        let directory = tempfile::tempdir().expect("a folder");
+        let db = crate::db::Db::open(&directory.path().join("oleafly-server.sqlite3"))
+            .expect("a file database");
+        let clock = crate::clock::ManualClock::new(crate::test_support::TEST_START_MS);
+        let state = crate::state::AppState::with_db(test_config(), clock.clone(), db)
+            .await
+            .expect("state");
+        let app = TestApp {
+            router: crate::build_router(state.clone()),
+            state,
+            clock,
+        };
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let project = project(&app, &owner, true).await;
+        for path in [
+            "/api/v1/projects".to_owned(),
+            format!("/api/v1/projects/{project}"),
+            format!("/api/v1/projects/{project}/members"),
+            format!("/api/v1/projects/{project}/devices"),
+            format!("/api/v1/projects/{project}/peers"),
+            "/api/v1/directory?q=seeded".to_owned(),
+        ] {
+            let request = Request::builder()
+                .uri(&path)
+                .header("authorization", format!("Bearer {}", owner.access_token))
+                .body(Body::empty())
+                .expect("request");
+            let response = app.router.clone().oneshot(request).await.expect("response");
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+        }
+    }
+
+    async fn refuse_inserts_into(app: &TestApp, table: &'static str) {
+        app.state
+            .db
+            .call(move |conn| {
+                conn.execute_batch(&format!(
+                    "CREATE TRIGGER refuse_{table} BEFORE INSERT ON {table} BEGIN SELECT RAISE(ABORT, 'refused'); END;"
+                ))?;
+                Ok(())
+            })
+            .await
+            .expect("trigger");
+    }
+
+    #[tokio::test]
+    async fn a_change_whose_security_log_entry_fails_leaves_nothing_behind() {
+        let app = test_app_with(test_config()).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let other = seed_member(&app, ServerRole::Member).await;
+        let active = project(&app, &owner, true).await;
+        refuse_inserts_into(&app, "security_log").await;
+        let add = format!("/api/v1/projects/{active}/members/{}", other.account_id);
+        let (status, _) = refusal(
+            &app,
+            Method::PUT,
+            &add,
+            &owner.access_token,
+            json!({ "role": "editor" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let patch = format!("/api/v1/projects/{active}");
+        let (status, _) = refusal(
+            &app,
+            Method::PATCH,
+            &patch,
+            &owner.access_token,
+            json!({ "link_sharing": true, "title": "Renamed" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = ProjectPatch {
+                    link_sharing: Some(true),
+                    ..ProjectPatch::default()
+                };
+                projects::apply_patch(conn, active, &patch)
+            })
+            .await
+            .expect("link sharing on");
+        let join = format!("/api/v1/projects/{active}/join");
+        let (status, _) = refusal(&app, Method::POST, &join, &other.access_token, json!({})).await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let other_account = other.account_id;
+        let (role, row) = app
+            .state
+            .db
+            .call(move |conn| {
+                Ok((
+                    projects::role_of(conn, active, other_account)?,
+                    projects::project_row(conn, active)?,
+                ))
+            })
+            .await
+            .expect("read back");
+        assert_eq!(role, None);
+        assert_eq!(row.expect("the project").title, "Thesis");
+    }
+
+    #[tokio::test]
+    async fn a_project_whose_owner_grant_fails_is_not_created() {
+        let app = test_app_with(test_config()).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        refuse_inserts_into(&app, "project_grants").await;
+        let (status, _) = refusal(
+            &app,
+            Method::POST,
+            "/api/v1/projects",
+            &owner.access_token,
+            json!({ "title": "Thesis" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let left: i64 = app
+            .state
+            .db
+            .call(|conn| Ok(conn.query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))?))
+            .await
+            .expect("count");
+        assert_eq!(left, 0);
+    }
+
+    #[tokio::test]
+    async fn refusals_a_person_can_cause_carry_their_own_codes() {
+        let mut config = test_config();
+        config.limits.max_members_per_project = 1;
+        let app = test_app_with(config).await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let other = seed_member(&app, ServerRole::Member).await;
+        let pending = project(&app, &owner, false).await;
+        let active = project(&app, &owner, true).await;
+        let conflict = |code: &str| (StatusCode::CONFLICT, code.to_owned());
+        allow(&app, false).await;
+        let patch = format!("/api/v1/projects/{active}");
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PATCH,
+                &patch,
+                &owner.access_token,
+                json!({ "link_sharing": true })
+            )
+            .await,
+            conflict("link_sharing_off")
+        );
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PATCH,
+                &patch,
+                &owner.access_token,
+                json!({ "access_log": true })
+            )
+            .await,
+            conflict("access_log_off")
+        );
+        let add = |project: SharedProjectId| {
+            format!("/api/v1/projects/{project}/members/{}", other.account_id)
+        };
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PUT,
+                &add(pending),
+                &owner.access_token,
+                json!({ "role": "editor" })
+            )
+            .await,
+            conflict("project_not_shared")
+        );
+        assert_eq!(
+            refusal(
+                &app,
+                Method::PUT,
+                &add(active),
+                &owner.access_token,
+                json!({ "role": "editor" })
+            )
+            .await,
+            conflict("project_full")
+        );
+        allow(&app, true).await;
+        app.state
+            .db
+            .call(move |conn| {
+                let patch = ProjectPatch {
+                    link_sharing: Some(true),
+                    ..ProjectPatch::default()
+                };
+                projects::apply_patch(conn, active, &patch)
+            })
+            .await
+            .expect("link sharing on");
+        let join = format!("/api/v1/projects/{active}/join");
+        assert_eq!(
+            refusal(&app, Method::POST, &join, &other.access_token, json!({})).await,
+            conflict("project_full")
+        );
+    }
 }

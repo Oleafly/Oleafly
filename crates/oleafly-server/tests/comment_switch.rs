@@ -12,6 +12,7 @@ use oleafly_collab_protocol::poll::{
     POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_server::snapshots::Budget;
 use oleafly_server::test_support::challenge_nonce;
 use people::{
     call, connect, connect_understanding, first_snapshot, grant, next_frame, raw_envelope,
@@ -358,5 +359,79 @@ async fn over_long_poll_only_a_client_that_names_the_comments_off_code_gets_it()
     assert!(
         matches!(replies.as_slice(), [reply] if refused_for_comments(reply)),
         "{replies:?}"
+    );
+}
+
+#[tokio::test]
+async fn with_comments_off_each_project_is_read_once_not_once_per_change() {
+    let stage = stage().await;
+    set_server_comments(&stage, false).await;
+    let mut projects = Vec::new();
+    for index in 0..20 {
+        let shared = share_project(&stage.server, &stage.bob, &format!("Thesis {index}")).await;
+        projects.push(shared.project_id);
+    }
+    let mut socket = connect(&stage.server, &stage.bob).await;
+    let mut docs = Vec::new();
+    for project in &projects {
+        assert!(matches!(
+            subscribe(&mut socket, *project, 0).await,
+            ServerFrame::Subscribed { .. }
+        ));
+        let doc = LoroDoc::new();
+        doc.import(&first_snapshot())
+            .expect("the first snapshot loads");
+        doc.set_peer_id(61).expect("peer");
+        docs.push(doc);
+    }
+    let snapshots = &stage.server.state().snapshots;
+    let reads = snapshots.document_reads();
+    for round in 0..3u64 {
+        for (project, doc) in projects.iter().zip(&docs) {
+            let before = doc.oplog_vv();
+            type_text(doc);
+            doc.commit();
+            let update = doc.export(ExportMode::updates(&before)).expect("update");
+            send_update(&mut socket, &raw_envelope(&stage.bob, *project, &update)).await;
+            loop {
+                match next_frame(&mut socket).await.expect("a reply") {
+                    ServerFrame::Ack { seq, .. } => {
+                        assert_eq!(seq, round + 1);
+                        break;
+                    }
+                    ServerFrame::Update { .. }
+                    | ServerFrame::Presence { .. }
+                    | ServerFrame::AccessChanged { .. } => {}
+                    other => panic!("expected an acknowledgement, got {other:?}"),
+                }
+            }
+        }
+    }
+    let read = snapshots.document_reads() - reads;
+    assert!(
+        read <= 20,
+        "the server read the projects {read} times for 60 changes"
+    );
+}
+
+#[tokio::test]
+async fn with_comments_off_typing_is_saved_even_when_the_project_is_too_large_to_check() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_project_comments(&stage, project, false).await;
+    stage.server.state().snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    });
+    let mut typist = Writer::open(&stage, &stage.alice, project, 42).await;
+    let typed = typist.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(typed, ServerFrame::Ack { seq: 1, .. }),
+        "{typed:?}"
+    );
+    let again = typist.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(again, ServerFrame::Ack { seq: 2, .. }),
+        "{again:?}"
     );
 }

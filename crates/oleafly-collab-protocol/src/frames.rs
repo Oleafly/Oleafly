@@ -426,6 +426,54 @@ mod tests {
     }
 
     #[test]
+    fn escaped_keys_and_type_names_read_the_same_in_both_parsers() {
+        for text in [
+            r#"{"\u0074ype":"ping","id":4}"#,
+            r#"{"type":"\u0070ing","id":4}"#,
+            r#"{"t\u0079pe":"p\u0069ng","\u0069d":4}"#,
+            r#"{"id":4,"later\n":"\u00e9","type":"ping"}"#,
+        ] {
+            assert_eq!(
+                ClientFrame::from_json(text).unwrap(),
+                ClientFrame::Ping { id: 4 },
+                "{text}"
+            );
+            assert_eq!(
+                serde_json::from_str::<ClientFrame>(text).unwrap(),
+                ClientFrame::Ping { id: 4 },
+                "{text}"
+            );
+        }
+        assert_eq!(
+            ServerFrame::from_json(r#"{"\u0074ype":"\u0070ong","id":4}"#).unwrap(),
+            ServerFrame::Pong { id: 4 }
+        );
+        for text in [
+            r#"{"type":"ping","type":"ping","id":4}"#,
+            r#"{"type":"ping","\u0074ype":"ping","id":4}"#,
+        ] {
+            assert!(ClientFrame::from_json(text).is_err(), "{text}");
+            assert!(serde_json::from_str::<ClientFrame>(text).is_err(), "{text}");
+        }
+        assert!(ServerFrame::from_json(r#"{"type":"pong","\u0074ype":"pong","id":4}"#).is_err());
+        for text in [
+            r#"{"type":"\u0070ingx","id":4}"#,
+            r#"{"type":"PING","id":4}"#,
+        ] {
+            assert_eq!(
+                ClientFrame::from_json(text).unwrap(),
+                ClientFrame::Unknown,
+                "{text}"
+            );
+            assert_eq!(
+                serde_json::from_str::<ClientFrame>(text).unwrap(),
+                ClientFrame::Unknown,
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
     fn an_access_change_can_carry_the_comment_switches_and_earlier_clients_ignore_them() {
         let frame = ServerFrame::AccessChanged {
             project_id: PROJECT.parse().unwrap(),

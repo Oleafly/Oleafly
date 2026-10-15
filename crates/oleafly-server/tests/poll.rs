@@ -1,4 +1,5 @@
 mod people;
+mod polling;
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
@@ -15,171 +16,24 @@ use oleafly_collab_protocol::frames::{
 };
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::poll::{
-    PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER,
-    PROTOCOL_HEADER, SIGNATURE_HEADER,
+    PollBatch, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
 };
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_server::build_router;
 use oleafly_server::config::{ConfigError, ServerConfig};
 use oleafly_server::rate_limit::CONNECT_BURST;
-use oleafly_server::test_support::{
-    challenge_nonce, test_app, test_app_with, TestDevice, TestServer,
-};
+use oleafly_server::test_support::{challenge_nonce, test_app, test_app_with, TestDevice};
+use oleafly_server::transfers::UploadTiming;
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, subscribe, Person, Stage,
+    signed_by, stage, subscribe, told_of_removal, Stage,
 };
+use polling::{open, open_with, opened, poll_url, Poller};
 use reqwest::{Method, StatusCode};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tower::ServiceExt;
 
 const WAIT: Duration = Duration::from_secs(5);
-
-struct Poller {
-    base: String,
-    project: SharedProjectId,
-    key: String,
-    cursor: String,
-}
-
-fn poll_url(server: &TestServer, project: SharedProjectId) -> String {
-    format!("{}/api/v1/projects/{project}/poll", server.url())
-}
-
-async fn open_with(
-    server: &TestServer,
-    person: &Person,
-    project: SharedProjectId,
-    since: u64,
-    signer: &TestDevice,
-    protocol: u32,
-) -> reqwest::Response {
-    let nonce = challenge_nonce(server).await;
-    let signature = signer.sign_b64(&challenge_message(
-        ChallengePurpose::Socket,
-        server.state().server_id,
-        &nonce,
-    ));
-    reqwest::Client::new()
-        .get(poll_url(server, project))
-        .query(&[("since", since.to_string())])
-        .bearer_auth(person.token())
-        .header(DEVICE_HEADER, person.tokens.device_id.to_string())
-        .header(NONCE_HEADER, nonce)
-        .header(SIGNATURE_HEADER, signature)
-        .header(PROTOCOL_HEADER, protocol.to_string())
-        .send()
-        .await
-        .expect("open request")
-}
-
-async fn open(
-    server: &TestServer,
-    person: &Person,
-    project: SharedProjectId,
-    since: u64,
-) -> (Option<Poller>, Vec<ServerFrame>) {
-    let response = open_with(
-        server,
-        person,
-        project,
-        since,
-        &person.device,
-        PROTOCOL_VERSION,
-    )
-    .await;
-    assert_eq!(response.status(), StatusCode::OK);
-    let batch: PollBatch = response.json().await.expect("poll batch");
-    let poller = match (batch.key, batch.cursor) {
-        (Some(key), Some(cursor)) => Some(Poller {
-            base: server.url(),
-            project,
-            key,
-            cursor,
-        }),
-        _ => None,
-    };
-    (poller, batch.frames)
-}
-
-async fn opened(server: &TestServer, person: &Person, project: SharedProjectId) -> Poller {
-    let (poller, frames) = open(server, person, project, 0).await;
-    assert!(
-        matches!(frames.first(), Some(ServerFrame::Subscribed { .. })),
-        "{frames:?}"
-    );
-    poller.expect("an open session")
-}
-
-impl Poller {
-    async fn get(&self, cursor: &str, key: &str) -> reqwest::Response {
-        reqwest::Client::new()
-            .get(format!(
-                "{}/api/v1/projects/{}/poll",
-                self.base, self.project
-            ))
-            .query(&[("cursor", cursor)])
-            .header(POLL_KEY_HEADER, key)
-            .send()
-            .await
-            .expect("poll request")
-    }
-
-    async fn poll_at(&mut self, cursor: &str) -> Vec<ServerFrame> {
-        let response = self.get(cursor, &self.key.clone()).await;
-        assert_eq!(response.status(), StatusCode::OK);
-        let batch: PollBatch = response.json().await.expect("poll batch");
-        assert_eq!(batch.key, None);
-        if let Some(cursor) = batch.cursor {
-            self.cursor = cursor;
-        }
-        batch.frames
-    }
-
-    async fn poll(&mut self) -> Vec<ServerFrame> {
-        let cursor = self.cursor.clone();
-        self.poll_at(&cursor).await
-    }
-
-    async fn status(&self) -> StatusCode {
-        self.get(&self.cursor, &self.key).await.status()
-    }
-
-    async fn collect(&mut self, count: usize) -> Vec<ServerFrame> {
-        let deadline = Instant::now() + WAIT;
-        let mut frames = Vec::new();
-        while frames.len() < count {
-            assert!(Instant::now() < deadline, "only got {frames:?}");
-            frames.extend(self.poll().await);
-        }
-        frames
-    }
-
-    async fn next(&mut self) -> ServerFrame {
-        let mut frames = self.collect(1).await;
-        assert_eq!(frames.len(), 1, "{frames:?}");
-        frames.remove(0)
-    }
-
-    async fn post_with(&self, key: &str, frames: Vec<ClientFrame>) -> reqwest::Response {
-        reqwest::Client::new()
-            .post(format!(
-                "{}/api/v1/projects/{}/frames",
-                self.base, self.project
-            ))
-            .header(POLL_KEY_HEADER, key)
-            .json(&PollFrames { frames })
-            .send()
-            .await
-            .expect("frames request")
-    }
-
-    async fn post(&self, frames: Vec<ClientFrame>) -> Vec<ServerFrame> {
-        let response = self.post_with(&self.key, frames).await;
-        assert_eq!(response.status(), StatusCode::OK);
-        let replies: PollReplies = response.json().await.expect("replies");
-        replies.frames
-    }
-}
 
 fn quick(stage: &Stage) {
     stage
@@ -751,11 +605,23 @@ async fn removing_someone_tells_their_long_poll_and_the_room() {
         }
     );
     assert_eq!(
-        next_frame(&mut bob).await,
-        Some(ServerFrame::PresenceLeft {
-            project_id: project,
-            device_id: stage.alice.tokens.device_id
-        })
+        told_of_removal(&mut bob).await,
+        vec![
+            ServerFrame::AccessChanged {
+                project_id: project,
+                role: Some(ProjectRole::Owner),
+                change: Some(MemberChange {
+                    account_id: stage.alice.tokens.account_id,
+                    by: stage.bob.tokens.account_id,
+                    kind: MemberChangeKind::Removed,
+                }),
+                comments: None,
+            },
+            ServerFrame::PresenceLeft {
+                project_id: project,
+                device_id: stage.alice.tokens.device_id
+            },
+        ]
     );
     assert!(matches!(
         alice
@@ -1038,6 +904,101 @@ async fn requests_without_the_session_key_find_nothing() {
     };
     assert_eq!(wrong_project.status().await, StatusCode::NOT_FOUND);
     assert_eq!(alice.status().await, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn posted_frames_whose_body_stops_arriving_end_after_the_upload_time() {
+    let stage = stage().await;
+    quick(&stage);
+    stage.server.state().transfers.set_timing(UploadTiming {
+        grace: Duration::from_millis(500),
+        min_rate: u64::MAX,
+    });
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    let address = stage.server.url().trim_start_matches("http://").to_owned();
+    let mut stream = tokio::net::TcpStream::connect(&address)
+        .await
+        .expect("connect");
+    let head = format!(
+        "POST /api/v1/projects/{project}/frames HTTP/1.1\r\nHost: {address}\r\n{POLL_KEY_HEADER}: {}\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{{\"frames\":[",
+        alice.key
+    );
+    stream
+        .write_all(head.as_bytes())
+        .await
+        .expect("send the head");
+    let started = Instant::now();
+    let mut answer = vec![0u8; 512];
+    let read = tokio::time::timeout(WAIT, stream.read(&mut answer))
+        .await
+        .expect("the stalled post was answered")
+        .expect("read the answer");
+    let answer = String::from_utf8_lossy(&answer[..read]).into_owned();
+    assert!(answer.starts_with("HTTP/1.1 400"), "{answer}");
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(alice.status().await, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn a_device_signed_out_while_its_long_poll_opens_is_told_its_session_ended() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let state = stage.server.state();
+    let pause = state.polls.pause_next_open();
+    let device = stage.alice.tokens.device_id;
+    let sign_out = async {
+        pause.reached.notified().await;
+        state.revoke_device(device).await.expect("sign out");
+        pause.resume.notify_one();
+    };
+    let ((poller, frames), ()) =
+        tokio::join!(open(&stage.server, &stage.alice, project, 0), sign_out);
+    assert!(
+        matches!(frames.first(), Some(ServerFrame::Subscribed { .. })),
+        "{frames:?}"
+    );
+    let mut poller = poller.expect("the open finished before the sign-out reached it");
+    assert_eq!(
+        poller.next().await,
+        ServerFrame::SessionRevoked { reason: None }
+    );
+}
+
+#[tokio::test]
+async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
+    let stage = stage().await;
+    quick(&stage);
+    stage
+        .server
+        .state()
+        .polls
+        .set_revocation_check(Duration::from_millis(100));
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut alice = opened(&stage.server, &stage.alice, project).await;
+    let device = stage.alice.tokens.device_id;
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            conn.execute(
+                "UPDATE devices SET revoked_at = 1 WHERE id = ?1",
+                [device.to_string()],
+            )?;
+            Ok(())
+        })
+        .await
+        .expect("revoke quietly");
+    assert_eq!(
+        alice.next().await,
+        ServerFrame::SessionRevoked { reason: None }
+    );
 }
 
 #[tokio::test]

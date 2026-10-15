@@ -286,9 +286,14 @@ async fn serve_reports_a_port_that_is_already_taken() {
         ("OLEAFLY_BIND", bind.as_str()),
         ("OLEAFLY_DATA_DIR", data_dir.as_str()),
     ]);
-    let error = oleafly_server::serve(config).await.unwrap_err();
-    assert!(error.to_string().contains("could not listen"), "{error}");
-    assert!(directory
+    let message = oleafly_server::serve(config).await.unwrap_err().to_string();
+    assert!(
+        message.starts_with("Oleafly Server cannot start."),
+        "{message}"
+    );
+    assert!(message.contains("already in use"), "{message}");
+    assert!(message.contains("OLEAFLY_BIND"), "{message}");
+    assert!(!directory
         .path()
         .join("data")
         .join("oleafly-server.sqlite3")

@@ -1,5 +1,10 @@
 #![allow(dead_code)]
 
+use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
 use futures_util::{SinkExt, StreamExt};
 use oleafly_collab_protocol::admin::AllowlistMatcher;
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose, SessionTokens};
@@ -12,8 +17,8 @@ use oleafly_collab_protocol::projects::{MemberGrant, NewProject, ProjectRole, Pr
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::config::ServerConfig;
 use oleafly_server::test_support::{
-    allowlist, github_provider, sign_in, test_config, MockGithub, MockGithubUser, TestDevice,
-    TestServer,
+    allowlist, github_provider, seed_person, sign_in, socket_request, test_config, MockGithub,
+    MockGithubUser, PersonSeed, TestDevice, TestServer,
 };
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
@@ -211,10 +216,6 @@ pub async fn grant(
     .await
 }
 
-fn ws_url(server: &TestServer) -> String {
-    format!("{}/ws", server.url().replacen("http://", "ws://", 1))
-}
-
 pub async fn next_frame(socket: &mut Socket) -> Option<ServerFrame> {
     let waited = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(message) = socket.next().await {
@@ -241,12 +242,22 @@ pub async fn connect(server: &TestServer, person: &Person) -> Socket {
     connect_understanding(server, person, Vec::new()).await
 }
 
+pub async fn connect_to(url: &str, person: &Person) -> Socket {
+    hello_on(url, person, Vec::new()).await
+}
+
 pub async fn connect_understanding(
     server: &TestServer,
     person: &Person,
     understands: Vec<FrameErrorCode>,
 ) -> Socket {
-    let (mut socket, _) = connect_async(ws_url(server)).await.expect("connect");
+    hello_on(&server.url(), person, understands).await
+}
+
+async fn hello_on(url: &str, person: &Person, understands: Vec<FrameErrorCode>) -> Socket {
+    let (mut socket, _) = connect_async(socket_request(url, Some(person.token())))
+        .await
+        .expect("connect");
     let Some(ServerFrame::Challenge { nonce, server_id }) = next_frame(&mut socket).await else {
         panic!("expected a challenge");
     };
@@ -320,4 +331,96 @@ pub async fn send_update(socket: &mut Socket, envelope: &Envelope) {
         },
     )
     .await;
+}
+
+pub async fn seeded(server: &TestServer, name: &str) -> Person {
+    let device = TestDevice::generate();
+    let tokens = seed_person(
+        server.state(),
+        PersonSeed {
+            name: name.to_owned(),
+            email: format!("{}@uni.edu", name.to_lowercase()),
+            role: ServerRole::Member,
+            device_public_key: device.public_key_b64().to_owned(),
+            device_name: "Laptop".to_owned(),
+        },
+    )
+    .await
+    .expect("seed a person");
+    Person { device, tokens }
+}
+
+// Large enough that reading or encoding it on the server's async thread
+// shows up as a stall, and small enough to fit in one frame.
+pub fn large_change(person: &Person, project: SharedProjectId) -> Envelope {
+    envelope(person, project, &vec![b'x'; 7 << 20])
+}
+
+struct Finished(Arc<AtomicBool>);
+
+impl Drop for Finished {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+// Runs `work` on a thread with a runtime of its own and sets the flag once
+// it ends, even by panicking. A client's own encoding and decoding of large
+// frames then never holds up the thread a test shares with its server.
+pub fn beside<F>(work: F) -> (tokio::task::JoinHandle<F::Output>, Arc<AtomicBool>)
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    let done = Arc::new(AtomicBool::new(false));
+    let finished = Finished(Arc::clone(&done));
+    let handle = tokio::task::spawn_blocking(move || {
+        let _finished = finished;
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("a runtime beside the server")
+            .block_on(work)
+    });
+    (handle, done)
+}
+
+// How long a server that shares one thread with the test may keep a ping
+// waiting while it handles a large change.
+pub const LONGEST_STALL: Duration = Duration::from_millis(100);
+
+// Pings over `socket` until `done` is set and returns the longest time a
+// round took beyond its pause, which is how long the thread the test shares
+// with the server was held up.
+pub async fn longest_stall(socket: &mut Socket, done: &AtomicBool) -> Duration {
+    let pause = Duration::from_millis(5);
+    let mut slowest = Duration::ZERO;
+    let mut id = 0;
+    while !done.load(Ordering::SeqCst) {
+        id += 1;
+        let started = tokio::time::Instant::now();
+        send_frame(socket, &ClientFrame::Ping { id }).await;
+        loop {
+            match next_frame(socket).await {
+                Some(ServerFrame::Pong { id: answered }) if answered == id => break,
+                Some(_) => {}
+                None => panic!("the pinging connection closed"),
+            }
+        }
+        tokio::time::sleep(pause).await;
+        slowest = slowest.max(started.elapsed().saturating_sub(pause));
+    }
+    slowest
+}
+
+// Cursor and leave frames wait beside the edit queue and go out when no
+// other frame is waiting, so after a removal the room's access change can
+// arrive before the leave. Reads both, access change first.
+pub async fn told_of_removal(socket: &mut Socket) -> Vec<ServerFrame> {
+    let mut told = vec![
+        next_frame(socket).await.expect("a frame about the removal"),
+        next_frame(socket).await.expect("a frame about the removal"),
+    ];
+    told.sort_by_key(|frame| matches!(frame, ServerFrame::PresenceLeft { .. }));
+    told
 }

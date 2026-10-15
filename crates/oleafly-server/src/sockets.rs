@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::auth::SessionEndReason;
-use oleafly_collab_protocol::ids::DeviceId;
+use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+
+use crate::routes::ws::{MAX_SOCKETS, MAX_SOCKETS_PER_ACCOUNT};
 
 pub const MAX_SOCKETS_PER_DEVICE: usize = 32;
 
@@ -14,6 +16,46 @@ pub enum SocketControl {
     Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
+    Restarting,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SocketLimits {
+    pub per_account: usize,
+    pub total: usize,
+}
+
+impl Default for SocketLimits {
+    fn default() -> SocketLimits {
+        SocketLimits {
+            per_account: MAX_SOCKETS_PER_ACCOUNT,
+            total: MAX_SOCKETS,
+        }
+    }
+}
+
+#[derive(Default)]
+struct OpenSockets {
+    total: usize,
+    by_account: HashMap<AccountId, usize>,
+}
+
+pub struct SocketSlot {
+    open: Arc<Mutex<OpenSockets>>,
+    account: AccountId,
+}
+
+impl Drop for SocketSlot {
+    fn drop(&mut self) {
+        let mut open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
+        open.total = open.total.saturating_sub(1);
+        if let Some(held) = open.by_account.get_mut(&self.account) {
+            *held = held.saturating_sub(1);
+            if *held == 0 {
+                open.by_account.remove(&self.account);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +106,8 @@ pub struct SocketRegistry {
     next: AtomicU64,
     sockets: Mutex<HashMap<DeviceId, Vec<Entry>>>,
     timing: Mutex<LinkTiming>,
+    limits: Mutex<SocketLimits>,
+    open: Arc<Mutex<OpenSockets>>,
 }
 
 impl SocketRegistry {
@@ -77,6 +121,44 @@ impl SocketRegistry {
 
     pub fn timing(&self) -> LinkTiming {
         *self.timing.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub fn set_limits(&self, limits: SocketLimits) {
+        *self.limits.lock().unwrap_or_else(PoisonError::into_inner) = limits;
+    }
+
+    pub fn limits(&self) -> SocketLimits {
+        *self.limits.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub fn open_slot(&self, account: AccountId) -> Option<SocketSlot> {
+        let limits = self.limits();
+        let mut open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
+        let held = open.by_account.get(&account).copied().unwrap_or(0);
+        if open.total >= limits.total || held >= limits.per_account {
+            return None;
+        }
+        open.total += 1;
+        *open.by_account.entry(account).or_insert(0) += 1;
+        Some(SocketSlot {
+            open: Arc::clone(&self.open),
+            account,
+        })
+    }
+
+    pub fn open_sockets(&self) -> usize {
+        self.open
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .total
+    }
+
+    pub fn restart_all(&self) -> usize {
+        self.lock()
+            .values()
+            .flatten()
+            .filter(|entry| entry.sender.send(SocketControl::Restarting).is_ok())
+            .count()
     }
 
     pub fn register(&self, device: DeviceId) -> SocketTicket {
@@ -234,6 +316,31 @@ mod tests {
             ..timing
         };
         assert!(unlimited.send_limit(usize::MAX) >= Duration::from_secs(15));
+    }
+
+    #[test]
+    fn open_sockets_are_capped_per_account_and_in_total_until_one_closes() {
+        let registry = SocketRegistry::new();
+        assert_eq!(registry.limits(), SocketLimits::default());
+        registry.set_limits(SocketLimits {
+            per_account: 2,
+            total: 3,
+        });
+        let (ada, bo, cy) = (
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+        );
+        let first = registry.open_slot(ada).expect("a first socket");
+        let _second = registry.open_slot(ada).expect("a second socket");
+        assert!(registry.open_slot(ada).is_none());
+        let _other = registry.open_slot(bo).expect("another account");
+        assert!(registry.open_slot(cy).is_none());
+        assert_eq!(registry.open_sockets(), 3);
+        drop(first);
+        assert_eq!(registry.open_sockets(), 2);
+        assert!(registry.open_slot(cy).is_some());
+        assert_eq!(registry.open_sockets(), 2);
     }
 
     #[test]

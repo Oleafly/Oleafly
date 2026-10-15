@@ -24,6 +24,7 @@ use crate::security_log;
 use crate::snapshots::{Budget, Snapshots};
 use crate::sockets::SocketRegistry;
 use crate::tokens;
+use crate::transfers::Transfers;
 
 pub const DATABASE_FILE: &str = "oleafly-server.sqlite3";
 pub const SETUP_LOG_PREFIX: &str = "Setup code: ";
@@ -59,6 +60,7 @@ pub struct AppState {
     pub snapshots: Snapshots,
     pub comment_guard: CommentGuard,
     pub mentions: Mentions,
+    pub transfers: Transfers,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -137,6 +139,7 @@ impl AppState {
         });
         snapshots.move_legacy_files(&database).await?;
         let polls = Arc::new(PollHub::with_hold(config.poll_hold));
+        let transfer_budget = config.snapshot_memory_mb.saturating_mul(1024 * 1024) / 2;
         let rate_limiter = Arc::new(RateLimiter::new(
             config.sign_in.requests_burst,
             config.sign_in.requests_per_minute,
@@ -160,6 +163,7 @@ impl AppState {
             snapshots,
             comment_guard: CommentGuard::default(),
             mentions: Mentions::default(),
+            transfers: Transfers::with_budget(transfer_budget),
         })
     }
 

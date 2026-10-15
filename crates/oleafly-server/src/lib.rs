@@ -29,9 +29,11 @@ pub mod state;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 pub mod tokens;
+pub mod transfers;
 
 use std::future::Future;
 use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -47,6 +49,8 @@ use crate::state::AppState;
 
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+// Sockets are told the server is restarting and get this long to close.
+const SOCKET_FAREWELL: Duration = Duration::from_secs(2);
 
 pub fn log_filter(level: Level) -> Targets {
     let others = if level >= Level::DEBUG {
@@ -75,18 +79,122 @@ pub fn build_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
+#[derive(Debug)]
+pub enum ServeError {
+    // A setting or the machine stops the server from starting. The message
+    // names the setting to check.
+    CannotStart(String),
+    Failed(ServerError),
+}
+
+impl std::fmt::Display for ServeError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServeError::CannotStart(message) => {
+                write!(formatter, "Oleafly Server cannot start. {message}")
+            }
+            ServeError::Failed(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServeError {}
+
+fn cannot_listen(bind: SocketAddr, error: &std::io::Error) -> String {
+    if error.kind() == std::io::ErrorKind::AddrInUse {
+        let mut free = bind;
+        free.set_port(bind.port().checked_add(1).unwrap_or(8081));
+        format!(
+            "Port {} is already in use. Stop the other program, or set OLEAFLY_BIND to a free address such as {free}.",
+            bind.port()
+        )
+    } else {
+        format!(
+            "It could not listen on {bind} ({error}). Set OLEAFLY_BIND to an address and port this machine lets it use."
+        )
+    }
+}
+
+fn bucket_refused(error: &ServerError) -> String {
+    let detail = match error {
+        ServerError::Internal(detail) => detail.clone(),
+        other => other.to_string(),
+    };
+    let check = [
+        (
+            "SignatureDoesNotMatch",
+            "Check OLEAFLY_S3_SECRET_ACCESS_KEY.",
+        ),
+        ("InvalidAccessKeyId", "Check OLEAFLY_S3_ACCESS_KEY_ID."),
+        (
+            "NoSuchBucket",
+            "Check the bucket name in OLEAFLY_BLOB_STORE.",
+        ),
+        (
+            "RequestTimeTooSkewed",
+            "Set this machine's clock to the right time.",
+        ),
+        (
+            "AccessDenied",
+            "Let the key in OLEAFLY_S3_ACCESS_KEY_ID put, get and delete objects in the bucket.",
+        ),
+        (
+            "could not reach",
+            "Check OLEAFLY_S3_ENDPOINT and the network.",
+        ),
+    ]
+    .iter()
+    .find(|(sign, _)| detail.contains(sign))
+    .map_or(
+        "Check OLEAFLY_BLOB_STORE and the OLEAFLY_S3_ settings.",
+        |(_, check)| check,
+    );
+    format!("The S3 bucket did not accept a test file: {detail}. {check}")
+}
+
+fn check_data_dir(data_dir: &Path) -> Result<(), String> {
+    let unwritable = |error: std::io::Error| {
+        format!(
+            "The server can't write to {} (OLEAFLY_DATA_DIR): {error}. Make that folder writable by the user the server runs as (uid 10001 in the Docker image).",
+            data_dir.display()
+        )
+    };
+    std::fs::create_dir_all(data_dir).map_err(unwritable)?;
+    let probe = data_dir.join(format!(".oleafly-write-check-{}", tokens::random_token()));
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe)
+        .map_err(unwritable)?;
+    std::fs::remove_file(&probe).map_err(unwritable)
+}
+
+pub async fn serve(config: ServerConfig) -> Result<(), ServeError> {
     let bind = config.bind;
-    let state = AppState::new(config, Arc::new(SystemClock)).await?;
+    let data_dir = config.data_dir.clone();
+    tokio::task::spawn_blocking(move || check_data_dir(&data_dir))
+        .await
+        .map_err(|error| ServeError::CannotStart(error.to_string()))?
+        .map_err(ServeError::CannotStart)?;
     let listener = tokio::net::TcpListener::bind(bind)
         .await
-        .map_err(|error| ServerError::Internal(format!("could not listen on {bind}: {error}")))?;
+        .map_err(|error| ServeError::CannotStart(cannot_listen(bind, &error)))?;
+    let state = AppState::new(config, Arc::new(SystemClock))
+        .await
+        .map_err(|error| ServeError::CannotStart(error.to_string()))?;
+    state
+        .blobs
+        .probe()
+        .await
+        .map_err(|error| ServeError::CannotStart(bucket_refused(&error)))?;
     tracing::info!(
         "Oleafly Server {} is listening on {bind} for {}",
         env!("CARGO_PKG_VERSION"),
         state.config.public_url
     );
-    serve_on(state, listener, shutdown_signal()).await
+    serve_on(state, listener, shutdown_signal())
+        .await
+        .map_err(ServeError::Failed)
 }
 
 pub async fn serve_on<F>(
@@ -100,13 +208,20 @@ where
     mentions::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let polls = Arc::clone(&state.polls);
+    let sockets = Arc::clone(&state.sockets);
     let app = build_router(state).into_make_service_with_connect_info::<SocketAddr>();
+    let farewell = Arc::clone(&sockets);
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             shutdown.await;
             polls.stop_waiting();
+            farewell.restart_all();
         })
         .await;
+    let deadline = tokio::time::Instant::now() + SOCKET_FAREWELL;
+    while sockets.open_sockets() > 0 && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
     maintenance.abort();
     result.map_err(|error| ServerError::Internal(format!("the server stopped: {error}")))
 }
@@ -155,7 +270,68 @@ async fn shutdown_signal() {
 mod tests {
     use tracing::Level;
 
-    use super::log_filter;
+    use super::{log_filter, serve, ServeError};
+    use crate::test_support::test_config;
+
+    async fn cannot_start(config: crate::config::ServerConfig) -> String {
+        match serve(config).await {
+            Err(ServeError::CannotStart(message)) => message,
+            Err(other) => panic!("the server failed another way: {other}"),
+            Ok(()) => panic!("the server started"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_port_in_use_is_reported_with_the_setting_to_change() {
+        let directory = tempfile::tempdir().unwrap();
+        let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut config = test_config();
+        config.data_dir = directory.path().to_path_buf();
+        config.bind = taken.local_addr().unwrap();
+        let message = cannot_start(config).await;
+        assert!(message.contains("already in use"), "{message}");
+        assert!(message.contains("OLEAFLY_BIND"), "{message}");
+    }
+
+    #[tokio::test]
+    async fn a_bucket_that_refuses_the_keys_stops_the_server_and_names_the_setting() {
+        let mock = crate::test_support::MockS3::start().await;
+        let directory = tempfile::tempdir().unwrap();
+        let mut bucket = mock.config("oleafly");
+        bucket.secret_access_key = "not-the-secret".to_owned();
+        let mut config = test_config();
+        config.data_dir = directory.path().to_path_buf();
+        config.bind = "127.0.0.1:0".parse().unwrap();
+        config.blob_store = crate::config::BlobStoreConfig::S3(Box::new(bucket));
+        let message = cannot_start(config).await;
+        assert!(
+            message.contains("OLEAFLY_S3_SECRET_ACCESS_KEY"),
+            "{message}"
+        );
+        assert!(!message.contains("not-the-secret"), "{message}");
+        assert!(mock.keys().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_data_folder_the_server_cannot_write_is_reported_with_the_setting_to_fix() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let locked = directory.path().join("data");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500)).unwrap();
+        if std::fs::write(locked.join("probe"), b"x").is_ok() {
+            // Running as root, which ignores the folder's permissions.
+            return;
+        }
+        let mut config = test_config();
+        config.data_dir = locked.clone();
+        config.bind = "127.0.0.1:0".parse().unwrap();
+        let message = cannot_start(config).await;
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(message.contains("OLEAFLY_DATA_DIR"), "{message}");
+        assert!(message.contains("uid 10001"), "{message}");
+    }
 
     #[test]
     fn other_libraries_log_only_warnings_unless_debugging_is_asked_for() {

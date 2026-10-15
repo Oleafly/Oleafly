@@ -259,6 +259,29 @@ impl S3Blobs {
             .await
     }
 
+    // Writes, reads back and removes a small object, so a wrong key, a key
+    // without the rights it needs or an unreachable bucket shows up before
+    // anyone's work depends on it.
+    pub async fn probe(&self) -> Result<(), ServerError> {
+        let body = Bytes::from_static(b"ready");
+        let hash = crate::blobs::sha256_hex(&body);
+        let key = format!(
+            "{}.oleafly-ready-{}",
+            self.inner.key_prefix,
+            crate::tokens::random_token()
+        );
+        self.put_object(&key, &hash, body).await?;
+        let read = self.get_object(&key, 64).await;
+        let removed = self.remove_object(&key).await;
+        read?.ok_or_else(|| {
+            ServerError::Internal(format!(
+                "the S3 blob store accepted {} but did not return it",
+                self.location(&key)
+            ))
+        })?;
+        removed
+    }
+
     async fn put_object(&self, key: &str, hash: &str, bytes: Bytes) -> Result<(), ServerError> {
         let timeout = self.inner.timeouts.for_bytes(bytes.len() as u64);
         self.with_retries(|| async {

@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError, RwLock};
+use std::time::Duration;
 
 use axum::body::Bytes;
 use loro::{
@@ -10,7 +12,7 @@ use loro::{
 };
 use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
-use tokio::sync::Mutex;
+use tokio::sync::{watch, Mutex};
 
 use crate::blobs::{sha256_hex, BlobStore};
 use crate::db::Db;
@@ -61,6 +63,56 @@ pub struct Snapshots {
     budget: Arc<RwLock<Budget>>,
     reserved: Arc<RwLock<u64>>,
     reported: Arc<RwLock<HashMap<SharedProjectId, u64>>>,
+    reads: Arc<AtomicU64>,
+    building: Running,
+}
+
+type Running = Arc<std::sync::Mutex<HashMap<SharedProjectId, watch::Receiver<bool>>>>;
+
+// One snapshot build per project runs at a time. A hint that arrives while
+// one runs waits for it to finish and then takes its own turn.
+struct Building {
+    running: Running,
+    project: SharedProjectId,
+    finished: watch::Sender<bool>,
+}
+
+enum Turn {
+    Lead(Building),
+    Follow(watch::Receiver<bool>),
+}
+
+impl Building {
+    fn turn(running: &Running, project: SharedProjectId) -> Turn {
+        let mut builds = running.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(finished) = builds.get(&project) {
+            return Turn::Follow(finished.clone());
+        }
+        let (finished, waiting) = watch::channel(false);
+        builds.insert(project, waiting);
+        Turn::Lead(Building {
+            running: Arc::clone(running),
+            project,
+            finished,
+        })
+    }
+}
+
+impl Drop for Building {
+    fn drop(&mut self) {
+        self.running
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&self.project);
+        let _ = self.finished.send(true);
+    }
+}
+
+pub enum Current {
+    Read(Budgeted, u64),
+    TooLarge { needed: u64, allowed: u64 },
+    Busy,
+    Missing,
 }
 
 struct Reserved {
@@ -75,8 +127,57 @@ impl Drop for Reserved {
     }
 }
 
+// A document read under the snapshot memory budget. The share of the budget
+// it took goes back only when the document itself is dropped, wherever that
+// happens, so a caller that keeps it, or a blocking task that outlives the
+// request that started it, keeps paying for it.
+pub struct Budgeted {
+    replay: Replay,
+    reserved: Reserved,
+}
+
+impl Budgeted {
+    pub fn reserved_bytes(&self) -> u64 {
+        self.reserved.bytes
+    }
+
+    pub fn grow(&mut self, snapshots: &Snapshots, bytes: u64) -> bool {
+        let Some(mut more) = snapshots.reserve(bytes) else {
+            return false;
+        };
+        self.reserved.bytes += more.bytes;
+        more.bytes = 0;
+        true
+    }
+
+    pub fn replaced(self, replay: Replay) -> Budgeted {
+        Budgeted {
+            replay,
+            reserved: self.reserved,
+        }
+    }
+
+    pub fn finish(self) -> Option<Vec<u8>> {
+        self.replay.finish()
+    }
+}
+
+impl std::ops::Deref for Budgeted {
+    type Target = Replay;
+
+    fn deref(&self) -> &Replay {
+        &self.replay
+    }
+}
+
+impl std::ops::DerefMut for Budgeted {
+    fn deref_mut(&mut self) -> &mut Replay {
+        &mut self.replay
+    }
+}
+
 enum Replayed {
-    Ready(Replay),
+    Ready(Budgeted),
     Unreadable,
     Gap,
 }
@@ -278,7 +379,13 @@ impl Snapshots {
             budget: Arc::new(RwLock::new(Budget::default())),
             reserved: Arc::new(RwLock::new(0)),
             reported: Arc::new(RwLock::new(HashMap::new())),
+            reads: Arc::new(AtomicU64::new(0)),
+            building: Arc::new(std::sync::Mutex::new(HashMap::new())),
         }
+    }
+
+    pub fn document_reads(&self) -> u64 {
+        self.reads.load(Ordering::Relaxed)
     }
 
     fn put_off(&self, project: SharedProjectId, through: u64) -> bool {
@@ -365,7 +472,7 @@ impl Snapshots {
     ) -> Result<Upload, ServerError> {
         let _writing = self.writer(project).lock().await;
         let newest = db
-            .call(move |conn| projects::latest_snapshot(conn, project))
+            .read(move |conn| projects::latest_snapshot(conn, project))
             .await?
             .ok_or(ServerError::NotFound)?;
         if through < newest.seq.saturating_add(self.policy().build_after.max(1))
@@ -374,7 +481,7 @@ impl Snapshots {
             return Ok(Upload::Held(newest.seq));
         }
         let (candidates, bindings) = db
-            .call(move |conn| {
+            .read(move |conn| {
                 Ok((
                     projects::readable_snapshots(conn, project)?,
                     peers::bound_devices(conn, project)?,
@@ -386,7 +493,7 @@ impl Snapshots {
         for row in candidates {
             let after = row.seq;
             let (span, size) = db
-                .call(move |conn| {
+                .read(move |conn| {
                     Ok((
                         projects::log_span(conn, project, after, through)?,
                         projects::snapshot_size(conn, project, after)?.unwrap_or(0),
@@ -409,7 +516,7 @@ impl Snapshots {
                 );
                 return Ok(Upload::Held(newest.seq));
             }
-            let Some(_reserved) = self.reserve(needed) else {
+            let Some(reserved) = self.reserve(needed) else {
                 tracing::info!(
                     "Put off the snapshot of project {project} at {through} while other snapshots are being built"
                 );
@@ -431,7 +538,7 @@ impl Snapshots {
                 }
             };
             let replay = match self
-                .replayed(db, project, base, after, through, &bindings)
+                .replayed(db, project, base, after, through, &bindings, reserved)
                 .await?
             {
                 Replayed::Ready(replay) => replay,
@@ -448,6 +555,13 @@ impl Snapshots {
                     continue;
                 }
             };
+            if let Some((first, last)) = replay.left_out() {
+                self.refused(project, through);
+                tracing::error!(
+                    "Kept the change log of project {project} and did not build its snapshot at {through}, because changes stored between {first} and {last} could not be read. Members who were online have them. Update Oleafly Server if the apps are newer than it."
+                );
+                return Ok(Upload::Held(newest.seq));
+            }
             let Some(derived) = blocking(move || Ok(replay.finish())).await? else {
                 tracing::warn!(
                     "The snapshot of project {project} at {after} does not load, so the server builds on the one before it"
@@ -490,6 +604,7 @@ impl Snapshots {
         Ok(Some(blocking(move || Ok(replay.files())).await?))
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn replayed(
         &self,
         db: &Db,
@@ -498,8 +613,12 @@ impl Snapshots {
         after: u64,
         through: u64,
         bindings: &Arc<HashMap<u64, DeviceId>>,
+        reserved: Reserved,
     ) -> Result<Replayed, ServerError> {
-        let Some(replay) = blocking(move || Ok(Replay::start(project, &base))).await? else {
+        let started = blocking(move || {
+            Ok(Replay::start(project, &base).map(|replay| Budgeted { replay, reserved }))
+        });
+        let Some(replay) = started.await? else {
             return Ok(Replayed::Unreadable);
         };
         Ok(
@@ -514,9 +633,20 @@ impl Snapshots {
         &self,
         db: &Db,
         project: SharedProjectId,
-    ) -> Result<Option<(Replay, u64)>, ServerError> {
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        Ok(match self.read_current(db, project).await? {
+            Current::Read(replay, head) => Some((replay, head)),
+            Current::TooLarge { .. } | Current::Busy | Current::Missing => None,
+        })
+    }
+
+    pub async fn read_current(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+    ) -> Result<Current, ServerError> {
         let (candidates, bindings, head) = db
-            .call(move |conn| {
+            .read(move |conn| {
                 Ok((
                     projects::readable_snapshots(conn, project)?,
                     peers::bound_devices(conn, project)?,
@@ -529,7 +659,7 @@ impl Snapshots {
         for row in candidates {
             let after = row.seq;
             let (span, size) = db
-                .call(move |conn| {
+                .read(move |conn| {
                     Ok((
                         projects::log_span(conn, project, after, head)?,
                         projects::snapshot_size(conn, project, after)?.unwrap_or(0),
@@ -537,7 +667,7 @@ impl Snapshots {
                 })
                 .await?;
             if span.count != head.saturating_sub(after) {
-                return Ok(None);
+                return Ok(Current::Missing);
             }
             let needed = read_cost(size, span.bytes);
             if needed > budget.memory_bytes {
@@ -546,24 +676,28 @@ impl Snapshots {
                     megabytes(needed),
                     megabytes(budget.memory_bytes)
                 );
-                return Ok(None);
+                return Ok(Current::TooLarge {
+                    needed,
+                    allowed: budget.memory_bytes,
+                });
             }
-            let Some(_reserved) = self.reserve(needed) else {
-                return Ok(None);
+            let Some(reserved) = self.reserve(needed) else {
+                return Ok(Current::Busy);
             };
+            self.reads.fetch_add(1, Ordering::Relaxed);
             let Ok(Some(base)) = self.read(project, &row).await else {
                 continue;
             };
             match self
-                .replayed(db, project, base, after, head, &bindings)
+                .replayed(db, project, base, after, head, &bindings, reserved)
                 .await?
             {
-                Replayed::Ready(replay) => return Ok(Some((replay, head))),
-                Replayed::Gap => return Ok(None),
+                Replayed::Ready(replay) => return Ok(Current::Read(replay, head)),
+                Replayed::Gap => return Ok(Current::Missing),
                 Replayed::Unreadable => {}
             }
         }
-        Ok(None)
+        Ok(Current::Missing)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -585,9 +719,9 @@ impl Snapshots {
                 return Ok(Upload::Held(newest.seq));
             }
         }
-        let size = bytes.len() as u64;
-        let hash = self.blobs.put_snapshot(project, bytes).await?;
-        if !matches!(self.blobs.get_snapshot(project, &hash).await, Ok(Some(_))) {
+        let (hash, size) = self.stage(db, project, bytes, now).await?;
+        if !matches!(self.blobs.snapshot_size(project, &hash).await, Ok(Some(found)) if found == size)
+        {
             self.drop_unused(db, project, &hash, now).await;
             return Err(ServerError::Internal(format!(
                 "the snapshot of project {project} at {seq} could not be read back from the blob store"
@@ -642,6 +776,71 @@ impl Snapshots {
             }
         }
         Ok(Upload::Stored)
+    }
+
+    // Notes the object for removal before writing it, so a build that stops
+    // between writing and recording (a dropped request, a killed process)
+    // leaves it for the maintenance pass rather than in the store forever.
+    // Recording the snapshot clears the note.
+    async fn stage(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        bytes: Bytes,
+        now: i64,
+    ) -> Result<(String, u64), ServerError> {
+        let size = bytes.len() as u64;
+        let (hash, bytes) = blocking(move || Ok((sha256_hex(&bytes), bytes))).await?;
+        let queued = hash.clone();
+        db.call(move |conn| {
+            projects::queue_removal(conn, Removal::Snapshot, Some(project), &queued, now)
+        })
+        .await?;
+        self.blobs.put_snapshot_as(project, &hash, bytes).await?;
+        Ok((hash, size))
+    }
+
+    pub async fn build_soon(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        through: u64,
+        by: AccountId,
+        now: i64,
+        wait: Duration,
+    ) -> Result<Option<Upload>, ServerError> {
+        let deadline = tokio::time::Instant::now() + wait;
+        let building = loop {
+            match Building::turn(&self.building, project) {
+                Turn::Lead(building) => break building,
+                Turn::Follow(mut finished) => {
+                    let waited =
+                        tokio::time::timeout_at(deadline, finished.wait_for(|done| *done)).await;
+                    if waited.is_err() {
+                        return Ok(None);
+                    }
+                }
+            }
+        };
+        let (done, outcome) = tokio::sync::oneshot::channel();
+        let (snapshots, db) = (self.clone(), db.clone());
+        tokio::spawn(async move {
+            let _building = building;
+            let built = snapshots.derive(&db, project, through, by, now).await;
+            if let Err(error) = &built {
+                tracing::warn!(
+                    "Could not build the snapshot of project {project} at {through}: {error}"
+                );
+            }
+            let _ = done.send(built);
+        });
+        match tokio::time::timeout_at(deadline, outcome).await {
+            Ok(Ok(built)) => built.map(Some),
+            Ok(Err(_)) => Err(ServerError::Internal(format!(
+                "the snapshot build of project {project} stopped before it finished"
+            ))),
+            Err(_) => Ok(None),
+        }
     }
 
     async fn intact(&self, project: SharedProjectId, row: &SnapshotRow, size: u64) -> bool {
@@ -739,7 +938,7 @@ impl Snapshots {
         project: SharedProjectId,
     ) -> Result<Option<Loaded>, ServerError> {
         let candidates = db
-            .call(move |conn| projects::readable_snapshots(conn, project))
+            .read(move |conn| projects::readable_snapshots(conn, project))
             .await?;
         self.first_readable(db, project, &candidates).await
     }
@@ -751,7 +950,7 @@ impl Snapshots {
         before: u64,
     ) -> Result<Option<Loaded>, ServerError> {
         let candidates = db
-            .call(move |conn| projects::readable_snapshots_before(conn, project, before))
+            .read(move |conn| projects::readable_snapshots_before(conn, project, before))
             .await?;
         self.first_readable(db, project, &candidates).await
     }
@@ -770,7 +969,7 @@ impl Snapshots {
                 Ok(Some(bytes)) => {
                     let seq = row.seq;
                     let signed = db
-                        .call(move |conn| projects::snapshot_signature(conn, project, seq))
+                        .read(move |conn| projects::snapshot_signature(conn, project, seq))
                         .await?
                         .map(|(device, signature)| Signed { device, signature });
                     return Ok(Some(Loaded { seq, bytes, signed }));
@@ -1008,20 +1207,29 @@ impl Snapshots {
 pub struct Replay {
     project: SharedProjectId,
     doc: LoroDoc,
+    reached: HashMap<u64, Reached>,
+}
+
+// How far the replayed entries took one writer id, and which entries did.
+#[derive(Clone, Copy)]
+struct Reached {
+    end: i32,
+    first: u64,
+    last: u64,
 }
 
 pub async fn advance(
     db: &Db,
     project: SharedProjectId,
-    mut replay: Replay,
+    mut replay: Budgeted,
     after: u64,
     through: u64,
     bindings: &Arc<HashMap<u64, DeviceId>>,
-) -> Result<Option<Replay>, ServerError> {
+) -> Result<Option<Budgeted>, ServerError> {
     let mut cursor = after;
     while cursor < through {
         let page = db
-            .call(move |conn| projects::logged_between(conn, project, cursor, through))
+            .read(move |conn| projects::logged_between(conn, project, cursor, through))
             .await?;
         let contiguous = page
             .iter()
@@ -1068,7 +1276,24 @@ impl Replay {
         peers::snapshot_reach(base)?;
         let doc = LoroDoc::new();
         doc.import(base).ok()?;
-        Some(Replay { project, doc })
+        Some(Replay {
+            project,
+            doc,
+            reached: HashMap::new(),
+        })
+    }
+
+    // The changes the replayed entries carried that the document does not
+    // hold, as the range of entries they came from. Such changes were
+    // accepted but could not be imported, so a snapshot built now would
+    // leave them out.
+    pub fn left_out(&self) -> Option<(u64, u64)> {
+        let held = self.doc.oplog_vv();
+        self.reached
+            .iter()
+            .filter(|(peer, reached)| held.get(peer).copied().unwrap_or(0) < reached.end)
+            .map(|(_, reached)| (reached.first, reached.last))
+            .reduce(|(low, high), (first, last)| (low.min(first), high.max(last)))
     }
 
     pub fn apply(&mut self, entries: &[LoggedUpdate], bindings: &HashMap<u64, DeviceId>) {
@@ -1085,15 +1310,23 @@ impl Replay {
             let Some(reach) = peers::update_reach(&envelope.payload) else {
                 continue;
             };
-            let taken = peers::introduced(&reach.ends, &known)
-                .into_iter()
-                .any(|peer| {
-                    bindings
-                        .get(&peer)
-                        .is_some_and(|bound| *bound != entry.device)
-                });
+            let taken = reach.ends.iter().any(|(peer, _)| {
+                bindings
+                    .get(peer)
+                    .is_some_and(|bound| *bound != entry.device)
+            });
             if taken {
                 continue;
+            }
+            for (peer, end) in &reach.ends {
+                let reached = self.reached.entry(*peer).or_insert(Reached {
+                    end: *end,
+                    first: entry.seq,
+                    last: entry.seq,
+                });
+                reached.end = reached.end.max(*end);
+                reached.first = reached.first.min(entry.seq);
+                reached.last = reached.last.max(entry.seq);
             }
             if builds_on(&reach, &known) {
                 for (peer, end) in &reach.ends {
@@ -1260,6 +1493,103 @@ mod tests {
         assert!(snapshots.reserve(101).is_none());
     }
 
+    async fn project_with_snapshot(snapshots: &Snapshots, db: &Db, text: &str) -> SharedProjectId {
+        let project = SharedProjectId::new_v7();
+        let owner = db
+            .call(move |conn| {
+                let owner = crate::members::create_account(
+                    conn,
+                    "Ada",
+                    None,
+                    oleafly_collab_protocol::roles::ServerRole::Member,
+                    1,
+                )?;
+                conn.execute(
+                    "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, 'Thesis', 'active', 1)",
+                    rusqlite::params![project.to_string(), owner.to_string()],
+                )?;
+                Ok(owner)
+            })
+            .await
+            .unwrap();
+        let doc = LoroDoc::new();
+        doc.set_peer_id(1).unwrap();
+        doc.get_text("text").insert(0, text).unwrap();
+        doc.commit();
+        let bytes = doc.export(ExportMode::Snapshot).unwrap();
+        snapshots
+            .upload_first(db, project, Bytes::from(bytes), owner, None, 1)
+            .await
+            .unwrap();
+        project
+    }
+
+    #[tokio::test]
+    async fn a_document_read_keeps_its_share_of_the_budget_until_it_is_dropped() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let size = db
+            .call(move |conn| projects::snapshot_size(conn, project, 0))
+            .await
+            .unwrap()
+            .expect("a stored snapshot");
+        let needed = read_cost(size, 0);
+        snapshots.set_budget(Budget {
+            memory_bytes: needed,
+            max_snapshot_bytes: 1 << 20,
+        });
+        let (kept, head) = snapshots
+            .current(&db, project)
+            .await
+            .unwrap()
+            .expect("the document fits the budget");
+        assert_eq!(head, 0);
+        assert_eq!(kept.reserved_bytes(), needed);
+        assert_eq!(kept.doc().get_text("text").to_string(), "Hello");
+        assert!(snapshots.reserve(needed).is_none());
+        assert!(snapshots.current(&db, project).await.unwrap().is_none());
+        drop(kept);
+        assert!(snapshots.reserve(needed).is_some());
+    }
+
+    #[tokio::test]
+    async fn an_object_written_but_never_recorded_is_removed_by_maintenance() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let recorded = db
+            .call(move |conn| projects::pending_removals(conn, 10))
+            .await
+            .unwrap();
+        assert!(recorded.is_empty(), "{recorded:?}");
+        let (hash, _) = snapshots
+            .stage(&db, project, Bytes::from_static(b"a build that stopped"), 2)
+            .await
+            .unwrap();
+        assert!(snapshots
+            .blobs
+            .get_snapshot(project, &hash)
+            .await
+            .unwrap()
+            .is_some());
+        let pending = db
+            .call(move |conn| projects::pending_removals(conn, 10))
+            .await
+            .unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].hash, hash);
+        crate::blobs::cleanup::finish_removals(&db, &snapshots.blobs, &snapshots)
+            .await
+            .unwrap();
+        assert!(snapshots
+            .blobs
+            .get_snapshot(project, &hash)
+            .await
+            .unwrap()
+            .is_none());
+    }
+
     fn logged(
         seq: u64,
         project: SharedProjectId,
@@ -1368,6 +1698,80 @@ mod tests {
             loaded.get_text("text").to_string(),
             writer.get_text("text").to_string()
         );
+    }
+
+    #[test]
+    fn a_stored_change_that_repeats_another_devices_operations_never_reaches_a_snapshot() {
+        let project = SharedProjectId::new_v7();
+        let (alice, bob, mallory) = (DeviceId::new_v7(), DeviceId::new_v7(), DeviceId::new_v7());
+        let base_doc = LoroDoc::new();
+        base_doc.set_peer_id(1).unwrap();
+        base_doc.get_text("text").insert(0, "Hello").unwrap();
+        base_doc.commit();
+        let base = base_doc.export(ExportMode::Snapshot).unwrap();
+        let written = |peer: u64, text: &str| {
+            let doc = LoroDoc::new();
+            doc.import(&base).unwrap();
+            typed(&doc, peer, text)
+        };
+        let from_bob = written(20, " Bob");
+        let from_alice = written(10, " holds.");
+        let forged = {
+            let doc = LoroDoc::new();
+            doc.import(&base).unwrap();
+            let before = doc.oplog_vv();
+            let text = doc.get_text("text");
+            doc.set_peer_id(10).unwrap();
+            text.insert(text.len_unicode(), " FAILS!").unwrap();
+            doc.commit();
+            doc.set_peer_id(30).unwrap();
+            text.insert(0, ">").unwrap();
+            doc.commit();
+            doc.export(ExportMode::updates(&before)).unwrap()
+        };
+        let entries = vec![
+            logged(1, project, bob, from_bob.clone()),
+            logged(2, project, alice, from_alice.clone()),
+            logged(3, project, mallory, forged),
+        ];
+        let bindings = HashMap::from([(1, alice), (10, alice), (20, bob), (30, mallory)]);
+        let built = replay(project, &base, &entries, &bindings).expect("a snapshot");
+        let loaded = LoroDoc::new();
+        loaded.import(&built).unwrap();
+        let expected = LoroDoc::new();
+        expected.import(&base).unwrap();
+        expected.import(&from_bob).unwrap();
+        expected.import(&from_alice).unwrap();
+        let text = loaded.get_text("text").to_string();
+        assert_eq!(text, expected.get_text("text").to_string());
+        assert!(text.contains("holds."), "{text}");
+        assert!(!text.contains("FAILS"), "{text}");
+    }
+
+    #[test]
+    fn a_replay_names_the_entries_whose_changes_it_could_not_take_in() {
+        let project = SharedProjectId::new_v7();
+        let laptop = DeviceId::new_v7();
+        let base_doc = LoroDoc::new();
+        base_doc.set_peer_id(1).unwrap();
+        base_doc.get_text("text").insert(0, "Hello").unwrap();
+        base_doc.commit();
+        let base = base_doc.export(ExportMode::Snapshot).unwrap();
+        let writer = LoroDoc::new();
+        writer.import(&base).unwrap();
+        let first = typed(&writer, 2, " one");
+        typed(&writer, 3, " never stored");
+        let after_the_gap = typed(&writer, 3, " builds on it");
+        let entries = vec![
+            logged(1, project, laptop, first),
+            logged(2, project, laptop, after_the_gap),
+        ];
+        let mut whole = Replay::start(project, &base).unwrap();
+        whole.apply(&entries[..1], &HashMap::new());
+        assert_eq!(whole.left_out(), None);
+        let mut gapped = Replay::start(project, &base).unwrap();
+        gapped.apply(&entries, &HashMap::new());
+        assert_eq!(gapped.left_out(), Some((2, 2)));
     }
 
     #[test]

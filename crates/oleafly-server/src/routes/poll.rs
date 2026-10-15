@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use axum::extract::rejection::{JsonRejection, PathRejection, QueryRejection};
-use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::body::Body;
+use axum::extract::rejection::{PathRejection, QueryRejection};
+use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{DeviceId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
@@ -18,18 +19,22 @@ use crate::auth::nonce;
 use crate::error::ServerError;
 use crate::polls::{self, Opening, PollSession};
 use crate::rate_limit::client_key;
-use crate::rooms::RoomMember;
-use crate::routes::ws::{frame_error, proves_device, unexpected_frame, Opened, Peer};
-use crate::routes::{json_body, path_id, ClientIp};
+use crate::rooms::{self, RoomMember};
+use crate::routes::meta::spoken_protocol;
+use crate::routes::ws::{
+    bearer_token, frame_error, proves_device, unexpected_frame, CursorGate, Opened, Peer,
+    ASIDE_BYTES, MAX_FRAME_BYTES,
+};
+use crate::routes::{path_id, ClientIp};
 use crate::state::AppState;
+
+const TOO_MUCH: &str = "These changes are too large to send.";
+const NOT_FRAMES: &str = "These frames are not valid.";
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/v1/projects/{project}/poll", get(poll))
-        .route(
-            "/api/v1/projects/{project}/frames",
-            post(frames).route_layer(DefaultBodyLimit::max(crate::routes::ws::MAX_FRAME_BYTES)),
-        )
+        .route("/api/v1/projects/{project}/frames", post(frames))
 }
 
 #[derive(Deserialize)]
@@ -42,13 +47,6 @@ struct PollQuery {
 fn header_text(headers: &HeaderMap, name: &str) -> Option<String> {
     let value = headers.get(name)?.to_str().ok()?.trim();
     (!value.is_empty()).then(|| value.to_owned())
-}
-
-fn bearer(headers: &HeaderMap) -> Option<String> {
-    let value = header_text(headers, header::AUTHORIZATION.as_str())?;
-    let (scheme, token) = value.split_once(' ')?;
-    let token = token.trim();
-    (scheme.eq_ignore_ascii_case("bearer") && !token.is_empty()).then(|| token.to_owned())
 }
 
 fn address_of(ip: Option<String>) -> String {
@@ -81,12 +79,32 @@ fn session_for(
     }
 }
 
-fn only(frames: Vec<ServerFrame>) -> Json<PollBatch> {
-    Json(PollBatch {
+fn only(frames: Vec<ServerFrame>) -> PollBatch {
+    PollBatch {
         cursor: None,
         key: None,
         frames,
-    })
+    }
+}
+
+// A batch that carries large changes is encoded on the blocking pool, as a
+// socket does with the frames it sends.
+async fn reply(batch: PollBatch) -> Result<Response, ServerError> {
+    let size = batch
+        .frames
+        .iter()
+        .map(rooms::frame_size)
+        .fold(0, usize::saturating_add);
+    if size < ASIDE_BYTES {
+        return Ok(Json(batch).into_response());
+    }
+    let unencoded =
+        |error: String| ServerError::Internal(format!("could not encode a poll reply: {error}"));
+    let body = tokio::task::spawn_blocking(move || serde_json::to_vec(&batch))
+        .await
+        .map_err(|error| unencoded(error.to_string()))?
+        .map_err(|error| unencoded(error.to_string()))?;
+    Ok(([(header::CONTENT_TYPE, "application/json")], body).into_response())
 }
 
 async fn poll(
@@ -95,20 +113,20 @@ async fn poll(
     headers: HeaderMap,
     path: Result<Path<String>, PathRejection>,
     query: Result<Query<PollQuery>, QueryRejection>,
-) -> Result<Json<PollBatch>, ServerError> {
+) -> Result<Response, ServerError> {
     if headers.contains_key(POLL_KEY_HEADER) {
         let project: SharedProjectId = path_id(path)?;
         let session = session_for(&state, ip, &headers, project)?;
         let Query(query) =
             query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
         let cursor = query.cursor.unwrap_or_default();
-        return polls::poll(&state, session, &cursor).await.map(Json);
+        return reply(polls::poll(&state, session, &cursor).await?).await;
     }
     let address = address_of(ip);
     charge(&state, &address)?;
     let project: SharedProjectId = path_id(path)?;
     let Query(query) = query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
-    open(&state, &address, &headers, project, query.since).await
+    reply(open(&state, &address, &headers, project, query.since).await?).await
 }
 
 async fn open(
@@ -117,14 +135,14 @@ async fn open(
     headers: &HeaderMap,
     project: SharedProjectId,
     since: u64,
-) -> Result<Json<PollBatch>, ServerError> {
-    let token = bearer(headers).ok_or(ServerError::Unauthorized)?;
+) -> Result<PollBatch, ServerError> {
+    let token = bearer_token(headers).ok_or(ServerError::Unauthorized)?;
     let protocol = header_text(headers, PROTOCOL_HEADER)
         .and_then(|value| value.parse::<u32>().ok())
         .ok_or_else(|| {
             ServerError::BadRequest("Say which protocol version you speak.".to_owned())
         })?;
-    if protocol != PROTOCOL_VERSION {
+    if spoken_protocol(protocol).is_none() {
         return Ok(only(vec![frame_error(
             FrameErrorCode::ProtocolMismatch,
             "This server speaks another protocol version.",
@@ -140,6 +158,13 @@ async fn open(
         .unwrap_or_default();
     let now = state.clock.now_ms();
     let server_id = state.server_id;
+    // Registered before the proof, like a socket, so a sign-out that lands
+    // while the proof runs still reaches this session.
+    let ticket = state.sockets.register(device);
+    let refuse = |error: ServerError| {
+        state.sockets.unregister(device, ticket.id);
+        error
+    };
     let proved = state
         .db
         .call(move |conn| {
@@ -148,14 +173,18 @@ async fn open(
             }
             proves_device(conn, server_id, now, device, &token, &echoed, &signature)
         })
-        .await
-        .inspect_err(|_| state.connects.forgive(address, now))?;
-    let (account, public_key) = proved.ok_or(ServerError::Unauthorized)?;
-    if !state.connects.admitted(address, device, now) {
-        return Err(ServerError::RateLimited);
-    }
-    if state.polls.count() >= polls::MAX_POLL_SESSIONS {
-        return Err(ServerError::RateLimited);
+        .await;
+    #[cfg(any(test, feature = "test-support"))]
+    state.polls.after_proof().await;
+    let proved = proved.map_err(|error| {
+        state.connects.forgive(address, now);
+        refuse(error)
+    })?;
+    let (account, public_key) = proved.ok_or_else(|| refuse(ServerError::Unauthorized))?;
+    if !state.connects.admitted(address, device, now)
+        || state.polls.count() >= polls::MAX_POLL_SESSIONS
+    {
+        return Err(refuse(ServerError::RateLimited));
     }
     for stale in state.polls.opened_by(device, project) {
         polls::close(state, &stale);
@@ -163,7 +192,6 @@ async fn open(
     for oldest in state.polls.beyond_account_cap(account) {
         polls::close(state, &oldest);
     }
-    let ticket = state.sockets.register(device);
     state.sockets.admit(device, ticket.id);
     let (frames, outbound) = polls::channel();
     let member = RoomMember {
@@ -173,6 +201,7 @@ async fn open(
         frames: frames.clone(),
         control: ticket.signal.clone(),
     };
+    let cursors = CursorGate::new();
     let peer = Peer {
         state,
         device,
@@ -180,6 +209,7 @@ async fn open(
         public_key: &public_key,
         connection: ticket.id,
         understands: &understands,
+        cursors: &cursors,
     };
     match peer.open(project, since, member).await {
         Opened::Refused(frame) => {
@@ -197,11 +227,22 @@ async fn open(
                 outbound,
                 understands,
             };
-            polls::start(state, opening, subscribed, since, head)
-                .await
-                .map(Json)
+            polls::start(state, opening, subscribed, since, head).await
         }
     }
+}
+
+fn posted_frames(bytes: &[u8]) -> Result<Vec<ClientFrame>, ServerError> {
+    let too_many = format!("Send at most {MAX_POSTED_FRAMES} frames at a time.");
+    PollFrames::from_json(bytes)
+        .map(|posted| posted.frames)
+        .map_err(|error| {
+            ServerError::BadRequest(if error.to_string().starts_with(&too_many) {
+                too_many
+            } else {
+                NOT_FRAMES.to_owned()
+            })
+        })
 }
 
 async fn frames(
@@ -209,7 +250,7 @@ async fn frames(
     ClientIp(ip): ClientIp,
     headers: HeaderMap,
     path: Result<Path<String>, PathRejection>,
-    body: Result<Json<PollFrames>, JsonRejection>,
+    body: Body,
 ) -> Result<Json<PollReplies>, ServerError> {
     let project: SharedProjectId = path_id(path)?;
     let session = session_for(&state, ip, &headers, project)?;
@@ -217,12 +258,20 @@ async fn frames(
     if session.is_ended() {
         return Err(ServerError::NotFound);
     }
-    let posted = json_body(body)?.frames;
-    if posted.len() > MAX_POSTED_FRAMES {
-        return Err(ServerError::BadRequest(format!(
-            "Send at most {MAX_POSTED_FRAMES} frames at a time."
-        )));
-    }
+    let bytes = state
+        .transfers
+        .read_body(body, &headers, MAX_FRAME_BYTES as u64)
+        .await?
+        .ok_or_else(|| ServerError::BadRequest(TOO_MUCH.to_owned()))?;
+    let posted = if bytes.len() < ASIDE_BYTES {
+        posted_frames(&bytes)?
+    } else {
+        tokio::task::spawn_blocking(move || posted_frames(&bytes))
+            .await
+            .map_err(|error| {
+                ServerError::Internal(format!("could not read posted frames: {error}"))
+            })??
+    };
     let peer = session.peer(&state);
     let mut replies = Vec::new();
     for frame in posted {
@@ -248,4 +297,40 @@ async fn frames(
         }
     }
     Ok(Json(PollReplies { frames: replies }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refused_posts_keep_the_routes_own_words() {
+        let ping = r#"{"type":"ping","id":1}"#;
+        let too_many = format!(
+            r#"{{"frames":[{}]}}"#,
+            vec![ping; MAX_POSTED_FRAMES + 1].join(",")
+        );
+        assert_eq!(
+            posted_frames(too_many.as_bytes()),
+            Err(ServerError::BadRequest(format!(
+                "Send at most {MAX_POSTED_FRAMES} frames at a time."
+            )))
+        );
+        for broken in [
+            r#"{"frames":[{"type":"ping"}]}"#,
+            r#"{"frames":[1]}"#,
+            "not json",
+            "{}",
+        ] {
+            assert_eq!(
+                posted_frames(broken.as_bytes()),
+                Err(ServerError::BadRequest(NOT_FRAMES.to_owned())),
+                "{broken}"
+            );
+        }
+        assert_eq!(
+            posted_frames(format!(r#"{{"frames":[{ping}]}}"#).as_bytes()),
+            Ok(vec![ClientFrame::Ping { id: 1 }])
+        );
+    }
 }

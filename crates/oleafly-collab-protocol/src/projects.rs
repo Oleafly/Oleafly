@@ -22,10 +22,23 @@ pub struct PersonSummary {
     pub login: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub guest: bool,
+    // False for someone who was removed from or suspended on this server,
+    // so the app can mark former members and an owner who has left. Older
+    // servers never send it, and everyone they list is active.
+    #[serde(default = "active", skip_serializing_if = "is_true")]
+    pub active: bool,
 }
 
 fn is_false(value: &bool) -> bool {
     !*value
+}
+
+fn is_true(value: &bool) -> bool {
+    *value
+}
+
+fn active() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +154,7 @@ mod tests {
             email: Some("carol@uni.edu".to_string()),
             login: Some("carol".to_string()),
             guest: false,
+            active: true,
         }
     }
 
@@ -169,6 +183,34 @@ mod tests {
             !serde_json::from_value::<PersonSummary>(older)
                 .unwrap()
                 .guest
+        );
+    }
+
+    #[test]
+    fn someone_who_left_is_marked_and_older_servers_read_as_active() {
+        let former = PersonSummary {
+            active: false,
+            ..carol()
+        };
+        let wire = serde_json::to_value(&former).unwrap();
+        assert_eq!(wire["active"], json!(false));
+        assert_eq!(
+            serde_json::from_value::<PersonSummary>(wire).unwrap(),
+            former
+        );
+        let member = serde_json::to_value(carol()).unwrap();
+        assert!(member.get("active").is_none());
+        let older = json!({
+            "account_id": ACCOUNT,
+            "display_name": "Carol Smith",
+            "avatar_url": null,
+            "email": null,
+            "login": null
+        });
+        assert!(
+            serde_json::from_value::<PersonSummary>(older)
+                .unwrap()
+                .active
         );
     }
 

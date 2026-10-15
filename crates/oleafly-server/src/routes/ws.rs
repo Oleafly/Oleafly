@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{close_code, CloseFrame, Message, Utf8Bytes, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
-use axum::response::Response;
+use axum::http::{header, HeaderMap};
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
 use oleafly_collab_protocol::admin::MemberStatus;
 use oleafly_collab_protocol::auth::{ChallengePurpose, SessionEndReason};
-use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::crypto::{b64url_decode, verify_ed25519};
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -23,38 +23,82 @@ use crate::comment_guard::Verdict;
 use crate::error::ServerError;
 use crate::members;
 use crate::mentions;
-use crate::peers::{self, Bound};
+use crate::peers::{self, Bound, Claim};
 use crate::projects;
 use crate::rate_limit::client_key;
 use crate::rooms::{self, Outbox, Queued, RoomMember};
-use crate::routes::ClientIp;
+use crate::routes::meta::spoken_protocol;
+use crate::routes::{authenticate, Authenticated, ClientIp};
 use crate::settings;
-use crate::sockets::{LinkTiming, SocketControl};
+use crate::sockets::{LinkTiming, SocketControl, SocketSlot};
 use crate::state::AppState;
 use crate::tokens::{random_token, resolve_access_token};
 
 pub const HELLO_TIMEOUT: Duration = Duration::from_secs(10);
-pub const MAX_FRAME_BYTES: usize = 12 * 1024 * 1024;
+pub const MAX_HELLO_BYTES: usize = 16 * 1024;
+// An 8 MiB change is about 10.7 MiB once base64 encoded, plus its envelope.
+pub const MAX_FRAME_BYTES: usize = 11 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
+pub const MAX_SOCKETS_PER_ACCOUNT: usize = 8;
+pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
 pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
 const BRIEF_SEND: Duration = Duration::from_secs(5);
+// Frames at least this large are parsed and encoded on the blocking pool.
+pub const ASIDE_BYTES: usize = 256 * 1024;
 const TOO_LARGE: &str = "This change is too large to send.";
+const NOT_A_HELLO: &str = "The first frame must be a hello.";
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/ws", get(upgrade))
 }
 
+pub(crate) fn bearer_token(headers: &HeaderMap) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?.trim();
+    let (scheme, token) = value.split_once(' ')?;
+    let token = token.trim();
+    (scheme.eq_ignore_ascii_case("bearer") && !token.is_empty()).then(|| token.to_owned())
+}
+
 async fn upgrade(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    headers: HeaderMap,
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let address = client_key(ip.as_deref().unwrap_or("unknown"));
+    let caller = match signed_in(&state, &address, &headers).await {
+        Ok(caller) => caller,
+        Err(error) => return error.into_response(),
+    };
+    let Some(slot) = state.sockets.open_slot(caller.account_id) else {
+        tracing::info!(
+            account = %caller.account_id,
+            "refused a connection over the open connection limit"
+        );
+        return ServerError::RateLimited.into_response();
+    };
     upgrade
         .max_message_size(MAX_FRAME_BYTES)
-        .on_upgrade(move |socket| run(state, socket, address))
+        .on_upgrade(move |socket| run(state, socket, address, caller, slot))
+}
+
+async fn signed_in(
+    state: &AppState,
+    address: &str,
+    headers: &HeaderMap,
+) -> Result<Authenticated, ServerError> {
+    let token = bearer_token(headers).ok_or(ServerError::Unauthorized)?;
+    let now = state.clock.now_ms();
+    let checked = state
+        .db
+        .read(move |conn| authenticate(conn, &token, now))
+        .await;
+    if matches!(checked, Err(ServerError::Internal(_))) {
+        state.connects.forgive(address, now);
+    }
+    checked
 }
 
 enum Incoming {
@@ -65,11 +109,14 @@ enum Incoming {
     Closed,
 }
 
-async fn next_incoming(socket: &mut WebSocket) -> Incoming {
-    match socket.recv().await {
-        Some(Ok(Message::Text(text))) => {
-            ClientFrame::from_json(text.as_str()).map_or(Incoming::Malformed, Incoming::Frame)
-        }
+async fn next_incoming(socket: &mut WebSocket, largest: usize) -> Incoming {
+    incoming(socket.recv().await, largest).await
+}
+
+async fn incoming(message: Option<Result<Message, axum::Error>>, largest: usize) -> Incoming {
+    match message {
+        Some(Ok(Message::Text(text))) if text.len() > largest => Incoming::Malformed,
+        Some(Ok(Message::Text(text))) => parsed(text).await,
         Some(Ok(Message::Binary(_))) => Incoming::Malformed,
         Some(Ok(Message::Ping(_) | Message::Pong(_))) => Incoming::Heard,
         Some(Err(error)) if over_size_limit(&error) => Incoming::TooLarge,
@@ -77,9 +124,20 @@ async fn next_incoming(socket: &mut WebSocket) -> Incoming {
     }
 }
 
+async fn parsed(text: Utf8Bytes) -> Incoming {
+    let read =
+        |text: &str| ClientFrame::from_json(text).map_or(Incoming::Malformed, Incoming::Frame);
+    if text.len() < ASIDE_BYTES {
+        return read(text.as_str());
+    }
+    tokio::task::spawn_blocking(move || read(text.as_str()))
+        .await
+        .unwrap_or(Incoming::Malformed)
+}
+
 async fn next_hello(socket: &mut WebSocket) -> Incoming {
     loop {
-        match next_incoming(socket).await {
+        match next_incoming(socket, MAX_HELLO_BYTES).await {
             Incoming::Heard => {}
             other => return other,
         }
@@ -129,7 +187,13 @@ async fn too_large(socket: &mut WebSocket, device: Option<DeviceId>) {
     }
 }
 
-async fn run(state: AppState, mut socket: WebSocket, address: String) {
+async fn run(
+    state: AppState,
+    mut socket: WebSocket,
+    address: String,
+    caller: Authenticated,
+    _slot: SocketSlot,
+) {
     let nonce = random_token();
     let challenge = ServerFrame::Challenge {
         nonce: nonce.clone(),
@@ -141,12 +205,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
     let hello = match tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)).await {
         Ok(Incoming::Frame(frame)) => frame,
         Ok(Incoming::Malformed) => {
-            return refuse(
-                &mut socket,
-                FrameErrorCode::BadFrame,
-                "The first frame must be a hello.",
-            )
-            .await
+            return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await
         }
         Ok(Incoming::TooLarge) => return too_large(&mut socket, None).await,
         Ok(Incoming::Heard | Incoming::Closed) => return,
@@ -168,23 +227,18 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
         understands,
     } = hello
     else {
-        return refuse(
-            &mut socket,
-            FrameErrorCode::BadFrame,
-            "The first frame must be a hello.",
-        )
-        .await;
+        return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await;
     };
-    if protocol != PROTOCOL_VERSION {
+    let Some(protocol) = spoken_protocol(protocol) else {
         return refuse(
             &mut socket,
             FrameErrorCode::ProtocolMismatch,
             "This server speaks another protocol version.",
         )
         .await;
-    }
+    };
     let mut ticket = state.sockets.register(device_id);
-    let checked = if echoed == nonce {
+    let checked = if echoed == nonce && device_id == caller.device_id {
         authorize(&state, device_id, access_token, echoed, signature).await
     } else {
         Ok(None)
@@ -195,7 +249,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
             if state.connects.admitted(&address, device_id, now) {
                 state.sockets.admit(device_id, ticket.id);
                 let welcome = ServerFrame::Welcome {
-                    protocol: PROTOCOL_VERSION,
+                    protocol,
                     account_id,
                 };
                 if send(&mut socket, &welcome).await {
@@ -207,6 +261,7 @@ async fn run(state: AppState, mut socket: WebSocket, address: String) {
                         connection: ticket.id,
                         signal: ticket.signal.clone(),
                         understands,
+                        cursors: CursorGate::new(),
                     };
                     let timing = state.sockets.timing();
                     let mut link = Link::new(&mut socket, &mut ticket.control, timing);
@@ -317,6 +372,7 @@ struct Session<'a> {
     connection: u64,
     signal: UnboundedSender<SocketControl>,
     understands: Vec<FrameErrorCode>,
+    cursors: CursorGate,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -325,6 +381,7 @@ enum Ending {
     Revoked(Option<SessionEndReason>),
     Overloaded,
     Replaced,
+    Restarting,
     Stalled,
     Idle,
     TooLarge,
@@ -336,6 +393,7 @@ impl Ending {
             Some(SocketControl::Revoked(reason)) => Ending::Revoked(reason),
             Some(SocketControl::Overloaded) => Ending::Overloaded,
             Some(SocketControl::Replaced) => Ending::Replaced,
+            Some(SocketControl::Restarting) => Ending::Restarting,
             None => Ending::Closed,
         }
     }
@@ -374,8 +432,32 @@ impl<'a> Link<'a> {
         }
     }
 
-    async fn send_queued(&mut self, queued: &Queued) -> bool {
-        match queued.text() {
+    async fn send_owned(&mut self, frame: ServerFrame) -> bool {
+        if rooms::frame_size(&frame) < ASIDE_BYTES {
+            return self.send(&frame).await;
+        }
+        let encoded = tokio::task::spawn_blocking(move || serde_json::to_string(&frame)).await;
+        match encoded {
+            Ok(Ok(text)) => {
+                let size = text.len();
+                self.send_message(Message::Text(text.into()), size).await
+            }
+            _ => false,
+        }
+    }
+
+    async fn send_queued(&mut self, queued: std::sync::Arc<Queued>) -> bool {
+        let text = if queued.size() < ASIDE_BYTES {
+            queued.text()
+        } else {
+            // The first member of the room to send a large change encodes it
+            // on the blocking pool, and the others reuse that text.
+            tokio::task::spawn_blocking(move || queued.text())
+                .await
+                .ok()
+                .flatten()
+        };
+        match text {
             Some(text) => {
                 let size = text.as_str().len();
                 self.send_message(Message::Text(text), size).await
@@ -442,6 +524,14 @@ impl<'a> Link<'a> {
                 )
                 .await;
             }
+            Ending::Restarting => {
+                close(
+                    self.socket,
+                    close_code::RESTART,
+                    "The server is restarting.",
+                )
+                .await;
+            }
             Ending::Stalled => {
                 tracing::info!(device = %device, "closed a connection that stopped reading");
             }
@@ -499,27 +589,29 @@ pub(crate) async fn backlog_page(
     project: SharedProjectId,
     after: u64,
 ) -> Result<BacklogPage, ServerError> {
-    let page = state
+    state
         .db
-        .call(move |conn| projects::updates_since(conn, project, after))
-        .await?;
-    let full = projects::page_is_full(page.iter().map(|stored| stored.envelope.len()));
-    let entries = page
-        .into_iter()
-        .map(|stored| BacklogEntry {
-            seq: stored.seq,
-            size: stored.envelope.len(),
-            frame: serde_json::from_slice::<Envelope>(&stored.envelope)
-                .ok()
-                .map(|envelope| ServerFrame::Update {
-                    project_id: project,
+        .read(move |conn| {
+            let page = projects::updates_since(conn, project, after)?;
+            let full = projects::page_is_full(page.iter().map(|stored| stored.envelope.len()));
+            let entries = page
+                .into_iter()
+                .map(|stored| BacklogEntry {
                     seq: stored.seq,
-                    account_id: Some(stored.account),
-                    envelope,
-                }),
+                    size: stored.envelope.len(),
+                    frame: serde_json::from_slice::<Envelope>(&stored.envelope)
+                        .ok()
+                        .map(|envelope| ServerFrame::Update {
+                            project_id: project,
+                            seq: stored.seq,
+                            account_id: Some(stored.account),
+                            envelope,
+                        }),
+                })
+                .collect();
+            Ok(BacklogPage { entries, full })
         })
-        .collect();
-    Ok(BacklogPage { entries, full })
+        .await
 }
 
 pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
@@ -535,6 +627,19 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
     }
 }
 
+struct ReadChange {
+    envelope: Envelope,
+    reach: peers::Reach,
+    mention: bool,
+    stored: Vec<u8>,
+}
+
+enum Unread {
+    Unsigned,
+    Unreadable,
+    Failed,
+}
+
 pub(crate) struct Peer<'a> {
     pub(crate) state: &'a AppState,
     pub(crate) device: DeviceId,
@@ -542,6 +647,39 @@ pub(crate) struct Peer<'a> {
     pub(crate) public_key: &'a [u8],
     pub(crate) connection: u64,
     pub(crate) understands: &'a [FrameErrorCode],
+    pub(crate) cursors: &'a CursorGate,
+}
+
+// The app sends a cursor position at most every 150 ms, so a connection
+// gets 10 a second with a burst of 20, and the rest are dropped.
+const CURSORS_PER_SECOND: f64 = 10.0;
+const CURSOR_BURST: f64 = 20.0;
+
+pub(crate) struct CursorGate {
+    budget: std::sync::Mutex<(f64, Instant)>,
+}
+
+impl CursorGate {
+    pub(crate) fn new() -> CursorGate {
+        CursorGate {
+            budget: std::sync::Mutex::new((CURSOR_BURST, Instant::now())),
+        }
+    }
+
+    fn allow(&self) -> bool {
+        let mut budget = self
+            .budget
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let now = Instant::now();
+        let refilled = now.duration_since(budget.1).as_secs_f64() * CURSORS_PER_SECOND;
+        *budget = ((budget.0 + refilled).min(CURSOR_BURST), now);
+        if budget.0 < 1.0 {
+            return false;
+        }
+        budget.0 -= 1.0;
+        true
+    }
 }
 
 impl Peer<'_> {
@@ -563,7 +701,7 @@ impl Peer<'_> {
         let checked = self
             .state
             .db
-            .call(move |conn| {
+            .read(move |conn| {
                 let row = projects::project_row(conn, project)?.ok_or(ServerError::NotFound)?;
                 let role =
                     projects::role_of(conn, project, account)?.ok_or(ServerError::NotFound)?;
@@ -606,7 +744,7 @@ impl Peer<'_> {
         let still = self
             .state
             .db
-            .call(move |conn| projects::role_of(conn, project, account))
+            .read(move |conn| projects::role_of(conn, project, account))
             .await;
         if !matches!(still, Ok(Some(_))) {
             self.state.rooms.leave(project, self.connection);
@@ -641,7 +779,7 @@ impl Peer<'_> {
     }
 
     pub(crate) fn leave_presence(&self, project: SharedProjectId) {
-        if self.state.rooms.is_member(project, self.connection) {
+        if self.state.rooms.is_member(project, self.connection) && self.cursors.allow() {
             self.state.rooms.broadcast(
                 project,
                 Some(self.connection),
@@ -675,16 +813,6 @@ impl Peer<'_> {
                 "This change is too large to send.",
             ));
         }
-        if !verify_ed25519(
-            self.public_key,
-            &envelope.signing_bytes(),
-            &envelope.signature,
-        ) {
-            return Some(frame_error(
-                FrameErrorCode::Unauthorized,
-                "This update is not signed by this device.",
-            ));
-        }
         None
     }
 
@@ -702,24 +830,43 @@ impl Peer<'_> {
             FrameErrorCode::Internal,
             "The server could not store this change.",
         );
-        let payload = envelope.payload.clone();
+        let public_key = self.public_key.to_vec();
         let mail = self.state.mailer.is_configured();
+        // Checking the signature, reading the change and encoding it for
+        // storage all walk the whole payload, so they run beside the async
+        // workers rather than on them.
         let read = tokio::task::spawn_blocking(move || {
-            (
-                peers::update_reach(&payload),
-                mail && mentions::may_mention(&payload),
-            )
+            if !verify_ed25519(&public_key, &envelope.signing_bytes(), &envelope.signature) {
+                return Err(Unread::Unsigned);
+            }
+            let reach = peers::update_reach(&envelope.payload).ok_or(Unread::Unreadable)?;
+            let mention = mail && mentions::may_mention(&envelope.payload);
+            let stored = serde_json::to_vec(&envelope).map_err(|_| Unread::Failed)?;
+            Ok(ReadChange {
+                envelope,
+                reach,
+                mention,
+                stored,
+            })
         })
         .await;
-        let (reach, mention) = match read {
-            Ok((Some(reach), mention)) => (reach, mention),
-            Ok((None, _)) => {
+        let ReadChange {
+            envelope,
+            reach,
+            mention,
+            stored,
+        } = match read {
+            Ok(Ok(read)) => read,
+            Ok(Err(Unread::Unsigned)) => {
+                return frame_error(
+                    FrameErrorCode::Unauthorized,
+                    "This update is not signed by this device.",
+                );
+            }
+            Ok(Err(Unread::Unreadable)) => {
                 return frame_error(FrameErrorCode::BadFrame, "This update is not valid.");
             }
-            Err(_) => return stored_failed,
-        };
-        let Ok(stored) = serde_json::to_vec(&envelope) else {
-            return stored_failed;
+            Ok(Err(Unread::Failed)) | Err(_) => return stored_failed,
         };
         let batch = envelope.batch_id;
         let first = self
@@ -773,6 +920,9 @@ impl Peer<'_> {
             Err(ServerError::BadRequest(_)) => {
                 frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
             }
+            Err(ServerError::Refused { message, .. }) => {
+                frame_error(FrameErrorCode::TooLarge, &message)
+            }
             Err(_) => stored_failed,
         }
     }
@@ -793,7 +943,7 @@ impl Peer<'_> {
             )
             .await;
         match verdict {
-            Ok(Verdict::Allowed) => None,
+            Ok(Verdict::Allowed | Verdict::Unchecked) => None,
             Ok(Verdict::ChangesComments) => Some(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
@@ -820,6 +970,7 @@ impl Peer<'_> {
     ) -> Result<Option<projects::Appended>, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
+        let limit_mb = self.state.config.limits.max_project_mb;
         let rooms = std::sync::Arc::clone(&self.state.rooms);
         let connection = self.connection;
         self.state
@@ -835,11 +986,28 @@ impl Peer<'_> {
                 {
                     return Err(ServerError::Forbidden);
                 }
+                if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
+                    return Ok(Some(projects::Appended {
+                        seq,
+                        duplicate: true,
+                    }));
+                }
+                match peers::claim(&transaction, project, device, &reach)? {
+                    Claim::Taken(_) => return Err(ServerError::Unauthorized),
+                    Claim::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Claim::Fresh(_) => {}
+                }
                 if !checked && !comments_on(&transaction, &row)? {
                     return Ok(None);
                 }
+                let after = projects::stored_bytes(&transaction, project)?
+                    .saturating_add(stored.len() as u64);
+                if after > limit_mb.saturating_mul(1024 * 1024) {
+                    return Err(projects::too_large_for(limit_mb));
+                }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
+                    Bound::Known => return Ok(Some(projects::Appended::nothing_new())),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(
@@ -895,6 +1063,9 @@ impl Peer<'_> {
                 "This presence update is not valid.",
             ));
         }
+        if !self.cursors.allow() {
+            return None;
+        }
         self.state.rooms.broadcast(
             project,
             Some(self.connection),
@@ -918,6 +1089,7 @@ impl Session<'_> {
             public_key: &self.public_key,
             connection: self.connection,
             understands: &self.understands,
+            cursors: &self.cursors,
         }
     }
 
@@ -930,9 +1102,9 @@ impl Session<'_> {
             tokio::select! {
                 biased;
                 signal = link.control.recv() => break Ending::from_signal(signal),
-                incoming = next_incoming(link.socket) => {
+                message = link.socket.recv() => {
                     link.unanswered_since = None;
-                    let keep_going = match incoming {
+                    let keep_going = match incoming(message, MAX_FRAME_BYTES).await {
                         Incoming::Frame(frame) => self.handle(link, &frames, frame).await,
                         Incoming::Malformed => link.send(&unexpected_frame()).await,
                         Incoming::Heard => true,
@@ -944,7 +1116,7 @@ impl Session<'_> {
                     }
                 }
                 Some(queued) = outbound.recv_shared() => {
-                    if !link.send_queued(&queued).await {
+                    if !link.send_queued(queued).await {
                         break link.ended();
                     }
                 }
@@ -1030,7 +1202,7 @@ impl Session<'_> {
             for entry in page.entries {
                 cursor = entry.seq;
                 if let Some(frame) = entry.frame {
-                    if !link.send(&frame).await {
+                    if !link.send_owned(frame).await {
                         return false;
                     }
                 }

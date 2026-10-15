@@ -1,10 +1,11 @@
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::ids::ServerId;
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
 use crate::error::ServerError;
 
@@ -25,9 +26,26 @@ const MIGRATIONS: [&str; 11] = [
     include_str!("../migrations/0011_mention_emails.sql"),
 ];
 
+// Reads that need no write go to their own connections, so token checks,
+// backlog pages and listings don't wait behind a write and its fsync. WAL
+// lets them run beside the writer and see everything it has committed.
+const READERS: usize = 4;
+
 #[derive(Clone)]
 pub struct Db {
     connection: Arc<Mutex<Connection>>,
+    readers: Arc<[Mutex<Connection>]>,
+    next_reader: Arc<AtomicUsize>,
+}
+
+fn open_reader(path: &Path) -> Result<Mutex<Connection>, ServerError> {
+    let connection = Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    connection.busy_timeout(Duration::from_secs(5))?;
+    connection.execute_batch("PRAGMA foreign_keys = ON; PRAGMA query_only = ON;")?;
+    Ok(Mutex::new(connection))
 }
 
 impl Db {
@@ -50,7 +68,12 @@ impl Db {
                 path.display()
             )));
         }
-        Db::prepare(connection)
+        let mut db = Db::prepare(connection)?;
+        db.readers = (0..READERS)
+            .map(|_| open_reader(path))
+            .collect::<Result<Vec<_>, _>>()?
+            .into();
+        Ok(db)
     }
 
     pub fn open_in_memory() -> Result<Db, ServerError> {
@@ -62,7 +85,35 @@ impl Db {
         migrate(&mut connection)?;
         Ok(Db {
             connection: Arc::new(Mutex::new(connection)),
+            readers: Vec::new().into(),
+            next_reader: Arc::new(AtomicUsize::new(0)),
         })
+    }
+
+    pub async fn read<T, F>(&self, f: F) -> Result<T, ServerError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&Connection) -> Result<T, ServerError> + Send + 'static,
+    {
+        if self.readers.is_empty() {
+            return self.call(move |conn| f(conn)).await;
+        }
+        let readers = Arc::clone(&self.readers);
+        let first = self.next_reader.fetch_add(1, Ordering::Relaxed) % readers.len();
+        tokio::task::spawn_blocking(move || {
+            let free = (0..readers.len())
+                .map(|offset| (first + offset) % readers.len())
+                .find_map(|index| readers[index].try_lock().ok());
+            let guard = match free {
+                Some(guard) => guard,
+                None => readers[first]
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner),
+            };
+            f(&guard)
+        })
+        .await
+        .map_err(|error| ServerError::Internal(format!("database task failed: {error}")))?
     }
 
     pub async fn call<T, F>(&self, f: F) -> Result<T, ServerError>
@@ -347,6 +398,47 @@ mod tests {
         assert_eq!(again, id);
         assert_eq!(mode, "wal");
         assert_eq!(schema, SCHEMA_VERSION);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn reads_run_beside_a_slow_write_and_see_what_it_committed() {
+        let directory = tempfile::tempdir().unwrap();
+        let db = Db::open(&directory.path().join("oleafly-server.sqlite3")).unwrap();
+        db.call(|conn| meta_set(conn, "first", "1")).await.unwrap();
+        let writer = db.clone();
+        let (started, writing) = tokio::sync::oneshot::channel();
+        let slow = tokio::spawn(async move {
+            writer
+                .call(move |conn| {
+                    let transaction = conn.transaction()?;
+                    meta_set(&transaction, "second", "2")?;
+                    let _ = started.send(());
+                    std::thread::sleep(Duration::from_millis(600));
+                    transaction.commit()?;
+                    Ok(())
+                })
+                .await
+        });
+        writing.await.unwrap();
+        let begun = std::time::Instant::now();
+        let read = db
+            .read(|conn| Ok((meta_get(conn, "first")?, meta_get(conn, "second")?)))
+            .await
+            .unwrap();
+        assert!(
+            begun.elapsed() < Duration::from_millis(300),
+            "a read waited {:?} for the write",
+            begun.elapsed()
+        );
+        assert_eq!(read, (Some("1".to_owned()), None));
+        slow.await.unwrap().unwrap();
+        let after = db.read(|conn| meta_get(conn, "second")).await.unwrap();
+        assert_eq!(after.as_deref(), Some("2"));
+        let refused = db
+            .read(|conn| Ok(meta_set(conn, "third", "3").is_err()))
+            .await
+            .unwrap();
+        assert!(refused, "a read connection must not write");
     }
 
     #[tokio::test]

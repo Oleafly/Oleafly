@@ -110,6 +110,17 @@ impl BlobStore {
         }
     }
 
+    pub fn is_s3(&self) -> bool {
+        matches!(self, BlobStore::S3(_))
+    }
+
+    pub async fn probe(&self) -> Result<(), ServerError> {
+        match self {
+            BlobStore::Filesystem(_) => Ok(()),
+            BlobStore::S3(store) => store.probe().await,
+        }
+    }
+
     pub async fn put(&self, hash: &str, bytes: Bytes) -> Result<(), ServerError> {
         if !valid_hash(hash) {
             return Err(ServerError::BadRequest(
@@ -172,14 +183,28 @@ impl BlobStore {
         bytes: Bytes,
     ) -> Result<String, ServerError> {
         let (hash, bytes) = blocking(move || Ok((sha256_hex(&bytes), bytes))).await?;
+        self.put_snapshot_as(project, &hash, bytes).await?;
+        Ok(hash)
+    }
+
+    pub async fn put_snapshot_as(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+        bytes: Bytes,
+    ) -> Result<(), ServerError> {
+        if !valid_hash(hash) {
+            return Err(ServerError::Internal(format!(
+                "{hash} is not a snapshot hash"
+            )));
+        }
         match self {
             BlobStore::Filesystem(store) => {
-                let target = store.snapshot_path(project, &hash);
-                blocking(move || write_atomically(&target, &bytes)).await?;
+                let target = store.snapshot_path(project, hash);
+                blocking(move || write_atomically(&target, &bytes)).await
             }
-            BlobStore::S3(store) => store.put_snapshot(project, &hash, bytes).await?,
+            BlobStore::S3(store) => store.put_snapshot(project, hash, bytes).await,
         }
-        Ok(hash)
     }
 
     pub async fn get_snapshot(

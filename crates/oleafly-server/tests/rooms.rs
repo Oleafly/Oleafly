@@ -4,10 +4,10 @@ use oleafly_collab_protocol::frames::{
     ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
 };
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
-use oleafly_server::test_support::TestDevice;
+use oleafly_server::test_support::{test_config, TestDevice};
 use people::{
     call, connect, envelope, grant, next_frame, put_bytes, send_frame, send_update, share_project,
-    signed_by, stage, subscribe, Stage,
+    signed_by, stage, stage_with, subscribe, told_of_removal, Stage,
 };
 use reqwest::{Method, StatusCode};
 
@@ -248,11 +248,23 @@ async fn removing_someone_tells_them_and_the_room() {
         })
     );
     assert_eq!(
-        next_frame(&mut bob).await,
-        Some(ServerFrame::PresenceLeft {
-            project_id: project,
-            device_id: stage.alice.tokens.device_id
-        })
+        told_of_removal(&mut bob).await,
+        vec![
+            ServerFrame::AccessChanged {
+                project_id: project,
+                role: Some(ProjectRole::Owner),
+                change: Some(MemberChange {
+                    account_id: stage.alice.tokens.account_id,
+                    by: stage.bob.tokens.account_id,
+                    kind: MemberChangeKind::Removed,
+                }),
+                comments: None,
+            },
+            ServerFrame::PresenceLeft {
+                project_id: project,
+                device_id: stage.alice.tokens.device_id
+            },
+        ]
     );
     send_update(&mut alice, &envelope(&stage.alice, project, b"after")).await;
     assert!(matches!(
@@ -433,4 +445,90 @@ async fn a_compacted_log_asks_for_the_snapshot_first() {
         next_frame(&mut alice).await,
         Some(ServerFrame::Update { seq: 3, .. })
     ));
+}
+
+#[tokio::test]
+async fn a_flood_of_cursor_updates_is_thinned_and_never_pushes_anyone_off() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut bob, project, 0).await;
+    subscribe(&mut alice, project, 0).await;
+    let started = tokio::time::Instant::now();
+    for cursor in 0..5_000u32 {
+        send_frame(
+            &mut alice,
+            &ClientFrame::Presence {
+                project_id: project,
+                state: PresenceState {
+                    file_id: Some("main".to_owned()),
+                    cursor: Some(cursor),
+                    anchor: None,
+                },
+            },
+        )
+        .await;
+    }
+    send_frame(&mut alice, &ClientFrame::Ping { id: 1 }).await;
+    loop {
+        match next_frame(&mut alice).await {
+            Some(ServerFrame::Pong { id: 1 }) => break,
+            Some(ServerFrame::Presence { .. } | ServerFrame::PresenceLeft { .. }) => {}
+            other => panic!("expected a pong, got {other:?}"),
+        }
+    }
+    let flooding = started.elapsed();
+    send_update(&mut bob, &envelope(&stage.bob, project, b"after the flood")).await;
+    let mut forwarded = 0u32;
+    loop {
+        match next_frame(&mut bob).await {
+            Some(ServerFrame::Ack { .. }) => break,
+            Some(ServerFrame::Presence { .. }) => forwarded += 1,
+            Some(ServerFrame::PresenceLeft { .. }) => {}
+            other => panic!("bob was pushed off or got {other:?}"),
+        }
+    }
+    let allowed = 20.0 + 10.0 * flooding.as_secs_f64() + 1.0;
+    assert!(
+        f64::from(forwarded) <= allowed,
+        "{forwarded} of 5000 cursor updates reached Bob in {flooding:?}"
+    );
+    let mut viewer = connect(&stage.server, &stage.alice).await;
+    assert!(matches!(
+        subscribe(&mut viewer, project, 0).await,
+        ServerFrame::Subscribed { .. }
+    ));
+    assert_eq!(
+        stage
+            .server
+            .state()
+            .sockets
+            .count(stage.bob.tokens.device_id),
+        1
+    );
+}
+
+#[tokio::test]
+async fn a_change_past_the_project_size_limit_is_refused_and_says_why() {
+    let mut config = test_config();
+    config.limits.max_project_mb = 1;
+    let stage = stage_with(config).await;
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut alice, project, 0).await;
+    let text = vec![b'a'; 400 * 1024];
+    send_update(&mut alice, &envelope(&stage.alice, project, &text)).await;
+    assert!(matches!(
+        next_frame(&mut alice).await,
+        Some(ServerFrame::Ack { seq: 1, .. })
+    ));
+    send_update(&mut alice, &envelope(&stage.alice, project, &text)).await;
+    match next_frame(&mut alice).await {
+        Some(ServerFrame::Error {
+            code: FrameErrorCode::TooLarge,
+            message,
+        }) => assert!(message.contains("OLEAFLY_MAX_PROJECT_MB"), "{message}"),
+        other => panic!("expected the size limit, got {other:?}"),
+    }
 }

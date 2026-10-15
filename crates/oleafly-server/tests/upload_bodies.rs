@@ -121,3 +121,157 @@ async fn a_blob_within_the_file_limit_uploads_even_when_streamed() {
         .status();
     assert_eq!(status, StatusCode::NO_CONTENT);
 }
+
+#[tokio::test]
+async fn a_snapshot_hint_for_a_project_with_a_snapshot_is_answered_without_reading_its_body() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let doc = loro::LoroDoc::new();
+    doc.get_text("text").insert(0, "first").expect("insert");
+    doc.commit();
+    let first = doc.export(loro::ExportMode::Snapshot).expect("snapshot");
+    let upload = |body: Body| {
+        Request::builder()
+            .method(Method::PUT)
+            .uri(format!("/api/v1/projects/{project}/snapshot?seq=0"))
+            .header(
+                header::AUTHORIZATION,
+                format!("Bearer {}", owner.access_token),
+            )
+            .body(body)
+            .expect("request")
+    };
+    let stored = app
+        .router
+        .clone()
+        .oneshot(upload(Body::from(first)))
+        .await
+        .expect("response");
+    assert_eq!(stored.status(), StatusCode::NO_CONTENT);
+    let polled = Arc::new(AtomicUsize::new(0));
+    let hinted = app
+        .router
+        .clone()
+        .oneshot(upload(counted(4, 1024, Arc::clone(&polled))))
+        .await
+        .expect("response");
+    assert_eq!(hinted.status(), StatusCode::NO_CONTENT);
+    assert_eq!(polled.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn large_transfers_wait_for_room_in_the_transfer_budget() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let content = vec![3u8; MIB];
+    let hash = sha256_hex(&content);
+    let path = format!("/api/v1/projects/{project}/blobs/{hash}");
+    let request = |method: Method, body: Body| {
+        Request::builder()
+            .method(method)
+            .uri(&path)
+            .header(
+                header::AUTHORIZATION,
+                format!("Bearer {}", owner.access_token),
+            )
+            .body(body)
+            .expect("request")
+    };
+    let stored = app
+        .router
+        .clone()
+        .oneshot(request(Method::PUT, Body::from(content.clone())))
+        .await
+        .expect("response");
+    assert_eq!(stored.status(), StatusCode::NO_CONTENT);
+    app.state.transfers.set_budget(MIB as u64);
+    let spent = app.state.transfers.hold(MIB as u64).await;
+    let mut download = tokio::spawn(
+        app.router
+            .clone()
+            .oneshot(request(Method::GET, Body::empty())),
+    );
+    let mut upload = tokio::spawn(
+        app.router
+            .clone()
+            .oneshot(request(Method::PUT, Body::from(content.clone()))),
+    );
+    let waiting = std::time::Duration::from_millis(300);
+    assert!(tokio::time::timeout(waiting, &mut download).await.is_err());
+    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    drop(spent);
+    let downloaded = download.await.expect("task").expect("response");
+    assert_eq!(downloaded.status(), StatusCode::OK);
+    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    let bytes = axum::body::to_bytes(downloaded.into_body(), 2 * MIB)
+        .await
+        .expect("the file");
+    assert_eq!(bytes.len(), MIB);
+    drop(bytes);
+    let uploaded = tokio::time::timeout(std::time::Duration::from_secs(5), upload)
+        .await
+        .expect("the upload gets room once the download is sent")
+        .expect("task")
+        .expect("response");
+    assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
+}
+
+async fn put_file(
+    app: &TestApp,
+    token: &str,
+    project: &str,
+    content: Vec<u8>,
+) -> (StatusCode, String) {
+    let hash = sha256_hex(&content);
+    let request = Request::builder()
+        .method(Method::PUT)
+        .uri(format!("/api/v1/projects/{project}/blobs/{hash}"))
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .body(Body::from(content))
+        .expect("request");
+    let response = app.router.clone().oneshot(request).await.expect("response");
+    let status = response.status();
+    let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+        .await
+        .expect("body");
+    let code = serde_json::from_slice::<serde_json::Value>(&bytes)
+        .ok()
+        .and_then(|body| body["code"].as_str().map(str::to_owned))
+        .unwrap_or_default();
+    (status, code)
+}
+
+#[tokio::test]
+async fn a_project_at_its_size_limit_refuses_new_files_while_others_still_upload() {
+    let mut config = test_config();
+    config.limits.max_file_mb = 1;
+    config.limits.max_project_mb = 1;
+    let app = test_app_with(config).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let token = owner.access_token.as_str();
+    let full = create_project(&app, token).await;
+    let other = create_project(&app, token).await;
+    let first = vec![1u8; 600 * 1024];
+    let second = vec![2u8; 600 * 1024];
+    assert_eq!(
+        put_file(&app, token, &full, first.clone()).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        put_file(&app, token, &full, second.clone()).await,
+        (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "project_too_large".to_owned()
+        )
+    );
+    assert_eq!(
+        put_file(&app, token, &full, first).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        put_file(&app, token, &other, second).await.0,
+        StatusCode::NO_CONTENT
+    );
+}

@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -11,27 +13,35 @@ use crate::db::Db;
 use crate::error::ServerError;
 use crate::peers;
 use crate::projects;
-use crate::snapshots::{self, Replay, Snapshots};
+use crate::snapshots::{self, read_cost, Budgeted, Current, Replay, Snapshots};
 
 pub const COMMENTS: &str = "comments";
 const IDLE: Duration = Duration::from_secs(15 * 60);
-const MAX_KEPT: usize = 16;
+// Kept documents may use this share of the snapshot memory budget, so
+// snapshot builds and other reads keep the rest.
+const BUDGET_SHARE: u64 = 4;
+const MAX_SLOTS: usize = 1_024;
+const BUSY_TRIES: u32 = 20;
+const BUSY_PAUSE: Duration = Duration::from_millis(100);
+const WARN_EVERY: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Verdict {
     Allowed,
     ChangesComments,
     Unreadable,
+    Unchecked,
 }
 
 struct Kept {
-    replay: Replay,
+    replay: Budgeted,
     seq: u64,
 }
 
 struct Slot {
     kept: Mutex<Option<Kept>>,
     used: std::sync::Mutex<Instant>,
+    bytes: AtomicU64,
 }
 
 impl Slot {
@@ -43,6 +53,7 @@ impl Slot {
 #[derive(Clone, Default)]
 pub struct CommentGuard {
     slots: Arc<std::sync::Mutex<HashMap<SharedProjectId, Arc<Slot>>>>,
+    warned: Arc<std::sync::Mutex<HashMap<SharedProjectId, Instant>>>,
 }
 
 impl CommentGuard {
@@ -52,7 +63,7 @@ impl CommentGuard {
         slots.retain(|key, slot| {
             *key == project || Arc::strong_count(slot) > 1 || slot.idle(now) < IDLE
         });
-        if !slots.contains_key(&project) && slots.len() >= MAX_KEPT {
+        if !slots.contains_key(&project) && slots.len() >= MAX_SLOTS {
             let oldest = slots
                 .iter()
                 .filter(|(_, slot)| Arc::strong_count(slot) == 1)
@@ -66,6 +77,7 @@ impl CommentGuard {
             Arc::new(Slot {
                 kept: Mutex::new(None),
                 used: std::sync::Mutex::new(now),
+                bytes: AtomicU64::new(0),
             })
         });
         *slot.used.lock().unwrap_or_else(PoisonError::into_inner) = now;
@@ -73,11 +85,49 @@ impl CommentGuard {
     }
 
     #[cfg(test)]
-    fn kept(&self) -> usize {
+    fn slots(&self) -> usize {
         self.slots
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .len()
+    }
+
+    pub fn kept_bytes(&self) -> u64 {
+        self.slots
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .map(|slot| slot.bytes.load(Ordering::Relaxed))
+            .sum()
+    }
+
+    // Drops the least recently used documents other than `project` until
+    // the kept ones fit within `cap`. A document in use is left alone.
+    fn make_room(&self, project: SharedProjectId, cap: u64) -> bool {
+        let now = Instant::now();
+        let mut kept: Vec<(Duration, Arc<Slot>)> = self
+            .slots
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .filter(|(key, slot)| **key != project && slot.bytes.load(Ordering::Relaxed) > 0)
+            .map(|(_, slot)| (slot.idle(now), Arc::clone(slot)))
+            .collect();
+        kept.sort_by_key(|(idle, _)| Reverse(*idle));
+        let mut total = self.kept_bytes();
+        let mut freed = false;
+        for (_, slot) in kept {
+            if total <= cap {
+                break;
+            }
+            if let Ok(mut held) = slot.kept.try_lock() {
+                if held.take().is_some() {
+                    total = total.saturating_sub(slot.bytes.swap(0, Ordering::Relaxed));
+                    freed = true;
+                }
+            }
+        }
+        freed
     }
 
     pub async fn check(
@@ -89,13 +139,13 @@ impl CommentGuard {
     ) -> Result<Verdict, ServerError> {
         let slot = self.slot(project);
         let mut kept = slot.kept.lock().await;
-        let (replay, seq) = match caught_up(db, project, kept.take()).await? {
-            Some(current) => current,
-            None => snapshots.current(db, project).await?.ok_or_else(|| {
-                ServerError::Internal(format!(
-                    "the document of project {project} could not be read to check a change"
-                ))
-            })?,
+        slot.bytes.store(0, Ordering::Relaxed);
+        let current = match caught_up(db, snapshots, project, kept.take()).await? {
+            Some(current) => Some(current),
+            None => self.read(db, snapshots, project).await?,
+        };
+        let Some((replay, seq)) = current else {
+            return Ok(Verdict::Unchecked);
         };
         let (verdict, replay) = tokio::task::spawn_blocking(move || {
             let before = replay.doc().oplog_frontiers();
@@ -103,16 +153,67 @@ impl CommentGuard {
             let replay = if intact {
                 Some(replay)
             } else {
-                rewound(project, &replay, &before)
+                rewound(project, &replay, &before).map(|fresh| replay.replaced(fresh))
             };
             (verdict, replay)
         })
         .await
         .map_err(|error| ServerError::Internal(format!("a comment check failed: {error}")))?;
-        if let Some(replay) = replay {
+        let cap = snapshots.budget().memory_bytes / BUDGET_SHARE;
+        if let Some(replay) = replay.filter(|replay| replay.reserved_bytes() <= cap) {
+            slot.bytes.store(replay.reserved_bytes(), Ordering::Relaxed);
             *kept = Some(Kept { replay, seq });
+            drop(kept);
+            self.make_room(project, cap);
         }
         Ok(verdict)
+    }
+
+    async fn read(
+        &self,
+        db: &Db,
+        snapshots: &Snapshots,
+        project: SharedProjectId,
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        for _ in 0..BUSY_TRIES {
+            match snapshots.read_current(db, project).await? {
+                Current::Read(replay, head) => return Ok(Some((replay, head))),
+                Current::Busy => {
+                    if !self.make_room(project, self.kept_bytes().saturating_sub(1)) {
+                        tokio::time::sleep(BUSY_PAUSE).await;
+                    }
+                }
+                Current::TooLarge { needed, allowed } => {
+                    self.warn(project, &format!(
+                        "reading it needs about {} MB and OLEAFLY_SNAPSHOT_MEMORY_MB allows {} MB. Raise OLEAFLY_SNAPSHOT_MEMORY_MB to keep comments off for it",
+                        needed.div_ceil(1024 * 1024),
+                        allowed.div_ceil(1024 * 1024)
+                    ));
+                    return Ok(None);
+                }
+                Current::Missing => {
+                    self.warn(project, "its document could not be read");
+                    return Ok(None);
+                }
+            }
+        }
+        self.warn(
+            project,
+            "snapshot builds and other reads held the memory budget",
+        );
+        Ok(None)
+    }
+
+    fn warn(&self, project: SharedProjectId, why: &str) {
+        let now = Instant::now();
+        let mut warned = self.warned.lock().unwrap_or_else(PoisonError::into_inner);
+        warned.retain(|_, at| now.saturating_duration_since(*at) < WARN_EVERY);
+        if warned.len() < MAX_SLOTS && !warned.contains_key(&project) {
+            warned.insert(project, now);
+            tracing::warn!(
+                "Stored a change to project {project} without checking it for comments, because {why}."
+            );
+        }
     }
 
     pub async fn forget(&self, project: SharedProjectId) {
@@ -124,6 +225,7 @@ impl CommentGuard {
             .cloned();
         if let Some(slot) = slot {
             *slot.kept.lock().await = None;
+            slot.bytes.store(0, Ordering::Relaxed);
         }
     }
 }
@@ -140,21 +242,21 @@ fn rewound(project: SharedProjectId, replay: &Replay, before: &Frontiers) -> Opt
 
 async fn caught_up(
     db: &Db,
+    snapshots: &Snapshots,
     project: SharedProjectId,
     kept: Option<Kept>,
-) -> Result<Option<(Replay, u64)>, ServerError> {
-    let Some(Kept { replay, seq }) = kept else {
+) -> Result<Option<(Budgeted, u64)>, ServerError> {
+    let Some(Kept { mut replay, seq }) = kept else {
         return Ok(None);
     };
-    let (head, bindings) = db
-        .call(move |conn| {
-            Ok((
-                projects::project_row(conn, project)?.map_or(0, |row| row.head_seq),
-                peers::bound_devices(conn, project)?,
-            ))
+    let (head, bindings, grown) = db
+        .read(move |conn| {
+            let head = projects::project_row(conn, project)?.map_or(0, |row| row.head_seq);
+            let grown = projects::log_span(conn, project, seq, head.max(seq))?.bytes;
+            Ok((head, peers::bound_devices(conn, project)?, grown))
         })
         .await?;
-    if head < seq {
+    if head < seq || !replay.grow(snapshots, read_cost(0, grown)) {
         return Ok(None);
     }
     let advanced = snapshots::advance(db, project, replay, seq, head, &Arc::new(bindings)).await?;
@@ -327,11 +429,12 @@ mod tests {
     }
 
     #[test]
-    fn the_guard_keeps_a_bounded_number_of_documents() {
+    fn the_guard_keeps_a_bounded_number_of_slots() {
         let guard = CommentGuard::default();
-        for _ in 0..(MAX_KEPT + 5) {
+        for _ in 0..(MAX_SLOTS + 5) {
             guard.slot(SharedProjectId::new_v7());
         }
-        assert!(guard.kept() <= MAX_KEPT);
+        assert!(guard.slots() <= MAX_SLOTS);
+        assert_eq!(guard.kept_bytes(), 0);
     }
 }

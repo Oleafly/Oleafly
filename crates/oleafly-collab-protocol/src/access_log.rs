@@ -62,6 +62,7 @@ mod tests {
                     email: Some("carol@uni.edu".to_string()),
                     login: None,
                     guest: false,
+                    active: true,
                 },
                 device_name: "Carol's laptop".to_string(),
                 at: 5,
