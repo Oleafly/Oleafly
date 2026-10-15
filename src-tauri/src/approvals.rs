@@ -294,11 +294,35 @@ pub fn helper_request_auto_approved(root: &Path, project_id: &str, kind: Option<
     if approvals.mode_for(project_id) != ApprovalMode::FullAccess {
         return false;
     }
-    let has_deny_rule = approvals
+    !tools_for_acp_kind(kind).is_empty() || !has_deny_rule(&approvals, project_id)
+}
+
+fn has_deny_rule(approvals: &ApprovalsFile, project_id: &str) -> bool {
+    approvals
         .decisions
         .get(project_id)
-        .is_some_and(|decisions| decisions.values().any(|d| *d == ToolDecision::Deny));
-    !tools_for_acp_kind(kind).is_empty() || !has_deny_rule
+        .is_some_and(|decisions| decisions.values().any(|d| *d == ToolDecision::Deny))
+}
+
+/// Whether the project's rules refuse a research task's permission request.
+/// A task works on a temporary copy that the user reviews before applying,
+/// and nobody answers its requests, so it gets no card: a deny rule refuses
+/// its tool, and while the project has any deny rule, a kind no tool's rules
+/// cover is refused too. Everything else goes ahead, in every mode. No data
+/// folder or a file that can't be read refuses, as everywhere else.
+pub fn task_request_refused(root: Option<&Path>, project_id: &str, kind: Option<&str>) -> bool {
+    let Some(root) = root else {
+        return true;
+    };
+    if acp_request_denied_by(root, project_id, kind).is_some() {
+        return true;
+    }
+    match read_file(root) {
+        Ok(approvals) => {
+            tools_for_acp_kind(kind).is_empty() && has_deny_rule(&approvals, project_id)
+        }
+        Err(_) => true,
+    }
 }
 
 pub fn set_mode(root: &Path, project_id: &str, mode: ApprovalMode) -> Result<(), String> {
@@ -512,6 +536,28 @@ mod tests {
             super::decisions_for(&root, "proj").get("run_command"),
             Some(&super::ToolDecision::Deny)
         );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn research_task_requests_follow_the_projects_deny_rules_in_every_mode() {
+        let root = temp_root("task-kinds");
+        // No deny rule: every kind goes ahead, whatever the mode.
+        for kind in [Some("execute"), Some("fetch"), None] {
+            assert!(!task_request_refused(Some(&root), "proj", kind), "{kind:?}");
+        }
+        set_mode(&root, "proj", ApprovalMode::AskForApproval).unwrap();
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        assert!(task_request_refused(Some(&root), "proj", Some("execute")));
+        assert!(!task_request_refused(Some(&root), "proj", Some("edit")));
+        // A kind no tool's rules cover is refused while a deny rule exists.
+        for kind in [Some("fetch"), Some("think"), None] {
+            assert!(task_request_refused(Some(&root), "proj", kind), "{kind:?}");
+        }
+        assert!(!task_request_refused(Some(&root), "other", Some("fetch")));
+        std::fs::write(approvals_path(&root), "[proj\nrun_command = deny").unwrap();
+        assert!(task_request_refused(Some(&root), "proj", Some("edit")));
+        assert!(task_request_refused(None, "proj", Some("edit")));
         std::fs::remove_dir_all(&root).ok();
     }
 
