@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { collabServerTest, type CollabConnectionCheck } from "@/lib/tauri";
 import { collabErrorText } from "./errors";
 
@@ -8,15 +8,28 @@ export type ConnectionTest =
   | { state: "done"; checks: CollabConnectionCheck[] }
   | { state: "failed"; message: string };
 
-export function useConnectionTest(url: string): { test: ConnectionTest; run: () => Promise<void> } {
+export function useConnectionTest(url: string): {
+  test: ConnectionTest;
+  run: () => Promise<void>;
+  reset: () => void;
+} {
   const [test, setTest] = useState<ConnectionTest>({ state: "idle" });
+  const runs = useRef(0);
   const run = useCallback(async () => {
+    const current = ++runs.current;
     setTest({ state: "running" });
     try {
-      setTest({ state: "done", checks: await collabServerTest(url) });
+      const checks = await collabServerTest(url);
+      if (current === runs.current) setTest({ state: "done", checks });
     } catch (error) {
-      setTest({ state: "failed", message: collabErrorText(error) });
+      if (current === runs.current) setTest({ state: "failed", message: collabErrorText(error) });
     }
   }, [url]);
-  return { test, run };
+  // Forgets the last result, and any test still running, when the address
+  // it was for is no longer the one in question.
+  const reset = useCallback(() => {
+    runs.current += 1;
+    setTest({ state: "idle" });
+  }, []);
+  return { test, run, reset };
 }

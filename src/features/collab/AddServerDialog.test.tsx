@@ -174,7 +174,9 @@ describe("AddServerDialog", () => {
     const user = userEvent.setup();
     renderDialog();
     await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
-    const notAServer = new Set(["not_found", "server", "invalid"]);
+    // A `server` error in the server's own words came from a server that
+    // answered, so it reads as that server's problem, not as no server.
+    const notAServer = new Set(["not_found", "invalid"]);
     for (const code of COLLAB_ERROR_CODES) {
       mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));
       await user.click(screen.getByRole("button", { name: copy.continue }));
@@ -220,6 +222,48 @@ describe("AddServerDialog", () => {
     expect(screen.queryByRole("button", { name: copy.useMoved })).toBeNull();
   });
 
+  it.each([
+    ["a relative address", "/collab/.well-known/oleafly-server", "https://uni.edu/collab"],
+    ["a trailing slash", "https://www.uni.edu/collab/.well-known/oleafly-server/", "https://www.uni.edu/collab"],
+  ])("names the address a redirect given as %s points at", async (_label, location, target) => {
+    mocks.collabServerProbe.mockRejectedValueOnce(collabError("server", location));
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(copy.addressLabel), "uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(fill(copy.moved, { target }));
+  });
+
+  it("says a server that answered ran into a problem instead of saying no server answered", async () => {
+    mocks.collabServerProbe.mockRejectedValueOnce(collabError("server", "database is locked"));
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.server);
+    expect(screen.queryByText(copy.notAServer)).toBeNull();
+  });
+
+  it("shows only the connection test of the address that failed", async () => {
+    mocks.collabServerProbe
+      .mockRejectedValueOnce(collabError("unreachable", "no route"))
+      .mockRejectedValueOnce(collabError("unreachable", "no route"));
+    mocks.collabServerTest.mockResolvedValueOnce([{ id: "https", status: "fail", detail: null }]);
+    const user = userEvent.setup();
+    renderDialog();
+    const field = screen.getByLabelText(copy.addressLabel);
+    await user.type(field, "first.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    await user.click(await screen.findByRole("button", { name: enCollab.section.server.test }));
+    expect(await screen.findByText(enCollab.section.checks.items.https.fail)).toBeInTheDocument();
+    await user.clear(field);
+    await user.type(field, "second.uni.edu");
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(screen.queryByText(enCollab.section.checks.items.https.fail)).toBeNull();
+    expect(screen.getByRole("button", { name: enCollab.section.server.test })).toBeEnabled();
+  });
+
   it("offers the connection test inline when the address can't be reached", async () => {
     mocks.collabServerProbe.mockRejectedValueOnce(collabError("unreachable", "certificate verify failed"));
     mocks.collabServerTest.mockResolvedValueOnce([{ id: "https", status: "fail", detail: null }]);
@@ -231,6 +275,15 @@ describe("AddServerDialog", () => {
     await user.click(screen.getByRole("button", { name: enCollab.section.server.test }));
     expect(mocks.collabServerTest).toHaveBeenCalledWith("https://collab.uni.edu");
     expect(await screen.findByText(enCollab.section.checks.items.https.fail)).toBeInTheDocument();
+  });
+
+  it("shows the server's own sentence when it turns a sign-in down for a reason it has no code for", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    mocks.collabServerSignIn.mockRejectedValue(collabError("invalid", "This sign-in request has no state."));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: github }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This sign-in request has no state.");
   });
 
   it("keeps the sign-in options when the server has not added you", async () => {
