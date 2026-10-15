@@ -95,7 +95,7 @@ pub(super) fn apply_to_disk(
             }
             Ok(WriteOutcome::Same) => {}
             Err(error) => {
-                failed.push((path.clone(), reason_of(&error)));
+                failed.push((path.clone(), reason_of(root, path, &error)));
                 continue;
             }
         }

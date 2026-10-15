@@ -185,7 +185,7 @@ impl Active {
                 match write_file_over(&self.root, path, bytes, stamp.as_ref()) {
                     Ok(WriteOutcome::ChangedOutside) => return Placed::Conflict,
                     Ok(_) => Placed::Written { added },
-                    Err(error) => return Placed::Failed(reason_of(&error)),
+                    Err(error) => return Placed::Failed(reason_of(&self.root, path, &error)),
                 }
             }
         };

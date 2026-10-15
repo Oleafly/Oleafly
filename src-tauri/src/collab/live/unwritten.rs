@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,6 +8,7 @@ use oleafly_collab::materialize::Layout;
 use serde::Serialize;
 
 use super::session::{guard, lock, Active, WriterSignal};
+use crate::collab::disk::safe_target;
 
 pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
 const FIRST_RETRY: Duration = Duration::from_secs(2);
@@ -44,30 +46,40 @@ pub(super) struct Failing {
 }
 
 #[cfg(windows)]
-fn reason_of_code(code: i32) -> UnwrittenReason {
+fn reason_of_code(code: i32, target: Option<&Path>) -> UnwrittenReason {
     match code {
-        32 | 33 => UnwrittenReason::Locked,
+        32 | 33 | 1224 => UnwrittenReason::Locked,
+        5 if target.is_some_and(in_use) => UnwrittenReason::Locked,
         5 | 19 => UnwrittenReason::ReadOnly,
         39 | 112 => UnwrittenReason::NoSpace,
         _ => UnwrittenReason::Other,
     }
 }
 
+#[cfg(windows)]
+fn in_use(target: &Path) -> bool {
+    std::fs::metadata(target)
+        .is_ok_and(|metadata| metadata.is_file() && !metadata.permissions().readonly())
+}
+
 #[cfg(not(windows))]
-fn reason_of_code(code: i32) -> UnwrittenReason {
+fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
     match code {
-        11 | 16 | 26 => UnwrittenReason::Locked,
-        1 | 13 | 30 => UnwrittenReason::ReadOnly,
-        28 | 69 | 122 => UnwrittenReason::NoSpace,
+        libc::EAGAIN | libc::EBUSY | libc::ETXTBSY => UnwrittenReason::Locked,
+        libc::EPERM | libc::EACCES | libc::EROFS => UnwrittenReason::ReadOnly,
+        libc::ENOSPC | libc::EDQUOT => UnwrittenReason::NoSpace,
         _ => UnwrittenReason::Other,
     }
 }
 
-pub(super) fn reason_of(error: &str) -> UnwrittenReason {
+pub(super) fn reason_of(root: &Path, path: &str, error: &str) -> UnwrittenReason {
+    let target = safe_target(root, path);
     error
         .rsplit_once("(os error ")
         .and_then(|(_, code)| code.trim_end_matches(')').parse().ok())
-        .map_or(UnwrittenReason::Other, reason_of_code)
+        .map_or(UnwrittenReason::Other, |code| {
+            reason_of_code(code, target.as_deref())
+        })
 }
 
 pub(super) fn backoff(attempts: u32) -> Duration {
@@ -169,33 +181,58 @@ mod tests {
 
     #[test]
     fn os_errors_read_as_the_reasons_the_window_explains() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::write(root.join("open.tex"), "x").unwrap();
+        let reason = |path: &str, error: &str| reason_of(root, path, error);
         #[cfg(not(windows))]
         {
             assert_eq!(
-                reason_of("Permission denied (os error 13)"),
+                reason("main.tex", "Permission denied (os error 13)"),
                 UnwrittenReason::ReadOnly
             );
             assert_eq!(
-                reason_of("could not stage main.tex: No space left on device (os error 28)"),
+                reason(
+                    "main.tex",
+                    "could not stage main.tex: No space left on device (os error 28)"
+                ),
                 UnwrittenReason::NoSpace
             );
             assert_eq!(
-                reason_of("Read-only file system (os error 30)"),
+                reason("main.tex", "Read-only file system (os error 30)"),
                 UnwrittenReason::ReadOnly
             );
+            let busy = format!(
+                "Resource temporarily unavailable (os error {})",
+                libc::EAGAIN
+            );
+            assert_eq!(reason("main.tex", &busy), UnwrittenReason::Locked);
+            let quota = format!("Disc quota exceeded (os error {})", libc::EDQUOT);
+            assert_eq!(reason("main.tex", &quota), UnwrittenReason::NoSpace);
+            let deadlock = format!("Resource deadlock avoided (os error {})", libc::EDEADLK);
+            assert_eq!(reason("main.tex", &deadlock), UnwrittenReason::Other);
         }
         #[cfg(windows)]
         {
             assert_eq!(
-                reason_of("The process cannot access the file because it is being used by another process. (os error 32)"),
+                reason("main.tex", "The process cannot access the file because it is being used by another process. (os error 32)"),
                 UnwrittenReason::Locked
             );
             assert_eq!(
-                reason_of("There is not enough space on the disk. (os error 112)"),
+                reason(
+                    "main.tex",
+                    "There is not enough space on the disk. (os error 112)"
+                ),
                 UnwrittenReason::NoSpace
             );
+            let denied = "Access is denied. (os error 5)";
+            assert_eq!(reason("open.tex", denied), UnwrittenReason::Locked);
+            assert_eq!(reason("missing.tex", denied), UnwrittenReason::ReadOnly);
         }
-        assert_eq!(reason_of("refused to write x"), UnwrittenReason::Other);
+        assert_eq!(
+            reason("open.tex", "refused to write x"),
+            UnwrittenReason::Other
+        );
     }
 
     #[test]
