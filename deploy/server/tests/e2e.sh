@@ -10,10 +10,19 @@ box=oleafly-e2e-box-$suffix
 docker_volume=oleafly-e2e-docker-$suffix
 work=$(mktemp -d "${TMPDIR:-/tmp}/oleafly-e2e.XXXXXX")
 
+# Nothing in here may fail: it runs on exit, and under set -e a failing
+# command would turn a passing run into a failed one.
 cleanup() {
 	docker rm -f "$box" "$registry" >/dev/null 2>&1 || true
 	docker volume rm "$docker_volume" >/dev/null 2>&1 || true
-	rm -rf "$work"
+	# The containers run as root, and with Docker on Linux what they wrote
+	# into $work/e2e belongs to root, so this user can't delete it. A
+	# container removes it first.
+	docker run --rm --pull never --platform linux/amd64 -v "$work:/work" ubuntu:24.04 rm -rf /work/e2e >/dev/null 2>&1 || true
+	rm -rf "$work" >/dev/null 2>&1 || true
+	if [ -e "$work" ]; then
+		echo "Couldn't remove $work. Remove it with: sudo rm -rf $work" >&2 || true
+	fi
 }
 main() {
 	trap 'cleanup' EXIT

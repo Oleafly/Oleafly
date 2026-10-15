@@ -327,6 +327,7 @@ expect "shellcheck covers the installer and its tests" grep -qF 'shellcheck --sh
 expect "the tests run in ubuntu:24.04 for amd64" grep -q 'docker run --rm --platform linux/amd64 .* ubuntu:24.04 sh /src/tests/installer-test.sh' "$blocks/test.sh"
 expect "the tests run under bash too" grep -q 'INSTALLER_SHELL=bash' "$blocks/test.sh"
 expect "this test runs too" grep -q 'docker run --rm --platform linux/amd64 .* ubuntu:24.04 sh /repo/deploy/server/tests/release-workflow-test.sh' "$blocks/test.sh"
+expect "the end-to-end cleanup test runs too" grep -q 'docker run --rm --platform linux/amd64 .* ubuntu:24.04 sh /src/tests/e2e-cleanup-test.sh' "$blocks/test.sh"
 finish
 
 begin "pull requests run the installer end to end against the image they built"
