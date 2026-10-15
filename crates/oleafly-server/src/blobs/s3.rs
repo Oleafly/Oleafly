@@ -72,6 +72,9 @@ struct Inner {
     bucket: String,
     bucket_path: String,
     key_prefix: String,
+    // One probe key for the life of the process, so a key that may not
+    // delete leaves one probe object behind rather than one per probe.
+    probe_key: String,
     region: String,
     access_key_id: String,
     secret_access_key: String,
@@ -132,6 +135,10 @@ impl S3Blobs {
                 host,
                 bucket: config.bucket.clone(),
                 bucket_path,
+                probe_key: format!(
+                    "{key_prefix}.oleafly-ready-{}",
+                    crate::tokens::random_token()
+                ),
                 key_prefix,
                 region: config.region.clone(),
                 access_key_id: config.access_key_id.clone(),
@@ -265,11 +272,7 @@ impl S3Blobs {
     pub async fn probe(&self) -> Result<(), ServerError> {
         let body = Bytes::from_static(b"ready");
         let hash = crate::blobs::sha256_hex(&body);
-        let key = format!(
-            "{}.oleafly-ready-{}",
-            self.inner.key_prefix,
-            crate::tokens::random_token()
-        );
+        let key = self.inner.probe_key.clone();
         self.put_object(&key, &hash, body).await?;
         let read = self.get_object(&key, 64).await;
         let removed = self.remove_object(&key).await;
