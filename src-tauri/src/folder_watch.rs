@@ -158,7 +158,7 @@ pub(crate) fn relevant_path(root: &Path, path: &Path) -> Option<String> {
     }
     if last.eq_ignore_ascii_case(".git")
         || last.eq_ignore_ascii_case(".DS_Store")
-        || crate::collab::disk::scratch_name(last)
+        || crate::checkpoint_capture::is_oleafly_owned(last)
         || is_replace_file_scratch(last)
     {
         return None;
@@ -316,6 +316,18 @@ fn still_active(project_id: &str, token: u64) -> bool {
         .is_some_and(|active| active.project_id == project_id && active.token == token)
 }
 
+fn unwanted<'a>(root: &'a Path, project_id: &'a str) -> impl Fn(&str) -> bool + 'a {
+    let shared = std::cell::OnceCell::new();
+    move |relative: &str| {
+        let name = relative.rsplit('/').next().unwrap_or(relative);
+        is_own_write(&root.join(relative))
+            || (crate::collab::disk::scratch_name(name)
+                && !shared
+                    .get_or_init(|| crate::collab::live::shared_files(project_id))
+                    .contains(relative))
+    }
+}
+
 fn deliver(
     batch: &mut Batch,
     root: &Path,
@@ -325,7 +337,7 @@ fn deliver(
     on_root_changed: &dyn Fn(),
 ) {
     let root_changed = batch.root_changed;
-    if let Some(change) = batch.take(project_id, &|relative| is_own_write(&root.join(relative))) {
+    if let Some(change) = batch.take(project_id, &unwanted(root, project_id)) {
         if still_active(project_id, token) {
             sink(change);
         }
@@ -695,12 +707,6 @@ mod tests {
             ("build/main.pdf", None),
             ("_minted-main/x.pyg", None),
             (".DS_Store", None),
-            (".main.tex.swp", None),
-            ("chapters/main.tex~", None),
-            ("#main.tex#", None),
-            (".~lock.notes.odt#", None),
-            ("~$report.docx", None),
-            ("4913", None),
         ] {
             assert_eq!(
                 relevant_path(root, &root.join(path)).as_deref(),
@@ -709,6 +715,39 @@ mod tests {
             );
         }
         assert_eq!(relevant_path(root, Path::new("/elsewhere/main.tex")), None);
+    }
+
+    #[test]
+    fn scratch_files_are_changes_only_once_they_are_shared() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let root = library.project("scratch-shared", &[]);
+        crate::collab::testing::track("scratch-shared", &["notes~", "drafts/#draft#"]);
+        let mut batch = Batch::default();
+        let paths = [
+            "notes~",
+            "drafts/#draft#",
+            ".main.tex.swp",
+            "chapters/main.tex~",
+            "#main.tex#",
+            ".~lock.notes.odt#",
+            "~$report.docx",
+            "4913",
+            "main.tex",
+        ]
+        .map(|path| root.join(path));
+        let touched: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
+        batch.absorb(
+            &root,
+            &event(
+                EventKind::Modify(ModifyKind::Data(DataChange::Content)),
+                &touched,
+            ),
+            Instant::now(),
+        );
+        let change = batch
+            .take("scratch-shared", &unwanted(&root, "scratch-shared"))
+            .expect("a change");
+        assert_eq!(change.paths, ["drafts/#draft#", "main.tex", "notes~"]);
     }
 
     #[test]

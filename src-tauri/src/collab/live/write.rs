@@ -15,7 +15,7 @@ use super::{
     WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
-use crate::collab::disk::{crlf_only, lf_text, safe_target};
+use crate::collab::disk::{crlf_only, lf_text, safe_target, ShareRules};
 
 const WRITE_SETTLE: Duration = Duration::from_secs(10);
 
@@ -117,7 +117,9 @@ fn write_into(
             live.doc_mut().set_crlf(&id, crlf)?;
         }
         None => {
-            if std::fs::symlink_metadata(&target).is_ok() {
+            if std::fs::symlink_metadata(&target).is_ok()
+                || ShareRules::load(root).leaves_out(&path, false)
+            {
                 return Ok(false);
             }
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
@@ -154,7 +156,10 @@ fn kept_from_a_viewer(live: &LiveProject, root: &Path, path: &str) -> Result<boo
     Ok(match placed.get(&path) {
         Some((_, NodeKind::Dir, _)) => false,
         Some(_) => true,
-        None => std::fs::symlink_metadata(target).is_err(),
+        None => {
+            std::fs::symlink_metadata(target).is_err()
+                && !ShareRules::load(root).leaves_out(&path, false)
+        }
     })
 }
 
@@ -731,6 +736,7 @@ mod tests {
     fn writes_the_shared_document_cannot_take_are_left_to_the_disk() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("notes.tex"), "outside").unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "*.aux\nbuild/\n").unwrap();
         let (mut live, main) = shared("abc\n");
         for path in [
             "../escape.tex",
@@ -738,6 +744,10 @@ mod tests {
             ".git/config",
             "notes.tex",
             "",
+            "main.aux",
+            "build/out.tex",
+            ".main.tex.swp",
+            "draft.tex~",
         ] {
             assert!(
                 !write_into(
@@ -784,6 +794,7 @@ mod tests {
                 "{path}"
             );
         }
+        std::fs::write(dir.path().join(".gitignore"), "*.aux\nbuild/\n").unwrap();
         for path in [
             "project.json",
             ".git/config",
@@ -791,6 +802,9 @@ mod tests {
             "chapters",
             "main.tex/inner.tex",
             "outside.tex",
+            "main.aux",
+            "build/out.tex",
+            "chapters/.new.tex.swp",
         ] {
             assert!(
                 !kept_from_a_viewer(&live, dir.path(), path).unwrap(),
