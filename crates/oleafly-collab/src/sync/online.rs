@@ -324,9 +324,9 @@ async fn online(
                     (false, _) => None,
                     (true, None) => Some(tokio::time::Instant::now()),
                     (true, Some(since)) if catching_up.is_none() && since.elapsed() > pace.quiet_for => {
-                        let reload = lock(project).request_resync();
+                        let reload = lock(project).request_resync(std::time::Instant::now());
                         if reload {
-                            return retry;
+                            return Exit::Resync;
                         }
                         Some(since)
                     }

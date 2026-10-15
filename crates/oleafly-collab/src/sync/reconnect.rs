@@ -104,6 +104,9 @@ pub(super) enum Exit {
     End(EndReason),
     Retry(Reached),
     Switch,
+    // Reload from the server's snapshot: connect again at once, without
+    // showing the session as offline.
+    Resync,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -168,8 +171,11 @@ pub(super) async fn run(
         ping_every: options.ping_every,
         quiet_for: options.quiet_for,
     };
+    let mut quietly = false;
     loop {
-        let _ = events.send(LiveEvent::Status(LiveStatus::Connecting));
+        if !std::mem::take(&mut quietly) {
+            let _ = events.send(LiveEvent::Status(LiveStatus::Connecting));
+        }
         let exit = match transport {
             Transport::Socket => match connect(&link).await {
                 Ok(socket) => {
@@ -223,7 +229,7 @@ pub(super) async fn run(
                             transport = Transport::Socket;
                         }
                     }
-                    Exit::Retry(_) => refused = 0,
+                    Exit::Retry(_) | Exit::Resync => refused = 0,
                     Exit::End(_) => {}
                 }
                 exit
@@ -247,6 +253,10 @@ pub(super) async fn run(
                 return;
             }
             Exit::Switch => continue,
+            Exit::Resync => {
+                quietly = true;
+                continue;
+            }
             Exit::Retry(reached) => attempt = backoff_step(attempt, reached),
         }
         let delay = backoff_wait(attempt);

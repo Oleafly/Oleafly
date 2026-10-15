@@ -238,7 +238,8 @@ pub struct LiveProject {
     resync_needed: bool,
     unreadable: Vec<(u64, Option<DeviceId>)>,
     waiting: VersionVector,
-    resynced_for: Option<VersionVector>,
+    held_back: Vec<ImportBlobMetadata>,
+    resync: ResyncGuard,
     dir: Option<PathBuf>,
     damaged: bool,
     skipped: BTreeSet<u64>,
@@ -248,6 +249,31 @@ pub struct LiveProject {
 struct ChangeLog {
     records: Vec<Vec<u8>>,
     torn: bool,
+}
+
+const FIRST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(120);
+const LONGEST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(3600);
+
+// Reloads from the server's snapshot for changes held back by a missing
+// dependency. One reload per set of missing dependencies: more changes
+// built on the same missing one don't ask again. A new set waits at least
+// two minutes after the last reload, doubling up to an hour, so updates
+// with made-up dependencies can't keep everyone reloading. All of it starts
+// over once nothing is held back.
+struct ResyncGuard {
+    tried_for: Option<BTreeSet<(u64, i32)>>,
+    next: Option<std::time::Instant>,
+    gap: std::time::Duration,
+}
+
+impl Default for ResyncGuard {
+    fn default() -> ResyncGuard {
+        ResyncGuard {
+            tried_for: None,
+            next: None,
+            gap: FIRST_RESYNC_GAP,
+        }
+    }
 }
 
 fn read_log(path: &Path) -> ChangeLog {
@@ -442,7 +468,8 @@ impl LiveProject {
             resync_needed: false,
             unreadable: Vec::new(),
             waiting: VersionVector::new(),
-            resynced_for: None,
+            held_back: Vec::new(),
+            resync: ResyncGuard::default(),
             dir: None,
             damaged: false,
             skipped: BTreeSet::new(),
@@ -923,6 +950,8 @@ impl LiveProject {
     fn note_waiting(&mut self, waiting: &[(u64, i32)]) {
         advance(&mut self.waiting, waiting);
         let have = self.doc.version();
+        self.held_back
+            .retain(|meta| !have.includes_vv(&meta.partial_end_vv));
         let drained: Vec<u64> = self
             .waiting
             .iter()
@@ -938,6 +967,37 @@ impl LiveProject {
             }
             self.waiting = left;
         }
+        if !self.missing_changes() {
+            self.held_back.clear();
+            self.resync = ResyncGuard::default();
+        }
+    }
+
+    // What the held-back changes build on that neither the document nor
+    // another held-back change holds.
+    fn missing_dependencies(&self) -> BTreeSet<(u64, i32)> {
+        let have = self.doc.version();
+        let held = |peer: u64, counter: i32| {
+            have.get(&peer).is_some_and(|end| counter < *end)
+                || self.held_back.iter().any(|meta| {
+                    meta.partial_start_vv.get(&peer).copied().unwrap_or(0) <= counter
+                        && counter < meta.partial_end_vv.get(&peer).copied().unwrap_or(0)
+                })
+        };
+        let mut missing = BTreeSet::new();
+        for meta in &self.held_back {
+            for id in meta.start_frontiers.iter() {
+                if !held(id.peer, id.counter) {
+                    missing.insert((id.peer, id.counter));
+                }
+            }
+            for (peer, start) in meta.partial_start_vv.iter() {
+                if *start > 0 && !held(*peer, start - 1) {
+                    missing.insert((*peer, start - 1));
+                }
+            }
+        }
+        missing
     }
 
     // Changes Loro holds back because something they build on never
@@ -951,14 +1011,16 @@ impl LiveProject {
             .any(|(peer, end)| have.get(peer).copied().unwrap_or(0) < *end)
     }
 
-    // Asks for one reload per set of held-back changes. When the server's
-    // snapshot did not bring what they wait for, asking again would only
-    // reconnect in a loop.
-    pub fn request_resync(&mut self) -> bool {
-        if self.resynced_for.as_ref() == Some(&self.waiting) {
+    pub fn request_resync(&mut self, now: std::time::Instant) -> bool {
+        let missing = self.missing_dependencies();
+        if self.resync.tried_for.as_ref() == Some(&missing)
+            || self.resync.next.is_some_and(|next| now < next)
+        {
             return false;
         }
-        self.resynced_for = Some(self.waiting.clone());
+        self.resync.tried_for = Some(missing);
+        self.resync.next = Some(now + self.resync.gap);
+        self.resync.gap = (self.resync.gap * 2).min(LONGEST_RESYNC_GAP);
         self.resync_needed = true;
         true
     }
@@ -1090,6 +1152,14 @@ impl LiveProject {
         let fresh = readable;
         self.witness_arrivals(&fresh);
         advance(&mut self.confirmed, &imported.arrived);
+        let have = self.doc.version();
+        self.held_back.extend(
+            fresh
+                .iter()
+                .filter_map(|received| received.meta.as_ref())
+                .filter(|meta| !have.includes_vv(&meta.partial_end_vv))
+                .cloned(),
+        );
         self.note_waiting(&imported.waiting);
         for received in &fresh {
             if let Some(meta) = &received.meta {
@@ -2325,13 +2395,60 @@ mod tests {
         assert!(!alice.import_update(1, &first.payload).unwrap());
         assert!(alice.missing_changes());
         assert!(!alice.diverged(2, alice.anchor()));
-        assert!(alice.request_resync());
-        assert!(!alice.request_resync());
+        let now = std::time::Instant::now();
+        assert!(alice.request_resync(now));
+        assert!(!alice.request_resync(now));
         assert!(alice.diverged(2, alice.anchor()));
         alice.rebase(2, &bob.doc().snapshot().unwrap()).unwrap();
         assert!(!alice.missing_changes());
         assert!(!alice.diverged(2, None));
         assert_eq!(alice.doc().text(&main).unwrap(), "abcde");
+    }
+
+    #[test]
+    fn changes_built_on_one_missing_change_ask_for_one_reload_and_a_new_gap_waits_its_turn() {
+        let (mut bob, mut alice, main) = pair();
+        let mut carol = LiveProject::new(
+            ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        let base = sent_change(&mut bob, &main, " base", 1);
+        let first = sent_change(&mut bob, &main, " one", 2);
+        alice.skip_update(1);
+        assert!(alice.import_update(2, &first).unwrap());
+        assert!(alice.missing_changes());
+        let start = std::time::Instant::now();
+        assert!(alice.request_resync(start));
+        let minutes = |count: u64| start + std::time::Duration::from_secs(60 * count);
+        for (seq, word) in [(3, " two"), (4, " three"), (5, " four")] {
+            let later = sent_change(&mut bob, &main, word, seq);
+            alice.import_update(seq, &later).unwrap();
+            assert!(!alice.request_resync(minutes(seq)), "{word}");
+        }
+        let unseen = sent_change(&mut carol, &main, " unseen", 6);
+        let built_on_it = sent_change(&mut carol, &main, " carol", 7);
+        alice.skip_update(6);
+        alice.import_update(7, &built_on_it).unwrap();
+        assert!(!alice.request_resync(start + std::time::Duration::from_secs(60)));
+        assert!(alice.request_resync(start + std::time::Duration::from_secs(121)));
+        let third = sent_change(&mut carol, &main, " more", 8);
+        alice.import_update(8, &third).unwrap();
+        let _ = (base, unseen);
+        let mut server = ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap();
+        server.import(&carol.doc().snapshot().unwrap()).unwrap();
+        alice.rebase(8, &server.snapshot().unwrap()).unwrap();
+        assert!(!alice.missing_changes());
+        assert_eq!(
+            alice.doc().text(&main).unwrap(),
+            server.text(&main).unwrap()
+        );
+        sent_change(&mut carol, &main, " again", 9);
+        let built_on_that = sent_change(&mut carol, &main, " end", 10);
+        alice.skip_update(9);
+        alice.import_update(10, &built_on_that).unwrap();
+        assert!(alice.missing_changes());
+        assert!(alice.request_resync(start + std::time::Duration::from_secs(122)));
     }
 
     #[test]
