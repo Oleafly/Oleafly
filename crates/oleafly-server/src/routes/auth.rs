@@ -614,6 +614,11 @@ pub(crate) fn complete_sign_in(
                         "via": admitted.via.as_str(),
                         "new_account": admitted.new_account,
                         "reactivated": admitted.reactivated,
+                        "left_out_of": admitted
+                            .left_out_of
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>(),
                         "device_code": pending.device_authorization.is_some()
                     }),
                 },

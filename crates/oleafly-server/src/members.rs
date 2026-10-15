@@ -3,13 +3,14 @@ use oleafly_collab_protocol::admin::{
     NewDomainRule,
 };
 use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary, SessionEndReason};
-use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::roles::ServerRole;
 use rusqlite::{params, Connection, OptionalExtension, Params, Row};
 use url::Host;
 
 use crate::db::{is_unique_violation, parse_id};
 use crate::error::ServerError;
+use crate::projects;
 
 const ALLOWLIST_COLUMNS: &str =
     "id, kind, provider_id, value, server_role, created_at, bound_account";
@@ -372,6 +373,33 @@ fn identity_logins(
         .into_iter()
         .filter_map(|(provider, login)| normalize_login(&login).map(|key| (provider, key)))
         .collect())
+}
+
+// Projects where an account that is not active still holds a grant, but
+// whose seats active people have taken since, so making the account active
+// again would put them over the limit. The owner's own grant never counts:
+// nobody can join a project while its owner is away.
+pub fn projects_now_full(
+    conn: &Connection,
+    account: AccountId,
+    max_members: u32,
+) -> Result<Vec<(SharedProjectId, String)>, ServerError> {
+    let mut full = Vec::new();
+    for id in query_strings(
+        conn,
+        "SELECT project_id FROM project_grants WHERE account_id = ?1 AND role != 'owner' \
+         ORDER BY granted_at, project_id",
+        [account.to_string()],
+    )? {
+        let project: SharedProjectId = parse_id(&id)?;
+        if projects::member_count(conn, project)? >= max_members {
+            let title = projects::project_row(conn, project)?
+                .map(|row| row.title)
+                .unwrap_or_default();
+            full.push((project, title));
+        }
+    }
+    Ok(full)
 }
 
 pub fn account_devices(

@@ -867,6 +867,80 @@ async fn a_removed_member_added_again_gets_their_old_projects_back() {
     assert_eq!(role, Some(ProjectRole::Editor));
 }
 
+#[tokio::test]
+async fn a_removed_member_added_again_is_left_out_of_projects_that_filled_up() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let matcher = AllowlistMatcher::ProviderLogin {
+        provider: "github".to_owned(),
+        login: "grace".to_owned(),
+    };
+    allow(&app, &admin.access_token, matcher.clone()).await;
+    let grace = github("9009", "grace", &["grace@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &grace, None).await else {
+        panic!("grace was refused");
+    };
+    let account = first.account_id;
+    let now = app.clock.now_ms();
+    let (thesis, notes, owner) = app
+        .state
+        .db
+        .call(move |conn| {
+            let owner = members::create_account(conn, "Yara", None, ServerRole::Member, now)?;
+            let mut made = Vec::new();
+            for title in ["Thesis", "Notes"] {
+                let project = projects::create_pending(conn, owner, title, now)?;
+                projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                projects::grant(conn, project, account, ProjectRole::Editor, owner, now)?;
+                made.push(project);
+            }
+            Ok((made[0], made[1], owner))
+        })
+        .await
+        .expect("grants");
+    remove(&app, &admin.access_token, account).await;
+    app.state
+        .db
+        .call(move |conn| {
+            let zoe = members::create_account(conn, "Zoe", None, ServerRole::Member, now)?;
+            projects::grant(conn, thesis, zoe, ProjectRole::Editor, owner, now)
+        })
+        .await
+        .expect("thesis fills up");
+    allow(&app, &admin.access_token, matcher).await;
+    let identity = grace.clone();
+    let applied = app
+        .state
+        .db
+        .call(move |conn| {
+            let decision = admission::decide(conn, &identity, None)?;
+            admission::apply(conn, &identity, decision, 2, None, now)
+        })
+        .await
+        .expect("admit");
+    let Applied::Admitted(again) = applied else {
+        panic!("grace was refused the second time: {applied:?}");
+    };
+    assert_eq!(again.account_id, account);
+    assert!(again.reactivated);
+    assert_eq!(again.left_out_of, [thesis]);
+    let (in_thesis, in_notes, seats) = app
+        .state
+        .db
+        .call(move |conn| {
+            Ok((
+                projects::role_of(conn, thesis, account)?,
+                projects::role_of(conn, notes, account)?,
+                projects::member_count(conn, thesis)?,
+            ))
+        })
+        .await
+        .expect("roles");
+    assert_eq!(in_thesis, None);
+    assert_eq!(in_notes, Some(ProjectRole::Editor));
+    assert_eq!(seats, 2);
+}
+
 const FORMER_ADDRESS: &str = "address_of_inactive_account";
 
 fn mallory_at(subject: &str) -> MockOidcUser {
