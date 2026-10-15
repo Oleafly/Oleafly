@@ -189,7 +189,7 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        let failed = uploads::send(&self.link, &import.blobs, self.online()).await;
+        let failed = uploads::send(&self.link, &self.root, &import.blobs, self.online()).await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         self.announce_uploads();
         let changed = {

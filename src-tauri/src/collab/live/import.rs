@@ -37,7 +37,7 @@ pub(super) fn by_path(layout: &Layout) -> HashMap<String, (String, NodeKind, Opt
 #[derive(Default)]
 pub(super) struct LocalImport {
     pub(super) texts: Vec<(String, String, String)>,
-    pub(super) blobs: Vec<(String, String, Vec<u8>)>,
+    pub(super) blobs: Vec<(String, String, u64)>,
     pub(super) removed: Vec<String>,
     pub(super) dirs: Vec<String>,
     pub(super) restamped: Vec<(String, String)>,
@@ -214,7 +214,9 @@ fn read_changed_file(
         }
         (Some(text), None) => import.texts.push((path, text, hash)),
         (_, Some((_, NodeKind::Blob, Some(blob)))) if *blob == hash => {}
-        (None, _) | (Some(_), Some(_)) => import.blobs.push((path, hash, bytes)),
+        (None, _) | (Some(_), Some(_)) => {
+            import.blobs.push((path, hash, bytes.len() as u64));
+        }
     }
     Ok(())
 }
@@ -423,7 +425,7 @@ fn import_blobs(
     live: &mut LiveProject,
     disk: &mut DiskState,
     placed: &mut HashMap<String, (String, NodeKind, Option<String>)>,
-    blobs: Vec<(String, String, Vec<u8>)>,
+    blobs: Vec<(String, String, u64)>,
     root: &Path,
     beside: &mut Vec<(String, String, String)>,
 ) -> Result<bool, CollabError> {

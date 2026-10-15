@@ -260,7 +260,7 @@ pub(crate) fn cloud_synced() -> CollabError {
     )
 }
 
-async fn sendable_blob(file: &Path, hash: &str) -> Result<Vec<u8>, CollabError> {
+pub(crate) async fn sendable_blob(file: &Path, hash: &str) -> Result<Vec<u8>, CollabError> {
     let bytes = tokio::fs::read(file).await.map_err(io)?;
     if sha256_hex(&bytes) != hash {
         return Err(CollabError::Io(format!(

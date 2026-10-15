@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
@@ -107,44 +108,30 @@ async fn server_limit(link: &LiveLink, fresh: bool) -> Option<u64> {
 
 pub(super) async fn send(
     link: &LiveLink,
-    blobs: &[(String, String, Vec<u8>)],
+    root: &Path,
+    blobs: &[(String, String, u64)],
     online: bool,
 ) -> BTreeSet<String> {
     if blobs.is_empty() {
         return BTreeSet::new();
     }
-    let big = blobs
-        .iter()
-        .any(|(_, _, bytes)| bytes.len() as u64 > CHECK_ABOVE);
+    let big = blobs.iter().any(|(_, _, size)| *size > CHECK_ABOVE);
     let mut limit = if big {
         server_limit(link, false).await
     } else {
         None
     };
-    let project = link.project;
     let mut known: BTreeMap<&str, Outcome> = BTreeMap::new();
     let mut results = Vec::new();
-    for (path, hash, bytes) in blobs {
-        let size = bytes.len() as u64;
+    for (path, hash, size) in blobs {
+        let size = *size;
         let outcome = match known.get(hash.as_str()) {
             Some(outcome) => *outcome,
             None => {
                 let mut outcome = if limit.is_some_and(|limit| size > limit) {
                     Outcome::TooLarge(limit)
                 } else {
-                    let sent = with_access(
-                        &link.sessions,
-                        link.server_id,
-                        &link.client,
-                        |client, access| {
-                            let (hash, bytes) = (hash.clone(), bytes.clone());
-                            Box::pin(
-                                async move { client.put_blob(access, project, &hash, bytes).await },
-                            )
-                        },
-                    )
-                    .await;
-                    match sent {
+                    match sent(link, root, path, hash).await {
                         Ok(()) => Outcome::Sent,
                         Err(error) => judged(&error),
                     }
@@ -162,6 +149,27 @@ pub(super) async fn send(
         results.push((path.clone(), hash.clone(), size, outcome));
     }
     record(key(link), results, online)
+}
+
+// The figure is read from disk for each try, so a large one is never
+// held in memory between tries or copied once per retry.
+async fn sent(link: &LiveLink, root: &Path, path: &str, hash: &str) -> Result<(), CollabError> {
+    let file = safe_target(root, path)
+        .ok_or_else(|| CollabError::Io(format!("refused to read {path}")))?;
+    let project = link.project;
+    with_access(
+        &link.sessions,
+        link.server_id,
+        &link.client,
+        |client, access| {
+            let (file, hash) = (file.clone(), hash.to_owned());
+            Box::pin(async move {
+                let bytes = crate::collab::share::sendable_blob(&file, &hash).await?;
+                client.put_blob(access, project, &hash, bytes).await
+            })
+        },
+    )
+    .await
 }
 
 fn record(

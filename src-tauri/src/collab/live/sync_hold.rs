@@ -424,14 +424,14 @@ pub(super) fn screen(
     }
     import.texts = texts;
     let mut blobs = Vec::new();
-    for (path, hash, bytes) in std::mem::take(&mut import.blobs) {
+    for (path, hash, size) in std::mem::take(&mut import.blobs) {
         match hold.kind(&path) {
             Some(Kept::Added) => {}
             Some(_) => {
                 hold.forget(dir, &path);
-                blobs.push((path, hash, bytes));
+                blobs.push((path, hash, size));
             }
-            None => blobs.push((path, hash, bytes)),
+            None => blobs.push((path, hash, size)),
         }
     }
     import.blobs = blobs;
