@@ -47,9 +47,9 @@ Writing a paper with other people usually means a browser editor with plan limit
 
 Share a project to your lab's Oleafly Server and everyone edits the same files at once. You see each person's cursor and selection, who's online, and what changed while you were away. Click someone's avatar to jump to the line they're working on.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/live-collaboration.png" alt="Two coauthors editing the same LaTeX file in Oleafly, with their cursors, avatars and the People and Activity pane" width="100%" />
-</div>
+</p>
 
 - Comment on any selection in LaTeX, Typst or Markdown, then reply, mention someone, resolve or reopen. A mentioned coauthor gets one email, and can turn those off.
 - Edits you make offline merge when you reconnect. If they overlap with someone else's, Oleafly shows you both and asks before it applies anything.
@@ -69,9 +69,9 @@ It's a single Rust binary that uses SQLite, keeps files on disk or in any S3-com
 
 Admins get a console in the desktop app for people, access rules, projects, email and the security log. Every device signs its changes, and the server builds each snapshot from that signed history instead of trusting uploads.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/server-admin.png" alt="Oleafly Server admin console showing people, access rules and the security log" width="100%" />
-</div>
+</p>
 
 Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, backups and the full list of who can do what.
 
@@ -79,9 +79,9 @@ Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, ba
 
 Turn on cloud sync and your library projects and app settings follow you from your laptop to your desktop. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/cloud-sync.png" alt="Oleafly Cloud sync settings with the connected account, storage use and a list of synced projects" width="100%" />
-</div>
+</p>
 
 - When two computers edit the same file, both versions are kept, each named after the computer that wrote it.
 - Deleting most of a project at once puts it on hold until you confirm, so one bad move can't empty it everywhere.
@@ -94,9 +94,9 @@ Moving from an online LaTeX editor? Sign in to your account once from Oleafly, p
 
 With a Git token from that account, Oleafly can keep an imported project in sync both ways, so coauthors who stay online keep working the way they do now. Two-way sync uses the service's own Git integration, which needs a paid or university plan on the project owner's account.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/import-online.png" alt="Oleafly import picker listing projects from an online LaTeX account, with several selected" width="100%" />
-</div>
+</p>
 
 You can also start from a project ZIP, a GitHub repository, a Word document, an arXiv source bundle, or a PDF that Oleafly rebuilds as editable LaTeX. Or open a folder where it already is.
 
@@ -104,9 +104,9 @@ You can also start from a project ZIP, a GitHub repository, a Word document, an 
 
 Pick an agent from the catalog and it works in your project with the source, the PDF and the compile log in reach. Each agent signs in with its own account and uses its own model. Oleafly gives it the project and the tools around it.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/ai-agents.png" alt="An AI agent in Oleafly revising a section of a LaTeX paper, with the proposed change shown as a diff" width="100%" />
-</div>
+</p>
 
 <div align="center">
 <table>
@@ -147,9 +147,9 @@ AI is optional. The editor, compiler, PDF, citations, proofreading and checks al
 
 Tectonic, Typst and Pandoc ship with the app, so a new project compiles without installing anything. When a project needs a full TeX distribution, switch it to latexmk with TeX Live, MacTeX, MiKTeX, or a TinyTeX that Oleafly installs for you.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/editor-and-pdf.png" alt="Oleafly source editor and compiled PDF side by side, with a compile diagnostic linked to its source line" width="100%" />
-</div>
+</p>
 
 - Click in the PDF to jump to the source, and back again. LaTeX uses SyncTeX, and Typst 0.13 or newer uses Tinymist.
 - Compile errors link to the line that caused them, and the last good PDF stays on screen while you fix them.
@@ -191,9 +191,9 @@ Tectonic, Typst and Pandoc ship with the app, so a new project compiles without 
 
 Every project is an ordinary folder with an ordinary Git repository. Stage, diff, commit, push, pull and publish to GitHub from the Source Control panel, or use your own terminal, since nothing is hidden from it. Checkpoints save a local snapshot after each successful compile, so you can roll back without making a commit.
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/readme/git-history.png" alt="Oleafly Source Control panel with a diff, a branch graph and commit controls" width="100%" />
-</div>
+</p>
 
 A terminal dock sits under the editor with up to ten tabs per project. Cmd-click (Ctrl-click) a file path in its output to open it at that line.
 
