@@ -1022,13 +1022,15 @@ fn a_gallery_link_is_copied_into_the_account_and_saved_as_a_template() {
     let (base, result, posts) = run(async {
         let page = gallery_page(page_path);
         let dashboard = dashboard_page(&json!({ "projects": [] }));
+        // Everything sits in one folder, as in many online projects. The
+        // layout is kept so the server's main file path stays valid.
         let archive = zip_bytes(&[
             (
                 "thesis/main.tex",
                 "\\documentclass{report}\\begin{document}x\\end{document}",
             ),
             ("thesis/LICENSE", "CC BY"),
-            ("logo.png", "png"),
+            ("thesis/logo.png", "png"),
         ]);
         let fixture = serve(Arc::new(move |request: &Request| {
             match (request.method.as_str(), request.path.as_str()) {
@@ -1075,7 +1077,8 @@ fn a_gallery_link_is_copied_into_the_account_and_saved_as_a_template() {
     assert_eq!(license.author, "Ada Lovelace");
     assert_eq!(license.url, format!("{base}{page_path}"));
     assert!(dir.join("files/thesis/LICENSE").is_file());
-    assert!(dir.join("files/logo.png").is_file());
+    assert!(dir.join("files/thesis/logo.png").is_file());
+    assert!(!dir.join("files/main.tex").exists());
     assert_eq!(posts.len(), 1);
     let post = &posts[0];
     assert_eq!(

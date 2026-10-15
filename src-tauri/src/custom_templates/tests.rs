@@ -369,3 +369,51 @@ fn projects_from_a_template_use_its_compiler() {
     );
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }
+
+#[test]
+fn an_online_project_keeps_its_single_folder_where_a_picked_zip_is_unwrapped() {
+    let work = tempfile::tempdir().unwrap();
+    let root = work.path().join("custom");
+    let archive = zip_file(
+        work.path(),
+        &[
+            ("thesis/main.tex", ARTICLE.as_bytes()),
+            ("thesis/chapters/intro.tex", b"Intro"),
+        ],
+    );
+    let picked = publish_template(
+        &root,
+        &[],
+        TemplateSource::Archive(&archive),
+        draft("Picked"),
+    )
+    .unwrap();
+    assert_eq!(
+        read_manifest(&root.join(&picked)).unwrap().main_doc,
+        "main.tex"
+    );
+    assert!(root
+        .join(&picked)
+        .join("files/chapters/intro.tex")
+        .is_file());
+
+    let online = publish_template(
+        &root,
+        &[],
+        TemplateSource::OnlineProject(&archive),
+        TemplateDraft {
+            name: "Online".into(),
+            main_doc: Some("thesis/main.tex".into()),
+            ..TemplateDraft::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        read_manifest(&root.join(&online)).unwrap().main_doc,
+        "thesis/main.tex"
+    );
+    assert!(root
+        .join(&online)
+        .join("files/thesis/chapters/intro.tex")
+        .is_file());
+}

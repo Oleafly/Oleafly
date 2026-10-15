@@ -44,6 +44,10 @@ pub(crate) struct TemplateDraft {
 pub(crate) enum TemplateSource<'a> {
     /// A ZIP archive. A single wrapping folder is unwrapped.
     Archive(&'a Path),
+    /// A project archive downloaded from an online account. Its layout is
+    /// kept exactly, so the main file path the server gave stays valid and
+    /// paths written from the project root still resolve.
+    OnlineProject(&'a Path),
     /// A folder someone picked. A single wrapping folder is unwrapped.
     Folder(&'a Path),
     /// A project's own folder. Its project.json stays behind.
@@ -90,6 +94,9 @@ fn stage_and_publish(
         TemplateSource::Archive(archive) => {
             crate::project::extract_zip_for_import(archive, &files)?;
             crate::project::flatten_single_root_folder(&files)?;
+        }
+        TemplateSource::OnlineProject(archive) => {
+            crate::project::extract_zip_for_import(archive, &files)?;
         }
         TemplateSource::Folder(folder) => {
             refuse_enclosing_folder(folder, custom_root)?;

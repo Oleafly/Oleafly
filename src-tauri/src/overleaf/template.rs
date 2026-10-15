@@ -420,7 +420,7 @@ async fn download_and_publish(
                 custom_templates::publish_template(
                     &custom_root,
                     &reserved,
-                    TemplateSource::Archive(&archive),
+                    TemplateSource::OnlineProject(&archive),
                     draft,
                 )
             })
