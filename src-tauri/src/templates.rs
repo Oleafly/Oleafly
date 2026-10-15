@@ -486,6 +486,14 @@ pub(crate) fn custom_templates_root() -> Result<PathBuf, String> {
     Ok(crate::paths::templates_data_root()?.join("custom"))
 }
 
+/// `shipped_template_ids` off the async runtime: listing reads every template
+/// folder on disk.
+pub(crate) async fn shipped_template_ids_off_thread(app: AppHandle) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || shipped_template_ids(&app))
+        .await
+        .map_err(|error| format!("failed to list templates: {error}"))
+}
+
 /// Ids of bundled and downloaded templates. They stay reserved so a custom
 /// template can never shadow, or be shadowed by, a shipped one.
 pub(crate) fn shipped_template_ids(app: &AppHandle) -> Vec<String> {

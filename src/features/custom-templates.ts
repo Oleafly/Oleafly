@@ -36,7 +36,9 @@ export async function projectPreviewPng(projectId: string): Promise<string | nul
 
 /** A starting name for a template made from a ZIP or a folder. */
 export function templateNameFromPath(path: string): string {
-  return basename(path.replace(/[\\/]+$/, ""))
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end -= 1;
+  return basename(path.slice(0, end))
     .replace(/\.zip$/i, "")
     .trim();
 }

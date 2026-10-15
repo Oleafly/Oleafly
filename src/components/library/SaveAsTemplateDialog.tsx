@@ -46,11 +46,11 @@ export function SaveAsTemplateDialog() {
       const id = await saveProjectTemplate(current.projectId, templateName);
       close();
       announceSavedTemplate(id, templateName);
-    } catch (failure) {
-      void logError("save project as template", failure);
+    } catch (error_) {
+      void logError("save project as template", error_);
       setError(
-        decodeAppError(failure)
-          ? describeError(failure)
+        decodeAppError(error_)
+          ? describeError(error_)
           : t(($) => $.library.customTemplates.saveFailed),
       );
     } finally {

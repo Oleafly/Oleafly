@@ -119,13 +119,13 @@ export function TemplateImportDialog({
       const id = await work();
       if (session !== sessionRef.current) return;
       onImported(id, savedName);
-    } catch (failure) {
+    } catch (error_) {
       if (session !== sessionRef.current) return;
-      void logError("import template", failure);
-      if (isOverleafError(failure, "signed_out") || isOverleafError(failure, "session_expired")) {
+      void logError("import template", error_);
+      if (isOverleafError(error_, "signed_out") || isOverleafError(error_, "session_expired")) {
         setNeedsSignIn(true);
       }
-      setError(describeError(failure) || t(($) => $.library.customTemplates.import.failed));
+      setError(describeError(error_) || t(($) => $.library.customTemplates.import.failed));
     } finally {
       busyRef.current = false;
       if (session === sessionRef.current) setBusy(false);
@@ -158,9 +158,9 @@ export function TemplateImportDialog({
       setPath(picked);
       setName(templateNameFromPath(picked));
       setView("name");
-    } catch (failure) {
-      void logError("choose a template source", failure);
-      setError(describeError(failure));
+    } catch (error_) {
+      void logError("choose a template source", error_);
+      setError(describeError(error_));
     }
   };
 
@@ -189,10 +189,10 @@ export function TemplateImportDialog({
       setName(found.title);
       if (found.hasPdf) {
         setPreviewLoading(true);
-        overleafTemplatePdf(found.server, found.link)
+        void overleafTemplatePdf(found.server, found.link)
           .then(firstPagePng)
-          .catch((failure: unknown) => {
-            void logError("template link preview", failure);
+          .catch((error_: unknown) => {
+            void logError("template link preview", error_);
             return null;
           })
           .then((uri) => {
@@ -201,10 +201,10 @@ export function TemplateImportDialog({
             setPreviewLoading(false);
           });
       }
-    } catch (failure) {
+    } catch (error_) {
       if (session !== sessionRef.current) return;
-      void logError("look up a template link", failure);
-      setError(describeError(failure));
+      void logError("look up a template link", error_);
+      setError(describeError(error_));
     } finally {
       busyRef.current = false;
       if (session === sessionRef.current) setBusy(false);
@@ -221,8 +221,8 @@ export function TemplateImportDialog({
         setNeedsSignIn(true);
         return;
       }
-    } catch (failure) {
-      void logError("overleaf status", failure);
+    } catch (error_) {
+      void logError("overleaf status", error_);
     }
     await run(
       () => overleafImportTemplate(found.server, found.link, templateName, pngBase64(preview)),
@@ -239,10 +239,10 @@ export function TemplateImportDialog({
       await overleafSignIn(found.server, t(($) => $.library.import.overleaf.signInWindowTitle));
       void useOverleafImportStore.getState().refreshStatus();
       setNeedsSignIn(false);
-    } catch (failure) {
-      if (!isOverleafError(failure, "sign_in_cancelled")) {
-        void logError("overleaf sign in", failure);
-        setError(describeError(failure));
+    } catch (error_) {
+      if (!isOverleafError(error_, "sign_in_cancelled")) {
+        void logError("overleaf sign in", error_);
+        setError(describeError(error_));
       }
       return;
     } finally {

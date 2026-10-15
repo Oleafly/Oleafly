@@ -339,14 +339,6 @@ pub(crate) fn decode_preview(base64: Option<&str>) -> Option<Vec<u8>> {
     (bytes.len() <= PREVIEW_LIMIT && bytes.starts_with(PNG_SIGNATURE)).then_some(bytes)
 }
 
-async fn blocking<T: Send + 'static>(
-    work: impl FnOnce() -> Result<T, String> + Send + 'static,
-) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(work)
-        .await
-        .map_err(|error| error.to_string())?
-}
-
 /// Import a ZIP or a folder as a custom template.
 #[tauri::command]
 pub async fn import_template_from_path(
@@ -354,8 +346,8 @@ pub async fn import_template_from_path(
     path: String,
     name: String,
 ) -> Result<String, String> {
-    let reserved = crate::templates::shipped_template_ids(&app);
-    blocking(move || {
+    let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
+    tauri::async_runtime::spawn_blocking(move || {
         let source = PathBuf::from(&path);
         let custom_root = crate::templates::custom_templates_root()?;
         let metadata =
@@ -376,6 +368,7 @@ pub async fn import_template_from_path(
         )
     })
     .await
+    .map_err(|error| error.to_string())?
 }
 
 /// Save a project's files as a custom template. The template keeps the
@@ -388,8 +381,8 @@ pub async fn save_project_as_template(
     name: String,
     preview_png_base64: Option<String>,
 ) -> Result<String, String> {
-    let reserved = crate::templates::shipped_template_ids(&app);
-    blocking(move || {
+    let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
+    tauri::async_runtime::spawn_blocking(move || {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let meta = crate::project::read_meta(&project_id)?;
         let location = crate::project_location::locate(&project_id)?;
@@ -411,6 +404,7 @@ pub async fn save_project_as_template(
         )
     })
     .await
+    .map_err(|error| error.to_string())?
 }
 
 #[cfg(test)]

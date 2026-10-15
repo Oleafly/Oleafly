@@ -483,7 +483,7 @@ pub async fn overleaf_import_template(
     name: String,
     preview_png_base64: Option<String>,
 ) -> Result<String, String> {
-    let reserved = crate::templates::shipped_template_ids(&app);
+    let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
     import_template(server.as_deref(), &link, name, preview_png_base64, reserved).await
 }
 
@@ -532,7 +532,7 @@ pub async fn overleaf_save_project_as_template(
     project_id: String,
     name: String,
 ) -> Result<String, String> {
-    let reserved = crate::templates::shipped_template_ids(&app);
+    let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
     save_project_as_template(server.as_deref(), &project_id, name, reserved).await
 }
 
