@@ -238,7 +238,6 @@ pub struct LiveProject {
     resync_needed: bool,
     unreadable: Vec<(u64, Option<DeviceId>)>,
     waiting: VersionVector,
-    held_back: Vec<ImportBlobMetadata>,
     resync: ResyncGuard,
     dir: Option<PathBuf>,
     damaged: bool,
@@ -256,23 +255,27 @@ const FIRST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(120
 const LONGEST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(3600);
 
 // Reloads from the server's snapshot for changes held back by a missing
-// dependency. One reload per set of missing dependencies: more changes
-// built on the same missing one don't ask again. A new set waits at least
-// two minutes after the last reload, doubling up to an hour, so updates
-// with made-up dependencies can't keep everyone reloading. All of it starts
-// over once nothing is held back.
+// dependency. The first reload goes at once. The snapshot it gets may still
+// predate the missing change, so another may follow, but only after a gap
+// of two minutes that doubles up to an hour, so neither an honest writer
+// building on a refused change nor updates with made-up dependencies can
+// keep anyone reloading. It all starts over once nothing is held back.
 struct ResyncGuard {
-    tried_for: Option<BTreeSet<(u64, i32)>>,
     next: Option<std::time::Instant>,
     gap: std::time::Duration,
+    first_gap: std::time::Duration,
+    #[cfg(test)]
+    reloads: usize,
 }
 
 impl Default for ResyncGuard {
     fn default() -> ResyncGuard {
         ResyncGuard {
-            tried_for: None,
             next: None,
             gap: FIRST_RESYNC_GAP,
+            first_gap: FIRST_RESYNC_GAP,
+            #[cfg(test)]
+            reloads: 0,
         }
     }
 }
@@ -469,7 +472,6 @@ impl LiveProject {
             resync_needed: false,
             unreadable: Vec::new(),
             waiting: VersionVector::new(),
-            held_back: Vec::new(),
             resync: ResyncGuard::default(),
             dir: None,
             damaged: false,
@@ -957,8 +959,6 @@ impl LiveProject {
     fn note_waiting(&mut self, waiting: &[(u64, i32)]) {
         advance(&mut self.waiting, waiting);
         let have = self.doc.version();
-        self.held_back
-            .retain(|meta| !have.includes_vv(&meta.partial_end_vv));
         let drained: Vec<u64> = self
             .waiting
             .iter()
@@ -975,36 +975,9 @@ impl LiveProject {
             self.waiting = left;
         }
         if !self.missing_changes() {
-            self.held_back.clear();
-            self.resync = ResyncGuard::default();
+            self.resync.next = None;
+            self.resync.gap = self.resync.first_gap;
         }
-    }
-
-    // What the held-back changes build on that neither the document nor
-    // another held-back change holds.
-    fn missing_dependencies(&self) -> BTreeSet<(u64, i32)> {
-        let have = self.doc.version();
-        let held = |peer: u64, counter: i32| {
-            have.get(&peer).is_some_and(|end| counter < *end)
-                || self.held_back.iter().any(|meta| {
-                    meta.partial_start_vv.get(&peer).copied().unwrap_or(0) <= counter
-                        && counter < meta.partial_end_vv.get(&peer).copied().unwrap_or(0)
-                })
-        };
-        let mut missing = BTreeSet::new();
-        for meta in &self.held_back {
-            for id in meta.start_frontiers.iter() {
-                if !held(id.peer, id.counter) {
-                    missing.insert((id.peer, id.counter));
-                }
-            }
-            for (peer, start) in meta.partial_start_vv.iter() {
-                if *start > 0 && !held(*peer, start - 1) {
-                    missing.insert((*peer, start - 1));
-                }
-            }
-        }
-        missing
     }
 
     // Changes Loro holds back because something they build on never
@@ -1019,17 +992,28 @@ impl LiveProject {
     }
 
     pub fn request_resync(&mut self, now: std::time::Instant) -> bool {
-        let missing = self.missing_dependencies();
-        if self.resync.tried_for.as_ref() == Some(&missing)
-            || self.resync.next.is_some_and(|next| now < next)
-        {
+        if self.resync.next.is_some_and(|next| now < next) {
             return false;
         }
-        self.resync.tried_for = Some(missing);
         self.resync.next = Some(now + self.resync.gap);
         self.resync.gap = (self.resync.gap * 2).min(LONGEST_RESYNC_GAP);
         self.resync_needed = true;
+        #[cfg(test)]
+        {
+            self.resync.reloads += 1;
+        }
         true
+    }
+
+    #[cfg(test)]
+    pub(crate) fn resync_after(&mut self, gap: std::time::Duration) {
+        self.resync.gap = gap;
+        self.resync.first_gap = gap;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reloads(&self) -> usize {
+        self.resync.reloads
     }
 
     pub fn diverged(&self, head: u64, at_since: Option<BatchId>) -> bool {
@@ -1159,14 +1143,6 @@ impl LiveProject {
         let fresh = readable;
         self.witness_arrivals(&fresh);
         advance(&mut self.confirmed, &imported.arrived);
-        let have = self.doc.version();
-        self.held_back.extend(
-            fresh
-                .iter()
-                .filter_map(|received| received.meta.as_ref())
-                .filter(|meta| !have.includes_vv(&meta.partial_end_vv))
-                .cloned(),
-        );
         self.note_waiting(&imported.waiting);
         for received in &fresh {
             if let Some(meta) = &received.meta {
@@ -2443,49 +2419,39 @@ mod tests {
     }
 
     #[test]
-    fn changes_built_on_one_missing_change_ask_for_one_reload_and_a_new_gap_waits_its_turn() {
+    fn reloads_for_held_back_changes_are_spaced_out_and_start_over_once_nothing_waits() {
         let (mut bob, mut alice, main) = pair();
         let mut carol = LiveProject::new(
             ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
             0,
             ProjectRole::Editor,
         );
-        let base = sent_change(&mut bob, &main, " base", 1);
+        sent_change(&mut bob, &main, " base", 1);
         let first = sent_change(&mut bob, &main, " one", 2);
         alice.skip_update(1);
         assert!(alice.import_update(2, &first).unwrap());
         assert!(alice.missing_changes());
         let start = std::time::Instant::now();
+        let after = |seconds: u64| start + std::time::Duration::from_secs(seconds);
         assert!(alice.request_resync(start));
-        let minutes = |count: u64| start + std::time::Duration::from_secs(60 * count);
         for (seq, word) in [(3, " two"), (4, " three"), (5, " four")] {
             let later = sent_change(&mut bob, &main, word, seq);
             alice.import_update(seq, &later).unwrap();
-            assert!(!alice.request_resync(minutes(seq)), "{word}");
+            assert!(!alice.request_resync(after(20 * seq)), "{word}");
         }
-        let unseen = sent_change(&mut carol, &main, " unseen", 6);
+        assert!(alice.request_resync(after(121)));
+        assert!(!alice.request_resync(after(121 + 239)));
+        assert!(alice.request_resync(after(121 + 241)));
+        let mut server = ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap();
+        server.import(&carol.doc().snapshot().unwrap()).unwrap();
+        alice.rebase(5, &server.snapshot().unwrap()).unwrap();
+        assert!(!alice.missing_changes());
+        sent_change(&mut carol, &main, " unseen", 6);
         let built_on_it = sent_change(&mut carol, &main, " carol", 7);
         alice.skip_update(6);
         alice.import_update(7, &built_on_it).unwrap();
-        assert!(!alice.request_resync(start + std::time::Duration::from_secs(60)));
-        assert!(alice.request_resync(start + std::time::Duration::from_secs(121)));
-        let third = sent_change(&mut carol, &main, " more", 8);
-        alice.import_update(8, &third).unwrap();
-        let _ = (base, unseen);
-        let mut server = ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap();
-        server.import(&carol.doc().snapshot().unwrap()).unwrap();
-        alice.rebase(8, &server.snapshot().unwrap()).unwrap();
-        assert!(!alice.missing_changes());
-        assert_eq!(
-            alice.doc().text(&main).unwrap(),
-            server.text(&main).unwrap()
-        );
-        sent_change(&mut carol, &main, " again", 9);
-        let built_on_that = sent_change(&mut carol, &main, " end", 10);
-        alice.skip_update(9);
-        alice.import_update(10, &built_on_that).unwrap();
         assert!(alice.missing_changes());
-        assert!(alice.request_resync(start + std::time::Duration::from_secs(122)));
+        assert!(alice.request_resync(after(121 + 242)));
     }
 
     #[test]
