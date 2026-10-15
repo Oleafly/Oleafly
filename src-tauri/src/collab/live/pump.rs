@@ -10,7 +10,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::payloads::{
     ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
-    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload, RolePayload,
 };
 use super::session::{guard, lock, Active, ACTIVE};
 
@@ -122,6 +122,7 @@ pub(super) async fn pump(
                     device_id,
                 });
             }
+            LiveEvent::ProjectFull => on_project_full(&active),
             LiveEvent::Unsendable => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration stopped sending changes in project {}: one edit is larger than the server accepts in a single change",
@@ -153,6 +154,19 @@ pub(super) async fn pump(
             }
         }
     }
+}
+
+// The server refused a change because the project reached its size limit,
+// so changes stay on this computer until the limit is raised. The sync
+// engine says so once per session.
+pub(super) fn on_project_full(active: &Active) {
+    let _ = crate::project::append_app_log(format!(
+        "Live collaboration in project {} reached the server's size limit; changes stay on this computer for now",
+        active.project_id
+    ));
+    active.host.project_full(ProjectFullPayload {
+        project_id: active.project_id.clone(),
+    });
 }
 
 async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_collab::CollabPaths) {
