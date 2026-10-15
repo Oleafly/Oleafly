@@ -23,6 +23,12 @@ export class SharedReadOnlyError extends Error {
   }
 }
 
+// This person can only view the live shared project that is open.
+export function sharedViewOnly(projectId: string | null): boolean {
+  const gate = useCollabEditorGate.getState();
+  return projectId !== null && gate.projectId === projectId && gate.viewer;
+}
+
 export async function writeSharedText(
   projectId: string,
   path: string,

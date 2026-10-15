@@ -103,6 +103,8 @@ function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number)
       return { kind: "serverTooOld", at, server: memory.server };
     case "server_changed":
       return { kind: "serverChanged", at, server: memory.server };
+    case "failed":
+      return { kind: "failed", at };
     default:
       return null;
   }

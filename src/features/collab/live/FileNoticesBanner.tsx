@@ -75,6 +75,35 @@ function TooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
   );
 }
 
+// A figure that would push the whole project past the server's limit. It
+// goes up by itself once the limit is raised and the upload is tried again.
+function ProjectTooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
+  const { t } = useTranslation(["collab"]);
+  const retrying = useFileNotices((state) => state.retrying);
+  const name = basename(file.path);
+  const message =
+    file.limit === null
+      ? t(($) => $.collab.files.projectTooLargeUnknown, { file: name })
+      : t(($) => $.collab.files.projectTooLarge, { file: name, limit: formatBytes(file.limit) });
+  return (
+    <WorkspaceBanner tone="warning" data-testid="collab-upload-project-too-large">
+      <FileWarning aria-hidden className="size-3.5 shrink-0" />
+      <PathMessage paths={[file.path]}>{message}</PathMessage>
+      <span className="flex shrink-0 items-center gap-1">
+        <WorkspaceBannerButton
+          tone="warning"
+          disabled={retrying}
+          onClick={() => void useFileNotices.getState().retry()}
+        >
+          {retrying ? <Spinner size="xs" /> : null}
+          {t(($) => $.collab.files.retry)}
+        </WorkspaceBannerButton>
+        <Dismiss tone="warning" onDismiss={() => useFileNotices.getState().dismissUpload(file.path)} />
+      </span>
+    </WorkspaceBanner>
+  );
+}
+
 function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: string }>) {
   const { t } = useTranslation(["collab"]);
   const values = { name, file: basename(file.path), copy: basename(file.copy) };
@@ -156,7 +185,13 @@ export function FileNoticesBanner() {
   const failed = notices.uploads.filter((file) => file.state === "failed");
   const waiting = notices.uploads.filter((file) => file.state === "waiting");
   const tooLarge = notices.uploads.filter((file) => file.state === "too_large");
-  const quiet = failed.length === 0 && waiting.length === 0 && tooLarge.length === 0 && notices.kept.length === 0;
+  const projectFull = notices.uploads.filter((file) => file.state === "project_too_large");
+  const quiet =
+    failed.length === 0 &&
+    waiting.length === 0 &&
+    tooLarge.length === 0 &&
+    projectFull.length === 0 &&
+    notices.kept.length === 0;
   if (quiet && !notices.offer && !notices.broughtIn) return null;
   const someone = t(($) => $.collab.toolbar.unknownPerson);
   return (
@@ -167,6 +202,9 @@ export function FileNoticesBanner() {
       {waiting.length > 0 ? <UploadRow files={waiting} failed={false} /> : null}
       {tooLarge.map((file) => (
         <TooLargeRow key={file.path} file={file} />
+      ))}
+      {projectFull.map((file) => (
+        <ProjectTooLargeRow key={file.path} file={file} />
       ))}
       {notices.kept.map((file) => (
         <KeptRow key={file.id} file={file} name={(file.by ? names.get(file.by) : undefined) || someone} />

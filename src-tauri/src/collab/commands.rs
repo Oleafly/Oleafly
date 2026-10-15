@@ -136,6 +136,9 @@ pub trait CollabHost: Send + Sync {
     fn signed_in(&self);
     fn device_name(&self) -> String;
     fn platform(&self) -> String;
+    // Sharing moved these files to the names the shared layout gives them.
+    fn renamed_on_disk(&self, _project_id: &str, _renamed: &[(String, String)]) {}
+    fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
 }
 
 pub struct AppHost {
@@ -189,6 +192,15 @@ impl CollabHost for AppHost {
 
     fn platform(&self) -> String {
         std::env::consts::OS.to_string()
+    }
+
+    fn renamed_on_disk(&self, project_id: &str, renamed: &[(String, String)]) {
+        let live = crate::collab::live::app_host(self.app.clone());
+        crate::collab::live::announce_renames(live.as_ref(), project_id, renamed);
+    }
+
+    fn settings_changed(&self, applied: crate::collab::settings::Applied) {
+        crate::collab::live::app_host(self.app.clone()).settings_changed(applied);
     }
 }
 

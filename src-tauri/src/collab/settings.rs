@@ -556,6 +556,37 @@ pub fn follow_project(
     })
 }
 
+// Points the project's main document at the name a move on disk gave it,
+// for example when sharing renamed `main.tex` beside `Main.tex` to fit the
+// shared layout, so the compile still finds it. Returns what changed, with
+// a notice for the activity.
+pub fn follow_renamed_main(project_id: &str, renamed: &[(String, String)]) -> Option<Applied> {
+    let moved = |main: &str| {
+        renamed
+            .iter()
+            .find_map(|(from, to)| super::disk::moved_key(main, from, to))
+    };
+    moved(&crate::project::read_meta(project_id).ok()?.main_doc)?;
+    let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
+    let ((), meta) = crate::project::follow_shared_settings(project_id, |meta| {
+        let changed = moved(&meta.main_doc)
+            .is_some_and(|path| !adopt(meta, &Settings::new(), Some(&path)).is_empty());
+        Ok(((), changed))
+    })
+    .ok()?;
+    let meta = meta?;
+    Some(Applied {
+        project_id: project_id.to_owned(),
+        notices: vec![SettingsChangedPayload {
+            project_id: project_id.to_owned(),
+            account_id: None,
+            changes: vec![notice(&meta, Setting::MainDoc)],
+        }],
+        meta: Some(meta),
+        pushed: false,
+    })
+}
+
 fn role_of(project_id: &str) -> Option<ProjectRole> {
     if let Some(role) = super::live::read_live(project_id, LiveProject::role) {
         return Some(role);
@@ -981,6 +1012,32 @@ mod tests {
         assert_eq!(bob.meta().main_doc, "thesis.tex");
         assert_eq!(raw(&bob.settings(), Setting::MainDoc), Some(main));
         assert!(!applied.pushed);
+    }
+
+    #[test]
+    fn the_main_document_follows_a_move_that_takes_it_along_and_says_so() {
+        let library = TempLibrary::new();
+        library.project("moved-main", &[("con/thesis.tex", "x\n")]);
+        crate::project::write_meta("moved-main", &meta("con/thesis.tex", "latexmk")).unwrap();
+        let elsewhere = [("refs.bib".to_owned(), "unnamed-1".to_owned())];
+        assert!(follow_renamed_main("moved-main", &elsewhere).is_none());
+        let moved = [("con".to_owned(), "unnamed-2".to_owned())];
+        let applied = follow_renamed_main("moved-main", &moved).expect("the main file moved");
+        let here = crate::project::read_meta("moved-main").unwrap();
+        assert_eq!(here.main_doc, "unnamed-2/thesis.tex");
+        assert_eq!(here.engine, "latexmk");
+        assert_eq!(applied.meta.map(|meta| meta.main_doc), Some(here.main_doc));
+        assert_eq!(
+            applied.notices,
+            vec![SettingsChangedPayload {
+                project_id: "moved-main".to_owned(),
+                account_id: None,
+                changes: vec![SettingNotice::MainDocument {
+                    path: "unnamed-2/thesis.tex".to_owned()
+                }],
+            }]
+        );
+        assert!(follow_renamed_main("moved-main", &moved).is_none());
     }
 
     #[test]

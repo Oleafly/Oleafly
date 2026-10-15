@@ -6,7 +6,8 @@ export interface LiveSessionsOptions {
   readOnly: () => boolean;
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
-  detached(path: string, text: string, edited: boolean): void;
+  // `shared` is the text Rust last confirmed, the base to merge `text` from.
+  detached(path: string, text: string, edited: boolean, shared: string): void;
   discarded?(path: string, reason: DiscardReason): void;
   // Whether a tab still shows the file. A file whose tab closed and opened
   // again before its typing was confirmed keeps its session.
@@ -15,6 +16,16 @@ export interface LiveSessionsOptions {
 }
 
 const SETTLE_TIMEOUT_MS = 3_000;
+
+// The confirmed text, or the session's own text when a broken state can't
+// rebuild it, which only loses the typing a merge would have kept.
+function sharedText(session: RemoteDocumentSession): string {
+  try {
+    return session.confirmed();
+  } catch {
+    return session.text();
+  }
+}
 
 export class LiveSessions {
   private readonly sessions = new Map<string, RemoteDocumentSession>();
@@ -113,9 +124,16 @@ export class LiveSessions {
     });
   }
 
+  // Live editing stopped. Typing Rust never confirmed goes back as unsaved,
+  // so it still reaches the disk; the store only holds it as saved text.
   close(): void {
     this.closed = true;
-    for (const session of this.sessions.values()) session.close();
+    for (const [path, session] of this.sessions) {
+      const edited = session.unconfirmed;
+      const shared = edited ? sharedText(session) : null;
+      session.close();
+      if (shared !== null) this.options.detached(path, session.text(), true, shared);
+    }
     this.sessions.clear();
     this.local.clear();
   }
@@ -125,9 +143,10 @@ export class LiveSessions {
     // Typing Rust never confirmed has to be saved locally now. A reopen keeps
     // it as pending, so "synchronized" alone can't tell.
     const edited = session.unconfirmed;
+    const shared = sharedText(session);
     this.sessions.delete(path);
     this.local.add(path);
     session.close();
-    this.options.detached(path, session.text(), edited);
+    this.options.detached(path, session.text(), edited, shared);
   }
 }

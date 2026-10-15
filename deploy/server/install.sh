@@ -637,24 +637,40 @@ download_release() {
 # Copies every release file to a folder inside the install first, and moves
 # them into place only when all of them are there, so a full disk can't leave
 # a truncated docker-compose.yml or files from two releases. placed is 1 once
-# a file was replaced. set -e doesn't stop a function its caller tests with
-# if or ||, so each step returns 1 itself.
+# a file was replaced. Errors go to $tmp/place.log for the caller to show.
+# set -e doesn't stop a function its caller tests with if or ||, so each step
+# returns 1 itself.
 place_release_files() {
 	placed=0
-	as_root mkdir -p "$dir" || return 1
-	as_root chmod 755 "$dir" || return 1
+	: >"$tmp/place.log"
+	as_root mkdir -p "$dir" 2>>"$tmp/place.log" || return 1
+	as_root chmod 755 "$dir" 2>>"$tmp/place.log" || return 1
 	incoming=$dir/.release-incoming
-	as_root rm -rf "$incoming" || return 1
-	as_root mkdir -m 700 "$incoming" || return 1
-	if ! stage_release_files "$incoming"; then
+	as_root rm -rf "$incoming" 2>>"$tmp/place.log" || return 1
+	as_root mkdir -m 700 "$incoming" 2>>"$tmp/place.log" || return 1
+	if ! stage_release_files "$incoming" 2>>"$tmp/place.log"; then
 		as_root rm -rf "$incoming"
 		return 1
 	fi
-	for file in docker-compose.yml Caddyfile litestream.yml .env.example install.sh; do
-		as_root mv -f "$incoming/$file" "$dir/$file" || return 1
+	# .env.example goes last. Nothing reads it, and every file moved before
+	# it has a .previous copy, so a failed move can always be undone.
+	for file in docker-compose.yml Caddyfile litestream.yml install.sh .env.example; do
+		if ! as_root mv -f "$incoming/$file" "$dir/$file" 2>>"$tmp/place.log"; then
+			as_root rm -rf "$incoming"
+			return 1
+		fi
 		placed=1
 	done
 	as_root rmdir "$incoming" || true
+}
+
+# The advice after a failed write: only a full disk is about space.
+next_step_after() {
+	if grep -Eqi 'no space left|quota' "$1" 2>/dev/null; then
+		printf '%s' "Free some disk space, then run the installer again."
+	else
+		printf '%s' "Fix the problem above, then run the installer again."
+	fi
 }
 
 stage_release_files() {
@@ -1337,12 +1353,16 @@ back_up_data() {
 	caddy_image=$(caddy_image_in "$tmp/release/docker-compose.yml")
 	[ -n "$caddy_image" ] || fail "The release's docker-compose.yml doesn't name a Caddy image, which the backup uses. Nothing was changed." "Report this at $issues_url"
 	backup_name=oleafly-data-$(date -u +%Y%m%dT%H%M%SZ)-$before.tar.gz
-	as_root install -d -m 700 "$dir/backups" || fail "Couldn't make $dir/backups for the copy of the data. Nothing was changed." "Check that the disk isn't full, then run the installer again."
+	if ! as_root install -d -m 700 "$dir/backups" 2>"$tmp/copy.log"; then
+		cat "$tmp/copy.log" >&2
+		fail "Couldn't make $dir/backups for the copy of the data. Nothing was changed." "$(next_step_after "$tmp/copy.log")"
+	fi
 	# These copies come before the stop, so a full disk ends the update while
 	# the server still runs.
 	for file in $previous_files; do
-		if [ -f "$dir/$file" ]; then
-			as_root cp -p "$dir/$file" "$dir/$file.previous" || fail "Couldn't keep a copy of $dir/$file before the update. Nothing was changed." "Check that the disk isn't full, then run the installer again."
+		if [ -f "$dir/$file" ] && ! as_root cp -p "$dir/$file" "$dir/$file.previous" 2>"$tmp/copy.log"; then
+			cat "$tmp/copy.log" >&2
+			fail "Couldn't keep a copy of $dir/$file before the update. Nothing was changed." "$(next_step_after "$tmp/copy.log")"
 		fi
 	done
 	item "Stopping the server to copy its data."
@@ -1355,8 +1375,11 @@ back_up_data() {
 	if ! docker_cmd run --rm -v "$data_volume:/data:ro" -v "$dir/backups:/backup" --entrypoint tar "$caddy_image" -czf "/backup/$backup_name" -C /data . >"$tmp/compose.log" 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
 		as_root rm -f "$dir/backups/$backup_name"
-		compose start >/dev/null 2>&1 || true
-		fail "Couldn't copy the data before the update. Its message is above." "The server runs $before again, and nothing else was changed. Check that this machine has free disk space, then run the installer again."
+		next=$(next_step_after "$tmp/compose.log")
+		if compose start >/dev/null 2>&1; then
+			fail "Couldn't copy the data before the update. Its message is above." "The server runs $before again, and nothing else was changed." "$next"
+		fi
+		fail "Couldn't copy the data before the update. Its message is above." "Nothing else was changed, but Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start" "$next"
 	fi
 	item "Copied the data to $dir/backups/$backup_name"
 	# An old copy that can't be removed doesn't stop the update.
@@ -1473,13 +1496,15 @@ refresh_install() {
 		back_up_data
 	fi
 	if ! place_release_files; then
+		tail -n 5 "$tmp/place.log" >&2
+		next=$(next_step_after "$tmp/place.log")
 		if [ "$stopped_for_backup" = 1 ]; then
 			# The new release never started, so the data is as it was. Only
 			# files to put back, if some were already replaced.
 			files_now="None of the installed files changed."
 			if [ "$placed" = 1 ]; then
 				if ! restore_previous_files; then
-					fail "Couldn't put the new release's files in $dir, or the previous ones back. Its message is above." "To put the previous files back, run:
+					fail "Couldn't put the new release's files in $dir, or the previous ones back. Its message is above." "The server is stopped. To put the previous files back and start it, run:
   cd $dir
   for file in $previous_files; do sudo cp \$file.previous \$file; done
   sudo docker compose start"
@@ -1491,9 +1516,9 @@ refresh_install() {
 			else
 				again="Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start"
 			fi
-			fail "Couldn't put the new release's files in $dir. Its message is above." "$files_now $again" "Free some disk space, then run the installer again."
+			fail "Couldn't put the new release's files in $dir. Its message is above." "$files_now $again" "$next"
 		fi
-		fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
+		fail "Couldn't put the release files in $dir. Its message is above." "$next"
 	fi
 	heading "Starting the server"
 	start_server
@@ -1556,7 +1581,10 @@ cmd_install() {
 	download_release
 	collect_settings
 	heading "Installing"
-	place_release_files || fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
+	if ! place_release_files; then
+		tail -n 5 "$tmp/place.log" >&2
+		fail "Couldn't put the release files in $dir. Its message is above." "$(next_step_after "$tmp/place.log")"
+	fi
 	write_env
 	heading "Starting the server"
 	pull_images "$dir/docker-compose.yml"

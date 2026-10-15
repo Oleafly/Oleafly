@@ -16,9 +16,9 @@
         "label": "Switch on a server card. Turns on or off this person's own emails about projects other people share with them.",
         "noMail": "Shared with you is a section of the library. Use the same words as that section."
       },
-      "paused": "Badge on a server card when an admin has suspended this person's account. Short, like Signed out.",
+      "suspended": "Badge on a server card when an admin has suspended this person's account. Short, like Signed out.",
       "noAccess": "Badge on a server card when this person's account was removed from the server. Short, like Signed out.",
-      "pausedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
+      "suspendedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
       "endedHint": "Under the server name when this person was removed from the server. {{server}} is the server's name. There is no Sign in button.",
       "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more."
     },

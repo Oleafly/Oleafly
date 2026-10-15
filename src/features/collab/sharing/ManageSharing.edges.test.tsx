@@ -86,6 +86,16 @@ afterEach(() => {
   useShareDialog.setState({ projectId: null, fromCopy: false });
 });
 
+describe("ManageSharing people list", () => {
+  it("marks someone removed from the server or suspended on it", async () => {
+    mocks.collabMembersList.mockResolvedValue([projectMember(BOB, "owner"), alice, projectMember({ ...CAROL, active: false })]);
+    renderManage();
+    const carol = (await screen.findByText("Carol Diaz")).closest("li") as HTMLElement;
+    expect(carol).toHaveTextContent(manage.inactive);
+    expect(screen.getAllByText(manage.inactive)).toHaveLength(1);
+  });
+});
+
 describe("ManageSharing people search", () => {
   it("explains a directory search that fails", async () => {
     mocks.collabPeopleSearch.mockRejectedValue(collabError("unreachable"));

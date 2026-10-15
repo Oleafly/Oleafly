@@ -291,11 +291,12 @@ fn build_document(root: &Path, meta: &crate::project::ProjectMeta) -> Result<Bui
     }
     let mut blobs = BTreeMap::new();
     let mut hashes = BTreeMap::new();
+    let mut files: HashMap<&str, String> = HashMap::new();
     for (path, _) in &scan.files {
         let bytes = std::fs::read(root.join(path)).map_err(io)?;
         let hash = sha256_hex(&bytes);
         let parent = parent_id(&dirs, path);
-        match as_text(&bytes) {
+        let id = match as_text(&bytes) {
             Some(text) => {
                 let id = doc.add_node(
                     parent.as_deref(),
@@ -305,21 +306,33 @@ fn build_document(root: &Path, meta: &crate::project::ProjectMeta) -> Result<Bui
                     &text,
                 )?;
                 doc.set_crlf(&id, crlf_only(&bytes) == Some(true))?;
+                id
             }
             None => {
+                blobs.entry(hash.clone()).or_insert_with(|| path.clone());
                 doc.add_node(
                     parent.as_deref(),
                     &name_of(path),
                     NodeKind::Blob,
                     Some(&hash),
                     "",
-                )?;
-                blobs.entry(hash.clone()).or_insert_with(|| path.clone());
+                )?
             }
-        }
+        };
+        files.insert(path, id);
         hashes.insert(path.clone(), hash);
     }
-    super::settings::seed(&mut doc, meta)?;
+    // The settings name the main file by its node, so they look it up
+    // where the layout puts it, which differs when the layout renames it.
+    let layout = materialize::layout(&doc.nodes()?);
+    let mut seeded = meta.clone();
+    if let Some(placed) = files
+        .get(meta.main_doc.as_str())
+        .and_then(|id| layout.get(id))
+    {
+        seeded.main_doc = placed.path.clone();
+    }
+    super::settings::seed(&mut doc, &seeded)?;
     Ok(Built { doc, blobs, hashes })
 }
 
@@ -446,19 +459,34 @@ pub async fn share_project(
     let nodes = built.doc.nodes()?;
     let layout = materialize::layout(&nodes);
     let mut hashes = built.hashes;
+    let nothing_before = materialize::Layout::new();
+    let mut found = super::disk::FoundPaths::new(&nodes, &nothing_before);
+    let node_at: HashMap<&str, &str> = layout
+        .iter()
+        .map(|(id, placed)| (placed.path.as_str(), id.as_str()))
+        .collect();
     let wanted = layout
         .iter()
-        .filter_map(|(id, placed)| {
-            Some((super::disk::found_path(&nodes, id)?, placed.path.clone()))
-        })
+        .filter_map(|(id, placed)| Some((found.path(id)?, placed.path.clone())))
         .collect();
-    for (from, to) in super::disk::follow_layout(&root, wanted) {
-        super::disk::rekey_moved(&mut hashes, &from, &to);
+    let followed = super::disk::follow_layout(&root, wanted);
+    for (from, to) in &followed.moved {
+        super::disk::rekey_moved(&mut hashes, from, to);
     }
+    let owed: BTreeMap<String, String> = followed
+        .failed
+        .into_iter()
+        .filter_map(|(from, to)| Some((from, (*node_at.get(to.as_str())?).to_owned())))
+        .collect();
     let shared_settings = built.doc.settings();
     let mut live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
     live.save(&paths.document_dir(project_id)?)?;
-    DiskState { layout, hashes }.save(&paths.materializer_index_file(project_id)?)?;
+    DiskState {
+        layout,
+        hashes,
+        owed,
+    }
+    .save(&paths.materializer_index_file(project_id)?)?;
     let binding = ShareBinding {
         server_url: entry.url.clone(),
         server_id: server,
@@ -482,6 +510,12 @@ pub async fn share_project(
         let _ = crate::project::write_meta(project_id, &off);
     }
     let _ = crate::project::revoke_shell_escape_trust(project_id);
+    if !followed.moved.is_empty() {
+        host.renamed_on_disk(project_id, &followed.moved);
+        if let Some(applied) = super::settings::follow_renamed_main(project_id, &followed.moved) {
+            host.settings_changed(applied);
+        }
+    }
     Ok(info_from(&state.registry()?, project_id, &binding))
 }
 
@@ -721,7 +755,12 @@ async fn join_into(
         downloads.check()?;
         admit_writers(&mut live, peers);
         live.save(&paths.document_dir(&local_id)?)?;
-        DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
+        DiskState {
+            layout,
+            hashes,
+            owed: Default::default(),
+        }
+        .save(&paths.materializer_index_file(&local_id)?)?;
         super::settings::remember(
             &super::settings::base_file(paths, &local_id)?,
             &settings_base,
@@ -1282,6 +1321,121 @@ mod transfer_tests {
             std::fs::read_to_string(root.join("main.tex")).unwrap(),
             "hello\n"
         );
+    }
+
+    #[derive(Default)]
+    struct Heard {
+        renamed: std::sync::Mutex<Vec<(String, String)>>,
+        notices: std::sync::Mutex<Vec<super::super::settings::SettingsChangedPayload>>,
+    }
+
+    impl CollabHost for Heard {
+        fn open_browser(&self, url: &str) -> Result<(), CollabError> {
+            Browser.open_browser(url)
+        }
+        fn server_changed(&self, _: ServerId) {}
+        fn signed_in(&self) {}
+        fn device_name(&self) -> String {
+            Browser.device_name()
+        }
+        fn platform(&self) -> String {
+            Browser.platform()
+        }
+        fn renamed_on_disk(&self, _: &str, renamed: &[(String, String)]) {
+            self.renamed.lock().unwrap().extend(renamed.iter().cloned());
+        }
+        fn settings_changed(&self, applied: super::super::settings::Applied) {
+            self.notices.lock().unwrap().extend(applied.notices);
+        }
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn sharing_tells_the_window_what_it_renamed_and_follows_a_renamed_main_file() {
+        let library = TempLibrary::new();
+        let root = library.project(
+            "odd-main",
+            &[("aux.tex", "\\documentclass{article}\n"), ("con.bib", "@a")],
+        );
+        let mut meta = crate::project::read_meta("odd-main").unwrap();
+        meta.main_doc = "aux.tex".to_owned();
+        crate::project::write_meta("odd-main", &meta).unwrap();
+        let lab = Lab::start().await;
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_in(&dir, "collab");
+        let server = lab.sign_in(&state, &lab.server.url(), true).await;
+        let heard = Heard::default();
+        share_project(&state, &heard, &|_, _| {}, "odd-main", server)
+            .await
+            .unwrap();
+        let main = shared_main(&state, "odd-main");
+        assert!(main.starts_with("unnamed-"), "{main}");
+        assert!(root.join(&main).is_file() && !root.join("aux.tex").exists());
+        let mut renamed = heard.renamed.lock().unwrap().clone();
+        renamed.sort();
+        let bib = renamed
+            .iter()
+            .find(|(from, _)| from == "con.bib")
+            .map(|(_, to)| to.clone())
+            .expect("the bibliography was renamed too");
+        let mut expected = vec![
+            ("aux.tex".to_owned(), main.clone()),
+            ("con.bib".to_owned(), bib),
+        ];
+        expected.sort();
+        assert_eq!(renamed, expected);
+        assert_eq!(
+            crate::project::read_meta("odd-main").unwrap().main_doc,
+            main
+        );
+        let notices = heard.notices.lock().unwrap();
+        assert_eq!(notices.len(), 1);
+        assert_eq!(
+            notices[0].changes,
+            vec![super::super::settings::SettingNotice::MainDocument { path: main }]
+        );
+    }
+
+    fn shared_main(state: &CollabState, project_id: &str) -> String {
+        let paths = state.paths().unwrap();
+        let disk = DiskState::load(&paths.materializer_index_file(project_id).unwrap());
+        let doc = LiveProject::load(&paths.document_dir(project_id).unwrap(), ProjectRole::Owner)
+            .unwrap();
+        let id = doc
+            .doc()
+            .settings()
+            .main_doc()
+            .expect("the main file is shared");
+        disk.layout[&id.to_string()].path.clone()
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_main_file_beside_a_second_spelling_stays_the_main_document_after_sharing() {
+        let library = TempLibrary::new();
+        let root = library.project("two-mains", &[("Main.tex", "upper\n")]);
+        std::fs::write(root.join("main.tex"), "lower\n").unwrap();
+        if std::fs::read_to_string(root.join("Main.tex")).unwrap() != "upper\n" {
+            return;
+        }
+        let lab = Lab::start().await;
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_in(&dir, "collab");
+        let server = lab.sign_in(&state, &lab.server.url(), true).await;
+        let heard = Heard::default();
+        share_project(&state, &heard, &|_, _| {}, "two-mains", server)
+            .await
+            .unwrap();
+        let main = shared_main(&state, "two-mains");
+        assert_eq!(
+            std::fs::read_to_string(root.join(&main)).unwrap(),
+            "lower\n"
+        );
+        assert_eq!(
+            crate::project::read_meta("two-mains").unwrap().main_doc,
+            main
+        );
+        let told = heard.notices.lock().unwrap().len();
+        assert_eq!(told, usize::from(main != "main.tex"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

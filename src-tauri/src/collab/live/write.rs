@@ -10,6 +10,7 @@ use oleafly_collab::CollabError;
 use serde::Serialize;
 use tokio::sync::oneshot;
 
+use super::import::Renamed;
 use super::{
     active_for, by_path, ensure_dir, guard, lock, merged_onto, name_of, nearest, parent_of, Active,
     WriterSignal, WrittenTexts,
@@ -63,6 +64,7 @@ fn under_a_file(placed: &Placed, path: &str) -> bool {
     false
 }
 
+#[cfg(test)]
 fn write_into(
     live: &mut LiveProject,
     bases: &mut WrittenTexts,
@@ -72,23 +74,39 @@ fn write_into(
     base: Option<&str>,
     text: &str,
 ) -> Result<bool, CollabError> {
+    Ok(write_renaming(live, bases, reads, root, path, base, text)?.0)
+}
+
+// Writes an app's text into the document. A new file whose path the layout
+// changes, such as `aux.tex`, is written where the layout puts it, so that
+// path comes back paired with the one asked for, for the window to follow.
+fn write_renaming(
+    live: &mut LiveProject,
+    bases: &mut WrittenTexts,
+    reads: Option<&WrittenTexts>,
+    root: &Path,
+    path: &str,
+    base: Option<&str>,
+    text: &str,
+) -> Result<(bool, Renamed), CollabError> {
+    let refused = (false, Renamed::new());
     let Some(path) = normalized(path) else {
-        return Ok(false);
+        return Ok(refused);
     };
     let Some(target) = safe_target(root, &path) else {
-        return Ok(false);
+        return Ok(refused);
     };
     if !live.can_edit() {
-        return Ok(false);
+        return Ok(refused);
     }
     let mut placed = by_path(&materialize::layout(&live.doc().nodes()?));
     if under_a_file(&placed, &path) {
-        return Ok(false);
+        return Ok(refused);
     }
     let crlf = crlf_only(text.as_bytes()) == Some(true);
     let text = lf_text(text);
     let base = base.map(lf_text);
-    match placed.get(&path).cloned() {
+    let added = match placed.get(&path).cloned() {
         Some((id, NodeKind::Text, _)) => {
             let current = live.doc().text(&id)?;
             let chosen = match base {
@@ -102,8 +120,9 @@ fn write_into(
                 Some(operation) => live.local_operation(&id, &operation)?,
                 None => live.local_text(&id, &text)?,
             };
+            None
         }
-        Some((_, NodeKind::Dir, _)) => return Ok(false),
+        Some((_, NodeKind::Dir, _)) => return Ok(refused),
         Some((id, NodeKind::Blob, _)) => {
             live.doc_mut().trash(&id)?;
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
@@ -115,12 +134,13 @@ fn write_into(
                 &text,
             )?;
             live.doc_mut().set_crlf(&id, crlf)?;
+            Some(id)
         }
         None => {
             if std::fs::symlink_metadata(&target).is_ok()
                 || ShareRules::load(root).leaves_out(&path, false)
             {
-                return Ok(false);
+                return Ok(refused);
             }
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
             let id = live.doc_mut().add_node(
@@ -131,10 +151,21 @@ fn write_into(
                 &text,
             )?;
             live.doc_mut().set_crlf(&id, crlf)?;
+            Some(id)
         }
-    }
-    bases.record(&path, &text);
-    Ok(true)
+    };
+    let laid = match added {
+        Some(id) => materialize::layout(&live.doc().nodes()?)
+            .remove(&id)
+            .map(|placed| placed.path)
+            .filter(|laid| *laid != path),
+        None => None,
+    };
+    bases.record(laid.as_deref().unwrap_or(&path), &text);
+    Ok((
+        true,
+        laid.map(|laid| vec![(path, laid)]).unwrap_or_default(),
+    ))
 }
 
 const READ_ONLY: &str = "read_only";
@@ -170,7 +201,7 @@ impl Active {
         base: Option<&str>,
         text: &str,
     ) -> Result<WriteOutcome, CollabError> {
-        let handled = {
+        let (handled, renamed) = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
             if kept_from_a_viewer(&live, &self.root, path)? {
@@ -180,7 +211,7 @@ impl Active {
                 });
             }
             let mut bases = guard(&self.bases);
-            write_into(
+            write_renaming(
                 &mut live,
                 &mut bases,
                 reads.get(&self.project_id),
@@ -201,6 +232,7 @@ impl Active {
         let (done, wait) = oneshot::channel();
         let _ = self.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
+        self.announce_new_names(renamed);
         Ok(WriteOutcome {
             handled: true,
             reason: None,
@@ -259,9 +291,9 @@ fn write_shared(
     bases: &mut WrittenTexts,
     root: &Path,
     shared: &SharedText<'_>,
-) -> Result<bool, CollabError> {
+) -> Result<(bool, Renamed), CollabError> {
     let Some(path) = normalized(shared.path) else {
-        return Ok(false);
+        return Ok((false, Renamed::new()));
     };
     let placed = by_path(&materialize::layout(&live.doc().nodes()?));
     let starts_as_reviewed = match (placed.get(&path), shared.before) {
@@ -271,9 +303,9 @@ fn write_shared(
         _ => false,
     };
     if !starts_as_reviewed {
-        return Ok(false);
+        return Ok((false, Renamed::new()));
     }
-    write_into(live, bases, None, root, &path, shared.before, shared.text)
+    write_renaming(live, bases, None, root, &path, shared.before, shared.text)
 }
 
 fn undo_shared(
@@ -311,22 +343,28 @@ fn undo_shared(
     Ok(())
 }
 
+// Writes every text or none: the first one refused undoes the others and
+// is returned. Otherwise returns the new files the layout put elsewhere.
 fn write_all_shared(
     live: &mut LiveProject,
     bases: &mut WrittenTexts,
     root: &Path,
     texts: &[SharedText<'_>],
-) -> Result<Option<String>, CollabError> {
+) -> Result<Result<Renamed, String>, CollabError> {
     let existing: BTreeSet<String> = materialize::layout(&live.doc().nodes()?)
         .into_keys()
         .collect();
     let mut written = Vec::new();
+    let mut renamed = Renamed::new();
     for shared in texts {
         match write_shared(live, bases, root, shared) {
-            Ok(true) => written.push(*shared),
-            Ok(false) => {
+            Ok((true, laid)) => {
+                written.push(*shared);
+                renamed.extend(laid);
+            }
+            Ok((false, _)) => {
                 undo_shared(live, &existing, &written)?;
-                return Ok(Some(shared.path.to_owned()));
+                return Ok(Err(shared.path.to_owned()));
             }
             Err(error) => {
                 let _ = undo_shared(live, &existing, &written);
@@ -334,7 +372,7 @@ fn write_all_shared(
             }
         }
     }
-    Ok(None)
+    Ok(Ok(renamed))
 }
 
 impl SharedDocument {
@@ -371,16 +409,17 @@ impl SharedDocument {
     }
 
     pub(crate) fn write(&self, texts: &[SharedText<'_>]) -> Result<Option<String>, CollabError> {
-        let refused = {
+        let written = {
             let mut live = lock(&self.0.live);
             let mut bases = guard(&self.0.bases);
             write_all_shared(&mut live, &mut bases, &self.0.root, texts)?
         };
         self.0.handle.flush();
         self.0.refresh_pending();
-        if refused.is_some() {
-            return Ok(refused);
-        }
+        let renamed = match written {
+            Ok(renamed) => renamed,
+            Err(refused) => return Ok(Some(refused)),
+        };
         for shared in texts {
             crate::agent_turns::note_app_write(&self.0.project_id, shared.path);
         }
@@ -389,6 +428,7 @@ impl SharedDocument {
         tauri::async_runtime::block_on(async move {
             let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
         });
+        self.0.announce_new_names(renamed);
         Ok(None)
     }
 
@@ -947,6 +987,7 @@ mod tests {
                 hashes: [("main.tex".to_owned(), sha256_hex(b"alpha\nbeta\n"))]
                     .into_iter()
                     .collect(),
+                owed: Default::default(),
             };
             let shared_live: SharedLive = Arc::new(Mutex::new(live));
             let (events, _events) = mpsc::unbounded_channel();

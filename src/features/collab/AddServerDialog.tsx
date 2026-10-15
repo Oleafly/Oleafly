@@ -73,11 +73,33 @@ export type ProbeTrouble =
   | { kind: "unreachable" }
   | { kind: "other"; message: string };
 
-export function probeTrouble(error: unknown): ProbeTrouble {
+// The server address a redirect from `probed` points at, read the way a
+// browser reads a Location header: relative to the request, with or without
+// a trailing slash. Null when it leads anywhere but another Oleafly server.
+function movedTarget(location: string, probed: string): string | null {
+  let resolved: URL;
+  try {
+    resolved = new URL(location, `${probed}${WELL_KNOWN}`);
+  } catch {
+    return null;
+  }
+  if (resolved.protocol !== "https:") return null;
+  const path = resolved.pathname.replace(/\/+$/u, "");
+  if (!path.endsWith(WELL_KNOWN)) return null;
+  return `${resolved.origin}${path.slice(0, -WELL_KNOWN.length)}`;
+}
+
+export function probeTrouble(error: unknown, probed: string): ProbeTrouble {
   const code = collabErrorCode(error);
-  const location = isCollabCommandError(error) ? error.message.trim() : "";
-  if (code === "server" && location.startsWith("https://") && location.endsWith(WELL_KNOWN)) {
-    return { kind: "moved", target: location.slice(0, -WELL_KNOWN.length) };
+  const said = isCollabCommandError(error) ? error.message.trim() : "";
+  if (code === "server" && (said.startsWith("https://") || said.startsWith("/"))) {
+    const target = movedTarget(said, probed);
+    return target ? { kind: "moved", target } : { kind: "notAServer" };
+  }
+  // An error in the server's own words came from an Oleafly server that
+  // answered but ran into a problem. A web page or an empty answer did not.
+  if (code === "server" && said !== "" && !said.startsWith("<")) {
+    return { kind: "other", message: collabErrorText(error) };
   }
   if (code === "not_found" || code === "server" || code === "invalid") return { kind: "notAServer" };
   if (code === "unreachable") return { kind: "unreachable" };
@@ -144,7 +166,11 @@ export function AddServerDialog({
   const [codeHint, setCodeHint] = useState(false);
   const [offerCode, setOfferCode] = useState(false);
   const waiting = step.kind === "signingIn";
-  const { test: connectionTest, run: runConnectionTest } = useConnectionTest(normalizeServerAddress(address));
+  const {
+    test: connectionTest,
+    run: runConnectionTest,
+    reset: resetConnectionTest,
+  } = useConnectionTest(normalizeServerAddress(address));
 
   const probe = useCallback(async (raw: string) => {
     const url = normalizeServerAddress(raw);
@@ -152,6 +178,7 @@ export function AddServerDialog({
     const current = ++attempt.current;
     setError(null);
     setTrouble(null);
+    resetConnectionTest();
     setStep({ kind: "checking" });
     try {
       const capabilities = await collabServerProbe(url);
@@ -159,10 +186,10 @@ export function AddServerDialog({
       setStep({ kind: "server", url, capabilities });
     } catch (error_) {
       if (current !== attempt.current) return;
-      setTrouble(probeTrouble(error_));
+      setTrouble(probeTrouble(error_, url));
       setStep({ kind: "address" });
     }
-  }, []);
+  }, [resetConnectionTest]);
 
   const tryMoved = (target: string) => {
     setAddress(target);
@@ -216,7 +243,7 @@ export function AddServerDialog({
     } catch (error_) {
       if (current !== attempt.current) return;
       const code = collabErrorCode(error_);
-      setError(collabErrorMessage(code));
+      setError(collabErrorText(error_));
       setCodeHint(code === "sign_in_timed_out");
       setStep({ kind: "server", url, capabilities });
     }
@@ -277,9 +304,10 @@ export function AddServerDialog({
     setError(null);
     setTrouble(null);
     setCodeHint(false);
+    resetConnectionTest();
     setStep({ kind: "address" });
     if (initialUrl) void probe(initialUrl);
-  }, [open, initialUrl, probe]);
+  }, [open, initialUrl, probe, resetConnectionTest]);
 
   useEffect(() => {
     setOfferCode(false);

@@ -45,6 +45,18 @@ pub struct UploadsPayload {
     pub files: Vec<UploadFile>,
 }
 
+// What makes the waiting figures go out again.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Retry {
+    // The next try of a figure that failed, after its wait.
+    Timer,
+    // The session came back online. A figure the server refused because the
+    // project was full goes again only if the server's limit has changed.
+    Reconnect,
+    // The person asked with Retry.
+    Asked,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Outcome {
     Sent,
@@ -330,13 +342,31 @@ impl Active {
                     .get(&key)
                     .is_some_and(|uploads| uploads.timer == token);
                 if let (true, Some(active)) = (current, active.upgrade()) {
-                    active.retry_uploads(false).await;
+                    active.retry_uploads(Retry::Timer).await;
                 }
             });
         }
     }
 
-    pub(super) async fn retry_uploads(&self, fresh: bool) {
+    fn waits_on_a_full_project(&self) -> bool {
+        guard(&UPLOADS)
+            .get(&self.upload_key())
+            .is_some_and(|uploads| {
+                uploads
+                    .files
+                    .values()
+                    .any(|pending| pending.state == UploadState::ProjectTooLarge)
+            })
+    }
+
+    pub(super) async fn retry_uploads(&self, why: Retry) {
+        let project_limit = if why == Retry::Reconnect && self.waits_on_a_full_project() {
+            server_limits(&self.link, true)
+                .await
+                .map(|limits| limits.project)
+        } else {
+            None
+        };
         let paths: Vec<String> = {
             let hashes = guard(&self.disk).hashes.clone();
             let mut all = guard(&UPLOADS);
@@ -348,7 +378,14 @@ impl Active {
                     && hashes.get(path) != Some(&pending.hash)
             });
             for pending in uploads.files.values_mut() {
-                if fresh && pending.state != UploadState::TooLarge {
+                let again = match (why, pending.state) {
+                    (Retry::Timer, _) | (_, UploadState::TooLarge) => false,
+                    (Retry::Reconnect, UploadState::ProjectTooLarge) => {
+                        project_limit.is_some() && project_limit != pending.limit
+                    }
+                    (Retry::Reconnect | Retry::Asked, _) => true,
+                };
+                if again {
                     pending.attempts = 0;
                     pending.state = UploadState::Waiting;
                 }
@@ -378,7 +415,7 @@ impl Active {
         if waiting {
             let active = Arc::clone(self);
             tauri::async_runtime::spawn(async move {
-                active.retry_uploads(true).await;
+                active.retry_uploads(Retry::Reconnect).await;
             });
         }
     }
@@ -401,7 +438,7 @@ pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, C
 #[tauri::command]
 pub async fn collab_upload_retry(project_id: String) -> Result<(), CollabCommandError> {
     let active = active_for(&project_id).ok_or_else(|| CollabCommandError::from(not_live()))?;
-    active.retry_uploads(true).await;
+    active.retry_uploads(Retry::Asked).await;
     Ok(())
 }
 

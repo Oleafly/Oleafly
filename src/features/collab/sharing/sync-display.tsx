@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Archive,
   Ban,
+  CircleAlert,
   CircleArrowUp,
   CirclePause,
   CloudCheck,
@@ -37,6 +38,7 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   clientTooOld: CircleArrowUp,
   serverTooOld: ServerCog,
   serverChanged: Replace,
+  failed: CircleAlert,
 };
 
 const SYNC_TONES: Readonly<Record<SyncState, string>> = {
@@ -54,6 +56,7 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   clientTooOld: "text-destructive",
   serverTooOld: "text-destructive",
   serverChanged: "text-destructive",
+  failed: "text-destructive",
 };
 
 export function SyncStateIcon({ state, className }: Readonly<{ state: SyncState; className?: string }>) {

@@ -265,6 +265,7 @@ mod tests {
         let mut disk = DiskState {
             layout: layout.clone(),
             hashes: BTreeMap::from([("removed.png".to_owned(), sha256_hex(b"removed.png"))]),
+            owed: Default::default(),
         };
         let pass = apply_to_disk(
             root,

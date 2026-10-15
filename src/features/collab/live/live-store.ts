@@ -13,6 +13,7 @@ import {
   onCollabLiveNewDevice,
   onCollabLiveRole,
   onCollabLiveStatus,
+  onCollabLiveProjectFull,
   onCollabLiveUnwritten,
   onCollabPresence,
   onCollabPresenceLeft,
@@ -103,12 +104,17 @@ export interface CollabLiveStoreState {
   commentsNotSent: CollabCommentNotSent[] | null;
   // Files of the live project that couldn't be written to this computer.
   unwritten: CollabLiveUnwritten["files"];
+  // The server refused a change because the project reached its size limit.
+  // Until the connection comes back, changes stay on this computer.
+  projectFull: boolean;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
   dismissCommentsNotSent: () => void;
+  // Starts syncing again after it stopped on an error.
+  goLiveAgain: () => void;
 }
 
 export interface LiveSession {
@@ -133,6 +139,7 @@ type LiveData = Omit<
   | "dismissEnded"
   | "dismissAccessNotice"
   | "dismissCommentsNotSent"
+  | "goLiveAgain"
 >;
 
 function emptyLive(projectId: string | null): LiveData {
@@ -151,6 +158,7 @@ function emptyLive(projectId: string | null): LiveData {
     accessNotice: null,
     commentsNotSent: null,
     unwritten: [],
+    projectFull: false,
   };
 }
 
@@ -177,6 +185,9 @@ function withPeople(
     ]),
   );
 }
+
+// Set while the live lifecycle runs.
+let goLiveAgainNow: (() => void) | null = null;
 
 let shareRequest = 0;
 let membersRequest = 0;
@@ -216,6 +227,7 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     dismissEnded: () => set({ ended: null }),
     dismissAccessNotice: () => set({ accessNotice: null }),
     dismissCommentsNotSent: () => set({ commentsNotSent: null }),
+    goLiveAgain: () => goLiveAgainNow?.(),
   }),
 );
 
@@ -349,6 +361,16 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       }) ?? null;
   };
 
+  // Syncing stopped after an error. The next start skips the change at
+  // fault, so it can start again at once.
+  const goLiveAgain = () => {
+    const state = store.getState();
+    if (disposed || live !== null || !state.projectId || !state.share || state.ended !== "failed") return;
+    store.setState({ status: null, ended: null });
+    void goLive(state.projectId);
+  };
+  goLiveAgainNow = goLiveAgain;
+
   const openProject = (projectId: string | null) => {
     stopLive();
     resumable = false;
@@ -373,7 +395,14 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
-    store.setState((state) => ({ status: heldStatus(state.status, payload.status), pending: payload.pending }));
+    // A connection that comes back tries the changes again, and the server
+    // says once more if the project is still full.
+    const back = payload.status.state === "online" && store.getState().status?.state !== "online";
+    store.setState((state) => ({
+      status: heldStatus(state.status, payload.status),
+      pending: payload.pending,
+      projectFull: back ? false : state.projectFull,
+    }));
     if (payload.status.state !== "ended") return;
     releaseEditors(payload.projectId);
     if (payload.status.reason === "stopped") return;
@@ -493,6 +522,11 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState((state) => ({ commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments] }));
   };
 
+  const onProjectFull = (payload: { projectId: string }) => {
+    if (payload.projectId !== current()) return;
+    store.setState({ projectFull: true });
+  };
+
   const onUnwritten = (payload: CollabLiveUnwritten) => {
     if (payload.projectId !== current()) return;
     store.setState({ unwritten: payload.files });
@@ -517,6 +551,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabCommentsNotSent(onCommentsNotSent),
     onCollabServerChanged(onServerChanged),
     onCollabLiveUnwritten(onUnwritten),
+    onCollabLiveProjectFull(onProjectFull),
   ].map((pending) =>
     pending.catch((error) => {
       void logError("collab live listen", error);
@@ -556,6 +591,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   return () => {
     if (disposed) return;
     disposed = true;
+    if (goLiveAgainNow === goLiveAgain) goLiveAgainNow = null;
     unsubscribeFiles();
     unsubscribeStore();
     unsubscribeSweep();

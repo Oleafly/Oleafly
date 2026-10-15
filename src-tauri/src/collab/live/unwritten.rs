@@ -79,7 +79,7 @@ fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
 // Another program holds the file for writing or deleting, or it is read-only.
 // One open asks Windows this at once, where a write would retry for seconds.
 #[cfg(windows)]
-fn held_elsewhere(target: &Path) -> bool {
+pub(super) fn held_elsewhere(target: &Path) -> bool {
     use std::os::windows::fs::OpenOptionsExt as _;
     const DELETE: u32 = 0x0001_0000;
     const FILE_WRITE_DATA: u32 = 0x0002;
@@ -88,12 +88,12 @@ fn held_elsewhere(target: &Path) -> bool {
         .open(target)
     {
         Ok(_) => false,
-        Err(error) => matches!(error.raw_os_error(), Some(5 | 32 | 33)),
+        Err(error) => matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224)),
     }
 }
 
 #[cfg(not(windows))]
-fn held_elsewhere(_target: &Path) -> bool {
+pub(super) fn held_elsewhere(_target: &Path) -> bool {
     false
 }
 
@@ -272,6 +272,14 @@ impl Active {
             .get(path)
             .map_or(0, |attempt| attempt.count)
     }
+
+    #[cfg(test)]
+    pub(super) fn next_try_in(&self, path: &str) -> Option<Duration> {
+        guard(&self.upkeep.failing)
+            .attempts
+            .get(path)
+            .map(|attempt| attempt.next.saturating_duration_since(Instant::now()))
+    }
 }
 
 #[cfg(test)]
@@ -332,6 +340,26 @@ mod tests {
             reason("open.tex", "refused to write x"),
             UnwrittenReason::Other
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_file_another_program_holds_is_found_held_by_one_quick_open() {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("main.tex");
+        std::fs::write(&target, "x").unwrap();
+        let holder = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&target)
+            .unwrap();
+        let started = Instant::now();
+        assert!(held_elsewhere(&target));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        drop(holder);
+        assert!(!held_elsewhere(&target));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "x");
     }
 
     #[test]

@@ -192,7 +192,8 @@ describe("ShareDialog checking the project", () => {
     const bar = await screen.findByRole("progressbar");
     expect(bar).toHaveAttribute("data-state", "indeterminate");
     expect(bar).not.toHaveAttribute("aria-valuenow");
-    expect(screen.getByText(share.preparing)).toBeInTheDocument();
+    expect(bar).toHaveAccessibleName(share.preparing);
+    expect(screen.getByRole("status")).toHaveTextContent(share.preparing);
     await waitFor(() => expect(mocks.onCollabShareProgress).toHaveBeenCalled());
     act(() => progress({ projectId: "grant", done: 0, total: 0 }));
     expect(screen.getByText(share.saving)).toBeInTheDocument();
@@ -213,10 +214,12 @@ describe("ShareDialog checking the project", () => {
     await user.click(await screen.findByRole("button", { name: share.start }));
     await waitFor(() => expect(mocks.onCollabShareProgress).toHaveBeenCalled());
     act(() => progress({ projectId: "grant", done: 1, total: 4 }));
-    expect(screen.getByText(fill(share.uploading, { done: "1", total: "4" }))).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    const counted = fill(share.uploading, { done: "1", total: "4" });
+    expect(screen.getByRole("status")).toHaveTextContent(counted);
+    expect(screen.getByRole("progressbar", { name: counted })).toHaveAttribute("aria-valuenow", "25");
     act(() => progress({ projectId: "grant", done: 4, total: 4 }));
-    expect(screen.getByText(share.saving)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(share.saving);
+    expect(screen.getByRole("button", { name: share.start }).querySelector("svg")).toHaveAttribute("aria-hidden");
     expect(screen.getByRole("progressbar")).toHaveAttribute("data-state", "indeterminate");
   });
 });
