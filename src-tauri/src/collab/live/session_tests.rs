@@ -260,6 +260,7 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 
 #[test]
 fn opening_a_project_after_its_session_ended_says_why() {
+    let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
