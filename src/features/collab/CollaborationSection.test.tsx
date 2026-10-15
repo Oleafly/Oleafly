@@ -32,6 +32,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  ...mocks,
+}));
 vi.mock("@/hooks/use-tauri-event", () => ({ useTauriEvent: events.useTauriEvent }));
 
 import { CollaborationSection } from "./CollaborationSection";

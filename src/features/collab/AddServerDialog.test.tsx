@@ -25,6 +25,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  ...mocks,
+}));
 
 import { AddServerDialog, CODE_OFFER_DELAY_MS, normalizeServerAddress } from "./AddServerDialog";
 import { useCollabStore } from "./store";
