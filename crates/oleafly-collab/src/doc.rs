@@ -55,6 +55,18 @@ pub(crate) mod failpoint {
             .push((payload.to_vec(), at));
     }
 
+    thread_local! {
+        static FORKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    pub(crate) fn forked() {
+        FORKS.with(|forks| forks.set(forks.get() + 1));
+    }
+
+    pub(crate) fn forks() -> usize {
+        FORKS.with(std::cell::Cell::get)
+    }
+
     pub(crate) fn hit(payload: &[u8], at: At) {
         let armed = ARMED
             .lock()
@@ -962,6 +974,13 @@ impl ProjectDoc {
         self.keep(imported, &before, status, changes)
     }
 
+    // A change the document already holds in full needs no scratch copy:
+    // taking it in again changes nothing.
+    fn holds_all_of(&self, bytes: &[u8]) -> bool {
+        LoroDoc::decode_import_blob_meta(bytes, false)
+            .is_ok_and(|meta| self.doc.oplog_vv().includes_vv(&meta.partial_end_vv))
+    }
+
     // One writer carrying on from the document's only head, say someone
     // pasting while the others are idle, has nothing concurrent to merge, so
     // a plain import is as fast as it gets and the fork is skipped.
@@ -995,9 +1014,14 @@ impl ProjectDoc {
     // panicked in can panic again, and the change counts as unreadable: the
     // document itself never sees it.
     fn staged(&self, bytes: &[u8]) -> Result<Option<Staged>, CollabError> {
-        if self.doc.oplog_vv().is_empty() || self.continues_its_own_head(bytes) {
+        if self.doc.oplog_vv().is_empty()
+            || self.continues_its_own_head(bytes)
+            || self.holds_all_of(bytes)
+        {
             return Ok(None);
         }
+        #[cfg(test)]
+        failpoint::forked();
         let scratch = self.doc.fork();
         scratch.detach();
         let tried = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

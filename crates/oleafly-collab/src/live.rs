@@ -2473,6 +2473,33 @@ mod tests {
     }
 
     #[test]
+    fn retrying_a_failed_batch_alone_skips_the_large_change_it_already_took() {
+        let (mut bob, mut alice, main) = pair();
+        let mut carol = LiveProject::new(
+            ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(120_000, 11), 1);
+        let small = sent_change(&mut carol, &main, " carol", 2);
+        let before = crate::doc::failpoint::forks();
+        let taken = bob
+            .import_arrivals(vec![
+                arrival(1, &large),
+                arrival(2, b"not a change"),
+                arrival(3, &small),
+            ])
+            .unwrap();
+        assert_eq!(taken, 2);
+        assert_eq!(bob.take_unreadable(), vec![(2, Some(device))]);
+        assert_eq!(crate::doc::failpoint::forks() - before, 1);
+        assert!(bob.doc().text(&main).unwrap().contains(" carol"));
+    }
+
+    #[test]
     fn when_a_batch_panics_its_changes_are_taken_in_alone_to_find_the_one_at_fault() {
         use crate::doc::failpoint::{panic_on, At};
         let (mut bob, mut alice, main) = pair();
