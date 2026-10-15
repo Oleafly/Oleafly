@@ -75,6 +75,7 @@ import {
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
+import { collabHandBack } from "@/lib/collab-live-bridge";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
@@ -1291,6 +1292,7 @@ async function prepareProjectSwitch(
     set({ loading: true });
     try {
       flushWysiwygPendingEdits();
+      await collabHandBack(previousProjectId);
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
@@ -1787,6 +1789,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set({ loading: true });
       try {
         flushWysiwygPendingEdits();
+        await collabHandBack(projectId);
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });
@@ -1847,7 +1850,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () => enqueueProjectTransition(() => get().saveAllDirty()),
+  flushForQuit: () =>
+    enqueueProjectTransition(async () => {
+      await collabHandBack(get().projectId);
+      await get().saveAllDirty();
+    }),
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);

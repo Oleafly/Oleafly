@@ -71,7 +71,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "./files";
 
 beforeAll(async () => {
@@ -308,6 +308,54 @@ describe("a viewer's change from an in-app writer", () => {
     useCollabEditorGate.setState({ viewer: false });
     expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(true);
     expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\nb\n", dirty: true });
+  });
+});
+
+describe("leaving a live project", () => {
+  // The live session hands back typing the shared document hasn't confirmed,
+  // the way live editing does, while the store still has the project.
+  function handingBack(order: string[]): () => void {
+    mocks.collabWriteText.mockImplementation(async () => {
+      order.push("save");
+      return { handled: true };
+    });
+    return installCollabEditorPort({
+      documentSession: () => null,
+      flush: async () => {},
+      handBack: async (projectId) => {
+        order.push(`hand back ${projectId}`);
+        useFilesStore.getState().setContent("main.tex", "a\ntyped\n", { unsaved: true, base: "a\n" });
+      },
+    });
+  }
+
+  it("takes back typing the shared document hasn't confirmed and saves it before closing", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    const order: string[] = [];
+    const uninstall = handingBack(order);
+    try {
+      await useFilesStore.getState().closeProject();
+    } finally {
+      uninstall();
+    }
+    expect(order).toEqual(["hand back project", "save"]);
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\ntyped\n");
+  });
+
+  it("does the same before the app quits", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    const order: string[] = [];
+    const uninstall = handingBack(order);
+    try {
+      await useFilesStore.getState().flushForQuit();
+    } finally {
+      uninstall();
+    }
+    expect(order).toEqual(["hand back project", "save"]);
   });
 });
 

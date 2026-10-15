@@ -115,6 +115,39 @@ describe("LiveSessions", () => {
     expect(channel.closes).toHaveLength(2);
   });
 
+  it("hands back typing still waiting behind a change in flight before the project closes", async () => {
+    vi.useFakeTimers();
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    const typed = sessions.documentSession("main.tex");
+    const quiet = sessions.documentSession("intro.tex");
+    await flush();
+    typed?.applyLocal([{ from: 3, to: 3, insert: "!" }], typed.version());
+    typed?.applyLocal([{ from: 4, to: 4, insert: "?" }], typed.version());
+    const handing = sessions.handBack(100);
+    await vi.advanceTimersByTimeAsync(100);
+    await handing;
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc!?", true, "abc");
+    expect(typed?.phase).toBe("closed");
+    expect(quiet?.phase).toBe("open");
+    expect(sessions.documentSession("intro.tex")).toBe(quiet);
+  });
+
+  it("hands nothing back once the shared document took the typing", async () => {
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    const typed = sessions.documentSession("main.tex");
+    await flush();
+    typed?.applyLocal([{ from: 3, to: 3, insert: "!" }], typed.version());
+    const handing = sessions.handBack(5_000);
+    channel.drain();
+    await handing;
+    expect(detached).not.toHaveBeenCalled();
+    expect(typed?.phase).toBe("open");
+  });
+
   it("passes on that typing had to be dropped, naming the file", async () => {
     const channel = new FakeChannel("abc");
     const discarded = vi.fn();
