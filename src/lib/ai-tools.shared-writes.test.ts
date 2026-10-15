@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AiToolsHost } from "@oleafly/ai-tools";
 
 const mocks = vi.hoisted(() => ({
@@ -68,6 +68,9 @@ vi.mock("@/components/editor/cm/controller", () => ({
 }));
 vi.mock("@/lib/cross-window", () => ({ notifyProjectFilesChanged: vi.fn() }));
 
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
+import { insertAtCursor, replaceRange } from "@/components/editor/cm/controller";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { createOleaflyTools } from "./ai-tools";
 
@@ -144,6 +147,47 @@ describe("AI file tools in a live shared project", () => {
     mocks.api.readFileContent.mockResolvedValue("alpha\n");
     await tool("replace_in_file")({ path: "a.tex", find: "alpha", replace: "omega" });
     expect(mocks.api.writeFileContent).toHaveBeenCalledWith("proj", "a.tex", "omega\n", 4);
+    expect(mocks.api.collabWriteText).not.toHaveBeenCalled();
+  });
+});
+
+describe("AI edits while a shared project goes live", () => {
+  // The role isn't known yet, and the shared document isn't live, so a write
+  // would land on the local file. The files store refuses the same writes.
+  function connecting(): void {
+    useCollabEditorGate.setState({ projectId: "proj", viewer: false, connecting: true });
+  }
+
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  it("write_file and replace_in_file say why and write nothing", async () => {
+    connecting();
+    mocks.api.readFileContent.mockResolvedValue("alpha\n");
+    const replaced = await tool("replace_in_file")({ path: "a.tex", find: "alpha", replace: "omega" });
+    expect(JSON.stringify(replaced)).toContain(enCollab.access.connecting);
+    const written = await tool("write_file")({ path: "a.tex", content: "new\n" });
+    expect(JSON.stringify(written)).toContain(enCollab.access.connecting);
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.api.collabWriteText).not.toHaveBeenCalled();
+    expect(mocks.files.applyExternalWrite).not.toHaveBeenCalled();
+  });
+
+  it("inserts and replaces nothing, in the editor or on disk, and says why", async () => {
+    vi.mocked(insertAtCursor).mockClear();
+    vi.mocked(replaceRange).mockClear();
+    connecting();
+    mocks.files.activePath = "main.tex";
+    mocks.files.files = { "main.tex": { content: "a\n\\end{document}", dirty: false } };
+    await expect(host().insertAtCursor("proj", "b")).rejects.toThrow(enCollab.access.connecting);
+    await expect(host().replaceRange?.("proj", 0, 1, "Z")).rejects.toThrow(enCollab.access.connecting);
+    mocks.editorView = {};
+    await expect(host().insertAtCursor("proj", "b")).rejects.toThrow(enCollab.access.connecting);
+    await expect(host().replaceRange?.("proj", 0, 1, "Z")).rejects.toThrow(enCollab.access.connecting);
+    expect(vi.mocked(insertAtCursor)).not.toHaveBeenCalled();
+    expect(vi.mocked(replaceRange)).not.toHaveBeenCalled();
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
     expect(mocks.api.collabWriteText).not.toHaveBeenCalled();
   });
 });

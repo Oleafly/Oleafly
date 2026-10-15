@@ -50,7 +50,7 @@ import {
   replaceRange as replaceRangeInEditor,
 } from "@/components/editor/cm/controller";
 import { openProjectLocation } from "@/lib/open-location";
-import { writeSharedText } from "@/lib/shared-document-writes";
+import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
 
 export type { ToolApprovalRequest, ConfirmFn } from "@oleafly/ai-tools";
 
@@ -66,6 +66,14 @@ function recordMutationResult(projectId: string, result: unknown): void {
 
 function assertFolderWritable(projectId: string): void {
   if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessageInEnglish());
+}
+
+// A viewer can't change a shared project, and while it goes live the role
+// isn't known yet. The shared document isn't live then, so a write would fall
+// back to the local file, which the files store refuses for the same reason.
+function assertSharedWritable(projectId: string): void {
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) throw refusal;
 }
 
 const toolReads = new Map<string, string>();
@@ -146,6 +154,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
   assertFolderWritable(projectId);
+  assertSharedWritable(projectId);
   if (getEditorView()) {
     insertAtCursor(text);
     return true;
@@ -173,6 +182,7 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
   assertFolderWritable(projectId);
+  assertSharedWritable(projectId);
   if (getEditorView()) {
     replaceRangeInEditor(from, to, text);
     return true;
@@ -304,6 +314,7 @@ const HOST: AiToolsHost = {
   readFileContent: readToolFile,
   writeFileContent: async (projectId, path, content, expectedGeneration) => {
     assertFolderWritable(projectId);
+    assertSharedWritable(projectId);
     const base = toolReads.get(toolReadKey(projectId, path));
     toolReads.delete(toolReadKey(projectId, path));
     if (await writeSharedText(projectId, path, content, base)) return {};

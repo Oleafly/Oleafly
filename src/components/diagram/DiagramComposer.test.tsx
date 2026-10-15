@@ -2,6 +2,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createContext, useContext, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
 import type { DiagramHost } from "@oleafly/diagram";
 
 const captured = vi.hoisted(() => ({
@@ -237,6 +239,27 @@ describe("the diagram host adapters", () => {
 
     vi.mocked(tauriApi.writeFileContent).mockResolvedValueOnce(undefined as never);
     await expect(props.host.writeFileContent("p", "fig.tex", "x")).resolves.toBeUndefined();
+  });
+
+  it("saves nothing while a shared project goes live, since the role isn't known yet", async () => {
+    await loadNamespace("collab");
+    const props = await openComposer();
+    vi.mocked(tauriApi.writeFileContent).mockClear();
+    vi.mocked(tauriApi.writeProjectBytes).mockClear();
+    useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: true });
+    try {
+      await expect(props.host.writeFileContent("paper", "figures/flow.tex", "\\draw;\n")).rejects.toThrow(
+        enCollab.access.connecting,
+      );
+      await expect(props.host.writeProjectBytes("paper", "figures/flow.png", "AAAA")).rejects.toThrow(
+        enCollab.access.connecting,
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+    expect(tauriCollab.collabWriteText).not.toHaveBeenCalled();
+    expect(tauriApi.writeFileContent).not.toHaveBeenCalled();
+    expect(tauriApi.writeProjectBytes).not.toHaveBeenCalled();
   });
 
   it("saves a figure source into a live shared project through the shared document", async () => {
