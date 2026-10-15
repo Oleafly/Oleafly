@@ -14,7 +14,7 @@
 
 **A live collaborative LaTeX, Typst & Markdown editor for research.**
 
-Oleafly is a desktop editor for research writing in LaTeX, Typst and Markdown. The source, PDF, citations, figures, checks and Git history of a project all sit in one window. Write with your coauthors in real time, keep your projects in sync across computers, and bring Claude Code, Codex or any model you like into the project.
+Oleafly is a powerful editor for research writing in LaTeX, Typst and Markdown. The source, PDF, citations, figures, checks and Git history of a project all sit in one place. Write with your coauthors in real time, keep your projects in sync across computers, and bring Claude Code, Codex or any model you like into the project.
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>Download free</strong></a>
@@ -72,7 +72,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 It's a single Rust binary that uses SQLite, keeps files on disk or in any S3-compatible store, and sends email over SMTP if you set it up. People sign in with GitHub or any OpenID Connect provider, so your university's single sign-on works. There are ready-made configs for Docker Compose, Coolify, Render and systemd, and guides for Railway, Cloudflare Tunnel and university certificates.
 
-Admins get a console in the desktop app for people, access rules, projects, email and the security log. Every device signs its changes, and the server builds each snapshot from that signed history instead of trusting uploads.
+Admins get a console in Oleafly for people, access rules, projects, email and the security log. Every device signs its changes, and the server builds each snapshot from that signed history instead of trusting uploads.
 
 <p align="center">
   <img src="docs/assets/readme/server-admin.png" alt="Oleafly Server admin console showing people, access rules and the security log" width="100%" />
@@ -82,7 +82,7 @@ Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, ba
 
 ## Cloud sync across your computers
 
-Turn on cloud sync and your library projects and app settings follow you from your laptop to your desktop. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
+Turn on cloud sync and your library projects and app settings follow you from one computer to the next. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
 
 <p align="center">
   <img src="docs/assets/readme/cloud-sync-dropbox.png" alt="Oleafly Cloud sync settings with the Dropbox card and a list of what syncs" width="100%" />
