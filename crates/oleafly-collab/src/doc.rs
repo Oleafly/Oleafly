@@ -200,6 +200,12 @@ pub(crate) mod failpoint {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Source {
+    Arriving,
+    Saved,
+}
+
 struct Staged {
     pieces: Vec<Vec<u8>>,
     target: VersionVector,
@@ -1053,9 +1059,26 @@ impl ProjectDoc {
             .map_err(|failure| failure.error)
     }
 
+    // Records from this computer's own change log went into the document
+    // once already, so their scratch copies don't count against the caps.
+    // Turning them away would read as a damaged log, and the next save
+    // would write the document without them.
+    pub(crate) fn import_saved(&mut self, records: &[&[u8]]) -> Result<Imported, CollabError> {
+        self.import_from(records, Source::Saved)
+            .map_err(|failure| failure.error)
+    }
+
     pub(crate) fn import_keeping(
         &mut self,
         payloads: &[&[u8]],
+    ) -> Result<Imported, Box<ImportFailure>> {
+        self.import_from(payloads, Source::Arriving)
+    }
+
+    fn import_from(
+        &mut self,
+        payloads: &[&[u8]],
+        source: Source,
     ) -> Result<Imported, Box<ImportFailure>> {
         let mut imported = Imported::default();
         let mut together: Vec<Vec<u8>> = Vec::new();
@@ -1071,7 +1094,7 @@ impl ProjectDoc {
                 failed = Some(error);
                 break;
             }
-            if let Err(error) = self.import_one(payload, &mut imported) {
+            if let Err(error) = self.import_one(payload, &mut imported, source) {
                 if error == engine_failed() {
                     panicked = Some(index);
                 }
@@ -1151,9 +1174,14 @@ impl ProjectDoc {
         Ok(())
     }
 
-    fn import_one(&mut self, bytes: &[u8], imported: &mut Imported) -> Result<(), CollabError> {
+    fn import_one(
+        &mut self,
+        bytes: &[u8],
+        imported: &mut Imported,
+        source: Source,
+    ) -> Result<(), CollabError> {
         let before = self.doc.oplog_vv();
-        let (status, changes) = match self.staged(bytes)? {
+        let (status, changes) = match self.staged(bytes, source)? {
             Some(staged) => {
                 let (done, changes) = self.recording(|doc| {
                     #[cfg(test)]
@@ -1224,14 +1252,16 @@ impl ProjectDoc {
     // unreadable: the document itself never sees it. The copy is made from
     // the project's own snapshot, so a panic while that is written is the
     // document's, not the change's, and unwinds to the guard around it.
-    fn staged(&mut self, bytes: &[u8]) -> Result<Option<Staged>, CollabError> {
+    fn staged(&mut self, bytes: &[u8], source: Source) -> Result<Option<Staged>, CollabError> {
         if self.doc.oplog_vv().is_empty()
             || self.continues_its_own_head(bytes)
             || self.holds_all_of(bytes)
         {
             return Ok(None);
         }
-        if engine_budget_spent() || self.scratch_failures >= MOST_SCRATCH_FAILURES {
+        if source == Source::Arriving
+            && (engine_budget_spent() || self.scratch_failures >= MOST_SCRATCH_FAILURES)
+        {
             return Err(engine_spent());
         }
         #[cfg(test)]

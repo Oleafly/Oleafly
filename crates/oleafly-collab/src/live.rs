@@ -434,7 +434,7 @@ fn saved_document(dir: &Path) -> Option<ProjectDoc> {
     let bytes = std::fs::read(dir.join(DOC_FILE)).ok()?;
     let mut doc = ProjectDoc::load(&bytes).ok()?;
     for record in &read_log(&dir.join(LOG_FILE)).records {
-        let _ = doc.import(record);
+        let _ = doc.import_saved(&[record.as_slice()]);
     }
     Some(doc)
 }
@@ -518,10 +518,10 @@ impl LiveProject {
         let log = read_log(&dir.join(LOG_FILE));
         let saved: Vec<&[u8]> = log.records.iter().map(Vec::as_slice).collect();
         let mut damaged = log.torn;
-        if doc.import_all(&saved).is_err() {
+        if doc.import_saved(&saved).is_err() {
             doc = ProjectDoc::load(&bytes)?;
             for record in &log.records {
-                damaged |= doc.import(record).is_err();
+                damaged |= doc.import_saved(&[record.as_slice()]).is_err();
             }
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
@@ -3064,6 +3064,30 @@ mod tests {
         );
         assert!(bob.damaged());
         assert_eq!(crate::doc::left_documents(), left);
+    }
+
+    #[test]
+    fn a_project_whose_log_holds_a_large_change_reopens_with_all_of_it_after_the_budget_is_spent() {
+        let (mut bob, mut alice, main) = pair();
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        type_at_end(&mut bob, &main, " mine");
+        let large = sent_change(&mut alice, &main, &noise(100_000, 91), 1);
+        bob.import_arrivals(vec![from_device(DeviceId::new_v7())(1, &large)])
+            .unwrap();
+        bob.save(dir.path()).unwrap();
+        type_at_end(&mut bob, &main, " after");
+        bob.save(dir.path()).unwrap();
+        let expected = bob.doc().text(&main).unwrap();
+        assert!(expected.ends_with(" after") && expected.len() > 100_000);
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        let mut reopened = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(!reopened.repaired_on_load());
+        assert_eq!(reopened.doc().text(&main).unwrap(), expected);
+        reopened.save(dir.path()).unwrap();
+        let again = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(again.doc().text(&main).unwrap(), expected);
     }
 
     #[test]
