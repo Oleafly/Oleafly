@@ -446,7 +446,19 @@ Do the steps in this order:
    release there, and waits until the copy answers. That needs the
    `OLEAFLY_SERVER_SYNC_TOKEN` secret: a fine-grained token with read and write
    access to Actions on Oleafly/oleafly-server and nothing else.
-6. When that run passes, check that
+6. On the first release only, point the website at it. Until then,
+   `https://oleafly.com/server/install.sh` serves a placeholder that says
+   where the release will appear and exits 1, and two pages say the release
+   is on its way. In Oleafly/oleafly-web, delete `public/server/install.sh`,
+   remove the `# ` in front of the `/server/install.sh` line in
+   `public/_redirects`, delete the "The first release is on its way" note in
+   `src/content/docs/docs/collaboration/server.mdx`, and set
+   `firstServerReleasePublished` to `true` in
+   `src/lib/__tests__/server-install.test.ts`, which checks all of it. In
+   Oleafly/oleafly-server, delete the "first release is on its way" line in
+   `README.md`.
+7. When the copy has passed, and on the first release the website is
+   deployed, check that
    `curl -fsSL https://oleafly.com/server/install.sh | grep '^installer_version='`
    prints the new version. Then run the one-command install on a fresh machine.
 
