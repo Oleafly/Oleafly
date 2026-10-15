@@ -84,7 +84,7 @@ async fn overview(
         issues.push(HealthIssue::StorageNotWritable);
     }
     let sign_in_problems = state.providers.problems(now);
-    if !sign_in_problems.is_empty() {
+    if state.providers.failing(now) {
         issues.push(HealthIssue::SignInFailing);
     }
     if emails_paused {

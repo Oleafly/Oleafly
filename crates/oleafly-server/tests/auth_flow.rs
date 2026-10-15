@@ -7,7 +7,7 @@ use oleafly_server::db;
 use oleafly_server::members;
 use oleafly_server::test_support::{
     allowlist, app_callback, follow_to_app, github_provider, no_redirect_client, oidc_provider,
-    security_event_kinds, seed_member, test_config, MockGithub, MockGithubUser, MockOidc,
+    redeem, security_event_kinds, seed_member, test_config, MockGithub, MockGithubUser, MockOidc,
     MockOidcUser, SignInAttempt, TestDevice, TestServer, TEST_REDIRECT_URI, TEST_SETUP_CODE,
 };
 use reqwest::StatusCode;
@@ -62,6 +62,78 @@ async fn location(client: &reqwest::Client, url: Url) -> Url {
         .expect("location")
         .to_owned();
     url.join(&location).expect("redirect target")
+}
+
+fn replacing(url: &Url, changes: &[(&str, &str)]) -> Url {
+    let pairs: Vec<(String, String)> = url.query_pairs().into_owned().collect();
+    let mut changed = url.clone();
+    changed
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(pairs.iter().map(|(key, value)| {
+            let new = changes
+                .iter()
+                .find(|(name, _)| name == key)
+                .map_or(value.as_str(), |(_, new)| new);
+            (key.as_str(), new)
+        }));
+    changed
+}
+
+#[tokio::test]
+async fn a_device_name_and_system_are_cleaned_before_they_are_stored() {
+    let (server, _github) = server_for(carol()).await;
+    let blank = SignInAttempt::new(&server, "github", &TestDevice::generate(), None);
+    let refused = no_redirect_client()
+        .get(replacing(
+            &blank.start_url,
+            &[("device_name", "\u{200b}\r\n\u{202e}")],
+        ))
+        .send()
+        .await
+        .expect("start");
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    let device = TestDevice::generate();
+    let attempt = claims::attempt(&server, "github", &device, Some(&server.setup_code()))
+        .await
+        .expect("a setup claim");
+    let start = replacing(
+        &attempt.start_url,
+        &[
+            (
+                "device_name",
+                "Carol's\r\n2026-10-14 INFO laptop\u{202e}\u{200b}",
+            ),
+            ("platform", "linux\u{2028}"),
+        ],
+    );
+    let landing = follow_to_app(&no_redirect_client(), start)
+        .await
+        .expect("back to the app");
+    let code = app_callback(&landing, &attempt.state).expect("a sign-in code");
+    let tokens = redeem(&server, &device, &code, &attempt.verifier)
+        .await
+        .expect("tokens");
+    let id = tokens.device_id.to_string();
+    let stored: (String, String) = server
+        .state()
+        .db
+        .call(move |conn| {
+            Ok(conn.query_row(
+                "SELECT name, platform FROM devices WHERE id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
+        .expect("the device");
+    assert_eq!(
+        stored,
+        (
+            "Carol's 2026-10-14 INFO laptop".to_owned(),
+            "linux".to_owned()
+        )
+    );
 }
 
 fn with_redirect(url: &Url, redirect: &str) -> Url {
