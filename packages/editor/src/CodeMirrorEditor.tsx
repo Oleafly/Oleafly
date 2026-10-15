@@ -447,10 +447,15 @@ function dispatchDocumentSync(
 }
 
 const NON_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
+const FOCUS_HOLDERS = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"], dialog';
 
-function typingElsewhere(view: EditorView): boolean {
+// The person is working somewhere else: typing in another field, or in a
+// dialog or menu, which a collaborator's rename or delete must not pull the
+// focus out of when it switches the open file.
+function focusHeldElsewhere(view: EditorView): boolean {
   const active = view.dom.ownerDocument.activeElement;
   if (!(active instanceof HTMLElement) || view.dom.contains(active)) return false;
+  if (active.closest(FOCUS_HOLDERS)) return true;
   if (active instanceof HTMLTextAreaElement || active.isContentEditable) return true;
   return active instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(active.type);
 }
@@ -1275,9 +1280,9 @@ export function CodeMirrorEditor({
     // Opening a file moves the focus here, but a resync of the same file must
     // leave it alone: a disk reload or a shared session can bump the version
     // while the person types somewhere else. A switch never takes the focus
-    // out of another text field either, since a collaborator's rename or
-    // delete can switch the file.
-    if (pathChanged && !typingElsewhere(view)) view.focus();
+    // out of another text field, a dialog or a menu either, since a
+    // collaborator's rename or delete can switch the file.
+    if (pathChanged && !focusHeldElsewhere(view)) view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
   useEffect(() => synchronizeRef.current(), [activePath, docVersion]);

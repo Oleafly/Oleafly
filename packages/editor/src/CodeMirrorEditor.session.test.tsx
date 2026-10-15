@@ -508,6 +508,34 @@ describe("where the focus goes when the document changes", () => {
     expect(document.activeElement).toBe(search);
   });
 
+  it("does not take the focus out of a dialog or a menu when the open file switches", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b", "c.tex": "c" } },
+      new Map(),
+    );
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const confirm = document.createElement("button");
+    dialog.append(confirm);
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    const item = document.createElement("div");
+    item.setAttribute("role", "menuitem");
+    item.tabIndex = -1;
+    menu.append(item);
+    document.body.append(dialog, menu);
+
+    confirm.focus();
+    await open(store, "b.tex");
+    expect(document.activeElement).toBe(confirm);
+    item.focus();
+    await open(store, "c.tex");
+    expect(document.activeElement).toBe(item);
+    expect(view().state.doc.toString()).toBe("c");
+    dialog.remove();
+    menu.remove();
+  });
+
   it("still takes the focus when a file is opened from somewhere that isn't a text field", async () => {
     const { store } = await mountEditor(
       { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b" } },
