@@ -643,6 +643,11 @@ impl Snapshots {
         let Some((replay, _)) = self.current(db, project).await? else {
             return Ok(None);
         };
+        // A change the replay couldn't take in may be the one that uses a
+        // file, so no file counts as unused until it can be read.
+        if replay.left_out().is_some() {
+            return Ok(None);
+        }
         Ok(Some(blocking(move || Ok(replay.files())).await?))
     }
 
