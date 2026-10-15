@@ -1773,12 +1773,19 @@ export interface CollabLiveRemoved {
   files: CollabLiveRemovedFile[];
   restored: string[];
 }
-export type CollabUploadState = "waiting" | "failed" | "too_large";
+// "project_too_large": the project as a whole reached the server's size
+// limit, so the file waits until the limit is raised.
+export type CollabUploadState = "waiting" | "failed" | "too_large" | "project_too_large";
 export interface CollabUploadFile {
   path: string;
   state: CollabUploadState;
   size: number;
   limit: number | null;
+}
+// The server refused a change because the project's change log reached its
+// size limit. Sent at the first refusal after each connect.
+export interface CollabLiveProjectFull {
+  projectId: string;
 }
 export interface CollabLiveUploads {
   projectId: string;

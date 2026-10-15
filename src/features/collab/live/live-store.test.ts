@@ -67,6 +67,7 @@ vi.mock("@/lib/tauri", () => ({
   onCollabPresenceLeft: listener("left"),
   onCollabCommentsNotSent: listener("notSent"),
   onCollabLiveUnwritten: listener("unwritten"),
+  onCollabLiveProjectFull: listener("projectFull"),
 }));
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -860,6 +861,34 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().unwritten).toEqual([]);
   });
 
+  it("says the project is full until the connection comes back, and again whenever the server says so", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    const online = (pending = 0) =>
+      emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending });
+    online();
+    emit("projectFull", { projectId: OTHER });
+    expect(useCollabLiveStore.getState().projectFull).toBe(false);
+    emit("projectFull", { projectId: PROJECT });
+    expect(useCollabLiveStore.getState().projectFull).toBe(true);
+    online(3);
+    expect(useCollabLiveStore.getState().projectFull).toBe(true);
+    emit<CollabLiveStatus>("status", {
+      projectId: PROJECT,
+      status: { state: "offline", retry_in_ms: 4000 },
+      pending: 3,
+    });
+    expect(useCollabLiveStore.getState().projectFull).toBe(true);
+    online(3);
+    expect(useCollabLiveStore.getState().projectFull).toBe(false);
+    emit("projectFull", { projectId: PROJECT });
+    expect(useCollabLiveStore.getState().projectFull).toBe(true);
+    openProject("thesis");
+    await settle();
+    expect(useCollabLiveStore.getState().projectFull).toBe(false);
+  });
+
   it("stops live sync, listeners and timers when the lifecycle ends", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -868,7 +897,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(10);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(11);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });
@@ -1021,7 +1050,7 @@ describe("collab live store edges", () => {
     stop();
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledOnce();
-    expect(mocks.unlisten).toHaveBeenCalledTimes(10);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(11);
   });
 });
 

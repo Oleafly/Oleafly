@@ -207,6 +207,16 @@ describe("collaboration IPC helpers", () => {
     expect(seen).toEqual([payload]);
   });
 
+  it("forwards the project a server refused because it reached its size limit", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabLiveProjectFull((payload) => seen.push(payload));
+    expect(tauri.COLLAB_LIVE_PROJECT_FULL_EVENT).toBe("collab-live-project-full");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-live-project-full", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    handler({ payload: { projectId: "grant" } });
+    expect(seen).toEqual([{ projectId: "grant" }]);
+  });
+
   it("asks a waiting live session to reconnect now, with no arguments", async () => {
     await tauri.collabLiveReconnectNow();
     expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("collab_live_reconnect_now");
