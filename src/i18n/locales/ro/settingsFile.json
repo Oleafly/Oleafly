@@ -19,14 +19,18 @@
     "readFailed": "Fișierul nu a putut fi deschis.",
     "imported": "Setările au fost importate.",
     "unchanged": "Setările tale se potrivesc deja cu {{name}}.",
-    "applyFailed": "Unele setări nu au putut fi salvate. Încearcă din nou importul."
+    "applyFailed": "Unele setări nu au putut fi salvate. Încearcă din nou importul.",
+    "cloudEmpty": "Încă nu există setări Oleafly în Dropbox. Activează mai întâi sincronizarea în cloud pe alt computer.",
+    "cloudLoadFailed": "Setările din Dropbox nu au putut fi încărcate.",
+    "cloudUnreadable": "Setările din Dropbox nu au putut fi citite."
   },
   "confirm": {
     "title": "Înlocuiești setările?",
     "description": "Setările din {{name}} le vor înlocui pe ale tale. Tot ce lipsește din fișier rămâne neschimbat.",
     "changes": "Setări care se vor schimba: {{count}}",
     "ignored": "Nu sunt recunoscute, așa că vor fi omise:",
-    "action": "Importă"
+    "action": "Importă",
+    "cloudDescription": "Setările din Dropbox le vor înlocui pe ale tale. Tot ce lipsește din ele rămâne neschimbat."
   },
   "error": {
     "title": "{{name}} nu a fost importat",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "trebuie să fie un cod de dicționar, de exemplu en_US",
     "shortcut": "trebuie să fie o scurtătură, de exemplu Mod-Shift-k, sau \"default\"",
     "editorKey": "trebuie să fie o tastă, de exemplu Mod-d, \"\" pentru niciuna, sau \"default\""
-  }
+  },
+  "importFromLocal": "Importă de pe acest dispozitiv",
+  "importFromCloud": "Importă din cloud",
+  "cloudSource": "Dropboxul tău"
 }

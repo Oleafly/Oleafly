@@ -747,11 +747,6 @@
   "settings": {
     "close": "關閉設定",
     "data": {
-      "cloud": {
-        "comingSoon": "即將推出",
-        "description": "不必設定 Git 遠端，就能讓專案在你的各台裝置之間保持同步。每次傳輸都會採用端對端加密，你的成果在傳輸過程中保持私密。本機的專案資料夾仍是唯一的依據來源。",
-        "title": "雲端同步"
-      },
       "danger": {
         "confirmDeleteAllAction": "刪除所有專案",
         "confirmDeleteAllDescription": "目前所有專案都會移到資源回收筒，包括其中的檔案與 Git 歷史記錄。之後你可以逐一還原專案。",

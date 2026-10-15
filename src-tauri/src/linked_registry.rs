@@ -977,6 +977,11 @@ mod management {
             write_record(&reservation.directory, &record)?;
             before_commit(self, &record)?;
             let directory = reservation.commit();
+            if let Err(error) = crate::project_ids::mint(&project_id, None) {
+                let _ = crate::project::append_app_log(format!(
+                    "linked folder {project_id} was registered without a sync identity: {error}"
+                ));
+            }
             let data_root = crate::paths::oleafly_root()?;
             store_entry(
                 &data_root,

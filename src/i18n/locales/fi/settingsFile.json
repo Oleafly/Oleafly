@@ -19,14 +19,18 @@
     "readFailed": "Tiedostoa ei voitu avata.",
     "imported": "Asetukset tuotiin.",
     "unchanged": "Asetuksesi vastaavat jo tiedostoa {{name}}.",
-    "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen."
+    "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen.",
+    "cloudEmpty": "Dropboxissasi ei ole vielä Oleafly-asetuksia. Ota pilvisynkronointi ensin käyttöön toisella tietokoneella.",
+    "cloudLoadFailed": "Asetuksia ei voitu ladata Dropboxistasi.",
+    "cloudUnreadable": "Dropboxisi asetuksia ei voitu lukea."
   },
   "confirm": {
     "title": "Korvataanko asetuksesi?",
     "description": "Tiedoston {{name}} asetukset korvaavat omasi. Kaikki, mitä tiedostossa ei ole, pysyy ennallaan.",
     "changes": "Muuttuvia asetuksia: {{count}}",
     "ignored": "Näitä ei tunnistettu, joten ne ohitetaan:",
-    "action": "Tuo"
+    "action": "Tuo",
+    "cloudDescription": "Dropboxisi asetukset korvaavat omasi. Kaikki, mitä niissä ei ole, pysyy ennallaan."
   },
   "error": {
     "title": "Tiedostoa {{name}} ei tuotu",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "saa olla vain sanakirjan koodi, esimerkiksi en_US",
     "shortcut": "saa olla vain pikanäppäin, esimerkiksi Mod-Shift-k, tai \"default\"",
     "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\""
-  }
+  },
+  "importFromLocal": "Tuo tältä laitteelta",
+  "importFromCloud": "Tuo pilvestä",
+  "cloudSource": "Dropboxissasi"
 }

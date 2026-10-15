@@ -124,5 +124,9 @@
     "helperRefused": "Nekad av regeln för {{tool}} i approvals.toml",
     "unknownTool": "Inget verktyg heter {{name}}, så regeln gör ingenting.",
     "unknownToolSuggestion": "Inget verktyg heter {{name}}, så regeln gör ingenting. Menade du {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Du är ansluten. Du kan stänga fliken och gå tillbaka till Oleafly.",
+    "failedPage": "Inloggningen slutfördes inte. Du kan stänga fliken och gå tillbaka till Oleafly."
   }
 }

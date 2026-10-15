@@ -139,6 +139,24 @@ export function buildSettingsDocument(snapshot: SettingsSnapshot): Record<string
   return root;
 }
 
+function readPath(root: Record<string, unknown>, path: string): unknown {
+  let node: unknown = root;
+  for (const part of path.split(".")) {
+    if (!isRecord(node) || !Object.hasOwn(node, part)) return undefined;
+    node = node[part];
+  }
+  return node;
+}
+
+export function validSettingsSubset(document: Record<string, unknown>): Record<string, unknown> {
+  const root: Record<string, unknown> = {};
+  for (const setting of SETTINGS_FIELDS) {
+    const value = readPath(document, setting.path);
+    if (value !== undefined && setting.parse(value).ok) setPath(root, setting.path, value);
+  }
+  return root;
+}
+
 export function serializeSettingsDocument(document: Record<string, unknown>): string {
   return `${JSON.stringify(document, null, 2)}\n`;
 }

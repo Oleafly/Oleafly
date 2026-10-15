@@ -9,6 +9,8 @@ rust-version = "1.87"
 
 [dependencies]
 aho-corasick = "1"
+blake3 = "1.8"
+fastcdc = "5"
 crc32fast = "1"
 fs4 = "1.1"
 memchr = "2"
@@ -18,6 +20,7 @@ serde_json = "1"
 sha2 = "0.10"
 tempfile = { workspace = true }
 unicode-normalization = "0.1"
+uuid = { version = "1", features = ["v7"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }

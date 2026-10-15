@@ -753,11 +753,6 @@
   "settings": {
     "close": "Ayarları kapat",
     "data": {
-      "cloud": {
-        "comingSoon": "Yakında",
-        "description": "Bir Git uzak deposu yapılandırmadan projelerinizi cihazlarınız arasında eşitleyin. Her aktarım uçtan uca şifrelenecek, böylece çalışmanız yolda gizli kalacak. Yerel proje klasörleriniz doğruluk kaynağı olmayı sürdürecek.",
-        "title": "Bulut eşitleme"
-      },
       "danger": {
         "confirmDeleteAllAction": "Tüm projeleri sil",
         "confirmDeleteAllDescription": "Geçerli her proje, dosyaları ve Git geçmişiyle birlikte Geri Dönüşüm Kutusu'na taşınacak. Sonrasında projeleri tek tek geri yükleyebilirsiniz.",

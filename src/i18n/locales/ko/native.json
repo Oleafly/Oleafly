@@ -124,5 +124,9 @@
     "helperRefused": "approvals.toml의 {{tool}} 규칙에 따라 거부됨",
     "unknownTool": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다.",
     "unknownToolSuggestion": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다. {{suggestion}}을(를) 말씀하신 건가요?"
+  },
+  "cloud": {
+    "connectedPage": "연결되었습니다. 이 탭을 닫고 Oleafly로 돌아가세요.",
+    "failedPage": "로그인이 완료되지 않았습니다. 이 탭을 닫고 Oleafly로 돌아가세요."
   }
 }

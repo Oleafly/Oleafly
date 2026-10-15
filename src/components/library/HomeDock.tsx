@@ -12,6 +12,7 @@ import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useSettingsStore } from "@/store/settings";
 import { openDiagramComposerChooser, openToolsGallery } from "@/features/open-tool";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
+import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 
 const DOCK_BUTTON_SHAPE = "rounded-full hover:scale-[1.2]";
 
@@ -32,6 +33,7 @@ function DockButton({
   active = false,
   testId,
   tour,
+  describedBy,
   tooltipSide,
 }: Readonly<{
   label: string;
@@ -42,6 +44,7 @@ function DockButton({
   active?: boolean;
   testId?: string;
   tour?: string;
+  describedBy?: string;
   tooltipSide: "top" | "left" | "right";
 }>) {
   return (
@@ -53,6 +56,7 @@ function DockButton({
         variant={primary ? "default" : "ghost"}
         size="icon"
         aria-label={label}
+        aria-describedby={describedBy}
         className={primary ? DOCK_BUTTON_SHAPE : dockButtonClass(active)}
         onClick={onClick}
       >
@@ -134,6 +138,7 @@ export function HomeDock() {
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"
         tour="settings"
+        describedBy={CLOUD_ATTENTION_HINT_ID}
         tooltipSide={tooltipSide}
       />
     </>

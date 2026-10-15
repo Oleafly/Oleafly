@@ -19,14 +19,18 @@
     "readFailed": "Nie udało się otworzyć tego pliku.",
     "imported": "Zaimportowano ustawienia.",
     "unchanged": "Twoje ustawienia są już zgodne z plikiem {{name}}.",
-    "applyFailed": "Nie udało się zapisać niektórych ustawień. Spróbuj zaimportować ponownie."
+    "applyFailed": "Nie udało się zapisać niektórych ustawień. Spróbuj zaimportować ponownie.",
+    "cloudEmpty": "Na twoim koncie Dropbox nie ma jeszcze ustawień Oleafly. Najpierw włącz synchronizację w chmurze na innym komputerze.",
+    "cloudLoadFailed": "Nie udało się wczytać ustawień z twojego konta Dropbox.",
+    "cloudUnreadable": "Nie da się odczytać ustawień zapisanych na twoim koncie Dropbox."
   },
   "confirm": {
     "title": "Zastąpić twoje ustawienia?",
     "description": "Ustawienia z pliku {{name}} zastąpią twoje. Wszystko, czego plik nie zawiera, pozostanie bez zmian.",
     "changes": "Liczba ustawień, które się zmienią: {{count}}",
     "ignored": "Nierozpoznane, więc zostaną pominięte:",
-    "action": "Importuj"
+    "action": "Importuj",
+    "cloudDescription": "Ustawienia z twojego konta Dropbox zastąpią twoje. Wszystko, czego w nich nie ma, pozostanie bez zmian."
   },
   "error": {
     "title": "Nie zaimportowano pliku {{name}}",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "musi być kodem słownika, na przykład en_US",
     "shortcut": "musi być skrótem klawiszowym, na przykład Mod-Shift-k, albo \"default\"",
     "editorKey": "musi być klawiszem, na przykład Mod-d, \"\", jeśli bez klawisza, albo \"default\""
-  }
+  },
+  "importFromLocal": "Importuj z tego urządzenia",
+  "importFromCloud": "Importuj z chmury",
+  "cloudSource": "na twoim koncie Dropbox"
 }

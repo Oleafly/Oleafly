@@ -747,11 +747,6 @@
   "settings": {
     "close": "关闭设置",
     "data": {
-      "cloud": {
-        "comingSoon": "即将推出",
-        "description": "无需配置 Git 远程仓库，即可让项目在多台设备间保持同步。每次传输都将采用端到端加密，你的内容在传输过程中始终保持私密。本地项目文件夹仍是唯一可信的数据来源。",
-        "title": "云同步"
-      },
       "danger": {
         "confirmDeleteAllAction": "删除所有项目",
         "confirmDeleteAllDescription": "每个当前项目都会移入回收站，包括其中的文件和 Git 历史。之后你可以逐个恢复项目。",

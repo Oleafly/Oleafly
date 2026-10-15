@@ -124,5 +124,9 @@
     "helperRefused": "approvals.toml の {{tool}} のルールにより拒否されました",
     "unknownTool": "{{name}} という名前のツールはないため、このルールは何もしません。",
     "unknownToolSuggestion": "{{name}} という名前のツールはないため、このルールは何もしません。{{suggestion}} のことですか？"
+  },
+  "cloud": {
+    "connectedPage": "接続しました。このタブを閉じて Oleafly に戻ってください。",
+    "failedPage": "サインインは完了しませんでした。このタブを閉じて Oleafly に戻ってください。"
   }
 }

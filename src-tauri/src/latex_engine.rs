@@ -2857,20 +2857,38 @@ mod tests {
     }
 
     #[cfg(unix)]
+    pub(super) fn write_test_script(script: &std::path::Path, contents: &str) {
+        use std::io::Write as _;
+        // A child shell writes the script. On Linux, exec fails with ETXTBSY
+        // while any process holds a write fd to the file, and a parallel
+        // test's fork inherits this process's fds until that child execs.
+        let mut writer = std::process::Command::new("sh")
+            .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+            .arg(script)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        writer
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(contents.as_bytes())
+            .unwrap();
+        assert!(writer.wait().unwrap().success());
+    }
+
+    #[cfg(unix)]
     fn recording_manager(body: &str) -> (tempfile::TempDir, String, PathBuf) {
-        use std::os::unix::fs::PermissionsExt;
         let root = tempfile::tempdir().unwrap();
         let script = root.path().join("tlmgr");
         let calls = root.path().join("calls");
-        std::fs::write(
+        write_test_script(
             &script,
-            format!(
+            &format!(
                 "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\n{body}\n",
                 calls.display()
             ),
-        )
-        .unwrap();
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+        );
         let path = script.to_string_lossy().into_owned();
         (root, path, calls)
     }
@@ -2923,19 +2941,15 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn the_user_tree_comes_from_the_active_distribution_not_from_a_guess() {
-        use std::os::unix::fs::PermissionsExt;
         let root = tempfile::tempdir().unwrap();
         let answer = root.path().join("Library/texmf");
         let kpsewhich = root.path().join("kpsewhich");
-        std::fs::write(
+        write_test_script(
             &kpsewhich,
-            format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", answer.display()),
-        )
-        .unwrap();
-        std::fs::set_permissions(&kpsewhich, std::fs::Permissions::from_mode(0o700)).unwrap();
-        std::fs::write(root.path().join("tlmgr"), "#!/bin/sh\nexit 0\n").unwrap();
+            &format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", answer.display()),
+        );
         let tlmgr = root.path().join("tlmgr");
-        std::fs::set_permissions(&tlmgr, std::fs::Permissions::from_mode(0o700)).unwrap();
+        write_test_script(&tlmgr, "#!/bin/sh\nexit 0\n");
         let resolved = tlmgr_user_tree(&tlmgr.to_string_lossy()).await.unwrap();
         assert_eq!(resolved, answer);
         assert_ne!(

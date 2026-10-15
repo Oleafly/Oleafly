@@ -759,11 +759,6 @@
   "settings": {
     "close": "Fechar as configurações",
     "data": {
-      "cloud": {
-        "comingSoon": "Em breve",
-        "description": "Mantenha os projetos sincronizados entre seus dispositivos sem configurar um remoto do Git. Toda transferência será criptografada de ponta a ponta, então seu trabalho continua privado no caminho. As pastas locais dos seus projetos continuarão sendo a fonte da verdade.",
-        "title": "Sincronização na nuvem"
-      },
       "danger": {
         "confirmDeleteAllAction": "Excluir todos os projetos",
         "confirmDeleteAllDescription": "Todos os projetos atuais vão para a Lixeira, com os arquivos e o histórico do Git. Depois você pode restaurar os projetos um a um.",

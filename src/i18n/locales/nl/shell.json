@@ -753,11 +753,6 @@
   "settings": {
     "close": "Instellingen sluiten",
     "data": {
-      "cloud": {
-        "comingSoon": "Binnenkort",
-        "description": "Houd projecten gesynchroniseerd tussen je apparaten zonder een Git-remote in te stellen. Elke overdracht wordt end-to-end versleuteld, dus je werk blijft onderweg privé. Je lokale projectmappen blijven de bron van waarheid.",
-        "title": "Cloudsynchronisatie"
-      },
       "danger": {
         "confirmDeleteAllAction": "Alle projecten verwijderen",
         "confirmDeleteAllDescription": "Elk huidig project gaat naar de Prullenbak, inclusief de bestanden en de Git-geschiedenis. Je kunt projecten daarna één voor één terugzetten.",

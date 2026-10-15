@@ -65,6 +65,7 @@ export const englishResources: Record<string, Catalog> = {
 };
 
 const lazyEnglishCatalogs: Readonly<Record<string, () => Promise<Catalog>>> = {
+  cloud: () => import("./locales/en/cloud.json").then((module) => module.default),
   collab: () => import("./locales/en/collab.json").then((module) => module.default),
   settingsFile: () => import("./locales/en/settingsFile.json").then((module) => module.default),
 };

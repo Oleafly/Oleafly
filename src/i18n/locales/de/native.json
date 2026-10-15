@@ -124,5 +124,9 @@
     "helperRefused": "Von der Regel für {{tool}} in approvals.toml abgelehnt",
     "unknownTool": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts.",
     "unknownToolSuggestion": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts. Meinten Sie {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Sie sind verbunden. Sie können diesen Tab schließen und zu Oleafly zurückkehren.",
+    "failedPage": "Die Anmeldung wurde nicht abgeschlossen. Sie können diesen Tab schließen und zu Oleafly zurückkehren."
   }
 }

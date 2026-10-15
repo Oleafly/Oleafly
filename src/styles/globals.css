@@ -2066,6 +2066,27 @@ textarea,
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
+:root[data-cloud-attention] [aria-describedby~="cloud-attention"] {
+  position: relative;
+}
+:root[data-cloud-attention] [aria-describedby~="cloud-attention"]::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--color-amber-500);
+  pointer-events: none;
+  forced-color-adjust: none;
+}
+@media (forced-colors: active) {
+  :root[data-cloud-attention] [aria-describedby~="cloud-attention"]::after {
+    background-color: CanvasText;
+  }
+}
+
 button {
   -webkit-user-select: none;
   user-select: none;

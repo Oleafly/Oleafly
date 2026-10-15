@@ -765,11 +765,6 @@
   "settings": {
     "close": "Zamknij ustawienia",
     "data": {
-      "cloud": {
-        "comingSoon": "Wkrótce",
-        "description": "Synchronizuj projekty między urządzeniami bez konfigurowania zdalnego repozytorium Git. Każdy transfer będzie szyfrowany end-to-end, więc Twoja praca pozostanie prywatna w drodze. Lokalne foldery projektów pozostaną źródłem prawdy.",
-        "title": "Synchronizacja w chmurze"
-      },
       "danger": {
         "confirmDeleteAllAction": "Usuń wszystkie projekty",
         "confirmDeleteAllDescription": "Każdy bieżący projekt trafi do Kosza, razem z plikami i historią Git. Później można przywracać projekty pojedynczo.",

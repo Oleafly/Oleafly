@@ -747,11 +747,6 @@
   "settings": {
     "close": "설정 닫기",
     "data": {
-      "cloud": {
-        "comingSoon": "준비 중",
-        "description": "Git 원격 저장소를 설정하지 않고도 여러 기기에서 프로젝트를 동기화하세요. 모든 전송은 종단 간 암호화되어 전송 중에도 작업물이 안전합니다. 로컬 프로젝트 폴더가 계속 기준이 됩니다.",
-        "title": "클라우드 동기화"
-      },
       "danger": {
         "confirmDeleteAllAction": "모든 프로젝트 삭제",
         "confirmDeleteAllDescription": "현재 모든 프로젝트가 파일과 Git 이력을 포함해 휴지통으로 이동합니다. 나중에 프로젝트를 하나씩 복원할 수 있습니다.",

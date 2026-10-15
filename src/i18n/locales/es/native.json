@@ -124,5 +124,9 @@
     "helperRefused": "Rechazado por la regla de {{tool}} en approvals.toml",
     "unknownTool": "Ninguna herramienta se llama {{name}}, así que la regla no hace nada.",
     "unknownToolSuggestion": "Ninguna herramienta se llama {{name}}, así que la regla no hace nada. ¿Querías decir {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Ya estás conectado. Puedes cerrar esta pestaña y volver a Oleafly.",
+    "failedPage": "El inicio de sesión no terminó. Puedes cerrar esta pestaña y volver a Oleafly."
   }
 }

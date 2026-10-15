@@ -759,11 +759,6 @@
   "settings": {
     "close": "Chiudi le impostazioni",
     "data": {
-      "cloud": {
-        "comingSoon": "In arrivo",
-        "description": "Tieni i progetti sincronizzati tra i tuoi dispositivi senza configurare un remote Git. Ogni trasferimento sarà cifrato end-to-end, così il tuo lavoro resta privato durante il transito. Le cartelle locali dei progetti resteranno la fonte di verità.",
-        "title": "Sincronizzazione cloud"
-      },
       "danger": {
         "confirmDeleteAllAction": "Elimina tutti i progetti",
         "confirmDeleteAllDescription": "Tutti i progetti attuali andranno nel cestino, con i loro file e la cronologia Git. Potrai ripristinarli uno per uno in seguito.",

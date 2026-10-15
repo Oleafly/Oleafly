@@ -29,6 +29,7 @@ mod checkpoint_publication;
 mod checkpoints;
 mod chunked;
 mod citation;
+mod cloud;
 mod cloud_files;
 mod collab;
 mod commands;
@@ -83,6 +84,7 @@ mod project;
 mod project_availability;
 mod project_file_sizes;
 mod project_grants;
+mod project_ids;
 mod project_location;
 mod project_manifest;
 mod project_rebind;
@@ -217,6 +219,10 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         let handle = app.handle().clone();
         project_availability::install_sink(Box::new(move |event| {
             let _ = handle.emit("project-availability", event);
+        }));
+        let handle = app.handle().clone();
+        cloud::progress::install_sink(Box::new(move |progress| {
+            let _ = handle.emit(cloud::progress::EVENT, progress);
         }));
     }
     program_locator::start_background_probe();
@@ -700,6 +706,29 @@ pub fn run() {
             commands::write_project_bytes,
             commands::write_bytes_file,
             commands::export_project_image,
+            cloud::commands::cloud_state,
+            cloud::commands::cloud_details,
+            cloud::commands::cloud_connect_begin,
+            cloud::commands::cloud_connect_wait,
+            cloud::commands::cloud_connect_paste,
+            cloud::commands::cloud_connect_cancel,
+            cloud::commands::cloud_disconnect,
+            cloud::commands::cloud_set_enabled,
+            cloud::commands::cloud_set_device_name,
+            cloud::commands::cloud_sync_now,
+            cloud::commands::cloud_project_set_mode,
+            cloud::commands::cloud_project_resolve_hold,
+            cloud::commands::cloud_project_remove,
+            cloud::commands::cloud_project_replace_remote,
+            cloud::commands::cloud_project_dismiss_conflicts,
+            cloud::commands::cloud_remove_remote,
+            cloud::commands::cloud_download_project,
+            cloud::commands::cloud_settings_sync,
+            cloud::commands::cloud_settings_download,
+            cloud::commands::cloud_settings_applied,
+            cloud::commands::cloud_settings_defer,
+            cloud::commands::cloud_wait_for_changes,
+            cloud::commands::cloud_settings_keep_local,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,
