@@ -52,12 +52,14 @@ enum Refresh {
 struct Answers {
     upgrade: Upgrade,
     poll_refuses: bool,
+    poll_busy: bool,
     refresh: Refresh,
 }
 
 const SOCKETS: Answers = Answers {
     upgrade: Upgrade::Accepted,
     poll_refuses: false,
+    poll_busy: false,
     refresh: Refresh::Missing,
 };
 
@@ -76,6 +78,7 @@ fn stranger(sockets: bool) -> Answers {
             Upgrade::Forbidden
         },
         poll_refuses: true,
+        poll_busy: false,
         refresh: Refresh::Revoked,
     }
 }
@@ -133,6 +136,15 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         return;
     }
     let path = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
+    if path.contains("/poll") && answers.poll_busy {
+        let busy = crate::client::test_util::http_response(
+            "503 Service Unavailable",
+            &[("Content-Type", "application/json")],
+            r#"{"code":"busy","message":"Try again later."}"#,
+        );
+        let _ = stream.write_all(busy.as_bytes()).await;
+        return;
+    }
     if path.contains("/poll") && answers.poll_refuses {
         let _ = stream
             .write_all(turned_away("unauthorized").as_bytes())
@@ -402,4 +414,40 @@ async fn a_401_from_a_proxy_on_the_upgrade_never_renews_the_session() {
             .map(|tokens| tokens.refresh_token),
         Some("refresh".to_owned())
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_busy_server_on_long_poll_gets_the_long_waits_too() {
+    let server = ServerId::new_v7();
+    let url = answering_at_the_address(
+        server,
+        ProtocolRange { min: 1, max: 1 },
+        Answers {
+            poll_busy: true,
+            ..NO_SOCKETS
+        },
+    )
+    .await;
+    let mut doc = ProjectDoc::create().unwrap();
+    let main = doc
+        .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+        .unwrap();
+    let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
+    start_with(&mut side, signed_in(server, url), quick());
+    let mut waits = Vec::new();
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while let Some(event) = side.events.recv().await {
+            if let LiveEvent::Status(LiveStatus::Offline { retry_in_ms }) = event {
+                waits.push(retry_in_ms);
+                if waits.len() == 2 {
+                    return;
+                }
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("only these waits came: {waits:?}"));
+    assert!(waits[0] <= 500, "{waits:?}");
+    assert!((5_000..=10_000).contains(&waits[1]), "{waits:?}");
+    stopped(&mut side).await;
 }

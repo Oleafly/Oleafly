@@ -5,7 +5,7 @@ use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use super::incoming::{next_frame, ready_updates, take_in};
-use super::reconnect::{ending_for_version, refused_version, Exit, Reached};
+use super::reconnect::{busy, ending_for_version, refused_version, Exit, Reached};
 use super::snapshot_hint::{hint_snapshot, should_snapshot};
 use super::subscribe::subscribe;
 use super::trust::Refreshed;
@@ -127,6 +127,7 @@ async fn serve_wire(
                 None => Exit::Retry(Reached::Never),
             }
         }
+        Err(error) if busy(&error) => return Exit::Busy,
         Err(_) => return Exit::Retry(Reached::Never),
     };
     if !lock(project).peers_vouched() {
@@ -277,6 +278,7 @@ async fn online(
                             }
                         }
                     }
+                    ServerFrame::Error { code: FrameErrorCode::RateLimited, .. } => return Exit::Busy,
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
                 }

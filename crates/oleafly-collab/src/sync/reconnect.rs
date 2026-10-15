@@ -41,9 +41,12 @@ impl Reached {
     }
 }
 
-fn jittered(cap: u64, random: u64) -> u64 {
-    let floor = JITTER_FLOOR_MS.min(cap);
+fn within(floor: u64, cap: u64, random: u64) -> u64 {
     floor + random % (cap - floor + 1)
+}
+
+fn jittered(cap: u64, random: u64) -> u64 {
+    within(JITTER_FLOOR_MS.min(cap), cap, random)
 }
 
 fn backoff_step(attempt: usize, reached: Reached) -> usize {
@@ -63,19 +66,39 @@ fn backoff_cap(attempt: usize) -> u64 {
     (quick << doublings).min(LONGEST_WAIT_MS)
 }
 
-fn backoff_wait(attempt: usize) -> u64 {
+fn random_u64() -> u64 {
     let mut random = [0u8; 8];
     let _ = SystemRandom::new().fill(&mut random);
-    jittered(backoff_cap(attempt), u64::from_le_bytes(random))
+    u64::from_le_bytes(random)
+}
+
+fn backoff_wait(attempt: usize) -> u64 {
+    jittered(backoff_cap(attempt), random_u64())
+}
+
+// A busy server waits at least half the long wait, so the clients it
+// turned away don't all come back within a few seconds.
+fn busy_wait(attempt: usize, random: u64) -> u64 {
+    let cap = backoff_cap(attempt);
+    within(cap / 2, cap, random)
+}
+
+pub(super) fn busy(error: &CollabError) -> bool {
+    matches!(
+        error,
+        CollabError::Api {
+            status: 429 | 503,
+            ..
+        }
+    )
 }
 
 // A server that says it is busy or rate limited gets the long waits at once.
 fn after_refusal(attempt: usize, error: &CollabError) -> usize {
-    match error {
-        CollabError::Api {
-            status: 429 | 503, ..
-        } => attempt.max(QUICK_ATTEMPTS),
-        _ => attempt,
+    if busy(error) {
+        attempt.max(QUICK_ATTEMPTS)
+    } else {
+        attempt
     }
 }
 
@@ -107,6 +130,8 @@ pub(super) enum Exit {
     // Reload from the server's snapshot: connect again at once, without
     // showing the session as offline.
     Resync,
+    // The server answered 429 or 503: the long waits, on either transport.
+    Busy,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -176,6 +201,7 @@ pub(super) async fn run(
         if !std::mem::take(&mut quietly) {
             let _ = events.send(LiveEvent::Status(LiveStatus::Connecting));
         }
+        let mut turned_away = false;
         let exit = match transport {
             Transport::Socket => match connect(&link).await {
                 Ok(socket) => {
@@ -202,6 +228,7 @@ pub(super) async fn run(
                     None => Exit::Retry(Reached::Never),
                 },
                 Err(error) => {
+                    turned_away = busy(&error);
                     attempt = after_refusal(attempt, &error);
                     if looks_blocked(&error) && answers_https(&link).await {
                         refused += 1;
@@ -230,7 +257,7 @@ pub(super) async fn run(
                         }
                     }
                     Exit::Retry(_) | Exit::Resync => refused = 0,
-                    Exit::End(_) => {}
+                    Exit::End(_) | Exit::Busy => {}
                 }
                 exit
             }
@@ -258,8 +285,16 @@ pub(super) async fn run(
                 continue;
             }
             Exit::Retry(reached) => attempt = backoff_step(attempt, reached),
+            Exit::Busy => {
+                turned_away = true;
+                attempt = attempt.max(QUICK_ATTEMPTS);
+            }
         }
-        let delay = backoff_wait(attempt);
+        let delay = if turned_away {
+            busy_wait(attempt, random_u64())
+        } else {
+            backoff_wait(attempt)
+        };
         attempt = attempt.saturating_add(1);
         let _ = events.send(LiveEvent::Status(LiveStatus::Offline {
             retry_in_ms: delay,
@@ -324,6 +359,12 @@ mod tests {
             2
         );
         assert!(backoff_cap(after_refusal(0, &refused(429))) > 5_000);
+        for random in [0, 1, 4_999, 5_000, u64::MAX] {
+            let wait = busy_wait(QUICK_ATTEMPTS, random);
+            assert!((5_000..=10_000).contains(&wait), "{wait} ms");
+            let later = busy_wait(QUICK_ATTEMPTS + 3, random);
+            assert!((30_000..=60_000).contains(&later), "{later} ms");
+        }
     }
 
     #[tokio::test]
