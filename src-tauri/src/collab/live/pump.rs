@@ -122,6 +122,7 @@ pub(super) async fn pump(
                     device_id,
                 });
             }
+            LiveEvent::ProjectFull => on_project_full(&active),
             LiveEvent::Unsendable => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration stopped sending changes in project {}: one edit is larger than the server accepts in a single change",
@@ -155,10 +156,9 @@ pub(super) async fn pump(
     }
 }
 
-// The pump calls this for the sync engine's LiveEvent::ProjectFull: the
-// server refused a change because the project reached its size limit, so
-// changes stay on this computer until the limit is raised.
-#[allow(dead_code)]
+// The server refused a change because the project reached its size limit,
+// so changes stay on this computer until the limit is raised. The sync
+// engine says so once per session.
 pub(super) fn on_project_full(active: &Active) {
     let _ = crate::project::append_app_log(format!(
         "Live collaboration in project {} reached the server's size limit; changes stay on this computer for now",

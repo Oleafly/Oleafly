@@ -426,9 +426,12 @@ where
         verify_server(state, &client, server).await?;
     }
     let keys = state.keys().await?;
-    let first = match keys.sessions.access_token(server, &client).await {
-        Ok(access) => call(&client, access.as_str()).await,
-        Err(error) => Err(error),
+    let (rejected, first) = match keys.sessions.access_token(server, &client).await {
+        Ok(access) => {
+            let first = call(&client, access.as_str()).await;
+            (Some(access), first)
+        }
+        Err(error) => (None, Err(error)),
     };
     let result = match first {
         Err(CollabError::Unauthorized) => {
@@ -437,11 +440,17 @@ where
             } else {
                 Ok(())
             };
-            match verified {
-                Ok(()) => match keys.sessions.force_refresh(server, &client).await {
-                    Ok(access) => call(&client, access.as_str()).await,
-                    Err(error) => Err(error),
-                },
+            let renewed = match (verified, &rejected) {
+                (Err(error), _) => Err(error),
+                (Ok(()), Some(rejected)) => {
+                    keys.sessions
+                        .refresh_rejected(server, &client, rejected)
+                        .await
+                }
+                (Ok(()), None) => keys.sessions.force_refresh(server, &client).await,
+            };
+            match renewed {
+                Ok(access) => call(&client, access.as_str()).await,
                 Err(error) => Err(error),
             }
         }
@@ -475,8 +484,8 @@ where
     let access = sessions.access_token(server, client).await?;
     match call(client, &access).await {
         Err(CollabError::Unauthorized) => {
-            let access = sessions.force_refresh(server, client).await?;
-            call(client, &access).await
+            let renewed = sessions.refresh_rejected(server, client, &access).await?;
+            call(client, &renewed).await
         }
         other => other,
     }
