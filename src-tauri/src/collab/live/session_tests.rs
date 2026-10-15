@@ -259,6 +259,26 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 }
 
 #[test]
+fn a_panic_in_desktop_work_on_the_document_marks_it_damaged_and_leaves_it_unpoisoned() {
+    let (_dir, _root, _host, rig) = watched_rig("guarded-work", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let edited = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        super::edit_live(
+            "guarded-work",
+            |_| -> Result<(), oleafly_collab::CollabError> {
+                panic!("a test broke the work on the document")
+            },
+        )
+    }))
+    .expect("the panic reached the caller instead of being contained");
+    assert!(edited.is_err());
+    let live = rig.shared_live();
+    assert!(!live.is_poisoned(), "the project mutex was poisoned");
+    assert!(lock(&live).damaged());
+    assert!(super::read_live("guarded-work", |_| ()).is_some());
+}
+
+#[test]
 fn opening_a_project_after_its_session_ended_says_why() {
     let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()

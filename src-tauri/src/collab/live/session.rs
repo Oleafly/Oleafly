@@ -356,18 +356,28 @@ impl Active {
         Ok(reread)
     }
 
+    // Reads what the document has for the disk. The reads go through
+    // `guarded`, so a panic in the document engine ends the session as
+    // failed instead of leaving the project mutex poisoned.
     fn take_outgoing(
         &self,
         previous: &mut Layout,
         hashes: &BTreeMap<String, String>,
     ) -> Result<Option<Outgoing>, CollabError> {
-        let mut live = lock(&self.live);
+        lock(&self.live).guarded(|live| Self::outgoing_from(live, previous, hashes))
+    }
+
+    fn outgoing_from(
+        live: &mut LiveProject,
+        previous: &mut Layout,
+        hashes: &BTreeMap<String, String>,
+    ) -> Result<Option<Outgoing>, CollabError> {
         let work = live.take_disk_work();
         if work.is_empty() {
             return Ok(None);
         }
         let lost = if work.tree {
-            kept::keep_lost_figures(&mut live, previous, hashes)?
+            kept::keep_lost_figures(live, previous, hashes)?
         } else {
             Vec::new()
         };
@@ -375,7 +385,7 @@ impl Active {
         let nodes = live.doc().nodes()?;
         let next = materialize::layout(&nodes);
         let kept = if work.tree {
-            kept::notices(&live, &nodes, previous, &next, lost)
+            kept::notices(live, &nodes, previous, &next, lost)
         } else {
             Vec::new()
         };
