@@ -1,9 +1,10 @@
+use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::AccountId;
 use ring::rand::{SecureRandom, SystemRandom};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::auth::split_token::{self, constant_time_eq, verifier_matches};
-use crate::auth::{db_error, parse_account};
+use crate::auth::{db_error, parse_account, refresh};
 use crate::error::ServerError;
 use crate::tokens::hash_token;
 
@@ -47,6 +48,7 @@ pub struct NewAuthorization {
     pub device_name: String,
     pub platform: String,
     pub setup_code_hash: Option<String>,
+    pub requested_from: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,6 +69,7 @@ pub struct Authorization {
     pub account_id: Option<AccountId>,
     pub interval_secs: u64,
     pub expires_at: i64,
+    pub requested_from: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,7 +80,7 @@ pub enum Pace {
 
 const SELECT: &str =
     "SELECT id, device_public_key, device_name, platform, setup_code_hash, status, \
-     account_id, interval_secs, expires_at, device_code_hash FROM device_authorizations";
+     account_id, interval_secs, expires_at, device_code_hash, requested_from FROM device_authorizations";
 
 pub fn generate_user_code() -> String {
     let random = SystemRandom::new();
@@ -144,6 +147,7 @@ fn row(
             account_id: None,
             interval_secs: u64::try_from(row.get::<_, i64>(7)?).unwrap_or(INTERVAL_SECS),
             expires_at: row.get(8)?,
+            requested_from: row.get(10)?,
         },
         row.get::<_, Option<String>>(6)?,
         row.get::<_, String>(5)?,
@@ -186,8 +190,9 @@ pub fn create(
         let user_code = generate_user_code();
         let inserted = conn.execute(
             "INSERT OR IGNORE INTO device_authorizations (id, device_code_hash, user_code_hash, device_public_key, \
-             device_name, platform, setup_code_hash, status, account_id, interval_secs, last_polled_at, created_at, expires_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', NULL, ?8, NULL, ?9, ?10)",
+             device_name, platform, setup_code_hash, status, account_id, interval_secs, last_polled_at, created_at, expires_at, \
+             requested_from) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', NULL, ?8, NULL, ?9, ?10, ?11)",
             params![
                 split.selector,
                 split.verifier_hash,
@@ -198,7 +203,8 @@ pub fn create(
                 new.setup_code_hash,
                 i64::try_from(INTERVAL_SECS).unwrap_or(5),
                 now,
-                now + CODE_TTL_MS
+                now + CODE_TTL_MS,
+                new.requested_from
             ],
         )
         .map_err(db_error)?;
@@ -339,6 +345,8 @@ pub fn record_poll(conn: &Connection, id: &str, now: i64) -> Result<Pace, Server
     })
 }
 
+const REPLY_PURPOSE: &[u8] = b"oleafly-device-code-grace";
+
 pub fn mark_used(conn: &Connection, id: &str) -> Result<bool, ServerError> {
     let changed = conn
         .execute(
@@ -347,6 +355,41 @@ pub fn mark_used(conn: &Connection, id: &str) -> Result<bool, ServerError> {
         )
         .map_err(db_error)?;
     Ok(changed == 1)
+}
+
+pub fn keep_reply(
+    conn: &Connection,
+    id: &str,
+    device_code: &str,
+    tokens: &SessionTokens,
+    now: i64,
+) -> Result<(), ServerError> {
+    let sealed = refresh::seal_reply_for(REPLY_PURPOSE, device_code, tokens)?;
+    conn.execute(
+        "UPDATE device_authorizations SET grace_reply = ?2, expires_at = ?3 WHERE id = ?1 AND status = 'used'",
+        params![id, sealed, now + APPROVED_GRACE_MS],
+    )
+    .map_err(db_error)?;
+    Ok(())
+}
+
+pub fn replay(
+    conn: &Connection,
+    id: &str,
+    device_code: &str,
+    now: i64,
+) -> Result<Option<SessionTokens>, ServerError> {
+    let sealed: Option<Vec<u8>> = conn
+        .query_row(
+            "SELECT grace_reply FROM device_authorizations \
+             WHERE id = ?1 AND status = 'used' AND expires_at > ?2",
+            params![id, now],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(db_error)?
+        .flatten();
+    Ok(sealed.and_then(|sealed| refresh::open_reply_for(REPLY_PURPOSE, device_code, &sealed)))
 }
 
 #[cfg(test)]
@@ -363,6 +406,7 @@ mod tests {
             device_name: "Lab PC".to_string(),
             platform: "linux".to_string(),
             setup_code_hash: None,
+            requested_from: Some("198.51.100.1".to_string()),
         }
     }
 
@@ -418,6 +462,7 @@ mod tests {
                 assert_eq!(found.device_name, "Lab PC");
                 assert_eq!(found.status, Status::Pending);
                 assert_eq!(found.interval_secs, INTERVAL_SECS);
+                assert_eq!(found.requested_from.as_deref(), Some("198.51.100.1"));
                 assert_eq!(
                     find_by_device_code(conn, &issued.device_code)?.map(|found| found.id),
                     Some(issued.id.clone())

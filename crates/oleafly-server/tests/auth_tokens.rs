@@ -1,3 +1,5 @@
+mod claims;
+
 use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::auth::{
     challenge_message, ChallengePurpose, SessionTokens, TokenRequest,
@@ -6,8 +8,8 @@ use oleafly_server::clock::Clock;
 use oleafly_server::members;
 use oleafly_server::test_support::{
     api_error_code, app_callback, challenge_nonce, follow_to_app, github_provider,
-    no_redirect_client, redeem, refresh_session, security_event_kinds, sign_in, test_config,
-    MockGithub, MockGithubUser, SignInAttempt, TestDevice, TestServer,
+    no_redirect_client, redeem, refresh_session, security_event_kinds, test_config, MockGithub,
+    MockGithubUser, TestDevice, TestServer,
 };
 use oleafly_server::tokens::resolve_access_token;
 use reqwest::StatusCode;
@@ -37,7 +39,9 @@ async fn setup_code_if_needed(server: &TestServer) -> Option<String> {
 
 async fn code_for(server: &TestServer, device: &TestDevice) -> (String, String) {
     let setup_code = setup_code_if_needed(server).await;
-    let attempt = SignInAttempt::new(server, "github", device, setup_code.as_deref());
+    let attempt = claims::attempt(server, "github", device, setup_code.as_deref())
+        .await
+        .expect("a setup claim");
     let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
         .await
         .expect("redirects");
@@ -49,7 +53,7 @@ async fn code_for(server: &TestServer, device: &TestDevice) -> (String, String) 
 
 async fn session(server: &TestServer, device: &TestDevice) -> SessionTokens {
     let setup_code = setup_code_if_needed(server).await;
-    sign_in(server, "github", device, setup_code.as_deref())
+    claims::sign_in(server, "github", device, setup_code.as_deref())
         .await
         .expect("sign in")
 }
@@ -266,16 +270,36 @@ async fn a_retried_refresh_gets_the_same_pair_while_the_new_one_is_unused() {
     let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
         .expect("rotate");
-    server.clock().advance(3 * 24 * 60 * 60 * 1000);
+    server.clock().advance(60 * 1000);
     let retried = refresh_session(&server, &device, first.device_id, &first.refresh_token)
         .await
-        .expect("a laptop that slept mid-refresh retries");
+        .expect("a reply lost on a bad connection is retried");
     assert_eq!(retried.refresh_token, rotated.refresh_token);
     assert!(access_is_live(&server, &retried.access_token).await);
     let next = refresh_session(&server, &device, first.device_id, &rotated.refresh_token)
         .await
         .expect("the new refresh token still rotates");
     assert_ne!(next.refresh_token, rotated.refresh_token);
+}
+
+#[tokio::test]
+async fn an_old_refresh_presented_days_later_is_caught_as_reuse_even_if_the_new_one_was_never_used()
+{
+    let (server, _github) = server().await;
+    let device = TestDevice::generate();
+    let first = session(&server, &device).await;
+    let rotated = refresh_session(&server, &device, first.device_id, &first.refresh_token)
+        .await
+        .expect("rotate");
+    server.clock().advance(3 * 24 * 60 * 60 * 1000);
+    let copied = refresh_session(&server, &device, first.device_id, &first.refresh_token).await;
+    assert_eq!(copied.err().as_deref(), Some("refresh_reused"));
+    let after = refresh_session(&server, &device, first.device_id, &rotated.refresh_token).await;
+    assert_eq!(after.err().as_deref(), Some("revoked"));
+    let kinds = security_event_kinds(&server).await;
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::RefreshReuseDetected)));
 }
 
 #[tokio::test]

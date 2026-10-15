@@ -3,11 +3,13 @@ mod browser;
 use std::time::Duration;
 
 use browser::{
-    form, form_labelled, poll, request_code, security_events, set_email_link, text_of, Browser,
-    Page,
+    form, form_labelled, poll, request_code, request_code_as, security_events, set_email_link,
+    text_of, Browser, Page,
 };
 use oleafly_collab_protocol::admin::{AllowlistMatcher, SecurityEventKind};
-use oleafly_collab_protocol::auth::{AccountSummary, DeviceCodeResponse, DevicePoll};
+use oleafly_collab_protocol::auth::{
+    AccountSummary, DeviceCodeRequest, DeviceCodeResponse, DevicePoll,
+};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::test_support::{
     allowlist, github_provider, mail_config, seed_member, test_config, CapturedEmail, MockGithub,
@@ -218,7 +220,7 @@ async fn the_person_can_stop_a_sign_in_they_did_not_start() {
 }
 
 #[tokio::test]
-async fn an_approved_code_gives_out_tokens_once() {
+async fn an_approved_code_gives_out_one_session() {
     let setup = setup().await;
     let device = TestDevice::generate();
     let code = request_code(&setup.server, &device, None)
@@ -227,7 +229,10 @@ async fn an_approved_code_gives_out_tokens_once() {
     let browser = Browser::new();
     let confirm = enter_code(&browser, &code, &code.user_code).await;
     continue_with(&browser, &confirm, "GitHub").await;
-    tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    let first = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    let again = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    assert_eq!(again.refresh_token, first.refresh_token);
+    setup.server.clock().advance(2 * MINUTE_MS + 1);
     assert_eq!(
         poll(&setup.server, &device, &code.device_code).await,
         Err("invalid_code".to_owned())
@@ -674,5 +679,146 @@ async fn an_emailed_link_for_a_code_that_ran_out_says_the_code_expired() {
         text_of(&late).contains("This code has expired"),
         "{}",
         late.body
+    );
+}
+
+fn code_request(device: &TestDevice, name: &str, platform: &str) -> DeviceCodeRequest {
+    DeviceCodeRequest {
+        device_public_key: device.public_key_b64().to_owned(),
+        device_name: name.to_owned(),
+        platform: platform.to_owned(),
+        setup_code: None,
+    }
+}
+
+#[tokio::test]
+async fn a_code_for_a_system_the_app_never_runs_on_is_refused() {
+    let setup = setup().await;
+    let device = TestDevice::generate();
+    for platform in ["Security check", "ios", ""] {
+        assert_eq!(
+            request_code_as(
+                &setup.server,
+                code_request(&device, "Lab PC", platform),
+                None
+            )
+            .await
+            .err()
+            .as_deref(),
+            Some("bad_request"),
+            "{platform}"
+        );
+    }
+    for platform in ["macos", "Windows", "linux"] {
+        assert!(
+            request_code_as(
+                &setup.server,
+                code_request(&device, "Lab PC", platform),
+                None
+            )
+            .await
+            .is_ok(),
+            "{platform}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_long_device_name_is_cut_short_on_the_approval_page() {
+    let setup = setup().await;
+    let device = TestDevice::generate();
+    let name = "Please confirm your access for the university IT department today";
+    let code = request_code_as(&setup.server, code_request(&device, name, "linux"), None)
+        .await
+        .expect("a code");
+    let confirm = enter_code(&Browser::new(), &code, &code.user_code).await;
+    let text = text_of(&confirm);
+    assert!(!text.contains(name), "{text}");
+    assert!(
+        text.contains("Oleafly on Please confirm your access for the univ"),
+        "{text}"
+    );
+    assert!(
+        text.contains("If someone sent you this link or code, stop."),
+        "{text}"
+    );
+}
+
+#[tokio::test]
+async fn approving_a_code_asked_for_on_another_network_shows_a_warning() {
+    let github = MockGithub::start(vec![person(11, "ada")]).await;
+    let mut config = test_config();
+    config.behind_proxy = true;
+    config.providers.push(github_provider("github", &github));
+    let server = TestServer::start(config).await;
+    let device = TestDevice::generate();
+    let code = request_code_as(
+        &server,
+        code_request(&device, "Lab PC", "linux"),
+        Some("198.51.100.1"),
+    )
+    .await
+    .expect("a code");
+    let warning = "This sign-in was started on a different network than this browser.";
+    let elsewhere = enter_code(
+        &Browser::from_address("203.0.113.1"),
+        &code,
+        &code.user_code,
+    )
+    .await;
+    assert!(text_of(&elsewhere).contains(warning), "{}", elsewhere.body);
+    assert!(
+        elsewhere.body.contains("role=\"alert\""),
+        "{}",
+        elsewhere.body
+    );
+    let same = enter_code(
+        &Browser::from_address("198.51.100.1"),
+        &code,
+        &code.user_code,
+    )
+    .await;
+    assert!(!text_of(&same).contains(warning), "{}", same.body);
+}
+
+#[tokio::test]
+async fn a_poll_whose_approved_reply_was_lost_gets_the_same_session_again() {
+    let setup = setup().await;
+    let device = TestDevice::generate();
+    let code = request_code(&setup.server, &device, None)
+        .await
+        .expect("a code");
+    let browser = Browser::new();
+    let confirm = enter_code(&browser, &code, &code.user_code).await;
+    let done = continue_with(&browser, &confirm, "GitHub").await;
+    assert_eq!(done.status, 200, "{}", done.body);
+    let lost = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    setup.server.clock().advance(30 * 1000);
+    let again = tokens_from(poll(&setup.server, &device, &code.device_code).await);
+    assert_eq!(again.refresh_token, lost.refresh_token);
+    assert_eq!(again.access_token, lost.access_token);
+    assert_eq!(again.device_id, lost.device_id);
+    assert_eq!(me(&setup.server, &again.access_token).await.logins, ["ada"]);
+    let stranger = TestDevice::generate();
+    assert_eq!(
+        poll(&setup.server, &stranger, &code.device_code)
+            .await
+            .err()
+            .as_deref(),
+        Some("invalid_signature")
+    );
+    let added = security_events(&setup.server)
+        .await
+        .into_iter()
+        .filter(|event| event.kind == SecurityEventKind::DeviceAdded)
+        .count();
+    assert_eq!(added, 1);
+    setup.server.clock().advance(2 * MINUTE_MS);
+    assert_eq!(
+        poll(&setup.server, &device, &code.device_code)
+            .await
+            .err()
+            .as_deref(),
+        Some("invalid_code")
     );
 }

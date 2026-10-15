@@ -1,6 +1,7 @@
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -15,6 +16,7 @@ pub const DEFAULT_SIGN_IN_PER_MINUTE: u32 = 120;
 pub const DEFAULT_EMAIL_LINKS_PER_IP: u32 = 100;
 pub const DEFAULT_DEVICE_CODES_PER_IP: u32 = 100;
 pub const DEFAULT_EMAIL_LINKS_PER_ADDRESS: u32 = 3;
+pub const DEFAULT_EMAIL_LINKS_PER_HOUR: u32 = 300;
 pub const MAX_POLL_HOLD_SECONDS: u64 = 40;
 pub const MAX_PROXY_HOPS: u8 = 8;
 pub const MIN_SETUP_CODE_CHARS: usize = 12;
@@ -37,6 +39,8 @@ const GITHUB_VARIABLES: [&str; 6] = [
     "OLEAFLY_GITHUB_LABEL",
 ];
 const LOG_LEVELS: [&str; 5] = ["error", "warn", "info", "debug", "trace"];
+const FOR_OTHER_TOOLS: [&str; 1] = ["OLEAFLY_DOMAIN"];
+const CLOSE_ENOUGH: usize = 3;
 const S3_VARIABLES: [&str; 6] = [
     "OLEAFLY_S3_ENDPOINT",
     "OLEAFLY_S3_REGION",
@@ -97,6 +101,7 @@ pub struct SignInLimits {
     pub requests_per_minute: u32,
     pub email_links_per_ip: u32,
     pub email_links_per_address: u32,
+    pub email_links_per_hour: u32,
     pub device_codes_per_ip: u32,
 }
 
@@ -107,7 +112,82 @@ impl Default for SignInLimits {
             requests_per_minute: DEFAULT_SIGN_IN_PER_MINUTE,
             email_links_per_ip: DEFAULT_EMAIL_LINKS_PER_IP,
             email_links_per_address: DEFAULT_EMAIL_LINKS_PER_ADDRESS,
+            email_links_per_hour: DEFAULT_EMAIL_LINKS_PER_HOUR,
             device_codes_per_ip: DEFAULT_DEVICE_CODES_PER_IP,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProxyRange {
+    network: IpAddr,
+    prefix: u8,
+}
+
+impl ProxyRange {
+    pub fn parse(text: &str) -> Option<ProxyRange> {
+        let (address, prefix) = match text.trim().split_once('/') {
+            Some((address, prefix)) => (address, Some(prefix)),
+            None => (text.trim(), None),
+        };
+        let address = address.parse::<IpAddr>().ok()?.to_canonical();
+        let widest = if address.is_ipv4() { 32 } else { 128 };
+        let prefix = match prefix {
+            Some(prefix) => prefix.parse::<u8>().ok().filter(|bits| *bits <= widest)?,
+            None => widest,
+        };
+        Some(ProxyRange {
+            network: masked(address, prefix),
+            prefix,
+        })
+    }
+
+    pub fn contains(&self, address: IpAddr) -> bool {
+        let address = address.to_canonical();
+        address.is_ipv4() == self.network.is_ipv4() && masked(address, self.prefix) == self.network
+    }
+}
+
+fn masked(address: IpAddr, prefix: u8) -> IpAddr {
+    match address {
+        IpAddr::V4(address) => {
+            let mask = u32::MAX.checked_shl(32 - u32::from(prefix)).unwrap_or(0);
+            IpAddr::V4(Ipv4Addr::from(u32::from(address) & mask))
+        }
+        IpAddr::V6(address) => {
+            let mask = u128::MAX.checked_shl(128 - u32::from(prefix)).unwrap_or(0);
+            IpAddr::V6(Ipv6Addr::from(u128::from(address) & mask))
+        }
+    }
+}
+
+impl fmt::Display for ProxyRange {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}/{}", self.network, self.prefix)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StartupNote {
+    Info(String),
+    Warning(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IgnoredSetting {
+    pub name: String,
+    pub instead: Option<String>,
+}
+
+impl IgnoredSetting {
+    fn sentence(&self) -> String {
+        match &self.instead {
+            Some(base) if self.name.strip_suffix("_FILE") == Some(base.as_str()) => format!(
+                "{} is not a setting. Only secrets can come from a file, so set {base} itself.",
+                self.name
+            ),
+            Some(close) => format!("{} is not a setting. Did you mean {close}?", self.name),
+            None => format!("{} is not a setting, so it has no effect.", self.name),
         }
     }
 }
@@ -128,11 +208,14 @@ pub struct ServerConfig {
     pub sign_in: SignInLimits,
     pub behind_proxy: bool,
     pub proxy_hops: u8,
+    pub trusted_proxies: Vec<ProxyRange>,
     pub log_level: String,
     pub security_log_days: u32,
     pub archive_days: u32,
     pub snapshot_memory_mb: u64,
     pub poll_hold: Duration,
+    pub startup_notes: Vec<StartupNote>,
+    pub ignored_settings: Vec<IgnoredSetting>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -171,7 +254,11 @@ impl ServerConfig {
         vars: &BTreeMap<String, String>,
         read_file: &dyn Fn(&Path) -> std::io::Result<String>,
     ) -> Result<ServerConfig, ConfigError> {
-        let source = Source { vars, read_file };
+        let source = Source {
+            vars,
+            read_file,
+            read: RefCell::new(BTreeSet::new()),
+        };
         let public_url = match source.get("OLEAFLY_PUBLIC_URL") {
             Some(raw) => parse_public_url(&raw)?,
             None => {
@@ -263,6 +350,22 @@ impl ServerConfig {
                 "OLEAFLY_PROXY_HOPS only applies when OLEAFLY_BEHIND_PROXY is true.",
             ));
         }
+        let trusted_proxies = match source.get("OLEAFLY_TRUSTED_PROXIES") {
+            Some(raw) => parse_trusted_proxies(&raw)?,
+            None => Vec::new(),
+        };
+        if !trusted_proxies.is_empty() && !behind_proxy {
+            return Err(ConfigError::new(
+                "OLEAFLY_TRUSTED_PROXIES",
+                "OLEAFLY_TRUSTED_PROXIES only applies when OLEAFLY_BEHIND_PROXY is true.",
+            ));
+        }
+        if !trusted_proxies.is_empty() && source.is_set("OLEAFLY_PROXY_HOPS") {
+            return Err(ConfigError::new(
+                "OLEAFLY_TRUSTED_PROXIES",
+                "Set OLEAFLY_TRUSTED_PROXIES or OLEAFLY_PROXY_HOPS, not both. The trusted list is safer, so remove OLEAFLY_PROXY_HOPS.",
+            ));
+        }
         let log_level = match source.get("OLEAFLY_LOG_LEVEL") {
             Some(raw) => {
                 let level = raw.to_ascii_lowercase();
@@ -278,10 +381,23 @@ impl ServerConfig {
         };
         let security_log_days = source.number("OLEAFLY_SECURITY_LOG_DAYS", 365u32)?;
         let archive_days = source.number("OLEAFLY_ARCHIVE_DAYS", 30u32)?;
-        let snapshot_memory_mb = source.number(
-            "OLEAFLY_SNAPSHOT_MEMORY_MB",
-            source.half_the_memory_limit_mb(),
-        )?;
+        let mut startup_notes = Vec::new();
+        let (detected_mb, memory) = source.half_the_memory_limit_mb();
+        let snapshot_memory_mb = source.number("OLEAFLY_SNAPSHOT_MEMORY_MB", detected_mb)?;
+        startup_notes.push(StartupNote::Info(
+            match (source.is_set("OLEAFLY_SNAPSHOT_MEMORY_MB"), memory) {
+                (true, _) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says."
+                ),
+                (false, Some(memory)) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB (half of {} MB).",
+                    memory / MB
+                ),
+                (false, None) => format!(
+                    "Snapshot builds may use {snapshot_memory_mb} MB. The server could not tell how much memory it has, so set OLEAFLY_SNAPSHOT_MEMORY_MB to about half of it."
+                ),
+            },
+        ));
         let poll_hold_seconds =
             source.number("OLEAFLY_POLL_HOLD_SECONDS", DEFAULT_POLL_HOLD_SECONDS)?;
         if poll_hold_seconds > MAX_POLL_HOLD_SECONDS {
@@ -291,6 +407,14 @@ impl ServerConfig {
             ));
         }
         let poll_hold = Duration::from_secs(poll_hold_seconds);
+        let ignored_settings = source.ignored();
+        if !ignored_settings.is_empty() {
+            let sentences: Vec<String> = ignored_settings
+                .iter()
+                .map(IgnoredSetting::sentence)
+                .collect();
+            startup_notes.push(StartupNote::Warning(sentences.join(" ")));
+        }
         Ok(ServerConfig {
             public_url,
             bind,
@@ -306,11 +430,14 @@ impl ServerConfig {
             sign_in,
             behind_proxy,
             proxy_hops,
+            trusted_proxies,
             log_level,
             security_log_days,
             archive_days,
             snapshot_memory_mb,
             poll_hold,
+            startup_notes,
+            ignored_settings,
         })
     }
 
@@ -355,23 +482,52 @@ fn read_secret_file(path: &Path) -> std::io::Result<String> {
 }
 
 const DEFAULT_SNAPSHOT_MEMORY_MB: u64 = 1024;
+const MB: u64 = 1024 * 1024;
+const UNLIMITED: u64 = 1 << 40;
 const MEMORY_LIMIT_FILES: [&str; 2] = [
     "/sys/fs/cgroup/memory.max",
     "/sys/fs/cgroup/memory/memory.limit_in_bytes",
 ];
+const OWN_CGROUP_FILE: &str = "/proc/self/cgroup";
+const MEMORY_INFO_FILE: &str = "/proc/meminfo";
 
 struct Source<'a> {
     vars: &'a BTreeMap<String, String>,
     read_file: &'a dyn Fn(&Path) -> std::io::Result<String>,
+    read: RefCell<BTreeSet<String>>,
 }
 
 impl Source<'_> {
+    fn noted(&self, name: &str) {
+        self.read.borrow_mut().insert(name.to_string());
+    }
+
+    fn ignored(&self) -> Vec<IgnoredSetting> {
+        let read = self.read.borrow();
+        self.vars
+            .iter()
+            .filter(|(name, value)| {
+                name.starts_with("OLEAFLY_")
+                    && !value.trim().is_empty()
+                    && !read.contains(name.as_str())
+                    && !FOR_OTHER_TOOLS.contains(&name.as_str())
+            })
+            .map(|(name, _)| IgnoredSetting {
+                name: name.clone(),
+                instead: instead_of(name, &read),
+            })
+            .collect()
+    }
+
     fn get(&self, name: &str) -> Option<String> {
+        self.noted(name);
         present(self.vars, name).map(str::to_string)
     }
 
     fn secret(&self, name: &str) -> Result<Option<String>, ConfigError> {
         let file_variable = format!("{name}_FILE");
+        self.noted(name);
+        self.noted(&file_variable);
         match (present(self.vars, name), present(self.vars, &file_variable)) {
             (Some(_), Some(_)) => Err(ConfigError::new(
                 name,
@@ -387,10 +543,7 @@ impl Source<'_> {
                         ),
                     )
                 })?;
-                let value = contents
-                    .strip_suffix("\r\n")
-                    .or_else(|| contents.strip_suffix('\n'))
-                    .unwrap_or(&contents);
+                let value = contents.trim();
                 if value.is_empty() {
                     return Err(ConfigError::new(
                         file_variable.as_str(),
@@ -404,6 +557,7 @@ impl Source<'_> {
     }
 
     fn is_set(&self, name: &str) -> bool {
+        self.noted(name);
         present(self.vars, name).is_some()
     }
 
@@ -423,15 +577,67 @@ impl Source<'_> {
         }
     }
 
-    fn half_the_memory_limit_mb(&self) -> u64 {
-        const UNLIMITED: u64 = 1 << 40;
-        const MB: u64 = 1024 * 1024;
-        MEMORY_LIMIT_FILES
+    fn half_the_memory_limit_mb(&self) -> (u64, Option<u64>) {
+        let files = self.memory_limit_files();
+        let limits = files
             .iter()
-            .filter_map(|file| (self.read_file)(Path::new(file)).ok())
-            .filter_map(|text| text.trim().parse::<u64>().ok())
-            .find(|limit| *limit < UNLIMITED)
-            .map_or(DEFAULT_SNAPSHOT_MEMORY_MB, |limit| (limit / 2 / MB).max(1))
+            .filter_map(|file| (self.read_file)(file).ok())
+            .filter_map(|text| text.trim().parse::<u64>().ok());
+        let smallest = limits
+            .chain(self.memory_total())
+            .filter(|limit| *limit < UNLIMITED)
+            .min();
+        match smallest {
+            Some(limit) => ((limit / 2 / MB).max(1), Some(limit)),
+            None => (DEFAULT_SNAPSHOT_MEMORY_MB, None),
+        }
+    }
+
+    fn memory_limit_files(&self) -> Vec<PathBuf> {
+        let mut files: Vec<PathBuf> = MEMORY_LIMIT_FILES.iter().map(PathBuf::from).collect();
+        let Ok(own) = (self.read_file)(Path::new(OWN_CGROUP_FILE)) else {
+            return files;
+        };
+        for line in own.lines() {
+            let mut fields = line.splitn(3, ':');
+            let (Some(_), Some(controllers), Some(path)) =
+                (fields.next(), fields.next(), fields.next())
+            else {
+                continue;
+            };
+            let (root, file) = if controllers.is_empty() {
+                ("/sys/fs/cgroup", "memory.max")
+            } else if controllers
+                .split(',')
+                .any(|controller| controller == "memory")
+            {
+                ("/sys/fs/cgroup/memory", "memory.limit_in_bytes")
+            } else {
+                continue;
+            };
+            let mut group = PathBuf::from(path.trim());
+            loop {
+                let relative = group.strip_prefix("/").unwrap_or(&group);
+                files.push(Path::new(root).join(relative).join(file));
+                if !group.pop() {
+                    break;
+                }
+            }
+        }
+        files
+    }
+
+    fn memory_total(&self) -> Option<u64> {
+        let text = (self.read_file)(Path::new(MEMORY_INFO_FILE)).ok()?;
+        let line = text.lines().find(|line| line.starts_with("MemTotal:"))?;
+        let kilobytes = line
+            .trim_start_matches("MemTotal:")
+            .trim()
+            .trim_end_matches("kB")
+            .trim()
+            .parse::<u64>()
+            .ok()?;
+        kilobytes.checked_mul(1024)
     }
 
     fn flag(&self, name: &str, default: bool) -> Result<bool, ConfigError> {
@@ -449,6 +655,48 @@ impl Source<'_> {
             ))
         }
     }
+}
+
+fn instead_of(name: &str, read: &BTreeSet<String>) -> Option<String> {
+    let oidc_shaped = |base: &str| {
+        base.starts_with(OIDC_PREFIX) && OIDC_SUFFIXES.iter().any(|suffix| base.ends_with(suffix))
+    };
+    if let Some(base) = name
+        .strip_suffix("_FILE")
+        .filter(|base| read.contains(*base) || oidc_shaped(base))
+    {
+        return Some(base.to_string());
+    }
+    let mut candidates: Vec<String> = read.iter().cloned().collect();
+    if let Some(rest) = name.strip_prefix(OIDC_PREFIX) {
+        for (split, _) in rest.match_indices('_') {
+            for suffix in OIDC_SUFFIXES {
+                candidates.push(format!("{OIDC_PREFIX}{}{suffix}", &rest[..split]));
+            }
+        }
+    }
+    candidates
+        .into_iter()
+        .map(|candidate| (edit_distance(name, &candidate), candidate))
+        .filter(|(distance, _)| *distance <= CLOSE_ENOUGH)
+        .min_by_key(|(distance, _)| *distance)
+        .map(|(_, candidate)| candidate)
+}
+
+fn edit_distance(left: &str, right: &str) -> usize {
+    let right: Vec<char> = right.chars().collect();
+    let mut previous: Vec<usize> = (0..=right.len()).collect();
+    for (row, left_char) in left.chars().enumerate() {
+        let mut current = vec![row + 1; right.len() + 1];
+        for (column, right_char) in right.iter().enumerate() {
+            let substitution = previous[column] + usize::from(left_char != *right_char);
+            current[column + 1] = substitution
+                .min(previous[column + 1] + 1)
+                .min(current[column] + 1);
+        }
+        previous = current;
+    }
+    previous[right.len()]
 }
 
 fn present<'a>(vars: &'a BTreeMap<String, String>, name: &str) -> Option<&'a str> {
@@ -684,6 +932,20 @@ fn parse_oidc(source: &Source<'_>, name: &str) -> Result<ProviderConfig, ConfigE
     })
 }
 
+fn parse_trusted_proxies(raw: &str) -> Result<Vec<ProxyRange>, ConfigError> {
+    raw.split([',', ' ', '\t', '\n'])
+        .filter(|item| !item.trim().is_empty())
+        .map(|item| {
+            ProxyRange::parse(item).ok_or_else(|| {
+                ConfigError::new(
+                    "OLEAFLY_TRUSTED_PROXIES",
+                    format!("OLEAFLY_TRUSTED_PROXIES must list addresses or ranges such as 173.245.48.0/20 or 10.0.0.0/8, separated by commas. {} is not one.", item.trim()),
+                )
+            })
+        })
+        .collect()
+}
+
 fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError> {
     let limits = SignInLimits {
         requests_burst: source.number("OLEAFLY_SIGN_IN_BURST", DEFAULT_SIGN_IN_BURST)?,
@@ -695,6 +957,8 @@ fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError
             "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
             DEFAULT_EMAIL_LINKS_PER_ADDRESS,
         )?,
+        email_links_per_hour: source
+            .number("OLEAFLY_EMAIL_LINKS_PER_HOUR", DEFAULT_EMAIL_LINKS_PER_HOUR)?,
         device_codes_per_ip: source
             .number("OLEAFLY_DEVICE_CODES_PER_IP", DEFAULT_DEVICE_CODES_PER_IP)?,
     };
@@ -963,11 +1227,20 @@ impl fmt::Debug for ServerConfig {
             .field("sign_in", &self.sign_in)
             .field("behind_proxy", &self.behind_proxy)
             .field("proxy_hops", &self.proxy_hops)
+            .field(
+                "trusted_proxies",
+                &self
+                    .trusted_proxies
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>(),
+            )
             .field("log_level", &self.log_level)
             .field("security_log_days", &self.security_log_days)
             .field("archive_days", &self.archive_days)
             .field("snapshot_memory_mb", &self.snapshot_memory_mb)
             .field("poll_hold", &self.poll_hold)
+            .field("startup_notes", &self.startup_notes)
             .finish()
     }
 }
@@ -1049,6 +1322,110 @@ mod tests {
         );
     }
 
+    fn files(
+        answers: &'static [(&'static str, &'static str)],
+    ) -> impl Fn(&Path) -> std::io::Result<String> {
+        move |path: &Path| {
+            answers
+                .iter()
+                .find(|(wanted, _)| path == Path::new(wanted))
+                .map(|(_, answer)| Ok((*answer).to_string()))
+                .unwrap_or_else(|| missing_file(path))
+        }
+    }
+
+    fn budget_and_note(
+        answers: &'static [(&'static str, &'static str)],
+    ) -> (u64, Vec<StartupNote>) {
+        let config = load_with(&[BASE], &files(answers)).unwrap();
+        (config.snapshot_memory_mb, config.startup_notes)
+    }
+
+    #[test]
+    fn snapshot_memory_is_half_the_smaller_of_the_limit_and_the_machine() {
+        let (budget, notes) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "max\n"),
+            (
+                "/proc/meminfo",
+                "MemTotal:        1000000 kB\nMemFree:          200000 kB\n",
+            ),
+        ]);
+        assert_eq!(budget, 488);
+        assert_eq!(
+            notes,
+            [StartupNote::Info(
+                "Snapshot builds may use 488 MB (half of 976 MB).".to_string()
+            )]
+        );
+        let (bigger_limit, _) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "4294967296\n"),
+            ("/proc/meminfo", "MemTotal: 2048000 kB\n"),
+        ]);
+        assert_eq!(bigger_limit, 1000);
+        let (smaller_limit, _) = budget_and_note(&[
+            ("/sys/fs/cgroup/memory.max", "536870912\n"),
+            ("/proc/meminfo", "MemTotal: 8192000 kB\n"),
+        ]);
+        assert_eq!(smaller_limit, 256);
+    }
+
+    #[test]
+    fn a_systemd_memory_limit_on_the_service_or_its_slice_counts() {
+        let (service, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "0::/system.slice/oleafly-server.service\n",
+            ),
+            (
+                "/sys/fs/cgroup/system.slice/oleafly-server.service/memory.max",
+                "1073741824\n",
+            ),
+            ("/sys/fs/cgroup/system.slice/memory.max", "max\n"),
+            ("/proc/meminfo", "MemTotal: 16384000 kB\n"),
+        ]);
+        assert_eq!(service, 512);
+        let (slice, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "0::/system.slice/oleafly-server.service\n",
+            ),
+            (
+                "/sys/fs/cgroup/system.slice/oleafly-server.service/memory.max",
+                "max\n",
+            ),
+            ("/sys/fs/cgroup/system.slice/memory.max", "805306368\n"),
+        ]);
+        assert_eq!(slice, 384);
+        let (version_one, _) = budget_and_note(&[
+            (
+                "/proc/self/cgroup",
+                "12:cpu,cpuacct:/docker/abc\n4:memory:/docker/abc\n",
+            ),
+            (
+                "/sys/fs/cgroup/memory/docker/abc/memory.limit_in_bytes",
+                "268435456\n",
+            ),
+        ]);
+        assert_eq!(version_one, 128);
+    }
+
+    #[test]
+    fn without_any_memory_figure_the_default_stays_and_the_note_says_how_to_change_it() {
+        let (budget, notes) = budget_and_note(&[]);
+        assert_eq!(budget, 1024);
+        assert!(
+            matches!(&notes[..], [StartupNote::Info(text)] if text.contains("set OLEAFLY_SNAPSHOT_MEMORY_MB")),
+            "{notes:?}"
+        );
+        let set = load(&[BASE, ("OLEAFLY_SNAPSHOT_MEMORY_MB", "300")]).unwrap();
+        assert_eq!(
+            set.startup_notes,
+            [StartupNote::Info(
+                "Snapshot builds may use 300 MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says.".to_string()
+            )]
+        );
+    }
+
     #[test]
     fn minimal_configuration_uses_documented_defaults() {
         let config = load(&[("OLEAFLY_PUBLIC_URL", "https://collab.example.edu")]).unwrap();
@@ -1081,6 +1458,7 @@ mod tests {
                 requests_per_minute: 120,
                 email_links_per_ip: 100,
                 email_links_per_address: 3,
+                email_links_per_hour: 300,
                 device_codes_per_ip: 100,
             }
         );
@@ -1100,6 +1478,7 @@ mod tests {
             ("OLEAFLY_SIGN_IN_PER_MINUTE", "250"),
             ("OLEAFLY_EMAIL_LINKS_PER_IP", "400"),
             ("OLEAFLY_EMAIL_LINKS_PER_ADDRESS", "5"),
+            ("OLEAFLY_EMAIL_LINKS_PER_HOUR", "50"),
             ("OLEAFLY_DEVICE_CODES_PER_IP", "300"),
         ])
         .unwrap()
@@ -1111,6 +1490,7 @@ mod tests {
                 requests_per_minute: 250,
                 email_links_per_ip: 400,
                 email_links_per_address: 5,
+                email_links_per_hour: 50,
                 device_codes_per_ip: 300,
             }
         );
@@ -1119,6 +1499,7 @@ mod tests {
             "OLEAFLY_SIGN_IN_PER_MINUTE",
             "OLEAFLY_EMAIL_LINKS_PER_IP",
             "OLEAFLY_EMAIL_LINKS_PER_ADDRESS",
+            "OLEAFLY_EMAIL_LINKS_PER_HOUR",
             "OLEAFLY_DEVICE_CODES_PER_IP",
         ] {
             for bad in ["0", "-3", "lots", "1.5"] {
@@ -1238,17 +1619,17 @@ mod tests {
     }
 
     #[test]
-    fn secrets_accept_file_variants_with_one_trailing_newline_removed() {
+    fn secrets_from_files_are_trimmed_like_the_same_value_in_a_variable() {
         let read = |path: &Path| -> std::io::Result<String> {
             match path.to_str() {
-                Some("/run/secrets/github") => Ok("gh-secret\n".to_string()),
+                Some("/run/secrets/github") => Ok("gh-secret \n".to_string()),
                 Some("/run/secrets/setup") => Ok("ABCD-EFGH-JKMN-PQRS\r\n".to_string()),
                 Some("/run/secrets/smtp") => {
                     Ok("smtps://mailer:pw@smtp.example.edu:465".to_string())
                 }
                 Some("/run/secrets/oidc") => Ok("oidc-secret\n\n".to_string()),
                 Some("/run/secrets/blobs") => Ok("s3://lab-bucket\n".to_string()),
-                Some("/run/secrets/s3-id") => Ok("AKIDFROMFILE\n".to_string()),
+                Some("/run/secrets/s3-id") => Ok("  AKIDFROMFILE\r\n\r\n".to_string()),
                 Some("/run/secrets/s3-secret") => Ok("s3-secret-from-file\n".to_string()),
                 _ => Err(std::io::Error::new(std::io::ErrorKind::NotFound, "missing")),
             }
@@ -1297,14 +1678,14 @@ mod tests {
                 ..
             }] => {
                 assert_eq!(client_secret, "gh-secret");
-                assert_eq!(oidc_secret, "oidc-secret\n");
+                assert_eq!(oidc_secret, "oidc-secret");
             }
             other => panic!("unexpected providers: {other:?}"),
         }
     }
 
     #[test]
-    fn only_secret_settings_have_file_variants_and_unknown_names_are_ignored() {
+    fn only_secret_settings_have_file_variants_and_unknown_names_are_ignored_but_named() {
         let read =
             |_: &Path| -> std::io::Result<String> { Ok("https://other.example.edu".to_string()) };
         let config = load_with(
@@ -1321,6 +1702,89 @@ mod tests {
         .unwrap();
         assert_eq!(config.public_url.as_str(), "https://c.example.edu/");
         assert!(config.providers.is_empty());
+        let named: Vec<(&str, Option<&str>)> = config
+            .ignored_settings
+            .iter()
+            .map(|ignored| (ignored.name.as_str(), ignored.instead.as_deref()))
+            .collect();
+        assert_eq!(
+            named,
+            [
+                (
+                    "OLEAFLY_GITHUB_CLIENT_ID_FILE",
+                    Some("OLEAFLY_GITHUB_CLIENT_ID")
+                ),
+                (
+                    "OLEAFLY_OIDC_UNI_ISSUER_FILE",
+                    Some("OLEAFLY_OIDC_UNI_ISSUER")
+                ),
+                ("OLEAFLY_OIDC_UNI_ISSUR", Some("OLEAFLY_OIDC_UNI_ISSUER")),
+                ("OLEAFLY_PUBLIC_URL_FILE", Some("OLEAFLY_PUBLIC_URL")),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_misspelled_setting_is_named_at_startup_with_the_one_it_was_meant_to_be() {
+        let config = load(&[
+            BASE,
+            ("OLEAFLY_SMTP_URI", "smtps://lab:secret@smtp.example.edu"),
+            ("OLEAFLY_SECURITY_LOGS_DAYS", "30"),
+            ("OLEAFLY_BEHIND_PROXIES", "true"),
+            ("OLEAFLY_COLOUR_SCHEME", "dark"),
+            ("OLEAFLY_DOMAIN", "c.example.edu"),
+            ("OLEAFLY_EMPTY_ONE", " "),
+        ])
+        .unwrap();
+        let named: Vec<(&str, Option<&str>)> = config
+            .ignored_settings
+            .iter()
+            .map(|ignored| (ignored.name.as_str(), ignored.instead.as_deref()))
+            .collect();
+        assert_eq!(
+            named,
+            [
+                ("OLEAFLY_BEHIND_PROXIES", Some("OLEAFLY_BEHIND_PROXY")),
+                ("OLEAFLY_COLOUR_SCHEME", None),
+                (
+                    "OLEAFLY_SECURITY_LOGS_DAYS",
+                    Some("OLEAFLY_SECURITY_LOG_DAYS")
+                ),
+                ("OLEAFLY_SMTP_URI", Some("OLEAFLY_SMTP_URL")),
+            ]
+        );
+        let warning = config
+            .startup_notes
+            .iter()
+            .find_map(|note| match note {
+                StartupNote::Warning(text) => Some(text.as_str()),
+                StartupNote::Info(_) => None,
+            })
+            .expect("one warning");
+        assert!(
+            warning.contains("OLEAFLY_SMTP_URI is not a setting. Did you mean OLEAFLY_SMTP_URL?"),
+            "{warning}"
+        );
+        assert!(
+            warning.contains("OLEAFLY_COLOUR_SCHEME is not a setting, so it has no effect."),
+            "{warning}"
+        );
+        assert!(!warning.contains("secret"), "{warning}");
+        assert!(!format!("{config:?}").contains("smtp.example.edu"));
+        let clean = load(&[BASE, ("OLEAFLY_DOMAIN", "c.example.edu")]).unwrap();
+        assert!(clean.ignored_settings.is_empty());
+        assert!(clean
+            .startup_notes
+            .iter()
+            .all(|note| matches!(note, StartupNote::Info(_))));
+    }
+
+    #[test]
+    fn edit_distance_counts_single_character_changes() {
+        assert_eq!(edit_distance("OLEAFLY_SMTP_URI", "OLEAFLY_SMTP_URL"), 1);
+        assert_eq!(edit_distance("PROXIES", "PROXY"), 3);
+        assert_eq!(edit_distance("", "abc"), 3);
+        assert_eq!(edit_distance("same", "same"), 0);
     }
 
     #[test]
@@ -1687,6 +2151,83 @@ mod tests {
                 "{name}={value}"
             );
         }
+    }
+
+    #[test]
+    fn trusted_proxy_ranges_match_the_addresses_inside_them() {
+        let range = |text: &str| ProxyRange::parse(text).expect(text);
+        let docker = range("10.0.0.0/8");
+        assert!(docker.contains("10.1.2.3".parse().unwrap()));
+        assert!(docker.contains("::ffff:10.0.15.2".parse().unwrap()));
+        assert!(!docker.contains("11.0.0.1".parse().unwrap()));
+        assert!(!docker.contains("2001:db8::1".parse().unwrap()));
+        let edge = range(" 173.245.48.0/20 ");
+        assert!(edge.contains("173.245.63.255".parse().unwrap()));
+        assert!(!edge.contains("173.245.64.0".parse().unwrap()));
+        let one = range("198.51.100.9");
+        assert_eq!(one.to_string(), "198.51.100.9/32");
+        assert!(one.contains("198.51.100.9".parse().unwrap()));
+        assert!(!one.contains("198.51.100.10".parse().unwrap()));
+        let v6 = range("2400:cb00::/32");
+        assert!(v6.contains("2400:cb00:1:2::3".parse().unwrap()));
+        assert!(!v6.contains("2400:cb01::1".parse().unwrap()));
+        assert_eq!(range("10.1.2.3/8").to_string(), "10.0.0.0/8");
+        assert!(range("0.0.0.0/0").contains("203.0.113.1".parse().unwrap()));
+        for bad in [
+            "10.0.0.0/33",
+            "2001:db8::/129",
+            "10.0.0/8",
+            "proxy",
+            "10.0.0.0/x",
+            "",
+        ] {
+            assert_eq!(ProxyRange::parse(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn trusted_proxies_need_a_proxy_and_replace_the_hop_count() {
+        let config = load(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            (
+                "OLEAFLY_TRUSTED_PROXIES",
+                "173.245.48.0/20, 2400:cb00::/32 10.0.0.0/8",
+            ),
+        ])
+        .unwrap();
+        assert_eq!(
+            config
+                .trusted_proxies
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["173.245.48.0/20", "2400:cb00::/32", "10.0.0.0/8"]
+        );
+        assert!(format!("{config:?}").contains("10.0.0.0/8"));
+        assert!(load(&[BASE]).unwrap().trusted_proxies.is_empty());
+        let without_proxy = load_err(&[BASE, ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8")]);
+        assert_eq!(without_proxy.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(without_proxy.message.contains("OLEAFLY_BEHIND_PROXY"));
+        let both = load_err(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            ("OLEAFLY_PROXY_HOPS", "2"),
+            ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8"),
+        ]);
+        assert_eq!(both.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(both.message.contains("not both"), "{}", both.message);
+        let bad = load_err(&[
+            BASE,
+            ("OLEAFLY_BEHIND_PROXY", "true"),
+            ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8, cloudflare"),
+        ]);
+        assert_eq!(bad.variable, "OLEAFLY_TRUSTED_PROXIES");
+        assert!(
+            bad.message.contains("cloudflare is not one"),
+            "{}",
+            bad.message
+        );
     }
 
     #[test]

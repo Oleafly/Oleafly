@@ -74,6 +74,19 @@ pub fn revoke_device_tokens(conn: &Connection, device: DeviceId) -> Result<(), S
     Ok(())
 }
 
+pub fn sign_out_device(conn: &Connection, device: DeviceId, now: i64) -> Result<(), ServerError> {
+    conn.execute(
+        "UPDATE devices SET revoked_at = ?2 WHERE id = ?1 AND revoked_at IS NULL",
+        rusqlite::params![device.to_string(), now],
+    )?;
+    revoke_device_tokens(conn, device)?;
+    conn.execute(
+        "UPDATE refresh_tokens SET revoked_at = ?2, grace_reply = NULL WHERE device_id = ?1 AND revoked_at IS NULL",
+        rusqlite::params![device.to_string(), now],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

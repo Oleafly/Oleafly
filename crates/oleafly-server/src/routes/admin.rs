@@ -23,6 +23,7 @@ use crate::routes::{json_body, path_id, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::AppState;
+use crate::tokens;
 
 const LAST_ADMIN: &str = "This is the server's only admin. Make someone else an admin first.";
 const UNKNOWN_ROLE: &str = "This server doesn't know that role.";
@@ -163,8 +164,8 @@ async fn patch_member(
         .await?;
     for device in signed_out {
         state
-            .end_device_session(device, SessionEndReason::AccountSuspended)
-            .await?;
+            .sockets
+            .revoke(device, Some(SessionEndReason::AccountSuspended));
     }
     Ok(Json(summary))
 }
@@ -198,7 +199,7 @@ fn apply_member_patch(
         && was_active
         && (new_role != ServerRole::Admin || !will_be_active);
     if loses_admin && members::count_admins(&transaction)? <= 1 {
-        return Err(ServerError::Conflict(LAST_ADMIN.to_string()));
+        return Err(ServerError::refused("last_admin", LAST_ADMIN));
     }
     let target_text = target.to_string();
     if role_changes {
@@ -235,6 +236,9 @@ fn apply_member_patch(
     } else if status_changes {
         signed_out = members::account_devices(&transaction, target)?;
         members::set_status(&transaction, target, &MemberStatus::Suspended, now)?;
+        for device in &signed_out {
+            tokens::sign_out_device(&transaction, *device, now)?;
+        }
         security_log::record(
             &transaction,
             now,
@@ -274,10 +278,13 @@ async fn remove_member(
                 && matches!(current.status, MemberStatus::Active)
                 && members::count_admins(&transaction)? <= 1
             {
-                return Err(ServerError::Conflict(LAST_ADMIN.to_string()));
+                return Err(ServerError::refused("last_admin", LAST_ADMIN));
             }
             let devices = members::account_devices(&transaction, target)?;
             let unbound = members::remove_account(&transaction, target, now)?;
+            for device in &devices {
+                tokens::sign_out_device(&transaction, *device, now)?;
+            }
             security_log::record(
                 &transaction,
                 now,
@@ -300,8 +307,8 @@ async fn remove_member(
         .await?;
     for device in signed_out {
         state
-            .end_device_session(device, SessionEndReason::AccessEnded)
-            .await?;
+            .sockets
+            .revoke(device, Some(SessionEndReason::AccessEnded));
     }
     Ok(StatusCode::NO_CONTENT)
 }
@@ -600,4 +607,57 @@ async fn security_log_page(
         })
         .await?;
     Ok(Json(listed))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clock::Clock;
+    use crate::test_support::{seed_member, test_app};
+
+    fn live_sign_ins(
+        conn: &Connection,
+        account: AccountId,
+    ) -> Result<(i64, i64, i64), ServerError> {
+        let id = account.to_string();
+        let count = |sql: &str| -> Result<i64, ServerError> {
+            Ok(conn.query_row(sql, [&id], |row| row.get(0))?)
+        };
+        Ok((
+            count("SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked_at IS NULL")?,
+            count("SELECT COUNT(*) FROM access_tokens WHERE account_id = ?1")?,
+            count(
+                "SELECT COUNT(*) FROM refresh_tokens WHERE account_id = ?1 AND revoked_at IS NULL",
+            )?,
+        ))
+    }
+
+    #[tokio::test]
+    async fn the_suspension_itself_leaves_no_live_device_or_token_behind() {
+        let app = test_app().await;
+        let admin = seed_member(&app, ServerRole::Admin).await;
+        let member = seed_member(&app, ServerRole::Member).await;
+        let auth = Authenticated {
+            account_id: admin.account_id,
+            device_id: admin.device_id,
+            role: ServerRole::Admin,
+        };
+        let (target, device, now) = (member.account_id, member.device_id, app.clock.now_ms());
+        let left = app
+            .state
+            .db
+            .call(move |conn| {
+                crate::auth::refresh::issue_session(conn, target, device, now)?;
+                let change = MemberPatch {
+                    role: None,
+                    status: Some(MemberStatus::Suspended),
+                };
+                let (_, signed_out) = apply_member_patch(conn, auth, target, &change, None, now)?;
+                assert_eq!(signed_out, [device]);
+                live_sign_ins(conn, target)
+            })
+            .await
+            .unwrap();
+        assert_eq!(left, (0, 0, 0));
+    }
 }

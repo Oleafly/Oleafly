@@ -15,12 +15,13 @@ use crate::removals;
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::{AppState, DAY_MS};
-use crate::tokens::random_token;
+use crate::tokens::{self, random_token};
 
 pub const INVITATION_DAYS: i64 = 14;
 pub const INVITATIONS_PER_HOUR: i64 = 20;
 const HOUR_MS: i64 = 60 * 60 * 1000;
 const COLUMNS: &str = "id, project_id, email, role, invited_by, status, created_at, expires_at";
+pub const GUEST_ROLES: &str = "A guest can be an Editor or a Viewer.";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Invitation {
@@ -203,6 +204,9 @@ pub fn create(
     approval_required: bool,
     now: i64,
 ) -> Result<Invitation, ServerError> {
+    if !matches!(role, ProjectRole::Editor | ProjectRole::Viewer) {
+        return Err(ServerError::BadRequest(GUEST_ROLES.to_string()));
+    }
     let recent: i64 = conn.query_row(
         "SELECT COUNT(*) FROM guest_invitations WHERE invited_by = ?1 AND created_at > ?2",
         params![invited_by.to_string(), now - HOUR_MS],
@@ -260,6 +264,9 @@ pub fn for_project(
 }
 
 pub fn open(conn: &Connection, now: i64) -> Result<Vec<Invitation>, ServerError> {
+    if !settings::load(conn)?.guests_enabled {
+        return Ok(Vec::new());
+    }
     select(
         conn,
         "WHERE status IN ('awaiting_approval', 'invited') AND expires_at > ?1 \
@@ -290,7 +297,25 @@ pub fn approve(
             "This invitation was already approved.".to_string(),
         ));
     }
+    if !settings::load(conn)?.guests_enabled {
+        return Err(ServerError::refused(
+            "guests_off",
+            "This server does not allow guests.",
+        ));
+    }
+    let shared = projects::project_row(conn, invitation.project)?
+        .is_some_and(|row| row.status == ProjectStatus::Active);
+    if !shared {
+        return Err(ServerError::refused(
+            "project_not_shared",
+            "This project isn't shared any more, so the invitation can't be approved.",
+        ));
+    }
     set_status(conn, id, GuestInvitationStatus::Invited, Some(by), now)?;
+    conn.execute(
+        "UPDATE guest_invitations SET expires_at = ?2 WHERE id = ?1",
+        params![id, now + INVITATION_DAYS * DAY_MS],
+    )?;
     get(conn, id)?.ok_or(ServerError::NotFound)
 }
 
@@ -363,6 +388,13 @@ pub fn has_candidate(conn: &Connection, emails: &[String]) -> Result<bool, Serve
     Ok(false)
 }
 
+fn owner_present(conn: &Connection, project: SharedProjectId) -> Result<bool, ServerError> {
+    let Some(row) = projects::project_row(conn, project)? else {
+        return Ok(false);
+    };
+    Ok(members::account_status(conn, row.owner)? == Some(MemberStatus::Active))
+}
+
 pub fn admissible(
     conn: &Connection,
     emails: &[String],
@@ -373,7 +405,9 @@ pub fn admissible(
         return Ok(false);
     }
     for invitation in usable(conn, emails, now)? {
-        if projects::member_count(conn, invitation.project)? < max_members {
+        if owner_present(conn, invitation.project)?
+            && projects::member_count(conn, invitation.project)? < max_members
+        {
             return Ok(true);
         }
     }
@@ -385,6 +419,7 @@ pub fn accept_for(
     account: AccountId,
     emails: &[String],
     max_members: u32,
+    ip: Option<&str>,
     now: i64,
 ) -> Result<Vec<Accepted>, ServerError> {
     if !settings::load(conn)?.guests_enabled {
@@ -392,9 +427,16 @@ pub fn accept_for(
     }
     let mut accepted = Vec::new();
     for invitation in usable(conn, emails, now)? {
-        accepted.extend(accept(conn, &invitation, account, max_members, now)?);
+        let by = Granter { actor: account, ip };
+        accepted.extend(accept(conn, &invitation, account, max_members, by, now)?);
     }
     Ok(accepted)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Granter<'a> {
+    pub actor: AccountId,
+    pub ip: Option<&'a str>,
 }
 
 fn accept(
@@ -402,8 +444,12 @@ fn accept(
     invitation: &Invitation,
     account: AccountId,
     max_members: u32,
+    by: Granter<'_>,
     now: i64,
 ) -> Result<Option<Accepted>, ServerError> {
+    if !owner_present(conn, invitation.project)? {
+        return Ok(None);
+    }
     let existing = projects::role_of(conn, invitation.project, account)?;
     if existing.is_none() && projects::member_count(conn, invitation.project)? >= max_members {
         return Ok(None);
@@ -428,15 +474,16 @@ fn accept(
             conn,
             now,
             NewSecurityEvent {
-                actor: Some(invitation.invited_by),
+                actor: Some(by.actor),
                 kind: SecurityEventKind::ProjectAccessGranted,
                 target: Some(account.to_string()),
-                ip: None,
+                ip: by.ip.map(str::to_string),
                 detail: json!({
                     "project": invitation.project.to_string(),
                     "role": projects::role_to_str(invitation.role),
                     "via": "invitation",
                     "invitation": invitation.id,
+                    "invited_by": invitation.invited_by.to_string(),
                 }),
             },
         )?;
@@ -453,6 +500,7 @@ pub fn accept_existing(
     conn: &Connection,
     invitation: &Invitation,
     max_members: u32,
+    by: Granter<'_>,
     now: i64,
 ) -> Result<Option<Accepted>, ServerError> {
     if invitation.status_at(now) != GuestInvitationStatus::Invited
@@ -477,7 +525,7 @@ pub fn accept_existing(
         return Ok(None);
     };
     let account: AccountId = parse_id(holder)?;
-    accept(conn, invitation, account, max_members, now)
+    accept(conn, invitation, account, max_members, by, now)
 }
 
 pub fn end_if_no_access(
@@ -502,6 +550,9 @@ pub fn end_if_no_access(
     }
     let devices = members::account_devices(conn, account)?;
     members::remove_account(conn, account, now)?;
+    for device in &devices {
+        tokens::sign_out_device(conn, *device, now)?;
+    }
     security_log::record(
         conn,
         now,
@@ -561,7 +612,8 @@ async fn prepare_invitation(
     let found = state
         .db
         .call(move |conn| {
-            if !settings::load(conn)?.email_notifications {
+            let runtime = settings::load(conn)?;
+            if !runtime.email_notifications || !runtime.guests_enabled {
                 return Ok(None);
             }
             let Some(invitation) = get(conn, &id)? else {
@@ -573,6 +625,9 @@ async fn prepare_invitation(
             let Some(row) = projects::project_row(conn, invitation.project)? else {
                 return Ok(None);
             };
+            if row.status != ProjectStatus::Active {
+                return Ok(None);
+            }
             let inviter = members::account_summary(conn, invitation.invited_by)?
                 .map(|summary| summary.display_name)
                 .unwrap_or_else(|| "Someone".to_string());
@@ -599,4 +654,85 @@ async fn prepare_invitation(
         to,
         content,
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clock::Clock;
+    use crate::db::Db;
+    use crate::test_support::{seed_member, test_app};
+
+    #[tokio::test]
+    async fn a_guest_left_without_projects_has_no_live_device_or_token_once_the_change_is_made() {
+        let app = test_app().await;
+        let owner = seed_member(&app, ServerRole::Member).await;
+        let guest = seed_member(&app, ServerRole::Guest).await;
+        let (target, device, by, now) = (
+            guest.account_id,
+            guest.device_id,
+            owner.account_id,
+            app.clock.now_ms(),
+        );
+        let left = app
+            .state
+            .db
+            .call(move |conn| {
+                crate::auth::refresh::issue_session(conn, target, device, now)?;
+                let signed_out = end_if_no_access(conn, target, by, None, now)?;
+                assert_eq!(signed_out, [device]);
+                let id = target.to_string();
+                let count = |sql: &str| -> Result<i64, ServerError> {
+                    Ok(conn.query_row(sql, [&id], |row| row.get(0))?)
+                };
+                Ok((
+                    count(
+                        "SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked_at IS NULL",
+                    )?,
+                    count("SELECT COUNT(*) FROM access_tokens WHERE account_id = ?1")?,
+                    count(
+                        "SELECT COUNT(*) FROM refresh_tokens WHERE account_id = ?1 AND revoked_at IS NULL",
+                    )?,
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(left, (0, 0, 0));
+    }
+
+    #[tokio::test]
+    async fn an_invitation_with_a_role_a_guest_cannot_have_stores_nothing() {
+        Db::open_in_memory()
+            .unwrap()
+            .call(|conn| {
+                let owner = members::create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+                let project = projects::create_pending(conn, owner, "Thesis", 1)?;
+                projects::set_status(conn, project, ProjectStatus::Active, 1)?;
+                for role in [ProjectRole::Owner, ProjectRole::Unknown] {
+                    let refused = create(conn, project, "carol@uni.edu", role, owner, false, 2);
+                    assert!(
+                        matches!(&refused, Err(ServerError::BadRequest(message)) if message == GUEST_ROLES),
+                        "{role:?}: {refused:?}"
+                    );
+                }
+                let stored: i64 =
+                    conn.query_row("SELECT COUNT(*) FROM guest_invitations", [], |row| {
+                        row.get(0)
+                    })?;
+                assert_eq!(stored, 0);
+                let made = create(
+                    conn,
+                    project,
+                    "carol@uni.edu",
+                    ProjectRole::Viewer,
+                    owner,
+                    false,
+                    2,
+                )?;
+                assert_eq!(made.role, ProjectRole::Viewer);
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
 }

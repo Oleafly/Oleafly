@@ -22,6 +22,21 @@ pub enum Link {
     Invalid,
 }
 
+pub const HOUR_MS: i64 = 60 * 60 * 1000;
+pub const SERVER_LIMIT_KEY: &str = "email-links-server";
+
+pub fn mailbox(address: &str) -> String {
+    let address = address.trim().to_lowercase();
+    let Some((local, domain)) = address.rsplit_once('@') else {
+        return address;
+    };
+    let local = local.split_once('+').map_or(local, |(base, _)| base);
+    match domain {
+        "gmail.com" | "googlemail.com" => format!("{}@gmail.com", local.replace('.', "")),
+        _ => format!("{local}@{domain}"),
+    }
+}
+
 pub fn available(mail_configured: bool, runtime: &RuntimeSettings) -> bool {
     mail_configured && runtime.email_link_sign_in
 }
@@ -322,6 +337,22 @@ mod tests {
         assert_eq!(identity.verified_emails, ["ada.lovelace@uni.edu"]);
         assert_eq!(identity.provider_id, PROVIDER_ID);
         assert_eq!(identity.login, None);
+    }
+
+    #[test]
+    fn one_mailbox_counts_once_however_its_address_is_written() {
+        assert_eq!(mailbox("ada+1@uni.edu"), "ada@uni.edu");
+        assert_eq!(mailbox("Ada+lab+2@Uni.EDU"), "ada@uni.edu");
+        assert_eq!(
+            mailbox("ada.l.ovelace+x@gmail.com"),
+            "adalovelace@gmail.com"
+        );
+        assert_eq!(
+            mailbox("ada.lovelace@googlemail.com"),
+            "adalovelace@gmail.com"
+        );
+        assert_eq!(mailbox("ada.lovelace@uni.edu"), "ada.lovelace@uni.edu");
+        assert_eq!(mailbox("not an address"), "not an address");
     }
 
     #[test]

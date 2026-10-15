@@ -15,7 +15,13 @@ const ALLOWLIST_COLUMNS: &str =
     "id, kind, provider_id, value, server_role, created_at, bound_account";
 const DOMAIN_COLUMNS: &str = "id, domain, server_role, created_at";
 
+const UNKNOWN_ROLE: &str = "This server doesn't know that role.";
+
 pub fn role_to_str(role: ServerRole) -> &'static str {
+    debug_assert!(
+        role != ServerRole::Unknown,
+        "a role from a later server must be refused before it is stored"
+    );
     match role {
         ServerRole::Admin => "admin",
         ServerRole::Maintainer => "maintainer",
@@ -54,6 +60,13 @@ pub fn status_from_str(text: &str) -> Result<MemberStatus, ServerError> {
             "unknown stored member status {other}"
         ))),
     }
+}
+
+fn storable(role: ServerRole) -> Result<ServerRole, ServerError> {
+    if role == ServerRole::Unknown {
+        return Err(ServerError::BadRequest(UNKNOWN_ROLE.to_string()));
+    }
+    Ok(role)
 }
 
 pub fn is_staff(role: ServerRole) -> bool {
@@ -116,12 +129,36 @@ pub fn create_account(
     role: ServerRole,
     now: i64,
 ) -> Result<AccountId, ServerError> {
+    let role = storable(role)?;
     let id = AccountId::new_v7();
     conn.execute(
         "INSERT INTO accounts (id, display_name, avatar_url, server_role, status, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 'active', ?5, ?5)",
         params![id.to_string(), display_name, avatar_url, role_to_str(role), now],
     )?;
     Ok(id)
+}
+
+pub fn refresh_profile(
+    conn: &Connection,
+    account: AccountId,
+    display_name: &str,
+    avatar_url: Option<&str>,
+    now: i64,
+) -> Result<(), ServerError> {
+    let display_name = display_name.trim();
+    if !display_name.is_empty() {
+        conn.execute(
+            "UPDATE accounts SET display_name = ?2, updated_at = ?3 WHERE id = ?1 AND display_name != ?2",
+            params![account.to_string(), display_name, now],
+        )?;
+    }
+    if let Some(avatar_url) = avatar_url.filter(|url| !url.trim().is_empty()) {
+        conn.execute(
+            "UPDATE accounts SET avatar_url = ?2, updated_at = ?3 WHERE id = ?1 AND avatar_url IS NOT ?2",
+            params![account.to_string(), avatar_url, now],
+        )?;
+    }
+    Ok(())
 }
 
 pub fn account_summary(
@@ -206,15 +243,24 @@ pub fn member_summary(
     let Some(summary) = account_summary(conn, account)? else {
         return Ok(None);
     };
-    let (status, created_at) = conn.query_row(
-        "SELECT status, created_at FROM accounts WHERE id = ?1",
+    let (status, created_at, owned) = conn.query_row(
+        "SELECT status, created_at, \
+         (SELECT COUNT(*) FROM projects p WHERE p.owner_account = accounts.id AND p.status = 'active') \
+         FROM accounts WHERE id = ?1",
         [account.to_string()],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        },
     )?;
     Ok(Some(MemberSummary {
         account: summary,
         status: status_from_str(&status)?,
         created_at,
+        owned_projects: u32::try_from(owned).unwrap_or(u32::MAX),
     }))
 }
 
@@ -238,6 +284,7 @@ pub fn set_role(
     role: ServerRole,
     now: i64,
 ) -> Result<(), ServerError> {
+    let role = storable(role)?;
     let changed = conn.execute(
         "UPDATE accounts SET server_role = ?2, updated_at = ?3 WHERE id = ?1",
         params![account.to_string(), role_to_str(role), now],
@@ -270,6 +317,7 @@ pub fn reactivate_account(
     role: ServerRole,
     now: i64,
 ) -> Result<(), ServerError> {
+    let role = storable(role)?;
     let changed = conn.execute(
         "UPDATE accounts SET status = 'active', server_role = ?2, updated_at = ?3 WHERE id = ?1",
         params![account.to_string(), role_to_str(role), now],
@@ -286,10 +334,20 @@ pub fn remove_account(
     now: i64,
 ) -> Result<usize, ServerError> {
     set_status(conn, account, &MemberStatus::Removed, now)?;
-    Ok(conn.execute(
-        "DELETE FROM allowlist WHERE bound_account = ?1",
-        [account.to_string()],
-    )?)
+    let id = account.to_string();
+    let mut removed = conn.execute("DELETE FROM allowlist WHERE bound_account = ?1", [&id])?;
+    removed += conn.execute(
+        "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'email' \
+         AND match_key IN (SELECT email FROM account_emails WHERE account_id = ?1)",
+        [&id],
+    )?;
+    removed += conn.execute(
+        "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'provider_login' \
+         AND EXISTS (SELECT 1 FROM identities i WHERE i.account_id = ?1 \
+         AND i.provider_id = allowlist.provider_id AND lower(i.login) = allowlist.match_key)",
+        [&id],
+    )?;
+    Ok(removed)
 }
 
 pub fn account_devices(
@@ -478,10 +536,11 @@ pub fn add_allowlist(
     actor: Option<AccountId>,
     now: i64,
 ) -> Result<AllowlistEntry, ServerError> {
+    let role = storable(entry.role)?;
     let (kind, provider, value, key) = match &entry.matcher {
         AllowlistMatcher::Email { email } => {
             let key = normalize_email(email).ok_or_else(|| {
-                ServerError::BadRequest("That email address doesn't look right.".to_string())
+                ServerError::invalid("invalid_email", "That email address doesn't look right.")
             })?;
             ("email", String::new(), email.trim().to_string(), key)
         }
@@ -493,7 +552,7 @@ pub fn add_allowlist(
                 ));
             }
             let key = normalize_login(login).ok_or_else(|| {
-                ServerError::BadRequest("That sign-in name doesn't look right.".to_string())
+                ServerError::invalid("invalid_login", "That sign-in name doesn't look right.")
             })?;
             (
                 "provider_login",
@@ -503,6 +562,12 @@ pub fn add_allowlist(
             )
         }
     };
+    if has_an_account(conn, kind, &provider, &key)? {
+        return Err(ServerError::refused(
+            "already_member",
+            "That person already has an account. Change their role under People.",
+        ));
+    }
     let id = uuid::Uuid::now_v7().to_string();
     let inserted = conn.execute(
         "INSERT INTO allowlist (id, kind, provider_id, value, match_key, server_role, created_at, created_by) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -512,7 +577,7 @@ pub fn add_allowlist(
             provider,
             value,
             key,
-            role_to_str(entry.role),
+            role_to_str(role),
             now,
             actor.map(|account| account.to_string())
         ],
@@ -520,14 +585,41 @@ pub fn add_allowlist(
     match inserted {
         Ok(_) => {}
         Err(error) if is_unique_violation(&error) => {
-            return Err(ServerError::Conflict(
-                "That person is already on the allowlist.".to_string(),
+            return Err(ServerError::refused(
+                "duplicate_entry",
+                "That person is already on the allowlist.",
             ))
         }
         Err(error) => return Err(error.into()),
     }
     get_allowlist(conn, &id)?
         .ok_or_else(|| ServerError::Internal("the new allowlist entry was not stored".to_string()))
+}
+
+fn has_an_account(
+    conn: &Connection,
+    kind: &str,
+    provider: &str,
+    key: &str,
+) -> Result<bool, ServerError> {
+    let found = if kind == "email" {
+        conn.query_row(
+            "SELECT 1 FROM account_emails e JOIN accounts a ON a.id = e.account_id \
+             WHERE e.email = ?1 AND a.status != 'removed' LIMIT 1",
+            [key],
+            |_| Ok(()),
+        )
+        .optional()?
+    } else {
+        conn.query_row(
+            "SELECT 1 FROM identities i JOIN accounts a ON a.id = i.account_id \
+             WHERE i.provider_id = ?1 AND lower(i.login) = ?2 AND a.status != 'removed' LIMIT 1",
+            [provider, key],
+            |_| Ok(()),
+        )
+        .optional()?
+    };
+    Ok(found.is_some())
 }
 
 pub fn remove_allowlist(conn: &Connection, id: &str) -> Result<bool, ServerError> {
@@ -630,8 +722,9 @@ pub fn add_domain_rule(
     now: i64,
 ) -> Result<DomainRule, ServerError> {
     let domain = normalize_domain(&rule.domain).ok_or_else(|| {
-        ServerError::BadRequest(
-            "That isn't a domain name. Use a form like cs.example.edu.".to_string(),
+        ServerError::invalid(
+            "invalid_domain",
+            "That isn't a domain name. Use a form like cs.example.edu.",
         )
     })?;
     if !matches!(rule.role, ServerRole::Member | ServerRole::Guest) {
@@ -653,8 +746,9 @@ pub fn add_domain_rule(
     match inserted {
         Ok(_) => {}
         Err(error) if is_unique_violation(&error) => {
-            return Err(ServerError::Conflict(
-                "There is already a rule for that domain.".to_string(),
+            return Err(ServerError::refused(
+                "duplicate_entry",
+                "There is already a rule for that domain.",
             ))
         }
         Err(error) => return Err(error.into()),
@@ -846,6 +940,30 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_role_from_a_later_server_is_refused_before_anything_is_stored() {
+        with_db(|conn| {
+            let ada = create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+            for refused in [
+                create_account(conn, "Eve", None, ServerRole::Unknown, 2).map(|_| ()),
+                set_role(conn, ada, ServerRole::Unknown, 2),
+                reactivate_account(conn, ada, ServerRole::Unknown, 2),
+                add_allowlist(conn, &email("eve@uni.edu", ServerRole::Unknown), None, 2)
+                    .map(|_| ()),
+            ] {
+                assert!(
+                    matches!(&refused, Err(ServerError::BadRequest(message)) if message.contains("doesn't know that role")),
+                    "{refused:?}"
+                );
+            }
+            assert_eq!(list_members(conn)?.len(), 1);
+            assert_eq!(account_role(conn, ada)?, Some(ServerRole::Member));
+            assert!(list_allowlist(conn)?.is_empty());
+            Ok(())
+        })
+        .await;
+    }
+
+    #[tokio::test]
     async fn accounts_report_emails_logins_role_and_status() {
         with_db(|conn| {
             let account = create_account(
@@ -956,9 +1074,11 @@ mod tests {
             assert!(find_allowlist_by_email(conn, "bob@uni.edu")?.is_none());
             assert!(find_allowlist_by_email(conn, "not an email")?.is_none());
             let duplicate = add_allowlist(conn, &email("alice@uni.edu", ServerRole::Admin), None, 6);
-            assert!(matches!(duplicate, Err(ServerError::Conflict(_))));
+            assert_eq!(duplicate.map(|_| ()).unwrap_err().code(), "duplicate_entry");
             let invalid = add_allowlist(conn, &email("alice", ServerRole::Member), None, 7);
-            assert!(matches!(invalid, Err(ServerError::BadRequest(_))));
+            assert_eq!(invalid.map(|_| ()).unwrap_err().code(), "invalid_email");
+            let name = add_allowlist(conn, &login("github", "two words", ServerRole::Member), None, 8);
+            assert_eq!(name.map(|_| ()).unwrap_err().code(), "invalid_login");
             Ok(())
         })
         .await;
@@ -1028,16 +1148,16 @@ mod tests {
                     Err(ServerError::BadRequest(_))
                 ));
             }
-            assert!(matches!(
-                add_domain_rule(conn, &rule("not a domain", ServerRole::Member), None, 3),
-                Err(ServerError::BadRequest(_))
-            ));
+            let not_a_domain =
+                add_domain_rule(conn, &rule("not a domain", ServerRole::Member), None, 3);
+            assert_eq!(
+                not_a_domain.map(|_| ()).unwrap_err().code(),
+                "invalid_domain"
+            );
             let unicode = add_domain_rule(conn, &rule("Bücher.de", ServerRole::Guest), None, 4)?;
             assert_eq!(unicode.domain, "xn--bcher-kva.de");
-            assert!(matches!(
-                add_domain_rule(conn, &rule("cs.stanford.edu", ServerRole::Guest), None, 5),
-                Err(ServerError::Conflict(_))
-            ));
+            let again = add_domain_rule(conn, &rule("cs.stanford.edu", ServerRole::Guest), None, 5);
+            assert_eq!(again.map(|_| ()).unwrap_err().code(), "duplicate_entry");
             assert_eq!(list_domain_rules(conn)?.len(), 2);
             assert!(remove_domain_rule(conn, &created.id)?);
             assert!(!remove_domain_rule(conn, &created.id)?);
@@ -1063,39 +1183,98 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn removing_an_account_keeps_it_and_drops_only_its_bound_allowlist_entries() {
+    async fn removing_an_account_keeps_it_and_drops_every_allowlist_entry_that_would_let_it_back() {
         with_db(|conn| {
             let ada = create_account(conn, "Ada", None, ServerRole::Member, 1)?;
-            add_verified_emails(conn, ada, &["ada@uni.edu".to_string()])?;
+            let bound = add_allowlist(conn, &email("ada@uni.edu", ServerRole::Member), None, 1)?;
+            let second_address =
+                add_allowlist(conn, &email("ADA@lab.uni.edu", ServerRole::Member), None, 1)?;
+            let handle = add_allowlist(
+                conn,
+                &login("github", "@ada-l", ServerRole::Member),
+                None,
+                1,
+            )?;
+            let other_provider =
+                add_allowlist(conn, &login("gitlab", "ada-l", ServerRole::Member), None, 1)?;
+            let unbound = add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 1)?;
+            add_verified_emails(
+                conn,
+                ada,
+                &["ada@uni.edu".to_string(), "ada@lab.uni.edu".to_string()],
+            )?;
             link_identity(
                 conn,
                 ada,
                 "github",
                 "https://github.com",
                 "42",
-                Some("ada"),
+                Some("Ada-L"),
                 1,
             )?;
-            let bound = add_allowlist(conn, &email("ada@uni.edu", ServerRole::Member), None, 1)?;
-            let unbound = add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 1)?;
             bind_allowlist(conn, &bound.id, ada)?;
-            assert_eq!(remove_account(conn, ada, 5)?, 1);
+            assert_eq!(remove_account(conn, ada, 5)?, 3);
             assert_eq!(account_status(conn, ada)?, Some(MemberStatus::Removed));
             assert_eq!(
                 find_account_by_identity(conn, "https://github.com", "42")?,
                 Some(ada)
             );
-            assert!(get_allowlist(conn, &bound.id)?.is_none());
+            for gone in [&bound, &second_address, &handle] {
+                assert!(get_allowlist(conn, &gone.id)?.is_none(), "{gone:?}");
+            }
+            assert!(get_allowlist(conn, &other_provider.id)?.is_some());
             assert!(get_allowlist(conn, &unbound.id)?.is_some());
             assert_eq!(
                 account_summary(conn, ada)?.map(|summary| summary.emails),
-                Some(vec!["ada@uni.edu".to_string()])
+                Some(vec![
+                    "ada@lab.uni.edu".to_string(),
+                    "ada@uni.edu".to_string()
+                ])
             );
             assert!(list_members(conn)?.is_empty());
             assert!(matches!(
                 remove_account(conn, AccountId::new_v7(), 6),
                 Err(ServerError::NotFound)
             ));
+            Ok(())
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn an_entry_for_someone_who_already_has_an_account_is_refused_unless_they_were_removed() {
+        with_db(|conn| {
+            let bob = create_account(conn, "Bob", None, ServerRole::Member, 1)?;
+            add_verified_emails(conn, bob, &["bob@uni.edu".to_string()])?;
+            link_identity(
+                conn,
+                bob,
+                "github",
+                "https://github.com",
+                "7",
+                Some("Bob-S"),
+                1,
+            )?;
+            for entry in [
+                email("Bob@Uni.edu", ServerRole::Maintainer),
+                login("github", "bob-s", ServerRole::Maintainer),
+            ] {
+                let refused = add_allowlist(conn, &entry, None, 2);
+                assert_eq!(refused.map(|_| ()).unwrap_err().code(), "already_member");
+            }
+            assert!(
+                add_allowlist(conn, &login("gitlab", "bob-s", ServerRole::Member), None, 2).is_ok()
+            );
+            set_status(conn, bob, &MemberStatus::Suspended, 3)?;
+            let paused = add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 3);
+            assert_eq!(paused.map(|_| ()).unwrap_err().code(), "already_member");
+            remove_account(conn, bob, 4)?;
+            assert!(
+                add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 5).is_ok()
+            );
+            assert!(
+                add_allowlist(conn, &login("github", "bob-s", ServerRole::Member), None, 5).is_ok()
+            );
             Ok(())
         })
         .await;

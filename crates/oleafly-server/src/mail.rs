@@ -3,6 +3,7 @@ pub mod notify;
 pub mod preferences;
 
 use std::fmt;
+use std::net::IpAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -64,17 +65,24 @@ impl SmtpSettings {
                 .to_string()
         };
         let url = Url::parse(raw).map_err(|_| invalid())?;
-        let (host, loopback) = match url.host() {
-            Some(Host::Domain(domain)) => (
-                domain.to_string(),
-                domain.eq_ignore_ascii_case("localhost")
-                    || domain
-                        .parse::<std::net::IpAddr>()
-                        .is_ok_and(|address| address.is_loopback()),
-            ),
-            Some(Host::Ipv4(address)) => (address.to_string(), address.is_loopback()),
-            Some(Host::Ipv6(address)) => (address.to_string(), address.is_loopback()),
+        let (host, address) = match url.host() {
+            Some(Host::Domain(domain)) => (domain.to_string(), domain.parse::<IpAddr>().ok()),
+            Some(Host::Ipv4(address)) => (address.to_string(), Some(IpAddr::V4(address))),
+            Some(Host::Ipv6(address)) => (address.to_string(), Some(IpAddr::V6(address))),
             None => return Err(invalid()),
+        };
+        let loopback = host.eq_ignore_ascii_case("localhost")
+            || address.is_some_and(|address| address.is_loopback());
+        let nearby = match address {
+            Some(IpAddr::V4(address)) => {
+                address.is_loopback() || address.is_private() || address.is_link_local()
+            }
+            Some(IpAddr::V6(address)) => {
+                address.is_loopback()
+                    || address.is_unique_local()
+                    || address.is_unicast_link_local()
+            }
+            None => loopback || !host.contains('.'),
         };
         let without_tls = match url.query_pairs().find(|(key, _)| key == "tls") {
             None => false,
@@ -95,6 +103,11 @@ impl SmtpSettings {
             "smtp" => (Security::StartTls, 587),
             _ => return Err(invalid()),
         };
+        if without_tls && !nearby {
+            return Err(format!(
+                "OLEAFLY_SMTP_URL asks for tls=none, but {host} is not on this machine or a private network, so every email would cross the network unencrypted. Remove tls=none, and if the relay's certificate is the problem, add its certificate authority to the server instead."
+            ));
+        }
         let username = Some(percent_decode(url.username())).filter(|name| !name.is_empty());
         let password = url.password().map(percent_decode);
         if without_tls && (username.is_some() || password.is_some()) {
@@ -368,6 +381,12 @@ fn spoken(delay: Duration) -> String {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Failure {
+    message: String,
+    permanent: bool,
+}
+
 impl Delivery {
     fn scrub(&self, text: String) -> String {
         match self.secret.as_deref().filter(|secret| !secret.is_empty()) {
@@ -395,28 +414,37 @@ impl Delivery {
             .map_err(|error| format!("could not build the email: {error}"))
     }
 
-    async fn deliver(&self, email: &OutgoingEmail) -> Result<(), String> {
+    async fn deliver(&self, email: &OutgoingEmail) -> Result<(), Failure> {
         let outcome = match self.message(email) {
             Ok(message) => {
                 match tokio::time::timeout(self.timeout, self.transport.send(message)).await {
                     Ok(Ok(_)) => Ok(()),
-                    Ok(Err(error)) => Err(self.scrub(describe(&error))),
-                    Err(_) => Err(format!(
-                        "the mail server did not answer within {}",
-                        spoken(self.timeout)
-                    )),
+                    Ok(Err(error)) => Err(Failure {
+                        permanent: error.is_permanent(),
+                        message: self.scrub(describe(&error)),
+                    }),
+                    Err(_) => Err(Failure {
+                        message: format!(
+                            "the mail server did not answer within {}",
+                            spoken(self.timeout)
+                        ),
+                        permanent: false,
+                    }),
                 }
             }
-            Err(error) => Err(error),
+            Err(message) => Err(Failure {
+                message,
+                permanent: true,
+            }),
         };
         let mut stats = locked(&self.stats);
         match &outcome {
             Ok(()) => stats.delivered += 1,
-            Err(message) => {
+            Err(failure) => {
                 stats.failed_attempts += 1;
                 stats.last_failure = Some(EmailFailure {
                     at: self.clock.now_ms(),
-                    message: message.clone(),
+                    message: failure.message.clone(),
                 });
             }
         }
@@ -428,6 +456,7 @@ struct Lane {
     delivery: Delivery,
     retry: mpsc::WeakSender<Job>,
     policy: Arc<RetryPolicy>,
+    waiting: Arc<Semaphore>,
 }
 
 fn give_up(stats: &Mutex<MailStats>, kind: &str) {
@@ -444,9 +473,17 @@ impl Lane {
             give_up(&self.delivery.stats, kind);
             return;
         }
-        let Err(error) = self.delivery.deliver(&job.email).await else {
+        let Err(failure) = self.delivery.deliver(&job.email).await else {
             return;
         };
+        let error = failure.message;
+        if failure.permanent {
+            locked(&self.delivery.stats).abandoned += 1;
+            tracing::error!(
+                "Gave up sending the {kind} email because it can't be sent as it is: {error}"
+            );
+            return;
+        }
         let attempts = self.policy.delays.len() + 1;
         let attempt = job.attempt + 1;
         let Some(delay) = self.policy.delays.get(job.attempt).copied() else {
@@ -470,10 +507,18 @@ impl Lane {
             "Could not send the {kind} email (attempt {attempt} of {attempts}): {error}. Trying again in {}.",
             spoken(delay)
         );
+        let Ok(held) = Arc::clone(&self.waiting).try_acquire_owned() else {
+            locked(&self.delivery.stats).dropped += 1;
+            tracing::warn!(
+                "Dropped the {kind} email because too many emails are already waiting to be tried again."
+            );
+            return;
+        };
         job.attempt = attempt;
         let retry = self.retry.clone();
         let stats = Arc::clone(&self.delivery.stats);
         tokio::spawn(async move {
+            let _held = held;
             tokio::time::sleep(delay).await;
             let queued = match retry.upgrade() {
                 Some(queue) => queue.try_send(job).is_ok(),
@@ -510,6 +555,7 @@ fn lane(delivery: &Delivery, policy: &Arc<RetryPolicy>, slots: usize) -> mpsc::S
         delivery: delivery.clone(),
         retry: queue.downgrade(),
         policy: Arc::clone(policy),
+        waiting: Arc::new(Semaphore::new(QUEUE_CAPACITY)),
     };
     tokio::spawn(work(lane, receiver, slots));
     queue
@@ -619,7 +665,11 @@ impl Mailer {
 
     pub async fn send_now(&self, email: OutgoingEmail) -> Result<(), String> {
         match &self.inner {
-            Some(inner) => inner.delivery.deliver(&email).await,
+            Some(inner) => inner
+                .delivery
+                .deliver(&email)
+                .await
+                .map_err(|failure| failure.message),
             None => Err("this server has no email settings".to_string()),
         }
     }
@@ -769,6 +819,61 @@ mod tests {
         assert_eq!(mailer.stats().abandoned, 1);
     }
 
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_recipient_the_mail_server_refuses_for_good_is_tried_once() {
+        let smtp = MockSmtp::start().await;
+        smtp.fail_next(1, MockSmtpFault::RejectRecipient);
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("typo@uni.edu"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 1);
+        let stats = mailer.stats();
+        assert_eq!(
+            (stats.failed_attempts, stats.abandoned, stats.delivered),
+            (1, 1, 0)
+        );
+        let failure = stats.last_failure.expect("the refusal is kept");
+        assert!(failure.message.contains("550"), "{}", failure.message);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn an_email_that_cannot_be_built_is_never_retried() {
+        let smtp = MockSmtp::start().await;
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("not an address"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 0);
+        let stats = mailer.stats();
+        assert_eq!((stats.failed_attempts, stats.abandoned), (1, 1));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_mail_server_that_asks_to_try_later_is_tried_again() {
+        let smtp = MockSmtp::start().await;
+        smtp.fail_next(2, MockSmtpFault::RejectMail);
+        let clock = ManualClock::new(TEST_START_MS);
+        let policy = RetryPolicy {
+            delays: vec![Duration::from_millis(20); 3],
+            attempt_timeout: Duration::from_secs(5),
+        };
+        let mailer = mailer(&smtp, &clock, policy);
+        mailer.enqueue(notification("ada@uni.edu"));
+        settle(&mailer, Duration::from_secs(10)).await;
+        assert_eq!(smtp.sessions(), 3);
+        let stats = mailer.stats();
+        assert_eq!((stats.failed_attempts, stats.delivered), (2, 1));
+    }
+
     #[test]
     fn smtps_addresses_use_tls_and_port_465_with_decoded_credentials() {
         let settings =
@@ -825,6 +930,47 @@ mod tests {
         ] {
             assert!(SmtpSettings::parse(refused).is_err(), "{refused}");
         }
+    }
+
+    #[test]
+    fn tls_none_works_only_for_a_relay_on_this_machine_or_a_private_network() {
+        for nearby in [
+            "smtp://mailpit:1025?tls=none",
+            "smtp://10.0.0.5?tls=none",
+            "smtp://172.20.0.3:25?tls=none",
+            "smtp://192.168.1.10?tls=none",
+            "smtp://169.254.10.1?tls=none",
+            "smtp://[fd00::25]:25?tls=none",
+            "smtp://[fe80::1]?tls=none",
+            "smtp://127.0.0.1:1025?tls=none",
+            "smtp://localhost?tls=none",
+        ] {
+            let settings =
+                SmtpSettings::parse(nearby).unwrap_or_else(|error| panic!("{nearby}: {error}"));
+            assert_eq!(settings.security, Security::Plain, "{nearby}");
+        }
+        for far in [
+            "smtp://smtp.example.org?tls=none",
+            "smtp://203.0.113.5?tls=none",
+            "smtp://relay.lab.internal?tls=none",
+            "smtp://[2001:db8::25]?tls=none",
+        ] {
+            let error = SmtpSettings::parse(far).expect_err(far);
+            let host = Url::parse(far)
+                .unwrap()
+                .host_str()
+                .unwrap()
+                .trim_matches(['[', ']'])
+                .to_string();
+            assert!(error.contains(&host), "{far}: {error}");
+            assert!(error.contains("certificate authority"), "{far}: {error}");
+        }
+        assert_eq!(
+            SmtpSettings::parse("smtp://smtp.example.org")
+                .unwrap()
+                .security,
+            Security::StartTls
+        );
     }
 
     #[test]

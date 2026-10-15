@@ -17,6 +17,7 @@ const MAX_MESSAGE: usize = 4 * 1024 * 1024;
 pub enum MockSmtpFault {
     Unavailable,
     RejectMail,
+    RejectRecipient,
     Stall,
 }
 
@@ -232,6 +233,9 @@ async fn serve(stream: TcpStream, shared: Arc<Shared>) -> std::io::Result<()> {
                     rcpt_to.clear();
                     reply(&mut writer, "250 2.1.0 Sender ok").await?;
                 }
+            }
+            "RCPT" if fault == Some(MockSmtpFault::RejectRecipient) => {
+                reply(&mut writer, "550 5.1.1 No such user here").await?;
             }
             "RCPT" => {
                 let recipient = angle_address(command);

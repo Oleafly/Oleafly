@@ -1,3 +1,5 @@
+mod claims;
+
 use oleafly_collab_protocol::admin::{AllowlistMatcher, SecurityEventKind};
 use oleafly_collab_protocol::capabilities::CapabilityManifest;
 use oleafly_collab_protocol::roles::ServerRole;
@@ -34,7 +36,7 @@ async fn attempt(
     setup_code: Option<&str>,
 ) -> Result<String, String> {
     let device = TestDevice::generate();
-    let attempt = SignInAttempt::new(server, provider, &device, setup_code);
+    let attempt = claims::attempt(server, provider, &device, setup_code).await?;
     let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone()).await?;
     app_callback(&landing, &attempt.state)
 }
@@ -132,11 +134,18 @@ async fn the_setup_code_works_once() {
 async fn a_wrong_setup_code_never_reaches_the_provider() {
     let (server, _github) = server_for(carol()).await;
     let device = TestDevice::generate();
-    let attempt = SignInAttempt::new(&server, "github", &device, Some("WRONG-CODE"));
-    let landing = location(&no_redirect_client(), attempt.start_url.clone()).await;
+    assert_eq!(
+        claims::attempt(&server, "github", &device, Some("WRONG-CODE"))
+            .await
+            .err()
+            .as_deref(),
+        Some("setup_code_invalid")
+    );
+    let in_the_address = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let landing = location(&no_redirect_client(), in_the_address.start_url.clone()).await;
     assert!(landing.as_str().starts_with(TEST_REDIRECT_URI));
     assert_eq!(
-        app_callback(&landing, &attempt.state),
+        app_callback(&landing, &in_the_address.state),
         Err("setup_code_invalid".to_owned())
     );
     assert_eq!(admins(&server).await, 0);
@@ -173,7 +182,9 @@ async fn someone_turned_away_hears_which_account_they_used() {
 async fn a_finished_sign_in_never_names_the_account_in_the_address() {
     let (server, _github) = server_for(carol()).await;
     let device = TestDevice::generate();
-    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let attempt = claims::attempt(&server, "github", &device, Some(&server.setup_code()))
+        .await
+        .expect("a setup claim");
     let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
         .await
         .expect("back at the app");
@@ -318,7 +329,9 @@ async fn declining_at_the_provider_returns_sign_in_cancelled() {
 async fn a_pending_sign_in_expires_after_ten_minutes() {
     let (server, _github) = server_for(carol()).await;
     let device = TestDevice::generate();
-    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let attempt = claims::attempt(&server, "github", &device, Some(&server.setup_code()))
+        .await
+        .expect("a setup claim");
     let client = no_redirect_client();
     let provider_page = location(&client, attempt.start_url.clone()).await;
     let callback = location(&client, provider_page).await;
@@ -332,7 +345,9 @@ async fn a_pending_sign_in_expires_after_ten_minutes() {
 async fn a_callback_cannot_be_replayed() {
     let (server, _github) = server_for(carol()).await;
     let device = TestDevice::generate();
-    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let attempt = claims::attempt(&server, "github", &device, Some(&server.setup_code()))
+        .await
+        .expect("a setup claim");
     let client = no_redirect_client();
     let provider_page = location(&client, attempt.start_url.clone()).await;
     let callback = location(&client, provider_page).await;

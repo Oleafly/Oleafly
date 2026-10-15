@@ -20,8 +20,8 @@ use oleafly_server::config::ServerConfig;
 use oleafly_server::members;
 use oleafly_server::state::DAY_MS;
 use oleafly_server::test_support::{
-    github_provider, mail_config, refresh_session, security_event_kinds, sign_in, test_config,
-    MockGithub, MockGithubUser, MockSmtp, TestDevice,
+    api_error_code, github_provider, mail_config, refresh_session, security_event_kinds, sign_in,
+    test_config, MockGithub, MockGithubUser, MockSmtp, TestDevice,
 };
 use people::{call, connect, next_frame, read, share_project, stage_with, Person, Stage};
 use reqwest::{Method, StatusCode};
@@ -290,6 +290,124 @@ async fn a_matching_verified_email_is_admitted_once_as_a_guest_off_the_allowlist
     assert_eq!(again.tokens.account_id, dana.tokens.account_id);
     let kinds = security_event_kinds(&stage.server).await;
     assert!(kinds.contains(&SecurityEventKind::GuestInvited));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_guest_waits_while_the_owner_who_invited_them_is_away() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, false).await;
+    let project = share_project(&stage.server, &stage.alice, "Alice's paper").await;
+    invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let alice = format!("/api/v1/admin/members/{}", stage.alice.tokens.account_id);
+    let suspended = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "suspended" })),
+    )
+    .await;
+    assert_eq!(suspended.status(), StatusCode::OK);
+    assert_eq!(
+        sign_in_as(stage, "dana-gh").await.err().as_deref(),
+        Some("not_admitted")
+    );
+    let back = call(
+        &stage.server,
+        Method::PATCH,
+        &alice,
+        stage.bob.token(),
+        Some(json!({ "status": "active" })),
+    )
+    .await;
+    assert_eq!(back.status(), StatusCode::OK);
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("dana gets in once the owner is back");
+    let listed = projects_of(stage, &dana).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].project_id, project.project_id);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn access_from_an_invitation_is_logged_by_whoever_granted_it_and_from_where() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Alice's paper").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let dana_first = sign_in_as(stage, "dana-gh").await;
+    assert_eq!(dana_first.err().as_deref(), Some("not_admitted"));
+    let approved = decide(stage, &stage.bob, &waiting.invitation.id, "approve").await;
+    assert_eq!(approved.status(), StatusCode::OK);
+    let dana = sign_in_as(stage, "dana-gh")
+        .await
+        .expect("dana is admitted");
+    let second = share_project(&stage.server, &stage.alice, "Alice's notes").await;
+    invited_by(
+        stage,
+        &stage.alice,
+        second.project_id,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    let approved_again = staff_list(stage, &stage.bob).await;
+    let open: Vec<oleafly_collab_protocol::guests::GuestInvitation> =
+        approved_again.json().await.expect("open invitations");
+    let second_invitation = open
+        .iter()
+        .find(|invitation| invitation.project_id == second.project_id)
+        .expect("the second invitation waits for approval");
+    let approved = decide(stage, &stage.bob, &second_invitation.id, "approve").await;
+    assert_eq!(approved.status(), StatusCode::OK);
+    let events = stage
+        .server
+        .state()
+        .db
+        .call(|conn| oleafly_server::security_log::page(conn, None, 200))
+        .await
+        .expect("security log")
+        .items;
+    let granted: Vec<_> = events
+        .iter()
+        .filter(|event| event.kind == SecurityEventKind::ProjectAccessGranted)
+        .filter(|event| event.detail["via"] == "invitation")
+        .collect();
+    assert_eq!(granted.len(), 2, "{granted:?}");
+    let alice = stage.alice.tokens.account_id.to_string();
+    for event in &granted {
+        assert_eq!(event.detail["invited_by"], alice.as_str(), "{event:?}");
+        assert!(
+            event.ip.as_deref().is_some_and(|ip| !ip.is_empty()),
+            "{event:?}"
+        );
+    }
+    let by_sign_in = granted
+        .iter()
+        .find(|event| event.detail["project"] == project.project_id.to_string().as_str())
+        .expect("the first grant");
+    assert_eq!(by_sign_in.actor, Some(dana.tokens.account_id));
+    let by_approval = granted
+        .iter()
+        .find(|event| event.detail["project"] == second.project_id.to_string().as_str())
+        .expect("the second grant");
+    assert_eq!(by_approval.actor, Some(stage.bob.tokens.account_id));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -906,6 +1024,31 @@ async fn an_existing_guest_gets_a_newly_approved_project_without_signing_in_agai
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn inviting_to_a_project_that_is_not_shared_yet_says_so() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, false).await;
+    let (owner, now) = (stage.bob.tokens.account_id, stage.server.clock().now_ms());
+    let draft = stage
+        .server
+        .state()
+        .db
+        .call(move |conn| oleafly_server::projects::create_pending(conn, owner, "Draft", now))
+        .await
+        .expect("a project that is still uploading");
+    let refused = invite(
+        stage,
+        &stage.bob,
+        draft,
+        "dana@field.org",
+        ProjectRole::Viewer,
+    )
+    .await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "project_not_shared");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
     let guests = guest_stage(test_config()).await;
     let stage = &guests.stage;
@@ -918,7 +1061,8 @@ async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
         ProjectRole::Viewer,
     )
     .await;
-    assert_eq!(off.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(off.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(off).await, "guests_off");
     let list = owner_list(stage, project.project_id).await;
     assert!(!list.guests_enabled);
     guests_on(stage, false).await;
@@ -940,6 +1084,7 @@ async fn invitations_need_guests_on_a_valid_address_and_a_grantable_role() {
     )
     .await;
     assert_eq!(junk.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(api_error_code(junk).await, "invalid_email");
     invited(
         stage,
         project.project_id,
@@ -1235,4 +1380,99 @@ async fn an_address_two_accounts_hold_waits_for_one_of_them_to_sign_in() {
         .await
         .expect("dana signs in again");
     assert_eq!(projects_of(stage, &again).await.len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_invitation_cannot_be_approved_while_guests_are_off_and_nothing_is_emailed() {
+    let smtp = MockSmtp::start().await;
+    let guests = guest_stage(mail_config(&smtp)).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Editor,
+    )
+    .await;
+    set_guests(stage, false, true).await;
+    let listed: Vec<GuestInvitation> = read(staff_list(stage, &stage.bob).await).await;
+    assert!(listed.is_empty(), "{listed:?}");
+    let refused = decide(stage, &stage.bob, &waiting.invitation.id, "approve").await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "guests_off");
+    stage.server.state().mailer.settled().await;
+    assert!(smtp.messages().is_empty(), "{:?}", smtp.messages());
+    guests_on(stage, true).await;
+    let listed: Vec<GuestInvitation> = read(staff_list(stage, &stage.bob).await).await;
+    assert_eq!(listed.len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_approved_invitation_gets_its_full_fourteen_days_from_the_approval() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Editor,
+    )
+    .await;
+    stage.server.clock().advance(12 * DAY_MS);
+    let admin =
+        oleafly_server::test_support::seed_member(stage.server.app(), ServerRole::Admin).await;
+    let approved: GuestInvitation = read(
+        call(
+            &stage.server,
+            Method::POST,
+            &format!("{PENDING}/{}/approve", waiting.invitation.id),
+            &admin.access_token,
+            None,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        approved.expires_at,
+        stage.server.clock().now_ms() + 14 * DAY_MS
+    );
+    assert!(approved.expires_at > waiting.invitation.expires_at);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_invitation_to_an_archived_project_cannot_be_approved() {
+    let guests = guest_stage(test_config()).await;
+    let stage = &guests.stage;
+    guests_on(stage, true).await;
+    let project = share_project(&stage.server, &stage.alice, "Reef survey").await;
+    let waiting = invited_by(
+        stage,
+        &stage.alice,
+        project.project_id,
+        "dana@field.org",
+        ProjectRole::Editor,
+    )
+    .await;
+    let id = project.project_id;
+    stage
+        .server
+        .state()
+        .db
+        .call(move |conn| {
+            Ok(conn.execute(
+                "UPDATE projects SET status = 'archived' WHERE id = ?1",
+                [id.to_string()],
+            )?)
+        })
+        .await
+        .expect("archive the project");
+    let refused = decide(stage, &stage.bob, &waiting.invitation.id, "approve").await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "project_not_shared");
 }

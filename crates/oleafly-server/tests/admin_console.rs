@@ -382,6 +382,51 @@ async fn the_overview_counts_people_devices_projects_and_who_is_online() {
 }
 
 #[tokio::test]
+async fn the_overview_counts_guest_invitations_waiting_for_an_admin() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let maintainer = seed_member(&app, ServerRole::Maintainer).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = seed_project(&app, owner.account_id, Seed::active("Thesis", 1)).await;
+    let (inviter, now) = (owner.account_id, app.clock.now_ms());
+    app.state
+        .db
+        .call(move |conn| {
+            oleafly_server::settings::patch(
+                conn,
+                &RuntimeSettingsPatch {
+                    guests_enabled: Some(true),
+                    guest_approval_required: Some(true),
+                    ..RuntimeSettingsPatch::default()
+                },
+            )?;
+            for (email, approval) in [
+                ("reviewer@elsewhere.org", true),
+                ("editor@elsewhere.org", true),
+                ("approved@elsewhere.org", false),
+            ] {
+                oleafly_server::guests::create(
+                    conn,
+                    project,
+                    email,
+                    ProjectRole::Viewer,
+                    inviter,
+                    approval,
+                    now,
+                )?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    for caller in [&admin, &maintainer] {
+        let overview: AdminOverview =
+            parse(support::send_get(&app.router, OVERVIEW, token(caller)).await);
+        assert_eq!(overview.counts.pending_guest_approvals, 2);
+    }
+}
+
+#[tokio::test]
 async fn uptime_runs_from_when_the_server_started() {
     let app = test_app().await;
     let admin = seed_member(&app, ServerRole::Admin).await;

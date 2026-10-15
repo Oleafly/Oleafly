@@ -126,4 +126,17 @@ async fn a_role_this_server_does_not_know_is_refused_and_nothing_is_stored() {
     )
     .await;
     assert_eq!(members.len(), 1);
+    let invitations: i64 = server
+        .state()
+        .db
+        .call(|conn| {
+            Ok(
+                conn.query_row("SELECT COUNT(*) FROM guest_invitations", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        })
+        .await
+        .expect("count guest invitations");
+    assert_eq!(invitations, 0);
 }

@@ -26,6 +26,7 @@ pub struct GithubProvider {
 struct TokenReply {
     access_token: Option<String>,
     error: Option<String>,
+    error_description: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -139,7 +140,11 @@ impl IdentityProvider for GithubProvider {
             .await
             .map_err(|error| provider_failed(&self.id, error))?;
         let Some(token) = reply.access_token else {
-            let reason = reply.error.unwrap_or_else(|| "no access token".to_owned());
+            let reason = match (reply.error, reply.error_description) {
+                (Some(error), Some(description)) => format!("{error}: {description}"),
+                (Some(error), None) => error,
+                (None, _) => "no access token".to_owned(),
+            };
             return Err(provider_failed(&self.id, reason));
         };
         let user: GithubUser = self.api("user", &token).await?;

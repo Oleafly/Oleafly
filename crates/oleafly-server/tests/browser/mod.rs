@@ -35,6 +35,8 @@ pub struct Browser {
     client: reqwest::Client,
     cookies: Mutex<BTreeMap<String, String>>,
     language: Option<String>,
+    address: Option<String>,
+    agent: Option<String>,
 }
 
 impl Default for Browser {
@@ -49,6 +51,22 @@ impl Browser {
             client: no_redirect_client(),
             cookies: Mutex::new(BTreeMap::new()),
             language: None,
+            address: None,
+            agent: None,
+        }
+    }
+
+    pub fn with_user_agent(agent: &str) -> Browser {
+        Browser {
+            agent: Some(agent.to_owned()),
+            ..Browser::new()
+        }
+    }
+
+    pub fn from_address(address: &str) -> Browser {
+        Browser {
+            address: Some(address.to_owned()),
+            ..Browser::new()
         }
     }
 
@@ -114,6 +132,12 @@ impl Browser {
         if let Some(language) = &self.language {
             request = request.header(ACCEPT_LANGUAGE, language);
         }
+        if let Some(address) = &self.address {
+            request = request.header("x-forwarded-for", address);
+        }
+        if let Some(agent) = &self.agent {
+            request = request.header(reqwest::header::USER_AGENT, agent);
+        }
         let response = request.send().await.expect("get");
         self.finish(url.clone(), response).await
     }
@@ -125,6 +149,12 @@ impl Browser {
         }
         if let Some(language) = &self.language {
             request = request.header(ACCEPT_LANGUAGE, language);
+        }
+        if let Some(address) = &self.address {
+            request = request.header("x-forwarded-for", address);
+        }
+        if let Some(agent) = &self.agent {
+            request = request.header(reqwest::header::USER_AGENT, agent);
         }
         let response = request.send().await.expect("post");
         self.finish(url.clone(), response).await
@@ -268,17 +298,31 @@ pub async fn request_code(
     device: &TestDevice,
     setup_code: Option<&str>,
 ) -> Result<DeviceCodeResponse, String> {
-    let response = reqwest::Client::new()
-        .post(format!("{}/auth/device/code", server.url()))
-        .json(&DeviceCodeRequest {
+    request_code_as(
+        server,
+        DeviceCodeRequest {
             device_public_key: device.public_key_b64().to_owned(),
             device_name: "Lab PC".to_owned(),
             platform: "linux".to_owned(),
             setup_code: setup_code.map(str::to_owned),
-        })
-        .send()
-        .await
-        .expect("device code request");
+        },
+        None,
+    )
+    .await
+}
+
+pub async fn request_code_as(
+    server: &TestServer,
+    request: DeviceCodeRequest,
+    from: Option<&str>,
+) -> Result<DeviceCodeResponse, String> {
+    let mut sent = reqwest::Client::new()
+        .post(format!("{}/auth/device/code", server.url()))
+        .json(&request);
+    if let Some(address) = from {
+        sent = sent.header("x-forwarded-for", address);
+    }
+    let response = sent.send().await.expect("device code request");
     if response.status().is_success() {
         Ok(response.json().await.expect("device code reply"))
     } else {

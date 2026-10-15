@@ -19,14 +19,16 @@ use crate::auth::device_code::{self, Authorization, NewAuthorization, Pace, Stat
 use crate::auth::email_link;
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::throttle::{self, Throttle};
-use crate::auth::{browser_binding, csrf, db_error, devices, nonce, refresh};
+use crate::auth::{browser_binding, csrf, db_error, devices, nonce, noting_failure, refresh};
 use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::messages::escape;
 use crate::mail::notify;
 use crate::members;
 use crate::rate_limit::client_key;
-use crate::routes::auth::{checked_setup_code, email_link_available, Finish};
+use crate::routes::auth::{
+    checked_setup_code, email_link_available, note_provider_problem, Finish,
+};
 use crate::routes::email_sign_in::{self, page_expired};
 use crate::routes::sign_in_pages::{
     self, device_label, heading, next, paragraph, provider_button, Field, Input, Tone,
@@ -60,10 +62,12 @@ fn verification_uri(state: &AppState) -> String {
     state.config.endpoint("/auth/device").to_string()
 }
 
+const PLATFORMS: [&str; 3] = ["macos", "windows", "linux"];
+
 fn well_formed(request: &DeviceCodeRequest) -> bool {
     let key = b64url_decode(&request.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
     let name = !request.device_name.trim().is_empty() && request.device_name.chars().count() <= 100;
-    let platform = !request.platform.trim().is_empty() && request.platform.chars().count() <= 40;
+    let platform = PLATFORMS.contains(&request.platform.trim().to_ascii_lowercase().as_str());
     key && name && platform
 }
 
@@ -104,8 +108,9 @@ async fn issue(
     let new = NewAuthorization {
         device_public_key: request.device_public_key.clone(),
         device_name: request.device_name.trim().to_string(),
-        platform: request.platform.trim().to_string(),
+        platform: request.platform.trim().to_ascii_lowercase(),
         setup_code_hash,
+        requested_from: ip.as_deref().map(client_key),
     };
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
     let per_ip = state.config.sign_in.device_codes_per_ip;
@@ -171,7 +176,12 @@ fn redeem(
         return Err(ServerError::Auth(AuthErrorCode::InvalidSignature));
     }
     let outcome = match authorization.status {
-        Status::Used => return Err(ServerError::Auth(AuthErrorCode::InvalidCode)),
+        Status::Used => {
+            match device_code::replay(&tx, &authorization.id, &request.device_code, now)? {
+                Some(tokens) => (DevicePoll::Approved { tokens }, None),
+                None => return Err(ServerError::Auth(AuthErrorCode::InvalidCode)),
+            }
+        }
         Status::Refused => return Err(ServerError::Auth(AuthErrorCode::NotAdmitted)),
         Status::Denied => (DevicePoll::Denied, None),
         _ if authorization.expires_at <= now => (DevicePoll::Expired, None),
@@ -179,7 +189,7 @@ fn redeem(
             Pace::Steady { interval } => (DevicePoll::Pending { interval }, None),
             Pace::TooFast { interval } => (DevicePoll::SlowDown { interval }, None),
         },
-        Status::Approved => approved(&tx, &authorization, ip, now)?,
+        Status::Approved => approved(&tx, &authorization, &request.device_code, ip, now)?,
     };
     tx.commit().map_err(db_error)?;
     Ok(outcome)
@@ -188,6 +198,7 @@ fn redeem(
 fn approved(
     tx: &Connection,
     authorization: &Authorization,
+    device_code: &str,
     ip: Option<String>,
     now: i64,
 ) -> Result<(DevicePoll, Added), ServerError> {
@@ -229,6 +240,7 @@ fn approved(
         )?;
     }
     let tokens = refresh::issue_session(tx, account, registered.device_id, now)?;
+    device_code::keep_reply(tx, &authorization.id, device_code, &tokens, now)?;
     let added = registered.added.then(|| {
         (
             account,
@@ -452,6 +464,7 @@ async fn check(
     headers: HeaderMap,
     Form(form): Form<CodeForm>,
 ) -> Result<Response, ServerError> {
+    let here = ip.as_deref().map(client_key);
     let authorization = match found_or_page(locale, &state, ip, &headers, &form).await? {
         Ok(authorization) => authorization,
         Err(page) => return Ok(page),
@@ -463,6 +476,9 @@ async fn check(
         &locale.fill(Key::CodeAsked, &[("device", &device)]),
     ));
     body.push_str(&sign_in_pages::code(&user_code));
+    if from_another_network(authorization.requested_from.as_deref(), here.as_deref()) {
+        body.push_str(&sign_in_pages::error(locale.text(Key::CodeOtherNetwork)));
+    }
     body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeOnlyIfYou)));
     let runtime_email = email_link_available(&state).await?;
     let providers = email_link::with_email_link(state.providers.infos(), runtime_email);
@@ -516,6 +532,10 @@ async fn check(
     ))
 }
 
+fn from_another_network(requested_from: Option<&str>, here: Option<&str>) -> bool {
+    matches!((requested_from, here), (Some(from), Some(here)) if from != here)
+}
+
 fn see_other(location: &str) -> Response {
     let mut response = StatusCode::SEE_OTHER.into_response();
     if let Ok(value) = HeaderValue::from_str(location) {
@@ -564,15 +584,15 @@ async fn continue_with(
         let callback = state
             .config
             .endpoint(&format!("/auth/callback/{}", pending.provider_id));
-        let Ok(authorize) = provider
-            .authorize_url(
-                &pending.id,
-                &callback,
-                &pkce_s256(&pending.provider_verifier),
-                &pending.provider_nonce,
-            )
-            .await
-        else {
+        let (authorize, detail) = noting_failure(provider.authorize_url(
+            &pending.id,
+            &callback,
+            &pkce_s256(&pending.provider_verifier),
+            &pending.provider_nonce,
+        ))
+        .await;
+        let Ok(authorize) = authorize else {
+            note_provider_problem(&state, &pending.provider_id, detail, now);
             return Ok(finished(
                 locale,
                 &state,
@@ -790,6 +810,20 @@ mod tests {
             .await
             .unwrap();
         String::from_utf8_lossy(&body).into_owned()
+    }
+
+    #[test]
+    fn only_two_different_known_networks_count_as_another_network() {
+        assert!(from_another_network(
+            Some("198.51.100.1"),
+            Some("203.0.113.1")
+        ));
+        assert!(!from_another_network(
+            Some("198.51.100.1"),
+            Some("198.51.100.1")
+        ));
+        assert!(!from_another_network(None, Some("203.0.113.1")));
+        assert!(!from_another_network(Some("198.51.100.1"), None));
     }
 
     #[tokio::test]

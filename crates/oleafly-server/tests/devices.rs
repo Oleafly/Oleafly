@@ -1,3 +1,5 @@
+mod claims;
+
 use oleafly_collab_protocol::admin::{AllowlistMatcher, SecurityEventKind};
 use oleafly_collab_protocol::auth::{AccountSummary, DeviceSummary, SessionTokens};
 use oleafly_collab_protocol::roles::ServerRole;
@@ -30,7 +32,7 @@ async fn two_people() -> (TestServer, MockGithub, MockGithub) {
 
 async fn carol_signs_in(server: &TestServer, device: &TestDevice, first: bool) -> SessionTokens {
     let setup_code = first.then(|| server.setup_code());
-    sign_in(server, "github", device, setup_code.as_deref())
+    claims::sign_in(server, "github", device, setup_code.as_deref())
         .await
         .expect("carol signs in")
 }

@@ -397,12 +397,13 @@ async fn the_last_admin_cannot_be_demoted_suspended_or_removed() {
     ] {
         let reply = support::send_patch(router, &own, auth, body).await;
         assert_eq!(reply.status, StatusCode::CONFLICT);
-        assert_eq!(reply.body["code"], "conflict");
+        assert_eq!(reply.body["code"], "last_admin");
     }
-    expect_status(
+    let removal = expect_status(
         support::send_delete(router, &own, auth).await,
         StatusCode::CONFLICT,
     );
+    assert_eq!(removal.body["code"], "last_admin");
     let second = seed_member(&app, ServerRole::Admin).await;
     expect_status(
         support::send_patch(router, &own, auth, role_patch(ServerRole::Member)).await,
@@ -698,8 +699,8 @@ async fn allowlist_entries_are_validated_and_unique() {
     )
     .await;
     assert_eq!(duplicate.status, StatusCode::CONFLICT);
-    assert_eq!(duplicate.body["code"], "conflict");
-    expect_status(
+    assert_eq!(duplicate.body["code"], "duplicate_entry");
+    let not_an_address = expect_status(
         support::send_post(
             router,
             ALLOWLIST,
@@ -709,6 +710,7 @@ async fn allowlist_entries_are_validated_and_unique() {
         .await,
         StatusCode::BAD_REQUEST,
     );
+    assert_eq!(not_an_address.body["code"], "invalid_email");
     let by_login: AllowlistEntry = parse(expect_status(
         support::send_post(
             router,
@@ -782,7 +784,7 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
     ));
     assert_eq!(created.domain, "cs.stanford.edu");
     assert_eq!(created.role, ServerRole::Member);
-    expect_status(
+    let again = expect_status(
         support::send_post(
             router,
             DOMAINS,
@@ -792,13 +794,14 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
         .await,
         StatusCode::CONFLICT,
     );
+    assert_eq!(again.body["code"], "duplicate_entry");
     for role in [ServerRole::Admin, ServerRole::Maintainer] {
         expect_status(
             support::send_post(router, DOMAINS, auth, domain_rule("uni.edu", role)).await,
             StatusCode::BAD_REQUEST,
         );
     }
-    expect_status(
+    let not_a_domain = expect_status(
         support::send_post(
             router,
             DOMAINS,
@@ -808,6 +811,7 @@ async fn domain_rules_are_normalised_and_cannot_add_staff() {
         .await,
         StatusCode::BAD_REQUEST,
     );
+    assert_eq!(not_a_domain.body["code"], "invalid_domain");
     let found = app
         .state
         .db
@@ -1216,4 +1220,179 @@ async fn maintainers_cannot_list_or_sign_out_staff_devices() {
         StatusCode::NO_CONTENT,
     );
     assert_eq!(of_kind(&logged(&app).await, "device_signed_out").len(), 1);
+}
+
+#[tokio::test]
+async fn the_member_list_says_how_many_shared_projects_each_person_owns() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let (owner_id, now) = (owner.account_id, app.clock.now_ms());
+    app.state
+        .db
+        .call(move |conn| {
+            use oleafly_collab_protocol::projects::ProjectStatus;
+            use oleafly_server::projects;
+            for (title, status) in [
+                ("Thesis", ProjectStatus::Active),
+                ("Paper", ProjectStatus::Active),
+                ("Old poster", ProjectStatus::Archived),
+                ("Still uploading", ProjectStatus::Pending),
+            ] {
+                let project = projects::create_pending(conn, owner_id, title, now)?;
+                if status != ProjectStatus::Pending {
+                    projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                }
+                if status == ProjectStatus::Archived {
+                    projects::set_status(conn, project, status, now)?;
+                }
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let listed: Vec<MemberSummary> = parse(expect_status(
+        support::send_get(&app.router, MEMBERS, token(&admin)).await,
+        StatusCode::OK,
+    ));
+    let owned = |account: AccountId| {
+        listed
+            .iter()
+            .find(|member| member.account.account_id == account)
+            .map(|member| member.owned_projects)
+    };
+    assert_eq!(owned(owner.account_id), Some(2));
+    assert_eq!(owned(admin.account_id), Some(0));
+    let suspended: MemberSummary = parse(expect_status(
+        support::send_patch(
+            &app.router,
+            &member_path(owner.account_id),
+            token(&admin),
+            status_patch(MemberStatus::Suspended),
+        )
+        .await,
+        StatusCode::OK,
+    ));
+    assert_eq!(suspended.owned_projects, 2);
+}
+
+#[tokio::test]
+async fn adding_someone_who_already_has_an_account_is_refused_and_emails_nobody() {
+    let smtp = oleafly_server::test_support::MockSmtp::start().await;
+    let app = test_app_with(oleafly_server::test_support::mail_config(&smtp)).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let bob = seed_member(&app, ServerRole::Member).await;
+    let bob_id = bob.account_id;
+    app.state
+        .db
+        .call(move |conn| members::add_verified_emails(conn, bob_id, &["bob@uni.edu".to_string()]))
+        .await
+        .unwrap();
+    let refused = support::send_post(
+        &app.router,
+        ALLOWLIST,
+        token(&admin),
+        email_entry("Bob@uni.edu", ServerRole::Maintainer),
+    )
+    .await;
+    assert_eq!(refused.status, StatusCode::CONFLICT, "{}", refused.body);
+    assert_eq!(refused.body["code"], "already_member");
+    assert!(
+        refused.body["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("under People")),
+        "{}",
+        refused.body
+    );
+    app.state.mailer.settled().await;
+    assert!(smtp.messages().is_empty(), "{:?}", smtp.messages());
+    let listed: Vec<AllowlistEntry> = parse(expect_status(
+        support::send_get(&app.router, ALLOWLIST, token(&admin)).await,
+        StatusCode::OK,
+    ));
+    assert!(listed.is_empty(), "{listed:?}");
+    expect_status(
+        support::send_delete(&app.router, &member_path(bob_id), token(&admin)).await,
+        StatusCode::NO_CONTENT,
+    );
+    expect_status(
+        support::send_post(
+            &app.router,
+            ALLOWLIST,
+            token(&admin),
+            email_entry("bob@uni.edu", ServerRole::Member),
+        )
+        .await,
+        StatusCode::CREATED,
+    );
+}
+
+async fn live_sign_ins(app: &TestApp, account: AccountId) -> (i64, i64, i64) {
+    app.state
+        .db
+        .call(move |conn| {
+            let id = account.to_string();
+            let count = |sql: &str| -> rusqlite::Result<i64> {
+                conn.query_row(sql, [&id], |row| row.get(0))
+            };
+            Ok((
+                count("SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked_at IS NULL")?,
+                count("SELECT COUNT(*) FROM access_tokens WHERE account_id = ?1")?,
+                count(
+                    "SELECT COUNT(*) FROM refresh_tokens WHERE account_id = ?1 AND revoked_at IS NULL",
+                )?,
+            ))
+        })
+        .await
+        .unwrap()
+}
+
+async fn with_a_second_device(app: &TestApp, member: &SeededMember) {
+    let (account, now) = (member.account_id, app.clock.now_ms());
+    app.state
+        .db
+        .call(move |conn| {
+            let device = oleafly_server::auth::devices::register(
+                conn,
+                account,
+                &tokens::random_token(),
+                "Lab PC",
+                "linux",
+                now,
+            )?
+            .device_id;
+            oleafly_server::auth::refresh::issue_session(conn, account, device, now)?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn suspending_or_removing_someone_signs_out_every_device_in_the_same_step() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let paused = seed_member(&app, ServerRole::Member).await;
+    let gone = seed_member(&app, ServerRole::Member).await;
+    for member in [&paused, &gone] {
+        with_a_second_device(&app, member).await;
+        assert_eq!(live_sign_ins(&app, member.account_id).await, (2, 2, 1));
+    }
+    expect_status(
+        support::send_patch(
+            &app.router,
+            &member_path(paused.account_id),
+            token(&admin),
+            status_patch(MemberStatus::Suspended),
+        )
+        .await,
+        StatusCode::OK,
+    );
+    assert_eq!(live_sign_ins(&app, paused.account_id).await, (0, 0, 0));
+    expect_status(
+        support::send_delete(&app.router, &member_path(gone.account_id), token(&admin)).await,
+        StatusCode::NO_CONTENT,
+    );
+    assert_eq!(live_sign_ins(&app, gone.account_id).await, (0, 0, 0));
+    assert_eq!(live_sign_ins(&app, admin.account_id).await.0, 1);
 }

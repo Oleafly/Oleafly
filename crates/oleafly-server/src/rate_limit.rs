@@ -15,6 +15,8 @@ pub const CONNECT_BURST: u32 = 300;
 pub const CONNECTS_PER_MINUTE: u32 = 600;
 pub const DEVICE_RECONNECT_BURST: u32 = 60;
 pub const DEVICE_RECONNECTS_PER_MINUTE: u32 = 60;
+pub const DEVICE_REFRESH_BURST: u32 = 30;
+pub const DEVICE_REFRESHES_PER_MINUTE: u32 = 10;
 pub const MAX_TRACKED: usize = 10_000;
 const TOKEN: u64 = 60_000;
 const EVICT_SHARE: usize = 10;
@@ -124,6 +126,7 @@ impl RateLimiter {
 pub struct ConnectLimits {
     by_address: RateLimiter,
     by_device: RateLimiter,
+    refreshes_by_device: RateLimiter,
 }
 
 impl Default for ConnectLimits {
@@ -140,7 +143,15 @@ impl ConnectLimits {
         ConnectLimits {
             by_address: RateLimiter::new(address.0, address.1),
             by_device: RateLimiter::new(device.0, device.1),
+            refreshes_by_device: RateLimiter::new(
+                DEVICE_REFRESH_BURST,
+                DEVICE_REFRESHES_PER_MINUTE,
+            ),
         }
+    }
+
+    pub fn refreshed(&self, device: DeviceId, now: i64) -> bool {
+        self.refreshes_by_device.allow(&device.to_string(), now)
     }
 
     pub fn allow_address(&self, address: &str, now: i64) -> bool {
@@ -275,6 +286,18 @@ mod tests {
         assert!(!limits.allow_address("10.0.0.1", 0));
         limits.forgive("10.0.0.1", 0);
         assert!(limits.allow_address("10.0.0.1", 0));
+    }
+
+    #[test]
+    fn a_device_that_proves_itself_gets_a_refresh_allowance_of_its_own() {
+        let limits = ConnectLimits::default();
+        let device = DeviceId::new_v7();
+        for _ in 0..DEVICE_REFRESH_BURST {
+            assert!(limits.refreshed(device, 0));
+        }
+        assert!(!limits.refreshed(device, 0));
+        assert!(limits.refreshed(DeviceId::new_v7(), 0));
+        assert!(limits.refreshed(device, 6_000));
     }
 
     #[test]

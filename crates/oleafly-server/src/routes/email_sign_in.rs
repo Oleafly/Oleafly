@@ -1,9 +1,10 @@
 use axum::extract::{Query, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Form, Router};
 use oleafly_collab_protocol::admin::SecurityEventKind;
+use oleafly_collab_protocol::page::status;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -151,6 +152,37 @@ fn link_problem(locale: Locale, link: &Link) -> Response {
     )
 }
 
+fn on_a_phone_or_tablet(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::USER_AGENT)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|agent| {
+            ["iPhone", "iPad", "iPod", "Android"]
+                .iter()
+                .any(|mark| agent.contains(mark))
+        })
+}
+
+fn needs_the_computer(pending: &PendingSignIn, headers: &HeaderMap) -> bool {
+    let desktop = matches!(
+        pending.platform.trim().to_ascii_lowercase().as_str(),
+        "macos" | "windows" | "linux"
+    );
+    pending.device_authorization.is_none() && desktop && on_a_phone_or_tablet(headers)
+}
+
+fn open_on_the_computer(locale: Locale, state: &AppState, pending: &PendingSignIn) -> Response {
+    let device = device_label(&pending.device_name, &pending.platform);
+    let title = title(locale, state);
+    let body = format!(
+        "{}{}{}",
+        status(sign_in_pages::Tone::Notice),
+        sign_in_pages::heading(&title),
+        sign_in_pages::paragraph(&locale.fill(Key::EmailWrongDevice, &[("device", &device)])),
+    );
+    sign_in_pages::render(locale, StatusCode::OK, &title, &body, None)
+}
+
 fn valid_address(raw: &str) -> Option<String> {
     let address = members::normalize_email(raw)?;
     (address.chars().count() <= email_link::MAX_EMAIL_CHARS
@@ -213,6 +245,47 @@ fn lockout(
     }
 }
 
+fn server_lockout(
+    conn: &rusqlite::Connection,
+    limit: u32,
+    ip: &Option<String>,
+    now: i64,
+) -> Result<bool, ServerError> {
+    match throttle::hit(
+        conn,
+        email_link::SERVER_LIMIT_KEY,
+        limit,
+        email_link::HOUR_MS,
+        now,
+    )? {
+        Throttle::Allowed => Ok(false),
+        Throttle::LockedOut { first } => {
+            if first {
+                tracing::warn!(
+                    "This server sent {limit} sign-in emails within an hour, so it sends no more until the hour is over."
+                );
+                security_log::record(
+                    conn,
+                    now,
+                    NewSecurityEvent {
+                        actor: None,
+                        kind: SecurityEventKind::SignInRefused,
+                        target: None,
+                        ip: ip.clone(),
+                        detail: json!({
+                            "provider": email_link::PROVIDER_ID,
+                            "reason": "locked_out",
+                            "limit": "server",
+                            "per_hour": limit
+                        }),
+                    },
+                )?;
+            }
+            Ok(true)
+        }
+    }
+}
+
 async fn request_link(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -255,6 +328,7 @@ async fn request_link(
     };
     let requester = ip.clone().unwrap_or_else(|| "unknown".to_string());
     let for_link = address.clone();
+    let mailbox = email_link::mailbox(&address);
     let pending_id = pending.id.clone();
     let limits = state.config.sign_in;
     let issued = state
@@ -270,13 +344,14 @@ async fn request_link(
                 now,
             )? || lockout(
                 conn,
-                &format!("email-link:{for_link}"),
+                &format!("email-link:{mailbox}"),
                 limits.email_links_per_address,
                 &for_link,
                 "address",
                 &ip,
                 now,
-            )? {
+            )? || server_lockout(conn, limits.email_links_per_hour, &ip, now)?
+            {
                 return Ok(None);
             }
             let token = email_link::issue(conn, &pending_id, &for_link, now)?;
@@ -354,6 +429,9 @@ async fn show_link(
     let Some(pending) = pending else {
         return Ok(sign_in_expired(locale));
     };
+    if needs_the_computer(&pending, &headers) {
+        return Ok(open_on_the_computer(locale, &state, &pending));
+    }
     let csrf = csrf::token(&headers);
     Ok(sign_in_pages::render(
         locale,
@@ -428,6 +506,7 @@ struct UseLink {
 enum Used {
     Link(Link),
     Gone,
+    WrongDevice(PendingSignIn),
     CodeGone(PendingSignIn),
     WrongCode(PendingSignIn),
     LockedOut,
@@ -472,6 +551,7 @@ async fn use_link(
     let token = form.token.clone();
     let max_members = state.config.limits.max_members_per_project;
     let typed = form.user_code.clone();
+    let phone = headers.clone();
     let outcome = state
         .db
         .call(move |conn| {
@@ -484,6 +564,9 @@ async fn use_link(
             else {
                 return Ok(Err(Used::Gone));
             };
+            if needs_the_computer(&pending, &phone) {
+                return Ok(Err(Used::WrongDevice(pending)));
+            }
             if let Some(problem) = typed_code_problem(conn, pending, &typed, &ip, now)? {
                 return Ok(Err(problem));
             }
@@ -514,6 +597,7 @@ async fn use_link(
         }
         Err(Used::Link(link)) => Ok(link_problem(locale, &link)),
         Err(Used::Gone) => Ok(sign_in_expired(locale)),
+        Err(Used::WrongDevice(pending)) => Ok(open_on_the_computer(locale, &state, &pending)),
         Err(Used::CodeGone(pending)) => conclude(locale, &state, &pending, Ok(Finish::DeviceGone)),
         Err(Used::WrongCode(pending)) => Ok(sign_in_pages::render(
             locale,

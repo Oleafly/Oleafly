@@ -15,7 +15,7 @@ use rusqlite::Connection;
 use serde_json::json;
 
 use crate::error::ServerError;
-use crate::guests::{self, Accepted, Invitation};
+use crate::guests::{self, Accepted, Granter, Invitation};
 use crate::mail::notify;
 use crate::members;
 use crate::projects::{self, ProjectRow};
@@ -156,12 +156,10 @@ async fn invite(
     let project: SharedProjectId = path_id(path)?;
     let request = json_body(body)?;
     if matches!(request.role, ProjectRole::Owner | ProjectRole::Unknown) {
-        return Err(ServerError::BadRequest(
-            "A guest can be an Editor or a Viewer.".to_string(),
-        ));
+        return Err(ServerError::BadRequest(guests::GUEST_ROLES.to_string()));
     }
     let email = members::normalize_email(&request.email).ok_or_else(|| {
-        ServerError::BadRequest("That email address doesn't look right.".to_string())
+        ServerError::invalid("invalid_email", "That email address doesn't look right.")
     })?;
     let account = auth.account_id;
     let now = state.clock.now_ms();
@@ -174,14 +172,16 @@ async fn invite(
             let row = owner_of(conn, project, account)?;
             auth.require(ServerAction::ShareProjects)?;
             if row.status != ProjectStatus::Active {
-                return Err(ServerError::Conflict(
-                    "Share the project before inviting people.".to_string(),
+                return Err(ServerError::refused(
+                    "project_not_shared",
+                    "Share the project before inviting people.",
                 ));
             }
             let runtime = settings::load(conn)?;
             if !runtime.guests_enabled {
-                return Err(ServerError::BadRequest(
-                    "This server does not allow guests.".to_string(),
+                return Err(ServerError::refused(
+                    "guests_off",
+                    "This server does not allow guests.",
                 ));
             }
             let transaction = conn.transaction()?;
@@ -212,13 +212,17 @@ async fn invite(
                     account,
                     SecurityEventKind::GuestInvitationApproved,
                     &approved,
-                    ip,
+                    ip.clone(),
                 )?;
                 approved
             } else {
                 created
             };
-            let accepted = guests::accept_existing(&transaction, &created, max_members, now)?;
+            let by = Granter {
+                actor: account,
+                ip: ip.as_deref(),
+            };
+            let accepted = guests::accept_existing(&transaction, &created, max_members, by, now)?;
             let current = guests::get(&transaction, &created.id)?.ok_or(ServerError::NotFound)?;
             let wire = guests::to_wire(&transaction, &current, now)?;
             let emailed = accepted.is_none() && guests::will_email(mail, &transaction, &email)?;
@@ -306,9 +310,13 @@ async fn approve(
                 actor,
                 SecurityEventKind::GuestInvitationApproved,
                 &approved,
-                ip,
+                ip.clone(),
             )?;
-            let accepted = guests::accept_existing(&transaction, &approved, max_members, now)?;
+            let by = Granter {
+                actor,
+                ip: ip.as_deref(),
+            };
+            let accepted = guests::accept_existing(&transaction, &approved, max_members, by, now)?;
             let current = guests::get(&transaction, &id)?.ok_or(ServerError::NotFound)?;
             let wire = guests::to_wire(&transaction, &current, now)?;
             transaction.commit()?;

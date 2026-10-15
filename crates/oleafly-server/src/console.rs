@@ -12,6 +12,7 @@ use rusqlite::{params_from_iter, Connection, Statement};
 use crate::db::parse_id;
 use crate::error::ServerError;
 use crate::projects;
+use crate::settings;
 
 const PROJECT_COLUMNS: &str = "SELECT p.id, p.title, p.status, p.owner_account, p.created_at, \
      MAX(p.created_at, COALESCE(p.committed_at, 0), COALESCE(p.archived_at, 0), \
@@ -41,7 +42,20 @@ fn bytes(conn: &Connection, sql: &str) -> Result<u64, ServerError> {
     Ok(u64::try_from(value).unwrap_or(0))
 }
 
-pub fn counts(conn: &Connection) -> Result<ServerCounts, ServerError> {
+fn pending_guest_approvals(conn: &Connection, now: i64) -> Result<u32, ServerError> {
+    if !settings::load(conn)?.guests_enabled {
+        return Ok(0);
+    }
+    let value: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM guest_invitations g JOIN projects p ON p.id = g.project_id \
+         WHERE g.status = 'awaiting_approval' AND g.expires_at > ?1 AND p.status = 'active'",
+        [now],
+        |row| row.get(0),
+    )?;
+    Ok(u32::try_from(value).unwrap_or(u32::MAX))
+}
+
+pub fn counts(conn: &Connection, now: i64) -> Result<ServerCounts, ServerError> {
     let mut by_status: HashMap<String, u32> = HashMap::new();
     let mut statement = conn.prepare("SELECT status, COUNT(*) FROM projects GROUP BY status")?;
     let rows = statement
@@ -72,7 +86,7 @@ pub fn counts(conn: &Connection) -> Result<ServerCounts, ServerError> {
         pending_projects: of("pending"),
         open_rooms: 0,
         people_online: 0,
-        pending_guest_approvals: 0,
+        pending_guest_approvals: pending_guest_approvals(conn, now)?,
     })
 }
 
@@ -294,6 +308,7 @@ mod tests {
     use super::*;
     use crate::db::Db;
     use oleafly_collab_protocol::ids::BatchId;
+    use oleafly_collab_protocol::projects::ProjectRole;
     use rusqlite::{params, StatementStatus};
 
     const START: i64 = 1_760_000_000_000;
@@ -407,6 +422,48 @@ mod tests {
             crowded <= alone + alone / 10,
             "listing 5 archived projects took {alone} steps alone and {crowded} next to 200 active ones"
         );
+    }
+
+    fn guests_allowed(conn: &Connection, allowed: bool) {
+        settings::patch(
+            conn,
+            &oleafly_collab_protocol::admin::RuntimeSettingsPatch {
+                guests_enabled: Some(allowed),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn only_open_approvals_on_shared_projects_count_while_guests_are_allowed() {
+        with_db(|conn| {
+            let owner = AccountId::new_v7();
+            conn.execute(
+                "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES (?1, 'Owner', 'member', 1, 1)",
+                [owner.to_string()],
+            )
+            .unwrap();
+            let shared = projects::create_pending(conn, owner, "Thesis", START).unwrap();
+            projects::set_status(conn, shared, ProjectStatus::Active, START).unwrap();
+            let archived = projects::create_pending(conn, owner, "Old paper", START).unwrap();
+            projects::set_status(conn, archived, ProjectStatus::Active, START).unwrap();
+            projects::set_status(conn, archived, ProjectStatus::Archived, START).unwrap();
+            let invite = |project, email: &str, approval: bool, at: i64| {
+                crate::guests::create(conn, project, email, ProjectRole::Viewer, owner, approval, at)
+                    .unwrap();
+            };
+            invite(shared, "waiting@uni.edu", true, START);
+            invite(shared, "approved@uni.edu", false, START);
+            invite(archived, "archived@uni.edu", true, START);
+            invite(shared, "late@uni.edu", true, START - 15 * crate::state::DAY_MS);
+            assert_eq!(counts(conn, START).unwrap().pending_guest_approvals, 0);
+            guests_allowed(conn, true);
+            assert_eq!(counts(conn, START).unwrap().pending_guest_approvals, 1);
+            guests_allowed(conn, false);
+            assert_eq!(counts(conn, START).unwrap().pending_guest_approvals, 0);
+        })
+        .await;
     }
 
     #[tokio::test]

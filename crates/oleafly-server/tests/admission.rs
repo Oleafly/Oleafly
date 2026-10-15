@@ -94,7 +94,7 @@ async fn admit(app: &TestApp, identity: &ExternalIdentity, setup_hash: Option<St
         .db
         .call(move |conn| {
             let decision = admission::decide(conn, &identity, setup_hash.as_deref())?;
-            admission::apply(conn, &identity, decision, 20, now)
+            admission::apply(conn, &identity, decision, 20, None, now)
         })
         .await
         .expect("admit")
@@ -419,6 +419,173 @@ async fn a_removed_member_added_again_gets_the_same_account() {
     );
 }
 
+#[tokio::test]
+async fn a_removed_member_with_a_second_entry_for_them_stays_out() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::ProviderLogin {
+            provider: "github".to_owned(),
+            login: "grace".to_owned(),
+        },
+    )
+    .await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::Email {
+            email: "Grace@uni.edu".to_owned(),
+        },
+    )
+    .await;
+    let grace = github("9009", "Grace", &["grace@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &grace, None).await else {
+        panic!("grace was refused");
+    };
+    remove(&app, &admin.access_token, first.account_id).await;
+    assert!(matches!(
+        decide(&app, &grace, None).await,
+        Admission::NotAdmitted
+    ));
+    let left = app
+        .state
+        .db
+        .call(|conn| members::list_allowlist(conn))
+        .await
+        .expect("allowlist");
+    assert!(left.is_empty(), "{left:?}");
+}
+
+#[tokio::test]
+async fn an_entry_made_after_someone_joined_by_domain_does_not_bring_them_back() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let rule = NewDomainRule {
+        domain: "uni.edu".to_owned(),
+        role: ServerRole::Member,
+    };
+    admin_call(
+        &app,
+        &admin.access_token,
+        Method::POST,
+        "/api/v1/admin/domains",
+        serde_json::to_value(rule).expect("rule json"),
+    )
+    .await;
+    let bob = github("5005", "bob", &["bob@uni.edu"]);
+    let Applied::Admitted(first) = admit(&app, &bob, None).await else {
+        panic!("bob was refused");
+    };
+    assert_eq!(first.via, Via::Domain);
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            for (id, kind, provider, value) in [
+                ("old-1", "email", "", "bob@uni.edu"),
+                ("old-2", "provider_login", "github", "bob"),
+            ] {
+                conn.execute(
+                    "INSERT INTO allowlist (id, kind, provider_id, value, match_key, server_role, created_at) \
+                     VALUES (?1, ?2, ?3, ?4, ?4, 'maintainer', ?5)",
+                    rusqlite::params![id, kind, provider, value, now],
+                )?;
+            }
+            Ok(())
+        })
+        .await
+        .expect("entries made before such entries were refused");
+    assert!(matches!(
+        decide(&app, &bob, None).await,
+        Admission::Linked { account_id } if account_id == first.account_id
+    ));
+    remove(&app, &admin.access_token, first.account_id).await;
+    assert!(matches!(
+        decide(&app, &bob, None).await,
+        Admission::NotAdmitted
+    ));
+}
+
+#[tokio::test]
+async fn signing_in_again_follows_a_new_login_name_and_picture_but_an_email_link_keeps_them() {
+    let app = app_with_github().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    allow(
+        &app,
+        &admin.access_token,
+        AllowlistMatcher::ProviderLogin {
+            provider: "github".to_owned(),
+            login: "ada-old".to_owned(),
+        },
+    )
+    .await;
+    let first = ExternalIdentity {
+        provider_id: "github".to_owned(),
+        issuer: "https://github.com".to_owned(),
+        subject: "42".to_owned(),
+        login: Some("ada-old".to_owned()),
+        display_name: "Ada".to_owned(),
+        avatar_url: Some("https://avatars.example/ada-1.png".to_owned()),
+        verified_emails: vec!["ada@uni.edu".to_owned()],
+    };
+    let Applied::Admitted(admitted) = admit(&app, &first, None).await else {
+        panic!("ada was refused");
+    };
+    let renamed = ExternalIdentity {
+        login: Some("ada-new".to_owned()),
+        display_name: "Ada Lovelace".to_owned(),
+        avatar_url: Some("https://avatars.example/ada-2.png".to_owned()),
+        ..first.clone()
+    };
+    let Applied::Admitted(again) = admit(&app, &renamed, None).await else {
+        panic!("ada was refused the second time");
+    };
+    assert_eq!(again.account_id, admitted.account_id);
+    assert_eq!(again.via, Via::Linked);
+    let account = admitted.account_id;
+    let summary = app
+        .state
+        .db
+        .call(move |conn| members::account_summary(conn, account))
+        .await
+        .expect("summary")
+        .expect("the account exists");
+    assert_eq!(summary.logins, ["ada-new"]);
+    assert_eq!(summary.display_name, "Ada Lovelace");
+    assert_eq!(
+        summary.avatar_url.as_deref(),
+        Some("https://avatars.example/ada-2.png")
+    );
+    let now = app.clock.now_ms();
+    app.state
+        .db
+        .call(move |conn| {
+            oleafly_server::auth::email_link::link_existing_account(conn, "ada@uni.edu", now)
+        })
+        .await
+        .expect("the address is linked");
+    let by_email = oleafly_server::auth::email_link::identity("ada@uni.edu");
+    let Applied::Admitted(linked) = admit(&app, &by_email, None).await else {
+        panic!("ada was refused by email");
+    };
+    assert_eq!(linked.account_id, account);
+    let kept = app
+        .state
+        .db
+        .call(move |conn| members::account_summary(conn, account))
+        .await
+        .expect("summary")
+        .expect("the account exists");
+    assert_eq!(kept.display_name, "Ada Lovelace");
+    assert_eq!(
+        kept.avatar_url.as_deref(),
+        Some("https://avatars.example/ada-2.png")
+    );
+    assert_eq!(kept.logins, ["ada-new"]);
+}
+
 async fn admin_status(
     app: &TestApp,
     token: &str,
@@ -619,7 +786,7 @@ async fn removed_then_invited(role: ServerRole) -> Returning {
             let identity = github("42", "bob", &["bob@uni.edu"]);
             let decision = admission::decide(conn, &identity, None)?;
             let again = admission::decide(conn, &identity, None)?;
-            let applied = admission::apply(conn, &identity, again, 20, now)?;
+            let applied = admission::apply(conn, &identity, again, 20, None, now)?;
             Ok(Returning {
                 decision,
                 applied,
@@ -937,7 +1104,7 @@ async fn inactive_then_invited_under_another_identity(
             let accounts_before = count(conn)?;
             let identity = github("43", "bob-elsewhere", &["bob@uni.edu"]);
             let decision = admission::decide(conn, &identity, None)?;
-            let applied = admission::apply(conn, &identity, decision, 20, now)?;
+            let applied = admission::apply(conn, &identity, decision, 20, None, now)?;
             Ok(InvitedElsewhere {
                 applied,
                 accounts_before,

@@ -38,6 +38,8 @@ pub struct MemberSummary {
     pub account: AccountSummary,
     pub status: MemberStatus,
     pub created_at: i64,
+    #[serde(default)]
+    pub owned_projects: u32,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -420,11 +422,17 @@ mod tests {
                 "logins": ["alice-chen"]
             },
             "status": "active",
-            "created_at": 9
+            "created_at": 9,
+            "owned_projects": 2
         });
         let summary: MemberSummary = serde_json::from_value(summary_json.clone()).unwrap();
         assert_eq!(summary.status, MemberStatus::Active);
+        assert_eq!(summary.owned_projects, 2);
         assert_eq!(serde_json::to_value(summary).unwrap(), summary_json);
+        let mut older = summary_json;
+        older.as_object_mut().unwrap().remove("owned_projects");
+        let from_older: MemberSummary = serde_json::from_value(older).unwrap();
+        assert_eq!(from_older.owned_projects, 0);
         let rule: DomainRule = serde_json::from_str(
             r#"{"id":"d1","domain":"cs.uni.edu","role":"member","created_at":3}"#,
         )
