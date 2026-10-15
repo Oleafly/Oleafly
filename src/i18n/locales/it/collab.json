@@ -412,6 +412,7 @@
         "projectCommentsOn": "Ha attivato i commenti in un progetto",
         "projectCommentsOff": "Ha disattivato i commenti in un progetto",
         "projectRejoinRefused": "Ha provato a rientrare in un progetto da cui era stato rimosso",
+        "commentsChangedWhileOff": "Ha modificato i commenti mentre erano disattivati",
         "guestInvited": "Ha invitato un ospite",
         "guestInvitationApproved": "Ha approvato un invito per un ospite",
         "guestInvitationDeclined": "Ha rifiutato un invito per un ospite",
@@ -788,6 +789,8 @@
         "okLabel": "Funziona tutto",
         "okDescription": "Le persone possono accedere e il server può salvare i file.",
         "problem": "L'accesso con {{provider}} non riesce dal {{time}}",
+        "commentChange": "{{project}}, modificato da {{name}} il {{time}}",
+        "commentChangeUnknown": "{{project}}, modificato il {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nessuno può accedere",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Le email di accesso sono in pausa",
             "description": "Il server ha inviato tutte le email di accesso consentite per quest'ora. Riprendono quando l'ora è finita."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Commenti modificati mentre erano disattivati",
+            "description": "Il server ha trovato modifiche ai commenti che ha salvato prima di poterle controllare, mentre i commenti erano disattivati. I progetti sono elencati qui sotto e il registro di sicurezza contiene ogni modifica."
           },
           "unknown": {
             "label": "Il server ha segnalato un problema",

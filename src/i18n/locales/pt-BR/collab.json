@@ -412,6 +412,7 @@
         "projectCommentsOn": "Ativou os comentários em um projeto",
         "projectCommentsOff": "Desativou os comentários em um projeto",
         "projectRejoinRefused": "Tentou voltar a um projeto do qual foi removido",
+        "commentsChangedWhileOff": "Alterou comentários enquanto estavam desativados",
         "guestInvited": "Enviou um convite de convidado",
         "guestInvitationApproved": "Aprovou um convite de convidado",
         "guestInvitationDeclined": "Recusou um convite de convidado",
@@ -788,6 +789,8 @@
         "okLabel": "Tudo está funcionando",
         "okDescription": "As pessoas conseguem fazer login e o servidor consegue salvar arquivos.",
         "problem": "O login com {{provider}} está falhando desde {{time}}",
+        "commentChange": "{{project}}, alterado por {{name}} em {{time}}",
+        "commentChangeUnknown": "{{project}}, alterado em {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ninguém consegue fazer login",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Os e-mails de login estão pausados",
             "description": "O servidor já enviou todos os e-mails de login que permite nesta hora. O envio volta quando a hora acabar."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentários alterados enquanto estavam desativados",
+            "description": "O servidor encontrou alterações em comentários que salvou antes de conseguir verificá-las, enquanto os comentários estavam desativados. Os projetos aparecem abaixo, e o registro de segurança tem cada alteração."
           },
           "unknown": {
             "label": "O servidor relatou um problema",

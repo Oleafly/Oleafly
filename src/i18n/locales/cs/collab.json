@@ -412,6 +412,7 @@
         "projectCommentsOn": "Zapnutí komentářů v projektu",
         "projectCommentsOff": "Vypnutí komentářů v projektu",
         "projectRejoinRefused": "Pokus o návrat do projektu po odebrání",
+        "commentsChangedWhileOff": "Změna komentářů, když byly vypnuté",
         "guestInvited": "Pozvání hosta",
         "guestInvitationApproved": "Schválení pozvánky pro hosta",
         "guestInvitationDeclined": "Odmítnutí pozvánky pro hosta",
@@ -788,6 +789,8 @@
         "okLabel": "Vše funguje",
         "okDescription": "Lidé se mohou přihlásit a server může ukládat soubory.",
         "problem": "Přihlašování přes {{provider}} selhává od {{time}}",
+        "commentChange": "{{project}}: změna od {{name}}, {{time}}",
+        "commentChangeUnknown": "{{project}}: změna {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikdo se nemůže přihlásit",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Přihlašovací e-maily jsou pozastavené",
             "description": "Server už poslal tolik přihlašovacích e-mailů, kolik za tuto hodinu dovoluje. Znovu je začne posílat, až hodina skončí."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Komentáře se změnily, když byly vypnuté",
+            "description": "Server našel změny komentářů, které uložil dřív, než je mohl zkontrolovat, zatímco byly komentáře vypnuté. Projekty jsou uvedené níže a každou změnu najdete v protokolu zabezpečení."
           },
           "unknown": {
             "label": "Server nahlásil problém",

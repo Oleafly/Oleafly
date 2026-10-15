@@ -412,6 +412,7 @@
         "projectCommentsOn": "Hat Kommentare in einem Projekt eingeschaltet",
         "projectCommentsOff": "Hat Kommentare in einem Projekt ausgeschaltet",
         "projectRejoinRefused": "Wollte einem Projekt erneut beitreten, aus dem die Person entfernt wurde",
+        "commentsChangedWhileOff": "Hat Kommentare geändert, während sie ausgeschaltet waren",
         "guestInvited": "Hat einen Gast eingeladen",
         "guestInvitationApproved": "Hat eine Gasteinladung freigegeben",
         "guestInvitationDeclined": "Hat eine Gasteinladung abgelehnt",
@@ -788,6 +789,8 @@
         "okLabel": "Alles funktioniert",
         "okDescription": "Personen können sich anmelden, und der Server kann Dateien speichern.",
         "problem": "Die Anmeldung mit {{provider}} schlägt seit {{time}} fehl",
+        "commentChange": "{{project}}, geändert von {{name}} am {{time}}",
+        "commentChangeUnknown": "{{project}}, geändert am {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kann sich anmelden",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Anmelde-E-Mails sind pausiert",
             "description": "Der Server hat so viele Anmelde-E-Mails gesendet, wie er in dieser Stunde erlaubt. Sie werden wieder gesendet, wenn die Stunde vorbei ist."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentare wurden geändert, während sie ausgeschaltet waren",
+            "description": "Der Server hat Änderungen an Kommentaren gefunden, die er gespeichert hat, bevor er sie prüfen konnte, während Kommentare ausgeschaltet waren. Die Projekte stehen unten, und das Sicherheitsprotokoll enthält jede Änderung."
           },
           "unknown": {
             "label": "Der Server hat ein Problem gemeldet",

@@ -412,6 +412,7 @@
         "projectCommentsOn": "プロジェクトのコメントをオンにしました",
         "projectCommentsOff": "プロジェクトのコメントをオフにしました",
         "projectRejoinRefused": "削除されたプロジェクトに再参加しようとしました",
+        "commentsChangedWhileOff": "コメントがオフの間にコメントを変更しました",
         "guestInvited": "ゲストを招待しました",
         "guestInvitationApproved": "ゲストの招待を承認しました",
         "guestInvitationDeclined": "ゲストの招待を却下しました",
@@ -788,6 +789,8 @@
         "okLabel": "すべて正常に動作しています",
         "okDescription": "ユーザーはサインインでき、サーバーはファイルを保存できます。",
         "problem": "{{provider}} を使ったサインインが {{time}} から失敗しています",
+        "commentChange": "{{project}}: {{name}} が {{time}} に変更",
+        "commentChangeUnknown": "{{project}}: {{time}} に変更",
         "issues": {
           "noSignInProvider": {
             "label": "誰もサインインできません",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "サインイン用のメールは一時停止中です",
             "description": "サーバーは、この 1 時間に送れる上限までサインイン用のメールを送りました。この 1 時間が過ぎると再開します。"
+          },
+          "commentsChangedWhileOff": {
+            "label": "オフの間にコメントが変更されました",
+            "description": "コメントがオフの間に、サーバーが確認する前に保存したコメントの変更が見つかりました。プロジェクトは下に一覧があり、各変更はセキュリティログにあります。"
           },
           "unknown": {
             "label": "サーバーが問題を報告しました",

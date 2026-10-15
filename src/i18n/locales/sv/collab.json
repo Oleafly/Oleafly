@@ -412,6 +412,7 @@
         "projectCommentsOn": "Slog på kommentarer i ett projekt",
         "projectCommentsOff": "Slog av kommentarer i ett projekt",
         "projectRejoinRefused": "Försökte gå med igen i ett projekt de tagits bort från",
+        "commentsChangedWhileOff": "Ändrade kommentarer medan de var avstängda",
         "guestInvited": "Bjöd in en gäst",
         "guestInvitationApproved": "Godkände en gästinbjudan",
         "guestInvitationDeclined": "Avböjde en gästinbjudan",
@@ -788,6 +789,8 @@
         "okLabel": "Allt fungerar",
         "okDescription": "Personer kan logga in och servern kan spara filer.",
         "problem": "Inloggning med {{provider}} har misslyckats sedan {{time}}",
+        "commentChange": "{{project}}, ändrat av {{name}} {{time}}",
+        "commentChangeUnknown": "{{project}}, ändrat {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logga in",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Inloggningsmejl är pausade",
             "description": "Servern har skickat så många inloggningsmejl som den tillåter den här timmen. De börjar skickas igen när timmen är slut."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentarer ändrades medan de var avstängda",
+            "description": "Servern hittade ändringar av kommentarer som den sparade innan den kunde kontrollera dem, medan kommentarer var avstängda. Projekten står nedan, och säkerhetsloggen har varje ändring."
           },
           "unknown": {
             "label": "Servern rapporterade ett problem",

@@ -32,6 +32,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  ...mocks,
+}));
 
 import { useComments } from "./comments-store";
 import { CommentsPane } from "./CommentsPane";

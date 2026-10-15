@@ -412,6 +412,7 @@
         "projectCommentsOn": "A activat comentariile într-un proiect",
         "projectCommentsOff": "A dezactivat comentariile într-un proiect",
         "projectRejoinRefused": "A încercat să revină într-un proiect din care fusese eliminat",
+        "commentsChangedWhileOff": "A modificat comentariile cât timp erau dezactivate",
         "guestInvited": "A trimis o invitație pentru un invitat",
         "guestInvitationApproved": "A aprobat o invitație pentru un invitat",
         "guestInvitationDeclined": "A refuzat o invitație pentru un invitat",
@@ -788,6 +789,8 @@
         "okLabel": "Totul funcționează",
         "okDescription": "Persoanele se pot autentifica, iar serverul poate salva fișiere.",
         "problem": "Autentificarea prin {{provider}} eșuează din {{time}}",
+        "commentChange": "{{project}}, modificat de {{name}} pe {{time}}",
+        "commentChangeUnknown": "{{project}}, modificat pe {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nimeni nu se poate autentifica",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "E-mailurile de autentificare sunt în pauză",
             "description": "Serverul a trimis câte e-mailuri de autentificare permite în această oră. Se reiau după ce trece ora."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentarii modificate cât timp erau dezactivate",
+            "description": "Serverul a găsit modificări ale comentariilor pe care le-a salvat înainte să le poată verifica, cât timp comentariile erau dezactivate. Proiectele sunt mai jos, iar jurnalul de securitate are fiecare modificare."
           },
           "unknown": {
             "label": "Serverul a raportat o problemă",

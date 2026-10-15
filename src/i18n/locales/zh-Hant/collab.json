@@ -412,6 +412,7 @@
         "projectCommentsOn": "開啟專案評論",
         "projectCommentsOff": "關閉專案評論",
         "projectRejoinRefused": "嘗試重新加入已被移出的專案",
+        "commentsChangedWhileOff": "在評論關閉期間變更了評論",
         "guestInvited": "邀請訪客",
         "guestInvitationApproved": "核准訪客邀請",
         "guestInvitationDeclined": "拒絕訪客邀請",
@@ -788,6 +789,8 @@
         "okLabel": "一切正常",
         "okDescription": "使用者可以登入，伺服器也可以儲存檔案。",
         "problem": "使用 {{provider}} 登入從 {{time}} 起一直失敗",
+        "commentChange": "{{project}}：{{name}} 於 {{time}} 變更",
+        "commentChangeUnknown": "{{project}}：於 {{time}} 變更",
         "issues": {
           "noSignInProvider": {
             "label": "沒有人能登入",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "登入郵件已暫停",
             "description": "伺服器本小時傳送的登入郵件已達上限。這一小時過去後會恢復傳送。"
+          },
+          "commentsChangedWhileOff": {
+            "label": "評論在關閉期間遭到變更",
+            "description": "伺服器發現了評論關閉期間、在檢查之前就已儲存的評論變更。專案列在下方，每項變更都在安全性記錄中。"
           },
           "unknown": {
             "label": "伺服器回報了問題",
