@@ -16,6 +16,7 @@ import {
   Archive,
   AtSign,
   Ban,
+  CircleAlert,
   CircleArrowUp,
   CloudCheck,
   CloudOff,
@@ -60,6 +61,7 @@ import { InlineAlert } from "../feedback";
 import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { collabPerson } from "../people";
 import { peerHue } from "../live/peer-hue";
 import { AccessLog, useAccessLogShown } from "./AccessLog";
@@ -89,6 +91,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   clientTooOld: CircleArrowUp,
   serverTooOld: ServerCog,
   serverChanged: Replace,
+  failed: CircleAlert,
   memberAdded: UserRoundPlus,
   memberRemoved: UserRoundMinus,
   newDevice: MonitorSmartphone,
@@ -138,6 +141,7 @@ function PersonRow({
         <p className="flex min-w-0 items-center gap-1.5 text-xs">
           <span className="truncate font-medium">{member.person.display_name}</span>
           {member.person.guest ? <GuestBadge /> : null}
+          {isInactive(member.person) ? <InactiveBadge /> : null}
           {self ? (
             <Badge variant="primaryGhost" size="sm">
               {t(($) => $.collab.manage.you)}
@@ -276,6 +280,8 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.serverTooOld, { server: entry.server });
     case "serverChanged":
       return t(($) => $.collab.activity.serverChanged, { server: entry.server });
+    case "failed":
+      return t(($) => $.collab.activity.failed);
     case "accessEnded":
       return entry.guest
         ? t(($) => $.collab.activity.accessEndedGuest, { server: entry.server })
@@ -286,6 +292,11 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
     case "newDevice":
       return t(($) => $.collab.activity.newDevice, { name: entry.name || unknown });
     case "renamed":
+      // Nobody renamed it: the shared layout gave the file a name that every
+      // computer accepts, such as one Windows doesn't reserve.
+      if (entry.accountId === null && entry.before === entry.ours) {
+        return t(($) => $.collab.activity.renamedPortable, { before: entry.before, theirs: entry.theirs });
+      }
       return t(($) => $.collab.activity.renamed, {
         name: entry.name || unknown,
         before: entry.before,
@@ -309,7 +320,29 @@ function checkForUpdates() {
   void openUpdateWindow({ manual: true });
 }
 
-const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: ActivityEntry; now: number }>) {
+// Offered only while syncing is still stopped on that error.
+function GoLiveAgain({ className }: Readonly<{ className: string }>) {
+  const { t } = useTranslation(["collab"]);
+  const stopped = useCollabLiveStore((state) => state.ended === "failed" && state.share !== null);
+  if (!stopped) return null;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={className}
+      onClick={() => useCollabLiveStore.getState().goLiveAgain()}
+    >
+      {t(($) => $.collab.activity.goLiveAgain)}
+    </Button>
+  );
+}
+
+const ActivityRow = memo(function ActivityRow({
+  entry,
+  now,
+  newestFailure = false,
+}: Readonly<{ entry: ActivityEntry; now: number; newestFailure?: boolean }>) {
   const { t } = useTranslation(["collab", "shell"]);
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -383,6 +416,7 @@ const ActivityRow = memo(function ActivityRow({ entry, now }: Readonly<{ entry: 
               {t(($) => $.collab.share.openSettings)}
             </Button>
           ) : null}
+          {entry.kind === "failed" && newestFailure ? <GoLiveAgain className="h-6 px-1.5 text-xs" /> : null}
           {entry.kind === "mentioned" && entry.path ? (
             <Button
               type="button"
@@ -416,10 +450,11 @@ const ActivityList = memo(function ActivityList({
   if (entries.length === 0) {
     return <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.pane.empty)}</p>;
   }
+  const newestFailure = entries.find((entry) => entry.kind === "failed")?.id;
   return (
     <ul aria-label={title} className="space-y-0.5">
       {entries.map((entry) => (
-        <ActivityRow key={entry.id} entry={entry} now={now} />
+        <ActivityRow key={entry.id} entry={entry} now={now} newestFailure={entry.id === newestFailure} />
       ))}
     </ul>
   );
@@ -493,6 +528,24 @@ function EndedDetails({ state, server }: Readonly<{ state: SyncState; server: st
   }
   if (state === "serverTooOld") {
     return <p className="text-muted-foreground">{t(($) => $.collab.activity.serverTooOld, { server })}</p>;
+  }
+  if (state === "failed") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.failed)}</p>
+        <PopoverClose asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={button}
+            onClick={() => useCollabLiveStore.getState().goLiveAgain()}
+          >
+            {t(($) => $.collab.activity.goLiveAgain)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
   }
   if (state === "serverChanged") {
     return (

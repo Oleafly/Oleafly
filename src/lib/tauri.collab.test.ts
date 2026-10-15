@@ -207,6 +207,21 @@ describe("collaboration IPC helpers", () => {
     expect(seen).toEqual([payload]);
   });
 
+  it("forwards the project a server refused because it reached its size limit", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabLiveProjectFull((payload) => seen.push(payload));
+    expect(tauri.COLLAB_LIVE_PROJECT_FULL_EVENT).toBe("collab-live-project-full");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-live-project-full", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    handler({ payload: { projectId: "grant" } });
+    expect(seen).toEqual([{ projectId: "grant" }]);
+  });
+
+  it("asks a waiting live session to reconnect now, with no arguments", async () => {
+    await tauri.collabLiveReconnectNow();
+    expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("collab_live_reconnect_now");
+  });
+
   it("forwards server change events", async () => {
     const seen: string[] = [];
     const unlisten = await tauri.onCollabServerChanged((payload) => seen.push(payload.serverId));
@@ -229,6 +244,16 @@ describe("collaboration command drift", () => {
   it("registers every collaboration command once", () => {
     expect(registered).toHaveLength(25);
     expect(new Set(registered).size).toBe(registered.length);
+  });
+
+  it("gives every live editing command a wrapper, the new reconnect one too", () => {
+    const live = [...read("../../src-tauri/src/lib.rs").matchAll(/collab::live::commands::(collab_[a-z_]+)/g)].map(
+      (match) => match[1],
+    );
+    expect(live).toContain("collab_live_reconnect_now");
+    const wrappers = read("./tauri.ts");
+    for (const name of live) expect(wrappers).toContain(`"${name}"`);
+    expect(read("../../packages/backend-port/src/index.ts")).toContain("collabLiveReconnectNow:");
   });
 
   it("gives every registered command a wrapper and a contract entry", () => {

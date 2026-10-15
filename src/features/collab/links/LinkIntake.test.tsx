@@ -254,6 +254,34 @@ describe("LinkIntake", () => {
     expect(screen.queryByTestId("collab-link-notice")).not.toBeInTheDocument();
   });
 
+  it("takes the same link again right after the person declined it", async () => {
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    const user = userEvent.setup();
+    const view = deliver([OPEN]);
+    const first = await screen.findByRole("dialog", { name: copy.confirm.title });
+    await user.click(within(first).getByRole("button", { name: enCommon.actions.cancel }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: copy.confirm.title })).not.toBeInTheDocument());
+    view.rerender(<LinkIntake links={[OPEN]} onTaken={onTaken} />);
+    expect(await screen.findByRole("dialog", { name: copy.confirm.title })).toBeInTheDocument();
+    expect(mocks.collabLinkPreview).toHaveBeenCalledTimes(2);
+  });
+
+  it("takes the same link again right after the person stopped its download", async () => {
+    const join = deferred<string>();
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockReturnValueOnce(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const view = deliver([OPEN]);
+    await joinWhenAsked(user);
+    const opening = await screen.findByTestId("collab-link-opening");
+    await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
+    view.rerender(<LinkIntake links={[OPEN_SLASHED]} onTaken={onTaken} />);
+    expect(await screen.findByRole("dialog", { name: copy.confirm.title })).toBeInTheDocument();
+  });
+
   it("treats Escape as not joining", async () => {
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     const user = userEvent.setup();
@@ -398,12 +426,15 @@ describe("LinkIntake", () => {
     const report = (sharedProjectId: string, done: number, total: number) =>
       act(() => events.get("collab-join-progress")?.({ payload: { serverId: SERVER_ID, sharedProjectId, done, total } }));
     report(PROJECT, 3, 12);
-    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
-    expect(within(opening).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    const downloading = fill(copy.downloading, { done: "3", total: "12" });
+    expect(within(opening).getByRole("status")).toHaveTextContent(downloading);
+    expect(within(opening).getByRole("progressbar", { name: downloading })).toHaveAttribute("aria-valuenow", "25");
     report("01920000-0000-7000-8000-0000000000bb", 9, 9);
     expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
     await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
     expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    expect(within(opening).getByRole("status")).toHaveTextContent(copy.cancelling);
+    expect(within(opening).getByRole("button", { name: enCommon.actions.cancel })).toBeDisabled();
     await act(async () => join.reject(collabError("cancelled")));
     await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
     expect(screen.queryByTestId("collab-link-notice")).toBeNull();

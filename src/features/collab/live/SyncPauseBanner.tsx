@@ -8,6 +8,7 @@ import { folderReachable, useProjectAvailabilityStore } from "@/store/project-av
 import { AccessChangeBanner } from "./AccessChangeBanner";
 import { CommentsNotSentBanner } from "./CommentsNotSentBanner";
 import { FileNoticesBanner } from "./FileNoticesBanner";
+import { ProjectFullBanner } from "./ProjectFullBanner";
 import { useSyncPauseStore } from "./sync-pause";
 
 function UnavailableBanner() {
@@ -68,6 +69,7 @@ export function CollabBanners() {
       <AccessChangeBanner />
       <CommentsNotSentBanner />
       <SyncPauseBanner />
+      <ProjectFullBanner />
       <FileNoticesBanner />
     </>
   );

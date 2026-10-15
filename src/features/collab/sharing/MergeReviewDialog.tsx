@@ -41,6 +41,8 @@ export function MergeReviewDialog({
   const members = useCollabLiveStore((state) => state.members);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [open, setOpen] = useState<readonly string[]>([]);
+  // The file that closed because another one opened, so the closing is said.
+  const [closedOldest, setClosedOldest] = useState<string | null>(null);
   const before = entry.review?.before ?? "";
   const after = entry.review?.after ?? "";
 
@@ -67,10 +69,16 @@ export function MergeReviewDialog({
     members.find((member) => member.person.account_id === accountId)?.person.display_name ??
     t(($) => $.collab.toolbar.unknownPerson);
   const changesIn = (path: string) => entry.files.find((file) => file.path === path)?.changes ?? 0;
-  const toggle = (path: string) =>
-    setOpen((current) =>
-      current.includes(path) ? current.filter((item) => item !== path) : [...current, path].slice(-MAX_OPEN_DIFFS),
-    );
+  const toggle = (path: string) => {
+    if (open.includes(path)) {
+      setOpen(open.filter((item) => item !== path));
+      setClosedOldest(null);
+      return;
+    }
+    const next = [...open, path];
+    setClosedOldest(next.length > MAX_OPEN_DIFFS ? next[0] : null);
+    setOpen(next.slice(-MAX_OPEN_DIFFS));
+  };
   const close = t(($) => $.common.actions.close);
 
   return (
@@ -142,6 +150,14 @@ export function MergeReviewDialog({
           {loaded.state === "failed" ? <InlineAlert>{t(($) => $.collab.mergeReview.failed)}</InlineAlert> : null}
           {loaded.state === "ready" && loaded.files.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t(($) => $.collab.mergeReview.noText)}</p>
+          ) : null}
+          {loaded.state === "ready" && closedOldest ? (
+            <p role="status" className="text-xs text-muted-foreground">
+              {t(($) => $.collab.mergeReview.closedOldest, {
+                number: formatNumber(MAX_OPEN_DIFFS),
+                path: closedOldest,
+              })}
+            </p>
           ) : null}
           {loaded.state === "ready" && loaded.files.length > 0 ? (
             <ul aria-labelledby={filesId} className="space-y-3">

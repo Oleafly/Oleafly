@@ -34,6 +34,22 @@ describe("useConnectionTest", () => {
     expect(mocks.collabServerTest).toHaveBeenCalledWith("https://collab.uni.edu");
   });
 
+  it("forgets the result once reset, even one that arrives after", async () => {
+    let answer: (checks: unknown[]) => void = () => undefined;
+    mocks.collabServerTest
+      .mockResolvedValueOnce([check("reachable", "fail")])
+      .mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    const { result } = renderHook(() => useConnectionTest("https://collab.uni.edu"));
+    await act(() => result.current.run());
+    expect(result.current.test).toEqual({ state: "done", checks: [check("reachable", "fail")] });
+    act(() => result.current.reset());
+    expect(result.current.test).toEqual({ state: "idle" });
+    act(() => void result.current.run());
+    act(() => result.current.reset());
+    await act(async () => answer([check("reachable", "pass")]));
+    expect(result.current.test).toEqual({ state: "idle" });
+  });
+
   it("explains a test that could not run", async () => {
     mocks.collabServerTest.mockRejectedValue(collabError("not_https"));
     const { result } = renderHook(() => useConnectionTest("http://collab.uni.edu"));

@@ -20,6 +20,7 @@ import {
   server,
 } from "../tests/fixtures";
 import { allowRadixSelect } from "../tests/select";
+import { invitation } from "../tests/guest-fixtures";
 import { DAY, NOW, adminProject, overview, projectsPage } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +32,8 @@ const mocks = vi.hoisted(() => ({
   collabAdminSettings: vi.fn(),
   collabAdminSecurityLog: vi.fn(),
   collabServerTest: vi.fn(),
+  collabAdminGuestInvitations: vi.fn(),
+  collabAdminGuestApprove: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -64,6 +67,7 @@ beforeEach(() => {
   mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
   mocks.collabAdminSecurityLog.mockResolvedValue({ items: [], next_cursor: null });
   mocks.collabServerTest.mockResolvedValue([check("reachable", "pass")]);
+  mocks.collabAdminGuestInvitations.mockResolvedValue([]);
 });
 
 function navItem(section: keyof typeof copy.sections): HTMLElement {
@@ -254,6 +258,29 @@ describe("AdminConsole", () => {
     expect(within(badge).getByText(fill(copy.pendingGuestsBadge, { number: "3" }))).toHaveClass("sr-only");
     await user.click(screen.getByRole("button", { name: copy.overview.glance.reviewGuests }));
     expect(screen.getByTestId("console-section-people")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("counts the guest invitations again once an admin approves one in People", async () => {
+    const waiting = overview();
+    waiting.counts = { ...waiting.counts, pending_guest_approvals: 1 };
+    mocks.collabAdminOverview.mockResolvedValueOnce(waiting).mockResolvedValue(overview());
+    mocks.collabAdminGuestInvitations.mockResolvedValue([
+      invitation({ id: "dana", email: "dana@field.org", status: "awaiting_approval" }),
+    ]);
+    mocks.collabAdminGuestApprove.mockResolvedValue(
+      invitation({ id: "dana", email: "dana@field.org", status: "invited" }),
+    );
+    const user = userEvent.setup();
+    render(<AdminConsole server={ADMIN} actor="admin" />);
+    expect(await screen.findByTestId("console-people-badge")).toHaveTextContent("1");
+    await user.click(screen.getByTestId("console-section-people"));
+    await user.click(
+      await screen.findByRole("button", {
+        name: fill(enCollab.guests.pending.approveNamed, { email: "dana@field.org" }),
+      }),
+    );
+    await waitFor(() => expect(screen.queryByTestId("console-people-badge")).toBeNull());
+    expect(mocks.collabAdminOverview).toHaveBeenCalledTimes(2);
   });
 
   it("shows no badge on People when nothing waits for approval", async () => {

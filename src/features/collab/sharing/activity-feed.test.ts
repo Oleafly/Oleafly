@@ -284,6 +284,13 @@ describe("startCollabActivity", () => {
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind, server: "Smith Lab" });
   });
 
+  it("notes that syncing stopped after an error", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "failed" }, ended: "failed" });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "failed" });
+  });
+
   it("says an admin paused the account, naming the server", () => {
     joined("owner");
     stop = startCollabActivity();

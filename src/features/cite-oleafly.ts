@@ -12,7 +12,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
-import { sharedBaseOption } from "@/lib/shared-document-writes";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 
 export type CiteOleaflyOutcome =
@@ -26,6 +26,8 @@ export type CiteOleaflyOutcome =
 let pendingRun: Promise<void> | null = null;
 
 function linkedBibliographyMessage(path: string): string {
+  const projectId = useFilesStore.getState().projectId;
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError().message;
   return i18n.t(($) => $.core.citation.linkedBibliography, { path });
 }
 
