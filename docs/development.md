@@ -410,8 +410,16 @@ Server releases have their own tags, `server-v<version>`, and their own
 workflow, `.github/workflows/release-server.yml`. The installer and
 `https://oleafly.com/server/install.sh` download releases from
 [Oleafly/oleafly-server](https://github.com/Oleafly/oleafly-server), not from
-this repository, so a release reaches people only once it is copied there. Do
-the steps in this order:
+this repository, so a release reaches people only once it is copied there.
+
+Once, before the first release, add the `OLEAFLY_SERVER_SYNC_TOKEN` secret to
+this repository under **Settings › Secrets and variables › Actions**. Make it a
+fine-grained personal access token owned by the Oleafly organization, with
+access to Oleafly/oleafly-server only and the Actions permission set to read
+and write. Without it, publishing a release fails at the copy, and the
+installer keeps offering the previous release.
+
+Do the steps in this order:
 
 1. Set `version` in `crates/oleafly-server/Cargo.toml` and merge. Push the tag
    on the merge commit, such as
@@ -447,3 +455,12 @@ If the copy fails, run it by hand with
 Oleafly/oleafly-server also copies new releases once a day, but GitHub turns
 that schedule off after 60 days without activity in the repository, so don't
 count on it.
+
+Pull requests that change the server or `deploy/server` also run
+`deploy/server/tests/e2e.sh` against the amd64 image the job built. It starts a
+privileged ubuntu:24.04 container that installs Docker with Docker's script,
+then installs, updates and uninstalls the server with the real installer, with
+the release served from a local registry. Caddy uses its own test certificate
+authority, so nothing reaches Let's Encrypt. To run it yourself, use a Linux
+x86-64 machine with Docker that can start privileged containers:
+`sh deploy/server/tests/e2e.sh oleafly-server:ci-amd64`.
