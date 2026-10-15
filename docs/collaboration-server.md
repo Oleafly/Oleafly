@@ -963,7 +963,7 @@ Back up first. The server updates its database the first time a new version star
 
 Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
 
-- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it stops the server, copies the data volume to `/opt/oleafly-server/backups` and keeps the old `docker-compose.yml` and `install.sh` as `docker-compose.yml.previous` and `install.sh.previous`. It keeps the three newest copies. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
+- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it keeps the old `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `install.sh` as `.previous` files, then stops the server and copies the data volume to `/opt/oleafly-server/backups`. It keeps the three newest copies. The new files go into a folder next to them first and replace the old ones only once all of them are written, so a full disk can't leave half of a release. If that fails, the installer starts the old version again and says to run it once there is space. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
 - Docker Compose: download the new release's `docker-compose.yml` and `SHA256SUMS` as in [Docker Compose](#docker-compose), check them, then run `docker compose pull && docker compose up -d`. If you build from source, run `git pull` in the `Oleafly` folder and repeat the build command.
 - Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
 - Render: open the service and start a manual deploy, which pulls the image again.
@@ -977,6 +977,8 @@ cd /opt/oleafly-server
 sudo docker compose down
 sudo docker run --rm -v oleafly-server_oleafly-data:/data -v /opt/oleafly-server/backups:/backup:ro debian:13.7-slim sh -c 'find /data -mindepth 1 -delete && tar -C /data -xzf /backup/oleafly-data-20261014T101500Z-0.1.0.tar.gz'
 sudo cp docker-compose.yml.previous docker-compose.yml
+sudo cp Caddyfile.previous Caddyfile
+sudo cp litestream.yml.previous litestream.yml
 sudo cp install.sh.previous install.sh
 sudo docker compose up -d
 ```
