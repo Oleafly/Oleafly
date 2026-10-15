@@ -709,6 +709,7 @@
     "showComment": "Show comment",
     "settings": {
       "mainDocument": "{{name}} made {{path}} the main document",
+      "mainDocumentNow": "{{path}} is the main document now",
       "compiler": "{{name}} set the compiler to {{compiler}}",
       "spellingLanguage": "{{name}} set the spelling language to {{language}}",
       "spellingCleared": "{{name}} cleared the project's spelling language",

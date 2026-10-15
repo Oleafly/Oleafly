@@ -709,6 +709,7 @@
     "showComment": "查看评论",
     "settings": {
       "mainDocument": "{{name}} 将 {{path}} 设为主文档",
+      "mainDocumentNow": "{{path}} 现在是主文档",
       "compiler": "{{name}} 将编译器设为 {{compiler}}",
       "spellingLanguage": "{{name}} 将拼写检查语言设为 {{language}}",
       "spellingCleared": "{{name}} 清除了项目的拼写检查语言",

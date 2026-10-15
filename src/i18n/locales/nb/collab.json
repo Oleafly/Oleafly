@@ -709,6 +709,7 @@
     "showComment": "Vis kommentar",
     "settings": {
       "mainDocument": "{{name}} gjorde {{path}} til hoveddokument",
+      "mainDocumentNow": "{{path}} er nå hoveddokumentet",
       "compiler": "{{name}} satte kompilatoren til {{compiler}}",
       "spellingLanguage": "{{name}} satte språket for stavekontroll til {{language}}",
       "spellingCleared": "{{name}} fjernet prosjektets språk for stavekontroll",

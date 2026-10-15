@@ -709,6 +709,7 @@
     "showComment": "Visa kommentar",
     "settings": {
       "mainDocument": "{{name}} gjorde {{path}} till huvuddokument",
+      "mainDocumentNow": "{{path}} är nu huvuddokumentet",
       "compiler": "{{name}} ställde in kompilatorn på {{compiler}}",
       "spellingLanguage": "{{name}} ställde in språket för stavningskontroll på {{language}}",
       "spellingCleared": "{{name}} tog bort projektets språk för stavningskontroll",

@@ -46,4 +46,10 @@ describe("activity lines for shared project settings", () => {
     expect(said({ kind: "typstVersion", version: null })).toBe("Bob Smith set the Typst version back to the default");
     expect(said({ kind: "typstOptions" }, "Someone")).toBe("Someone changed the Typst options");
   });
+
+  it("says the main document followed its file to a new name without naming anyone", () => {
+    expect(settingActivityText({ kind: "mainDocument", path: "main (2).tex" }, "Someone", t, false)).toBe(
+      "main (2).tex is the main document now",
+    );
+  });
 });

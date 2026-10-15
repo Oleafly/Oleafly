@@ -709,6 +709,7 @@
     "showComment": "Показати коментар",
     "settings": {
       "mainDocument": "Користувач {{name}} зробив {{path}} головним документом",
+      "mainDocumentNow": "Головний документ тепер {{path}}",
       "compiler": "Користувач {{name}} вибрав компілятор {{compiler}}",
       "spellingLanguage": "Користувач {{name}} вибрав мову перевірки орфографії {{language}}",
       "spellingCleared": "Користувач {{name}} скинув мову перевірки орфографії проєкту",

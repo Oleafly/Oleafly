@@ -709,6 +709,7 @@
     "showComment": "Näytä kommentti",
     "settings": {
       "mainDocument": "{{name}} asetti tiedoston {{path}} päädokumentiksi",
+      "mainDocumentNow": "{{path}} on nyt päädokumentti",
       "compiler": "{{name}} vaihtoi kääntäjäksi {{compiler}}",
       "spellingLanguage": "{{name}} vaihtoi oikoluvun kieleksi {{language}}",
       "spellingCleared": "{{name}} poisti projektin oikoluvun kielen",

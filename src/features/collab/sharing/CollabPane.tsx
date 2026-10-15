@@ -308,7 +308,7 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
         ? t(($) => $.collab.activity.mentioned, { name: entry.name || unknown, path: entry.path })
         : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
     case "setting":
-      return settingActivityText(entry.change, entry.name || unknown, t);
+      return settingActivityText(entry.change, entry.name || unknown, t, entry.accountId !== null);
     case "skipped":
       return entry.name
         ? t(($) => $.collab.activity.skipped, { name: entry.name })

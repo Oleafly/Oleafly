@@ -709,6 +709,7 @@
     "showComment": "Ver comentário",
     "settings": {
       "mainDocument": "{{name}} definiu {{path}} como documento principal",
+      "mainDocumentNow": "{{path}} agora é o documento principal",
       "compiler": "{{name}} mudou o compilador para {{compiler}}",
       "spellingLanguage": "{{name}} mudou o idioma da verificação ortográfica para {{language}}",
       "spellingCleared": "{{name}} removeu o idioma da verificação ortográfica do projeto",

@@ -709,6 +709,7 @@
     "showComment": "Zobrazit komentář",
     "settings": {
       "mainDocument": "Uživatel {{name}} nastavil {{path}} jako hlavní dokument",
+      "mainDocumentNow": "Hlavním dokumentem je teď {{path}}",
       "compiler": "Uživatel {{name}} nastavil překladač na {{compiler}}",
       "spellingLanguage": "Uživatel {{name}} nastavil jazyk kontroly pravopisu na {{language}}",
       "spellingCleared": "Uživatel {{name}} zrušil jazyk kontroly pravopisu projektu",

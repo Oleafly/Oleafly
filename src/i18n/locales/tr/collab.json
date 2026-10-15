@@ -709,6 +709,7 @@
     "showComment": "Yorumu göster",
     "settings": {
       "mainDocument": "{{name}}, {{path}} dosyasını ana belge yaptı",
+      "mainDocumentNow": "Ana belge artık {{path}}",
       "compiler": "{{name}}, derleyiciyi {{compiler}} olarak ayarladı",
       "spellingLanguage": "{{name}}, yazım denetimi dilini {{language}} olarak ayarladı",
       "spellingCleared": "{{name}}, projenin yazım denetimi dilini kaldırdı",

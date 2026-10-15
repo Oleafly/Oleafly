@@ -709,6 +709,7 @@
     "showComment": "Arată comentariul",
     "settings": {
       "mainDocument": "{{name}} a setat {{path}} ca document principal",
+      "mainDocumentNow": "{{path}} este acum documentul principal",
       "compiler": "{{name}} a setat compilatorul la {{compiler}}",
       "spellingLanguage": "{{name}} a setat limba verificării ortografice la {{language}}",
       "spellingCleared": "{{name}} a eliminat limba verificării ortografice a proiectului",

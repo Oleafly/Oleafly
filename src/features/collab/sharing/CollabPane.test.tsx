@@ -613,6 +613,23 @@ describe("CollabPane", () => {
     expect(rows[1]).toHaveTextContent(activity.skippedUnknown);
   });
 
+  it("says the main document followed its file to a new name, without a someone", () => {
+    feed([
+      {
+        kind: "setting",
+        at: NOW,
+        accountId: null,
+        name: "",
+        change: { kind: "mainDocument", path: "main (2).tex" },
+        count: 1,
+      },
+    ]);
+    render(<CollabPane />);
+    const [row] = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(row).toHaveTextContent(fill(activity.settings.mainDocumentNow, { path: "main (2).tex" }));
+    expect(row).not.toHaveTextContent(enCollab.toolbar.unknownPerson);
+  });
+
   it("says who changed a shared compile setting and what it is now", () => {
     const setting = (change: Extract<NewActivity, { kind: "setting" }>["change"], name = "Bob Smith"): ActivityEntry => ({
       kind: "setting",

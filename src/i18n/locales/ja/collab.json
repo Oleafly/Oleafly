@@ -709,6 +709,7 @@
     "showComment": "コメントを表示",
     "settings": {
       "mainDocument": "{{name}} が {{path}} をメイン文書にしました",
+      "mainDocumentNow": "{{path}} がメイン文書になりました",
       "compiler": "{{name}} がコンパイラを {{compiler}} に設定しました",
       "spellingLanguage": "{{name}} がスペルチェックの言語を {{language}} に設定しました",
       "spellingCleared": "{{name}} がプロジェクトのスペルチェックの言語を解除しました",

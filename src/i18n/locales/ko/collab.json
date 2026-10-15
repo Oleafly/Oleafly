@@ -709,6 +709,7 @@
     "showComment": "댓글 보기",
     "settings": {
       "mainDocument": "{{name}} 님이 {{path}}을(를) 주 문서로 지정했습니다",
+      "mainDocumentNow": "이제 {{path}}이(가) 주 문서입니다",
       "compiler": "{{name}} 님이 컴파일러를 {{compiler}}(으)로 설정했습니다",
       "spellingLanguage": "{{name}} 님이 맞춤법 검사 언어를 {{language}}(으)로 설정했습니다",
       "spellingCleared": "{{name}} 님이 프로젝트의 맞춤법 검사 언어를 해제했습니다",

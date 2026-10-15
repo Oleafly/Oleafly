@@ -709,6 +709,7 @@
     "showComment": "查看評論",
     "settings": {
       "mainDocument": "{{name}} 將 {{path}} 設為主要文件",
+      "mainDocumentNow": "{{path}} 現在是主要文件",
       "compiler": "{{name}} 將編譯器設為 {{compiler}}",
       "spellingLanguage": "{{name}} 將拼字檢查語言設為 {{language}}",
       "spellingCleared": "{{name}} 清除了專案的拼字檢查語言",

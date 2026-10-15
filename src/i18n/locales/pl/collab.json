@@ -709,6 +709,7 @@
     "showComment": "Pokaż komentarz",
     "settings": {
       "mainDocument": "Użytkownik {{name}} ustawił {{path}} jako dokument główny",
+      "mainDocumentNow": "Dokumentem głównym jest teraz {{path}}",
       "compiler": "Użytkownik {{name}} ustawił kompilator na {{compiler}}",
       "spellingLanguage": "Użytkownik {{name}} ustawił język sprawdzania pisowni na {{language}}",
       "spellingCleared": "Użytkownik {{name}} usunął język sprawdzania pisowni projektu",

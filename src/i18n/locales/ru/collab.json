@@ -709,6 +709,7 @@
     "showComment": "Показать комментарий",
     "settings": {
       "mainDocument": "Участник {{name}} сделал {{path}} главным документом",
+      "mainDocumentNow": "Главный документ теперь {{path}}",
       "compiler": "Участник {{name}} выбрал компилятор {{compiler}}",
       "spellingLanguage": "Участник {{name}} выбрал язык проверки орфографии {{language}}",
       "spellingCleared": "Участник {{name}} сбросил язык проверки орфографии проекта",

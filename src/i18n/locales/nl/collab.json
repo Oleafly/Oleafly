@@ -709,6 +709,7 @@
     "showComment": "Opmerking tonen",
     "settings": {
       "mainDocument": "{{name}} heeft {{path}} het hoofddocument gemaakt",
+      "mainDocumentNow": "{{path}} is nu het hoofddocument",
       "compiler": "{{name}} heeft de compiler op {{compiler}} gezet",
       "spellingLanguage": "{{name}} heeft de taal voor de spellingcontrole op {{language}} gezet",
       "spellingCleared": "{{name}} heeft de taal voor de spellingcontrole van het project gewist",
