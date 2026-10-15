@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::ids::ServerId;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 
 use crate::error::ServerError;
 
@@ -98,7 +98,7 @@ impl Db {
         F: FnOnce(&Connection) -> Result<T, ServerError> + Send + 'static,
     {
         if self.readers.is_empty() {
-            return self.call(move |conn| f(conn)).await;
+            return self.call(move |conn| in_one_read(conn, f)).await;
         }
         let readers = Arc::clone(&self.readers);
         let first = self.next_reader.fetch_add(1, Ordering::Relaxed) % readers.len();
@@ -106,13 +106,13 @@ impl Db {
             let free = (0..readers.len())
                 .map(|offset| (first + offset) % readers.len())
                 .find_map(|index| readers[index].try_lock().ok());
-            let guard = match free {
+            let mut guard = match free {
                 Some(guard) => guard,
                 None => readers[first]
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner),
             };
-            f(&guard)
+            in_one_read(&mut guard, f)
         })
         .await
         .map_err(|error| ServerError::Internal(format!("database task failed: {error}")))?
@@ -131,6 +131,16 @@ impl Db {
         .await
         .map_err(|error| ServerError::Internal(format!("database task failed: {error}")))?
     }
+}
+
+// Every statement of a read sees the same committed state, as they did
+// when reads shared the writer's connection.
+fn in_one_read<T>(
+    conn: &mut Connection,
+    f: impl FnOnce(&Connection) -> Result<T, ServerError>,
+) -> Result<T, ServerError> {
+    let transaction = conn.transaction_with_behavior(TransactionBehavior::Deferred)?;
+    f(&transaction)
 }
 
 fn migrate(connection: &mut Connection) -> Result<(), ServerError> {
@@ -441,6 +451,36 @@ mod tests {
         assert_eq!(again, id);
         assert_eq!(mode, "wal");
         assert_eq!(schema, SCHEMA_VERSION);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_sees_one_state_when_a_write_lands_between_its_statements() {
+        let directory = tempfile::tempdir().unwrap();
+        let db = Db::open(&directory.path().join("oleafly-server.sqlite3")).unwrap();
+        db.call(|conn| meta_set(conn, "count", "1")).await.unwrap();
+        let (reached, between) = std::sync::mpsc::channel::<()>();
+        let (resume, resumed) = std::sync::mpsc::channel::<()>();
+        let reader = db.clone();
+        let reading = tokio::spawn(async move {
+            reader
+                .read(move |conn| {
+                    let first = meta_get(conn, "count")?;
+                    reached.send(()).unwrap();
+                    resumed.recv().unwrap();
+                    Ok((first, meta_get(conn, "count")?))
+                })
+                .await
+        });
+        tokio::task::spawn_blocking(move || between.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        db.call(|conn| meta_set(conn, "count", "2")).await.unwrap();
+        resume.send(()).unwrap();
+        let (first, second) = reading.await.unwrap().unwrap();
+        assert_eq!(first, second);
+        let after = db.read(|conn| meta_get(conn, "count")).await.unwrap();
+        assert_eq!(after.as_deref(), Some("2"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
