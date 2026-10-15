@@ -797,6 +797,7 @@ fn writing_out_leaves_the_live_document_free_while_the_disk_is_written() {
 struct Watching {
     changes: Mutex<Vec<FolderChange>>,
     unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
+    renamed: Mutex<Vec<crate::collab::tree::RenamedPayload>>,
 }
 
 impl Watching {
@@ -827,6 +828,9 @@ impl LiveHost for Watching {
     fn new_device(&self, _: NewDevicePayload) {}
     fn unwritten(&self, payload: super::unwritten::UnwrittenPayload) {
         guard(&self.unwritten).push(payload);
+    }
+    fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
+        guard(&self.renamed).push(payload);
     }
 }
 
@@ -903,6 +907,42 @@ fn a_folder_where_a_shared_file_goes_moves_aside_without_holding_back_the_others
         "{:?}",
         rig.paths()
     );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_new_file_the_app_writes_under_a_name_the_layout_changes_is_written_where_the_layout_puts_it() {
+    let (_dir, root, host, rig) = watched_rig("app-aux", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let save = |path: &str, text: &str| {
+        tauri::async_runtime::block_on(write::write_text("app-aux", path, None, text))
+            .unwrap()
+            .handled
+    };
+    assert!(save("aux.tex", "aux"));
+    let laid = rig
+        .paths()
+        .into_iter()
+        .find(|path| path.starts_with("unnamed-"))
+        .expect("the new file has a node");
+    assert_eq!(std::fs::read_to_string(root.join(&laid)).unwrap(), "aux");
+    assert!(!root.join("aux.tex").exists());
+    let pair = ("aux.tex".to_owned(), laid.clone());
+    let told: Vec<(String, String)> = guard(&host.renamed)
+        .iter()
+        .map(|payload| (payload.ours.clone(), payload.theirs.clone()))
+        .collect();
+    assert_eq!(told, vec![pair.clone()]);
+    assert!(
+        guard(&host.changes)
+            .iter()
+            .any(|change| change.renamed == vec![pair.clone()]),
+        "the window was not told to follow the new name"
+    );
+    let nodes = rig.paths().len();
+    assert!(save(&laid, "aux 2"));
+    assert_eq!(rig.paths().len(), nodes, "the next save added a node");
+    assert_eq!(rig.text(&laid).as_deref(), Some("aux 2"));
 }
 
 fn fail_main(rig: &write::rig::LiveRig, times: usize) {

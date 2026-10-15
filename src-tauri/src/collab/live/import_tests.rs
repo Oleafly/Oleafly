@@ -123,6 +123,32 @@ fn a_new_file_inside_a_folder_the_layout_renamed_follows_the_layout_too() {
     );
 }
 
+#[cfg(not(windows))]
+#[test]
+fn a_file_moved_on_disk_to_a_name_the_layout_changes_follows_the_layout() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let (mut live, mut disk, main) = project(root);
+    std::fs::rename(root.join("main.tex"), root.join("aux.tex")).unwrap();
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    let (changed, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    assert!(changed);
+    let layout = materialize::layout(&live.doc().nodes().unwrap());
+    let laid = layout[&main].path.clone();
+    assert!(laid.starts_with("unnamed-"), "{laid}");
+    assert_eq!(renamed, vec![("aux.tex".to_owned(), laid.clone())]);
+    assert!(!root.join("aux.tex").exists());
+    assert_eq!(std::fs::read_to_string(root.join(&laid)).unwrap(), "abc");
+    assert!(disk.hashes.contains_key(&laid) && !disk.hashes.contains_key("aux.tex"));
+    let nodes = live.doc().nodes().unwrap().len();
+    let again = read_local_changes(root, &disk, &live, None).unwrap();
+    assert!(again.is_empty(), "a second scan found the moved file again");
+    apply_local_import(&mut live, &mut disk, &mut bases, again, root).unwrap();
+    assert_eq!(live.doc().nodes().unwrap().len(), nodes);
+}
+
 #[cfg(unix)]
 #[test]
 fn a_folder_whose_move_fails_stays_whole_is_left_alone_and_moves_once_it_can() {

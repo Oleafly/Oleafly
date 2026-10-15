@@ -280,7 +280,8 @@ pub(super) fn import_renaming(
     let before = materialize::layout(&live.doc().nodes()?);
     let mut placed = by_path(&before);
     let mut import = import;
-    let mut changed = adopt_moved_files(live, disk, bases, &mut placed, &mut import, root)?;
+    let adopted = adopt_moved_files(live, disk, bases, &mut placed, &mut import, root)?;
+    let mut changed = !adopted.is_empty();
     for path in import.dirs {
         ensure_dir(live, &mut placed, Some(&path))?;
         changed = true;
@@ -375,25 +376,45 @@ pub(super) fn import_renaming(
     if changed {
         let nodes = live.doc().nodes()?;
         let after = materialize::layout(&nodes);
-        renamed = follow_new_names(root, disk, bases, &nodes, &before, &after, &beside);
+        let new_names = NewNames {
+            before: &before,
+            after: &after,
+            beside: &beside,
+            adopted: &adopted,
+        };
+        renamed = follow_new_names(root, disk, bases, &nodes, &new_names);
         record_local_change(&mut disk.layout, &before, &after);
         crate::collab::tree::keep_beside(&mut disk.layout, beside);
     }
     Ok((changed, renamed))
 }
 
+struct NewNames<'a> {
+    before: &'a Layout,
+    after: &'a Layout,
+    beside: &'a [(String, String, String)],
+    // Nodes moved to follow a file moved on disk, with where it is now.
+    adopted: &'a [(String, String)],
+}
+
+// Moves each file and folder this import added, or moved to follow a move
+// on disk, to the path the layout gives its node.
 fn follow_new_names(
     root: &Path,
     disk: &mut DiskState,
     bases: &mut WrittenTexts,
     nodes: &[FileNode],
-    before: &Layout,
-    after: &Layout,
-    beside: &[(String, String, String)],
+    names: &NewNames<'_>,
 ) -> Renamed {
+    let NewNames {
+        before,
+        after,
+        beside,
+        adopted,
+    } = names;
     let mut found = FoundPaths::new(nodes, before);
     let mut node_at: HashMap<String, String> = HashMap::new();
-    let wanted = after
+    let mut wanted: Vec<(String, String)> = after
         .iter()
         .filter(|(id, _)| {
             !before.contains_key(*id) && !beside.iter().any(|(ours, _, _)| ours == *id)
@@ -403,6 +424,12 @@ fn follow_new_names(
             Some((found.path(id)?, placed.path.clone()))
         })
         .collect();
+    for (id, now) in adopted.iter() {
+        if let Some(placed) = after.get(id) {
+            node_at.insert(placed.path.clone(), id.clone());
+            wanted.push((now.clone(), placed.path.clone()));
+        }
+    }
     let followed = follow_layout(root, wanted);
     for (from, to) in &followed.moved {
         for (old, new) in rekey_moved(&mut disk.hashes, from, to) {
@@ -423,6 +450,8 @@ fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {
         .is_some_and(|bytes| sha256_hex(&bytes) == hash)
 }
 
+// Moves the node of each file moved on disk to where it went, and returns
+// each node moved with its new path.
 fn adopt_moved_files(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -430,8 +459,8 @@ fn adopt_moved_files(
     placed: &mut HashMap<String, (String, NodeKind, Option<String>)>,
     import: &mut LocalImport,
     root: &Path,
-) -> Result<bool, CollabError> {
-    let mut changed = false;
+) -> Result<Vec<(String, String)>, CollabError> {
+    let mut adopted = Vec::new();
     for old in import.removed.clone() {
         let Some((id, kind, blob)) = placed.get(&old).cloned() else {
             continue;
@@ -464,15 +493,15 @@ fn adopt_moved_files(
             live.doc_mut().rename(&id, name_of(&new))?;
         }
         placed.remove(&old);
-        placed.insert(new.clone(), (id, kind, blob));
+        placed.insert(new.clone(), (id.clone(), kind, blob));
         if let Some(hash) = disk.hashes.remove(&old) {
             disk.hashes.insert(new.clone(), hash);
         }
         bases.rename(&old, &new);
         import.removed.retain(|path| *path != old);
-        changed = true;
+        adopted.push((id, new));
     }
-    Ok(changed)
+    Ok(adopted)
 }
 
 fn import_blobs(
