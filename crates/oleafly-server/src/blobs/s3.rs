@@ -11,7 +11,7 @@ use url::Url;
 use oleafly_collab_protocol::ids::SharedProjectId;
 
 use crate::blobs::sigv4::{self, Credentials, Request};
-use crate::blobs::snapshot_key;
+use crate::blobs::{snapshot_key, BlobReader, Source};
 use crate::clock::Clock;
 use crate::config::S3Config;
 use crate::error::ServerError;
@@ -196,6 +196,19 @@ impl S3Blobs {
         self.remove_object(&self.key(hash)).await
     }
 
+    pub async fn open(&self, hash: &str) -> Result<Option<BlobReader>, ServerError> {
+        self.open_object(&self.key(hash), hash).await
+    }
+
+    pub async fn open_snapshot(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<Option<BlobReader>, ServerError> {
+        self.open_object(&self.snapshot_object_key(project, hash), hash)
+            .await
+    }
+
     pub async fn put_snapshot(
         &self,
         project: SharedProjectId,
@@ -329,6 +342,43 @@ impl S3Blobs {
                     }
                     Err(_) => Attempt::Again(self.timed_out(&Method::GET, key, reading)),
                 };
+            }
+            let code = error_code(response).await;
+            if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {
+                return Attempt::Done(None);
+            }
+            self.refused(&Method::GET, key, status, code.as_deref())
+        })
+        .await
+    }
+
+    // Starts reading an object, which is then read in pieces as it is sent.
+    // Only starting is retried, since a piece already sent can't be taken
+    // back.
+    async fn open_object(&self, key: &str, hash: &str) -> Result<Option<BlobReader>, ServerError> {
+        let first_byte = self.inner.timeouts.first_byte;
+        self.with_retries(|| async {
+            let sent = tokio::time::timeout(
+                first_byte,
+                self.send(Method::GET, key, None, sigv4::EMPTY_PAYLOAD_SHA256, None),
+            )
+            .await;
+            let response = match sent {
+                Ok(Ok(response)) => response,
+                Ok(Err(error)) => return Attempt::Again(error),
+                Err(_) => return Attempt::Again(self.timed_out(&Method::GET, key, first_byte)),
+            };
+            let status = response.status();
+            if status.is_success() {
+                let Some(size) = response.content_length() else {
+                    return Attempt::Stop(ServerError::Internal(format!(
+                        "the S3 blob store sent {} without its length",
+                        self.location(key)
+                    )));
+                };
+                let mut reader = BlobReader::new(Source::S3(response), size, Some(hash));
+                reader.within = Some(self.inner.timeouts.for_bytes(size));
+                return Attempt::Done(Some(reader));
             }
             let code = error_code(response).await;
             if status == StatusCode::NOT_FOUND && code.as_deref() != Some(NO_SUCH_BUCKET) {

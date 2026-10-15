@@ -14,11 +14,12 @@ use oleafly_collab_protocol::envelope::Envelope;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use tokio::sync::{watch, Mutex};
 
-use crate::blobs::{sha256_hex, BlobStore};
+use crate::blobs::{self, sha256_hex, BlobReader, BlobStore};
 use crate::db::Db;
 use crate::error::ServerError;
 use crate::peers;
 use crate::projects::{self, LoggedUpdate, Removal, SnapshotRow};
+use crate::transfers::SMALL_TRANSFER;
 
 mod kept;
 
@@ -400,10 +401,10 @@ pub struct Signed {
     pub signature: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Loaded {
+// A snapshot opened to be sent.
+pub struct Opened {
     pub seq: u64,
-    pub bytes: Bytes,
+    pub reader: BlobReader,
     pub signed: Option<Signed>,
 }
 
@@ -1066,47 +1067,39 @@ impl Snapshots {
         self.remove_queued(db, project, hash).await
     }
 
-    pub async fn load(
+    // Opens the newest snapshot that can be read, or the newest before
+    // `before`, to be sent in pieces. One that doesn't hold the bytes it was
+    // stored with is passed over, and a small one is read and checked whole
+    // here, so a damaged snapshot falls back to the one before it. A large
+    // one is checked as it is sent.
+    pub async fn open(
         &self,
         db: &Db,
         project: SharedProjectId,
-    ) -> Result<Option<Loaded>, ServerError> {
+        before: Option<u64>,
+    ) -> Result<Option<Opened>, ServerError> {
         let candidates = db
-            .read(move |conn| projects::readable_snapshots(conn, project))
+            .read(move |conn| match before {
+                Some(before) => projects::readable_snapshots_before(conn, project, before),
+                None => projects::readable_snapshots(conn, project),
+            })
             .await?;
-        self.first_readable(db, project, &candidates).await
-    }
-
-    pub async fn load_before(
-        &self,
-        db: &Db,
-        project: SharedProjectId,
-        before: u64,
-    ) -> Result<Option<Loaded>, ServerError> {
-        let candidates = db
-            .read(move |conn| projects::readable_snapshots_before(conn, project, before))
-            .await?;
-        self.first_readable(db, project, &candidates).await
-    }
-
-    async fn first_readable(
-        &self,
-        db: &Db,
-        project: SharedProjectId,
-        candidates: &[SnapshotRow],
-    ) -> Result<Option<Loaded>, ServerError> {
         if candidates.is_empty() {
             return Ok(None);
         }
-        for row in candidates {
-            match self.read(project, row).await {
-                Ok(Some(bytes)) => {
+        for row in &candidates {
+            match self.open_row(db, project, row).await {
+                Ok(Some(reader)) => {
                     let seq = row.seq;
                     let signed = db
                         .read(move |conn| projects::snapshot_signature(conn, project, seq))
                         .await?
                         .map(|(device, signature)| Signed { device, signature });
-                    return Ok(Some(Loaded { seq, bytes, signed }));
+                    return Ok(Some(Opened {
+                        seq,
+                        reader,
+                        signed,
+                    }));
                 }
                 Ok(None) => tracing::warn!(
                     "The snapshot of project {project} at {} is missing from the blob store",
@@ -1284,6 +1277,54 @@ impl Snapshots {
         match self.legacy_bytes(&row.file).await? {
             Some(bytes) if sha256_hex(&bytes) == *hash => Ok(Some(bytes)),
             _ => stored,
+        }
+    }
+
+    async fn open_row(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        row: &SnapshotRow,
+    ) -> Result<Option<BlobReader>, ServerError> {
+        let Some(reader) = self.opened(project, row).await? else {
+            return Ok(None);
+        };
+        let seq = row.seq;
+        let stored = db
+            .read(move |conn| projects::snapshot_size(conn, project, seq))
+            .await?;
+        if let Some(stored) = stored.filter(|stored| *stored != reader.size()) {
+            return Err(ServerError::Internal(format!(
+                "it holds {} bytes, not the {stored} it was stored with",
+                reader.size()
+            )));
+        }
+        if reader.size() >= SMALL_TRANSFER {
+            return Ok(Some(reader));
+        }
+        let bytes = reader
+            .read_all()
+            .await
+            .map_err(|error| ServerError::Internal(error.to_string()))?;
+        Ok(Some(BlobReader::whole(bytes)))
+    }
+
+    async fn opened(
+        &self,
+        project: SharedProjectId,
+        row: &SnapshotRow,
+    ) -> Result<Option<BlobReader>, ServerError> {
+        let legacy = self.data_dir.join(&row.file);
+        let Some(hash) = &row.hash else {
+            return blobs::open_file(legacy, None).await;
+        };
+        let stored = self.blobs.open_snapshot(project, hash).await;
+        if row.in_blob_store(project) || matches!(stored, Ok(Some(_))) {
+            return stored;
+        }
+        match blobs::open_file(legacy, Some(hash)).await? {
+            Some(reader) => Ok(Some(reader)),
+            None => stored,
         }
     }
 

@@ -15,6 +15,7 @@ test-support = []
 async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "query", "tokio", "ws"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+futures-util = "0.3"
 # The frame type a response body yields, so a large download can be sent
 # in pieces and stopped at its deadline. axum depends on it already.
 http-body = "1"
@@ -27,7 +28,7 @@ ring = "0.17"
 rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
 url = "2"
