@@ -105,7 +105,9 @@ impl Active {
                 if reason.is_some() {
                     entry.1 = reason;
                 }
-                retry.insert(path);
+                if reason != Some(UnwrittenReason::NotDownloaded) {
+                    retry.insert(path);
+                }
             }
             let told: Vec<UnwrittenFile> = failing
                 .attempts

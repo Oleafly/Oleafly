@@ -153,6 +153,7 @@ async fn finish(active: Arc<Active>) {
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
+    active.close_figures();
     active.save_now();
     active.handle.stop();
 }
@@ -174,6 +175,7 @@ pub fn finish_for_quit(wait: Duration) {
         let (done, flushed) = oneshot::channel();
         let _ = active.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(wait, flushed).await;
+        active.close_figures();
         active.save_now();
         active.handle.stop();
     });

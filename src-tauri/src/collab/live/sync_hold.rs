@@ -532,6 +532,12 @@ impl Shaped {
     }
 }
 
+pub(super) fn keeps_back(dir: &Path, path: &str) -> bool {
+    let _lock = hold_lock();
+    let hold = Hold::load(dir);
+    hold.holds(path) || hold.kind(path).is_some()
+}
+
 pub(super) fn shape(
     dir: &Path,
     root: &Path,

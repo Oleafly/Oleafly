@@ -3,6 +3,7 @@ pub mod write;
 
 mod bases;
 mod disk_pass;
+mod downloads;
 mod editor;
 mod host;
 mod import;

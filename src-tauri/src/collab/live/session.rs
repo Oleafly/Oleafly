@@ -19,10 +19,9 @@ use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
 use super::import::{apply_local_import, placed_now, scan_local};
 use super::payloads::StatusPayload;
-use super::unwritten::{reason_of, Settled, UnwrittenReason};
+use super::unwritten::Settled;
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
-use crate::collab::commands::with_access;
-use crate::collab::disk::{sha256_hex, write_file_over, DiskState, Stamp, WriteOutcome};
+use crate::collab::disk::DiskState;
 use crate::folder_watch::FolderChange;
 
 const WRITE_DEBOUNCE: Duration = Duration::from_millis(120);
@@ -64,6 +63,7 @@ pub struct Active {
 pub(super) struct Upkeep {
     pub(super) pace: Mutex<super::pacing::Pace>,
     pub(super) failing: Mutex<super::unwritten::Failing>,
+    pub(super) figures: Mutex<super::downloads::Figures>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -190,11 +190,14 @@ impl Active {
         Ok(())
     }
 
-    pub(super) async fn write_out(&self) -> Result<Vec<String>, CollabError> {
+    pub(super) async fn write_out(self: &Arc<Self>) -> Result<Vec<String>, CollabError> {
         self.write_out_paced(true).await
     }
 
-    pub(super) async fn write_out_paced(&self, urgent: bool) -> Result<Vec<String>, CollabError> {
+    pub(super) async fn write_out_paced(
+        self: &Arc<Self>,
+        urgent: bool,
+    ) -> Result<Vec<String>, CollabError> {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
@@ -259,21 +262,21 @@ impl Active {
         }
         self.announce_removed(&previous, &removed);
         self.note_arrivals(&previous, &changed);
-        let mut settled = Settled {
-            done,
-            failed,
-            conflicts: Vec::new(),
-        };
-        self.fetch_blobs(blobs, &mut conflicts, &mut changed, &mut settled)
-            .await;
         self.note_written(&written);
         let layout = {
             let disk = guard(&self.disk);
             self.save_index_if_changed(&disk);
             disk.layout.clone()
         };
-        settled.conflicts.clone_from(&conflicts);
-        self.settle_unwritten(&layout, settled);
+        self.settle_unwritten(
+            &layout,
+            Settled {
+                done,
+                failed,
+                conflicts: conflicts.clone(),
+            },
+        );
+        self.want_figures(blobs);
         let typed_here = self.open_texts(&layout, &written, &moved);
         changed.retain(|path| !typed_here.contains(path));
         if !changed.is_empty() || structural {
@@ -365,44 +368,6 @@ impl Active {
             })
             .map(|(_, placed)| placed.path.clone())
             .collect()
-    }
-
-    async fn fetch_blobs(
-        &self,
-        blobs: Vec<(String, String, Option<Stamp>)>,
-        conflicts: &mut Vec<String>,
-        changed: &mut BTreeSet<String>,
-        settled: &mut Settled,
-    ) {
-        let project = self.link.project;
-        for (path, hash, stamp) in blobs {
-            let fetched = with_access(
-                &self.link.sessions,
-                self.link.server_id,
-                &self.link.client,
-                |client, access| {
-                    let hash = hash.clone();
-                    Box::pin(async move { client.get_blob(access, project, &hash).await })
-                },
-            )
-            .await
-            .ok()
-            .filter(|bytes| sha256_hex(bytes) == hash);
-            let Some(bytes) = fetched else {
-                settled.failed.push((path, UnwrittenReason::NotDownloaded));
-                continue;
-            };
-            let mut disk = guard(&self.disk);
-            match write_file_over(&self.root, &path, &bytes, stamp.as_ref()) {
-                Ok(WriteOutcome::ChangedOutside) => conflicts.push(path),
-                Ok(_) => {
-                    disk.hashes.insert(path.clone(), hash);
-                    changed.insert(path.clone());
-                    settled.done.insert(path);
-                }
-                Err(error) => settled.failed.push((path, reason_of(&error))),
-            }
-        }
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {

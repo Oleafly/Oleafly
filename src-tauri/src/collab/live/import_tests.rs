@@ -97,7 +97,7 @@ fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_
     let fetched: Vec<(&str, &str)> = pass
         .blobs
         .iter()
-        .map(|(path, hash, _)| (path.as_str(), hash.as_str()))
+        .map(|(path, hash)| (path.as_str(), hash.as_str()))
         .collect();
     assert_eq!(fetched, vec![("plot.png", "alicehash")]);
 }

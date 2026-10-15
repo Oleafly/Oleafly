@@ -37,7 +37,7 @@ fn inspected(root: &Path, disk: &DiskState, path: &str) -> Option<(Option<Stamp>
 pub(super) struct DiskPass {
     pub(super) changed: BTreeSet<String>,
     pub(super) conflicts: Vec<String>,
-    pub(super) blobs: Vec<(String, String, Option<Stamp>)>,
+    pub(super) blobs: Vec<(String, String)>,
     pub(super) moved: Vec<(String, String)>,
     pub(super) removed: Vec<String>,
     pub(super) written: BTreeSet<String>,
@@ -192,13 +192,32 @@ fn move_planned(
     renamed
 }
 
+pub(super) enum FigureState {
+    OnDisk,
+    Conflict,
+    Missing(Option<Stamp>),
+}
+
+pub(super) fn figure_state(root: &Path, disk: &DiskState, path: &str, hash: &str) -> FigureState {
+    let on_disk = safe_target(root, path)
+        .and_then(|target| std::fs::read(target).ok())
+        .is_some_and(|bytes| sha256_hex(&bytes) == hash);
+    if on_disk {
+        FigureState::OnDisk
+    } else if moves::deleted_here(root, disk, path) {
+        FigureState::Conflict
+    } else {
+        checked(root, disk, path).map_or(FigureState::Conflict, FigureState::Missing)
+    }
+}
+
 fn blobs_to_fetch(
     root: &Path,
     disk: &mut DiskState,
     next: &Layout,
     blocked: &dyn Fn(&str) -> bool,
     conflicts: &mut Vec<String>,
-) -> Vec<(String, String, Option<Stamp>)> {
+) -> Vec<(String, String)> {
     let mut blobs = Vec::new();
     for placed in next.values().filter(|placed| placed.kind == NodeKind::Blob) {
         let Some(hash) = &placed.blob else {
@@ -207,17 +226,12 @@ fn blobs_to_fetch(
         if disk.hashes.get(&placed.path) == Some(hash) || blocked(&placed.path) {
             continue;
         }
-        let on_disk = safe_target(root, &placed.path)
-            .and_then(|target| std::fs::read(target).ok())
-            .is_some_and(|bytes| sha256_hex(&bytes) == *hash);
-        if on_disk {
-            disk.hashes.insert(placed.path.clone(), hash.clone());
-        } else if moves::deleted_here(root, disk, &placed.path) {
-            conflicts.push(placed.path.clone());
-        } else if let Some(stamp) = checked(root, disk, &placed.path) {
-            blobs.push((placed.path.clone(), hash.clone(), stamp));
-        } else {
-            conflicts.push(placed.path.clone());
+        match figure_state(root, disk, &placed.path, hash) {
+            FigureState::OnDisk => {
+                disk.hashes.insert(placed.path.clone(), hash.clone());
+            }
+            FigureState::Conflict => conflicts.push(placed.path.clone()),
+            FigureState::Missing(_) => blobs.push((placed.path.clone(), hash.clone())),
         }
     }
     blobs
@@ -263,11 +277,7 @@ mod tests {
             &|path| path == "held.png",
         )
         .unwrap();
-        let fetched: Vec<&str> = pass
-            .blobs
-            .iter()
-            .map(|(path, _, _)| path.as_str())
-            .collect();
+        let fetched: Vec<&str> = pass.blobs.iter().map(|(path, _)| path.as_str()).collect();
         assert_eq!(fetched, ["late.png"]);
         assert_eq!(disk.hashes.get("here.png"), Some(&sha256_hex(b"here.png")));
         assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
