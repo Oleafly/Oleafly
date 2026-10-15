@@ -929,7 +929,7 @@ impl Peer<'_> {
             Ok(Appendix::Unchecked(envelope, reach, stored)) => {
                 let check = match self.comment_check(project, &envelope).await {
                     Ok(check) => check,
-                    Err(refusal) => return refusal,
+                    Err(refusal) => return *refusal,
                 };
                 let checked = self
                     .append(project, envelope, reach, stored, check, mention)
@@ -990,7 +990,7 @@ impl Peer<'_> {
         &self,
         project: SharedProjectId,
         envelope: &Envelope,
-    ) -> Result<Check, ServerFrame> {
+    ) -> Result<Check, Box<ServerFrame>> {
         let guard = &self.state.comment_guard;
         let verdict = guard
             .check(
@@ -1009,18 +1009,18 @@ impl Peer<'_> {
         match verdict {
             Ok(Verdict::Allowed) => Ok(Check::Passed),
             Ok(Verdict::Unchecked) => Ok(Check::Later),
-            Ok(Verdict::ChangesComments) => Err(frame_error(
+            Ok(Verdict::ChangesComments) => Err(Box::new(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
-            )),
-            Ok(Verdict::Unreadable) => Err(frame_error(
+            ))),
+            Ok(Verdict::Unreadable) => Err(Box::new(frame_error(
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
-            )),
-            Err(_) => Err(frame_error(
+            ))),
+            Err(_) => Err(Box::new(frame_error(
                 FrameErrorCode::Internal,
                 "The server could not store this change.",
-            )),
+            ))),
         }
     }
 
