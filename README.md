@@ -306,10 +306,10 @@ The bundled `research-core` pack ships 36 skills. The names below are the IDs us
 
 | Platform | Package | Download |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSI or EXE | [![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage, DEB, or RPM | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage, DEB, or RPM | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![Download for macOS (Apple Silicon)](docs/assets/readme/download-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI or EXE | [![Download for Windows](docs/assets/readme/download-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB, or RPM | [![Download for Linux (x86_64)](docs/assets/readme/download-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB, or RPM | [![Download for Linux (ARM64)](docs/assets/readme/download-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 On x86_64, the Linux packages need glibc 2.35 or newer (Ubuntu 22.04 or later). ARM64 packages are built on Ubuntu 24.04. Releases include signed update artifacts, and the in-app updater checks the signature before it installs anything.
 
