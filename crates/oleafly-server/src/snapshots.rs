@@ -132,6 +132,17 @@ impl Drop for Reserved {
     }
 }
 
+impl Reserved {
+    // Gives back what the reservation holds beyond `bytes`.
+    fn shrink_to(&mut self, bytes: u64) {
+        if bytes < self.bytes {
+            let mut held = self.held.write().unwrap_or_else(PoisonError::into_inner);
+            *held = held.saturating_sub(self.bytes - bytes);
+            self.bytes = bytes;
+        }
+    }
+}
+
 // A document read under the snapshot memory budget. The share of the budget
 // it took goes back only when the document itself is dropped, wherever that
 // happens, so a caller that keeps it, or a blocking task that outlives the
@@ -164,6 +175,18 @@ impl Budgeted {
 
     pub fn finish(self) -> Option<Vec<u8>> {
         self.replay.finish()
+    }
+
+    // Exports the document and keeps as much of its reservation as the
+    // exported bytes need, for the caller to hold while it stores them.
+    fn exported(self) -> Option<(Vec<u8>, Reserved)> {
+        let Budgeted {
+            replay,
+            mut reserved,
+        } = self;
+        let bytes = replay.finish()?;
+        reserved.shrink_to(bytes.len() as u64);
+        Some((bytes, reserved))
     }
 }
 
@@ -604,7 +627,7 @@ impl Snapshots {
                 );
                 return Ok(Upload::Held(newest.seq));
             }
-            let Some(derived) = blocking(move || Ok(replay.finish())).await? else {
+            let Some((derived, _storing)) = blocking(move || Ok(replay.exported())).await? else {
                 tracing::warn!(
                     "The snapshot of project {project} at {after} does not load, so the server builds on the one before it"
                 );
@@ -1698,6 +1721,25 @@ mod tests {
         tokio::time::advance(Duration::from_secs(2 * 60)).await;
         assert_eq!(snapshots.sweep_kept(), 1);
         assert_eq!(snapshots.kept_bytes(), 0);
+    }
+
+    #[tokio::test]
+    async fn an_exported_snapshot_keeps_its_share_of_the_budget_until_it_is_stored() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let (document, _) = snapshots
+            .current(&db, project)
+            .await
+            .unwrap()
+            .expect("the document fits the budget");
+        assert!(document.reserved_bytes() > 0);
+        let (bytes, storing) = document.exported().expect("an export");
+        let held = || *snapshots.reserved.read().unwrap();
+        assert_eq!(storing.bytes, bytes.len() as u64);
+        assert_eq!(held(), bytes.len() as u64);
+        drop(storing);
+        assert_eq!(held(), 0);
     }
 
     #[tokio::test]
