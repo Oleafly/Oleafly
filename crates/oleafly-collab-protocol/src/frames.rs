@@ -204,6 +204,8 @@ pub enum FrameErrorCode {
     NotFound,
     TooLarge,
     CommentsOff,
+    // The project's change log reached the server's size limit. Sent only
+    // to clients that say they understand it, others get TooLarge.
     ProjectTooLarge,
     #[serde(other)]
     Unknown,
@@ -896,6 +898,24 @@ mod tests {
         Forbidden,
         #[serde(other)]
         Unknown,
+    }
+
+    #[test]
+    fn a_full_project_has_its_own_code_and_earlier_clients_read_it_as_unknown() {
+        let refusal = ServerFrame::Error {
+            code: FrameErrorCode::ProjectTooLarge,
+            message: "m".to_string(),
+        };
+        let wire = json!({ "type": "error", "code": "project_too_large", "message": "m" });
+        assert_server_wire(refusal, wire);
+        assert_eq!(
+            serde_json::from_value::<EarlierErrorCode>(json!("project_too_large")).unwrap(),
+            EarlierErrorCode::Unknown
+        );
+        assert_eq!(
+            crate::poll::understood_codes("comments_off,project_too_large"),
+            vec![FrameErrorCode::CommentsOff, FrameErrorCode::ProjectTooLarge]
+        );
     }
 
     #[test]

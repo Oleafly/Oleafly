@@ -139,25 +139,7 @@ async fn presence_and_leaving_cross_between_socket_and_long_poll() {
     });
     handle.leave_presence();
     let device = pair.alice.tokens.device_id;
-    tokio::time::timeout(WAIT, async {
-        let mut placed = false;
-        while let Some(event) = bob.events.recv().await {
-            match event {
-                LiveEvent::Presence {
-                    device_id, state, ..
-                } if device_id == device => {
-                    placed = state.cursor == Some(1);
-                }
-                LiveEvent::PresenceLeft { device_id } if device_id == device => {
-                    assert!(placed, "the leave arrived after the last presence");
-                    return;
-                }
-                _ => {}
-            }
-        }
-    })
-    .await
-    .expect("the leave arrived");
+    super::editing::left_without_a_later_cursor(&mut bob, device).await;
     let here = PresenceState {
         file_id: Some(main.clone()),
         cursor: Some(2),

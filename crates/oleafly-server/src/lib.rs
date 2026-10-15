@@ -49,6 +49,9 @@ use crate::state::AppState;
 
 pub const MAX_BODY_BYTES: usize = 256 * 1024;
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+// Documents kept between comment checks and mention scans are dropped once
+// idle, even when no check or scan comes along to do it.
+const KEPT_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 // Sockets are told the server is restarting and get this long to close.
 const SOCKET_FAREWELL: Duration = Duration::from_secs(2);
 
@@ -207,6 +210,7 @@ where
 {
     mentions::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
+    let sweeping = tokio::spawn(sweep_kept_loop(state.snapshots.clone()));
     let polls = Arc::clone(&state.polls);
     let sockets = Arc::clone(&state.sockets);
     let app = build_router(state).into_make_service_with_connect_info::<SocketAddr>();
@@ -223,7 +227,16 @@ where
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     maintenance.abort();
+    sweeping.abort();
     result.map_err(|error| ServerError::Internal(format!("the server stopped: {error}")))
+}
+
+async fn sweep_kept_loop(snapshots: snapshots::Snapshots) {
+    let mut interval = tokio::time::interval(KEPT_SWEEP_INTERVAL);
+    loop {
+        interval.tick().await;
+        snapshots.sweep_kept();
+    }
 }
 
 async fn maintenance_loop(state: AppState) {
