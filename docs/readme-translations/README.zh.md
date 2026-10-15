@@ -6,463 +6,210 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | **中文** | [العربية](README.ar.md)
 
-[![下载 macOS 版（Apple Silicon）](https://img.shields.io/badge/Download_for_macOS_%28Apple_Silicon%29-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![下载 Windows 版](https://img.shields.io/badge/Download_for_Windows-0496ff?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![下载 Linux 版](https://img.shields.io/badge/Download_for_Linux-ffba08?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 macOS 版（Apple Silicon）](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 Windows 版](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 Linux 版](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
 
 [![开放议题](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![下载量](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube 质量门禁](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![代码覆盖率](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![开发状态：超活跃](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![最近提交日期](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![许可证：AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-永久免费 · 开源 · 无需账户 · 无需注册 · 无跟踪
+**面向科研的 LaTeX、Typst 和 Markdown 实时协作编辑器。**
 
-**在现代科学写作工作空间中，减少琐事，写好你的下一篇论文。**
-
-Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Markdown 撰写论文。你可以在同一处查找资料、管理引文，并看到论文逐步成形。让 AI 助手修改一个章节、制作一幅图，或修复失败的构建；你可以审阅每一项改动。项目保存在你拥有的普通文件中，编辑器可在启用或不启用 AI 的情况下使用。
+Oleafly 是一款功能强大的编辑器，用于以 LaTeX、Typst 和 Markdown 撰写研究论文和学位论文。一个项目的源文件、PDF、引文、图形、检查和 Git 历史都集中在一处。与合作者实时写作，让项目在多台电脑之间保持同步，并把 Claude Code、Codex 或你喜欢的任何模型带进项目。
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>免费下载</strong></a>
-· <a href="https://oleafly.com/docs/">阅读指南</a> · <a href="../development.md">从源代码构建</a>
+· <a href="https://oleafly.com/docs/">阅读指南</a> · <a href="https://github.com/Oleafly/oleafly-server">运行服务器</a> · <a href="../development.md">从源代码构建</a>
 </p>
 
+
+永久免费 · 开源 · 无需 Oleafly 账户 · 无跟踪
+
 </div>
 
 <div align="center">
-  <img src="../assets/readme/hero.png" alt="Oleafly 工作空间展示 LaTeX 项目、源文件编辑器、PDF 预览和 AI 计划面板" width="100%" />
+  <img src="../assets/readme/hero-collab.png" alt="Oleafly 中打开的一篇 LaTeX 研究论文：左侧是文件树、大纲和结构，旁边是带有五位合作者光标和高亮评论的源文件，以及编译后的 PDF" width="100%" />
 </div>
-
-## 从这里开始
-
-| 如果你正在…… | 从这里开始…… |
-| --- | --- |
-| 撰写论文或学位论文 | 可编辑的 LaTeX、Typst 或 Markdown 起始项目 |
-| 将已有工作带到电脑上 | ZIP、GitHub 仓库、Word、HTML 或 Markdown 文件、Typst 文档、arXiv 源码或 PDF 导入 |
-| 使用 LaTeX、Typst 或 Markdown | 源文件编辑器、可视化编辑器、实时预览和引擎选择器 |
-| 构建结构化手稿 | 项目大纲、跨文件搜索、引用导航和本地校对 |
-| 查找资料或引文 | 引文搜索、文档支持扫描、写作时直接从 Zotero 文献库引用，或从文件导入书目 |
-| 使用 AI | 内置助手、隔离的研究任务、CLI 代理或 MCP |
-| 运行较长的研究任务 | 独立 worktree 或暂存副本、审阅结果和选择性文件应用 |
-| 重用研究工作流 | 内置技能包、斜杠命令或自己保存的技能文件夹 |
-| 制作图形或表格 | Diagram Composer、LaTeX Preview、Image to LaTeX 或 LaTeX Table Generator |
-| 准备投稿 | 编译、引用、隐私、无障碍和投稿要求检查的 Preflight |
-| 恢复或管理版本 | 用检查点进行本地恢复，用 Git 管理有意的历史和协作 |
-| 关联论文、数据或分析 | 手稿旁边的只读研究文件夹 |
-| 导出或转换文档 | PDF、PNG 和源代码 ZIP，以及支持的 Word、HTML、Markdown、LaTeX、Typst、文本、PPTX 或 EPUB 输出 |
-| 查找本地工具链 | 内置 Tectonic、Typst 和 Pandoc，以及可选的系统 TeX 或由应用管理的 TinyTeX 安装，后两者也可以设为新项目的默认选择 |
-
-<div align="center">
-  <img src="../assets/readme/start-work.png" alt="Oleafly 开始菜单，可选择研究项目、导入项目或模板" width="100%" />
-</div>
-<p align="center"><em>从你实际拥有的工作类型开始：新研究项目、现有项目或模板。</em></p>
 
 ## 为什么选择 Oleafly
 
-许多科研写作流程由一串互相分开的工具组成：编辑器、编译器、PDF 阅读器、文献管理器、制图工具、Git、投稿清单，以及一个可能看不到项目内容的 AI 聊天窗口。论证变复杂时，工作也被分散到越来越多的窗口里。
+这里的一切都是免费的，包括其他编辑器留给付费方案的功能：与你邀请的任意数量合作者实时协作、完整的版本历史、Git 和 GitHub 同步、Zotero、语法检查和 AI。
 
-Oleafly 将这些工具围绕一个项目组织起来。源文件仍是普通文本，PDF 就在旁边。你可以从正在写的句子查找引文，将图形保留为 TikZ，并在助手改动进入项目之前先审阅它们。
+- 在你的实验室用一条命令搭建的服务器上，与合作者实时写作，共享光标和评论。
+- 专为长文档打造的编辑器：标签、引文和命令补全，实时错误检查，整个项目的大纲，Vim 和 Emacs 键位，可视化模式，以及包含 236 个 LaTeX 符号的可搜索面板。
+- 在你自己的电脑上编译。Tectonic、Typst 和 Pandoc 已经内置，项目需要完整发行版时，由 TeX Live、MacTeX、MiKTeX 或 TinyTeX 接手。
+- 在 PDF 中点击即可跳到源文件，也可以再跳回来。修复错误时，最后一次成功的 PDF 会一直留在屏幕上。
+- 每个项目都是可以推送到 GitHub 的 Git 仓库，每次成功编译后，检查点都会保存一份快照。
+- 输入时即可从 Zotero 文献库引用，不离开编辑器就能搜索 arXiv、Semantic Scholar、Crossref、PubMed 和 OpenAlex。
+- 针对学术写作调校的拼写和语法检查在你的电脑上运行。
+- 投稿之前，Preflight 会找出断裂的引用、缺失的图形、未嵌入的字体、无障碍缺陷，以及任何会破坏匿名评审的内容。
+- 绘制的图形会保留为 TikZ、Typst 或 Mermaid 代码，你还可以从 1,700 多个论文、学位论文、幻灯片、海报和简历模板开始。
+- 可从 Word、PDF、arXiv 源码、GitHub 仓库或在线 LaTeX 账户导入。
+- 云同步让你的项目出现在你使用的每台电脑上，离线时也可以继续写作。
+- Claude Code、Codex 和另外 12 个代理可以在你的项目中工作，你也可以连接任何模型，包括本地模型。AI 是可选的，它做出的每项更改都是可以审阅和撤销的 diff。
+- 研究任务会在项目的独立副本中进行文献综述、证据审计或一轮修订，同时你可以继续写作，并自行选择保留哪些更改过的文件。
 
-### 三种工作方式
+## 实时共同写作
 
-| 工作方式 | 它提供什么 | 你仍然需要解决什么 |
-| --- | --- | --- |
-| 托管云编辑器 | 快速开始、浏览器访问和托管服务 | 信任托管数据层，并适应服务本身的限制 |
-| 自建本地工作流 | 控制文件、工具和基础设施 | 选择、安装、配置和维护每个组成部分 |
-| Oleafly | 将编辑器、引擎、PDF、引文、图形、检查、Git 和可选代理放在一起的本地桌面工作空间 | 当前版本尚未提供实时共同编辑和后台跨设备同步 |
-
-Oleafly 提供有引导的工作空间，同时不会把手稿锁进专有格式或永久服务中。
-
-## 哪些内容留在你的电脑上
-
-核心工作留在你的电脑上：项目文件、索引、使用本地引擎的编译、PDF 预览、拼写检查、语法检查、Preflight、Git 历史、检查点和终端。这些任务不需要账户。
-
-应用只会为确实需要网络的操作访问网络，例如文献搜索、DOI 元数据、GitHub 操作、托管 AI、zotero.org 账户、你连接的 MCP 服务器、Typst Universe 和 CTAN 宏包查询，以及可选的引擎、宏包和模板下载。发布版本还会在每次启动应用时检查更新。本地 Ollama 模型会让模型通信留在你的电脑上，从同一台电脑上的 Zotero 应用引用也只在本地进行。服务不可用时，应用会显示离线或不可用状态。
-
-| 默认留在本地 | 只有在你选择时才发生 |
-| --- | --- |
-| 项目源文件和元数据 | 文献和引文搜索 |
-| 编辑器状态和项目索引 | GitHub 登录、推送、拉取和发布 |
-| 所需软件包可用时用内置引擎编译 LaTeX | 托管 AI 服务 |
-| 宏包已缓存或保存在项目中时的 Typst 编译 | 可选的引擎、宏包和模板下载 |
-| PDF 渲染和文本检查 | Domain shelf 技能下载 |
-| 拼写、语法和 Preflight 检查 | localhost 上的外部 MCP 客户端 |
-| Git 历史和自动检查点 | alphaXiv 和你连接的其他 MCP 服务器 |
-| 从这台电脑上的 Zotero 应用引用 | 通过 zotero.org 账户引用和导入 Zotero 文献 |
+将项目共享到你实验室的 Oleafly Server，所有人就能同时编辑相同的文件。你可以看到每个人的光标和选区、谁在线，以及你离开期间有哪些更改。点击某人的头像，即可跳到对方正在编辑的那一行。
 
 <p align="center">
-  <img src="../assets/readme/provider-boundaries.png" alt="Oleafly 提供商设置展示与项目文件分开的明确连接" width="100%" />
+  <img src="../assets/readme/live-comments.png" alt="两位合作者在 Oleafly 中编辑同一个 LaTeX 文件，显示他们的光标、头像以及人员和活动面板" width="100%" />
 </p>
-<p align="center"><em>提供商连接由你明确选择，并与磁盘上的手稿分开。</em></p>
 
-## 从真实项目开始
+- 在 LaTeX、Typst 或 Markdown 中对任意选区发表评论，然后回复、提及某人、标记为已解决或重新打开。被提及的合作者会收到一封邮件，也可以关闭这类邮件。
+- 离线时所做的编辑会在重新连接后合并。如果与他人的编辑重叠，Oleafly 会把两者都展示给你，并在应用任何内容之前先询问你。
+- AI 编辑、Zotero 引文、重命名、删除和图形也都会同步。如果两个人同时替换同一个图形，两个版本都会保留。
+- 主文件、编译器、拼写检查语言和 Typst 选项是共享的，因此整个团队都以相同方式编译项目。
+- 每个项目都有所有者、编辑者和查看者。通过邮件邀请的访客只能看到自己受邀加入的项目。
 
-### 可以编辑的模板
+### 自己运行服务器
 
-从文章、期刊论文、学位论文、文献综述、报告、书籍、Beamer 演示文稿、海报、作业、信件、书目、简历或图形开始。模板是普通的源代码项目，带有声明的引擎、主文档、文档类型、资源和预览元数据。创建项目之前，你可以查看渲染后的预览以及它使用的引擎。
+Oleafly Server 只需一条命令即可安装在 Linux 机器上，无论是实验室工作站、大学虚拟机还是小型云服务器：
 
-模板库可以按引擎、类别、离线准备状态和 ATS 适用性筛选。内置模板不需要模板账户。只有在你选择后，可选模板包、字体和资源才会下载。
+```bash
+curl -fsSL https://oleafly.com/server/install.sh | sudo sh
+```
 
-<div align="center">
-  <img src="../assets/readme/template-downloads.png" alt="Oleafly 模板下载，展示学术写作、Beamer 和会议起始模板包" width="100%" />
-</div>
+它是一个使用 SQLite 的单一 Rust 二进制文件，可以把文件保存在磁盘或任何 S3 兼容存储中，配置后还能通过 SMTP 发送邮件。用户通过 GitHub 或任何 OpenID Connect 提供商登录，因此你所在大学的单点登录也能使用。服务器提供适用于 Docker Compose、Coolify、Render 和 systemd 的现成配置，以及 Railway、Cloudflare Tunnel 和大学证书的指南。
 
-### 带入你已有的工作
-
-导入项目 ZIP 或 GitHub 仓库，用 Pandoc 转换 DOCX，或将 PDF 作为可编辑 LaTeX 的起点。导入结果会成为本地项目文件，因此你可以检查结果，而原始来源保持不变。你也可以直接在文件夹原来的位置打开它。Oleafly 会把该文件夹的构建、设置和检查点保存在自己的数据文件夹中，并在你选择“信任此文件夹”之前，限制该文件夹中的 Git、外部代理和系统 LaTeX。
-
-对于带文本层的 PDF，重建是确定性的。应用会提取能够识别的文本、布局、公式和图形，报告它的限制，并留下可编辑的 LaTeX，而不是不透明的文档。扫描版 PDF 可以由本地运行的视觉模型转写。如果你连接了支持视觉的提供商，它之后还可以帮助完善导入的项目。
+管理员可以在 Oleafly 中通过控制台管理人员、访问规则、项目、邮件和安全日志。每台设备都会为自己的更改签名，服务器根据这份签名历史构建每个快照，而不是信任上传的内容。
 
 <p align="center">
-  <img src="../assets/readme/import-project.png" alt="Oleafly 导入对话框，包含项目、Word、Markdown、HTML、Typst、arXiv 和 GitHub 选项" width="100%" />
+  <img src="../assets/readme/server-admin.png" alt="Oleafly Server 管理控制台，显示人员、访问规则和安全日志" width="100%" />
 </p>
-<p align="center"><em>将已有项目或文档带入普通的本地工作空间。</em></p>
 
-### 每个项目都是磁盘上可访问的文件夹
+阅读[服务器指南](https://github.com/Oleafly/oleafly-server)，了解安装设置、备份，以及谁能做什么的完整列表。
 
-Oleafly 的项目库跟踪项目身份、引擎、文档类型、书签、预览状态和历史。手稿本身仍是普通目录，可以在其他编辑器中打开，在终端中检查，与合作者共享，或使用普通 Git 提交。Oleafly 不需要专有文档数据库来编译你的工作。
+## 在多台电脑之间云同步
 
-应用自己的构建产物和本地元数据与源文件分开保存。项目可以在 `project.json` 中保存引擎和主文档选择，因此克隆或导出的源代码压缩包也能使用相同的项目设置打开。
-
-<div align="center">
-  <img src="../assets/readme/project-library.png" alt="Oleafly 项目库，以可搜索的列表组织研究项目" width="100%" />
-</div>
-
-## 写作并保持文档结构
-
-### 面向结构化文档的源文件编辑器
-
-CodeMirror 编辑器由项目级索引支持。索引覆盖手稿中的标题、标签、引用键、宏、环境、被包含文件和编译诊断。
-
-在 LaTeX、Typst、Markdown 和 BibTeX 中，你可以使用：
-
-- 面向引擎的语法高亮，覆盖命令、环境、数学、注释、标记语言和书目条目。
-- 标签、引用键和项目文件路径补全。LaTeX 文件还会补全命令和环境，Typst 文件会补全函数、宏包和书目样式。
-- 语法、编译错误、未定义引用、重复键、重复标签和断裂引用的实时诊断。
-- 带有符号、标签、引文、宏和文件关系的本地及全局文档大纲。
-- 搜索和替换、代码折叠、多文件标签页、Vim 或 Emacs 键位、字数统计、斜杠命令插入和可配置快捷键。
-- LaTeX 结构助手，用于 `\item`、`\begin` / `\end`、环境、数学分隔符、图注和常用插入模式。
-- Typst 助手：数学公式的 `$` 成对插入，列表在按 Enter 时自动延续，`/` 打开片段。
-- 编译后的标签编号和页码悬停提示、公式预览，以及 `\includegraphics` 目标的图像缩略图。
-- 重命名或移动文件时，Oleafly 可以更新 `\input`、`\includegraphics`、`#include`、`image()` 和 Markdown 链接中指向它的路径。在路径上按 F2 即可重命名对应文件。
-
-### 插入 LaTeX 块、格式和符号
-
-LaTeX 工具栏让常用结构触手可及，同时把源文件控制权留在你手中。你可以在 Code 和 Visual 视图之间切换，撤销或重做，选择标题级别，设置文字格式，插入引用，创建表格或图形，而不必记住每一条命令。Typst 文件有自己的工具栏，提供相同的工具，并写入 Typst 标记。
-
-<div align="center">
-  <img src="../assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX 编辑器工具栏，包含格式、引用、图形、表格、列表、公式、分数和符号控件" width="100%" />
-</div>
-<p align="center"><em>从工具栏插入常见 LaTeX 结构，再继续直接编辑源文件。</em></p>
-
-| 区域 | 可用控件 |
-| --- | --- |
-| 编辑和视图 | Code 视图、Visual 视图、撤销、重做 |
-| 文档结构 | 插入 H1–H7 标题：`\part`、`\chapter`、`\section`、`\subsection`、`\subsubsection`、`\paragraph`、`\subparagraph` |
-| 行内格式 | 粗体 `\textbf{}`、斜体 `\textit{}`、下划线 `\underline{}`、行内代码 `\texttt{}` |
-| 引用和注释 | 链接 `\href{}{}`、项目引文、交叉引用 `\ref{}`、脚注 `\footnote{}` |
-| 内容块 | `quote` 块引用、带 `\includegraphics` 的图形、图注和标签、可选择行列的可视化表格、项目符号 `itemize` 列表、有序 `enumerate` 列表 |
-| 数学块 | `equation`、`align` 和分数 `\frac{}{}` 插入 |
-| AI 辅助插入 | 在配置支持视觉的提供商后，将图像中的公式、表格或可见文本转换为 LaTeX |
-| 代码智能 | 跳转到定义、查找引用、项目级符号重命名，以及移动文件时更新路径 |
-| 项目工具 | “绘制图表”“LaTeX 宏包”“文档分析”和“文档设置” |
-
-### 可搜索的 LaTeX 符号面板
-
-符号选择器的 **All** 视图包含 236 个不重复命令。分类列表包含 238 个条目，因为 `\nabla` 和 `\partial` 同时适用于运算符和微积分。按符号名称或 LaTeX 命令搜索，然后在光标处插入。在 Typst 文件中，面板会显示、搜索并插入每个符号的 Typst 名称。
-
-| 类别 | 数量 | 可用符号和命令 |
-| --- | ---: | --- |
-| 小写希腊字母 | 29 | `\alpha`, `\beta`, `\gamma`, `\delta`, `\epsilon`, `\varepsilon`, `\zeta`, `\eta`, `\theta`, `\vartheta`, `\iota`, `\kappa`, `\lambda`, `\mu`, `\nu`, `\xi`, `\pi`, `\varpi`, `\rho`, `\varrho`, `\sigma`, `\varsigma`, `\tau`, `\upsilon`, `\phi`, `\varphi`, `\chi`, `\psi`, `\omega` |
-| 大写希腊字母 | 11 | `\Gamma`, `\Delta`, `\Theta`, `\Lambda`, `\Xi`, `\Pi`, `\Sigma`, `\Upsilon`, `\Phi`, `\Psi`, `\Omega` |
-| 运算符 | 19 | `+`, `-`, `\times`, `\div`, `\cdot`, `\pm`, `\mp`, `\ast`, `\star`, `\circ`, `\bullet`, `\oplus`, `\ominus`, `\otimes`, `\odot`, `\dagger`, `\ddagger`, `\nabla`, `\partial` |
-| 关系 | 21 | `=`, `\neq`, `<`, `>`, `\leq`, `\geq`, `\ll`, `\gg`, `\approx`, `\sim`, `\simeq`, `\cong`, `\equiv`, `\propto`, `\prec`, `\succ`, `\preceq`, `\succeq`, `\perp`, `\parallel`, `\mid` |
-| 箭头 | 23 | `\leftarrow`, `\rightarrow`, `\uparrow`, `\downarrow`, `\leftrightarrow`, `\Leftarrow`, `\Rightarrow`, `\Uparrow`, `\Downarrow`, `\Leftrightarrow`, `\mapsto`, `\longmapsto`, `\longrightarrow`, `\longleftarrow`, `\hookrightarrow`, `\hookleftarrow`, `\nearrow`, `\searrow`, `\nwarrow`, `\swarrow`, `\rightleftharpoons`, `\leftharpoonup`, `\rightharpoonup` |
-| 集合论 | 19 | `\in`, `\notin`, `\ni`, `\subset`, `\supset`, `\subseteq`, `\supseteq`, `\cup`, `\cap`, `\bigcup`, `\bigcap`, `\setminus`, `\emptyset`, `\varnothing`, `\mathbb{N}`, `\mathbb{Z}`, `\mathbb{Q}`, `\mathbb{R}`, `\mathbb{C}` |
-| 逻辑 | 16 | `\forall`, `\exists`, `\nexists`, `\neg`, `\land`, `\lor`, `\wedge`, `\vee`, `\implies`, `\iff`, `\therefore`, `\because`, `\top`, `\bot`, `\vdash`, `\models` |
-| 微积分 | 18 | `\int`, `\iint`, `\iiint`, `\oint`, `\sum`, `\prod`, `\coprod`, `\lim`, `\infty`, `\nabla`, `\partial`, `\sqrt{}`, `\frac{}{}`, `\binom{}{}`, `\sup`, `\inf`, `\max`, `\min` |
-| 函数 | 19 | `\sin`, `\cos`, `\tan`, `\cot`, `\sec`, `\csc`, `\arcsin`, `\arccos`, `\arctan`, `\sinh`, `\cosh`, `\tanh`, `\log`, `\ln`, `\exp`, `\det`, `\dim`, `\ker`, `\arg` |
-| 括号 | 16 | `(`, `)`, `[`, `]`, `\{`, `\}`, `\langle`, `\rangle`, `\lfloor`, `\rfloor`, `\lceil`, `\rceil`, 竖线字符, `\|`, `\left( \right)`, `\left[ \right]` |
-| 重音 | 14 | `\hat{}`, `\bar{}`, `\tilde{}`, `\vec{}`, `\dot{}`, `\ddot{}`, `\acute{}`, `\grave{}`, `\breve{}`, `\check{}`, `\overline{}`, `\underline{}`, `\overbrace{}`, `\underbrace{}` |
-| 点和间距 | 13 | `\cdots`, `\ldots`, `\vdots`, `\ddots`, `\quad`, `\qquad`, `\,`, `\;`, `\!`, `\text{}`, `\mathrm{}`, `\mathbf{}`, `\mathcal{}` |
-| 其他 | 20 | `\hbar`, `\ell`, `\wp`, `\Re`, `\Im`, `\aleph`, `\angle`, `\triangle`, `\diamond`, `\square`, `\lozenge`, `\clubsuit`, `\diamondsuit`, `\heartsuit`, `\spadesuit`, `^{\circ}`, `\#`, `\$`, `\%`, `\&` |
-
-<div align="center">
-  <img src="../assets/readme/latex-symbols.png" alt="Oleafly LaTeX 符号面板，按类别搜索希腊字母、运算符、关系、箭头、集合论、逻辑、微积分、函数、括号、重音、间距和其他符号" width="100%" />
-</div>
-<p align="center"><em>按类别或名称搜索 236 个不重复的 LaTeX 命令，并在需要的位置插入它。</em></p>
-
-<div align="center">
-  <img src="../assets/readme/source-and-pdf.png" alt="Oleafly 同时展示手稿源文件和编译后的 PDF" width="100%" />
-</div>
-
-### 源文件视图和可视化视图
-
-源文件视图是规范表示形式。引擎支持时，可以为 LaTeX、Typst 或 Markdown 打开可视化编辑器，在页面化界面中编辑文字、公式、引文、表格和图形。数学公式、脚注、定理、图形、表格和颜色会渲染为原生的可编辑节点；粘贴的富文本和图像会转换为文档自身的标记，浮动工具栏可以直接编辑表格。源文件始终可供 Git、外部编辑器和手动编辑使用。
-
-页面级编辑适合使用可视化视图。需要精确控制命令、宏包、环境或版式时，返回源文件视图。
+开启云同步后，你的项目库项目和应用设置会从一台电脑跟随你到另一台电脑。每次下载在替换文件之前都会与对应记录核对，你打开着且有未保存更改的文件永远不会被覆盖。
 
 <p align="center">
-  <img src="../assets/readme/visual-editor.png" alt="Oleafly 可视化编辑器，展示页面化手稿、文件树和大纲" width="100%" />
+  <img src="../assets/readme/cloud-sync-dropbox.png" alt="Oleafly 云同步设置，显示 Dropbox 卡片和同步内容列表" width="100%" />
 </p>
 
-### 在本地校对正文
+- 两台电脑编辑同一个文件时，两个版本都会保留，并分别以写入它的电脑命名。
+- 一次删除项目的大部分内容时，项目会先被挂起，等你确认，因此一次误操作不会把各处的项目都清空。
+- 在另一台电脑上删除的文件会进入这台电脑的废纸篓，而不是直接消失。
+- 在新电脑上，Oleafly 会询问一次：保留这台电脑的设置，还是使用同步的设置。
 
-Hunspell 使用选定的词典包以及个人或项目词条进行拼写检查。Harper 通过面向文档的正文掩码检查语法和风格，因此命令、注释、数学内容和机器参数不会被当作普通英语句子处理。
+## 带上你的项目
 
-学术配置会避开与学术写作冲突的规则，每条发现都提供本地操作：替换、忽略（“暂时忽略”“在此项目中忽略”或“全局忽略”）或关闭该规则。设置会列出你关闭的规则，方便你重新开启。校对在本地运行，不需要 AI 提供商。
+正在从在线 LaTeX 编辑器迁移？在 Oleafly 中登录一次你的账户，选择想要的项目，它们就会连同文件、编译器和主文件一起迁移过来，可以直接编译。大学自己部署的服务器也同样适用。
 
-### 搜索整个项目
-
-从搜索面板搜索整个项目。项目索引连接源文件、标题、标签、引文、宏和被包含文件，让多文件学位论文比一堆编辑器标签更容易导航。
-
-### 主题、字体和禅模式
-
-编辑器可以为浅色模式和深色模式各设一个主题，并随应用一起切换。浅色主题有两个：暖白色的 Paper 和 One Light。“设置 > 外观 > 编辑器”中的“编辑器颜色”可以修改主题的任何颜色。颜色按角色分组，例如标题、命令、引文或数学公式，LaTeX、Typst 或 Markdown 示例会即时显示每处修改。Oleafly 会为每个主题分别保存你的修改，主题的导出和导入也会带上这些修改。
-
-应用和编辑器可以使用电脑上安装的任何字体，编辑器还可以设置字间距以及光标的宽度、高度、颜色和闪烁方式，也可以关闭光标所在行的高亮。Cmd+= 和 Cmd+- 可以缩放整个应用，包括编辑器和 PDF，Cmd+0 恢复到 100%（Windows 和 Linux 上为 Ctrl）。
-
-禅模式会隐藏工具栏、侧边栏、助手和终端，只留下编辑器。按 Ctrl+Cmd+Shift+F（Windows 和 Linux 上为 Shift+F11）开启，再按一次同样的快捷键或按两次 Escape 退出。
-
-## 使用 LaTeX、Typst 或 Markdown 编译
-
-Oleafly 将编译放在手稿旁边，并把编译器输出转换为与源文件关联的诊断。每个项目保留自己的引擎，编辑器、预览、SyncTeX、Preflight 和导出控件都遵循该引擎能做的事。新建、导入和转换的 LaTeX 项目会使用你在“设置 > 引擎”中选择的“默认编译引擎”。
-
-| 引擎 | 适合什么 | 重要细节 |
-| --- | --- | --- |
-| 使用 Tectonic 的 LaTeX | 便携、内置的 LaTeX 构建 | 随桌面应用提供；支持多文件项目、图像、引文、Biber（Linux ARM64 除外）、SyncTeX、独立图形编译，以及宏包可用时的缓存离线构建 |
-| 使用 `latexmk` 的 LaTeX | 需要完整系统 TeX 发行版的项目 | 使用 MacTeX、TeX Live、MiKTeX 或 TinyTeX，支持 `glossaries`、`makeidx`，以及自动选择的 XeLaTeX、LuaLaTeX 和用于日文的 upLaTeX 或 pLaTeX。在此电脑上允许外部命令后，`minted`、PythonTeX 和其他运行外部命令的宏包即可使用 |
-| Typst | 快速的现代文档写作 | 内置编译器，可输出 PDF、EPUB、PNG、SVG 和 HTML，并提供项目索引和引文。源文件与 PDF 同步需要 Typst 0.13 或以上版本，宏包已缓存或保存在项目中时可以离线构建。当前版本不提供独立图形编译 |
-| 使用 Pandoc 的 Markdown | 轻量写作和转换工作流 | Pandoc 随应用提供。它会将文档转换为 LaTeX，交由内置 Tectonic 排版，并可导出 Word、HTML、EPUB、PowerPoint、LaTeX、Typst 和纯文本 |
-
-LaTeX 项目打开时会进行兼容性扫描。如果项目超出内置引擎的能力，Oleafly 会说明差距，并指向适合的引擎或宏包。系统 TeX 默认阻止外部命令。为需要外部命令的项目选择系统 LaTeX 时，这一选择也会允许它们。编译被阻止时，编辑器上方的横幅会提供“允许外部命令”。这项许可只保存在这台电脑上，不会写入项目。
-
-内置 Biber sidecar 与 Tectonic 使用的 biblatex 版本匹配。编译日志会区分缺少 Biber 可执行文件、版本不匹配和普通 LaTeX 错误，帮助你选择正确的修复方式。
-
-<div align="center">
-  <img src="../assets/readme/compile-engines.png" alt="Oleafly 引擎设置，展示 LaTeX、Typst、Markdown 和受管理的 TeX 发行版" width="100%" />
-</div>
-
-## 在源文件旁阅读 PDF
-
-PDF 查看器内置在工作空间中，也可以在独立预览窗口中打开。较新的编译正在运行或失败时，它仍会保留最后一次接受的 PDF，因此一次错误编辑不会抹去上一个可读结果。重新编译后会保留你的阅读位置，高倍缩放时页面依然清晰。Cmd+Option+P（Ctrl+Alt+P）可以显示或隐藏编辑器旁的 PDF。
-
-你可以使用连续滚动或单页、双页模式。还可以缩放、适应宽度或高度、旋转、反色、搜索文档文本、跟随大纲、跳转页面、使用指定文件名下载，或在同一个界面查看编译日志。加密 PDF 会显示密码提示，而不是空白查看器。
-
-“跳转到 PDF”会从源文件跳到 PDF 中的对应位置，在 PDF 中点击则会回到源文件中的对应行。LaTeX 通过 SyncTeX 实现，Typst 0.13 及以上版本通过 Tinymist 语言服务器实现。Markdown 和较旧的 Typst 版本无法同步，因此不会显示这些控件。
-
-<div align="center">
-  <img src="../assets/readme/pdf-preview.png" alt="Oleafly 源文件编辑器旁的 PDF 预览" width="100%" />
-</div>
-
-## 文献与引文
-
-### 从正在写的句子开始搜索
-
-引文搜索会在一个界面中查询 arXiv、Semantic Scholar、Crossref、PubMed 和 OpenAlex；添加 Serper 密钥后，还会查询 Google Scholar。它会合并重复结果，保留元数据，并让你将参考文献保存到本地文献库。
-
-你也可以按 DOI、arXiv ID、URL 或标题查找引文。从 Zotero RDF、EndNote XML、RIS 或 BibTeX 导入现有文献库，或在“设置 > 集成”中连接 zotero.org 账户，再从参考文献面板导入整个文献库。项目索引提供引文键补全、参考文献导航、悬停详情，以及未定义引文、重复键和不完整书目元数据的诊断。
-
-在同一台电脑上打开 Zotero 7 或更高版本后，输入 `@` 和作者、标题、年份或键的一部分，即可在 LaTeX、Typst 或 Markdown 中引用整个 Zotero 文献库。Oleafly 会按文档已有的引用方式插入引文，并只把这一条目添加到项目的 `.bib`。安装了 Better BibTeX 时，键来自 Better BibTeX。`.bib` 中缺少的引文键会提供“从 Zotero 添加”，在 Zotero 中有改动的条目会提供“从 Zotero 更新”。关闭 Zotero 后，搜索仍会使用上次同步的内容，你也可以改为连接 zotero.org 账户。
-
-### 扫描文档，查找缺少支持的论述
-
-在文档模式中，Oleafly 会将当前选区或手稿拆分为正文段落，搜索配置的文献来源，排除已经在书目中的论文，并按 0 到 100 分排序。AI 提供商可以补充简短的支持 / 反对理由。关闭 AI 时，扫描使用本地启发式排序。
-
-你可以将结果保存到本地文献库，复制 BibTeX，或将选定条目追加到项目书目并插入引文。
-
-### 用两种声音审阅论文
-
-审阅模式可以使用配置好的 AI 提供商，以两种风格阅读当前文档或捕获的选区：
-
-- Friendly：先说明优点，再给出具体、建设性的建议。
-- Fire：严格模拟 Reviewer #2，压力测试主张、方法和证据。
-
-审阅是可选的助手操作，不能替代投稿要求或人类合作者。
-
-### 将研究文件夹放在手稿旁边
-
-关联数据集、来源库、分析文件夹或其他研究目录，而不必把它们移入项目。Oleafly 只读取这些关联文件夹，不会写入其中。它们不会参与编译、项目搜索或 Git；路径不可用时会显示明确的缺失或不可读状态。
-
-### 搜索实验室和截止日期
-
-工具库中的 Lab Search 使用 OpenAlex 列出的研究机构，并提供国家筛选以及机构、ROR 和 OpenAlex 记录链接。Conference Deadlines 可以搜索会议、按研究领域筛选并查看倒计时。截止日期数据随应用提供，并且可以刷新。大多数会议属于计算机科学，也有少数属于神经科学和物理学等领域。
-
-## 图形、公式和表格
-
-### Diagram Composer
-
-Diagram Composer 会先询问图表的用途：用于 LaTeX 的 TikZ、用于 Typst 的 fletcher 图表，或用于 Markdown 的 Mermaid 流程图。在画布上使用矩形、圆形、椭圆、菱形、文本、连接线、吸附、填充和边框颜色、撤销、重做、小地图以及明暗画布绘图。代码面板和绘图双向保持同步，画布无法绘制的代码会按原样保留。TikZ 图形可以单独编译，Typst 图表使用项目自己的 Typst 预览，Mermaid 使用应用自带的渲染器。
-
-保存的源文件保留图表模型，方便再次编辑；Diagram Composer 还可以导入 `.tikz`、`.tex`、`.typ`、`.mmd` 和 `.md` 文件。你可以在光标处插入代码，或将 PNG 和源文件保存到项目的 `figures` 文件夹。可选的 AI 修复可以帮助处理图形编译错误，支持视觉的模型也可以检查渲染结果并调整布局。
-
-<div align="center">
-  <img src="../assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer，在画布上编辑可修改的研究系统图" width="100%" />
-</div>
-
-### 公式和表格输出
-
-LaTeX to Image 工具会渲染公式并导出 PNG 或 SVG，也可以为 Word 复制 MathML 或 KaTeX HTML，它的 Typst 模式还可以复制 Typst 数学公式。Table to LaTeX 工具提供可视化行列编辑器并导出普通 LaTeX，CSV to Typst 和 Excel to Typst 则生成 Typst 表格。Image to LaTeX 和 Image to Typst 使用本地运行的视觉模型，从图像中转写公式、表格或可见文本。编辑器工具栏上的 Image to LaTeX 按钮则改用你配置的支持视觉的提供商。
-
-这些工具位于工具库中。工具库处于 beta 阶段，默认关闭（见下方的“工具库”）。开启后，也可以从命令面板以及应用显示的斜杠命令中使用这些工具。
-
-<div align="center">
-  <img src="../assets/readme/tools-gallery.png" alt="Oleafly 工具库，展示内置研究和文档工具目录" width="100%" />
-</div>
-
-## 在文档离开电脑前检查它
-
-Preflight 会读取源文件、项目结构、编译器日志和当前 PDF，将发现按问题分组，并显示每个结果的来源。检查可以一起或分别运行；缺少输入时会显示为不可用或部分完成，而不会被算作通过。Typst 项目有自己的源文件检查，覆盖未解决的引用和引文、缺少替代文本、文档元数据、缺少图像、隐私和匿名评审。Markdown 项目只进行编译日志和 PDF 检查。
-
-| 检查 | 检查内容 |
-| --- | --- |
-| 编译和版式 | 构建失败、未解决的引文和引用、重复运行警告、缺少字形、溢出盒、被裁剪文本、重复 PDF 目标和混合页面尺寸 |
-| 投稿准备 | 文档类、摘要、关键词、图形格式、嵌入字体、PDF 版本和限制、可移植文件名、图注和干净的源文件打包 |
-| ATS 准备 | 简历文本提取、联系字段、预期章节、页数和容易打乱申请人跟踪系统的版式 |
-| 无障碍 | 标签、替代文本、文档语言和标题、查看器设置、标题和表格结构、链接说明、阅读顺序、可选文本、书签和过小文字 |
-| 引用和资源 | 缺少文件、未定义引文和引用、重复标签和 DOI、不完整书目字段、未引用条目和缺少图形 |
-| 隐私和匿名评审 | 凭据、私钥、敏感文件、草稿标记、内部注释、作者字段、致谢和 PDF 身份元数据 |
-
-出版配置文件覆盖一般出版、arXiv、IEEE、ACM、其他期刊和学位论文。页边距、页数、文件大小规则和投稿说明仍应以投稿 venue 当前的作者指南为准。
-
-无障碍检查参考 PDF/UA、Matterhorn 和 WCAG，并报告 PDF/UA-1 中可由机器检查的部分。符合条件时，无障碍导出准备可以添加 LaTeX 元数据、表头声明和替代文本占位符。对于 Typst，导出准备提供 PDF/A 和 PDF/UA。
-
-Preflight 是机器检查集合，不是符合性证书。它无法判断替代文本是否有意义、阅读顺序是否合理或对比度是否足够。如需正式的无障碍符合性声明，请使用投稿 venue 要求的工具验证最终 PDF。
-
-<div align="center">
-  <img src="../assets/readme/preflight-accessibility.png" alt="Oleafly Preflight 展示可由机器检查的无障碍发现" width="100%" />
-</div>
-<p align="center"><em>在投稿前查看可由机器检查的无障碍问题，但不要把它误认为符合性声明。</em></p>
-
-## 管理版本并恢复工作
-
-### 像平常一样使用 Git 仓库
-
-Oleafly 使用普通 Git 仓库。Source Control 面板可以初始化仓库，显示统一或并排 diff，暂存文件，丢弃更改，提交、推送、拉取，并显示远程的领先或落后状态。你也可以将项目发布到 GitHub 或连接现有仓库。资源管理器会用相同的状态字母标记已更改的文件；如果没有安装 Git，Source Control 会说明如何获取。
-
-项目库中的项目在新建、导入或打开时会获得 Git 仓库，新建或导入的项目通常会先有一次“创建项目”提交。在设置中关闭“为每个项目初始化 Git”即可停用此行为。此后，保存、编译或关闭项目都不会创建提交。对于在原位置打开的文件夹，Oleafly 从不创建仓库。Oleafly 不会把源文件藏在终端之外，也不会为了隐藏自己的元数据而修改项目的 `.gitignore`。
+有了该账户的 Git 令牌，Oleafly 可以让导入的项目双向保持同步，留在线上的合作者可以照常工作。双向同步使用该服务自己的 Git 集成，需要项目所有者的账户使用付费方案或大学方案。
 
 <p align="center">
-  <img src="../assets/readme/source-control.png" alt="Oleafly Source Control 面板，展示暂存更改、分支图和提交控件" width="100%" />
+  <img src="../assets/readme/import-dialog.png" alt="Oleafly 导入项目对话框，提供本地文件、arXiv、GitHub 和在线 LaTeX 账户等选项" width="100%" />
 </p>
-<p align="center"><em>无需离开项目即可查看暂存更改、分支、历史和提交。</em></p>
 
-### 用检查点快速恢复
+你也可以从项目 ZIP、GitHub 仓库、Word 文档、arXiv 源码包，或由 Oleafly 重建为可编辑 LaTeX 的 PDF 开始。也可以直接在文件夹原来的位置打开它。
 
-成功编译后，Oleafly 可以保存项目的本地快照。检查点不会初始化仓库、创建提交或改变分支。你可以事务性地恢复旧状态，为重要版本添加标签，检查已保存文件，清理旧历史，或在加密归档中移动完整历史。
+## 在项目中工作的 AI 代理
 
-有意创建提交、分支、远程和协作时使用 Git。论文快速变化时，用检查点进行本地快速恢复。
+从目录中选择一个代理，它就会在你的项目中工作，源文件、PDF 和编译日志都触手可及。每个代理使用自己的账户登录，使用自己的模型。Oleafly 为它提供项目和周围的工具。
 
-<div align="center">
-  <img src="../assets/readme/checkpoints.png" alt="Oleafly 版本控制面板，展示已保存的检查点和 Git 历史" width="100%" />
-</div>
-
-## AI 是可选的
-
-关闭 AI 时，编辑器、编译器、PDF 预览、引文、校对和 Preflight 仍然可用。启用 AI 后，它使用与应用其他部分相同的项目文件和工具。
-
-### 让助手了解打开的项目
-
-配置提供商后，助手可以：
-
-- 在回答前读取项目文件或搜索项目。
-- 解释章节、公式、引文或编译错误。
-- 修改正文、创建文件、重命名文件和进行有针对性的替换。
-- 编译项目、读取日志、提取 PDF 文本，并在启用 PDF 捕获后检查渲染页面。
-- 搜索文献、验证 DOI、添加引文，并映射文档的标题、标签、引文、宏和文件关系。
-- 起草、编译、检查、修复和插入可编辑图形：LaTeX 中的 TikZ 或 PGFPlots，以及 Typst 中的 CeTZ 或 fletcher。
-
-每次文件改动都会生成可见 diff。在对话中选择批准模式：“请求批准”“替我批准”“完全访问权限”或“自定义”，其中“自定义”遵循 `approvals.toml` 中的规则。每轮结束后，会有一行显示更改了多少个文件。你可以审阅每项更改，撤销或重做单个文件，或撤销整轮更改。Plan 模式会先绘制项目地图，之后才允许助手写入、编译或运行命令。
-
-你可以连接托管提供商、OpenAI 兼容端点或本地 Ollama 模型。提供商凭据保存在应用管理的加密存储中，不会写入项目文件。应用会说明你选择的操作何时会发起托管请求。
+<p align="center">
+  <img src="../assets/readme/ai-agents.png" alt="Oleafly 中的 AI 代理正在修改 LaTeX 论文的一个章节，建议的更改以 diff 显示" width="100%" />
+</p>
 
 <div align="center">
-  <img src="../assets/readme/ai-personas.png" alt="Oleafly AI 助手角色选择，包含研究写作、文档编辑、批判性审阅和图形工作" width="100%" />
+<table>
+  <tr>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/anthropic" alt="" width="40" height="40" /><br />Claude&nbsp;Code</td>
+    <td align="center" valign="top" width="135"><img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="40" height="40" /><br />Codex&nbsp;CLI</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/googlegemini" alt="" width="40" height="40" /><br />Gemini&nbsp;CLI</td>
+    <td align="center" valign="top" width="135"><img src="https://pi.dev/favicon.svg" alt="" width="40" height="40" /><br />Pi</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/opencode" alt="" width="40" height="40" /><br />OpenCode</td>
+    <td align="center" valign="top" width="135"><img src="https://openclaw.ai/favicon.svg" alt="" width="40" height="40" /><br />OpenClaw</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/cline" alt="" width="40" height="40" /><br />Cline</td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="135"><img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="40" height="40" /><br />Hermes&nbsp;Agent</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/codebuddy" alt="" width="40" height="40" /><br />CodeBuddy</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/kimi" alt="" width="40" height="40" /><br />Kimi&nbsp;Code</td>
+    <td align="center" valign="top" width="135"><img src="https://grok.com/images/favicon.svg" alt="" width="40" height="40" /><br />Grok&nbsp;Build</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/cursor" alt="" width="40" height="40" /><br />Cursor</td>
+    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/deepseek" alt="" width="40" height="40" /><br />DeepSeek Harness</td>
+    <td align="center" valign="top" width="135"><img src="https://qoder.com/favIcon.svg" alt="" width="40" height="40" /><br />Qoder</td>
+  </tr>
+</table>
 </div>
-<p align="center"><em>根据手头的任务选择角色，从研究写作、文档编辑到批判性审阅和图形工作。</em></p>
+
+<p align="center"><sub>这些标志用于识别兼容工具，归其各自所有者所有，不表示任何背书。</sub></p>
+
+更喜欢聊天助手？可以连接托管提供商、任何 OpenAI 兼容端点或本地 Ollama 模型。
+
+- 每次文件更改都是一个 diff。你可以逐个批准，让助手自主工作，或按工具设置规则，也可以撤销单个文件或整轮更改。
+- Plan 模式会在写入任何内容之前先绘制项目地图。
+- 文献综述或修订可以在独立的 Git worktree 中运行，你可以继续写作。由你选择保留哪些更改过的文件。
+- 应用随附 36 个研究技能，包括文献检索、相关工作、主张核查和审稿回复信。
+- 本地 MCP 服务器让外部 AI 客户端可以使用相同的项目工具。它只监听 127.0.0.1。
+
+AI 是可选的。关闭 AI 时，编辑器、编译器、PDF、引文、校对和检查都照常工作。
+
+## LaTeX、Typst 和 Markdown，在你的电脑上编译
+
+Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何东西即可编译。项目需要完整的 TeX 发行版时，可以将它切换到 latexmk，配合 TeX Live、MacTeX、MiKTeX 或由 Oleafly 为你安装的 TinyTeX 使用。
+
+<p align="center">
+  <img src="../assets/readme/editor-and-pdf.png" alt="Oleafly 源文件编辑器与编译后的 PDF 并排显示，一条编译诊断链接到对应的源文件行" width="100%" />
+</p>
+
+- 在 PDF 中点击可跳到源文件，也可以再跳回来。LaTeX 使用 SyncTeX，Typst 0.13 或更高版本使用 Tinymist。
+- 编译错误会链接到导致错误的那一行，修复期间，最后一次成功的 PDF 会留在屏幕上。
+- 可视化模式让你在类似页面的视图中编辑，源文件只需一次点击。
+- 为整个项目中的标签、引文、命令、环境和文件路径提供补全和实时诊断。
+- 拼写和语法检查在本地运行，并针对学术写作进行了调校。
+- 支持 XeLaTeX、LuaLaTeX，以及用于日文文档的 upLaTeX 或 pLaTeX。
+
+## 引文、图形、检查和模板
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/citations.png" alt="在 Oleafly 编辑器中输入 @ 引用 Zotero 条目" width="100%" />
+      <h3>输入时即可从 Zotero 引用</h3>
+      输入 <code>@</code> 以及作者、标题或年份的一部分，即可从你的 Zotero 文献库引用。Oleafly 只会把这一条目添加到项目的 <code>.bib</code>。引文搜索覆盖 arXiv、Semantic Scholar、Crossref、PubMed 和 OpenAlex。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/diagrams.png" alt="Oleafly Diagram Composer，画布与 TikZ 代码并排显示" width="100%" />
+      <h3>绘制保留为代码的图形</h3>
+      Diagram Composer 在画布上绘图，并写出 TikZ、用于 Typst 的 fletcher 或 Mermaid。修改图形或代码，另一方会随之更新。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/preflight.png" alt="Oleafly Preflight 列出引用、图形和无障碍方面的发现" width="100%" />
+      <h3>投稿前先检查</h3>
+      Preflight 会找出断裂的引用、缺失的图形、未嵌入的字体、无障碍缺陷，以及任何会在匿名评审中暴露作者身份的内容。它提供适用于 arXiv、IEEE、ACM、期刊和学位论文的配置文件。
+    </td>
+    <td width="50%" valign="top">
+      <img src="../assets/readme/templates.png" alt="Oleafly 模板库，显示论文、学位论文和幻灯片的渲染预览" width="100%" />
+      <h3>从 1,700 多个模板开始</h3>
+      文章、学位论文、Beamer 演示、海报、简历和会议风格论文，每个模板在你创建项目之前都有渲染预览。
+    </td>
+  </tr>
+</table>
+
+## Git、历史和终端
+
+每个项目都是一个普通文件夹，里面是一个普通的 Git 仓库。在 Source Control 面板中暂存、查看 diff、提交、推送、拉取并发布到 GitHub，也可以使用你自己的终端，因为没有任何内容对它隐藏。每次成功编译后，检查点会保存一份本地快照，因此你无需提交也能回滚。
+
+<p align="center">
+  <img src="../assets/readme/git-history.png" alt="Oleafly Source Control 面板，显示 diff、分支图和提交控件" width="100%" />
+</p>
+
+编辑器下方有一个终端停靠栏，每个项目最多可以打开十个标签页。按住 Cmd 点击（Ctrl 点击）输出中的文件路径，即可在对应行打开该文件。
+
+## 还有更多
 
 <details>
-<summary>应用前查看编辑建议</summary>
+<summary>40 多个转换、引文和数学工具</summary>
 
-在“请求批准”模式下，阅读建议的文件 diff，并选择要应用的更改。在“自定义”模式下，“在此项目中始终允许”会为该工具保存一条允许规则。删除操作会单独显示，并可能需要明确确认。
+工具库处于 beta 阶段，默认关闭。可在“设置 > 实验功能 > LaTeX 工具”中开启。
 
-</details>
-
-### 将较长的研究任务单独运行
-
-为文献综述、证据审计、分析、手稿修订或回复审稿人启动任务。任务会在独立 Git worktree 或暂存副本中运行，你可以继续在原项目中工作。在 Windows 上，CLI 代理暂时无法运行这些任务，由 Oleafly 助手运行的任务也无法执行 shell 命令。在 macOS 上，Codex 无法运行这些任务。
-
-任务完成后，检查活动、输出和每一个更改文件。预览 diff，选择值得保留的文件，只应用这些文件。原项目在你应用经过审阅的结果之前不会改变。如果任务运行期间项目发生变化，Oleafly 会检测漂移，而不是把旧 diff 覆盖到较新的工作上。
-
-### 使用目录中的 CLI 代理
-
-目录包含 14 个 CLI 代理。每个代理使用自己的账户、权限和模型配置；Oleafly 提供项目上下文和周围的工作空间。在设置中，你还可以在 ACP 注册表中查找更多代理，或添加自定义代理。
-
-| 代理 | 命令 |
-| --- | --- |
-| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
-| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
-| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
-| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
-| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
-| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
-| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
-| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
-| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
-| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
-| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
-| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
-| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
-| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
-
-<small>这些标志用于识别兼容工具，归其各自所有者所有，不表示任何背书。</small>
-
-打开对话，在需要时通过代理自己的 CLI 登录，重新连接，查看工具活动，指导运行中的任务，停止任务，并在支持时将记录保留在项目会话中。权限请求会显示代理想要做出的更改。代理主页提供“文献检索”和“引用核查”等研究起点，你也可以将对话导出为 Markdown 或 JSON。
-
-CLI 代理支持处于 beta 阶段。设置会显示每个代理的安装准备状态、平台限制以及 Oleafly 找到的程序，并提供“测试”按钮。代理无法恢复已保存的会话时，对话中会告诉你。
-
-### 重用研究工作流和技能
-
-Oleafly 提供用于文献、写作、图形、审阅、投稿、交流和工具操作的技能。技能是遵循 Agent Skills 结构的普通 `SKILL.md` 文件夹。
-
-你可以用斜杠命令运行技能，添加自己的文件夹，从已完成的对话保存可重复的研究流程，或从领域技能库安装技能。技能也可以与同一台电脑上兼容的 CLI 代理共享。已经安装的技能可以继续离线工作。你可以搜索自己的技能和领域技能库，并将每个技能设为对所有项目启用，或只对当前打开的项目启用。
-
-### Oleafly 随附的技能
-
-内置的 `research-core` 软件包包含 36 个技能。下面的名称是目录和项目设置中使用的 ID。
-
-| 类别 | 技能 |
-| --- | --- |
-| 研究和文献 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
-| 手稿写作和分析 | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
-| 图形和可视化 | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
-| 审阅和证据 | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
-| 投稿 | `oleafly-pre-submission` |
-| 交流 | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| 导入和构建工具 | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
-
-<p align="center">
-  <img src="../assets/readme/skills.png" alt="Oleafly AI 助手技能面板，展示可重用的研究能力" width="100%" />
-</p>
-<p align="center"><em>把有用的研究流程变成可以重用并与兼容代理共享的技能。</em></p>
-
-### 通过 MCP 连接外部 AI 客户端
-
-Oleafly 可以为外部客户端运行本地 MCP 服务器。它向内置助手公开相同的项目工具：列出和读取文件、搜索项目、检查项目地图、编译、读取日志、提取 PDF 文本、预览图形，以及按照 Oleafly 的批准策略应用编辑。
-
-服务器只绑定到 `127.0.0.1`，使用可在设置中重新生成的 bearer token，并且只在 Oleafly 进程打开期间运行。只读模式会从工具列表中移除修改工具。外部客户端自带模型，因此通过此路径不需要在 Oleafly 中填写 AI API 密钥。
-
-助手也可以使用外部 MCP 服务器。你可以导入服务器的设置，或搜索 MCP 官方注册表，并在添加前检查条目。alphaXiv 通过 API 密钥连接，让助手可以搜索和阅读论文，并且每次调用前都会先询问你。
-
-## 工具库
-
-工具库处于 beta 阶段，默认关闭。在“设置 > 实验功能 > LaTeX 工具”中开启它，然后从全局搜索栏或命令面板打开。按名称、描述或斜杠命令搜索。需要网络或 AI 提供商的工具会在自己的面板中说明。
-
-### 用一个搜索框搜索整个工作空间
-
-按 Cmd+Shift+F（Windows 和 Linux 上为 Ctrl+Shift+F），即可在一个位置搜索项目和文档，打开设置，创建项目，切换主题，或启动工具。输入 `/` 可缩小到命令列表，写作时不必离开键盘。命令面板的快捷键是 Cmd+K（Ctrl+K），它只列出命令。按 Cmd+,（Ctrl+,）可以打开设置。
-
-<p align="center">
-  <img src="../assets/readme/command-palette.png" alt="Oleafly 搜索框，查找项目、文档、命令和工具" width="100%" />
-</p>
-
-### 导入和格式转换
+#### 导入和格式转换
 
 | 工具 | 用途 |
 | --- | --- |
@@ -477,7 +224,7 @@ Oleafly 可以为外部客户端运行本地 MCP 服务器。它向内置助手�
 | LaTeX to Image | 渲染公式并导出 PNG 或 SVG |
 | LaTeX to Markdown | 将 LaTeX 文档转换为可移植 Markdown |
 | LaTeX to Typst | 将 LaTeX 转换为可以复制、保存或打开为项目的 Typst 源码 |
-| LaTeX to Word | 创建带原生 Word 数学公式的 DOCX |
+| LaTeX to Word | 创建 Word 文档，公式以原生 Word 数学公式保存 |
 | Markdown to LaTeX | 将 Markdown 笔记转换为独立 LaTeX 文档 |
 | Markdown to Typst | 将 Markdown 笔记转换为 Typst 源码 |
 | Mermaid to LaTeX | 将 Mermaid 流程图转换为可编辑 TikZ 代码 |
@@ -499,16 +246,16 @@ Oleafly 可以为外部客户端运行本地 MCP 服务器。它向内置助手�
 | Word to Typst | 将 Word 文档转换为 Typst，并保留提取出的媒体文件 |
 | Word to LaTeX | 将 Word 文档转换为 LaTeX，并保留提取出的媒体文件 |
 
-### 数学、表格、写作和验证
+#### 数学、表格、写作和验证
 
 | 工具 | 用途 |
 | --- | --- |
-| BibTeX Validator | 检查 `.bib` 文件的语法错误、缺少字段和重复键 |
+| BibTeX Validator | 检查 `.bib` 文件的语法错误、缺少的必填字段和重复键 |
 | Statistics Calculators | 在本地计算 p 值、样本量和置信区间 |
-| Writing Generators | 根据打开的文档准备摘要、总结、改写或学位论文提纲 |
+| Writing Generators | 借助助手，根据打开的文档准备摘要、总结、改写或学位论文提纲 |
 | Symbol Reference | 浏览 LaTeX 符号，并在光标处插入符号；在 Typst 文件中则插入其 Typst 名称 |
 
-### 文献、参考资料和研究
+#### 文献、参考资料和研究
 
 | 工具 | 用途 |
 | --- | --- |
@@ -516,7 +263,7 @@ Oleafly 可以为外部客户端运行本地 MCP 服务器。它向内置助手�
 | arXiv Citation Generator | 查找 arXiv 论文，并按八种格式生成引文 |
 | Bibliography Generator | 根据结构化详情或 BibTeX 创建、验证、排序和导出书目 |
 | Citation Generator | 将文章详情或学术标识符转换为格式化引文和 BibTeX |
-| Citation Generators by Style | 比较 APA、MLA、Chicago、IEEE、Harvard、Vancouver、AMA 和 ACS 格式 |
+| Citation Generators by Style | 在 APA、MLA、Chicago、IEEE、Harvard、Vancouver、AMA 和 ACS 格式之间比较同一条参考文献 |
 | DOI to BibTeX | 获取 DOI 记录，检查字段，并导出 BibTeX |
 | ISBN to BibTeX | 获取 ISBN 书籍元数据，修正后导出 BibTeX |
 | PubMed to BibTeX | 根据 PMID 获取并检查 PubMed 记录，然后导出 BibTeX |
@@ -524,60 +271,89 @@ Oleafly 可以为外部客户端运行本地 MCP 服务器。它向内置助手�
 | Lab Search | 在 OpenAlex 目录中查找研究机构 |
 | Conference Deadlines | 筛选会议截止日期（大多属于计算机科学）并查看倒计时 |
 
-公式工作区还可以导出 PNG、SVG、用于 Word 的 MathML 或 KaTeX HTML，并提供 Typst 模式。Table to LaTeX 输出普通 LaTeX，CSV to Typst 和 Excel to Typst 输出 Typst 表格。Writing Generators 会为配置好的助手准备提示词，本身不提供模型。
+</details>
 
-命令面板还提供重新编译、自动编译、SyncTeX、PDF 导出、清理构建缓存、字数统计、Git 历史、检查点、终端、引文插入、格式助手、环境助手、主题控件、Vim 模式、禅模式、应用缩放、显示或隐藏 PDF 预览、拼写检查和离线模式。它还可以放映幻灯片、将 LaTeX 项目转换为 Typst、浏览 LaTeX 和 Typst 宏包、打开“文档分析”和“文档设置”，关闭所有编辑器标签页或只关闭助手打开的文件，以及从 Zotero 添加缺失的引用、从 Zotero 更新 `.bib` 条目或同步 Zotero 库。
+<details>
+<summary>Oleafly 随附的 36 个研究技能</summary>
 
-## 在论文旁边使用终端
+技能是遵循 Agent Skills 结构的普通 `SKILL.md` 文件夹。你可以用斜杠命令运行技能，添加自己的技能，或与同一台电脑上兼容的 CLI 代理共享。
 
-在不离开工作空间的情况下，为当前项目打开 shell 标签页。每个项目最多可以打开十个终端会话。你可以重命名和设置标签颜色，关闭一个或多个会话，并让这些标签名称随项目保存。
+内置的 `research-core` 软件包包含 36 个技能。下面的名称是目录和项目设置中使用的 ID。
 
-可以使用标签页运行脚本、检查数据集、查看生成文件或使用其他 CLI 工具。它就是你的 shell，命令可以访问你选择的同一个项目目录。输出中的文件路径和网址都是链接。按住 Cmd 点击（Windows 和 Linux 上按住 Ctrl 点击）即可打开：项目文件会跳到输出中指明的行和列，PDF 或图像会在其查看器中打开，网址会在浏览器中打开。
-
-<p align="center">
-  <img src="../assets/readme/project-terminal.png" alt="Oleafly 手稿项目旁打开的终端" width="100%" />
-</p>
-<p align="center"><em>在不离开编辑器和 PDF 工作空间的情况下，在终端标签页中运行项目命令。</em></p>
-
-## 用于 computer-use 任务的浏览器
-
-内置浏览器处于 beta 阶段，默认关闭。可在“设置 > 实验功能 > 网页浏览器”中开启。它以独立的系统窗口打开，带有标签页、地址栏、导航控件和隔离的内容 webview。它主要用于 computer-use：代理可以打开 URL 并等待页面加载，而你继续在主窗口中处理手稿。
-
-computer-use 工具不能读取、捕获、点击或脚本化页面内容。远程页面不会获得 Oleafly IPC 访问权，外部导航遵循当前批准策略。需要可搜索元数据或引文时，请使用文献工具。
-
-## 常见研究工作流
-
-| 使用场景 | Oleafly 如何帮助 |
+| 类别 | 技能 |
 | --- | --- |
-| 第一篇论文 | 从文章模板开始，在大纲可见的情况下写作，并持续编译 |
-| 学位论文或博士论文 | 在一个带索引的项目中保存章节、图形、参考文献和附录，并用检查点恢复 |
-| 文献综述 | 搜索来源，扫描段落中缺少的支持，保存元数据，并用研究技能组织证据 |
-| 可复现分析 | 以只读方式关联数据和分析文件夹，将手稿分开，并用终端运行项目命令 |
-| 会议论文 | 使用面向 venue 的模板、SyncTeX、图形和表格工具以及投稿前检查 |
-| Beamer 演示或海报 | 从演示或海报模板开始，导出支持的格式，并从编译后的 PDF 放映，可选用演示者视图 |
-| 书籍或长篇报告 | 使用多文件源代码树、大纲、项目级引用、PDF 导航，并在支持时导出 EPUB |
-| 简历或 CV | 使用简历模板、本地校对、PDF 文本提取和 ATS 准备检查 |
-| 多语言手稿 | 需要 XeLaTeX 或 LuaLaTeX 时，选择模板的 Unicode 引擎和系统字体 |
-| 实验室或团队助手 | 使用隔离的研究任务、CLI 代理或带批准控件的 localhost MCP 服务器 |
+| 研究和文献 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| 手稿写作和分析 | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
+| 图形和可视化 | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
+| 审阅和证据 | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
+| 投稿 | `oleafly-pre-submission` |
+| 交流 | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
+| 导入和构建工具 | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
-## 下载 Oleafly
+</details>
 
-永久免费 · 开源 · 无需账户 · 无需注册 · 无跟踪
+<details>
+<summary>编辑器细节</summary>
+
+- 包含 236 个 LaTeX 符号的可搜索面板，在 Typst 文件中会插入 Typst 名称。
+- Vim 和 Emacs 键位、多文件标签页、代码折叠、跨项目搜索和替换，以及字数统计。
+- 重命名或移动文件时，Oleafly 会更新指向它的路径。
+- 浅色和深色模式的主题、任何已安装的字体、可编辑的语法颜色，以及禅模式。
+- 界面提供 21 种语言。
+- 命令面板的快捷键是 Cmd+K（Ctrl+K），按 Cmd+Shift+F（Ctrl+Shift+F）则可在一个搜索框中查找项目、文档、设置和工具。
+
+</details>
+
+## 开始使用
+
+1. 为你的电脑[下载 Oleafly](https://github.com/Oleafly/Oleafly/releases/latest)。
+2. 从模板创建项目、导入项目，或打开你已有的文件夹。
+3. 按 Cmd+Enter（Windows 和 Linux 上为 Ctrl+Enter）编译。
+4. 要与他人一起写作，点击**共享**，将项目发送到你实验室的 Oleafly Server。
 
 | 平台 | 软件包 | 下载 |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![下载 macOS 版](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![下载 macOS 版（Apple Silicon）](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版（x86_64）](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版（ARM64）](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-桌面应用包含用于 LaTeX 的 Tectonic、Typst 编译器，以及用于 Markdown 构建和文档转换的 Pandoc。内置引擎已具备所需宏包时，LaTeX 可以离线构建；宏包已缓存或保存在项目中时，Typst 也可以离线构建。
+在 x86_64 上，Linux 软件包需要 glibc 2.35 或更高版本（Ubuntu 22.04 或更高版本）。ARM64 软件包在 Ubuntu 24.04 上构建。发行版包含签名的更新产物，应用内更新器会在安装任何内容之前验证签名。
 
-在 x86_64 上，Linux 软件包需要 glibc 2.35 或更高版本（Ubuntu 22.04 或更高版本）。ARM64 软件包在 Ubuntu 24.04（glibc 2.39）上构建。发行版包含签名的更新产物，应用内更新器会在安装前验证签名。[发行说明](https://github.com/Oleafly/Oleafly/releases/latest)会说明每个安装程序包含的内容。
+## 常见问题
+
+<details>
+<summary>我需要账户吗？</summary>
+
+不需要 Oleafly 账户。你无需登录任何服务就能写作、编译和使用 Git。实时协作会通过 GitHub 或你所在大学的登录方式让你登录实验室的服务器，云同步则会登录你的云存储。
+
+</details>
+
+<details>
+<summary>可以离线使用吗？</summary>
+
+可以。写作、编译、PDF、校对、Preflight、Git 和检查点都在你的电脑上运行。内置引擎具备所需宏包后，LaTeX 可以离线构建，Typst 则在宏包缓存后可以离线构建。共享项目会保留你的编辑，并在重新连接后合并。
+
+</details>
+
+<details>
+<summary>哪些内容会经过网络？</summary>
+
+只有你请求的内容：与你的服务器共享、云同步、文献和 DOI 查询、GitHub、托管 AI 提供商、你连接的 MCP 服务器，以及可选的引擎、宏包和模板下载。发布版本还会在应用启动时检查更新。本地 Ollama 模型会让 AI 通信留在你的电脑上。
+
+</details>
+
+<details>
+<summary>我的大学或公司可以托管服务器吗？</summary>
+
+可以，这正是它的设计初衷。Oleafly Server 运行在你自己的机器或云账户上，通过 GitHub 或任何 OpenID Connect 提供商让用户登录，并将文件存储在磁盘或 S3 兼容存储中。[服务器指南](https://github.com/Oleafly/oleafly-server)介绍了安装、备份和角色。
+
+</details>
 
 ## 了解更多
 
 - [产品指南](https://oleafly.com/docs/)
+- [Oleafly Server](https://github.com/Oleafly/oleafly-server)
 - [功能地图](../features.md)
 - [编辑器指南](../Editor.md)
 - [PDF 预览](../PDFPreview.md)
@@ -592,10 +368,7 @@ computer-use 工具不能读取、捕获、点击或脚本化页面内容。远�
 - [技能](../Skills.md)
 - [MCP 集成](../mcp.md)
 - [开发设置](../development.md)
-
-## 当前版本
-
-Oleafly 仍处于 beta。此版本尚未提供实时共同编辑、评论和跨设备后台同步。Markdown 目前还不提供源文件与 PDF 同步或源文件 Preflight 检查，Typst 同步需要 Typst 0.13 或更高版本。请在应用中查看当前引擎，并关注[更新日志](../../CHANGELOG.md)的变化。
+- [更新日志](../../CHANGELOG.md)
 
 ## 社区与支持
 
@@ -613,7 +386,7 @@ Oleafly 由 [Prajwal Murthy](https://github.com/prajwal-svm) 和贡献者共同�
 ```bibtex
 @software{oleafly,
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
-  title   = {Oleafly: a local-first desktop workspace for research writing},
+  title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
   version = {0.4.6},
   url     = {https://github.com/Oleafly/Oleafly},
