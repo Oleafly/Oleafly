@@ -1101,6 +1101,52 @@ fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
     assert!(!super::lock(&active.live).is_open(&second.file_id));
 }
 
+#[derive(Default)]
+struct FullHost(Mutex<Vec<super::payloads::ProjectFullPayload>>);
+
+impl LiveHost for FullHost {
+    fn status(&self, _: StatusPayload) {}
+    fn role(&self, _: RolePayload) {}
+    fn merged(&self, _: MergedPayload) {}
+    fn presence(&self, _: PresencePayload) {}
+    fn presence_left(&self, _: PresenceLeftPayload) {}
+    fn folder_changed(&self, _: FolderChange) {}
+    fn new_device(&self, _: NewDevicePayload) {}
+    fn project_full(&self, payload: super::payloads::ProjectFullPayload) {
+        guard(&self.0).push(payload);
+    }
+}
+
+#[test]
+fn a_full_project_reaches_the_window_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let host = Arc::new(FullHost::default());
+    let rig = write::rig::LiveRig::heard_by(
+        "full",
+        &root,
+        &[("main.tex", "abc")],
+        Arc::clone(&host) as Arc<dyn LiveHost>,
+    );
+    super::pump::on_project_full(&rig.active());
+    let heard = guard(&host.0).clone();
+    assert_eq!(
+        heard,
+        vec![super::payloads::ProjectFullPayload {
+            project_id: "full".to_owned(),
+        }]
+    );
+    assert_eq!(
+        serde_json::to_value(&heard[0]).unwrap(),
+        serde_json::json!({ "projectId": "full" })
+    );
+    assert_eq!(
+        super::payloads::PROJECT_FULL_EVENT,
+        "collab-live-project-full"
+    );
+}
+
 #[test]
 fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
     let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
