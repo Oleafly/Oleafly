@@ -49,7 +49,17 @@ fn write_back(root: &Path, live: &LiveProject, disk: &mut DiskState, bases: &mut
         .map(|(_, placed)| placed.path.clone())
         .collect();
     let plan = materialize::plan(&disk.layout, &next);
-    let pass = apply_to_disk(root, disk, bases, plan, next, &texts, &crlf, &|_| false).unwrap();
+    let pass = apply_to_disk(
+        root,
+        disk,
+        bases,
+        plan,
+        next,
+        &texts,
+        &crlf,
+        &super::disk_pass::NOTHING_LEFT,
+    )
+    .unwrap();
     assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
 }
 

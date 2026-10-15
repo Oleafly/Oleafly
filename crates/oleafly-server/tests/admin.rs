@@ -9,11 +9,12 @@ use oleafly_collab_protocol::admin::{
 use oleafly_collab_protocol::auth::DeviceSummary;
 use oleafly_collab_protocol::capabilities::CapabilityManifest;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
+use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::clock::Clock;
 use oleafly_server::security_log::{self, NewSecurityEvent};
 use oleafly_server::test_support::{seed_member, test_app, test_app_with, SeededMember, TestApp};
-use oleafly_server::{members, tokens};
+use oleafly_server::{members, projects, tokens};
 use serde_json::{json, Value};
 use support::Reply;
 
@@ -509,6 +510,89 @@ async fn suspending_a_member_signs_out_every_device() {
         support::send_get(router, MEMBERS, token(&member)).await,
         StatusCode::UNAUTHORIZED,
     );
+}
+
+#[tokio::test]
+async fn making_someone_active_again_is_refused_while_their_project_is_full() {
+    let app = test_app_with(support::config_with(&[(
+        "OLEAFLY_MAX_MEMBERS_PER_PROJECT",
+        "2",
+    )]))
+    .await;
+    let router = &app.router;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let bob = seed_member(&app, ServerRole::Member).await;
+    let carol = seed_member(&app, ServerRole::Member).await;
+    let now = app.clock.now_ms();
+    let (by, bob_id, carol_id) = (owner.account_id, bob.account_id, carol.account_id);
+    let project = app
+        .state
+        .db
+        .call(move |conn| {
+            let project = projects::create_pending(conn, by, "Reef survey", now)?;
+            projects::set_status(conn, project, ProjectStatus::Active, now)?;
+            projects::grant(conn, project, bob_id, ProjectRole::Editor, by, now)?;
+            Ok(project)
+        })
+        .await
+        .expect("a shared project");
+    expect_status(
+        support::send_patch(
+            router,
+            &member_path(bob_id),
+            token(&admin),
+            status_patch(MemberStatus::Suspended),
+        )
+        .await,
+        StatusCode::OK,
+    );
+    app.state
+        .db
+        .call(move |conn| projects::grant(conn, project, carol_id, ProjectRole::Editor, by, now))
+        .await
+        .expect("carol takes the free seat");
+    let refused = expect_status(
+        support::send_patch(
+            router,
+            &member_path(bob_id),
+            token(&admin),
+            status_patch(MemberStatus::Active),
+        )
+        .await,
+        StatusCode::CONFLICT,
+    );
+    assert_eq!(refused.body["code"], "project_full");
+    assert!(
+        refused.body["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("Reef survey")),
+        "{}",
+        refused.body
+    );
+    let still = app
+        .state
+        .db
+        .call(move |conn| members::account_status(conn, bob_id))
+        .await
+        .expect("status");
+    assert_eq!(still, Some(MemberStatus::Suspended));
+    app.state
+        .db
+        .call(move |conn| projects::revoke(conn, project, carol_id).map(|_| ()))
+        .await
+        .expect("carol leaves");
+    let back: MemberSummary = parse(expect_status(
+        support::send_patch(
+            router,
+            &member_path(bob_id),
+            token(&admin),
+            status_patch(MemberStatus::Active),
+        )
+        .await,
+        StatusCode::OK,
+    ));
+    assert_eq!(back.status, MemberStatus::Active);
 }
 
 #[tokio::test]

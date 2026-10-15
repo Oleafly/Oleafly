@@ -112,3 +112,74 @@ async fn a_change_that_makes_the_decoder_panic_is_skipped_and_the_session_carrie
     assert!(!lock(&restarted.live).damaged());
     stopped(&mut restarted).await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_panic_on_a_desktop_thread_ends_the_live_session_as_failed() {
+    let pair = two_people().await;
+    let (project, main, bob_live, _alice_live) = shared(&pair).await;
+    let mut bob = side(bob_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    let outcome: Result<(), crate::CollabError> =
+        lock(&bob.live).guarded(|_| panic!("a desktop thread failed in Loro"));
+    assert!(outcome.is_err());
+    flushed(&bob);
+    until_status(
+        &mut bob,
+        LiveStatus::Ended {
+            reason: EndReason::Failed,
+        },
+    )
+    .await;
+    assert!(lock(&bob.live).damaged());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_thread_that_panics_while_it_holds_the_project_ends_the_live_session_as_failed() {
+    let pair = two_people().await;
+    let (project, main, bob_live, _alice_live) = shared(&pair).await;
+    let mut bob = side(bob_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    let held = Arc::clone(&bob.live);
+    let panicked = std::thread::spawn(move || {
+        let _live = held.lock().unwrap();
+        panic!("a desktop thread failed while it held the project");
+    })
+    .join();
+    assert!(panicked.is_err());
+    assert!(bob.live.is_poisoned());
+    flushed(&bob);
+    until_status(
+        &mut bob,
+        LiveStatus::Ended {
+            reason: EndReason::Failed,
+        },
+    )
+    .await;
+    assert!(!bob.live.is_poisoned());
+    assert!(lock(&bob.live).damaged());
+}
+
+#[tokio::test]
+async fn once_the_app_has_left_too_many_broken_documents_a_failed_session_says_to_restart() {
+    let pair = two_people().await;
+    let (project, main, bob_live, _alice_live) = shared(&pair).await;
+    let mut bob = side(bob_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+        crate::doc::leave_in_memory(Vec::<u8>::new());
+    }
+    let outcome: Result<(), crate::CollabError> =
+        lock(&bob.live).guarded(|_| panic!("a desktop thread failed in Loro"));
+    assert!(outcome.is_err());
+    flushed(&bob);
+    until_status(
+        &mut bob,
+        LiveStatus::Ended {
+            reason: EndReason::EngineSpent,
+        },
+    )
+    .await;
+}

@@ -686,7 +686,7 @@ async fn join_into(
         }))
         .await?;
     let seq = verified.seq;
-    let doc = ProjectDoc::load(&verified.bytes)?;
+    let doc = ProjectDoc::load_contained(&verified.bytes)?;
     let layout = materialize::layout(&doc.nodes()?);
     let mut staged = Staged {
         dirs: Vec::new(),

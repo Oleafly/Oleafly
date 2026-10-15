@@ -72,13 +72,18 @@ pub(super) fn owe(active: &Active, from: &str, id: &str, due_in: std::time::Dura
 }
 
 impl Active {
-    pub(super) fn settle_owed_moves(&self) {
+    // Tries the owed moves that are due and returns the nodes that moved.
+    // Scans skip a path while its move is owed, so the caller reads those
+    // nodes again once the disk matches the document: an edit made to them
+    // in the meantime then reaches it.
+    pub(super) fn settle_owed_moves(&self) -> Vec<String> {
         let now = Instant::now();
-        let (moved, next, alarm) = {
+        let (moved, ids, next, alarm) = {
             let mut disk = guard(&self.disk);
             if disk.owed.is_empty() {
-                return;
+                return Vec::new();
             }
+            let owed = disk.owed.clone();
             let mut tries = guard(&self.upkeep.owed);
             let mut bases = guard(&self.bases);
             let before = disk.owed.len();
@@ -86,12 +91,25 @@ impl Active {
             if disk.owed.len() != before {
                 self.save_index_if_changed(&disk);
             }
-            (moved, next, tries.alarm.clone())
+            let ids = moved
+                .iter()
+                .filter_map(|(from, _)| owed.get(from).cloned())
+                .collect();
+            (moved, ids, next, tries.alarm.clone())
         };
         self.announce_new_names(moved);
         if let Some(next) = next {
             alarm.ring_in(&self.writer, next.saturating_duration_since(now));
         }
+        ids
+    }
+
+    // Where the given nodes are on disk now.
+    pub(super) fn written_at(&self, ids: &[String]) -> Vec<String> {
+        let disk = guard(&self.disk);
+        ids.iter()
+            .filter_map(|id| disk.layout.get(id).map(|placed| placed.path.clone()))
+            .collect()
     }
 
     // Texts whose node sits where an owed move goes wait until the move is

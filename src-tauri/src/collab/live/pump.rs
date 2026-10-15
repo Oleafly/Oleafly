@@ -178,6 +178,7 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
         let _ = active.write_out().await;
         active.close_figures();
         active.save_now();
+        active.announce_written();
         if matches!(
             reason,
             EndReason::Removed | EndReason::Archived | EndReason::AccessEnded

@@ -15,7 +15,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
 use super::bases::WrittenTexts;
-use super::disk_pass::{apply_to_disk, DiskPass};
+use super::disk_pass::{apply_to_disk, DiskPass, LeftAlone};
 use super::host::LiveHost;
 use super::import::{import_renaming, placed_now, scan_local};
 use super::payloads::StatusPayload;
@@ -93,6 +93,9 @@ pub(super) struct Upkeep {
     pub(super) figures: Mutex<super::downloads::Figures>,
     pub(super) figures_closed: AtomicBool,
     pub(super) owed: Mutex<super::owed::OwedTries>,
+    // Files written while the window had them open, which it isn't told
+    // about then, so it is told how they are on disk when the session stops.
+    pub(super) unannounced: Mutex<BTreeSet<String>>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -191,7 +194,16 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        let failed = uploads::send(&self.link, &self.root, &import.blobs, self.online()).await;
+        let progress =
+            |path: &str| uploads::progress_for(Arc::clone(&self.host), &self.project_id, path);
+        let failed = uploads::send(
+            &self.link,
+            &self.root,
+            &import.blobs,
+            self.online(),
+            &progress,
+        )
+        .await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         self.announce_uploads();
         let (changed, renamed) = {
@@ -231,7 +243,7 @@ impl Active {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
-        self.settle_owed_moves();
+        let followed = self.settle_owed_moves();
         let (mut previous, hashes, owed) = {
             let disk = guard(&self.disk);
             (disk.layout.clone(), disk.hashes.clone(), disk.owed_paths())
@@ -248,7 +260,7 @@ impl Active {
             if self.save_owed() && self.save_due(urgent) {
                 self.save_document().await;
             }
-            return Ok(Vec::new());
+            return Ok(self.written_at(&followed));
         };
         if copied {
             self.handle.flush();
@@ -270,12 +282,13 @@ impl Active {
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
-        let blocked = |path: &str| {
-            shaped.blocks(path)
-                || owed
-                    .iter()
-                    .any(|held| crate::collab::disk::inside(path, held))
+        let owed_here = |path: &str| {
+            owed.iter().any(|held| {
+                crate::collab::disk::inside(path, held) || crate::collab::disk::inside(held, path)
+            })
         };
+        let blocked = |path: &str| shaped.blocks(path) || owed_here(path);
+        let pinned = |path: &str| shaped.pins(path) || owed_here(path);
         let DiskPass {
             mut changed,
             mut conflicts,
@@ -285,13 +298,24 @@ impl Active {
             written,
             done,
             mut failed,
+            waiting,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
+            let left = LeftAlone {
+                blocked: &blocked,
+                pinned: &pinned,
+            };
             apply_to_disk(
-                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
+                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &left,
             )?
         };
+        if !waiting.is_empty() {
+            let mut live = lock(&self.live);
+            for id in &waiting {
+                live.mark_dirty(id);
+            }
+        }
         failed.extend(still_held);
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
@@ -320,6 +344,7 @@ impl Active {
         self.want_figures(blobs);
         let typed_here = self.open_texts(&layout, &written, &moved);
         changed.retain(|path| !typed_here.contains(path));
+        self.note_unannounced(&typed_here, &changed, &moved, &removed);
         if !changed.is_empty() || structural {
             self.host.folder_changed(FolderChange {
                 project_id: self.project_id.clone(),
@@ -335,21 +360,33 @@ impl Active {
                 settings::schedule(&active);
             }
         }
-        Ok(conflicts)
+        let mut reread = conflicts;
+        reread.extend(self.written_at(&followed));
+        Ok(reread)
     }
 
+    // Reads what the document has for the disk. The reads go through
+    // `guarded`, so a panic in the document engine ends the session as
+    // failed instead of leaving the project mutex poisoned.
     fn take_outgoing(
         &self,
         previous: &mut Layout,
         hashes: &BTreeMap<String, String>,
     ) -> Result<Option<Outgoing>, CollabError> {
-        let mut live = lock(&self.live);
+        lock(&self.live).guarded(|live| Self::outgoing_from(live, previous, hashes))
+    }
+
+    fn outgoing_from(
+        live: &mut LiveProject,
+        previous: &mut Layout,
+        hashes: &BTreeMap<String, String>,
+    ) -> Result<Option<Outgoing>, CollabError> {
         let work = live.take_disk_work();
         if work.is_empty() {
             return Ok(None);
         }
         let lost = if work.tree {
-            kept::keep_lost_figures(&mut live, previous, hashes)?
+            kept::keep_lost_figures(live, previous, hashes)?
         } else {
             Vec::new()
         };
@@ -357,7 +394,7 @@ impl Active {
         let nodes = live.doc().nodes()?;
         let next = materialize::layout(&nodes);
         let kept = if work.tree {
-            kept::notices(&live, &nodes, previous, &next, lost)
+            kept::notices(live, &nodes, previous, &next, lost)
         } else {
             Vec::new()
         };
@@ -409,6 +446,81 @@ impl Active {
             })
             .map(|(_, placed)| placed.path.clone())
             .collect()
+    }
+
+    fn note_unannounced(
+        &self,
+        typed_here: &BTreeSet<String>,
+        told: &BTreeSet<String>,
+        moved: &[(String, String)],
+        removed: &[String],
+    ) {
+        let mut unannounced = guard(&self.upkeep.unannounced);
+        if unannounced.is_empty() && typed_here.is_empty() {
+            return;
+        }
+        let kept = std::mem::take(&mut *unannounced);
+        *unannounced = kept
+            .into_iter()
+            .filter(|path| {
+                !told.contains(path)
+                    && !removed
+                        .iter()
+                        .any(|gone| crate::collab::disk::inside(path, gone))
+            })
+            .map(|path| {
+                moved
+                    .iter()
+                    .find_map(|(from, to)| crate::collab::disk::moved_key(&path, from, to))
+                    .unwrap_or(path)
+            })
+            .collect();
+        unannounced.extend(typed_here.iter().cloned());
+    }
+
+    // When a session stops, the window takes the files it has open back as
+    // plain files on disk. It wasn't told when the session wrote them, so it
+    // hears how each one is on disk now, and stopping never looks like a
+    // change made outside. A file changed outside since the session wrote it
+    // is left out, so that change still shows.
+    pub(super) fn announce_written(&self) {
+        let paths = std::mem::take(&mut *guard(&self.upkeep.unannounced));
+        if paths.is_empty() {
+            return;
+        }
+        let known: Vec<(String, String)> = {
+            let disk = guard(&self.disk);
+            paths
+                .into_iter()
+                .filter_map(|path| {
+                    let hash = disk.hashes.get(&path)?.clone();
+                    Some((path, hash))
+                })
+                .collect()
+        };
+        let files: Vec<super::payloads::WrittenFile> = known
+            .into_iter()
+            .filter_map(|(path, hash)| {
+                let target = crate::collab::disk::safe_target(&self.root, &path)?;
+                let bytes = std::fs::read(target).ok()?;
+                if crate::collab::disk::sha256_hex(&bytes) != hash {
+                    return None;
+                }
+                let text = std::str::from_utf8(&bytes).ok()?;
+                Some(super::payloads::WrittenFile {
+                    hash: super::payloads::window_hash(&bytes),
+                    crlf: crate::collab::disk::crlf_only(&bytes) == Some(true),
+                    length: text.encode_utf16().count(),
+                    path,
+                })
+            })
+            .collect();
+        if !files.is_empty() {
+            self.host.written(super::payloads::WrittenPayload {
+                project_id: self.project_id.clone(),
+                files,
+            });
+        }
     }
 
     pub(super) fn announce_new_names(&self, renamed: Vec<(String, String)>) {
@@ -501,9 +613,11 @@ pub(super) async fn writer_loop(
         let Some(active) = active.upgrade() else {
             return;
         };
-        if let Ok(conflicts) = active.write_out_paced(!waiters.is_empty()).await {
-            if !conflicts.is_empty() {
-                let _ = active.import_paths(Some(conflicts)).await;
+        // A pass returns the paths to read again: conflicts, and files that
+        // just finished an owed move.
+        if let Ok(reread) = active.write_out_paced(!waiters.is_empty()).await {
+            if !reread.is_empty() {
+                let _ = active.import_paths(Some(reread)).await;
             }
         }
         for done in waiters {

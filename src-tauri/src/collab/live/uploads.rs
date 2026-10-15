@@ -4,15 +4,19 @@ use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use oleafly_collab::sync::{LiveLink, LiveStatus};
-use oleafly_collab::CollabError;
+use oleafly_collab::{CollabError, TransferProgress};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use serde::Serialize;
 
-use super::{active_for, guard, not_live, Active};
+use super::{active_for, guard, not_live, Active, LiveHost};
 use crate::collab::commands::{with_access, CollabCommandError};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
+pub const UPLOAD_PROGRESS_EVENT: &str = "collab-upload-progress";
+// The window hears how far a figure's upload got at most this often, and
+// once more when it has all been sent.
+const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 const MEBIBYTE: u64 = 1024 * 1024;
 const CHECK_ABOVE: u64 = 4 * MEBIBYTE;
 const FIRST_RETRY: Duration = Duration::from_secs(2);
@@ -43,6 +47,44 @@ pub struct UploadFile {
 pub struct UploadsPayload {
     pub project_id: String,
     pub files: Vec<UploadFile>,
+}
+
+// How many of a figure's bytes have gone up so far.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadProgress {
+    pub project_id: String,
+    pub path: String,
+    pub done: u64,
+    pub total: u64,
+}
+
+// Tells the window how a figure's upload goes, a few times a second at
+// most, since the sync engine reports every 64 KiB.
+pub(super) fn progress_for(
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    path: &str,
+) -> TransferProgress {
+    let (project_id, path) = (project_id.to_owned(), path.to_owned());
+    let told: Mutex<Option<Instant>> = Mutex::new(None);
+    Arc::new(move |done, total| {
+        let now = Instant::now();
+        {
+            let mut told = guard(&told);
+            let due = told.is_none_or(|at| now.duration_since(at) >= PROGRESS_EVERY);
+            if !due && done < total {
+                return;
+            }
+            *told = Some(now);
+        }
+        host.upload_progress(UploadProgress {
+            project_id: project_id.clone(),
+            path: path.clone(),
+            done,
+            total,
+        });
+    })
 }
 
 // What makes the waiting figures go out again.
@@ -141,6 +183,7 @@ pub(super) async fn send(
     root: &Path,
     blobs: &[(String, String, u64)],
     online: bool,
+    progress: &(dyn Fn(&str) -> TransferProgress + Sync),
 ) -> BTreeSet<String> {
     if blobs.is_empty() {
         return BTreeSet::new();
@@ -161,7 +204,7 @@ pub(super) async fn send(
                 let mut outcome = if limit.is_some_and(|limit| size > limit) {
                     Outcome::TooLarge(limit)
                 } else {
-                    match sent(link, root, path, hash).await {
+                    match sent(link, root, path, hash, progress(path)).await {
                         Ok(()) => Outcome::Sent,
                         Err(error) => judged(&error),
                     }
@@ -187,7 +230,13 @@ pub(super) async fn send(
 
 // The figure is read from disk for each try, so a large one is never
 // held in memory between tries or copied once per retry.
-async fn sent(link: &LiveLink, root: &Path, path: &str, hash: &str) -> Result<(), CollabError> {
+async fn sent(
+    link: &LiveLink,
+    root: &Path,
+    path: &str,
+    hash: &str,
+    progress: TransferProgress,
+) -> Result<(), CollabError> {
     let file = safe_target(root, path)
         .ok_or_else(|| CollabError::Io(format!("refused to read {path}")))?;
     let project = link.project;
@@ -196,10 +245,12 @@ async fn sent(link: &LiveLink, root: &Path, path: &str, hash: &str) -> Result<()
         link.server_id,
         &link.client,
         |client, access| {
-            let (file, hash) = (file.clone(), hash.to_owned());
+            let (file, hash, progress) = (file.clone(), hash.to_owned(), Arc::clone(&progress));
             Box::pin(async move {
                 let bytes = crate::collab::share::sendable_blob(&file, &hash).await?;
-                client.put_blob(access, project, &hash, bytes).await
+                client
+                    .put_blob_with(access, project, &hash, bytes, Some(progress))
+                    .await
             })
         },
     )
@@ -335,6 +386,9 @@ impl Active {
             self.host.uploads(payload);
         }
         if let Some((wait, token, active)) = timer {
+            // A server that asked with Retry-After to be left alone for a
+            // while gets at least that long before the next try.
+            let wait = wait.max(self.link.client.asked_wait().unwrap_or_default());
             let key = self.upload_key();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(wait).await;
