@@ -618,6 +618,34 @@ async fn several_devices_of_one_person_on_a_flapping_network_keep_connecting() {
 }
 
 #[tokio::test]
+async fn a_device_reconnecting_at_its_accounts_allowance_replaces_its_own_oldest_socket() {
+    let (server, _github) = server_with_carol().await;
+    server.state().sockets.set_limits(SocketLimits {
+        per_account: 2,
+        total: oleafly_server::routes::ws::MAX_SOCKETS,
+    });
+    let laptop = TestDevice::generate();
+    let tokens = first_session(&server, &laptop).await;
+    let desktop = TestDevice::generate();
+    let other = next_session(&server, &desktop).await;
+    let mut oldest = welcomed(&server, &laptop, &tokens).await;
+    let _newer = welcomed(&server, &laptop, &tokens).await;
+    assert_eq!(
+        upgrade_refusal(&server, Some(&other.access_token)).await,
+        (429, "rate_limited".to_owned()),
+        "another device of the account has no socket to replace"
+    );
+    let _reconnected = welcomed(&server, &laptop, &tokens).await;
+    loop {
+        match next_frame(&mut oldest).await {
+            Some(ServerFrame::Pong { .. }) => {}
+            Some(other) => panic!("expected the socket to close, got {other:?}"),
+            None => break,
+        }
+    }
+}
+
+#[tokio::test]
 async fn the_server_keeps_at_most_its_open_socket_allowance() {
     let server = TestServer::start(test_config()).await;
     server.state().sockets.set_limits(SocketLimits {

@@ -180,3 +180,56 @@ async fn stopping_the_server_tells_open_sockets_it_is_restarting() {
         .unwrap()
         .expect("the server stops cleanly");
 }
+
+#[tokio::test]
+async fn a_socket_still_waiting_for_its_hello_hears_the_server_is_restarting() {
+    let stage = stage().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
+    let serving = tokio::spawn(oleafly_server::serve_on(
+        stage.server.state().clone(),
+        listener,
+        async move {
+            let _ = stopped.await;
+        },
+    ));
+    let (mut socket, _) = tokio_tungstenite::connect_async(socket_request(
+        &format!("http://{address}"),
+        Some(stage.alice.token()),
+    ))
+    .await
+    .expect("connect");
+    assert!(matches!(
+        socket.next().await,
+        Some(Ok(Message::Text(text))) if text.as_str().contains("challenge")
+    ));
+    stop.send(()).unwrap();
+    let closed = tokio::time::timeout(PROMPTLY, async {
+        while let Some(message) = socket.next().await {
+            if let Ok(Message::Close(frame)) = message {
+                return frame.map(|frame| frame.code);
+            }
+        }
+        None
+    })
+    .await
+    .expect("the socket heard from the server before it stopped");
+    assert_eq!(closed, Some(CloseCode::Restart));
+    tokio::time::timeout(PROMPTLY, serving)
+        .await
+        .expect("the server stopped")
+        .expect("the server task")
+        .expect("the server stopped cleanly");
+}
+
+#[test]
+fn a_socket_registered_after_the_restart_began_is_told_at_once() {
+    let registry = oleafly_server::sockets::SocketRegistry::new();
+    registry.restart_all();
+    let mut ticket = registry.register(oleafly_collab_protocol::ids::DeviceId::new_v7());
+    assert_eq!(
+        ticket.control.try_recv().ok(),
+        Some(oleafly_server::sockets::SocketControl::Restarting)
+    );
+}

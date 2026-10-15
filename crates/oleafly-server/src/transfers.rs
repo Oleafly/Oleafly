@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 use std::time::Duration;
 
 use axum::body::{Body, Bytes, HttpBody};
@@ -11,14 +11,16 @@ use http_body::{Frame, SizeHint};
 use oleafly_collab_protocol::ids::AccountId;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
+use crate::blobs::{BlobReader, Pieces};
 use crate::error::ServerError;
 use crate::routes::read_body_within;
 
 const TOOK_TOO_LONG: &str = "The upload took too long. Try again.";
 const TOO_BUSY: &str = "The server is busy with other large files. Try again in a moment.";
 const KIB: u64 = 1024;
-// A large download goes to the connection in copied pieces of this size,
-// so what the connection holds never pins the whole file.
+// Bytes already in memory go to the connection in copied pieces of this
+// size, so what the connection holds never pins all of them.
+#[cfg(test)]
 const SEND_PIECE: usize = 64 * 1024;
 // Smaller transfers pass without waiting for room in the budget.
 pub const SMALL_TRANSFER: u64 = 1024 * 1024;
@@ -29,6 +31,10 @@ pub const TRANSFER_WAIT: Duration = Duration::from_secs(30);
 // Large transfers one account may have under way at once, so one person
 // reading many files slowly can't hold the budget everyone shares.
 pub const LARGE_TRANSFERS_PER_ACCOUNT: usize = 4;
+// The share of the budget one account's large transfers may hold together.
+// A transfer the account starts with nothing else under way may take more,
+// up to the whole budget, so a large snapshot still goes through.
+pub const ACCOUNT_SHARE_DIVISOR: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UploadTiming {
@@ -67,12 +73,19 @@ impl Gate {
     }
 }
 
-type Accounts = Arc<Mutex<HashMap<AccountId, usize>>>;
+#[derive(Default)]
+struct UnderWay {
+    transfers: usize,
+    kib: u32,
+}
 
-// Files and snapshots are held whole in memory while they are uploaded or
-// downloaded. Each large transfer takes its size from one shared budget and
-// waits while the budget is spent, so many people opening a project at
-// once take turns instead of holding every file at the same time.
+type Accounts = Arc<Mutex<HashMap<AccountId, UnderWay>>>;
+
+// Uploads are held whole in memory, and downloads are read from the store
+// in pieces as the client takes them. Each large transfer takes its size
+// from one shared budget and waits while the budget is spent, so many
+// people opening a project at once take turns, and how many large
+// downloads keep a file or a bucket read open stays bounded.
 #[derive(Clone)]
 pub struct Transfers {
     timing: Arc<Mutex<UploadTiming>>,
@@ -92,14 +105,16 @@ pub struct TransferPermit(Option<Held>);
 struct AccountTurn {
     accounts: Accounts,
     account: AccountId,
+    kib: u32,
 }
 
 impl Drop for AccountTurn {
     fn drop(&mut self) {
         let mut accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(count) = accounts.get_mut(&self.account) {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
+        if let Some(under_way) = accounts.get_mut(&self.account) {
+            under_way.transfers = under_way.transfers.saturating_sub(1);
+            under_way.kib = under_way.kib.saturating_sub(self.kib);
+            if under_way.transfers == 0 {
                 accounts.remove(&self.account);
             }
         }
@@ -113,16 +128,27 @@ struct Held {
 }
 
 struct Unsent {
-    bytes: Bytes,
+    pieces: Pieces,
     _held: Held,
+}
+
+struct Sending {
+    unsent: Option<Unsent>,
+    // The connection, while it waits for the store's next piece.
+    waiting: Option<Waker>,
+}
+
+fn sending_of(shared: &Mutex<Sending>) -> std::sync::MutexGuard<'_, Sending> {
+    shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 // A large download. When its send deadline passes, a timer drops what is
 // left of it, with its budget share and the account's turn, even while the
 // connection waits on a client that stopped reading and so asks the body
-// for nothing more. Asking after that fails, and the connection is closed.
+// for nothing more, and wakes a connection waiting on the store. Asking
+// after that fails, and the connection is closed.
 struct Deadlined {
-    unsent: Arc<Mutex<Option<Unsent>>>,
+    sending: Arc<Mutex<Sending>>,
     left: u64,
     timer: tokio::task::AbortHandle,
 }
@@ -130,13 +156,16 @@ struct Deadlined {
 impl Drop for Deadlined {
     fn drop(&mut self) {
         self.timer.abort();
-        let unsent = self
-            .unsent
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
+        let unsent = sending_of(&self.sending).unsent.take();
         drop(unsent);
     }
+}
+
+fn ended_early() -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::UnexpectedEof,
+        "the stored file ended before its length",
+    )
 }
 
 impl HttpBody for Deadlined {
@@ -145,27 +174,38 @@ impl HttpBody for Deadlined {
 
     fn poll_frame(
         self: Pin<&mut Self>,
-        _context: &mut Context<'_>,
+        context: &mut Context<'_>,
     ) -> Poll<Option<Result<Frame<Bytes>, std::io::Error>>> {
         let this = self.get_mut();
         if this.left == 0 {
             return Poll::Ready(None);
         }
-        let mut unsent = this.unsent.lock().unwrap_or_else(PoisonError::into_inner);
-        let Some(rest) = unsent.as_mut() else {
+        let mut sending = sending_of(&this.sending);
+        let Some(rest) = sending.unsent.as_mut() else {
             return Poll::Ready(Some(Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "the client did not read the download before its deadline",
             ))));
         };
-        let front = rest.bytes.split_to(rest.bytes.len().min(SEND_PIECE));
-        let piece = Bytes::copy_from_slice(&front);
-        if rest.bytes.is_empty() {
-            *unsent = None;
+        match rest.pieces.as_mut().poll_next(context) {
+            Poll::Pending => {
+                sending.waiting = Some(context.waker().clone());
+                Poll::Pending
+            }
+            Poll::Ready(Some(Ok(piece))) => {
+                this.left = this.left.saturating_sub(piece.len() as u64);
+                if this.left == 0 {
+                    sending.unsent = None;
+                }
+                Poll::Ready(Some(Ok(Frame::data(piece))))
+            }
+            Poll::Ready(failed) => {
+                sending.unsent = None;
+                Poll::Ready(Some(Err(failed.map_or_else(ended_early, |failed| {
+                    failed.err().unwrap_or_else(ended_early)
+                }))))
+            }
         }
-        drop(unsent);
-        this.left = this.left.saturating_sub(piece.len() as u64);
-        Poll::Ready(Some(Ok(Frame::data(piece))))
     }
 
     fn is_end_stream(&self) -> bool {
@@ -177,33 +217,70 @@ impl HttpBody for Deadlined {
     }
 }
 
+// The response body for a large download. Its budget share and the
+// account's turn go back once its last piece is out, once the client goes,
+// or at the send deadline, when what is left is dropped and the response
+// ends, so a client that stops reading can't keep them.
+fn deadlined(held: Held, pieces: Pieces, left: u64) -> Body {
+    let deadline = held.deadline;
+    let sending = Arc::new(Mutex::new(Sending {
+        unsent: Some(Unsent {
+            pieces,
+            _held: held,
+        }),
+        waiting: None,
+    }));
+    let expiring = Arc::clone(&sending);
+    let timer = tokio::spawn(async move {
+        tokio::time::sleep(deadline).await;
+        let (expired, waiting) = {
+            let mut sending = sending_of(&expiring);
+            (sending.unsent.take(), sending.waiting.take())
+        };
+        drop(expired);
+        if let Some(waiting) = waiting {
+            waiting.wake();
+        }
+    })
+    .abort_handle();
+    Body::new(Deadlined {
+        sending,
+        left,
+        timer,
+    })
+}
+
 impl TransferPermit {
-    // Sends the bytes as the response body. Their budget share and the
-    // account's turn go back once they are sent, once the client goes, or
-    // at the send deadline, when what is left is dropped and the response
-    // ends, so a client that stops reading can't keep them.
-    pub fn keep_with(self, bytes: Bytes) -> Body {
+    // Sends a stored file as the response body. A small one is read whole
+    // first, so a damaged one is refused before anything goes out. A large
+    // one is read from the store a piece at a time as the client takes it,
+    // and a damaged one ends in an error before its last piece.
+    pub async fn send(self, reader: BlobReader) -> Result<Body, ServerError> {
+        let Some(held) = self.0 else {
+            let bytes = reader.read_all().await.map_err(|error| {
+                ServerError::Internal(format!("could not read a stored file: {error}"))
+            })?;
+            return Ok(Body::from(bytes));
+        };
+        let left = reader.size();
+        Ok(deadlined(held, reader.pieces(), left))
+    }
+
+    // Sends bytes already in memory, in copied pieces.
+    #[cfg(test)]
+    fn keep_with(self, bytes: Bytes) -> Body {
         let Some(held) = self.0 else {
             return Body::from(bytes);
         };
-        let deadline = held.deadline;
         let left = bytes.len() as u64;
-        let unsent = Arc::new(Mutex::new(Some(Unsent { bytes, _held: held })));
-        let expiring = Arc::clone(&unsent);
-        let timer = tokio::spawn(async move {
-            tokio::time::sleep(deadline).await;
-            let expired = expiring
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .take();
-            drop(expired);
-        })
-        .abort_handle();
-        Body::new(Deadlined {
-            unsent,
-            left,
-            timer,
-        })
+        let pieces = futures_util::stream::unfold(bytes, |mut rest| async move {
+            if rest.is_empty() {
+                return None;
+            }
+            let front = rest.split_to(rest.len().min(SEND_PIECE));
+            Some((Ok(Bytes::copy_from_slice(&front)), rest))
+        });
+        deadlined(held, Box::pin(pieces), left)
     }
 }
 
@@ -245,16 +322,21 @@ impl Transfers {
         *self.wait.lock().unwrap_or_else(PoisonError::into_inner) = wait;
     }
 
-    fn turn_for(&self, account: AccountId) -> Option<AccountTurn> {
+    fn turn_for(&self, account: AccountId, kib: u32, total: u32) -> Option<AccountTurn> {
         let mut accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);
-        let count = accounts.entry(account).or_insert(0);
-        if *count >= LARGE_TRANSFERS_PER_ACCOUNT {
+        let under_way = accounts.entry(account).or_default();
+        let share = total / ACCOUNT_SHARE_DIVISOR;
+        if under_way.transfers >= LARGE_TRANSFERS_PER_ACCOUNT
+            || (under_way.transfers > 0 && under_way.kib.saturating_add(kib) > share)
+        {
             return None;
         }
-        *count += 1;
+        under_way.transfers += 1;
+        under_way.kib = under_way.kib.saturating_add(kib);
         Some(AccountTurn {
             accounts: Arc::clone(&self.accounts),
             account,
+            kib,
         })
     }
 
@@ -266,7 +348,6 @@ impl Transfers {
         if bytes < SMALL_TRANSFER {
             return Ok(TransferPermit(None));
         }
-        let turn = self.turn_for(account).ok_or(ServerError::RateLimited)?;
         let (permits, total) = {
             let gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
             (Arc::clone(&gate.permits), gate.total)
@@ -274,6 +355,9 @@ impl Transfers {
         let wanted = u32::try_from(bytes.div_ceil(KIB))
             .unwrap_or(u32::MAX)
             .min(total);
+        let turn = self
+            .turn_for(account, wanted, total)
+            .ok_or(ServerError::RateLimited)?;
         let wait = *self.wait.lock().unwrap_or_else(PoisonError::into_inner);
         let permit = tokio::time::timeout(wait, permits.acquire_many_owned(wanted))
             .await
@@ -335,7 +419,7 @@ mod tests {
             .await
             .expect("room");
         assert!(small.0.is_none());
-        let waiting = transfers.hold(account, 2 * SMALL_TRANSFER);
+        let waiting = transfers.hold(AccountId::new_v7(), 2 * SMALL_TRANSFER);
         tokio::pin!(waiting);
         assert!(
             tokio::time::timeout(Duration::from_millis(50), &mut waiting)
@@ -432,6 +516,51 @@ mod tests {
         );
     }
 
+    struct Woken(std::sync::atomic::AtomicBool);
+
+    impl std::task::Wake for Woken {
+        fn wake(self: Arc<Self>) {
+            self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_download_waiting_on_its_store_ends_at_its_deadline() {
+        let transfers = Transfers::with_budget(2 * SMALL_TRANSFER);
+        transfers.set_timing(UploadTiming {
+            grace: Duration::from_secs(5),
+            min_rate: u64::MAX,
+        });
+        let held = transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .expect("room")
+            .0
+            .expect("a large transfer");
+        let mut sending = deadlined(
+            held,
+            Box::pin(futures_util::stream::pending()),
+            2 * SMALL_TRANSFER,
+        );
+        let woken = Arc::new(Woken(std::sync::atomic::AtomicBool::new(false)));
+        let waker = Waker::from(Arc::clone(&woken));
+        let mut context = Context::from_waker(&waker);
+        assert!(Pin::new(&mut sending).poll_frame(&mut context).is_pending());
+        tokio::time::sleep(Duration::from_secs(6)).await;
+        assert!(
+            woken.0.load(std::sync::atomic::Ordering::SeqCst),
+            "the deadline wakes a connection waiting on the store"
+        );
+        assert!(matches!(
+            Pin::new(&mut sending).poll_frame(&mut context),
+            Poll::Ready(Some(Err(_)))
+        ));
+        assert!(transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .is_ok());
+    }
+
     #[tokio::test]
     async fn a_download_read_to_the_end_is_sent_whole_in_pieces() {
         let transfers = Transfers::with_budget(4 * SMALL_TRANSFER);
@@ -476,6 +605,36 @@ mod tests {
             .is_ok());
         under_way.pop();
         assert!(transfers.hold(account, SMALL_TRANSFER).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn one_account_holds_at_most_half_the_budget_with_more_than_one_transfer() {
+        let transfers = Transfers::with_budget(8 * SMALL_TRANSFER);
+        let account = AccountId::new_v7();
+        let first = transfers
+            .hold(account, 3 * SMALL_TRANSFER)
+            .await
+            .expect("room");
+        assert!(matches!(
+            transfers.hold(account, 2 * SMALL_TRANSFER).await,
+            Err(ServerError::RateLimited)
+        ));
+        let _small = transfers
+            .hold(account, SMALL_TRANSFER)
+            .await
+            .expect("still within half");
+        let _other = transfers
+            .hold(AccountId::new_v7(), 4 * SMALL_TRANSFER)
+            .await
+            .expect("another account's room");
+        drop(first);
+        assert!(transfers.hold(account, 3 * SMALL_TRANSFER).await.is_ok());
+        let alone = AccountId::new_v7();
+        let whole = Transfers::with_budget(8 * SMALL_TRANSFER);
+        assert!(
+            whole.hold(alone, 6 * SMALL_TRANSFER).await.is_ok(),
+            "a transfer with nothing else under way may take more than half"
+        );
     }
 
     #[test]

@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::auth::{email_link, throttle};
+use crate::comment_guard;
 use crate::config::BlobStoreConfig;
 use crate::console::{self, ProjectFilter};
 use crate::error::ServerError;
@@ -56,7 +57,7 @@ async fn overview(
     };
     let now = state.clock.now_ms();
     let per_hour = state.config.sign_in.email_links_per_hour;
-    let (mut counts, storage, runtime, emails_paused) = state
+    let (mut counts, storage, runtime, emails_paused, comment_changes) = state
         .db
         .call(move |conn| {
             let counts = console::counts(conn, now)?;
@@ -66,7 +67,14 @@ async fn overview(
                 None
             };
             let paused = throttle::reached(conn, email_link::SERVER_LIMIT_KEY, per_hour, now)?;
-            Ok((counts, storage, settings::load(conn)?, paused))
+            let comment_changes = comment_guard::noticed(conn, now)?;
+            Ok((
+                counts,
+                storage,
+                settings::load(conn)?,
+                paused,
+                comment_changes,
+            ))
         })
         .await?;
     let (open_rooms, people_online) = state.rooms.occupancy();
@@ -89,6 +97,9 @@ async fn overview(
     }
     if emails_paused {
         issues.push(HealthIssue::SignInEmailsPaused);
+    }
+    if !comment_changes.is_empty() {
+        issues.push(HealthIssue::CommentsChangedWhileOff);
     }
     let config = &state.config;
     Ok(Json(AdminOverview {
@@ -116,6 +127,7 @@ async fn overview(
         limits: config.limits,
         archive_days: config.archive_days,
         sign_in_problems,
+        comments_changed_while_off: comment_changes,
     }))
 }
 

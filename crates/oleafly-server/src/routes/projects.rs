@@ -721,9 +721,19 @@ async fn get_blob(
             projects::blob_size(conn, project, &lookup)?.ok_or(ServerError::NotFound)
         })
         .await?;
+    let reader = state
+        .blobs
+        .open(&hash)
+        .await?
+        .ok_or(ServerError::NotFound)?;
+    if reader.size() != size {
+        return Err(ServerError::Internal(format!(
+            "the stored file {hash} holds {} bytes, not the {size} it was stored with",
+            reader.size()
+        )));
+    }
     let room = state.transfers.hold(account, size).await?;
-    let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
-    let body = room.keep_with(bytes);
+    let body = room.send(reader).await?;
     Ok((
         [(
             header::CONTENT_TYPE,
@@ -908,27 +918,16 @@ async fn get_snapshot(
     let Query(DownloadQuery { before }) =
         query.map_err(|rejection| ServerError::BadRequest(rejection.body_text()))?;
     let account = auth.account_id;
-    let size = state
+    state
         .db
-        .read(move |conn| {
-            access(conn, project, account)?;
-            let Some(newest) = projects::latest_snapshot(conn, project)? else {
-                return Ok(0);
-            };
-            Ok(projects::snapshot_size(conn, project, newest.seq)?.unwrap_or(0))
-        })
+        .read(move |conn| access(conn, project, account).map(drop))
         .await?;
-    let room = state.transfers.hold(account, size).await?;
-    let loaded = match before {
-        Some(before) => {
-            state
-                .snapshots
-                .load_before(&state.db, project, before)
-                .await?
-        }
-        None => state.snapshots.load(&state.db, project).await?,
-    }
-    .ok_or(ServerError::NotFound)?;
+    let opened = state
+        .snapshots
+        .open(&state.db, project, before)
+        .await?
+        .ok_or(ServerError::NotFound)?;
+    let room = state.transfers.hold(account, opened.reader.size()).await?;
     access_log::note_download(&state, project, account, auth.device_id).await;
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -937,9 +936,9 @@ async fn get_snapshot(
     );
     headers.insert(
         header::HeaderName::from_static(SNAPSHOT_SEQ_HEADER),
-        seq_value(loaded.seq)?,
+        seq_value(opened.seq)?,
     );
-    if let Some(signed) = &loaded.signed {
+    if let Some(signed) = &opened.signed {
         if let (Ok(device), Ok(signature)) = (
             HeaderValue::from_str(&signed.device.to_string()),
             HeaderValue::from_str(&signed.signature),
@@ -954,7 +953,7 @@ async fn get_snapshot(
             );
         }
     }
-    Ok((headers, room.keep_with(loaded.bytes)).into_response())
+    Ok((headers, room.send(opened.reader).await?).into_response())
 }
 
 pub(crate) fn sees_emails(role: ServerRole, settings: &RuntimeSettings) -> bool {

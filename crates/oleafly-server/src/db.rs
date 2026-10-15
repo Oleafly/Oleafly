@@ -1,18 +1,20 @@
+use std::collections::VecDeque;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::ids::ServerId;
-use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, TransactionBehavior};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 13;
+pub const SCHEMA_VERSION: i64 = 14;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 13] = [
+const MIGRATIONS: [&str; 14] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -26,6 +28,7 @@ const MIGRATIONS: [&str; 13] = [
     include_str!("../migrations/0011_mention_emails.sql"),
     include_str!("../migrations/0012_device_code_network.sql"),
     include_str!("../migrations/0013_project_sizes.sql"),
+    include_str!("../migrations/0014_comment_rechecks.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
@@ -33,11 +36,61 @@ const MIGRATIONS: [&str; 13] = [
 // lets them run beside the writer and see everything it has committed.
 const READERS: usize = 4;
 
+// Writes that wait for the writer together share one commit, at most this
+// many to a commit.
+const GROUP_LIMIT: usize = 64;
+
 #[derive(Clone)]
 pub struct Db {
     connection: Arc<Mutex<Connection>>,
     readers: Arc<[Mutex<Connection>]>,
     next_reader: Arc<AtomicUsize>,
+    grouped: Arc<Grouped>,
+}
+
+// What a grouped write hands back: its result, and what to do once its
+// commit is durable. `then` runs in commit order, before the writer moves
+// on, so what it announces goes out in the order it was stored.
+pub struct Written<T> {
+    pub value: T,
+    pub then: Option<Box<dyn FnOnce() + Send>>,
+}
+
+impl<T> Written<T> {
+    pub fn now(value: T) -> Written<T> {
+        Written { value, then: None }
+    }
+}
+
+type Finish = Box<dyn FnOnce(Result<(), &str>) + Send>;
+type GroupedWrite = Box<dyn FnOnce(&mut Transaction<'_>) -> Finish + Send>;
+
+#[derive(Default)]
+struct Grouped {
+    waiting: Mutex<Waiting>,
+    commits: AtomicU64,
+}
+
+#[derive(Default)]
+struct Waiting {
+    writes: VecDeque<GroupedWrite>,
+    draining: bool,
+}
+
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+// Runs a write in its own savepoint, so one that fails takes back only its
+// own changes.
+fn in_savepoint<T>(
+    transaction: &mut Transaction<'_>,
+    write: impl FnOnce(&Connection) -> Result<T, ServerError>,
+) -> Result<T, ServerError> {
+    let savepoint = transaction.savepoint()?;
+    let value = write(&savepoint)?;
+    savepoint.commit()?;
+    Ok(value)
 }
 
 fn open_reader(path: &Path) -> Result<Mutex<Connection>, ServerError> {
@@ -89,7 +142,96 @@ impl Db {
             connection: Arc::new(Mutex::new(connection)),
             readers: Vec::new().into(),
             next_reader: Arc::new(AtomicUsize::new(0)),
+            grouped: Arc::new(Grouped::default()),
         })
+    }
+
+    // A write that may share its commit with others waiting for the writer
+    // at the same moment. A lone write is committed at once. Writes that
+    // arrive while a commit is under way wait for it and then commit
+    // together, so many changes cost one sync to disk instead of one each.
+    // The result comes back once the commit is durable.
+    pub async fn write_grouped<T, F>(&self, write: F) -> Result<T, ServerError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&Connection) -> Result<Written<T>, ServerError> + Send + 'static,
+    {
+        let (done, outcome) = tokio::sync::oneshot::channel();
+        let grouped: GroupedWrite = Box::new(move |transaction| {
+            let written = in_savepoint(transaction, write);
+            Box::new(move |committed: Result<(), &str>| {
+                let result = match (written, committed) {
+                    (Ok(written), Ok(())) => {
+                        if let Some(then) = written.then {
+                            then();
+                        }
+                        Ok(written.value)
+                    }
+                    (Ok(_), Err(failed)) => Err(ServerError::Internal(format!(
+                        "the database could not commit a change: {failed}"
+                    ))),
+                    (Err(error), _) => Err(error),
+                };
+                let _ = done.send(result);
+            })
+        });
+        let start = {
+            let mut waiting = locked(&self.grouped.waiting);
+            waiting.writes.push_back(grouped);
+            !std::mem::replace(&mut waiting.draining, true)
+        };
+        if start {
+            let db = self.clone();
+            tokio::task::spawn_blocking(move || db.drain_grouped());
+        }
+        outcome.await.map_err(|_| {
+            ServerError::Internal("the database dropped a change before storing it".to_string())
+        })?
+    }
+
+    // Takes the writer, then every grouped write waiting for it, and commits
+    // them together, until none are left. A write that fails or panics is
+    // dropped from the group, and its caller hears so.
+    fn drain_grouped(&self) {
+        loop {
+            let mut connection = locked(&self.connection);
+            let writes: Vec<GroupedWrite> = {
+                let mut waiting = locked(&self.grouped.waiting);
+                if waiting.writes.is_empty() {
+                    waiting.draining = false;
+                    return;
+                }
+                let count = waiting.writes.len().min(GROUP_LIMIT);
+                waiting.writes.drain(..count).collect()
+            };
+            let mut transaction = match connection.transaction() {
+                Ok(transaction) => transaction,
+                Err(error) => {
+                    tracing::warn!("Could not start storing {} changes: {error}", writes.len());
+                    continue;
+                }
+            };
+            let finishes: Vec<Finish> = writes
+                .into_iter()
+                .filter_map(|write| catch_unwind(AssertUnwindSafe(|| write(&mut transaction))).ok())
+                .collect();
+            let committed = transaction.commit().map_err(|error| error.to_string());
+            self.grouped.commits.fetch_add(1, Ordering::SeqCst);
+            for finish in finishes {
+                let outcome = committed.as_ref().map(|_| ()).map_err(String::as_str);
+                let _ = catch_unwind(AssertUnwindSafe(|| finish(outcome)));
+            }
+        }
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn grouped_commits(&self) -> u64 {
+        self.grouped.commits.load(Ordering::SeqCst)
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn waiting_writes(&self) -> usize {
+        locked(&self.grouped.waiting).writes.len()
     }
 
     pub async fn read<T, F>(&self, f: F) -> Result<T, ServerError>
@@ -212,12 +354,13 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 30] = [
+    const TABLES: [&str; 31] = [
         "access_tokens",
         "account_emails",
         "accounts",
         "allowlist",
         "auth_codes",
+        "comment_rechecks",
         "device_authorizations",
         "devices",
         "domain_rules",
@@ -481,6 +624,81 @@ mod tests {
         assert_eq!(first, second);
         let after = db.read(|conn| meta_get(conn, "count")).await.unwrap();
         assert_eq!(after.as_deref(), Some("2"));
+    }
+
+    #[tokio::test]
+    async fn a_grouped_write_that_fails_takes_back_only_its_own_changes() {
+        let db = Db::open_in_memory().unwrap();
+        db.call(|conn| {
+            conn.execute_batch("CREATE TABLE notes (text TEXT NOT NULL)")?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        let (held, holding) = std::sync::mpsc::channel::<()>();
+        let (release, released) = std::sync::mpsc::channel::<()>();
+        let busy = {
+            let db = db.clone();
+            tokio::spawn(async move {
+                db.call(move |_| {
+                    let _ = held.send(());
+                    let _ = released.recv();
+                    Ok(())
+                })
+                .await
+            })
+        };
+        tokio::task::spawn_blocking(move || holding.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let kept = {
+            let db = db.clone();
+            tokio::spawn(async move {
+                db.write_grouped(|conn| {
+                    conn.execute("INSERT INTO notes VALUES ('kept')", [])?;
+                    Ok(Written::now(()))
+                })
+                .await
+            })
+        };
+        let refused = {
+            let db = db.clone();
+            tokio::spawn(async move {
+                db.write_grouped(|conn| {
+                    conn.execute("INSERT INTO notes VALUES ('taken back')", [])?;
+                    Err::<Written<()>, _>(ServerError::Conflict("refused".to_string()))
+                })
+                .await
+            })
+        };
+        for _ in 0..1_000 {
+            if db.waiting_writes() == 2 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        assert_eq!(db.waiting_writes(), 2);
+        let commits = db.grouped_commits();
+        release.send(()).unwrap();
+        busy.await.unwrap().unwrap();
+        assert!(kept.await.unwrap().is_ok());
+        assert!(matches!(
+            refused.await.unwrap(),
+            Err(ServerError::Conflict(_))
+        ));
+        assert_eq!(db.grouped_commits(), commits + 1);
+        let notes: Vec<String> = db
+            .call(|conn| {
+                let mut statement = conn.prepare("SELECT text FROM notes")?;
+                let notes = statement
+                    .query_map([], |row| row.get(0))?
+                    .collect::<Result<Vec<String>, _>>()?;
+                Ok(notes)
+            })
+            .await
+            .unwrap();
+        assert_eq!(notes, ["kept"]);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

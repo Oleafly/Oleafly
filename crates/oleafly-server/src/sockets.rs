@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -9,7 +9,10 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use crate::routes::ws::{MAX_SOCKETS, MAX_SOCKETS_PER_ACCOUNT};
 
-pub const MAX_SOCKETS_PER_DEVICE: usize = 32;
+// A device keeps one socket in normal use. A flapping network can leave
+// several half open until they go idle, and past this many its oldest is
+// replaced, so one device never fills its account's allowance.
+pub const MAX_SOCKETS_PER_DEVICE: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SocketControl {
@@ -108,6 +111,8 @@ pub struct SocketRegistry {
     timing: Mutex<LinkTiming>,
     limits: Mutex<SocketLimits>,
     open: Arc<Mutex<OpenSockets>>,
+    restarting: AtomicBool,
+    restart: tokio::sync::Notify,
 }
 
 impl SocketRegistry {
@@ -131,11 +136,18 @@ impl SocketRegistry {
         *self.limits.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    pub fn open_slot(&self, account: AccountId) -> Option<SocketSlot> {
+    // An account at its allowance makes room for a device that already
+    // has a socket, by replacing that device's oldest one, which is most
+    // likely one a flapping network left half open. A device without a
+    // socket is refused.
+    pub fn open_slot(&self, account: AccountId, device: DeviceId) -> Option<SocketSlot> {
         let limits = self.limits();
         let mut open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
         let held = open.by_account.get(&account).copied().unwrap_or(0);
-        if open.total >= limits.total || held >= limits.per_account {
+        if open.total >= limits.total {
+            return None;
+        }
+        if held >= limits.per_account && !self.replace_oldest(device) {
             return None;
         }
         open.total += 1;
@@ -146,6 +158,27 @@ impl SocketRegistry {
         })
     }
 
+    fn replace_oldest(&self, device: DeviceId) -> bool {
+        let oldest = {
+            let mut sockets = self.lock();
+            let Some(list) = sockets.get_mut(&device) else {
+                return false;
+            };
+            let Some(position) = list
+                .iter()
+                .enumerate()
+                .filter(|(_, entry)| entry.admitted)
+                .min_by_key(|(_, entry)| entry.id)
+                .map(|(position, _)| position)
+            else {
+                return false;
+            };
+            list.remove(position)
+        };
+        let _ = oldest.sender.send(SocketControl::Replaced);
+        true
+    }
+
     pub fn open_sockets(&self) -> usize {
         self.open
             .lock()
@@ -153,7 +186,13 @@ impl SocketRegistry {
             .total
     }
 
+    // Tells every socket the server is restarting: the registered ones
+    // through their control channel, and the ones still upgrading or
+    // waiting for their hello, and any registered from now on, through the
+    // restarting flag.
     pub fn restart_all(&self) -> usize {
+        self.restarting.store(true, Ordering::SeqCst);
+        self.restart.notify_waiters();
         self.lock()
             .values()
             .flatten()
@@ -161,9 +200,26 @@ impl SocketRegistry {
             .count()
     }
 
+    pub fn is_restarting(&self) -> bool {
+        self.restarting.load(Ordering::SeqCst)
+    }
+
+    pub async fn restarted(&self) {
+        let notified = self.restart.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        if self.is_restarting() {
+            return;
+        }
+        notified.await;
+    }
+
     pub fn register(&self, device: DeviceId) -> SocketTicket {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (sender, control) = mpsc::unbounded_channel();
+        if self.is_restarting() {
+            let _ = sender.send(SocketControl::Restarting);
+        }
         self.lock().entry(device).or_default().push(Entry {
             id,
             sender: sender.clone(),
@@ -331,16 +387,48 @@ mod tests {
             AccountId::new_v7(),
             AccountId::new_v7(),
         );
-        let first = registry.open_slot(ada).expect("a first socket");
-        let _second = registry.open_slot(ada).expect("a second socket");
-        assert!(registry.open_slot(ada).is_none());
-        let _other = registry.open_slot(bo).expect("another account");
-        assert!(registry.open_slot(cy).is_none());
+        let device = DeviceId::new_v7();
+        let first = registry.open_slot(ada, device).expect("a first socket");
+        let _second = registry.open_slot(ada, device).expect("a second socket");
+        assert!(registry.open_slot(ada, device).is_none());
+        let _other = registry.open_slot(bo, device).expect("another account");
+        assert!(registry.open_slot(cy, device).is_none());
         assert_eq!(registry.open_sockets(), 3);
         drop(first);
         assert_eq!(registry.open_sockets(), 2);
-        assert!(registry.open_slot(cy).is_some());
+        assert!(registry.open_slot(cy, device).is_some());
         assert_eq!(registry.open_sockets(), 2);
+    }
+
+    #[tokio::test]
+    async fn a_device_at_its_accounts_allowance_replaces_its_own_oldest_socket() {
+        let registry = SocketRegistry::new();
+        registry.set_limits(SocketLimits {
+            per_account: 2,
+            total: 10,
+        });
+        let (account, flapping, other) =
+            (AccountId::new_v7(), DeviceId::new_v7(), DeviceId::new_v7());
+        let mut tickets = Vec::new();
+        let mut slots = Vec::new();
+        for _ in 0..2 {
+            slots.push(registry.open_slot(account, flapping).expect("room"));
+            let ticket = registry.register(flapping);
+            registry.admit(flapping, ticket.id);
+            tickets.push(ticket);
+        }
+        assert!(
+            registry.open_slot(account, other).is_none(),
+            "a device with no socket to replace is refused"
+        );
+        let third = registry.open_slot(account, flapping);
+        assert!(third.is_some(), "the device's oldest socket makes room");
+        assert_eq!(
+            tickets[0].control.recv().await,
+            Some(SocketControl::Replaced)
+        );
+        assert!(tickets[1].control.try_recv().is_err());
+        assert_eq!(registry.count(flapping), 1);
     }
 
     #[test]

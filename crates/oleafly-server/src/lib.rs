@@ -5,6 +5,7 @@ pub mod cli;
 pub mod clock;
 pub mod comment_guard;
 pub mod config;
+pub mod connections;
 pub mod console;
 pub mod db;
 pub mod error;
@@ -44,6 +45,7 @@ use tracing_subscriber::filter::Targets;
 
 use crate::clock::SystemClock;
 use crate::config::ServerConfig;
+pub use crate::connections::ConnectionTimeouts;
 use crate::error::ServerError;
 use crate::state::AppState;
 
@@ -208,27 +210,39 @@ pub async fn serve_on<F>(
 where
     F: Future<Output = ()> + Send + 'static,
 {
+    serve_on_with(state, listener, shutdown, ConnectionTimeouts::default()).await
+}
+
+pub async fn serve_on_with<F>(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+    shutdown: F,
+    timeouts: ConnectionTimeouts,
+) -> Result<(), ServerError>
+where
+    F: Future<Output = ()> + Send + 'static,
+{
     mentions::resume(&state).await;
+    comment_guard::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let sweeping = tokio::spawn(sweep_kept_loop(state.snapshots.clone()));
     let polls = Arc::clone(&state.polls);
     let sockets = Arc::clone(&state.sockets);
-    let app = build_router(state).into_make_service_with_connect_info::<SocketAddr>();
+    let app = build_router(state).layer(axum::middleware::from_fn(connections::connect_info));
     let farewell = Arc::clone(&sockets);
-    let result = axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
-            shutdown.await;
-            polls.stop_waiting();
-            farewell.restart_all();
-        })
-        .await;
+    connections::serve(listener, app, timeouts, async move {
+        shutdown.await;
+        polls.stop_waiting();
+        farewell.restart_all();
+    })
+    .await;
     let deadline = tokio::time::Instant::now() + SOCKET_FAREWELL;
     while sockets.open_sockets() > 0 && tokio::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     maintenance.abort();
     sweeping.abort();
-    result.map_err(|error| ServerError::Internal(format!("the server stopped: {error}")))
+    Ok(())
 }
 
 async fn sweep_kept_loop(snapshots: snapshots::Snapshots) {
