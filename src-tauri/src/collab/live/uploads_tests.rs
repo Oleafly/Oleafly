@@ -27,7 +27,7 @@ use super::super::{
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     WriterSignal,
 };
-use super::{attach, UploadFile, UploadState, UploadsPayload};
+use super::{attach, Retry, UploadFile, UploadState, UploadsPayload};
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
 
@@ -284,7 +284,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     }
 }
 
-fn manifest(max_file_mb: u64) -> String {
+fn manifest(max_file_mb: u64, max_project_mb: u64) -> String {
     serde_json::to_string(&CapabilityManifest {
         server_id: ServerId::new_v7(),
         name: "Lab".to_owned(),
@@ -305,7 +305,7 @@ fn manifest(max_file_mb: u64) -> String {
             encryption: EncryptionSupport::None,
         },
         limits: Limits {
-            max_project_mb: 200,
+            max_project_mb,
             max_file_mb,
             max_members_per_project: 20,
         },
@@ -323,6 +323,7 @@ struct Canned {
     stalled: Arc<Mutex<Option<String>>>,
     slow_ms: Arc<AtomicU64>,
     asked: Arc<Mutex<Vec<String>>>,
+    project_mb: Arc<AtomicU64>,
 }
 
 impl Canned {
@@ -355,9 +356,10 @@ struct Counters {
     stalled: Arc<Mutex<Option<String>>>,
     slow_ms: Arc<AtomicU64>,
     asked: Arc<Mutex<Vec<String>>>,
+    project_mb: Arc<AtomicU64>,
 }
 
-async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fail: usize) {
+async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fail: usize) {
     let mut seen = Vec::new();
     let mut chunk = [0u8; 65_536];
     let head_end = loop {
@@ -427,7 +429,8 @@ async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fai
         }
     }
     let (status, reply) = if line.starts_with("GET /.well-known/oleafly-server") {
-        ("200 OK", manifest)
+        let project_mb = counters.project_mb.load(Ordering::SeqCst);
+        ("200 OK", manifest(max_file_mb, project_mb))
     } else if line.starts_with("PUT ") && line.contains("/blobs/") {
         let count = counters.puts.fetch_add(1, Ordering::SeqCst) + 1;
         if counters.full.load(Ordering::SeqCst) {
@@ -475,12 +478,12 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         stalled: Arc::default(),
         slow_ms: Arc::new(AtomicU64::new(0)),
         asked: Arc::default(),
+        project_mb: Arc::new(AtomicU64::new(200)),
     };
     let counted = counters.clone();
-    let manifest = manifest(max_file_mb);
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
-            tokio::spawn(answer(stream, counted.clone(), manifest.clone(), fail));
+            tokio::spawn(answer(stream, counted.clone(), max_file_mb, fail));
         }
     });
     Canned {
@@ -493,6 +496,7 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         stalled: counters.stalled,
         slow_ms: counters.slow_ms,
         asked: counters.asked,
+        project_mb: counters.project_mb,
     }
 }
 
@@ -604,8 +608,46 @@ fn a_figure_refused_because_the_project_is_full_waits_with_the_project_limit() {
             "a full project is not tried again on a timer"
         );
         server.full.store(false, Ordering::SeqCst);
-        alice.active.retry_uploads(true).await;
+        alice.active.retry_uploads(Retry::Asked).await;
         until("the upload once the project has room", || {
+            alice.shared_blob("figures/plot.png").is_some()
+        })
+        .await;
+        assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn a_reconnect_sends_a_figure_refused_for_a_full_project_again_only_once_the_limit_changed() {
+    run(async {
+        let server = canned(0, 50).await;
+        server.full.store(true, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.online();
+        let figure = [0x89, b'P', b'N', b'G', 8, 8];
+        alice.write("figures/plot.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/plot.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(server.puts.load(Ordering::SeqCst), 1);
+        for _ in 0..3 {
+            alice.active.retry_uploads(Retry::Reconnect).await;
+        }
+        assert_eq!(
+            server.puts.load(Ordering::SeqCst),
+            1,
+            "a reconnect sent the figure again although the limit stayed the same"
+        );
+        assert_eq!(
+            alice.active.upload_list()[0].state,
+            UploadState::ProjectTooLarge
+        );
+        server.project_mb.store(400, Ordering::SeqCst);
+        server.full.store(false, Ordering::SeqCst);
+        alice.active.retry_uploads(Retry::Reconnect).await;
+        until("the upload once the server allows more", || {
             alice.shared_blob("figures/plot.png").is_some()
         })
         .await;
