@@ -352,6 +352,7 @@
     "refs-duplicate-bib-key": {
       "title": "Citační klíč „{{key}}“ je definován víc než jednou",
       "detail": "Definován v {{places}}. BibTeX použije jen první záznam s tímto klíčem a při porovnávání klíčů nerozlišuje velká a malá písmena. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají.",
+      "detailBiber": "Definován v {{places}}. Když biber sestavuje bibliografii, použije jen první záznam s tímto klíčem. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají.",
       "detailTypst": "Definován v {{places}}. Typst zastaví kompilaci, když mají dva záznamy bibliografie stejný klíč. Ponechte jeden záznam, nebo ostatním dejte nové klíče a upravte citace, které je používají."
     },
     "submission-path-case": {

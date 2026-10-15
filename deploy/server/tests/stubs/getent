@@ -1,4 +1,6 @@
 #!/bin/sh
 printf 'getent %s\n' "$*" >>/stub/log
-[ -f /stub/state/dns ] || exit 2
-awk '{ print $1 "      STREAM " FILENAME }' /stub/state/dns
+answers=/stub/state/dns
+[ ! -f "/stub/state/dns-$2" ] || answers=/stub/state/dns-$2
+[ -f "$answers" ] || exit 2
+awk '{ print $1 "      STREAM " FILENAME }' "$answers"

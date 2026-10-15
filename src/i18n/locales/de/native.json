@@ -119,5 +119,10 @@
   },
   "collab": {
     "localCopy": "{{name}} (lokale Kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Von der Regel für {{tool}} in approvals.toml abgelehnt",
+    "unknownTool": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts.",
+    "unknownToolSuggestion": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts. Meinten Sie {{suggestion}}?"
   }
 }

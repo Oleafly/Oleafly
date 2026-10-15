@@ -119,5 +119,10 @@
   },
   "collab": {
     "localCopy": "{{name}} (copie locală)"
+  },
+  "approvals": {
+    "helperRefused": "Refuzat de regula pentru {{tool}} din approvals.toml",
+    "unknownTool": "Niciun instrument nu se numește {{name}}, așa că regula nu face nimic.",
+    "unknownToolSuggestion": "Niciun instrument nu se numește {{name}}, așa că regula nu face nimic. Ai vrut să scrii {{suggestion}}?"
   }
 }

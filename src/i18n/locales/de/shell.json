@@ -1467,5 +1467,9 @@
       "allTheirs": "Alle Versionen von Overleaf verwenden",
       "apply": "Übernehmen und synchronisieren"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly hat dieses Fenster neu geladen, weil es 30 Sekunden lang nicht reagiert hat. Änderungen kurz davor wurden möglicherweise nicht gespeichert.",
+    "reloadedAgain": "Oleafly hat dieses Fenster erneut neu geladen, weil es wieder nicht reagiert hat. Ihr Projekt wurde nicht wieder geöffnet, falls etwas darin die Ursache ist."
   }
 }

@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Der Zitierschlüssel „{{key}}“ ist mehrfach definiert",
       "detail": "Definiert in {{places}}. BibTeX verwendet nur den ersten Eintrag mit diesem Schlüssel und unterscheidet beim Vergleich von Schlüsseln nicht zwischen Groß- und Kleinschreibung. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden.",
+      "detailBiber": "Definiert in {{places}}. Wenn biber das Literaturverzeichnis erstellt, verwendet es nur den ersten Eintrag mit diesem Schlüssel. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden.",
       "detailTypst": "Definiert in {{places}}. Typst bricht das Kompilieren ab, wenn zwei Literatureinträge denselben Schlüssel haben. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden."
     },
     "submission-path-case": {

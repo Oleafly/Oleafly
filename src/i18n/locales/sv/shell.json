@@ -1467,5 +1467,9 @@
       "allTheirs": "Använd alla Overleafs",
       "apply": "Tillämpa och synka"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly läste in det här fönstret igen eftersom det inte svarade på 30 sekunder. Ändringar du gjorde precis innan kanske inte sparades.",
+    "reloadedAgain": "Oleafly läste in det här fönstret igen eftersom det slutade svara en gång till. Ditt projekt öppnades inte igen, ifall något i det orsakade problemet."
   }
 }

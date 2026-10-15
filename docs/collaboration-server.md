@@ -30,7 +30,7 @@ Every member's computer also keeps a full copy of each project shared with them.
 
 You need:
 
-- A Linux machine that stays on, or an account with a hosting service such as Render or Railway. A small virtual machine is enough to start. Keep an eye on its memory and disk as your projects grow.
+- A Linux machine that stays on, or an account with a hosting service such as Render or Railway. A small virtual machine is enough to start. Keep an eye on its memory and disk as your projects grow. The machine needs an IPv4 connection, or NAT64, because GitHub, where the releases and the server image live, only works over IPv4. On a Windows PC or a Mac, read [On Windows or macOS](#on-windows-or-macos).
 - A domain name for the server, such as `collab.example.org`, with a DNS record pointing at the machine. Render and Railway give you an address if you don't have one. If the machine has no public address, read [Without a public address](#without-a-public-address).
 - A way for people to sign in: GitHub, or an OpenID Connect login such as your university's. The server won't start without one. Email is optional. Read [Sign-in providers](#sign-in-providers).
 
@@ -45,6 +45,10 @@ Then pick how to run it:
 | [Linux without Docker](#linux-without-docker) | A university virtual machine where you can't use Docker. |
 
 The server runs on x86-64 and ARM machines. Each release is published as a container image, `ghcr.io/oleafly/oleafly-server`, and as a single Linux program on the [releases page](https://github.com/Oleafly/Oleafly/releases). The installer and its Compose files are also on the releases page of [Oleafly/oleafly-server](https://github.com/Oleafly/oleafly-server/releases).
+
+### On Windows or macOS
+
+The server runs on Linux. From a Windows PC or a Mac, the simplest way is to rent a small Linux virtual machine from a hosting company and run the [one command](#install-with-one-command) there over SSH. A Linux machine in your lab works too, with [Cloudflare Tunnel](#without-a-public-address) if it has no public address. Docker Desktop on Windows or macOS is only good for trying the server on your own computer, because it stops whenever the computer sleeps. The installer refuses to run in WSL: other computers can't reach a server there, and it stops when Windows sleeps.
 
 ## Settings
 
@@ -77,10 +81,12 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
 | `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
 | `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` | How many sign-in emails one email address can get in 15 minutes. It can't be more than `OLEAFLY_EMAIL_LINKS_PER_IP`. | `3` |
+| `OLEAFLY_EMAIL_LINKS_PER_HOUR` | How many sign-in emails the whole server sends in an hour, all addresses together. A flood of requests from many addresses stops there instead of at your mail provider's limit. | `300` |
 | `OLEAFLY_DEVICE_CODES_PER_IP` | How many sign-in codes people at one network address can ask for in 10 minutes. Read [Sign in with a code](#sign-in-with-a-code). | `100` |
-| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half the container's memory limit, or `1024` without a limit |
+| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
-| `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. Set it to `2` when Cloudflare sits in front of your own proxy, such as Coolify's. It needs `OLEAFLY_BEHIND_PROXY=true`. | `1` |
+| `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. It needs `OLEAFLY_BEHIND_PROXY=true`. With more than one proxy, `OLEAFLY_TRUSTED_PROXIES` is safer. | `1` |
+| `OLEAFLY_TRUSTED_PROXIES` | Your proxies' IP addresses and CIDR ranges, separated by commas. The server then uses `X-Forwarded-For` only on connections from them, and skips the trusted entries from the right to find the visitor. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. | None |
 | `OLEAFLY_LOG_LEVEL` | How much the server logs: `error`, `warn`, `info`, `debug` or `trace`. Libraries the server uses only log warnings unless you pick `debug` or `trace`. | `info` |
 | `OLEAFLY_SECURITY_LOG_DAYS` | How many days to keep security log entries, project access log entries and answered or expired guest invitations. | `365` |
 | `OLEAFLY_ARCHIVE_DAYS` | How many days to keep a project after its owner stops sharing it. | `30` |
@@ -88,9 +94,11 @@ The server reads its settings from environment variables. A variable that is set
 
 In the Compose `.env` file, put a value in single quotes if it contains `$` or `#`.
 
+When the server starts, it warns about every variable whose name starts with `OLEAFLY_` but that it doesn't know, and suggests the closest name it does know. A typo such as `OLEAFLY_PROXY_HOP` then shows up in the log instead of being ignored.
+
 ### Keeping secrets in files
 
-Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
+Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The server trims spaces and line breaks around the value in the file, the same as for a plain variable. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
 
 ### Files in a bucket
 
@@ -132,38 +140,50 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 Point your domain's DNS record at the machine first. The installer then:
 
 1. Checks that the machine runs Linux on x86-64 or ARM and that ports 80 and 443 are free.
-2. Uses Docker if it's there. If it isn't, it asks before it installs Docker with Docker's own install script. It downloads a fixed version of that script and checks it against a known SHA-256 first, and won't run a copy that doesn't match.
+2. Uses Docker if it's there. If it isn't, it asks before it installs Docker with Docker's own install script. It downloads a fixed version of that script and checks it against a known SHA-256 first, and won't run a copy that doesn't match. That script works on Ubuntu, Debian, Raspberry Pi OS, Fedora, CentOS, RHEL and Rocky Linux. On Amazon Linux, AlmaLinux and Oracle Linux, the installer prints the commands that install Docker and its Compose plugin there instead, and stops so you can run them.
 3. Asks for the domain, the server's name and a sign-in provider. It shows the callback address for GitHub or OpenID Connect before it asks for the client ID, so you can create the app while it waits. It can also set up [email](#email) and a [bucket for files](#files-in-a-bucket).
 4. Checks that the domain points to this machine. If it doesn't yet, the installer says so and carries on, and Caddy keeps trying to get the certificate. To find the machine's public address, it may ask `ifconfig.me`.
 5. Downloads the release's `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `.env.example` into `/opt/oleafly-server`, and checks each one against the release's `SHA256SUMS`.
 6. Writes your settings to `/opt/oleafly-server/.env`, which only root can read, then pulls the server image and starts it.
-7. Waits until `https://<your domain>/healthz` answers, then prints the setup code and the next steps.
+7. Waits until `https://<your domain>/healthz` answers on the machine itself, then prints the setup code and the next steps. Open that address on a phone or from another network to check that other people can reach it too. If it doesn't answer, check that TCP ports 80 and 443 and UDP port 443 are open in any firewall or cloud security group in front of the machine.
 
 Sign-in by email link is off until an admin turns it on, so the first admin signs in with GitHub or OpenID Connect. Email set up by the installer works for invitations and alerts straight away.
 
-Run it again at any time. When `/opt/oleafly-server/.env` exists, the installer keeps it, replaces only the files that come with a release, and starts the server again.
+Run it again at any time. When `/opt/oleafly-server/.env` exists, the installer keeps it, replaces only the files that come with a release, and starts the server again. That also works when `.env` is the only file there, for example after you started the [Docker Compose](#docker-compose) steps in that folder.
 
 These commands work on a server the installer set up:
 
 | Command | What it does |
 | --- | --- |
-| `curl -fsSL https://oleafly.com/server/install.sh \| sudo sh -s update` | Gets the newest release's files and image, keeps `.env`, restarts the server and waits until it's ready. It never moves to an older release. |
-| `sudo sh /opt/oleafly-server/install.sh status` | Shows the version, the containers and whether HTTPS answers. |
+| `curl -fsSL https://oleafly.com/server/install.sh \| sudo sh -s update` | Gets the newest release's files and image, keeps `.env`, restarts the server and waits until it's ready. It never moves to an older release. Read [Upgrading](#upgrading). |
+| `sudo sh /opt/oleafly-server/install.sh status` | Shows the version, the containers and whether HTTPS answers. Until someone finishes setup, it also shows the current setup code. |
 | `sudo sh /opt/oleafly-server/install.sh uninstall` | Stops and removes the containers. The data stays unless you type `delete` when it asks. |
 | `sh install.sh --help` | Lists every option and setting. |
 
 The files that come with a release are replaced on each update. Put your own changes in `docker-compose.override.yml` next to them, which the installer never touches.
 
-To install without questions, for example from a provisioning script, pass `--yes` and give the settings as environment variables. They have the same names as in `.env`:
+Typing `delete` during `uninstall` removes the data volume, `.env` and the copies the installer made before updates. Files and snapshots in a bucket and Litestream's copies of the database stay where they are, and the installer names them so you can delete them with your storage provider. Caddy's certificates stay too, in the volumes `oleafly-server_caddy-data` and `oleafly-server_caddy-config`, so a new install doesn't have to ask Let's Encrypt again. Let's Encrypt gives out at most five certificates for the same domain in a week.
+
+To install without questions, for example from a provisioning script, pass `--yes` and put the settings in a file. They have the same names as in `.env`. Don't put secrets on the `sudo` command line: sudo writes the whole line to the system log, such as `/var/log/auth.log`, and every user on the machine can see it with `ps` while the installer runs. With a file, only its name ends up there:
 
 ```sh
-curl -fsSL https://oleafly.com/server/install.sh -o install.sh
-sudo env OLEAFLY_DOMAIN=collab.example.org OLEAFLY_SERVER_NAME='Smith Lab' \
-  OLEAFLY_GITHUB_CLIENT_ID=Ov23liExampleClientId OLEAFLY_GITHUB_CLIENT_SECRET=example-client-secret \
-  sh install.sh --yes
+sudo install -m 600 /dev/null /root/oleafly-answers.env
+sudoedit /root/oleafly-answers.env
+curl -fsSL https://oleafly.com/server/install.sh | sudo OLEAFLY_ANSWERS_FILE=/root/oleafly-answers.env sh -s -- --yes
 ```
 
-With `--yes`, the installer stops if Docker is missing, unless you also set `OLEAFLY_INSTALL_DOCKER=yes`. Set `OLEAFLY_DIR` to install somewhere other than `/opt/oleafly-server`. Values on a command line can end up in your shell history, so keep the client secret in your provisioning tool's secret store instead.
+Write one setting per line:
+
+```ini
+OLEAFLY_DOMAIN=collab.example.org
+OLEAFLY_SERVER_NAME='Smith Lab'
+OLEAFLY_GITHUB_CLIENT_ID=Ov23liExampleClientId
+OLEAFLY_GITHUB_CLIENT_SECRET=example-client-secret
+```
+
+Lines that start with `#` are skipped, and a value can be in single or double quotes. The installer reads the file as plain text and never runs it. A setting that is also in the environment keeps the environment's value. The settings end up in `/opt/oleafly-server/.env`, so you can delete the file afterwards.
+
+With `--yes`, the installer stops if Docker is missing, unless you also set `OLEAFLY_INSTALL_DOCKER=yes`. Set `OLEAFLY_DIR` to install somewhere other than `/opt/oleafly-server`. `sh install.sh --help` lists every setting.
 
 ## Docker Compose
 
@@ -205,6 +225,8 @@ This setup runs two containers. `oleafly-server` is the server, and only other c
 Your data lives in the Docker volume `oleafly-server_oleafly-data`. Caddy keeps its certificates in `oleafly-server_caddy-data`.
 
 Docker opens ports 80 and 443 itself, even when a host firewall such as `ufw` is on. That is what you want for Caddy. Don't add a `ports:` entry to the `oleafly-server` service. If you need to reach the server from the machine itself, publish it as `127.0.0.1:8080:8080` so it stays off the network.
+
+If your domain has an AAAA record, set `OLEAFLY_IPV6=true` in `.env`. Without it, Docker hands every visitor who comes in over IPv6 to Caddy from one internal address, so the security log shows that address for all of them and they share one sign-in limit. It needs Docker 27 or newer and a public IPv6 address on the machine, and the one-command installer turns it on when both are there. With an older Docker, give the domain only an A record. If you change the setting later, run `docker compose down` and then `docker compose up -d`, so Docker creates the network again. If the installer says Docker couldn't set up IPv6 for the network, set `OLEAFLY_IPV6=false` in `.env` and run the installer again.
 
 If you change the `Caddyfile`, run `docker compose up -d --force-recreate caddy`.
 
@@ -250,11 +272,11 @@ Before you start, point your domain's DNS record, such as `collab.example.org`, 
 6. Select **Deploy**. The first build compiles the server and takes a few minutes. When it's done, Coolify shows the resource as running and healthy.
 7. Open `https://collab.example.org/healthz` in a browser. It shows `{"status":"ok"}`.
 8. Open **Logs**, choose the `oleafly-server` container, and copy the code from the newest line that starts with `Setup code:`.
-9. In Oleafly, open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
+9. In Oleafly, turn on **Live collaboration** in **Settings › Experimentation**. Then open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
 
 If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
 
-If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_PROXY_HOPS` to `2`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit.
+If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_TRUSTED_PROXIES`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit. Behind Cloudflare's proxy, list [Cloudflare's published ranges](https://www.cloudflare.com/ips/) plus the range of Docker's `coolify` network, separated by commas. Find that range with `docker network inspect coolify --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`. Behind a tunnel, the `coolify` network's range is enough. Cloudflare changes its list now and then, so check it when you update the server. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains the other choice, `OLEAFLY_PROXY_HOPS=2`, and why it needs more care.
 
 The Coolify file has room for GitHub and one OpenID Connect provider named `UNIVERSITY`. Set `OLEAFLY_OIDC_UNIVERSITY_LABEL` to the text people should see, such as `GitLab`. Its callback address ends in `/auth/callback/university`. For more providers, deploy from a fork with your own copy of the file.
 
@@ -264,7 +286,7 @@ The data lives in a Docker volume whose name ends in `oleafly-data`. Find it wit
 
 Each server release is published as `ghcr.io/oleafly/oleafly-server`, for x86-64 and ARM. Running it skips the build, which suits a small Coolify server.
 
-Follow the steps above with two changes. In step 2, set **Docker Compose Location** to `/deploy/server/docker-compose.coolify-image.yml`. Skip step 3, because nothing gets built. The file asks for the `0.1` tag, so each **Redeploy** pulls the newest `0.1` release.
+Follow the steps above with two changes. In step 2, set **Docker Compose Location** to `/deploy/server/docker-compose.coolify-image.yml`. Skip step 3, because nothing gets built. The file asks for the `0.1` tag, which moves to each `0.1` release once it is published, so each **Redeploy** pulls the newest one.
 
 ## Render
 
@@ -444,9 +466,13 @@ With `OLEAFLY_BEHIND_PROXY=true`, the server reads the `X-Forwarded-For` header 
 
 Turn it on only when every request comes through your proxy. If people can also reach the server directly, anyone can send a made-up `X-Forwarded-For`, put any address in the security log and get around the sign-in limit.
 
-With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. Set `OLEAFLY_PROXY_HOPS=2` and the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one.
+With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. There are two ways to fix that.
 
-To check the number, sign in from your own computer and open **Security log** in the admin console. The newest entry should show your public address, the one a site such as `ifconfig.me` reports. If it shows a private or Cloudflare address instead, raise `OLEAFLY_PROXY_HOPS` by one.
+The safer one is `OLEAFLY_TRUSTED_PROXIES`, a list of your proxies' IP addresses and CIDR ranges separated by commas. The server then uses `X-Forwarded-For` only on connections that come from an address on the list. It reads the header from the right, skips every address on the list, and takes the first one that isn't as the visitor, the way nginx does with `real_ip_recursive`. A connection from anywhere else keeps its own address, whatever header it sends. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. [Coolify](#coolify) shows what to list behind Cloudflare.
+
+The other one is `OLEAFLY_PROXY_HOPS=2`: the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one. With `2`, the inner proxy must not be reachable directly from the internet, because a request sent straight to it can carry a made-up address that the server then takes as the visitor's. On Coolify, remove the `sslip.io` host Coolify generated for the resource, so only the domain behind Cloudflare leads to the server.
+
+To check the setting, sign in from your own computer and open **Security log** in the admin console. The newest entry should show your public address, the one a site such as `ifconfig.me` reports. If it shows a private or Cloudflare address instead, add that address's range to `OLEAFLY_TRUSTED_PROXIES`, or raise `OLEAFLY_PROXY_HOPS` by one.
 
 ### Caddy
 
@@ -535,6 +561,32 @@ services:
       - ./ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
 ```
 
+## Behind an outbound proxy
+
+Some networks, often at universities, reach the internet only through an HTTP proxy. The installer, Docker, the server and Caddy each need to know about it. The examples use `http://proxy.example.edu:3128`.
+
+- The installer. `sudo` drops proxy settings, so pass yours on: `curl -fsSL https://oleafly.com/server/install.sh | sudo https_proxy="$https_proxy" sh`
+- Docker, which downloads the images. Save this as `/etc/systemd/system/docker.service.d/http-proxy.conf`, then run `sudo systemctl daemon-reload && sudo systemctl restart docker`:
+
+  ```ini
+  [Service]
+  Environment="HTTPS_PROXY=http://proxy.example.edu:3128"
+  Environment="NO_PROXY=localhost,127.0.0.1"
+  ```
+
+- The server, which talks to GitHub, your OpenID Connect provider and your bucket. Add `HTTPS_PROXY=http://proxy.example.edu:3128` and `NO_PROXY=localhost,127.0.0.1` to `.env`. If your bucket is on the same network, add its host name to `NO_PROXY`. Email doesn't go through the proxy, so the server has to reach the mail server directly.
+- Caddy, which gets the certificate from Let's Encrypt. Give it the same settings in `docker-compose.override.yml`:
+
+  ```yaml
+  services:
+    caddy:
+      environment:
+        HTTPS_PROXY: http://proxy.example.edu:3128
+        NO_PROXY: localhost,127.0.0.1,oleafly-server
+  ```
+
+Then run `docker compose up -d` again. Let's Encrypt still connects to Caddy on ports 80 and 443 to check the domain, so those have to be open from the internet. If the network blocks them, use [Cloudflare Tunnel](#without-a-public-address) instead.
+
 ## Without a public address
 
 If the machine has no public address, for example a computer in your lab behind the university firewall, Cloudflare Tunnel can make it reachable. You need a Cloudflare account with your domain on it. Cloudflare handles HTTPS for the hostname, so requests are decrypted on Cloudflare's network before they reach your machine. Count Cloudflare among the parties that can read traffic to your server.
@@ -559,7 +611,7 @@ If the machine has no public address, for example a computer in your lab behind 
 
 On a machine without Docker, install `cloudflared` from [Cloudflare's package repository](https://pkg.cloudflare.com/), run `sudo cloudflared service install` followed by the token, and set **Service URL** to `http://127.0.0.1:8080`.
 
-Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
+Cloudflare passes WebSocket connections through and puts the visitor's address last in `X-Forwarded-For`, so keep `OLEAFLY_BEHIND_PROXY=true`. When the tunnel leads to another proxy, such as Coolify's, and not straight to the server, also set `OLEAFLY_TRUSTED_PROXIES` to the range of the Docker network that `cloudflared` and that proxy share. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains this and the other choice, `OLEAFLY_PROXY_HOPS=2`. Cloudflare refuses requests larger than 100 MB on its Free and Pro plans, so set `OLEAFLY_MAX_PROJECT_MB` to 100 or less, or large projects fail to upload. Don't put Cloudflare Access in front of the server, because Oleafly can't get past its login page.
 
 When you update the server later, name the service so Caddy stays off: `docker compose pull oleafly-server && docker compose up -d oleafly-server`. The one-command installer always starts Caddy, so use these steps for a tunnel instead.
 
@@ -630,7 +682,7 @@ Your access rules still decide who gets in: an allowed list entry for that email
 
 Turning **Sign in by email** on also opens existing accounts to email links. A link signs in to the account that already has that address as a verified address. The server keeps every verified address a provider has reported for an account, not just the main one, and it keeps an address even after the person removes it from the provider. GitHub, for example, reports every verified address on the GitHub account. So anyone who can read mail at one of those addresses can sign in to that account by email. Before you turn it on, check that people still control every address on their accounts. If an address belongs to more than one account that can sign in, the link signs in to none of them, and your access rules decide whether it gets an account of its own. If the only account with that address is suspended or removed, the link is refused until you let that person back in, even when a domain rule covers the address.
 
-The server sends at most 3 links to one email address and 100 links to one IP address in 15 minutes, so a class of 50 at one address can all sign in. `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` and `OLEAFLY_EMAIL_LINKS_PER_IP` set these numbers. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. Turning **Sign in by email** off stops links that were already sent.
+The server sends at most 3 links to one email address and 100 links to one IP address in 15 minutes, so a class of 50 at one address can all sign in. `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` and `OLEAFLY_EMAIL_LINKS_PER_IP` set these numbers. All IPv6 addresses in one `/64` network count as one address. After that the page asks people to wait 15 minutes. The whole server also sends at most 300 sign-in emails an hour, whoever asks for them, and `OLEAFLY_EMAIL_LINKS_PER_HOUR` sets that number. Turning **Sign in by email** off stops links that were already sent.
 
 ### Sign in with a code
 
@@ -649,10 +701,11 @@ If they didn't start the sign-in, **Stop, this wasn't me** cancels the code. A c
 A new server has no admin. Until someone finishes setup, the server makes a new one-time setup code each time it starts and writes it to its log, and Oleafly sees that the server needs setup.
 
 1. Find the newest line that starts with `Setup code:` in the log:
+   - One-command install: `sudo sh /opt/oleafly-server/install.sh status` shows the current code
    - Docker Compose: `docker compose logs oleafly-server | grep 'Setup code'`
    - Coolify: the logs of the `oleafly-server` service
    - systemd: `sudo journalctl -u oleafly-server | grep 'Setup code'`
-2. In Oleafly, open **Settings › Collaboration**, select **Add server**, and enter your server's address. Oleafly asks for the setup code.
+2. In Oleafly, turn on **Live collaboration** in **Settings › Experimentation**. Then open **Settings › Collaboration**, select **Add server**, and enter your server's address. Oleafly asks for the setup code.
 3. Enter the code and sign in with any provider you configured. You become the server's admin, and the code stops working.
 
 Anyone who has the code before you use it can make themselves admin, so only ever paste it into Oleafly.
@@ -703,7 +756,7 @@ Set both lines or neither. Write special characters in the user name and passwor
 
 `smtps://` uses TLS from the start, on port 465 unless you name another port. `smtp://` uses port 587 unless you name another, then switches to TLS with STARTTLS. If the mail server doesn't offer STARTTLS, the server won't send. A mail relay on the same machine is the one exception: `smtp://localhost`, `smtp://127.0.0.1` and `smtp://[::1]` send without TLS. The server checks the mail server's certificate against the system's trusted certificates.
 
-A relay on the same private network can skip TLS too, when you ask for it. Add `?tls=none`, as in `smtp://mailpit:1025?tls=none`. That suits a relay container in the same Compose project, or a mail catcher such as [Mailpit](https://mailpit.axllent.org) on a test server. The address can't hold a user name or password then, because they would cross the network unencrypted. Use it only when nobody else can reach that network.
+A relay on the same private network can skip TLS too, when you ask for it. Add `?tls=none`, as in `smtp://mailpit:1025?tls=none`. That suits a relay container in the same Compose project, or a mail catcher such as [Mailpit](https://mailpit.axllent.org) on a test server. The address can't hold a user name or password then, because they would cross the network unencrypted. The server accepts `tls=none` only for this machine, an IP address in a private, link-local or unique-local range, or a one-word host name such as a Compose service. It refuses it for any other host. Use it only when nobody else can reach that network.
 
 ### What the server sends
 
@@ -910,12 +963,23 @@ Back up first. The server updates its database the first time a new version star
 
 Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
 
-- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`.
+- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it stops the server, copies the data volume to `/opt/oleafly-server/backups` and keeps the old `docker-compose.yml` and `install.sh` as `docker-compose.yml.previous` and `install.sh.previous`. It keeps the three newest copies. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
 - Docker Compose: download the new release's `docker-compose.yml` and `SHA256SUMS` as in [Docker Compose](#docker-compose), check them, then run `docker compose pull && docker compose up -d`. If you build from source, run `git pull` in the `Oleafly` folder and repeat the build command.
 - Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
 - Render: open the service and start a manual deploy, which pulls the image again.
 - Railway: deploy the service again from its menu. For images on GitHub's registry, Railway can also update the image by itself.
 - systemd: install the new release as in [Download the server](#download-the-server), or run `git pull` in the `Oleafly` folder and repeat the `cargo build` and `sudo install` commands from [Build the server](#build-the-server). Then run `sudo systemctl restart oleafly-server`.
+
+To go back after a one-command update by hand, put the copy and the previous files back. Use the name of your newest copy:
+
+```sh
+cd /opt/oleafly-server
+sudo docker compose down
+sudo docker run --rm -v oleafly-server_oleafly-data:/data -v /opt/oleafly-server/backups:/backup:ro debian:13.7-slim sh -c 'find /data -mindepth 1 -delete && tar -C /data -xzf /backup/oleafly-data-20261014T101500Z-0.1.0.tar.gz'
+sudo cp docker-compose.yml.previous docker-compose.yml
+sudo cp install.sh.previous install.sh
+sudo docker compose up -d
+```
 
 Oleafly checks the server's version every time it connects. If the app and the server can't work together, Oleafly says which one needs an update.
 

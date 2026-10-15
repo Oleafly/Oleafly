@@ -500,6 +500,62 @@ describe("preflight store", () => {
     });
   });
 
+  it("checks only the .bib files the document loads for repeated keys", async () => {
+    seedProject();
+    const refsBib = "@article{alpha, title={A}}\n@article{beta, title={B}}";
+    useFilesStore.setState((state) => ({
+      tree: [
+        ...state.tree,
+        { path: "refs (conflicted copy 2026-10-14).bib", is_dir: false },
+        { path: "old/sample.bib", is_dir: false },
+      ],
+      files: {
+        ...state.files,
+        "main.tex": { content: "\\documentclass{article}\\begin{document}\\bibliography{refs}\\end{document}", dirty: false },
+        "refs.bib": { content: refsBib, dirty: false },
+      },
+    }));
+    useIndexStore.setState({
+      texts: {
+        "refs (conflicted copy 2026-10-14).bib": refsBib,
+        "old/sample.bib": "@article{alpha, title={Sample}, doi={10.1/a}}",
+      },
+    });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.bibKeyDefinitions?.map((definition) => definition.file)).toEqual(["refs.bib", "refs.bib"]);
+    expect(refs.bibKeyDialect).toBe("bibtex");
+    expect(runRefsRules("", refs).map((finding) => finding.id)).not.toContain("refs-duplicate-bib-key");
+  });
+
+  it("keeps biber keys that differ in letter case apart and still reports their shared DOI", async () => {
+    seedProject();
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "main.tex": {
+          content: "\\documentclass{article}\\usepackage{biblatex}\\addbibresource{refs.bib}\\begin{document}\\end{document}",
+          dirty: false,
+        },
+        "refs.bib": {
+          content: "@article{Smith2020, title={A}, doi={10.1/same}}\n@article{smith2020, title={B}, doi={10.1/same}}",
+          dirty: false,
+        },
+      },
+    }));
+    useIndexStore.setState({ texts: {} });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.bibKeyDialect).toBe("biber");
+    const ids = runRefsRules("", refs).map((finding) => finding.id);
+    expect(ids).toContain("refs-duplicate-bib");
+    expect(ids).not.toContain("refs-duplicate-bib-key");
+  });
+
   it("does not call one heading id in two Markdown files a duplicate", async () => {
     seedProject();
     useIndexStore.setState((state) => ({

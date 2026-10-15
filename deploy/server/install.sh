@@ -11,8 +11,15 @@ issues_url=https://github.com/Oleafly/oleafly-server/issues
 docker_script_commit=ada7a567e59b3935bd601bb21e422da50e80e376
 docker_script_sha256=2b102d809152ea157a59f171319f489d971273b2d26dd7e9a6d1d737ce89289d
 docker_script_url=https://raw.githubusercontent.com/docker/docker-install/$docker_script_commit/install.sh
+# The Compose plugin release the printed steps download, with the checksums
+# from that release's .sha256 files.
+compose_plugin_version=v5.5.1
+compose_plugin_sha256_x86_64=db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
+compose_plugin_sha256_aarch64=732e3a84c1a0f67256ce80bc2598a24546b10ca05f9faa97efceb1171ece2ef7
 
 dir=${OLEAFLY_DIR:-/opt/oleafly-server}
+data_volume=oleafly-server_oleafly-data
+sysroot=${OLEAFLY_TEST_SYSROOT:-}
 noninteractive=0
 test_local_tls=0
 sudo_cmd=
@@ -22,11 +29,21 @@ tty_known=
 command_name=install
 https_ok=0
 domain=
+dns_via=
 server_name=
 github_on=0
 oidc_list=
 email_summary=Off
 files_summary='On this machine'
+engine=
+before=
+release_version=
+latest_checked=0
+container_before=
+restarts_before=0
+rollback=
+ipv6_on=0
+stopped_for_backup=0
 
 print_help() {
 	cat <<EOF
@@ -42,11 +59,14 @@ Usage:
 Commands:
   install     Set up the server, or repair an existing setup. This is the default.
   update      Get this release's files and image, keep .env, and restart.
-  status      Show whether the server is running and answers over HTTPS.
+              When the version changes, it copies the data to backups first.
+  status      Show whether the server is running and answers over HTTPS,
+              and the setup code until someone finishes setup.
   uninstall   Stop and remove the containers. Data stays unless you confirm deleting it.
 
 Options:
-  -y, --yes   Don't ask questions. Read the settings from environment variables.
+  -y, --yes   Don't ask questions. Read the settings from environment variables
+              or from OLEAFLY_ANSWERS_FILE.
   --version   Show the installer version.
   --help      Show this help.
 
@@ -84,6 +104,10 @@ Installer settings:
                              if it's missing.
   OLEAFLY_RELEASE_URL        Download the release files from this https:// or
                              file:// address instead of GitHub.
+  OLEAFLY_ANSWERS_FILE       Read settings from this file, one KEY=VALUE per
+                             line. Settings in the environment come first.
+                             Secrets on a sudo command line end up in the
+                             system log, and a file keeps them out of it.
 
 More help: $docs_url
 EOF
@@ -258,19 +282,38 @@ upper() {
 
 version_gt() {
 	awk -v a="$1" -v b="$2" 'BEGIN {
-		na = split(a, x, "-")
-		nb = split(b, y, "-")
-		split(x[1], p, ".")
-		split(y[1], q, ".")
+		na = index(a, "-")
+		nb = index(b, "-")
+		split(na ? substr(a, 1, na - 1) : a, p, ".")
+		split(nb ? substr(b, 1, nb - 1) : b, q, ".")
 		for (i = 1; i <= 3; i++) {
 			if (p[i] + 0 > q[i] + 0) exit 0
 			if (p[i] + 0 < q[i] + 0) exit 1
 		}
-		if (na == 1 && nb > 1) exit 0
-		if (na > 1 && nb == 1) exit 1
-		if (na > 1 && nb > 1 && x[2] > y[2]) exit 0
-		exit 1
+		if (!na || !nb) exit (!na && nb ? 0 : 1)
+		np = split(substr(a, na + 1), pa, ".")
+		nq = split(substr(b, nb + 1), pb, ".")
+		for (i = 1; i <= np && i <= nq; i++) {
+			an = pa[i] ~ /^[0-9]+$/
+			bn = pb[i] ~ /^[0-9]+$/
+			if (an && bn) {
+				if (pa[i] + 0 != pb[i] + 0) exit (pa[i] + 0 > pb[i] + 0 ? 0 : 1)
+			} else if (an != bn) {
+				exit (an ? 1 : 0)
+			} else if (pa[i] != pb[i]) {
+				exit (pa[i] > pb[i] ? 0 : 1)
+			}
+		}
+		exit (np > nq ? 0 : 1)
 	}'
+}
+
+valid_version() {
+	case $1 in
+		*[!0-9A-Za-z.-]* | '') return 1 ;;
+		[0-9]*.[0-9]*.[0-9]*) return 0 ;;
+	esac
+	return 1
 }
 
 compose_version() {
@@ -281,10 +324,47 @@ read_env_value() {
 	as_root sed -n "s/^$1=//p" "$dir/.env" 2>/dev/null | tail -n 1 | env_unquote
 }
 
+os_value() {
+	for file in "$sysroot/etc/os-release" "$sysroot/usr/lib/os-release"; do
+		if [ -r "$file" ]; then
+			sed -n "s/^$1=//p" "$file" | tail -n 1 | env_unquote
+			return 0
+		fi
+	done
+}
+
+read_distro() {
+	distro_id=$(os_value ID)
+	distro_like=$(os_value ID_LIKE)
+	distro_version=$(os_value VERSION_ID)
+	distro_name=$(os_value PRETTY_NAME)
+	[ -n "$distro_name" ] || distro_name=${distro_id:-this Linux distribution}
+}
+
+is_wsl() {
+	grep -qi microsoft "$sysroot/proc/sys/kernel/osrelease" 2>/dev/null
+}
+
+has_ipv4_route() {
+	[ -r "$sysroot/proc/net/route" ] || return 0
+	awk 'NR > 1 && $2 == "00000000" { found = 1 } END { exit !found }' "$sysroot/proc/net/route"
+}
+
+check_ipv4() {
+	has_ipv4_route && return 0
+	if resolve_domain github.com | grep -q ':'; then
+		return 0
+	fi
+	fail "This machine has no IPv4 connection. GitHub, where the release files and the server image live, only works over IPv4." "Give this machine an IPv4 address, or use NAT64 with DNS64, then run the installer again."
+}
+
 check_platform() {
 	heading "Checking this machine"
 	os=$(uname -s)
-	[ "$os" = Linux ] || fail "Oleafly Server runs on Linux, and this machine runs $os." "Use a Linux machine or virtual machine, such as one with Ubuntu 24.04 or Debian 13."
+	[ "$os" = Linux ] || fail "Oleafly Server runs on Linux, and this machine runs $os." "Use a Linux server or virtual machine, such as one with Ubuntu 24.04 or Debian 13. Read ${docs_url}#on-windows-or-macos"
+	if is_wsl; then
+		fail "This is WSL on Windows. It stops when Windows sleeps, and other computers can't reach it." "Run the server on a Linux server or virtual machine. Read ${docs_url}#on-windows-or-macos"
+	fi
 	arch=$(uname -m)
 	case $arch in
 		x86_64 | amd64) arch=x86_64 ;;
@@ -294,6 +374,7 @@ check_platform() {
 	for tool in curl awk sed od tr mktemp sha256sum install printenv; do
 		command -v "$tool" >/dev/null 2>&1 || fail "This installer needs $tool, which isn't installed." "Install it with your package manager and run the installer again."
 	done
+	check_ipv4
 	item "Linux on $arch."
 }
 
@@ -348,7 +429,85 @@ docker_ready() {
 	docker_cmd info >/dev/null 2>&1
 }
 
+docker_script_supports() {
+	case " $distro_id $distro_like " in
+		*' ubuntu '* | *' debian '* | *' raspbian '*) return 0 ;;
+	esac
+	case $distro_id in
+		centos | rhel | rocky | fedora | fedora-asahi-remix) return 0 ;;
+	esac
+	return 1
+}
+
+package_manager() {
+	if command -v dnf >/dev/null 2>&1; then
+		printf dnf
+	else
+		printf yum
+	fi
+}
+
+compose_plugin_steps() {
+	case $(uname -m) in
+		aarch64 | arm64)
+			compose_asset=docker-compose-linux-aarch64
+			compose_sha256=$compose_plugin_sha256_aarch64
+			;;
+		*)
+			compose_asset=docker-compose-linux-x86_64
+			compose_sha256=$compose_plugin_sha256_x86_64
+			;;
+	esac
+	printf '%s\n' "  curl -fLO https://github.com/docker/compose/releases/download/$compose_plugin_version/$compose_asset" \
+		"  echo '$compose_sha256  $compose_asset' | sha256sum -c" \
+		"  sudo install -D -m 755 $compose_asset /usr/local/lib/docker/cli-plugins/docker-compose"
+}
+
+docker_steps() {
+	case " $distro_id $distro_like " in
+		*' amzn '*)
+			printf '%s\n' "  sudo $(package_manager) install -y docker" "  sudo systemctl enable --now docker"
+			compose_plugin_steps
+			;;
+		*' rhel '* | *' centos '* | *' ol '*)
+			printf '%s\n' "  sudo dnf install -y dnf-plugins-core" \
+				"  sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo" \
+				"  sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" \
+				"  sudo systemctl enable --now docker"
+			;;
+		*) return 1 ;;
+	esac
+}
+
+compose_steps() {
+	read_distro
+	if dpkg -s docker-ce-cli 2>/dev/null | grep -q '^Status: install ok installed'; then
+		printf '%s\n' "  sudo apt-get install docker-compose-plugin"
+	elif rpm -q docker-ce-cli >/dev/null 2>&1; then
+		printf '%s\n' "  sudo $(package_manager) install docker-compose-plugin"
+	else
+		case $distro_id in
+			ubuntu) printf '%s\n' "  sudo apt-get install docker-compose-v2" ;;
+			fedora) printf '%s\n' "  sudo dnf install docker-compose" ;;
+			debian)
+				case $distro_version in
+					'' | 1[3-9]* | [2-9][0-9]*) printf '%s\n' "  sudo apt-get install docker-compose" ;;
+					*) compose_plugin_steps ;;
+				esac
+				;;
+			*) compose_plugin_steps ;;
+		esac
+	fi
+}
+
 install_docker() {
+	read_distro
+	if ! docker_script_supports; then
+		if steps=$(docker_steps); then
+			fail "Docker isn't installed, and Docker's install script doesn't support $distro_name." "Install Docker and its Compose plugin with these commands, then run the installer again:" "$steps"
+		fi
+		fail "Docker isn't installed, and Docker's install script doesn't support $distro_name." "Install Docker Engine and its Compose plugin with your distribution's packages, or follow https://docs.docker.com/engine/install/" "Then run the installer again."
+	fi
 	if [ "$noninteractive" = 1 ]; then
 		case ${OLEAFLY_INSTALL_DOCKER:-} in
 			yes | 1 | true) ;;
@@ -366,7 +525,10 @@ install_docker() {
 		fi
 	fi
 	item "Installing Docker with Docker's script. This takes a few minutes."
-	fetch "$docker_script_url" "$tmp/get-docker.sh" || fail "Couldn't download Docker's install script from $docker_script_url." "Check this machine's network connection and try again. Nothing was changed."
+	if ! fetch "$docker_script_url" "$tmp/get-docker.sh"; then
+		hint=$(proxy_hint)
+		fail "Couldn't download Docker's install script from $docker_script_url." "Check this machine's network connection and try again. Nothing was changed." ${hint:+"$hint"}
+	fi
 	actual=$(sha256sum "$tmp/get-docker.sh" | awk '{ print $1 }')
 	if [ "$actual" != "$docker_script_sha256" ]; then
 		fail "Docker's install script doesn't match the checksum this installer expects, so the installer won't run it. Nothing was changed." "Try again in a few minutes. If it happens again, report it at $issues_url" "Docker's other ways to install: https://docs.docker.com/engine/install/"
@@ -403,7 +565,7 @@ ensure_docker() {
 	fi
 	docker_ready || start_docker
 	if ! docker_cmd compose version >/dev/null 2>&1; then
-		fail "Docker is running, but the Docker Compose plugin isn't installed." "With Docker's packages: sudo apt-get install docker-compose-plugin" "With Ubuntu's packages: sudo apt-get install docker-compose-v2" "Then run the installer again."
+		fail "Docker is running, but the Docker Compose plugin isn't installed." "Install it with:" "$(compose_steps)" "Then run the installer again."
 	fi
 	engine=$(docker_cmd version --format '{{.Server.Version}}' 2>/dev/null) || engine=
 	plugin=$(docker_cmd compose version --short 2>/dev/null) || plugin=
@@ -423,6 +585,12 @@ release_base() {
 		printf 'https://github.com/%s/releases/latest/download' "$release_repo"
 	else
 		printf 'https://github.com/%s/releases/download/server-v%s' "$release_repo" "$installer_version"
+	fi
+}
+
+proxy_hint() {
+	if [ -n "${SUDO_USER:-}" ] && [ -z "${https_proxy:-}${HTTPS_PROXY:-}" ]; then
+		printf '%s' "sudo drops proxy settings. If this network needs a proxy, run the installer with: curl -fsSL $install_url | sudo https_proxy=\"\$https_proxy\" sh"
 	fi
 }
 
@@ -448,7 +616,10 @@ download_release() {
 	rm -rf "$tmp/release"
 	mkdir "$tmp/release"
 	for file in SHA256SUMS $release_files; do
-		fetch "$base/$file" "$tmp/release/$file" || fail "Couldn't download $file from $base." "Check this machine's network connection and try again. Nothing was changed."
+		if ! fetch "$base/$file" "$tmp/release/$file"; then
+			hint=$(proxy_hint)
+			fail "Couldn't download $file from $base." "Check this machine's network connection and try again. Nothing was changed." ${hint:+"$hint"}
+		fi
 	done
 	for file in $release_files; do
 		expected=$(awk -v name="$file" '{ n = $2; sub(/^\*/, "", n); if (n == name) { print $1; exit } }' "$tmp/release/SHA256SUMS")
@@ -463,14 +634,16 @@ download_release() {
 	item "Oleafly Server $release_version. All files match SHA256SUMS."
 }
 
+# Stops at the first file it can't write, so the caller can say what to do.
+# set -e doesn't stop a function its caller tests with if or ||.
 place_release_files() {
-	as_root mkdir -p "$dir"
-	as_root chmod 755 "$dir"
+	as_root mkdir -p "$dir" || return 1
+	as_root chmod 755 "$dir" || return 1
 	for file in docker-compose.yml Caddyfile litestream.yml; do
-		as_root install -m 644 "$tmp/release/$file" "$dir/$file"
+		as_root install -m 644 "$tmp/release/$file" "$dir/$file" || return 1
 	done
-	as_root install -m 644 "$tmp/release/env.example" "$dir/.env.example"
-	as_root install -m 755 "$tmp/release/install.sh" "$dir/install.sh"
+	as_root install -m 644 "$tmp/release/env.example" "$dir/.env.example" || return 1
+	as_root install -m 755 "$tmp/release/install.sh" "$dir/install.sh" || return 1
 }
 
 check_not_older() {
@@ -523,11 +696,19 @@ resolve_domain() {
 	fi
 }
 
+outside_addresses() {
+	grep -Eiv '^(127\.|169\.254\.|0\.0\.0\.0$|::1?$|::ffff:127\.|fe[89ab][0-9a-f]:)' | sed '/^$/d' | sort -u
+}
+
 local_addresses() {
-	{
-		hostname -I 2>/dev/null || true
-		ip -o addr show 2>/dev/null | awk '{ sub(/\/.*/, "", $4); print $4 }' || true
-	} | tr ' ' '\n' | sed '/^$/d' | sort -u
+	found=$(ip -o addr show 2>/dev/null | awk '$2 != "lo" && $2 !~ /^(docker|br-|veth|virbr)/ && $0 !~ / scope (host|link) / {
+		sub(/\/.*/, "", $4)
+		print $4
+	}') || found=
+	if [ -z "$found" ]; then
+		found=$(hostname -I 2>/dev/null | tr ' ' '\n') || found=
+	fi
+	printf '%s\n' "$found" | outside_addresses
 }
 
 public_addresses() {
@@ -554,9 +735,14 @@ check_dns() {
 			return 0
 			;;
 	esac
-	resolved=$(resolve_domain "$domain") || resolved=
-	if [ -z "$resolved" ]; then
+	answers=$(resolve_domain "$domain") || answers=
+	if [ -z "$answers" ]; then
 		note "$domain doesn't have a DNS record yet. Caddy can't get a certificate until it points to this machine. The install carries on, and Caddy keeps trying."
+		return 0
+	fi
+	resolved=$(printf '%s\n' "$answers" | outside_addresses)
+	if [ -z "$resolved" ]; then
+		note "/etc/hosts maps $domain to this machine, so the installer can't check its public DNS record. Make sure that record points here. The install carries on."
 		return 0
 	fi
 	mine=$(local_addresses) || mine=
@@ -565,8 +751,9 @@ check_dns() {
 		return 0
 	fi
 	item "Asking ifconfig.me for this machine's public address."
-	public=$(public_addresses) || public=
+	public=$(public_addresses | outside_addresses) || public=
 	if any_shared "$resolved" "$public"; then
+		dns_via=public
 		item "$domain points to this machine ($matched)."
 		return 0
 	fi
@@ -944,6 +1131,25 @@ env_passthrough() {
 	done
 }
 
+host_has_ipv6() {
+	awk '$4 == "00" && $6 != "lo" && $6 !~ /^(docker|br-|veth|virbr)/ { found = 1 } END { exit !found }' "$sysroot/proc/net/if_inet6" 2>/dev/null
+}
+
+read_ipv6() {
+	if [ -n "${OLEAFLY_IPV6:-}" ]; then
+		[ "$(lower "$OLEAFLY_IPV6")" != true ] || ipv6_on=1
+		return 0
+	fi
+	host_has_ipv6 || return 0
+	case ${engine%%.*} in
+		'' | *[!0-9]*) return 0 ;;
+	esac
+	if [ "${engine%%.*}" -ge 27 ]; then
+		add_setting OLEAFLY_IPV6 true
+		ipv6_on=1
+	fi
+}
+
 sign_in_summary() {
 	if [ "$github_on" = 1 ] && [ -n "$oidc_list" ]; then
 		printf 'GitHub and OpenID Connect (%s)' "$oidc_list"
@@ -963,6 +1169,7 @@ collect_settings() {
 	read_sign_in
 	read_email
 	read_storage
+	read_ipv6
 	heading "Ready to install"
 	item "Folder: $dir"
 	item "Domain: $domain"
@@ -970,6 +1177,7 @@ collect_settings() {
 	item "Sign-in: $(sign_in_summary)"
 	item "Email: $email_summary"
 	item "Files: $files_summary"
+	[ "$ipv6_on" = 0 ] || item "IPv6: On"
 	if [ "$noninteractive" = 0 ]; then
 		confirm "  Go ahead? [Y/n] " y || fail "Stopped. Nothing was changed."
 	fi
@@ -1001,45 +1209,129 @@ write_env() {
 	item "Wrote the settings to $dir/.env. Only root can read it."
 }
 
-start_server() {
-	heading "Starting the server"
+server_image_in() {
+	sed -n 's|^[[:space:]]*image:[[:space:]]*\([^[:space:]]*/oleafly-server:[^[:space:]]*\)[[:space:]]*$|\1|p' "$1" 2>/dev/null | head -n 1
+}
+
+caddy_image_in() {
+	sed -n 's|^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\)[[:space:]]*$|\1|p' "$1" 2>/dev/null | head -n 1
+}
+
+pull_images() {
 	item "Downloading the container images. This can take a minute."
-	if ! compose pull --quiet >"$tmp/compose.log" 2>&1; then
-		tail -n 20 "$tmp/compose.log" >&2
-		fail "Docker couldn't download the images. Its message is above." "Check this machine's network connection, then run the installer again."
+	# Naming a file with -f stops Compose from reading the admin's
+	# docker-compose.override.yml by itself, so name that file too: an image
+	# it swaps in is pulled before anything stops.
+	override=
+	[ ! -f "$dir/docker-compose.override.yml" ] || override=$dir/docker-compose.override.yml
+	if compose --project-directory "$dir" -f "$1" ${override:+-f "$override"} pull --quiet >"$tmp/compose.log" 2>&1; then
+		return 0
+	fi
+	tail -n 20 "$tmp/compose.log" >&2
+	if grep -Eqi 'denied|unauthorized|manifest unknown|not found: manifest|manifest for .* not found' "$tmp/compose.log"; then
+		fail "Docker couldn't get $(server_image_in "$1") from the registry. Its message is above.${2:+ $2}" "The registry refused the download or doesn't have the image, so this machine's network isn't the problem. Report it at $issues_url"
+	fi
+	fail "Docker couldn't download the images. Its message is above.${2:+ $2}" "Check this machine's network connection, then run the installer again."
+}
+
+start_server() {
+	container_before=$(compose ps -q oleafly-server 2>/dev/null) || container_before=
+	restarts_before=0
+	if [ -n "$container_before" ]; then
+		restarts_before=$(docker_cmd inspect --format '{{.RestartCount}}' "$container_before" 2>/dev/null) || restarts_before=0
+		case $restarts_before in
+			'' | *[!0-9]*) restarts_before=0 ;;
+		esac
 	fi
 	if ! compose up -d --remove-orphans >"$tmp/compose.log" 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
-		fail "Docker couldn't start the containers. Its message is above." "Fix the problem, then run the installer again."
+		ipv6=$(read_env_value OLEAFLY_IPV6) || ipv6=
+		if [ "$(lower "$ipv6")" = true ] && grep -Eqi 'ip6tables|ipv6|address pool' "$tmp/compose.log"; then
+			fail "Docker couldn't start the containers. Its message is above." "Docker couldn't set up IPv6 for the server's network. Set OLEAFLY_IPV6=false in $dir/.env, then run the installer again." ${rollback:+"$rollback"}
+		fi
+		fail "Docker couldn't start the containers. Its message is above." "Fix the problem, then run the installer again." ${rollback:+"$rollback"}
 	fi
 }
 
 server_failed() {
-	reason=$(compose logs --no-color --no-log-prefix --tail 100 oleafly-server 2>/dev/null | grep 'cannot start' | tail -n 1) || reason=
-	fail "The server stopped right after it started." ${reason:+"It said: $reason"} "Fix the setting in $dir/.env, then run: sudo sh $dir/install.sh" "To see the whole log: cd $dir && sudo docker compose logs oleafly-server"
+	log=$(compose logs --no-color --no-log-prefix --tail 100 oleafly-server 2>/dev/null) || log=
+	reason=$(printf '%s\n' "$log" | grep 'cannot start' | tail -n 1)
+	if [ -n "$reason" ]; then
+		fail "The server stopped right after it started." "It said: $reason" "Fix the setting in $dir/.env, then run: sudo sh $dir/install.sh" "To see the whole log: cd $dir && sudo docker compose logs oleafly-server" ${rollback:+"$rollback"}
+	fi
+	reason=$(printf '%s\n' "$log" | grep '[[:space:]]ERROR[[:space:]]' | tail -n 1 | sed 's/^.*[[:space:]]ERROR[[:space:]]*//')
+	fail "The server stopped right after it started." ${reason:+"It said: $reason"} "To see the whole log: cd $dir && sudo docker compose logs oleafly-server" ${rollback:+"$rollback"}
 }
 
 wait_for_server() {
 	item "Waiting for the server to be ready."
 	container=$(compose ps -q oleafly-server 2>/dev/null) || container=
 	[ -n "$container" ] || server_failed
+	allowed=0
+	if [ "$container" = "$container_before" ]; then
+		allowed=$restarts_before
+	fi
 	tries=0
 	while :; do
 		state=$(docker_cmd inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} {{.RestartCount}}' "$container" 2>/dev/null) || state=missing
 		case $state in
-			'running healthy 0')
+			running\ *) ;;
+			*) server_failed ;;
+		esac
+		restarts=${state##* }
+		case $restarts in
+			'' | *[!0-9]*) restarts=0 ;;
+		esac
+		[ "$restarts" -le "$allowed" ] || server_failed
+		case $state in
+			'running healthy '*)
 				item "The server is running."
 				return 0
 				;;
-			running\ *\ 0) ;;
-			*) server_failed ;;
 		esac
 		tries=$((tries + 1))
 		if [ "$tries" -ge 90 ]; then
-			fail "The server didn't become ready within 3 minutes." "See its log with: cd $dir && sudo docker compose logs oleafly-server"
+			fail "The server didn't become ready within 3 minutes." "See its log with: cd $dir && sudo docker compose logs oleafly-server" ${rollback:+"$rollback"}
 		fi
 		sleep 2
 	done
+}
+
+back_up_data() {
+	heading "Copying the data before the update"
+	caddy_image=$(caddy_image_in "$tmp/release/docker-compose.yml")
+	[ -n "$caddy_image" ] || fail "The release's docker-compose.yml doesn't name a Caddy image, which the backup uses. Nothing was changed." "Report this at $issues_url"
+	backup_name=oleafly-data-$(date -u +%Y%m%dT%H%M%SZ)-$before.tar.gz
+	as_root install -d -m 700 "$dir/backups"
+	item "Stopping the server to copy its data."
+	if ! compose stop >"$tmp/compose.log" 2>&1; then
+		tail -n 20 "$tmp/compose.log" >&2
+		compose start >/dev/null 2>&1 || true
+		fail "Docker couldn't stop the server to copy its data. Its message is above. Nothing was changed."
+	fi
+	if ! docker_cmd run --rm -v "$data_volume:/data:ro" -v "$dir/backups:/backup" --entrypoint tar "$caddy_image" -czf "/backup/$backup_name" -C /data . >"$tmp/compose.log" 2>&1; then
+		tail -n 20 "$tmp/compose.log" >&2
+		as_root rm -f "$dir/backups/$backup_name"
+		compose start >/dev/null 2>&1 || true
+		fail "Couldn't copy the data before the update. Its message is above." "The server runs $before again, and nothing else was changed. Check that this machine has free disk space, then run the installer again."
+	fi
+	item "Copied the data to $dir/backups/$backup_name"
+	for old in $(as_root ls -1 "$dir/backups" | grep '^oleafly-data-.*\.tar\.gz$' | sort -r | tail -n +4); do
+		as_root rm -f "$dir/backups/$old"
+	done
+	for file in docker-compose.yml install.sh; do
+		if [ -f "$dir/$file" ]; then
+			as_root cp -p "$dir/$file" "$dir/$file.previous"
+		fi
+	done
+	rollback="To go back to $before with the data from before this update, run:
+  cd $dir
+  sudo docker compose down
+  sudo docker run --rm -v $data_volume:/data -v $dir/backups:/backup:ro --entrypoint sh $caddy_image -c 'find /data -mindepth 1 -delete && tar -xzf /backup/$backup_name -C /data'
+  sudo cp docker-compose.yml.previous docker-compose.yml
+  sudo cp install.sh.previous install.sh
+  sudo docker compose up -d"
+	stopped_for_backup=1
 }
 
 https_get() {
@@ -1060,7 +1352,8 @@ check_https() {
 	while :; do
 		if https_get /healthz /dev/null; then
 			https_ok=1
-			item "https://$domain answers with a valid certificate."
+			item "https://$domain answers on this machine with a valid certificate."
+			item "To check it from outside, open https://$domain/healthz on a phone or from another network."
 			return 0
 		fi
 		tries=$((tries + 1))
@@ -1069,12 +1362,16 @@ check_https() {
 	done
 	note "The server is running, but https://$domain doesn't answer yet."
 	item "Caddy may still be getting the certificate, or the domain may not point here yet."
+	item "Check that TCP ports 80 and 443 and UDP port 443 are open in any firewall or cloud security group in front of this machine."
+	if [ "$dns_via" = public ]; then
+		item "This machine has a private address behind a router or NAT. Forward TCP ports 80 and 443 to it, or follow ${docs_url}#without-a-public-address"
+	fi
 	item "Caddy keeps trying by itself. Check again in a few minutes with:"
 	item "  sudo sh $dir/install.sh status"
 	item "Caddy's log says what it's waiting for: cd $dir && sudo docker compose logs caddy"
 }
 
-show_result() {
+read_setup_state() {
 	needs_setup=unknown
 	if [ "$https_ok" = 1 ] && https_get /.well-known/oleafly-server "$tmp/manifest.json"; then
 		if grep -q '"needs_setup": *false' "$tmp/manifest.json"; then
@@ -1092,57 +1389,111 @@ show_result() {
 			?*) code=$(printf '%s\n' "$line" | sed -n 's/.*Setup code: \([A-Z0-9][A-Z0-9-]*\)\..*/\1/p') ;;
 		esac
 	fi
-	heading "Oleafly Server is running"
-	item "Address: https://$domain"
-	if [ "$needs_setup" = no ]; then
-		item "This server already has an admin. Sign in to it from Oleafly."
-	elif [ -n "$code" ]; then
+}
+
+show_setup_code() {
+	if [ -n "$code" ]; then
 		item "Setup code: $code"
 	elif [ "$preset" = 1 ]; then
 		item "Setup code: the one you set in OLEAFLY_SETUP_CODE"
 	else
 		item "Find the setup code with: cd $dir && sudo docker compose logs oleafly-server | grep 'Setup code'"
 	fi
-	if [ "$needs_setup" != no ]; then
+}
+
+show_result() {
+	read_setup_state
+	heading "Oleafly Server is running"
+	item "Address: https://$domain"
+	if [ "$needs_setup" = no ]; then
+		item "This server already has an admin. Sign in to it from Oleafly."
+	else
+		show_setup_code
 		heading "Next steps"
 		item "1. Open Oleafly. Turn on Live collaboration in Settings > Experimentation."
 		item "2. In Settings > Collaboration, choose Add server and enter https://$domain"
 		item "3. Enter the setup code and sign in. You become the server's admin, and the code stops working."
+		item "4. Add people under Manage server. Nobody else can sign in until you add them."
 		item "Only paste the setup code into Oleafly. Whoever uses it first becomes the admin."
-		if [ "$needs_setup" = unknown ] && [ -n "$code" ]; then
-			item "The code is new each time the server starts, until someone finishes setup."
-		fi
+		item "The code is new each time the server starts, until someone finishes setup. To see the current one, run: sudo sh $dir/install.sh status"
 	fi
 	heading "For later"
 	item "Settings: $dir/.env"
-	item "Data: the Docker volume oleafly-server_oleafly-data. Backups: $operations_url"
+	item "Data: the Docker volume $data_volume. Backups: $operations_url"
 	item "Status: sudo sh $dir/install.sh status"
 	item "Update: curl -fsSL $install_url | sudo sh -s update"
+	item "Each update copies the data to $dir/backups before a new version starts."
 }
 
 refresh_install() {
 	download_release
 	check_not_older
-	place_release_files
+	pull_images "$tmp/release/docker-compose.yml" "Nothing was changed."
+	if [ -n "$before" ] && [ "$before" != "$release_version" ]; then
+		back_up_data
+	fi
+	if ! place_release_files; then
+		if [ "$stopped_for_backup" = 1 ]; then
+			if compose start >/dev/null 2>&1; then
+				again="The server runs $before again."
+			else
+				again="Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start"
+			fi
+			fail "Couldn't put the new release's files in $dir. Its message is above." "$again" "$rollback"
+		fi
+		fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
+	fi
+	heading "Starting the server"
 	start_server
 	wait_for_server
 	check_https "$1"
+}
+
+read_installed_domain() {
+	domain=$(read_env_value OLEAFLY_DOMAIN) || domain=
+	[ -z "$domain" ] || return 0
+	if [ -f "$dir/docker-compose.yml" ]; then
+		fail "$dir/.env doesn't set OLEAFLY_DOMAIN. Add it, then run the installer again."
+	fi
+	read_domain
+	printf '\nOLEAFLY_DOMAIN=%s\n' "$domain" | as_root tee -a "$dir/.env" >/dev/null
+	item "Added OLEAFLY_DOMAIN=$domain to $dir/.env."
 }
 
 require_install() {
 	if [ ! -f "$dir/.env" ] || [ ! -f "$dir/docker-compose.yml" ]; then
 		fail "There's no Oleafly Server in $dir." "Install it with: curl -fsSL $install_url | sudo sh" "If it's in another folder, set OLEAFLY_DIR to that folder."
 	fi
-	domain=$(read_env_value OLEAFLY_DOMAIN) || domain=
-	[ -n "$domain" ] || fail "$dir/.env doesn't set OLEAFLY_DOMAIN. Add it, then run the installer again."
+	read_installed_domain
+}
+
+check_newer_release() {
+	latest_checked=0
+	[ -z "${OLEAFLY_RELEASE_URL:-}" ] || return 0
+	if [ "$installer_version" = unreleased ]; then
+		latest_checked=1
+		return 0
+	fi
+	url=$(curl -fsSIL --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 20 -o /dev/null -w '%{url_effective}' "https://github.com/$release_repo/releases/latest" 2>/dev/null) || return 0
+	latest=${url##*/tag/server-v}
+	valid_version "$latest" || return 0
+	if version_gt "$latest" "$installer_version"; then
+		fail "Oleafly Server $latest is out, and this installer is for $installer_version. Nothing was changed." "Update with: curl -fsSL $install_url | sudo sh -s update"
+	fi
+	latest_checked=1
 }
 
 cmd_install() {
 	check_platform
 	check_root
 	if [ -f "$dir/.env" ]; then
-		require_install
-		item "Found a server in $dir. Its settings in .env stay as they are."
+		if [ -f "$dir/docker-compose.yml" ]; then
+			item "Found a server in $dir. Its settings in .env stay as they are."
+		else
+			item "Found $dir/.env without the other files. The installer keeps .env and puts the other files back."
+		fi
+		read_installed_domain
+		before=$(compose_version "$dir/docker-compose.yml") || before=
 		ensure_docker may_install
 		refresh_install 40
 		show_result
@@ -1153,8 +1504,10 @@ cmd_install() {
 	download_release
 	collect_settings
 	heading "Installing"
-	place_release_files
+	place_release_files || fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
 	write_env
+	heading "Starting the server"
+	pull_images "$dir/docker-compose.yml"
 	start_server
 	wait_for_server
 	check_https 40
@@ -1166,12 +1519,19 @@ cmd_update() {
 	check_root
 	require_install
 	before=$(compose_version "$dir/docker-compose.yml") || before=
+	check_newer_release
 	ensure_docker no_install
 	refresh_install 40
 	if [ -n "$before" ] && [ "$before" != "$release_version" ]; then
 		heading "Updated from $before to $release_version"
-	else
+	elif [ "$latest_checked" = 1 ]; then
 		heading "Oleafly Server $release_version is up to date"
+	elif [ -n "${OLEAFLY_RELEASE_URL:-}" ]; then
+		heading "Oleafly Server $release_version is in place"
+		item "It came from OLEAFLY_RELEASE_URL, so the installer didn't look for a newer release."
+	else
+		heading "Oleafly Server $release_version is in place"
+		item "The installer couldn't check for a newer release."
 	fi
 	item "Your settings in $dir/.env didn't change."
 }
@@ -1195,18 +1555,44 @@ cmd_status() {
 		item "The server isn't ready. See why with: cd $dir && sudo docker compose logs oleafly-server"
 	fi
 	if https_get /healthz /dev/null; then
-		item "https://$domain answers with a valid certificate."
+		item "https://$domain answers on this machine with a valid certificate."
 		https_ok=1
 	else
-		item "https://$domain doesn't answer. See Caddy's log with: cd $dir && sudo docker compose logs caddy"
+		item "https://$domain doesn't answer on this machine. See Caddy's log with: cd $dir && sudo docker compose logs caddy"
+	fi
+	if [ "$healthy" = 1 ]; then
+		read_setup_state
+		case $needs_setup in
+			yes)
+				show_setup_code
+				item "Nobody has finished setup yet. The code is new each time the server starts."
+				;;
+			unknown)
+				if [ -n "$code" ]; then
+					item "Setup code, if nobody has finished setup yet: $code"
+					item "The code is new each time the server starts."
+				fi
+				;;
+		esac
 	fi
 	[ "$healthy" = 1 ] && [ "$https_ok" = 1 ]
+}
+
+storage_location() {
+	printf '%s' "$1" | sed 's#^\([A-Za-z][A-Za-z0-9+.-]*://\)[^/@]*@#\1#'
 }
 
 cmd_uninstall() {
 	check_root
 	require_install
 	ensure_docker no_install
+	blob_store=$(read_env_value OLEAFLY_BLOB_STORE) || blob_store=
+	case $blob_store in
+		[Ss]3://*) blob_store=$(storage_location "$blob_store") ;;
+		*) blob_store= ;;
+	esac
+	replica=$(read_env_value LITESTREAM_REPLICA_URL) || replica=
+	[ -z "$replica" ] || replica=$(storage_location "$replica")
 	heading "Uninstall"
 	item "This stops and removes the Oleafly Server containers."
 	item "Your data and settings stay unless you choose to delete them next."
@@ -1219,45 +1605,95 @@ cmd_uninstall() {
 		fail "Docker couldn't remove the containers. Its message is above."
 	}
 	item "The containers are gone."
-	mountpoint=$(docker_cmd volume inspect --format '{{.Mountpoint}}' oleafly-server_oleafly-data 2>/dev/null) || mountpoint=
+	mountpoint=$(docker_cmd volume inspect --format '{{.Mountpoint}}' "$data_volume" 2>/dev/null) || mountpoint=
 	heading "Your data"
 	if [ -n "$mountpoint" ]; then
-		item "Projects, accounts and the security log are in the Docker volume oleafly-server_oleafly-data, at $mountpoint"
+		item "Projects, accounts and the security log are in the Docker volume $data_volume, at $mountpoint"
 	fi
+	[ -z "$blob_store" ] || item "Files and project snapshots are in $blob_store."
+	[ -z "$replica" ] || item "Litestream's copies of the database are in $replica."
 	item "Settings are in $dir/.env"
 	if [ "$noninteractive" = 1 ]; then
 		item "To delete them too, run the uninstall again without --yes."
 		return 0
 	fi
 	tell ""
-	tell "Deleting the data removes every shared project on this server, every account and the security log."
+	tell "Deleting the data removes every shared project on this server, every account, the security log and the copies in $dir/backups."
+	[ -z "$blob_store" ] || tell "Files and snapshots in $blob_store stay. Delete them in your storage provider."
+	[ -z "$replica" ] || tell "The database copies in $replica stay. Delete them in your storage provider."
 	tell "It can't be undone. People keep their own copies of projects on their computers."
 	ask "  To delete the data and settings, type delete. To keep them, press Enter: "
 	if [ "$reply" != delete ]; then
 		item "Kept the data and settings. Install again later to use them."
 		return 0
 	fi
-	compose down --volumes >"$tmp/compose.log" 2>&1 || {
+	if ! docker_cmd volume rm "$data_volume" >"$tmp/compose.log" 2>&1 && docker_cmd volume inspect "$data_volume" >/dev/null 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
-		fail "Docker couldn't delete the volumes. Its message is above."
-	}
-	for file in .env .env.example install.sh docker-compose.yml Caddyfile litestream.yml; do
+		fail "Docker couldn't delete the data volume $data_volume. Its message is above."
+	fi
+	for file in .env .env.example install.sh install.sh.previous docker-compose.yml docker-compose.yml.previous Caddyfile litestream.yml; do
 		as_root rm -f "$dir/$file"
 	done
+	if [ -d "$dir/backups" ]; then
+		for old in $(as_root ls -1 "$dir/backups" | grep '^oleafly-data-.*\.tar\.gz$'); do
+			as_root rm -f "$dir/backups/$old"
+		done
+		as_root rmdir "$dir/backups" 2>/dev/null || true
+	fi
 	if as_root rmdir "$dir" 2>/dev/null; then
 		item "Deleted the data, the settings and $dir."
 	else
 		item "Deleted the data and the settings. $dir still holds files you added, so it stays."
 	fi
+	[ -z "$blob_store" ] || item "Files and snapshots in $blob_store are still there. Delete them in your storage provider."
+	[ -z "$replica" ] || item "The database copies in $replica are still there. Delete them in your storage provider."
+	item "Caddy's certificates stay in the Docker volumes oleafly-server_caddy-data and oleafly-server_caddy-config, so a new install doesn't ask Let's Encrypt for new ones. To delete them too, run: sudo docker volume rm oleafly-server_caddy-data oleafly-server_caddy-config"
+}
+
+load_answers() {
+	answers=${OLEAFLY_ANSWERS_FILE:-}
+	[ -n "$answers" ] || return 0
+	if [ ! -f "$answers" ] || [ ! -r "$answers" ]; then
+		fail "OLEAFLY_ANSWERS_FILE is $answers, which the installer can't read." "Check the path, and run the installer as root, for example through sudo."
+	fi
+	entries=$(awk '{
+		sub(/\r$/, "")
+		sub(/^[ \t]+/, "")
+		sub(/^export[ \t]+/, "")
+		if ($0 == "" || substr($0, 1, 1) == "#") next
+		print NR ":" $0
+	}' "$answers")
+	while IFS= read -r entry; do
+		[ -n "$entry" ] || continue
+		number=${entry%%:*}
+		line=${entry#*:}
+		key=${line%%=*}
+		case $key in
+			"$line" | '' | *[!A-Za-z0-9_]*) fail "Line $number of $answers isn't a setting such as OLEAFLY_DOMAIN=collab.example.org." ;;
+			OLEAFLY_* | LITESTREAM_*) ;;
+			*) fail "Line $number of $answers sets $key, which the installer doesn't read." "Use the names in .env.example, which start with OLEAFLY_ or LITESTREAM_." ;;
+		esac
+		value=${line#*=}
+		case $value in
+			\'*\')
+				value=${value#\'}
+				value=${value%\'}
+				;;
+			\"*\")
+				value=${value#\"}
+				value=${value%\"}
+				;;
+		esac
+		if ! printenv "$key" >/dev/null 2>&1; then
+			export "$key=$value"
+		fi
+	done <<EOF
+$entries
+EOF
+	dir=${OLEAFLY_DIR:-/opt/oleafly-server}
 }
 
 main() {
-	case ${OLEAFLY_NONINTERACTIVE:-} in
-		1 | yes | true) noninteractive=1 ;;
-	esac
-	case ${OLEAFLY_TEST_LOCAL_TLS:-} in
-		1 | yes | true) test_local_tls=1 ;;
-	esac
 	for argument in "$@"; do
 		case $argument in
 			install | update | status | uninstall) command_name=$argument ;;
@@ -1273,6 +1709,13 @@ main() {
 			*) fail "The installer doesn't know \"$argument\". Run it with --help to see what it can do." ;;
 		esac
 	done
+	load_answers
+	case ${OLEAFLY_NONINTERACTIVE:-} in
+		1 | yes | true) noninteractive=1 ;;
+	esac
+	case ${OLEAFLY_TEST_LOCAL_TLS:-} in
+		1 | yes | true) test_local_tls=1 ;;
+	esac
 	trap cleanup EXIT
 	trap 'exit 130' INT
 	trap 'exit 143' TERM

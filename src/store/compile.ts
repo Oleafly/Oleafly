@@ -10,6 +10,7 @@ import {
   withEventListener,
   type CompileError,
   type CompileResult,
+  type DocumentEngineDescriptor,
   type LogDiagnostic,
   type MainDecision,
 } from "@/lib/tauri";
@@ -40,7 +41,11 @@ import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { explainCodedCompileErrors } from "@/lib/compile-error-codes";
-import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
+import {
+  locationErrorAvailability,
+  projectFolderAvailable,
+  reportLocationError,
+} from "@/store/project-availability";
 import { SaveFlushError, codedSaveFailure } from "@/store/save-flush-error";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
@@ -870,14 +875,113 @@ function settleCompileNotices(projectId: string): void {
   if (!packageInstallsRunning.has(projectId)) dismissOwnedToast(missingPackageToasts, projectId);
 }
 
-export async function saveAllForCompile(): Promise<void> {
+async function saveAllDirtyRetryingConflicts(): Promise<void> {
   try {
     await useFilesStore.getState().saveAllDirty();
   } catch (error) {
     if (!String(error).includes(MUTATION_CONFLICT)) throw error;
     await useFilesStore.getState().saveAllDirty();
   }
+}
+
+// The files a build of mainDoc reads, from the project graph: the main
+// document, what it includes or imports, and the bibliographies and assets
+// those name. Null without a graph for this project, so every file counts.
+function filesTheCompileReads(projectId: string | null, mainDoc: string): Set<string> | null {
+  const graph = useIndexStore.getState().intelligenceState?.data;
+  if (!graph || !projectId || graph.identity.projectId !== projectId) return null;
+  const reads = new Set([mainDoc]);
+  const pending = [mainDoc];
+  for (let from = pending.pop(); from !== undefined; from = pending.pop()) {
+    for (const edge of graph.hierarchy.edges) {
+      if (edge.fromFile !== from) continue;
+      for (const target of edge.targetFile ? [edge.targetFile] : edge.candidateFiles) {
+        if (reads.has(target)) continue;
+        reads.add(target);
+        if (edge.kind === "include" || edge.kind === "import") pending.push(target);
+      }
+    }
+  }
+  return reads;
+}
+
+// The graph has no edge for files an engine finds by name: LaTeX packages,
+// classes and bibliography styles, data that Typst code loads, Markdown
+// filters and styles. A file with one of these extensions counts as read by
+// the build even when the graph doesn't list it.
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps", "bmp", "tif", "tiff"];
+const BUILD_READ_EXTENSIONS: Readonly<Record<"latex" | "typst" | "markdown", ReadonlySet<string>>> = {
+  // latexmkrc stands for both latexmkrc and .latexmkrc, see fileExtension.
+  latex: new Set([
+    ...["tex", "ltx", "sty", "cls", "bst", "bbx", "cbx", "lbx", "def", "cfg", "clo", "fd", "bib"],
+    ...["tikz", "pgf", "csv", "dat", "txt", "pdf", "latexmkrc", ...IMAGE_EXTENSIONS],
+  ]),
+  typst: new Set([
+    ...["typ", "bib", "yaml", "yml", "json", "toml", "csv", "xml", "cbor", "txt", "wasm", "pdf"],
+    ...IMAGE_EXTENSIONS,
+  ]),
+  markdown: new Set(["md", "yaml", "yml", "json", "bib", "csl", "lua", "tex", ...IMAGE_EXTENSIONS]),
+};
+
+function fileExtension(path: string): string {
+  const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  return name.slice(name.lastIndexOf(".") + 1);
+}
+
+function engineReadsExtensions(engine: DocumentEngineDescriptor | null): ReadonlySet<string> | null {
+  const profile = engine?.capabilities.formatting_profile;
+  return profile === "latex" || profile === "typst" || profile === "markdown"
+    ? BUILD_READ_EXTENSIONS[profile]
+    : null;
+}
+
+// A failed save stops the compile when the build may read that file: the
+// graph names it, or the engine reads files of its kind. A failure that says
+// the project folder itself is gone stops it whatever the file.
+function saveFailureStopsCompile(
+  error: unknown,
+  projectId: string | null,
+  mainDoc: string,
+  engine: DocumentEngineDescriptor | null,
+): boolean {
+  if (!(error instanceof SaveFlushError)) return true;
+  const reads = filesTheCompileReads(projectId, mainDoc);
+  const readable = engineReadsExtensions(engine);
+  if (reads === null || readable === null) return true;
+  return error.failures.some(
+    (failure) =>
+      reads.has(failure.path) ||
+      readable.has(fileExtension(failure.path)) ||
+      locationErrorAvailability(failure.reason) !== null,
+  );
+}
+
+// Saves every open file. A file the build doesn't read that can't be saved,
+// such as notes changed on disk by a sync client, gets the usual save notice
+// and doesn't stop the compile. Anything else stops it.
+export async function saveAllForCompile(
+  options: { readonly mainDoc?: string; readonly explicit?: boolean } = {},
+): Promise<void> {
+  const files = useFilesStore.getState();
+  try {
+    await saveAllDirtyRetryingConflicts();
+  } catch (error) {
+    if (saveFailureStopsCompile(error, files.projectId, options.mainDoc ?? files.mainDoc, files.engine)) {
+      throw error;
+    }
+    reportCompileSaveFailure("save before compile", useFilesStore.getState(), error, options.explicit);
+  }
   await collabCompileBarrier(useFilesStore.getState().projectId);
+}
+
+export function compileSaveFailureReason(error: unknown): string {
+  if (!(error instanceof SaveFlushError)) {
+    return i18n.t(($) => $.core.compile.saveFailedOther, { reason: describeError(error) });
+  }
+  const path = error.failures[0].path;
+  return error.failures.length > 1
+    ? i18n.t(($) => $.core.compile.saveFailedSeveral, { path })
+    : i18n.t(($) => $.core.compile.saveFailed, { path });
 }
 
 export function clearFolderPause(): void {
@@ -889,18 +993,27 @@ export function clearFolderPause(): void {
   );
 }
 
+// Each failed file is reported under its own path with its own reason, so
+// one file's "changed on disk" never marks another file as changed.
 export function reportCompileSaveFailure(
   scope: string,
   files: ReturnType<typeof useFilesStore.getState>,
   error: unknown,
   explicit = false,
 ): void {
-  const path = error instanceof SaveFlushError ? error.failures[0].path : files.activePath;
-  if (files.projectId && path && projectFolderAvailable(files.projectId)) {
-    reportFileSaveFailure(scope, files.projectId, path, codedSaveFailure(error) ?? error, explicit);
-  } else {
+  const projectId = files.projectId;
+  if (!projectId || !projectFolderAvailable(projectId)) {
     void logError(scope, error);
+    return;
   }
+  if (error instanceof SaveFlushError) {
+    for (const failure of error.failures) {
+      reportFileSaveFailure(scope, projectId, failure.path, failure.reason, explicit);
+    }
+    return;
+  }
+  if (files.activePath) reportFileSaveFailure(scope, projectId, files.activePath, error, explicit);
+  else void logError(scope, error);
 }
 
 export function stopOutdatedAutomaticCompile(editedAt: number, now = Date.now()): boolean {
@@ -1103,7 +1216,7 @@ function folderLostDuringSave(projectId: string, error: unknown): boolean {
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
   if (formatsBeforeCompileSave(ctx)) await formatActiveFileBeforeCompileSave();
   try {
-    await saveAllForCompile();
+    await saveAllForCompile({ mainDoc: ctx.mainDoc, explicit: ctx.origin === "explicit" });
   } catch (e) {
     if (ctx.capturedProjectId && folderLostDuringSave(ctx.capturedProjectId, e)) {
       setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
@@ -1113,7 +1226,7 @@ async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> 
     ctx.set({
       status: "error",
       phase: "idle",
-      failureReason: `The document could not be saved before compiling: ${String(e)}`,
+      failureReason: compileSaveFailureReason(e),
       lastAttemptIdentity: gateAttemptIdentity(ctx),
     });
     ctx.abortIntent();

@@ -23,6 +23,7 @@ import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { summarizeMcpError, summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
   appendAppLog,
+  approvalsList,
   appVersion,
   getConfig,
   listProjects,
@@ -74,6 +75,9 @@ const MUTATING_TOOLS = new Set([
 ]);
 
 const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "computer_use"]);
+
+const DENIED_BY_RULES = "This tool is denied for this project in approvals.toml.";
+const RULES_UNREADABLE = "Oleafly couldn't read the approval rules in approvals.toml, so it refused this tool.";
 
 export function rawSchemaOf(schema: unknown): unknown {
   if (schema && typeof schema === "object" && "jsonSchema" in schema) {
@@ -663,6 +667,26 @@ export async function refreshMcpRegistry(): Promise<void> {
 }
 
 
+// The MCP client gets the English sentence, like every other tool error it
+// receives. The activity list in the app shows the translated summary.
+type RuleRefusal = { readonly client: string; readonly summary: string };
+
+// A deny rule in approvals.toml refuses its tool for outside agents too,
+// whatever the MCP approval policy. Rules that can't be read refuse every
+// tool, the same as in the in-app chat.
+async function ruleRefusal(toolName: string): Promise<RuleRefusal | null> {
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) return null;
+  try {
+    const rules = await approvalsList(projectId);
+    return rules[toolName] === "deny"
+      ? { client: DENIED_BY_RULES, summary: i18n.t(($) => $.core.mcp.deniedByRules) }
+      : null;
+  } catch {
+    return { client: RULES_UNREADABLE, summary: i18n.t(($) => $.core.mcp.rulesUnreadable) };
+  }
+}
+
 async function handleCall(payload: {
   callId: number;
   epoch: number;
@@ -700,18 +724,22 @@ async function handleCall(payload: {
       bridgeCalls.pendingImages = [];
       bridgeCalls.pendingImageChars = 0;
       try {
-        const validationError = validateToolInput(rawSchemaOf(tool.inputSchema), args);
-        let raw = validationError
-          ? { error: `Invalid tool arguments: ${validationError}` }
-          : await tool.execute(args);
+        let refusal = await ruleRefusal(payload.name);
+        const validationError = refusal ? null : validateToolInput(rawSchemaOf(tool.inputSchema), args);
+        let raw = refusal
+          ? { error: refusal.client }
+          : validationError
+            ? { error: `Invalid tool arguments: ${validationError}` }
+            : await tool.execute(args);
         if (bridgeCalls.cancelledKeys.has(callKey)) {
           raw = { error: "MCP request was cancelled before the tool completed." };
+          refusal = null;
           bridgeCalls.pendingImages = [];
           bridgeCalls.pendingImageChars = 0;
         }
         result = toMcpResult(raw, bridgeCalls.pendingImages);
         const textResult = result.content.find((part) => part.type === "text");
-        summary = summarizeMcpResult(textResult?.text, result.isError);
+        summary = refusal?.summary ?? summarizeMcpResult(textResult?.text, result.isError);
       } catch (e) {
         result = toMcpResult({ error: String(e) }, []);
         summary = summarizeMcpError(e);

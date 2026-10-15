@@ -8,7 +8,7 @@ import {
   resolveBibliographyPath,
 } from "@oleafly/latex";
 import { maskComments } from "./mask";
-import { message } from "./messages";
+import { message, type PreflightMessageKey } from "./messages";
 import type { Finding } from "./types";
 
 export interface RefsContext {
@@ -23,6 +23,8 @@ export interface RefsContext {
   duplicateLabels?: { label: string; files: string[] }[];
   unreferencedLabels?: { label: string; file: string }[];
   bibKeyDefinitions?: BibKeyDefinition[];
+  /** How the project's bibliography tool compares keys. Defaults to BibTeX. */
+  bibKeyDialect?: BibKeyDialect;
 }
 
 export interface BibKeyDefinition {
@@ -409,11 +411,19 @@ function bibKeyPlace(definition: BibKeyDefinition, shown: string): string {
   return definition.key === shown ? place : `${place} (${definition.key})`;
 }
 
-export type BibKeyDialect = "bibtex" | "typst";
+export type BibKeyDialect = "bibtex" | "biber" | "typst";
 
+// BibTeX compares keys without letter case. biber and Typst keep
+// Smith2020 and smith2020 apart.
 function bibKeyIdentity(key: string, dialect: BibKeyDialect): string {
   return dialect === "bibtex" ? key.toLowerCase() : key;
 }
+
+const DUPLICATE_KEY_DETAIL: Record<BibKeyDialect, PreflightMessageKey> = {
+  bibtex: "rules.refs-duplicate-bib-key.detail",
+  biber: "rules.refs-duplicate-bib-key.detailBiber",
+  typst: "rules.refs-duplicate-bib-key.detailTypst",
+};
 
 function distinctBibKeys(keys: readonly string[], dialect: BibKeyDialect): string[] {
   const seen = new Map<string, string>();
@@ -459,7 +469,7 @@ export function duplicateBibKeyFindings(ctx: RefsContext, dialect: BibKeyDialect
         severity: typst ? ("error" as const) : ("warning" as const),
         certainty: "verified" as const,
         title: message("rules.refs-duplicate-bib-key.title", { key: first.key }),
-        detail: message(typst ? "rules.refs-duplicate-bib-key.detailTypst" : "rules.refs-duplicate-bib-key.detail", {
+        detail: message(DUPLICATE_KEY_DETAIL[dialect], {
           places: definitions.map((item) => bibKeyPlace(item, first.key)).join(", "),
         }),
         file: first.file,
@@ -491,11 +501,12 @@ export function runRefsRules(
   ];
 
   if (options.includeProjectQuality !== false) {
+    const dialect = ctx.bibKeyDialect ?? "bibtex";
     out.push(
-      ...duplicateDoiFindings(ctx),
+      ...duplicateDoiFindings(ctx, dialect),
       ...bibliographyQuality(ctx),
       ...projectLabelQuality(ctx),
-      ...duplicateBibKeyFindings(ctx),
+      ...duplicateBibKeyFindings(ctx, dialect),
     );
   }
 

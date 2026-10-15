@@ -220,54 +220,213 @@ async fn a_child_without_a_permission_route_is_declined_instead_of_stalling() {
     runtime.close(&id).await.unwrap();
 }
 
-#[test]
-fn full_access_auto_allows_a_child_only_without_a_run_command_deny() {
-    use crate::acp::PermissionDelegate;
+/// Starts a helper turn whose agent asks for a permission of `kind`, waits until
+/// the request is pending, and returns the turn and the request.
+async fn helper_asks(
+    temp: &tempfile::TempDir,
+    runtime: &Arc<AcpRuntime>,
+    id: &str,
+    kind: &str,
+) -> (
+    tokio::task::JoinHandle<Result<(), String>>,
+    crate::acp::PermissionRequest,
+) {
+    let path = temp
+        .path()
+        .join("project")
+        .canonicalize()
+        .unwrap()
+        .join("paper.tex");
+    let prompt = format!(
+        "ask-permission:{}",
+        serde_json::json!({"kind": kind, "path": path})
+    );
+    let prompting = runtime.clone();
+    let prompt_id = id.to_owned();
+    let turn = tokio::spawn(async move {
+        prompting
+            .prompt(&prompt_id, prompt, Vec::new())
+            .await
+            .map(|_| ())
+    });
+    let request = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            let pending = runtime.snapshot(id).await.unwrap().permissions;
+            if let Some(request) = pending.into_iter().next() {
+                break request;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    (turn, request)
+}
+
+fn chosen_option(runtime: &AcpRuntime, id: &str) -> serde_json::Value {
+    runtime
+        .events(id, 0, 500)
+        .unwrap()
+        .events
+        .into_iter()
+        .rev()
+        .find(|event| event.kind == "permission_resolved")
+        .map(|event| event.data["optionId"].clone())
+        .unwrap()
+}
+
+const PROJECT: &str = "delegation-fixture";
+
+#[tokio::test]
+async fn a_deny_rule_added_after_the_helper_started_refuses_its_command_without_a_card() {
     use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
-    let root = tempfile::tempdir().unwrap();
-    set_mode(root.path(), "full-open", ApprovalMode::FullAccess).unwrap();
-    set_mode(root.path(), "full-denied", ApprovalMode::FullAccess).unwrap();
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
     set_decision(
-        root.path(),
-        "full-denied",
+        rules.path(),
+        PROJECT,
         "run_command",
         Some(ToolDecision::Deny),
     )
     .unwrap();
-    set_mode(root.path(), "approve", ApprovalMode::ApproveForMe).unwrap();
+
+    let (turn, _) = helper_asks(&temp, &runtime, &id, "execute").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert_eq!(refused, vec!["run_command"]);
+    turn.await.unwrap().unwrap();
+    assert_eq!(chosen_option(&runtime, &id), "no");
+    assert!(runtime.snapshot(&id).await.unwrap().permissions.is_empty());
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn deny_rules_for_file_tools_refuse_a_helpers_edits_under_full_access() {
+    use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
     set_decision(
-        root.path(),
-        "approve",
-        "run_command",
-        Some(ToolDecision::Allow),
+        rules.path(),
+        PROJECT,
+        "write_file",
+        Some(ToolDecision::Deny),
     )
     .unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
 
-    assert_eq!(
-        super::permission_delegate_for(root.path(), "full-open"),
-        PermissionDelegate::AutoAllow
-    );
-    assert_eq!(
-        super::permission_delegate_for(root.path(), "full-denied"),
-        PermissionDelegate::ParentChat
-    );
-    assert_eq!(
-        super::permission_delegate_for(root.path(), "approve"),
-        PermissionDelegate::ParentChat
-    );
+    let (turn, _) = helper_asks(&temp, &runtime, &id, "edit").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert_eq!(refused, vec!["write_file"]);
+    turn.await.unwrap().unwrap();
+    assert_eq!(chosen_option(&runtime, &id), "no");
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn full_access_approves_a_helpers_request_that_no_rule_denies() {
+    use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
+    set_decision(
+        rules.path(),
+        PROJECT,
+        "run_command",
+        Some(ToolDecision::Deny),
+    )
+    .unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+
+    let (turn, _) = helper_asks(&temp, &runtime, &id, "edit").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert!(refused.is_empty());
+    turn.await.unwrap().unwrap();
+    assert_eq!(chosen_option(&runtime, &id), "yes");
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn leaving_full_access_mid_session_sends_the_next_request_to_the_parent_conversation() {
+    use crate::approvals::{set_mode, ApprovalMode};
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+    set_mode(rules.path(), PROJECT, ApprovalMode::AskForApproval).unwrap();
+
+    let (turn, request) = helper_asks(&temp, &runtime, &id, "execute").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert!(refused.is_empty());
+    assert_eq!(runtime.snapshot(&id).await.unwrap().permissions.len(), 1);
+    runtime
+        .resolve_delegated_permission(&id, &request.id, Some("yes".into()))
+        .await
+        .unwrap();
+    turn.await.unwrap().unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_unreadable_approvals_file_refuses_a_helpers_command() {
+    let rules = tempfile::tempdir().unwrap();
+    std::fs::write(
+        rules.path().join("approvals.toml"),
+        "[\"$approval_modes\"]\ndelegation-fixture = \"full-access\"\n[delegation-fixture\n",
+    )
+    .unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+
+    let (turn, _) = helper_asks(&temp, &runtime, &id, "execute").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert_eq!(refused, vec!["run_command"]);
+    turn.await.unwrap().unwrap();
+    assert_eq!(chosen_option(&runtime, &id), "no");
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn full_access_sends_a_request_no_rule_covers_to_the_card_while_a_deny_rule_exists() {
+    use crate::approvals::{set_decision, set_mode, ApprovalMode, ToolDecision};
+    let rules = tempfile::tempdir().unwrap();
+    set_mode(rules.path(), PROJECT, ApprovalMode::FullAccess).unwrap();
+    set_decision(
+        rules.path(),
+        PROJECT,
+        "run_command",
+        Some(ToolDecision::Deny),
+    )
+    .unwrap();
+    let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+
+    // A fetch matches no tool's rules, so it might do what the deny rule
+    // forbids. It waits for the user instead of being approved.
+    let (turn, request) = helper_asks(&temp, &runtime, &id, "fetch").await;
+    let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
+
+    assert!(refused.is_empty());
+    assert_eq!(request.kind.as_deref(), Some("fetch"));
+    assert_eq!(runtime.snapshot(&id).await.unwrap().permissions.len(), 1);
+    runtime
+        .resolve_delegated_permission(&id, &request.id, Some("no".into()))
+        .await
+        .unwrap();
+    turn.await.unwrap().unwrap();
+    runtime.close(&id).await.unwrap();
 }
 
 #[test]
-fn an_unreadable_approvals_file_routes_child_permissions_to_the_parent_chat() {
-    let root = tempfile::tempdir().unwrap();
-    std::fs::write(
-        root.path().join("approvals.toml"),
-        "[\"$approval_modes\"]\nproj = \"full-access\"\n[proj\n",
-    )
-    .unwrap();
-
+fn a_refused_request_is_described_in_the_apps_language() {
     assert_eq!(
-        super::permission_delegate_for(root.path(), "proj"),
-        crate::acp::PermissionDelegate::ParentChat
+        crate::i18n::t_with_in("en", "approvals.helperRefused", &[("tool", "run_command")]),
+        "Refused by the run_command rule in approvals.toml"
+    );
+    let detail = super::refused_by_rule_detail("run_command");
+    assert!(detail.contains("run_command"), "{detail}");
+    assert!(
+        !detail.contains("helperRefused") && !detail.contains("{{"),
+        "{detail}"
     );
 }

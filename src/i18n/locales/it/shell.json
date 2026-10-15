@@ -1503,5 +1503,9 @@
       "allTheirs": "Usa tutte quelle di Overleaf",
       "apply": "Applica e sincronizza"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly ha ricaricato questa finestra perché non rispondeva da 30 secondi. Le modifiche fatte poco prima potrebbero non essere state salvate.",
+    "reloadedAgain": "Oleafly ha ricaricato di nuovo questa finestra perché ha smesso ancora di rispondere. Il tuo progetto non è stato riaperto, nel caso fosse qualcosa al suo interno a causare il problema."
   }
 }

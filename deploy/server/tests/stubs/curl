@@ -3,11 +3,16 @@ state=/stub/state
 url=
 out=
 family=
+write_out=
 printf 'curl %s\n' "$*" >>/stub/log
 while [ $# -gt 0 ]; do
 	case $1 in
 		-o)
 			out=$2
+			shift
+			;;
+		-w)
+			write_out=$2
 			shift
 			;;
 		--resolve | --cacert | --max-time | --retry | --connect-timeout | --proto | --proto-redir) shift ;;
@@ -32,6 +37,7 @@ serve_file() {
 	}
 	emit <"$1"
 }
+[ ! -f "$state/offline" ] || exit 6
 case $url in
 	https://raw.githubusercontent.com/docker/docker-install/*/install.sh)
 		[ -f "$state/get-docker-unreachable" ] && exit 6
@@ -40,6 +46,11 @@ case $url in
 	https://ifconfig.me/ip)
 		[ -f "$state/public-ip$family" ] || exit 7
 		emit <"$state/public-ip$family"
+		;;
+	https://github.com/Oleafly/oleafly-server/releases/latest)
+		[ ! -f "$state/latest-unreachable" ] || exit 6
+		[ "$write_out" = '%{url_effective}' ] || exit 2
+		printf 'https://github.com/Oleafly/oleafly-server/releases/tag/server-v%s' "$(cat /stub/releases/latest-version)"
 		;;
 	https://github.com/Oleafly/oleafly-server/releases/download/*)
 		rest=${url#https://github.com/Oleafly/oleafly-server/releases/download/}

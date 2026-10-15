@@ -69,7 +69,10 @@
       "localNotFound": "本地包 {{spec}} 未安装。请将其放入 Oleafly 的 Typst 包文件夹或项目的 typst-packages 文件夹。",
       "versionMissing": "此包没有 {{version}} 版本。最新版本为 {{latest}}。",
       "versionMissingNoLatest": "此包没有 {{version}} 版本。请检查 import 中的版本号。"
-    }
+    },
+    "saveFailed": "无法保存 {{path}}，因此 Oleafly 没有编译。请检查该文件，然后重新编译。",
+    "saveFailedSeveral": "无法保存 {{path}} 和其他文件，因此 Oleafly 没有编译。请检查这些文件，然后重新编译。",
+    "saveFailedOther": "无法保存文档，因此 Oleafly 没有编译。{{reason}}"
   },
   "developer": {
     "actions": {
@@ -281,7 +284,9 @@
     "yearRangeInvalid": "起始年份不能晚于结束年份。"
   },
   "mcp": {
+    "deniedByRules": "已被 approvals.toml 中的拒绝规则拒绝。",
     "openProjectSummary": "打开项目 {{id}}。",
+    "rulesUnreadable": "无法读取 approvals.toml，因此已拒绝。",
     "useToolSummary": "使用 {{server}} MCP 服务器中的 {{tool}}。"
   },
   "mcpConfig": {

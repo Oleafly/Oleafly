@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Citation key \"{{key}}\" is defined more than once",
       "detail": "Defined at {{places}}. BibTeX uses only the first entry with this key, and it ignores capital letters when it compares keys. Keep one entry, or give the others new keys and update the citations that use them.",
+      "detailBiber": "Defined at {{places}}. When biber builds the bibliography, it uses only the first entry with this key. Keep one entry, or give the others new keys and update the citations that use them.",
       "detailTypst": "Defined at {{places}}. Typst stops the compile when two bibliography entries share a key. Keep one entry, or give the others new keys and update the citations that use them."
     },
     "submission-path-case": {

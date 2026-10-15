@@ -322,6 +322,7 @@
     "refs-duplicate-bib-key": {
       "title": "Citatiesleutel \"{{key}}\" is meer dan één keer gedefinieerd",
       "detail": "Gedefinieerd in {{places}}. BibTeX gebruikt alleen het eerste item met deze sleutel en maakt bij het vergelijken van sleutels geen onderscheid tussen hoofdletters en kleine letters. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
+      "detailBiber": "Gedefinieerd in {{places}}. Als biber de bibliografie maakt, gebruikt het alleen het eerste item met deze sleutel. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
       "detailTypst": "Gedefinieerd in {{places}}. Typst stopt met compileren als twee bibliografie-items dezelfde sleutel hebben. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken."
     },
     "submission-path-case": {

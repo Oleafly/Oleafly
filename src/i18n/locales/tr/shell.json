@@ -1467,5 +1467,9 @@
       "allTheirs": "Tümünde Overleaf'tekini kullan",
       "apply": "Uygula ve eşitle"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Bu pencere 30 saniye yanıt vermediği için Oleafly onu yeniden yükledi. Hemen öncesinde yaptığınız değişiklikler kaydedilmemiş olabilir.",
+    "reloadedAgain": "Bu pencere yine yanıt vermeyi bıraktığı için Oleafly onu tekrar yeniden yükledi. Sorunun nedeni projedeki bir şey olabileceğinden projeniz yeniden açılmadı."
   }
 }

@@ -119,5 +119,10 @@
   },
   "collab": {
     "localCopy": "{{name}}（本地副本）"
+  },
+  "approvals": {
+    "helperRefused": "已被 approvals.toml 中的 {{tool}} 规则拒绝。",
+    "unknownTool": "没有名为 {{name}} 的工具，因此这条规则不起作用。",
+    "unknownToolSuggestion": "没有名为 {{name}} 的工具，因此这条规则不起作用。你是不是想写 {{suggestion}}？"
   }
 }

@@ -119,5 +119,10 @@
   },
   "collab": {
     "localCopy": "{{name}} (lokal kopia)"
+  },
+  "approvals": {
+    "helperRefused": "Nekad av regeln för {{tool}} i approvals.toml",
+    "unknownTool": "Inget verktyg heter {{name}}, så regeln gör ingenting.",
+    "unknownToolSuggestion": "Inget verktyg heter {{name}}, så regeln gör ingenting. Menade du {{suggestion}}?"
   }
 }

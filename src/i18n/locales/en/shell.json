@@ -1467,5 +1467,9 @@
       "allTheirs": "Use all of Overleaf's",
       "apply": "Apply and sync"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly reloaded this window because it stopped responding for 30 seconds. Changes made just before that may not have been saved.",
+    "reloadedAgain": "Oleafly reloaded this window again because it stopped responding. It didn't reopen your project, in case something in it caused this."
   }
 }

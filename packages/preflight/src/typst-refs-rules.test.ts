@@ -198,6 +198,32 @@ describe("Typst references", () => {
       ]);
     });
 
+    it("counts only the .bib files the document loads", () => {
+      const findings = run(
+        { "main.typ": '@cross\n#bibliography("refs/main.bib")', "chapters/intro.typ": "More" },
+        {
+          bibKeys: ["cross"],
+          bibKeyDefinitions: [
+            definition("cross", "refs/main.bib", 4, 80),
+            definition("cross", "refs/main (conflicted copy 2026-10-14).bib", 4, 80),
+            definition("cross", "old/refs.bib", 1, 0),
+          ],
+        },
+      );
+      expect(findings.some((finding) => finding.id === "refs-duplicate-bib-key")).toBe(false);
+    });
+
+    it("still finds a key repeated inside a loaded file, whatever the letter case of its path", () => {
+      const findings = run(
+        { "chapters/main.typ": '@cross\n#bibliography("../Refs.bib")' },
+        {
+          bibKeys: ["cross"],
+          bibKeyDefinitions: [definition("cross", "refs.bib", 4, 80), definition("cross", "refs.bib", 9, 200)],
+        },
+      );
+      expect(findings.filter((finding) => finding.id === "refs-duplicate-bib-key")).toHaveLength(1);
+    });
+
     it("keeps keys that differ only in letter case apart, as Typst does", () => {
       const findings = run(
         { "main.typ": '@smith2020 @Smith2020\n#bibliography("refs.bib")' },

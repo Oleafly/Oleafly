@@ -1539,5 +1539,9 @@
       "allTheirs": "Użyj wszystkich z Overleaf",
       "apply": "Zastosuj i synchronizuj"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly ponownie wczytało to okno, ponieważ nie odpowiadało przez 30 sekund. Zmiany wprowadzone tuż przedtem mogły nie zostać zapisane.",
+    "reloadedAgain": "Oleafly ponownie wczytało to okno, ponieważ znowu przestało odpowiadać. Tym razem Twój projekt nie został otwarty, na wypadek gdyby problem powodowało coś w nim."
   }
 }

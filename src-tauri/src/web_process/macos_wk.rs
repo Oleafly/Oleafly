@@ -10,7 +10,7 @@ use tauri::{AppHandle, Manager, Runtime, Webview};
 use super::watchdog::{
     self, CpuSamples, Observation, UiPulse, Verdict, CPU_WINDOW, PROBE_INTERVAL, TICK,
 };
-use super::{ReloadBudget, RestoreAfterReload, MAX_RELOADS};
+use super::{KillBudget, KillPlan, ReloadBudget, RestoreAfterReload, MAX_WATCHDOG_KILLS};
 
 const WEB_CONTENT_PROCESS: &str = "com.apple.WebKit.WebContent";
 
@@ -18,6 +18,7 @@ const WEB_CONTENT_PROCESS: &str = "com.apple.WebKit.WebContent";
 pub(crate) struct Watchdogs {
     watches: Mutex<HashMap<String, Arc<Mutex<Watch>>>>,
     budgets: Mutex<HashMap<String, ReloadBudget>>,
+    kills: Mutex<HashMap<String, KillBudget>>,
 }
 
 impl Watchdogs {
@@ -36,11 +37,18 @@ impl Watchdogs {
             .is_some_and(|current| Arc::ptr_eq(&current, watch))
     }
 
-    fn has_room(&self, label: &str, now: Instant) -> bool {
-        lock(&self.budgets)
+    fn kill_room(&self, label: &str, now: Instant) -> bool {
+        lock(&self.kills)
             .entry(label.to_owned())
             .or_default()
             .has_room(now)
+    }
+
+    fn spend_kill(&self, label: &str, now: Instant) -> KillPlan {
+        lock(&self.kills)
+            .entry(label.to_owned())
+            .or_default()
+            .spend(now)
     }
 
     fn spend(&self, label: &str, now: Instant) -> bool {
@@ -85,6 +93,12 @@ pub(crate) fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 fn watch<R: Runtime>(webview: &Webview<R>) {
     if webview.label() != webview.window().label() {
+        return;
+    }
+    if !watchdog::enabled(
+        cfg!(debug_assertions) && !cfg!(feature = "e2e-testing"),
+        std::env::var_os("OLEAFLY_WEB_WATCHDOG").is_some(),
+    ) {
         return;
     }
     let Some(watchdogs) = webview.try_state::<Watchdogs>() else {
@@ -172,7 +186,7 @@ fn tick<R: Runtime>(app: &AppHandle<R>, label: &str, watch: &Arc<Mutex<Watch>>) 
         ui_alive: state.ui.alive_for(now),
         cpu_in_window: state.cpu.used_over(now, CPU_WINDOW),
         same_process: state.pid == Some(pid) && is_web_content_process(pid),
-        budget_left: watchdogs.has_room(label, now),
+        budget_left: watchdogs.kill_room(label, now),
     };
     match watchdog::verdict(observation) {
         Verdict::Healthy | Verdict::Wait => true,
@@ -184,16 +198,27 @@ fn tick<R: Runtime>(app: &AppHandle<R>, label: &str, watch: &Arc<Mutex<Watch>>) 
             true
         }
         Verdict::Kill => {
+            let plan = watchdogs.spend_kill(label, now);
+            if plan == KillPlan::GiveUp {
+                drop(state);
+                give_up(label);
+                return false;
+            }
             state.probe = None;
             state.loaded_at = None;
             state.cpu.clear();
             drop(state);
+            let into = if plan == KillPlan::Library {
+                " into the library"
+            } else {
+                ""
+            };
             log(format!(
-                "webview: the {label} window stopped answering {} s ago and its web content process (pid {pid}) is idle; killing that process so the window reloads",
+                "webview: the {label} window stopped answering {} s ago and its web content process (pid {pid}) is idle; killing that process so the window reloads{into}",
                 unanswered.as_secs()
             ));
             if let Some(restore) = app.try_state::<RestoreAfterReload>() {
-                restore.arm(label);
+                restore.arm(label, plan);
             }
             unsafe {
                 libc::kill(pid, libc::SIGKILL);
@@ -202,12 +227,16 @@ fn tick<R: Runtime>(app: &AppHandle<R>, label: &str, watch: &Arc<Mutex<Watch>>) 
         }
         Verdict::GiveUp => {
             drop(state);
-            log(format!(
-                "webview: the {label} window stopped answering again after {MAX_RELOADS} reloads in a minute; leaving it as it is"
-            ));
+            give_up(label);
             false
         }
     }
+}
+
+fn give_up(label: &str) {
+    log(format!(
+        "webview: the {label} window stopped answering again after {MAX_WATCHDOG_KILLS} reloads in ten minutes; leaving it as it is"
+    ));
 }
 
 fn send_probe<R: Runtime>(webview: &Webview<R>, watch: &Arc<Mutex<Watch>>, id: u64) {

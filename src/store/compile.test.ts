@@ -1081,14 +1081,184 @@ describe("saving before a compile", () => {
     mocks.saveAllDirty.mockRejectedValue(error);
     await useCompileStore.getState().recompile();
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(useCompileStore.getState().failureReason).toContain("chapter.tex: disk full");
+    expect(useCompileStore.getState().failureReason).toBe(
+      enCore.compile.saveFailed.replace("{{path}}", "chapter.tex"),
+    );
+    expect(useCompileStore.getState().failureReason).not.toContain("SaveFlushError");
     expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
       "save before compile",
       "project",
       "chapter.tex",
-      error,
+      "disk full",
       true,
     );
+  });
+
+  describe("with the project graph", () => {
+    const index = mocks.index as typeof mocks.index & { intelligenceState?: unknown };
+    const edge = (kind: string, fromFile: string, targetFile: string | null, candidateFiles: string[] = []) => ({
+      kind,
+      fromFile,
+      targetFile,
+      candidateFiles,
+    });
+    const graph = (edges: ReturnType<typeof edge>[], projectId = "project") => {
+      index.intelligenceState = { data: { identity: { projectId }, hierarchy: { edges } } };
+    };
+
+    beforeEach(() => {
+      graph([
+        edge("include", "main.tex", "chapters/one.tex"),
+        edge("include", "chapters/one.tex", null, ["chapters/two.tex"]),
+        edge("bibliography", "chapters/one.tex", "refs.bib"),
+        edge("asset", "main.tex", "figure.pdf"),
+        edge("include", "notes.md", "main.tex"),
+      ]);
+      mocks.compileProject.mockResolvedValue(failedResult);
+    });
+
+    afterEach(() => {
+      index.intelligenceState = undefined;
+    });
+
+    it("compiles when only a file the build doesn't read can't be saved, and reports that file", async () => {
+      mocks.saveAllDirty.mockRejectedValue(
+        new SaveFlushError([{ path: "notes.md", reason: "file changed on disk: notes.md" }]),
+      );
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).toHaveBeenCalledOnce();
+      expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+        "save before compile",
+        "project",
+        "notes.md",
+        "file changed on disk: notes.md",
+        true,
+      );
+    });
+
+    it("stops when a file the main document reads can't be saved", async () => {
+      for (const path of ["main.tex", "chapters/one.tex", "chapters/two.tex", "refs.bib", "figure.pdf"]) {
+        mocks.compileProject.mockClear();
+        mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path, reason: "disk full" }]));
+        await useCompileStore.getState().recompile();
+        expect(mocks.compileProject, path).not.toHaveBeenCalled();
+        expect(useCompileStore.getState().failureReason).toBe(enCore.compile.saveFailed.replace("{{path}}", path));
+      }
+    });
+
+    it("reports each failed file under its own path with its own reason", async () => {
+      const locked = "The process cannot access the file because it is being used by another process. (os error 32)";
+      mocks.saveAllDirty.mockRejectedValue(
+        new SaveFlushError([
+          { path: "main.tex", reason: locked },
+          { path: "refs.bib", reason: "file changed on disk: refs.bib" },
+        ]),
+      );
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).not.toHaveBeenCalled();
+      expect(mocks.reportFileSaveFailure.mock.calls).toEqual([
+        ["save before compile", "project", "main.tex", locked, true],
+        ["save before compile", "project", "refs.bib", "file changed on disk: refs.bib", true],
+      ]);
+      expect(useCompileStore.getState().failureReason).toBe(
+        enCore.compile.saveFailedSeveral.replace("{{path}}", "main.tex"),
+      );
+    });
+
+    it("stops when a package, class or style the main document loads by name can't be saved", async () => {
+      // \usepackage{macros}, \documentclass{localclass} and \bibliographystyle
+      // have no edge in the graph, but LaTeX reads them during the build.
+      for (const path of ["macros.sty", "styles/localclass.cls", "plain.bst", ".latexmkrc"]) {
+        mocks.compileProject.mockClear();
+        mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path, reason: "disk full" }]));
+        await useCompileStore.getState().recompile();
+        expect(mocks.compileProject, path).not.toHaveBeenCalled();
+        expect(useCompileStore.getState().failureReason).toBe(enCore.compile.saveFailed.replace("{{path}}", path));
+      }
+    });
+
+    it("stops when the project folder is gone, even for a file the build doesn't read", async () => {
+      mocks.saveAllDirty.mockRejectedValue(
+        new SaveFlushError([{ path: "notes.md", reason: '@oleafly/error:{"code":"project.linked_missing"}' }]),
+      );
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).not.toHaveBeenCalled();
+    });
+
+    it("compiles past an error with a code in a file the build doesn't read", async () => {
+      const readOnly = '@oleafly/error:{"code":"files.read_only"}';
+      mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path: "notes.md", reason: readOnly }]));
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).toHaveBeenCalledOnce();
+      expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+        "save before compile",
+        "project",
+        "notes.md",
+        readOnly,
+        true,
+      );
+    });
+
+    it("stops for a Typst data file the graph doesn't list, and not for notes", async () => {
+      mocks.files.mainDoc = "main.typ";
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        id: "typst",
+        source_extensions: ["typ"],
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst" },
+      };
+      graph([edge("include", "main.typ", "chapter.typ")]);
+      // #let d = json("data.json") reads the file from code, without an edge.
+      for (const path of ["data.json", "results.toml", "table.cbor", "plugin.wasm"]) {
+        mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path, reason: "disk full" }]));
+        await expect(saveAllForCompile(), path).rejects.toBeInstanceOf(SaveFlushError);
+      }
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).resolves.toBeUndefined();
+    });
+
+    it("stops for any failed save while the engine isn't known", async () => {
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "none" },
+      };
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).rejects.toBeInstanceOf(SaveFlushError);
+    });
+
+    it("stops when the graph belongs to another project", async () => {
+      graph([], "other-project");
+      mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await useCompileStore.getState().recompile();
+      expect(mocks.compileProject).not.toHaveBeenCalled();
+    });
+
+    it("still writes a shared project to disk when an unread file can't be saved", async () => {
+      const order: string[] = [];
+      mocks.saveAllDirty.mockImplementationOnce(async () => {
+        order.push("save");
+        throw new SaveFlushError([{ path: "notes.md", reason: "disk full" }]);
+      });
+      const uninstall = installCollabEditorPort({
+        documentSession: () => null,
+        flush: async (projectId: string) => {
+          order.push(`flush ${projectId}`);
+        },
+      });
+      try {
+        await saveAllForCompile();
+      } finally {
+        uninstall();
+      }
+      expect(order).toEqual(["save", "flush project"]);
+      expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+        "save before compile",
+        "project",
+        "notes.md",
+        "disk full",
+        false,
+      );
+    });
   });
 });
 

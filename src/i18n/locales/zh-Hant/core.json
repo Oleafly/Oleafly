@@ -69,7 +69,10 @@
       "localNotFound": "未安裝本機套件 {{spec}}。請將它放進 Oleafly 的 Typst 套件資料夾，或專案的 typst-packages 資料夾。",
       "versionMissing": "這個套件沒有 {{version}} 版本。最新版本是 {{latest}}。",
       "versionMissingNoLatest": "這個套件沒有 {{version}} 版本。請檢查 import 中的版本。"
-    }
+    },
+    "saveFailed": "無法儲存 {{path}}，因此 Oleafly 沒有編譯。請檢查該檔案，然後重新編譯。",
+    "saveFailedSeveral": "無法儲存 {{path}} 和其他檔案，因此 Oleafly 沒有編譯。請檢查這些檔案，然後重新編譯。",
+    "saveFailedOther": "無法儲存文件，因此 Oleafly 沒有編譯。{{reason}}"
   },
   "developer": {
     "actions": {
@@ -281,7 +284,9 @@
     "yearRangeInvalid": "起始年份不能晚於結束年份。"
   },
   "mcp": {
+    "deniedByRules": "已被 approvals.toml 中的拒絕規則拒絕。",
     "openProjectSummary": "開啟專案 {{id}}",
+    "rulesUnreadable": "無法讀取 approvals.toml，因此已拒絕。",
     "useToolSummary": "使用 {{server}} MCP 伺服器的 {{tool}}"
   },
   "mcpConfig": {
