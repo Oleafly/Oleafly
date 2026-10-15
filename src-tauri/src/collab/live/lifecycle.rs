@@ -144,6 +144,10 @@ pub async fn start(
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Arc::clone(&active));
+    active.host.unwritten(super::unwritten::UnwrittenPayload {
+        project_id: project_id.to_owned(),
+        files: Vec::new(),
+    });
     active.announce_new_names(renamed);
     settings::schedule(&active);
     uploads::attach(&active);

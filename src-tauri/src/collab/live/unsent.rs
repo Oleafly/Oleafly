@@ -270,6 +270,7 @@ mod tests {
     struct Heard {
         statuses: std::sync::Mutex<Vec<LiveStatus>>,
         others: std::sync::atomic::AtomicUsize,
+        unwritten: std::sync::Mutex<Vec<crate::collab::live::unwritten::UnwrittenPayload>>,
     }
 
     impl Heard {
@@ -296,6 +297,9 @@ mod tests {
         fn folder_changed(&self, _: FolderChange) {}
         fn new_device(&self, _: NewDevicePayload) {
             self.other();
+        }
+        fn unwritten(&self, payload: crate::collab::live::unwritten::UnwrittenPayload) {
+            self.unwritten.lock().unwrap().push(payload);
         }
     }
 
@@ -769,6 +773,19 @@ mod tests {
         );
         assert!(deleted.is_ok());
         assert!(active_for(PROJECT).is_none());
+    }
+
+    #[test]
+    fn a_new_session_clears_the_window_list_of_files_it_could_not_write() {
+        let heard = Arc::new(Heard::default());
+        let _lab = Lab::open(true, false, Arc::clone(&heard) as Arc<dyn LiveHost>);
+        assert_eq!(
+            heard.unwritten.lock().unwrap().first(),
+            Some(&crate::collab::live::unwritten::UnwrittenPayload {
+                project_id: PROJECT.to_owned(),
+                files: Vec::new(),
+            })
+        );
     }
 
     #[test]
