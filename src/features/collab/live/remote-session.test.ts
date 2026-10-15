@@ -313,6 +313,33 @@ describe("RemoteDocumentSession", () => {
     expect(editor.doc).toBe(channel.text);
   });
 
+  it("keeps a composition through two resets and sends it once when it ends", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    const id = channel.opens[0];
+    session.holdLocal();
+    editor.type([{ from: 3, to: 3, insert: "か" }]);
+    channel.reset(">abc");
+    channel.deliverOne(id);
+    channel.reset(">>abc");
+    channel.deliverOne(id);
+    expect(session.text()).toBe(">>abcか");
+    expect(channel.sent).toEqual([]);
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.sent).toHaveLength(1);
+    expect(channel.text).toBe(">>abcか");
+    expect(editor.doc).toBe(channel.text);
+    expect(discarded).not.toHaveBeenCalled();
+    expect(channel.opens).toHaveLength(1);
+  });
+
   // Only a broken state can leave typing that doesn't fit, so these two set it
   // up directly. The session must open again and say the typing was lost.
   it("opens again with the shared text when its unsent typing can't be kept, and says so", async () => {

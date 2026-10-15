@@ -370,7 +370,9 @@ export class RemoteDocumentSession implements DocumentSession {
       this.settle();
       return;
     }
-    this.resent = true;
+    // Only typing that goes out again counts as sent once more. Typing held
+    // for a composition waits unsent, so another reset can't refuse it.
+    this.resent = !this.holding;
     this.queue(mine);
   }
 
