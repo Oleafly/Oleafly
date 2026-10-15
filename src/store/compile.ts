@@ -912,24 +912,43 @@ function filesTheCompileReads(projectId: string | null, mainDoc: string): Set<st
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps", "bmp", "tif", "tiff"];
 const BUILD_READ_EXTENSIONS: Readonly<Record<"latex" | "typst" | "markdown", ReadonlySet<string>>> = {
   // latexmkrc stands for both latexmkrc and .latexmkrc, see fileExtension.
+  // lua is for \directlua and luacode, ist for makeindex styles.
   latex: new Set([
     ...["tex", "ltx", "sty", "cls", "bst", "bbx", "cbx", "lbx", "def", "cfg", "clo", "fd", "bib"],
-    ...["tikz", "pgf", "csv", "dat", "txt", "pdf", "latexmkrc", ...IMAGE_EXTENSIONS],
+    ...["tikz", "pgf", "csv", "dat", "txt", "pdf", "latexmkrc", "lua", "ist", ...IMAGE_EXTENSIONS],
   ]),
+  // csl is a citation style that #bibliography(style: ...) loads.
   typst: new Set([
-    ...["typ", "bib", "yaml", "yml", "json", "toml", "csv", "xml", "cbor", "txt", "wasm", "pdf"],
+    ...["typ", "bib", "yaml", "yml", "json", "toml", "csv", "xml", "cbor", "txt", "wasm", "pdf", "csl"],
     ...IMAGE_EXTENSIONS,
   ]),
-  markdown: new Set(["md", "yaml", "yml", "json", "bib", "csl", "lua", "tex", ...IMAGE_EXTENSIONS]),
+  // sty, cls, css and html are templates and styles for PDF and HTML output.
+  markdown: new Set([
+    ...["md", "yaml", "yml", "json", "bib", "csl", "lua", "tex", "sty", "cls", "css", "html"],
+    ...IMAGE_EXTENSIONS,
+  ]),
 };
+
+// LaTeX reads .md files only through the markdown package. Without it, notes
+// in Markdown that can't be saved don't stop a LaTeX compile.
+const LATEX_WITH_MARKDOWN: ReadonlySet<string> = new Set([...BUILD_READ_EXTENSIONS.latex, "md"]);
 
 function fileExtension(path: string): string {
   const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
   return name.slice(name.lastIndexOf(".") + 1);
 }
 
-function engineReadsExtensions(engine: DocumentEngineDescriptor | null): ReadonlySet<string> | null {
+function projectLoadsMarkdownPackage(projectId: string | null): boolean {
+  const graph = useIndexStore.getState().intelligenceState?.data;
+  return !!graph && graph.identity.projectId === projectId && (graph.detectedPackages ?? []).includes("markdown");
+}
+
+function engineReadsExtensions(
+  engine: DocumentEngineDescriptor | null,
+  projectId: string | null,
+): ReadonlySet<string> | null {
   const profile = engine?.capabilities.formatting_profile;
+  if (profile === "latex" && projectLoadsMarkdownPackage(projectId)) return LATEX_WITH_MARKDOWN;
   return profile === "latex" || profile === "typst" || profile === "markdown"
     ? BUILD_READ_EXTENSIONS[profile]
     : null;
@@ -946,7 +965,7 @@ function saveFailureStopsCompile(
 ): boolean {
   if (!(error instanceof SaveFlushError)) return true;
   const reads = filesTheCompileReads(projectId, mainDoc);
-  const readable = engineReadsExtensions(engine);
+  const readable = engineReadsExtensions(engine, projectId);
   if (reads === null || readable === null) return true;
   return error.failures.some(
     (failure) =>
