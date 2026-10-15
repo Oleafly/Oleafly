@@ -746,6 +746,14 @@ impl ProjectDoc {
                 _ => continue,
             };
             let meta = self.tree.get_meta(node.id).map_err(doc_error)?;
+            // A deleted file is stamped when it goes to the trash, so it
+            // stays deleted even if an edit turns the trash folder into an
+            // ordinary one.
+            let parent = if meta.get("trashed_at").is_some() {
+                NodeParent::Trash
+            } else {
+                parent
+            };
             views.push(FileNode {
                 id: (*id).to_owned(),
                 parent,
@@ -1500,6 +1508,9 @@ mod tests {
                 .unwrap();
             assert!(alice.trash.is_none(), "round {round}");
             let mut reopened = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+            let placed = crate::materialize::layout(&alice.nodes().unwrap());
+            assert!(!placed.contains_key(&notes), "round {round}");
+            assert!(placed.values().all(|placed| !placed.path.contains("notes")));
             reopened.trash(&main).unwrap();
             assert!(reopened.trash.is_some(), "round {round}");
             let trashed = reopened.trashed().unwrap();
