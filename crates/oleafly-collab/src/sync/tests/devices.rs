@@ -449,8 +449,9 @@ async fn a_refused_base_is_reloaded_again_when_the_first_snapshot_still_lacked_i
         signed_envelope(&pair.alice, project, typed[1].clone()),
     )
     .await;
+    let client = ServerClient::new(pair.url.clone()).unwrap();
     let mut bob = side(bob_live, &main);
-    lock(&bob.live).resync_after(Duration::from_millis(500));
+    lock(&bob.live).resync_after(Duration::from_secs(3));
     start_with(
         &mut bob,
         link(&pair, &pair.bob, project),
@@ -478,7 +479,6 @@ async fn a_refused_base_is_reloaded_again_when_the_first_snapshot_still_lacked_i
         signed_envelope(&pair.alice, project, typed[2].clone()),
     )
     .await;
-    let client = ServerClient::new(pair.url.clone()).unwrap();
     client
         .snapshot_hint(&pair.alice.tokens.access_token, project, 2)
         .await

@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
 use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::capabilities::ProtocolRange;
 use oleafly_collab_protocol::frames::ServerFrame;
@@ -48,13 +50,44 @@ enum Refresh {
     Renewed,
 }
 
+#[derive(Default)]
+struct PollTrace {
+    polled: AtomicBool,
+    missed: AtomicUsize,
+}
+
+#[derive(Clone, Copy)]
+enum Manifest {
+    Served,
+    Missing,
+    // Served until the app opens long poll, missing after: the app falls
+    // back to long poll as usual, then can't read the manifest there.
+    GoneAfterPoll(&'static PollTrace),
+}
+
+impl Manifest {
+    fn served(self) -> bool {
+        match self {
+            Manifest::Served => true,
+            Manifest::Missing => false,
+            Manifest::GoneAfterPoll(trace) => {
+                let polled = trace.polled.load(Ordering::SeqCst);
+                if polled {
+                    trace.missed.fetch_add(1, Ordering::SeqCst);
+                }
+                !polled
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct Answers {
     upgrade: Upgrade,
     poll_refuses: bool,
     poll_busy: bool,
     refresh: Refresh,
-    manifest_missing: bool,
+    manifest: Manifest,
 }
 
 const SOCKETS: Answers = Answers {
@@ -62,7 +95,7 @@ const SOCKETS: Answers = Answers {
     poll_refuses: false,
     poll_busy: false,
     refresh: Refresh::Missing,
-    manifest_missing: false,
+    manifest: Manifest::Served,
 };
 
 const NO_SOCKETS: Answers = Answers {
@@ -82,7 +115,7 @@ fn stranger(sockets: bool) -> Answers {
         poll_refuses: true,
         poll_busy: false,
         refresh: Refresh::Revoked,
-        manifest_missing: false,
+        manifest: Manifest::Served,
     }
 }
 
@@ -139,6 +172,9 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         return;
     }
     let path = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
+    if let (true, Manifest::GoneAfterPoll(trace)) = (path.contains("/poll"), answers.manifest) {
+        trace.polled.store(true, Ordering::SeqCst);
+    }
     if path.contains("/poll") && answers.poll_busy {
         let busy = crate::client::test_util::http_response(
             "503 Service Unavailable",
@@ -174,7 +210,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         let _ = stream.write_all(reply.as_bytes()).await;
         return;
     }
-    let body = if path.starts_with("/.well-known/oleafly-server") && !answers.manifest_missing {
+    let body = if path.starts_with("/.well-known/oleafly-server") && answers.manifest.served() {
         manifest
     } else if path.starts_with("/auth/challenge") {
         serde_json::json!({ "nonce": "nonce", "expires_at": 4_102_444_800_000_i64 }).to_string()
@@ -397,9 +433,14 @@ async fn a_server_that_turns_away_a_renewed_session_signs_out_the_same_way_on_ei
 async fn a_turned_away_session_is_kept_when_the_servers_manifest_does_not_load() {
     for sockets in [true, false] {
         let server = ServerId::new_v7();
+        let trace: &'static PollTrace = Box::leak(Box::default());
         let answers = Answers {
             refresh: Refresh::Renewed,
-            manifest_missing: true,
+            manifest: if sockets {
+                Manifest::Missing
+            } else {
+                Manifest::GoneAfterPoll(trace)
+            },
             ..stranger(sockets)
         };
         let url = answering_at_the_address(server, ProtocolRange { min: 1, max: 1 }, answers).await;
@@ -438,6 +479,16 @@ async fn a_turned_away_session_is_kept_when_the_servers_manifest_does_not_load()
             "sockets {sockets}"
         );
         assert!(lock(&side.live).has_unsent());
+        if !sockets {
+            assert!(
+                trace.polled.load(Ordering::SeqCst),
+                "long poll was never opened"
+            );
+            assert!(
+                trace.missed.load(Ordering::SeqCst) > 0,
+                "the manifest was never read after long poll turned the session away"
+            );
+        }
         stopped(&mut side).await;
     }
 }

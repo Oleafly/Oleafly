@@ -185,8 +185,8 @@ async fn a_full_project_keeps_the_change_says_so_once_per_connection_and_stays_c
     let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
     lock(&side.live).local_text(&main, "abc kept").unwrap();
     let options = TransportOptions {
-        ping_every: Duration::from_millis(200),
-        quiet_for: Duration::from_millis(600),
+        ping_every: Duration::from_millis(500),
+        quiet_for: Duration::from_secs(2),
         ..quick()
     };
     start_with(&mut side, link, options);
