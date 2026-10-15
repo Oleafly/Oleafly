@@ -9,10 +9,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 13;
+pub const SCHEMA_VERSION: i64 = 14;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 13] = [
+const MIGRATIONS: [&str; 14] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -26,6 +26,7 @@ const MIGRATIONS: [&str; 13] = [
     include_str!("../migrations/0011_mention_emails.sql"),
     include_str!("../migrations/0012_device_code_network.sql"),
     include_str!("../migrations/0013_project_sizes.sql"),
+    include_str!("../migrations/0014_comment_rechecks.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
@@ -212,12 +213,13 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 30] = [
+    const TABLES: [&str; 31] = [
         "access_tokens",
         "account_emails",
         "accounts",
         "allowlist",
         "auth_codes",
+        "comment_rechecks",
         "device_authorizations",
         "devices",
         "domain_rules",

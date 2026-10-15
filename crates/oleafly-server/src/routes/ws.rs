@@ -19,7 +19,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::auth::devices;
-use crate::comment_guard::Verdict;
+use crate::comment_guard::{self, Verdict};
 use crate::error::ServerError;
 use crate::members;
 use crate::mentions;
@@ -643,6 +643,16 @@ enum Appendix {
     Unchecked(Envelope, peers::Reach, Vec<u8>),
 }
 
+// Where a change stands with the comment check as it is stored.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Check {
+    // Not asked yet: with comments off, the change comes back unstored.
+    Pending,
+    Passed,
+    // Stored without the check, which runs once the budget allows.
+    Later,
+}
+
 struct ReadChange {
     envelope: Envelope,
     reach: peers::Reach,
@@ -911,22 +921,25 @@ impl Peer<'_> {
         };
         let batch = envelope.batch_id;
         let first = self
-            .append(project, envelope, reach, stored, false, mention)
+            .append(project, envelope, reach, stored, Check::Pending, mention)
             .await;
         let appended = match first {
             Ok(Appendix::Stored(appended)) => Ok(appended),
             Ok(Appendix::Unchecked(envelope, reach, stored)) => {
-                if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
-                    return refusal;
-                }
+                let check = match self.comment_check(project, &envelope).await {
+                    Ok(check) => check,
+                    Err(refusal) => return refusal,
+                };
                 let checked = self
-                    .append(project, envelope, reach, stored, true, mention)
+                    .append(project, envelope, reach, stored, check, mention)
                     .await;
                 if checked.is_err() {
                     self.state
                         .comment_guard
                         .forget(&self.state.snapshots, project)
                         .await;
+                } else if check == Check::Later {
+                    self.state.comment_guard.recheck(self.state, project);
                 }
                 checked.and_then(|appended| match appended {
                     Appendix::Stored(appended) => Ok(appended),
@@ -970,14 +983,15 @@ impl Peer<'_> {
         }
     }
 
-    async fn refuse_comment_change(
+    // Checks a change to a project with comments off, and refuses one that
+    // changes comments.
+    async fn comment_check(
         &self,
         project: SharedProjectId,
         envelope: &Envelope,
-    ) -> Option<ServerFrame> {
-        let verdict = self
-            .state
-            .comment_guard
+    ) -> Result<Check, ServerFrame> {
+        let guard = &self.state.comment_guard;
+        let verdict = guard
             .check(
                 &self.state.db,
                 &self.state.snapshots,
@@ -985,17 +999,24 @@ impl Peer<'_> {
                 envelope.payload.clone(),
             )
             .await;
+        if matches!(
+            verdict,
+            Ok(Verdict::Allowed | Verdict::ChangesComments | Verdict::Unreadable)
+        ) {
+            guard.read_project(self.state, project);
+        }
         match verdict {
-            Ok(Verdict::Allowed | Verdict::Unchecked) => None,
-            Ok(Verdict::ChangesComments) => Some(frame_error(
+            Ok(Verdict::Allowed) => Ok(Check::Passed),
+            Ok(Verdict::Unchecked) => Ok(Check::Later),
+            Ok(Verdict::ChangesComments) => Err(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
             )),
-            Ok(Verdict::Unreadable) => Some(frame_error(
+            Ok(Verdict::Unreadable) => Err(frame_error(
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
             )),
-            Err(_) => Some(frame_error(
+            Err(_) => Err(frame_error(
                 FrameErrorCode::Internal,
                 "The server could not store this change.",
             )),
@@ -1008,7 +1029,7 @@ impl Peer<'_> {
         envelope: Envelope,
         reach: peers::Reach,
         stored: Vec<u8>,
-        checked: bool,
+        check: Check,
         mention: bool,
     ) -> Result<Appendix, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
@@ -1040,7 +1061,7 @@ impl Peer<'_> {
                     Claim::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
                     Claim::Fresh(_) => {}
                 }
-                if !checked && !comments_on(&transaction, &row)? {
+                if check == Check::Pending && !comments_on(&transaction, &row)? {
                     return Ok(Appendix::Unchecked(envelope, reach, stored));
                 }
                 let after =
@@ -1069,6 +1090,17 @@ impl Peer<'_> {
                 )?;
                 if mention && !appended.duplicate {
                     mentions::queue(&transaction, project, appended.seq, &reach)?;
+                }
+                if check == Check::Later && !appended.duplicate {
+                    comment_guard::queue_recheck(
+                        &transaction,
+                        project,
+                        appended.seq,
+                        &reach,
+                        account,
+                        device,
+                        now,
+                    )?;
                 }
                 transaction.commit()?;
                 if !appended.duplicate {

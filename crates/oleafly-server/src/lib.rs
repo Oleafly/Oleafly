@@ -209,6 +209,7 @@ where
     F: Future<Output = ()> + Send + 'static,
 {
     mentions::resume(&state).await;
+    comment_guard::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let sweeping = tokio::spawn(sweep_kept_loop(state.snapshots.clone()));
     let polls = Arc::clone(&state.polls);
