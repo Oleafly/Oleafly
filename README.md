@@ -14,7 +14,7 @@
 
 **A live collaborative LaTeX, Typst & Markdown editor for research.**
 
-Oleafly is a desktop editor for LaTeX, Typst and Markdown that keeps the whole paper in one window: source, PDF, citations, figures, checks and Git history. Write with your coauthors in real time, keep your projects in sync across computers, and bring Claude Code, Codex or any model you like into the project. Free and open source, for Mac, Windows and Linux.
+Oleafly is a desktop editor for research writing in LaTeX, Typst and Markdown. The source, PDF, citations, figures, checks and Git history of a project all sit in one window. Write with your coauthors in real time, keep your projects in sync across computers, and bring Claude Code, Codex or any model you like into the project.
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>Download free</strong></a>
@@ -27,7 +27,7 @@ Free forever · Open source · No Oleafly account · No tracking
 </div>
 
 <div align="center">
-  <img src="docs/assets/readme/hero-collab.png" alt="Oleafly with a LaTeX paper open: the source editor with two coauthors' cursors, the compiled PDF, and an AI agent panel" width="100%" />
+  <img src="docs/assets/readme/hero-collab.png" alt="Oleafly with a LaTeX research paper open: the file tree, outline and structure on the left, the source with five coauthors' cursors and highlighted comments, and the compiled PDF" width="100%" />
 </div>
 
 ## Why Oleafly
@@ -39,7 +39,7 @@ Everything here is free, including what other editors keep for paid plans: real-
 - Compile on your own computer. Tectonic, Typst and Pandoc are built in, and TeX Live, MacTeX, MiKTeX or TinyTeX take over when a project needs a full distribution.
 - Click in the PDF to jump to the source and back, and the last good PDF stays on screen while you fix an error.
 - Every project is a Git repository you can push to GitHub, and checkpoints save a snapshot after each successful compile.
-- Cite from your Zotero library as you type, and search arXiv, Semantic Scholar, Crossref, PubMed and OpenAlex without leaving the paper.
+- Cite from your Zotero library as you type, and search arXiv, Semantic Scholar, Crossref, PubMed and OpenAlex without leaving the editor.
 - Spelling and grammar checks tuned for academic writing run on your computer.
 - Preflight catches broken references, missing figures, fonts that didn't embed, accessibility gaps and anything that would unblind a review, before you submit.
 - Draw figures that stay as TikZ, Typst or Mermaid code, and start from more than 1,700 templates for papers, theses, slides, posters and CVs.
@@ -59,7 +59,7 @@ Share a project to your lab's Oleafly Server and everyone edits the same files a
 - Comment on any selection in LaTeX, Typst or Markdown, then reply, mention someone, resolve or reopen. A mentioned coauthor gets one email, and can turn those off.
 - Edits you make offline merge when you reconnect. If they overlap with someone else's, Oleafly shows you both and asks before it applies anything.
 - AI edits, Zotero citations, renames, deletes and figures all travel too. If two people replace the same figure at once, both versions are kept.
-- The main file, compiler, spelling language and Typst options are shared, so the whole team compiles the paper the same way.
+- The main file, compiler, spelling language and Typst options are shared, so the whole team compiles the project the same way.
 - Each project has an owner, editors and viewers. Guests invited by email see only the projects they were invited to.
 
 ### Run the server yourself
@@ -105,7 +105,7 @@ With a Git token from that account, Oleafly can keep an imported project in sync
 
 You can also start from a project ZIP, a GitHub repository, a Word document, an arXiv source bundle, or a PDF that Oleafly rebuilds as editable LaTeX. Or open a folder where it already is.
 
-## AI agents that work inside your paper
+## AI agents that work inside your project
 
 Pick an agent from the catalog and it works in your project with the source, the PDF and the compile log in reach. Each agent signs in with its own account and uses its own model. Oleafly gives it the project and the tools around it.
 
