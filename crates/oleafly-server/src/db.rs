@@ -5,14 +5,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::ids::ServerId;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 12;
+pub const SCHEMA_VERSION: i64 = 13;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 12] = [
+const MIGRATIONS: [&str; 13] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -25,6 +25,7 @@ const MIGRATIONS: [&str; 12] = [
     include_str!("../migrations/0010_storage_cleanup.sql"),
     include_str!("../migrations/0011_mention_emails.sql"),
     include_str!("../migrations/0012_device_code_network.sql"),
+    include_str!("../migrations/0013_project_sizes.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
@@ -97,7 +98,7 @@ impl Db {
         F: FnOnce(&Connection) -> Result<T, ServerError> + Send + 'static,
     {
         if self.readers.is_empty() {
-            return self.call(move |conn| f(conn)).await;
+            return self.call(move |conn| in_one_read(conn, f)).await;
         }
         let readers = Arc::clone(&self.readers);
         let first = self.next_reader.fetch_add(1, Ordering::Relaxed) % readers.len();
@@ -105,13 +106,13 @@ impl Db {
             let free = (0..readers.len())
                 .map(|offset| (first + offset) % readers.len())
                 .find_map(|index| readers[index].try_lock().ok());
-            let guard = match free {
+            let mut guard = match free {
                 Some(guard) => guard,
                 None => readers[first]
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner),
             };
-            f(&guard)
+            in_one_read(&mut guard, f)
         })
         .await
         .map_err(|error| ServerError::Internal(format!("database task failed: {error}")))?
@@ -130,6 +131,16 @@ impl Db {
         .await
         .map_err(|error| ServerError::Internal(format!("database task failed: {error}")))?
     }
+}
+
+// Every statement of a read sees the same committed state, as they did
+// when reads shared the writer's connection.
+fn in_one_read<T>(
+    conn: &mut Connection,
+    f: impl FnOnce(&Connection) -> Result<T, ServerError>,
+) -> Result<T, ServerError> {
+    let transaction = conn.transaction_with_behavior(TransactionBehavior::Deferred)?;
+    f(&transaction)
 }
 
 fn migrate(connection: &mut Connection) -> Result<(), ServerError> {
@@ -324,6 +335,47 @@ mod tests {
     }
 
     #[test]
+    fn project_sizes_start_from_what_is_stored_and_follow_every_write() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        migrated_to(&mut conn, 12);
+        conn.execute_batch(
+            "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES ('a1', 'Ada', 'member', 1, 1);
+             INSERT INTO projects (id, owner_account, title, status, created_at) VALUES ('p1', 'a1', 'Thesis', 'active', 1), ('p2', 'a1', 'Notes', 'active', 1);
+             INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 1, 'b1', 'd1', 'a1', zeroblob(100), 1), ('p1', 2, 'b2', 'd1', 'a1', zeroblob(50), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h1', 10, 1), ('p1', 'h2', 20, 1);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let sizes = |conn: &Connection, project: &str| -> (i64, i64) {
+            conn.query_row(
+                "SELECT log_bytes, file_bytes FROM projects WHERE id = ?1",
+                [project],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap()
+        };
+        assert_eq!(sizes(&conn, "p1"), (150, 30));
+        assert_eq!(sizes(&conn, "p2"), (0, 0));
+        conn.execute_batch(
+            "INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 3, 'b3', 'd1', 'a1', zeroblob(25), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h3', 5, 1) ON CONFLICT (project_id, hash) DO UPDATE SET used_at = excluded.used_at;
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h1', 10, 2) ON CONFLICT (project_id, hash) DO UPDATE SET used_at = excluded.used_at;",
+        )
+        .unwrap();
+        assert_eq!(sizes(&conn, "p1"), (175, 35));
+        conn.execute_batch(
+            "DELETE FROM project_updates WHERE project_id = 'p1' AND seq <= 2;
+             DELETE FROM project_blobs WHERE project_id = 'p1' AND hash = 'h2';",
+        )
+        .unwrap();
+        assert_eq!(sizes(&conn, "p1"), (25, 15));
+        conn.execute("DELETE FROM projects WHERE id = 'p1'", [])
+            .unwrap();
+        assert_eq!(count(&conn, "project_updates"), 0);
+    }
+
+    #[test]
     fn an_older_database_upgrades_with_every_grant_accepted_and_every_file_marked_used() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
@@ -399,6 +451,36 @@ mod tests {
         assert_eq!(again, id);
         assert_eq!(mode, "wal");
         assert_eq!(schema, SCHEMA_VERSION);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_read_sees_one_state_when_a_write_lands_between_its_statements() {
+        let directory = tempfile::tempdir().unwrap();
+        let db = Db::open(&directory.path().join("oleafly-server.sqlite3")).unwrap();
+        db.call(|conn| meta_set(conn, "count", "1")).await.unwrap();
+        let (reached, between) = std::sync::mpsc::channel::<()>();
+        let (resume, resumed) = std::sync::mpsc::channel::<()>();
+        let reader = db.clone();
+        let reading = tokio::spawn(async move {
+            reader
+                .read(move |conn| {
+                    let first = meta_get(conn, "count")?;
+                    reached.send(()).unwrap();
+                    resumed.recv().unwrap();
+                    Ok((first, meta_get(conn, "count")?))
+                })
+                .await
+        });
+        tokio::task::spawn_blocking(move || between.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        db.call(|conn| meta_set(conn, "count", "2")).await.unwrap();
+        resume.send(()).unwrap();
+        let (first, second) = reading.await.unwrap().unwrap();
+        assert_eq!(first, second);
+        let after = db.read(|conn| meta_get(conn, "count")).await.unwrap();
+        assert_eq!(after.as_deref(), Some("2"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

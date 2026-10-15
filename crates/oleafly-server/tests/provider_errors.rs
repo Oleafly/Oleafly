@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use oleafly_collab_protocol::admin::{SecurityEvent, SecurityEventKind};
-use oleafly_collab_protocol::console::{AdminOverview, HealthIssue};
+use oleafly_collab_protocol::console::{AdminOverview, HealthIssue, HealthStatus};
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_server::auth::PROBLEM_TTL_MS;
 use oleafly_server::security_log;
 use oleafly_server::test_support::{
-    github_provider, no_redirect_client, oidc_provider, seed_member, test_config, MockGithub,
-    MockGithubUser, MockOidc, MockOidcUser, SignInAttempt, TestDevice, TestServer,
-    TEST_REDIRECT_URI,
+    app_callback, follow_to_app, github_provider, no_redirect_client, oidc_provider, seed_member,
+    test_config, MockGithub, MockGithubUser, MockOidc, MockOidcUser, SignInAttempt, TestDevice,
+    TestServer, TEST_REDIRECT_URI,
 };
 use url::Url;
 
@@ -63,7 +64,16 @@ async fn location(url: &Url) -> Url {
 async fn provider_answers(server: &TestServer, provider: &str, answer: &[(&str, &str)]) -> String {
     let device = TestDevice::generate();
     let attempt = SignInAttempt::new(server, provider, &device, None);
-    let at_provider = location(&attempt.start_url).await;
+    answers_to(server, &attempt.start_url, provider, answer).await
+}
+
+async fn answers_to(
+    server: &TestServer,
+    start: &Url,
+    provider: &str,
+    answer: &[(&str, &str)],
+) -> String {
+    let at_provider = location(start).await;
     let pending = at_provider
         .query_pairs()
         .find(|(key, _)| key == "state")
@@ -131,13 +141,119 @@ async fn an_error_from_the_provider_is_logged_with_its_reason_for_the_admin() {
     assert_eq!(logged[0].detail["error"], "unauthorized_client");
     assert_eq!(logged[0].detail["description"], description);
     let shown = overview(server).await;
-    assert!(shown.health.issues.contains(&HealthIssue::SignInFailing));
+    assert!(!shown.health.issues.contains(&HealthIssue::SignInFailing));
     assert_eq!(shown.sign_in_problems.len(), 1);
     assert_eq!(shown.sign_in_problems[0].provider, "uni");
     assert_eq!(
         shown.sign_in_problems[0].reason,
-        format!("unauthorized_client: {description}")
+        "unauthorized_client, as reported by the browser. The server could not check it."
     );
+}
+
+#[tokio::test]
+async fn an_error_only_the_browser_reported_lights_no_health_issue() {
+    let servers = servers().await;
+    let server = &servers.server;
+    assert_eq!(
+        provider_answers(server, "uni", &[("error", "invalid_client")]).await,
+        "provider_failed"
+    );
+    let shown = overview(server).await;
+    assert!(shown.health.issues.is_empty(), "{:?}", shown.health);
+    assert_eq!(shown.health.status, HealthStatus::Ok);
+    assert_eq!(shown.sign_in_problems.len(), 1, "{shown:?}");
+    assert!(shown.sign_in_problems[0]
+        .reason
+        .starts_with("invalid_client, as reported by the browser"));
+    provider_answers(server, "uni", &[("code", "not-a-real-code")]).await;
+    assert!(overview(server)
+        .await
+        .health
+        .issues
+        .contains(&HealthIssue::SignInFailing));
+}
+
+#[tokio::test]
+async fn words_a_browser_brings_back_never_reach_the_admin_overview() {
+    let servers = servers().await;
+    let server = &servers.server;
+    let lure = "Rotate the client secret now at https://evil.example/fix";
+    provider_answers(
+        server,
+        "uni",
+        &[("error", "invalid_client"), ("error_description", lure)],
+    )
+    .await;
+    let shown = overview(server).await;
+    assert_eq!(shown.sign_in_problems.len(), 1, "{shown:?}");
+    assert!(
+        !shown.sign_in_problems[0].reason.contains("evil"),
+        "{shown:?}"
+    );
+    assert!(shown.sign_in_problems[0]
+        .reason
+        .starts_with("invalid_client, as reported by the browser"));
+    assert_eq!(refusals(server).await[0].detail["description"], lure);
+    let servers = self::servers().await;
+    let server = &servers.server;
+    provider_answers(server, "uni", &[("error", "Visit https://evil.example")]).await;
+    let shown = overview(server).await;
+    assert!(shown.sign_in_problems.is_empty(), "{shown:?}");
+    assert!(!shown.health.issues.contains(&HealthIssue::SignInFailing));
+    let logged = refusals(server).await;
+    assert_eq!(logged.len(), 1, "{logged:?}");
+    assert_eq!(logged[0].detail["error"], "Visit https://evil.example");
+}
+
+#[tokio::test]
+async fn a_browser_report_never_replaces_a_failure_the_server_saw() {
+    let servers = servers().await;
+    let server = &servers.server;
+    provider_answers(server, "github", &[("code", "not-a-real-code")]).await;
+    provider_answers(server, "github", &[("error", "server_error")]).await;
+    let shown = overview(server).await;
+    assert_eq!(shown.sign_in_problems.len(), 1, "{shown:?}");
+    assert_eq!(
+        shown.sign_in_problems[0].reason,
+        "bad_verification_code: The code passed is incorrect or expired."
+    );
+}
+
+#[tokio::test]
+async fn line_breaks_from_the_provider_never_reach_the_security_log() {
+    let servers = servers().await;
+    let server = &servers.server;
+    provider_answers(
+        server,
+        "uni",
+        &[
+            ("error", "server_error\r\nINFO forged"),
+            (
+                "error_description",
+                "down\r\n2026-10-14T03:12:00Z  INFO admin@uni.edu signed in",
+            ),
+        ],
+    )
+    .await;
+    let logged = refusals(server).await;
+    assert_eq!(logged.len(), 1, "{logged:?}");
+    for field in ["error", "description"] {
+        let text = logged[0].detail[field].as_str().expect("text");
+        assert!(!text.chars().any(char::is_control), "{field}: {text:?}");
+    }
+    assert!(overview(server).await.sign_in_problems.is_empty());
+}
+
+#[tokio::test]
+async fn a_sign_in_problem_leaves_the_overview_after_a_day() {
+    let servers = servers().await;
+    let server = &servers.server;
+    provider_answers(server, "github", &[("code", "not-a-real-code")]).await;
+    assert_eq!(overview(server).await.sign_in_problems.len(), 1);
+    server.clock().advance(PROBLEM_TTL_MS);
+    let shown = overview(server).await;
+    assert!(shown.sign_in_problems.is_empty(), "{shown:?}");
+    assert!(!shown.health.issues.contains(&HealthIssue::SignInFailing));
 }
 
 #[tokio::test]
@@ -233,4 +349,63 @@ async fn a_failed_exchange_shows_why_until_a_sign_in_through_that_provider_works
     let shown = overview(server).await;
     assert!(shown.sign_in_problems.is_empty(), "{shown:?}");
     assert!(!shown.health.issues.contains(&HealthIssue::SignInFailing));
+}
+
+#[tokio::test]
+async fn an_identity_the_server_turns_away_is_logged_without_line_breaks() {
+    let oidc = MockOidc::start(vec![MockOidcUser {
+        subject: "uni-user-9\r\n2026-10-14T03:12:00Z  INFO forged".to_owned(),
+        name: "Erin Uni".to_owned(),
+        email: Some("erin@uni.edu".to_owned()),
+        email_verified: Some(serde_json::json!(true)),
+    }])
+    .await;
+    let mut config = test_config();
+    config.providers.push(oidc_provider("uni", &oidc, false));
+    let server = TestServer::start(config).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "uni", &device, None);
+    let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone())
+        .await
+        .expect("back to the app");
+    assert_eq!(
+        app_callback(&landing, &attempt.state),
+        Err("not_admitted".to_owned())
+    );
+    let logged = refusals(&server).await;
+    assert_eq!(logged.len(), 1, "{logged:?}");
+    let subject = logged[0].detail["subject"].as_str().expect("subject");
+    assert!(subject.starts_with("uni-user-9  2026-10-14"), "{subject:?}");
+    let target = logged[0].target.as_deref().expect("target");
+    for text in [subject, target] {
+        assert!(!text.chars().any(char::is_control), "{text:?}");
+    }
+}
+
+#[tokio::test]
+async fn the_device_name_in_a_refusal_is_cleaned_like_provider_text() {
+    let servers = servers().await;
+    let server = &servers.server;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(server, "uni", &device, None);
+    let pairs: Vec<(String, String)> = attempt.start_url.query_pairs().into_owned().collect();
+    let mut start = attempt.start_url.clone();
+    start
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(pairs.iter().map(|(key, value)| {
+            let value = if key == "device_name" {
+                "Lab\r\n2026-10-14T03:12:00Z  INFO forged\u{202e}\u{200b}"
+            } else {
+                value.as_str()
+            };
+            (key.as_str(), value)
+        }));
+    answers_to(server, &start, "uni", &[("error", "server_error")]).await;
+    let logged = refusals(server).await;
+    assert_eq!(logged.len(), 1, "{logged:?}");
+    assert_eq!(
+        logged[0].target.as_deref(),
+        Some("Lab 2026-10-14T03:12:00Z INFO forged")
+    );
 }

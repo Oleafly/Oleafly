@@ -19,6 +19,17 @@ docker_stub_sha256=
 compose_pin=$(sed -n 's/^compose_plugin_version=//p' "$src/install.sh")
 compose_pin_x86_64=$(sed -n 's/^compose_plugin_sha256_x86_64=//p' "$src/install.sh")
 compose_pin_aarch64=$(sed -n 's/^compose_plugin_sha256_aarch64=//p' "$src/install.sh")
+# The asset and checksum install.sh prints on this machine.
+case $(uname -m) in
+	aarch64 | arm64)
+		compose_arch=aarch64
+		compose_pin_sha256=$compose_pin_aarch64
+		;;
+	*)
+		compose_arch=x86_64
+		compose_pin_sha256=$compose_pin_x86_64
+		;;
+esac
 
 . "$src/tests/lib.sh"
 
@@ -40,8 +51,11 @@ make_release() {
 setup_stubs() {
 	rm -rf /stub
 	mkdir -p /stub/bin /stub/late /stub/releases
-	for tool in curl systemctl service getent hostname ss sleep ip install; do
+	for tool in curl systemctl service getent hostname ss sleep ip; do
 		cp "$src/tests/stubs/$tool" "/stub/bin/$tool"
+	done
+	for tool in install cp mv; do
+		cp "$src/tests/stubs/file-tool" "/stub/bin/$tool"
 	done
 	cp "$src/tests/stubs/docker" /stub/bin/docker.real
 	cp "$src/tests/stubs/get-docker.sh" /stub/get-docker.sh
@@ -905,12 +919,47 @@ expect "the data was copied first" log_order 'compose stop' 'docker run --rm -v 
 expect "the old server was started again" log_order 'docker run --rm -v oleafly-server_oleafly-data:/data:ro' 'compose start'
 expect "the server is up" [ -f /stub/state/up ]
 expect "no new version was started" log_lacks 'compose up'
-expect "it says which version runs" out_has 'The server runs 0.1.0 again.'
-expect "the way back is named" out_has 'To go back to 0.1.0 with the data from before this update, run:'
+expect "it says nothing was replaced" out_has 'None of the installed files changed. The server runs 0.1.0 again.'
+expect "it says to run the installer again" out_has 'Free some disk space, then run the installer again.'
+expect "it doesn't offer a data restore nobody needs" out_lacks 'To go back to 0.1.0 with the data'
+expect "the compose file is still the old release's" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml"
+expect "no staging folder is left" [ ! -e "$install_dir/.release-incoming" ]
+rm -f /stub/state/install-fails
+: >/stub/log
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect "the next update works" [ "$status" = 0 ]
+expect "the next update still copies the data first" log_has 'docker run --rm -v oleafly-server_oleafly-data:/data:ro'
+expect "the next update says what changed" out_has 'Updated from 0.1.0 to 0.1.1'
 rm -rf "$install_dir"
+echo Caddyfile >/stub/state/install-fails
 run_full "$installer_shell" /stub/install-0.1.0.sh --yes
 expect "a new install stops with a reason" [ "$status" = 1 ]
 expect "a new install says what failed" out_has "Couldn't put the release files in $install_dir."
+finish
+
+begin "a release file that can't be moved into place puts the previous files back"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+echo install.sh >/stub/state/mv-fails
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 1
+expect "it says the previous files are back" out_has 'The installer put the previous files back. The server runs 0.1.0 again.'
+expect "the compose file is the old release's again" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml"
+expect "the Caddyfile was kept too" [ -f "$install_dir/Caddyfile.previous" ]
+expect "the server is up" [ -f /stub/state/up ]
+finish
+
+begin "a copy of the old files that can't be written stops the update before the server stops"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+echo docker-compose.yml.previous >/stub/state/cp-fails
+: >/stub/log
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 1
+expect "it says what it couldn't copy" out_has "Couldn't keep a copy of $install_dir/docker-compose.yml before the update. Nothing was changed."
+expect "the server was never stopped" log_lacks 'compose stop'
+expect "the server still runs" [ -f /stub/state/up ]
+expect "the release files are the old ones" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml"
 finish
 
 begin "an update also pulls the images docker-compose.override.yml names"
@@ -924,6 +973,11 @@ expect_status 0
 expect "the override is read with the release file" log_has "-f $install_dir/docker-compose.override.yml pull"
 expect "its image was pulled before the update" grep -qx 'example.org/caddy-with-plugins:2.11.7' /stub/state/pulled
 expect "the release's server image was pulled too" grep -qx 'ghcr.io/oleafly/oleafly-server:0.1.1' /stub/state/pulled
+expect "a service the override builds is skipped" log_has 'pull --quiet --ignore-buildable'
+echo 'Error response from daemon: pull access denied for example.org/caddy-with-plugins' >/stub/state/pull-fails
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect "a refused pull fails" [ "$status" = 1 ]
+expect "the override's image is named" out_has 'or one that docker-compose.override.yml names (example.org/caddy-with-plugins:2.11.7)'
 finish
 
 begin "a failed copy before an update keeps the running release"
@@ -983,8 +1037,8 @@ expect_status 1
 expect "the distribution is named" out_has "Docker's install script doesn't support Amazon Linux 2023.8.20250915."
 expect "Amazon's package is used" out_has 'install -y docker'
 expect "Docker is turned on" out_has 'sudo systemctl enable --now docker'
-expect "the Compose plugin comes from the pinned release" out_has "releases/download/$compose_pin/docker-compose-linux-x86_64"
-expect "the plugin is checked against the pinned checksum" out_has "echo '$compose_pin_x86_64  docker-compose-linux-x86_64' | sha256sum -c"
+expect "the Compose plugin comes from the pinned release" out_has "releases/download/$compose_pin/docker-compose-linux-$compose_arch"
+expect "the plugin is checked against the pinned checksum" out_has "echo '$compose_pin_sha256  docker-compose-linux-$compose_arch' | sha256sum -c"
 expect "the plugin goes where Docker finds it" out_has '/usr/local/lib/docker/cli-plugins/docker-compose'
 expect "Docker's script isn't offered" out_lacks 'Install Docker now?'
 expect "Docker's script wasn't downloaded" log_lacks 'docker-install'

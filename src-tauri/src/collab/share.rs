@@ -260,7 +260,7 @@ pub(crate) fn cloud_synced() -> CollabError {
     )
 }
 
-async fn sendable_blob(file: &Path, hash: &str) -> Result<Vec<u8>, CollabError> {
+pub(crate) async fn sendable_blob(file: &Path, hash: &str) -> Result<Vec<u8>, CollabError> {
     let bytes = tokio::fs::read(file).await.map_err(io)?;
     if sha256_hex(&bytes) != hash {
         return Err(CollabError::Io(format!(
@@ -443,15 +443,22 @@ pub async fn share_project(
         Box::pin(async move { client.commit_project(access, shared).await })
     })
     .await?;
-    let layout = materialize::layout(&built.doc.nodes()?);
+    let nodes = built.doc.nodes()?;
+    let layout = materialize::layout(&nodes);
+    let mut hashes = built.hashes;
+    let wanted = layout
+        .iter()
+        .filter_map(|(id, placed)| {
+            Some((super::disk::found_path(&nodes, id)?, placed.path.clone()))
+        })
+        .collect();
+    for (from, to) in super::disk::follow_layout(&root, wanted) {
+        super::disk::rekey_moved(&mut hashes, &from, &to);
+    }
     let shared_settings = built.doc.settings();
     let mut live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
     live.save(&paths.document_dir(project_id)?)?;
-    DiskState {
-        layout,
-        hashes: built.hashes,
-    }
-    .save(&paths.materializer_index_file(project_id)?)?;
+    DiskState { layout, hashes }.save(&paths.materializer_index_file(project_id)?)?;
     let binding = ShareBinding {
         server_url: entry.url.clone(),
         server_id: server,
@@ -1238,6 +1245,45 @@ mod transfer_tests {
         }
     }
 
+    #[cfg(not(windows))]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_name_the_layout_changes_is_renamed_on_disk_when_the_project_is_shared() {
+        let library = TempLibrary::new();
+        let root = library.project(
+            "odd-names",
+            &[("main.tex", "hello\n"), ("aux.tex", "aux\n")],
+        );
+        let lab = Lab::start().await;
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_in(&dir, "collab");
+        let server = lab.sign_in(&state, &lab.server.url(), true).await;
+        share_project(&state, &Browser, &|_, _| {}, "odd-names", server)
+            .await
+            .unwrap();
+        let disk = DiskState::load(
+            &state
+                .paths()
+                .unwrap()
+                .materializer_index_file("odd-names")
+                .unwrap(),
+        );
+        let laid = disk
+            .layout
+            .values()
+            .find(|placed| placed.path.starts_with("unnamed-"))
+            .expect("aux.tex is laid out under a safe name")
+            .path
+            .clone();
+        assert!(!root.join("aux.tex").exists());
+        assert_eq!(std::fs::read_to_string(root.join(&laid)).unwrap(), "aux\n");
+        assert!(disk.hashes.contains_key(&laid));
+        assert!(!disk.hashes.contains_key("aux.tex"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "hello\n"
+        );
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_share_finishes_although_its_access_token_expires_halfway() {
         let library = TempLibrary::new();
@@ -1267,8 +1313,8 @@ mod transfer_tests {
     async fn a_share_cut_off_halfway_resumes_without_sending_its_files_again() {
         let library = TempLibrary::new();
         paper(&library, "cut-share");
-        let lab = Lab::start().await;
-        let relay = Relay::start(lab.address()).await;
+        let relay = Relay::bind().await;
+        let lab = Lab::behind(&relay).await;
         let dir = tempfile::tempdir().unwrap();
         let state = state_in(&dir, "collab");
         let server = lab.sign_in(&state, &relay.url, true).await;
@@ -1311,11 +1357,11 @@ mod transfer_tests {
         async fn start() -> Joiner {
             let library = TempLibrary::new();
             paper(&library, "to-join");
-            let lab = Lab::start().await;
-            let relay = Relay::start(lab.address()).await;
+            let relay = Relay::bind().await;
+            let lab = Lab::behind(&relay).await;
             let dir = tempfile::tempdir().unwrap();
             let owner = state_in(&dir, "owner");
-            let server = lab.sign_in(&owner, &lab.server.url(), true).await;
+            let server = lab.sign_in(&owner, &relay.url, true).await;
             let shared = share_project(&owner, &Browser, &|_, _| {}, "to-join", server)
                 .await
                 .unwrap()

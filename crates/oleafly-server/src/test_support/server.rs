@@ -67,6 +67,42 @@ impl TestServer {
         }
     }
 
+    /// Starts the server behind a front at `public_url`, the address people
+    /// use, the way a reverse proxy setup works. `url()` stays the server's
+    /// own address.
+    pub async fn start_at(mut config: ServerConfig, public_url: &str) -> TestServer {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind the test server");
+        let addr = listener.local_addr().expect("test server address");
+        config.public_url = Url::parse(public_url).expect("test server public url");
+        config.bind = addr;
+        let setup_code = config
+            .setup_code
+            .clone()
+            .unwrap_or_else(|| TEST_SETUP_CODE.to_owned());
+        config.setup_code = Some(setup_code.clone());
+        let app = test_app_with(config).await;
+        let real = SystemClock.now_ms();
+        let current = app.clock.now_ms();
+        if real > current {
+            app.clock.advance(real - current);
+        }
+        let service = app
+            .router
+            .clone()
+            .into_make_service_with_connect_info::<SocketAddr>();
+        let task = tokio::spawn(async move {
+            let _ = axum::serve(listener, service).await;
+        });
+        TestServer {
+            app,
+            addr,
+            setup_code,
+            task,
+        }
+    }
+
     pub fn url(&self) -> String {
         format!("http://{}", self.addr)
     }

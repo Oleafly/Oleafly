@@ -74,16 +74,16 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_S3_ENDPOINT` | The address of an S3-compatible store other than Amazon S3, such as MinIO or Cloudflare R2. Leave it empty for Amazon S3. | Amazon S3 |
 | `OLEAFLY_S3_REGION` | The bucket's region. | `us-east-1` |
 | `OLEAFLY_S3_ACCESS_KEY_ID`, `OLEAFLY_S3_SECRET_ACCESS_KEY` | The key the server uses for the bucket. Required with an `s3://` address. | None |
-| `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. | `200` |
+| `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. A file upload counts the project's files and its change log, and a text change counts only the change log. Read [Size and connection limits](#size-and-connection-limits). | `200` |
 | `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
-| `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. | `20` |
+| `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. Only active accounts count, so a suspended account doesn't take a place. | `20` |
 | `OLEAFLY_SIGN_IN_BURST` | How many sign-in requests one network address can make in a burst. A sign-in takes about six, so the default covers 50 people at one address signing in at the same time. | `300` |
 | `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
 | `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
 | `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` | How many sign-in emails one email address can get in 15 minutes. It can't be more than `OLEAFLY_EMAIL_LINKS_PER_IP`. | `3` |
 | `OLEAFLY_EMAIL_LINKS_PER_HOUR` | How many sign-in emails the whole server sends in an hour, all addresses together. A flood of requests from many addresses stops there instead of at your mail provider's limit. | `300` |
 | `OLEAFLY_DEVICE_CODES_PER_IP` | How many sign-in codes people at one network address can ask for in 10 minutes. Read [Sign in with a code](#sign-in-with-a-code). | `100` |
-| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, the server may use to build project snapshots. A project that needs more keeps all its changes until you raise it. Read [Files in a bucket](#files-in-a-bucket). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory |
+| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, documents and large file transfers may use together: three quarters for documents, such as building project snapshots, and one quarter for transfers of a megabyte or more. A project whose snapshot needs more keeps all its changes until you raise it. The server's startup note says "Documents and large file transfers may use N MB together". Read [Size and connection limits](#size-and-connection-limits). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory, or `1024` when the server can't read any of them |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
 | `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. It needs `OLEAFLY_BEHIND_PROXY=true`. With more than one proxy, `OLEAFLY_TRUSTED_PROXIES` is safer. | `1` |
 | `OLEAFLY_TRUSTED_PROXIES` | Your proxies' IP addresses and CIDR ranges, separated by commas. The server then uses `X-Forwarded-For` only on connections from them, and skips the trusted entries from the right to find the visitor. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. | None |
@@ -100,12 +100,20 @@ When the server starts, it warns about every variable whose name starts with `OL
 
 Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SECRET`, `OLEAFLY_OIDC_<NAME>_CLIENT_SECRET`, `OLEAFLY_SMTP_URL`, `OLEAFLY_BLOB_STORE`, `OLEAFLY_S3_ACCESS_KEY_ID` and `OLEAFLY_S3_SECRET_ACCESS_KEY`. Each one also has a `_FILE` version that names a file holding the value, for example `OLEAFLY_GITHUB_CLIENT_SECRET_FILE=/run/secrets/github_client_secret`. Set one of the two, not both. The server trims spaces and line breaks around the value in the file, the same as for a plain variable. The [Docker Compose](#docker-compose) and [systemd](#run-it-with-systemd) sections show how.
 
+### Size and connection limits
+
+A project's size is its files plus its change log, the record of edits the server keeps so that devices can catch up. `OLEAFLY_MAX_PROJECT_MB` treats the two differently. A file upload, such as a figure, counts both, and the server refuses an upload that would go past the limit. Oleafly then keeps that file on the computer and says the project reached the server's size limit. A text change counts only the change log, so a project whose figures fill the limit still accepts typing. If the change log itself reaches the limit, the server refuses changes too. Oleafly keeps them on the computer, asks people to have the limit raised, and sends them once you raise `OLEAFLY_MAX_PROJECT_MB` and restart the server.
+
+Each account can hold up to 32 live connections at once, across all its devices and projects, and the whole server up to 512. One device keeps at most 32: when it opens another, its oldest one closes. Past the account or server limit, the server answers the connection with 429 "Too many requests", and its log says "refused a connection over the open connection limit". Oleafly then keeps editing over [HTTP long-polling](#when-websocket-connections-are-blocked), which has its own, larger limits, and tries a live connection again every minute.
+
+Large file transfers and documents share the memory `OLEAFLY_SNAPSHOT_MEMORY_MB` sets. An upload or download of a megabyte or more waits up to 30 seconds for room in its quarter. If there is still none, the server answers 503 `server_busy` with `Retry-After: 5`. One account can have four large transfers under way at once, and a fifth gets 429. One long-polling session posts one batch of edits at a time, and a second batch at the same time gets 429. These are normal answers to a busy server, and Oleafly tries again by itself.
+
 ### Files in a bucket
 
 By default the server keeps files in `OLEAFLY_DATA_DIR`. It can keep them in Amazon S3 instead, or in another store with an S3-compatible API, such as MinIO or Cloudflare R2. Project snapshots are stored in the same place as files. The database stays in `OLEAFLY_DATA_DIR` either way, so the server still needs its data folder.
 
 1. Create a bucket and block public access to it.
-2. Create a key that can read, write and delete objects in that bucket and nothing else. On Amazon S3 that means `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::lab-bucket/*`, or on `arn:aws:s3:::lab-bucket/oleafly/*` if you use a folder.
+2. Create a key that can read, write and delete objects in that bucket and nothing else. On Amazon S3 that means `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::lab-bucket/*`, or on `arn:aws:s3:::lab-bucket/oleafly/*` if you use a folder. The server needs all three from the start. When it starts, and every few minutes when `/readyz` is checked, it writes a small test object named `.oleafly-ready-<random>`, reads it back and deletes it, and gives each try 5 seconds. Each server process uses one such name, so a key without delete permission leaves at most one object behind.
 3. Set the variables, for example in `.env`:
 
    ```sh
@@ -123,7 +131,7 @@ Project snapshots have their own `snapshots` folder with a folder for each proje
 
 When a project is shared, the owner's app uploads its first snapshot and signs it with that device's key. From then on the server builds every snapshot itself. It starts from the previous snapshot and adds the changes people sent since. A new snapshot is built once a project has 1,000 changes past the last one. The server always keeps at least the last 2,000 changes, so a device that was away for a short time catches up from those changes and doesn't download the whole project again. Old snapshots that nothing needs are removed as soon as a newer one is stored.
 
-Building a snapshot needs about ten times the size of the previous snapshot plus the changes since it. The server only starts a build that fits in `OLEAFLY_SNAPSHOT_MEMORY_MB`, and builds running at the same time share that amount. If a build doesn't fit, the server skips it, logs how much memory it needs, and keeps all the project's changes. Devices then catch up from those changes a few megabytes at a time. Raise the setting and the next snapshot gets built. The server also won't store a snapshot larger than `OLEAFLY_MAX_PROJECT_MB`.
+Building a snapshot needs about ten times the size of the previous snapshot plus the changes since it. The server only starts a build that fits in the documents' three quarters of `OLEAFLY_SNAPSHOT_MEMORY_MB`, and builds running at the same time share that amount. If a build doesn't fit, the server skips it, logs how much memory it needs, and keeps all the project's changes. Devices then catch up from those changes a few megabytes at a time. Raise the setting and the next snapshot gets built. The server also won't store a snapshot larger than `OLEAFLY_MAX_PROJECT_MB`.
 
 Every change records which internal writer ids it adds text under. The server ties each writer id to the first device that used it. It refuses a change that adds text under a writer id another device already used, and it refuses anything that isn't a valid document change. Apps check the same rule before they apply a change. They also read the list of writer ids from `GET /api/v1/projects/{id}/peers` to tell who wrote each comment.
 
@@ -276,7 +284,7 @@ Before you start, point your domain's DNS record, such as `collab.example.org`, 
 
 If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
 
-If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_TRUSTED_PROXIES`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit. Behind Cloudflare's proxy, list [Cloudflare's published ranges](https://www.cloudflare.com/ips/) plus the range of Docker's `coolify` network, separated by commas. Find that range with `docker network inspect coolify --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`. Behind a tunnel, the `coolify` network's range is enough. Cloudflare changes its list now and then, so check it when you update the server. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains the other choice, `OLEAFLY_PROXY_HOPS=2`, and why it needs more care.
+If Cloudflare sits in front of Coolify, because your DNS record goes through Cloudflare's proxy or a tunnel leads to Coolify's proxy, set `OLEAFLY_TRUSTED_PROXIES`. Without it, the security log shows the proxy's address for everyone, and they all share one sign-in limit. Behind Cloudflare's proxy, list [Cloudflare's published ranges](https://www.cloudflare.com/ips/) plus the range of Docker's `coolify` network, separated by commas. Find that range with `docker network inspect coolify --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`. Behind a tunnel, the `coolify` network's range is enough. Cloudflare changes its list now and then, so check it when you update the server. Those ranges are shared: Workers and Cloudflare's other services connect from them too. So with them in `OLEAFLY_TRUSTED_PROXIES`, the machine has to accept connections only from Cloudflare, or sit behind a tunnel, and must not be reachable directly. [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes) explains the other choice, `OLEAFLY_PROXY_HOPS=2`, and why it needs more care.
 
 The Coolify file has room for GitHub and one OpenID Connect provider named `UNIVERSITY`. Set `OLEAFLY_OIDC_UNIVERSITY_LABEL` to the text people should see, such as `GitLab`. Its callback address ends in `/auth/callback/university`. For more providers, deploy from a fork with your own copy of the file.
 
@@ -409,7 +417,7 @@ This writes `dist/oleafly-server`. Use `--platform linux/arm64` for an ARM serve
    sudo journalctl -u oleafly-server | grep 'Setup code'
    ```
 
-The unit runs the server as a user that systemd creates for it, with a read-only view of the rest of the system. The only place it can write is `/var/lib/oleafly-server`, where it keeps its data. On disk that folder is `/var/lib/private/oleafly-server`.
+The unit runs the server as a user that systemd creates for it, with a read-only view of the rest of the system. It also raises the limit on open files to 65,536 with `LimitNOFILE=65536`, because each live connection uses one. The only place it can write is `/var/lib/oleafly-server`, where it keeps its data. On disk that folder is `/var/lib/private/oleafly-server`.
 
 To keep the client secret out of the settings file, use a systemd credential. Save the secret in `/etc/oleafly-server/github-client-secret` with mode 600, delete the `OLEAFLY_GITHUB_CLIENT_SECRET` line from the settings file, run `sudo systemctl edit oleafly-server`, and add:
 
@@ -444,6 +452,8 @@ The server speaks plain HTTP, so something in front of it handles HTTPS: Caddy i
 
 It should also pass WebSocket upgrades through to `/ws` and keep those connections open for at least an hour. Live editing uses them when it can. If they're blocked, live editing still works over slower HTTP long-polling. Read [When WebSocket connections are blocked](#when-websocket-connections-are-blocked).
 
+The upgrade request carries the app's token in an `Authorization: Bearer` header, so the proxy has to pass that header on. nginx, Caddy and Traefik do that by default. A proxy that strips it makes Oleafly fall back to the slower long-polling.
+
 Run the server where only the proxy can reach it. On the same machine, set `OLEAFLY_BIND=127.0.0.1:8080`. Then set `OLEAFLY_BEHIND_PROXY=true`.
 
 ### When WebSocket connections are blocked
@@ -468,7 +478,7 @@ Turn it on only when every request comes through your proxy. If people can also 
 
 With two proxies in a row, for example Cloudflare in front of Coolify's proxy, the last address is the one the inner proxy added for the outer one. People then show up with the outer proxy's address, a Cloudflare one or a private one such as `10.0.1.1`, and share its sign-in limit. There are two ways to fix that.
 
-The safer one is `OLEAFLY_TRUSTED_PROXIES`, a list of your proxies' IP addresses and CIDR ranges separated by commas. The server then uses `X-Forwarded-For` only on connections that come from an address on the list. It reads the header from the right, skips every address on the list, and takes the first one that isn't as the visitor, the way nginx does with `real_ip_recursive`. A connection from anywhere else keeps its own address, whatever header it sends. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. [Coolify](#coolify) shows what to list behind Cloudflare.
+The safer one is `OLEAFLY_TRUSTED_PROXIES`, a list of your proxies' IP addresses and CIDR ranges separated by commas. The server then uses `X-Forwarded-For` only on connections that come from an address on the list. It reads the header from the right, skips every address on the list, and takes the first one that isn't as the visitor, the way nginx does with `real_ip_recursive`. A connection from anywhere else keeps its own address, whatever header it sends. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. The server refuses a `/0` range when it starts, and starts with a warning for a very wide one: an IPv4 range shorter than `/8`, or an IPv6 range shorter than `/24` outside `fc00::/7` and `fe80::/10`. [Coolify](#coolify) shows what to list behind Cloudflare.
 
 The other one is `OLEAFLY_PROXY_HOPS=2`: the server takes the second address from the end instead. Count only the proxies that every request goes through. A [Cloudflare Tunnel](#without-a-public-address) that leads straight to the server counts as one. With `2`, the inner proxy must not be reachable directly from the internet, because a request sent straight to it can carry a made-up address that the server then takes as the visitor's. On Coolify, remove the `sslip.io` host Coolify generated for the resource, so only the domain behind Cloudflare leads to the server.
 
@@ -963,7 +973,7 @@ Back up first. The server updates its database the first time a new version star
 
 Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
 
-- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it stops the server, copies the data volume to `/opt/oleafly-server/backups` and keeps the old `docker-compose.yml` and `install.sh` as `docker-compose.yml.previous` and `install.sh.previous`. It keeps the three newest copies. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
+- One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it keeps the old `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `install.sh` as `.previous` files, then stops the server and copies the data volume to `/opt/oleafly-server/backups`. It keeps the three newest copies. The new files go into a folder next to them first and replace the old ones only once all of them are written, so a full disk can't leave half of a release. If that fails, the installer starts the old version again and says to run it once there is space. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
 - Docker Compose: download the new release's `docker-compose.yml` and `SHA256SUMS` as in [Docker Compose](#docker-compose), check them, then run `docker compose pull && docker compose up -d`. If you build from source, run `git pull` in the `Oleafly` folder and repeat the build command.
 - Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
 - Render: open the service and start a manual deploy, which pulls the image again.
@@ -977,6 +987,8 @@ cd /opt/oleafly-server
 sudo docker compose down
 sudo docker run --rm -v oleafly-server_oleafly-data:/data -v /opt/oleafly-server/backups:/backup:ro debian:13.7-slim sh -c 'find /data -mindepth 1 -delete && tar -C /data -xzf /backup/oleafly-data-20261014T101500Z-0.1.0.tar.gz'
 sudo cp docker-compose.yml.previous docker-compose.yml
+sudo cp Caddyfile.previous Caddyfile
+sudo cp litestream.yml.previous litestream.yml
 sudo cp install.sh.previous install.sh
 sudo docker compose up -d
 ```
@@ -1012,7 +1024,7 @@ The last row matters most. Projects are not encrypted on the server, so whoever 
 ## Checking the server
 
 - `https://collab.example.org/healthz` answers `200` while the server process runs.
-- `/readyz` answers `200` only while the server can write to its database and its data folder. When it can't, for example on a full disk, it answers `503` and names what failed (`database` or `storage`).
+- `/readyz` answers `200` only while the server can write to its database and its data folder, and, with a bucket, write, read back and delete a small test object there. When it can't, for example on a full disk, it answers `503` and names what failed (`database` or `storage`). It checks the bucket at most every 5 minutes, and every 30 seconds after a failure.
 - The Docker image checks `/readyz` by itself with the server's own `oleafly-server healthcheck` command, so `docker ps` and Coolify show an unhealthy server instead of a running one that can't save anything.
 - In Oleafly, **Test connection** under **Settings › Collaboration** checks the address, HTTPS, the version, WebSocket connections, sign-in providers and the server's clock, and names the first problem it finds. When WebSocket connections are blocked but long-polling gets through, it says live edits take a slower route. **Connection checks** in the [admin console](#admin-console) runs the same checks.
 - A certificate error from Oleafly or in the server's log usually means a certificate authority that the machine doesn't trust yet. Read [Certificates your university signs](#certificates-your-university-signs).

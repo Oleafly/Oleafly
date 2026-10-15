@@ -175,18 +175,21 @@ fn client_ip(parts: &Parts, config: &ServerConfig) -> Option<IpAddr> {
             .iter()
             .any(|range| range.contains(*address))
     };
-    if peer.is_some_and(|peer| !trusted(&peer)) {
-        return peer;
+    // Without the connection's own address nobody can tell who wrote the
+    // header, so none of it is believed.
+    let peer = peer?;
+    if !trusted(&peer) {
+        return Some(peer);
     }
     let mut leftmost = peer;
     for entry in forwarded.iter().rev() {
         match entry {
-            Some(address) if trusted(address) => leftmost = Some(*address),
+            Some(address) if trusted(address) => leftmost = *address,
             Some(address) => return Some(*address),
-            None => return peer,
+            None => return Some(peer),
         }
     }
-    leftmost
+    Some(leftmost)
 }
 
 pub fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ServerError> {

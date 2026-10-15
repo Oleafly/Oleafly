@@ -8265,15 +8265,19 @@ pub async fn recycle_project(
     state: tauri::State<'_, crate::state::AppState>,
     collab: tauri::State<'_, crate::collab::state::CollabState>,
 ) -> Result<(), String> {
-    let recycled = crate::collab::live::resumed_if_failed(
+    let (recycled, restarted) = crate::collab::live::resumed_if_failed(
         collab.inner(),
-        crate::collab::live::app_host(app),
+        crate::collab::live::app_host(app.clone()),
         &project_id,
         recycle_project_synchronized(&state, project_id.clone()),
     )
     .await;
-    if recycled.is_err() && !crate::collab::switch::enabled() {
-        crate::collab::live::stop(&project_id).await;
+    if restarted {
+        if crate::collab::switch::enabled() {
+            crate::collab::live::commands::settle_started(app, project_id).await;
+        } else {
+            crate::collab::live::stop(&project_id).await;
+        }
     }
     recycled
 }

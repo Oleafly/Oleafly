@@ -5,9 +5,9 @@ use tauri::Emitter;
 use super::moves::{RemovedPayload, LIVE_REMOVED_EVENT};
 use super::payloads::{
     ChangeSkippedPayload, MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload,
-    PresencePayload, RolePayload, StatusPayload, CHANGE_SKIPPED_EVENT, LIVE_MEMBERS_EVENT,
-    LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT,
-    PRESENCE_LEFT_EVENT,
+    PresencePayload, ProjectFullPayload, RolePayload, StatusPayload, CHANGE_SKIPPED_EVENT,
+    LIVE_MEMBERS_EVENT, LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT,
+    LIVE_STATUS_EVENT, PRESENCE_EVENT, PRESENCE_LEFT_EVENT, PROJECT_FULL_EVENT,
 };
 use super::{kept, unwritten, uploads};
 use crate::collab::state::CollabState;
@@ -27,6 +27,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn comments_status(&self, _payload: crate::collab::comments::CommentsStatusPayload) {}
     fn members(&self, _payload: MembersPayload) {}
     fn change_skipped(&self, _payload: ChangeSkippedPayload) {}
+    fn project_full(&self, _payload: ProjectFullPayload) {}
     fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
@@ -109,6 +110,10 @@ impl LiveHost for AppLiveHost {
 
     fn change_skipped(&self, payload: ChangeSkippedPayload) {
         let _ = self.app.emit(CHANGE_SKIPPED_EVENT, payload);
+    }
+
+    fn project_full(&self, payload: ProjectFullPayload) {
+        let _ = self.app.emit(PROJECT_FULL_EVENT, payload);
     }
 
     fn removed(&self, payload: RemovedPayload) {

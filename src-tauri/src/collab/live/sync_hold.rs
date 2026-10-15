@@ -424,14 +424,14 @@ pub(super) fn screen(
     }
     import.texts = texts;
     let mut blobs = Vec::new();
-    for (path, hash, bytes) in std::mem::take(&mut import.blobs) {
+    for (path, hash, size) in std::mem::take(&mut import.blobs) {
         match hold.kind(&path) {
             Some(Kept::Added) => {}
             Some(_) => {
                 hold.forget(dir, &path);
-                blobs.push((path, hash, bytes));
+                blobs.push((path, hash, size));
             }
-            None => blobs.push((path, hash, bytes)),
+            None => blobs.push((path, hash, size)),
         }
     }
     import.blobs = blobs;
@@ -685,6 +685,7 @@ pub(super) struct CaughtUp {
     pub(super) disk: DiskState,
     pub(super) bases: WrittenTexts,
     pub(super) to_upload: Vec<String>,
+    pub(super) renamed: super::import::Renamed,
 }
 
 pub(super) async fn catch_up(
@@ -695,12 +696,13 @@ pub(super) async fn catch_up(
 ) -> Result<CaughtUp, CollabError> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut bases = super::initial_bases(&root, &disk, &live);
-        let to_upload = catch_up_here(&root, &dir, &mut live, &mut disk, &mut bases)?;
+        let (to_upload, renamed) = catch_up_here(&root, &dir, &mut live, &mut disk, &mut bases)?;
         Ok(CaughtUp {
             live,
             disk,
             bases,
             to_upload,
+            renamed,
         })
     })
     .await
@@ -713,14 +715,14 @@ fn catch_up_here(
     live: &mut LiveProject,
     disk: &mut DiskState,
     bases: &mut WrittenTexts,
-) -> Result<Vec<String>, CollabError> {
+) -> Result<(Vec<String>, super::import::Renamed), CollabError> {
     let mut import = super::read_local_changes(root, disk, live, None)?;
     let edits = screen(dir, root, disk, &mut import)?;
     if hold_at_start(dir, disk, &import, &edits)? {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     }
     if (import.is_empty() && edits.is_empty()) || !live.can_edit() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     }
     let sent: BTreeSet<&String> = disk.hashes.values().collect();
     let (fresh, known): (Vec<_>, Vec<_>) = std::mem::take(&mut import.blobs)
@@ -729,9 +731,9 @@ fn catch_up_here(
     import.blobs = known;
     let to_upload = fresh.into_iter().map(|(path, _, _)| path).collect();
     super::moves::adopt_folder_moves(live, disk, bases, &mut import)?;
-    super::apply_local_import(live, disk, bases, import, root)?;
+    let (_, renamed) = super::import::import_renaming(live, disk, bases, import, root)?;
     apply_kept_edits(dir, root, live, disk, bases, edits)?;
-    Ok(to_upload)
+    Ok((to_upload, renamed))
 }
 
 pub(crate) fn outside_change(

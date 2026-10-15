@@ -163,11 +163,10 @@ async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: b
     append(&bob, &main, " ready");
     flushed(&bob);
     until(|| text(&alice, &main).ends_with(" ready")).await;
+    // Every check below runs on the document the server kept from the check
+    // of " ready", without reading the project again.
     let snapshots = &pair._server.state().snapshots;
-    snapshots.set_budget(oleafly_server::snapshots::Budget {
-        memory_bytes: 1,
-        ..snapshots.budget()
-    });
+    let reads = snapshots.document_reads();
     let author = pair.alice.tokens.account_id;
     for round in 0..6 {
         let (since, told) = match round {
@@ -223,6 +222,11 @@ async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: b
     }
     acknowledged(&alice).await;
     until(|| text(&alice, &main) == text(&bob, &main)).await;
+    assert_eq!(
+        snapshots.document_reads(),
+        reads,
+        "a comment check read the project again"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -257,12 +261,7 @@ async fn a_refused_comment_change_is_refused_again_and_the_next_edit_is_checked_
     let one = typed(&mut doc, " one");
     assert_eq!(check(one.clone()).await.unwrap(), Verdict::Allowed);
     store_on_server(&pair, &pair.bob, signed_envelope(&pair.bob, project, one)).await;
-    state
-        .snapshots
-        .set_budget(oleafly_server::snapshots::Budget {
-            memory_bytes: 1,
-            ..state.snapshots.budget()
-        });
+    let reads = state.snapshots.document_reads();
     let mut aside = ProjectDoc::load(&doc.snapshot().unwrap()).unwrap();
     let since = aside.version();
     aside
@@ -278,5 +277,10 @@ async fn a_refused_comment_change_is_refused_again_and_the_next_edit_is_checked_
     assert_eq!(
         check(typed(&mut doc, " two")).await.unwrap(),
         Verdict::Allowed
+    );
+    assert_eq!(
+        state.snapshots.document_reads(),
+        reads,
+        "the checks read the project again"
     );
 }

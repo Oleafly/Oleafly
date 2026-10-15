@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 21] = [
+const PASSED_THROUGH: [&str; 23] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -92,6 +92,8 @@ const PASSED_THROUGH: [&str; 21] = [
     "share_in_progress",
     "cancelled",
     "cloud_synced",
+    "owner_away",
+    "wrong_server",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -424,9 +426,12 @@ where
         verify_server(state, &client, server).await?;
     }
     let keys = state.keys().await?;
-    let first = match keys.sessions.access_token(server, &client).await {
-        Ok(access) => call(&client, access.as_str()).await,
-        Err(error) => Err(error),
+    let (rejected, first) = match keys.sessions.access_token(server, &client).await {
+        Ok(access) => {
+            let first = call(&client, access.as_str()).await;
+            (Some(access), first)
+        }
+        Err(error) => (None, Err(error)),
     };
     let result = match first {
         Err(CollabError::Unauthorized) => {
@@ -435,11 +440,17 @@ where
             } else {
                 Ok(())
             };
-            match verified {
-                Ok(()) => match keys.sessions.force_refresh(server, &client).await {
-                    Ok(access) => call(&client, access.as_str()).await,
-                    Err(error) => Err(error),
-                },
+            let renewed = match (verified, &rejected) {
+                (Err(error), _) => Err(error),
+                (Ok(()), Some(rejected)) => {
+                    keys.sessions
+                        .refresh_rejected(server, &client, rejected)
+                        .await
+                }
+                (Ok(()), None) => keys.sessions.force_refresh(server, &client).await,
+            };
+            match renewed {
+                Ok(access) => call(&client, access.as_str()).await,
                 Err(error) => Err(error),
             }
         }
@@ -473,8 +484,8 @@ where
     let access = sessions.access_token(server, client).await?;
     match call(client, &access).await {
         Err(CollabError::Unauthorized) => {
-            let access = sessions.force_refresh(server, client).await?;
-            call(client, &access).await
+            let renewed = sessions.refresh_rejected(server, client, &access).await?;
+            call(client, &renewed).await
         }
         other => other,
     }
@@ -744,6 +755,51 @@ pub async fn remove_server(
     Ok(detached)
 }
 
+// After a sign-in whose account read failed, the account is read again a
+// few times in the background, so the server card gets its name, avatar
+// and admin rights without the person having to reopen the section.
+pub(crate) const ACCOUNT_READS: [Duration; 5] = [
+    Duration::from_secs(2),
+    Duration::from_secs(5),
+    Duration::from_secs(15),
+    Duration::from_secs(30),
+    Duration::from_secs(60),
+];
+
+pub(crate) async fn read_account_later(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    waits: &[Duration],
+) -> bool {
+    for wait in waits {
+        tokio::time::sleep(*wait).await;
+        if !state.has_session(server).unwrap_or(false) {
+            return false;
+        }
+        if refresh_account(state, host, server)
+            .await
+            .is_ok_and(|server| server.account.is_some())
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn read_account_soon(app: &tauri::AppHandle, server: &CollabServer) {
+    if server.account.is_some() {
+        return;
+    }
+    let (app, id) = (app.clone(), server.server_id);
+    tauri::async_runtime::spawn(async move {
+        use tauri::Manager;
+        let state = app.state::<CollabState>();
+        let host = AppHost::new(app.clone());
+        read_account_later(state.inner(), &host, id, &ACCOUNT_READS).await;
+    });
+}
+
 pub async fn refresh_account(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -995,8 +1051,8 @@ pub async fn collab_server_sign_in(
     provider_id: String,
     setup_code: Option<String>,
 ) -> Result<CollabServer, CollabCommandError> {
-    let host = AppHost::new(app);
-    sign_in_server(
+    let host = AppHost::new(app.clone());
+    let server = sign_in_server(
         state.inner(),
         &host,
         &url,
@@ -1005,7 +1061,9 @@ pub async fn collab_server_sign_in(
         SIGN_IN_TIMEOUT,
     )
     .await
-    .map_err(CollabCommandError::from)
+    .map_err(CollabCommandError::from)?;
+    read_account_soon(&app, &server);
+    Ok(server)
 }
 
 #[tauri::command]
@@ -1016,15 +1074,17 @@ pub async fn collab_server_code_sign_in(
     setup_code: Option<String>,
     on_code: tauri::ipc::Channel<SignInCode>,
 ) -> Result<CollabServer, CollabCommandError> {
-    let host = AppHost::new(app);
+    let host = AppHost::new(app.clone());
     let show = move |code: &SignInCode| {
         on_code
             .send(code.clone())
             .map_err(|error| CollabError::Io(error.to_string()))
     };
-    code_sign_in_server(state.inner(), &host, &url, setup_code, &show)
+    let server = code_sign_in_server(state.inner(), &host, &url, setup_code, &show)
         .await
-        .map_err(CollabCommandError::from)
+        .map_err(CollabCommandError::from)?;
+    read_account_soon(&app, &server);
+    Ok(server)
 }
 
 #[tauri::command]
@@ -1397,6 +1457,10 @@ mod tests {
     }
 
     async fn github_server() -> (MockGithub, TestServer) {
+        github_server_at(None).await
+    }
+
+    async fn github_server_at(public_url: Option<&str>) -> (MockGithub, TestServer) {
         let github = MockGithub::start(vec![MockGithubUser {
             id: 1,
             login: "carol".to_string(),
@@ -1413,7 +1477,16 @@ mod tests {
             web_url: github.web_url(),
             api_url: github.api_url(),
         });
-        let server = TestServer::start(config).await;
+        let server = match public_url {
+            Some(url) => TestServer::start_at(config, url).await,
+            None => TestServer::start(config).await,
+        };
+        (github, server)
+    }
+
+    async fn github_server_behind(relay: &Relay) -> (MockGithub, TestServer) {
+        let (github, server) = github_server_at(Some(&relay.url)).await;
+        relay.point_at(&server);
         (github, server)
     }
 
@@ -1446,12 +1519,18 @@ mod tests {
 
     impl Relay {
         async fn start(first: &TestServer) -> Relay {
+            let relay = Relay::bind().await;
+            relay.point_at(first);
+            relay
+        }
+
+        async fn bind() -> Relay {
             let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
             let url = format!(
                 "http://127.0.0.1:{}",
                 listener.local_addr().expect("address").port()
             );
-            let upstream = Arc::new(Mutex::new(address_of(first)));
+            let upstream = Arc::new(Mutex::new(String::new()));
             let seen = Arc::new(Mutex::new(Vec::new()));
             let (target, log) = (upstream.clone(), seen.clone());
             tokio::spawn(async move {
@@ -1596,7 +1675,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 20] = [
+    const NEW_CODES: [(u16, &str); 22] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1617,6 +1696,8 @@ mod tests {
         (400, "setup_code_invalid"),
         (409, "device_in_use"),
         (404, "server_unknown"),
+        (409, "owner_away"),
+        (400, "wrong_server"),
     ];
 
     #[test]
@@ -1659,7 +1740,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs the frontend's CollabErrorCode additions from contracts C-5, C-7, C-11, C-12 and C-13; run once both sides are merged"]
     fn every_code_added_for_refusals_is_one_the_frontend_knows() {
         let contract = include_str!("../../../packages/backend-port/src/index.ts");
         let start = contract
@@ -1787,8 +1867,9 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_sign_in_whose_account_read_fails_keeps_the_new_session() {
-        let (_github, server) = github_server().await;
-        let relay = crate::collab::testing::Relay::start(address_of(&server)).await;
+        let relay = crate::collab::testing::Relay::bind().await;
+        let (_github, server) = github_server_at(Some(&relay.url)).await;
+        relay.point_at(address_of(&server));
         relay.refuse(Some("GET /api/v1/me HTTP"));
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
@@ -1806,12 +1887,13 @@ mod tests {
         assert!(relay.refusals() > 0);
         assert!(added.signed_in);
         assert!(added.account.is_none());
+        let soon = [Duration::from_millis(20); 2];
+        assert!(!read_account_later(&state, &host, added.server_id, &soon).await);
         relay.refuse(None);
-        let refreshed = refresh_account(&state, &host, added.server_id)
-            .await
-            .expect("account");
-        assert!(refreshed.signed_in);
-        assert!(refreshed.account.is_some());
+        assert!(read_account_later(&state, &host, added.server_id, &soon).await);
+        let listed = list_servers(&state).expect("list");
+        assert!(listed[0].signed_in);
+        assert!(listed[0].account.is_some());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -2074,8 +2156,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_replaced_server_at_the_same_address_gets_no_token() {
-        let (_github, first) = github_server().await;
-        let relay = Relay::start(&first).await;
+        let relay = Relay::bind().await;
+        let (_github, first) = github_server_behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let host = TestHost::following();
@@ -2089,7 +2171,7 @@ mod tests {
         )
         .await
         .expect("sign in");
-        let replacement = TestServer::start(test_config()).await;
+        let replacement = TestServer::start_at(test_config(), &relay.url).await;
         relay.point_at(&replacement);
         let (expected, found) = (added.server_id, replacement.state().server_id);
         let changed = |result: &Result<(), CollabError>| {
@@ -2132,8 +2214,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_token_rejected_within_the_cached_check_checks_the_server_before_refreshing() {
-        let (_github, server) = github_server().await;
-        let relay = Relay::start(&server).await;
+        let relay = Relay::bind().await;
+        let (_github, server) = github_server_behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let host = TestHost::following();
@@ -2261,8 +2343,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn admin_calls_in_a_row_share_one_connection_and_one_server_check() {
-        let lab = crate::collab::testing::Lab::start().await;
-        let relay = crate::collab::testing::Relay::start(lab.address()).await;
+        let relay = crate::collab::testing::Relay::bind().await;
+        let lab = crate::collab::testing::Lab::behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let server = lab.sign_in(&state, &relay.url, true).await;
