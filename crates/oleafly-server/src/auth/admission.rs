@@ -1,6 +1,6 @@
 use oleafly_collab_protocol::admin::{AllowlistEntry, MemberStatus};
 use oleafly_collab_protocol::auth::AuthErrorCode;
-use oleafly_collab_protocol::ids::AccountId;
+use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::roles::ServerRole;
 use rusqlite::Connection;
 
@@ -9,6 +9,7 @@ use crate::db::parse_id;
 use crate::error::ServerError;
 use crate::guests;
 use crate::members;
+use crate::projects;
 
 #[derive(Debug)]
 pub enum Admission {
@@ -63,6 +64,9 @@ pub struct Admitted {
     pub new_account: bool,
     pub reactivated: bool,
     pub via: Via,
+    // Projects a returning account was not put back into, because active
+    // people filled them while it was away.
+    pub left_out_of: Vec<SharedProjectId>,
 }
 
 #[derive(Debug)]
@@ -184,6 +188,7 @@ pub fn apply(
                 new_account: false,
                 reactivated: false,
                 via: Via::Linked,
+                left_out_of: Vec::new(),
             }));
         }
         Admission::Allowlisted {
@@ -217,9 +222,15 @@ pub fn apply(
         }
         Admission::NotAdmitted => return Ok(refused(AuthErrorCode::NotAdmitted, "not_admitted")),
     };
+    let mut left_out_of = Vec::new();
     let (account_id, new_account) = match existing {
         Some(account_id) => {
+            let full = members::projects_now_full(conn, account_id, max_members)?;
             members::reactivate_account(conn, account_id, role, now)?;
+            for (project, _) in full {
+                projects::revoke(conn, project, account_id)?;
+                left_out_of.push(project);
+            }
             (account_id, false)
         }
         None => {
@@ -262,6 +273,7 @@ pub fn apply(
         new_account,
         reactivated: !new_account,
         via,
+        left_out_of,
     }))
 }
 
