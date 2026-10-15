@@ -341,13 +341,37 @@ pub fn remove_account(
          AND match_key IN (SELECT email FROM account_emails WHERE account_id = ?1)",
         [&id],
     )?;
-    removed += conn.execute(
-        "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'provider_login' \
-         AND EXISTS (SELECT 1 FROM identities i WHERE i.account_id = ?1 \
-         AND i.provider_id = allowlist.provider_id AND lower(i.login) = allowlist.match_key)",
-        [&id],
-    )?;
+    for (provider, login) in identity_logins(
+        conn,
+        "SELECT provider_id, login FROM identities WHERE account_id = ?1 AND login IS NOT NULL",
+        &id,
+    )? {
+        removed += conn.execute(
+            "DELETE FROM allowlist WHERE bound_account IS NULL AND kind = 'provider_login' \
+             AND provider_id = ?1 AND match_key = ?2",
+            params![provider, login],
+        )?;
+    }
     Ok(removed)
+}
+
+// Logins as allowlist entries store them. SQLite's lower() folds only
+// ASCII letters, so the comparison happens here, with normalize_login.
+fn identity_logins(
+    conn: &Connection,
+    sql: &str,
+    param: &str,
+) -> Result<Vec<(String, String)>, ServerError> {
+    let mut statement = conn.prepare(sql)?;
+    let rows = statement
+        .query_map([param], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(provider, login)| normalize_login(&login).map(|key| (provider, key)))
+        .collect())
 }
 
 pub fn account_devices(
@@ -602,23 +626,23 @@ fn has_an_account(
     provider: &str,
     key: &str,
 ) -> Result<bool, ServerError> {
-    let found = if kind == "email" {
-        conn.query_row(
+    if kind != "email" {
+        let logins = identity_logins(
+            conn,
+            "SELECT i.provider_id, i.login FROM identities i JOIN accounts a ON a.id = i.account_id \
+             WHERE i.provider_id = ?1 AND i.login IS NOT NULL AND a.status != 'removed'",
+            provider,
+        )?;
+        return Ok(logins.iter().any(|(_, login)| login == key));
+    }
+    let found = conn
+        .query_row(
             "SELECT 1 FROM account_emails e JOIN accounts a ON a.id = e.account_id \
              WHERE e.email = ?1 AND a.status != 'removed' LIMIT 1",
             [key],
             |_| Ok(()),
         )
-        .optional()?
-    } else {
-        conn.query_row(
-            "SELECT 1 FROM identities i JOIN accounts a ON a.id = i.account_id \
-             WHERE i.provider_id = ?1 AND lower(i.login) = ?2 AND a.status != 'removed' LIMIT 1",
-            [provider, key],
-            |_| Ok(()),
-        )
-        .optional()?
-    };
+        .optional()?;
     Ok(found.is_some())
 }
 
@@ -1197,6 +1221,12 @@ mod tests {
             )?;
             let other_provider =
                 add_allowlist(conn, &login("gitlab", "ada-l", ServerRole::Member), None, 1)?;
+            let accented = add_allowlist(
+                conn,
+                &login("uni", "ÅSA.Öberg", ServerRole::Member),
+                None,
+                1,
+            )?;
             let unbound = add_allowlist(conn, &email("bob@uni.edu", ServerRole::Member), None, 1)?;
             add_verified_emails(
                 conn,
@@ -1212,14 +1242,23 @@ mod tests {
                 Some("Ada-L"),
                 1,
             )?;
+            link_identity(
+                conn,
+                ada,
+                "uni",
+                "https://id.uni.edu",
+                "ada-77",
+                Some("Åsa.Öberg"),
+                1,
+            )?;
             bind_allowlist(conn, &bound.id, ada)?;
-            assert_eq!(remove_account(conn, ada, 5)?, 3);
+            assert_eq!(remove_account(conn, ada, 5)?, 4);
             assert_eq!(account_status(conn, ada)?, Some(MemberStatus::Removed));
             assert_eq!(
                 find_account_by_identity(conn, "https://github.com", "42")?,
                 Some(ada)
             );
-            for gone in [&bound, &second_address, &handle] {
+            for gone in [&bound, &second_address, &handle, &accented] {
                 assert!(get_allowlist(conn, &gone.id)?.is_none(), "{gone:?}");
             }
             assert!(get_allowlist(conn, &other_provider.id)?.is_some());
@@ -1255,9 +1294,19 @@ mod tests {
                 Some("Bob-S"),
                 1,
             )?;
+            link_identity(
+                conn,
+                bob,
+                "uni",
+                "https://id.uni.edu",
+                "bob-8",
+                Some("Bjørn.Ærø"),
+                1,
+            )?;
             for entry in [
                 email("Bob@Uni.edu", ServerRole::Maintainer),
                 login("github", "bob-s", ServerRole::Maintainer),
+                login("uni", "BJØRN.ÆRØ", ServerRole::Maintainer),
             ] {
                 let refused = add_allowlist(conn, &entry, None, 2);
                 assert_eq!(refused.map(|_| ()).unwrap_err().code(), "already_member");
