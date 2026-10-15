@@ -49,7 +49,7 @@ describe("oleaflyHayagriva", () => {
       [
         "oleafly:",
         "  type: repository",
-        '  title: "Oleafly: a local-first desktop workspace for research writing"',
+        '  title: "Oleafly: a local-first workspace for research writing"',
         "  author:",
         '    - "Venkateshmurthy, Prajwal S."',
         '    - name: "The Oleafly contributors"',
