@@ -101,14 +101,18 @@ describe("MergeReviewDialog", () => {
     const row = (path: string) =>
       screen.getByRole("button", { name: fill(enCollab.activity.mergedFile, { path, number: "0" }) });
     expect(row("chapter-10.tex")).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("status")).toBeNull();
+    // The status region is there, empty, before anything closes, so the
+    // closing is announced as a change.
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     await user.click(row("chapter-10.tex"));
     expect(row("chapter-10.tex")).toHaveAttribute("aria-expanded", "true");
     expect(await shown()).toEqual(["chapter-02.tex", "chapter-03.tex", "chapter-10.tex"]);
-    expect(screen.getByRole("status")).toHaveTextContent(fill(copy.closedOldest, { number: "3", path: "chapter-01.tex" }));
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent(fill(copy.closedOldest, { number: "3", path: "chapter-01.tex" }));
     await user.click(row("chapter-02.tex"));
     expect(await shown()).toEqual(["chapter-03.tex", "chapter-10.tex"]);
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(status).toBeEmptyDOMElement();
     expect(row("chapter-01.tex")).toHaveAttribute("aria-expanded", "false");
   });
 

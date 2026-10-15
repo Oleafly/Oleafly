@@ -37,12 +37,18 @@ describe("ProjectFullBanner", () => {
 
   it("says the changes stay on this computer once the project reaches the server's limit", () => {
     render(<ProjectFullBanner />);
+    // The status region is mounted, empty, before the banner, so screen
+    // readers announce the banner when it appears.
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     act(() => useCollabLiveStore.setState({ projectFull: true }));
     const banner = screen.getByTestId("collab-project-full");
     expect(banner).toHaveTextContent(enCollab.files.projectFull);
-    expect(screen.getByRole("status")).toHaveTextContent(enCollab.files.projectFull);
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent(enCollab.files.projectFull);
     act(() => useCollabLiveStore.setState({ projectFull: false }));
     expect(screen.queryByTestId("collab-project-full")).toBeNull();
+    expect(status).toBeEmptyDOMElement();
   });
 
   it("belongs to the live project only", () => {

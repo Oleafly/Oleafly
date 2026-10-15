@@ -10,13 +10,16 @@ export function ProjectFullBanner() {
   const { t } = useTranslation(["collab"]);
   const projectId = useFilesStore((state) => state.projectId);
   const full = useCollabLiveStore((state) => state.projectFull && state.projectId === projectId);
-  if (!full || projectId === null) return null;
+  // The status region stays mounted while the banner comes and goes, so
+  // screen readers announce the banner when it appears.
   return (
-    <WorkspaceBanner tone="warning" data-testid="collab-project-full">
-      <HardDrive aria-hidden className="size-3.5 shrink-0" />
-      <p role="status" className="min-w-0 flex-1 select-text">
-        {t(($) => $.collab.files.projectFull)}
-      </p>
-    </WorkspaceBanner>
+    <div role="status" className="shrink-0">
+      {full && projectId !== null ? (
+        <WorkspaceBanner tone="warning" data-testid="collab-project-full">
+          <HardDrive aria-hidden className="size-3.5 shrink-0" />
+          <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.files.projectFull)}</p>
+        </WorkspaceBanner>
+      ) : null}
+    </div>
   );
 }
