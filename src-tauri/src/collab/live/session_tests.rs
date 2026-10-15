@@ -1402,6 +1402,28 @@ fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
 }
 
 #[test]
+fn a_test_session_with_tree_changes_leaves_the_data_folder_alone() {
+    let library = crate::collab::testing::TempLibrary::new();
+    let data = std::path::PathBuf::from(std::env::var_os("OLEAFLY_DATA_DIR").unwrap());
+    let (_dir, root, _host, rig) = watched_rig("tree-quiet", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    rig.remote_new("added.tex", "new");
+    rig.settle();
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(root.join("added.tex").is_file());
+    let made: Vec<_> = std::fs::read_dir(&data)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name())
+        .collect();
+    assert!(
+        made.is_empty(),
+        "the session wrote into the data folder: {made:?}"
+    );
+    drop(library);
+}
+
+#[test]
 fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
     let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
     {
