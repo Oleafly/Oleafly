@@ -333,6 +333,9 @@ async function writeCitationTarget(
   newContent: string,
   base: string,
 ): Promise<string | null> {
+  // A viewer's change stops here with one message. The files store would
+  // refuse it as well and say so in a toast of its own.
+  if (sharedViewOnly(id)) return new SharedReadOnlyError().message;
   if (files.files[targetPath] !== undefined) {
     const bumpVersion = useFilesStore.getState().activePath === targetPath;
     if (!files.setContent(targetPath, newContent, { bumpVersion })) return linkedBibliographyMessage(targetPath);

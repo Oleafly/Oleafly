@@ -327,12 +327,14 @@ async function writeText(
   exists: boolean,
   base: string | undefined,
 ): Promise<void> {
+  // A viewer's change stops here with one message. The files store would
+  // refuse it as well and say so in a toast of its own.
+  if (sharedViewOnly(projectId)) throw new SharedReadOnlyError();
   written.set(path, { projectId, text: next, previous: knownText(path) });
   const files = useFilesStore.getState();
   if (files.projectId !== projectId) throw new Error(i18n.t(($) => $.core.citation.projectChanged));
   if (files.files[path] !== undefined) {
     if (!files.setContent(path, next, { bumpVersion: files.activePath === path })) {
-      if (sharedViewOnly(projectId)) throw new SharedReadOnlyError();
       throw new Error(i18n.t(($) => $.core.citation.linkedBibliography, { path }));
     }
     await useFilesStore.getState().saveFile(path);
