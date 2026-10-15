@@ -70,6 +70,12 @@ async fn run_server() -> ExitCode {
         )
         .with(oleafly_server::log_filter(level))
         .init();
+    for note in &config.startup_notes {
+        match note {
+            oleafly_server::config::StartupNote::Info(text) => tracing::info!("{text}"),
+            oleafly_server::config::StartupNote::Warning(text) => tracing::warn!("{text}"),
+        }
+    }
     match oleafly_server::serve(config).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(oleafly_server::ServeError::CannotStart(message)) => {

@@ -20,7 +20,7 @@ use crate::members;
 use crate::peers::{self, Reach};
 use crate::projects;
 use crate::settings;
-use crate::snapshots::{self, Replay};
+use crate::snapshots::{self, Budgeted};
 use crate::state::AppState;
 
 pub type Span = (u64, i32, i32);
@@ -304,7 +304,7 @@ struct Inner {
 }
 
 struct Kept {
-    replay: Replay,
+    replay: Budgeted,
     seq: u64,
     used: Instant,
 }
@@ -371,7 +371,7 @@ impl Mentions {
         self.inner.built.load(Ordering::SeqCst)
     }
 
-    fn take_kept(&self, project: SharedProjectId) -> Option<(Replay, u64)> {
+    fn take_kept(&self, project: SharedProjectId) -> Option<(Budgeted, u64)> {
         let mut kept = locked(&self.inner.kept);
         let now = Instant::now();
         kept.retain(|_, document| now.duration_since(document.used) < KEPT_IDLE);
@@ -379,7 +379,7 @@ impl Mentions {
             .map(|document| (document.replay, document.seq))
     }
 
-    fn keep(&self, project: SharedProjectId, replay: Replay, seq: u64) {
+    fn keep(&self, project: SharedProjectId, replay: Budgeted, seq: u64) {
         let mut kept = locked(&self.inner.kept);
         let now = Instant::now();
         kept.retain(|_, document| now.duration_since(document.used) < KEPT_IDLE);
@@ -473,8 +473,8 @@ async fn scan(state: &AppState, project: SharedProjectId) {
 async fn caught_up(
     db: &Db,
     project: SharedProjectId,
-    kept: Option<(Replay, u64)>,
-) -> Result<Option<(Replay, u64)>, ServerError> {
+    kept: Option<(Budgeted, u64)>,
+) -> Result<Option<(Budgeted, u64)>, ServerError> {
     let Some((replay, seq)) = kept else {
         return Ok(None);
     };
@@ -496,7 +496,7 @@ async fn caught_up(
 async fn document(
     state: &AppState,
     project: SharedProjectId,
-) -> Result<(Replay, u64), ServerError> {
+) -> Result<(Budgeted, u64), ServerError> {
     let kept = state.mentions.take_kept(project);
     if let Some(current) = caught_up(&state.db, project, kept).await? {
         return Ok(current);

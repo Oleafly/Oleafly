@@ -6,7 +6,7 @@ use axum::http::{header, Request};
 use oleafly_collab_protocol::admin::{AllowlistMatcher, NewAllowlistEntry, SecurityEventKind};
 use oleafly_collab_protocol::auth::{
     challenge_message, ApiError, ChallengePurpose, ChallengeResponse, RefreshRequest,
-    SessionTokens, TokenRequest,
+    SessionTokens, SetupClaimRequest, SetupClaimResponse, TokenRequest,
 };
 use oleafly_collab_protocol::crypto::{b64url_encode, pkce_s256};
 use oleafly_collab_protocol::ids::DeviceId;
@@ -341,13 +341,44 @@ pub async fn refresh_session(
     post_for_tokens(server, "/auth/refresh", &request).await
 }
 
+pub async fn setup_claim(
+    server: &TestServer,
+    setup_code: &str,
+    code_challenge: &str,
+) -> Result<String, String> {
+    let response = reqwest::Client::new()
+        .post(format!("{}/auth/setup-claim", server.url()))
+        .json(&SetupClaimRequest {
+            setup_code: setup_code.to_owned(),
+            code_challenge: code_challenge.to_owned(),
+        })
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    if !response.status().is_success() {
+        return Err(api_error_code(response).await);
+    }
+    response
+        .json::<SetupClaimResponse>()
+        .await
+        .map(|reply| reply.claim)
+        .map_err(|error| error.to_string())
+}
+
 pub async fn sign_in(
     server: &TestServer,
     provider: &str,
     device: &TestDevice,
     setup_code: Option<&str>,
 ) -> Result<SessionTokens, String> {
-    let attempt = SignInAttempt::new(server, provider, device, setup_code);
+    let mut attempt = SignInAttempt::new(server, provider, device, None);
+    if let Some(code) = setup_code {
+        let claim = setup_claim(server, code, &pkce_s256(&attempt.verifier)).await?;
+        attempt
+            .start_url
+            .query_pairs_mut()
+            .append_pair("setup_claim", &claim);
+    }
     let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone()).await?;
     let code = app_callback(&landing, &attempt.state)?;
     redeem(server, device, &code, &attempt.verifier).await

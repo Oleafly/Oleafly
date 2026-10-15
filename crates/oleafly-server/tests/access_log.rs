@@ -12,7 +12,9 @@ use oleafly_collab_protocol::poll::{
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectSummary};
 use oleafly_server::access_log::{self, Visit};
 use oleafly_server::state::DAY_MS;
-use oleafly_server::test_support::{challenge_nonce, security_event_kinds, TestServer};
+use oleafly_server::test_support::{
+    api_error_code, challenge_nonce, security_event_kinds, TestServer,
+};
 use people::{call, connect, create_project, grant, read, share_project, stage, subscribe, Person};
 use reqwest::{Method, StatusCode};
 use serde_json::{json, Value};
@@ -357,12 +359,9 @@ async fn a_server_that_disallows_access_logs_records_and_shows_nothing_but_keeps
     ));
     open_by_polling(server, bob, project).await;
     assert_eq!(stored(server).await, 2);
-    assert_eq!(
-        patch(server, bob, project, json!({ "access_log": true }))
-            .await
-            .status(),
-        StatusCode::BAD_REQUEST
-    );
+    let refused = patch(server, bob, project, json!({ "access_log": true })).await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(api_error_code(refused).await, "access_log_off");
     let off: ProjectSummary =
         read(patch(server, bob, project, json!({ "access_log": false })).await).await;
     assert!(!off.access_log);

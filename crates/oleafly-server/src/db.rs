@@ -24,7 +24,7 @@ const MIGRATIONS: [&str; 12] = [
     include_str!("../migrations/0009_peer_bindings.sql"),
     include_str!("../migrations/0010_storage_cleanup.sql"),
     include_str!("../migrations/0011_mention_emails.sql"),
-    include_str!("../migrations/0012_s1_sign_in.sql"),
+    include_str!("../migrations/0012_device_code_network.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
