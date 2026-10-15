@@ -268,10 +268,17 @@
       "devicesLoading": "Načítají se zařízení…",
       "devicesLoadFailed": "Oleafly nemohl načíst tato zařízení.",
       "lastAdmin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
+      "ownedOne": "{{name}} vlastní sdílený projekt. Dokud {{name}} chybí, nikdo jiný ho nemůže spravovat.",
+      "ownedMany": "{{name}} vlastní sdílené projekty: {{number}}. Dokud {{name}} chybí, nikdo jiný je nemůže spravovat.",
       "removeConfirm": {
         "title": "Odebrat {{name}} z tohoto serveru?",
         "description": "Zařízení tohoto člena se okamžitě odhlásí. Projekty, které vlastní, zůstanou na serveru a člena můžete později přidat zpět.",
         "confirm": "Odebrat člena"
+      },
+      "suspendConfirm": {
+        "title": "Pozastavit {{name}}?",
+        "description": "{{name}} se nemůže přihlásit ani synchronizovat, dokud administrátor účet znovu neaktivuje.",
+        "confirm": "Pozastavit člena"
       },
       "selfRoleConfirm": {
         "title": "Změnit vlastní roli na {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Stav",
         "okLabel": "Vše funguje",
         "okDescription": "Lidé se mohou přihlásit a server může ukládat soubory.",
+        "problem": "Přihlášení přes {{provider}} selhává od {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikdo se nemůže přihlásit",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Server nemůže ukládat soubory",
             "description": "Zkontrolujte, že jeho datová složka existuje a že do ní server může zapisovat."
+          },
+          "signInFailing": {
+            "label": "Přihlášení selhává",
+            "description": "Přes jednu z možností přihlášení na serveru se lidé nemohou přihlásit. Seznam níže uvádí kterou a odkdy."
+          },
+          "signInEmailsPaused": {
+            "label": "Přihlašovací e-maily jsou pozastavené",
+            "description": "Server už poslal tolik přihlašovacích e-mailů, kolik za tuto hodinu dovoluje. Znovu je začne posílat, až hodina skončí."
           },
           "unknown": {
             "label": "Server nahlásil problém",

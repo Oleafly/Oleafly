@@ -268,10 +268,17 @@
       "devicesLoading": "正在載入裝置…",
       "devicesLoadFailed": "Oleafly 無法載入這些裝置。",
       "lastAdmin": "這個伺服器至少需要一位管理員。請先將其他人設為管理員。",
+      "ownedOne": "{{name}} 擁有一個分享專案。{{name}} 不在期間，其他人無法管理它。",
+      "ownedMany": "{{name}} 擁有的分享專案：{{number}} 個。{{name}} 不在期間，其他人無法管理它們。",
       "removeConfirm": {
         "title": "要將 {{name}} 從這個伺服器移除嗎？",
         "description": "對方的裝置會立即登出。對方擁有的專案會保留在伺服器上，你之後也可以再把對方加回來。",
         "confirm": "移除成員"
+      },
+      "suspendConfirm": {
+        "title": "要將 {{name}} 停權嗎？",
+        "description": "在管理員重新啟用帳號之前，{{name}} 無法登入或同步。",
+        "confirm": "將成員停權"
       },
       "selfRoleConfirm": {
         "title": "要把你自己的角色改為 {{role}} 嗎？",
@@ -765,6 +772,7 @@
         "title": "運作狀態",
         "okLabel": "一切正常",
         "okDescription": "使用者可以登入，伺服器也可以儲存檔案。",
+        "problem": "{{provider}} 登入從 {{time}} 起一直失敗",
         "issues": {
           "noSignInProvider": {
             "label": "沒有人能登入",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "伺服器無法儲存檔案",
             "description": "請確認伺服器的資料資料夾存在，而且伺服器可以寫入這個資料夾。"
+          },
+          "signInFailing": {
+            "label": "登入失敗",
+            "description": "透過伺服器的某個登入方式無法登入。下方清單會說明是哪一個以及從什麼時候開始。"
+          },
+          "signInEmailsPaused": {
+            "label": "登入郵件已暫停",
+            "description": "伺服器本小時傳送的登入郵件已達上限。這一小時過去後會恢復傳送。"
           },
           "unknown": {
             "label": "伺服器回報了問題",

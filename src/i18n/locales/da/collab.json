@@ -268,10 +268,17 @@
       "devicesLoading": "Indlæser enheder…",
       "devicesLoadFailed": "Oleafly kunne ikke indlæse disse enheder.",
       "lastAdmin": "Denne server skal have mindst én administrator. Gør en anden til administrator først.",
+      "ownedOne": "{{name}} ejer et delt projekt. Ingen andre kan administrere det, mens {{name}} er væk.",
+      "ownedMany": "{{name}} ejer delte projekter: {{number}}. Ingen andre kan administrere dem, mens {{name}} er væk.",
       "removeConfirm": {
         "title": "Vil du fjerne {{name}} fra denne server?",
         "description": "Personens enheder bliver logget ud med det samme. Projekter, som personen ejer, bliver på serveren, og du kan tilføje personen igen senere.",
         "confirm": "Fjern medlemmet"
+      },
+      "suspendConfirm": {
+        "title": "Vil du suspendere {{name}}?",
+        "description": "{{name}} kan ikke logge ind eller synkronisere, før en administrator genaktiverer kontoen.",
+        "confirm": "Suspender medlem"
       },
       "selfRoleConfirm": {
         "title": "Vil du ændre din egen rolle til {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Tilstand",
         "okLabel": "Alt virker",
         "okDescription": "Folk kan logge ind, og serveren kan gemme filer.",
+        "problem": "Login med {{provider}} har slået fejl siden {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logge ind",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Serveren kan ikke gemme filer",
             "description": "Tjek, at dens datamappe findes, og at serveren kan skrive til den."
+          },
+          "signInFailing": {
+            "label": "Login mislykkes",
+            "description": "Folk kan ikke logge ind med en af serverens loginmuligheder. Listen herunder viser hvilken og siden hvornår."
+          },
+          "signInEmailsPaused": {
+            "label": "Login-mails er sat på pause",
+            "description": "Serveren har sendt så mange login-mails, som den tillader i denne time. De begynder igen, når timen er gået."
           },
           "unknown": {
             "label": "Serveren har meldt om et problem",

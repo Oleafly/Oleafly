@@ -268,10 +268,17 @@
       "devicesLoading": "Läser in enheter…",
       "devicesLoadFailed": "Oleafly kunde inte läsa in de här enheterna.",
       "lastAdmin": "Den här servern behöver minst en administratör. Gör någon annan till administratör först.",
+      "ownedOne": "{{name}} äger ett delat projekt. Ingen annan kan hantera det medan {{name}} är borta.",
+      "ownedMany": "{{name}} äger delade projekt: {{number}}. Ingen annan kan hantera dem medan {{name}} är borta.",
       "removeConfirm": {
         "title": "Ta bort {{name}} från den här servern?",
         "description": "Medlemmens enheter loggas ut direkt. Projekt som medlemmen äger ligger kvar på servern, och du kan lägga till medlemmen igen senare.",
         "confirm": "Ta bort medlemmen"
+      },
+      "suspendConfirm": {
+        "title": "Stänga av {{name}}?",
+        "description": "{{name}} kan inte logga in eller synka förrän en administratör återaktiverar kontot.",
+        "confirm": "Stäng av medlem"
       },
       "selfRoleConfirm": {
         "title": "Ändra din egen roll till {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Hälsa",
         "okLabel": "Allt fungerar",
         "okDescription": "Personer kan logga in och servern kan spara filer.",
+        "problem": "Inloggning med {{provider}} har misslyckats sedan {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logga in",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Servern kan inte spara filer",
             "description": "Kontrollera att serverns datamapp finns och att servern kan skriva till den."
+          },
+          "signInFailing": {
+            "label": "Inloggningen misslyckas",
+            "description": "Det går inte att logga in med ett av serverns inloggningssätt. Listan nedan visar vilket och sedan när."
+          },
+          "signInEmailsPaused": {
+            "label": "Inloggningsmejl är pausade",
+            "description": "Servern har skickat så många inloggningsmejl som den tillåter den här timmen. De börjar skickas igen när timmen är slut."
           },
           "unknown": {
             "label": "Servern rapporterade ett problem",

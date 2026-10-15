@@ -1040,6 +1040,8 @@ export interface CollabMember {
     account: CollabAccount;
     status: CollabMemberStatus;
     created_at: number;
+    // Shared projects this person owns. Older servers leave it out.
+    owned_projects?: number;
 }
 export interface CollabMemberPatch {
     role?: CollabServerRole | null;
@@ -1798,7 +1800,19 @@ export interface CollabLocalCopyOffer {
 }
 
 export type CollabHealthStatus = "ok" | "warning" | "unknown";
-export type CollabHealthIssue = "no_sign_in_provider" | "storage_not_writable" | "unknown";
+export type CollabHealthIssue =
+    | "no_sign_in_provider"
+    | "storage_not_writable"
+    | "sign_in_failing"
+    | "sign_in_emails_paused"
+    | "unknown";
+// A sign-in option that keeps failing: its provider id, when it started and
+// the provider's own message.
+export interface CollabSignInProblem {
+    provider: string;
+    at: number;
+    reason: string;
+}
 export type CollabFilesLocation = "disk" | "s3" | "unknown";
 export interface CollabServerCounts {
     people: number;
@@ -1832,6 +1846,7 @@ export interface CollabAdminOverview {
     settings: CollabRuntimeSettings;
     limits: CollabCapabilities["limits"];
     archive_days: number;
+    sign_in_problems?: CollabSignInProblem[];
 }
 export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
 export type CollabSortOrder = "asc" | "desc";

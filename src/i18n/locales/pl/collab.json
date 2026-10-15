@@ -268,10 +268,17 @@
       "devicesLoading": "Wczytywanie urządzeń…",
       "devicesLoadFailed": "Oleafly nie mógł wczytać tych urządzeń.",
       "lastAdmin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
+      "ownedOne": "{{name}} jest właścicielem udostępnionego projektu. Nikt inny nie może nim zarządzać pod nieobecność {{name}}.",
+      "ownedMany": "{{name}} jest właścicielem udostępnionych projektów: {{number}}. Nikt inny nie może nimi zarządzać pod nieobecność {{name}}.",
       "removeConfirm": {
         "title": "Usunąć użytkownika {{name}} z tego serwera?",
         "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
         "confirm": "Usuń członka"
+      },
+      "suspendConfirm": {
+        "title": "Zawiesić {{name}}?",
+        "description": "{{name}} nie może się logować ani synchronizować, dopóki administrator nie aktywuje konta ponownie.",
+        "confirm": "Zawieś członka"
       },
       "selfRoleConfirm": {
         "title": "Zmienić swoją rolę na {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Stan",
         "okLabel": "Wszystko działa",
         "okDescription": "Można się logować, a serwer może zapisywać pliki.",
+        "problem": "Logowanie przez {{provider}} nie działa od {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikt nie może się zalogować",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Serwer nie może zapisywać plików",
             "description": "Sprawdź, czy folder danych serwera istnieje i czy serwer może w nim zapisywać."
+          },
+          "signInFailing": {
+            "label": "Logowanie się nie udaje",
+            "description": "Przez jedną z opcji logowania na serwerze nie da się zalogować. Lista poniżej pokazuje którą i od kiedy."
+          },
+          "signInEmailsPaused": {
+            "label": "E-maile do logowania są wstrzymane",
+            "description": "Serwer wysłał już tyle e-maili do logowania, ile pozwala w tej godzinie. Wysyłanie wznowi się, gdy godzina minie."
           },
           "unknown": {
             "label": "Serwer zgłosił problem",

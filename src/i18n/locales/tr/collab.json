@@ -268,10 +268,17 @@
       "devicesLoading": "Cihazlar yükleniyor…",
       "devicesLoadFailed": "Oleafly bu cihazları yükleyemedi.",
       "lastAdmin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
+      "ownedOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} yokken onu başka kimse yönetemez.",
+      "ownedMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} yokken onları başka kimse yönetemez.",
       "removeConfirm": {
         "title": "{{name}} bu sunucudan kaldırılsın mı?",
         "description": "Kişinin cihazlarındaki oturumlar hemen kapatılır. Sahibi olduğu projeler sunucuda kalır ve kişiyi daha sonra yeniden ekleyebilirsiniz.",
         "confirm": "Üyeyi kaldır"
+      },
+      "suspendConfirm": {
+        "title": "{{name}} askıya alınsın mı?",
+        "description": "Bir yönetici hesabı yeniden etkinleştirene kadar {{name}} oturum açamaz ve eşitleme yapamaz.",
+        "confirm": "Üyeyi askıya al"
       },
       "selfRoleConfirm": {
         "title": "Kendi rolünüz {{role}} olarak değiştirilsin mi?",
@@ -765,6 +772,7 @@
         "title": "Durum",
         "okLabel": "Her şey çalışıyor",
         "okDescription": "Kişiler oturum açabiliyor ve sunucu dosyaları kaydedebiliyor.",
+        "problem": "{{provider}} ile oturum açma {{time}} tarihinden beri başarısız",
         "issues": {
           "noSignInProvider": {
             "label": "Kimse oturum açamıyor",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Sunucu dosyaları kaydedemiyor",
             "description": "Sunucunun veri klasörünün var olduğunu ve sunucunun bu klasöre yazabildiğini denetleyin."
+          },
+          "signInFailing": {
+            "label": "Oturum açma başarısız oluyor",
+            "description": "Sunucunun oturum açma seçeneklerinden biriyle oturum açılamıyor. Aşağıdaki liste hangisi olduğunu ve ne zamandan beri olduğunu gösterir."
+          },
+          "signInEmailsPaused": {
+            "label": "Oturum açma e-postaları duraklatıldı",
+            "description": "Sunucu bu saat için izin verdiği kadar oturum açma e-postası gönderdi. Saat dolunca yeniden gönderilir."
           },
           "unknown": {
             "label": "Sunucu bir sorun bildirdi",

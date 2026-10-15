@@ -268,10 +268,17 @@
       "devicesLoading": "Caricamento dei dispositivi…",
       "devicesLoadFailed": "Oleafly non è riuscito a caricare questi dispositivi.",
       "lastAdmin": "Questo server deve avere almeno un amministratore. Prima rendi amministratore un'altra persona.",
+      "ownedOne": "{{name}} è proprietario di un progetto condiviso. Nessun altro può gestirlo finché {{name}} è assente.",
+      "ownedMany": "{{name}} è proprietario di progetti condivisi: {{number}}. Nessun altro può gestirli finché {{name}} è assente.",
       "removeConfirm": {
         "title": "Vuoi rimuovere il membro {{name}} da questo server?",
         "description": "I suoi dispositivi vengono disconnessi subito. I progetti che possiede restano sul server, e potrai aggiungere di nuovo questa persona in seguito.",
         "confirm": "Rimuovi il membro"
+      },
+      "suspendConfirm": {
+        "title": "Sospendere {{name}}?",
+        "description": "{{name}} non potrà accedere né sincronizzare finché un amministratore non riattiverà l'account.",
+        "confirm": "Sospendi membro"
       },
       "selfRoleConfirm": {
         "title": "Cambiare il tuo ruolo in {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Stato",
         "okLabel": "Funziona tutto",
         "okDescription": "Le persone possono accedere e il server può salvare i file.",
+        "problem": "L'accesso con {{provider}} non riesce dal {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nessuno può accedere",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Il server non riesce a salvare i file",
             "description": "Controlla che la sua cartella dei dati esista e che il server possa scriverci."
+          },
+          "signInFailing": {
+            "label": "L'accesso non riesce",
+            "description": "Con una delle opzioni di accesso del server non si riesce ad accedere. L'elenco qui sotto dice quale e da quando."
+          },
+          "signInEmailsPaused": {
+            "label": "Le email di accesso sono in pausa",
+            "description": "Il server ha inviato tutte le email di accesso consentite per quest'ora. Riprendono quando l'ora è finita."
           },
           "unknown": {
             "label": "Il server ha segnalato un problema",

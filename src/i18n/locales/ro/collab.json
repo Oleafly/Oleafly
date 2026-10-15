@@ -268,10 +268,17 @@
       "devicesLoading": "Se încarcă dispozitivele…",
       "devicesLoadFailed": "Oleafly nu a putut încărca aceste dispozitive.",
       "lastAdmin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
+      "ownedOne": "{{name}} deține un proiect partajat. Nimeni altcineva nu îl poate gestiona cât timp {{name}} lipsește.",
+      "ownedMany": "{{name}} deține proiecte partajate: {{number}}. Nimeni altcineva nu le poate gestiona cât timp {{name}} lipsește.",
       "removeConfirm": {
         "title": "Elimini {{name}} de pe acest server?",
         "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
         "confirm": "Elimină membrul"
+      },
+      "suspendConfirm": {
+        "title": "Suspenzi {{name}}?",
+        "description": "{{name}} nu se poate autentifica și nu poate sincroniza până când un administrator reactivează contul.",
+        "confirm": "Suspendă membrul"
       },
       "selfRoleConfirm": {
         "title": "Îți schimbi propriul rol în {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Stare",
         "okLabel": "Totul funcționează",
         "okDescription": "Persoanele se pot autentifica, iar serverul poate salva fișiere.",
+        "problem": "Autentificarea prin {{provider}} eșuează din {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nimeni nu se poate autentifica",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Serverul nu poate salva fișiere",
             "description": "Verifică dacă dosarul de date al serverului există și dacă serverul poate scrie în el."
+          },
+          "signInFailing": {
+            "label": "Autentificarea eșuează",
+            "description": "Nimeni nu se poate autentifica prin una dintre opțiunile serverului. Lista de mai jos arată care și de când."
+          },
+          "signInEmailsPaused": {
+            "label": "E-mailurile de autentificare sunt în pauză",
+            "description": "Serverul a trimis câte e-mailuri de autentificare permite în această oră. Se reiau după ce trece ora."
           },
           "unknown": {
             "label": "Serverul a raportat o problemă",

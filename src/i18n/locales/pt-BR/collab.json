@@ -268,10 +268,17 @@
       "devicesLoading": "Carregando os dispositivos…",
       "devicesLoadFailed": "O Oleafly não conseguiu carregar estes dispositivos.",
       "lastAdmin": "Este servidor precisa de pelo menos um administrador. Promova outra pessoa a administrador primeiro.",
+      "ownedOne": "{{name}} é dono de um projeto compartilhado. Ninguém mais pode gerenciá-lo enquanto {{name}} estiver fora.",
+      "ownedMany": "{{name}} é dono de projetos compartilhados: {{number}}. Ninguém mais pode gerenciá-los enquanto {{name}} estiver fora.",
       "removeConfirm": {
         "title": "Remover {{name}} deste servidor?",
         "description": "A sessão dos dispositivos dessa pessoa é encerrada na hora. Os projetos dela continuam no servidor, e você pode adicioná-la de novo depois.",
         "confirm": "Remover membro"
+      },
+      "suspendConfirm": {
+        "title": "Suspender {{name}}?",
+        "description": "{{name}} não poderá entrar nem sincronizar até que um administrador reative a conta.",
+        "confirm": "Suspender membro"
       },
       "selfRoleConfirm": {
         "title": "Mudar a sua própria função para {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Estado",
         "okLabel": "Tudo está funcionando",
         "okDescription": "As pessoas conseguem fazer login e o servidor consegue salvar arquivos.",
+        "problem": "O login com {{provider}} está falhando desde {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ninguém consegue fazer login",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "O servidor não consegue salvar arquivos",
             "description": "Confira se a pasta de dados do servidor existe e se ele consegue gravar nela."
+          },
+          "signInFailing": {
+            "label": "O login está falhando",
+            "description": "Ninguém consegue entrar com uma das opções de login do servidor. A lista abaixo diz qual e desde quando."
+          },
+          "signInEmailsPaused": {
+            "label": "Os e-mails de login estão pausados",
+            "description": "O servidor já enviou todos os e-mails de login que permite nesta hora. O envio volta quando a hora acabar."
           },
           "unknown": {
             "label": "O servidor relatou um problema",

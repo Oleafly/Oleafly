@@ -268,10 +268,17 @@
       "devicesLoading": "Loading devices…",
       "devicesLoadFailed": "Oleafly couldn't load these devices.",
       "lastAdmin": "This server needs at least one admin. Make someone else an admin first.",
+      "ownedOne": "{{name}} owns a shared project. Nobody else can manage it while {{name}} is away.",
+      "ownedMany": "{{name}} owns shared projects: {{number}}. Nobody else can manage them while {{name}} is away.",
       "removeConfirm": {
         "title": "Remove {{name}} from this server?",
         "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
         "confirm": "Remove member"
+      },
+      "suspendConfirm": {
+        "title": "Suspend {{name}}?",
+        "description": "{{name}} can't sign in or sync until an admin reactivates the account.",
+        "confirm": "Suspend member"
       },
       "selfRoleConfirm": {
         "title": "Change your own role to {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Health",
         "okLabel": "Everything is working",
         "okDescription": "People can sign in and the server can save files.",
+        "problem": "{{provider}} sign-in has been failing since {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nobody can sign in",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "The server can't save files",
             "description": "Check that its data folder exists and that the server can write to it."
+          },
+          "signInFailing": {
+            "label": "Sign-in is failing",
+            "description": "People can't sign in with one of the server's sign-in options. The list below says which one and since when."
+          },
+          "signInEmailsPaused": {
+            "label": "Sign-in emails are paused",
+            "description": "The server has sent as many sign-in emails as it allows this hour. They start again when the hour is over."
           },
           "unknown": {
             "label": "The server reported a problem",

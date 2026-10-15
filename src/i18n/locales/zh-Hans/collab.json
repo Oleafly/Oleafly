@@ -268,10 +268,17 @@
       "devicesLoading": "正在加载设备…",
       "devicesLoadFailed": "Oleafly 无法加载这些设备。",
       "lastAdmin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
+      "ownedOne": "{{name}} 拥有一个共享项目。{{name}} 不在期间，其他人无法管理它。",
+      "ownedMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 不在期间，其他人无法管理它们。",
       "removeConfirm": {
         "title": "要将 {{name}} 从此服务器中移除吗？",
         "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
         "confirm": "移除成员"
+      },
+      "suspendConfirm": {
+        "title": "要停用 {{name}} 吗？",
+        "description": "在管理员重新启用账户之前，{{name}} 无法登录或同步。",
+        "confirm": "停用成员"
       },
       "selfRoleConfirm": {
         "title": "要把你自己的角色改为 {{role}} 吗？",
@@ -765,6 +772,7 @@
         "title": "运行状况",
         "okLabel": "一切正常",
         "okDescription": "用户可以登录，服务器也可以保存文件。",
+        "problem": "{{provider}} 登录从 {{time}} 起一直失败",
         "issues": {
           "noSignInProvider": {
             "label": "无人可以登录",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "服务器无法保存文件",
             "description": "请检查服务器的数据文件夹是否存在，以及服务器能否写入该文件夹。"
+          },
+          "signInFailing": {
+            "label": "登录失败",
+            "description": "通过服务器的某个登录方式无法登录。下方列表会说明是哪一个以及从什么时候开始。"
+          },
+          "signInEmailsPaused": {
+            "label": "登录邮件已暂停",
+            "description": "服务器本小时发送的登录邮件已达上限。这一小时过去后会恢复发送。"
           },
           "unknown": {
             "label": "服务器报告了一个问题",

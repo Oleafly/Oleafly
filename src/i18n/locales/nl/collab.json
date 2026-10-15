@@ -268,10 +268,17 @@
       "devicesLoading": "Apparaten laden…",
       "devicesLoadFailed": "Oleafly kon deze apparaten niet laden.",
       "lastAdmin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
+      "ownedOne": "{{name}} is eigenaar van een gedeeld project. Niemand anders kan het beheren zolang {{name}} weg is.",
+      "ownedMany": "{{name}} is eigenaar van gedeelde projecten: {{number}}. Niemand anders kan ze beheren zolang {{name}} weg is.",
       "removeConfirm": {
         "title": "{{name}} van deze server weghalen?",
         "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
         "confirm": "Lid weghalen"
+      },
+      "suspendConfirm": {
+        "title": "{{name}} schorsen?",
+        "description": "{{name}} kan niet aanmelden of synchroniseren tot een beheerder het account weer activeert.",
+        "confirm": "Lid schorsen"
       },
       "selfRoleConfirm": {
         "title": "Je eigen rol wijzigen in {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Status",
         "okLabel": "Alles werkt",
         "okDescription": "Mensen kunnen zich aanmelden en de server kan bestanden opslaan.",
+        "problem": "Aanmelden met {{provider}} mislukt sinds {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kan zich aanmelden",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "De server kan geen bestanden opslaan",
             "description": "Controleer of de gegevensmap van de server bestaat en of de server erin kan schrijven."
+          },
+          "signInFailing": {
+            "label": "Aanmelden mislukt",
+            "description": "Met een van de aanmeldopties van de server kan niemand zich aanmelden. De lijst hieronder laat zien welke en sinds wanneer."
+          },
+          "signInEmailsPaused": {
+            "label": "Aanmeldmails zijn gepauzeerd",
+            "description": "De server heeft dit uur zoveel aanmeldmails verstuurd als hij toestaat. Ze gaan weer verder als het uur voorbij is."
           },
           "unknown": {
             "label": "De server meldde een probleem",

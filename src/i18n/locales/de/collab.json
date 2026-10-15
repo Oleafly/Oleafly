@@ -268,10 +268,17 @@
       "devicesLoading": "Geräte werden geladen…",
       "devicesLoadFailed": "Oleafly konnte diese Geräte nicht laden.",
       "lastAdmin": "Dieser Server braucht mindestens einen Admin. Machen Sie zuerst eine andere Person zum Admin.",
+      "ownedOne": "{{name}} gehört ein geteiltes Projekt. Niemand sonst kann es verwalten, solange {{name}} weg ist.",
+      "ownedMany": "{{name}} gehören geteilte Projekte: {{number}}. Niemand sonst kann sie verwalten, solange {{name}} weg ist.",
       "removeConfirm": {
         "title": "{{name}} von diesem Server entfernen?",
         "description": "Die Geräte dieser Person werden sofort abgemeldet. Projekte, die ihr gehören, bleiben auf dem Server, und Sie können die Person später wieder hinzufügen.",
         "confirm": "Mitglied entfernen"
+      },
+      "suspendConfirm": {
+        "title": "{{name}} sperren?",
+        "description": "{{name}} kann sich nicht anmelden oder abgleichen, bis ein Admin das Konto reaktiviert.",
+        "confirm": "Mitglied sperren"
       },
       "selfRoleConfirm": {
         "title": "Ihre eigene Rolle zu {{role}} ändern?",
@@ -765,6 +772,7 @@
         "title": "Zustand",
         "okLabel": "Alles funktioniert",
         "okDescription": "Personen können sich anmelden, und der Server kann Dateien speichern.",
+        "problem": "Die Anmeldung mit {{provider}} schlägt seit {{time}} fehl",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kann sich anmelden",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Der Server kann keine Dateien speichern",
             "description": "Prüfen Sie, ob sein Datenordner existiert und ob der Server darin schreiben kann."
+          },
+          "signInFailing": {
+            "label": "Die Anmeldung schlägt fehl",
+            "description": "Mit einer der Anmeldeoptionen des Servers kann sich niemand anmelden. Die Liste unten zeigt, welche es ist und seit wann."
+          },
+          "signInEmailsPaused": {
+            "label": "Anmelde-E-Mails sind pausiert",
+            "description": "Der Server hat so viele Anmelde-E-Mails gesendet, wie er in dieser Stunde erlaubt. Sie werden wieder gesendet, wenn die Stunde vorbei ist."
           },
           "unknown": {
             "label": "Der Server hat ein Problem gemeldet",

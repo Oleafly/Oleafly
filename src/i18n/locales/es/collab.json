@@ -268,10 +268,17 @@
       "devicesLoading": "Cargando los dispositivos…",
       "devicesLoadFailed": "Oleafly no pudo cargar estos dispositivos.",
       "lastAdmin": "Este servidor necesita al menos un administrador. Primero haz administrador a otra persona.",
+      "ownedOne": "{{name}} es dueño de un proyecto compartido. Nadie más puede gestionarlo mientras {{name}} no esté.",
+      "ownedMany": "{{name}} es dueño de proyectos compartidos: {{number}}. Nadie más puede gestionarlos mientras {{name}} no esté.",
       "removeConfirm": {
         "title": "¿Quitar a {{name}} de este servidor?",
         "description": "Sus dispositivos cierran la sesión al momento. Los proyectos que le pertenecen se quedan en el servidor, y puedes volver a añadir a esta persona más tarde.",
         "confirm": "Quitar al miembro"
+      },
+      "suspendConfirm": {
+        "title": "¿Suspender a {{name}}?",
+        "description": "{{name}} no podrá iniciar sesión ni sincronizar hasta que un administrador reactive la cuenta.",
+        "confirm": "Suspender miembro"
       },
       "selfRoleConfirm": {
         "title": "¿Cambiar tu propio rol a {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Estado",
         "okLabel": "Todo funciona",
         "okDescription": "Las personas pueden iniciar sesión y el servidor puede guardar archivos.",
+        "problem": "El inicio de sesión con {{provider}} falla desde {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nadie puede iniciar sesión",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "El servidor no puede guardar archivos",
             "description": "Comprueba que su carpeta de datos existe y que el servidor puede escribir en ella."
+          },
+          "signInFailing": {
+            "label": "El inicio de sesión está fallando",
+            "description": "Nadie puede iniciar sesión con una de las opciones del servidor. La lista de abajo dice cuál y desde cuándo."
+          },
+          "signInEmailsPaused": {
+            "label": "Los correos de inicio de sesión están en pausa",
+            "description": "El servidor ya envió todos los correos de inicio de sesión que permite en esta hora. Vuelven a enviarse cuando termine la hora."
           },
           "unknown": {
             "label": "El servidor informó de un problema",

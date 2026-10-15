@@ -268,10 +268,17 @@
       "devicesLoading": "Ladataan laitteita…",
       "devicesLoadFailed": "Oleafly ei voinut ladata näitä laitteita.",
       "lastAdmin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
+      "ownedOne": "{{name}} omistaa jaetun projektin. Kukaan muu ei voi hallita sitä, kun {{name}} on poissa.",
+      "ownedMany": "{{name}} omistaa jaettuja projekteja: {{number}}. Kukaan muu ei voi hallita niitä, kun {{name}} on poissa.",
       "removeConfirm": {
         "title": "Poistetaanko {{name}} tältä palvelimelta?",
         "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
         "confirm": "Poista jäsen"
+      },
+      "suspendConfirm": {
+        "title": "Jäädytetäänkö {{name}}?",
+        "description": "{{name}} ei voi kirjautua eikä synkronoida, ennen kuin ylläpitäjä aktivoi tilin uudelleen.",
+        "confirm": "Jäädytä jäsen"
       },
       "selfRoleConfirm": {
         "title": "Vaihdetaanko oma roolisi rooliin {{role}}?",
@@ -765,6 +772,7 @@
         "title": "Tila",
         "okLabel": "Kaikki toimii",
         "okDescription": "Ihmiset voivat kirjautua sisään, ja palvelin voi tallentaa tiedostoja.",
+        "problem": "Kirjautuminen palvelulla {{provider}} on epäonnistunut {{time}} lähtien",
         "issues": {
           "noSignInProvider": {
             "label": "Kukaan ei voi kirjautua sisään",
@@ -773,6 +781,14 @@
           "storageNotWritable": {
             "label": "Palvelin ei voi tallentaa tiedostoja",
             "description": "Tarkista, että sen datakansio on olemassa ja että palvelin voi kirjoittaa siihen."
+          },
+          "signInFailing": {
+            "label": "Kirjautuminen epäonnistuu",
+            "description": "Yhdellä palvelimen kirjautumistavoista ei pääse sisään. Alla oleva luettelo kertoo, millä ja mistä lähtien."
+          },
+          "signInEmailsPaused": {
+            "label": "Kirjautumissähköpostit on keskeytetty",
+            "description": "Palvelin on lähettänyt niin monta kirjautumissähköpostia kuin se sallii tällä tunnilla. Lähetys jatkuu, kun tunti on kulunut."
           },
           "unknown": {
             "label": "Palvelin ilmoitti ongelmasta",

@@ -6,6 +6,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
+import { formatNumber } from "@/lib/intl";
 import {
   collabAdminMemberDevices,
   collabAdminPatchMember,
@@ -26,6 +27,21 @@ import { RolePicker } from "./RolePicker";
 import { canChangeMember, isStaffRole, serverRoleAllows, toServerRole, type ServerRole } from "./roles";
 
 export type MembersUpdate = (update: (members: CollabMember[]) => CollabMember[]) => void;
+
+// What suspending or removing someone means for the shared projects they own.
+function OwnedProjects({ member }: Readonly<{ member: CollabMember }>) {
+  const { t } = useTranslation(["collab"]);
+  const owned = member.owned_projects ?? 0;
+  if (owned <= 0) return null;
+  const name = member.account.display_name;
+  return (
+    <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-foreground" data-testid="collab-owned-projects">
+      {owned === 1
+        ? t(($) => $.collab.admin.members.ownedOne, { name })
+        : t(($) => $.collab.admin.members.ownedMany, { name, number: formatNumber(owned) })}
+    </p>
+  );
+}
 
 const STATUS_BADGE = {
   active: "success",
@@ -70,6 +86,8 @@ export function MembersTab({
   const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabMember | null>(null);
+  // Suspending someone who owns shared projects waits for a yes.
+  const [suspending, setSuspending] = useState<CollabMember | null>(null);
   // A change to your own role takes your admin rights away, so it waits for a yes.
   const [stepping, setStepping] = useState<{ member: CollabMember; role: ServerRole } | null>(null);
   const [devicesFor, setDevicesFor] = useState<string | null>(null);
@@ -168,7 +186,10 @@ export function MembersTab({
             <SuspendButton
               suspended={suspended}
               disabled={busy}
-              onToggle={() => void patch(member, { status: suspended ? "active" : "suspended" })}
+              onToggle={() => {
+                if (!suspended && (member.owned_projects ?? 0) > 0) setSuspending(member);
+                else void patch(member, { status: suspended ? "active" : "suspended" });
+              }}
             />
             <Button
               type="button"
@@ -246,7 +267,25 @@ export function MembersTab({
           if (removing) void remove(removing);
         }}
         onCancel={() => setRemoving(null)}
-      />
+      >
+        {removing ? <OwnedProjects member={removing} /> : null}
+      </ConfirmationDialog>
+      <ConfirmationDialog
+        open={suspending !== null}
+        title={t(($) => $.collab.admin.members.suspendConfirm.title, { name: suspending?.account.display_name ?? "" })}
+        description={t(($) => $.collab.admin.members.suspendConfirm.description, {
+          name: suspending?.account.display_name ?? "",
+        })}
+        confirmLabel={t(($) => $.collab.admin.members.suspendConfirm.confirm)}
+        destructive
+        onConfirm={() => {
+          if (suspending) void patch(suspending, { status: "suspended" });
+          setSuspending(null);
+        }}
+        onCancel={() => setSuspending(null)}
+      >
+        {suspending ? <OwnedProjects member={suspending} /> : null}
+      </ConfirmationDialog>
       <ConfirmationDialog
         open={stepping !== null}
         title={t(($) => $.collab.admin.members.selfRoleConfirm.title, {

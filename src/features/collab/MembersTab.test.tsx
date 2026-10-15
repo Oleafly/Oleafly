@@ -161,6 +161,27 @@ describe("MembersTab", () => {
     expect(mocks.collabAdminPatchMember).toHaveBeenCalledTimes(2);
   });
 
+  it("says what suspending means for the shared projects someone owns, and suspends only after a yes", async () => {
+    const owner = { ...bob, owned_projects: 2 };
+    mocks.collabAdminPatchMember.mockResolvedValue(member(bob.account, "suspended"));
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, owner]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.suspend }));
+    const dialog = await screen.findByRole("alertdialog", { name: fill(copy.suspendConfirm.title, { name: "Bob Smith" }) });
+    expect(dialog).toHaveTextContent(fill(copy.ownedMany, { name: "Bob Smith", number: "2" }));
+    expect(mocks.collabAdminPatchMember).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: copy.suspendConfirm.confirm }));
+    expect(mocks.collabAdminPatchMember).toHaveBeenCalledWith(SERVER_ID, BOB_ID, { status: "suspended" });
+  });
+
+  it("names the one shared project someone owns before removing them", async () => {
+    const user = userEvent.setup();
+    render(<Harness actor="admin" initial={[alice, { ...bob, owned_projects: 1 }]} />);
+    await user.click(within(rowOf(BOB_ID)).getByRole("button", { name: copy.remove }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(fill(copy.ownedOne, { name: "Bob Smith" }));
+  });
+
   it("keeps staff rows read-only for a maintainer", () => {
     render(<Harness actor="maintainer" initial={[alice, carol, bob]} selfId={CAROL_ID} />);
     expect(within(rowOf(ALICE_ID)).queryByRole("combobox")).toBeNull();
