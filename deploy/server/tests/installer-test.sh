@@ -19,6 +19,8 @@ docker_stub_sha256=
 compose_pin=$(sed -n 's/^compose_plugin_version=//p' "$src/install.sh")
 compose_pin_x86_64=$(sed -n 's/^compose_plugin_sha256_x86_64=//p' "$src/install.sh")
 compose_pin_aarch64=$(sed -n 's/^compose_plugin_sha256_aarch64=//p' "$src/install.sh")
+# Dependabot moves Caddy's tag, so the tests read it from the release file.
+caddy_pin=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\).*$/\1/p' "$src/docker-compose.yml" | head -n 1)
 # The asset and checksum install.sh prints on this machine.
 case $(uname -m) in
 	aarch64 | arm64)
@@ -882,7 +884,7 @@ expect "the oldest archives are gone" [ ! -e "$install_dir/backups/oleafly-data-
 expect "the new images were pulled before anything stopped" log_order 'release/docker-compose.yml pull' 'compose stop'
 expect "the server was stopped before the copy" log_order 'compose stop' 'docker run --rm -v oleafly-server_oleafly-data:/data:ro'
 expect "the copy came before the new version started" log_order 'docker run --rm -v oleafly-server_oleafly-data:/data:ro' 'compose up'
-expect "the copy used the release's Caddy image" log_has '--entrypoint tar caddy:2.11.7 -czf'
+expect "the copy used the release's Caddy image" log_has "--entrypoint tar $caddy_pin -czf"
 expect "the previous compose file is kept" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml.previous"
 expect "the previous installer is kept" grep -qx 'installer_version=0.1.0' "$install_dir/install.sh.previous"
 expect "it says where the copy is" out_has "Copied the data to $install_dir/backups/oleafly-data-"
@@ -947,6 +949,32 @@ expect "it says the previous files are back" out_has 'The installer put the prev
 expect "the compose file is the old release's again" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml"
 expect "the Caddyfile was kept too" [ -f "$install_dir/Caddyfile.previous" ]
 expect "the server is up" [ -f /stub/state/up ]
+expect "no staging folder is left" [ ! -e "$install_dir/.release-incoming" ]
+expect "a full disk asks for space" out_has 'Free some disk space, then run the installer again.'
+finish
+
+begin "a failed copy that isn't about space doesn't ask for disk space"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+echo Caddyfile >/stub/state/install-fails
+echo 'Permission denied' >/stub/state/install-fails-reason
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 1
+expect "it shows the reason" out_has 'Permission denied'
+expect "it says to fix the problem" out_has 'Fix the problem above, then run the installer again.'
+expect "it doesn't ask for disk space" out_lacks 'Free some disk space'
+finish
+
+begin "previous files that can't be put back leave clear steps for a stopped server"
+all_good
+run_full "$installer_shell" /stub/install-0.1.0.sh --yes
+echo install.sh >/stub/state/mv-fails
+echo docker-compose.yml >/stub/state/cp-fails
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect_status 1
+expect "it says the server is stopped" out_has 'The server is stopped. To put the previous files back and start it, run:'
+expect "it names the copy to run" out_has "sudo cp \$file.previous \$file; done"
+expect "the server wasn't started on mixed files" [ ! -f /stub/state/up ]
 finish
 
 begin "a copy of the old files that can't be written stops the update before the server stops"
@@ -989,7 +1017,13 @@ expect_status 1
 expect "it says the copy failed" out_has "Couldn't copy the data before the update."
 expect "the compose file still names 0.1.0" grep -q 'image: ghcr.io/oleafly/oleafly-server:0.1.0$' "$install_dir/docker-compose.yml"
 expect "the server was started again" log_has 'compose start'
+expect "it says which version runs" out_has 'The server runs 0.1.0 again, and nothing else was changed.'
+expect "a full disk asks for space" out_has 'Free some disk space, then run the installer again.'
 expect "no half-written archive is left" [ -z "$(ls -A "$install_dir/backups")" ]
+touch /stub/state/start-fails
+run "$installer_shell" /stub/install-0.1.1.sh update
+expect "a server that won't start again is named" out_has "Docker couldn't start the server again. Start it with: cd $install_dir && sudo docker compose start"
+expect "it doesn't claim the server runs" out_lacks 'The server runs 0.1.0 again'
 finish
 
 begin "a server Docker restarted once still counts as ready on the next run"
