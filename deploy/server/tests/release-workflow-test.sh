@@ -329,6 +329,32 @@ expect "the tests run under bash too" grep -q 'INSTALLER_SHELL=bash' "$blocks/te
 expect "this test runs too" grep -q 'docker run --rm --platform linux/amd64 .* ubuntu:24.04 sh /repo/deploy/server/tests/release-workflow-test.sh' "$blocks/test.sh"
 finish
 
+begin "pull requests run the installer end to end against the image they built"
+python3 - "$workflow" >"$work/out" 2>&1 <<'EOF'
+import sys
+import yaml
+
+steps = yaml.safe_load(open(sys.argv[1]))["jobs"]["build"]["steps"]
+names = [step.get("name") for step in steps]
+problems = []
+if "Run the installer end to end" not in names:
+    problems.append("the build job has no end-to-end installer step")
+else:
+    step = steps[names.index("Run the installer end to end")]
+    if step.get("if") != "github.event_name == 'pull_request'":
+        problems.append("the end-to-end step doesn't run on pull requests only")
+    if "deploy/server/tests/e2e.sh oleafly-server:ci-amd64" not in step.get("run", ""):
+        problems.append("the end-to-end step doesn't test the amd64 image the job built")
+    if names.index("Run the installer end to end") < names.index("Build the amd64 image"):
+        problems.append("the end-to-end step runs before the amd64 image is built")
+for problem in problems:
+    print(problem)
+sys.exit(1 if problems else 0)
+EOF
+status=$?
+expect "the workflow passes the end-to-end checks, got $status" [ "$status" = 0 ]
+finish
+
 begin "pull requests get a read-only token, and every action is pinned"
 python3 - "$workflow" >"$work/out" 2>&1 <<'EOF'
 import re

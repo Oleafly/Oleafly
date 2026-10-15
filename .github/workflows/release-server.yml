@@ -43,7 +43,8 @@ jobs:
     name: Image and static binaries
     if: github.event_name != 'release'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # The end-to-end installer test adds about ten minutes on pull requests.
+    timeout-minutes: 75
     permissions:
       contents: read
     outputs:
@@ -160,6 +161,17 @@ jobs:
           set -euo pipefail
           bash deploy/server/smoke-test.sh oleafly-server:ci-amd64
           bash deploy/server/smoke-test.sh oleafly-server:ci-arm64
+
+      # A privileged ubuntu:24.04 machine runs the real installer: it installs
+      # Docker with Docker's script, installs this build from a local
+      # registry, updates it and uninstalls it. Caddy uses its own test
+      # certificate authority, so nothing reaches Let's Encrypt.
+      - name: Run the installer end to end
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh deploy/server/tests/e2e.sh oleafly-server:ci-amd64
 
       - name: Build the static binaries
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
