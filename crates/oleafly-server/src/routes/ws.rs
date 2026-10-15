@@ -20,6 +20,7 @@ use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::auth::devices;
 use crate::comment_guard::{self, Verdict};
+use crate::db::Written;
 use crate::error::ServerError;
 use crate::members;
 use crate::mentions;
@@ -1039,39 +1040,40 @@ impl Peer<'_> {
         let connection = self.connection;
         self.state
             .db
-            .call(move |conn| {
-                let transaction = conn.transaction()?;
+            .write_grouped(move |transaction| {
                 let row =
-                    projects::project_row(&transaction, project)?.ok_or(ServerError::NotFound)?;
-                let role = projects::role_of(&transaction, project, account)?
+                    projects::project_row(transaction, project)?.ok_or(ServerError::NotFound)?;
+                let role = projects::role_of(transaction, project, account)?
                     .ok_or(ServerError::NotFound)?;
                 if row.status != ProjectStatus::Active
                     || !project_role_allows(role, ProjectAction::Edit)
                 {
                     return Err(ServerError::Forbidden);
                 }
-                if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
-                    return Ok(Appendix::Stored(projects::Appended {
+                if let Some(seq) = projects::stored_batch(transaction, project, batch)? {
+                    return Ok(Written::now(Appendix::Stored(projects::Appended {
                         seq,
                         duplicate: true,
-                    }));
+                    })));
                 }
-                match peers::claim(&transaction, project, device, &reach)? {
+                let nothing_new =
+                    || Written::now(Appendix::Stored(projects::Appended::nothing_new()));
+                match peers::claim(transaction, project, device, &reach)? {
                     Claim::Taken(_) => return Err(ServerError::Unauthorized),
-                    Claim::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
+                    Claim::Known => return Ok(nothing_new()),
                     Claim::Fresh(_) => {}
                 }
-                if check == Check::Pending && !comments_on(&transaction, &row)? {
-                    return Ok(Appendix::Unchecked(envelope, reach, stored));
+                if check == Check::Pending && !comments_on(transaction, &row)? {
+                    return Ok(Written::now(Appendix::Unchecked(envelope, reach, stored)));
                 }
                 let after =
-                    projects::log_bytes(&transaction, project)?.saturating_add(stored.len() as u64);
+                    projects::log_bytes(transaction, project)?.saturating_add(stored.len() as u64);
                 if after > limit_mb.saturating_mul(1024 * 1024) {
                     return Err(projects::too_large_for(limit_mb));
                 }
-                match peers::bind(&transaction, project, device, account, &reach, now)? {
+                match peers::bind(transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
-                    Bound::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
+                    Bound::Known => return Ok(nothing_new()),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(
@@ -1080,7 +1082,7 @@ impl Peer<'_> {
                     }
                 }
                 let appended = projects::append_update_in(
-                    &transaction,
+                    transaction,
                     project,
                     batch,
                     device,
@@ -1089,11 +1091,11 @@ impl Peer<'_> {
                     now,
                 )?;
                 if mention && !appended.duplicate {
-                    mentions::queue(&transaction, project, appended.seq, &reach)?;
+                    mentions::queue(transaction, project, appended.seq, &reach)?;
                 }
                 if check == Check::Later && !appended.duplicate {
                     comment_guard::queue_recheck(
-                        &transaction,
+                        transaction,
                         project,
                         appended.seq,
                         &reach,
@@ -1102,20 +1104,27 @@ impl Peer<'_> {
                         now,
                     )?;
                 }
-                transaction.commit()?;
-                if !appended.duplicate {
-                    rooms.publish(
-                        project,
-                        Some(connection),
-                        ServerFrame::Update {
-                            project_id: project,
-                            seq: appended.seq,
-                            account_id: Some(account),
-                            envelope,
-                        },
-                    );
-                }
-                Ok(Appendix::Stored(appended))
+                let then: Option<Box<dyn FnOnce() + Send>> = if appended.duplicate {
+                    None
+                } else {
+                    let seq = appended.seq;
+                    Some(Box::new(move || {
+                        rooms.publish(
+                            project,
+                            Some(connection),
+                            ServerFrame::Update {
+                                project_id: project,
+                                seq,
+                                account_id: Some(account),
+                                envelope,
+                            },
+                        );
+                    }))
+                };
+                Ok(Written {
+                    value: Appendix::Stored(appended),
+                    then,
+                })
             })
             .await
     }
