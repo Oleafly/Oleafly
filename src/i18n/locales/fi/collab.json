@@ -586,7 +586,8 @@
     "serverRemoved": "Palvelin poistettu",
     "clientTooOld": "Oleafly tarvitsee päivityksen",
     "serverTooOld": "Palvelin tarvitsee päivityksen",
-    "serverChanged": "Osoitteessa on uusi palvelin"
+    "serverChanged": "Osoitteessa on uusi palvelin",
+    "failed": "Pysähtyi virheeseen"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
@@ -684,6 +685,8 @@
     "clientTooOld": "Päivitä Oleafly, jotta voit jatkaa työtä palvelimella {{server}}. Muutoksesi pysyvät tällä koneella.",
     "serverTooOld": "Palvelin {{server}} tarvitsee päivityksen, ennen kuin se toimii tämän Oleafly-version kanssa. Kysy sen ylläpitäjältä. Muutoksesi pysyvät tällä koneella.",
     "serverChanged": "Palvelimen {{server}} osoite vie nyt toiselle palvelimelle. Poista se Yhteistyö-asetuksista ja lisää se uudelleen. Muutoksesi pysyvät tällä koneella.",
+    "failed": "Tämän projektin synkronointi pysähtyi virheen vuoksi. Jatka käynnistämällä se uudelleen.",
+    "goLiveAgain": "Synkronoi uudelleen",
     "accessEnded": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "accessEndedGuest": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "signIn": "Kirjaudu sisään",

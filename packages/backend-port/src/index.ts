@@ -1239,7 +1239,10 @@ export type CollabLiveEndReason =
     | "stopped"
     | "client_too_old"
     | "server_too_old"
-    | "server_changed";
+    | "server_changed"
+    // The document engine hit an error on a change. The next start skips
+    // that change, so going live again continues.
+    | "failed";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }

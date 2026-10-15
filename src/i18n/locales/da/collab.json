@@ -586,7 +586,8 @@
     "serverRemoved": "Server fjernet",
     "clientTooOld": "Oleafly skal opdateres",
     "serverTooOld": "Serveren skal opdateres",
-    "serverChanged": "Ny server på adressen"
+    "serverChanged": "Ny server på adressen",
+    "failed": "Stoppet efter en fejl"
   },
   "toolbar": {
     "noFile": "Ingen fil åben",
@@ -684,6 +685,8 @@
     "clientTooOld": "Opdater Oleafly for at fortsætte arbejdet på {{server}}. Dine ændringer bliver på denne computer.",
     "serverTooOld": "{{server}} skal opdateres, før den virker med denne version af Oleafly. Spørg den, der driver den. Dine ændringer bliver på denne computer.",
     "serverChanged": "Adressen på {{server}} peger nu på en anden server. Fjern den i samarbejdsindstillingerne, og tilføj den igen. Dine ændringer bliver på denne computer.",
+    "failed": "Synkroniseringen af dette projekt stoppede efter en fejl. Start den igen for at fortsætte.",
+    "goLiveAgain": "Synkroniser igen",
     "accessEnded": "Du har ikke længere adgang til {{server}}. Din kopi bliver på denne computer som et almindeligt projekt.",
     "accessEndedGuest": "Du har ikke længere adgang til {{server}}, fordi du ikke er med i nogen af de delte projekter der. Din kopi bliver på denne computer som et almindeligt projekt.",
     "signIn": "Log ind",

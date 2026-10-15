@@ -113,6 +113,8 @@ export interface CollabLiveStoreState {
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
   dismissCommentsNotSent: () => void;
+  // Starts syncing again after it stopped on an error.
+  goLiveAgain: () => void;
 }
 
 export interface LiveSession {
@@ -137,6 +139,7 @@ type LiveData = Omit<
   | "dismissEnded"
   | "dismissAccessNotice"
   | "dismissCommentsNotSent"
+  | "goLiveAgain"
 >;
 
 function emptyLive(projectId: string | null): LiveData {
@@ -183,6 +186,9 @@ function withPeople(
   );
 }
 
+// Set while the live lifecycle runs.
+let goLiveAgainNow: (() => void) | null = null;
+
 let shareRequest = 0;
 let membersRequest = 0;
 
@@ -221,6 +227,7 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     dismissEnded: () => set({ ended: null }),
     dismissAccessNotice: () => set({ accessNotice: null }),
     dismissCommentsNotSent: () => set({ commentsNotSent: null }),
+    goLiveAgain: () => goLiveAgainNow?.(),
   }),
 );
 
@@ -353,6 +360,16 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         deviceId: info.device_id,
       }) ?? null;
   };
+
+  // Syncing stopped after an error. The next start skips the change at
+  // fault, so it can start again at once.
+  const goLiveAgain = () => {
+    const state = store.getState();
+    if (disposed || live !== null || !state.projectId || !state.share || state.ended !== "failed") return;
+    store.setState({ status: null, ended: null });
+    void goLive(state.projectId);
+  };
+  goLiveAgainNow = goLiveAgain;
 
   const openProject = (projectId: string | null) => {
     stopLive();
@@ -574,6 +591,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   return () => {
     if (disposed) return;
     disposed = true;
+    if (goLiveAgainNow === goLiveAgain) goLiveAgainNow = null;
     unsubscribeFiles();
     unsubscribeStore();
     unsubscribeSweep();

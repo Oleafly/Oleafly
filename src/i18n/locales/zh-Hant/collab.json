@@ -586,7 +586,8 @@
     "serverRemoved": "伺服器已移除",
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "伺服器需要更新",
-    "serverChanged": "這個位址已換成新伺服器"
+    "serverChanged": "這個位址已換成新伺服器",
+    "failed": "因出錯已停止"
   },
   "toolbar": {
     "noFile": "未開啟檔案",
@@ -684,6 +685,8 @@
     "clientTooOld": "請更新 Oleafly，才能繼續在 {{server}} 上工作。你的變更會留在這台電腦上。",
     "serverTooOld": "{{server}} 需要更新後才能搭配這個版本的 Oleafly 使用。請聯絡伺服器的管理者。你的變更會留在這台電腦上。",
     "serverChanged": "{{server}} 的位址現在指向另一個伺服器。請在協作設定中移除它，然後重新新增。你的變更會留在這台電腦上。",
+    "failed": "這個專案因出錯已停止同步。重新開始同步即可繼續。",
+    "goLiveAgain": "重新同步",
     "accessEnded": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。",
     "accessEndedGuest": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。",
     "signIn": "登入",

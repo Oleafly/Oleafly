@@ -586,7 +586,8 @@
     "serverRemoved": "Server eliminat",
     "clientTooOld": "Oleafly trebuie actualizat",
     "serverTooOld": "Serverul trebuie actualizat",
-    "serverChanged": "Server nou la această adresă"
+    "serverChanged": "Server nou la această adresă",
+    "failed": "Oprit după o eroare"
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",
@@ -684,6 +685,8 @@
     "clientTooOld": "Actualizează Oleafly ca să lucrezi în continuare pe {{server}}. Modificările tale rămân pe acest computer.",
     "serverTooOld": "{{server}} trebuie actualizat ca să funcționeze cu această versiune de Oleafly. Întreabă persoana care îl administrează. Modificările tale rămân pe acest computer.",
     "serverChanged": "Adresa {{server}} duce acum la alt server. Elimină-l din setările de Colaborare și adaugă-l din nou. Modificările tale rămân pe acest computer.",
+    "failed": "Sincronizarea acestui proiect s-a oprit după o eroare. Pornește-o din nou ca să continui.",
+    "goLiveAgain": "Sincronizează din nou",
     "accessEnded": "Nu mai ai acces la {{server}}. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "accessEndedGuest": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "signIn": "Autentifică-te",

@@ -967,6 +967,35 @@ describe("collab live store edges", () => {
     expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
   });
 
+  it("lets go of the editors when syncing stops after an error, and goes live again when asked", async () => {
+    const release = vi.fn();
+    openProject(PROJECT);
+    stop = startCollabLive({ started: () => release });
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
+    useCollabLiveStore.getState().goLiveAgain();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
+
+    emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "ended", reason: "failed" }, pending: 0 });
+    await settle();
+    expect(release).toHaveBeenCalledOnce();
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    const ended = useCollabLiveStore.getState();
+    expect(ended.ended).toBe("failed");
+    expect(syncState(ended.status, ended.pending)).toBe("failed");
+    expect(mocks.collabShareInfo).toHaveBeenCalledTimes(2);
+    expect(mocks.collabLiveStart).toHaveBeenCalledOnce();
+
+    useCollabLiveStore.getState().goLiveAgain();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
+    expect(useCollabLiveStore.getState()).toMatchObject({ ended: null, status: null, role: "editor" });
+    useCollabLiveStore.getState().goLiveAgain();
+    await settle();
+    expect(mocks.collabLiveStart).toHaveBeenCalledTimes(2);
+  });
+
   it("does not retry going live once the session has ended", async () => {
     vi.useFakeTimers();
     mocks.collabLiveStart.mockRejectedValueOnce(new Error("busy"));

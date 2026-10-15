@@ -586,7 +586,8 @@
     "serverRemoved": "Sunucu kaldırıldı",
     "clientTooOld": "Oleafly güncellenmeli",
     "serverTooOld": "Sunucu güncellenmeli",
-    "serverChanged": "Bu adreste yeni bir sunucu var"
+    "serverChanged": "Bu adreste yeni bir sunucu var",
+    "failed": "Bir hatadan sonra durdu"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",
@@ -684,6 +685,8 @@
     "clientTooOld": "{{server}} sunucusunda çalışmaya devam etmek için Oleafly'yi güncelleyin. Değişiklikleriniz bu bilgisayarda kalır.",
     "serverTooOld": "{{server}} sunucusunun bu Oleafly sürümüyle çalışması için güncellenmesi gerekiyor. Sunucuyu yöneten kişiye danışın. Değişiklikleriniz bu bilgisayarda kalır.",
     "serverChanged": "{{server}} adresi artık farklı bir sunucuyu gösteriyor. Sunucuyu Ayarlar'daki İş Birliği bölümünden kaldırıp yeniden ekleyin. Değişiklikleriniz bu bilgisayarda kalır.",
+    "failed": "Bu projenin eşitlenmesi bir hatadan sonra durdu. Devam etmek için eşitlemeyi yeniden başlatın.",
+    "goLiveAgain": "Yeniden eşitle",
     "accessEnded": "{{server}} sunucusuna artık erişiminiz yok. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "accessEndedGuest": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "signIn": "Oturum aç",

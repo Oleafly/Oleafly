@@ -586,7 +586,8 @@
     "serverRemoved": "Servidor quitado",
     "clientTooOld": "Oleafly necesita actualizarse",
     "serverTooOld": "El servidor necesita actualizarse",
-    "serverChanged": "Nuevo servidor en esta dirección"
+    "serverChanged": "Nuevo servidor en esta dirección",
+    "failed": "Detenido por un error"
   },
   "toolbar": {
     "noFile": "Ningún archivo abierto",
@@ -684,6 +685,8 @@
     "clientTooOld": "Actualiza Oleafly para seguir trabajando en {{server}}. Tus cambios se quedan en este equipo.",
     "serverTooOld": "{{server}} necesita una actualización para funcionar con esta versión de Oleafly. Pregunta a quien lo administra. Tus cambios se quedan en este equipo.",
     "serverChanged": "La dirección de {{server}} ahora lleva a otro servidor. Quítalo en los ajustes de Colaboración y vuelve a añadirlo. Tus cambios se quedan en este equipo.",
+    "failed": "La sincronización de este proyecto se detuvo por un error. Vuelve a sincronizar para continuar.",
+    "goLiveAgain": "Volver a sincronizar",
     "accessEnded": "Ya no tienes acceso a {{server}}. Tu copia se queda en este equipo como un proyecto normal.",
     "accessEndedGuest": "Ya no tienes acceso a {{server}} porque no estás en ninguno de sus proyectos compartidos. Tu copia se queda en este equipo como un proyecto normal.",
     "signIn": "Iniciar sesión",

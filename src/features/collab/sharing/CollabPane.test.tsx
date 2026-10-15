@@ -3,7 +3,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Profiler } from "react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
@@ -231,6 +231,7 @@ describe("CollabPane", () => {
     ],
     [{ status: { state: "ended", reason: "server_too_old" }, pending: 0 }, enCollab.sync.serverTooOld, "server-cog", "text-destructive"],
     [{ status: { state: "ended", reason: "server_changed" }, pending: 0 }, enCollab.sync.serverChanged, "replace", "text-destructive"],
+    [{ status: { state: "ended", reason: "failed" }, pending: 0 }, enCollab.sync.failed, "circle-alert", "text-destructive"],
   ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);
@@ -725,6 +726,39 @@ describe("CollabPane", () => {
     expect(details).toHaveTextContent(fill(activity.serverChanged, { server: "Smith Lab" }));
     await user.click(within(details).getByRole("button", { name: enCollab.share.openSettings }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "collaboration" });
+  });
+
+  it("offers to go live again when syncing stopped after an error", async () => {
+    const goLiveAgain = vi.fn();
+    const original = useCollabLiveStore.getState().goLiveAgain;
+    onTestFinished(() => useCollabLiveStore.setState({ goLiveAgain: original }));
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "failed" }, ended: "failed", goLiveAgain });
+    feed([
+      { kind: "failed", at: NOW, count: 1 },
+      { kind: "failed", at: NOW - 60_000, count: 1 },
+    ]);
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const [row, older] = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(row).toHaveTextContent(activity.failed);
+    expect(older).toHaveTextContent(activity.failed);
+    expect(within(older).queryByRole("button", { name: activity.goLiveAgain })).toBeNull();
+    expect(row.querySelector("svg.lucide-circle-alert")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: activity.goLiveAgain }));
+    expect(goLiveAgain).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: enCollab.sync.failed }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(activity.failed);
+    await user.click(within(details).getByRole("button", { name: activity.goLiveAgain }));
+    expect(goLiveAgain).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps an old note that syncing stopped after an error without the button once it is live again", () => {
+    feed([{ kind: "failed", at: NOW, count: 1 }]);
+    render(<CollabPane />);
+    const row = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem")[0];
+    expect(row).toHaveTextContent(activity.failed);
+    expect(within(row).queryByRole("button", { name: activity.goLiveAgain })).toBeNull();
   });
 
   it("offers Sign in in the status details while signed out", async () => {
