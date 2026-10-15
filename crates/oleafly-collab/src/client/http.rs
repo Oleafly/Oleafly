@@ -7,7 +7,7 @@ use oleafly_collab_protocol::admin::{
 };
 use oleafly_collab_protocol::auth::{
     AccountSummary, ApiError, AuthStartQuery, ChallengeResponse, DeviceSummary, RefreshRequest,
-    SessionEndReason, SessionTokens, TokenRequest,
+    SessionEndReason, SessionTokens, SetupClaimRequest, SetupClaimResponse, TokenRequest,
 };
 use oleafly_collab_protocol::capabilities::{CapabilityManifest, WELL_KNOWN_PATH};
 use oleafly_collab_protocol::email::{
@@ -28,6 +28,8 @@ use serde::de::DeserializeOwned;
 use super::{ServerUrl, CONNECT_TIMEOUT};
 use crate::{CollabError, DeviceKey};
 
+pub const PEERS_PER_REQUEST: usize = 200;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SnapshotSignature {
     pub device_id: DeviceId,
@@ -43,6 +45,18 @@ pub struct SnapshotDownload {
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const TRANSFER_TIMEOUT: Duration = Duration::from_secs(600);
+const SLOWEST_TRANSFER_BYTES_PER_SECOND: u64 = 32 * 1024;
+const STALLED_AFTER: Duration = Duration::from_secs(60);
+const NO_DEADLINE: Duration = Duration::from_secs(24 * 60 * 60);
+const LARGEST_PREALLOCATION: u64 = 64 * 1024 * 1024;
+
+// Figures and snapshots get ten minutes, or the time a slow link needs for
+// their size when that is longer, so a large one on a slow link still fits.
+pub(crate) fn transfer_timeout(bytes: u64) -> Duration {
+    TRANSFER_TIMEOUT.max(Duration::from_secs(
+        bytes / SLOWEST_TRANSFER_BYTES_PER_SECOND,
+    ))
+}
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
 const USER_AGENT: &str = concat!("oleafly-collab/", env!("CARGO_PKG_VERSION"));
 
@@ -84,6 +98,18 @@ impl ServerClient {
 
     pub async fn challenge(&self) -> Result<ChallengeResponse, CollabError> {
         json(self.http.post(self.url.endpoint("auth/challenge"))).await
+    }
+
+    pub async fn setup_claim(
+        &self,
+        request: &SetupClaimRequest,
+    ) -> Result<SetupClaimResponse, CollabError> {
+        json(
+            self.http
+                .post(self.url.endpoint("auth/setup-claim"))
+                .json(request),
+        )
+        .await
     }
 
     pub async fn exchange_token(
@@ -436,7 +462,7 @@ impl ServerClient {
             self.http
                 .put(self.project_url(project, &["blobs", hash]))
                 .bearer_auth(access)
-                .timeout(TRANSFER_TIMEOUT)
+                .timeout(transfer_timeout(bytes.len() as u64))
                 .body(bytes),
         )
         .await
@@ -448,11 +474,10 @@ impl ServerClient {
         project: SharedProjectId,
         hash: &str,
     ) -> Result<Vec<u8>, CollabError> {
-        bytes(
+        download(
             self.http
                 .get(self.project_url(project, &["blobs", hash]))
-                .bearer_auth(access)
-                .timeout(TRANSFER_TIMEOUT),
+                .bearer_auth(access),
         )
         .await
         .map(|(_, body)| body)
@@ -471,7 +496,7 @@ impl ServerClient {
             self.http
                 .put(url)
                 .bearer_auth(access)
-                .timeout(TRANSFER_TIMEOUT)
+                .timeout(transfer_timeout(snapshot.len() as u64))
                 .body(snapshot),
         )
         .await
@@ -493,7 +518,7 @@ impl ServerClient {
                 .put(url)
                 .bearer_auth(access)
                 .header(SNAPSHOT_SIGNATURE_HEADER, signature)
-                .timeout(TRANSFER_TIMEOUT)
+                .timeout(transfer_timeout(snapshot.len() as u64))
                 .body(snapshot),
         )
         .await
@@ -521,13 +546,7 @@ impl ServerClient {
             url.query_pairs_mut()
                 .append_pair("before", &before.to_string());
         }
-        let (headers, bytes) = bytes(
-            self.http
-                .get(url)
-                .bearer_auth(access)
-                .timeout(TRANSFER_TIMEOUT),
-        )
-        .await?;
+        let (headers, bytes) = download(self.http.get(url).bearer_auth(access)).await?;
         let header = |name: &str| {
             headers
                 .get(name)
@@ -568,6 +587,25 @@ impl ServerClient {
         .await
     }
 
+    // Only the rows for these writer ids, at most PEERS_PER_REQUEST to a
+    // request. A server that does not filter yet sends every row, which
+    // merges the same way.
+    pub async fn project_peers_among(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        peers: &[u64],
+    ) -> Result<Vec<ProjectPeer>, CollabError> {
+        let mut listed = Vec::new();
+        for chunk in peers.chunks(PEERS_PER_REQUEST) {
+            let ids: Vec<String> = chunk.iter().map(u64::to_string).collect();
+            let mut url = self.project_url(project, &["peers"]);
+            url.set_query(Some(&format!("ids={}", ids.join(","))));
+            listed.extend(json::<Vec<ProjectPeer>>(self.http.get(url).bearer_auth(access)).await?);
+        }
+        Ok(listed)
+    }
+
     pub async fn snapshot_seq(
         &self,
         access: &str,
@@ -596,11 +634,10 @@ impl ServerClient {
         access: &str,
         project: SharedProjectId,
     ) -> Result<(u64, Vec<u8>), CollabError> {
-        let (headers, body) = bytes(
+        let (headers, body) = download(
             self.http
                 .get(self.project_url(project, &["snapshot"]))
-                .bearer_auth(access)
-                .timeout(TRANSFER_TIMEOUT),
+                .bearer_auth(access),
         )
         .await?;
         let seq = headers
@@ -768,13 +805,49 @@ pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result
     })
 }
 
-async fn bytes(
+// A download fails when no bytes move for a minute rather than at a fixed
+// deadline, so a large figure on a slow link finishes and a dead
+// connection is noticed in a minute instead of ten.
+async fn download(
     request: RequestBuilder,
 ) -> Result<(reqwest::header::HeaderMap, Vec<u8>), CollabError> {
-    let response = check_status(request.send().await.map_err(network_error)?).await?;
+    let sent = tokio::time::timeout(STALLED_AFTER, request.timeout(NO_DEADLINE).send())
+        .await
+        .map_err(|_| CollabError::Network("the server did not start the transfer".to_string()))?
+        .map_err(network_error)?;
+    let response = check_status(sent).await?;
     let headers = response.headers().clone();
-    let body = response.bytes().await.map_err(network_error)?;
-    Ok((headers, body.to_vec()))
+    let deadline = response.content_length().map(transfer_timeout);
+    let body = read_steadily(response, STALLED_AFTER, deadline).await?;
+    Ok((headers, body))
+}
+
+pub(crate) async fn read_steadily(
+    mut response: Response,
+    stalled_after: Duration,
+    deadline: Option<Duration>,
+) -> Result<Vec<u8>, CollabError> {
+    let started = tokio::time::Instant::now();
+    let expected = response
+        .content_length()
+        .unwrap_or(0)
+        .min(LARGEST_PREALLOCATION);
+    let mut body = Vec::with_capacity(usize::try_from(expected).unwrap_or(0));
+    loop {
+        let chunk = tokio::time::timeout(stalled_after, response.chunk())
+            .await
+            .map_err(|_| CollabError::Network("the transfer stopped moving".to_string()))?
+            .map_err(network_error)?;
+        let Some(chunk) = chunk else {
+            return Ok(body);
+        };
+        body.extend_from_slice(&chunk);
+        if deadline.is_some_and(|deadline| started.elapsed() > deadline) {
+            return Err(CollabError::Network(
+                "the transfer took too long".to_string(),
+            ));
+        }
+    }
 }
 
 async fn empty(request: RequestBuilder) -> Result<(), CollabError> {
@@ -807,10 +880,14 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
     let numeric = status.as_u16();
     let body = response.bytes().await.unwrap_or_default();
     if status == StatusCode::UNAUTHORIZED {
-        let ended = serde_json::from_slice::<ApiError>(&body)
-            .ok()
-            .and_then(|error| SessionEndReason::from_code(&error.code));
-        return Err(ended.map_or(CollabError::Unauthorized, CollabError::SessionEnded));
+        return Err(match serde_json::from_slice::<ApiError>(&body) {
+            Ok(error) => unauthorized(error),
+            Err(_) => CollabError::Network(
+                "a 401 came back without the server's own error, so something in front of the \
+                 server turned the request away"
+                    .to_owned(),
+            ),
+        });
     }
     Err(match serde_json::from_slice::<ApiError>(&body) {
         Ok(error) => CollabError::Api {
@@ -824,6 +901,31 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
             message: String::from_utf8_lossy(&body).chars().take(200).collect(),
         },
     })
+}
+
+// The 401 codes that mean the session is gone and the person has to sign in
+// again. Any other 401 the server explains, such as a sign-in check that
+// expired while the laptop slept, keeps its code so the caller can try
+// again.
+pub(crate) const SESSION_GONE: [&str; 4] = [
+    "unauthorized",
+    "revoked",
+    "refresh_reused",
+    "invalid_signature",
+];
+
+pub(crate) fn unauthorized(error: ApiError) -> CollabError {
+    if let Some(reason) = SessionEndReason::from_code(&error.code) {
+        return CollabError::SessionEnded(reason);
+    }
+    if SESSION_GONE.contains(&error.code.as_str()) {
+        return CollabError::Unauthorized;
+    }
+    CollabError::Api {
+        status: 401,
+        code: error.code,
+        message: error.message,
+    }
 }
 
 pub(crate) fn network_error(error: reqwest::Error) -> CollabError {
@@ -1275,6 +1377,78 @@ mod tests {
         assert!(!changed.shared_with_you);
     }
 
+    #[test]
+    fn a_large_transfer_gets_the_time_a_slow_link_needs() {
+        assert_eq!(transfer_timeout(1024), TRANSFER_TIMEOUT);
+        assert_eq!(
+            transfer_timeout(50 * 1024 * 1024),
+            Duration::from_secs(1600)
+        );
+    }
+
+    async fn trickling(pauses: Vec<Duration>, chunk: usize) -> ServerUrl {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let mut head = [0u8; 4096];
+                let _ = stream.read(&mut head).await;
+                let total = pauses.len() * chunk;
+                let answer = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {total}\r\nConnection: close\r\n\r\n"
+                );
+                if stream.write_all(answer.as_bytes()).await.is_err() {
+                    return;
+                }
+                for pause in pauses {
+                    tokio::time::sleep(pause).await;
+                    if stream.write_all(&vec![b'x'; chunk]).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        });
+        ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address")
+    }
+
+    #[tokio::test]
+    async fn a_download_that_keeps_moving_finishes_and_one_that_stops_fails_soon() {
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("client");
+        let moving = trickling(vec![Duration::from_millis(60); 10], 1000).await;
+        let response = client
+            .get(moving.endpoint("blob"))
+            .send()
+            .await
+            .expect("response");
+        let body = read_steadily(response, Duration::from_millis(400), None)
+            .await
+            .expect("a download that keeps moving finishes");
+        assert_eq!(body.len(), 10_000);
+        let stopping = trickling(
+            vec![Duration::ZERO, Duration::ZERO, Duration::from_secs(5)],
+            1000,
+        )
+        .await;
+        let response = client
+            .get(stopping.endpoint("blob"))
+            .send()
+            .await
+            .expect("response");
+        let started = tokio::time::Instant::now();
+        let read = read_steadily(response, Duration::from_millis(400), None).await;
+        assert!(
+            matches!(read, Err(CollabError::Network(ref message)) if message.contains("stopped moving")),
+            "{read:?}"
+        );
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
     #[tokio::test]
     async fn html_error_page_keeps_its_status() {
         let response = http_response(
@@ -1316,6 +1490,16 @@ mod tests {
                 CollabError::SessionEnded(SessionEndReason::AccessEnded),
             ),
             ("revoked", CollabError::Unauthorized),
+            ("refresh_reused", CollabError::Unauthorized),
+            ("unauthorized", CollabError::Unauthorized),
+            (
+                "expired_nonce",
+                CollabError::Api {
+                    status: 401,
+                    code: "expired_nonce".to_owned(),
+                    message: "m".to_owned(),
+                },
+            ),
         ] {
             let response = http_response(
                 "401 Unauthorized",
@@ -1327,9 +1511,9 @@ mod tests {
         }
         let bare = http_response("401 Unauthorized", &[], "");
         let client = ServerClient::new(canned(bare).await).expect("client");
-        assert_eq!(
+        assert!(matches!(
             client.me("token").await.err(),
-            Some(CollabError::Unauthorized)
-        );
+            Some(CollabError::Network(_))
+        ));
     }
 }

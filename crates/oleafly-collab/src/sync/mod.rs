@@ -128,6 +128,7 @@ enum LiveCommand {
     Flush,
     Presence(PresenceState),
     LeavePresence,
+    Reconnect,
     Stop,
 }
 
@@ -147,6 +148,12 @@ impl LiveHandle {
 
     pub fn leave_presence(&self) {
         let _ = self.commands.send(LiveCommand::LeavePresence);
+    }
+
+    // For when the network changes or the machine wakes: a session waiting
+    // to reconnect tries again now and starts its waits over.
+    pub fn reconnect_now(&self) {
+        let _ = self.commands.send(LiveCommand::Reconnect);
     }
 
     pub fn stop(&self) {
@@ -173,6 +180,8 @@ fn lock(project: &SharedLive) -> MutexGuard<'_, LiveProject> {
 pub struct TransportOptions {
     pub fallback_after: u32,
     pub retry_socket_every: Duration,
+    pub ping_every: Duration,
+    pub quiet_for: Duration,
 }
 
 impl Default for TransportOptions {
@@ -180,6 +189,8 @@ impl Default for TransportOptions {
         TransportOptions {
             fallback_after: 2,
             retry_socket_every: Duration::from_secs(60),
+            ping_every: Duration::from_secs(20),
+            quiet_for: Duration::from_secs(30),
         }
     }
 }

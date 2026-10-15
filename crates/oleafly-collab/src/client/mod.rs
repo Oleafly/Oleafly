@@ -37,6 +37,13 @@ pub(crate) use self::ws::Socket;
 pub use self::ws::{connect_socket, SocketConnection};
 
 pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const SLOWEST_UPLINK_BYTES_PER_SECOND: f64 = 16.0 * 1024.0;
+
+// The time a slow link that still works needs to carry `bytes` up to the
+// server, given on top of the usual waits so a large change is not cut off.
+pub(crate) fn upload_allowance(bytes: usize) -> Duration {
+    Duration::from_secs_f64(bytes as f64 / SLOWEST_UPLINK_BYTES_PER_SECOND)
+}
 
 pub(crate) fn now_ms() -> i64 {
     SystemTime::now()

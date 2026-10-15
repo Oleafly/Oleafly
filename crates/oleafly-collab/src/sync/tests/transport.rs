@@ -245,6 +245,7 @@ async fn the_fallback_moves_back_to_the_socket_once_websockets_get_through() {
     let options = TransportOptions {
         fallback_after: 2,
         retry_socket_every: Duration::from_millis(300),
+        ..TransportOptions::default()
     };
     start_with(&mut bob, link(&pair, &pair.bob, project), quick());
     start_with(
@@ -453,6 +454,47 @@ async fn a_socket_turned_away_right_after_a_fresh_token_is_tried_again_instead_o
     })
     .await;
     assert_eq!(reached, LiveEvent::Status(LiveStatus::Online));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_socket_the_server_refuses_with_its_own_401_is_tried_once_after_a_refresh_then_signs_out()
+{
+    use crate::client::test_util::{refusal_with, UpgradeFront};
+    let pair = two_people().await;
+    let (project, main, _bob_live, alice_live) = shared(&pair).await;
+    let front = UpgradeFront::start(
+        &pair.url,
+        Some(refusal_with("401 Unauthorized", "unauthorized")),
+    )
+    .await;
+    let mut alice = side(alice_live, &main);
+    let mut through = link(&pair, &pair.alice, project);
+    through.client = Arc::new(ServerClient::new(front.url.clone()).unwrap());
+    start_with(&mut alice, through, quick());
+    let reached = until_event(&mut alice, |event| {
+        matches!(
+            event,
+            LiveEvent::Status(LiveStatus::Online | LiveStatus::Ended { .. })
+        )
+    })
+    .await;
+    assert_eq!(
+        reached,
+        LiveEvent::Status(LiveStatus::Ended {
+            reason: EndReason::SignedOut
+        })
+    );
+    let upgrades = front.upgrades();
+    assert_eq!(upgrades.len(), 2, "{upgrades:?}");
+    let renewed = pair
+        .alice
+        .sessions
+        .tokens(pair.server_id)
+        .unwrap()
+        .expect("the session is still stored")
+        .access_token;
+    assert_ne!(renewed, pair.alice.tokens.access_token);
+    assert!(upgrades[1].contains(&renewed));
 }
 
 #[tokio::test(flavor = "multi_thread")]

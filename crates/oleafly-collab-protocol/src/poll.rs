@@ -111,6 +111,73 @@ pub struct PollReplies {
     pub frames: Vec<ServerFrame>,
 }
 
+// Far above what a server sends in one answer: a poll batch carries at most
+// 4 MiB of changes, and each one is a few hundred bytes at the least.
+pub const MAX_POLLED_FRAMES: usize = 65_536;
+
+impl PollBatch {
+    pub fn from_json(bytes: &[u8]) -> Result<PollBatch, serde_json::Error> {
+        let read: Polled = serde_json::from_slice(bytes)?;
+        Ok(PollBatch {
+            cursor: read.cursor,
+            key: read.key,
+            frames: read.frames.0,
+        })
+    }
+}
+
+impl PollReplies {
+    pub fn from_json(bytes: &[u8]) -> Result<PollReplies, serde_json::Error> {
+        let read: Replied = serde_json::from_slice(bytes)?;
+        Ok(PollReplies {
+            frames: read.frames.0,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+struct Polled {
+    #[serde(default)]
+    cursor: Option<String>,
+    #[serde(default)]
+    key: Option<String>,
+    frames: ServerOneByOne,
+}
+
+#[derive(Deserialize)]
+struct Replied {
+    frames: ServerOneByOne,
+}
+
+struct ServerOneByOne(Vec<ServerFrame>);
+
+impl<'de> Deserialize<'de> for ServerOneByOne {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ServerOneByOne, D::Error> {
+        deserializer.deserialize_seq(ServerOneByOne(Vec::new()))
+    }
+}
+
+impl<'de> Visitor<'de> for ServerOneByOne {
+    type Value = ServerOneByOne;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a list of frames")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(mut self, mut frames: A) -> Result<ServerOneByOne, A::Error> {
+        while let Some(raw) = frames.next_element::<&'de RawValue>()? {
+            if self.0.len() == MAX_POLLED_FRAMES {
+                return Err(de::Error::custom(format!(
+                    "a server answer carries at most {MAX_POLLED_FRAMES} frames"
+                )));
+            }
+            self.0
+                .push(ServerFrame::from_json(raw.get()).map_err(de::Error::custom)?);
+        }
+        Ok(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,6 +271,81 @@ mod tests {
             refused.to_string().contains("Send at most 64 frames"),
             "{refused}"
         );
+    }
+
+    #[test]
+    fn batches_and_replies_read_one_frame_at_a_time_like_the_derived_parse() {
+        let batch = json!({
+            "cursor": "abc.1",
+            "key": "secret",
+            "frames": [
+                { "type": "pong", "id": 1 },
+                { "type": "from_a_later_server", "detail": [[1], [2, [3]]] },
+                { "type": "snapshot_required", "project_id": PROJECT, "padding": [[0], [0]] },
+                { "type": "error", "code": "a_later_code", "message": "m" }
+            ],
+            "later": { "n": [1, 2, 3] }
+        })
+        .to_string();
+        let read = PollBatch::from_json(batch.as_bytes()).unwrap();
+        assert_eq!(read, serde_json::from_str::<PollBatch>(&batch).unwrap());
+        assert_eq!(read.cursor.as_deref(), Some("abc.1"));
+        assert_eq!(read.frames[1], ServerFrame::Unknown);
+        let bare = json!({ "frames": [{ "type": "pong", "id": 2 }] }).to_string();
+        assert_eq!(
+            PollBatch::from_json(bare.as_bytes()).unwrap(),
+            serde_json::from_str::<PollBatch>(&bare).unwrap()
+        );
+        assert_eq!(
+            PollReplies::from_json(bare.as_bytes()).unwrap(),
+            serde_json::from_str::<PollReplies>(&bare).unwrap()
+        );
+        for refused in [
+            r#"{"frames":[{"type":"pong"}]}"#,
+            r#"{"frames":[1]}"#,
+            r#"{"frames":{}}"#,
+            r#"{"cursor":"c"}"#,
+        ] {
+            assert!(
+                PollBatch::from_json(refused.as_bytes()).is_err(),
+                "{refused}"
+            );
+            assert!(
+                serde_json::from_str::<PollBatch>(refused).is_err(),
+                "{refused}"
+            );
+            assert!(
+                PollReplies::from_json(refused.as_bytes()).is_err(),
+                "{refused}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_server_answer_carries_at_most_the_polled_frame_limit() {
+        let frames = |count: usize| {
+            let mut text = String::from(r#"{"frames":["#);
+            for at in 0..count {
+                if at > 0 {
+                    text.push(',');
+                }
+                text.push_str(r#"{"type":"pong","id":1}"#);
+            }
+            text.push_str("]}");
+            text
+        };
+        let full = frames(MAX_POLLED_FRAMES);
+        assert_eq!(
+            PollBatch::from_json(full.as_bytes()).unwrap().frames.len(),
+            MAX_POLLED_FRAMES
+        );
+        let over = frames(MAX_POLLED_FRAMES + 1);
+        let refused = PollBatch::from_json(over.as_bytes()).unwrap_err();
+        assert!(
+            refused.to_string().contains("at most 65536 frames"),
+            "{refused}"
+        );
+        assert!(PollReplies::from_json(over.as_bytes()).is_err());
     }
 
     #[test]

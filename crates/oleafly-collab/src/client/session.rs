@@ -8,7 +8,7 @@ use oleafly_collab_protocol::auth::{
 use oleafly_collab_protocol::ids::ServerId;
 use reqwest::header::{HeaderMap, DATE};
 
-use super::http::{check_status, network_error};
+use super::http::{check_status, network_error, SESSION_GONE};
 use super::{now_ms, ServerClient};
 use crate::device_key::server_key_account;
 use crate::{CollabError, DeviceKey, SecretPort};
@@ -25,7 +25,7 @@ pub struct SessionManager {
     secrets: Arc<dyn SecretPort>,
     key: Arc<DeviceKey>,
     server_keys: Mutex<HashMap<ServerId, Arc<DeviceKey>>>,
-    refresh: tokio::sync::Mutex<()>,
+    refreshing: Mutex<HashMap<ServerId, Arc<tokio::sync::Mutex<()>>>>,
     server_clocks: Mutex<HashMap<ServerId, i64>>,
 }
 
@@ -35,7 +35,7 @@ impl SessionManager {
             secrets,
             key,
             server_keys: Mutex::new(HashMap::new()),
-            refresh: tokio::sync::Mutex::new(()),
+            refreshing: Mutex::new(HashMap::new()),
             server_clocks: Mutex::new(HashMap::new()),
         }
     }
@@ -114,6 +114,33 @@ impl SessionManager {
         }
     }
 
+    // Reads the stored session off the async workers: the secret store can
+    // wait on a file lock held by another process.
+    async fn stored(&self, server: ServerId) -> Result<Option<SessionTokens>, CollabError> {
+        let secrets = Arc::clone(&self.secrets);
+        let json = tokio::task::spawn_blocking(move || secrets.get(&session_account(server)))
+            .await
+            .map_err(|error| CollabError::Secret(error.to_string()))??;
+        json.map(|json| {
+            serde_json::from_str(&json).map_err(|error| CollabError::Corrupt(error.to_string()))
+        })
+        .transpose()
+    }
+
+    fn fresh(&self, server: ServerId, tokens: &SessionTokens) -> bool {
+        tokens.access_expires_at - self.server_now(server) >= REFRESH_MARGIN_MS
+    }
+
+    fn refresh_lock(&self, server: ServerId) -> Arc<tokio::sync::Mutex<()>> {
+        Arc::clone(
+            self.refreshing
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .entry(server)
+                .or_default(),
+        )
+    }
+
     pub async fn access_token(
         &self,
         server: ServerId,
@@ -136,12 +163,27 @@ impl SessionManager {
         client: &ServerClient,
         force: bool,
     ) -> Result<String, CollabError> {
-        let _guard = self.refresh.lock().await;
-        let tokens = self.tokens(server)?.ok_or(CollabError::Unauthorized)?;
-        if !force && tokens.access_expires_at - self.server_now(server) >= REFRESH_MARGIN_MS {
+        // A good token needs no lock, and each server refreshes under its
+        // own, so a refresh that hangs on one server holds up nobody else.
+        let seen = self
+            .stored(server)
+            .await?
+            .ok_or(CollabError::Unauthorized)?;
+        if !force && self.fresh(server, &seen) {
+            return Ok(seen.access_token);
+        }
+        let lock = self.refresh_lock(server);
+        let _guard = lock.lock().await;
+        let tokens = self
+            .stored(server)
+            .await?
+            .ok_or(CollabError::Unauthorized)?;
+        let renewed_meanwhile = tokens.access_token != seen.access_token;
+        if (!force || renewed_meanwhile) && self.fresh(server, &tokens) {
             return Ok(tokens.access_token);
         }
         let mut attempt = 1;
+        let mut fresh_check = false;
         loop {
             match self.refresh_once(server, client, &tokens).await {
                 Ok(fresh) => {
@@ -156,6 +198,10 @@ impl SessionManager {
                     self.clear(server)?;
                     return Err(CollabError::Unauthorized);
                 }
+                // The check expires two minutes after it is handed out, by
+                // the server's clock: a laptop that slept in between needs
+                // one new check, not a new sign-in.
+                Err(error) if nonce_expired(&error) && !fresh_check => fresh_check = true,
                 Err(CollabError::Network(_)) if attempt < REFRESH_ATTEMPTS => {
                     attempt += 1;
                     tokio::time::sleep(REFRESH_RETRY_DELAY).await;
@@ -222,9 +268,15 @@ fn server_time(headers: &HeaderMap) -> Option<i64> {
 fn is_revocation(error: &CollabError) -> bool {
     match error {
         CollabError::Unauthorized => true,
-        CollabError::Api { code, .. } => code == "revoked" || code == "refresh_reused",
+        CollabError::Api {
+            status: 401, code, ..
+        } => SESSION_GONE.contains(&code.as_str()),
         _ => false,
     }
+}
+
+fn nonce_expired(error: &CollabError) -> bool {
+    matches!(error, CollabError::Api { status: 401, code, .. } if code == "expired_nonce")
 }
 
 #[cfg(test)]
@@ -411,6 +463,168 @@ mod tests {
             manager.access_token(server, &second).await.expect("token"),
             "second"
         );
+    }
+
+    async fn silent() -> (crate::ServerUrl, Arc<tokio::sync::Notify>) {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        let reached = Arc::new(tokio::sync::Notify::new());
+        let signal = Arc::clone(&reached);
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((stream, _)) = listener.accept().await {
+                held.push(stream);
+                signal.notify_one();
+            }
+        });
+        let url = crate::ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("url");
+        (url, reached)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_refresh_that_hangs_on_one_server_holds_up_no_other_server() {
+        let (_secrets, manager) = manager();
+        let manager = Arc::new(manager);
+        let (stuck, fine, renewing) = (ServerId::new_v7(), ServerId::new_v7(), ServerId::new_v7());
+        manager.store(stuck, &tokens("stale", 0)).expect("store");
+        manager
+            .store(fine, &tokens("good", now_ms() + 300_000))
+            .expect("store");
+        let original = tokens("old", 0);
+        manager.store(renewing, &original).expect("store");
+        let (url, reached) = silent().await;
+        let hanging = {
+            let manager = Arc::clone(&manager);
+            let client = ServerClient::new(url).expect("client");
+            tokio::spawn(async move { manager.access_token(stuck, &client).await })
+        };
+        reached.notified().await;
+        let offline = ServerClient::new(closed_url().await).expect("client");
+        let good =
+            tokio::time::timeout(Duration::from_secs(2), manager.access_token(fine, &offline))
+                .await
+                .expect("a good token is not held up")
+                .expect("token");
+        assert_eq!(good, "good");
+        let answering =
+            ServerClient::new(answering(now_ms(), &original, "renewed").await).expect("client");
+        let renewed = tokio::time::timeout(
+            Duration::from_secs(5),
+            manager.force_refresh(renewing, &answering),
+        )
+        .await
+        .expect("another server's refresh is not held up")
+        .expect("token");
+        assert_eq!(renewed, "renewed");
+        assert!(!hanging.is_finished());
+        hanging.abort();
+    }
+
+    async fn refreshing_with(
+        refresh_replies: Vec<String>,
+        original: &SessionTokens,
+    ) -> crate::ServerUrl {
+        use crate::client::test_util::{http_response, routed};
+        let json = [("Content-Type", "application/json")];
+        let challenge = serde_json::json!({
+            "nonce": "nonce",
+            "expires_at": now_ms() + 120_000,
+        })
+        .to_string();
+        let renewed = serde_json::json!({
+            "account_id": original.account_id,
+            "device_id": original.device_id,
+            "access_token": "renewed",
+            "access_expires_at": now_ms() + 600_000,
+            "refresh_token": "renewed-refresh",
+        })
+        .to_string();
+        let replies = refresh_replies
+            .into_iter()
+            .map(|reply| {
+                if reply == "renewed" {
+                    http_response("200 OK", &json, &renewed)
+                } else {
+                    reply
+                }
+            })
+            .collect();
+        let (url, _heard) = routed(|_| {
+            vec![
+                (
+                    "/auth/challenge",
+                    vec![http_response("200 OK", &json, &challenge)],
+                ),
+                ("/auth/refresh", replies),
+            ]
+        })
+        .await;
+        url
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_expired_sign_in_check_is_tried_again_and_keeps_the_session() {
+        use crate::client::test_util::http_response;
+        let (_secrets, manager) = manager();
+        let server = ServerId::new_v7();
+        let original = tokens("old", 0);
+        manager.store(server, &original).expect("store");
+        let expired = http_response(
+            "401 Unauthorized",
+            &[("Content-Type", "application/json")],
+            r#"{"code":"expired_nonce","message":"The sign-in check expired. Try again."}"#,
+        );
+        let url = refreshing_with(vec![expired, "renewed".to_owned()], &original).await;
+        let client = ServerClient::new(url).expect("client");
+        assert_eq!(
+            manager
+                .force_refresh(server, &client)
+                .await
+                .expect("renewed"),
+            "renewed"
+        );
+        let stored = manager
+            .tokens(server)
+            .expect("read")
+            .expect("still signed in");
+        assert_eq!(stored.refresh_token, "renewed-refresh");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_401_from_something_in_front_of_the_server_keeps_the_session() {
+        use crate::client::test_util::http_response;
+        let (_secrets, manager) = manager();
+        let server = ServerId::new_v7();
+        let original = tokens("old", 0);
+        manager.store(server, &original).expect("store");
+        let bare = http_response("401 Unauthorized", &[("WWW-Authenticate", "Basic")], "");
+        let url = refreshing_with(vec![bare], &original).await;
+        let client = ServerClient::new(url).expect("client");
+        assert!(matches!(
+            manager.force_refresh(server, &client).await,
+            Err(CollabError::Network(_))
+        ));
+        assert_eq!(
+            manager
+                .tokens(server)
+                .expect("read")
+                .map(|kept| kept.refresh_token),
+            Some(original.refresh_token.clone())
+        );
+        let still_expired = http_response(
+            "401 Unauthorized",
+            &[("Content-Type", "application/json")],
+            r#"{"code":"expired_nonce","message":"m"}"#,
+        );
+        let url = refreshing_with(vec![still_expired], &original).await;
+        let client = ServerClient::new(url).expect("client");
+        assert!(matches!(
+            manager.force_refresh(server, &client).await,
+            Err(CollabError::Api { status: 401, ref code, .. }) if code == "expired_nonce"
+        ));
+        assert!(manager.tokens(server).expect("read").is_some());
     }
 
     #[tokio::test]

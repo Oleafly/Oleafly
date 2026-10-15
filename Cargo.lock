@@ -3964,6 +3964,7 @@ version = "0.1.0"
 dependencies = [
  "futures-util",
  "httpdate",
+ "hyper-util",
  "loro",
  "oleafly-collab-protocol",
  "oleafly-server",
@@ -3977,6 +3978,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tokio-tungstenite 0.30.0",
+ "unicode-normalization",
  "url",
  "webpki-roots 1.0.9",
 ]

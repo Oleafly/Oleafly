@@ -252,6 +252,91 @@ fn a_project_with_a_long_saved_change_log_opens_within_a_few_plain_batch_imports
     );
 }
 
+fn pasted_by_one_writer(pastes: usize) -> (Vec<u8>, Vec<Vec<u8>>) {
+    let mut owner = ProjectDoc::create().unwrap();
+    let main = owner
+        .add_node(
+            None,
+            "main.tex",
+            NodeKind::Text,
+            None,
+            &lines(120_000, "main"),
+        )
+        .unwrap();
+    owner
+        .add_node(
+            None,
+            "big.tex",
+            NodeKind::Text,
+            None,
+            &lines(BIG_FILE, "big"),
+        )
+        .unwrap();
+    let copy = owner.snapshot().unwrap();
+    let paster = LoroDoc::new();
+    paster.import(&copy).unwrap();
+    paster.set_peer_id(u64::MAX - 100).unwrap();
+    let mut payloads = Vec::new();
+    for paste in 0..pastes {
+        let from = paster
+            .oplog_vv()
+            .get(&paster.peer_id())
+            .copied()
+            .unwrap_or(0);
+        let text = paster.get_text(format!("text:{main}"));
+        text.insert(
+            text.len_unicode(),
+            &lines(200_000, &format!("paste {paste}")),
+        )
+        .unwrap();
+        paster.commit();
+        payloads.push(own_changes(&paster, from));
+    }
+    (copy, payloads)
+}
+
+#[test]
+fn pastes_from_one_writer_onto_an_idle_copy_import_about_as_fast_as_plain_imports_and_resends_cost_nothing(
+) {
+    let _alone = alone();
+    let (copy, pastes) = pasted_by_one_writer(5);
+    assert!(pastes.iter().all(|payload| payload.len() >= 64 * 1024));
+    let plain = LoroDoc::new();
+    plain.import(&copy).unwrap();
+    plain.import(&pastes[0]).unwrap();
+    let started = Instant::now();
+    for payload in &pastes[1..] {
+        plain.import(payload).unwrap();
+    }
+    let plain_took = started.elapsed();
+    let mut live = LiveProject::new(ProjectDoc::load(&copy).unwrap(), 0, ProjectRole::Editor);
+    assert!(live.import_update(1, &pastes[0]).unwrap());
+
+    let started = Instant::now();
+    for (index, payload) in pastes[1..].iter().enumerate() {
+        assert!(live.import_update(index as u64 + 2, payload).unwrap());
+    }
+    let took = started.elapsed();
+
+    assert_eq!(live.doc().version(), plain.oplog_vv());
+    assert!(
+        took.as_secs_f64() <= 3.0 * plain_took.as_secs_f64() + 0.05,
+        "{} pastes onto the copy's own head took {took:?}, plain imports took {plain_took:?}",
+        pastes.len() - 1
+    );
+    let started = Instant::now();
+    let _ = plain.fork();
+    let fork_took = started.elapsed();
+    let started = Instant::now();
+    assert!(live.import_update(9, &pastes[2]).unwrap());
+    let resent = started.elapsed();
+    assert_eq!(live.doc().version(), plain.oplog_vv());
+    assert!(
+        resent * 4 < fork_took,
+        "a paste the copy already held took {resent:?}, one fork of the document takes {fork_took:?}"
+    );
+}
+
 #[test]
 fn a_queue_of_concurrent_changes_some_over_64_kib_is_taken_in_within_a_few_plain_batch_imports() {
     let _alone = alone();

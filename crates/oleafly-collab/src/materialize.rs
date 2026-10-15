@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::doc::{FileNode, NodeKind, NodeParent};
 
@@ -14,9 +15,12 @@ pub struct Placed {
 pub type Layout = BTreeMap<String, Placed>;
 
 const RESERVED_TOP: [&str; 3] = [".oleafly", ".git", ".DS_Store"];
-const WINDOWS_RESERVED: [&str; 22] = [
-    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+// Windows treats these as devices with or without an extension, including
+// the forms with superscript digits.
+const WINDOWS_RESERVED: [&str; 30] = [
+    "con", "prn", "aux", "nul", "com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7",
+    "com8", "com9", "com¹", "com²", "com³", "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6",
+    "lpt7", "lpt8", "lpt9", "lpt¹", "lpt²", "lpt³",
 ];
 
 pub fn short_alias(name: &str) -> bool {
@@ -63,12 +67,16 @@ pub fn safe_name(name: &str, id: &str) -> String {
     }
 }
 
+// Two names are one file wherever a member's file system says so: macOS
+// and Windows ignore case, and macOS also treats a name typed as one
+// character (NFC) and the same name spelled with a combining accent (NFD),
+// which Finder and zip files from a Mac use, as the same name.
 fn fold(name: &str) -> String {
-    name.to_lowercase()
+    name.nfc().flat_map(char::to_lowercase).collect()
 }
 
-fn suffixed(name: &str, id: &str) -> String {
-    let short: String = id
+fn suffixed(name: &str, id: &str, number: usize) -> String {
+    let mut short: String = id
         .chars()
         .rev()
         .take(6)
@@ -76,18 +84,36 @@ fn suffixed(name: &str, id: &str) -> String {
         .into_iter()
         .rev()
         .collect();
+    if number > 1 {
+        short = format!("{short} {number}");
+    }
     match name.rfind('.') {
         Some(dot) if dot > 0 => format!("{} ({short}){}", &name[..dot], &name[dot..]),
         _ => format!("{name} ({short})"),
     }
 }
 
-fn in_trash(parents: &BTreeMap<&str, &NodeParent>, id: &str) -> bool {
+// Any name can already be taken, even one with this node's id in it, so
+// the suffix counts up until the name is free.
+fn free_suffixed(name: &str, id: &str, mut free: impl FnMut(&str) -> bool) -> String {
+    let mut number = 1;
+    loop {
+        let named = suffixed(name, id, number);
+        if free(&named) {
+            return named;
+        }
+        number += 1;
+    }
+}
+
+fn in_trash(parents: &BTreeMap<&str, &NodeParent>, folders: &BTreeSet<&str>, id: &str) -> bool {
     let mut current = id;
     for _ in 0..=parents.len() {
         match parents.get(current) {
             Some(NodeParent::Trash) => return true,
-            Some(NodeParent::Node(parent)) => current = parent.as_str(),
+            Some(NodeParent::Node(parent)) if folders.contains(parent.as_str()) => {
+                current = parent.as_str();
+            }
             _ => return false,
         }
     }
@@ -96,19 +122,30 @@ fn in_trash(parents: &BTreeMap<&str, &NodeParent>, id: &str) -> bool {
 
 type Groups<'a> = BTreeMap<(NodeParent, String), Vec<&'a FileNode>>;
 
+// Only a folder holds other nodes. A node whose parent is a file, which
+// only a modified client can make, sits at the top like an orphan, so it
+// never needs a folder where a file is.
+fn folders(nodes: &[FileNode]) -> BTreeSet<&str> {
+    nodes
+        .iter()
+        .filter(|node| node.kind == NodeKind::Dir)
+        .map(|node| node.id.as_str())
+        .collect()
+}
+
 fn groups(nodes: &[FileNode]) -> Groups<'_> {
-    let ids: BTreeSet<&str> = nodes.iter().map(|node| node.id.as_str()).collect();
+    let folders = folders(nodes);
     let parents: BTreeMap<&str, &NodeParent> = nodes
         .iter()
         .map(|node| (node.id.as_str(), &node.parent))
         .collect();
     let mut groups = Groups::new();
     for node in nodes {
-        if in_trash(&parents, &node.id) {
+        if in_trash(&parents, &folders, &node.id) {
             continue;
         }
         let parent = match &node.parent {
-            NodeParent::Node(parent) if !ids.contains(parent.as_str()) => NodeParent::Root,
+            NodeParent::Node(parent) if !folders.contains(parent.as_str()) => NodeParent::Root,
             other => other.clone(),
         };
         let name = safe_name(&node.name, &node.id);
@@ -217,7 +254,11 @@ fn naming<'a>(groups: &Groups<'a>) -> Naming<'a> {
                         taken.insert((parent.clone(), fold(named)))
                     })
                 })
-                .unwrap_or_else(|| suffixed(&name, &node.id));
+                .unwrap_or_else(|| {
+                    free_suffixed(&name, &node.id, |named| {
+                        taken.insert((parent.clone(), fold(named)))
+                    })
+                });
             if !reserved {
                 clashes.push(Clash {
                     id: node.id.clone(),
@@ -249,8 +290,6 @@ pub fn layout(nodes: &[FileNode]) -> Layout {
             },
         );
     }
-    let taken: BTreeSet<String> = placed.values().map(|entry| fold(&entry.path)).collect();
-    debug_assert_eq!(taken.len(), placed.len());
     placed
 }
 
@@ -291,7 +330,11 @@ fn path_of(
     for _ in 0..=by_id.len() {
         segments.push(names.get(current)?.clone());
         match by_id.get(current).map(|node| &node.parent) {
-            Some(NodeParent::Node(parent)) if by_id.contains_key(parent.as_str()) => {
+            Some(NodeParent::Node(parent))
+                if by_id
+                    .get(parent.as_str())
+                    .is_some_and(|holder| holder.kind == NodeKind::Dir) =>
+            {
                 current = parent.as_str();
             }
             Some(NodeParent::Trash) => return None,
@@ -449,6 +492,33 @@ mod tests {
     }
 
     #[test]
+    fn a_suffixed_name_never_takes_a_name_another_file_already_has() {
+        let nodes = vec![
+            node("ab0001", NodeParent::Root, "plot.png", NodeKind::Text),
+            node("ab0002", NodeParent::Root, "plot.png", NodeKind::Text),
+            node(
+                "ab0003",
+                NodeParent::Root,
+                "plot (ab0002).png",
+                NodeKind::Text,
+            ),
+            node(
+                "ab0004",
+                NodeParent::Root,
+                "plot (ab0002 2).png",
+                NodeKind::Text,
+            ),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["ab0001"].path, "plot.png");
+        assert_eq!(placed["ab0002"].path, "plot (ab0002 3).png");
+        assert_eq!(placed["ab0003"].path, "plot (ab0002).png");
+        assert_eq!(placed["ab0004"].path, "plot (ab0002 2).png");
+        let paths: BTreeSet<String> = placed.values().map(|entry| fold(&entry.path)).collect();
+        assert_eq!(paths.len(), placed.len());
+    }
+
+    #[test]
     fn clashes_name_the_original_name_and_the_file_that_kept_it() {
         let nodes = vec![
             node("a1", NodeParent::Root, "Main.tex", NodeKind::Text),
@@ -512,6 +582,49 @@ mod tests {
     }
 
     #[test]
+    fn a_node_whose_parent_is_a_file_is_laid_out_at_the_top() {
+        let nodes = vec![
+            node("t1", NodeParent::Root, "main.tex", NodeKind::Text),
+            node(
+                "t2",
+                NodeParent::Node("t1".into()),
+                "child.tex",
+                NodeKind::Text,
+            ),
+            node("d1", NodeParent::Root, "figs", NodeKind::Dir),
+            node(
+                "t3",
+                NodeParent::Node("d1".into()),
+                "plot.tex",
+                NodeKind::Text,
+            ),
+            node(
+                "t4",
+                NodeParent::Node("t1".into()),
+                "main.tex",
+                NodeKind::Text,
+            ),
+            node("t5", NodeParent::Trash, "old.tex", NodeKind::Text),
+            node(
+                "t6",
+                NodeParent::Node("t5".into()),
+                "under-old.tex",
+                NodeKind::Text,
+            ),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["t1"].path, "main.tex");
+        assert_eq!(placed["t2"].path, "child.tex");
+        assert_eq!(placed["t3"].path, "figs/plot.tex");
+        assert_eq!(placed["t4"].path, "main (t4).tex");
+        assert_eq!(placed["t6"].path, "under-old.tex");
+        assert!(!placed.contains_key("t5"));
+        assert!(placed
+            .values()
+            .all(|placed| !placed.path.starts_with("main.tex/")));
+    }
+
+    #[test]
     fn names_that_clash_by_case_get_a_suffix() {
         let nodes = vec![
             node("a1", NodeParent::Root, "Main.tex", NodeKind::Text),
@@ -520,6 +633,33 @@ mod tests {
         let placed = layout(&nodes);
         assert_eq!(placed["a1"].path, "Main.tex");
         assert_eq!(placed["b2"].path, "main (b2).tex");
+    }
+
+    #[test]
+    fn names_that_differ_only_in_unicode_form_get_a_suffix() {
+        let nodes = vec![
+            node(
+                "a1",
+                NodeParent::Root,
+                "Gr\u{f6}\u{df}e.png",
+                NodeKind::Text,
+            ),
+            node(
+                "b2",
+                NodeParent::Root,
+                "Gro\u{308}\u{df}e.png",
+                NodeKind::Text,
+            ),
+            node("c3", NodeParent::Root, "CAF\u{c9}", NodeKind::Dir),
+            node("d4", NodeParent::Root, "cafe\u{301}", NodeKind::Dir),
+        ];
+        let placed = layout(&nodes);
+        assert_eq!(placed["a1"].path, "Gr\u{f6}\u{df}e.png");
+        assert_eq!(placed["b2"].path, "Gro\u{308}\u{df}e (b2).png");
+        assert_eq!(placed["c3"].path, "CAF\u{c9}");
+        assert_eq!(placed["d4"].path, "cafe\u{301} (d4)");
+        let clashed: Vec<String> = clashes(&nodes).into_iter().map(|clash| clash.id).collect();
+        assert_eq!(clashed, ["d4", "b2"]);
     }
 
     #[test]
@@ -535,6 +675,10 @@ mod tests {
             ".Oleafly",
             "GIT~1",
             "draft~2.tex",
+            "COM\u{b9}.txt",
+            "lpt\u{b3}",
+            "COM0.tex",
+            "lpt0",
         ] {
             assert!(
                 safe_name(bad, "0123456789").starts_with("unnamed-"),

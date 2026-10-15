@@ -73,6 +73,157 @@ pub(crate) async fn canned(response: String) -> ServerUrl {
     ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("canned address")
 }
 
+pub(crate) type Heard = Arc<std::sync::Mutex<Vec<String>>>;
+
+// A server that answers each path with its own list of responses, one per
+// request and the last one again after that, and keeps every request it got.
+pub(crate) async fn routed(
+    routes: impl FnOnce(&ServerUrl) -> Vec<(&'static str, Vec<String>)>,
+) -> (ServerUrl, Heard) {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+    let port = listener.local_addr().expect("address").port();
+    let url = ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("routed address");
+    let routes: Vec<(&'static str, Vec<String>)> = routes(&url);
+    let answers = Arc::new(std::sync::Mutex::new(
+        routes
+            .into_iter()
+            .map(|(path, replies)| (path, replies.into_iter().collect()))
+            .collect::<Vec<(&'static str, std::collections::VecDeque<String>)>>(),
+    ));
+    let heard: Heard = Arc::default();
+    let kept = Arc::clone(&heard);
+    tokio::spawn(async move {
+        while let Ok((mut stream, _)) = listener.accept().await {
+            let answers = Arc::clone(&answers);
+            let kept = Arc::clone(&kept);
+            tokio::spawn(async move {
+                let Some(request) = read_whole_request(&mut stream).await else {
+                    return;
+                };
+                let path = request
+                    .split_whitespace()
+                    .nth(1)
+                    .and_then(|target| target.split('?').next())
+                    .unwrap_or_default()
+                    .to_owned();
+                kept.lock().expect("heard").push(request);
+                let answer = {
+                    let mut answers = answers.lock().expect("answers");
+                    match answers.iter_mut().find(|(route, _)| *route == path) {
+                        Some((_, replies)) if replies.len() > 1 => replies.pop_front(),
+                        Some((_, replies)) => replies.front().cloned(),
+                        None => None,
+                    }
+                };
+                let answer = answer.unwrap_or_else(|| http_response("404 Not Found", &[], ""));
+                let _ = stream.write_all(answer.as_bytes()).await;
+                let _ = stream.shutdown().await;
+            });
+        }
+    });
+    (url, heard)
+}
+
+async fn read_whole_request(stream: &mut tokio::net::TcpStream) -> Option<String> {
+    let mut request = Vec::new();
+    let mut buffer = [0u8; 8192];
+    let end = loop {
+        if let Some(end) = request.windows(4).position(|window| window == b"\r\n\r\n") {
+            break end + 4;
+        }
+        match stream.read(&mut buffer).await {
+            Ok(0) | Err(_) => return None,
+            Ok(read) => request.extend_from_slice(&buffer[..read]),
+        }
+    };
+    let head = String::from_utf8_lossy(&request[..end]).to_string();
+    let length = head
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.trim()
+                .eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())?
+        })
+        .unwrap_or(0);
+    while request.len() < end + length {
+        match stream.read(&mut buffer).await {
+            Ok(0) | Err(_) => break,
+            Ok(read) => request.extend_from_slice(&buffer[..read]),
+        }
+    }
+    Some(String::from_utf8_lossy(&request).to_string())
+}
+
+pub(crate) struct UpgradeFront {
+    pub(crate) url: ServerUrl,
+    pub(crate) upgrades: Heard,
+}
+
+impl UpgradeFront {
+    // Passes everything on to `upstream` and keeps the head of every
+    // WebSocket upgrade, answering those with `refusal` when one is given.
+    pub(crate) async fn start(upstream: &ServerUrl, refusal: Option<String>) -> UpgradeFront {
+        let target = upstream.endpoint("/");
+        let upstream = format!(
+            "{}:{}",
+            target.host_str().expect("host"),
+            target.port_or_known_default().expect("port")
+        );
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        let upgrades: Heard = Arc::default();
+        let kept = Arc::clone(&upgrades);
+        tokio::spawn(async move {
+            while let Ok((mut client, _)) = listener.accept().await {
+                let (upstream, refusal, kept) =
+                    (upstream.clone(), refusal.clone(), Arc::clone(&kept));
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut buffer = [0u8; 8192];
+                    while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match client.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => head.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    let text = String::from_utf8_lossy(&head).to_string();
+                    if text.to_ascii_lowercase().contains("upgrade: websocket") {
+                        kept.lock().expect("upgrades").push(text);
+                        if let Some(refusal) = refusal {
+                            let _ = client.write_all(refusal.as_bytes()).await;
+                            let _ = client.shutdown().await;
+                            return;
+                        }
+                    }
+                    let Ok(mut server) = tokio::net::TcpStream::connect(&upstream).await else {
+                        return;
+                    };
+                    if server.write_all(&head).await.is_ok() {
+                        let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+                    }
+                });
+            }
+        });
+        UpgradeFront {
+            url: ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("front address"),
+            upgrades,
+        }
+    }
+
+    pub(crate) fn upgrades(&self) -> Vec<String> {
+        self.upgrades.lock().expect("upgrades").clone()
+    }
+}
+
+pub(crate) fn refusal_with(status: &str, code: &str) -> String {
+    http_response(
+        status,
+        &[("Content-Type", "application/json")],
+        &format!("{{\"code\":\"{code}\",\"message\":\"Sign in to this server again.\"}}"),
+    )
+}
+
 pub(crate) async fn closed_url() -> ServerUrl {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
     let port = listener.local_addr().expect("address").port();
@@ -108,12 +259,45 @@ pub(crate) fn device_key() -> DeviceKey {
     DeviceKey::load_or_create(&MemorySecrets::default()).expect("device key")
 }
 
+fn is_app_callback(url: &::url::Url) -> bool {
+    url.host_str() == Some("127.0.0.1") && url.path() == "/callback"
+}
+
+// Follows redirects like a browser. A server from before the issuer check
+// (RFC 9207) leaves `iss` off its redirect back to the app, so this adds the
+// address of the server that sent that redirect, as such a server would.
+pub(crate) async fn browse(url: &str) -> Option<reqwest::Response> {
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .ok()?;
+    let mut url = ::url::Url::parse(url).ok()?;
+    for _ in 0..20 {
+        let response = client.get(url.clone()).send().await.ok()?;
+        if !response.status().is_redirection() {
+            return Some(response);
+        }
+        let location = response
+            .headers()
+            .get(reqwest::header::LOCATION)?
+            .to_str()
+            .ok()?;
+        let mut next = url.join(location).ok()?;
+        let named = next.query_pairs().any(|(name, _)| name == "iss");
+        if is_app_callback(&next) && !named {
+            let sender = url.origin().ascii_serialization();
+            next.query_pairs_mut().append_pair("iss", &sender);
+        }
+        url = next;
+    }
+    None
+}
+
 pub(crate) fn follow_browser(url: &str) -> Result<(), CollabError> {
     let url = url.to_string();
     tokio::spawn(async move {
-        if let Ok(client) = reqwest::Client::builder().no_proxy().build() {
-            let _ = client.get(url).send().await;
-        }
+        let _ = browse(&url).await;
     });
     Ok(())
 }
@@ -127,10 +311,7 @@ pub(crate) fn recording_browser(
         let url = url.to_string();
         let pages = Arc::clone(&pages);
         tokio::spawn(async move {
-            let Ok(client) = reqwest::Client::builder().no_proxy().build() else {
-                return;
-            };
-            if let Ok(response) = client.get(url).send().await {
+            if let Some(response) = browse(&url).await {
                 if let Ok(page) = response.text().await {
                     pages.lock().expect("pages").push(page);
                 }
@@ -316,6 +497,36 @@ pub(crate) async fn two_people() -> Pair {
         bob,
         alice,
     }
+}
+
+// A copy that keeps only the history after its current state, and a change
+// someone made from an earlier state. The change reads like any other but
+// the copy cannot take it in: the shape of a change from a modified client
+// or one that hits a Loro bug.
+pub(crate) fn trimmed_and_unreadable(doc: &crate::doc::ProjectDoc) -> (Vec<u8>, Vec<u8>) {
+    let loro = doc.loro();
+    let trimmed = loro
+        .export(loro::ExportMode::shallow_snapshot(&loro.oplog_frontiers()))
+        .expect("a trimmed copy");
+    let first_writer = *loro
+        .oplog_vv()
+        .iter()
+        .next()
+        .expect("the document has a history")
+        .0;
+    let earliest = loro::Frontiers::from_id(loro::ID::new(first_writer, 0));
+    let writer = loro.fork_at(&earliest).expect("an early copy");
+    writer.set_peer_id(u64::MAX >> 3).expect("a writer id");
+    let since = writer.oplog_vv();
+    writer
+        .get_map("meta")
+        .insert("written_early", true)
+        .expect("a change");
+    writer.commit();
+    let update = writer
+        .export(loro::ExportMode::updates(&since))
+        .expect("the change");
+    (trimmed, update)
 }
 
 pub(crate) fn noise(length: usize, seed: u64) -> String {

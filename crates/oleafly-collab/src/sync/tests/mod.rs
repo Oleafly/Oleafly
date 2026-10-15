@@ -8,6 +8,7 @@ mod ending;
 mod refusals;
 mod restore;
 mod transport;
+mod versions;
 mod writer_list;
 
 use std::collections::BTreeSet;
@@ -222,6 +223,7 @@ fn quick() -> TransportOptions {
     TransportOptions {
         fallback_after: 2,
         retry_socket_every: Duration::from_secs(60),
+        ..TransportOptions::default()
     }
 }
 
@@ -350,6 +352,65 @@ async fn reached(side: &mut Side, wanted: impl Fn(&LiveStatus) -> bool) -> bool 
 
 async fn back_online(side: &mut Side) -> bool {
     reached(side, |status| *status == LiveStatus::Online).await
+}
+
+// Carries what the app sends at `rate` bytes a second and what the server
+// sends at full speed, like a home or hotel uplink.
+async fn throttled_link(upstream: std::net::SocketAddr, rate: usize) -> std::net::SocketAddr {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    async fn pump(
+        mut from: tokio::net::tcp::OwnedReadHalf,
+        mut to: tokio::net::tcp::OwnedWriteHalf,
+        rate: Option<usize>,
+    ) {
+        let mut buffer = vec![0u8; 4096];
+        loop {
+            match from.read(&mut buffer).await {
+                Ok(0) | Err(_) => break,
+                Ok(read) => {
+                    if let Some(rate) = rate {
+                        tokio::time::sleep(Duration::from_secs_f64(read as f64 / rate as f64))
+                            .await;
+                    }
+                    if to.write_all(&buffer[..read]).await.is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+        let _ = to.shutdown().await;
+    }
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let address = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        while let Ok((client, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let Ok(server) = tokio::net::TcpStream::connect(upstream).await else {
+                    return;
+                };
+                let (client_read, client_write) = client.into_split();
+                let (server_read, server_write) = server.into_split();
+                let up = tokio::spawn(pump(client_read, server_write, Some(rate)));
+                let down = tokio::spawn(pump(server_read, client_write, None));
+                let _ = tokio::join!(up, down);
+            });
+        }
+    });
+    address
+}
+
+fn link_through(
+    pair: &Pair,
+    person: &Person,
+    project: SharedProjectId,
+    address: std::net::SocketAddr,
+) -> LiveLink {
+    let mut through = link(pair, person, project);
+    let url = crate::ServerUrl::parse(&format!("http://{address}")).expect("relay address");
+    through.client = Arc::new(ServerClient::new(url).expect("client"));
+    through
 }
 
 async fn slow_link(upstream: std::net::SocketAddr, one_way: Duration) -> std::net::SocketAddr {

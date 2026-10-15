@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use oleafly_collab_protocol::crypto::verify_ed25519;
-use oleafly_collab_protocol::envelope::Envelope;
+use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -12,6 +12,7 @@ use crate::live::PeerCheck;
 pub(super) enum Trust {
     Signed(Option<AccountId>),
     Refused,
+    Unreadable,
     Unreachable,
 }
 
@@ -29,6 +30,9 @@ pub(super) async fn trust(
     envelope: &Envelope,
     claimed: Option<AccountId>,
 ) -> Trust {
+    if envelope.mode == EnvelopeMode::Unknown {
+        return Trust::Unreadable;
+    }
     match signature_trust(
         link,
         project,
@@ -58,26 +62,40 @@ pub(super) async fn peer_trust(
     let unknown = match lock(project).check_peers(&envelope.payload, envelope.device_id) {
         PeerCheck::Fine => return Trust::Signed(None),
         PeerCheck::Refused => return Trust::Refused,
+        PeerCheck::Unreadable => return Trust::Unreadable,
         PeerCheck::Unknown(unknown) => unknown,
     };
     if unknown.iter().all(|peer| refreshed.contains(peer)) {
         return Trust::Signed(None);
     }
-    refreshed.extend(unknown);
+    refreshed.extend(unknown.iter().copied());
+    // Once the whole list has been seen, a new writer id only needs its own
+    // row, not every row the project ever had.
+    let whole = !lock(project).peers_vouched();
     let listed = match link
         .sessions
         .access_token(link.server_id, &link.client)
         .await
     {
-        Ok(access) => link.client.project_peers(&access, link.project).await,
+        Ok(access) if whole => link.client.project_peers(&access, link.project).await,
+        Ok(access) => {
+            link.client
+                .project_peers_among(&access, link.project, &unknown)
+                .await
+        }
         Err(error) => Err(error),
     };
     match listed {
         Ok(listed) => {
             let mut live = lock(project);
-            live.pin_peers(listed);
+            if whole {
+                live.pin_peers(listed);
+            } else {
+                live.add_peers(listed);
+            }
             match live.check_peers(&envelope.payload, envelope.device_id) {
                 PeerCheck::Refused => Trust::Refused,
+                PeerCheck::Unreadable => Trust::Unreadable,
                 PeerCheck::Fine | PeerCheck::Unknown(_) => Trust::Signed(None),
             }
         }

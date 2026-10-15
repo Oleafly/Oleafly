@@ -82,6 +82,90 @@ async fn four_three_megabyte_files_added_at_once_reach_the_other_editor_over_lon
     four_big_files_reach_the_other_editor(true).await;
 }
 
+fn impatient() -> TransportOptions {
+    TransportOptions {
+        ping_every: Duration::from_millis(500),
+        quiet_for: Duration::from_secs(2),
+        ..quick()
+    }
+}
+
+async fn on_a_slow_uplink(pair: &Pair) -> (SharedProjectId, String, Side, Side) {
+    let (project, main, bob_live, alice_live) = shared(pair).await;
+    let upstream = pair
+        ._server
+        .url()
+        .trim_start_matches("http://")
+        .parse()
+        .unwrap();
+    let slow = throttled_link(upstream, 32 * 1024).await;
+    let mut bob = side(bob_live, &main);
+    let mut alice = side(alice_live, &main);
+    start_with(
+        &mut bob,
+        link_through(pair, &pair.bob, project, slow),
+        impatient(),
+    );
+    start(&mut alice, link(pair, &pair.alice, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    until_status(&mut alice, LiveStatus::Online).await;
+    (project, main, bob, alice)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_large_change_on_a_slow_uplink_is_acknowledged_without_reconnecting() {
+    let pair = two_people().await;
+    let (_project, _main, mut bob, alice) = on_a_slow_uplink(&pair).await;
+    let body = noise(200 * 1024, 21);
+    let refs = lock(&bob.live)
+        .doc_mut()
+        .add_node(None, "refs.bib", NodeKind::Text, None, &body)
+        .unwrap();
+    flushed(&bob);
+    tokio::time::timeout(Duration::from_secs(90), async {
+        while lock(&bob.live).has_unsent() {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the change was acknowledged");
+    assert_eq!(dropped(&mut bob), 0, "Bob's connection dropped on the way");
+    tokio::time::timeout(WAIT, async {
+        while lock(&alice.live).doc().text(&refs).ok().as_deref() != Some(body.as_str()) {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the change reached Alice");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stopping_while_a_large_change_is_still_going_up_ends_the_session_at_once() {
+    let pair = two_people().await;
+    let (_project, _main, mut bob, _alice) = on_a_slow_uplink(&pair).await;
+    let body = noise(2 * 1024 * 1024, 22);
+    lock(&bob.live)
+        .doc_mut()
+        .add_node(None, "refs.bib", NodeKind::Text, None, &body)
+        .unwrap();
+    flushed(&bob);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let asked = tokio::time::Instant::now();
+    bob.handle.as_ref().unwrap().stop();
+    until_status(
+        &mut bob,
+        LiveStatus::Ended {
+            reason: EndReason::Stopped,
+        },
+    )
+    .await;
+    assert!(
+        asked.elapsed() < Duration::from_secs(5),
+        "stopping took {:?}",
+        asked.elapsed()
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edit_too_large_for_any_batch_is_reported_once_and_the_connection_stays_up() {
     let pair = two_people().await;

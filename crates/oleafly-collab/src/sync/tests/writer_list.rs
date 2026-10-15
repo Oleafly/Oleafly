@@ -242,3 +242,52 @@ async fn a_change_from_a_new_writer_waits_whenever_the_server_gives_no_writer_li
     let verdict = peer_trust(&current, &bob.live, &mut BTreeSet::new(), &envelope).await;
     assert!(matches!(verdict, Trust::Signed(_)));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_new_writer_id_is_looked_up_alone_once_the_whole_list_was_seen() {
+    let pair = two_people().await;
+    let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+    let alice_peer = alice_live.doc().peer_id();
+    alice_live.local_text(&main, "abcX").unwrap();
+    let payload = alice_live.next_outgoing().unwrap().unwrap().payload;
+    let envelope = signed_envelope(&pair.alice, project, payload);
+    let row = serde_json::json!([{
+        "peer": alice_peer,
+        "device_id": pair.alice.tokens.device_id,
+        "account_id": pair.alice.tokens.account_id,
+    }])
+    .to_string();
+    let path: &'static str =
+        Box::leak(format!("/api/v1/projects/{project}/peers").into_boxed_str());
+    for vouched in [false, true] {
+        let bob = side(
+            LiveProject::new(
+                ProjectDoc::load(&bob_live.doc().snapshot().unwrap()).unwrap(),
+                0,
+                ProjectRole::Owner,
+            ),
+            &main,
+        );
+        if vouched {
+            lock(&bob.live).pin_peers(Vec::new());
+        }
+        let reply = http_response("200 OK", &[("content-type", "application/json")], &row);
+        let (url, heard) = crate::client::test_util::routed(|_| vec![(path, vec![reply])]).await;
+        let mut asking = link(&pair, &pair.bob, project);
+        asking.client = Arc::new(ServerClient::new(url).unwrap());
+        let verdict = peer_trust(&asking, &bob.live, &mut BTreeSet::new(), &envelope).await;
+        assert!(matches!(verdict, Trust::Signed(_)));
+        let heard = heard.lock().unwrap().clone();
+        assert_eq!(heard.len(), 1, "{heard:?}");
+        let target = heard[0].split_whitespace().nth(1).unwrap().to_owned();
+        if vouched {
+            assert_eq!(target, format!("{path}?ids={alice_peer}"));
+        } else {
+            assert_eq!(target, path);
+        }
+        assert!(lock(&bob.live).peers_vouched());
+        let again = peer_trust(&asking, &bob.live, &mut BTreeSet::new(), &envelope).await;
+        assert!(matches!(again, Trust::Signed(_)));
+        assert_eq!(heard.len(), 1);
+    }
+}

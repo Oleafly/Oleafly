@@ -139,9 +139,14 @@ async fn probe_manifest(url: &ServerUrl) -> ManifestProbe {
 }
 
 async fn socket_opens(url: &ServerUrl) -> Result<(), CollabError> {
-    let mut socket = open_socket(url).await?;
-    let _ = socket.close(None).await;
-    Ok(())
+    match open_socket(url, None).await {
+        Ok(mut socket) => {
+            let _ = socket.close(None).await;
+            Ok(())
+        }
+        Err(CollabError::Unauthorized) => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 
 async fn long_poll_answers(url: &ServerUrl) -> bool {
@@ -422,6 +427,25 @@ mod tests {
             ]
         );
         assert_eq!(checks[5].detail.as_deref(), Some("configured"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_server_that_wants_a_sign_in_before_the_upgrade_still_passes_the_websocket_check() {
+        use crate::client::test_util::{refusal_with, UpgradeFront};
+        let server = TestServer::start(test_config()).await;
+        let url = server_url(&server);
+        let asks =
+            UpgradeFront::start(&url, Some(refusal_with("401 Unauthorized", "unauthorized"))).await;
+        let checks = test_connection(&asks.url).await;
+        assert_eq!(
+            checks[3],
+            check(CheckId::WebSocket, CheckStatus::Pass, None)
+        );
+        assert_eq!(asks.upgrades().len(), 1);
+        let stranger =
+            UpgradeFront::start(&url, Some(http_response("401 Unauthorized", &[], ""))).await;
+        let checks = test_connection(&stranger.url).await;
+        assert_ne!(checks[3].status, CheckStatus::Pass);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

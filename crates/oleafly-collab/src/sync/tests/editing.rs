@@ -228,3 +228,42 @@ async fn a_person_far_behind_catches_up_from_the_snapshot() {
     assert_eq!(text(&alice, &main), "abcxyz");
     assert_eq!(lock(&alice.live).last_seq(), 3);
 }
+
+async fn stored_updates(pair: &Pair, project: SharedProjectId) -> i64 {
+    pair._server
+        .state()
+        .db
+        .call(move |conn| {
+            Ok::<_, oleafly_server::error::ServerError>(conn.query_row(
+                "SELECT COUNT(*) FROM project_updates WHERE project_id = ?1",
+                [project.to_string()],
+                |row| row.get::<_, i64>(0),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_batch_the_server_took_just_before_the_app_quit_is_stored_once() {
+    let pair = two_people().await;
+    let (project, main, mut bob_live, _alice_live) = shared(&pair).await;
+    bob_live
+        .local_text(&main, "abc sent before quitting")
+        .unwrap();
+    let outgoing = bob_live.next_outgoing().unwrap().unwrap();
+    let mut envelope = signed_envelope(&pair.bob, project, outgoing.payload.clone());
+    envelope.batch_id = outgoing.batch;
+    envelope.signature = pair.bob.key.sign(&envelope.signing_bytes()).to_vec();
+    store_in_project(&pair, &pair.bob, project, envelope).await;
+    let dir = tempfile::tempdir().unwrap();
+    bob_live.save(dir.path()).unwrap();
+    drop(bob_live);
+    let restarted = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+    let mut bob = side(restarted, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    acknowledged(&bob).await;
+    assert_eq!(stored_updates(&pair, project).await, 1);
+    stopped(&mut bob).await;
+}

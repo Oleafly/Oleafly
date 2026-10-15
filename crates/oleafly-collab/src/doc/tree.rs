@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use loro::{Frontiers, LoroMap, LoroValue, TreeID, TreeParentId, ValueOrContainer, VersionVector};
 use oleafly_collab_protocol::ids::AccountId;
 
-use super::{doc_error, meta_string, NodeKind, NodeParent, ProjectDoc};
+use super::{doc_error, meta_string, NodeKind, NodeParent, ProjectDoc, TRASH_ID};
 use crate::CollabError;
 
 const RENAME_WINDOW: Duration = Duration::from_secs(5 * 60);
@@ -177,12 +177,24 @@ impl ProjectDoc {
         for _ in 0..=self.ids.len() + 1 {
             match self.tree.parent(current) {
                 Some(TreeParentId::Root) => return true,
-                Some(TreeParentId::Node(parent)) if Some(parent) == self.trash => return false,
+                Some(TreeParentId::Node(parent))
+                    if Some(parent) == self.trash || self.is_trash_folder(parent) =>
+                {
+                    return false
+                }
                 Some(TreeParentId::Node(parent)) => current = parent,
                 _ => return false,
             }
         }
         false
+    }
+
+    fn is_trash_folder(&self, node: TreeID) -> bool {
+        self.tree
+            .get_meta(node)
+            .ok()
+            .and_then(|meta| meta_string(&meta, "id"))
+            .is_some_and(|id| id == TRASH_ID)
     }
 
     fn name_path(&self, id: &str) -> Option<String> {
