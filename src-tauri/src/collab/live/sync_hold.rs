@@ -55,6 +55,11 @@ impl Pending {
     fn holds(&self, path: &str) -> bool {
         self.everything || self.paths.iter().any(|held| covers(held, path))
     }
+
+    // Whether moving `path` would carry a held file along.
+    fn pins(&self, path: &str) -> bool {
+        self.holds(path) || self.paths.iter().any(|held| covers(path, held))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,6 +134,12 @@ impl Hold {
         self.pending
             .as_ref()
             .is_some_and(|pending| pending.holds(path))
+    }
+
+    fn pins(&self, path: &str) -> bool {
+        self.pending
+            .as_ref()
+            .is_some_and(|pending| pending.pins(path))
     }
 
     fn kind(&self, path: &str) -> Option<Kept> {
@@ -293,10 +304,93 @@ impl Active {
             }
             (!pending.everything).then(|| pending.paths.into_iter().collect::<Vec<_>>())
         };
+        let only = self.follow_held_moves(only)?;
         match decision {
             SyncDecision::Send => self.import_paths(only).await,
             SyncDecision::KeepLocal => self.keep_local(only.as_deref()),
         }
+    }
+
+    // A rename someone else made to a file the hold kept back waited for
+    // the decision, so the file stayed under its old name. It moves now,
+    // before the decision reads it, so the decision meets each file under
+    // its node's name. Returns the decided paths where they are now.
+    fn follow_held_moves(
+        &self,
+        only: Option<Vec<String>>,
+    ) -> Result<Option<Vec<String>>, CollabError> {
+        let decided = |path: &str| {
+            only.as_ref().is_none_or(|paths| {
+                paths
+                    .iter()
+                    .any(|held| covers(held, path) || covers(path, held))
+            })
+        };
+        let moved = {
+            let mut disk = guard(&self.disk);
+            let now = materialize::layout(&lock(&self.live).doc().nodes()?);
+            let owed = disk.owed_paths();
+            let wanted: Vec<(String, String)> = disk
+                .layout
+                .iter()
+                .filter_map(|(id, placed)| {
+                    let laid = &now.get(id)?.path;
+                    let free = !owed.iter().any(|held| covers(held, &placed.path));
+                    (*laid != placed.path && free && decided(&placed.path))
+                        .then(|| (placed.path.clone(), laid.clone()))
+                })
+                .collect();
+            if wanted.is_empty() {
+                return Ok(only);
+            }
+            let followed = super::super::disk::follow_layout(&self.root, wanted);
+            let mut bases = guard(&self.bases);
+            for (from, to) in &followed.moved {
+                for (old, new) in super::super::disk::rekey_moved(&mut disk.hashes, from, to) {
+                    bases.rename(&old, &new);
+                }
+                for placed in disk.layout.values_mut() {
+                    if let Some(path) = super::super::disk::moved_key(&placed.path, from, to) {
+                        placed.path = path;
+                    }
+                }
+            }
+            if !followed.moved.is_empty() {
+                self.save_index(&disk)?;
+                let dir = self.hold_dir();
+                let _lock = hold_lock();
+                let mut hold = Hold::load(&dir);
+                for (from, to) in &followed.moved {
+                    hold.rekey(&dir, from, to);
+                }
+                hold.save(&dir)?;
+            }
+            followed.moved
+        };
+        if !moved.is_empty() {
+            self.host.folder_changed(FolderChange {
+                project_id: self.project_id.clone(),
+                paths: moved
+                    .iter()
+                    .flat_map(|(from, to)| [from.clone(), to.clone()])
+                    .collect(),
+                rescan: false,
+                structural: true,
+                renamed: moved.clone(),
+                deleted: Vec::new(),
+            });
+        }
+        Ok(only.map(|paths| {
+            paths
+                .into_iter()
+                .map(|path| {
+                    moved
+                        .iter()
+                        .find_map(|(from, to)| super::super::disk::moved_key(&path, from, to))
+                        .unwrap_or(path)
+                })
+                .collect()
+        }))
     }
 
     fn keep_local(&self, only: Option<&[String]>) -> Result<(), CollabError> {
@@ -530,6 +624,12 @@ impl Shaped {
             .as_ref()
             .is_some_and(|hold| hold.holds(path) || hold.kind(path).is_some())
     }
+
+    // A file the hold holds until a decision doesn't move on disk until
+    // then, so a program that has it open keeps finding it.
+    pub(super) fn pins(&self, path: &str) -> bool {
+        self.held.as_ref().is_some_and(|hold| hold.pins(path))
+    }
 }
 
 pub(super) fn keeps_back(dir: &Path, path: &str) -> bool {
@@ -553,6 +653,9 @@ pub(super) fn shape(
     }
     let before = hold.clone();
     for (from, to) in &plan.moved {
+        if hold.pins(from) || hold.pins(to) {
+            continue;
+        }
         hold.rekey(dir, from, to);
     }
     let mut removed = Vec::new();
@@ -1015,6 +1118,17 @@ mod tests {
             assert!(live.import_update(seq, &payload).unwrap());
         }
 
+        fn remote_rename(&self, path: &str, name: &str) {
+            let id = self.id_of(path).unwrap();
+            let mut live = lock(&self.active.live);
+            let mut peer = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+            let since = live.doc().version();
+            peer.rename(&id, name).unwrap();
+            let payload = peer.export_since(&since).unwrap();
+            let seq = self.seq.fetch_add(1, Ordering::SeqCst) + 1;
+            assert!(live.import_update(seq, &payload).unwrap());
+        }
+
         async fn outside(&self, paths: &[&str], verdict: MassChangeVerdict) {
             self.active
                 .outside(&change(paths), verdict, &RecordedPauses::default())
@@ -1080,6 +1194,35 @@ mod tests {
             assert_eq!(rig.shared("d.tex").as_deref(), Some("d"));
             assert_eq!(rig.shared("new.tex").as_deref(), Some("N"));
         });
+    }
+
+    #[test]
+    fn a_held_file_renamed_by_someone_else_keeps_its_name_until_the_decision() {
+        for decision in [SyncDecision::Send, SyncDecision::KeepLocal] {
+            run(async {
+                let rig = rig(&[("a.tex", "a"), ("b.tex", "b")]).await;
+                rig.write("a.tex", "A here");
+                rig.outside(&["a.tex"], pause_of(&["a.tex"], 2)).await;
+                rig.remote_rename("a.tex", "c.tex");
+                rig.write_out().await;
+                assert_eq!(rig.on_disk("a.tex").as_deref(), Some("A here"));
+                assert!(
+                    rig.on_disk("c.tex").is_none(),
+                    "the held file moved before the decision"
+                );
+                rig.active.decide(decision).await.unwrap();
+                rig.stop();
+                assert!(rig.on_disk("a.tex").is_none());
+                assert_eq!(rig.on_disk("c.tex").as_deref(), Some("A here"));
+                assert_eq!(rig.shared_paths(), ["b.tex", "c.tex"]);
+                let sent = (decision == SyncDecision::Send).then_some("A here");
+                assert_eq!(
+                    rig.shared("c.tex").as_deref(),
+                    Some(sent.unwrap_or("a")),
+                    "{decision:?}"
+                );
+            });
+        }
     }
 
     #[test]

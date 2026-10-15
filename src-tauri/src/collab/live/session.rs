@@ -15,7 +15,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
 use super::bases::WrittenTexts;
-use super::disk_pass::{apply_to_disk, DiskPass};
+use super::disk_pass::{apply_to_disk, DiskPass, LeftAlone};
 use super::host::LiveHost;
 use super::import::{import_renaming, placed_now, scan_local};
 use super::payloads::StatusPayload;
@@ -270,12 +270,13 @@ impl Active {
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
-        let blocked = |path: &str| {
-            shaped.blocks(path)
-                || owed
-                    .iter()
-                    .any(|held| crate::collab::disk::inside(path, held))
+        let owed_here = |path: &str| {
+            owed.iter().any(|held| {
+                crate::collab::disk::inside(path, held) || crate::collab::disk::inside(held, path)
+            })
         };
+        let blocked = |path: &str| shaped.blocks(path) || owed_here(path);
+        let pinned = |path: &str| shaped.pins(path) || owed_here(path);
         let DiskPass {
             mut changed,
             mut conflicts,
@@ -285,13 +286,24 @@ impl Active {
             written,
             done,
             mut failed,
+            waiting,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
+            let left = LeftAlone {
+                blocked: &blocked,
+                pinned: &pinned,
+            };
             apply_to_disk(
-                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
+                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &left,
             )?
         };
+        if !waiting.is_empty() {
+            let mut live = lock(&self.live);
+            for id in &waiting {
+                live.mark_dirty(id);
+            }
+        }
         failed.extend(still_held);
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);

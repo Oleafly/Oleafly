@@ -1269,6 +1269,56 @@ fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
 }
 
 #[test]
+fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() {
+    let (_dir, root, _host, rig) = watched_rig("owed-meets", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.remote_new_in("figs", "b.tex", "B");
+    rig.settle();
+    assert!(root.join("figs/a.tex").is_file() && root.join("figs/b.tex").is_file());
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    {
+        let mut disk = guard(&active.disk);
+        for path in ["figs/a.tex", "figs/b.tex"] {
+            let hash = disk.hashes.remove(path).unwrap();
+            disk.hashes.insert(format!("old-{path}"), hash);
+        }
+    }
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    rig.remote_remove("figs/a.tex");
+    rig.remote_rename("figs", "plots");
+    rig.settle();
+    assert!(
+        root.join("old-figs/a.tex").is_file() && root.join("old-figs/b.tex").is_file(),
+        "a file waiting for its folder's move was removed or moved"
+    );
+    assert!(!root.join("figs").exists() && !root.join("plots").exists());
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    rig.settle();
+    assert!(!root.join("old-figs").exists() && !root.join("figs").exists());
+    assert!(
+        !root.join("plots/a.tex").exists(),
+        "the delete never reached the disk"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("plots/b.tex")).unwrap(),
+        "B"
+    );
+    let nodes = rig.paths().len();
+    tauri::async_runtime::block_on(active.import_paths(None)).unwrap();
+    assert_eq!(rig.paths().len(), nodes, "{:?}", rig.paths());
+    assert!(guard(&active.disk).owed.is_empty());
+}
+
+#[test]
 fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
     let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
     {

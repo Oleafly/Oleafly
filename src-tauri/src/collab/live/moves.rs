@@ -771,7 +771,7 @@ mod tests {
                 next,
                 &texts,
                 &crlf,
-                &|_| false,
+                &super::super::disk_pass::NOTHING_LEFT,
             )
             .unwrap()
         }
