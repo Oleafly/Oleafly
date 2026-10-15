@@ -237,6 +237,20 @@ describe("RemoteDocumentSession", () => {
     apply.mockRestore();
   });
 
+  it("tells move listeners its new path when its file is renamed, and only then", async () => {
+    const channel = new FakeChannel("abc");
+    const { session } = await opened(channel);
+    const moved = vi.fn();
+    const stop = session.subscribeMove(moved);
+    session.moveTo("main.tex");
+    session.moveTo("chapters/main.tex");
+    expect(moved).toHaveBeenCalledExactlyOnceWith("chapters/main.tex");
+    stop();
+    session.moveTo("main.tex");
+    expect(moved).toHaveBeenCalledOnce();
+    expect(session.path).toBe("main.tex");
+  });
+
   it("moves a remote change past its own pending changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

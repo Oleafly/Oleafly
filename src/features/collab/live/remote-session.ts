@@ -58,6 +58,7 @@ export class RemoteDocumentSession implements DocumentSession {
   private generation = 0;
   private current: RemoteSessionPhase = "opening";
   private readonly listeners = new Set<(change: RemoteChange) => void>();
+  private readonly moveListeners = new Set<(path: string) => void>();
   private waiters: (() => void)[] = [];
   private readonly options: RemoteSessionOptions;
 
@@ -74,7 +75,16 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   moveTo(path: string): void {
+    if (path === this.place) return;
     this.place = path;
+    for (const listener of Array.from(this.moveListeners)) listener(path);
+  }
+
+  subscribeMove(listener: (path: string) => void): () => void {
+    this.moveListeners.add(listener);
+    return () => {
+      this.moveListeners.delete(listener);
+    };
   }
 
   get phase(): RemoteSessionPhase {
