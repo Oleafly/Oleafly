@@ -889,7 +889,10 @@ impl Peer<'_> {
                     .append(project, envelope, reach, stored, true, mention)
                     .await;
                 if checked.is_err() {
-                    self.state.comment_guard.forget(project).await;
+                    self.state
+                        .comment_guard
+                        .forget(&self.state.snapshots, project)
+                        .await;
                 }
                 checked.and_then(|appended| {
                     appended.ok_or_else(|| {

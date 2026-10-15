@@ -20,6 +20,10 @@ use crate::error::ServerError;
 use crate::peers;
 use crate::projects::{self, LoggedUpdate, Removal, SnapshotRow};
 
+mod kept;
+
+pub use kept::Keep;
+
 const LEGACY_FOLDER: &str = "snapshots";
 const WRITE_STRIPES: usize = 64;
 
@@ -65,6 +69,7 @@ pub struct Snapshots {
     reported: Arc<RwLock<HashMap<SharedProjectId, u64>>>,
     reads: Arc<AtomicU64>,
     building: Running,
+    kept: Arc<kept::KeptDocuments>,
 }
 
 type Running = Arc<std::sync::Mutex<HashMap<SharedProjectId, watch::Receiver<bool>>>>;
@@ -381,6 +386,7 @@ impl Snapshots {
             reported: Arc::new(RwLock::new(HashMap::new())),
             reads: Arc::new(AtomicU64::new(0)),
             building: Arc::new(std::sync::Mutex::new(HashMap::new())),
+            kept: Arc::new(kept::KeptDocuments::default()),
         }
     }
 
@@ -446,20 +452,56 @@ impl Snapshots {
         self.store(db, project, 0, bytes, by, signed, now).await
     }
 
+    // Kept documents give their memory back when a reservation needs it,
+    // least recently used first, so only documents in use and builds can
+    // make a reservation wait.
     fn reserve(&self, bytes: u64) -> Option<Reserved> {
-        let limit = self.budget().memory_bytes;
-        let mut held = self
-            .reserved
-            .write()
-            .unwrap_or_else(PoisonError::into_inner);
-        if held.saturating_add(bytes) > limit {
-            return None;
+        loop {
+            let limit = self.budget().memory_bytes;
+            {
+                let mut held = self
+                    .reserved
+                    .write()
+                    .unwrap_or_else(PoisonError::into_inner);
+                if held.saturating_add(bytes) <= limit {
+                    *held += bytes;
+                    return Some(Reserved {
+                        held: Arc::clone(&self.reserved),
+                        bytes,
+                    });
+                }
+                if held.saturating_sub(self.kept.bytes()).saturating_add(bytes) > limit {
+                    return None;
+                }
+            }
+            drop(self.kept.least_recent()?);
         }
-        *held += bytes;
-        Some(Reserved {
-            held: Arc::clone(&self.reserved),
-            bytes,
-        })
+    }
+
+    // Brings a kept document up to the project's latest change, growing its
+    // reservation by what the log since then costs. None when it can't be
+    // brought up to date, and the caller reads the project again.
+    pub async fn caught_up(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        kept: Option<(Budgeted, u64)>,
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        let Some((mut replay, seq)) = kept else {
+            return Ok(None);
+        };
+        let (head, bindings, grown) = db
+            .read(move |conn| {
+                let head = projects::project_row(conn, project)?.map_or(0, |row| row.head_seq);
+                let grown = projects::log_span(conn, project, seq, head.max(seq))?.bytes;
+                Ok((head, peers::bound_devices(conn, project)?, grown))
+            })
+            .await?;
+        if head < seq || !replay.grow(self, read_cost(0, grown)) {
+            return Ok(None);
+        }
+        let advanced = advance(db, project, replay, seq, head, &Arc::new(bindings)).await?;
+        Ok(advanced.map(|replay| (replay, head)))
     }
 
     pub async fn derive(
@@ -1551,6 +1593,106 @@ mod tests {
         assert!(snapshots.current(&db, project).await.unwrap().is_none());
         drop(kept);
         assert!(snapshots.reserve(needed).is_some());
+    }
+
+    async fn read_cost_of(db: &Db, project: SharedProjectId) -> u64 {
+        let size = db
+            .call(move |conn| projects::snapshot_size(conn, project, 0))
+            .await
+            .unwrap()
+            .expect("a stored snapshot");
+        read_cost(size, 0)
+    }
+
+    async fn kept_for(snapshots: &Snapshots, db: &Db, keep: Keep, project: SharedProjectId) {
+        let (document, head) = snapshots
+            .current(db, project)
+            .await
+            .unwrap()
+            .expect("the document fits the budget");
+        snapshots.keep(keep, project, document, head);
+    }
+
+    #[tokio::test]
+    async fn a_kept_document_gives_way_to_a_read_that_needs_its_memory() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let first = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let second = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let needed = read_cost_of(&db, first).await;
+        assert_eq!(read_cost_of(&db, second).await, needed);
+        snapshots.set_budget(Budget {
+            memory_bytes: needed,
+            max_snapshot_bytes: 1 << 20,
+        });
+        kept_for(&snapshots, &db, Keep::MentionScans, first).await;
+        assert_eq!(snapshots.kept_bytes(), needed);
+        let (read, _) = snapshots
+            .current(&db, second)
+            .await
+            .unwrap()
+            .expect("the kept document gives its memory to the read");
+        assert_eq!(read.reserved_bytes(), needed);
+        assert_eq!(snapshots.kept_bytes(), 0);
+        assert!(snapshots.take_kept(Keep::MentionScans, first).is_none());
+        assert!(
+            snapshots.current(&db, first).await.unwrap().is_none(),
+            "a document in use keeps its memory"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_document_kept_last_stays_and_older_ones_give_way() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let mut projects = Vec::new();
+        for _ in 0..3 {
+            projects.push(project_with_snapshot(&snapshots, &db, "Hello").await);
+        }
+        let needed = read_cost_of(&db, projects[0]).await;
+        snapshots.set_budget(Budget {
+            memory_bytes: 4 * needed,
+            max_snapshot_bytes: 1 << 20,
+        });
+        for project in &projects {
+            kept_for(&snapshots, &db, Keep::CommentChecks, *project).await;
+        }
+        assert_eq!(snapshots.kept_bytes(), 2 * needed);
+        assert!(snapshots
+            .take_kept(Keep::CommentChecks, projects[0])
+            .is_none());
+        snapshots.clear_kept(Keep::CommentChecks);
+        snapshots.set_budget(Budget {
+            memory_bytes: needed + needed / 2,
+            max_snapshot_bytes: 1 << 20,
+        });
+        kept_for(&snapshots, &db, Keep::CommentChecks, projects[2]).await;
+        assert_eq!(
+            snapshots.kept_bytes(),
+            needed,
+            "a document larger than the kept share on its own still stays"
+        );
+        assert!(snapshots
+            .take_kept(Keep::CommentChecks, projects[2])
+            .is_some());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn kept_documents_nobody_uses_are_swept_and_scans_can_drop_theirs() {
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let checked = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let scanned = project_with_snapshot(&snapshots, &db, "Hello").await;
+        kept_for(&snapshots, &db, Keep::CommentChecks, checked).await;
+        kept_for(&snapshots, &db, Keep::MentionScans, scanned).await;
+        let both = snapshots.kept_bytes();
+        snapshots.clear_kept(Keep::MentionScans);
+        assert_eq!(snapshots.kept_bytes(), both / 2);
+        tokio::time::advance(Duration::from_secs(14 * 60)).await;
+        assert_eq!(snapshots.sweep_kept(), 0);
+        tokio::time::advance(Duration::from_secs(2 * 60)).await;
+        assert_eq!(snapshots.sweep_kept(), 1);
+        assert_eq!(snapshots.kept_bytes(), 0);
     }
 
     #[tokio::test]
