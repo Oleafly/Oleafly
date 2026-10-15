@@ -642,7 +642,7 @@
         "locked": "{{path}} yazılamıyor: başka bir program dosyayı açık tutuyor.",
         "read_only": "{{path}} yazılamıyor: dosya veya klasörü salt okunur.",
         "no_space": "{{path}} yazılamıyor: disk dolu.",
-        "not_downloaded": "{{path}} yazılamıyor: bir bulut hizmeti dosyayı henüz bu bilgisayara indirmedi.",
+        "not_downloaded": "{{path}} henüz sunucudan indirilemedi. Oleafly denemeye devam ediyor.",
         "other": "{{path}} yazılamıyor."
       }
     },

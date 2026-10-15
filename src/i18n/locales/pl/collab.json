@@ -642,7 +642,7 @@
         "locked": "Nie można zapisać {{path}}: inny program ma go otwartego.",
         "read_only": "Nie można zapisać {{path}}: plik lub jego folder jest tylko do odczytu.",
         "no_space": "Nie można zapisać {{path}}: dysk jest pełny.",
-        "not_downloaded": "Nie można zapisać {{path}}: usługa w chmurze jeszcze go nie pobrała na ten komputer.",
+        "not_downloaded": "Nie udało się jeszcze pobrać {{path}} z serwera. Oleafly próbuje dalej.",
         "other": "Nie można zapisać {{path}}."
       }
     },

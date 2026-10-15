@@ -642,7 +642,7 @@
         "locked": "Tiedostoa {{path}} ei voi kirjoittaa: toinen ohjelma pitää sitä auki.",
         "read_only": "Tiedostoa {{path}} ei voi kirjoittaa: tiedosto tai sen kansio on vain luku -tilassa.",
         "no_space": "Tiedostoa {{path}} ei voi kirjoittaa: levy on täynnä.",
-        "not_downloaded": "Tiedostoa {{path}} ei voi kirjoittaa: pilvipalvelu ei ole vielä ladannut sitä tälle koneelle.",
+        "not_downloaded": "Tiedostoa {{path}} ei ole vielä saatu ladattua palvelimelta. Oleafly yrittää edelleen.",
         "other": "Tiedostoa {{path}} ei voi kirjoittaa."
       }
     },

@@ -642,7 +642,7 @@
         "locked": "Kan {{path}} niet schrijven: een ander programma heeft het geopend.",
         "read_only": "Kan {{path}} niet schrijven: het bestand of de map is alleen-lezen.",
         "no_space": "Kan {{path}} niet schrijven: de schijf is vol.",
-        "not_downloaded": "Kan {{path}} niet schrijven: een clouddienst heeft het nog niet naar deze computer gedownload.",
+        "not_downloaded": "{{path}} kon nog niet van de server worden gedownload. Oleafly blijft het proberen.",
         "other": "Kan {{path}} niet schrijven."
       }
     },

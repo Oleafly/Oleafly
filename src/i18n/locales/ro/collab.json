@@ -642,7 +642,7 @@
         "locked": "Nu se poate scrie {{path}}: alt program îl are deschis.",
         "read_only": "Nu se poate scrie {{path}}: fișierul sau folderul lui este doar în citire.",
         "no_space": "Nu se poate scrie {{path}}: discul este plin.",
-        "not_downloaded": "Nu se poate scrie {{path}}: un serviciu cloud nu l-a descărcat încă pe acest computer.",
+        "not_downloaded": "{{path}} nu a putut fi descărcat încă de pe server. Oleafly încearcă în continuare.",
         "other": "Nu se poate scrie {{path}}."
       }
     },

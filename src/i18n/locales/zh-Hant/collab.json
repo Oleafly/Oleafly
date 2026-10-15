@@ -642,7 +642,7 @@
         "locked": "無法寫入 {{path}}：另一個程式正開著它。",
         "read_only": "無法寫入 {{path}}：檔案或其資料夾是唯讀的。",
         "no_space": "無法寫入 {{path}}：磁碟已滿。",
-        "not_downloaded": "無法寫入 {{path}}：雲端服務還沒有把它下載到這台電腦。",
+        "not_downloaded": "暫時還無法從伺服器下載 {{path}}。Oleafly 會繼續嘗試。",
         "other": "無法寫入 {{path}}。"
       }
     },

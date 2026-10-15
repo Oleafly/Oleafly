@@ -642,7 +642,7 @@
         "locked": "Can't write {{path}}: another program has it open.",
         "read_only": "Can't write {{path}}: the file or its folder is read-only.",
         "no_space": "Can't write {{path}}: the disk is full.",
-        "not_downloaded": "Can't write {{path}}: a cloud service hasn't downloaded it to this computer yet.",
+        "not_downloaded": "{{path}} couldn't be downloaded from the server yet. Oleafly keeps trying.",
         "other": "Can't write {{path}}."
       }
     },

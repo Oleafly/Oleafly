@@ -642,7 +642,7 @@
         "locked": "Kan ikke skrive {{path}}: et annet program har den åpen.",
         "read_only": "Kan ikke skrive {{path}}: filen eller mappen er skrivebeskyttet.",
         "no_space": "Kan ikke skrive {{path}}: disken er full.",
-        "not_downloaded": "Kan ikke skrive {{path}}: en skytjeneste har ikke lastet den ned til denne maskinen ennå.",
+        "not_downloaded": "{{path}} kunne ikke lastes ned fra serveren ennå. Oleafly fortsetter å prøve.",
         "other": "Kan ikke skrive {{path}}."
       }
     },

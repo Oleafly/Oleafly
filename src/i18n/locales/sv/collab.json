@@ -642,7 +642,7 @@
         "locked": "Det går inte att skriva {{path}}: ett annat program har den öppen.",
         "read_only": "Det går inte att skriva {{path}}: filen eller mappen är skrivskyddad.",
         "no_space": "Det går inte att skriva {{path}}: disken är full.",
-        "not_downloaded": "Det går inte att skriva {{path}}: en molntjänst har inte laddat ned den till den här datorn än.",
+        "not_downloaded": "{{path}} kunde inte laddas ned från servern än. Oleafly fortsätter att försöka.",
         "other": "Det går inte att skriva {{path}}."
       }
     },

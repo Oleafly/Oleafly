@@ -642,7 +642,7 @@
         "locked": "Soubor {{path}} nejde zapsat: má ho otevřený jiný program.",
         "read_only": "Soubor {{path}} nejde zapsat: soubor nebo jeho složka jsou jen pro čtení.",
         "no_space": "Soubor {{path}} nejde zapsat: disk je plný.",
-        "not_downloaded": "Soubor {{path}} nejde zapsat: cloudová služba ho do tohoto počítače ještě nestáhla.",
+        "not_downloaded": "Soubor {{path}} se zatím nepodařilo stáhnout ze serveru. Oleafly to zkouší dál.",
         "other": "Soubor {{path}} nejde zapsat."
       }
     },

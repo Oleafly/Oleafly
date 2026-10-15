@@ -642,7 +642,7 @@
         "locked": "{{path}} kann nicht geschrieben werden: Ein anderes Programm hat die Datei geöffnet.",
         "read_only": "{{path}} kann nicht geschrieben werden: Die Datei oder ihr Ordner ist schreibgeschützt.",
         "no_space": "{{path}} kann nicht geschrieben werden: Der Datenträger ist voll.",
-        "not_downloaded": "{{path}} kann nicht geschrieben werden: Ein Cloud-Dienst hat die Datei noch nicht auf diesen Computer geladen.",
+        "not_downloaded": "{{path}} konnte noch nicht vom Server geladen werden. Oleafly versucht es weiter.",
         "other": "{{path}} kann nicht geschrieben werden."
       }
     },

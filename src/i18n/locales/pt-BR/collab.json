@@ -642,7 +642,7 @@
         "locked": "Não é possível gravar {{path}}: outro programa está com ele aberto.",
         "read_only": "Não é possível gravar {{path}}: o arquivo ou a pasta dele é somente leitura.",
         "no_space": "Não é possível gravar {{path}}: o disco está cheio.",
-        "not_downloaded": "Não é possível gravar {{path}}: um serviço de nuvem ainda não o baixou para este computador.",
+        "not_downloaded": "Ainda não foi possível baixar {{path}} do servidor. O Oleafly continua tentando.",
         "other": "Não é possível gravar {{path}}."
       }
     },
