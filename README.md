@@ -32,14 +32,20 @@ Free forever · Open source · No Oleafly account · No tracking
 
 ## Why Oleafly
 
-Oleafly is a desktop editor with live collaboration built in. Your files live on your computer, and when you share a project, your coauthors edit it with you through a server your lab controls.
+Oleafly is a desktop editor for LaTeX, Typst and Markdown that keeps the whole paper in one window: source, PDF, citations, figures, checks and history. Everything is free, including what other editors keep for paid plans: real-time collaboration with as many coauthors as you invite, full version history, Git and GitHub sync, Zotero, grammar checking and AI.
 
-- Your papers stay on your computer, and on your lab's server when you share them.
-- Compiles run on your own machine, so a long thesis builds as fast as your computer allows.
-- Invite as many coauthors as your server lets in.
-- Keep writing offline. Your edits merge when you're back online.
-- Work with Claude Code, Codex and 12 more agents, or any model you connect, local ones included.
-- Free and open source under AGPL-3.0.
+- Write with your coauthors in real time, with shared cursors and comments, on a server your lab sets up with one command.
+- An editor made for long documents: completion for labels, citations and commands, live error checking, an outline of the whole project, Vim and Emacs keys, a visual mode and a searchable palette of 236 LaTeX symbols.
+- Compile on your own computer. Tectonic, Typst and Pandoc are built in, and TeX Live, MacTeX, MiKTeX or TinyTeX take over when a project needs a full distribution.
+- Click in the PDF to jump to the source and back, and the last good PDF stays on screen while you fix an error.
+- Every project is a Git repository you can push to GitHub, and checkpoints save a snapshot after each successful compile.
+- Cite from your Zotero library as you type, and search arXiv, Semantic Scholar, Crossref, PubMed and OpenAlex without leaving the paper.
+- Spelling and grammar checks tuned for academic writing run on your computer.
+- Preflight catches broken references, missing figures, fonts that didn't embed, accessibility gaps and anything that would unblind a review, before you submit.
+- Draw figures that stay as TikZ, Typst or Mermaid code, and start from more than 1,700 templates for papers, theses, slides, posters and CVs.
+- Import from Word, a PDF, an arXiv source, a GitHub repository or an online LaTeX account.
+- Cloud sync keeps your projects on every computer you use, and you can keep writing offline.
+- Claude Code, Codex and 12 more agents work inside your project, or connect any model, local ones included. AI is optional, and each change it makes is a diff you can review and undo.
 
 ## Write together, live
 
