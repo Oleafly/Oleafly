@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -111,6 +111,8 @@ pub struct SocketRegistry {
     timing: Mutex<LinkTiming>,
     limits: Mutex<SocketLimits>,
     open: Arc<Mutex<OpenSockets>>,
+    restarting: AtomicBool,
+    restart: tokio::sync::Notify,
 }
 
 impl SocketRegistry {
@@ -184,7 +186,13 @@ impl SocketRegistry {
             .total
     }
 
+    // Tells every socket the server is restarting: the registered ones
+    // through their control channel, and the ones still upgrading or
+    // waiting for their hello, and any registered from now on, through the
+    // restarting flag.
     pub fn restart_all(&self) -> usize {
+        self.restarting.store(true, Ordering::SeqCst);
+        self.restart.notify_waiters();
         self.lock()
             .values()
             .flatten()
@@ -192,9 +200,26 @@ impl SocketRegistry {
             .count()
     }
 
+    pub fn is_restarting(&self) -> bool {
+        self.restarting.load(Ordering::SeqCst)
+    }
+
+    pub async fn restarted(&self) {
+        let notified = self.restart.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        if self.is_restarting() {
+            return;
+        }
+        notified.await;
+    }
+
     pub fn register(&self, device: DeviceId) -> SocketTicket {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (sender, control) = mpsc::unbounded_channel();
+        if self.is_restarting() {
+            let _ = sender.send(SocketControl::Restarting);
+        }
         self.lock().entry(device).or_default().push(Entry {
             id,
             sender: sender.clone(),

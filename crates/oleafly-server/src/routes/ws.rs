@@ -51,6 +51,7 @@ const BRIEF_SEND: Duration = Duration::from_secs(5);
 // Frames at least this large are parsed and encoded on the blocking pool.
 pub const ASIDE_BYTES: usize = 256 * 1024;
 const TOO_LARGE: &str = "This change is too large to send.";
+const RESTARTING: &str = "The server is restarting.";
 const NOT_A_HELLO: &str = "The first frame must be a hello.";
 
 pub fn router() -> Router<AppState> {
@@ -197,6 +198,9 @@ async fn run(
     caller: Authenticated,
     _slot: SocketSlot,
 ) {
+    if state.sockets.is_restarting() {
+        return close(&mut socket, close_code::RESTART, RESTARTING).await;
+    }
     let nonce = random_token();
     let challenge = ServerFrame::Challenge {
         nonce: nonce.clone(),
@@ -205,7 +209,15 @@ async fn run(
     if !send(&mut socket, &challenge).await {
         return;
     }
-    let hello = match tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)).await {
+    let waited = tokio::select! {
+        biased;
+        () = state.sockets.restarted() => None,
+        waited = tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)) => Some(waited),
+    };
+    let Some(waited) = waited else {
+        return close(&mut socket, close_code::RESTART, RESTARTING).await;
+    };
+    let hello = match waited {
         Ok(Incoming::Frame(frame)) => frame,
         Ok(Incoming::Malformed) => {
             return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await
@@ -527,14 +539,7 @@ impl<'a> Link<'a> {
                 )
                 .await;
             }
-            Ending::Restarting => {
-                close(
-                    self.socket,
-                    close_code::RESTART,
-                    "The server is restarting.",
-                )
-                .await;
-            }
+            Ending::Restarting => close(self.socket, close_code::RESTART, RESTARTING).await,
             Ending::Stalled => {
                 tracing::info!(device = %device, "closed a connection that stopped reading");
             }
@@ -1235,6 +1240,12 @@ impl Session<'_> {
         };
         let mut cursor = since;
         loop {
+            // A long catch-up doesn't hear the control channel until it's
+            // done, so it checks for a restart between pages.
+            if self.state.sockets.is_restarting() {
+                link.ending = Some(Ending::Restarting);
+                return false;
+            }
             let Ok(page) = backlog_page(self.state, project, cursor).await else {
                 return false;
             };
