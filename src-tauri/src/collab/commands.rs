@@ -702,7 +702,23 @@ pub async fn remove_within(
 ) -> Result<SignOutOutcome, CollabError> {
     let mut outcome = settle_unsent(state, server, choice, wait).await?;
     if outcome.signed_out {
-        outcome.detached = remove_server(state, host, server).await?;
+        let mut detached: Vec<DetachedProject> = outcome
+            .unsent
+            .iter()
+            .map(|project| DetachedProject {
+                project_id: project.project_id.clone(),
+                name: project.name.clone(),
+            })
+            .collect();
+        for project in remove_server(state, host, server).await? {
+            if !detached
+                .iter()
+                .any(|kept| kept.project_id == project.project_id)
+            {
+                detached.push(project);
+            }
+        }
+        outcome.detached = detached;
     }
     Ok(outcome)
 }

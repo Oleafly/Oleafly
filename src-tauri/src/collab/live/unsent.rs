@@ -731,6 +731,26 @@ mod tests {
     }
 
     #[test]
+    fn removing_the_server_and_keeping_a_local_copy_lists_the_copy_with_the_others() {
+        let lab = Lab::new(false);
+        lab.type_text("hello\nwritten offline\n");
+        let outcome = lab.remove(UnsentChoice::KeepLocalCopy);
+        assert!(outcome.signed_out);
+        assert_eq!(outcome.unsent.len(), 1);
+        assert_eq!(
+            outcome.detached,
+            vec![DetachedProject {
+                project_id: PROJECT.to_owned(),
+                name: "R3 Paper".to_owned(),
+            }]
+        );
+        assert!(load_binding(lab.state.paths().unwrap(), PROJECT)
+            .unwrap()
+            .is_none());
+        assert!(lab.state.registry().unwrap().get(lab.server).is_none());
+    }
+
+    #[test]
     fn opening_a_project_after_signing_out_says_signed_out_and_keeps_it_shared() {
         let lab = Lab::new(true);
         assert!(lab.sign_out(UnsentChoice::Ask).signed_out);
