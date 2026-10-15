@@ -160,6 +160,7 @@ import {
   acceptCompileOffer,
   beginCompileRequestIdentity,
   clearFolderPause,
+  compileSaveFailureReason,
   downloadMissingTypst,
   switchToDefaultTypst,
   installerNotices,
@@ -1259,6 +1260,23 @@ describe("saving before a compile", () => {
         false,
       );
     });
+  });
+});
+
+describe("the reason a compile shows when a save fails", () => {
+  it("names the file that couldn't be saved, or the first of several", () => {
+    expect(compileSaveFailureReason(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]))).toBe(
+      enCore.compile.saveFailed.replace("{{path}}", "notes.md"),
+    );
+    expect(
+      compileSaveFailureReason(
+        new SaveFlushError([
+          { path: "chapters/one.tex", reason: "disk full" },
+          { path: "refs.bib", reason: "disk full" },
+        ]),
+      ),
+    ).toBe(enCore.compile.saveFailedSeveral.replace("{{path}}", "chapters/one.tex"));
+    expect(compileSaveFailureReason(new Error("disk full"))).toContain("disk full");
   });
 });
 

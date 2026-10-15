@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   logError: vi.fn(),
   reportCompileSaveFailure: vi.fn(),
+  compileSaveFailureReason: vi.fn((error: unknown) => `could not save: ${String(error)}`),
   beginCompileRequestIdentity: vi.fn(() => ({
     projectId: "project",
     mainDocument: "main.tex",
@@ -50,6 +51,7 @@ vi.mock("@/store/compile", () => ({
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
   isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
   reportCompileSaveFailure: mocks.reportCompileSaveFailure,
+  compileSaveFailureReason: (error: unknown) => mocks.compileSaveFailureReason(error),
   saveAllForCompile: () => mocks.files.saveAllDirty(),
   useCompileStore: {
     getState: () => mocks.compileState,
@@ -93,6 +95,7 @@ import {
   createCompileSuccessCheckpoint,
   fingerprintCompileOutput,
 } from "@/lib/compile-checkpoint";
+import { SaveFlushError } from "@/store/save-flush-error";
 import { compileTaggedAndVerify } from "./latex-engine";
 
 function deferred<T>() {
@@ -396,7 +399,7 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
     expect(mocks.compileState).toMatchObject({
       status: "error",
-      failureReason: "Tagged compile failed: Error: disk full",
+      failureReason: "could not save: Error: disk full",
     });
     expect(mocks.reportCompileSaveFailure).toHaveBeenCalledExactlyOnceWith(
       "save before tagged compile",
@@ -407,6 +410,22 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.toast.info).not.toHaveBeenCalled();
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("names the file that couldn't be saved in the status and the preview", async () => {
+    const error = new SaveFlushError([{ path: "chapters/one.tex", reason: "disk full" }]);
+    const reason = "chapters/one.tex couldn't be saved, so the compile stopped.";
+    mocks.compileSaveFailureReason.mockReturnValueOnce(reason);
+    mocks.saveAllDirty.mockRejectedValue(error);
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileSaveFailureReason).toHaveBeenCalledWith(error);
+    expect(mocks.compileState.failureReason).toBe(reason);
+    expect(mocks.refreshPreviewWindow).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "error", message: reason }),
+    );
+    expect(mocks.compileTagged).not.toHaveBeenCalled();
   });
 
   it("saves every open file before the tagged compile starts", async () => {
