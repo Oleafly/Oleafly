@@ -158,9 +158,10 @@ async fn patch_member(
         return Err(ServerError::BadRequest(UNKNOWN_ROLE.to_string()));
     }
     let now = state.clock.now_ms();
+    let max_members = state.config.limits.max_members_per_project;
     let (summary, signed_out) = state
         .db
-        .call(move |conn| apply_member_patch(conn, auth, target, &change, ip, now))
+        .call(move |conn| apply_member_patch(conn, auth, target, &change, max_members, ip, now))
         .await?;
     for device in signed_out {
         state
@@ -175,6 +176,7 @@ fn apply_member_patch(
     auth: Authenticated,
     target: AccountId,
     change: &MemberPatch,
+    max_members: u32,
     ip: Option<String>,
     now: i64,
 ) -> Result<(MemberSummary, Vec<DeviceId>), ServerError> {
@@ -221,6 +223,17 @@ fn apply_member_patch(
     }
     let mut signed_out = Vec::new();
     if status_changes && will_be_active {
+        let full = members::projects_now_full(&transaction, target, max_members)?;
+        if !full.is_empty() {
+            let titles: Vec<&str> = full.iter().map(|(_, title)| title.as_str()).collect();
+            return Err(ServerError::refused(
+                "project_full",
+                format!(
+                    "These projects are full, so this person can't be made active again yet: {}. Their owners can make room first.",
+                    titles.join(", ")
+                ),
+            ));
+        }
         members::set_status(&transaction, target, &MemberStatus::Active, now)?;
         security_log::record(
             &transaction,
@@ -652,7 +665,8 @@ mod tests {
                     role: None,
                     status: Some(MemberStatus::Suspended),
                 };
-                let (_, signed_out) = apply_member_patch(conn, auth, target, &change, None, now)?;
+                let (_, signed_out) =
+                    apply_member_patch(conn, auth, target, &change, 20, None, now)?;
                 assert_eq!(signed_out, [device]);
                 live_sign_ins(conn, target)
             })

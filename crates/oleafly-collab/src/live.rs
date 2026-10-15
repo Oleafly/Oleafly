@@ -154,10 +154,7 @@ struct Received {
     unreadable: bool,
 }
 
-// A scratch copy left in memory per change that made Loro panic in it; at
-// this many in one session the session ends, which bounds what a member's
-// changes can cost every other member.
-const SCRATCH_FAILURES_PER_SESSION: usize = 3;
+const SCRATCH_FAILURES_PER_SESSION: usize = crate::doc::MOST_SCRATCH_FAILURES;
 
 struct Piece {
     peer: u64,
@@ -276,7 +273,10 @@ const LONGEST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(3
 // predate the missing change, so another may follow, but only after a gap
 // of two minutes that doubles up to an hour, so neither an honest writer
 // building on a refused change nor updates with made-up dependencies can
-// keep anyone reloading. It all starts over once nothing is held back.
+// keep anyone reloading. Once nothing is held back the gap starts over, but
+// the next reload still waits for the time the last one set, so a member
+// who supplies a missing change right after each reload can't make every
+// member download the snapshot again every minute.
 struct ResyncGuard {
     next: Option<std::time::Instant>,
     gap: std::time::Duration,
@@ -437,7 +437,7 @@ fn saved_document(dir: &Path) -> Option<ProjectDoc> {
     let bytes = std::fs::read(dir.join(DOC_FILE)).ok()?;
     let mut doc = ProjectDoc::load(&bytes).ok()?;
     for record in &read_log(&dir.join(LOG_FILE)).records {
-        let _ = doc.import(record);
+        let _ = doc.import_saved(&[record.as_slice()]);
     }
     Some(doc)
 }
@@ -521,10 +521,10 @@ impl LiveProject {
         let log = read_log(&dir.join(LOG_FILE));
         let saved: Vec<&[u8]> = log.records.iter().map(Vec::as_slice).collect();
         let mut damaged = log.torn;
-        if doc.import_all(&saved).is_err() {
+        if doc.import_saved(&saved).is_err() {
             doc = ProjectDoc::load(&bytes)?;
             for record in &log.records {
-                damaged |= doc.import(record).is_err();
+                damaged |= doc.import_saved(&[record.as_slice()]).is_err();
             }
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
@@ -566,6 +566,19 @@ impl LiveProject {
         if self.damaged {
             return Ok(self.damaged_save(dir));
         }
+        let saving = self.guarded(|live| live.saving(dir));
+        if self.damaged {
+            return Ok(self.damaged_save(dir));
+        }
+        saving
+    }
+
+    fn saving(&mut self, dir: &Path) -> Result<PendingSave, CollabError> {
+        #[cfg(test)]
+        crate::doc::failpoint::hit(
+            dir.as_os_str().as_encoded_bytes(),
+            crate::doc::failpoint::At::Local,
+        );
         self.dir = Some(dir.to_path_buf());
         let last_seq = self.last_seq;
         self.skipped.retain(|seq| *seq > last_seq);
@@ -807,6 +820,10 @@ impl LiveProject {
     }
 
     pub fn open_file(&mut self, id: &str, sink: DocSink) -> Result<OpenedFile, CollabError> {
+        self.guarded(|live| live.opening(id, sink))
+    }
+
+    fn opening(&mut self, id: &str, sink: DocSink) -> Result<OpenedFile, CollabError> {
         let text = self.doc.text(id)?;
         let start = self
             .editor_rev(id)
@@ -845,6 +862,15 @@ impl LiveProject {
     }
 
     pub fn editor_change(
+        &mut self,
+        id: &str,
+        base_rev: u64,
+        operation: TextOperation,
+    ) -> Result<(), CollabError> {
+        self.guarded(|live| live.taking_editor_change(id, base_rev, operation))
+    }
+
+    fn taking_editor_change(
         &mut self,
         id: &str,
         base_rev: u64,
@@ -1002,7 +1028,6 @@ impl LiveProject {
             self.waiting = left;
         }
         if !self.missing_changes() {
-            self.resync.next = None;
             self.resync.gap = self.resync.first_gap;
         }
     }
@@ -1069,7 +1094,7 @@ impl LiveProject {
         self.outgoing = None;
         self.resync_needed = false;
         self.note_waiting(&imported.waiting);
-        self.route(imported.changes, None)
+        self.route_snapshot(imported.changes, snapshot)
     }
 
     pub fn import_update(&mut self, seq: u64, payload: &[u8]) -> Result<bool, CollabError> {
@@ -1294,6 +1319,11 @@ impl LiveProject {
             if taken || unreadable.contains(&index) {
                 continue;
             }
+            if crate::doc::engine_budget_spent()
+                || self.doc.scratch_failures() >= SCRATCH_FAILURES_PER_SESSION
+            {
+                break;
+            }
             let alone = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 self.doc.import_keeping(&[*payload])
             }));
@@ -1400,17 +1430,33 @@ impl LiveProject {
     }
 
     // A snapshot from the server goes into the document like any change,
-    // so a panic there leaves the project damaged the same way.
+    // so a panic there leaves the project damaged the same way. So does one
+    // that panicked in its scratch copy, or found no room for another: the
+    // next reload would fetch the same snapshot and fail again, so the
+    // session ends instead of reloading it over and over.
     fn import_contained(&mut self, bytes: &[u8]) -> Result<crate::doc::Imported, CollabError> {
         if self.damaged {
             return Err(crate::doc::engine_failed());
         }
+        if crate::doc::engine_budget_spent() {
+            self.went_bad(false);
+            return Err(crate::doc::engine_spent());
+        }
         let taken =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.doc.import(bytes)));
-        taken.unwrap_or_else(|_| {
-            self.went_bad(true);
-            Err(crate::doc::engine_failed())
-        })
+        match taken {
+            Ok(Err(error))
+                if error == crate::doc::engine_failed() || error == crate::doc::engine_spent() =>
+            {
+                self.went_bad(false);
+                Err(error)
+            }
+            Ok(taken) => taken,
+            Err(_) => {
+                self.went_bad(true);
+                Err(crate::doc::engine_failed())
+            }
+        }
     }
 
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
@@ -1437,7 +1483,19 @@ impl LiveProject {
         }
         self.seen.retain(|known| *known > seq);
         self.mark_seen(seq);
-        self.route(imported.changes, None)
+        self.route_snapshot(imported.changes, snapshot)
+    }
+
+    // Routing reads the document Loro just changed, so a panic there counts
+    // like one in the import of the snapshot.
+    fn route_snapshot(&mut self, changes: DocChanges, snapshot: &[u8]) -> Result<(), CollabError> {
+        #[cfg(not(test))]
+        let _ = snapshot;
+        self.guarded(|live| {
+            #[cfg(test)]
+            crate::doc::failpoint::hit(snapshot, crate::doc::failpoint::At::Applied);
+            live.route(changes, None)
+        })
     }
 
     // A reconnect halfway through keeps the catch-up already under way, so
@@ -1628,9 +1686,15 @@ impl LiveProject {
     }
 
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        self.guarded(|live| live.setting_text(id, content))
+    }
+
+    fn setting_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
         if self.damaged {
             return Ok(false);
         }
+        #[cfg(test)]
+        crate::doc::failpoint::hit(content.as_bytes(), crate::doc::failpoint::At::Local);
         let before = self.own_counter();
         let changes = self.doc.set_text(id, content)?;
         self.note_offline(id, before);
@@ -1644,6 +1708,10 @@ impl LiveProject {
         id: &str,
         operation: &TextOperation,
     ) -> Result<bool, CollabError> {
+        self.guarded(|live| live.applying(id, operation))
+    }
+
+    fn applying(&mut self, id: &str, operation: &TextOperation) -> Result<bool, CollabError> {
         if operation.is_noop() || self.damaged {
             return Ok(false);
         }
@@ -1925,7 +1993,28 @@ impl LiveProject {
         if events.is_empty() {
             return crate::comments::CommentChanges::default();
         }
-        self.doc.comment_changes(events)
+        self.guarded(|live| Ok(live.doc.comment_changes(events)))
+            .unwrap_or_default()
+    }
+
+    // Desktop threads change and read the shared document too: saving,
+    // local edits, the disk pass, review and comment edits. A panic in that
+    // work is contained the way one in the sync task is: the project is
+    // marked damaged, the document Loro may have panicked in is left in
+    // memory, and the live session ends as failed, so nothing keeps
+    // writing into it. The edits and saves here go through this already,
+    // and the desktop runs its other work on the project through it too.
+    pub fn guarded<T>(
+        &mut self,
+        work: impl FnOnce(&mut LiveProject) -> Result<T, CollabError>,
+    ) -> Result<T, CollabError> {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(self))) {
+            Ok(done) => done,
+            Err(_) => {
+                self.went_bad(true);
+                Err(crate::doc::engine_failed())
+            }
+        }
     }
 }
 
@@ -2553,7 +2642,7 @@ mod tests {
     }
 
     #[test]
-    fn reloads_for_held_back_changes_are_spaced_out_and_start_over_once_nothing_waits() {
+    fn reloads_for_held_back_changes_are_spaced_out_and_the_gap_starts_over_once_nothing_waits() {
         let (mut bob, mut alice, main) = pair();
         let mut carol = LiveProject::new(
             ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
@@ -2585,7 +2674,11 @@ mod tests {
         alice.skip_update(6);
         alice.import_update(7, &built_on_it).unwrap();
         assert!(alice.missing_changes());
-        assert!(alice.request_resync(after(121 + 242)));
+        assert!(!alice.request_resync(after(121 + 242)));
+        assert!(!alice.request_resync(after(362 + 479)));
+        assert!(alice.request_resync(after(362 + 480)));
+        assert!(!alice.request_resync(after(842 + 119)));
+        assert!(alice.request_resync(after(842 + 120)));
     }
 
     #[test]
@@ -2774,6 +2867,127 @@ mod tests {
     }
 
     #[test]
+    fn a_scratch_copy_loro_panics_in_while_it_holds_its_lock_is_left_without_aborting() {
+        use crate::doc::failpoint::poison_next;
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(100_000, 61), 1);
+        let left = crate::doc::left_documents();
+        poison_next();
+        bob.import_arrivals(vec![arrival(1, &large)]).unwrap();
+        assert_eq!(crate::doc::left_documents(), left + 1);
+        assert_eq!(bob.doc().scratch_failures(), 1);
+        assert!(!bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc mine");
+    }
+
+    #[test]
+    fn a_panic_while_a_scratch_copy_is_read_back_is_contained_like_one_in_its_import() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(100_000, 62), 1);
+        panic_on(&large, At::ScratchExport);
+        bob.import_arrivals(vec![arrival(1, &large)]).unwrap();
+        assert_eq!(bob.doc().scratch_failures(), 1);
+        assert!(!bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+    }
+
+    #[test]
+    fn copies_of_the_project_loro_panics_in_are_left_without_aborting() {
+        use crate::doc::failpoint::poison_next;
+        let (mut bob, _alice, main) = pair();
+        let snapshot = bob.doc().snapshot().unwrap();
+        let left = crate::doc::left_documents();
+        poison_next();
+        assert!(ProjectDoc::load_contained(&snapshot).is_err());
+        let base = bob.doc().version();
+        type_at_end(&mut bob, &main, " more");
+        poison_next();
+        assert!(bob.doc().at_version(&base).is_err());
+        bob.comment_doc()
+            .create_comment_thread(&main, 0, 1, AccountId::new_v7(), 1, "Note", &[])
+            .unwrap();
+        poison_next();
+        assert!(bob
+            .comment_doc()
+            .without_comment_changes_after(&base)
+            .is_err());
+        assert_eq!(crate::doc::left_documents(), left + 3);
+        assert_eq!(
+            ProjectDoc::load_contained(&snapshot)
+                .unwrap()
+                .text(&main)
+                .unwrap(),
+            "abc"
+        );
+        assert_eq!(
+            bob.doc().at_version(&base).unwrap().text(&main).unwrap(),
+            "abc"
+        );
+    }
+
+    #[test]
+    fn a_panic_in_a_local_edit_marks_the_project_damaged_and_takes_no_more_edits() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, _alice, main) = pair();
+        let (_dir, mut bob) = saved_and_loaded(&mut bob);
+        panic_on(b"abc typed as Loro panics", At::Local);
+        assert_eq!(
+            bob.local_text(&main, "abc typed as Loro panics"),
+            Err(crate::doc::engine_failed())
+        );
+        assert!(bob.damaged());
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc");
+        assert!(!bob.local_text(&main, "abc typed after").unwrap());
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert!(bob.take_disk_work().is_empty());
+    }
+
+    #[test]
+    fn a_panic_while_the_project_is_saved_leaves_the_saved_copy_as_it_was() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, _alice, main) = pair();
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        type_at_end(&mut bob, &main, " unsaved");
+        panic_on(dir.path().as_os_str().as_encoded_bytes(), At::Local);
+        bob.save(dir.path()).unwrap();
+        assert!(bob.damaged());
+        let reopened = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(reopened.doc().text(&main).unwrap(), "abc");
+    }
+
+    #[test]
+    fn desktop_work_that_panics_in_the_project_marks_it_damaged() {
+        let (mut bob, _alice, _main) = pair();
+        let outcome: Result<(), CollabError> = bob.guarded(|_| panic!("a desktop thread failed"));
+        assert_eq!(outcome, Err(crate::doc::engine_failed()));
+        assert!(bob.damaged());
+        assert!(crate::sync::failed_ending() == crate::sync::EndReason::Failed);
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        assert!(crate::sync::failed_ending() == crate::sync::EndReason::EngineSpent);
+    }
+
+    #[test]
+    fn a_panic_while_editors_hear_of_a_snapshot_counts_like_one_in_its_import() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut alice, &main, " from the server");
+        let snapshot = alice.doc().snapshot().unwrap();
+        panic_on(&snapshot, At::Applied);
+        assert_eq!(bob.rebase(1, &snapshot), Err(crate::doc::engine_failed()));
+        assert!(bob.damaged());
+    }
+
+    #[test]
     fn a_project_that_stopped_syncing_after_a_panic_takes_no_comment_edits() {
         use crate::doc::failpoint::{panic_on, At};
         let (mut bob, mut alice, main) = pair();
@@ -2927,6 +3141,82 @@ mod tests {
             assert!(bob.skipped.contains(&seq), "round {round}");
         }
         assert!(bob.doc().text(&main).unwrap().contains(" carol"));
+    }
+
+    #[test]
+    fn a_backlog_of_large_changes_that_panic_in_scratch_copies_costs_at_most_three_copies() {
+        use crate::doc::failpoint::{forks, panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let mut backlog = Vec::new();
+        for seq in 1..=5u64 {
+            let large = sent_change(&mut alice, &main, &noise(100_000, 70 + seq), seq);
+            panic_on(&large, At::Scratch);
+            backlog.push(arrival(seq, &large));
+        }
+        let (before, left) = (forks(), crate::doc::left_documents());
+        assert!(bob.import_arrivals(backlog).is_err());
+        assert_eq!(forks() - before, SCRATCH_FAILURES_PER_SESSION);
+        assert_eq!(
+            crate::doc::left_documents() - left,
+            SCRATCH_FAILURES_PER_SESSION
+        );
+        assert!(bob.damaged());
+        assert_eq!(bob.skipped, BTreeSet::from([1, 2, 3]));
+    }
+
+    #[test]
+    fn a_large_snapshot_that_panics_in_its_scratch_copy_ends_the_session_instead_of_reloading() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        type_at_end(&mut alice, &main, &noise(100_000, 81));
+        let snapshot = alice.doc().snapshot().unwrap();
+        panic_on(&snapshot, At::Scratch);
+        assert!(bob.rebase(1, &snapshot).is_err());
+        assert!(bob.damaged());
+        assert_eq!(bob.doc().scratch_failures(), 1);
+    }
+
+    #[test]
+    fn once_the_engine_budget_is_spent_a_snapshot_is_not_taken_in_at_all() {
+        let (mut bob, alice, _main) = pair();
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        let left = crate::doc::left_documents();
+        assert_eq!(
+            bob.import_snapshot(1, &alice.doc().snapshot().unwrap()),
+            Err(crate::doc::engine_spent())
+        );
+        assert!(bob.damaged());
+        assert_eq!(crate::doc::left_documents(), left);
+    }
+
+    #[test]
+    fn a_project_whose_log_holds_a_large_change_reopens_with_all_of_it_after_the_budget_is_spent() {
+        let (mut bob, mut alice, main) = pair();
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        type_at_end(&mut bob, &main, " mine");
+        let large = sent_change(&mut alice, &main, &noise(100_000, 91), 1);
+        bob.import_arrivals(vec![from_device(DeviceId::new_v7())(1, &large)])
+            .unwrap();
+        bob.save(dir.path()).unwrap();
+        type_at_end(&mut bob, &main, " after");
+        bob.save(dir.path()).unwrap();
+        let expected = bob.doc().text(&main).unwrap();
+        assert!(expected.ends_with(" after") && expected.len() > 100_000);
+        for _ in 0..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        let mut reopened = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(!reopened.repaired_on_load());
+        assert_eq!(reopened.doc().text(&main).unwrap(), expected);
+        reopened.save(dir.path()).unwrap();
+        let again = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(again.doc().text(&main).unwrap(), expected);
     }
 
     #[test]

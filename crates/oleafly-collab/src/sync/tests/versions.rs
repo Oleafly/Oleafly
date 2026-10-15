@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
 use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::capabilities::ProtocolRange;
 use oleafly_collab_protocol::frames::ServerFrame;
@@ -39,6 +41,8 @@ enum Upgrade {
     ProxyRefuses,
     // The server's own 401.
     Refuses,
+    // The server's own 503, as when it is restarting or full.
+    Busy,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -48,13 +52,46 @@ enum Refresh {
     Renewed,
 }
 
+#[derive(Default)]
+struct PollTrace {
+    polled: AtomicBool,
+    missed: AtomicUsize,
+}
+
+#[derive(Clone, Copy)]
+enum Manifest {
+    Served,
+    Missing,
+    // Served until the app opens long poll, missing after: the app falls
+    // back to long poll as usual, then can't read the manifest there.
+    GoneAfterPoll(&'static PollTrace),
+}
+
+impl Manifest {
+    fn served(self) -> bool {
+        match self {
+            Manifest::Served => true,
+            Manifest::Missing => false,
+            Manifest::GoneAfterPoll(trace) => {
+                let polled = trace.polled.load(Ordering::SeqCst);
+                if polled {
+                    trace.missed.fetch_add(1, Ordering::SeqCst);
+                }
+                !polled
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct Answers {
     upgrade: Upgrade,
     poll_refuses: bool,
     poll_busy: bool,
     refresh: Refresh,
-    manifest_missing: bool,
+    manifest: Manifest,
+    // Sent as Retry-After with a busy answer.
+    retry_after: Option<&'static str>,
 }
 
 const SOCKETS: Answers = Answers {
@@ -62,8 +99,21 @@ const SOCKETS: Answers = Answers {
     poll_refuses: false,
     poll_busy: false,
     refresh: Refresh::Missing,
-    manifest_missing: false,
+    manifest: Manifest::Served,
+    retry_after: None,
 };
+
+fn busy_answer(answers: Answers) -> String {
+    let mut headers = vec![("Content-Type", "application/json")];
+    if let Some(wait) = answers.retry_after {
+        headers.push(("Retry-After", wait));
+    }
+    crate::client::test_util::http_response(
+        "503 Service Unavailable",
+        &headers,
+        r#"{"code":"busy","message":"Try again later."}"#,
+    )
+}
 
 const NO_SOCKETS: Answers = Answers {
     upgrade: Upgrade::Forbidden,
@@ -82,7 +132,8 @@ fn stranger(sockets: bool) -> Answers {
         poll_refuses: true,
         poll_busy: false,
         refresh: Refresh::Revoked,
-        manifest_missing: false,
+        manifest: Manifest::Served,
+        retry_after: None,
     }
 }
 
@@ -104,6 +155,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
                 "",
             )),
             Upgrade::Refuses => Some(turned_away("unauthorized")),
+            Upgrade::Busy => Some(busy_answer(answers)),
         };
         if let Some(refusal) = refusal {
             let _ = stream.write_all(refusal.as_bytes()).await;
@@ -139,13 +191,11 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         return;
     }
     let path = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
+    if let (true, Manifest::GoneAfterPoll(trace)) = (path.contains("/poll"), answers.manifest) {
+        trace.polled.store(true, Ordering::SeqCst);
+    }
     if path.contains("/poll") && answers.poll_busy {
-        let busy = crate::client::test_util::http_response(
-            "503 Service Unavailable",
-            &[("Content-Type", "application/json")],
-            r#"{"code":"busy","message":"Try again later."}"#,
-        );
-        let _ = stream.write_all(busy.as_bytes()).await;
+        let _ = stream.write_all(busy_answer(answers).as_bytes()).await;
         return;
     }
     if path.contains("/poll") && answers.poll_refuses {
@@ -174,7 +224,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         let _ = stream.write_all(reply.as_bytes()).await;
         return;
     }
-    let body = if path.starts_with("/.well-known/oleafly-server") && !answers.manifest_missing {
+    let body = if path.starts_with("/.well-known/oleafly-server") && answers.manifest.served() {
         manifest
     } else if path.starts_with("/auth/challenge") {
         serde_json::json!({ "nonce": "nonce", "expires_at": 4_102_444_800_000_i64 }).to_string()
@@ -397,9 +447,14 @@ async fn a_server_that_turns_away_a_renewed_session_signs_out_the_same_way_on_ei
 async fn a_turned_away_session_is_kept_when_the_servers_manifest_does_not_load() {
     for sockets in [true, false] {
         let server = ServerId::new_v7();
+        let trace: &'static PollTrace = Box::leak(Box::default());
         let answers = Answers {
             refresh: Refresh::Renewed,
-            manifest_missing: true,
+            manifest: if sockets {
+                Manifest::Missing
+            } else {
+                Manifest::GoneAfterPoll(trace)
+            },
             ..stranger(sockets)
         };
         let url = answering_at_the_address(server, ProtocolRange { min: 1, max: 1 }, answers).await;
@@ -438,6 +493,16 @@ async fn a_turned_away_session_is_kept_when_the_servers_manifest_does_not_load()
             "sockets {sockets}"
         );
         assert!(lock(&side.live).has_unsent());
+        if !sockets {
+            assert!(
+                trace.polled.load(Ordering::SeqCst),
+                "long poll was never opened"
+            );
+            assert!(
+                trace.missed.load(Ordering::SeqCst) > 0,
+                "the manifest was never read after long poll turned the session away"
+            );
+        }
         stopped(&mut side).await;
     }
 }
@@ -502,4 +567,53 @@ async fn a_busy_server_on_long_poll_gets_the_long_waits_too() {
     assert!(waits[0] <= 500, "{waits:?}");
     assert!((5_000..=10_000).contains(&waits[1]), "{waits:?}");
     stopped(&mut side).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_server_that_asks_for_a_wait_with_retry_after_is_left_alone_that_long() {
+    for sockets in [true, false] {
+        let server = ServerId::new_v7();
+        let (answers, asked) = if sockets {
+            (
+                Answers {
+                    upgrade: Upgrade::Busy,
+                    retry_after: Some("40"),
+                    ..SOCKETS
+                },
+                40_000,
+            )
+        } else {
+            (
+                Answers {
+                    poll_busy: true,
+                    retry_after: Some("30"),
+                    ..NO_SOCKETS
+                },
+                30_000,
+            )
+        };
+        let url = answering_at_the_address(server, ProtocolRange { min: 1, max: 1 }, answers).await;
+        let mut doc = ProjectDoc::create().unwrap();
+        let main = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
+        start_with(&mut side, signed_in(server, url), quick());
+        let mut waits = Vec::new();
+        tokio::time::timeout(Duration::from_secs(20), async {
+            while let Some(event) = side.events.recv().await {
+                if let LiveEvent::Status(LiveStatus::Offline { retry_in_ms }) = event {
+                    waits.push(retry_in_ms);
+                    if retry_in_ms >= asked - 1_000 {
+                        return;
+                    }
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("sockets {sockets}: only these waits came: {waits:?}"));
+        let longest = waits.iter().copied().max().unwrap_or(0);
+        assert!(longest <= 600_000, "sockets {sockets}: {waits:?}");
+        stopped(&mut side).await;
+    }
 }

@@ -10,7 +10,12 @@ use crate::error::ServerError;
 use crate::tokens::{hash_token, issue_access_token, random_token};
 
 pub const REFRESH_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
-pub const GRACE_MS: i64 = 5 * 60 * 1000;
+// How long the previous refresh token can still fetch the pair that
+// replaced it: long enough for a laptop that went to sleep between the
+// server's reply and the app saving it. The caller has already checked the
+// device's signature, the token must belong to that device, and the replay
+// stops as soon as the new pair has been used. Anything else is reuse.
+pub const REPLAY_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 const FAMILY_SEPARATOR: char = '.';
 
 #[derive(Debug)]
@@ -134,7 +139,7 @@ pub fn rotate(
             Ok(RefreshOutcome::Rotated(tokens))
         }
         Some(rotated_at) => {
-            let recent = now.saturating_sub(rotated_at) <= GRACE_MS;
+            let recent = now.saturating_sub(rotated_at) <= REPLAY_MS;
             if recent && successor_unused(conn, stored.replaced_by.as_deref(), now)? {
                 let replay = stored
                     .grace_reply
@@ -307,7 +312,7 @@ mod tests {
     #[tokio::test]
     async fn rotation_replays_while_the_successor_is_unused_and_flags_reuse_after_it() {
         let app = test_app().await;
-        let later = 2_000 + GRACE_MS;
+        let later = 2_000 + REPLAY_MS;
         let (rotated, replayed, reused) = app
             .state
             .db
@@ -342,7 +347,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_previous_token_is_replayed_only_shortly_after_its_rotation() {
+    async fn the_previous_token_is_replayed_for_a_week_after_its_rotation() {
         let app = test_app().await;
         let (inside, outside) = app
             .state
@@ -354,8 +359,8 @@ mod tests {
                     devices::register(conn, account, "key-1", "Laptop", "macos", 1_000)?.device_id;
                 let first = issue_session(conn, account, device, 1_000)?;
                 rotate(conn, &first.refresh_token, device, 2_000)?;
-                let inside = rotate(conn, &first.refresh_token, device, 2_000 + GRACE_MS - 1)?;
-                let outside = rotate(conn, &first.refresh_token, device, 2_000 + GRACE_MS + 1)?;
+                let inside = rotate(conn, &first.refresh_token, device, 2_000 + REPLAY_MS - 1)?;
+                let outside = rotate(conn, &first.refresh_token, device, 2_000 + REPLAY_MS + 1)?;
                 Ok((inside, outside))
             })
             .await

@@ -30,10 +30,10 @@ pub mod servers;
 pub mod snapshots;
 pub mod sync;
 
-pub use client::ServerClient;
 pub use client::{connect_socket, SocketConnection};
 pub use client::{session_account, SessionManager};
 pub use client::{sign_in, sign_in_as, SignInRequest};
 pub use client::{sign_in_with_code, sign_in_with_code_as, CodeSignInRequest, SignInCode};
 pub use client::{test_connection, test_connection_pinned, CheckId, CheckStatus, ConnectionCheck};
+pub use client::{ServerClient, TransferProgress};
 pub use servers::{ServerEntry, ServerRegistry};

@@ -9,7 +9,7 @@ mod trust;
 mod wire;
 mod writers;
 
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use oleafly_collab_protocol::auth::SessionEndReason;
@@ -59,6 +59,10 @@ pub enum EndReason {
     // session itself panicked. The project in memory is not saved; the next
     // start loads it from disk and skips the change at fault.
     Failed,
+    // As failed, but the app has already left as many broken documents in
+    // memory as it allows, so going live again can't help until the app
+    // restarts.
+    EngineSpent,
 }
 
 impl EndReason {
@@ -81,7 +85,8 @@ impl EndReason {
             | EndReason::ClientTooOld
             | EndReason::ServerTooOld
             | EndReason::ServerChanged
-            | EndReason::Failed => None,
+            | EndReason::Failed
+            | EndReason::EngineSpent => None,
         }
     }
 }
@@ -181,8 +186,17 @@ impl LiveHandle {
 
 pub type SharedLive = Arc<Mutex<LiveProject>>;
 
+// A thread that panicked while it held the project, such as a desktop
+// thread in the middle of a Loro call, poisons this lock. The document may
+// be broken then, so the project is treated as damaged, the same as after a
+// panic in the sync task, and the session ends as failed at its next turn.
 fn lock(project: &SharedLive) -> MutexGuard<'_, LiveProject> {
-    project.lock().unwrap_or_else(PoisonError::into_inner)
+    project.lock().unwrap_or_else(|poisoned| {
+        project.clear_poison();
+        let mut live = poisoned.into_inner();
+        live.went_bad(true);
+        live
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -240,12 +254,20 @@ async fn guarded(
         .catch_unwind()
         .await;
     if finished.is_err() {
-        if watched.is_poisoned() {
-            lock(&watched).went_bad(true);
-        }
+        // A poisoned project is marked damaged as it is locked.
+        drop(lock(&watched));
         let _ = reporting.send(LiveEvent::Status(LiveStatus::Ended {
-            reason: EndReason::Failed,
+            reason: failed_ending(),
         }));
+    }
+}
+
+// How a session that ends on a damaged project says so.
+pub(crate) fn failed_ending() -> EndReason {
+    if crate::doc::engine_budget_spent() {
+        EndReason::EngineSpent
+    } else {
+        EndReason::Failed
     }
 }
 

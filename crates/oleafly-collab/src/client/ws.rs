@@ -231,7 +231,19 @@ pub(crate) async fn open_socket(
     );
     match tokio::time::timeout(FRAME_TIMEOUT, handshake).await {
         Ok(Ok((socket, _))) => Ok(socket),
-        Ok(Err(error)) => Err(ws_error(error)),
+        Ok(Err(error)) => {
+            if let WsError::Http(response) = &error {
+                super::http::note_asked_wait(
+                    &url.endpoint(""),
+                    response.status().as_u16(),
+                    response
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|value| value.to_str().ok()),
+                );
+            }
+            Err(ws_error(error))
+        }
         Err(_) => Err(CollabError::Network(
             "the WebSocket upgrade timed out".to_string(),
         )),
