@@ -724,6 +724,47 @@ async fn a_code_for_a_system_the_app_never_runs_on_is_refused() {
 }
 
 #[tokio::test]
+async fn a_device_name_is_cleaned_before_a_code_is_made_for_it() {
+    let setup = setup().await;
+    let device = TestDevice::generate();
+    assert_eq!(
+        request_code_as(
+            &setup.server,
+            code_request(&device, "\u{200b}\n\u{2066}", "linux"),
+            None
+        )
+        .await
+        .err()
+        .as_deref(),
+        Some("bad_request")
+    );
+    let code = request_code_as(
+        &setup.server,
+        code_request(&device, "Lab\r\nPC\u{202e}\u{feff}", "linux"),
+        None,
+    )
+    .await
+    .expect("a code");
+    let stored: Vec<String> = setup
+        .server
+        .state()
+        .db
+        .call(|conn| {
+            let mut statement = conn.prepare("SELECT device_name FROM device_authorizations")?;
+            let names = statement
+                .query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<String>, _>>()?;
+            Ok(names)
+        })
+        .await
+        .expect("stored names");
+    assert_eq!(stored, ["Lab PC"]);
+    let confirm = enter_code(&Browser::new(), &code, &code.user_code).await;
+    let text = text_of(&confirm);
+    assert!(text.contains("Oleafly on Lab PC"), "{text}");
+}
+
+#[tokio::test]
 async fn a_long_device_name_is_cut_short_on_the_approval_page() {
     let setup = setup().await;
     let device = TestDevice::generate();

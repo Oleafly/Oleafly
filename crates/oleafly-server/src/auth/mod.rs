@@ -280,6 +280,12 @@ pub fn short(text: &str) -> String {
         .collect()
 }
 
+// A device name or system as the app sent it, cleaned the same way and with
+// its spaces collapsed, before it is stored or logged.
+pub fn clean_label(text: &str) -> String {
+    plain(text).split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn printable(character: char) -> Option<char> {
     let within =
         |ranges: &[RangeInclusive<char>]| ranges.iter().any(|range| range.contains(&character));
@@ -459,6 +465,19 @@ mod tests {
         let tagged: String = hidden.iter().collect();
         assert_eq!(short(&format!("{tagged}ok")), "ok");
         assert_eq!(plain("Ådne’s café, 東京"), "Ådne’s café, 東京");
+    }
+
+    #[test]
+    fn a_device_name_keeps_its_words_and_loses_breaks_marks_and_extra_spaces() {
+        assert_eq!(
+            clean_label("  Ada's\tLaptop\r\n\u{202e}exe.txt\u{200b}  "),
+            "Ada's Laptop exe.txt"
+        );
+        assert_eq!(
+            clean_label("Bjørn’s  ThinkPad (lab)"),
+            "Bjørn’s ThinkPad (lab)"
+        );
+        assert_eq!(clean_label("\u{200b}\r\n\u{2066}\u{feff}"), "");
     }
 
     #[test]

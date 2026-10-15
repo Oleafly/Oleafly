@@ -64,7 +64,16 @@ async fn location(url: &Url) -> Url {
 async fn provider_answers(server: &TestServer, provider: &str, answer: &[(&str, &str)]) -> String {
     let device = TestDevice::generate();
     let attempt = SignInAttempt::new(server, provider, &device, None);
-    let at_provider = location(&attempt.start_url).await;
+    answers_to(server, &attempt.start_url, provider, answer).await
+}
+
+async fn answers_to(
+    server: &TestServer,
+    start: &Url,
+    provider: &str,
+    answer: &[(&str, &str)],
+) -> String {
+    let at_provider = location(start).await;
     let pending = at_provider
         .query_pairs()
         .find(|(key, _)| key == "state")
@@ -371,4 +380,32 @@ async fn an_identity_the_server_turns_away_is_logged_without_line_breaks() {
     for text in [subject, target] {
         assert!(!text.chars().any(char::is_control), "{text:?}");
     }
+}
+
+#[tokio::test]
+async fn the_device_name_in_a_refusal_is_cleaned_like_provider_text() {
+    let servers = servers().await;
+    let server = &servers.server;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(server, "uni", &device, None);
+    let pairs: Vec<(String, String)> = attempt.start_url.query_pairs().into_owned().collect();
+    let mut start = attempt.start_url.clone();
+    start
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(pairs.iter().map(|(key, value)| {
+            let value = if key == "device_name" {
+                "Lab\r\n2026-10-14T03:12:00Z  INFO forged\u{202e}\u{200b}"
+            } else {
+                value.as_str()
+            };
+            (key.as_str(), value)
+        }));
+    answers_to(server, &start, "uni", &[("error", "server_error")]).await;
+    let logged = refusals(server).await;
+    assert_eq!(logged.len(), 1, "{logged:?}");
+    assert_eq!(
+        logged[0].target.as_deref(),
+        Some("Lab 2026-10-14T03:12:00Z INFO forged")
+    );
 }
