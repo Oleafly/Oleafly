@@ -102,6 +102,11 @@ pub async fn start(
         .map_err(io)??
     };
     let (mut live, disk) = loaded;
+    if live.repaired_on_load() {
+        let _ = crate::project::append_app_log(format!(
+            "Live collaboration repaired the saved shared document of project {project_id} when it opened"
+        ));
+    }
     crate::collab::tree::sign(&mut live, state, binding.server_id, tokens.account_id);
     let hold_dir = paths.project_dir(project_id)?;
     let sync_hold::CaughtUp {
