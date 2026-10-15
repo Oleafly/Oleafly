@@ -2062,7 +2062,9 @@ export const budgetSet = (projectId: string, budgetUsd: number | null) =>
   invoke<void>("budget_set_cmd", { projectId, budgetUsd });
 
 export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
-export const approvalsWriteRaw = (text: string) => invoke<void>("approvals_write_raw", { text });
+// Saves the approvals file and returns warnings about it, already in the
+// app's language, such as a tool name it doesn't know.
+export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
 export const approvalsList = (projectId: string) =>
   invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
 export const approvalsSet = (
