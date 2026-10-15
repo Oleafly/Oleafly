@@ -240,7 +240,7 @@ async fn guarded(
         .await;
     if finished.is_err() {
         if watched.is_poisoned() {
-            lock(&watched).went_bad();
+            lock(&watched).went_bad(true);
         }
         let _ = reporting.send(LiveEvent::Status(LiveStatus::Ended {
             reason: EndReason::Failed,
