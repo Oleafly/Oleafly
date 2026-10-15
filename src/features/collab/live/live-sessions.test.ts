@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CollabDocOpened } from "@/lib/tauri";
 import { LiveSessions, type LiveSessionsOptions } from "./live-sessions";
+import { TextOperation } from "./ot";
 import type { RemoteSessionTransport } from "./remote-session";
 import { FakeChannel } from "./tests/fake-channel";
 
@@ -72,7 +73,7 @@ describe("LiveSessions", () => {
     session?.applyLocal([{ from: 5, to: 5, insert: "!" }], session.version());
     release(null);
     await flush();
-    expect(detached).toHaveBeenCalledWith("notes.txt", "local!", true);
+    expect(detached).toHaveBeenCalledWith("notes.txt", "local!", true, "local");
     expect(sessions.documentSession("notes.txt")).toBeNull();
   });
 
@@ -94,7 +95,24 @@ describe("LiveSessions", () => {
     await flush();
     session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     await flush();
-    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc!", true);
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc!", true, "abc");
+  });
+
+  it("hands back typing Rust never confirmed when live editing stops, with the text to merge it from", async () => {
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    const typed = sessions.documentSession("main.tex");
+    const quiet = sessions.documentSession("intro.tex");
+    await flush();
+    channel.remote(new TextOperation().insert(">").retain(3));
+    channel.drain();
+    typed?.applyLocal([{ from: 4, to: 4, insert: " typed" }], typed.version());
+    sessions.close();
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", ">abc typed", true, ">abc");
+    expect(typed?.phase).toBe("closed");
+    expect(quiet?.phase).toBe("closed");
+    expect(channel.closes).toHaveLength(2);
   });
 
   it("passes on that typing had to be dropped, naming the file", async () => {

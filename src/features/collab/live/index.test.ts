@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   stopRemovedNotices: vi.fn(),
   startFileNotices: vi.fn(() => () => {}),
   stopFileNotices: vi.fn(),
+  startReconnectNudges: vi.fn(() => () => {}),
+  stopReconnectNudges: vi.fn(),
 }));
 
 vi.mock("./live-store", () => ({ startCollabLive: mocks.startCollabLive }));
@@ -16,6 +18,7 @@ vi.mock("./live-editing", () => ({ startLiveEditing: mocks.startLiveEditing }));
 vi.mock("./sync-pause", () => ({ startSyncPause: mocks.startSyncPause }));
 vi.mock("./removed-notices", () => ({ startRemovedNotices: mocks.startRemovedNotices }));
 vi.mock("./file-notices", () => ({ startFileNotices: mocks.startFileNotices }));
+vi.mock("./reconnect-nudges", () => ({ startReconnectNudges: mocks.startReconnectNudges }));
 
 import { startLive } from "./index";
 
@@ -46,6 +49,16 @@ describe("live collaboration entry", () => {
     expect(mocks.stopRemovedNotices).not.toHaveBeenCalled();
     stop();
     expect(mocks.stopRemovedNotices).toHaveBeenCalledOnce();
+  });
+
+  it("asks for a reconnect after waking or a network change for as long as live collaboration runs", () => {
+    mocks.startReconnectNudges.mockClear();
+    mocks.startReconnectNudges.mockReturnValue(mocks.stopReconnectNudges);
+    const stop = startLive();
+    expect(mocks.startReconnectNudges).toHaveBeenCalledOnce();
+    expect(mocks.stopReconnectNudges).not.toHaveBeenCalled();
+    stop();
+    expect(mocks.stopReconnectNudges).toHaveBeenCalledOnce();
   });
 
   it("tells people about figures waiting to be shared and copies kept for them while live collaboration runs", () => {

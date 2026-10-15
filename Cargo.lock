@@ -4040,6 +4040,7 @@ dependencies = [
  "axum",
  "chrono",
  "futures-util",
+ "http-body",
  "lettre",
  "loro",
  "oleafly-collab-protocol",

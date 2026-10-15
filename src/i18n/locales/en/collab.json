@@ -25,9 +25,9 @@
       "signedOut": "Signed out",
       "signedInAs": "Signed in as {{name}}",
       "signedOutHint": "This computer isn't signed in to this server.",
-      "paused": "Suspended",
+      "suspended": "Suspended",
       "noAccess": "No access",
-      "pausedHint": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
+      "suspendedHint": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
       "endedHint": "You no longer have access to {{server}}. Your copies stay on this computer as ordinary projects. If an admin adds you back, sign in again.",
       "endedGuestHint": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copies stay on this computer as ordinary projects. If you're invited again, sign in again.",
       "role": "Your role: {{role}}",
@@ -35,11 +35,11 @@
       "signOut": "Sign out",
       "remove": "Remove",
       "manage": "Manage server",
-      "manageHint": "Manage server shows people, access rules and server settings here. The admin console opens in its own window and also has an overview, projects and connection checks.",
+      "manageHint": "Manage server shows People, Allowed people, Domains, Server settings, Email and Security log here. The admin console opens in its own window and also has an overview, projects and connection checks.",
       "test": "Test connection",
       "removeConfirm": {
         "title": "Remove {{name}}?",
-        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects.",
+        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects, each renamed as a local copy.",
         "confirm": "Remove server"
       },
       "detached": "These shared projects from {{server}} stopped syncing. They stay on this computer as ordinary projects.",
@@ -216,11 +216,12 @@
     "link_sharing_off": "This server doesn't allow link sharing. Ask its admin to turn it on.",
     "access_log_off": "This server doesn't allow access logs. Ask its admin to turn them on.",
     "last_admin": "This server needs at least one admin. Make someone else an admin first.",
-    "duplicate_entry": "That's already on the list.",
+    "duplicate_entry": "That entry already exists.",
     "already_member": "That person already has an account. Change their role under People.",
     "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
     "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
-    "owner_away": "This project's owner isn't active on this server right now, so it can't take new people.",
+    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people right now. Ask an admin of the server.",
+    "wrong_server": "This server sent its sign-in page from a different address, so Oleafly stopped. Check the server address, or ask the person who runs it.",
     "not_a_link": "That isn't a link to a shared project. Copy the whole link, then try again.",
     "signed_out": "You're signed out of this server. Sign in again to sync this project.",
     "server_removed": "This project's server isn't in your list any more. Keep the project as a local copy, or add the server again.",
@@ -268,17 +269,21 @@
       "devicesLoading": "Loading devices…",
       "devicesLoadFailed": "Oleafly couldn't load these devices.",
       "lastAdmin": "This server needs at least one admin. Make someone else an admin first.",
-      "ownedOne": "{{name}} owns a shared project. Nobody else can manage it while {{name}} is away.",
-      "ownedMany": "{{name}} owns shared projects: {{number}}. Nobody else can manage them while {{name}} is away.",
+      "owned": {
+        "suspendOne": "{{name}} owns a shared project. Nobody else can manage it while {{name}} is suspended.",
+        "suspendMany": "Shared projects {{name}} owns: {{number}}. Nobody else can manage them while {{name}} is suspended.",
+        "removeOne": "{{name}} owns a shared project. Once {{name}} is removed, nobody else can manage it.",
+        "removeMany": "Shared projects {{name}} owns: {{number}}. Once {{name}} is removed, nobody else can manage them."
+      },
       "removeConfirm": {
         "title": "Remove {{name}} from this server?",
         "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
-        "confirm": "Remove member"
+        "confirm": "Remove from server"
       },
       "suspendConfirm": {
         "title": "Suspend {{name}}?",
         "description": "{{name}} can't sign in or sync until an admin reactivates the account.",
-        "confirm": "Suspend member"
+        "confirm": "Suspend account"
       },
       "selfRoleConfirm": {
         "title": "Change your own role to {{role}}?",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "People on this list can sign in to the server with the role you pick.",
+      "description": "People added here can sign in to the server with the role you pick.",
       "matchLabel": "Match by",
       "match": {
         "email": "Email address",
@@ -303,14 +308,14 @@
       "providerLabel": "Sign-in option",
       "roleLabel": "Role",
       "add": "Add",
-      "loading": "Loading the list…",
-      "empty": "Nobody is on the list yet.",
+      "loading": "Loading allowed people…",
+      "empty": "Nobody has been added yet.",
       "loginEntry": "{{login}} on {{provider}}",
       "bound": "Has signed in",
       "unbound": "Hasn't signed in yet",
       "remove": "Remove",
       "removeNamed": "Remove {{entry}}",
-      "duplicate": "That person is already on the list."
+      "duplicate": "That person is already allowed in."
     },
     "domains": {
       "description": "Anyone with a verified email address at these domains can sign in with the role you pick.",
@@ -507,7 +512,7 @@
     "uploading": "Uploading figures and other files: {{done}} of {{total}}",
     "saving": "Saving the project on the server…",
     "failed": "Sharing didn't finish, so nothing was shared.",
-    "trustAgain": "Now that other people can edit this project, Oleafly asks you again before running its tools on this computer."
+    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it."
   },
   "manage": {
     "sharedOn": "Shared on {{server}}",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly couldn't load who has access.",
     "people": "People with access",
     "you": "You",
+    "inactive": "Removed or suspended",
+    "ownerInactive": "Owner removed or suspended",
     "roleLabel": "Role for {{name}}",
     "remove": "Remove",
     "removeNamed": "Remove {{name}}",
@@ -529,7 +536,6 @@
       "placeholder": "Name, sign-in name or email",
       "roleLabel": "Role for people you add",
       "searching": "Searching…",
-      "noResults": "Nobody on {{server}} matches.",
       "noResultsTryEmail": "Nobody on {{server}} matches. Try their full email address.",
       "alreadyMember": "{{name}} already has access.",
       "allMembers": "Everyone who matches already has access.",
@@ -582,7 +588,8 @@
     "serverRemoved": "Server removed",
     "clientTooOld": "Oleafly needs an update",
     "serverTooOld": "Server needs an update",
-    "serverChanged": "Different server"
+    "serverChanged": "New server at this address",
+    "failed": "Stopped after an error"
   },
   "toolbar": {
     "noFile": "No file open",
@@ -638,7 +645,7 @@
         "locked": "Can't write {{path}}: another program has it open.",
         "read_only": "Can't write {{path}}: the file or its folder is read-only.",
         "no_space": "Can't write {{path}}: the disk is full.",
-        "not_downloaded": "Can't write {{path}}: a cloud service hasn't downloaded it to this computer yet.",
+        "not_downloaded": "{{path}} couldn't be downloaded from the server yet. Oleafly keeps trying.",
         "other": "Can't write {{path}}."
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "Update Oleafly to keep working on {{server}}. Your changes stay on this computer.",
     "serverTooOld": "{{server}} needs an update before it works with this version of Oleafly. Ask the person who runs it. Your changes stay on this computer.",
     "serverChanged": "The address of {{server}} now points at a different server. Remove it in Collaboration settings and add it again. Your changes stay on this computer.",
+    "failed": "Syncing this project stopped after an error. Go live again to continue.",
+    "goLiveAgain": "Go live again",
     "accessEnded": "You no longer have access to {{server}}. Your copy stays on this computer as an ordinary project.",
     "accessEndedGuest": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copy stays on this computer as an ordinary project.",
     "signIn": "Sign in",
@@ -692,6 +701,7 @@
     "newDevice": "{{name}} signed in on a new device",
     "review": "Review",
     "renamed": "{{name}} renamed {{before}} to {{theirs}} after you named it {{ours}}",
+    "renamedPortable": "{{before}} was renamed to {{theirs}} so it works on every computer.",
     "skipped": "A change from {{name}} couldn't be read and was skipped.",
     "skippedUnknown": "A change from someone couldn't be read and was skipped.",
     "mentioned": "{{name}} mentioned you in a comment on {{path}}",
@@ -729,6 +739,7 @@
     "noText": "No text changed, so there's nothing to compare.",
     "newFile": "New file",
     "removedFile": "Removed",
+    "closedOldest": "Only {{number}} files stay open at a time, so {{path}} closed.",
     "diffLabel": "Changes in {{path}}"
   },
   "console": {
@@ -772,7 +783,7 @@
         "title": "Health",
         "okLabel": "Everything is working",
         "okDescription": "People can sign in and the server can save files.",
-        "problem": "{{provider}} sign-in has been failing since {{time}}",
+        "problem": "Signing in with {{provider}} has been failing since {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nobody can sign in",
@@ -897,7 +908,8 @@
     "malformed": "Oleafly can't open this link. Ask the person who sent it for a new one.",
     "opening": "Opening the shared project…",
     "downloading": "Downloading files: {{done}} of {{total}}",
-    "cancelNamed": "Stop opening {{name}}",
+    "cancelNamed": "Cancel opening {{name}}",
+    "cancelling": "Cancelling…",
     "confirm": {
       "title": "Join this shared project?",
       "body": "Joining adds you to the project and copies its files to this computer. Only join if you know who sent you the link.",
@@ -1038,6 +1050,9 @@
     "failed": "Couldn't be shared: {{files}}",
     "tooLarge": "{{file}} is {{size}}, larger than this server allows ({{limit}}). It stays on this computer only.",
     "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
+    "projectTooLarge": "{{file}} stays on this computer because this project reached the server's size limit of {{limit}}. Ask the person who runs the server to raise it.",
+    "projectTooLargeUnknown": "{{file}} stays on this computer because this project reached the server's size limit. Ask the person who runs the server to raise it.",
+    "projectFull": "This project reached the server's size limit, so your changes stay on this computer for now. Ask the person who runs the server to raise it.",
     "replaced": "{{name}} replaced {{file}} at the same time as you. Your version is kept as {{copy}}.",
     "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
     "beside": "{{name}} also has a file named {{file}}. Theirs is kept as {{copy}}.",

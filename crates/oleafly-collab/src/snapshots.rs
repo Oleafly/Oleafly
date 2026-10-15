@@ -1,4 +1,4 @@
-use loro::{EncodedBlobMode, LoroDoc};
+use loro::EncodedBlobMode;
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::projects::ProjectDevice;
 
@@ -16,8 +16,10 @@ pub struct Verified {
 }
 
 pub fn loads(bytes: &[u8]) -> bool {
-    LoroDoc::decode_import_blob_meta(bytes, true)
-        .is_ok_and(|meta| meta.mode == EncodedBlobMode::Snapshot)
+    matches!(
+        crate::doc::blob_meta(bytes, true),
+        crate::doc::Meta::Read(meta) if meta.mode == EncodedBlobMode::Snapshot
+    )
 }
 
 pub async fn fetch_verified(

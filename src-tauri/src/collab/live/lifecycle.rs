@@ -281,14 +281,19 @@ pub fn reconnect_now() -> bool {
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);
 
-pub async fn flush(project_id: &str) {
+// Writes what the document has to disk. The compile barrier also waits a
+// little for figures still on their way, so the compile finds them; other
+// flushes, such as reopening a restored file, don't.
+pub async fn flush(project_id: &str, figures: bool) {
     let Some(active) = active_for(project_id) else {
         return;
     };
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
-    active.wait_for_figures(FIGURE_WAIT).await;
+    if figures {
+        active.wait_for_figures(FIGURE_WAIT).await;
+    }
 }
 
 pub async fn forget(project_id: &str, paths: &oleafly_collab::CollabPaths) {

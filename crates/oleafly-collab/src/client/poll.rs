@@ -117,15 +117,20 @@ pub(crate) async fn post_outbox(
                     let _ = replies.send(Ok(answered)).await;
                 }
             }
+            // A post refused because the project is full reads like the
+            // server's own frame for that. Anything else too large, from the
+            // server or a proxy in front of it, reads like a batch too large.
             Err(CollabError::Api {
                 status: 413,
+                code,
                 message,
-                ..
             }) => {
-                let refused = ServerFrame::Error {
-                    code: FrameErrorCode::TooLarge,
-                    message,
+                let code = if code == "project_too_large" {
+                    FrameErrorCode::ProjectTooLarge
+                } else {
+                    FrameErrorCode::TooLarge
                 };
+                let refused = ServerFrame::Error { code, message };
                 let _ = replies.send(Ok(vec![refused])).await;
             }
             Err(error) => {
@@ -521,15 +526,14 @@ mod tests {
         assert_eq!((status, body.len()), (200, 1000));
     }
 
-    #[tokio::test]
-    async fn a_post_a_proxy_refuses_as_too_large_reads_like_the_servers_own_refusal() {
-        let (url, _) = crate::client::test_util::routed(|_| {
+    async fn refused_posts(body: &'static str) -> Vec<Polled> {
+        let (url, _) = crate::client::test_util::routed(move |_| {
             vec![(
                 "/frames",
                 vec![crate::client::test_util::http_response(
                     "413 Payload Too Large",
-                    &[],
-                    "",
+                    &[("Content-Type", "application/json")],
+                    body,
                 )],
             )]
         })
@@ -547,12 +551,40 @@ mod tests {
         let (sender, mut replies) = mpsc::channel(4);
         let posting = tokio::spawn(post_outbox(channel, Arc::clone(&outbox), sender));
         let project = SharedProjectId::new_v7();
+        let mut heard = Vec::new();
         for _ in 0..2 {
             outbox.push(update(project, 64 * 1024));
             let reply = tokio::time::timeout(Duration::from_secs(10), replies.recv())
                 .await
                 .expect("an answer")
                 .expect("the outbox is still sending");
+            heard.push(reply);
+        }
+        assert!(!posting.is_finished());
+        posting.abort();
+        heard
+    }
+
+    #[tokio::test]
+    async fn a_post_refused_because_the_project_is_full_reads_like_the_servers_frame_for_it() {
+        let heard =
+            refused_posts(r#"{"code":"project_too_large","message":"This project is full."}"#)
+                .await;
+        for reply in &heard {
+            assert!(
+                matches!(
+                    reply.as_deref(),
+                    Ok([ServerFrame::Error {
+                        code: FrameErrorCode::ProjectTooLarge,
+                        message,
+                    }]) if message == "This project is full."
+                ),
+                "{reply:?}"
+            );
+        }
+        let heard =
+            refused_posts(r#"{"code":"payload_too_large","message":"Too much at once."}"#).await;
+        for reply in &heard {
             assert!(
                 matches!(
                     reply.as_deref(),
@@ -564,8 +596,22 @@ mod tests {
                 "{reply:?}"
             );
         }
-        assert!(!posting.is_finished());
-        posting.abort();
+    }
+
+    #[tokio::test]
+    async fn a_post_a_proxy_refuses_as_too_large_reads_like_the_servers_own_refusal() {
+        for reply in &refused_posts("").await {
+            assert!(
+                matches!(
+                    reply.as_deref(),
+                    Ok([ServerFrame::Error {
+                        code: FrameErrorCode::TooLarge,
+                        ..
+                    }])
+                ),
+                "{reply:?}"
+            );
+        }
     }
 
     #[test]

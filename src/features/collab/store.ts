@@ -27,9 +27,23 @@ export interface UnsentWork {
 }
 
 // The shared projects a removed server left behind as ordinary projects.
+// The shared projects one removed server left as ordinary projects.
 export interface DetachedNotice {
   server: string;
   projects: readonly CollabDetachedProject[];
+}
+
+// A second Remove adds to what the first one listed instead of replacing it.
+function withDetached(
+  notices: readonly DetachedNotice[],
+  server: string,
+  projects: readonly CollabDetachedProject[],
+): readonly DetachedNotice[] {
+  const existing = notices.find((notice) => notice.server === server);
+  if (!existing) return [...notices, { server, projects }];
+  const listed = new Set(existing.projects.map((project) => project.project_id));
+  const added = projects.filter((project) => !listed.has(project.project_id));
+  return notices.map((notice) => (notice === existing ? { server, projects: [...notice.projects, ...added] } : notice));
 }
 
 interface CollabStore {
@@ -38,7 +52,7 @@ interface CollabStore {
   loadError: CollabErrorCode | null;
   pending: Readonly<Record<string, CollabServerAction>>;
   unsent: Readonly<Record<string, UnsentWork>>;
-  detached: DetachedNotice | null;
+  detached: readonly DetachedNotice[];
   load: () => Promise<void>;
   signIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
   signInWithCode: (
@@ -105,7 +119,7 @@ async function end(
   store.setState((state) => ({
     servers: ended(state.servers, serverId, action),
     pending: without(state.pending, serverId),
-    detached: detached.length > 0 ? { server: serverName, projects: detached } : state.detached,
+    detached: detached.length > 0 ? withDetached(state.detached, serverName, detached) : state.detached,
   }));
   const local = [...outcome.unsent, ...detached].map((project) => project.project_id);
   if (local.length > 0) void followLocalCopies(local);
@@ -153,7 +167,7 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
   loadError: null,
   pending: {},
   unsent: {},
-  detached: null,
+  detached: [],
   load: async () => {
     const request = ++loadRequest;
     set((state) => ({ status: state.status === "ready" ? "ready" : "loading", loadError: null }));
@@ -186,7 +200,7 @@ export const useCollabStore = create<CollabStore>((set, get) => ({
     return end(serverId, waiting.action, true);
   },
   stay: (serverId) => set((state) => ({ unsent: without(state.unsent, serverId) })),
-  dismissDetached: () => set({ detached: null }),
+  dismissDetached: () => set({ detached: [] }),
   refreshAccounts: async () => {
     // Apply each answer as it comes, and only while nothing has changed the
     // list since: a refresh started before a sign-out must not sign back in.

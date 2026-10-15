@@ -25,9 +25,9 @@
       "signedOut": "Wylogowano",
       "signedInAs": "Zalogowano jako {{name}}",
       "signedOutHint": "Ten komputer nie jest zalogowany do tego serwera.",
-      "paused": "Zawieszone",
+      "suspended": "Zawieszone",
       "noAccess": "Brak dostępu",
-      "pausedHint": "Administrator zawiesił Twoje konto na serwerze {{server}}. Twoje zmiany zostają na tym komputerze. Możesz zalogować się ponownie, gdy administrator aktywuje je ponownie.",
+      "suspendedHint": "Administrator zawiesił Twoje konto na serwerze {{server}}. Twoje zmiany zostają na tym komputerze. Możesz zalogować się ponownie, gdy administrator aktywuje je ponownie.",
       "endedHint": "Nie masz już dostępu do serwera {{server}}. Twoje kopie zostają na tym komputerze jako zwykłe projekty. Jeśli administrator doda Cię ponownie, zaloguj się jeszcze raz.",
       "endedGuestHint": "Nie masz już dostępu do serwera {{server}}, bo nie należysz do żadnego z jego udostępnionych projektów. Twoje kopie zostają na tym komputerze jako zwykłe projekty. Jeśli dostaniesz nowe zaproszenie, zaloguj się jeszcze raz.",
       "role": "Twoja rola: {{role}}",
@@ -35,11 +35,11 @@
       "signOut": "Wyloguj się",
       "remove": "Usuń",
       "manage": "Zarządzaj serwerem",
-      "manageHint": "Zarządzaj serwerem pokazuje tutaj osoby, reguły dostępu i ustawienia serwera. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
+      "manageHint": "Zarządzaj serwerem pokazuje tutaj sekcje Osoby, Dozwolone osoby, Domeny, Ustawienia serwera, E-mail i Dziennik bezpieczeństwa. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
       "test": "Testuj połączenie",
       "removeConfirm": {
         "title": "Usunąć serwer {{name}}?",
-        "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty.",
+        "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty, każdy z nazwą kopii lokalnej.",
         "confirm": "Usuń serwer"
       },
       "detached": "Te udostępnione projekty z serwera {{server}} przestały się synchronizować. Zostają na tym komputerze jako zwykłe projekty.",
@@ -216,11 +216,12 @@
     "link_sharing_off": "Ten serwer nie zezwala na udostępnianie przez link. Poproś jego administratora o włączenie tej opcji.",
     "access_log_off": "Ten serwer nie zezwala na dzienniki dostępu. Poproś jego administratora o ich włączenie.",
     "last_admin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
-    "duplicate_entry": "To już jest na liście.",
+    "duplicate_entry": "Ten wpis już istnieje.",
     "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
-    "owner_away": "Właściciel tego projektu nie jest teraz aktywny na tym serwerze, więc projekt nie może przyjąć nowych osób.",
+    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może teraz przyjąć nowych osób. Zapytaj administratora serwera.",
+    "wrong_server": "Ten serwer wysłał stronę logowania z innego adresu, więc Oleafly przerwał. Sprawdź adres serwera albo zapytaj osobę, która go prowadzi.",
     "not_a_link": "To nie jest link do udostępnionego projektu. Skopiuj cały link i spróbuj ponownie.",
     "signed_out": "Wylogowano Cię z tego serwera. Zaloguj się ponownie, aby synchronizować ten projekt.",
     "server_removed": "Serwera tego projektu nie ma już na Twojej liście. Zachowaj projekt jako kopię lokalną albo dodaj serwer ponownie.",
@@ -268,17 +269,21 @@
       "devicesLoading": "Wczytywanie urządzeń…",
       "devicesLoadFailed": "Oleafly nie mógł wczytać tych urządzeń.",
       "lastAdmin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
-      "ownedOne": "{{name}} jest właścicielem udostępnionego projektu. Nikt inny nie może nim zarządzać pod nieobecność {{name}}.",
-      "ownedMany": "{{name}} jest właścicielem udostępnionych projektów: {{number}}. Nikt inny nie może nimi zarządzać pod nieobecność {{name}}.",
+      "owned": {
+        "suspendOne": "Do {{name}} należy udostępniony projekt. Dopóki konto {{name}} jest zawieszone, nikt inny nie może nim zarządzać.",
+        "suspendMany": "Udostępnione projekty należące do {{name}}: {{number}}. Dopóki konto {{name}} jest zawieszone, nikt inny nie może nimi zarządzać.",
+        "removeOne": "Do {{name}} należy udostępniony projekt. Po usunięciu konta {{name}} nikt inny nie będzie mógł nim zarządzać.",
+        "removeMany": "Udostępnione projekty należące do {{name}}: {{number}}. Po usunięciu konta {{name}} nikt inny nie będzie mógł nimi zarządzać."
+      },
       "removeConfirm": {
         "title": "Usunąć użytkownika {{name}} z tego serwera?",
         "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
-        "confirm": "Usuń członka"
+        "confirm": "Usuń z serwera"
       },
       "suspendConfirm": {
         "title": "Zawiesić {{name}}?",
         "description": "{{name}} nie może się logować ani synchronizować, dopóki administrator nie aktywuje konta ponownie.",
-        "confirm": "Zawieś członka"
+        "confirm": "Zawieś konto"
       },
       "selfRoleConfirm": {
         "title": "Zmienić swoją rolę na {{role}}?",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "Osoby z tej listy mogą logować się do serwera z rolą, którą wybierzesz.",
+      "description": "Osoby dodane tutaj mogą logować się do serwera z rolą, którą wybierzesz.",
       "matchLabel": "Dopasuj według",
       "match": {
         "email": "Adres e-mail",
@@ -303,14 +308,14 @@
       "providerLabel": "Opcja logowania",
       "roleLabel": "Rola",
       "add": "Dodaj",
-      "loading": "Wczytywanie listy…",
-      "empty": "Na liście nie ma jeszcze nikogo.",
+      "loading": "Wczytywanie dozwolonych osób…",
+      "empty": "Nikt nie został jeszcze dodany.",
       "loginEntry": "{{login}} w usłudze {{provider}}",
       "bound": "Zalogowano",
       "unbound": "Jeszcze nie zalogowano",
       "remove": "Usuń",
       "removeNamed": "Usuń wpis {{entry}}",
-      "duplicate": "Ta osoba jest już na liście."
+      "duplicate": "Ta osoba jest już dozwolona."
     },
     "domains": {
       "description": "Każdy, kto ma zweryfikowany adres e-mail w tych domenach, może się zalogować z rolą, którą wybierzesz.",
@@ -507,7 +512,7 @@
     "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
     "saving": "Zapisywanie projektu na serwerze…",
     "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono.",
-    "trustAgain": "Teraz, gdy inni mogą edytować ten projekt, Oleafly zapyta Cię ponownie, zanim uruchomi jego narzędzia na tym komputerze."
+    "trustAgain": "Każdy, kogo dodasz do tego projektu, może zmieniać jego pliki, więc Oleafly poprosi Cię na tym komputerze o ponowne zaufanie, zanim uruchomi dla niego agentów, polecenia terminala lub shell escape."
   },
   "manage": {
     "sharedOn": "Udostępniono na serwerze {{server}}",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly nie mógł wczytać listy osób z dostępem.",
     "people": "Osoby z dostępem",
     "you": "Ty",
+    "inactive": "Usunięty lub zawieszony",
+    "ownerInactive": "Właściciel usunięty lub zawieszony",
     "roleLabel": "Rola użytkownika {{name}}",
     "remove": "Usuń",
     "removeNamed": "Usuń użytkownika {{name}}",
@@ -529,7 +536,6 @@
       "placeholder": "Imię, nazwa użytkownika lub e-mail",
       "roleLabel": "Rola dla dodawanych osób",
       "searching": "Wyszukiwanie…",
-      "noResults": "Nikt na serwerze {{server}} nie pasuje.",
       "noResultsTryEmail": "Nikt na serwerze {{server}} nie pasuje. Spróbuj pełnego adresu e-mail tej osoby.",
       "alreadyMember": "{{name}} ma już dostęp.",
       "allMembers": "Wszystkie pasujące osoby mają już dostęp.",
@@ -582,7 +588,8 @@
     "serverRemoved": "Serwer usunięty",
     "clientTooOld": "Oleafly wymaga aktualizacji",
     "serverTooOld": "Serwer wymaga aktualizacji",
-    "serverChanged": "Inny serwer"
+    "serverChanged": "Nowy serwer pod tym adresem",
+    "failed": "Zatrzymano po błędzie"
   },
   "toolbar": {
     "noFile": "Brak otwartego pliku",
@@ -638,7 +645,7 @@
         "locked": "Nie można zapisać {{path}}: inny program ma go otwartego.",
         "read_only": "Nie można zapisać {{path}}: plik lub jego folder jest tylko do odczytu.",
         "no_space": "Nie można zapisać {{path}}: dysk jest pełny.",
-        "not_downloaded": "Nie można zapisać {{path}}: usługa w chmurze jeszcze go nie pobrała na ten komputer.",
+        "not_downloaded": "Nie udało się jeszcze pobrać {{path}} z serwera. Oleafly próbuje dalej.",
         "other": "Nie można zapisać {{path}}."
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "Zaktualizuj Oleafly, aby dalej pracować na serwerze {{server}}. Twoje zmiany zostają na tym komputerze.",
     "serverTooOld": "Serwer {{server}} wymaga aktualizacji, zanim zadziała z tą wersją Oleafly. Zwróć się do osoby, która nim zarządza. Twoje zmiany zostają na tym komputerze.",
     "serverChanged": "Adres serwera {{server}} prowadzi teraz do innego serwera. Usuń go w Ustawieniach w sekcji Współpraca i dodaj ponownie. Twoje zmiany zostają na tym komputerze.",
+    "failed": "Synchronizacja tego projektu zatrzymała się po błędzie. Uruchom ją ponownie, aby kontynuować.",
+    "goLiveAgain": "Synchronizuj ponownie",
     "accessEnded": "Nie masz już dostępu do serwera {{server}}. Twoja kopia zostaje na tym komputerze jako zwykły projekt.",
     "accessEndedGuest": "Nie masz już dostępu do serwera {{server}}, bo nie należysz do żadnego z jego udostępnionych projektów. Twoja kopia zostaje na tym komputerze jako zwykły projekt.",
     "signIn": "Zaloguj się",
@@ -692,6 +701,7 @@
     "newDevice": "Użytkownik {{name}} zalogował się na nowym urządzeniu",
     "review": "Przejrzyj",
     "renamed": "Użytkownik {{name}} zmienił nazwę {{before}} na {{theirs}} po tym, jak nazwałeś plik {{ours}}",
+    "renamedPortable": "Nazwę {{before}} zmieniono na {{theirs}}, żeby plik działał na każdym komputerze.",
     "skipped": "Nie udało się odczytać zmiany od użytkownika {{name}}, więc została pominięta.",
     "skippedUnknown": "Nie udało się odczytać czyjejś zmiany, więc została pominięta.",
     "mentioned": "{{name}} oznacza Cię w komentarzu w pliku {{path}}",
@@ -729,6 +739,7 @@
     "noText": "Żaden tekst się nie zmienił, więc nie ma czego porównywać.",
     "newFile": "Nowy plik",
     "removedFile": "Usunięty",
+    "closedOldest": "Naraz mogą być otwarte tylko {{number}} pliki, więc {{path}} został zamknięty.",
     "diffLabel": "Zmiany w {{path}}"
   },
   "console": {
@@ -897,7 +908,8 @@
     "malformed": "Oleafly nie może otworzyć tego linku. Poproś osobę, która go wysłała, o nowy.",
     "opening": "Otwieranie udostępnionego projektu…",
     "downloading": "Pobieranie plików: {{done}} z {{total}}",
-    "cancelNamed": "Przerwij otwieranie {{name}}",
+    "cancelNamed": "Anuluj otwieranie {{name}}",
+    "cancelling": "Anulowanie…",
     "confirm": {
       "title": "Dołączyć do tego udostępnionego projektu?",
       "body": "Dołączenie doda Cię do projektu i skopiuje jego pliki na ten komputer. Dołącz tylko wtedy, gdy wiesz, kto wysłał Ci link.",
@@ -1038,6 +1050,9 @@
     "failed": "Nie udało się udostępnić: {{files}}",
     "tooLarge": "{{file}} ma {{size}}, więcej, niż pozwala ten serwer ({{limit}}). Plik zostaje tylko na tym komputerze.",
     "tooLargeUnknown": "{{file}} jest większy, niż pozwala ten serwer. Plik zostaje tylko na tym komputerze.",
+    "projectTooLarge": "{{file}} zostaje na tym komputerze, bo projekt osiągnął limit rozmiaru serwera ({{limit}}). Poproś osobę, która prowadzi serwer, o jego podniesienie.",
+    "projectTooLargeUnknown": "{{file}} zostaje na tym komputerze, bo projekt osiągnął limit rozmiaru serwera. Poproś osobę, która prowadzi serwer, o jego podniesienie.",
+    "projectFull": "Ten projekt osiągnął limit rozmiaru serwera, więc Twoje zmiany na razie zostają na tym komputerze. Poproś osobę, która prowadzi serwer, o podniesienie limitu.",
     "replaced": "Plik {{file}} został w tym samym momencie zastąpiony też przez: {{name}}. Twoja wersja jest zapisana jako {{copy}}.",
     "added": "{{file}} ma teraz nazwę {{copy}}, bo plik o tej samej nazwie dodał(a): {{name}}.",
     "beside": "Plik o nazwie {{file}} ma też: {{name}}. Jest zapisany jako {{copy}}.",

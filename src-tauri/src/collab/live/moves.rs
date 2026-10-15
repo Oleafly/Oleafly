@@ -226,9 +226,13 @@ pub(super) fn adopt_folder_moves(
             continue;
         };
         let new = (*new).clone();
+        let Some((id, _, _)) = placed.get(&old) else {
+            continue;
+        };
         if !adopt_move(live, disk, bases, &old, &new)? {
             continue;
         }
+        import.moved_dirs.push((id.clone(), new.clone()));
         import.removed.retain(|path| !covers(&old, path));
         let unchanged = |path: &str, hash: &str| {
             covers(&new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
@@ -243,7 +247,9 @@ pub(super) fn adopt_folder_moves(
     }
     if moved {
         let now = by_path(&materialize::layout(&live.doc().nodes()?));
-        import.dirs.retain(|path| !now.contains_key(path));
+        import.dirs.retain(|path| {
+            !now.contains_key(path) && !disk.layout.values().any(|placed| placed.path == *path)
+        });
     }
     Ok(moved)
 }
@@ -681,7 +687,11 @@ mod tests {
                     hashes.insert(placed.path.clone(), sha256_hex(text.as_bytes()));
                 }
             }
-            let disk = DiskState { layout, hashes };
+            let disk = DiskState {
+                layout,
+                hashes,
+                owed: Default::default(),
+            };
             live.take_disk_work();
             let bases = initial_bases(&root, &disk, &live);
             Peer {

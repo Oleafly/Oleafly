@@ -168,6 +168,29 @@ describe("AllowlistTab", () => {
     expect(screen.getByText(copy.empty)).toBeInTheDocument();
   });
 
+  it("keeps an entry busy until its own removal ends, whatever another entry does", async () => {
+    const forDan = deferred<undefined>();
+    const forEve = deferred<undefined>();
+    mocks.collabAdminAllowlist.mockResolvedValue([
+      allowlistEntry(),
+      allowlistEntry({ id: "allow-2", matcher: { kind: "email", email: "eve@uni.edu" } }),
+    ]);
+    mocks.collabAdminRemoveAllowlist.mockImplementation((_server: string, id: string) =>
+      id === "allow-1" ? forDan.promise : forEve.promise,
+    );
+    const user = userEvent.setup();
+    render(<AllowlistTab serverId={SERVER_ID} actor="admin" providers={providers} />);
+    await user.click(await screen.findByRole("button", { name: fill(copy.removeNamed, { entry: "dan@uni.edu" }) }));
+    const eve = screen.getByRole("button", { name: fill(copy.removeNamed, { entry: "eve@uni.edu" }) });
+    await user.click(eve);
+    await act(async () => forDan.resolve(undefined));
+    await waitFor(() => expect(screen.queryByText("dan@uni.edu")).toBeNull());
+    expect(eve).toBeDisabled();
+    expect(mocks.collabAdminRemoveAllowlist).toHaveBeenCalledTimes(2);
+    await act(async () => forEve.resolve(undefined));
+    await waitFor(() => expect(screen.queryByText("eve@uni.edu")).toBeNull());
+  });
+
   it("offers a maintainer only the member and guest roles", async () => {
     mocks.collabAdminAllowlist.mockResolvedValue([]);
     const user = userEvent.setup();

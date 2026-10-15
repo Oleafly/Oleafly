@@ -176,6 +176,60 @@ async fn a_large_change_on_a_slow_downlink_arrives_without_reconnecting() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn typing_sent_on_reconnect_waits_out_a_long_backlog_without_reconnecting() {
+    let pair = two_people().await;
+    let (project, main, bob_live, alice_live) = shared(&pair).await;
+    let mut alice = side(alice_live, &main);
+    start(&mut alice, link(&pair, &pair.alice, project));
+    until_status(&mut alice, LiveStatus::Online).await;
+    let body = noise(600 * 1024, 31);
+    let refs = lock(&alice.live)
+        .doc_mut()
+        .add_node(None, "refs.bib", NodeKind::Text, None, &body)
+        .unwrap();
+    flushed(&alice);
+    acknowledged(&alice).await;
+    let mut bob = side(bob_live, &main);
+    append(&bob, &main, " mine");
+    let upstream = pair
+        ._server
+        .url()
+        .trim_start_matches("http://")
+        .parse()
+        .unwrap();
+    let slow = throttled_link(upstream, None, Some(128 * 1024)).await;
+    let options = impatient();
+    start_with(
+        &mut bob,
+        link_through(&pair, &pair.bob, project, slow),
+        options,
+    );
+    until_status(&mut bob, LiveStatus::Online).await;
+    let started = tokio::time::Instant::now();
+    tokio::time::timeout(Duration::from_secs(90), async {
+        loop {
+            let done = {
+                let live = lock(&bob.live);
+                !live.has_unsent() && live.doc().text(&refs).ok().as_deref() == Some(body.as_str())
+            };
+            if done {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the backlog came in and Bob's typing was acknowledged");
+    assert!(
+        started.elapsed() > options.quiet_for,
+        "the backlog took {:?}, no longer than the quiet window",
+        started.elapsed()
+    );
+    assert_eq!(dropped(&mut bob), 0, "Bob's connection dropped on the way");
+    until_text(&alice, &main, "abc mine").await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn stopping_while_a_large_change_is_still_going_up_ends_the_session_at_once() {
     let pair = two_people().await;
     let (_project, _main, mut bob, _alice) = on_a_slow_uplink(&pair).await;

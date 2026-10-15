@@ -826,6 +826,7 @@ impl ProjectDoc {
         body: &str,
         mentions: &[AccountId],
     ) -> Result<CommentThread, CollabError> {
+        self.writable()?;
         let body = checked_body(body)?;
         let text = self.text_of(file_id)?;
         let stale = || {
@@ -925,6 +926,7 @@ impl ProjectDoc {
         body: &str,
         mentions: &[AccountId],
     ) -> Result<CommentMessage, CollabError> {
+        self.writable()?;
         let body = checked_body(body)?;
         let map = self.writable_thread(file_id, thread)?;
         let Some(ValueOrContainer::Container(Container::List(messages))) = map.get(MESSAGES) else {
@@ -955,6 +957,7 @@ impl ProjectDoc {
         body: &str,
         mentions: &[AccountId],
     ) -> Result<CommentMessage, CollabError> {
+        self.writable()?;
         let body = checked_body(body)?;
         let found = self.find_message(file_id, thread, message)?;
         if found.message.author != by {
@@ -988,6 +991,7 @@ impl ProjectDoc {
         message: CommentId,
         by: AccountId,
     ) -> Result<(), CollabError> {
+        self.writable()?;
         let found = self.find_message(file_id, thread, message)?;
         if found.message.author != by {
             return Err(not_yours());
@@ -1008,6 +1012,7 @@ impl ProjectDoc {
         by: AccountId,
         at: i64,
     ) -> Result<(), CollabError> {
+        self.writable()?;
         let map = self.writable_thread(file_id, thread)?;
         let resolution = HashMap::from([
             ("by".to_owned(), LoroValue::from(by.to_string())),
@@ -1023,6 +1028,7 @@ impl ProjectDoc {
         file_id: &str,
         thread: CommentId,
     ) -> Result<(), CollabError> {
+        self.writable()?;
         let map = self.writable_thread(file_id, thread)?;
         map.insert(RESOLVED, LoroValue::Null).map_err(loro_error)?;
         self.loro().commit();
@@ -1035,6 +1041,7 @@ impl ProjectDoc {
         thread: CommentId,
         by: AccountId,
     ) -> Result<(), CollabError> {
+        self.writable()?;
         let (map, view) = self.open_thread(file_id, thread)?;
         if view.created_by != by {
             return Err(not_yours());

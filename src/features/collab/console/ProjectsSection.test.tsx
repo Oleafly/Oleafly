@@ -84,6 +84,14 @@ describe("ProjectsSection", () => {
     );
   });
 
+  it("marks an owner who was removed from the server or suspended on it", async () => {
+    mocks.collabAdminProjects.mockResolvedValue(projectsPage([GRANT, { ...THESIS, owner: { ...CAROL, active: false } }]));
+    renderSection();
+    expect(await screen.findByText("Thesis")).toBeInTheDocument();
+    expect(within(row(THESIS)).getByText(enCollab.manage.inactive)).toBeInTheDocument();
+    expect(within(row(GRANT)).queryByText(enCollab.manage.inactive)).not.toBeInTheDocument();
+  });
+
   it("marks archived and uploading projects", async () => {
     mocks.collabAdminProjects.mockResolvedValue(projectsPage([OLD, DRAFT, adminProject({ project_id: "x", title: "Odd", status: "unknown" })]));
     renderSection();

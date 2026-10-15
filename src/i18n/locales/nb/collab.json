@@ -25,9 +25,9 @@
       "signedOut": "Logget ut",
       "signedInAs": "Logget inn som {{name}}",
       "signedOutHint": "Denne maskinen er ikke logget inn på denne serveren.",
-      "paused": "Suspendert",
+      "suspended": "Suspendert",
       "noAccess": "Ingen tilgang",
-      "pausedHint": "En administrator har suspendert kontoen din på {{server}}. Endringene dine blir værende på denne maskinen. Du kan logge inn igjen når en administrator aktiverer den igjen.",
+      "suspendedHint": "En administrator har suspendert kontoen din på {{server}}. Endringene dine blir værende på denne maskinen. Du kan logge inn igjen når en administrator aktiverer den igjen.",
       "endedHint": "Du har ikke lenger tilgang til {{server}}. Kopiene dine blir liggende på denne maskinen som vanlige prosjekter. Hvis en administrator legger deg til igjen, logger du inn på nytt.",
       "endedGuestHint": "Du har ikke lenger tilgang til {{server}} fordi du ikke er med i noen av de delte prosjektene der. Kopiene dine blir liggende på denne maskinen som vanlige prosjekter. Hvis du blir invitert igjen, logger du inn på nytt.",
       "role": "Rollen din: {{role}}",
@@ -35,11 +35,11 @@
       "signOut": "Logg ut",
       "remove": "Fjern",
       "manage": "Administrer serveren",
-      "manageHint": "Administrer serveren viser personer, tilgangsregler og serverinnstillinger her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
+      "manageHint": "Administrer serveren viser Personer, Tillatte personer, Domener, Serverinnstillinger, E-post og Sikkerhetslogg her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
       "test": "Test tilkoblingen",
       "removeConfirm": {
         "title": "Fjerne {{name}}?",
-        "description": "Oleafly logger ut av {{name}} og glemmer den. Delte prosjekter fra {{name}} slutter å synkronisere og blir værende på denne maskinen som vanlige prosjekter.",
+        "description": "Oleafly logger ut av {{name}} og glemmer den. Delte prosjekter fra {{name}} slutter å synkronisere og blir værende på denne maskinen som vanlige prosjekter, hvert med nytt navn som lokal kopi.",
         "confirm": "Fjern serveren"
       },
       "detached": "Disse delte prosjektene fra {{server}} synkroniseres ikke lenger. De blir værende på denne maskinen som vanlige prosjekter.",
@@ -216,11 +216,12 @@
     "link_sharing_off": "Denne serveren tillater ikke deling med lenke. Be administratoren om å slå det på.",
     "access_log_off": "Denne serveren tillater ikke tilgangslogger. Be administratoren om å slå dem på.",
     "last_admin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
-    "duplicate_entry": "Det står allerede på listen.",
+    "duplicate_entry": "Den finnes allerede.",
     "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
-    "owner_away": "Eieren av dette prosjektet er ikke aktiv på serveren akkurat nå, så prosjektet kan ikke ta inn nye personer.",
+    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer akkurat nå. Spør en administrator av serveren.",
+    "wrong_server": "Serveren sendte innloggingssiden sin fra en annen adresse, så Oleafly stoppet. Sjekk serveradressen, eller spør den som drifter serveren.",
     "not_a_link": "Det er ikke en lenke til et delt prosjekt. Kopier hele lenken, og prøv igjen.",
     "signed_out": "Du er logget ut av denne serveren. Logg inn igjen for å synkronisere prosjektet.",
     "server_removed": "Serveren til dette prosjektet står ikke lenger i listen din. Behold prosjektet som en lokal kopi, eller legg til serveren igjen.",
@@ -268,17 +269,21 @@
       "devicesLoading": "Laster enheter…",
       "devicesLoadFailed": "Oleafly kunne ikke laste disse enhetene.",
       "lastAdmin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
-      "ownedOne": "{{name}} eier et delt prosjekt. Ingen andre kan administrere det mens {{name}} er borte.",
-      "ownedMany": "{{name}} eier delte prosjekter: {{number}}. Ingen andre kan administrere dem mens {{name}} er borte.",
+      "owned": {
+        "suspendOne": "{{name}} eier et delt prosjekt. Ingen andre kan administrere det mens {{name}} er suspendert.",
+        "suspendMany": "Delte prosjekter som {{name}} eier: {{number}}. Ingen andre kan administrere dem mens {{name}} er suspendert.",
+        "removeOne": "{{name}} eier et delt prosjekt. Når {{name}} er fjernet, kan ingen andre administrere det.",
+        "removeMany": "Delte prosjekter som {{name}} eier: {{number}}. Når {{name}} er fjernet, kan ingen andre administrere dem."
+      },
       "removeConfirm": {
         "title": "Fjerne {{name}} fra denne serveren?",
         "description": "Enhetene deres logges ut med en gang. Prosjektene de eier, blir liggende på serveren. Du kan legge personen til igjen senere.",
-        "confirm": "Fjern medlemmet"
+        "confirm": "Fjern fra serveren"
       },
       "suspendConfirm": {
         "title": "Suspendere {{name}}?",
         "description": "{{name}} kan ikke logge inn eller synkronisere før en administrator aktiverer kontoen igjen.",
-        "confirm": "Suspender medlem"
+        "confirm": "Suspender kontoen"
       },
       "selfRoleConfirm": {
         "title": "Endre din egen rolle til {{role}}?",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "Personer på denne listen kan logge inn på serveren med rollen du velger.",
+      "description": "Personer du legger til her, kan logge inn på serveren med rollen du velger.",
       "matchLabel": "Identifiser med",
       "match": {
         "email": "E-postadresse",
@@ -303,14 +308,14 @@
       "providerLabel": "Innloggingsmåte",
       "roleLabel": "Rolle",
       "add": "Legg til",
-      "loading": "Laster listen…",
-      "empty": "Ingen står på listen ennå.",
+      "loading": "Laster tillatte personer…",
+      "empty": "Ingen er lagt til ennå.",
       "loginEntry": "{{login}} på {{provider}}",
       "bound": "Har logget inn",
       "unbound": "Har ikke logget inn ennå",
       "remove": "Fjern",
       "removeNamed": "Fjern {{entry}}",
-      "duplicate": "Den personen står allerede på listen."
+      "duplicate": "Den personen er allerede tillatt."
     },
     "domains": {
       "description": "Alle med en bekreftet e-postadresse på disse domenene kan logge inn med rollen du velger.",
@@ -507,7 +512,7 @@
     "uploading": "Laster opp figurer og andre filer: {{done}} av {{total}}",
     "saving": "Lagrer prosjektet på serveren…",
     "failed": "Delingen ble ikke fullført, så ingenting ble delt.",
-    "trustAgain": "Nå som andre kan redigere prosjektet, spør Oleafly deg igjen før prosjektets verktøy kjøres på denne maskinen."
+    "trustAgain": "Alle du legger til i prosjektet, kan endre filene, så Oleafly ber deg stole på det igjen på denne maskinen før det kjører agenter, terminalkommandoer eller shell escape for det."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly kunne ikke laste hvem som har tilgang.",
     "people": "Personer med tilgang",
     "you": "Du",
+    "inactive": "Fjernet eller suspendert",
+    "ownerInactive": "Eieren er fjernet eller suspendert",
     "roleLabel": "Rolle for {{name}}",
     "remove": "Fjern",
     "removeNamed": "Fjern {{name}}",
@@ -529,7 +536,6 @@
       "placeholder": "Navn, brukernavn eller e-post",
       "roleLabel": "Rolle for personer du legger til",
       "searching": "Søker…",
-      "noResults": "Ingen treff på {{server}}.",
       "noResultsTryEmail": "Ingen treff på {{server}}. Prøv hele e-postadressen til personen.",
       "alreadyMember": "{{name}} har allerede tilgang.",
       "allMembers": "Alle som passer, har allerede tilgang.",
@@ -582,7 +588,8 @@
     "serverRemoved": "Server fjernet",
     "clientTooOld": "Oleafly må oppdateres",
     "serverTooOld": "Serveren må oppdateres",
-    "serverChanged": "En annen server"
+    "serverChanged": "Ny server på adressen",
+    "failed": "Stoppet etter en feil"
   },
   "toolbar": {
     "noFile": "Ingen fil åpen",
@@ -638,7 +645,7 @@
         "locked": "Kan ikke skrive {{path}}: et annet program har den åpen.",
         "read_only": "Kan ikke skrive {{path}}: filen eller mappen er skrivebeskyttet.",
         "no_space": "Kan ikke skrive {{path}}: disken er full.",
-        "not_downloaded": "Kan ikke skrive {{path}}: en skytjeneste har ikke lastet den ned til denne maskinen ennå.",
+        "not_downloaded": "{{path}} kunne ikke lastes ned fra serveren ennå. Oleafly fortsetter å prøve.",
         "other": "Kan ikke skrive {{path}}."
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "Oppdater Oleafly for å fortsette arbeidet på {{server}}. Endringene dine blir værende på denne maskinen.",
     "serverTooOld": "{{server}} må oppdateres før den virker med denne versjonen av Oleafly. Spør den som driver den. Endringene dine blir værende på denne maskinen.",
     "serverChanged": "Adressen til {{server}} peker nå til en annen server. Fjern den i samarbeidsinnstillingene, og legg den til på nytt. Endringene dine blir værende på denne maskinen.",
+    "failed": "Synkroniseringen av dette prosjektet stoppet etter en feil. Start den igjen for å fortsette.",
+    "goLiveAgain": "Synkroniser igjen",
     "accessEnded": "Du har ikke lenger tilgang til {{server}}. Kopien din blir liggende på denne maskinen som et vanlig prosjekt.",
     "accessEndedGuest": "Du har ikke lenger tilgang til {{server}} fordi du ikke er med i noen av de delte prosjektene der. Kopien din blir liggende på denne maskinen som et vanlig prosjekt.",
     "signIn": "Logg inn",
@@ -692,6 +701,7 @@
     "newDevice": "{{name}} logget inn på en ny enhet",
     "review": "Gå gjennom",
     "renamed": "{{name}} ga {{before}} nytt navn til {{theirs}} etter at du hadde kalt den {{ours}}",
+    "renamedPortable": "{{before}} fikk nytt navn, {{theirs}}, så den virker på alle maskiner.",
     "skipped": "En endring fra {{name}} kunne ikke leses og ble hoppet over.",
     "skippedUnknown": "En endring fra noen kunne ikke leses og ble hoppet over.",
     "mentioned": "{{name}} nevnte deg i en kommentar i {{path}}",
@@ -729,6 +739,7 @@
     "noText": "Ingen tekst ble endret, så det er ingenting å sammenligne.",
     "newFile": "Ny fil",
     "removedFile": "Fjernet",
+    "closedOldest": "Bare {{number}} filer kan være åpne om gangen, så {{path}} ble lukket.",
     "diffLabel": "Endringer i {{path}}"
   },
   "console": {
@@ -897,7 +908,8 @@
     "malformed": "Oleafly kan ikke åpne denne lenken. Be den som sendte den, om en ny.",
     "opening": "Åpner det delte prosjektet…",
     "downloading": "Laster ned filer: {{done}} av {{total}}",
-    "cancelNamed": "Stopp åpningen av {{name}}",
+    "cancelNamed": "Avbryt åpningen av {{name}}",
+    "cancelling": "Avbryter…",
     "confirm": {
       "title": "Vil du bli med i dette delte prosjektet?",
       "body": "Når du blir med, legges du til i prosjektet, og filene kopieres til denne datamaskinen. Bli bare med hvis du vet hvem som sendte deg lenken.",
@@ -1038,6 +1050,9 @@
     "failed": "Kunne ikke deles: {{files}}",
     "tooLarge": "{{file}} er på {{size}}, mer enn denne serveren tillater ({{limit}}). Filen blir bare på denne datamaskinen.",
     "tooLargeUnknown": "{{file}} er større enn denne serveren tillater. Filen blir bare på denne datamaskinen.",
+    "projectTooLarge": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense på {{limit}}. Be den som drifter serveren om å øke den.",
+    "projectTooLargeUnknown": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense. Be den som drifter serveren om å øke den.",
+    "projectFull": "Prosjektet har nådd serverens størrelsesgrense, så endringene dine blir på denne maskinen inntil videre. Be den som drifter serveren om å øke den.",
     "replaced": "{{name}} erstattet {{file}} samtidig med deg. Versjonen din er lagret som {{copy}}.",
     "added": "{{file}} heter nå {{copy}} fordi {{name}} la til en fil med samme navn.",
     "beside": "{{name}} har også en fil som heter {{file}}. Den er lagret som {{copy}}.",

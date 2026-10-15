@@ -27,7 +27,7 @@ use super::super::{
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     WriterSignal,
 };
-use super::{attach, UploadFile, UploadState, UploadsPayload};
+use super::{attach, Retry, UploadFile, UploadState, UploadsPayload};
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
 
@@ -145,6 +145,27 @@ impl Side {
         std::fs::read(self.root.join(path)).ok()
     }
 
+    fn replaced(&self, path: &str, old: &[u8], new: &[u8]) {
+        let mut live = lock(&self.active.live);
+        let mut peer = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+        let since = live.doc().version();
+        let id = materialize::layout(&peer.nodes().unwrap())
+            .into_iter()
+            .find(|(_, placed)| placed.path == path)
+            .map(|(id, _)| id)
+            .expect("the replaced figure is shared");
+        peer.replace_blob(&id, &sha256_hex(old), &sha256_hex(new))
+            .unwrap();
+        let payload = peer.export_since(&since).unwrap();
+        assert!(live.import_update(2, &payload).unwrap());
+    }
+
+    fn go_live(&self) -> LiveHere {
+        let turn = super::super::write::rig::live_turn();
+        *guard(&super::super::ACTIVE) = Some(Arc::clone(&self.active));
+        LiveHere { _turn: turn }
+    }
+
     fn type_in(&self, path: &str, text: &str) {
         let mut live = lock(&self.active.live);
         let id = materialize::layout(&live.doc().nodes().unwrap())
@@ -165,6 +186,16 @@ impl Side {
 impl Drop for Side {
     fn drop(&mut self) {
         self.active.handle.stop();
+    }
+}
+
+struct LiveHere {
+    _turn: std::sync::MutexGuard<'static, ()>,
+}
+
+impl Drop for LiveHere {
+    fn drop(&mut self) {
+        *guard(&super::super::ACTIVE) = None;
     }
 }
 
@@ -195,6 +226,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     let disk = DiskState {
         layout: materialize::layout(&live.doc().nodes().unwrap()),
         hashes,
+        owed: Default::default(),
     };
     let sessions = Arc::new(SessionManager::new(
         Arc::new(MemorySecrets::default()),
@@ -252,7 +284,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     }
 }
 
-fn manifest(max_file_mb: u64) -> String {
+fn manifest(max_file_mb: u64, max_project_mb: u64) -> String {
     serde_json::to_string(&CapabilityManifest {
         server_id: ServerId::new_v7(),
         name: "Lab".to_owned(),
@@ -273,7 +305,7 @@ fn manifest(max_file_mb: u64) -> String {
             encryption: EncryptionSupport::None,
         },
         limits: Limits {
-            max_project_mb: 200,
+            max_project_mb,
             max_file_mb,
             max_members_per_project: 20,
         },
@@ -290,6 +322,8 @@ struct Canned {
     figures: Arc<Mutex<HashMap<String, Vec<u8>>>>,
     stalled: Arc<Mutex<Option<String>>>,
     slow_ms: Arc<AtomicU64>,
+    asked: Arc<Mutex<Vec<String>>>,
+    project_mb: Arc<AtomicU64>,
 }
 
 impl Canned {
@@ -298,6 +332,17 @@ impl Canned {
             .lock()
             .unwrap()
             .insert(sha256_hex(bytes), bytes.to_vec());
+    }
+
+    // How many times a figure was asked for.
+    fn asked(&self, bytes: &[u8]) -> usize {
+        let hash = sha256_hex(bytes);
+        self.asked
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|line| line.contains(&hash))
+            .count()
     }
 }
 
@@ -310,9 +355,11 @@ struct Counters {
     figures: Arc<Mutex<HashMap<String, Vec<u8>>>>,
     stalled: Arc<Mutex<Option<String>>>,
     slow_ms: Arc<AtomicU64>,
+    asked: Arc<Mutex<Vec<String>>>,
+    project_mb: Arc<AtomicU64>,
 }
 
-async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fail: usize) {
+async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fail: usize) {
     let mut seen = Vec::new();
     let mut chunk = [0u8; 65_536];
     let head_end = loop {
@@ -349,6 +396,7 @@ async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fai
     let line = head.lines().next().unwrap_or_default();
     if line.starts_with("GET ") && line.contains("/blobs/") {
         counters.gets.fetch_add(1, Ordering::SeqCst);
+        counters.asked.lock().unwrap().push(line.to_owned());
         let stalled = counters
             .stalled
             .lock()
@@ -381,7 +429,8 @@ async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fai
         }
     }
     let (status, reply) = if line.starts_with("GET /.well-known/oleafly-server") {
-        ("200 OK", manifest)
+        let project_mb = counters.project_mb.load(Ordering::SeqCst);
+        ("200 OK", manifest(max_file_mb, project_mb))
     } else if line.starts_with("PUT ") && line.contains("/blobs/") {
         let count = counters.puts.fetch_add(1, Ordering::SeqCst) + 1;
         if counters.full.load(Ordering::SeqCst) {
@@ -428,12 +477,13 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         figures: Arc::default(),
         stalled: Arc::default(),
         slow_ms: Arc::new(AtomicU64::new(0)),
+        asked: Arc::default(),
+        project_mb: Arc::new(AtomicU64::new(200)),
     };
     let counted = counters.clone();
-    let manifest = manifest(max_file_mb);
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
-            tokio::spawn(answer(stream, counted.clone(), manifest.clone(), fail));
+            tokio::spawn(answer(stream, counted.clone(), max_file_mb, fail));
         }
     });
     Canned {
@@ -445,6 +495,8 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         figures: counters.figures,
         stalled: counters.stalled,
         slow_ms: counters.slow_ms,
+        asked: counters.asked,
+        project_mb: counters.project_mb,
     }
 }
 
@@ -556,8 +608,46 @@ fn a_figure_refused_because_the_project_is_full_waits_with_the_project_limit() {
             "a full project is not tried again on a timer"
         );
         server.full.store(false, Ordering::SeqCst);
-        alice.active.retry_uploads(true).await;
+        alice.active.retry_uploads(Retry::Asked).await;
         until("the upload once the project has room", || {
+            alice.shared_blob("figures/plot.png").is_some()
+        })
+        .await;
+        assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn a_reconnect_sends_a_figure_refused_for_a_full_project_again_only_once_the_limit_changed() {
+    run(async {
+        let server = canned(0, 50).await;
+        server.full.store(true, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.online();
+        let figure = [0x89, b'P', b'N', b'G', 8, 8];
+        alice.write("figures/plot.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/plot.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(server.puts.load(Ordering::SeqCst), 1);
+        for _ in 0..3 {
+            alice.active.retry_uploads(Retry::Reconnect).await;
+        }
+        assert_eq!(
+            server.puts.load(Ordering::SeqCst),
+            1,
+            "a reconnect sent the figure again although the limit stayed the same"
+        );
+        assert_eq!(
+            alice.active.upload_list()[0].state,
+            UploadState::ProjectTooLarge
+        );
+        server.project_mb.store(400, Ordering::SeqCst);
+        server.full.store(false, Ordering::SeqCst);
+        alice.active.retry_uploads(Retry::Reconnect).await;
+        until("the upload once the server allows more", || {
             alice.shared_blob("figures/plot.png").is_some()
         })
         .await;
@@ -933,6 +1023,108 @@ fn a_figure_that_downloaded_but_could_not_be_written_is_written_later_without_do
         })
         .await;
         assert_eq!(server.gets.load(Ordering::SeqCst), 1);
+    });
+}
+
+#[test]
+fn a_figure_replaced_while_it_downloads_is_fetched_once_in_its_new_version() {
+    run(async {
+        let server = canned(0, 50).await;
+        let (old, new) = (b"old plot".as_slice(), b"new plot".as_slice());
+        server.serve(old);
+        server.serve(new);
+        *server.stalled.lock().unwrap() = Some(sha256_hex(old));
+        server.slow_ms.store(500, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", old);
+        alice.pass().await;
+        until("the download of the old version", || server.asked(old) == 1).await;
+        alice.replaced("figures/plot.png", old, new);
+        alice.pass().await;
+        until("the new version on disk", || {
+            alice.figure("figures/plot.png").as_deref() == Some(new)
+        })
+        .await;
+        tokio::time::sleep(Duration::from_millis(800)).await;
+        assert_eq!(
+            server.asked(new),
+            1,
+            "the stopped download of the old version let the new one start twice"
+        );
+        until("the worker to finish", || !alice.active.figures_running()).await;
+    });
+}
+
+#[test]
+fn a_figure_waiting_to_be_written_holds_up_neither_closing_nor_a_bounded_wait() {
+    run(async {
+        let server = canned(0, 50).await;
+        let figure = b"waits for the disk".as_slice();
+        server.serve(figure);
+        server.slow_ms.store(300, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", figure);
+        alice.pass().await;
+        // Holding the index stands in for a write that Windows holds up.
+        let writing = guard(&alice.active.disk);
+        let deadline = std::time::Instant::now() + WAIT;
+        while server.gets.load(Ordering::SeqCst) < 1 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the download never started"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        std::thread::sleep(Duration::from_millis(700));
+        let on_its_own = |work: Box<dyn FnOnce(&Active) + Send>| {
+            let active = Arc::clone(&alice.active);
+            let (done, finished) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                work(&active);
+                let _ = done.send(());
+            });
+            finished
+        };
+        let waited = on_its_own(Box::new(|active| {
+            tauri::async_runtime::block_on(active.wait_for_figures(Duration::from_millis(300)));
+        }));
+        assert!(
+            waited.recv_timeout(Duration::from_secs(2)).is_ok(),
+            "the flush wait outlasted its limit while the figure waited to be written"
+        );
+        let closed = on_its_own(Box::new(Active::close_figures));
+        assert!(
+            closed.recv_timeout(Duration::from_secs(2)).is_ok(),
+            "closing waited for the figure write"
+        );
+        drop(writing);
+        until("the worker to stop", || !alice.active.figures_running()).await;
+        assert_eq!(alice.figure("figures/plot.png"), None);
+    });
+}
+
+#[test]
+fn only_the_compile_barrier_waits_for_a_figure_still_downloading() {
+    run(async {
+        let server = canned(0, 50).await;
+        server.stall.store(true, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", b"plot");
+        alice.pass().await;
+        until("the stalled request", || {
+            server.gets.load(Ordering::SeqCst) >= 1
+        })
+        .await;
+        let _live = alice.go_live();
+        let started = std::time::Instant::now();
+        super::super::lifecycle::flush("uploads", false).await;
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "a flush that is not for a compile waited for the figure"
+        );
+        let started = std::time::Instant::now();
+        super::super::lifecycle::flush("uploads", true).await;
+        assert!(started.elapsed() >= Duration::from_secs(4));
     });
 }
 

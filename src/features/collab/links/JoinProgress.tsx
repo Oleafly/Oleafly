@@ -49,6 +49,15 @@ export function JoinProgress({
   const [stopping, setStopping] = useState<string | null>(null);
   const key = keyOf(target);
   const counting = progress !== null && progress.total > 0;
+  const cancelling = stopping === key;
+  let status = t(($) => $.collab.links.opening);
+  if (cancelling) status = t(($) => $.collab.links.cancelling);
+  else if (counting) {
+    status = t(($) => $.collab.links.downloading, {
+      done: formatNumber(progress.done),
+      total: formatNumber(progress.total),
+    });
+  }
   const cancel = () => {
     setStopping(key);
     onCancel?.();
@@ -59,21 +68,18 @@ export function JoinProgress({
   };
   return (
     <div className="space-y-1.5" data-testid="collab-join-progress">
-      <Progress value={counting ? (progress.done / progress.total) * 100 : 0} indeterminate={!counting} />
+      <Progress
+        value={counting ? (progress.done / progress.total) * 100 : 0}
+        indeterminate={!counting || cancelling}
+        label={status}
+      />
       <div className="flex items-center gap-2">
-        <output className="min-w-0 flex-1 text-xs text-muted-foreground">
-          {counting
-            ? t(($) => $.collab.links.downloading, {
-                done: formatNumber(progress.done),
-                total: formatNumber(progress.total),
-              })
-            : t(($) => $.collab.links.opening)}
-        </output>
+        <output className="min-w-0 flex-1 text-xs text-muted-foreground">{status}</output>
         <Button
           type="button"
           variant="ghost"
           size="xs"
-          disabled={stopping === key}
+          disabled={cancelling}
           aria-label={name === null ? undefined : t(($) => $.collab.links.cancelNamed, { name })}
           onClick={cancel}
         >

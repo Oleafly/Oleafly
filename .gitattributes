@@ -30,3 +30,7 @@ src-tauri/windows/*.wxs text eol=lf
 
 src-tauri/resources/typst-toolchain.json text eol=lf
 crates/oleafly-core/tests/fixtures/typst-log/*.log text eol=lf
+
+# Bundled citation styles ship inside the app, and the performance budget
+# counts their bytes. A CRLF checkout on Windows makes them 13 KB larger.
+src/assets/csl/*.csl text eol=lf

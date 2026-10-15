@@ -41,6 +41,7 @@ export type NewActivity =
   | { kind: "role"; at: number; role: CollabProjectRole }
   | { kind: "removed"; at: number; by?: string }
   | { kind: "archived"; at: number }
+  | { kind: "failed"; at: number }
   | {
       kind: "signedOut" | "suspended" | "clientTooOld" | "serverTooOld" | "serverChanged";
       at: number;

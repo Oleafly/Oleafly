@@ -4,6 +4,7 @@ import { FolderDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import type { CollabProjectSummary, CollabServer } from "@/lib/tauri";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { personDetail } from "../people";
 
 interface Fact {
@@ -39,7 +40,12 @@ export function JoinLinkDialog({
     {
       key: "owner",
       label: t(($) => $.collab.links.confirm.owner),
-      value: <Named name={project.owner.display_name} detail={personDetail(project.owner)} />,
+      value: (
+        <>
+          <Named name={project.owner.display_name} detail={personDetail(project.owner)} />
+          {isInactive(project.owner) ? <InactiveBadge tone="warning" /> : null}
+        </>
+      ),
     },
     {
       key: "server",
