@@ -75,6 +75,14 @@ export type ProbeTrouble =
   | { kind: "unreachable" }
   | { kind: "other"; message: string };
 
+// Drops every trailing `mark` with a plain loop. A regex like /\/+$/ backtracks
+// over a long run of marks that doesn't end the text.
+function withoutTrailing(text: string, mark: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === mark) end -= 1;
+  return text.slice(0, end);
+}
+
 // The server address a redirect from `probed` points at, read the way a
 // browser reads a Location header: relative to the request, with or without
 // a trailing slash. Null when it leads anywhere but another Oleafly server.
@@ -86,7 +94,7 @@ function movedTarget(location: string, probed: string): string | null {
     return null;
   }
   if (resolved.protocol !== "https:") return null;
-  const path = resolved.pathname.replace(/\/+$/u, "");
+  const path = withoutTrailing(resolved.pathname, "/");
   if (!path.endsWith(WELL_KNOWN)) return null;
   return `${resolved.origin}${path.slice(0, -WELL_KNOWN.length)}`;
 }

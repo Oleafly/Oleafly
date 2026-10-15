@@ -12,6 +12,13 @@ describe("access rule shape checks", () => {
     (value) => expect(looksLikeDomain(value)).toBe(false),
   );
 
+  it("checks a long run of dots in linear time", () => {
+    const started = performance.now();
+    expect(looksLikeDomain(`uni.edu${".".repeat(200_000)}`)).toBe(true);
+    expect(looksLikeDomain(`uni${".".repeat(200_000)}edu`)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it.each(["ada@uni.edu", " ada@cs.uni.edu ", "first.last+tag@uni.edu"])("takes %s as an email address", (value) =>
     expect(looksLikeEmailAddress(value)).toBe(true),
   );

@@ -229,6 +229,11 @@ describe("AddServerDialog", () => {
   it.each([
     ["a relative address", "/collab/.well-known/oleafly-server", "https://uni.edu/collab"],
     ["a trailing slash", "https://www.uni.edu/collab/.well-known/oleafly-server/", "https://www.uni.edu/collab"],
+    [
+      "a long run of trailing slashes",
+      `https://www.uni.edu/collab/.well-known/oleafly-server${"/".repeat(100_000)}`,
+      "https://www.uni.edu/collab",
+    ],
   ])("names the address a redirect given as %s points at", async (_label, location, target) => {
     mocks.collabServerProbe.mockRejectedValueOnce(collabError("server", location));
     const user = userEvent.setup();
