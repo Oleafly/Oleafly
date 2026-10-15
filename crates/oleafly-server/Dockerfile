@@ -21,11 +21,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/build/target,sharing=locked \
     find crates -type f -exec touch {} + \
-    && xx-cargo build --release --locked -p oleafly-server --target-dir /build/target \
-    && xx-verify --static "/build/target/$(xx-cargo --print-target-triple)/release/oleafly-server" \
+    && xx-cargo build --profile server-release --locked -p oleafly-server --target-dir /build/target \
+    && xx-verify --static "/build/target/$(xx-cargo --print-target-triple)/server-release/oleafly-server" \
     && mkdir -p /out/data \
     && chmod 0700 /out/data \
-    && cp "/build/target/$(xx-cargo --print-target-triple)/release/oleafly-server" /out/oleafly-server
+    && cp "/build/target/$(xx-cargo --print-target-triple)/server-release/oleafly-server" /out/oleafly-server
 
 FROM scratch AS binary
 COPY --from=build /out/oleafly-server /oleafly-server
