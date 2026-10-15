@@ -83,7 +83,7 @@ async fn overview(
     if !console::data_dir_writable(state.config.data_dir.clone()).await {
         issues.push(HealthIssue::StorageNotWritable);
     }
-    let sign_in_problems = state.providers.problems();
+    let sign_in_problems = state.providers.problems(now);
     if !sign_in_problems.is_empty() {
         issues.push(HealthIssue::SignInFailing);
     }
