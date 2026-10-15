@@ -398,6 +398,17 @@ async fn settle_revocation(
     error
 }
 
+async fn verify_server(
+    state: &CollabState,
+    client: &ServerClient,
+    server: ServerId,
+) -> Result<(), CollabError> {
+    let manifest = client.capabilities().await?;
+    check_pin(Some(server), manifest.server_id)?;
+    state.note_verified(server, manifest);
+    Ok(())
+}
+
 pub(crate) async fn authed<T, F>(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -408,10 +419,9 @@ where
     F: for<'a> Fn(&'a ServerClient, &'a str) -> ApiCall<'a, T>,
 {
     let client = state.client(&known(state, server)?)?;
-    if state.verified_manifest(server).is_none() {
-        let manifest = client.capabilities().await?;
-        check_pin(Some(server), manifest.server_id)?;
-        state.note_verified(server, manifest);
+    let cached = state.verified_manifest(server).is_some();
+    if !cached {
+        verify_server(state, &client, server).await?;
     }
     let keys = state.keys().await?;
     let first = match keys.sessions.access_token(server, &client).await {
@@ -420,8 +430,16 @@ where
     };
     let result = match first {
         Err(CollabError::Unauthorized) => {
-            match keys.sessions.force_refresh(server, &client).await {
-                Ok(access) => call(&client, access.as_str()).await,
+            let verified = if cached {
+                verify_server(state, &client, server).await
+            } else {
+                Ok(())
+            };
+            match verified {
+                Ok(()) => match keys.sessions.force_refresh(server, &client).await {
+                    Ok(access) => call(&client, access.as_str()).await,
+                    Err(error) => Err(error),
+                },
                 Err(error) => Err(error),
             }
         }
@@ -1464,6 +1482,10 @@ mod tests {
                 .to_ascii_lowercase()
                 .contains("authorization: bearer")
         }
+
+        fn seen_text(&self) -> String {
+            String::from_utf8_lossy(&self.seen.lock().expect("lock")).into_owned()
+        }
     }
 
     async fn signed_in(state: &CollabState, host: &TestHost, server: &TestServer) -> CollabServer {
@@ -2053,6 +2075,50 @@ mod tests {
             .expect("remove");
         assert!(!relay.saw_a_bearer_token());
         assert!(list_servers(&state).expect("list").is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_token_rejected_within_the_cached_check_checks_the_server_before_refreshing() {
+        let (_github, server) = github_server().await;
+        let relay = Relay::start(&server).await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = sign_in_server(
+            &state,
+            &host,
+            &relay.url,
+            "github".to_string(),
+            Some(server.setup_code()),
+            LONG,
+        )
+        .await
+        .expect("sign in");
+        server_devices(&state, &host, added.server_id)
+            .await
+            .expect("devices");
+        let keys = state.keys().await.expect("keys");
+        let tokens = keys
+            .sessions
+            .tokens(added.server_id)
+            .expect("read")
+            .expect("session");
+        ServerClient::new(ServerUrl::parse(&server.url()).expect("url"))
+            .expect("client")
+            .sign_out(&tokens.access_token)
+            .await
+            .expect("server sign out");
+        relay.point_at(&server);
+        let result = server_devices(&state, &host, added.server_id).await;
+        assert!(matches!(result, Err(CollabError::Unauthorized)));
+        let seen = relay.seen_text();
+        let checked = seen
+            .find("GET /.well-known/oleafly-server")
+            .expect("the server was checked again");
+        let refreshed = seen
+            .find("POST /auth/refresh")
+            .expect("the session was refreshed");
+        assert!(checked < refreshed, "{seen}");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
