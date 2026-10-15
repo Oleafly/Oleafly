@@ -259,13 +259,7 @@ pub(crate) fn device_key() -> DeviceKey {
     DeviceKey::load_or_create(&MemorySecrets::default()).expect("device key")
 }
 
-fn is_app_callback(url: &::url::Url) -> bool {
-    url.host_str() == Some("127.0.0.1") && url.path() == "/callback"
-}
-
-// Follows redirects like a browser. A server from before the issuer check
-// (RFC 9207) leaves `iss` off its redirect back to the app, so this adds the
-// address of the server that sent that redirect, as such a server would.
+// Follows redirects like a browser.
 pub(crate) async fn browse(url: &str) -> Option<reqwest::Response> {
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -283,13 +277,7 @@ pub(crate) async fn browse(url: &str) -> Option<reqwest::Response> {
             .get(reqwest::header::LOCATION)?
             .to_str()
             .ok()?;
-        let mut next = url.join(location).ok()?;
-        let named = next.query_pairs().any(|(name, _)| name == "iss");
-        if is_app_callback(&next) && !named {
-            let sender = url.origin().ascii_serialization();
-            next.query_pairs_mut().append_pair("iss", &sender);
-        }
-        url = next;
+        url = url.join(location).ok()?;
     }
     None
 }

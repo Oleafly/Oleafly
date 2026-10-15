@@ -128,15 +128,8 @@ async fn claimed(
         setup_code: code,
         code_challenge: code_challenge.to_owned(),
     };
-    match client.setup_claim(&request).await {
-        Ok(response) => Ok((None, Some(response.claim))),
-        // Until the server half of the claim route is merged, the test
-        // server answers 404 here. Only the tests fall back to the code in
-        // the address; the app never does.
-        #[cfg(test)]
-        Err(CollabError::Api { status: 404, .. }) => Ok((Some(request.setup_code), None)),
-        Err(error) => Err(error),
-    }
+    let response = client.setup_claim(&request).await?;
+    Ok((None, Some(response.claim)))
 }
 
 async fn exchange(
