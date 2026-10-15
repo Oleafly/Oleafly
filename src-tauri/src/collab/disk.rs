@@ -163,7 +163,8 @@ impl ShareRules {
         let segments: Vec<&str> = relative.split('/').collect();
         let name = segments.last().copied().unwrap_or(relative);
         self.skips(name, relative, is_dir)
-            || (1..segments.len()).any(|end| ignored(&self.0, &segments[..end].join("/"), true))
+            || (1..segments.len())
+                .any(|end| self.skips(segments[end - 1], &segments[..end].join("/"), true))
     }
 }
 
@@ -708,8 +709,20 @@ mod tests {
         assert!(rules.leaves_out("main.aux", false));
         assert!(rules.leaves_out("build/out/main.log", false));
         assert!(rules.leaves_out("chapters/.intro.tex.swp", false));
+        assert!(rules.leaves_out("backup~/main.tex", false));
         assert!(!rules.leaves_out("chapters/intro.tex", false));
         assert!(!rules.leaves_out("builder/main.tex", false));
+        write(root, "backup~/main.tex", "an editor's backup folder");
+        let files: Vec<String> = scan_folder(root)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+        assert!(
+            !files.iter().any(|path| path.starts_with("backup~")),
+            "{files:?}"
+        );
     }
 
     #[test]
