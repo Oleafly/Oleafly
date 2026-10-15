@@ -273,7 +273,10 @@ const LONGEST_RESYNC_GAP: std::time::Duration = std::time::Duration::from_secs(3
 // predate the missing change, so another may follow, but only after a gap
 // of two minutes that doubles up to an hour, so neither an honest writer
 // building on a refused change nor updates with made-up dependencies can
-// keep anyone reloading. It all starts over once nothing is held back.
+// keep anyone reloading. Once nothing is held back the gap starts over, but
+// the next reload still waits for the time the last one set, so a member
+// who supplies a missing change right after each reload can't make every
+// member download the snapshot again every minute.
 struct ResyncGuard {
     next: Option<std::time::Instant>,
     gap: std::time::Duration,
@@ -999,7 +1002,6 @@ impl LiveProject {
             self.waiting = left;
         }
         if !self.missing_changes() {
-            self.resync.next = None;
             self.resync.gap = self.resync.first_gap;
         }
     }
@@ -2571,7 +2573,7 @@ mod tests {
     }
 
     #[test]
-    fn reloads_for_held_back_changes_are_spaced_out_and_start_over_once_nothing_waits() {
+    fn reloads_for_held_back_changes_are_spaced_out_and_the_gap_starts_over_once_nothing_waits() {
         let (mut bob, mut alice, main) = pair();
         let mut carol = LiveProject::new(
             ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
@@ -2603,7 +2605,11 @@ mod tests {
         alice.skip_update(6);
         alice.import_update(7, &built_on_it).unwrap();
         assert!(alice.missing_changes());
-        assert!(alice.request_resync(after(121 + 242)));
+        assert!(!alice.request_resync(after(121 + 242)));
+        assert!(!alice.request_resync(after(362 + 479)));
+        assert!(alice.request_resync(after(362 + 480)));
+        assert!(!alice.request_resync(after(842 + 119)));
+        assert!(alice.request_resync(after(842 + 120)));
     }
 
     #[test]
