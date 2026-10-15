@@ -49,15 +49,22 @@ pub fn doc_change(
     Ok(())
 }
 
+// The work below runs the document engine on the shared document from a
+// desktop thread, so it goes through `guarded`: a panic in it marks the
+// project damaged and ends the session as failed, where it would otherwise
+// leave the editors writing into a broken document.
 pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError>> {
-    active_for(project_id).map(|active| lock(&active.live).doc().snapshot())
+    active_for(project_id).map(|active| lock(&active.live).guarded(|live| live.doc().snapshot()))
 }
 
+// Nothing when the project isn't live, or when the work broke the document.
 pub(in crate::collab) fn read_live<T>(
     project_id: &str,
     work: impl FnOnce(&LiveProject) -> T,
 ) -> Option<T> {
-    active_for(project_id).map(|active| work(&lock(&active.live)))
+    let active = active_for(project_id)?;
+    let mut live = lock(&active.live);
+    live.guarded(|live| Ok(work(live))).ok()
 }
 
 pub(in crate::collab) fn comment_live<T>(
@@ -65,7 +72,7 @@ pub(in crate::collab) fn comment_live<T>(
     work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CollabError>,
 ) -> Result<T, CollabError> {
     let active = active_for(project_id).ok_or_else(not_live)?;
-    let outcome = work(&mut lock(&active.live), active.account_id)?;
+    let outcome = lock(&active.live).guarded(|live| work(live, active.account_id))?;
     active.save_now();
     active.handle.flush();
     active.refresh_pending();
@@ -77,7 +84,7 @@ pub(in crate::collab) fn edit_live<T>(
     work: impl FnOnce(&mut LiveProject) -> Result<T, CollabError>,
 ) -> Result<T, CollabError> {
     let active = active_for(project_id).ok_or_else(not_live)?;
-    let outcome = work(&mut lock(&active.live))?;
+    let outcome = lock(&active.live).guarded(work)?;
     active.handle.flush();
     active.kick();
     active.refresh_pending();

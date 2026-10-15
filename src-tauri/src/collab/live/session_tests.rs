@@ -259,6 +259,111 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 }
 
 #[test]
+fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
+    let _turn = write::rig::live_turn();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let dir = tempfile::tempdir().unwrap();
+        let state = CollabState::new(
+            oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+            Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+        );
+        let keys = state.keys().await.unwrap();
+        let server = ServerId::new_v7();
+        let paths = state.paths().unwrap().clone();
+        save_binding(&paths, "spent", &binding_on(server)).unwrap();
+        let link = LiveLink {
+            client: Arc::new(
+                ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+            ),
+            server_id: server,
+            project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+            device_id: DeviceId::new_v7(),
+            key: Arc::clone(&keys.key),
+            sessions: Arc::clone(&keys.sessions),
+        };
+        let root = dir.path().join("project");
+        std::fs::create_dir_all(&root).unwrap();
+        let (live, disk, _main) = project(&root);
+        let shared: SharedLive = Arc::new(Mutex::new(live));
+        let (unused, _unused) = mpsc::unbounded_channel();
+        let (writer, _writer) = mpsc::unbounded_channel();
+        let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+        let host = Arc::new(EndingHost::default());
+        let active = Arc::new(Active {
+            project_id: "spent".to_owned(),
+            root,
+            document_dir: dir.path().join("document"),
+            disk_file: dir.path().join("disk.json"),
+            live: shared,
+            handle,
+            link,
+            disk: Mutex::new(disk),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+            writer,
+            account_id: AccountId::new_v7(),
+            quiet_merge: AtomicBool::new(false),
+            waiting: AtomicBool::new(false),
+            last_status: Mutex::new(LiveStatus::Connecting),
+            bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
+        });
+        *guard(&ACTIVE) = Some(Arc::clone(&active));
+        let (events, receiver) = mpsc::unbounded_channel();
+        let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
+        events
+            .send(LiveEvent::Status(LiveStatus::Ended {
+                reason: EndReason::EngineSpent,
+            }))
+            .unwrap();
+        drop(events);
+        pumping.await.unwrap();
+        active.handle.stop();
+        assert_eq!(
+            ended_with(&guard(&host.statuses)),
+            vec![(
+                "spent".to_owned(),
+                LiveStatus::Ended {
+                    reason: EndReason::EngineSpent
+                }
+            )]
+        );
+        assert!(guard(&host.ended).is_empty());
+        assert!(
+            load_binding(&paths, "spent").unwrap().is_some(),
+            "the project was let go"
+        );
+        assert!(
+            guard(&ACTIVE).is_none(),
+            "the spent session stayed or started again"
+        );
+    });
+}
+
+#[test]
+fn a_panic_in_desktop_work_on_the_document_marks_it_damaged_and_leaves_it_unpoisoned() {
+    let (_dir, _root, _host, rig) = watched_rig("guarded-work", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let edited = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        super::edit_live(
+            "guarded-work",
+            |_| -> Result<(), oleafly_collab::CollabError> {
+                panic!("a test broke the work on the document")
+            },
+        )
+    }))
+    .expect("the panic reached the caller instead of being contained");
+    assert!(edited.is_err());
+    let live = rig.shared_live();
+    assert!(!live.is_poisoned(), "the project mutex was poisoned");
+    assert!(lock(&live).damaged());
+    assert!(super::read_live("guarded-work", |_| ()).is_some());
+}
+
+#[test]
 fn opening_a_project_after_its_session_ended_says_why() {
     let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -798,6 +903,7 @@ struct Watching {
     changes: Mutex<Vec<FolderChange>>,
     unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
     renamed: Mutex<Vec<crate::collab::tree::RenamedPayload>>,
+    written: Mutex<Vec<super::payloads::WrittenPayload>>,
 }
 
 impl Watching {
@@ -831,6 +937,9 @@ impl LiveHost for Watching {
     }
     fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
         guard(&self.renamed).push(payload);
+    }
+    fn written(&self, payload: super::payloads::WrittenPayload) {
+        guard(&self.written).push(payload);
     }
 }
 
@@ -874,6 +983,50 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
     let changed = host.changed_paths();
     assert!(!changed.contains(&"main.tex".to_owned()), "{changed:?}");
     assert!(changed.contains(&"refs.bib".to_owned()), "{changed:?}");
+}
+
+#[test]
+fn the_window_hash_matches_the_one_the_window_computes() {
+    use super::payloads::window_hash;
+    assert_eq!(window_hash(b""), "cbf29ce484222325");
+    assert_eq!(window_hash(b"a"), "af63dc4c8601ec8c");
+    assert_eq!(window_hash(b"hello\r\nworld\r\n"), "b72d7e8f5c60720b");
+    assert_eq!(
+        window_hash("caf\u{e9} \u{1F600}\n".as_bytes()),
+        "ae8731198c70f2c8"
+    );
+}
+
+#[test]
+fn stopping_tells_the_window_how_the_files_it_had_open_are_on_disk() {
+    let (_dir, root, host, rig) = watched_rig(
+        "written-open",
+        &[("main.tex", "abc"), ("refs.bib", "@a"), ("notes.tex", "n")],
+    );
+    let (main, rev) = rig.open("main.tex");
+    rig.typed(&main, rev, "d");
+    let (notes, rev) = rig.open("notes.tex");
+    rig.typed(&notes, rev, "!");
+    rig.remote("refs.bib", "@b");
+    rig.settle();
+    std::fs::write(root.join("notes.tex"), "changed outside").unwrap();
+    let _live = rig.go_live();
+    tauri::async_runtime::block_on(super::lifecycle::stop("written-open"));
+    let told = guard(&host.written).clone();
+    let bytes = std::fs::read(root.join("main.tex")).unwrap();
+    assert_eq!(bytes, b"abcd");
+    assert_eq!(
+        told,
+        vec![super::payloads::WrittenPayload {
+            project_id: "written-open".to_owned(),
+            files: vec![super::payloads::WrittenFile {
+                path: "main.tex".to_owned(),
+                hash: super::payloads::window_hash(&bytes),
+                crlf: false,
+                length: 4,
+            }],
+        }]
+    );
 }
 
 #[test]
@@ -1266,6 +1419,142 @@ fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
         "A"
     );
     assert!(guard(&active.disk).owed.is_empty());
+}
+
+#[test]
+fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() {
+    let (_dir, root, _host, rig) = watched_rig("owed-meets", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.remote_new_in("figs", "b.tex", "B");
+    rig.settle();
+    assert!(root.join("figs/a.tex").is_file() && root.join("figs/b.tex").is_file());
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    {
+        let mut disk = guard(&active.disk);
+        for path in ["figs/a.tex", "figs/b.tex"] {
+            let hash = disk.hashes.remove(path).unwrap();
+            disk.hashes.insert(format!("old-{path}"), hash);
+        }
+    }
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    rig.remote_remove("figs/a.tex");
+    rig.remote_rename("figs", "plots");
+    rig.settle();
+    assert!(
+        root.join("old-figs/a.tex").is_file() && root.join("old-figs/b.tex").is_file(),
+        "a file waiting for its folder's move was removed or moved"
+    );
+    assert!(!root.join("figs").exists() && !root.join("plots").exists());
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    rig.settle();
+    assert!(!root.join("old-figs").exists() && !root.join("figs").exists());
+    assert!(
+        !root.join("plots/a.tex").exists(),
+        "the delete never reached the disk"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("plots/b.tex")).unwrap(),
+        "B"
+    );
+    let nodes = rig.paths().len();
+    tauri::async_runtime::block_on(active.import_paths(None)).unwrap();
+    assert_eq!(rig.paths().len(), nodes, "{:?}", rig.paths());
+    assert!(guard(&active.disk).owed.is_empty());
+}
+
+#[test]
+fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
+    let (_dir, root, _host, rig) = watched_rig("owed-edit", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.settle();
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    {
+        let mut disk = guard(&active.disk);
+        let hash = disk.hashes.remove("figs/a.tex").unwrap();
+        disk.hashes.insert("old-figs/a.tex".to_owned(), hash);
+    }
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    std::fs::write(root.join("old-figs/a.tex"), "A edited meanwhile").unwrap();
+    rig.import(&["old-figs/a.tex"]);
+    assert_eq!(rig.text("figs/a.tex").as_deref(), Some("A"));
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while rig.text("figs/a.tex").as_deref() != Some("A edited meanwhile") {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the edit made while the move was owed never reached the document"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn quitting_with_a_file_another_program_holds_waits_no_longer_than_its_budget() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    const FILE_SHARE_READ: u32 = 0x0001;
+    let (_dir, root, _host, rig) = watched_rig("held-at-quit", &[("main.tex", "abc")]);
+    // Open for reading only, as a viewer holds a file: it can still be read,
+    // but not replaced, which is what makes a write retry for seconds.
+    let holder = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ)
+        .open(root.join("main.tex"))
+        .unwrap();
+    let _live = rig.go_live();
+    rig.remote("main.tex", "abcd");
+    let started = std::time::Instant::now();
+    super::lifecycle::finish_for_quit(super::lifecycle::QUIT_WAIT);
+    assert!(
+        started.elapsed() < super::lifecycle::QUIT_WAIT + Duration::from_secs(2),
+        "quitting waited {:?} on a file another program held",
+        started.elapsed()
+    );
+    drop(holder);
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc"
+    );
+}
+
+#[test]
+fn a_test_session_with_tree_changes_leaves_the_data_folder_alone() {
+    let library = crate::collab::testing::TempLibrary::new();
+    let data = std::path::PathBuf::from(std::env::var_os("OLEAFLY_DATA_DIR").unwrap());
+    let (_dir, root, _host, rig) = watched_rig("tree-quiet", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    rig.remote_new("added.tex", "new");
+    rig.settle();
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(root.join("added.tex").is_file());
+    let made: Vec<_> = std::fs::read_dir(&data)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name())
+        .collect();
+    assert!(
+        made.is_empty(),
+        "the session wrote into the data folder: {made:?}"
+    );
+    drop(library);
 }
 
 #[test]
