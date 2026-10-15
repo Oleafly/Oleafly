@@ -25,6 +25,20 @@ async fn head_of(stream: &TcpStream) -> Option<String> {
     None
 }
 
+// Sends an answer and closes the way a real server does: the app gets the end
+// of the stream, and what it sent and nobody read yet is read before the
+// socket is dropped. Windows resets a socket closed with unread data, and the
+// reset throws away the answer before the app reads it.
+async fn respond(mut stream: TcpStream, text: &str) {
+    let _ = stream.write_all(text.as_bytes()).await;
+    let _ = stream.shutdown().await;
+    let mut rest = [0u8; 1024];
+    let _ = tokio::time::timeout(Duration::from_secs(5), async {
+        while matches!(stream.read(&mut rest).await, Ok(read) if read > 0) {}
+    })
+    .await;
+}
+
 fn turned_away(code: &str) -> String {
     crate::client::test_util::http_response(
         "401 Unauthorized",
@@ -158,7 +172,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
             Upgrade::Busy => Some(busy_answer(answers)),
         };
         if let Some(refusal) = refusal {
-            let _ = stream.write_all(refusal.as_bytes()).await;
+            respond(stream, &refusal).await;
             return;
         }
         let Ok(mut socket) = tokio_tungstenite::accept_async(stream).await else {
@@ -195,13 +209,11 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         trace.polled.store(true, Ordering::SeqCst);
     }
     if path.contains("/poll") && answers.poll_busy {
-        let _ = stream.write_all(busy_answer(answers).as_bytes()).await;
+        respond(stream, &busy_answer(answers)).await;
         return;
     }
     if path.contains("/poll") && answers.poll_refuses {
-        let _ = stream
-            .write_all(turned_away("unauthorized").as_bytes())
-            .await;
+        respond(stream, &turned_away("unauthorized")).await;
         return;
     }
     if path.starts_with("/auth/refresh") {
@@ -221,7 +233,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
                 .to_string(),
             ),
         };
-        let _ = stream.write_all(reply.as_bytes()).await;
+        respond(stream, &reply).await;
         return;
     }
     let body = if path.starts_with("/.well-known/oleafly-server") && answers.manifest.served() {
@@ -234,9 +246,11 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         })
         .to_string()
     } else {
-        let _ = stream
-            .write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
-            .await;
+        respond(
+            stream,
+            "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        )
+        .await;
         return;
     };
     let reply = crate::client::test_util::http_response(
@@ -244,8 +258,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         &[("Content-Type", "application/json")],
         &body,
     );
-    let _ = stream.write_all(reply.as_bytes()).await;
-    let _ = stream.shutdown().await;
+    respond(stream, &reply).await;
 }
 
 // A server at the project's address that can never carry it on: its
