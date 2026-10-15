@@ -15,7 +15,6 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
-  Cloud,
   Compass,
   Copy,
   Cpu,
@@ -80,6 +79,7 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
+import { useCloudStore } from "@/store/cloud";
 import { useTemplateLinkStore } from "@/store/template-link";
 import {
   appVersion,
@@ -147,7 +147,14 @@ const SettingsFileCard = lazy(() =>
   Promise.all([
     import("@/components/settings/SettingsFileCard"),
     loadNamespace("settingsFile"),
+    loadNamespace("cloud"),
   ]).then(([module]) => module),
+);
+const CloudTab = lazy(() =>
+  Promise.all([
+    import("@/components/settings/cloud/CloudTab"),
+    loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
+  ]).then(([module]) => ({ default: module.CloudTab })),
 );
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
@@ -320,6 +327,19 @@ export function SettingsModal() {
   const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
+  const [dataTab, setDataTab] = useState("local");
+  const settingsNavRequest = useCloudStore((s) => s.navRequest);
+  const requestSettingsNav = useCloudStore((s) => s.requestNav);
+  useEffect(() => {
+    if (!settingsNavRequest) return;
+    if (settingsNavRequest === "data-cloud") {
+      setSection("data");
+      setDataTab("cloud");
+    } else if (settingsNavRequest === "general") {
+      setSection("general");
+    }
+    requestSettingsNav(null);
+  }, [settingsNavRequest, requestSettingsNav]);
   useEffect(() => {
     loadNamespace("settingsFile").catch((error: unknown) => void logError("load settings file strings", error));
   }, []);
@@ -413,6 +433,15 @@ export function SettingsModal() {
     seenTemplateLink.current = templateLinkSerial;
     setSection("downloads");
   }, [templateLinkSerial]);
+
+  const cloudLibraryRevision = useCloudStore((s) => s.libraryRevision);
+  useEffect(() => {
+    if (!open) useCloudStore.getState().clearSettingsImport();
+  }, [open]);
+
+  useEffect(() => {
+    if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
+  }, [cloudLibraryRevision]);
 
   useEffect(() => {
     if (!liveCollaboration && section === "collaboration") setSection("general");
@@ -876,7 +905,7 @@ export function SettingsModal() {
 
   const renderDataSection = () => (
     section === "data" && (
-      <Tabs defaultValue="local" className="space-y-4 text-sm">
+      <Tabs value={dataTab} onValueChange={setDataTab} className="space-y-4 text-sm">
         <TabsList>
           <TabsTrigger value="local" data-testid="data-tab-local">
             {t(($) => $.shell.settings.data.tabs.local)}
@@ -1017,25 +1046,9 @@ export function SettingsModal() {
         </section>
         </TabsContent>
         <TabsContent value="cloud">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex max-w-xl flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="relative size-6 shrink-0 text-primary" aria-hidden>
-                <Cloud className="absolute left-0 top-0 size-5" />
-                <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
-              </span>
-              <h3 className="font-semibold text-foreground">
-                {t(($) => $.shell.settings.data.cloud.title)}
-              </h3>
-              <Badge variant="muted" size="sm" className="uppercase tracking-wide">
-                {t(($) => $.shell.settings.data.cloud.comingSoon)}
-              </Badge>
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t(($) => $.shell.settings.data.cloud.description)}
-            </p>
-          </div>
-        </div>
+          <Suspense fallback={null}>
+            <CloudTab />
+          </Suspense>
         </TabsContent>
       </Tabs>
     )

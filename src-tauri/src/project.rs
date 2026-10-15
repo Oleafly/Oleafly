@@ -1864,7 +1864,7 @@ pub(crate) fn read_project_worktree<T>(
 /// Metadata serialization for a caller whose `MutationAdmission` already owns
 /// the cross-process worktree lock. Keeping this separate prevents recursive
 /// acquisition of the same OS lock during restore, rename, and recycle.
-fn with_project_metadata_lock_held<T>(
+pub(crate) fn with_project_metadata_lock_held<T>(
     project_id: &str,
     operation: impl FnOnce() -> Result<T, String>,
 ) -> Result<T, String> {
@@ -5730,7 +5730,7 @@ where
     F: FnOnce() -> Result<(), String>,
 {
     initialize()?;
-    Ok(reservation.commit())
+    reservation.commit()
 }
 
 fn git_auto_init_enabled() -> bool {
@@ -6099,26 +6099,37 @@ fn pick<'a>(list: &'a [&'a str], seed: &mut u64) -> &'a str {
     list[((*seed >> 33) as usize) % list.len()]
 }
 
-struct ProjectDirectoryReservation {
+pub(crate) struct ProjectDirectoryReservation {
     project_id: String,
     path: PathBuf,
+    identity_store: Option<PathBuf>,
     identity: Option<same_file::Handle>,
     _worktree: Option<crate::worktree_lock::ProjectWorktreeLock>,
     committed: bool,
 }
 
 impl ProjectDirectoryReservation {
-    fn project_id(&self) -> &str {
+    pub(crate) fn project_id(&self) -> &str {
         &self.project_id
     }
 
-    fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 
-    fn commit(mut self) -> String {
+    pub(crate) fn commit(mut self) -> Result<String, String> {
+        if let Some(store) = &self.identity_store {
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, &self.path)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
+        }
         self.committed = true;
-        self.project_id.clone()
+        Ok(self.project_id.clone())
     }
 
     fn publish_staged(self, staged: &Path) -> Result<String, String> {
@@ -6141,12 +6152,25 @@ impl ProjectDirectoryReservation {
         // other Oleafly processes, so the staged rename can reuse this path.
         drop(current);
         drop(self.identity.take());
+        if let Some(store) = &self.identity_store {
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, staged)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
+        }
         std::fs::remove_dir(&self.path)
             .map_err(|error| format!("failed to release project reservation: {error}"))?;
         // The reservation inode no longer exists. From this point onward Drop
         // must not remove whatever another actor may place at the destination.
         self.committed = true;
         if let Err(error) = publish(staged, &self.path) {
+            if let Some(store) = &self.identity_store {
+                let _ = crate::project_ids::forget_at(store, &self.project_id);
+            }
             let cleanup = std::fs::remove_dir_all(staged);
             return Err(match cleanup {
                 Ok(()) => format!("could not publish the imported project: {error}"),
@@ -6175,6 +6199,9 @@ impl Drop for ProjectDirectoryReservation {
         drop(current);
         drop(self.identity.take());
         let _ = std::fs::remove_dir_all(&self.path);
+        if let Some(store) = &self.identity_store {
+            let _ = crate::project_ids::forget_at(store, &self.project_id);
+        }
     }
 }
 
@@ -6182,6 +6209,15 @@ fn try_reserve_project_directory(
     root: &Path,
     project_id: &str,
     coordinate_worktree: bool,
+) -> Result<Option<ProjectDirectoryReservation>, String> {
+    try_reserve_project_directory_adopting(root, project_id, coordinate_worktree, None)
+}
+
+fn try_reserve_project_directory_adopting(
+    root: &Path,
+    project_id: &str,
+    coordinate_worktree: bool,
+    adopted: Option<oleafly_core::ids::ProjectId>,
 ) -> Result<Option<ProjectDirectoryReservation>, String> {
     paths::validate_project_id(project_id)?;
     let worktree = coordinate_worktree
@@ -6206,9 +6242,33 @@ fn try_reserve_project_directory(
             ));
         }
     }
+    let identity_store = if coordinate_worktree {
+        match crate::project_ids::store_path().and_then(|store| {
+            crate::project_ids::mint_in(&store, project_id, adopted).map(|_| store)
+        }) {
+            Ok(store) => Some(store),
+            Err(error) if adopted.is_none() => {
+                let _ = append_app_log(format!(
+                    "project {project_id} was created without a sync identity; it will get one when it first syncs: {error}"
+                ));
+                None
+            }
+            Err(error) => {
+                let _ = std::fs::remove_dir(&path);
+                return Err(format!(
+                    "failed to bind project identity {project_id}: {error}"
+                ));
+            }
+        }
+    } else {
+        None
+    };
     let identity = match same_file::Handle::from_path(&path) {
         Ok(identity) => identity,
         Err(error) => {
+            if let Some(store) = &identity_store {
+                let _ = crate::project_ids::forget_at(store, project_id);
+            }
             // The directory is still empty and the worktree lock is held. Do
             // not strand an unbound reservation that every later allocator
             // would treat as an existing project.
@@ -6221,6 +6281,7 @@ fn try_reserve_project_directory(
     Ok(Some(ProjectDirectoryReservation {
         project_id: project_id.to_string(),
         path,
+        identity_store,
         identity: Some(identity),
         _worktree: worktree,
         committed: false,
@@ -6255,6 +6316,37 @@ fn reserve_unique_project_directory(
         let candidate = format!("project-{:032x}", rand::random::<u128>());
         if let Some(reservation) =
             try_reserve_project_directory(root, &candidate, coordinate_worktree)?
+        {
+            return Ok(reservation);
+        }
+    }
+    Err("could not allocate a unique project identity".into())
+}
+
+pub(crate) fn reserve_unique_project_directory_adopting(
+    root: &Path,
+    adopted: oleafly_core::ids::ProjectId,
+) -> Result<ProjectDirectoryReservation, String> {
+    for _ in 0..32 {
+        let mut seed = rand::random::<u64>();
+        pick(ADJECTIVES, &mut seed);
+        pick(COLORS, &mut seed);
+        let candidate = format!(
+            "{}-{}-{}",
+            pick(ADJECTIVES, &mut seed),
+            pick(COLORS, &mut seed),
+            pick(ANIMALS, &mut seed)
+        );
+        if let Some(reservation) =
+            try_reserve_project_directory_adopting(root, &candidate, true, Some(adopted))?
+        {
+            return Ok(reservation);
+        }
+    }
+    for _ in 0..32 {
+        let candidate = format!("project-{:032x}", rand::random::<u128>());
+        if let Some(reservation) =
+            try_reserve_project_directory_adopting(root, &candidate, true, Some(adopted))?
         {
             return Ok(reservation);
         }
@@ -7918,7 +8010,17 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             write_meta(&new_id, &meta)
         })();
         duplicated?;
-        let created = reservation.commit();
+        match crate::project_ids::mint(&project_id, None)
+            .and_then(|source| crate::project_ids::set_duplicated_from(&new_id, source.project))
+        {
+            Ok(()) => {}
+            Err(error) => {
+                let _ = append_app_log(format!(
+                    "could not record that {new_id} was duplicated from {project_id}: {error}"
+                ));
+            }
+        }
+        let created = reservation.commit()?;
         initialize_git_for_new_project(&created);
         Ok(created)
     })
@@ -8299,7 +8401,7 @@ fn recyclable_project_exists(dir: &Path) -> Result<bool, String> {
     }
 }
 
-async fn recycle_project_synchronized(
+pub(crate) async fn recycle_project_synchronized(
     state: &crate::state::AppState,
     project_id: String,
 ) -> Result<(), String> {
@@ -8361,10 +8463,11 @@ mod tests {
         normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
         pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
         rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
-        set_main_doc_unlocked, try_reserve_project_directory, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
-        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        set_main_doc_unlocked, try_reserve_project_directory,
+        try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
+        write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest, CreateFileResult,
+        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
+        SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -11048,6 +11151,11 @@ mod tests {
         let owner =
             std::fs::read_to_string(projects.join("shared-project").join("owner.txt")).unwrap();
         assert!(owner == "first" || owner == "second");
+        let binding = crate::project_ids::binding("shared-project")
+            .unwrap()
+            .unwrap();
+        assert!(binding.origin_digest.is_some());
+        assert!(binding.duplicated_from.is_none());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
@@ -15823,6 +15931,42 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn abandoned_reservations_forget_their_identity_and_adoption_never_clones() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        let adopted = oleafly_core::ids::ProjectId::new();
+        let first =
+            try_reserve_project_directory_adopting(&projects, "adopted-one", true, Some(adopted))
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            crate::project_ids::binding("adopted-one")
+                .unwrap()
+                .unwrap()
+                .project,
+            adopted
+        );
+        assert!(try_reserve_project_directory_adopting(
+            &projects,
+            "adopted-two",
+            true,
+            Some(adopted)
+        )
+        .is_err());
+        assert!(!projects.join("adopted-two").exists());
+        drop(first);
+        assert!(crate::project_ids::binding("adopted-one")
+            .unwrap()
+            .is_none());
+        assert!(!projects.join("adopted-one").exists());
+        let scratch = super::get_or_create_scratch_project_blocking().unwrap();
+        assert!(crate::project_ids::binding(&scratch).unwrap().is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     // Held across the await deliberately: it serializes access to the shared
     // OLEAFLY_DATA_DIR env var against other tests, single-threaded runtime.
     #[allow(clippy::await_holding_lock)]
@@ -15850,9 +15994,15 @@ mod tests {
         assert!(read_meta(&source_id).unwrap().allow_shell_escape);
         let source_checkpoint_store = crate::paths::checkpoint_store_dir(&source_id).unwrap();
         oleafly_history::Store::open(&source_checkpoint_store).unwrap();
+        let source_binding = crate::project_ids::binding(&source_id).unwrap().unwrap();
         let fork_id = duplicate_project(source_id, "Original Paper (copy)".to_string())
             .await
             .unwrap();
+        let fork_binding = crate::project_ids::binding(&fork_id).unwrap().unwrap();
+        assert_ne!(fork_binding.project, source_binding.project);
+        assert_eq!(fork_binding.duplicated_from, Some(source_binding.project));
+        assert!(fork_binding.origin_digest.is_some());
+        assert!(source_binding.origin_digest.is_some());
         let meta = read_meta(&fork_id).unwrap();
         assert_eq!(meta.name, "Original Paper (copy)");
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));

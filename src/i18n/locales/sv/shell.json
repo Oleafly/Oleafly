@@ -753,11 +753,6 @@
   "settings": {
     "close": "Stäng inställningarna",
     "data": {
-      "cloud": {
-        "comingSoon": "Kommer snart",
-        "description": "Håll projekt synkroniserade mellan dina enheter utan att konfigurera en Git-fjärransluten. Varje överföring blir totalsträckskrypterad, så ditt arbete förblir privat under transporten. Dina lokala projektmappar förblir den sanna källan.",
-        "title": "Molnsynkronisering"
-      },
       "danger": {
         "confirmDeleteAllAction": "Radera alla projekt",
         "confirmDeleteAllDescription": "Alla aktuella projekt flyttas till papperskorgen, inklusive deras filer och Git-historik. Du kan återställa projekt ett och ett efteråt.",

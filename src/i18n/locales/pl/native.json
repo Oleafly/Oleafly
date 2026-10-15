@@ -124,5 +124,9 @@
     "helperRefused": "Odrzucono przez regułę {{tool}} w approvals.toml",
     "unknownTool": "Żadne narzędzie nie nazywa się {{name}}, więc ta reguła nic nie robi.",
     "unknownToolSuggestion": "Żadne narzędzie nie nazywa się {{name}}, więc ta reguła nic nie robi. Czy chodziło Ci o {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Połączono. Możesz zamknąć tę kartę i wrócić do Oleafly.",
+    "failedPage": "Logowanie nie zostało ukończone. Możesz zamknąć tę kartę i wrócić do Oleafly."
   }
 }

@@ -135,6 +135,10 @@ describe("WorkspaceControls", () => {
     useSettingsStore.setState({ settingsOpen: false });
     const { rerender } = render(<ThemeProvider><WorkspaceDockControls overflow={0} /></ThemeProvider>);
     expect(screen.getByRole("button", { name: enShell.dock.settings })).toBeVisible();
+    expect(screen.getByRole("button", { name: enShell.dock.settings })).toHaveAttribute(
+      "aria-describedby",
+      "cloud-attention",
+    );
     expect(screen.queryByRole("button", { name: enShell.toolbar.moreActions })).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("rail-browser-toggle"));
     expect(toggleBrowser).toHaveBeenCalled();

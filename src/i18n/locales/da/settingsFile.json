@@ -19,14 +19,18 @@
     "readFailed": "Kunne ikke åbne filen.",
     "imported": "Indstillingerne er importeret.",
     "unchanged": "Dine indstillinger svarer allerede til {{name}}.",
-    "applyFailed": "Nogle indstillinger kunne ikke gemmes. Prøv at importere igen."
+    "applyFailed": "Nogle indstillinger kunne ikke gemmes. Prøv at importere igen.",
+    "cloudEmpty": "Din Dropbox har endnu ingen Oleafly-indstillinger. Slå synkronisering i skyen til på en anden computer først.",
+    "cloudLoadFailed": "Kunne ikke indlæse indstillingerne fra din Dropbox.",
+    "cloudUnreadable": "Indstillingerne i din Dropbox kunne ikke læses."
   },
   "confirm": {
     "title": "Vil du erstatte dine indstillinger?",
     "description": "Indstillingerne fra {{name}} erstatter dine. Alt, hvad filen ikke indeholder, forbliver uændret.",
     "changes": "Indstillinger, der ændres: {{count}}",
     "ignored": "Ikke genkendt, så de springes over:",
-    "action": "Importer"
+    "action": "Importer",
+    "cloudDescription": "Indstillingerne fra din Dropbox erstatter dine. Alt, hvad de ikke indeholder, forbliver uændret."
   },
   "error": {
     "title": "{{name}} blev ikke importeret",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "skal være en ordbogskode som en_US",
     "shortcut": "skal være en genvej som Mod-Shift-k, eller \"default\"",
     "editorKey": "skal være en tast som Mod-d, \"\" for ingen, eller \"default\""
-  }
+  },
+  "importFromLocal": "Importér fra denne enhed",
+  "importFromCloud": "Importér fra skyen",
+  "cloudSource": "din Dropbox"
 }

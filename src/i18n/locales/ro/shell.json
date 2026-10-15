@@ -759,11 +759,6 @@
   "settings": {
     "close": "Închide setările",
     "data": {
-      "cloud": {
-        "comingSoon": "În curând",
-        "description": "Ține proiectele sincronizate pe toate dispozitivele tale, fără să configurezi un depozit Git la distanță. Fiecare transfer va fi criptat cap la cap, așa că munca ta rămâne privată pe drum. Folderele tale locale de proiect vor rămâne sursa de adevăr.",
-        "title": "Sincronizare în cloud"
-      },
       "danger": {
         "confirmDeleteAllAction": "Șterge toate proiectele",
         "confirmDeleteAllDescription": "Fiecare proiect curent va ajunge în Coșul de reciclare, împreună cu fișierele și cu istoricul lui Git. Poți restabili proiectele pe rând după aceea.",

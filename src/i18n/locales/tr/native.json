@@ -124,5 +124,9 @@
     "helperRefused": "approvals.toml içindeki {{tool}} kuralı nedeniyle reddedildi",
     "unknownTool": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor.",
     "unknownToolSuggestion": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor. {{suggestion}} mi demek istediniz?"
+  },
+  "cloud": {
+    "connectedPage": "Bağlandınız. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz.",
+    "failedPage": "Oturum açma tamamlanmadı. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz."
   }
 }

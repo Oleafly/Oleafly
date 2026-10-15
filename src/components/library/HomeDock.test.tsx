@@ -102,6 +102,7 @@ describe("HomeDock", () => {
     expect(trigger.className).toContain("hover:scale-[1.2]");
     expect(trigger.className).toContain("h-9");
     expect(settings.className).toContain("rounded-full");
+    expect(settings).toHaveAttribute("aria-describedby", "cloud-attention");
   });
 
   it("opens the dock theme menu from a click that sends no pointer events", () => {

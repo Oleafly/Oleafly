@@ -753,11 +753,6 @@
   "settings": {
     "close": "Close settings",
     "data": {
-      "cloud": {
-        "comingSoon": "Coming soon",
-        "description": "Keep projects synchronized across your devices without configuring a Git remote. Every transfer will be end-to-end encrypted, so your work stays private in transit. Your local project folders will remain the source of truth.",
-        "title": "Cloud sync"
-      },
       "danger": {
         "confirmDeleteAllAction": "Delete all projects",
         "confirmDeleteAllDescription": "Every current project will move to the Recycle Bin, including its files and Git history. You can restore projects individually afterward.",

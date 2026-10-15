@@ -124,5 +124,9 @@
     "helperRefused": "Refused by the {{tool}} rule in approvals.toml",
     "unknownTool": "No tool is named {{name}}, so its rule does nothing.",
     "unknownToolSuggestion": "No tool is named {{name}}, so its rule does nothing. Did you mean {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "You're connected. You can close this tab and go back to Oleafly.",
+    "failedPage": "Sign-in did not finish. You can close this tab and go back to Oleafly."
   }
 }

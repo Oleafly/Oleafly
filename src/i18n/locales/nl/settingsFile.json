@@ -19,14 +19,18 @@
     "readFailed": "Kon dat bestand niet openen.",
     "imported": "Instellingen geïmporteerd.",
     "unchanged": "Je instellingen komen al overeen met {{name}}.",
-    "applyFailed": "Sommige instellingen konden niet worden opgeslagen. Probeer het importeren opnieuw."
+    "applyFailed": "Sommige instellingen konden niet worden opgeslagen. Probeer het importeren opnieuw.",
+    "cloudEmpty": "Je Dropbox bevat nog geen instellingen van Oleafly. Zet eerst cloudsynchronisatie aan op een andere computer.",
+    "cloudLoadFailed": "Kon de instellingen niet uit je Dropbox laden.",
+    "cloudUnreadable": "De instellingen in je Dropbox konden niet worden gelezen."
   },
   "confirm": {
     "title": "Je instellingen vervangen?",
     "description": "De instellingen uit {{name}} vervangen die van jou. Wat niet in het bestand staat, blijft zoals het is.",
     "changes": "Instellingen die veranderen: {{count}}",
     "ignored": "Niet herkend, dus deze worden overgeslagen:",
-    "action": "Importeren"
+    "action": "Importeren",
+    "cloudDescription": "De instellingen uit je Dropbox vervangen die van jou. Wat er niet in staat, blijft zoals het is."
   },
   "error": {
     "title": "{{name}} is niet geïmporteerd",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "moet een woordenboekcode zijn zoals en_US",
     "shortcut": "moet een sneltoets zijn zoals Mod-Shift-k, of \"default\"",
     "editorKey": "moet een toets zijn zoals Mod-d, \"\" voor geen, of \"default\""
-  }
+  },
+  "importFromLocal": "Importeren vanaf dit apparaat",
+  "importFromCloud": "Importeren uit de cloud",
+  "cloudSource": "je Dropbox"
 }

@@ -19,14 +19,18 @@
     "readFailed": "Tento soubor se nepodařilo otevřít.",
     "imported": "Nastavení bylo importováno.",
     "unchanged": "Vaše nastavení už odpovídá souboru {{name}}.",
-    "applyFailed": "Některá nastavení se nepodařilo uložit. Zkuste import znovu."
+    "applyFailed": "Některá nastavení se nepodařilo uložit. Zkuste import znovu.",
+    "cloudEmpty": "Ve vašem Dropboxu zatím nejsou žádná nastavení Oleafly. Nejdřív zapněte synchronizaci v cloudu na jiném počítači.",
+    "cloudLoadFailed": "Nastavení z vašeho Dropboxu se nepodařilo načíst.",
+    "cloudUnreadable": "Nastavení ve vašem Dropboxu se nepodařilo přečíst."
   },
   "confirm": {
     "title": "Nahradit vaše nastavení?",
     "description": "Nastavení ze souboru {{name}} nahradí to vaše. Co soubor neobsahuje, zůstane beze změny.",
     "changes": "Počet nastavení, která se změní: {{count}}",
     "ignored": "Nerozpoznáno, proto se přeskočí:",
-    "action": "Importovat"
+    "action": "Importovat",
+    "cloudDescription": "Nastavení z vašeho Dropboxu nahradí to vaše. Co v něm chybí, zůstane beze změny."
   },
   "error": {
     "title": "Soubor {{name}} nebyl importován",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "musí být kód slovníku, například en_US",
     "shortcut": "musí být klávesová zkratka, například Mod-Shift-k, nebo \"default\"",
     "editorKey": "musí být klávesa, například Mod-d, \"\" pro žádnou, nebo \"default\""
-  }
+  },
+  "importFromLocal": "Importovat z tohoto zařízení",
+  "importFromCloud": "Importovat z cloudu",
+  "cloudSource": "ve vašem Dropboxu"
 }

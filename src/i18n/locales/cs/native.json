@@ -124,5 +124,9 @@
     "helperRefused": "Odmítnuto pravidlem {{tool}} v approvals.toml",
     "unknownTool": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá.",
     "unknownToolSuggestion": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá. Měli jste na mysli {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Jste připojeni. Tuto kartu můžete zavřít a vrátit se do Oleafly.",
+    "failedPage": "Přihlášení se nedokončilo. Tuto kartu můžete zavřít a vrátit se do Oleafly."
   }
 }

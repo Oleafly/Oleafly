@@ -19,14 +19,18 @@
     "readFailed": "Bu dosya açılamadı.",
     "imported": "Ayarlar içe aktarıldı.",
     "unchanged": "Ayarlarınız zaten {{name}} dosyasıyla aynı.",
-    "applyFailed": "Bazı ayarlar kaydedilemedi. İçe aktarmayı yeniden deneyin."
+    "applyFailed": "Bazı ayarlar kaydedilemedi. İçe aktarmayı yeniden deneyin.",
+    "cloudEmpty": "Dropbox'ınızda henüz Oleafly ayarı yok. Önce başka bir bilgisayarda bulut eşitlemeyi açın.",
+    "cloudLoadFailed": "Ayarlar Dropbox'ınızdan yüklenemedi.",
+    "cloudUnreadable": "Dropbox'ınızdaki ayarlar okunamadı."
   },
   "confirm": {
     "title": "Ayarlarınız değiştirilsin mi?",
     "description": "{{name}} dosyasındaki ayarlar sizinkilerin yerini alacak. Dosyada olmayan her şey olduğu gibi kalır.",
     "changes": "Değişecek ayar sayısı: {{count}}",
     "ignored": "Tanınmadığı için atlanacak:",
-    "action": "İçe aktar"
+    "action": "İçe aktar",
+    "cloudDescription": "Dropbox'ınızdaki ayarlar sizinkilerin yerini alacak. Bu ayarlarda olmayan her şey olduğu gibi kalır."
   },
   "error": {
     "title": "{{name}} içe aktarılmadı",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "en_US gibi bir sözlük kodu olmalıdır",
     "shortcut": "Mod-Shift-k gibi bir kısayol ya da \"default\" olmalıdır",
     "editorKey": "Mod-d gibi bir tuş, tuş olmaması için \"\" ya da \"default\" olmalıdır"
-  }
+  },
+  "importFromLocal": "Bu cihazdan içe aktar",
+  "importFromCloud": "Buluttan içe aktar",
+  "cloudSource": "Dropbox"
 }

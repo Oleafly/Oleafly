@@ -753,11 +753,6 @@
   "settings": {
     "close": "Sulje asetukset",
     "data": {
-      "cloud": {
-        "comingSoon": "Tulossa pian",
-        "description": "Pidä projektit synkronoituina laitteiden välillä ilman Git-etäosoitteen määrittämistä. Jokainen siirto salataan päästä päähän, joten työ pysyy yksityisenä matkalla. Paikalliset projektikansiot pysyvät totuuden lähteenä.",
-        "title": "Pilvisynkronointi"
-      },
       "danger": {
         "confirmDeleteAllAction": "Poista kaikki projektit",
         "confirmDeleteAllDescription": "Jokainen nykyinen projekti siirtyy roskakoriin, mukaan lukien sen tiedostot ja Git-historia. Projektit voi palauttaa jälkeenpäin yksitellen.",

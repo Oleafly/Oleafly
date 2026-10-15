@@ -124,5 +124,9 @@
     "helperRefused": "Hylätty approvals.toml-tiedoston {{tool}}-säännön vuoksi",
     "unknownTool": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään.",
     "unknownToolSuggestion": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään. Tarkoititko {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Olet yhteydessä. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen.",
+    "failedPage": "Kirjautuminen ei valmistunut. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen."
   }
 }

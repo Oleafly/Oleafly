@@ -19,14 +19,18 @@
     "readFailed": "无法打开该文件。",
     "imported": "设置已导入。",
     "unchanged": "你的设置已与 {{name}} 一致。",
-    "applyFailed": "部分设置无法保存。请重新导入。"
+    "applyFailed": "部分设置无法保存。请重新导入。",
+    "cloudEmpty": "你的 Dropbox 中还没有 Oleafly 设置。请先在另一台电脑上开启云同步。",
+    "cloudLoadFailed": "无法从你的 Dropbox 加载设置。",
+    "cloudUnreadable": "无法读取你 Dropbox 中的设置。"
   },
   "confirm": {
     "title": "要替换你的设置吗？",
     "description": "{{name}} 中的设置将替换你当前的设置。文件中没有的设置保持不变。",
     "changes": "将更改的设置：{{count}} 项",
     "ignored": "无法识别，将跳过：",
-    "action": "导入"
+    "action": "导入",
+    "cloudDescription": "你 Dropbox 中的设置将替换你当前的设置。其中没有的设置保持不变。"
   },
   "error": {
     "title": "未导入 {{name}}",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "必须是 en_US 这样的词典代码",
     "shortcut": "必须是 Mod-Shift-k 这样的快捷键，或为 \"default\"",
     "editorKey": "必须是 Mod-d 这样的按键，或用 \"\" 表示不设按键，或为 \"default\""
-  }
+  },
+  "importFromLocal": "从此设备导入",
+  "importFromCloud": "从云端导入",
+  "cloudSource": "你的 Dropbox"
 }

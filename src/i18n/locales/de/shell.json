@@ -753,11 +753,6 @@
   "settings": {
     "close": "Einstellungen schließen",
     "data": {
-      "cloud": {
-        "comingSoon": "In Kürze",
-        "description": "Projekte über Ihre Geräte hinweg abgleichen, ohne ein Git-Remote einzurichten. Jede Übertragung wird Ende-zu-Ende verschlüsselt, Ihre Arbeit bleibt also unterwegs privat. Ihre lokalen Projektordner bleiben maßgeblich.",
-        "title": "Cloud-Abgleich"
-      },
       "danger": {
         "confirmDeleteAllAction": "Alle Projekte löschen",
         "confirmDeleteAllDescription": "Jedes aktuelle Projekt wandert in den Papierkorb, samt Dateien und Git-Historie. Sie können Projekte danach einzeln wiederherstellen.",

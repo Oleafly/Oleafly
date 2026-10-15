@@ -753,11 +753,6 @@
   "settings": {
     "close": "Luk indstillinger",
     "data": {
-      "cloud": {
-        "comingSoon": "På vej",
-        "description": "Hold projekterne synkroniseret på tværs af dine enheder uden at skulle sætte en Git-remote op. Hver overførsel bliver end-to-end-krypteret, så dit arbejde forbliver privat undervejs. Dine lokale projektmapper bliver ved med at være den rigtige kilde.",
-        "title": "Synkronisering i skyen"
-      },
       "danger": {
         "confirmDeleteAllAction": "Slet alle projekter",
         "confirmDeleteAllDescription": "Alle nuværende projekter flyttes til papirkurven, inklusive deres filer og Git-historik. Du kan gendanne projekterne enkeltvis bagefter.",

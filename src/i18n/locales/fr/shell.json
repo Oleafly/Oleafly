@@ -759,11 +759,6 @@
   "settings": {
     "close": "Fermer les paramètres",
     "data": {
-      "cloud": {
-        "comingSoon": "Bientôt disponible",
-        "description": "Gardez vos projets synchronisés entre vos appareils sans configurer de dépôt Git distant. Chaque transfert sera chiffré de bout en bout, votre travail restera donc privé pendant le transit. Vos dossiers de projet locaux resteront la référence.",
-        "title": "Synchronisation cloud"
-      },
       "danger": {
         "confirmDeleteAllAction": "Supprimer tous les projets",
         "confirmDeleteAllDescription": "Tous les projets actuels iront à la corbeille, avec leurs fichiers et leur historique Git. Vous pourrez ensuite les restaurer un par un.",

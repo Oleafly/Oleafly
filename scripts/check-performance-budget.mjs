@@ -116,7 +116,13 @@ const limits = {
   // gives the bundled CSL styles CRLF line endings, which adds 13,040 bytes
   // there (CI measured 20,242,679 and 20,255,719 bytes for one tree), so the
   // limit leaves room for the Windows build too.
-  totalJavaScript: 20_330_000,
+  // +70 KB for Dropbox cloud sync: the cloud store, the Cloud sync settings
+  // tab, the sync keeper that follows saves and Dropbox changes, transfer
+  // progress and conflict notices. All of it loads with Settings or once
+  // cloud sync is on, except about 0.5 KB in the entry. Together with live
+  // collaboration the combined graph measures 20.37 MB on macOS and Linux
+  // and about 20.39 MB on Windows.
+  totalJavaScript: 20_400_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

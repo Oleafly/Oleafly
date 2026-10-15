@@ -124,5 +124,9 @@
     "helperRefused": "已被 approvals.toml 中的 {{tool}} 规则拒绝。",
     "unknownTool": "没有名为 {{name}} 的工具，因此这条规则不起作用。",
     "unknownToolSuggestion": "没有名为 {{name}} 的工具，因此这条规则不起作用。你是不是想写 {{suggestion}}？"
+  },
+  "cloud": {
+    "connectedPage": "已连接。你可以关闭此标签页并返回 Oleafly。",
+    "failedPage": "登录未完成。你可以关闭此标签页并返回 Oleafly。"
   }
 }

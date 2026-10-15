@@ -765,11 +765,6 @@
   "settings": {
     "close": "Zavřít nastavení",
     "data": {
-      "cloud": {
-        "comingSoon": "Již brzy",
-        "description": "Udržujte projekty synchronizované mezi svými zařízeními, aniž byste nastavovali vzdálený repozitář Git. Každý přenos bude šifrovaný od konce ke konci, takže vaše práce zůstane po cestě soukromá. Zdrojem pravdy zůstanou vaše místní složky projektů.",
-        "title": "Synchronizace v cloudu"
-      },
       "danger": {
         "confirmDeleteAllAction": "Smazat všechny projekty",
         "confirmDeleteAllDescription": "Každý aktuální projekt se přesune do koše včetně svých souborů a historie Git. Projekty pak můžete obnovovat jednotlivě.",

@@ -19,14 +19,18 @@
     "readFailed": "Det gick inte att öppna filen.",
     "imported": "Inställningarna har importerats.",
     "unchanged": "Dina inställningar stämmer redan med {{name}}.",
-    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen."
+    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen.",
+    "cloudEmpty": "Din Dropbox har inga Oleafly-inställningar än. Aktivera molnsynkronisering på en annan dator först.",
+    "cloudLoadFailed": "Det gick inte att läsa in inställningarna från din Dropbox.",
+    "cloudUnreadable": "Inställningarna i din Dropbox kunde inte läsas."
   },
   "confirm": {
     "title": "Vill du ersätta dina inställningar?",
     "description": "Inställningarna från {{name}} ersätter dina. Allt som filen inte tar upp förblir som det är.",
     "changes": "Inställningar som ändras: {{count}}",
     "ignored": "Känns inte igen och hoppas därför över:",
-    "action": "Importera"
+    "action": "Importera",
+    "cloudDescription": "Inställningarna från din Dropbox ersätter dina. Allt som de inte tar upp förblir som det är."
   },
   "error": {
     "title": "{{name}} importerades inte",
@@ -53,5 +57,8 @@
     "dictionaryLocale": "måste vara en ordlistekod som en_US",
     "shortcut": "måste vara ett kortkommando som Mod-Shift-k, eller \"default\"",
     "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\""
-  }
+  },
+  "importFromLocal": "Importera från den här enheten",
+  "importFromCloud": "Importera från molnet",
+  "cloudSource": "din Dropbox"
 }
