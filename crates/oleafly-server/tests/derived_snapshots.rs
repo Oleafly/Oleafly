@@ -698,15 +698,14 @@ async fn hinted(stage: &Stage, project: SharedProjectId, seq: u64) -> Option<u64
     seq_of(&response)
 }
 
-#[tokio::test]
-async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_without_it() {
-    let stage = stage().await;
-    snapshot_often(&stage);
-    let project = shared_with_alice(&stage).await;
+// A project whose log holds, after three ordinary changes, one the server
+// can't take in: it builds on a change that was never stored.
+async fn with_an_unreadable_change(stage: &Stage) -> SharedProjectId {
+    let project = shared_with_alice(stage).await;
     let doc = LoroDoc::new();
     doc.import(&first_snapshot())
         .expect("the first snapshot loads");
-    append_changes(&stage, &doc, project, 1, 3).await;
+    append_changes(stage, &doc, project, 1, 3).await;
     let hidden = doc.fork();
     hidden.set_peer_id(9_009).expect("peer");
     hidden
@@ -743,6 +742,14 @@ async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_wit
         })
         .await
         .expect("store the change directly");
+    project
+}
+
+#[tokio::test]
+async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_without_it() {
+    let stage = stage().await;
+    snapshot_often(&stage);
+    let project = with_an_unreadable_change(&stage).await;
     assert_eq!(hinted(&stage, project, 4).await, Some(0));
     let kept = stage
         .server
@@ -758,6 +765,17 @@ async fn a_change_the_server_cannot_read_keeps_the_log_instead_of_a_snapshot_wit
     };
     assert_eq!(seq, Some(0));
     assert_eq!(text_of(&bytes), SNAPSHOT_TEXT);
+}
+
+#[tokio::test]
+async fn the_unused_file_sweep_keeps_every_file_while_a_change_cannot_be_read() {
+    let stage = stage().await;
+    let project = with_an_unreadable_change(&stage).await;
+    let state = stage.server.state();
+    assert_eq!(
+        state.snapshots.files_in_use(&state.db, project).await,
+        Ok(None)
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

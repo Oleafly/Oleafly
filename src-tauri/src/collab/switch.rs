@@ -12,11 +12,12 @@ pub const TURNED_OFF: &str = "collab.turned_off";
 pub const TURNED_OFF_CODE: &str = "turned_off";
 pub const SWITCH_COMMAND: &str = "collab_live_collaboration_set";
 const COMMAND_PREFIX: &str = "collab_";
-const ALWAYS_ANSWERED: [&str; 4] = [
+const ALWAYS_ANSWERED: [&str; 5] = [
     SWITCH_COMMAND,
     "collab_pending_links",
     "collab_live_stop",
     "collab_live_flush",
+    "collab_live_reconnect_now",
 ];
 #[cfg(any(test, feature = "e2e-testing"))]
 const SEED_KEY: &str = "oleafly.liveCollaboration";
@@ -269,6 +270,7 @@ mod tests {
             [
                 "collab_live_collaboration_set",
                 "collab_live_flush",
+                "collab_live_reconnect_now",
                 "collab_live_stop",
                 "collab_pending_links",
             ]

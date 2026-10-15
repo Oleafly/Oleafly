@@ -12,6 +12,7 @@ pub const PRESENCE_LEFT_EVENT: &str = "collab-presence-left";
 pub const LIVE_NEW_DEVICE_EVENT: &str = "collab-live-new-device";
 pub const LIVE_MEMBERS_EVENT: &str = "collab-live-members";
 pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
+pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -79,6 +80,12 @@ pub struct ChangeSkippedPayload {
     pub project_id: String,
     pub seq: u64,
     pub device_id: Option<DeviceId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectFullPayload {
+    pub project_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]

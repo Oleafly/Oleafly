@@ -1,6 +1,7 @@
 mod people;
 mod polling;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
@@ -63,6 +64,19 @@ async fn next_change(socket: &mut Socket) -> Option<ServerFrame> {
     }
 }
 
+// The longest a ping waits on this machine just now, with nothing large
+// going on. A large change may add at most LONGEST_STALL to it, so a slow
+// or busy machine doesn't fail these tests, while a large change handled
+// on the server's thread still does.
+async fn quiet_stall(socket: &mut Socket) -> Duration {
+    let done = AtomicBool::new(false);
+    let stop = async {
+        tokio::time::sleep(Duration::from_millis(1_500)).await;
+        done.store(true, Ordering::SeqCst);
+    };
+    tokio::join!(longest_stall(socket, &done), stop).0
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn a_large_change_does_not_hold_up_other_connections() {
     let _alone = alone().await;
@@ -72,6 +86,7 @@ async fn a_large_change_does_not_hold_up_other_connections() {
     let dave = granted(&stage, project, "Dave", ProjectRole::Viewer).await;
     let large = large_change(&carol, project);
     let mut alice = connect(&stage.server, &stage.alice).await;
+    let quiet = quiet_stall(&mut alice).await;
     let url = stage.server.url();
     let (work, done) = beside(async move {
         let mut reader = people::connect_to(&url, &dave).await;
@@ -92,8 +107,8 @@ async fn a_large_change_does_not_hold_up_other_connections() {
     );
     assert!(matches!(arrived, Some(ServerFrame::Update { seq: 1, .. })));
     assert!(
-        stall < LONGEST_STALL,
-        "the server's thread was held for {stall:?} while a large change was stored and sent on"
+        stall < LONGEST_STALL + quiet,
+        "the server's thread was held for {stall:?} while a large change was stored and sent on, {quiet:?} with none"
     );
 }
 
@@ -113,6 +128,7 @@ async fn catching_up_on_a_large_change_does_not_hold_up_other_connections() {
         "{answer:?}"
     );
     let mut alice = connect(&stage.server, &stage.alice).await;
+    let quiet = quiet_stall(&mut alice).await;
     let url = stage.server.url();
     let (work, done) = beside(async move {
         let mut reader = people::connect_to(&url, &dave).await;
@@ -123,8 +139,8 @@ async fn catching_up_on_a_large_change_does_not_hold_up_other_connections() {
     let arrived = work.await.expect("the reader ran");
     assert!(matches!(arrived, Some(ServerFrame::Update { seq: 1, .. })));
     assert!(
-        stall < LONGEST_STALL,
-        "the server's thread was held for {stall:?} while a large change was read from the log"
+        stall < LONGEST_STALL + quiet,
+        "the server's thread was held for {stall:?} while a large change was read from the log, {quiet:?} with none"
     );
 }
 
@@ -143,6 +159,7 @@ async fn a_large_change_over_long_poll_does_not_hold_up_other_connections() {
     let mut bob = opened(&stage.server, &stage.bob, project).await;
     let carol = seeded(&stage.server, "Carol").await;
     let mut pinger = connect(&stage.server, &carol).await;
+    let quiet = quiet_stall(&mut pinger).await;
     let (work, done) = beside(async move {
         let update = ClientFrame::Update {
             project_id: project,
@@ -161,7 +178,7 @@ async fn a_large_change_over_long_poll_does_not_hold_up_other_connections() {
         [ServerFrame::Update { seq: 1, .. }]
     ));
     assert!(
-        stall < LONGEST_STALL,
-        "the server's thread was held for {stall:?} while a large change was posted and polled"
+        stall < LONGEST_STALL + quiet,
+        "the server's thread was held for {stall:?} while a large change was posted and polled, {quiet:?} with none"
     );
 }

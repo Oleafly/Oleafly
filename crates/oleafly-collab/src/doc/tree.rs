@@ -173,6 +173,13 @@ impl ProjectDoc {
     }
 
     fn alive(&self, node: TreeID) -> bool {
+        if self
+            .tree
+            .get_meta(node)
+            .is_ok_and(|meta| meta.get("trashed_at").is_some())
+        {
+            return false;
+        }
         let mut current = node;
         for _ in 0..=self.ids.len() + 1 {
             match self.tree.parent(current) {

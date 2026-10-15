@@ -369,6 +369,22 @@ async fn trusted_proxies_are_skipped_and_the_first_address_outside_them_is_the_c
 }
 
 #[tokio::test]
+async fn trusted_proxies_count_for_nothing_when_the_connection_has_no_address() {
+    let app = test_app_with(support::config_with(&[
+        ("OLEAFLY_BEHIND_PROXY", "true"),
+        ("OLEAFLY_TRUSTED_PROXIES", "10.0.0.0/8"),
+    ]))
+    .await;
+    let mut request = support::build_request(Method::GET, "/ip", None, None);
+    request.headers_mut().insert(
+        "x-forwarded-for",
+        HeaderValue::from_static("203.0.113.66, 10.0.1.1"),
+    );
+    let reply = support::send_request(&ip_probe(app.state.clone()), request).await;
+    assert_eq!(reply.body["ip"], Value::Null);
+}
+
+#[tokio::test]
 async fn seeding_an_admin_ends_setup() {
     let app = test_app().await;
     let before = app

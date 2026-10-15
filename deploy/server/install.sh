@@ -634,16 +634,46 @@ download_release() {
 	item "Oleafly Server $release_version. All files match SHA256SUMS."
 }
 
-# Stops at the first file it can't write, so the caller can say what to do.
-# set -e doesn't stop a function its caller tests with if or ||.
+# Copies every release file to a folder inside the install first, and moves
+# them into place only when all of them are there, so a full disk can't leave
+# a truncated docker-compose.yml or files from two releases. placed is 1 once
+# a file was replaced. set -e doesn't stop a function its caller tests with
+# if or ||, so each step returns 1 itself.
 place_release_files() {
+	placed=0
 	as_root mkdir -p "$dir" || return 1
 	as_root chmod 755 "$dir" || return 1
-	for file in docker-compose.yml Caddyfile litestream.yml; do
-		as_root install -m 644 "$tmp/release/$file" "$dir/$file" || return 1
+	incoming=$dir/.release-incoming
+	as_root rm -rf "$incoming" || return 1
+	as_root mkdir -m 700 "$incoming" || return 1
+	if ! stage_release_files "$incoming"; then
+		as_root rm -rf "$incoming"
+		return 1
+	fi
+	for file in docker-compose.yml Caddyfile litestream.yml .env.example install.sh; do
+		as_root mv -f "$incoming/$file" "$dir/$file" || return 1
+		placed=1
 	done
-	as_root install -m 644 "$tmp/release/env.example" "$dir/.env.example" || return 1
-	as_root install -m 755 "$tmp/release/install.sh" "$dir/install.sh" || return 1
+	as_root rmdir "$incoming" || true
+}
+
+stage_release_files() {
+	for file in docker-compose.yml Caddyfile litestream.yml; do
+		as_root install -m 644 "$tmp/release/$file" "$1/$file" || return 1
+	done
+	as_root install -m 644 "$tmp/release/env.example" "$1/.env.example" || return 1
+	as_root install -m 755 "$tmp/release/install.sh" "$1/install.sh" || return 1
+}
+
+# The files the update keeps as name.previous before it stops the server.
+previous_files='docker-compose.yml Caddyfile litestream.yml install.sh'
+
+restore_previous_files() {
+	for file in $previous_files; do
+		if [ -f "$dir/$file.previous" ]; then
+			as_root cp -p "$dir/$file.previous" "$dir/$file" || return 1
+		fi
+	done
 }
 
 check_not_older() {
@@ -1221,15 +1251,20 @@ pull_images() {
 	item "Downloading the container images. This can take a minute."
 	# Naming a file with -f stops Compose from reading the admin's
 	# docker-compose.override.yml by itself, so name that file too: an image
-	# it swaps in is pulled before anything stops.
+	# it swaps in is pulled before anything stops. A service the override
+	# builds from source has nothing to pull.
 	override=
 	[ ! -f "$dir/docker-compose.override.yml" ] || override=$dir/docker-compose.override.yml
-	if compose --project-directory "$dir" -f "$1" ${override:+-f "$override"} pull --quiet >"$tmp/compose.log" 2>&1; then
+	if compose --project-directory "$dir" -f "$1" ${override:+-f "$override"} pull --quiet ${override:+--ignore-buildable} >"$tmp/compose.log" 2>&1; then
 		return 0
 	fi
 	tail -n 20 "$tmp/compose.log" >&2
 	if grep -Eqi 'denied|unauthorized|manifest unknown|not found: manifest|manifest for .* not found' "$tmp/compose.log"; then
-		fail "Docker couldn't get $(server_image_in "$1") from the registry. Its message is above.${2:+ $2}" "The registry refused the download or doesn't have the image, so this machine's network isn't the problem. Report it at $issues_url"
+		images=$(server_image_in "$1")
+		override_images=
+		[ -z "$override" ] || override_images=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$override" | tr '\n' ' ')
+		[ -z "$override_images" ] || images="$images, or one that docker-compose.override.yml names (${override_images% }),"
+		fail "Docker couldn't get $images from the registry. Its message is above.${2:+ $2}" "The registry refused the download or doesn't have the image, so this machine's network isn't the problem. Report it at $issues_url"
 	fi
 	fail "Docker couldn't download the images. Its message is above.${2:+ $2}" "Check this machine's network connection, then run the installer again."
 }
@@ -1302,13 +1337,21 @@ back_up_data() {
 	caddy_image=$(caddy_image_in "$tmp/release/docker-compose.yml")
 	[ -n "$caddy_image" ] || fail "The release's docker-compose.yml doesn't name a Caddy image, which the backup uses. Nothing was changed." "Report this at $issues_url"
 	backup_name=oleafly-data-$(date -u +%Y%m%dT%H%M%SZ)-$before.tar.gz
-	as_root install -d -m 700 "$dir/backups"
+	as_root install -d -m 700 "$dir/backups" || fail "Couldn't make $dir/backups for the copy of the data. Nothing was changed." "Check that the disk isn't full, then run the installer again."
+	# These copies come before the stop, so a full disk ends the update while
+	# the server still runs.
+	for file in $previous_files; do
+		if [ -f "$dir/$file" ]; then
+			as_root cp -p "$dir/$file" "$dir/$file.previous" || fail "Couldn't keep a copy of $dir/$file before the update. Nothing was changed." "Check that the disk isn't full, then run the installer again."
+		fi
+	done
 	item "Stopping the server to copy its data."
 	if ! compose stop >"$tmp/compose.log" 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
 		compose start >/dev/null 2>&1 || true
 		fail "Docker couldn't stop the server to copy its data. Its message is above. Nothing was changed."
 	fi
+	stopped_for_backup=1
 	if ! docker_cmd run --rm -v "$data_volume:/data:ro" -v "$dir/backups:/backup" --entrypoint tar "$caddy_image" -czf "/backup/$backup_name" -C /data . >"$tmp/compose.log" 2>&1; then
 		tail -n 20 "$tmp/compose.log" >&2
 		as_root rm -f "$dir/backups/$backup_name"
@@ -1316,22 +1359,19 @@ back_up_data() {
 		fail "Couldn't copy the data before the update. Its message is above." "The server runs $before again, and nothing else was changed. Check that this machine has free disk space, then run the installer again."
 	fi
 	item "Copied the data to $dir/backups/$backup_name"
+	# An old copy that can't be removed doesn't stop the update.
 	for old in $(as_root ls -1 "$dir/backups" | grep '^oleafly-data-.*\.tar\.gz$' | sort -r | tail -n +4); do
-		as_root rm -f "$dir/backups/$old"
-	done
-	for file in docker-compose.yml install.sh; do
-		if [ -f "$dir/$file" ]; then
-			as_root cp -p "$dir/$file" "$dir/$file.previous"
-		fi
+		as_root rm -f "$dir/backups/$old" || note "Couldn't remove the old copy $dir/backups/$old."
 	done
 	rollback="To go back to $before with the data from before this update, run:
   cd $dir
   sudo docker compose down
   sudo docker run --rm -v $data_volume:/data -v $dir/backups:/backup:ro --entrypoint sh $caddy_image -c 'find /data -mindepth 1 -delete && tar -xzf /backup/$backup_name -C /data'
   sudo cp docker-compose.yml.previous docker-compose.yml
+  sudo cp Caddyfile.previous Caddyfile
+  sudo cp litestream.yml.previous litestream.yml
   sudo cp install.sh.previous install.sh
   sudo docker compose up -d"
-	stopped_for_backup=1
 }
 
 https_get() {
@@ -1434,12 +1474,24 @@ refresh_install() {
 	fi
 	if ! place_release_files; then
 		if [ "$stopped_for_backup" = 1 ]; then
+			# The new release never started, so the data is as it was. Only
+			# files to put back, if some were already replaced.
+			files_now="None of the installed files changed."
+			if [ "$placed" = 1 ]; then
+				if ! restore_previous_files; then
+					fail "Couldn't put the new release's files in $dir, or the previous ones back. Its message is above." "To put the previous files back, run:
+  cd $dir
+  for file in $previous_files; do sudo cp \$file.previous \$file; done
+  sudo docker compose start"
+				fi
+				files_now="The installer put the previous files back."
+			fi
 			if compose start >/dev/null 2>&1; then
 				again="The server runs $before again."
 			else
 				again="Docker couldn't start the server again. Start it with: cd $dir && sudo docker compose start"
 			fi
-			fail "Couldn't put the new release's files in $dir. Its message is above." "$again" "$rollback"
+			fail "Couldn't put the new release's files in $dir. Its message is above." "$files_now $again" "Free some disk space, then run the installer again."
 		fi
 		fail "Couldn't put the release files in $dir. Its message is above." "Check that the disk isn't full, then run the installer again."
 	fi
@@ -1631,7 +1683,8 @@ cmd_uninstall() {
 		tail -n 20 "$tmp/compose.log" >&2
 		fail "Docker couldn't delete the data volume $data_volume. Its message is above."
 	fi
-	for file in .env .env.example install.sh install.sh.previous docker-compose.yml docker-compose.yml.previous Caddyfile litestream.yml; do
+	as_root rm -rf "$dir/.release-incoming"
+	for file in .env .env.example install.sh install.sh.previous docker-compose.yml docker-compose.yml.previous Caddyfile Caddyfile.previous litestream.yml litestream.yml.previous; do
 		as_root rm -f "$dir/$file"
 	done
 	if [ -d "$dir/backups" ]; then

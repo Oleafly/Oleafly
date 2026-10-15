@@ -364,11 +364,10 @@ async fn a_comment_written_offline_is_refused(shape: Shape, derived: bool) {
         if derived {
             let at = head(&room).await;
             assert_eq!(hinted(&room.stage, room.project, at).await, Some(at));
-            room.stage
-                .server
-                .state()
+            let state = room.stage.server.state();
+            state
                 .comment_guard
-                .forget(room.project)
+                .forget(&state.snapshots, room.project)
                 .await;
         }
         room.bob_sends(|doc| type_line(doc, &format!(" bob before {round}")))
