@@ -197,14 +197,12 @@ impl LiveRig {
         });
     }
 
-    #[cfg(unix)]
     pub(crate) fn remote_new_dir(&self, path: &str) {
         self.arrive(|peer| {
             peer.add_node(None, path, NodeKind::Dir, None, "").unwrap();
         });
     }
 
-    #[cfg(unix)]
     pub(crate) fn remote_new_in(&self, folder: &str, name: &str, text: &str) {
         let parent = self.id_of(folder).expect("the folder is shared");
         self.arrive(|peer| {

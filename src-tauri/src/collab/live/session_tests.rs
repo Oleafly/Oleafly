@@ -950,6 +950,36 @@ fn a_new_session_starts_without_the_failures_of_the_last_one() {
     assert_eq!(told(&host), vec![1]);
 }
 
+#[test]
+fn a_file_that_cannot_be_written_waits_for_its_next_try_while_others_are_written() {
+    let (_dir, root, _host, rig) = watched_rig("waiting-try", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.settle();
+    assert!(root.join("figs").is_dir());
+    std::fs::remove_dir(root.join("figs")).unwrap();
+    std::fs::write(root.join("figs"), "a file in the way").unwrap();
+    rig.remote_new_in("figs", "a.tex", "A");
+    let active = rig.active();
+    tauri::async_runtime::block_on(active.write_out_paced(false)).unwrap();
+    assert_eq!(active.tries_of("figs/a.tex"), 1);
+    for round in 0..4 {
+        let text = format!("abc {round}");
+        rig.remote("main.tex", &text);
+        tauri::async_runtime::block_on(active.write_out_paced(false)).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            text
+        );
+    }
+    assert_eq!(
+        active.tries_of("figs/a.tex"),
+        1,
+        "the file that cannot be written was tried on every pass"
+    );
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert_eq!(active.tries_of("figs/a.tex"), 2, "a flush tries it once");
+}
+
 #[cfg(unix)]
 #[test]
 fn a_file_in_a_folder_that_refuses_writes_is_retried_reported_and_written_once_it_can_be() {

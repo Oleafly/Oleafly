@@ -257,6 +257,7 @@ impl Active {
         if !urgent {
             self.hold_back_typing(&next, &mut texts);
         }
+        let still_held = self.hold_back_failing(&next, &mut texts, urgent);
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
@@ -271,7 +272,7 @@ impl Active {
             removed,
             written,
             done,
-            failed,
+            mut failed,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
@@ -279,6 +280,7 @@ impl Active {
                 &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
             )?
         };
+        failed.extend(still_held);
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
         if !kept.is_empty() {
