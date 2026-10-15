@@ -533,7 +533,6 @@
       "placeholder": "이름, 사용자 이름 또는 이메일",
       "roleLabel": "추가할 사람의 역할",
       "searching": "검색하는 중…",
-      "noResults": "{{server}}에 일치하는 사람이 없습니다.",
       "noResultsTryEmail": "{{server}}에 일치하는 사람이 없습니다. 전체 이메일 주소로 검색해 보세요.",
       "alreadyMember": "{{name}} 님은 이미 접근 권한이 있습니다.",
       "allMembers": "일치하는 사람은 모두 이미 접근 권한이 있습니다.",
@@ -733,6 +732,7 @@
     "noText": "변경된 텍스트가 없어 비교할 내용이 없습니다.",
     "newFile": "새 파일",
     "removedFile": "삭제됨",
+    "closedOldest": "한 번에 {{number}}개 파일만 열려 있을 수 있어서 {{path}}을(를) 닫았습니다.",
     "diffLabel": "{{path}}의 변경 사항"
   },
   "console": {

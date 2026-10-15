@@ -533,7 +533,6 @@
       "placeholder": "Nimi, käyttäjänimi tai sähköposti",
       "roleLabel": "Lisättävien henkilöiden rooli",
       "searching": "Haetaan…",
-      "noResults": "Kukaan palvelimella {{server}} ei vastaa hakua.",
       "noResultsTryEmail": "Kukaan palvelimella {{server}} ei vastaa hakua. Kokeile henkilön koko sähköpostiosoitetta.",
       "alreadyMember": "Henkilöllä {{name}} on jo pääsy.",
       "allMembers": "Kaikilla hakua vastaavilla on jo pääsy.",
@@ -733,6 +732,7 @@
     "noText": "Mikään teksti ei muuttunut, joten vertailtavaa ei ole.",
     "newFile": "Uusi tiedosto",
     "removedFile": "Poistettu",
+    "closedOldest": "Vain {{number}} tiedostoa pysyy auki kerrallaan, joten {{path}} suljettiin.",
     "diffLabel": "Muutokset tiedostossa {{path}}"
   },
   "console": {

@@ -533,7 +533,6 @@
       "placeholder": "姓名、登录名或电子邮箱",
       "roleLabel": "所添加人员的角色",
       "searching": "正在搜索…",
-      "noResults": "{{server}} 上没有匹配的人员。",
       "noResultsTryEmail": "{{server}} 上没有匹配的人员。请尝试输入对方的完整电子邮件地址。",
       "alreadyMember": "{{name}} 已有访问权限。",
       "allMembers": "所有匹配的人都已有访问权限。",
@@ -733,6 +732,7 @@
     "noText": "没有文本更改，因此没有可比较的内容。",
     "newFile": "新文件",
     "removedFile": "已移除",
+    "closedOldest": "同时只能打开 {{number}} 个文件，所以 {{path}} 已关闭。",
     "diffLabel": "{{path}} 中的更改"
   },
   "console": {

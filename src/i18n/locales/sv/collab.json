@@ -533,7 +533,6 @@
       "placeholder": "Namn, användarnamn eller e-post",
       "roleLabel": "Roll för personer du lägger till",
       "searching": "Söker…",
-      "noResults": "Ingen på {{server}} matchar.",
       "noResultsTryEmail": "Ingen på {{server}} matchar. Prova personens fullständiga e-postadress.",
       "alreadyMember": "{{name}} har redan åtkomst.",
       "allMembers": "Alla som matchar har redan åtkomst.",
@@ -733,6 +732,7 @@
     "noText": "Ingen text ändrades, så det finns inget att jämföra.",
     "newFile": "Ny fil",
     "removedFile": "Borttagen",
+    "closedOldest": "Bara {{number}} filer kan vara öppna samtidigt, så {{path}} stängdes.",
     "diffLabel": "Ändringar i {{path}}"
   },
   "console": {

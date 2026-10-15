@@ -533,7 +533,6 @@
       "placeholder": "名稱、登入名稱或電子郵件",
       "roleLabel": "新增人員的角色",
       "searching": "正在搜尋…",
-      "noResults": "{{server}} 上沒有符合的人。",
       "noResultsTryEmail": "{{server}} 上沒有符合的人。請試著輸入對方的完整電子郵件地址。",
       "alreadyMember": "{{name}} 已有存取權。",
       "allMembers": "所有符合的人都已有存取權。",
@@ -733,6 +732,7 @@
     "noText": "沒有文字變更，因此沒有可比較的內容。",
     "newFile": "新檔案",
     "removedFile": "已移除",
+    "closedOldest": "同時只能開啟 {{number}} 個檔案，所以 {{path}} 已關閉。",
     "diffLabel": "{{path}} 中的變更"
   },
   "console": {

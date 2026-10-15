@@ -533,7 +533,6 @@
       "placeholder": "Navn, brukernavn eller e-post",
       "roleLabel": "Rolle for personer du legger til",
       "searching": "Søker…",
-      "noResults": "Ingen treff på {{server}}.",
       "noResultsTryEmail": "Ingen treff på {{server}}. Prøv hele e-postadressen til personen.",
       "alreadyMember": "{{name}} har allerede tilgang.",
       "allMembers": "Alle som passer, har allerede tilgang.",
@@ -733,6 +732,7 @@
     "noText": "Ingen tekst ble endret, så det er ingenting å sammenligne.",
     "newFile": "Ny fil",
     "removedFile": "Fjernet",
+    "closedOldest": "Bare {{number}} filer kan være åpne om gangen, så {{path}} ble lukket.",
     "diffLabel": "Endringer i {{path}}"
   },
   "console": {

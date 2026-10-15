@@ -97,6 +97,15 @@ describe("inviting a guest from the share dialog", () => {
     expect(mocks.collabGuestInvitations).toHaveBeenCalledTimes(2);
   });
 
+  it("does not offer it for an address the server would turn down", async () => {
+    await typeQuery("dana@field_lab.org");
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noResultsTryEmail, { server: "Smith Lab" })),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: fill(guests.invite.buttonNamed, { email: "dana@field_lab.org" }) }))
+      .toBeNull();
+  });
+
   it("does not offer it for a name or for an address someone already uses", async () => {
     await typeQuery("dana");
     expect(

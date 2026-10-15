@@ -533,7 +533,6 @@
       "placeholder": "Nume, nume de utilizator sau e-mail",
       "roleLabel": "Rol pentru persoanele pe care le adaugi",
       "searching": "Se caută…",
-      "noResults": "Nimeni de pe {{server}} nu se potrivește.",
       "noResultsTryEmail": "Nimeni de pe {{server}} nu se potrivește. Încearcă adresa de e-mail completă a persoanei.",
       "alreadyMember": "{{name}} are deja acces.",
       "allMembers": "Toate persoanele găsite au deja acces.",
@@ -733,6 +732,7 @@
     "noText": "Niciun text nu s-a schimbat, deci nu este nimic de comparat.",
     "newFile": "Fișier nou",
     "removedFile": "Eliminat",
+    "closedOldest": "Doar {{number}} fișiere rămân deschise în același timp, așa că {{path}} a fost închis.",
     "diffLabel": "Modificări în {{path}}"
   },
   "console": {

@@ -21,7 +21,6 @@ import { InlineAlert } from "../feedback";
 import { GuestBadge } from "../GuestBadge";
 import type { GrantableRole } from "./ProjectRolePicker";
 
-const WHITESPACE = /\s/;
 
 type ListedStatus = "awaiting_approval" | "invited" | "declined";
 
@@ -33,14 +32,6 @@ const STATUS_BADGE = {
 
 function listedStatus(status: CollabGuestInvitation["status"]): ListedStatus | null {
   return status === "awaiting_approval" || status === "invited" || status === "declined" ? status : null;
-}
-
-export function looksLikeEmail(text: string): boolean {
-  const address = text.trim();
-  const at = address.indexOf("@");
-  if (at < 1 || address.includes("@", at + 1) || WHITESPACE.test(address)) return false;
-  const dot = address.indexOf(".", at + 2);
-  return dot !== -1 && dot < address.length - 1;
 }
 
 export interface ProjectGuests {

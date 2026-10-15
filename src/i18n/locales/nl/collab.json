@@ -533,7 +533,6 @@
       "placeholder": "Naam, aanmeldnaam of e-mail",
       "roleLabel": "Rol voor mensen die je toevoegt",
       "searching": "Zoeken…",
-      "noResults": "Niemand op {{server}} komt overeen.",
       "noResultsTryEmail": "Niemand op {{server}} komt overeen. Probeer het volledige e-mailadres.",
       "alreadyMember": "{{name}} heeft al toegang.",
       "allMembers": "Iedereen die overeenkomt, heeft al toegang.",
@@ -733,6 +732,7 @@
     "noText": "Er is geen tekst gewijzigd, dus er valt niets te vergelijken.",
     "newFile": "Nieuw bestand",
     "removedFile": "Verwijderd",
+    "closedOldest": "Er blijven maar {{number}} bestanden tegelijk open, dus {{path}} is gesloten.",
     "diffLabel": "Wijzigingen in {{path}}"
   },
   "console": {

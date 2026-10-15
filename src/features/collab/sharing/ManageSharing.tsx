@@ -29,6 +29,7 @@ import {
   type CollabShareInfo,
 } from "@/lib/tauri";
 import { useBusyRows } from "../busy-rows";
+import { looksLikeEmailAddress } from "../address-checks";
 import { collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
@@ -39,7 +40,6 @@ import {
   GuestInvitationList,
   GuestInviteOffer,
   InviteOutcomeNote,
-  looksLikeEmail,
   useProjectGuests,
   type InviteOutcome,
   type ProjectGuests,
@@ -166,7 +166,7 @@ function AddPeople({
         ? quiet(t(($) => $.collab.manage.add.alreadyMember, { name: only.display_name }))
         : quiet(t(($) => $.collab.manage.add.allMembers));
     }
-    if (people.length === 0 && looksLikeEmail(trimmed)) return renderNewAddress(trimmed.toLowerCase());
+    if (people.length === 0 && looksLikeEmailAddress(trimmed)) return renderNewAddress(trimmed.toLowerCase());
     if (people.length === 0) {
       // Without the member directory the server matches only a whole email
       // address, so a name finds nobody.

@@ -533,7 +533,6 @@
       "placeholder": "Name, sign-in name or email",
       "roleLabel": "Role for people you add",
       "searching": "Searching…",
-      "noResults": "Nobody on {{server}} matches.",
       "noResultsTryEmail": "Nobody on {{server}} matches. Try their full email address.",
       "alreadyMember": "{{name}} already has access.",
       "allMembers": "Everyone who matches already has access.",
@@ -733,6 +732,7 @@
     "noText": "No text changed, so there's nothing to compare.",
     "newFile": "New file",
     "removedFile": "Removed",
+    "closedOldest": "Only {{number}} files stay open at a time, so {{path}} closed.",
     "diffLabel": "Changes in {{path}}"
   },
   "console": {

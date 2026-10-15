@@ -533,7 +533,6 @@
       "placeholder": "Ad, kullanıcı adı veya e-posta",
       "roleLabel": "Eklediğiniz kişilerin rolü",
       "searching": "Aranıyor…",
-      "noResults": "{{server}} sunucusunda eşleşen kimse yok.",
       "noResultsTryEmail": "{{server}} sunucusunda eşleşen kimse yok. Kişinin tam e-posta adresini deneyin.",
       "alreadyMember": "{{name}} zaten erişime sahip.",
       "allMembers": "Eşleşen herkes zaten erişime sahip.",
@@ -733,6 +732,7 @@
     "noText": "Hiçbir metin değişmedi, karşılaştırılacak bir şey yok.",
     "newFile": "Yeni dosya",
     "removedFile": "Kaldırıldı",
+    "closedOldest": "Aynı anda yalnızca {{number}} dosya açık kalabilir, bu yüzden {{path}} kapatıldı.",
     "diffLabel": "{{path}} içindeki değişiklikler"
   },
   "console": {

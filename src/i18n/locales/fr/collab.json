@@ -533,7 +533,6 @@
       "placeholder": "Nom, nom d'utilisateur ou courriel",
       "roleLabel": "Rôle des personnes ajoutées",
       "searching": "Recherche…",
-      "noResults": "Personne sur {{server}} ne correspond.",
       "noResultsTryEmail": "Personne sur {{server}} ne correspond. Essayez avec son adresse e-mail complète.",
       "alreadyMember": "{{name}} a déjà accès.",
       "allMembers": "Toutes les personnes correspondantes ont déjà accès.",
@@ -733,6 +732,7 @@
     "noText": "Aucun texte n'a changé, il n'y a donc rien à comparer.",
     "newFile": "Nouveau fichier",
     "removedFile": "Supprimé",
+    "closedOldest": "Seuls {{number}} fichiers restent ouverts à la fois, donc {{path}} a été fermé.",
     "diffLabel": "Modifications dans {{path}}"
   },
   "console": {

@@ -533,7 +533,6 @@
       "placeholder": "Imię, nazwa użytkownika lub e-mail",
       "roleLabel": "Rola dla dodawanych osób",
       "searching": "Wyszukiwanie…",
-      "noResults": "Nikt na serwerze {{server}} nie pasuje.",
       "noResultsTryEmail": "Nikt na serwerze {{server}} nie pasuje. Spróbuj pełnego adresu e-mail tej osoby.",
       "alreadyMember": "{{name}} ma już dostęp.",
       "allMembers": "Wszystkie pasujące osoby mają już dostęp.",
@@ -733,6 +732,7 @@
     "noText": "Żaden tekst się nie zmienił, więc nie ma czego porównywać.",
     "newFile": "Nowy plik",
     "removedFile": "Usunięty",
+    "closedOldest": "Naraz mogą być otwarte tylko {{number}} pliki, więc {{path}} został zamknięty.",
     "diffLabel": "Zmiany w {{path}}"
   },
   "console": {

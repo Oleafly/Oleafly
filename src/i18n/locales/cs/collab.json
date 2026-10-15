@@ -533,7 +533,6 @@
       "placeholder": "Jméno, přihlašovací jméno nebo e-mail",
       "roleLabel": "Role pro přidané lidi",
       "searching": "Hledá se…",
-      "noResults": "Na serveru {{server}} nikdo neodpovídá.",
       "noResultsTryEmail": "Na serveru {{server}} nikdo neodpovídá. Zkuste celou e-mailovou adresu.",
       "alreadyMember": "{{name}} už má přístup.",
       "allMembers": "Všichni, kdo odpovídají, už mají přístup.",
@@ -733,6 +732,7 @@
     "noText": "Žádný text se nezměnil, není co porovnávat.",
     "newFile": "Nový soubor",
     "removedFile": "Odstraněno",
+    "closedOldest": "Najednou zůstanou otevřené nejvýš {{number}} soubory, proto se soubor {{path}} zavřel.",
     "diffLabel": "Změny v {{path}}"
   },
   "console": {

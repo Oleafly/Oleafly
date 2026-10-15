@@ -533,7 +533,6 @@
       "placeholder": "名前、ユーザー名、またはメールアドレス",
       "roleLabel": "追加するユーザーの役割",
       "searching": "検索中…",
-      "noResults": "{{server}} に一致する人はいません。",
       "noResultsTryEmail": "{{server}} に一致する人はいません。メールアドレス全体で検索してみてください。",
       "alreadyMember": "{{name}} はすでにアクセスできます。",
       "allMembers": "一致するユーザーは全員すでにアクセスできます。",
@@ -733,6 +732,7 @@
     "noText": "テキストは変更されていないため、比較するものはありません。",
     "newFile": "新しいファイル",
     "removedFile": "削除済み",
+    "closedOldest": "同時に開いておけるのは {{number}} ファイルまでのため、{{path}} を閉じました。",
     "diffLabel": "{{path}} の変更"
   },
   "console": {
