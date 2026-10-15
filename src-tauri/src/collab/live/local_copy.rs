@@ -91,6 +91,11 @@ fn load_origin(paths: &CollabPaths, project_id: &str) -> Option<Origin> {
     serde_json::from_slice(&bytes).ok()
 }
 
+#[cfg(test)]
+pub(crate) fn has_origin(paths: &CollabPaths, project_id: &str) -> bool {
+    load_origin(paths, project_id).is_some()
+}
+
 fn forget_origin(paths: &CollabPaths, project_id: &str) -> Result<(), CollabError> {
     match std::fs::remove_file(origin_file(paths, project_id)?) {
         Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
@@ -100,12 +105,38 @@ fn forget_origin(paths: &CollabPaths, project_id: &str) -> Result<(), CollabErro
     }
 }
 
-pub(super) fn keep_origin(paths: &CollabPaths, project_id: &str, doc: &ProjectDoc) {
+const SAVED_STATE: &str = "sync.json";
+
+fn confirmed_version(saved: &Path) -> Option<Vec<u8>> {
+    #[derive(Deserialize)]
+    struct Saved {
+        confirmed: String,
+    }
+    let saved: Saved =
+        serde_json::from_slice(&std::fs::read(saved.join(SAVED_STATE)).ok()?).ok()?;
+    let hex = saved.confirmed;
+    (0..hex.len())
+        .step_by(2)
+        .map(|at| {
+            hex.get(at..at + 2)
+                .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+        })
+        .collect()
+}
+
+fn as_the_server_has_it(saved: &Path, doc: &ProjectDoc) -> Option<ProjectDoc> {
+    let bytes = confirmed_version(saved).filter(|bytes| !bytes.is_empty())?;
+    let version = oleafly_collab::doc::decode_version(&bytes).ok()?;
+    doc.at_version(&version).ok()
+}
+
+pub(super) fn keep_origin(paths: &CollabPaths, project_id: &str, doc: &ProjectDoc, saved: &Path) {
     let kept = load_binding(paths, project_id).and_then(|binding| {
         let Some(binding) = binding else {
             return Ok(());
         };
-        let origin = Origin::of(&binding, doc)?;
+        let confirmed = as_the_server_has_it(saved, doc);
+        let origin = Origin::of(&binding, confirmed.as_ref().unwrap_or(doc))?;
         let json =
             serde_json::to_vec(&origin).map_err(|error| CollabError::Corrupt(error.to_string()))?;
         write_atomic(&origin_file(paths, project_id)?, &json)
@@ -114,6 +145,41 @@ pub(super) fn keep_origin(paths: &CollabPaths, project_id: &str, doc: &ProjectDo
         let _ = crate::project::append_app_log(format!(
             "Live collaboration could not keep what {project_id} looked like when it became a local copy: {error}"
         ));
+    }
+}
+
+pub(crate) fn keep_stored_origin(paths: &CollabPaths, project_id: &str) {
+    let (Ok(dir), Ok(Some(binding))) = (
+        paths.document_dir(project_id),
+        load_binding(paths, project_id),
+    ) else {
+        return;
+    };
+    if !LiveProject::exists(&dir) {
+        return;
+    }
+    match LiveProject::load(&dir, binding.role) {
+        Ok(live) => keep_origin(paths, project_id, live.doc(), &dir),
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not read {project_id} to keep it as a local copy: {error}"
+            ));
+        }
+    }
+}
+
+pub(crate) fn forget_all_but_origin(paths: &CollabPaths, project_id: &str) {
+    let Ok(dir) = paths.project_dir(project_id) else {
+        return;
+    };
+    let origin = std::fs::read(dir.join(ORIGIN_FILE)).ok();
+    let _ = std::fs::remove_dir_all(&dir);
+    if let Some(origin) = origin {
+        if let Err(error) = write_atomic(&dir.join(ORIGIN_FILE), &origin) {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not keep what {project_id} looked like when it was deleted: {error}"
+            ));
+        }
     }
 }
 
@@ -603,6 +669,7 @@ mod tests {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(WrittenTexts::default()),
+                upkeep: Default::default(),
             });
             let (events, receiver) = mpsc::unbounded_channel();
             let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths));
@@ -707,6 +774,7 @@ mod tests {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(bases),
+            upkeep: Default::default(),
         })
     }
 

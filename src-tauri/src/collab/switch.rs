@@ -1,12 +1,15 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 use tauri::ipc::Invoke;
 use tauri::Runtime;
 
+use super::commands::CollabCommandError;
 use super::state::CollabState;
 use crate::app_error::AppError;
 
 pub const TURNED_OFF: &str = "collab.turned_off";
+pub const TURNED_OFF_CODE: &str = "turned_off";
 pub const SWITCH_COMMAND: &str = "collab_live_collaboration_set";
 const COMMAND_PREFIX: &str = "collab_";
 const ALWAYS_ANSWERED: [&str; 4] = [
@@ -56,9 +59,17 @@ fn seeded(seed: Option<&serde_json::Value>) -> Option<bool> {
     }
 }
 
-pub fn refusal(command: &str) -> Option<AppError> {
+pub fn turned_off() -> CollabCommandError {
+    CollabCommandError {
+        code: TURNED_OFF_CODE,
+        message: crate::app_error::english(&AppError::new(TURNED_OFF).to_string())
+            .unwrap_or_default(),
+    }
+}
+
+pub fn refusal(command: &str) -> Option<CollabCommandError> {
     let gated = command.starts_with(COMMAND_PREFIX) && !ALWAYS_ANSWERED.contains(&command);
-    (gated && !enabled()).then(|| AppError::new(TURNED_OFF))
+    (gated && !enabled()).then(turned_off)
 }
 
 pub fn gated<R, F>(handler: F) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static
@@ -68,7 +79,7 @@ where
 {
     move |invoke| match refusal(invoke.message.command()) {
         Some(error) => {
-            invoke.resolver.reject(error.to_string());
+            invoke.resolver.reject(error);
             true
         }
         None => handler(invoke),
@@ -79,6 +90,7 @@ pub(crate) fn switch_to(state: &CollabState, on: bool) {
     let was = ENABLED.swap(on, Ordering::SeqCst);
     if was && !on {
         state.cancel_sign_in();
+        state.cancel_joins();
         super::live::stop_running_session();
     }
 }
@@ -93,13 +105,21 @@ fn remember(on: bool) -> Result<(), String> {
     })
 }
 
+fn remember_current() -> Result<(), String> {
+    static SAVING: Mutex<()> = Mutex::new(());
+    let _saving = SAVING.lock().unwrap_or_else(PoisonError::into_inner);
+    remember(enabled())
+}
+
 #[tauri::command]
-pub fn collab_live_collaboration_set(
+pub async fn collab_live_collaboration_set(
     state: tauri::State<'_, CollabState>,
     enabled: bool,
 ) -> Result<(), String> {
     switch_to(state.inner(), enabled);
-    remember(enabled)
+    tauri::async_runtime::spawn_blocking(remember_current)
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[cfg(test)]
@@ -114,10 +134,9 @@ mod tests {
     use tokio::sync::oneshot::error::TryRecvError;
 
     use super::{
-        adopt_seeds, collab_live_collaboration_set, enabled, refusal, startup, switch_to, ENABLED,
-        SWITCH_COMMAND, TURNED_OFF,
+        adopt_seeds, collab_live_collaboration_set, enabled, refusal, startup, switch_to,
+        turned_off, ENABLED, SWITCH_COMMAND, TURNED_OFF_CODE,
     };
-    use crate::app_error::{AppError, PREFIX};
     use crate::collab::live::active_for;
     use crate::collab::live::write::rig::{live_turn, LiveRig};
     use crate::collab::state::CollabState;
@@ -184,11 +203,11 @@ mod tests {
     }
 
     fn refused_code(answer: &Result<Value, Value>) -> Option<String> {
-        let Err(Value::String(text)) = answer else {
+        let Err(refused) = answer else {
             return None;
         };
-        let envelope: Value = serde_json::from_str(text.strip_prefix(PREFIX)?).ok()?;
-        envelope.get("code")?.as_str().map(str::to_owned)
+        let code = refused.get("code")?.as_str()?;
+        (code == TURNED_OFF_CODE).then(|| code.to_owned())
     }
 
     fn registered_collab_commands() -> Vec<&'static str> {
@@ -259,7 +278,11 @@ mod tests {
             .filter(|command| !answered.contains(command))
         {
             let refused = refusal(command).map(|error| error.code);
-            assert_eq!(refused, Some(TURNED_OFF), "{command} answers while off");
+            assert_eq!(
+                refused,
+                Some(TURNED_OFF_CODE),
+                "{command} answers while off"
+            );
         }
         assert!(refusal("read_file").is_none());
         assert!(refusal("get_config").is_none());
@@ -288,13 +311,17 @@ mod tests {
         let (_app, window) = mock_app(state);
         ENABLED.store(false, Ordering::SeqCst);
         let listed = call(&window, "collab_servers_list", json!({}));
-        assert_eq!(refused_code(&listed).as_deref(), Some(TURNED_OFF));
+        assert_eq!(refused_code(&listed).as_deref(), Some(TURNED_OFF_CODE));
         let probed = call(
             &window,
             "collab_server_probe",
             json!({ "url": "http://127.0.0.1:9" }),
         );
-        assert_eq!(refused_code(&probed).as_deref(), Some(TURNED_OFF));
+        assert_eq!(refused_code(&probed).as_deref(), Some(TURNED_OFF_CODE));
+        assert_eq!(
+            listed.unwrap_err(),
+            serde_json::to_value(turned_off()).unwrap()
+        );
 
         let switched = call(&window, SWITCH_COMMAND, json!({ "enabled": true }));
         assert_eq!(switched, Ok(Value::Null));
@@ -315,7 +342,7 @@ mod tests {
         let switched = call(&window, SWITCH_COMMAND, json!({ "enabled": false }));
         assert_eq!(switched, Ok(Value::Null));
         let listed = call(&window, "collab_servers_list", json!({}));
-        assert_eq!(refused_code(&listed).as_deref(), Some(TURNED_OFF));
+        assert_eq!(refused_code(&listed).as_deref(), Some(TURNED_OFF_CODE));
     }
 
     #[test]
@@ -484,12 +511,23 @@ mod tests {
     }
 
     #[test]
-    fn the_refusal_reads_as_a_sentence() {
-        let text = AppError::new(TURNED_OFF).to_string();
-        let sentence = crate::app_error::english(&text).expect("errors.json has the text");
+    fn the_refusal_is_a_collaboration_error_that_reads_as_a_sentence() {
+        let refused = turned_off();
+        assert_eq!(refused.code, "turned_off");
         assert!(
-            sentence.starts_with("Live collaboration is turned off."),
-            "{sentence}"
+            refused
+                .message
+                .starts_with("Live collaboration is turned off."),
+            "{}",
+            refused.message
         );
+    }
+
+    #[test]
+    fn the_switch_command_never_runs_on_the_main_thread() {
+        let source = include_str!("switch.rs");
+        let code = &source[..source.find("#[cfg(test)]\nmod tests").unwrap()];
+        assert!(code.contains("pub async fn collab_live_collaboration_set("));
+        assert!(code.contains("spawn_blocking(remember_current)"));
     }
 }

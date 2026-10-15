@@ -4,7 +4,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab::{
     sign_in_as, sign_in_with_code_as, test_connection_pinned, CodeSignInRequest, CollabError,
-    ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SignInCode, SignInRequest,
+    ConnectionCheck, ServerClient, ServerEntry, ServerUrl, SessionManager, SignInCode,
+    SignInRequest,
 };
 use oleafly_collab_protocol::admin::{
     AllowlistEntry, DomainRule, MemberPatch, MemberSummary, NewAllowlistEntry, NewDomainRule, Page,
@@ -69,14 +70,38 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
+const PASSED_THROUGH: [&str; 21] = [
+    "not_admitted",
+    "setup_code_invalid",
+    "device_in_use",
+    "server_unknown",
+    "invalid_domain",
+    "invalid_email",
+    "invalid_login",
+    "guests_off",
+    "link_sharing_off",
+    "access_log_off",
+    "last_admin",
+    "duplicate_entry",
+    "already_member",
+    "project_not_shared",
+    "project_full",
+    "not_a_link",
+    "signed_out",
+    "server_removed",
+    "share_in_progress",
+    "cancelled",
+    "cloud_synced",
+];
+
 fn api_code(status: u16, code: &str) -> &'static str {
+    if let Some(known) = PASSED_THROUGH.iter().find(|known| **known == code) {
+        return known;
+    }
     match (code, status) {
-        ("not_admitted", _) => "not_admitted",
-        ("setup_code_invalid", _) => "setup_code_invalid",
-        ("device_in_use", _) => "device_in_use",
-        ("server_unknown", _) => "server_unknown",
         ("too_large", _) | (_, 413) => "too_large",
         ("rate_limited", _) | (_, 429) => "rate_limited",
+        (_, 400) => "invalid",
         (_, 401) => "unauthorized",
         (_, 403) => "forbidden",
         (_, 404) => "not_found",
@@ -210,6 +235,14 @@ pub(crate) fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or(0)
+}
+
+pub(crate) fn signed_out() -> CollabError {
+    CollabError::Api {
+        status: 401,
+        code: "signed_out".to_string(),
+        message: "sign in to this project's server to keep working on it together".to_string(),
+    }
 }
 
 fn unknown_server() -> CollabError {
@@ -365,6 +398,17 @@ async fn settle_revocation(
     error
 }
 
+async fn verify_server(
+    state: &CollabState,
+    client: &ServerClient,
+    server: ServerId,
+) -> Result<(), CollabError> {
+    let manifest = client.capabilities().await?;
+    check_pin(Some(server), manifest.server_id)?;
+    state.note_verified(server, manifest);
+    Ok(())
+}
+
 pub(crate) async fn authed<T, F>(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -374,8 +418,11 @@ pub(crate) async fn authed<T, F>(
 where
     F: for<'a> Fn(&'a ServerClient, &'a str) -> ApiCall<'a, T>,
 {
-    let client = client_for(&known(state, server)?)?;
-    verify_pin(&client, server).await?;
+    let client = state.client(&known(state, server)?)?;
+    let cached = state.verified_manifest(server).is_some();
+    if !cached {
+        verify_server(state, &client, server).await?;
+    }
     let keys = state.keys().await?;
     let first = match keys.sessions.access_token(server, &client).await {
         Ok(access) => call(&client, access.as_str()).await,
@@ -383,8 +430,16 @@ where
     };
     let result = match first {
         Err(CollabError::Unauthorized) => {
-            match keys.sessions.force_refresh(server, &client).await {
-                Ok(access) => call(&client, access.as_str()).await,
+            let verified = if cached {
+                verify_server(state, &client, server).await
+            } else {
+                Ok(())
+            };
+            match verified {
+                Ok(()) => match keys.sessions.force_refresh(server, &client).await {
+                    Ok(access) => call(&client, access.as_str()).await,
+                    Err(error) => Err(error),
+                },
                 Err(error) => Err(error),
             }
         }
@@ -398,8 +453,30 @@ where
         }
     }
     match result {
-        Err(error) => Err(settle_revocation(state, host, server, error).await),
+        Err(error) => {
+            state.forget_verified(server);
+            Err(settle_revocation(state, host, server, error).await)
+        }
         ok => ok,
+    }
+}
+
+pub(crate) async fn with_access<T, F>(
+    sessions: &SessionManager,
+    server: ServerId,
+    client: &ServerClient,
+    call: F,
+) -> Result<T, CollabError>
+where
+    F: for<'a> Fn(&'a ServerClient, &'a str) -> ApiCall<'a, T>,
+{
+    let access = sessions.access_token(server, client).await?;
+    match call(client, &access).await {
+        Err(CollabError::Unauthorized) => {
+            let access = sessions.force_refresh(server, client).await?;
+            call(client, &access).await
+        }
+        other => other,
     }
 }
 
@@ -486,10 +563,18 @@ async fn finish_sign_in(
     let server = manifest.server_id;
     check_pin(pinned, server)?;
     check_unique(state, url, server)?;
-    let account = ServerClient::new(url.clone())?
-        .me(&tokens.access_token)
-        .await?;
+    let client = ServerClient::new(url.clone())?;
     keys.sessions.store(server, &tokens)?;
+    let account = match client.me(&tokens.access_token).await {
+        Ok(account) => Some(account),
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Signed in to {} but could not read the account yet: {error}",
+                url.as_str()
+            ));
+            None
+        }
+    };
     state.update_registry(|registry| {
         let added_at = registry
             .get(server)
@@ -499,7 +584,7 @@ async fn finish_sign_in(
             url: url.as_str().to_string(),
             name: manifest.name.clone(),
             icon_url: manifest.icon_url.clone(),
-            account: Some(account),
+            account: account.clone(),
             added_at,
         });
         registry.set_ended(server, None);
@@ -623,9 +708,25 @@ pub async fn remove_within(
     choice: UnsentChoice,
     wait: Duration,
 ) -> Result<SignOutOutcome, CollabError> {
-    let outcome = settle_unsent(state, server, choice, wait).await?;
+    let mut outcome = settle_unsent(state, server, choice, wait).await?;
     if outcome.signed_out {
-        remove_server(state, host, server).await?;
+        let mut detached: Vec<DetachedProject> = outcome
+            .unsent
+            .iter()
+            .map(|project| DetachedProject {
+                project_id: project.project_id.clone(),
+                name: project.name.clone(),
+            })
+            .collect();
+        for project in remove_server(state, host, server).await? {
+            if !detached
+                .iter()
+                .any(|kept| kept.project_id == project.project_id)
+            {
+                detached.push(project);
+            }
+        }
+        outcome.detached = detached;
     }
     Ok(outcome)
 }
@@ -634,12 +735,13 @@ pub async fn remove_server(
     state: &CollabState,
     host: &dyn CollabHost,
     server: ServerId,
-) -> Result<(), CollabError> {
+) -> Result<Vec<DetachedProject>, CollabError> {
     let entry = known(state, server)?;
+    let detached = super::live::detach_projects(state, server).await?;
     end_session(state, server, &entry).await?;
     state.update_registry(|registry| registry.remove(server))?;
     host.server_changed(server);
-    Ok(())
+    Ok(detached)
 }
 
 pub async fn refresh_account(
@@ -1404,6 +1506,10 @@ mod tests {
                 .to_ascii_lowercase()
                 .contains("authorization: bearer")
         }
+
+        fn seen_text(&self) -> String {
+            String::from_utf8_lossy(&self.seen.lock().expect("lock")).into_owned()
+        }
     }
 
     async fn signed_in(state: &CollabState, host: &TestHost, server: &TestServer) -> CollabServer {
@@ -1449,7 +1555,6 @@ mod tests {
             (api(400, "setup_code_invalid"), "setup_code_invalid"),
             (api(400, "not_admitted"), "not_admitted"),
             (api(502, "http_502"), "server"),
-            (api(400, "bad_request"), "server"),
             (CollabError::Io("disk".to_string()), "internal"),
             (CollabError::Corrupt("json".to_string()), "internal"),
             (CollabError::Secret("store".to_string()), "internal"),
@@ -1489,6 +1594,89 @@ mod tests {
             CollabCommandError::from(api(409, "conflict")).message,
             "conflict message"
         );
+    }
+
+    const NEW_CODES: [(u16, &str); 20] = [
+        (400, "invalid_domain"),
+        (400, "invalid_email"),
+        (400, "invalid_login"),
+        (409, "guests_off"),
+        (409, "link_sharing_off"),
+        (409, "access_log_off"),
+        (409, "last_admin"),
+        (409, "duplicate_entry"),
+        (409, "already_member"),
+        (409, "project_not_shared"),
+        (409, "project_full"),
+        (400, "not_a_link"),
+        (401, "signed_out"),
+        (404, "server_removed"),
+        (409, "share_in_progress"),
+        (409, "cancelled"),
+        (409, "cloud_synced"),
+        (400, "setup_code_invalid"),
+        (409, "device_in_use"),
+        (404, "server_unknown"),
+    ];
+
+    #[test]
+    fn refusals_people_can_cause_keep_their_code_and_other_bad_requests_read_as_invalid() {
+        for (status, code) in NEW_CODES {
+            assert_eq!(
+                CollabCommandError::from(api(status, code)),
+                CollabCommandError {
+                    code,
+                    message: format!("{code} message"),
+                },
+            );
+        }
+        let invalid = CollabCommandError::from(CollabError::Api {
+            status: 400,
+            code: "bad_request".to_string(),
+            message: "That isn't a domain name. Use a form like cs.example.edu.".to_string(),
+        });
+        assert_eq!(invalid.code, "invalid");
+        assert_eq!(
+            invalid.message,
+            "That isn't a domain name. Use a form like cs.example.edu."
+        );
+        assert_eq!(
+            CollabCommandError::from(api(400, "anything")).code,
+            "invalid"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(409, "conflict")).code,
+            "conflict"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(413, "anything")).code,
+            "too_large"
+        );
+        assert_eq!(
+            CollabCommandError::from(api(500, "anything")).code,
+            "server"
+        );
+    }
+
+    #[test]
+    #[ignore = "needs the frontend's CollabErrorCode additions from contracts C-5, C-7, C-11, C-12 and C-13; run once both sides are merged"]
+    fn every_code_added_for_refusals_is_one_the_frontend_knows() {
+        let contract = include_str!("../../../packages/backend-port/src/index.ts");
+        let start = contract
+            .find("export type CollabErrorCode =")
+            .expect("CollabErrorCode in backend-port");
+        let end = start + contract[start..].find(';').expect("end of CollabErrorCode");
+        let union = &contract[start..end];
+        let codes = NEW_CODES
+            .iter()
+            .map(|(_, code)| *code)
+            .chain(["invalid", "turned_off"]);
+        for code in codes {
+            assert!(
+                union.contains(&format!("\"{code}\"")),
+                "{code} is missing from CollabErrorCode"
+            );
+        }
     }
 
     #[test]
@@ -1595,6 +1783,35 @@ mod tests {
             .expect("remove");
         assert!(list_servers(&state).expect("list").is_empty());
         assert_eq!(host.changed(), vec![added.server_id; 3]);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_sign_in_whose_account_read_fails_keeps_the_new_session() {
+        let (_github, server) = github_server().await;
+        let relay = crate::collab::testing::Relay::start(address_of(&server)).await;
+        relay.refuse(Some("GET /api/v1/me HTTP"));
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = sign_in_server(
+            &state,
+            &host,
+            &relay.url,
+            "github".to_string(),
+            Some(server.setup_code()),
+            LONG,
+        )
+        .await
+        .expect("sign in");
+        assert!(relay.refusals() > 0);
+        assert!(added.signed_in);
+        assert!(added.account.is_none());
+        relay.refuse(None);
+        let refreshed = refresh_account(&state, &host, added.server_id)
+            .await
+            .expect("account");
+        assert!(refreshed.signed_in);
+        assert!(refreshed.account.is_some());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1914,6 +2131,50 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_token_rejected_within_the_cached_check_checks_the_server_before_refreshing() {
+        let (_github, server) = github_server().await;
+        let relay = Relay::start(&server).await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = sign_in_server(
+            &state,
+            &host,
+            &relay.url,
+            "github".to_string(),
+            Some(server.setup_code()),
+            LONG,
+        )
+        .await
+        .expect("sign in");
+        server_devices(&state, &host, added.server_id)
+            .await
+            .expect("devices");
+        let keys = state.keys().await.expect("keys");
+        let tokens = keys
+            .sessions
+            .tokens(added.server_id)
+            .expect("read")
+            .expect("session");
+        ServerClient::new(ServerUrl::parse(&server.url()).expect("url"))
+            .expect("client")
+            .sign_out(&tokens.access_token)
+            .await
+            .expect("server sign out");
+        relay.point_at(&server);
+        let result = server_devices(&state, &host, added.server_id).await;
+        assert!(matches!(result, Err(CollabError::Unauthorized)));
+        let seen = relay.seen_text();
+        let checked = seen
+            .find("GET /.well-known/oleafly-server")
+            .expect("the server was checked again");
+        let refreshed = seen
+            .find("POST /auth/refresh")
+            .expect("the session was refreshed");
+        assert!(checked < refreshed, "{seen}");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_second_address_claiming_a_known_server_is_refused() {
         let (_github, server) = github_server().await;
         let dir = tempfile::tempdir().expect("tempdir");
@@ -1996,6 +2257,24 @@ mod tests {
             role_of(&list_servers(&state).expect("list")),
             Some(ServerRole::Member)
         ));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn admin_calls_in_a_row_share_one_connection_and_one_server_check() {
+        let lab = crate::collab::testing::Lab::start().await;
+        let relay = crate::collab::testing::Relay::start(lab.address()).await;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let server = lab.sign_in(&state, &relay.url, true).await;
+        relay.forget_seen();
+        let before = relay.connections();
+        let host = TestHost::following();
+        for _ in 0..2 {
+            admin_members(&state, &host, server).await.expect("members");
+        }
+        assert_eq!(relay.requests("GET /.well-known/oleafly-server"), 1);
+        assert_eq!(relay.requests("GET /api/v1/admin/members"), 2);
+        assert_eq!(relay.connections() - before, 1);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

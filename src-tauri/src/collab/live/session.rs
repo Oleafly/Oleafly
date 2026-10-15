@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::{save_shared, DiskWork, LiveProject};
@@ -17,14 +17,14 @@ use tokio::sync::oneshot;
 use super::bases::WrittenTexts;
 use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
-use super::import::{apply_local_import, read_local_changes};
+use super::import::{apply_local_import, placed_now, scan_local};
 use super::payloads::StatusPayload;
+use super::unwritten::Settled;
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
-use crate::collab::disk::{sha256_hex, write_file_over, DiskState, Stamp, WriteOutcome};
+use crate::collab::disk::DiskState;
 use crate::folder_watch::FolderChange;
 
 const WRITE_DEBOUNCE: Duration = Duration::from_millis(120);
-const BLOB_RETRY: Duration = Duration::from_secs(3);
 
 struct Outgoing {
     work: DiskWork,
@@ -56,6 +56,41 @@ pub struct Active {
     pub(super) waiting: AtomicBool,
     pub(super) last_status: Mutex<LiveStatus>,
     pub(super) bases: Mutex<WrittenTexts>,
+    pub(super) upkeep: Upkeep,
+}
+
+#[derive(Clone, Default)]
+pub(super) struct Alarm(Arc<Mutex<Option<Instant>>>);
+
+impl Alarm {
+    pub(super) fn ring_in(&self, writer: &UnboundedSender<WriterSignal>, delay: Duration) {
+        let at = Instant::now() + delay;
+        {
+            let mut pending = guard(&self.0);
+            if pending.is_some_and(|due| due <= at) {
+                return;
+            }
+            *pending = Some(at);
+        }
+        let (alarm, writer) = (Arc::clone(&self.0), writer.clone());
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(delay).await;
+            {
+                let mut pending = guard(&alarm);
+                if *pending == Some(at) {
+                    *pending = None;
+                }
+            }
+            let _ = writer.send(WriterSignal::Kick);
+        });
+    }
+}
+
+#[derive(Default)]
+pub(super) struct Upkeep {
+    pub(super) pace: Mutex<super::pacing::Pace>,
+    pub(super) failing: Mutex<super::unwritten::Failing>,
+    pub(super) figures: Mutex<super::downloads::Figures>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -122,7 +157,7 @@ impl Active {
 
     pub(super) fn save_now(&self) {
         let _ = save_shared(&self.live, &self.document_dir);
-        let _ = guard(&self.disk).save(&self.disk_file);
+        let _ = self.save_index(&guard(&self.disk));
     }
 
     pub(super) async fn persist(&self) -> Result<(), CollabError> {
@@ -138,10 +173,15 @@ impl Active {
             return Ok(());
         }
         let snapshot = guard(&self.disk).clone();
-        let mut import = {
-            let live = lock(&self.live);
-            read_local_changes(&self.root, &snapshot, &live, only.as_deref())?
-        };
+        let placed = placed_now(&lock(&self.live))?;
+        let root = self.root.clone();
+        let (scanned, snapshot) = tauri::async_runtime::spawn_blocking(move || {
+            let scanned = scan_local(&root, &snapshot, &placed, only.as_deref());
+            (scanned, snapshot)
+        })
+        .await
+        .map_err(io)?;
+        let mut import = scanned?.classify(&lock(&self.live));
         let edits = sync_hold::screen(&self.hold_dir(), &self.root, &snapshot, &mut import)?;
         if import.is_empty() && edits.is_empty() {
             return Ok(());
@@ -177,7 +217,14 @@ impl Active {
         Ok(())
     }
 
-    pub(super) async fn write_out(&self) -> Result<Vec<String>, CollabError> {
+    pub(super) async fn write_out(self: &Arc<Self>) -> Result<Vec<String>, CollabError> {
+        self.write_out_paced(true).await
+    }
+
+    pub(super) async fn write_out_paced(
+        self: &Arc<Self>,
+        urgent: bool,
+    ) -> Result<Vec<String>, CollabError> {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
@@ -194,29 +241,43 @@ impl Active {
             copied,
         }) = self.take_outgoing(&mut previous, &hashes)?
         else {
+            if self.save_owed() && self.save_due(urgent) {
+                self.save_document().await;
+            }
             return Ok(Vec::new());
         };
         if copied {
             self.handle.flush();
             self.refresh_pending();
         }
-        self.persist().await?;
+        if self.save_due(urgent) {
+            self.save_document().await;
+        }
         let mut plan = materialize::plan(&previous, &next);
+        if !urgent {
+            self.hold_back_typing(&next, &mut texts);
+        }
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
+        let blocked = |path: &str| shaped.blocks(path);
         let DiskPass {
             mut changed,
             mut conflicts,
             blobs,
             moved,
             removed,
+            written,
+            done,
+            failed,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
-            apply_to_disk(&self.root, &mut disk, &mut bases, plan, next, &texts, &crlf)?
+            apply_to_disk(
+                &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
+            )?
         };
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
@@ -228,18 +289,23 @@ impl Active {
         }
         self.announce_removed(&previous, &removed);
         self.note_arrivals(&previous, &changed);
-        let missing = self
-            .fetch_blobs(blobs, &mut conflicts, &mut changed)
-            .await?;
-        let _ = guard(&self.disk).save(&self.disk_file);
-        if missing {
-            lock(&self.live).mark_all_dirty()?;
-            let writer = self.writer.clone();
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(BLOB_RETRY).await;
-                let _ = writer.send(WriterSignal::Kick);
-            });
-        }
+        self.note_written(&written);
+        let layout = {
+            let disk = guard(&self.disk);
+            self.save_index_if_changed(&disk);
+            disk.layout.clone()
+        };
+        self.settle_unwritten(
+            &layout,
+            Settled {
+                done,
+                failed,
+                conflicts: conflicts.clone(),
+            },
+        );
+        self.want_figures(blobs);
+        let typed_here = self.open_texts(&layout, &written, &moved);
+        changed.retain(|path| !typed_here.contains(path));
         if !changed.is_empty() || structural {
             self.host.folder_changed(FolderChange {
                 project_id: self.project_id.clone(),
@@ -310,52 +376,34 @@ impl Active {
         }))
     }
 
-    async fn fetch_blobs(
+    fn open_texts(
         &self,
-        blobs: Vec<(String, String, Option<Stamp>)>,
-        conflicts: &mut Vec<String>,
-        changed: &mut BTreeSet<String>,
-    ) -> Result<bool, CollabError> {
-        let mut missing = false;
-        if blobs.is_empty() {
-            return Ok(missing);
-        }
-        let access = self
-            .link
-            .sessions
-            .access_token(self.link.server_id, &self.link.client)
-            .await;
-        for (path, hash, stamp) in blobs {
-            let fetched = match &access {
-                Ok(access) => self
-                    .link
-                    .client
-                    .get_blob(access, self.link.project, &hash)
-                    .await
-                    .ok()
-                    .filter(|bytes| sha256_hex(bytes) == hash),
-                Err(_) => None,
-            };
-            let Some(bytes) = fetched else {
-                missing = true;
-                continue;
-            };
-            let mut disk = guard(&self.disk);
-            match write_file_over(&self.root, &path, &bytes, stamp.as_ref())
-                .map_err(CollabError::Io)?
-            {
-                WriteOutcome::ChangedOutside => conflicts.push(path),
-                _ => {
-                    disk.hashes.insert(path.clone(), hash);
-                    changed.insert(path);
-                }
-            }
-        }
-        Ok(missing)
+        layout: &Layout,
+        written: &BTreeSet<String>,
+        moved: &[(String, String)],
+    ) -> BTreeSet<String> {
+        let live = lock(&self.live);
+        layout
+            .iter()
+            .filter(|(id, placed)| {
+                placed.kind == NodeKind::Text
+                    && written.contains(&placed.path)
+                    && !moved
+                        .iter()
+                        .any(|(from, to)| *from == placed.path || *to == placed.path)
+                    && live.is_open(id)
+            })
+            .map(|(_, placed)| placed.path.clone())
+            .collect()
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {
-        local_copy::keep_origin(paths, &self.project_id, lock(&self.live).doc());
+        local_copy::keep_origin(
+            paths,
+            &self.project_id,
+            lock(&self.live).doc(),
+            &self.document_dir,
+        );
         let _ = remove_binding(paths, &self.project_id);
         crate::collab::registry::invalidate(&self.project_id);
         local_copy::name_local_copy(&self.project_id);
@@ -381,7 +429,7 @@ pub(super) async fn writer_loop(
         let Some(active) = active.upgrade() else {
             return;
         };
-        if let Ok(conflicts) = active.write_out().await {
+        if let Ok(conflicts) = active.write_out_paced(!waiters.is_empty()).await {
             if !conflicts.is_empty() {
                 let _ = active.import_paths(Some(conflicts)).await;
             }

@@ -38,6 +38,7 @@ pub fn is_link(text: &str) -> bool {
     cleaned(text).is_some()
 }
 
+#[cfg(test)]
 pub fn add_server_url(link: &str) -> Option<String> {
     let url = tauri::Url::parse(cleaned(link)?).ok()?;
     let host = url.host_str()?;

@@ -10,7 +10,6 @@ use super::host::{AppLiveHost, LiveHost};
 use super::lifecycle::{flush, start, stop};
 use super::local_events::resume;
 use super::payloads::{DocOpened, LiveInfo};
-use super::session::not_live;
 use super::sync_hold::{announce, SyncDecision};
 use crate::collab::commands::CollabCommandError;
 use crate::collab::state::CollabState;
@@ -27,7 +26,7 @@ pub async fn collab_live_start(
         .map_err(CollabCommandError::from)?;
     if !crate::collab::switch::enabled() {
         stop(&project_id).await;
-        return Err(CollabCommandError::from(not_live()));
+        return Err(crate::collab::switch::turned_off());
     }
     announce(&project_id, &app);
     if !crate::folder_watch::is_watching(&project_id) {

@@ -3,6 +3,7 @@ pub mod write;
 
 mod bases;
 mod disk_pass;
+mod downloads;
 mod editor;
 mod host;
 mod import;
@@ -11,45 +12,52 @@ mod lifecycle;
 pub mod local_copy;
 mod local_events;
 mod moves;
+mod pacing;
 mod payloads;
 mod pump;
 mod session;
 mod settings;
 mod sync_hold;
 mod unsent;
+pub mod unwritten;
 pub mod uploads;
 
 pub use editor::document_snapshot;
 pub(super) use editor::{comment_live, edit_live, read_live};
 pub use host::LiveHost;
-pub use lifecycle::{forget, stop, stop_running_session};
+pub use lifecycle::{
+    finish_for_quit, forget, resumed_if_failed, stop, stop_running_session, QUIT_WAIT,
+};
 pub use local_events::{app_wrote, folder_changed};
-pub(crate) use local_events::{known_content, KnownContent};
+pub(crate) use local_events::{known_content, shared_files, KnownContent};
 pub(crate) use moves::{deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile};
 pub use session::{active_for, note_fresh_join, Active};
 pub(crate) use sync_hold::{outside_change, root_returned};
-pub(crate) use unsent::{keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT};
+pub(crate) use unsent::{
+    detach_projects, keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT,
+};
 
-use bases::{merged_onto, nearest, WrittenTexts};
+use bases::{initial_bases, merged_onto, nearest, WrittenTexts};
 use disk_pass::{checked, writable};
 use import::{
-    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, upload_blobs,
-    LocalImport,
+    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport,
 };
 use session::{guard, lock, not_live, WriterSignal, ACTIVE};
+
+pub fn app_host(app: tauri::AppHandle) -> std::sync::Arc<dyn LiveHost> {
+    std::sync::Arc::new(host::AppLiveHost::new(app))
+}
 
 #[cfg(test)]
 pub use lifecycle::start;
 #[cfg(test)]
 pub use payloads::{
-    MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
 };
 
 #[cfg(test)]
 use crate::collab::disk::sha256_hex;
-#[cfg(test)]
-use bases::initial_bases;
 #[cfg(test)]
 use disk_pass::{apply_to_disk, DiskPass};
 #[cfg(test)]

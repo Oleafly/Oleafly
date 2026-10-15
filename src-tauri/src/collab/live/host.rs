@@ -4,11 +4,12 @@ use tauri::Emitter;
 
 use super::moves::{RemovedPayload, LIVE_REMOVED_EVENT};
 use super::payloads::{
-    MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
-    RolePayload, StatusPayload, LIVE_MEMBERS_EVENT, LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT,
-    LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT, PRESENCE_LEFT_EVENT,
+    ChangeSkippedPayload, MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload,
+    PresencePayload, RolePayload, StatusPayload, CHANGE_SKIPPED_EVENT, LIVE_MEMBERS_EVENT,
+    LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, PRESENCE_EVENT,
+    PRESENCE_LEFT_EVENT,
 };
-use super::{kept, uploads};
+use super::{kept, unwritten, uploads};
 use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
 
@@ -25,10 +26,12 @@ pub trait LiveHost: Send + Sync + 'static {
     fn comments_not_sent(&self, _payload: crate::collab::comments::CommentsNotSentPayload) {}
     fn comments_status(&self, _payload: crate::collab::comments::CommentsStatusPayload) {}
     fn members(&self, _payload: MembersPayload) {}
+    fn change_skipped(&self, _payload: ChangeSkippedPayload) {}
     fn session_ended(&self, _server: ServerId, _reason: SessionEndReason) {}
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
+    fn unwritten(&self, _payload: unwritten::UnwrittenPayload) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
@@ -104,6 +107,10 @@ impl LiveHost for AppLiveHost {
         let _ = self.app.emit(LIVE_MEMBERS_EVENT, payload);
     }
 
+    fn change_skipped(&self, payload: ChangeSkippedPayload) {
+        let _ = self.app.emit(CHANGE_SKIPPED_EVENT, payload);
+    }
+
     fn removed(&self, payload: RemovedPayload) {
         let _ = self.app.emit(LIVE_REMOVED_EVENT, payload);
     }
@@ -114,6 +121,10 @@ impl LiveHost for AppLiveHost {
 
     fn uploads(&self, payload: uploads::UploadsPayload) {
         let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
+    }
+
+    fn unwritten(&self, payload: unwritten::UnwrittenPayload) {
+        let _ = self.app.emit(unwritten::LIVE_UNWRITTEN_EVENT, payload);
     }
 
     fn settings_changed(&self, applied: crate::collab::settings::Applied) {

@@ -58,6 +58,15 @@ pub(crate) struct LiveRig {
 
 impl LiveRig {
     pub(crate) fn start(project_id: &str, root: &Path, files: &[(&str, &str)]) -> LiveRig {
+        LiveRig::heard_by(project_id, root, files, Arc::new(Quiet))
+    }
+
+    pub(crate) fn heard_by(
+        project_id: &str,
+        root: &Path,
+        files: &[(&str, &str)],
+        host: Arc<dyn LiveHost>,
+    ) -> LiveRig {
         let dir = tempfile::tempdir().unwrap();
         let mut doc = ProjectDoc::create().unwrap();
         let mut hashes = BTreeMap::new();
@@ -108,13 +117,14 @@ impl LiveRig {
                 handle,
                 link,
                 disk: Mutex::new(disk),
-                host: Arc::new(Quiet),
+                host,
                 writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(bases),
+                upkeep: Default::default(),
             });
             tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             active
@@ -128,6 +138,14 @@ impl LiveRig {
 
     pub(crate) fn document(&self) -> SharedDocument {
         SharedDocument(Arc::clone(&self.active))
+    }
+
+    pub(in crate::collab::live) fn active(&self) -> Arc<Active> {
+        Arc::clone(&self.active)
+    }
+
+    pub(crate) fn document_dir(&self) -> PathBuf {
+        self.active.document_dir.clone()
     }
 
     fn id_of(&self, path: &str) -> Option<String> {
@@ -179,8 +197,39 @@ impl LiveRig {
         });
     }
 
+    #[cfg(unix)]
+    pub(crate) fn remote_new_dir(&self, path: &str) {
+        self.arrive(|peer| {
+            peer.add_node(None, path, NodeKind::Dir, None, "").unwrap();
+        });
+    }
+
+    #[cfg(unix)]
+    pub(crate) fn remote_new_in(&self, folder: &str, name: &str, text: &str) {
+        let parent = self.id_of(folder).expect("the folder is shared");
+        self.arrive(|peer| {
+            peer.add_node(Some(&parent), name, NodeKind::Text, None, text)
+                .unwrap();
+        });
+    }
+
     pub(crate) fn set_role(&self, role: ProjectRole) {
         lock(&self.active.live).set_role(role);
+    }
+
+    pub(crate) fn open(&self, path: &str) -> (String, u64) {
+        let id = self.id_of(path).expect("the opened path is shared");
+        let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+        let opened = lock(&self.active.live).open_file(&id, sink).unwrap();
+        (id, opened.rev)
+    }
+
+    pub(crate) fn typed(&self, id: &str, rev: u64, at_end: &str) {
+        let mut live = lock(&self.active.live);
+        let text = live.doc().text(id).unwrap();
+        let mut operation = oleafly_collab::ot::TextOperation::new();
+        operation.retain(text.encode_utf16().count()).insert(at_end);
+        live.editor_change(id, rev, operation).unwrap();
     }
 
     pub(crate) fn go_live(&self) -> LiveNow {
@@ -198,6 +247,29 @@ impl LiveRig {
             .collect();
         names.sort();
         names
+    }
+
+    pub(crate) fn kick(&self) {
+        self.active.kick();
+    }
+
+    pub(in crate::collab::live) fn counted(&self) -> super::super::pacing::Counted {
+        self.active.counted()
+    }
+
+    pub(crate) fn shared_live(&self) -> SharedLive {
+        Arc::clone(&self.active.live)
+    }
+
+    pub(crate) fn saved_text(&self, path: &str) -> Option<String> {
+        let id = self.id_of(path)?;
+        let saved = LiveProject::load(&self.active.document_dir, ProjectRole::Owner).ok()?;
+        saved.doc().text(&id).ok()
+    }
+
+    pub(crate) fn import(&self, paths: &[&str]) {
+        let paths = paths.iter().map(|path| (*path).to_owned()).collect();
+        tauri::async_runtime::block_on(self.active.import_paths(Some(paths))).unwrap();
     }
 
     pub(crate) fn settle(&self) {

@@ -8260,10 +8260,22 @@ fn clear_build_cache_blocking(project_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn recycle_project(
+    app: tauri::AppHandle,
     project_id: String,
     state: tauri::State<'_, crate::state::AppState>,
+    collab: tauri::State<'_, crate::collab::state::CollabState>,
 ) -> Result<(), String> {
-    recycle_project_synchronized(&state, project_id).await
+    let recycled = crate::collab::live::resumed_if_failed(
+        collab.inner(),
+        crate::collab::live::app_host(app),
+        &project_id,
+        recycle_project_synchronized(&state, project_id.clone()),
+    )
+    .await;
+    if recycled.is_err() && !crate::collab::switch::enabled() {
+        crate::collab::live::stop(&project_id).await;
+    }
+    recycled
 }
 
 fn recyclable_project_exists(dir: &Path) -> Result<bool, String> {
@@ -8301,6 +8313,7 @@ async fn recycle_project_synchronized(
     )?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
+    crate::collab::live::stop(&project_id).await;
     let recycled_id = project_id.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let ((), _) = admission.run_with_change_status(|| {
@@ -8325,7 +8338,7 @@ async fn recycle_project_synchronized(
     })
     .await
     .map_err(|e| e.to_string())??;
-    crate::collab::share::forget_local(&recycled_id).await;
+    crate::collab::share::forget_local_keeping_origin(&recycled_id).await;
     Ok(())
 }
 

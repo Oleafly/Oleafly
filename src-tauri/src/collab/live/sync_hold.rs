@@ -6,7 +6,6 @@ use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, DiskPlan, Layout};
 use oleafly_collab::ot::TextOperation;
-use oleafly_collab::sync::LiveLink;
 use oleafly_collab::{evaluate, write_atomic, CollabError, MassChangeThreshold, MassChangeVerdict};
 use serde::{Deserialize, Serialize};
 
@@ -266,6 +265,7 @@ impl Active {
             .map_or_else(|| self.document_dir.clone(), Path::to_path_buf)
     }
 
+    #[cfg(test)]
     pub(crate) async fn outside(
         &self,
         change: &FolderChange,
@@ -303,9 +303,11 @@ impl Active {
         let dir = self.hold_dir();
         {
             let mut disk = guard(&self.disk);
+            let placed = super::import::placed_now(&lock(&self.live))?;
+            let scanned = super::import::scan_local(&self.root, &disk, &placed, only)?;
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
-            let import = super::read_local_changes(&self.root, &disk, &live, only)?;
+            let import = scanned.classify(&live);
             let placed = by_path(&materialize::layout(&live.doc().nodes()?));
             let _lock = hold_lock();
             let mut hold = Hold::load(&dir);
@@ -363,7 +365,7 @@ impl Active {
             }
             hold.pending = None;
             hold.save(&dir)?;
-            disk.save(&self.disk_file)?;
+            self.save_index(&disk)?;
             live.mark_all_dirty()?;
         }
         self.kick();
@@ -519,6 +521,21 @@ pub(super) fn apply_kept_edits(
 pub(super) struct Shaped {
     pub(super) conflicts: Vec<String>,
     merged: Vec<(String, KeptText)>,
+    held: Option<Hold>,
+}
+
+impl Shaped {
+    pub(super) fn blocks(&self, path: &str) -> bool {
+        self.held
+            .as_ref()
+            .is_some_and(|hold| hold.holds(path) || hold.kind(path).is_some())
+    }
+}
+
+pub(super) fn keeps_back(dir: &Path, path: &str) -> bool {
+    let _lock = hold_lock();
+    let hold = Hold::load(dir);
+    hold.holds(path) || hold.kind(path).is_some()
 }
 
 pub(super) fn shape(
@@ -597,6 +614,7 @@ pub(super) fn shape(
     if hold != before {
         let _ = hold.save(dir);
     }
+    shaped.held = Some(hold);
     shaped
 }
 
@@ -662,28 +680,58 @@ fn hold_at_start(
     Ok(true)
 }
 
+pub(super) struct CaughtUp {
+    pub(super) live: LiveProject,
+    pub(super) disk: DiskState,
+    pub(super) bases: WrittenTexts,
+    pub(super) to_upload: Vec<String>,
+}
+
 pub(super) async fn catch_up(
+    root: PathBuf,
+    dir: PathBuf,
+    mut live: LiveProject,
+    mut disk: DiskState,
+) -> Result<CaughtUp, CollabError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut bases = super::initial_bases(&root, &disk, &live);
+        let to_upload = catch_up_here(&root, &dir, &mut live, &mut disk, &mut bases)?;
+        Ok(CaughtUp {
+            live,
+            disk,
+            bases,
+            to_upload,
+        })
+    })
+    .await
+    .map_err(io)?
+}
+
+fn catch_up_here(
     root: &Path,
     dir: &Path,
-    link: &LiveLink,
     live: &mut LiveProject,
     disk: &mut DiskState,
     bases: &mut WrittenTexts,
-) -> Result<(), CollabError> {
+) -> Result<Vec<String>, CollabError> {
     let mut import = super::read_local_changes(root, disk, live, None)?;
     let edits = screen(dir, root, disk, &mut import)?;
     if hold_at_start(dir, disk, &import, &edits)? {
-        return Ok(());
+        return Ok(Vec::new());
     }
     if (import.is_empty() && edits.is_empty()) || !live.can_edit() {
-        return Ok(());
+        return Ok(Vec::new());
     }
-    let failed = super::upload_blobs(link, &import.blobs).await;
-    import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
+    let sent: BTreeSet<&String> = disk.hashes.values().collect();
+    let (fresh, known): (Vec<_>, Vec<_>) = std::mem::take(&mut import.blobs)
+        .into_iter()
+        .partition(|(_, hash, _)| !sent.contains(hash));
+    import.blobs = known;
+    let to_upload = fresh.into_iter().map(|(path, _, _)| path).collect();
     super::moves::adopt_folder_moves(live, disk, bases, &mut import)?;
     super::apply_local_import(live, disk, bases, import, root)?;
     apply_kept_edits(dir, root, live, disk, bases, edits)?;
-    Ok(())
+    Ok(to_upload)
 }
 
 pub(crate) fn outside_change(
@@ -748,7 +796,7 @@ mod tests {
     use crate::collab::testing::RecordedPauses;
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
     use oleafly_collab::materialize;
-    use oleafly_collab::sync::{spawn_live, LiveStatus, SharedLive};
+    use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
@@ -859,6 +907,7 @@ mod tests {
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
             bases: Mutex::new(bases),
+            upkeep: Default::default(),
         });
         Rig {
             dir,
@@ -883,21 +932,17 @@ mod tests {
         } = rig;
         let document_dir = active.document_dir.clone();
         let disk_file = active.disk_file.clone();
-        let link = active.link.clone();
         drop(active);
-        let mut live = LiveProject::load(&document_dir, ProjectRole::Owner).unwrap();
-        let mut disk = DiskState::load(&disk_file);
-        let mut bases = initial_bases(&root, &disk, &live);
-        catch_up(
-            &root,
-            &collab_of(&dir),
-            &link,
-            &mut live,
-            &mut disk,
-            &mut bases,
-        )
-        .await
-        .unwrap();
+        let live = LiveProject::load(&document_dir, ProjectRole::Owner).unwrap();
+        let disk = DiskState::load(&disk_file);
+        let CaughtUp {
+            mut live,
+            disk,
+            bases,
+            ..
+        } = catch_up(root.clone(), collab_of(&dir), live, disk)
+            .await
+            .unwrap();
         live.mark_all_dirty().unwrap();
         build(dir, root, state, live, disk, bases, seq.into_inner()).await
     }
@@ -1140,6 +1185,39 @@ mod tests {
             assert_eq!(
                 rig.shared("main.tex").as_deref(),
                 Some("zero\nalpha\nbeta\nremote\n")
+            );
+        });
+    }
+
+    #[test]
+    fn a_kept_file_being_typed_is_merged_once_it_is_written_and_never_read_as_changed_outside() {
+        run(async {
+            let rig = rig(&[
+                ("main.tex", "alpha\nbeta\n"),
+                ("a.tex", "a"),
+                ("b.tex", "b"),
+            ])
+            .await;
+            rig.write("main.tex", "alpha\nlocal\nbeta\n");
+            rig.outside(&["main.tex"], pause_of(&["main.tex"], 3)).await;
+            rig.active.decide(SyncDecision::KeepLocal).await.unwrap();
+            let main = rig.id_of("main.tex").unwrap();
+            let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            lock(&rig.active.live).open_file(&main, quiet).unwrap();
+            rig.active.note_written([&"main.tex".to_owned()]);
+
+            rig.remote("main.tex", "alpha\nbeta\nremote\n");
+            let typing = rig.active.write_out_paced(false).await.unwrap();
+            let held = rig.on_disk("main.tex");
+            let written = rig.active.write_out().await.unwrap();
+            rig.stop();
+
+            assert!(typing.is_empty(), "{typing:?}");
+            assert_eq!(held.as_deref(), Some("alpha\nlocal\nbeta\n"));
+            assert!(written.is_empty(), "{written:?}");
+            assert_eq!(
+                rig.on_disk("main.tex").as_deref(),
+                Some("alpha\nlocal\nbeta\nremote\n")
             );
         });
     }

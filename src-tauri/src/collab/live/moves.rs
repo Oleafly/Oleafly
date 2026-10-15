@@ -484,7 +484,7 @@ impl Active {
     }
 
     fn settle_structure(&self) {
-        let _ = guard(&self.disk).save(&self.disk_file);
+        let _ = self.save_index(&guard(&self.disk));
         self.handle.flush();
         self.kick();
         self.refresh_pending();
@@ -505,9 +505,9 @@ impl Active {
         }
         let (outcome, adopted) = {
             let mut disk = guard(&self.disk);
+            let outcome = work()?;
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
-            let outcome = work()?;
             let adopted = match adopt(&outcome, &mut live, &mut disk, &mut bases) {
                 Ok(adopted) => adopted,
                 Err(error) => {
@@ -761,6 +761,7 @@ mod tests {
                 next,
                 &texts,
                 &crlf,
+                &|_| false,
             )
             .unwrap()
         }
@@ -1267,6 +1268,7 @@ mod tests {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(bases),
+                upkeep: Default::default(),
             })
         });
         Rig {

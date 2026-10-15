@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
@@ -46,7 +47,16 @@ pub fn as_text(bytes: &[u8]) -> Option<String> {
     }
     std::str::from_utf8(bytes)
         .ok()
-        .map(|text| text.replace("\r\n", "\n"))
+        .map(|text| lf_text(text).into_owned())
+}
+
+// The shared document and the editor hold LF only; the disk keeps each file's style.
+pub fn lf_text(text: &str) -> Cow<'_, str> {
+    if text.contains('\r') {
+        Cow::Owned(text.replace("\r\n", "\n").replace('\r', "\n"))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
 
 pub fn crlf_only(bytes: &[u8]) -> Option<bool> {
@@ -118,6 +128,44 @@ fn glob(pattern: &[u8], text: &[u8]) -> bool {
     }
 }
 
+pub fn scratch_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    [".swp", ".swo", ".swx"]
+        .iter()
+        .any(|swap| lower.ends_with(swap))
+        || name.ends_with('~')
+        || (name.len() > 1 && name.starts_with('#') && name.ends_with('#'))
+        || name.starts_with(".#")
+        || (name.starts_with(".~lock.") && name.ends_with('#'))
+        || name.starts_with("~$")
+        || name == "4913"
+        || crate::checkpoint_capture::is_oleafly_owned(name)
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ShareRules(Vec<IgnoreRule>);
+
+impl ShareRules {
+    pub fn load(root: &Path) -> ShareRules {
+        ShareRules(
+            std::fs::read_to_string(root.join(".gitignore"))
+                .map(|text| parse_gitignore(&text))
+                .unwrap_or_default(),
+        )
+    }
+
+    fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
+        scratch_name(name) || ignored(&self.0, relative, is_dir)
+    }
+
+    pub fn leaves_out(&self, relative: &str, is_dir: bool) -> bool {
+        let segments: Vec<&str> = relative.split('/').collect();
+        let name = segments.last().copied().unwrap_or(relative);
+        self.skips(name, relative, is_dir)
+            || (1..segments.len()).any(|end| ignored(&self.0, &segments[..end].join("/"), true))
+    }
+}
+
 fn ignored(rules: &[IgnoreRule], relative: &str, is_dir: bool) -> bool {
     let name = relative.rsplit('/').next().unwrap_or(relative);
     rules.iter().any(|rule| {
@@ -164,11 +212,14 @@ pub fn excluded_name(relative: &str) -> bool {
 }
 
 pub fn scan_folder(root: &Path) -> Result<Scan, String> {
-    let rules = std::fs::read_to_string(root.join(".gitignore"))
-        .map(|text| parse_gitignore(&text))
-        .unwrap_or_default();
+    scan_folder_within(root, "")
+}
+
+pub fn scan_folder_within(root: &Path, folder: &str) -> Result<Scan, String> {
+    let rules = ShareRules::load(root);
     let mut scan = Scan::default();
-    walk(root, "", &rules, &mut scan, 0)?;
+    let depth = folder.split('/').filter(|part| !part.is_empty()).count();
+    walk(root, folder, &rules, &mut scan, depth)?;
     scan.files.sort();
     scan.dirs.sort();
     scan.excluded.sort();
@@ -178,7 +229,7 @@ pub fn scan_folder(root: &Path) -> Result<Scan, String> {
 fn walk(
     root: &Path,
     relative: &str,
-    rules: &[IgnoreRule],
+    rules: &ShareRules,
     scan: &mut Scan,
     depth: usize,
 ) -> Result<(), String> {
@@ -219,7 +270,10 @@ fn walk(
             }
             continue;
         }
-        if ignored(rules, &child, kind.is_dir()) {
+        if rules.skips(&name, &child, kind.is_dir()) {
+            if crate::checkpoint_capture::is_oleafly_owned(&name) {
+                continue;
+            }
             scan.excluded.push(if kind.is_dir() {
                 format!("{child}/")
             } else {
@@ -365,19 +419,40 @@ fn inside_app_folder(root: &Path, folder: &Path) -> bool {
     })
 }
 
+// APFS and HFS+ treat names that differ only in Unicode normalization as one
+// name; NTFS and the Linux file systems do not.
+fn spelled_alike(on_disk: &str, wanted: &str) -> bool {
+    on_disk == wanted
+        || (cfg!(target_os = "macos")
+            && unicode_normalization::UnicodeNormalization::nfc(on_disk)
+                .eq(unicode_normalization::UnicodeNormalization::nfc(wanted)))
+}
+
+fn same_name_here(first: &str, second: &str) -> bool {
+    if cfg!(target_os = "macos") {
+        oleafly_history::portable_fold(first) == oleafly_history::portable_fold(second)
+    } else {
+        first.to_lowercase() == second.to_lowercase()
+    }
+}
+
 pub fn exists_exact(root: &Path, relative: &str) -> bool {
     let mut folder = root.to_path_buf();
     for part in relative.split('/') {
         let Ok(entries) = std::fs::read_dir(&folder) else {
             return false;
         };
-        let found = entries
-            .filter_map(Result::ok)
-            .any(|entry| entry.file_name().to_str() == Some(part));
-        if !found {
+        let found = entries.filter_map(Result::ok).find_map(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .filter(|name| spelled_alike(name, part))
+                .map(str::to_owned)
+        });
+        let Some(name) = found else {
             return false;
-        }
-        folder.push(part);
+        };
+        folder.push(name);
     }
     true
 }
@@ -403,7 +478,7 @@ fn same_entry(first: &Path, second: &Path) -> bool {
 }
 
 pub fn same_file(root: &Path, first: &str, second: &str) -> bool {
-    if first == second || first.to_lowercase() != second.to_lowercase() {
+    if first == second || !same_name_here(first, second) {
         return false;
     }
     match (safe_target(root, first), safe_target(root, second)) {
@@ -419,7 +494,7 @@ pub fn move_path(root: &Path, from: &str, to: &str) -> bool {
     if !exists_exact(root, from) {
         return false;
     }
-    let case_only = from.to_lowercase() == to.to_lowercase() && same_entry(&source, &target);
+    let case_only = same_name_here(from, to) && same_entry(&source, &target);
     if target.exists() && !case_only {
         return false;
     }
@@ -521,6 +596,36 @@ mod tests {
     }
 
     #[test]
+    fn editor_and_oleafly_scratch_files_are_never_shared() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(root, "main.tex", "x");
+        write(root, ".gitignore", "*.aux\nbuild/\n");
+        for scratch in [
+            ".main.tex.swp",
+            "main.tex~",
+            "#main.tex#",
+            ".~lock.notes.odt#",
+            "~$report.docx",
+            "4913",
+            ".main.tex.oleafly-1-2-3.tmp",
+            ".oleafly-rename-abc",
+        ] {
+            write(root, scratch, "scratch");
+        }
+        let scan = scan_folder(root).unwrap();
+        let files: Vec<&str> = scan.files.iter().map(|(path, _)| path.as_str()).collect();
+        assert_eq!(files, vec![".gitignore", "main.tex"]);
+        assert!(!scan.excluded.iter().any(|path| path.contains("oleafly")));
+        let rules = ShareRules::load(root);
+        assert!(rules.leaves_out("main.aux", false));
+        assert!(rules.leaves_out("build/out/main.log", false));
+        assert!(rules.leaves_out("chapters/.intro.tex.swp", false));
+        assert!(!rules.leaves_out("chapters/intro.tex", false));
+        assert!(!rules.leaves_out("builder/main.tex", false));
+    }
+
+    #[test]
     fn globs_match_names_and_anchored_paths() {
         assert!(glob(b"*.aux", b"main.aux"));
         assert!(!glob(b"*.aux", b"dir/main.aux"));
@@ -535,6 +640,14 @@ mod tests {
         assert_eq!(as_text(b"a\r\nb").as_deref(), Some("a\nb"));
         assert_eq!(as_text(b"\x89PNG\0"), None);
         assert_eq!(as_text(&[0xff, 0xfe]), None);
+    }
+
+    #[test]
+    fn a_lone_carriage_return_reads_as_a_line_end_like_the_editor() {
+        assert_eq!(as_text(b"a\rb\r\nc\n").as_deref(), Some("a\nb\nc\n"));
+        assert_eq!(as_text(b"\r\r\n").as_deref(), Some("\n\n"));
+        assert_eq!(lf_text("one\r\ntwo\rthree"), "one\ntwo\nthree");
+        assert!(matches!(lf_text("plain\n"), Cow::Borrowed("plain\n")));
     }
 
     #[test]
@@ -612,6 +725,22 @@ mod tests {
         assert!(!exists_exact(root, "Main.tex"));
         write(root, "other.tex", "y");
         assert!(!move_path(root, "main.tex", "other.tex"));
+    }
+
+    #[test]
+    fn names_that_differ_only_in_unicode_normalization_follow_the_file_system() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let decomposed = "figures/Gro\u{0308}\u{00df}e.png";
+        let composed = "figures/Gr\u{00f6}\u{00df}e.png";
+        write(root, decomposed, "plot");
+        assert!(exists_exact(root, decomposed));
+        assert_eq!(exists_exact(root, composed), cfg!(target_os = "macos"));
+        assert_eq!(
+            same_file(root, decomposed, composed),
+            cfg!(target_os = "macos")
+        );
+        assert!(!exists_exact(root, "figures/gro\u{0308}\u{00df}e.png"));
     }
 
     #[test]

@@ -30,7 +30,6 @@ mod checkpoints;
 mod chunked;
 mod citation;
 mod cloud_files;
-#[allow(dead_code)]
 mod collab;
 mod commands;
 mod community;
@@ -763,6 +762,7 @@ pub fn run() {
             collab::share::collab_leave_project,
             collab::share::collab_shared_with_me,
             collab::share::collab_join_project,
+            collab::joining::collab_join_cancel,
             collab::share::collab_open_link,
             collab::share::collab_link_preview,
             collab::live::commands::collab_live_start,
@@ -1061,6 +1061,7 @@ pub fn run() {
         .expect("error while running Oleafly")
         .run(|_, event| {
             if let tauri::RunEvent::Exit = event {
+                collab::live::finish_for_quit(collab::live::QUIT_WAIT);
                 quit_gate::on_app_exit();
             }
         });

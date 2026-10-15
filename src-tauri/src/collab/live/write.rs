@@ -15,7 +15,7 @@ use super::{
     WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
-use crate::collab::disk::safe_target;
+use crate::collab::disk::{crlf_only, lf_text, safe_target, ShareRules};
 
 const WRITE_SETTLE: Duration = Duration::from_secs(10);
 
@@ -85,49 +85,82 @@ fn write_into(
     if under_a_file(&placed, &path) {
         return Ok(false);
     }
+    let crlf = crlf_only(text.as_bytes()) == Some(true);
+    let text = lf_text(text);
+    let base = base.map(lf_text);
     match placed.get(&path).cloned() {
         Some((id, NodeKind::Text, _)) => {
             let current = live.doc().text(&id)?;
             let chosen = match base {
-                Some(base) => Some(base.to_owned()),
-                None => closest_base(bases, reads, &path, text),
+                Some(base) => Some(base.into_owned()),
+                None => closest_base(bases, reads, &path, &text),
             };
             match chosen
                 .as_deref()
-                .and_then(|base| merged_onto(base, text, &current))
+                .and_then(|base| merged_onto(base, &text, &current))
             {
                 Some(operation) => live.local_operation(&id, &operation)?,
-                None => live.local_text(&id, text)?,
+                None => live.local_text(&id, &text)?,
             };
         }
         Some((_, NodeKind::Dir, _)) => return Ok(false),
         Some((id, NodeKind::Blob, _)) => {
             live.doc_mut().trash(&id)?;
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
-            live.doc_mut().add_node(
+            let id = live.doc_mut().add_node(
                 parent.as_deref(),
                 name_of(&path),
                 NodeKind::Text,
                 None,
-                text,
+                &text,
             )?;
+            live.doc_mut().set_crlf(&id, crlf)?;
         }
         None => {
-            if std::fs::symlink_metadata(&target).is_ok() {
+            if std::fs::symlink_metadata(&target).is_ok()
+                || ShareRules::load(root).leaves_out(&path, false)
+            {
                 return Ok(false);
             }
             let parent = ensure_dir(live, &mut placed, parent_of(&path))?;
-            live.doc_mut().add_node(
+            let id = live.doc_mut().add_node(
                 parent.as_deref(),
                 name_of(&path),
                 NodeKind::Text,
                 None,
-                text,
+                &text,
             )?;
+            live.doc_mut().set_crlf(&id, crlf)?;
         }
     }
-    bases.record(&path, text);
+    bases.record(&path, &text);
     Ok(true)
+}
+
+const READ_ONLY: &str = "read_only";
+
+fn kept_from_a_viewer(live: &LiveProject, root: &Path, path: &str) -> Result<bool, CollabError> {
+    if live.can_edit() {
+        return Ok(false);
+    }
+    let Some(path) = normalized(path) else {
+        return Ok(false);
+    };
+    let Some(target) = safe_target(root, &path) else {
+        return Ok(false);
+    };
+    let placed = by_path(&materialize::layout(&live.doc().nodes()?));
+    if under_a_file(&placed, &path) {
+        return Ok(false);
+    }
+    Ok(match placed.get(&path) {
+        Some((_, NodeKind::Dir, _)) => false,
+        Some(_) => true,
+        None => {
+            std::fs::symlink_metadata(target).is_err()
+                && !ShareRules::load(root).leaves_out(&path, false)
+        }
+    })
 }
 
 impl Active {
@@ -136,10 +169,16 @@ impl Active {
         path: &str,
         base: Option<&str>,
         text: &str,
-    ) -> Result<bool, CollabError> {
+    ) -> Result<WriteOutcome, CollabError> {
         let handled = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
+            if kept_from_a_viewer(&live, &self.root, path)? {
+                return Ok(WriteOutcome {
+                    handled: false,
+                    reason: Some(READ_ONLY.to_owned()),
+                });
+            }
             let mut bases = guard(&self.bases);
             write_into(
                 &mut live,
@@ -152,14 +191,20 @@ impl Active {
             )?
         };
         if !handled {
-            return Ok(false);
+            return Ok(WriteOutcome {
+                handled: false,
+                reason: None,
+            });
         }
         self.handle.flush();
         self.refresh_pending();
         let (done, wait) = oneshot::channel();
         let _ = self.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
-        Ok(true)
+        Ok(WriteOutcome {
+            handled: true,
+            reason: None,
+        })
     }
 }
 
@@ -172,7 +217,7 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
     reads
         .entry(project_id.to_owned())
         .or_default()
-        .record(&path, text);
+        .record(&path, &lf_text(text));
 }
 
 pub fn note_read(project_id: &str, path: &str, text: &str) {
@@ -193,14 +238,11 @@ pub async fn write_text(
             reason: None,
         });
     };
-    let handled = active.write_text(path, base, text).await?;
-    if handled {
+    let outcome = active.write_text(path, base, text).await?;
+    if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
     }
-    Ok(WriteOutcome {
-        handled,
-        reason: None,
-    })
+    Ok(outcome)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -248,9 +290,10 @@ fn undo_shared(
             continue;
         };
         let current = live.doc().text(&id)?;
-        match merged_onto(shared.text, before, &current) {
+        let before = lf_text(before);
+        match merged_onto(&lf_text(shared.text), &before, &current) {
             Some(operation) => live.local_operation(&id, &operation)?,
-            None => live.local_text(&id, before)?,
+            None => live.local_text(&id, &before)?,
         };
     }
     let layout = materialize::layout(&live.doc().nodes()?);
@@ -545,6 +588,78 @@ mod tests {
     }
 
     #[test]
+    fn a_crlf_write_reaches_the_document_and_the_open_editor_as_lf() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, main) = shared("a\n");
+        let (sink, seen) = recorder();
+        let opened = live.open_file(&main, sink).unwrap();
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            Some("a\r\n"),
+            "a\r\nb\r\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "a\nb\n");
+        let messages = seen.lock().unwrap().clone();
+        match &messages[..] {
+            [DocMessage::Remote { op, .. }] => {
+                assert_eq!(op.apply(&opened.text).unwrap(), "a\nb\n");
+            }
+            other => panic!("expected one remote change, got {other:?}"),
+        }
+        assert!(write_into(
+            &mut live,
+            &mut WrittenTexts::default(),
+            None,
+            dir.path(),
+            "main.tex",
+            None,
+            "a\rb\r\nc\n",
+        )
+        .unwrap());
+        assert_eq!(live.doc().text(&main).unwrap(), "a\nb\nc\n");
+    }
+
+    #[test]
+    fn a_new_crlf_file_is_lf_in_the_document_and_remembered_as_crlf() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut live, _) = shared("abc\n");
+        for (path, text) in [
+            ("windows.tex", "one\r\ntwo\r\n"),
+            ("unix.tex", "one\ntwo\n"),
+        ] {
+            assert!(write_into(
+                &mut live,
+                &mut WrittenTexts::default(),
+                None,
+                dir.path(),
+                path,
+                None,
+                text,
+            )
+            .unwrap());
+        }
+        let layout = materialize::layout(&live.doc().nodes().unwrap());
+        let id_of = |path: &str| {
+            layout
+                .iter()
+                .find(|(_, placed)| placed.path == path)
+                .unwrap()
+                .0
+                .clone()
+        };
+        let (windows, unix) = (id_of("windows.tex"), id_of("unix.tex"));
+        assert_eq!(live.doc().text(&windows).unwrap(), "one\ntwo\n");
+        assert!(live.doc().crlf(&windows));
+        assert_eq!(live.doc().text(&unix).unwrap(), "one\ntwo\n");
+        assert!(!live.doc().crlf(&unix));
+    }
+
+    #[test]
     fn an_ai_full_file_write_during_live_typing_never_erases_newer_keystrokes() {
         let dir = tempfile::tempdir().unwrap();
         let read = "alpha\nbeta\ngamma\n";
@@ -621,6 +736,7 @@ mod tests {
     fn writes_the_shared_document_cannot_take_are_left_to_the_disk() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("notes.tex"), "outside").unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "*.aux\nbuild/\n").unwrap();
         let (mut live, main) = shared("abc\n");
         for path in [
             "../escape.tex",
@@ -628,6 +744,10 @@ mod tests {
             ".git/config",
             "notes.tex",
             "",
+            "main.aux",
+            "build/out.tex",
+            ".main.tex.swp",
+            "draft.tex~",
         ] {
             assert!(
                 !write_into(
@@ -656,6 +776,41 @@ mod tests {
         .unwrap());
         assert_eq!(live.doc().text(&main).unwrap(), "abc\n");
         assert_eq!(paths_of(&live), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn a_viewer_is_told_a_write_to_the_shared_tree_is_read_only() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("outside.tex"), "local").unwrap();
+        let (mut live, _) = shared("abc\n");
+        live.doc_mut()
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        assert!(!kept_from_a_viewer(&live, dir.path(), "main.tex").unwrap());
+        live.set_role(ProjectRole::Viewer);
+        for path in ["main.tex", "./main.tex", "new.tex", "chapters/new.tex"] {
+            assert!(
+                kept_from_a_viewer(&live, dir.path(), path).unwrap(),
+                "{path}"
+            );
+        }
+        std::fs::write(dir.path().join(".gitignore"), "*.aux\nbuild/\n").unwrap();
+        for path in [
+            "project.json",
+            ".git/config",
+            "../escape.tex",
+            "chapters",
+            "main.tex/inner.tex",
+            "outside.tex",
+            "main.aux",
+            "build/out.tex",
+            "chapters/.new.tex.swp",
+        ] {
+            assert!(
+                !kept_from_a_viewer(&live, dir.path(), path).unwrap(),
+                "{path}"
+            );
+        }
     }
 
     #[test]
@@ -815,6 +970,7 @@ mod tests {
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
                 bases: Mutex::new(bases),
+                upkeep: Default::default(),
             });
             tokio::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             let created = tokio::time::timeout(
@@ -824,7 +980,7 @@ mod tests {
             .await
             .expect("the write never answered")
             .unwrap();
-            assert!(created);
+            assert!(created.handled);
             assert_eq!(
                 std::fs::read_to_string(root.join("figures/plot.tex")).unwrap(),
                 "\\draw;\n"
@@ -841,10 +997,13 @@ mod tests {
                 }
             }
             remember_read("written-live", "main.tex", "alpha\nbeta\n");
-            assert!(active
-                .write_text("main.tex", None, "ALPHA\nbeta\n")
-                .await
-                .unwrap());
+            assert!(
+                active
+                    .write_text("main.tex", None, "ALPHA\nbeta\n")
+                    .await
+                    .unwrap()
+                    .handled
+            );
             assert_eq!(
                 shared_live.lock().unwrap().doc().text(&main).unwrap(),
                 "ALPHA\nbeta\ngamma\n"

@@ -8,7 +8,7 @@ use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use serde::Serialize;
 
 use super::{active_for, guard, not_live, Active};
-use crate::collab::commands::CollabCommandError;
+use crate::collab::commands::{with_access, CollabCommandError};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
@@ -121,10 +121,7 @@ pub(super) async fn send(
     } else {
         None
     };
-    let access = link
-        .sessions
-        .access_token(link.server_id, &link.client)
-        .await;
+    let project = link.project;
     let mut known: BTreeMap<&str, Outcome> = BTreeMap::new();
     let mut results = Vec::new();
     for (path, hash, bytes) in blobs {
@@ -135,16 +132,21 @@ pub(super) async fn send(
                 let mut outcome = if limit.is_some_and(|limit| size > limit) {
                     Outcome::TooLarge(limit)
                 } else {
-                    match &access {
-                        Err(_) => Outcome::Retry,
-                        Ok(access) => match link
-                            .client
-                            .put_blob(access, link.project, hash, bytes.clone())
-                            .await
-                        {
-                            Ok(()) => Outcome::Sent,
-                            Err(error) => judged(&error),
+                    let sent = with_access(
+                        &link.sessions,
+                        link.server_id,
+                        &link.client,
+                        |client, access| {
+                            let (hash, bytes) = (hash.clone(), bytes.clone());
+                            Box::pin(
+                                async move { client.put_blob(access, project, &hash, bytes).await },
+                            )
                         },
+                    )
+                    .await;
+                    match sent {
+                        Ok(()) => Outcome::Sent,
+                        Err(error) => judged(&error),
                     }
                 };
                 if matches!(outcome, Outcome::Refused | Outcome::TooLarge(None)) {

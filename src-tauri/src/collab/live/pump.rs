@@ -9,8 +9,8 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::payloads::{
-    MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload,
+    ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload,
 };
 use super::session::{guard, lock, Active, ACTIVE};
 
@@ -116,6 +116,11 @@ pub(super) async fn pump(
                     "Live collaboration skipped change {seq} from {from} in project {}: this app could not read it",
                     active.project_id
                 ));
+                active.host.change_skipped(ChangeSkippedPayload {
+                    project_id: active.project_id.clone(),
+                    seq,
+                    device_id,
+                });
             }
             LiveEvent::Unsendable => {
                 let _ = crate::project::append_app_log(format!(
@@ -157,6 +162,7 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
     };
     if let Some(reason) = ended {
         let _ = active.write_out().await;
+        active.close_figures();
         active.save_now();
         if matches!(
             reason,

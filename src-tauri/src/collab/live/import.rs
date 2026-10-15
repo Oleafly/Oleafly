@@ -4,15 +4,14 @@ use std::path::Path;
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, Layout};
-use oleafly_collab::sync::LiveLink;
 use oleafly_collab::CollabError;
 
 use super::bases::{merged_onto, WrittenTexts};
+use super::kept;
 use super::session::io;
-use super::{kept, uploads};
 use crate::collab::disk::{
-    as_text, crlf_only, excluded_name, exists_exact, safe_target, scan_folder, sha256_hex,
-    DiskState,
+    as_text, crlf_only, excluded_name, exists_exact, safe_target, scan_folder, scan_folder_within,
+    sha256_hex, DiskState, ShareRules,
 };
 
 pub(super) fn parent_of(path: &str) -> Option<&str> {
@@ -55,19 +54,56 @@ impl LocalImport {
     }
 }
 
+pub(super) type Placed = HashMap<String, (String, NodeKind, Option<String>)>;
+
+pub(super) struct Scanned {
+    import: LocalImport,
+    known_texts: Vec<(String, String, String, String)>,
+}
+
+impl Scanned {
+    pub(super) fn classify(self, live: &LiveProject) -> LocalImport {
+        let mut import = self.import;
+        for (path, id, text, hash) in self.known_texts {
+            if live.doc().text(&id).ok().as_deref() == Some(text.as_str()) {
+                import.restamped.push((path, hash));
+            } else {
+                import.texts.push((path, text, hash));
+            }
+        }
+        import
+    }
+}
+
+pub(super) fn placed_now(live: &LiveProject) -> Result<Placed, CollabError> {
+    Ok(by_path(&materialize::layout(&live.doc().nodes()?)))
+}
+
 pub(super) fn read_local_changes(
     root: &Path,
     disk: &DiskState,
     live: &LiveProject,
     only: Option<&[String]>,
 ) -> Result<LocalImport, CollabError> {
-    let layout = materialize::layout(&live.doc().nodes()?);
-    let placed = by_path(&layout);
+    let placed = placed_now(live)?;
+    Ok(scan_local(root, disk, &placed, only)?.classify(live))
+}
+
+pub(super) fn scan_local(
+    root: &Path,
+    disk: &DiskState,
+    placed: &Placed,
+    only: Option<&[String]>,
+) -> Result<Scanned, CollabError> {
     let candidates = match only {
-        Some(paths) => named_candidates(root, &placed, paths),
-        None => every_candidate(root, &placed)?,
+        Some(paths) => named_candidates(root, placed, paths),
+        None => every_candidate(root, placed)?,
     };
-    let mut import = LocalImport::default();
+    let rules = ShareRules::load(root);
+    let mut scanned = Scanned {
+        import: LocalImport::default(),
+        known_texts: Vec::new(),
+    };
     for path in candidates {
         if path.is_empty() || excluded_name(&path) {
             continue;
@@ -76,6 +112,9 @@ pub(super) fn read_local_changes(
             continue;
         };
         let known = placed.get(&path);
+        if known.is_none() && rules.leaves_out(&path, target.is_dir()) {
+            continue;
+        }
         let present = if exists_exact(root, &path) {
             std::fs::symlink_metadata(&target)
         } else {
@@ -83,18 +122,18 @@ pub(super) fn read_local_changes(
         };
         match present {
             Ok(metadata) if metadata.is_file() => {
-                read_changed_file(&mut import, disk, live, &target, path, known)?;
+                read_changed_file(&mut scanned, disk, &target, path, known)?;
             }
             Ok(metadata) if metadata.is_dir() => {
                 if known.is_none() {
-                    import.dirs.push(path);
+                    scanned.import.dirs.push(path);
                 }
             }
             Ok(_) => {}
-            Err(_) => note_missing(&mut import, disk, path, known),
+            Err(_) => note_missing(&mut scanned.import, disk, path, known),
         }
     }
-    Ok(import)
+    Ok(scanned)
 }
 
 fn named_candidates(
@@ -114,14 +153,9 @@ fn named_candidates(
         );
         if let Some(target) = safe_target(root, path) {
             if target.is_dir() {
-                if let Ok(scan) = scan_folder(root) {
-                    candidates.extend(
-                        scan.files
-                            .into_iter()
-                            .map(|(file, _)| file)
-                            .filter(|file| file.starts_with(&prefix)),
-                    );
-                    candidates.extend(scan.dirs.into_iter().filter(|dir| dir.starts_with(&prefix)));
+                if let Ok(scan) = scan_folder_within(root, path.trim_matches('/')) {
+                    candidates.extend(scan.files.into_iter().map(|(file, _)| file));
+                    candidates.extend(scan.dirs);
                 }
             }
         }
@@ -141,30 +175,42 @@ fn every_candidate(
     Ok(candidates)
 }
 
+#[cfg(test)]
+pub(super) type ReadHook = std::sync::Arc<dyn Fn(&str) + Send + Sync>;
+
+#[cfg(test)]
+pub(super) static BEFORE_READ: std::sync::Mutex<Option<ReadHook>> = std::sync::Mutex::new(None);
+
 fn read_changed_file(
-    import: &mut LocalImport,
+    scanned: &mut Scanned,
     disk: &DiskState,
-    live: &LiveProject,
     target: &Path,
     path: String,
     known: Option<&(String, NodeKind, Option<String>)>,
 ) -> Result<(), CollabError> {
+    #[cfg(test)]
+    {
+        let hook = BEFORE_READ
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        if let Some(hook) = hook {
+            hook(&path);
+        }
+    }
     let bytes = std::fs::read(target).map_err(io)?;
     let hash = sha256_hex(&bytes);
     if disk.hashes.get(&path) == Some(&hash) && known.is_some() {
         return Ok(());
     }
+    let import = &mut scanned.import;
     let text = as_text(&bytes);
     if text.is_some() && crlf_only(&bytes) == Some(true) {
         import.crlf.insert(path.clone());
     }
     match (text, known) {
         (Some(text), Some((id, NodeKind::Text, _))) => {
-            if live.doc().text(id)? != text {
-                import.texts.push((path, text, hash));
-            } else {
-                import.restamped.push((path, hash));
-            }
+            scanned.known_texts.push((path, id.clone(), text, hash));
         }
         (Some(text), None) => import.texts.push((path, text, hash)),
         (_, Some((_, NodeKind::Blob, Some(blob)))) if *blob == hash => {}
@@ -437,11 +483,4 @@ fn record_local_change(written: &mut Layout, before: &Layout, after: &Layout) {
             written.insert(id.clone(), placed.clone());
         }
     }
-}
-
-pub(super) async fn upload_blobs(
-    link: &LiveLink,
-    blobs: &[(String, String, Vec<u8>)],
-) -> BTreeSet<String> {
-    uploads::send(link, blobs, false).await
 }

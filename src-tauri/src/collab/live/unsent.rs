@@ -8,6 +8,7 @@ use oleafly_collab_protocol::ids::{DeviceId, ServerId};
 use oleafly_collab_protocol::projects::ProjectRole;
 use serde::Serialize;
 
+use super::super::commands::DetachedProject;
 use super::super::state::CollabState;
 use super::{guard, local_copy, lock, stop, Active, ACTIVE};
 
@@ -90,13 +91,17 @@ fn stored_changes(
     changes_in(&live)
 }
 
-fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
-    let meta = crate::project::read_meta(&project_id).ok()?;
-    let name = if meta.name.trim().is_empty() {
-        project_id.clone()
+fn name_of(project_id: &str) -> Option<String> {
+    let meta = crate::project::read_meta(project_id).ok()?;
+    Some(if meta.name.trim().is_empty() {
+        project_id.to_owned()
     } else {
         meta.name
-    };
+    })
+}
+
+fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
+    let name = name_of(&project_id)?;
     Some(UnsentProject {
         project_id,
         name,
@@ -154,11 +159,44 @@ pub(crate) async fn keep_local_copies(
         .collect();
     tauri::async_runtime::spawn_blocking(move || {
         for id in ids {
+            local_copy::keep_stored_origin(&paths, &id);
             remove_binding(&paths, &id)?;
             super::super::registry::invalidate(&id);
             local_copy::name_local_copy(&id);
         }
         Ok(())
+    })
+    .await
+    .map_err(|error| CollabError::Io(error.to_string()))?
+}
+
+pub(crate) async fn detach_projects(
+    state: &CollabState,
+    server: ServerId,
+) -> Result<Vec<DetachedProject>, CollabError> {
+    let paths = state.paths()?.clone();
+    let bound = {
+        let paths = paths.clone();
+        tauri::async_runtime::spawn_blocking(move || bound_to(&paths, server))
+            .await
+            .map_err(|error| CollabError::Io(error.to_string()))?
+    };
+    for (project_id, _) in &bound {
+        stop(project_id).await;
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut detached = Vec::new();
+        for (project_id, _) in bound {
+            let name = name_of(&project_id);
+            local_copy::keep_stored_origin(&paths, &project_id);
+            remove_binding(&paths, &project_id)?;
+            super::super::registry::invalidate(&project_id);
+            local_copy::name_local_copy(&project_id);
+            if let Some(name) = name {
+                detached.push(DetachedProject { project_id, name });
+            }
+        }
+        Ok(detached)
     })
     .await
     .map_err(|error| CollabError::Io(error.to_string()))?
@@ -182,7 +220,8 @@ mod tests {
     };
     use super::*;
     use crate::collab::commands::{
-        sign_in_server, sign_out_within, CollabHost, SignOutOutcome, UnsentChoice,
+        remove_within, sign_in_server, sign_out_within, CollabCommandError, CollabHost,
+        DetachedProject, SignOutOutcome, UnsentChoice,
     };
     use crate::collab::testing::TempLibrary;
     use crate::folder_watch::FolderChange;
@@ -265,7 +304,7 @@ mod tests {
         server: ServerId,
         root: PathBuf,
         later: Option<FutureFrames>,
-        _test_server: TestServer,
+        test_server: TestServer,
         _github: MockGithub,
         _dir: tempfile::TempDir,
         _turn: MutexGuard<'static, ()>,
@@ -327,7 +366,7 @@ mod tests {
                 crate::collab::share::share_project(
                     &state,
                     &Browser,
-                    None,
+                    &|_, _| {},
                     PROJECT,
                     signed.server_id,
                 )
@@ -362,7 +401,7 @@ mod tests {
                 server,
                 root,
                 later,
-                _test_server: test_server,
+                test_server,
                 _github: github,
                 _dir: dir,
                 _turn: turn,
@@ -419,8 +458,65 @@ mod tests {
             .unwrap()
         }
 
+        fn remove(&self, choice: UnsentChoice) -> SignOutOutcome {
+            tauri::async_runtime::block_on(remove_within(
+                &self.state,
+                &Browser,
+                self.server,
+                choice,
+                Duration::from_secs(2),
+            ))
+            .unwrap()
+        }
+
+        fn start_again(&self, host: Arc<dyn LiveHost>) -> Result<(), String> {
+            tauri::async_runtime::block_on(async {
+                stop(PROJECT).await;
+                start(&self.state, host, PROJECT).await
+            })
+            .map(|_| ())
+            .map_err(|error| CollabCommandError::from(error).code.to_owned())
+        }
+
         fn signed_in(&self) -> bool {
             self.state.has_session(self.server).unwrap()
+        }
+
+        fn shared_id(&self) -> oleafly_collab_protocol::ids::SharedProjectId {
+            load_binding(self.state.paths().unwrap(), PROJECT)
+                .unwrap()
+                .expect("the project is shared")
+                .shared_project_id
+        }
+
+        fn join_again(
+            &self,
+            shared: oleafly_collab_protocol::ids::SharedProjectId,
+        ) -> Option<local_copy::LocalCopyOffer> {
+            tauri::async_runtime::block_on(async {
+                if !self.signed_in() {
+                    sign_in_server(
+                        &self.state,
+                        &Browser,
+                        &self.test_server.url(),
+                        "github".to_owned(),
+                        None,
+                        Duration::from_secs(20),
+                    )
+                    .await
+                    .unwrap();
+                }
+                let joined = crate::collab::share::join_project(
+                    &self.state,
+                    &Browser,
+                    &|_| {},
+                    self.server,
+                    shared,
+                )
+                .await
+                .unwrap();
+                local_copy::offer(self.state.paths().unwrap(), &joined).unwrap()
+            })
         }
 
         fn switch_comments_elsewhere(&self, server_wide: bool, on: bool) {
@@ -594,8 +690,110 @@ mod tests {
     }
 
     #[test]
+    fn removing_the_server_turns_its_shared_projects_into_local_copies() {
+        let lab = Lab::new(true);
+        let outcome = lab.remove(UnsentChoice::Ask);
+        assert_eq!(
+            outcome,
+            SignOutOutcome {
+                signed_out: true,
+                unsent: Vec::new(),
+                detached: vec![DetachedProject {
+                    project_id: PROJECT.to_owned(),
+                    name: "R3 Paper".to_owned(),
+                }],
+            }
+        );
+        let paths = lab.state.paths().unwrap();
+        assert!(active_for(PROJECT).is_none());
+        assert!(load_binding(paths, PROJECT).unwrap().is_none());
+        assert!(crate::collab::share::share_info(&lab.state, PROJECT)
+            .unwrap()
+            .is_none());
+        assert!(lab.state.registry().unwrap().get(lab.server).is_none());
+        assert!(paths
+            .project_dir(PROJECT)
+            .unwrap()
+            .join("local-copy.json")
+            .is_file());
+        assert_eq!(
+            crate::project::read_meta(PROJECT).unwrap().name,
+            local_copy::local_copy_name_in(crate::i18n::current(), "R3 Paper")
+        );
+        assert_eq!(
+            std::fs::read_to_string(lab.root.join("main.tex")).unwrap(),
+            "hello\n"
+        );
+        assert_eq!(
+            lab.start_again(Arc::new(Quiet)),
+            Err("not_found".to_owned())
+        );
+    }
+
+    #[test]
+    fn removing_the_server_and_keeping_a_local_copy_lists_the_copy_with_the_others() {
+        let lab = Lab::new(false);
+        lab.type_text("hello\nwritten offline\n");
+        let outcome = lab.remove(UnsentChoice::KeepLocalCopy);
+        assert!(outcome.signed_out);
+        assert_eq!(outcome.unsent.len(), 1);
+        assert_eq!(
+            outcome.detached,
+            vec![DetachedProject {
+                project_id: PROJECT.to_owned(),
+                name: "R3 Paper".to_owned(),
+            }]
+        );
+        assert!(load_binding(lab.state.paths().unwrap(), PROJECT)
+            .unwrap()
+            .is_none());
+        assert!(lab.state.registry().unwrap().get(lab.server).is_none());
+    }
+
+    #[test]
+    fn a_project_that_could_not_be_deleted_goes_live_again() {
+        let lab = Lab::new(true);
+        let failed: Result<(), String> = tauri::async_runtime::block_on(
+            crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
+                stop(PROJECT).await;
+                Err("the recycle bin refused".to_owned())
+            }),
+        );
+        assert!(failed.is_err());
+        assert!(active_for(PROJECT).is_some());
+        let deleted: Result<(), String> = tauri::async_runtime::block_on(
+            crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
+                stop(PROJECT).await;
+                Ok(())
+            }),
+        );
+        assert!(deleted.is_ok());
+        assert!(active_for(PROJECT).is_none());
+    }
+
+    #[test]
+    fn opening_a_project_after_signing_out_says_signed_out_and_keeps_it_shared() {
+        let lab = Lab::new(true);
+        assert!(lab.sign_out(UnsentChoice::Ask).signed_out);
+        let heard = Arc::new(Heard::default());
+        let started = lab.start_again(Arc::clone(&heard) as Arc<dyn LiveHost>);
+        assert_eq!(started, Err("signed_out".to_owned()));
+        assert_eq!(
+            *heard.statuses.lock().unwrap(),
+            vec![LiveStatus::Ended {
+                reason: oleafly_collab::sync::EndReason::SignedOut
+            }]
+        );
+        assert!(load_binding(lab.state.paths().unwrap(), PROJECT)
+            .unwrap()
+            .is_some());
+        assert!(active_for(PROJECT).is_none());
+    }
+
+    #[test]
     fn keeping_a_local_copy_signs_out_and_leaves_the_unsent_text_on_disk() {
         let lab = Lab::new(false);
+        let shared = lab.shared_id();
         lab.type_text("hello\nwritten offline\n");
         let outcome = lab.sign_out(UnsentChoice::KeepLocalCopy);
         assert!(outcome.signed_out);
@@ -620,5 +818,36 @@ mod tests {
             crate::project::read_meta(PROJECT).unwrap().name,
             local_copy::local_copy_name_in(crate::i18n::current(), "R3 Paper")
         );
+        let offer = lab
+            .join_again(shared)
+            .expect("the copy kept at sign-out is offered");
+        assert_eq!(offer.copy_id, PROJECT);
+        assert_eq!(offer.files, vec!["main.tex".to_owned()]);
+    }
+
+    #[test]
+    fn a_shared_project_deleted_with_unsent_changes_offers_them_back_once_restored() {
+        let lab = Lab::new(false);
+        let shared = lab.shared_id();
+        lab.type_text("hello\nwritten offline\n");
+        let paths = lab.state.paths().unwrap().clone();
+        tauri::async_runtime::block_on(stop(PROJECT));
+        let recycled = lab.root.with_file_name("r3-paper-recycled");
+        std::fs::rename(&lab.root, &recycled).unwrap();
+        tauri::async_runtime::block_on(crate::collab::share::let_go_keeping_origin(
+            PROJECT, &paths,
+        ));
+        assert!(load_binding(&paths, PROJECT).unwrap().is_none());
+        assert!(!paths.document_dir(PROJECT).unwrap().exists());
+        std::fs::rename(&recycled, &lab.root).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(lab.root.join("main.tex")).unwrap(),
+            "hello\nwritten offline\n"
+        );
+        let offer = lab
+            .join_again(shared)
+            .expect("the restored copy is offered");
+        assert_eq!(offer.copy_id, PROJECT);
+        assert_eq!(offer.files, vec!["main.tex".to_owned()]);
     }
 }

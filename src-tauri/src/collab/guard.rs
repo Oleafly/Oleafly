@@ -1,7 +1,5 @@
 use crate::folder_watch::FolderChange;
-use oleafly_collab::file_ids::FileIdMap;
 use oleafly_collab::mass_change::{evaluate, MassChangeThreshold, MassChangeVerdict};
-use oleafly_collab::paths::CollabPaths;
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
@@ -78,21 +76,37 @@ impl MassChangeGuard {
     pub(crate) fn inspect(&self, change: &FolderChange) -> MassChangeVerdict {
         let since = self.advance_baseline();
         let tracked = self.tracked();
-        let tracked_total = tracked.as_ref().map_or(0, FileIdMap::len);
+        let tracked_total = tracked.as_ref().map_or(0, BTreeSet::len);
         if !self.root.is_dir() {
             return self.lose_root(tracked_total);
         }
         self.regain_root();
         let known = crate::collab::live::known_content(&self.project_id);
+        let rules = crate::collab::disk::ShareRules::load(&self.root);
+        let shared = |path: &str, is_dir: bool| {
+            tracked
+                .as_ref()
+                .is_some_and(|tracked| tracked.contains(path))
+                || !rules.leaves_out(path, is_dir)
+        };
+        let paths: Vec<String> = change
+            .paths
+            .iter()
+            .filter(|path| shared(path, self.root.join(path).is_dir()))
+            .cloned()
+            .collect();
         let direct = if change.rescan {
             None
         } else {
-            direct_changes(&self.root, &change.paths, tracked.as_ref(), &known)
+            direct_changes(&self.root, &paths, tracked.as_ref(), &known)
         };
-        let present = if direct.is_some() && tracked_total > 0 {
+        let present: Vec<String> = if direct.is_some() && tracked_total > 0 {
             Vec::new()
         } else {
             present_files(&self.root)
+                .into_iter()
+                .filter(|path| shared(path, false))
+                .collect()
         };
         let changed = match direct {
             Some(count) => count,
@@ -101,7 +115,7 @@ impl MassChangeGuard {
                 let files = if change.rescan {
                     rescan_changes(&self.root, &present, &added, &removed, since)
                 } else {
-                    expanded_changes(&self.root, &change.paths, &added, &removed)
+                    expanded_changes(&self.root, &paths, &added, &removed)
                 };
                 files
                     .iter()
@@ -127,7 +141,7 @@ impl MassChangeGuard {
             self.regain_root();
             return None;
         }
-        let total = self.tracked().as_ref().map_or(0, FileIdMap::len);
+        let total = self.tracked().as_ref().map_or(0, BTreeSet::len);
         Some(self.lose_root(total))
     }
 
@@ -168,21 +182,21 @@ impl MassChangeGuard {
         std::mem::replace(&mut *baseline, SystemTime::now())
     }
 
-    fn tracked(&self) -> Option<FileIdMap> {
-        let file = CollabPaths::new(crate::paths::collab_root().ok()?)
-            .file_ids_file(&self.project_id)
-            .ok()?;
-        if !file.is_file() {
-            return None;
-        }
-        FileIdMap::load(&file).ok()
+    fn tracked(&self) -> Option<BTreeSet<String>> {
+        let tracked: BTreeSet<String> = crate::collab::live::shared_files(&self.project_id)
+            .into_iter()
+            .filter(|path| {
+                crate::folder_watch::relevant_path(&self.root, &self.root.join(path)).is_some()
+            })
+            .collect();
+        (!tracked.is_empty()).then_some(tracked)
     }
 }
 
 fn direct_changes(
     root: &Path,
     paths: &[String],
-    tracked: Option<&FileIdMap>,
+    tracked: Option<&BTreeSet<String>>,
     known: &crate::collab::live::KnownContent,
 ) -> Option<usize> {
     let tracked = tracked?;
@@ -191,23 +205,23 @@ fn direct_changes(
             Ok(metadata) if metadata.is_dir() => None,
             Ok(_) if known.holds(root, path) => Some(count),
             Ok(_) => Some(count + 1),
-            Err(_) if tracked.id_of(path).is_some() => Some(count + 1),
+            Err(_) if tracked.contains(path) => Some(count + 1),
             Err(_) => None,
         }
     })
 }
 
 fn tracked_diff(
-    tracked: Option<FileIdMap>,
+    tracked: Option<BTreeSet<String>>,
     present: &[String],
 ) -> (BTreeSet<String>, BTreeSet<String>) {
-    let Some(mut map) = tracked else {
+    let Some(tracked) = tracked else {
         return (BTreeSet::new(), BTreeSet::new());
     };
-    let report = map.reconcile(present);
+    let present: BTreeSet<String> = present.iter().cloned().collect();
     (
-        report.added.into_iter().collect(),
-        report.removed.into_iter().collect(),
+        present.difference(&tracked).cloned().collect(),
+        tracked.difference(&present).cloned().collect(),
     )
 }
 
@@ -300,6 +314,7 @@ fn descends(root: &Path, directory: &Path, name: &OsStr) -> bool {
 mod tests {
     use super::*;
     use crate::collab::testing::{track, RecordedPauses, TempLibrary};
+    use oleafly_collab::paths::CollabPaths;
     use std::time::Duration;
 
     fn paused(project_id: &str, changed: usize, total: usize, reason: PauseReason) -> SyncPaused {
@@ -522,13 +537,55 @@ mod tests {
         );
     }
 
-    fn remember_written(project_id: &str, files: &[(&str, &str)]) {
+    fn index_of(project_id: &str) -> PathBuf {
         let index = CollabPaths::new(crate::paths::collab_root().unwrap())
             .materializer_index_file(project_id)
             .unwrap();
         std::fs::create_dir_all(index.parent().unwrap()).unwrap();
-        let written = crate::collab::disk::DiskState {
-            layout: Default::default(),
+        index
+    }
+
+    fn remember_written(project_id: &str, files: &[(&str, &str)]) {
+        let index = index_of(project_id);
+        let mut written = crate::collab::disk::DiskState::load(&index);
+        written.hashes = files
+            .iter()
+            .map(|(path, text)| {
+                (
+                    (*path).to_owned(),
+                    crate::collab::disk::sha256_hex(text.as_bytes()),
+                )
+            })
+            .collect();
+        written.save(&index).unwrap();
+    }
+
+    fn as_a_session_left_it(project_id: &str, files: &[(&str, &str)]) {
+        let mut doc = oleafly_collab::doc::ProjectDoc::create().unwrap();
+        let mut folders = std::collections::BTreeMap::new();
+        for (path, text) in files {
+            let parent = path.rsplit_once('/').map(|(folder, _)| {
+                folders
+                    .entry(folder.to_owned())
+                    .or_insert_with(|| {
+                        doc.add_node(None, folder, oleafly_collab::doc::NodeKind::Dir, None, "")
+                            .unwrap()
+                    })
+                    .clone()
+            });
+            let name = path.rsplit_once('/').map_or(*path, |(_, name)| name);
+            doc.add_node(
+                parent.as_deref(),
+                name,
+                oleafly_collab::doc::NodeKind::Text,
+                None,
+                text,
+            )
+            .unwrap();
+        }
+        let index = index_of(project_id);
+        crate::collab::disk::DiskState {
+            layout: oleafly_collab::materialize::layout(&doc.nodes().unwrap()),
             hashes: files
                 .iter()
                 .map(|(path, text)| {
@@ -538,8 +595,81 @@ mod tests {
                     )
                 })
                 .collect(),
-        };
-        written.save(&index).unwrap();
+        }
+        .save(&index)
+        .unwrap();
+    }
+
+    #[test]
+    fn a_folder_deleted_while_live_pauses_with_only_the_index_a_session_keeps() {
+        let library = TempLibrary::new();
+        let files = [
+            ("main.tex", "main"),
+            ("chapters/one.tex", "one"),
+            ("chapters/two.tex", "two"),
+            ("chapters/three.tex", "three"),
+            ("chapters/four.tex", "four"),
+        ];
+        let root = library.project("guard-session-folder", &files);
+        as_a_session_left_it("guard-session-folder", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let guard = MassChangeGuard::new("guard-session-folder", &root, pauses.clone());
+
+        let saved = guard.inspect(&change("guard-session-folder", &["chapters/one.tex"]));
+        std::fs::remove_dir_all(root.join("chapters")).unwrap();
+        let deleted = guard.inspect(&change("guard-session-folder", &["chapters"]));
+
+        assert!(matches!(saved, MassChangeVerdict::Apply), "{saved:?}");
+        assert!(
+            matches!(
+                deleted,
+                MassChangeVerdict::Pause {
+                    changed: 4,
+                    total: 5
+                }
+            ),
+            "{deleted:?}"
+        );
+        assert_eq!(
+            pauses.taken(),
+            [paused(
+                "guard-session-folder",
+                4,
+                5,
+                PauseReason::MassChange
+            )]
+        );
+    }
+
+    #[test]
+    fn a_rescan_while_live_counts_deleted_files_with_only_the_index_a_session_keeps() {
+        let library = TempLibrary::new();
+        let names: Vec<String> = (0..12).map(|index| format!("f{index:02}.tex")).collect();
+        let files: Vec<(&str, &str)> = names.iter().map(|name| (name.as_str(), "x")).collect();
+        let root = library.project("guard-session-rescan", &files);
+        as_a_session_left_it("guard-session-rescan", &files);
+        let past = SystemTime::now() - Duration::from_secs(60);
+        for name in &names {
+            set_modified(&root.join(name), past);
+        }
+        let pauses = Arc::new(RecordedPauses::default());
+        let guard = MassChangeGuard::new("guard-session-rescan", &root, pauses.clone());
+        for name in ["f00.tex", "f01.tex", "f02.tex", "f03.tex"] {
+            std::fs::remove_file(root.join(name)).unwrap();
+        }
+
+        let verdict = guard.inspect(&rescan("guard-session-rescan"));
+
+        assert!(
+            matches!(
+                verdict,
+                MassChangeVerdict::Pause {
+                    changed: 4,
+                    total: 12
+                }
+            ),
+            "{verdict:?}"
+        );
     }
 
     #[test]

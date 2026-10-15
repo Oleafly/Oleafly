@@ -6,6 +6,7 @@ pub mod disk;
 pub mod email;
 pub mod guard;
 pub mod guests;
+pub mod joining;
 pub mod links;
 pub mod live;
 pub mod registry;

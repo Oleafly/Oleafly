@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::sync::{spawn_live, EndReason, LiveLink, LiveStatus, SharedLive};
@@ -9,7 +9,6 @@ use oleafly_collab_protocol::auth::SessionEndReason;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-use super::bases::initial_bases;
 use super::host::LiveHost;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
@@ -18,8 +17,17 @@ use super::session::{
     LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
+use crate::collab::commands::signed_out;
 use crate::collab::disk::DiskState;
 use crate::collab::state::CollabState;
+
+fn server_removed() -> CollabError {
+    CollabError::Api {
+        status: 404,
+        code: "server_removed".to_owned(),
+        message: "this project's server is no longer in the list".to_owned(),
+    }
+}
 
 pub async fn start(
     state: &CollabState,
@@ -46,21 +54,30 @@ pub async fn start(
     let binding = load_binding(&paths, project_id)?.ok_or_else(not_live)?;
     let keys = state.keys().await?;
     let Some(tokens) = keys.sessions.tokens(binding.server_id)? else {
-        if let Some(reason) = state.registry()?.ended(binding.server_id) {
-            if reason == SessionEndReason::AccessEnded {
-                let _ = remove_binding(&paths, project_id);
-                crate::collab::registry::invalidate(project_id);
-                local_copy::name_local_copy(project_id);
-            }
-            host.status(StatusPayload {
-                project_id: project_id.to_owned(),
-                status: LiveStatus::Ended {
-                    reason: EndReason::of_session(Some(reason)),
-                },
-                pending: 0,
-            });
+        let registry = state.registry()?;
+        let ended = registry.ended(binding.server_id);
+        if ended == Some(SessionEndReason::AccessEnded) {
+            let (kept, id) = (paths.clone(), project_id.to_owned());
+            let _ = tauri::async_runtime::spawn_blocking(move || {
+                local_copy::keep_stored_origin(&kept, &id);
+                let _ = remove_binding(&kept, &id);
+            })
+            .await;
+            crate::collab::registry::invalidate(project_id);
+            local_copy::name_local_copy(project_id);
         }
-        return Err(CollabError::Unauthorized);
+        host.status(StatusPayload {
+            project_id: project_id.to_owned(),
+            status: LiveStatus::Ended {
+                reason: EndReason::of_session(ended),
+            },
+            pending: 0,
+        });
+        return Err(if registry.get(binding.server_id).is_some() {
+            signed_out()
+        } else {
+            server_removed()
+        });
     };
     let root = crate::paths::project_dir(project_id).map_err(CollabError::Io)?;
     let client = Arc::new(ServerClient::new(ServerUrl::parse(&binding.server_url)?)?);
@@ -84,11 +101,15 @@ pub async fn start(
         .await
         .map_err(io)??
     };
-    let (mut live, mut disk) = loaded;
+    let (mut live, disk) = loaded;
     crate::collab::tree::sign(&mut live, state, binding.server_id, tokens.account_id);
-    let mut bases = initial_bases(&root, &disk, &live);
     let hold_dir = paths.project_dir(project_id)?;
-    sync_hold::catch_up(&root, &hold_dir, &link, &mut live, &mut disk, &mut bases).await?;
+    let sync_hold::CaughtUp {
+        live,
+        disk,
+        bases,
+        to_upload,
+    } = sync_hold::catch_up(root.clone(), hold_dir, live, disk).await?;
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
     let (writer_tx, writer_rx) = mpsc::unbounded_channel();
@@ -110,6 +131,7 @@ pub async fn start(
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
         bases: Mutex::new(bases),
+        upkeep: Default::default(),
     });
     lock(&shared).mark_all_dirty()?;
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
@@ -119,6 +141,12 @@ pub async fn start(
     settings::schedule(&active);
     uploads::attach(&active);
     active.announce_uploads();
+    if !to_upload.is_empty() {
+        let uploading = Arc::clone(&active);
+        tauri::async_runtime::spawn(async move {
+            let _ = uploading.import_paths(Some(to_upload)).await;
+        });
+    }
     Ok(LiveInfo {
         role,
         account_id: tokens.account_id,
@@ -130,6 +158,7 @@ async fn finish(active: Arc<Active>) {
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
+    active.close_figures();
     active.save_now();
     active.handle.stop();
 }
@@ -141,13 +170,35 @@ async fn stop_any() {
     }
 }
 
+pub const QUIT_WAIT: Duration = Duration::from_secs(2);
+
+pub fn finish_for_quit(wait: Duration) {
+    tauri::async_runtime::block_on(async move {
+        let started = Instant::now();
+        let _lifecycle = tokio::time::timeout(wait, LIFECYCLE.lock()).await.ok();
+        let Some(active) = guard(&ACTIVE).take() else {
+            return;
+        };
+        let (done, flushed) = oneshot::channel();
+        let _ = active.writer.send(WriterSignal::Flush(done));
+        let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
+        active.close_figures();
+        active.save_now();
+        active.handle.stop();
+    });
+}
+
 pub fn stop_running_session() {
-    let Some(active) = guard(&ACTIVE).take() else {
-        return;
-    };
+    let held = LIFECYCLE.try_lock().ok();
+    let taken = held.as_ref().and_then(|_| guard(&ACTIVE).take());
     tauri::async_runtime::spawn(async move {
-        let _lifecycle = LIFECYCLE.lock().await;
-        finish(active).await;
+        let _lifecycle = match held {
+            Some(held) => held,
+            None => LIFECYCLE.lock().await,
+        };
+        if let Some(active) = taken.or_else(|| guard(&ACTIVE).take()) {
+            finish(active).await;
+        }
     });
 }
 
@@ -167,6 +218,24 @@ pub async fn stop(project_id: &str) {
     if let Some(active) = previous {
         finish(active).await;
     }
+}
+
+pub async fn resumed_if_failed<T, E>(
+    state: &CollabState,
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    work: impl std::future::Future<Output = Result<T, E>>,
+) -> Result<T, E> {
+    let was_live = active_for(project_id).is_some();
+    let done = work.await;
+    if done.is_err() && was_live && active_for(project_id).is_none() {
+        if let Err(error) = start(state, host, project_id).await {
+            let _ = crate::project::append_app_log(format!(
+                "Live collaboration could not start project {project_id} again after it stayed: {error}"
+            ));
+        }
+    }
+    done
 }
 
 pub async fn flush(project_id: &str) {

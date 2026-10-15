@@ -1,11 +1,14 @@
-use std::sync::{Arc, Mutex, PoisonError};
+use std::collections::{BTreeSet, HashMap};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, Instant};
 
 use oleafly_collab::{
-    session_account, CollabError, CollabPaths, DeviceKey, SecretPort, ServerRegistry,
-    SessionManager,
+    session_account, CollabError, CollabPaths, DeviceKey, SecretPort, ServerClient, ServerEntry,
+    ServerRegistry, ServerUrl, SessionManager,
 };
-use oleafly_collab_protocol::ids::ServerId;
-use tokio::sync::{oneshot, OnceCell};
+use oleafly_collab_protocol::capabilities::CapabilityManifest;
+use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
+use tokio::sync::{oneshot, watch, OnceCell};
 
 use super::secrets_adapter::AppSecrets;
 
@@ -14,32 +17,185 @@ pub struct CollabKeys {
     pub sessions: Arc<SessionManager>,
 }
 
+type JoinKey = (ServerId, SharedProjectId);
+
+const PIN_KEPT: Duration = Duration::from_secs(120);
+
+struct Connection {
+    url: String,
+    client: Arc<ServerClient>,
+    verified: Option<(CapabilityManifest, Instant)>,
+}
+
 pub struct CollabState {
     paths: Result<CollabPaths, String>,
     secrets: Arc<dyn SecretPort>,
     keys: OnceCell<Arc<CollabKeys>>,
     registry: Mutex<()>,
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
+    sharing: Mutex<BTreeSet<String>>,
+    joins: Mutex<HashMap<JoinKey, Arc<JoinSlot>>>,
+    connections: Mutex<HashMap<ServerId, Connection>>,
+}
+
+pub(crate) struct ShareTurn<'a> {
+    state: &'a CollabState,
+    project_id: String,
+}
+
+impl Drop for ShareTurn<'_> {
+    fn drop(&mut self) {
+        locked(&self.state.sharing).remove(&self.project_id);
+    }
+}
+
+pub(crate) struct JoinSlot {
+    turn: tokio::sync::Mutex<()>,
+    cancels: watch::Sender<u64>,
+}
+
+pub(crate) struct JoinTicket<'a> {
+    state: &'a CollabState,
+    key: JoinKey,
+    slot: Arc<JoinSlot>,
+    since: u64,
+}
+
+impl JoinTicket<'_> {
+    pub(crate) async fn turn(&self) -> tokio::sync::MutexGuard<'_, ()> {
+        self.slot.turn.lock().await
+    }
+
+    pub(crate) fn is_cancelled(&self) -> bool {
+        *self.slot.cancels.borrow() > self.since
+    }
+
+    pub(crate) async fn until_cancelled(&self) {
+        let mut cancels = self.slot.cancels.subscribe();
+        let _ = cancels.wait_for(|count| *count > self.since).await;
+    }
+}
+
+impl Drop for JoinTicket<'_> {
+    fn drop(&mut self) {
+        let mut joins = locked(&self.state.joins);
+        if Arc::strong_count(&self.slot) == 2 {
+            joins.remove(&self.key);
+        }
+    }
+}
+
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 impl CollabState {
+    #[cfg(test)]
     pub fn new(paths: CollabPaths, secrets: Arc<dyn SecretPort>) -> CollabState {
+        CollabState::with(Ok(paths), secrets)
+    }
+
+    pub fn for_app() -> CollabState {
+        CollabState::with(
+            crate::paths::collab_root().map(CollabPaths::new),
+            Arc::new(AppSecrets),
+        )
+    }
+
+    fn with(paths: Result<CollabPaths, String>, secrets: Arc<dyn SecretPort>) -> CollabState {
         CollabState {
-            paths: Ok(paths),
+            paths,
             secrets,
             keys: OnceCell::new(),
             registry: Mutex::new(()),
             sign_in: Mutex::new(None),
+            sharing: Mutex::new(BTreeSet::new()),
+            joins: Mutex::new(HashMap::new()),
+            connections: Mutex::new(HashMap::new()),
         }
     }
 
-    pub fn for_app() -> CollabState {
-        CollabState {
-            paths: crate::paths::collab_root().map(CollabPaths::new),
-            secrets: Arc::new(AppSecrets),
-            keys: OnceCell::new(),
-            registry: Mutex::new(()),
-            sign_in: Mutex::new(None),
+    pub(crate) fn client(&self, entry: &ServerEntry) -> Result<Arc<ServerClient>, CollabError> {
+        let mut connections = locked(&self.connections);
+        if let Some(known) = connections
+            .get(&entry.server_id)
+            .filter(|known| known.url == entry.url)
+        {
+            return Ok(Arc::clone(&known.client));
+        }
+        let client = Arc::new(ServerClient::new(ServerUrl::parse(&entry.url)?)?);
+        connections.insert(
+            entry.server_id,
+            Connection {
+                url: entry.url.clone(),
+                client: Arc::clone(&client),
+                verified: None,
+            },
+        );
+        Ok(client)
+    }
+
+    pub(crate) fn verified_manifest(&self, server: ServerId) -> Option<CapabilityManifest> {
+        locked(&self.connections)
+            .get(&server)
+            .and_then(|known| known.verified.as_ref())
+            .filter(|(_, at)| at.elapsed() < PIN_KEPT)
+            .map(|(manifest, _)| manifest.clone())
+    }
+
+    pub(crate) fn note_verified(&self, server: ServerId, manifest: CapabilityManifest) {
+        if let Some(known) = locked(&self.connections).get_mut(&server) {
+            known.verified = Some((manifest, Instant::now()));
+        }
+    }
+
+    pub(crate) fn forget_verified(&self, server: ServerId) {
+        if let Some(known) = locked(&self.connections).get_mut(&server) {
+            known.verified = None;
+        }
+    }
+
+    pub(crate) fn begin_share(&self, project_id: &str) -> Option<ShareTurn<'_>> {
+        locked(&self.sharing)
+            .insert(project_id.to_owned())
+            .then(|| ShareTurn {
+                state: self,
+                project_id: project_id.to_owned(),
+            })
+    }
+
+    pub(crate) fn begin_join(&self, server: ServerId, shared: SharedProjectId) -> JoinTicket<'_> {
+        let mut joins = locked(&self.joins);
+        let slot = Arc::clone(joins.entry((server, shared)).or_insert_with(|| {
+            Arc::new(JoinSlot {
+                turn: tokio::sync::Mutex::new(()),
+                cancels: watch::Sender::new(0),
+            })
+        }));
+        let since = *slot.cancels.borrow();
+        JoinTicket {
+            state: self,
+            key: (server, shared),
+            slot,
+            since,
+        }
+    }
+
+    pub(crate) fn cancel_joins(&self) {
+        for slot in locked(&self.joins).values() {
+            if Arc::strong_count(slot) > 1 {
+                slot.cancels.send_modify(|count| *count += 1);
+            }
+        }
+    }
+
+    pub(crate) fn cancel_join(&self, server: ServerId, shared: SharedProjectId) -> bool {
+        match locked(&self.joins).get(&(server, shared)) {
+            Some(slot) if Arc::strong_count(slot) > 1 => {
+                slot.cancels.send_modify(|count| *count += 1);
+                true
+            }
+            _ => false,
         }
     }
 
@@ -163,14 +319,59 @@ mod tests {
     }
 
     #[test]
+    fn only_one_share_of_a_project_runs_at_a_time() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (_secrets, state) = collab_state(&dir);
+        let first = state.begin_share("paper").expect("the first share runs");
+        assert!(state.begin_share("paper").is_none());
+        let other = state.begin_share("thesis").expect("another project shares");
+        drop(first);
+        assert!(state.begin_share("paper").is_some());
+        drop(other);
+    }
+
+    #[tokio::test]
+    async fn cancelling_a_join_stops_the_running_ones_but_not_a_later_one() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (_secrets, state) = collab_state(&dir);
+        let (server, shared) = (ServerId::new_v7(), SharedProjectId::new_v7());
+        assert!(!state.cancel_join(server, shared));
+        let running = state.begin_join(server, shared);
+        let other = state.begin_join(server, SharedProjectId::new_v7());
+        assert!(!running.is_cancelled());
+        assert!(state.cancel_join(server, shared));
+        assert!(running.is_cancelled());
+        tokio::time::timeout(std::time::Duration::from_secs(5), running.until_cancelled())
+            .await
+            .expect("the cancel wakes the join");
+        assert!(!other.is_cancelled());
+        let later = state.begin_join(server, shared);
+        assert!(!later.is_cancelled());
+        drop(running);
+        drop(later);
+        assert!(!state.cancel_join(server, shared));
+        assert!(locked(&state.joins).get(&(server, shared)).is_none());
+    }
+
+    #[tokio::test]
+    async fn joins_of_one_project_take_turns() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (_secrets, state) = collab_state(&dir);
+        let (server, shared) = (ServerId::new_v7(), SharedProjectId::new_v7());
+        let first = state.begin_join(server, shared);
+        let second = state.begin_join(server, shared);
+        let held = first.turn().await;
+        assert!(second.slot.turn.try_lock().is_err());
+        drop(held);
+        assert!(second.slot.turn.try_lock().is_ok());
+    }
+
+    #[test]
     fn missing_collaboration_root_is_an_internal_error() {
-        let state = CollabState {
-            paths: Err("no home folder".to_string()),
-            secrets: Arc::new(MemorySecrets::default()),
-            keys: OnceCell::new(),
-            registry: Mutex::new(()),
-            sign_in: Mutex::new(None),
-        };
+        let state = CollabState::with(
+            Err("no home folder".to_string()),
+            Arc::new(MemorySecrets::default()),
+        );
         assert!(matches!(state.registry(), Err(CollabError::Io(_))));
         assert!(matches!(
             state.update_registry(|registry| registry.list().len()),

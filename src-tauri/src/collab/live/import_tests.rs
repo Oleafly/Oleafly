@@ -87,6 +87,7 @@ fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_
         next,
         &[],
         &BTreeSet::new(),
+        &|_| false,
     )
     .unwrap();
     assert_eq!(
@@ -96,7 +97,7 @@ fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_
     let fetched: Vec<(&str, &str)> = pass
         .blobs
         .iter()
-        .map(|(path, hash, _)| (path.as_str(), hash.as_str()))
+        .map(|(path, hash)| (path.as_str(), hash.as_str()))
         .collect();
     assert_eq!(fetched, vec![("plot.png", "alicehash")]);
 }
@@ -172,7 +173,17 @@ fn edit_main_then_write_out(live: &mut LiveProject, disk: &mut DiskState, root: 
     assert!(apply_local_import(live, disk, &mut bases, import, root).unwrap());
     let next = materialize::layout(&live.doc().nodes().unwrap());
     let plan = materialize::plan(&disk.layout, &next);
-    apply_to_disk(root, disk, &mut bases, plan, next, &[], &BTreeSet::new()).unwrap();
+    apply_to_disk(
+        root,
+        disk,
+        &mut bases,
+        plan,
+        next,
+        &[],
+        &BTreeSet::new(),
+        &|_| false,
+    )
+    .unwrap();
 }
 
 fn rescan(live: &mut LiveProject, disk: &mut DiskState, root: &Path) {
@@ -285,6 +296,7 @@ fn a_case_rename_that_arrives_as_remove_and_add_keeps_the_file() {
         next,
         &texts,
         &BTreeSet::new(),
+        &|_| false,
     )
     .unwrap();
     assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -329,6 +341,7 @@ fn files_in_a_folder_renamed_elsewhere_stay_writable() {
         next,
         &texts,
         &BTreeSet::new(),
+        &|_| false,
     )
     .unwrap();
     assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -372,6 +385,7 @@ fn a_folder_removed_elsewhere_is_reported_once() {
         next,
         &[],
         &BTreeSet::new(),
+        &|_| false,
     )
     .unwrap();
     assert!(!root.join("data").exists());

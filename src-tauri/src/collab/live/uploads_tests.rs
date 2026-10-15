@@ -25,6 +25,7 @@ use tokio::task::JoinHandle;
 use super::super::{
     guard, initial_bases, lock, pump, writer_loop, Active, LiveHost, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    WriterSignal,
 };
 use super::{attach, UploadFile, UploadState, UploadsPayload};
 use crate::collab::disk::{sha256_hex, DiskState};
@@ -109,6 +110,41 @@ impl Side {
     fn online(&self) {
         *guard(&self.active.last_status) = LiveStatus::Online;
     }
+
+    fn arrived(&self, folder: &str, name: &str, bytes: &[u8]) {
+        let mut live = lock(&self.active.live);
+        let mut peer = ProjectDoc::load(&live.doc().snapshot().unwrap()).unwrap();
+        let since = live.doc().version();
+        let parent = peer
+            .add_node(None, folder, NodeKind::Dir, None, "")
+            .unwrap();
+        peer.add_node(
+            Some(&parent),
+            name,
+            NodeKind::Blob,
+            Some(&sha256_hex(bytes)),
+            "",
+        )
+        .unwrap();
+        let payload = peer.export_since(&since).unwrap();
+        assert!(live.import_update(1, &payload).unwrap());
+    }
+
+    fn type_in(&self, path: &str, text: &str) {
+        let mut live = lock(&self.active.live);
+        let id = materialize::layout(&live.doc().nodes().unwrap())
+            .into_iter()
+            .find(|(_, placed)| placed.path == path)
+            .map(|(id, _)| id)
+            .unwrap();
+        live.local_text(&id, text).unwrap();
+    }
+
+    async fn flush(&self) {
+        let (done, flushed) = tokio::sync::oneshot::channel();
+        let _ = self.active.writer.send(WriterSignal::Flush(done));
+        let _ = flushed.await;
+    }
 }
 
 impl Drop for Side {
@@ -182,6 +218,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
         bases: Mutex::new(bases),
+        upkeep: Default::default(),
     });
     attach(&active);
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
@@ -232,9 +269,18 @@ fn manifest(max_file_mb: u64) -> String {
 struct Canned {
     url: String,
     puts: Arc<AtomicUsize>,
+    gets: Arc<AtomicUsize>,
+    stall: Arc<AtomicBool>,
 }
 
-async fn answer(mut stream: TcpStream, puts: Arc<AtomicUsize>, manifest: String, fail: usize) {
+#[derive(Clone)]
+struct Counters {
+    puts: Arc<AtomicUsize>,
+    gets: Arc<AtomicUsize>,
+    stall: Arc<AtomicBool>,
+}
+
+async fn answer(mut stream: TcpStream, counters: Counters, manifest: String, fail: usize) {
     let mut seen = Vec::new();
     let mut chunk = [0u8; 65_536];
     let head_end = loop {
@@ -269,10 +315,16 @@ async fn answer(mut stream: TcpStream, puts: Arc<AtomicUsize>, manifest: String,
         body += read;
     }
     let line = head.lines().next().unwrap_or_default();
+    if line.starts_with("GET ") && line.contains("/blobs/") {
+        counters.gets.fetch_add(1, Ordering::SeqCst);
+        if counters.stall.load(Ordering::SeqCst) {
+            std::future::pending::<()>().await;
+        }
+    }
     let (status, reply) = if line.starts_with("GET /.well-known/oleafly-server") {
         ("200 OK", manifest)
     } else if line.starts_with("PUT ") && line.contains("/blobs/") {
-        let count = puts.fetch_add(1, Ordering::SeqCst) + 1;
+        let count = counters.puts.fetch_add(1, Ordering::SeqCst) + 1;
         if count <= fail {
             (
                 "503 Service Unavailable",
@@ -304,17 +356,23 @@ async fn answer(mut stream: TcpStream, puts: Arc<AtomicUsize>, manifest: String,
 async fn canned(fail: usize, max_file_mb: u64) -> Canned {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let puts = Arc::new(AtomicUsize::new(0));
-    let counted = Arc::clone(&puts);
+    let counters = Counters {
+        puts: Arc::new(AtomicUsize::new(0)),
+        gets: Arc::new(AtomicUsize::new(0)),
+        stall: Arc::new(AtomicBool::new(false)),
+    };
+    let counted = counters.clone();
     let manifest = manifest(max_file_mb);
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
-            tokio::spawn(answer(stream, Arc::clone(&counted), manifest.clone(), fail));
+            tokio::spawn(answer(stream, counted.clone(), manifest.clone(), fail));
         }
     });
     Canned {
         url: format!("http://127.0.0.1:{port}"),
-        puts,
+        puts: counters.puts,
+        gets: counters.gets,
+        stall: counters.stall,
     }
 }
 
@@ -585,5 +643,157 @@ fn a_figure_added_while_the_link_is_down_reaches_the_other_person_after_reconnec
         })
         .await;
         assert_eq!(alice.host.last_uploads(), Some(Vec::new()));
+    });
+}
+
+#[test]
+fn a_figure_whose_download_failed_arrives_later_and_after_a_restart_without_another_edit() {
+    run(async {
+        let server = TestServer::start(test_config()).await;
+        let server_id = server.state().server_id;
+        let (alice_key, alice_tokens) = person(&server, "Alice", ServerRole::Admin).await;
+        let (bob_key, bob_tokens) = person(&server, "Bob", ServerRole::Member).await;
+        let client = ServerClient::new(ServerUrl::parse(&server.url()).unwrap()).unwrap();
+        let access = &alice_tokens.access_token;
+        let mut doc = ProjectDoc::create().unwrap();
+        doc.add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .unwrap()
+            .project_id;
+        client
+            .put_snapshot(access, project, 0, doc.snapshot().unwrap())
+            .await
+            .unwrap();
+        client.commit_project(access, project).await.unwrap();
+        client
+            .grant_member(access, project, bob_tokens.account_id, ProjectRole::Editor)
+            .await
+            .unwrap();
+        let (seq, snapshot) = client.get_snapshot(access, project).await.unwrap();
+        let joined = |role| LiveProject::new(ProjectDoc::load(&snapshot).unwrap(), seq, role);
+        let relay = crate::collab::testing::Relay::start(
+            server.url().trim_start_matches("http://").to_owned(),
+        )
+        .await;
+        let alice = side(
+            Seat {
+                url: &server.url(),
+                server_id,
+                project,
+                key: alice_key,
+                tokens: &alice_tokens,
+            },
+            joined(ProjectRole::Owner),
+            &[("main.tex", "abc")],
+            true,
+        )
+        .await;
+        let bob_seat = || Seat {
+            url: &relay.url,
+            server_id,
+            project,
+            key: Arc::clone(&bob_key),
+            tokens: &bob_tokens,
+        };
+        let bob = side(
+            bob_seat(),
+            joined(ProjectRole::Editor),
+            &[("main.tex", "abc")],
+            true,
+        )
+        .await;
+        until("both online", || {
+            alice.host.status() == Some(LiveStatus::Online)
+                && bob.host.status() == Some(LiveStatus::Online)
+        })
+        .await;
+        relay.refuse(Some("/blobs/"));
+        let figure = [0x89, b'P', b'N', b'G', 4, 5, 6];
+        alice.write("figures/late.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/late.png".to_owned()]))
+            .await
+            .unwrap();
+        until("bob's download refused", || relay.refusals() > 0).await;
+        assert!(!bob.root.join("figures/late.png").exists());
+        relay.refuse(None);
+        until("the figure on bob's disk", || {
+            std::fs::read(bob.root.join("figures/late.png"))
+                .ok()
+                .as_deref()
+                == Some(&figure[..])
+        })
+        .await;
+        let seen = lock(&bob.active.live).doc().snapshot().unwrap();
+        drop(bob);
+        let again = side(
+            bob_seat(),
+            LiveProject::new(ProjectDoc::load(&seen).unwrap(), 0, ProjectRole::Editor),
+            &[("main.tex", "abc")],
+            false,
+        )
+        .await;
+        assert!(!again.root.join("figures/late.png").exists());
+        lock(&again.active.live).mark_all_dirty().unwrap();
+        again.active.write_out().await.unwrap();
+        until("the figure after the restart", || {
+            std::fs::read(again.root.join("figures/late.png"))
+                .ok()
+                .as_deref()
+                == Some(&figure[..])
+        })
+        .await;
+    });
+}
+
+#[test]
+fn a_figure_the_server_cannot_send_is_asked_for_again_only_after_a_growing_wait() {
+    run(async {
+        let server = canned(0, 50).await;
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", b"plot");
+        for _ in 0..8 {
+            lock(&alice.active.live).mark_all_dirty().unwrap();
+            alice.active.write_out().await.unwrap();
+        }
+        until("the first request", || {
+            server.gets.load(Ordering::SeqCst) >= 1
+        })
+        .await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert_eq!(server.gets.load(Ordering::SeqCst), 1);
+        assert_eq!(alice.active.figures_asked(), 1);
+        until("the request after the wait", || {
+            server.gets.load(Ordering::SeqCst) >= 2
+        })
+        .await;
+        assert!(!alice.root.join("figures/plot.png").exists());
+    });
+}
+
+#[test]
+fn a_stalled_figure_download_holds_back_neither_typing_nor_a_flush() {
+    run(async {
+        let server = canned(0, 50).await;
+        server.stall.store(true, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.arrived("figures", "plot.png", b"plot");
+        alice.active.kick();
+        until("the stalled request", || {
+            server.gets.load(Ordering::SeqCst) >= 1
+        })
+        .await;
+        alice.type_in("main.tex", "typed meanwhile");
+        let flushed = tokio::time::timeout(Duration::from_secs(5), alice.flush()).await;
+        assert!(flushed.is_ok(), "the flush waited for the stalled download");
+        assert_eq!(
+            std::fs::read_to_string(alice.root.join("main.tex")).unwrap(),
+            "typed meanwhile"
+        );
+        assert!(!alice.root.join("figures/plot.png").exists());
     });
 }
