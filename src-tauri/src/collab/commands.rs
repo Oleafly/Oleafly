@@ -563,10 +563,18 @@ async fn finish_sign_in(
     let server = manifest.server_id;
     check_pin(pinned, server)?;
     check_unique(state, url, server)?;
-    let account = ServerClient::new(url.clone())?
-        .me(&tokens.access_token)
-        .await?;
+    let client = ServerClient::new(url.clone())?;
     keys.sessions.store(server, &tokens)?;
+    let account = match client.me(&tokens.access_token).await {
+        Ok(account) => Some(account),
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Signed in to {} but could not read the account yet: {error}",
+                url.as_str()
+            ));
+            None
+        }
+    };
     state.update_registry(|registry| {
         let added_at = registry
             .get(server)
@@ -576,7 +584,7 @@ async fn finish_sign_in(
             url: url.as_str().to_string(),
             name: manifest.name.clone(),
             icon_url: manifest.icon_url.clone(),
-            account: Some(account),
+            account: account.clone(),
             added_at,
         });
         registry.set_ended(server, None);
@@ -1775,6 +1783,35 @@ mod tests {
             .expect("remove");
         assert!(list_servers(&state).expect("list").is_empty());
         assert_eq!(host.changed(), vec![added.server_id; 3]);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_sign_in_whose_account_read_fails_keeps_the_new_session() {
+        let (_github, server) = github_server().await;
+        let relay = crate::collab::testing::Relay::start(address_of(&server)).await;
+        relay.refuse(Some("GET /api/v1/me HTTP"));
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state = collab_state(&dir);
+        let host = TestHost::following();
+        let added = sign_in_server(
+            &state,
+            &host,
+            &relay.url,
+            "github".to_string(),
+            Some(server.setup_code()),
+            LONG,
+        )
+        .await
+        .expect("sign in");
+        assert!(relay.refusals() > 0);
+        assert!(added.signed_in);
+        assert!(added.account.is_none());
+        relay.refuse(None);
+        let refreshed = refresh_account(&state, &host, added.server_id)
+            .await
+            .expect("account");
+        assert!(refreshed.signed_in);
+        assert!(refreshed.account.is_some());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
