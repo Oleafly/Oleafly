@@ -708,19 +708,41 @@ function noteChangedOnDisk(projectId: string, path: string): void {
   useFilesStore.setState({ changedOnDisk: [...state.changedOnDisk, path] });
 }
 
+function snapshotHolds(snapshot: DiskSnapshot, content: string): boolean {
+  const bytes = snapshot.crlf ? crlfBytes(content) : content;
+  return bytes.length === snapshot.length && diskHash(bytes) === snapshot.hash;
+}
+
 // A live session that stopped wrote these files while editors had them open,
 // and the window doesn't hear about such writes, so its disk snapshots of them
 // are out of date. Each comes with the snapshot of what the disk holds now,
 // so a save that follows isn't taken for a change made outside Oleafly.
+//
+// A snapshot is taken only for text the window has: a file with no buffer,
+// the buffer itself, or the base a handed-back buffer merges from. Anything
+// else on disk, such as a collaborator's change the session never applied,
+// keeps the old snapshot, and its path is returned so the caller checks the
+// file like any outside change.
 export function refreshDiskSnapshots(
   projectId: string,
   files: readonly ({ path: string } & DiskSnapshot)[],
-): void {
+): string[] {
+  const state = useFilesStore.getState();
+  const changed: string[] = [];
   for (const { path, hash, crlf, length } of files) {
     const key = writeKey(projectId, path);
-    diskSnapshots.set(key, { hash, crlf, length });
+    const snapshot = { hash, crlf, length };
+    const open = state.projectId === projectId ? state.files[path] : undefined;
+    const base = sharedSaveBases.get(key);
+    const known = !open || snapshotHolds(snapshot, open.content) || (base !== undefined && snapshotHolds(snapshot, base));
+    if (!known) {
+      changed.push(path);
+      continue;
+    }
+    diskSnapshots.set(key, snapshot);
     settleDiskConflict(key);
   }
+  return changed;
 }
 
 export async function detectDiskChange(projectId: string, path: string): Promise<boolean> {

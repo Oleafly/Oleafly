@@ -226,17 +226,6 @@ describe("collaboration IPC helpers", () => {
     ]);
   });
 
-  it("forwards the files a stopped live session wrote, with their hashes", async () => {
-    const seen: unknown[] = [];
-    await tauri.onCollabLiveWritten((payload) => seen.push(payload));
-    expect(tauri.COLLAB_LIVE_WRITTEN_EVENT).toBe("collab-live-written");
-    expect(mocks.listen).toHaveBeenCalledWith("collab-live-written", expect.any(Function));
-    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
-    const payload = { projectId: "grant", files: [{ path: "main.tex", hash: "c0ffee", crlf: true, length: 12 }] };
-    handler({ payload });
-    expect(seen).toEqual([payload]);
-  });
-
   it("forwards how far a figure's upload got", async () => {
     const seen: unknown[] = [];
     await tauri.onCollabUploadProgress((payload) => seen.push(payload));

@@ -18,12 +18,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
+  COLLAB_LIVE_WRITTEN_EVENT: "collab-live-written",
   watchProjectFolder: mocks.watchProjectFolder,
   unwatchProjectFolder: mocks.unwatchProjectFolder,
 }));
 vi.mock("@/lib/external-file-changes", () => ({ applyFolderChange: mocks.applyFolderChange }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
+import { diskHash } from "@/lib/disk-hash";
 import { useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { FolderWatchKeeper } from "./FolderWatchKeeper";
@@ -39,6 +41,41 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useProjectAvailabilityStore.getState().reset(null);
+});
+
+describe("FolderWatchKeeper and the files a stopped live session wrote", () => {
+  function written(text: string) {
+    act(() =>
+      mocks.events.get("collab-live-written")?.({
+        payload: {
+          projectId: "linked-a",
+          files: [{ path: "main.tex", hash: diskHash(text), crlf: false, length: text.length }],
+        },
+      }),
+    );
+  }
+
+  it("takes what the disk holds when the window has that text, with or without a live session", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "a\nremote\n", dirty: false } } });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.events.has("collab-live-written")).toBe(true));
+    written("a\nremote\n");
+    expect(mocks.applyFolderChange).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it("checks a file like any outside change when the disk holds text the window doesn't have", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "a\n", dirty: false } } });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.events.has("collab-live-written")).toBe(true));
+    written("a\ncollaborator\n");
+    expect(mocks.applyFolderChange).toHaveBeenCalledExactlyOnceWith({
+      projectId: "linked-a",
+      paths: ["main.tex"],
+      rescan: false,
+    });
+    view.unmount();
+  });
 });
 
 describe("FolderWatchKeeper", () => {
