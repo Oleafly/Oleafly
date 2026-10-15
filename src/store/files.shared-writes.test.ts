@@ -323,7 +323,7 @@ describe("files a live session wrote while they were open", () => {
     useFilesStore.setState((state) => ({
       files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
     }));
-    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n") }]);
+    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n"), crlf: false, length: 9 }]);
     useFilesStore.getState().setContent("main.tex", "a\nremote\nmine\n");
     await useFilesStore.getState().saveFile("main.tex");
     expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
@@ -335,13 +335,30 @@ describe("files a live session wrote while they were open", () => {
     );
   });
 
+  it("keep the CRLF line ends the disk has for the next direct save", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    refreshDiskSnapshots("project", [
+      { path: "main.tex", hash: diskHash("a\r\nremote\r\n"), crlf: true, length: 11 },
+    ]);
+    useFilesStore.getState().setContent("main.tex", "a\nremote\nmine\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "a\r\nremote\r\nmine\r\n",
+      3,
+      diskHash("a\r\nremote\r\n"),
+    );
+  });
+
   it("keep a buffer that holds what the disk holds as saved", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");
     useFilesStore.setState((state) => ({
       files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
     }));
-    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n") }]);
+    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n"), crlf: false, length: 9 }]);
     useFilesStore.getState().setContent("main.tex", "a\nremote\n", { unsaved: true });
     expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ dirty: false });
   });

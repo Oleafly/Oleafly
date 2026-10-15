@@ -710,19 +710,14 @@ function noteChangedOnDisk(projectId: string, path: string): void {
 
 // A live session that stopped wrote these files while editors had them open,
 // and the window doesn't hear about such writes, so its disk snapshots of them
-// are out of date. The hashes it reports are what the disk holds now, so a
-// save that follows isn't taken for a change made outside Oleafly.
-export function refreshDiskSnapshots(projectId: string, files: readonly { path: string; hash: string }[]): void {
-  const state = useFilesStore.getState();
-  for (const { path, hash } of files) {
+// are out of date. Each comes with the snapshot of what the disk holds now,
+// so a save that follows isn't taken for a change made outside Oleafly.
+export function refreshDiskSnapshots(
+  projectId: string,
+  files: readonly ({ path: string } & DiskSnapshot)[],
+): void {
+  for (const { path, hash, crlf, length } of files) {
     const key = writeKey(projectId, path);
-    const crlf = diskSnapshots.get(key)?.crlf ?? false;
-    const open = state.projectId === projectId ? state.files[path] : undefined;
-    // A buffer that hashes the same holds what the disk holds, which gives
-    // the length too. Otherwise the length stays unknown and the buffer
-    // counts as unsaved.
-    const bytes = open ? (crlf ? crlfBytes(open.content) : open.content) : null;
-    const length = bytes !== null && diskHash(bytes) === hash ? bytes.length : -1;
     diskSnapshots.set(key, { hash, crlf, length });
     settleDiskConflict(key);
   }

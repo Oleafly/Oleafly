@@ -1793,11 +1793,14 @@ export interface CollabUploadFile {
 export interface CollabLiveProjectFull {
   projectId: string;
 }
-// Sent when a live session stops: the files it wrote while editors had them
-// open, with the hash of what each holds on disk now.
+// Sent when a live session stops or the server ends it: the files it wrote
+// while editors had them open, each with the disk snapshot of what it holds
+// now (the window's own hash, whether it has CRLF line ends, and its length in
+// UTF-16 units). Files changed outside Oleafly since are left out, so their
+// change still shows.
 export interface CollabLiveWritten {
   projectId: string;
-  files: { path: string; hash: string }[];
+  files: { path: string; hash: string; crlf: boolean; length: number }[];
 }
 // How far the upload of one figure got, in bytes. Sent a few times a second
 // at most while it goes up.

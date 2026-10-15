@@ -896,7 +896,7 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    const files = [{ path: "main.tex", hash: "c0ffee" }];
+    const files = [{ path: "main.tex", hash: "c0ffee", crlf: false, length: 12 }];
     emit("written", { projectId: OTHER, files });
     expect(vi.mocked(refreshDiskSnapshots)).toHaveBeenCalledExactlyOnceWith(OTHER, files);
   });
