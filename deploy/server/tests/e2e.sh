@@ -50,6 +50,8 @@ main() {
 		sleep 1
 	done
 	docker save "$image" -o "$work/server.tar"
+	chmod 755 "$work"
+	chmod 644 "$work/server.tar"
 	for version in 0.1.0 0.1.1; do
 		docker run --rm --network "container:$registry" -v "$work:/work:ro" gcr.io/go-containerregistry/crane:v0.20.3 \
 			push --insecure /work/server.tar "localhost:5000/oleafly/oleafly-server:$version"

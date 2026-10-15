@@ -59,6 +59,13 @@ case "$*" in
 		host=$(mount_for /work "$@") || exit 125
 		as_root "rm -rf '$host/e2e'"
 		;;
+	*' push --insecure /work/server.tar '*)
+		host=$(mount_for /work "$@") || exit 125
+		as_root "setpriv --reuid=65532 --regid=65532 --clear-groups test -r '$host/server.tar'" || {
+			echo "Error: stat /work/server.tar: permission denied" >&2
+			exit 1
+		}
+		;;
 	*':/out '*)
 		host=$(mount_for /out "$@") || exit 125
 		as_root "for version in 0.1.0 0.1.1; do mkdir -p '$host'/release-\$version && echo installer >'$host'/release-\$version/install.sh; done"
