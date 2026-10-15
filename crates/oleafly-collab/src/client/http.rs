@@ -49,6 +49,10 @@ const SLOWEST_TRANSFER_BYTES_PER_SECOND: u64 = 32 * 1024;
 const STALLED_AFTER: Duration = Duration::from_secs(60);
 const NO_DEADLINE: Duration = Duration::from_secs(24 * 60 * 60);
 const LARGEST_PREALLOCATION: u64 = 64 * 1024 * 1024;
+// The most the app reads of a JSON answer, the same as for long-poll, and of
+// an error answer, which only needs room for the server's code and message.
+const JSON_ANSWER_BYTES: usize = 32 * 1024 * 1024;
+const ERROR_ANSWER_BYTES: usize = 64 * 1024;
 
 // Figures and snapshots get ten minutes, or the time a slow link needs for
 // their size when that is longer, so a large one on a slow link still fits.
@@ -797,7 +801,7 @@ pub(crate) fn build_http(
 pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabError> {
     let response = check_status(request.send().await.map_err(network_error)?).await?;
     let status = response.status().as_u16();
-    let body = response.bytes().await.map_err(network_error)?;
+    let body = body_within(response, JSON_ANSWER_BYTES).await?;
     serde_json::from_slice(&body).map_err(|error| CollabError::Api {
         status,
         code: "invalid_response".to_string(),
@@ -805,9 +809,37 @@ pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result
     })
 }
 
-// A download fails when no bytes move for a minute rather than at a fixed
-// deadline, so a large figure on a slow link finishes and a dead
-// connection is noticed in a minute instead of ten.
+// Reads an answer up to `limit` bytes, refusing a larger one as soon as its
+// length or the bytes so far show it.
+pub(crate) async fn body_within(
+    mut response: Response,
+    limit: usize,
+) -> Result<Vec<u8>, CollabError> {
+    let too_large = || {
+        CollabError::Network(format!(
+            "the server's answer is larger than {} MiB",
+            limit / (1024 * 1024)
+        ))
+    };
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(too_large());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(network_error)? {
+        if body.len() + chunk.len() > limit {
+            return Err(too_large());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+// A download fails when no bytes move for a minute, not at a deadline: a
+// large figure on a slow link finishes however long it takes while it
+// keeps moving, and a dead connection is noticed within a minute.
 async fn download(
     request: RequestBuilder,
 ) -> Result<(reqwest::header::HeaderMap, Vec<u8>), CollabError> {
@@ -817,17 +849,14 @@ async fn download(
         .map_err(network_error)?;
     let response = check_status(sent).await?;
     let headers = response.headers().clone();
-    let deadline = response.content_length().map(transfer_timeout);
-    let body = read_steadily(response, STALLED_AFTER, deadline).await?;
+    let body = read_steadily(response, STALLED_AFTER).await?;
     Ok((headers, body))
 }
 
 pub(crate) async fn read_steadily(
     mut response: Response,
     stalled_after: Duration,
-    deadline: Option<Duration>,
 ) -> Result<Vec<u8>, CollabError> {
-    let started = tokio::time::Instant::now();
     let expected = response
         .content_length()
         .unwrap_or(0)
@@ -842,12 +871,25 @@ pub(crate) async fn read_steadily(
             return Ok(body);
         };
         body.extend_from_slice(&chunk);
-        if deadline.is_some_and(|deadline| started.elapsed() > deadline) {
-            return Err(CollabError::Network(
-                "the transfer took too long".to_string(),
-            ));
-        }
     }
+}
+
+// An error answer is read for its code and message only: a small part, in
+// at most the time of an ordinary request, even when the request itself has
+// no deadline.
+async fn error_answer(mut response: Response) -> Vec<u8> {
+    let mut body = Vec::new();
+    let reading = async {
+        while let Ok(Some(chunk)) = response.chunk().await {
+            let room = ERROR_ANSWER_BYTES.saturating_sub(body.len());
+            body.extend_from_slice(&chunk[..chunk.len().min(room)]);
+            if body.len() >= ERROR_ANSWER_BYTES {
+                break;
+            }
+        }
+    };
+    let _ = tokio::time::timeout(REQUEST_TIMEOUT, reading).await;
+    body
 }
 
 async fn empty(request: RequestBuilder) -> Result<(), CollabError> {
@@ -878,7 +920,7 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
         });
     }
     let numeric = status.as_u16();
-    let body = response.bytes().await.unwrap_or_default();
+    let body = error_answer(response).await;
     if status == StatusCode::UNAUTHORIZED {
         return Err(match serde_json::from_slice::<ApiError>(&body) {
             Ok(error) => unauthorized(error),
@@ -1414,6 +1456,71 @@ mod tests {
         ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address")
     }
 
+    // Answers with `head`, then keeps sending filler and never finishes.
+    async fn endless(head: &'static str) -> ServerUrl {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut request = [0u8; 4096];
+                    let _ = stream.read(&mut request).await;
+                    if stream.write_all(head.as_bytes()).await.is_err() {
+                        return;
+                    }
+                    let filler = vec![b'x'; 16 * 1024];
+                    while stream.write_all(&filler).await.is_ok() {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                });
+            }
+        });
+        ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address")
+    }
+
+    #[tokio::test]
+    async fn an_error_answer_that_never_ends_is_read_only_in_part() {
+        let url =
+            endless("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 100000000\r\n\r\n")
+                .await;
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("client");
+        let response = client
+            .get(url.endpoint("blob"))
+            .timeout(NO_DEADLINE)
+            .send()
+            .await
+            .expect("response");
+        let checked = tokio::time::timeout(Duration::from_secs(10), check_status(response))
+            .await
+            .expect("the error answer was read in part");
+        assert!(
+            matches!(checked, Err(CollabError::Api { status: 500, ref code, .. }) if code == "http_500"),
+            "{checked:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_json_answer_larger_than_the_limit_is_refused_before_it_is_read() {
+        let url = endless(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 40000000\r\n\r\n",
+        )
+        .await;
+        let client = ServerClient::new(url).expect("client");
+        let answered = tokio::time::timeout(Duration::from_secs(10), client.capabilities())
+            .await
+            .expect("refused at once");
+        assert!(
+            matches!(answered, Err(CollabError::Network(ref message)) if message.contains("larger than 32 MiB")),
+            "{answered:?}"
+        );
+    }
+
     #[tokio::test]
     async fn a_download_that_keeps_moving_finishes_and_one_that_stops_fails_soon() {
         let client = reqwest::Client::builder()
@@ -1426,7 +1533,7 @@ mod tests {
             .send()
             .await
             .expect("response");
-        let body = read_steadily(response, Duration::from_millis(400), None)
+        let body = read_steadily(response, Duration::from_millis(400))
             .await
             .expect("a download that keeps moving finishes");
         assert_eq!(body.len(), 10_000);
@@ -1441,7 +1548,7 @@ mod tests {
             .await
             .expect("response");
         let started = tokio::time::Instant::now();
-        let read = read_steadily(response, Duration::from_millis(400), None).await;
+        let read = read_steadily(response, Duration::from_millis(400)).await;
         assert!(
             matches!(read, Err(CollabError::Network(ref message)) if message.contains("stopped moving")),
             "{read:?}"

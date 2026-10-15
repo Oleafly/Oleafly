@@ -98,7 +98,7 @@ async fn on_a_slow_uplink(pair: &Pair) -> (SharedProjectId, String, Side, Side) 
         .trim_start_matches("http://")
         .parse()
         .unwrap();
-    let slow = throttled_link(upstream, 32 * 1024).await;
+    let slow = throttled_link(upstream, Some(32 * 1024), None).await;
     let mut bob = side(bob_live, &main);
     let mut alice = side(alice_live, &main);
     start_with(
@@ -137,6 +137,42 @@ async fn a_large_change_on_a_slow_uplink_is_acknowledged_without_reconnecting() 
     })
     .await
     .expect("the change reached Alice");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_large_change_on_a_slow_downlink_arrives_without_reconnecting() {
+    let pair = two_people().await;
+    let (project, main, bob_live, alice_live) = shared(&pair).await;
+    let upstream = pair
+        ._server
+        .url()
+        .trim_start_matches("http://")
+        .parse()
+        .unwrap();
+    let slow = throttled_link(upstream, None, Some(128 * 1024)).await;
+    let mut bob = side(bob_live, &main);
+    let alice = side(alice_live, &main);
+    start_with(
+        &mut bob,
+        link_through(&pair, &pair.bob, project, slow),
+        impatient(),
+    );
+    until_status(&mut bob, LiveStatus::Online).await;
+    let body = noise(600 * 1024, 23);
+    let refs = lock(&alice.live)
+        .doc_mut()
+        .add_node(None, "refs.bib", NodeKind::Text, None, &body)
+        .unwrap();
+    let mut alice = alice;
+    start(&mut alice, link(&pair, &pair.alice, project));
+    tokio::time::timeout(Duration::from_secs(90), async {
+        while lock(&bob.live).doc().text(&refs).ok().as_deref() != Some(body.as_str()) {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the change reached Bob");
+    assert_eq!(dropped(&mut bob), 0, "Bob's connection dropped on the way");
 }
 
 #[tokio::test(flavor = "multi_thread")]

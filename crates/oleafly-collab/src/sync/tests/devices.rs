@@ -419,6 +419,11 @@ async fn a_change_that_builds_on_a_refused_one_is_fetched_again_from_the_servers
     until_text(&bob, &main, "abcde").await;
     assert!(!lock(&bob.live).missing_changes());
     assert_eq!(lock(&bob.live).last_seq(), 2);
+    assert_eq!(
+        dropped(&mut bob),
+        0,
+        "the reload showed the session offline"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

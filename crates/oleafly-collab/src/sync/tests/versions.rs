@@ -23,17 +23,87 @@ async fn head_of(stream: &TcpStream) -> Option<String> {
     None
 }
 
-async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, sockets: bool) {
+fn turned_away(code: &str) -> String {
+    crate::client::test_util::http_response(
+        "401 Unauthorized",
+        &[("Content-Type", "application/json")],
+        &serde_json::json!({ "code": code, "message": "Sign in to this server." }).to_string(),
+    )
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Upgrade {
+    Accepted,
+    Forbidden,
+    // A 401 with no Oleafly answer, as a proxy in front of the server sends.
+    ProxyRefuses,
+    // The server's own 401.
+    Refuses,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Refresh {
+    Missing,
+    Revoked,
+    Renewed,
+}
+
+#[derive(Clone, Copy)]
+struct Answers {
+    upgrade: Upgrade,
+    poll_refuses: bool,
+    poll_busy: bool,
+    refresh: Refresh,
+}
+
+const SOCKETS: Answers = Answers {
+    upgrade: Upgrade::Accepted,
+    poll_refuses: false,
+    poll_busy: false,
+    refresh: Refresh::Missing,
+};
+
+const NO_SOCKETS: Answers = Answers {
+    upgrade: Upgrade::Forbidden,
+    ..SOCKETS
+};
+
+// A server that knows nothing of this session: it turns away the upgrade
+// or the long-poll open, and a refresh, with its own 401.
+fn stranger(sockets: bool) -> Answers {
+    Answers {
+        upgrade: if sockets {
+            Upgrade::Refuses
+        } else {
+            Upgrade::Forbidden
+        },
+        poll_refuses: true,
+        poll_busy: false,
+        refresh: Refresh::Revoked,
+    }
+}
+
+async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, answers: Answers) {
     let Some(head) = head_of(&stream).await else {
         return;
     };
     if head.to_ascii_lowercase().contains("upgrade: websocket") {
-        if !sockets {
-            let _ = stream
-                .write_all(
-                    b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-                )
-                .await;
+        let refusal = match answers.upgrade {
+            Upgrade::Accepted => None,
+            Upgrade::Forbidden => Some(crate::client::test_util::http_response(
+                "403 Forbidden",
+                &[],
+                "",
+            )),
+            Upgrade::ProxyRefuses => Some(crate::client::test_util::http_response(
+                "401 Unauthorized",
+                &[("WWW-Authenticate", "Basic")],
+                "",
+            )),
+            Upgrade::Refuses => Some(turned_away("unauthorized")),
+        };
+        if let Some(refusal) = refusal {
+            let _ = stream.write_all(refusal.as_bytes()).await;
             return;
         }
         let Ok(mut socket) = tokio_tungstenite::accept_async(stream).await else {
@@ -66,6 +136,41 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, so
         return;
     }
     let path = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
+    if path.contains("/poll") && answers.poll_busy {
+        let busy = crate::client::test_util::http_response(
+            "503 Service Unavailable",
+            &[("Content-Type", "application/json")],
+            r#"{"code":"busy","message":"Try again later."}"#,
+        );
+        let _ = stream.write_all(busy.as_bytes()).await;
+        return;
+    }
+    if path.contains("/poll") && answers.poll_refuses {
+        let _ = stream
+            .write_all(turned_away("unauthorized").as_bytes())
+            .await;
+        return;
+    }
+    if path.starts_with("/auth/refresh") {
+        let reply = match answers.refresh {
+            Refresh::Missing => crate::client::test_util::http_response("404 Not Found", &[], ""),
+            Refresh::Revoked => turned_away("revoked"),
+            Refresh::Renewed => crate::client::test_util::http_response(
+                "200 OK",
+                &[("Content-Type", "application/json")],
+                &serde_json::json!({
+                    "account_id": AccountId::new_v7(),
+                    "device_id": DeviceId::new_v7(),
+                    "access_token": "renewed",
+                    "access_expires_at": crate::client::now_ms() + 3_600_000,
+                    "refresh_token": "renewed",
+                })
+                .to_string(),
+            ),
+        };
+        let _ = stream.write_all(reply.as_bytes()).await;
+        return;
+    }
     let body = if path.starts_with("/.well-known/oleafly-server") {
         manifest
     } else if path.starts_with("/auth/challenge") {
@@ -96,7 +201,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, so
 async fn answering_at_the_address(
     server_id: ServerId,
     protocol: ProtocolRange,
-    sockets: bool,
+    answers: Answers,
 ) -> crate::ServerUrl {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -105,7 +210,7 @@ async fn answering_at_the_address(
     let manifest = serde_json::to_string(&manifest).unwrap();
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
-            tokio::spawn(answer(stream, manifest.clone(), server_id, sockets));
+            tokio::spawn(answer(stream, manifest.clone(), server_id, answers));
         }
     });
     crate::ServerUrl::parse(&format!("http://127.0.0.1:{port}")).unwrap()
@@ -144,16 +249,18 @@ async fn ending_against(
     project_server: ServerId,
     answering: ServerId,
     protocol: ProtocolRange,
-    sockets: bool,
-) -> (Vec<LiveEvent>, Side) {
-    let url = answering_at_the_address(answering, protocol, sockets).await;
+    answers: Answers,
+) -> (Vec<LiveEvent>, Side, Arc<SessionManager>) {
+    let url = answering_at_the_address(answering, protocol, answers).await;
     let mut doc = ProjectDoc::create().unwrap();
     let main = doc
         .add_node(None, "main.tex", NodeKind::Text, None, "abc")
         .unwrap();
     let mut side = side(LiveProject::new(doc, 3, ProjectRole::Editor), &main);
     lock(&side.live).local_text(&main, "abc kept").unwrap();
-    start_with(&mut side, signed_in(project_server, url), quick());
+    let link = signed_in(project_server, url);
+    let sessions = Arc::clone(&link.sessions);
+    start_with(&mut side, link, quick());
     let mut heard = Vec::new();
     tokio::time::timeout(Duration::from_secs(20), async {
         while let Some(event) = side.events.recv().await {
@@ -166,7 +273,7 @@ async fn ending_against(
     })
     .await
     .unwrap_or_else(|_| panic!("the session never ended, it heard {heard:?}"));
-    (heard, side)
+    (heard, side, sessions)
 }
 
 fn offline(heard: &[LiveEvent]) -> usize {
@@ -179,8 +286,8 @@ fn offline(heard: &[LiveEvent]) -> usize {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_server_that_speaks_only_a_newer_protocol_ends_the_session_once_and_keeps_the_changes() {
     let server = ServerId::new_v7();
-    let (heard, side) =
-        ending_against(server, server, ProtocolRange { min: 2, max: 3 }, true).await;
+    let (heard, side, _) =
+        ending_against(server, server, ProtocolRange { min: 2, max: 3 }, SOCKETS).await;
     assert_eq!(
         heard.last(),
         Some(&LiveEvent::Status(LiveStatus::Ended {
@@ -194,8 +301,8 @@ async fn a_server_that_speaks_only_a_newer_protocol_ends_the_session_once_and_ke
 #[tokio::test(flavor = "multi_thread")]
 async fn a_server_that_speaks_only_an_older_protocol_says_the_server_needs_an_update() {
     let server = ServerId::new_v7();
-    let (heard, _side) =
-        ending_against(server, server, ProtocolRange { min: 0, max: 0 }, true).await;
+    let (heard, _side, _) =
+        ending_against(server, server, ProtocolRange { min: 0, max: 0 }, SOCKETS).await;
     assert_eq!(
         heard.last(),
         Some(&LiveEvent::Status(LiveStatus::Ended {
@@ -207,11 +314,11 @@ async fn a_server_that_speaks_only_an_older_protocol_says_the_server_needs_an_up
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_different_server_at_the_address_ends_the_session() {
-    let (heard, side) = ending_against(
+    let (heard, side, _) = ending_against(
         ServerId::new_v7(),
         ServerId::new_v7(),
         ProtocolRange { min: 1, max: 1 },
-        true,
+        SOCKETS,
     )
     .await;
     assert_eq!(
@@ -227,12 +334,120 @@ async fn a_different_server_at_the_address_ends_the_session() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_version_refusal_over_long_poll_ends_the_session_the_same_way() {
     let server = ServerId::new_v7();
-    let (heard, _side) =
-        ending_against(server, server, ProtocolRange { min: 2, max: 3 }, false).await;
+    let (heard, _side, _) =
+        ending_against(server, server, ProtocolRange { min: 2, max: 3 }, NO_SOCKETS).await;
     assert_eq!(
         heard.last(),
         Some(&LiveEvent::Status(LiveStatus::Ended {
             reason: EndReason::ClientTooOld
         }))
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_new_server_at_the_address_that_turns_the_session_away_ends_it_as_changed_and_keeps_it() {
+    for sockets in [true, false] {
+        let project_server = ServerId::new_v7();
+        let (heard, side, sessions) = ending_against(
+            project_server,
+            ServerId::new_v7(),
+            ProtocolRange { min: 1, max: 1 },
+            stranger(sockets),
+        )
+        .await;
+        assert_eq!(
+            heard.last(),
+            Some(&LiveEvent::Status(LiveStatus::Ended {
+                reason: EndReason::ServerChanged
+            })),
+            "sockets {sockets}: {heard:?}"
+        );
+        assert!(
+            sessions.tokens(project_server).unwrap().is_some(),
+            "sockets {sockets}"
+        );
+        assert!(lock(&side.live).has_unsent());
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_server_that_turns_away_a_renewed_session_signs_out_the_same_way_on_either_transport() {
+    for sockets in [true, false] {
+        let server = ServerId::new_v7();
+        let answers = Answers {
+            refresh: Refresh::Renewed,
+            ..stranger(sockets)
+        };
+        let (heard, _side, _) =
+            ending_against(server, server, ProtocolRange { min: 1, max: 1 }, answers).await;
+        assert_eq!(
+            heard.last(),
+            Some(&LiveEvent::Status(LiveStatus::Ended {
+                reason: EndReason::SignedOut
+            })),
+            "sockets {sockets}: {heard:?}"
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_401_from_a_proxy_on_the_upgrade_never_renews_the_session() {
+    let server = ServerId::new_v7();
+    let answers = Answers {
+        upgrade: Upgrade::ProxyRefuses,
+        refresh: Refresh::Renewed,
+        ..SOCKETS
+    };
+    let (heard, _side, sessions) =
+        ending_against(server, server, ProtocolRange { min: 2, max: 3 }, answers).await;
+    assert_eq!(
+        heard.last(),
+        Some(&LiveEvent::Status(LiveStatus::Ended {
+            reason: EndReason::ClientTooOld
+        })),
+        "{heard:?}"
+    );
+    assert_eq!(
+        sessions
+            .tokens(server)
+            .unwrap()
+            .map(|tokens| tokens.refresh_token),
+        Some("refresh".to_owned())
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_busy_server_on_long_poll_gets_the_long_waits_too() {
+    let server = ServerId::new_v7();
+    let url = answering_at_the_address(
+        server,
+        ProtocolRange { min: 1, max: 1 },
+        Answers {
+            poll_busy: true,
+            ..NO_SOCKETS
+        },
+    )
+    .await;
+    let mut doc = ProjectDoc::create().unwrap();
+    let main = doc
+        .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+        .unwrap();
+    let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
+    start_with(&mut side, signed_in(server, url), quick());
+    let mut waits = Vec::new();
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while let Some(event) = side.events.recv().await {
+            if let LiveEvent::Status(LiveStatus::Offline { retry_in_ms }) = event {
+                waits.push(retry_in_ms);
+                if waits.len() == 2 {
+                    return;
+                }
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("only these waits came: {waits:?}"));
+    assert!(waits[0] <= 500, "{waits:?}");
+    assert!((5_000..=10_000).contains(&waits[1]), "{waits:?}");
+    stopped(&mut side).await;
 }

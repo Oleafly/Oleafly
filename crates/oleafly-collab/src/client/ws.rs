@@ -34,7 +34,92 @@ fn socket_config() -> WebSocketConfig {
         .max_frame_size(Some(MAX_MESSAGE_BYTES))
 }
 
-pub(crate) type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+pub(crate) type Socket = WebSocketStream<MaybeTlsStream<Counted>>;
+
+fn clock() -> &'static std::time::Instant {
+    static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    STARTED.get_or_init(std::time::Instant::now)
+}
+
+fn now_ticks() -> u64 {
+    u64::try_from(clock().elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
+// The connection under the socket, noting when bytes last came in. A large
+// frame on a slow downlink takes longer than the quiet window to arrive
+// whole, and the bytes on their way show the connection is alive.
+pub(crate) struct Counted {
+    stream: TcpStream,
+    heard: Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl Counted {
+    fn new(stream: TcpStream) -> Counted {
+        Counted {
+            stream,
+            heard: Arc::new(std::sync::atomic::AtomicU64::new(now_ticks())),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct Heard(Arc<std::sync::atomic::AtomicU64>);
+
+impl Heard {
+    pub(crate) fn of(socket: &Socket) -> Option<Heard> {
+        let counted = match socket.get_ref() {
+            MaybeTlsStream::Rustls(tls) => tls.get_ref().0,
+            MaybeTlsStream::Plain(plain) => plain,
+            _ => return None,
+        };
+        Some(Heard(Arc::clone(&counted.heard)))
+    }
+
+    pub(crate) fn silent_for(&self) -> Duration {
+        let last = self.0.load(std::sync::atomic::Ordering::Relaxed);
+        Duration::from_millis(now_ticks().saturating_sub(last))
+    }
+}
+
+impl tokio::io::AsyncRead for Counted {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+        buffer: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        let before = buffer.filled().len();
+        let read = std::pin::Pin::new(&mut self.stream).poll_read(context, buffer);
+        if buffer.filled().len() > before {
+            self.heard
+                .store(now_ticks(), std::sync::atomic::Ordering::Relaxed);
+        }
+        read
+    }
+}
+
+impl tokio::io::AsyncWrite for Counted {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+        bytes: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::pin::Pin::new(&mut self.stream).poll_write(context, bytes)
+    }
+
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.stream).poll_flush(context)
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.stream).poll_shutdown(context)
+    }
+}
 
 pub struct SocketConnection {
     socket: Socket,
@@ -132,7 +217,7 @@ pub(crate) async fn open_socket(
             .map_err(|_| CollabError::Unauthorized)?;
         request.headers_mut().insert(AUTHORIZATION, bearer);
     }
-    let stream = connect_tcp(&target).await?;
+    let stream = Counted::new(connect_tcp(&target).await?);
     let connector = if target.scheme() == "wss" {
         Connector::Rustls(tls_config()?)
     } else {
@@ -201,26 +286,42 @@ fn interleaved(addresses: Vec<SocketAddr>) -> Vec<SocketAddr> {
     ordered
 }
 
+// Each address gets 250 ms before the next one starts, as in RFC 8305, and
+// the next one starts at once when an attempt fails, so an address with no
+// route doesn't cost its whole slot.
 async fn race(addresses: Vec<SocketAddr>) -> std::io::Result<TcpStream> {
-    if addresses.is_empty() {
-        return Err(std::io::Error::other(
-            "the server's address did not resolve",
-        ));
+    let mut waiting = interleaved(addresses).into_iter();
+    let mut trying = futures_util::stream::FuturesUnordered::new();
+    let mut failed = None;
+    loop {
+        if trying.is_empty() {
+            match waiting.next() {
+                Some(address) => trying.push(TcpStream::connect(address)),
+                None => {
+                    return Err(failed.unwrap_or_else(|| {
+                        std::io::Error::other("the server's address did not resolve")
+                    }))
+                }
+            }
+        }
+        tokio::select! {
+            finished = trying.next() => match finished {
+                Some(Ok(stream)) => return Ok(stream),
+                Some(Err(error)) => {
+                    failed = Some(error);
+                    if let Some(address) = waiting.next() {
+                        trying.push(TcpStream::connect(address));
+                    }
+                }
+                None => {}
+            },
+            () = tokio::time::sleep(NEXT_ADDRESS_AFTER), if !waiting.as_slice().is_empty() => {
+                if let Some(address) = waiting.next() {
+                    trying.push(TcpStream::connect(address));
+                }
+            }
+        }
     }
-    let attempts = interleaved(addresses)
-        .into_iter()
-        .enumerate()
-        .map(|(index, address)| {
-            Box::pin(async move {
-                let wait =
-                    NEXT_ADDRESS_AFTER.saturating_mul(u32::try_from(index).unwrap_or(u32::MAX));
-                tokio::time::sleep(wait).await;
-                TcpStream::connect(address).await
-            })
-        });
-    futures_util::future::select_ok(attempts)
-        .await
-        .map(|(stream, _)| stream)
 }
 
 async fn connect_host(host: &str, port: u16) -> std::io::Result<TcpStream> {
@@ -364,6 +465,7 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
                 FrameErrorCode::CommentsOff => (403, "comments_off"),
                 FrameErrorCode::NotFound => (404, "not_found"),
                 FrameErrorCode::TooLarge => (413, "too_large"),
+                FrameErrorCode::ProjectTooLarge => (413, "project_too_large"),
                 FrameErrorCode::Internal
                 | FrameErrorCode::Unauthorized
                 | FrameErrorCode::Unknown => (500, "internal"),
@@ -378,6 +480,10 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
     }
 }
 
+// The server's own 401 says why in a JSON body. tungstenite keeps only the
+// bytes that arrived with the headers, so a body sent after them reads as
+// none: a 401 that announces JSON counts as the server's own even when its
+// body didn't come with it.
 fn ws_error(error: WsError) -> CollabError {
     match error {
         WsError::Http(response) => {
@@ -386,8 +492,14 @@ fn ws_error(error: WsError) -> CollabError {
                 .body()
                 .as_deref()
                 .and_then(|body| serde_json::from_slice::<ApiError>(body).ok());
+            let json = response
+                .headers()
+                .get(tokio_tungstenite::tungstenite::http::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.starts_with("application/json"));
             match said {
                 Some(error) if status == 401 => super::http::unauthorized(error),
+                None if status == 401 && json => CollabError::Unauthorized,
                 _ => CollabError::Api {
                     status,
                     code: "websocket_refused".to_string(),
@@ -563,6 +675,15 @@ mod tests {
             connect(bare).await,
             Err(CollabError::Api { status: 401, ref code, .. }) if code == "websocket_refused"
         ));
+        let late_body = UpgradeFront::start(
+            &signed.url,
+            Some(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: 59\r\n\r\n"
+                    .to_owned(),
+            ),
+        )
+        .await;
+        assert_eq!(connect(late_body).await, Err(CollabError::Unauthorized));
     }
 
     async fn sending(message: String) -> ServerUrl {
@@ -645,6 +766,31 @@ mod tests {
             .expect("the working address answered");
         assert_eq!(stream.peer_addr().expect("peer"), working);
         assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[tokio::test]
+    async fn an_address_that_turns_the_connection_away_lets_the_next_one_start_at_once() {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let working = listener.local_addr().expect("address");
+        let closed = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let refusing = closed.local_addr().expect("address");
+        drop(closed);
+        let started = tokio::time::Instant::now();
+        let stream = race(vec![refusing, working])
+            .await
+            .expect("the working address answered");
+        assert_eq!(stream.peer_addr().expect("peer"), working);
+        assert!(
+            started.elapsed() < NEXT_ADDRESS_AFTER,
+            "{:?}",
+            started.elapsed()
+        );
+        assert!(race(vec![refusing]).await.is_err());
+        assert!(race(Vec::new()).await.is_err());
     }
 
     async fn connect_proxy(
