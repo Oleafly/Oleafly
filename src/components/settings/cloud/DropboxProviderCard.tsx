@@ -14,6 +14,7 @@ import { InfoHint } from "@/components/ui/info-hint";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
+import { cn } from "@/lib/utils";
 import { cloudErrorCode, useCloudStore } from "@/store/cloud";
 import { Files, HardDriveUpload, History, Settings2, ShieldCheck, Unplug } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
@@ -294,7 +295,7 @@ function AccountView() {
       data-testid="cloud-provider-dropbox"
       className="overflow-hidden rounded-xl border bg-card"
     >
-      <header className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
+      <header className={cn("flex flex-wrap items-center gap-x-6 gap-y-3 p-4", showDetails && "min-h-22")}>
         <ProviderIdentity titleId={titleId} badge={badge} email={state.email ?? state.lastEmail} />
         {showDetails ? <StorageRing space={space} /> : null}
       </header>
