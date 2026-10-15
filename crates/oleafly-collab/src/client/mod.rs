@@ -26,7 +26,7 @@ pub use self::code_sign_in::{
 pub use self::diagnostics::{
     test_connection, test_connection_pinned, CheckId, CheckStatus, ConnectionCheck,
 };
-pub use self::http::{ServerClient, SnapshotDownload, SnapshotSignature};
+pub use self::http::{ServerClient, SnapshotDownload, SnapshotSignature, TransferProgress};
 pub(crate) use self::poll::{
     keep_polling, post_outbox, Outbox, PollChannel, PollOpen, PollRequest, PollTiming, Polled,
 };

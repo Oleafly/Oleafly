@@ -320,6 +320,11 @@ async fn online(
             }
             command = commands.recv() => {
                 burst = 0;
+                // A desktop thread that panicked in the project marks it
+                // damaged, and the session ends as failed.
+                if lock(project).damaged() {
+                    return retry;
+                }
                 match command {
                     Some(LiveCommand::Flush) => {
                         if flush(link, project, events, wire).await.is_err() {
@@ -350,6 +355,9 @@ async fn online(
             Some(()) = found.recv() => return Exit::Switch,
             _ = ping.tick() => {
                 burst = 0;
+                if lock(project).damaged() {
+                    return retry;
+                }
                 let flying = lock(project).in_flight();
                 let in_flight = flying.map(|(batch, bytes, sent)| InFlight {
                     bytes,

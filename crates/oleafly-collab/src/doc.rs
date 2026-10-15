@@ -73,6 +73,12 @@ pub(crate) fn blob_meta(bytes: &[u8], check_checksum: bool) -> Meta {
 // changes turned away for that reason are not blamed for it.
 pub(crate) const MOST_LEFT_DOCUMENTS: usize = 8;
 
+// A scratch copy left in memory per change that made Loro panic in it. At
+// this many for one open project it takes no more large changes, and the
+// live session ends, which bounds what a member's changes can cost every
+// other member.
+pub(crate) const MOST_SCRATCH_FAILURES: usize = 3;
+
 #[cfg(not(test))]
 static LEFT_DOCUMENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
@@ -92,11 +98,37 @@ pub(crate) fn leave_in_memory<T>(broken: T) {
 }
 
 pub(crate) fn engine_budget_spent() -> bool {
+    left_documents() >= MOST_LEFT_DOCUMENTS
+}
+
+pub(crate) fn left_documents() -> usize {
     #[cfg(not(test))]
     let left = LEFT_DOCUMENTS.load(std::sync::atomic::Ordering::Relaxed);
     #[cfg(test)]
     let left = LEFT_DOCUMENTS.with(std::cell::Cell::get);
-    left >= MOST_LEFT_DOCUMENTS
+    left
+}
+
+// Fills a fresh Loro document with what may make Loro panic: bytes from
+// another computer, or a copy of the project. The document is made here,
+// outside the panic guard, and only lent to `fill`, so a panic never drops
+// it while unwinding: Loro's lock is poisoned then, and the drop would panic
+// again, which aborts the app. A document Loro panicked in is left in
+// memory. `fill` hands out clones of it where it needs one of its own.
+pub(crate) fn filled<T>(
+    fill: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
+) -> Result<(LoroDoc, T), CollabError> {
+    let doc = LoroDoc::new();
+    #[cfg(test)]
+    failpoint::poison_if_asked(&doc);
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fill(&doc))) {
+        Ok(Ok(value)) => Ok((doc, value)),
+        Ok(Err(error)) => Err(error),
+        Err(_) => {
+            leave_in_memory(doc);
+            Err(engine_failed())
+        }
+    }
 }
 
 // Tests mark a payload so that taking it in panics, the way a malformed
@@ -111,7 +143,9 @@ pub(crate) mod failpoint {
         Decode,
         Document,
         Scratch,
+        ScratchExport,
         Applied,
+        Local,
     }
 
     static ARMED: Mutex<Vec<(Vec<u8>, At)>> = Mutex::new(Vec::new());
@@ -135,6 +169,26 @@ pub(crate) mod failpoint {
         FORKS.with(std::cell::Cell::get)
     }
 
+    thread_local! {
+        static POISON: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    // The next fresh document panics inside Loro while Loro holds its lock,
+    // the way a real engine panic leaves it: the lock is poisoned, and
+    // dropping the document would panic again.
+    pub(crate) fn poison_next() {
+        POISON.with(|poison| poison.set(true));
+    }
+
+    pub(crate) fn poison_if_asked(doc: &loro::LoroDoc) {
+        if POISON.with(|poison| poison.replace(false)) {
+            doc.subscribe_root(std::sync::Arc::new(|_| {
+                panic!("a test made Loro panic while it held its lock")
+            }))
+            .detach();
+        }
+    }
+
     pub(crate) fn hit(payload: &[u8], at: At) {
         let armed = ARMED
             .lock()
@@ -145,6 +199,12 @@ pub(crate) mod failpoint {
             panic!("a test made taking in this change panic");
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Source {
+    Arriving,
+    Saved,
 }
 
 struct Staged {
@@ -423,6 +483,43 @@ impl ProjectDoc {
         ProjectDoc::wrap(doc)
     }
 
+    // For bytes from elsewhere, such as the server's snapshot a joiner
+    // starts from. A panic in Loro is contained (see `filled`) and reads as
+    // the engine failing on them.
+    pub fn load_contained(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
+        if engine_budget_spent() {
+            return Err(engine_spent());
+        }
+        let peer = fresh_peer()?;
+        let (_, loaded) = filled(|doc| {
+            doc.set_peer_id(peer).map_err(doc_error)?;
+            doc.import(bytes).map_err(doc_error)?;
+            ProjectDoc::wrap(doc.clone())
+        })?;
+        Ok(loaded)
+    }
+
+    // A copy of the project as it was at `frontiers`, made the way
+    // `LoroDoc::fork_at` makes one but contained (see `filled`).
+    fn copy_at(
+        &self,
+        frontiers: &loro::Frontiers,
+        then: impl FnOnce(&LoroDoc) -> Result<(), CollabError>,
+    ) -> Result<ProjectDoc, CollabError> {
+        let bytes = self
+            .doc
+            .export(ExportMode::SnapshotAt {
+                version: std::borrow::Cow::Borrowed(frontiers),
+            })
+            .map_err(doc_error)?;
+        let (_, copy) = filled(|copy| {
+            copy.import(&bytes).map_err(doc_error)?;
+            then(copy)?;
+            ProjectDoc::wrap(copy.clone())
+        })?;
+        Ok(copy)
+    }
+
     fn wrap(doc: LoroDoc) -> Result<ProjectDoc, CollabError> {
         let tree = doc.get_tree(TREE);
         tree.enable_fractional_index(0);
@@ -452,7 +549,7 @@ impl ProjectDoc {
             ));
         }
         let frontiers = self.doc.vv_to_frontiers(version);
-        ProjectDoc::wrap(self.doc.fork_at(&frontiers).map_err(doc_error)?)
+        self.copy_at(&frontiers, |_| Ok(()))
     }
 
     pub fn without_comment_changes_after(
@@ -477,11 +574,13 @@ impl ProjectDoc {
             kept.push(container.clone(), change.clone())
                 .map_err(|_| CollabError::Corrupt("a change was listed twice".to_owned()))?;
         }
-        let fork = self.doc.fork_at(&from).map_err(doc_error)?;
-        fork.set_peer_id(fresh_peer()?).map_err(doc_error)?;
-        fork.apply_diff(kept).map_err(doc_error)?;
-        fork.commit();
-        let mut rebuilt = ProjectDoc::wrap(fork)?;
+        let peer = fresh_peer()?;
+        let mut rebuilt = self.copy_at(&from, |copy| {
+            copy.set_peer_id(peer).map_err(doc_error)?;
+            copy.apply_diff(kept).map_err(doc_error)?;
+            copy.commit();
+            Ok(())
+        })?;
         if !self.same_files_as(&rebuilt)? {
             return Err(CollabError::Corrupt(
                 "the project changed while comments were taken out of it".to_owned(),
@@ -961,9 +1060,26 @@ impl ProjectDoc {
             .map_err(|failure| failure.error)
     }
 
+    // Records from this computer's own change log went into the document
+    // once already, so their scratch copies don't count against the caps.
+    // Turning them away would read as a damaged log, and the next save
+    // would write the document without them.
+    pub(crate) fn import_saved(&mut self, records: &[&[u8]]) -> Result<Imported, CollabError> {
+        self.import_from(records, Source::Saved)
+            .map_err(|failure| failure.error)
+    }
+
     pub(crate) fn import_keeping(
         &mut self,
         payloads: &[&[u8]],
+    ) -> Result<Imported, Box<ImportFailure>> {
+        self.import_from(payloads, Source::Arriving)
+    }
+
+    fn import_from(
+        &mut self,
+        payloads: &[&[u8]],
+        source: Source,
     ) -> Result<Imported, Box<ImportFailure>> {
         let mut imported = Imported::default();
         let mut together: Vec<Vec<u8>> = Vec::new();
@@ -979,7 +1095,7 @@ impl ProjectDoc {
                 failed = Some(error);
                 break;
             }
-            if let Err(error) = self.import_one(payload, &mut imported) {
+            if let Err(error) = self.import_one(payload, &mut imported, source) {
                 if error == engine_failed() {
                     panicked = Some(index);
                 }
@@ -1059,9 +1175,14 @@ impl ProjectDoc {
         Ok(())
     }
 
-    fn import_one(&mut self, bytes: &[u8], imported: &mut Imported) -> Result<(), CollabError> {
+    fn import_one(
+        &mut self,
+        bytes: &[u8],
+        imported: &mut Imported,
+        source: Source,
+    ) -> Result<(), CollabError> {
         let before = self.doc.oplog_vv();
-        let (status, changes) = match self.staged(bytes)? {
+        let (status, changes) = match self.staged(bytes, source)? {
             Some(staged) => {
                 let (done, changes) = self.recording(|doc| {
                     #[cfg(test)]
@@ -1127,37 +1248,48 @@ impl ProjectDoc {
     }
 
     // A large change is tried in a scratch copy first. If Loro panics there,
-    // the copy is left in memory (see `leave_in_memory`) and the change
-    // counts as unreadable: the document itself never sees it.
-    fn staged(&mut self, bytes: &[u8]) -> Result<Option<Staged>, CollabError> {
+    // while it takes the change in or while the pieces are read back out,
+    // the copy is left in memory (see `filled`) and the change counts as
+    // unreadable: the document itself never sees it. The copy is made from
+    // the project's own snapshot, so a panic while that is written is the
+    // document's, not the change's, and unwinds to the guard around it.
+    fn staged(&mut self, bytes: &[u8], source: Source) -> Result<Option<Staged>, CollabError> {
         if self.doc.oplog_vv().is_empty()
             || self.continues_its_own_head(bytes)
             || self.holds_all_of(bytes)
         {
             return Ok(None);
         }
-        if engine_budget_spent() {
+        if source == Source::Arriving
+            && (engine_budget_spent() || self.scratch_failures >= MOST_SCRATCH_FAILURES)
+        {
             return Err(engine_spent());
         }
         #[cfg(test)]
         failpoint::forked();
-        let scratch = self.doc.fork();
-        scratch.detach();
-        let tried = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let snapshot = self.doc.export(ExportMode::Snapshot).map_err(doc_error)?;
+        let known = self.doc.oplog_vv();
+        let tried = filled(|scratch| {
+            if scratch.import(&snapshot).is_err() {
+                return Ok(None);
+            }
+            scratch.detach();
             #[cfg(test)]
             failpoint::hit(bytes, failpoint::At::Scratch);
-            scratch.import(bytes)
-        }));
-        let Ok(tried) = tried else {
-            leave_in_memory(scratch);
-            self.scratch_failures += 1;
-            return Err(engine_failed());
-        };
-        Ok(Self::staged_from(
-            &self.doc.oplog_vv(),
-            &scratch,
-            tried.ok(),
-        ))
+            let status = scratch.import(bytes).ok();
+            #[cfg(test)]
+            failpoint::hit(bytes, failpoint::At::ScratchExport);
+            Ok(Self::staged_from(&known, scratch, status))
+        });
+        match tried {
+            Ok((_, staged)) => Ok(staged),
+            Err(error) => {
+                if error == engine_failed() {
+                    self.scratch_failures += 1;
+                }
+                Err(error)
+            }
+        }
     }
 
     fn staged_from(
