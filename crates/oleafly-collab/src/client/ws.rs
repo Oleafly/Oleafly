@@ -378,6 +378,10 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
     }
 }
 
+// The server's own 401 says why in a JSON body. tungstenite keeps only the
+// bytes that arrived with the headers, so a body sent after them reads as
+// none: a 401 that announces JSON counts as the server's own even when its
+// body didn't come with it.
 fn ws_error(error: WsError) -> CollabError {
     match error {
         WsError::Http(response) => {
@@ -386,8 +390,14 @@ fn ws_error(error: WsError) -> CollabError {
                 .body()
                 .as_deref()
                 .and_then(|body| serde_json::from_slice::<ApiError>(body).ok());
+            let json = response
+                .headers()
+                .get(tokio_tungstenite::tungstenite::http::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.starts_with("application/json"));
             match said {
                 Some(error) if status == 401 => super::http::unauthorized(error),
+                None if status == 401 && json => CollabError::Unauthorized,
                 _ => CollabError::Api {
                     status,
                     code: "websocket_refused".to_string(),
@@ -563,6 +573,15 @@ mod tests {
             connect(bare).await,
             Err(CollabError::Api { status: 401, ref code, .. }) if code == "websocket_refused"
         ));
+        let late_body = UpgradeFront::start(
+            &signed.url,
+            Some(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: 59\r\n\r\n"
+                    .to_owned(),
+            ),
+        )
+        .await;
+        assert_eq!(connect(late_body).await, Err(CollabError::Unauthorized));
     }
 
     async fn sending(message: String) -> ServerUrl {

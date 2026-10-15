@@ -20,6 +20,8 @@ const POLL_QUEUE: usize = 64;
 const SOCKET_QUEUE: usize = 64;
 const CLOSE_WITHIN: Duration = Duration::from_secs(2);
 
+const MANIFEST_WITHIN: Duration = Duration::from_secs(10);
+
 pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     let access = link
         .sessions
@@ -34,11 +36,8 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     )
     .await
     {
-        Err(CollabError::Unauthorized | CollabError::Api { status: 401, .. }) => {
-            let access = link
-                .sessions
-                .force_refresh(link.server_id, &link.client)
-                .await?;
+        Err(CollabError::Unauthorized) => {
+            let access = renewed_after_refusal(link).await?;
             connect_socket(
                 link.client.url(),
                 link.server_id,
@@ -53,13 +52,27 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     }
 }
 
-fn refused_after_refresh(error: CollabError) -> CollabError {
-    match error {
-        CollabError::Unauthorized => {
-            CollabError::Network("the server turned away a session it had just renewed".to_owned())
+// The server's own 401 on the upgrade or on opening long-poll. A server
+// reinstalled with a fresh database, or another server now at the address,
+// knows nothing of this session either, and asking it to renew the session
+// would throw away one that is still good. So the manifest is checked
+// first, as for a refused protocol version. Both transports then renew
+// once and try once more, and a 401 after that means the session is gone.
+// A 401 without the server's own answer, from a proxy, renews nothing.
+async fn renewed_after_refusal(link: &LiveLink) -> Result<String, CollabError> {
+    if let Ok(Ok(manifest)) =
+        tokio::time::timeout(MANIFEST_WITHIN, link.client.capabilities()).await
+    {
+        if manifest.server_id != link.server_id {
+            return Err(CollabError::ServerChanged {
+                expected: link.server_id,
+                found: manifest.server_id,
+            });
         }
-        other => other,
     }
+    link.sessions
+        .force_refresh(link.server_id, &link.client)
+        .await
 }
 
 pub(super) enum Wire {
@@ -243,13 +256,8 @@ impl PollWire {
             .await?;
         let opened = match self.open_with(&access, since).await {
             Err(CollabError::Unauthorized) => {
-                let access = link
-                    .sessions
-                    .force_refresh(link.server_id, &link.client)
-                    .await?;
-                self.open_with(&access, since)
-                    .await
-                    .map_err(refused_after_refresh)?
+                let access = renewed_after_refusal(link).await?;
+                self.open_with(&access, since).await?
             }
             other => other?,
         };

@@ -117,6 +117,7 @@ async fn serve_wire(
         Ok(Ok(subscribed)) => subscribed,
         Ok(Err(reason)) => return Exit::End(reason),
         Err(CollabError::Unauthorized) => return Exit::End(EndReason::SignedOut),
+        Err(CollabError::ServerChanged { .. }) => return Exit::End(EndReason::ServerChanged),
         Err(CollabError::SessionEnded(reason)) => {
             return Exit::End(EndReason::of_session(Some(reason)))
         }
