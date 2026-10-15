@@ -45,7 +45,7 @@ pub struct SessionManager {
     key: Arc<DeviceKey>,
     server_keys: Mutex<HashMap<ServerId, Arc<DeviceKey>>>,
     refreshing: Mutex<HashMap<ServerId, Arc<tokio::sync::Mutex<()>>>>,
-    server_clocks: Mutex<HashMap<ServerId, i64>>,
+    server_clocks: Arc<Mutex<HashMap<ServerId, i64>>>,
 }
 
 impl SessionManager {
@@ -55,7 +55,7 @@ impl SessionManager {
             key,
             server_keys: Mutex::new(HashMap::new()),
             refreshing: Mutex::new(HashMap::new()),
-            server_clocks: Mutex::new(HashMap::new()),
+            server_clocks: Arc::default(),
         }
     }
 
@@ -107,13 +107,6 @@ impl SessionManager {
         now_ms() + offset
     }
 
-    fn learn_server_clock(&self, server: ServerId, server_ms: i64) {
-        self.server_clocks
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(server, server_ms - now_ms());
-    }
-
     pub fn store(&self, server: ServerId, tokens: &SessionTokens) -> Result<(), CollabError> {
         let json = serde_json::to_string(tokens)
             .map_err(|error| CollabError::Corrupt(error.to_string()))?;
@@ -144,25 +137,6 @@ impl SessionManager {
             serde_json::from_str(&json).map_err(|error| CollabError::Corrupt(error.to_string()))
         })
         .transpose()
-    }
-
-    // Writes the stored session off the async workers, for the same reason.
-    async fn kept(
-        &self,
-        server: ServerId,
-        tokens: Option<SessionTokens>,
-    ) -> Result<(), CollabError> {
-        let secrets = Arc::clone(&self.secrets);
-        tokio::task::spawn_blocking(move || match tokens {
-            Some(tokens) => {
-                let json = serde_json::to_string(&tokens)
-                    .map_err(|error| CollabError::Corrupt(error.to_string()))?;
-                secrets.set(&session_account(server), &json)
-            }
-            None => secrets.remove(&session_account(server)),
-        })
-        .await
-        .map_err(|error| CollabError::Secret(error.to_string()))?
     }
 
     fn fresh(&self, server: ServerId, tokens: &SessionTokens) -> bool {
@@ -223,8 +197,7 @@ impl SessionManager {
         if renewal.takes(&seen, &seen) && self.fresh(server, &seen) {
             return Ok(seen.access_token);
         }
-        let lock = self.refresh_lock(server);
-        let _guard = lock.lock().await;
+        let guard = self.refresh_lock(server).lock_owned().await;
         let tokens = self
             .stored(server)
             .await?
@@ -232,21 +205,55 @@ impl SessionManager {
         if renewal.takes(&seen, &tokens) && self.fresh(server, &tokens) {
             return Ok(tokens.access_token);
         }
+        let refresh = Refresh {
+            server,
+            client: client.clone(),
+            tokens,
+            key: self.device_key(server)?,
+            secrets: Arc::clone(&self.secrets),
+            clocks: Arc::clone(&self.server_clocks),
+        };
+        // The refresh runs in a task of its own, holding the lock, and
+        // keeps what the server answers even when the caller is gone. The
+        // server rotates the refresh token as it answers, the old one works
+        // for only a few minutes after that, and then using it counts as
+        // reuse and signs the device out.
+        tokio::spawn(async move {
+            let renewed = refresh.run().await;
+            drop(guard);
+            renewed
+        })
+        .await
+        .map_err(|error| CollabError::Network(format!("the session refresh stopped: {error}")))?
+    }
+}
+
+struct Refresh {
+    server: ServerId,
+    client: ServerClient,
+    tokens: SessionTokens,
+    key: Arc<DeviceKey>,
+    secrets: Arc<dyn SecretPort>,
+    clocks: Arc<Mutex<HashMap<ServerId, i64>>>,
+}
+
+impl Refresh {
+    async fn run(self) -> Result<String, CollabError> {
         let mut attempt = 1;
         let mut fresh_check = false;
         loop {
-            match self.refresh_once(server, client, &tokens).await {
+            match self.once().await {
                 Ok(fresh) => {
                     let access = fresh.access_token.clone();
-                    self.kept(server, Some(fresh)).await?;
+                    self.kept(Some(fresh)).await?;
                     return Ok(access);
                 }
                 Err(CollabError::SessionEnded(reason)) => {
-                    self.kept(server, None).await?;
+                    self.kept(None).await?;
                     return Err(CollabError::SessionEnded(reason));
                 }
                 Err(error) if is_revocation(&error) => {
-                    self.kept(server, None).await?;
+                    self.kept(None).await?;
                     return Err(CollabError::Unauthorized);
                 }
                 // The check expires two minutes after it is handed out, by
@@ -262,25 +269,40 @@ impl SessionManager {
         }
     }
 
-    async fn refresh_once(
-        &self,
-        server: ServerId,
-        client: &ServerClient,
-        tokens: &SessionTokens,
-    ) -> Result<SessionTokens, CollabError> {
-        let challenge = client.challenge().await?;
-        let message = challenge_message(ChallengePurpose::Refresh, server, &challenge.nonce);
+    async fn once(&self) -> Result<SessionTokens, CollabError> {
+        let challenge = self.client.challenge().await?;
+        let message = challenge_message(ChallengePurpose::Refresh, self.server, &challenge.nonce);
         let request = RefreshRequest {
-            refresh_token: tokens.refresh_token.clone(),
-            device_id: tokens.device_id,
-            signature: self.device_key(server)?.sign_b64(&message),
+            refresh_token: self.tokens.refresh_token.clone(),
+            device_id: self.tokens.device_id,
+            signature: self.key.sign_b64(&message),
             nonce: challenge.nonce,
         };
-        let (tokens, server_ms) = post_refresh(client, &request).await?;
+        let (tokens, server_ms) = post_refresh(&self.client, &request).await?;
         if let Some(server_ms) = server_ms {
-            self.learn_server_clock(server, server_ms);
+            self.clocks
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(self.server, server_ms - now_ms());
         }
         Ok(tokens)
+    }
+
+    // Writes the stored session off the async workers: the secret store can
+    // wait on a file lock held by another process.
+    async fn kept(&self, tokens: Option<SessionTokens>) -> Result<(), CollabError> {
+        let secrets = Arc::clone(&self.secrets);
+        let server = self.server;
+        tokio::task::spawn_blocking(move || match tokens {
+            Some(tokens) => {
+                let json = serde_json::to_string(&tokens)
+                    .map_err(|error| CollabError::Corrupt(error.to_string()))?;
+                secrets.set(&session_account(server), &json)
+            }
+            None => secrets.remove(&session_account(server)),
+        })
+        .await
+        .map_err(|error| CollabError::Secret(error.to_string()))?
     }
 }
 
@@ -571,6 +593,122 @@ mod tests {
         assert_eq!(renewed, "renewed");
         assert!(!hanging.is_finished());
         hanging.abort();
+    }
+
+    // Answers the refresh only after a while, and says when it came in.
+    async fn slow_to_renew(
+        original: &SessionTokens,
+    ) -> (crate::ServerUrl, Arc<tokio::sync::Notify>) {
+        use crate::client::test_util::http_response;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let json = [("Content-Type", "application/json")];
+        let challenge = http_response(
+            "200 OK",
+            &json,
+            &serde_json::json!({ "nonce": "nonce", "expires_at": now_ms() + 120_000 }).to_string(),
+        );
+        let renewed = http_response(
+            "200 OK",
+            &json,
+            &serde_json::json!({
+                "account_id": original.account_id,
+                "device_id": original.device_id,
+                "access_token": "renewed",
+                "access_expires_at": now_ms() + 600_000,
+                "refresh_token": "renewed-refresh",
+            })
+            .to_string(),
+        );
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        let asked = Arc::new(tokio::sync::Notify::new());
+        let signal = Arc::clone(&asked);
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let (challenge, renewed) = (challenge.clone(), renewed.clone());
+                let signal = Arc::clone(&signal);
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    let mut buffer = [0u8; 4096];
+                    let end = loop {
+                        if let Some(end) =
+                            request.windows(4).position(|window| window == b"\r\n\r\n")
+                        {
+                            break end + 4;
+                        }
+                        match stream.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => request.extend_from_slice(&buffer[..read]),
+                        }
+                    };
+                    let head = String::from_utf8_lossy(&request[..end]).to_ascii_lowercase();
+                    let length = head
+                        .lines()
+                        .find_map(|line| line.strip_prefix("content-length:"))
+                        .and_then(|value| value.trim().parse::<usize>().ok())
+                        .unwrap_or(0);
+                    while request.len() < end + length {
+                        match stream.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => request.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    let reply = if head.starts_with("post /auth/refresh ") {
+                        signal.notify_one();
+                        tokio::time::sleep(Duration::from_millis(300)).await;
+                        renewed
+                    } else {
+                        challenge
+                    };
+                    let _ = stream.write_all(reply.as_bytes()).await;
+                    let _ = stream.shutdown().await;
+                });
+            }
+        });
+        let url = crate::ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("url");
+        (url, asked)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_caller_that_goes_away_mid_refresh_still_leaves_the_new_session_stored() {
+        let (_secrets, manager) = manager();
+        let manager = Arc::new(manager);
+        let server = ServerId::new_v7();
+        let original = tokens("old", 0);
+        manager.store(server, &original).expect("store");
+        let (url, asked) = slow_to_renew(&original).await;
+        let client = ServerClient::new(url).expect("client");
+        let caller = {
+            let manager = Arc::clone(&manager);
+            tokio::spawn(async move { manager.access_token(server, &client).await })
+        };
+        asked.notified().await;
+        caller.abort();
+        assert!(caller
+            .await
+            .expect_err("the caller was stopped")
+            .is_cancelled());
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let kept = manager.tokens(server).expect("read").expect("stored");
+                if kept.refresh_token == "renewed-refresh" {
+                    return kept;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("the renewed session was stored after the caller went away");
+        let offline = ServerClient::new(closed_url().await).expect("client");
+        assert_eq!(
+            manager
+                .access_token(server, &offline)
+                .await
+                .expect("the stored token is good"),
+            "renewed"
+        );
     }
 
     async fn refreshing_with(

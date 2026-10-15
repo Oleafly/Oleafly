@@ -47,6 +47,7 @@ export const COLLAB_ERROR_CODES = [
   "turned_off",
   "cloud_synced",
   "owner_away",
+  "wrong_server",
 ] as const satisfies readonly CollabErrorCode[];
 
 type UnlistedCode = Exclude<CollabErrorCode, (typeof COLLAB_ERROR_CODES)[number]>;

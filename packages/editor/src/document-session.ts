@@ -21,6 +21,9 @@ export interface DocumentSession {
   // one change. Sessions that send nothing anywhere can leave these out.
   holdLocal?(): void;
   releaseLocal?(): void;
+  // Tells the listener when the session's file is renamed, `path` being the
+  // new one. Sessions whose file never moves can leave this out.
+  subscribeMove?(listener: (path: string) => void): () => void;
 }
 
 function splitsSurrogatePair(text: string, position: number): boolean {

@@ -104,7 +104,13 @@ case $1 in
 				touch "$state/up"
 				;;
 			stop) rm -f "$state/up" ;;
-			start) touch "$state/up" ;;
+			start)
+				if [ -f "$state/start-fails" ]; then
+					echo 'Error response from daemon: failed to start containers: oleafly-server' >&2
+					exit 1
+				fi
+				touch "$state/up"
+				;;
 			ps)
 				case $2 in
 					-q) [ -f "$state/up" ] && printf 'c%s\n' "$(cksum <"$state/running-image" | cut -d ' ' -f 1)" ;;

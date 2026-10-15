@@ -1716,6 +1716,7 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "turned_off",
   "cloud_synced",
   "owner_away",
+  "wrong_server",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -1844,6 +1845,9 @@ export const collabLiveStop = (projectId: string) =>
   invoke<void>("collab_live_stop", { projectId });
 export const collabLiveFlush = (projectId: string) =>
   invoke<void>("collab_live_flush", { projectId });
+// Asks a live session that waits between reconnect tries to try now. It
+// answers even with nothing running, so callers can fire and forget.
+export const collabLiveReconnectNow = () => invoke<void>("collab_live_reconnect_now");
 export async function collabDocOpen(
   projectId: string,
   path: string,
@@ -2172,6 +2176,15 @@ export function onCollabLiveRenamed(
 
 export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
 export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
+export const COLLAB_LIVE_PROJECT_FULL_EVENT = "collab-live-project-full";
+
+export function onCollabLiveProjectFull(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveProjectFull) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveProjectFull>(COLLAB_LIVE_PROJECT_FULL_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
 
 export function onCollabLiveUnwritten(
   handler: (payload: import("@oleafly/backend-port").CollabLiveUnwritten) => void,

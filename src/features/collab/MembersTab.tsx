@@ -29,16 +29,27 @@ import { canChangeMember, isStaffRole, serverRoleAllows, toServerRole, type Serv
 export type MembersUpdate = (update: (members: CollabMember[]) => CollabMember[]) => void;
 
 // What suspending or removing someone means for the shared projects they own.
-function OwnedProjects({ member }: Readonly<{ member: CollabMember }>) {
+function OwnedProjects({ member, action }: Readonly<{ member: CollabMember; action: "suspend" | "remove" }>) {
   const { t } = useTranslation(["collab"]);
   const owned = member.owned_projects ?? 0;
   if (owned <= 0) return null;
   const name = member.account.display_name;
+  const number = formatNumber(owned);
+  let text: string;
+  if (action === "suspend") {
+    text =
+      owned === 1
+        ? t(($) => $.collab.admin.members.owned.suspendOne, { name })
+        : t(($) => $.collab.admin.members.owned.suspendMany, { name, number });
+  } else {
+    text =
+      owned === 1
+        ? t(($) => $.collab.admin.members.owned.removeOne, { name })
+        : t(($) => $.collab.admin.members.owned.removeMany, { name, number });
+  }
   return (
     <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-foreground" data-testid="collab-owned-projects">
-      {owned === 1
-        ? t(($) => $.collab.admin.members.ownedOne, { name })
-        : t(($) => $.collab.admin.members.ownedMany, { name, number: formatNumber(owned) })}
+      {text}
     </p>
   );
 }
@@ -72,6 +83,7 @@ export function MembersTab({
   onRetry,
   onMembersChange,
   onAddPeople,
+  onGuestsChanged,
 }: Readonly<{
   serverId: string;
   actor: ServerRole;
@@ -81,6 +93,8 @@ export function MembersTab({
   onRetry: () => void;
   onMembersChange: MembersUpdate;
   onAddPeople?: () => void;
+  // A guest invitation was approved, declined or withdrawn.
+  onGuestsChanged?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
   const rows = useBusyRows();
@@ -243,7 +257,9 @@ export function MembersTab({
 
   return (
     <div className="space-y-2">
-      {serverRoleAllows(actor, "approveGuests") && !loadError ? <PendingGuests serverId={serverId} /> : null}
+      {serverRoleAllows(actor, "approveGuests") && !loadError ? (
+        <PendingGuests serverId={serverId} onChanged={onGuestsChanged} />
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <p>{t(($) => $.collab.admin.members.description)}</p>
@@ -268,7 +284,7 @@ export function MembersTab({
         }}
         onCancel={() => setRemoving(null)}
       >
-        {removing ? <OwnedProjects member={removing} /> : null}
+        {removing ? <OwnedProjects member={removing} action="remove" /> : null}
       </ConfirmationDialog>
       <ConfirmationDialog
         open={suspending !== null}
@@ -284,7 +300,7 @@ export function MembersTab({
         }}
         onCancel={() => setSuspending(null)}
       >
-        {suspending ? <OwnedProjects member={suspending} /> : null}
+        {suspending ? <OwnedProjects member={suspending} action="suspend" /> : null}
       </ConfirmationDialog>
       <ConfirmationDialog
         open={stepping !== null}

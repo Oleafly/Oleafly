@@ -270,6 +270,57 @@ async fn a_transfer_that_finds_no_room_for_a_while_hears_the_server_is_busy() {
     );
 }
 
+#[tokio::test]
+async fn a_download_whose_client_stops_reading_gives_its_room_back_at_its_deadline() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let content = vec![5u8; MIB];
+    let (stored, _) = put_file(&app, &owner.access_token, &project, content.clone()).await;
+    assert_eq!(stored, StatusCode::NO_CONTENT);
+    let transfers = &app.state.transfers;
+    transfers.set_budget(MIB as u64);
+    transfers.set_timing(oleafly_server::transfers::UploadTiming {
+        grace: std::time::Duration::from_secs(1),
+        min_rate: u64::MAX,
+    });
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri(format!(
+            "/api/v1/projects/{project}/blobs/{}",
+            sha256_hex(&content)
+        ))
+        .header(
+            header::AUTHORIZATION,
+            format!("Bearer {}", owner.access_token),
+        )
+        .body(Body::empty())
+        .expect("request");
+    let response = app.router.clone().oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut body = response.into_body();
+    let first = std::future::poll_fn(|context| {
+        axum::body::HttpBody::poll_frame(std::pin::Pin::new(&mut body), context)
+    })
+    .await
+    .expect("a first piece")
+    .expect("on time");
+    assert!(first.is_data());
+    transfers.set_wait(std::time::Duration::from_secs(5));
+    let started = std::time::Instant::now();
+    let next = transfers
+        .hold(AccountId::new_v7(), MIB as u64)
+        .await
+        .expect("room once the stalled download's deadline passes");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(4),
+        "{:?}",
+        started.elapsed()
+    );
+    drop(next);
+    drop(body);
+}
+
 async fn put_file(
     app: &TestApp,
     token: &str,

@@ -56,19 +56,25 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
 // reinstalled with a fresh database, or another server now at the address,
 // knows nothing of this session either, and asking it to renew the session
 // would throw away one that is still good. So the manifest is checked
-// first, as for a refused protocol version. Both transports then renew
-// once and try once more, and a 401 after that means the session is gone.
-// A 401 without the server's own answer, from a proxy, renews nothing.
+// first, as for a refused protocol version. Without it there is no telling
+// which server answered, so nothing is renewed and the session tries again
+// later as after any network error. Both transports then renew once and
+// try once more, and a 401 after that means the session is gone. A 401
+// without the server's own answer, from a proxy, renews nothing.
 async fn renewed_after_refusal(link: &LiveLink, refused: &str) -> Result<String, CollabError> {
-    if let Ok(Ok(manifest)) =
-        tokio::time::timeout(MANIFEST_WITHIN, link.client.capabilities()).await
-    {
-        if manifest.server_id != link.server_id {
-            return Err(CollabError::ServerChanged {
-                expected: link.server_id,
-                found: manifest.server_id,
-            });
-        }
+    let Ok(Ok(manifest)) = tokio::time::timeout(MANIFEST_WITHIN, link.client.capabilities()).await
+    else {
+        return Err(CollabError::Network(
+            "the server turned the session away and its manifest did not load, so the \
+             session was kept for the next try"
+                .to_owned(),
+        ));
+    };
+    if manifest.server_id != link.server_id {
+        return Err(CollabError::ServerChanged {
+            expected: link.server_id,
+            found: manifest.server_id,
+        });
     }
     link.sessions
         .refresh_rejected(link.server_id, &link.client, refused)

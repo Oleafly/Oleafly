@@ -25,9 +25,9 @@
       "signedOut": "未登录",
       "signedInAs": "已以 {{name}} 的身份登录",
       "signedOutHint": "这台电脑尚未登录此服务器。",
-      "paused": "已停用",
+      "suspended": "已停用",
       "noAccess": "无访问权限",
-      "pausedHint": "管理员停用了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。管理员重新启用后，你可以重新登录。",
+      "suspendedHint": "管理员停用了你在 {{server}} 上的账户。你的更改会保留在这台电脑上。管理员重新启用后，你可以重新登录。",
       "endedHint": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。如果管理员重新添加了你，请重新登录。",
       "endedGuestHint": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。如果你再次受到邀请，请重新登录。",
       "role": "你的角色：{{role}}",
@@ -35,11 +35,11 @@
       "signOut": "退出登录",
       "remove": "移除",
       "manage": "管理服务器",
-      "manageHint": "管理服务器会在这里显示人员、访问规则和服务器设置。管理控制台在单独的窗口中打开，还包含概览、项目和连接检查。",
+      "manageHint": "管理服务器会在这里显示人员、允许的人员、域名、服务器设置、电子邮件和安全日志。管理控制台在单独的窗口中打开，还包含概览、项目和连接检查。",
       "test": "测试连接",
       "removeConfirm": {
         "title": "要移除 {{name}} 吗？",
-        "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，并作为普通项目保留在这台电脑上。",
+        "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，各自改名为本地副本，并作为普通项目保留在这台电脑上。",
         "confirm": "移除服务器"
       },
       "detached": "这些来自 {{server}} 的共享项目已停止同步。它们会作为普通项目保留在这台电脑上。",
@@ -216,11 +216,12 @@
     "link_sharing_off": "此服务器不允许链接共享。请让其管理员开启该功能。",
     "access_log_off": "此服务器不允许访问日志。请让其管理员开启该功能。",
     "last_admin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
-    "duplicate_entry": "该条目已在列表中。",
+    "duplicate_entry": "该条目已存在。",
     "already_member": "此人已经有账户。请在人员中更改其角色。",
     "project_not_shared": "此项目尚未共享。请先共享，再邀请其他人。",
     "project_full": "此项目的人数已达到服务器允许的上限。请先移除某人，或联系服务器的管理员。",
-    "owner_away": "这个项目的所有者目前在此服务器上不可用，所以项目无法接纳新成员。",
+    "owner_away": "这个项目的所有者在此服务器上已被停用或移除，所以项目目前无法接纳新成员。请联系服务器的管理员。",
+    "wrong_server": "此服务器从另一个地址发来了登录页面，所以 Oleafly 已停止。请检查服务器地址，或询问管理服务器的人。",
     "not_a_link": "这不是共享项目的链接。请复制完整链接，然后重试。",
     "signed_out": "你已退出此服务器的登录。请重新登录以同步此项目。",
     "server_removed": "此项目的服务器已不在你的列表中。请将项目保留为本地副本，或重新添加该服务器。",
@@ -268,17 +269,21 @@
       "devicesLoading": "正在加载设备…",
       "devicesLoadFailed": "Oleafly 无法加载这些设备。",
       "lastAdmin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
-      "ownedOne": "{{name}} 拥有一个共享项目。{{name}} 不在期间，其他人无法管理它。",
-      "ownedMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 不在期间，其他人无法管理它们。",
+      "owned": {
+        "suspendOne": "{{name}} 拥有一个共享项目。{{name}} 被停用期间，其他人无法管理它。",
+        "suspendMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 被停用期间，其他人无法管理它们。",
+        "removeOne": "{{name}} 拥有一个共享项目。移除 {{name}} 后，其他人将无法管理它。",
+        "removeMany": "{{name}} 拥有的共享项目：{{number}} 个。移除 {{name}} 后，其他人将无法管理它们。"
+      },
       "removeConfirm": {
         "title": "要将 {{name}} 从此服务器中移除吗？",
         "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
-        "confirm": "移除成员"
+        "confirm": "从服务器移除"
       },
       "suspendConfirm": {
         "title": "要停用 {{name}} 吗？",
         "description": "在管理员重新启用账户之前，{{name}} 无法登录或同步。",
-        "confirm": "停用成员"
+        "confirm": "停用账户"
       },
       "selfRoleConfirm": {
         "title": "要把你自己的角色改为 {{role}} 吗？",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "此名单上的人员可以使用你选择的角色登录服务器。",
+      "description": "在这里添加的人员可以使用你选择的角色登录服务器。",
       "matchLabel": "匹配方式",
       "match": {
         "email": "电子邮箱地址",
@@ -303,14 +308,14 @@
       "providerLabel": "登录方式",
       "roleLabel": "角色",
       "add": "添加",
-      "loading": "正在加载名单…",
-      "empty": "名单上还没有人。",
+      "loading": "正在加载允许的人员…",
+      "empty": "还没有添加任何人。",
       "loginEntry": "{{provider}} 上的 {{login}}",
       "bound": "已登录过",
       "unbound": "尚未登录",
       "remove": "移除",
       "removeNamed": "移除 {{entry}}",
-      "duplicate": "此人已在名单上。"
+      "duplicate": "此人已被允许。"
     },
     "domains": {
       "description": "在这些域名下拥有已验证电子邮箱地址的任何人，都可以使用你选择的角色登录。",
@@ -507,7 +512,7 @@
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
     "saving": "正在把项目保存到服务器…",
     "failed": "共享未完成，因此没有共享任何内容。",
-    "trustAgain": "现在其他人也能编辑这个项目了，Oleafly 在这台电脑上运行它的工具前会再次征求你的同意。"
+    "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly 无法加载有权访问的人员。",
     "people": "有权访问的人员",
     "you": "你",
+    "inactive": "已移除或已停用",
+    "ownerInactive": "所有者已移除或已停用",
     "roleLabel": "{{name}} 的角色",
     "remove": "移除",
     "removeNamed": "移除 {{name}}",
@@ -529,7 +536,6 @@
       "placeholder": "姓名、登录名或电子邮箱",
       "roleLabel": "所添加人员的角色",
       "searching": "正在搜索…",
-      "noResults": "{{server}} 上没有匹配的人员。",
       "noResultsTryEmail": "{{server}} 上没有匹配的人员。请尝试输入对方的完整电子邮件地址。",
       "alreadyMember": "{{name}} 已有访问权限。",
       "allMembers": "所有匹配的人都已有访问权限。",
@@ -582,7 +588,8 @@
     "serverRemoved": "服务器已移除",
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "服务器需要更新",
-    "serverChanged": "其他服务器"
+    "serverChanged": "该地址已换成新服务器",
+    "failed": "因出错已停止"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -638,7 +645,7 @@
         "locked": "无法写入 {{path}}：另一个程序正打开着它。",
         "read_only": "无法写入 {{path}}：文件或其文件夹是只读的。",
         "no_space": "无法写入 {{path}}：磁盘已满。",
-        "not_downloaded": "无法写入 {{path}}：云服务还没有把它下载到这台电脑。",
+        "not_downloaded": "暂时还无法从服务器下载 {{path}}。Oleafly 会继续尝试。",
         "other": "无法写入 {{path}}。"
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "请更新 Oleafly，才能继续在 {{server}} 上工作。你的更改会保留在这台电脑上。",
     "serverTooOld": "{{server}} 需要更新后才能与此版本的 Oleafly 配合使用。请联系服务器的运行者。你的更改会保留在这台电脑上。",
     "serverChanged": "{{server}} 的地址现在指向另一台服务器。请在协作设置中移除它，然后重新添加。你的更改会保留在这台电脑上。",
+    "failed": "这个项目因出错已停止同步。重新开始同步即可继续。",
+    "goLiveAgain": "重新同步",
     "accessEnded": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。",
     "accessEndedGuest": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。",
     "signIn": "登录",
@@ -692,6 +701,7 @@
     "newDevice": "{{name}} 在新设备上登录了",
     "review": "查看",
     "renamed": "你将它命名为 {{ours}} 之后，{{name}} 把 {{before}} 重命名为 {{theirs}}",
+    "renamedPortable": "为了在每台电脑上都能使用，{{before}} 已重命名为 {{theirs}}。",
     "skipped": "无法读取来自 {{name}} 的一项更改，已跳过。",
     "skippedUnknown": "无法读取来自某人的一项更改，已跳过。",
     "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
@@ -729,6 +739,7 @@
     "noText": "没有文本更改，因此没有可比较的内容。",
     "newFile": "新文件",
     "removedFile": "已移除",
+    "closedOldest": "同时只能打开 {{number}} 个文件，所以 {{path}} 已关闭。",
     "diffLabel": "{{path}} 中的更改"
   },
   "console": {
@@ -772,7 +783,7 @@
         "title": "运行状况",
         "okLabel": "一切正常",
         "okDescription": "用户可以登录，服务器也可以保存文件。",
-        "problem": "{{provider}} 登录从 {{time}} 起一直失败",
+        "problem": "使用 {{provider}} 登录从 {{time}} 起一直失败",
         "issues": {
           "noSignInProvider": {
             "label": "无人可以登录",
@@ -897,7 +908,8 @@
     "malformed": "Oleafly 无法打开此链接。请向发送者索取新链接。",
     "opening": "正在打开共享项目…",
     "downloading": "正在下载文件：{{done}}/{{total}}",
-    "cancelNamed": "停止打开 {{name}}",
+    "cancelNamed": "取消打开 {{name}}",
+    "cancelling": "正在取消…",
     "confirm": {
       "title": "要加入这个共享项目吗？",
       "body": "加入后，你会被添加到项目中，项目文件也会复制到这台电脑。只有在你知道是谁发来链接时才加入。",
@@ -1038,6 +1050,9 @@
     "failed": "无法共享：{{files}}",
     "tooLarge": "{{file}} 大小为 {{size}}，超过此服务器允许的上限（{{limit}}）。它只保留在这台电脑上。",
     "tooLargeUnknown": "{{file}} 超过此服务器允许的大小。它只保留在这台电脑上。",
+    "projectTooLarge": "这个项目已达到服务器的大小上限 {{limit}}，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",
+    "projectTooLargeUnknown": "这个项目已达到服务器的大小上限，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",
+    "projectFull": "这个项目已达到服务器的大小上限，所以你的更改暂时留在这台电脑上。请让管理服务器的人提高上限。",
     "replaced": "{{name}} 与你同时替换了 {{file}}。你的版本已保存为 {{copy}}。",
     "added": "因为 {{name}} 添加了同名文件，{{file}} 现在是 {{copy}}。",
     "beside": "{{name}} 也有一个名为 {{file}} 的文件。该文件已保存为 {{copy}}。",

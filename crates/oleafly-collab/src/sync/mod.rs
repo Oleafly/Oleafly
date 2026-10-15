@@ -125,7 +125,8 @@ pub enum LiveEvent {
     },
     Unsendable,
     // The project reached the server's size limit, so changes stay on this
-    // computer for now. Said once per session.
+    // computer for now. Said once per connection, at the first refusal after
+    // each connect or reconnect.
     ProjectFull,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
     Comments(CommentSwitches),
@@ -240,7 +241,7 @@ async fn guarded(
         .await;
     if finished.is_err() {
         if watched.is_poisoned() {
-            lock(&watched).went_bad();
+            lock(&watched).went_bad(true);
         }
         let _ = reporting.send(LiveEvent::Status(LiveStatus::Ended {
             reason: EndReason::Failed,

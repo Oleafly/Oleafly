@@ -17,6 +17,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { JoinProgress } from "../links/JoinProgress";
 import { collabPerson } from "../people";
 import { useCollabStore } from "../store";
@@ -150,6 +151,7 @@ export function SharedWithYou() {
                     server: item.server_name,
                   })}
                 </p>
+                {isInactive(project.owner) ? <InactiveBadge owner tone="warning" /> : null}
               </div>
               <Badge variant="muted" size="sm">
                 {t(($) => $.collab.projectRoles[project.role])}

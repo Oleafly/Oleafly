@@ -1,12 +1,15 @@
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::task::{Context, Poll};
 use std::time::Duration;
 
-use axum::body::{Body, Bytes};
+use axum::body::{Body, Bytes, HttpBody};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
+use http_body::{Frame, SizeHint};
 use oleafly_collab_protocol::ids::AccountId;
-use tokio::sync::{oneshot, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::error::ServerError;
 use crate::routes::read_body_within;
@@ -14,6 +17,9 @@ use crate::routes::read_body_within;
 const TOOK_TOO_LONG: &str = "The upload took too long. Try again.";
 const TOO_BUSY: &str = "The server is busy with other large files. Try again in a moment.";
 const KIB: u64 = 1024;
+// A large download goes to the connection in copied pieces of this size,
+// so what the connection holds never pins the whole file.
+const SEND_PIECE: usize = 64 * 1024;
 // Smaller transfers pass without waiting for room in the budget.
 pub const SMALL_TRANSFER: u64 = 1024 * 1024;
 pub const DEFAULT_TRANSFER_BUDGET: u64 = 256 * 1024 * 1024;
@@ -101,54 +107,103 @@ impl Drop for AccountTurn {
 }
 
 struct Held {
-    budget: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
-    deadline: Duration,
+    _budget: Option<OwnedSemaphorePermit>,
     _account: AccountTurn,
-    _cancel: Option<oneshot::Sender<()>>,
+    deadline: Duration,
 }
 
-impl Drop for Held {
-    fn drop(&mut self) {
-        self.budget
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-    }
-}
-
-struct HeldBytes {
+struct Unsent {
     bytes: Bytes,
     _held: Held,
 }
 
-impl AsRef<[u8]> for HeldBytes {
-    fn as_ref(&self) -> &[u8] {
-        &self.bytes
+// A large download. When its send deadline passes, a timer drops what is
+// left of it, with its budget share and the account's turn, even while the
+// connection waits on a client that stopped reading and so asks the body
+// for nothing more. Asking after that fails, and the connection is closed.
+struct Deadlined {
+    unsent: Arc<Mutex<Option<Unsent>>>,
+    left: u64,
+    timer: tokio::task::AbortHandle,
+}
+
+impl Drop for Deadlined {
+    fn drop(&mut self) {
+        self.timer.abort();
+        let unsent = self
+            .unsent
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        drop(unsent);
+    }
+}
+
+impl HttpBody for Deadlined {
+    type Data = Bytes;
+    type Error = std::io::Error;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        _context: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Bytes>, std::io::Error>>> {
+        let this = self.get_mut();
+        if this.left == 0 {
+            return Poll::Ready(None);
+        }
+        let mut unsent = this.unsent.lock().unwrap_or_else(PoisonError::into_inner);
+        let Some(rest) = unsent.as_mut() else {
+            return Poll::Ready(Some(Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "the client did not read the download before its deadline",
+            ))));
+        };
+        let front = rest.bytes.split_to(rest.bytes.len().min(SEND_PIECE));
+        let piece = Bytes::copy_from_slice(&front);
+        if rest.bytes.is_empty() {
+            *unsent = None;
+        }
+        drop(unsent);
+        this.left = this.left.saturating_sub(piece.len() as u64);
+        Poll::Ready(Some(Ok(Frame::data(piece))))
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.left == 0
+    }
+
+    fn size_hint(&self) -> SizeHint {
+        SizeHint::with_exact(self.left)
     }
 }
 
 impl TransferPermit {
-    // Ties the permit to the bytes, so it goes back only once the response
-    // that carries them has been sent and dropped. A client that reads
-    // slowly has until the send deadline: then the budget share goes back,
-    // while the download still counts toward the account's large transfers.
-    pub fn keep_with(self, bytes: Bytes) -> Bytes {
-        let Some(mut held) = self.0 else {
-            return bytes;
+    // Sends the bytes as the response body. Their budget share and the
+    // account's turn go back once they are sent, once the client goes, or
+    // at the send deadline, when what is left is dropped and the response
+    // ends, so a client that stops reading can't keep them.
+    pub fn keep_with(self, bytes: Bytes) -> Body {
+        let Some(held) = self.0 else {
+            return Body::from(bytes);
         };
-        let (cancel, cancelled) = oneshot::channel::<()>();
-        let budget = Arc::clone(&held.budget);
         let deadline = held.deadline;
-        tokio::spawn(async move {
-            tokio::select! {
-                () = tokio::time::sleep(deadline) => {
-                    budget.lock().unwrap_or_else(PoisonError::into_inner).take();
-                }
-                _ = cancelled => {}
-            }
-        });
-        held._cancel = Some(cancel);
-        Bytes::from_owner(HeldBytes { bytes, _held: held })
+        let left = bytes.len() as u64;
+        let unsent = Arc::new(Mutex::new(Some(Unsent { bytes, _held: held })));
+        let expiring = Arc::clone(&unsent);
+        let timer = tokio::spawn(async move {
+            tokio::time::sleep(deadline).await;
+            let expired = expiring
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .take();
+            drop(expired);
+        })
+        .abort_handle();
+        Body::new(Deadlined {
+            unsent,
+            left,
+            timer,
+        })
     }
 }
 
@@ -225,10 +280,9 @@ impl Transfers {
             .map_err(|_| busy())?
             .ok();
         Ok(TransferPermit(Some(Held {
-            budget: Arc::new(Mutex::new(permit)),
-            deadline: self.timing().limit_for(bytes),
+            _budget: permit,
             _account: turn,
-            _cancel: None,
+            deadline: self.timing().limit_for(bytes),
         })))
     }
 
@@ -289,16 +343,14 @@ mod tests {
                 .is_err(),
             "a transfer that does not fit waits"
         );
-        let sent = first.keep_with(Bytes::from(vec![7u8; 16]));
-        let copy = sent.clone();
-        drop(sent);
+        let sending = first.keep_with(Bytes::from(vec![7u8; 16]));
         assert!(
             tokio::time::timeout(Duration::from_millis(50), &mut waiting)
                 .await
                 .is_err(),
-            "the permit stays while the bytes are still held"
+            "the permit stays while the download is under way"
         );
-        drop(copy);
+        drop(sending);
         let second = tokio::time::timeout(Duration::from_secs(1), waiting)
             .await
             .expect("room once the first transfer's bytes are gone")
@@ -332,18 +384,31 @@ mod tests {
         assert_eq!(refused.code(), "server_busy");
     }
 
+    async fn next_piece(body: &mut Body) -> Option<Result<Frame<Bytes>, axum::Error>> {
+        std::future::poll_fn(|context| Pin::new(&mut *body).poll_frame(context)).await
+    }
+
     #[tokio::test(start_paused = true)]
-    async fn a_download_read_slowly_gives_its_share_back_at_its_send_deadline() {
+    async fn a_download_whose_client_stops_reading_lets_go_at_its_deadline() {
         let transfers = Transfers::with_budget(2 * SMALL_TRANSFER);
         transfers.set_timing(UploadTiming {
             grace: Duration::from_secs(5),
             min_rate: u64::MAX,
         });
-        let sending = transfers
-            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+        let account = AccountId::new_v7();
+        let mut sending = transfers
+            .hold(account, 2 * SMALL_TRANSFER)
             .await
             .expect("room")
-            .keep_with(Bytes::from(vec![7u8; 16]));
+            .keep_with(Bytes::from(vec![7u8; 2 * SMALL_TRANSFER as usize]));
+        let first = next_piece(&mut sending)
+            .await
+            .expect("a first piece")
+            .expect("on time");
+        assert_eq!(
+            first.into_data().map(|piece| piece.len()).ok(),
+            Some(SEND_PIECE)
+        );
         let waiting = transfers.hold(AccountId::new_v7(), 2 * SMALL_TRANSFER);
         tokio::pin!(waiting);
         assert!(
@@ -357,7 +422,34 @@ mod tests {
             .expect("the share comes back at the deadline")
             .expect("room");
         assert!(next.0.is_some());
-        drop(sending);
+        assert!(
+            !transfers.accounts.lock().unwrap().contains_key(&account),
+            "the account's turn comes back at the deadline"
+        );
+        assert!(
+            matches!(next_piece(&mut sending).await, Some(Err(_))),
+            "asking for more after the deadline fails, so the response ends"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_download_read_to_the_end_is_sent_whole_in_pieces() {
+        let transfers = Transfers::with_budget(4 * SMALL_TRANSFER);
+        let content: Vec<u8> = (0..2 * SMALL_TRANSFER as usize)
+            .map(|index| (index % 251) as u8)
+            .collect();
+        let mut sending = transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .expect("room")
+            .keep_with(Bytes::from(content.clone()));
+        assert_eq!(sending.size_hint().exact(), Some(content.len() as u64));
+        let mut received = Vec::new();
+        while let Some(piece) = next_piece(&mut sending).await {
+            received.extend_from_slice(&piece.expect("on time").into_data().expect("data"));
+        }
+        assert_eq!(received, content);
+        assert!(sending.is_end_stream());
     }
 
     #[tokio::test]

@@ -61,10 +61,30 @@ pub fn safe_name(name: &str, id: &str) -> String {
             .into_iter()
             .rev()
             .collect();
-        format!("unnamed-{short}")
+        match safe_extension(name) {
+            Some(extension) => format!("unnamed-{short}.{extension}"),
+            None => format!("unnamed-{short}"),
+        }
     } else {
         name.to_owned()
     }
+}
+
+// The file keeps its type under the stand-in name, so it still opens with
+// the same program and references that go by type still find it. Only an
+// extension safe on its own is kept: short, plain letters, digits and a
+// few marks, and after a name, not a leading dot.
+fn safe_extension(name: &str) -> Option<&str> {
+    let dot = name.rfind('.')?;
+    let (stem, extension) = (&name[..dot], &name[dot + 1..]);
+    let plain = extension
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '+'));
+    (!stem.trim_start_matches('.').is_empty()
+        && !extension.is_empty()
+        && extension.len() <= 16
+        && plain)
+        .then_some(extension)
 }
 
 // Two names are one file wherever a member's file system says so: macOS
@@ -693,10 +713,38 @@ mod tests {
                 "orphan.tex",
                 NodeKind::Text,
             ),
+            node("x3", NodeParent::Root, "CON.tex", NodeKind::Text),
         ];
         let placed = layout(&nodes);
         assert_eq!(placed["x1"].path, "unnamed-x1");
         assert_eq!(placed["x2"].path, "orphan.tex");
+        assert_eq!(placed["x3"].path, "unnamed-x3.tex");
+    }
+
+    #[test]
+    fn a_stand_in_name_keeps_the_extension_when_it_is_safe_on_its_own() {
+        let id = "0123456789";
+        for (bad, standing_in) in [
+            ("CON.tex", "unnamed-23456789.tex"),
+            ("a:b.png", "unnamed-23456789.png"),
+            ("draft~2.tex", "unnamed-23456789.tex"),
+            ("COM\u{b9}.txt", "unnamed-23456789.txt"),
+            ("aux.fdb_latexmk", "unnamed-23456789.fdb_latexmk"),
+            ("a*b.tar.gz", "unnamed-23456789.gz"),
+            ("a:b.p?g", "unnamed-23456789"),
+            ("a:b.tex ", "unnamed-23456789"),
+            ("x:y.a~1", "unnamed-23456789"),
+            ("x:y.\u{442}\u{435}\u{43a}", "unnamed-23456789"),
+            ("x:y.averyveryverylongone", "unnamed-23456789"),
+            ("name.", "unnamed-23456789"),
+            (".GIT", "unnamed-23456789"),
+            ("..", "unnamed-23456789"),
+            ("", "unnamed-23456789"),
+        ] {
+            let named = safe_name(bad, id);
+            assert_eq!(named, standing_in, "{bad}");
+            assert_eq!(safe_name(&named, id), named, "{bad}");
+        }
     }
 
     #[test]

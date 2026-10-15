@@ -25,9 +25,9 @@
       "signedOut": "Ei kirjautunut",
       "signedInAs": "Kirjautunut käyttäjänä {{name}}",
       "signedOutHint": "Tämä kone ei ole kirjautunut tälle palvelimelle.",
-      "paused": "Jäädytetty",
+      "suspended": "Jäädytetty",
       "noAccess": "Ei pääsyä",
-      "pausedHint": "Ylläpitäjä jäädytti tilisi palvelimella {{server}}. Muutoksesi pysyvät tällä koneella. Voit kirjautua uudelleen, kun ylläpitäjä aktivoi tilin uudelleen.",
+      "suspendedHint": "Ylläpitäjä jäädytti tilisi palvelimella {{server}}. Muutoksesi pysyvät tällä koneella. Voit kirjautua uudelleen, kun ylläpitäjä aktivoi tilin uudelleen.",
       "endedHint": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyvät tällä koneella tavallisina projekteina. Jos ylläpitäjä lisää sinut takaisin, kirjaudu uudelleen sisään.",
       "endedGuestHint": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyvät tällä koneella tavallisina projekteina. Jos sinut kutsutaan uudelleen, kirjaudu uudelleen sisään.",
       "role": "Roolisi: {{role}}",
@@ -35,11 +35,11 @@
       "signOut": "Kirjaudu ulos",
       "remove": "Poista",
       "manage": "Hallitse palvelinta",
-      "manageHint": "Hallitse palvelinta näyttää henkilöt, pääsysäännöt ja palvelimen asetukset tässä. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
+      "manageHint": "Hallitse palvelinta näyttää tässä osiot Henkilöt, Sallitut henkilöt, Verkkotunnukset, Palvelimen asetukset, Sähköposti ja Tietoturvaloki. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
       "test": "Testaa yhteys",
       "removeConfirm": {
         "title": "Poistetaanko {{name}}?",
-        "description": "Oleafly kirjautuu ulos palvelimelta {{name}} ja unohtaa sen. Palvelimen {{name}} jaetut projektit lakkaavat synkronoitumasta ja pysyvät tällä koneella tavallisina projekteina.",
+        "description": "Oleafly kirjautuu ulos palvelimelta {{name}} ja unohtaa sen. Palvelimen {{name}} jaetut projektit lakkaavat synkronoitumasta ja pysyvät tällä koneella tavallisina projekteina, ja jokainen nimetään paikalliseksi kopioksi.",
         "confirm": "Poista palvelin"
       },
       "detached": "Nämä palvelimen {{server}} jaetut projektit eivät enää synkronoidu. Ne pysyvät tällä koneella tavallisina projekteina.",
@@ -216,11 +216,12 @@
     "link_sharing_off": "Tämä palvelin ei salli linkkijakoa. Pyydä sen ylläpitäjää ottamaan se käyttöön.",
     "access_log_off": "Tämä palvelin ei salli käyttölokeja. Pyydä sen ylläpitäjää ottamaan ne käyttöön.",
     "last_admin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
-    "duplicate_entry": "Se on jo listalla.",
+    "duplicate_entry": "Tämä kohta on jo olemassa.",
     "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
-    "owner_away": "Tämän projektin omistaja ei ole nyt aktiivinen tällä palvelimella, joten projektiin ei voi ottaa uusia henkilöitä.",
+    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi nyt ottaa uusia henkilöitä. Kysy palvelimen ylläpitäjältä.",
+    "wrong_server": "Tämä palvelin lähetti kirjautumissivunsa eri osoitteesta, joten Oleafly keskeytti. Tarkista palvelimen osoite tai kysy palvelimen ylläpitäjältä.",
     "not_a_link": "Tämä ei ole linkki jaettuun projektiin. Kopioi koko linkki ja yritä sitten uudelleen.",
     "signed_out": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään, niin projekti synkronoituu.",
     "server_removed": "Tämän projektin palvelin ei ole enää listallasi. Säilytä projekti paikallisena kopiona tai lisää palvelin uudelleen.",
@@ -268,17 +269,21 @@
       "devicesLoading": "Ladataan laitteita…",
       "devicesLoadFailed": "Oleafly ei voinut ladata näitä laitteita.",
       "lastAdmin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
-      "ownedOne": "{{name}} omistaa jaetun projektin. Kukaan muu ei voi hallita sitä, kun {{name}} on poissa.",
-      "ownedMany": "{{name}} omistaa jaettuja projekteja: {{number}}. Kukaan muu ei voi hallita niitä, kun {{name}} on poissa.",
+      "owned": {
+        "suspendOne": "{{name}} omistaa jaetun projektin. Kukaan muu ei voi hallita sitä, kun {{name}} on jäädytetty.",
+        "suspendMany": "Jaetut projektit, jotka {{name}} omistaa: {{number}}. Kukaan muu ei voi hallita niitä, kun {{name}} on jäädytetty.",
+        "removeOne": "{{name}} omistaa jaetun projektin. Kun {{name}} on poistettu, kukaan muu ei voi hallita sitä.",
+        "removeMany": "Jaetut projektit, jotka {{name}} omistaa: {{number}}. Kun {{name}} on poistettu, kukaan muu ei voi hallita niitä."
+      },
       "removeConfirm": {
         "title": "Poistetaanko {{name}} tältä palvelimelta?",
         "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
-        "confirm": "Poista jäsen"
+        "confirm": "Poista palvelimelta"
       },
       "suspendConfirm": {
         "title": "Jäädytetäänkö {{name}}?",
         "description": "{{name}} ei voi kirjautua eikä synkronoida, ennen kuin ylläpitäjä aktivoi tilin uudelleen.",
-        "confirm": "Jäädytä jäsen"
+        "confirm": "Jäädytä tili"
       },
       "selfRoleConfirm": {
         "title": "Vaihdetaanko oma roolisi rooliin {{role}}?",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "Tämän listan henkilöt voivat kirjautua palvelimelle valitsemallasi roolilla.",
+      "description": "Tähän lisäämäsi henkilöt voivat kirjautua palvelimelle valitsemallasi roolilla.",
       "matchLabel": "Tunnistustapa",
       "match": {
         "email": "Sähköpostiosoite",
@@ -303,14 +308,14 @@
       "providerLabel": "Kirjautumistapa",
       "roleLabel": "Rooli",
       "add": "Lisää",
-      "loading": "Ladataan listaa…",
-      "empty": "Listalla ei ole vielä ketään.",
+      "loading": "Ladataan sallittuja henkilöitä…",
+      "empty": "Ketään ei ole vielä lisätty.",
       "loginEntry": "{{login}} palvelussa {{provider}}",
       "bound": "On kirjautunut",
       "unbound": "Ei ole vielä kirjautunut",
       "remove": "Poista",
       "removeNamed": "Poista {{entry}}",
-      "duplicate": "Tämä henkilö on jo listalla."
+      "duplicate": "Tämä henkilö on jo sallittu."
     },
     "domains": {
       "description": "Kuka tahansa, jolla on vahvistettu sähköpostiosoite näissä verkkotunnuksissa, voi kirjautua sisään valitsemallasi roolilla.",
@@ -507,7 +512,7 @@
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
-    "trustAgain": "Koska muutkin voivat nyt muokata tätä projektia, Oleafly kysyy sinulta uudelleen ennen kuin se ajaa projektin työkaluja tällä koneella."
+    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea."
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly ei voinut ladata käyttöoikeuksia.",
     "people": "Henkilöt, joilla on pääsy",
     "you": "Sinä",
+    "inactive": "Poistettu tai jäädytetty",
+    "ownerInactive": "Omistaja poistettu tai jäädytetty",
     "roleLabel": "Käyttäjän {{name}} rooli",
     "remove": "Poista",
     "removeNamed": "Poista {{name}}",
@@ -529,7 +536,6 @@
       "placeholder": "Nimi, käyttäjänimi tai sähköposti",
       "roleLabel": "Lisättävien henkilöiden rooli",
       "searching": "Haetaan…",
-      "noResults": "Kukaan palvelimella {{server}} ei vastaa hakua.",
       "noResultsTryEmail": "Kukaan palvelimella {{server}} ei vastaa hakua. Kokeile henkilön koko sähköpostiosoitetta.",
       "alreadyMember": "Henkilöllä {{name}} on jo pääsy.",
       "allMembers": "Kaikilla hakua vastaavilla on jo pääsy.",
@@ -582,7 +588,8 @@
     "serverRemoved": "Palvelin poistettu",
     "clientTooOld": "Oleafly tarvitsee päivityksen",
     "serverTooOld": "Palvelin tarvitsee päivityksen",
-    "serverChanged": "Eri palvelin"
+    "serverChanged": "Osoitteessa on uusi palvelin",
+    "failed": "Pysähtyi virheeseen"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
@@ -638,7 +645,7 @@
         "locked": "Tiedostoa {{path}} ei voi kirjoittaa: toinen ohjelma pitää sitä auki.",
         "read_only": "Tiedostoa {{path}} ei voi kirjoittaa: tiedosto tai sen kansio on vain luku -tilassa.",
         "no_space": "Tiedostoa {{path}} ei voi kirjoittaa: levy on täynnä.",
-        "not_downloaded": "Tiedostoa {{path}} ei voi kirjoittaa: pilvipalvelu ei ole vielä ladannut sitä tälle koneelle.",
+        "not_downloaded": "Tiedostoa {{path}} ei ole vielä saatu ladattua palvelimelta. Oleafly yrittää edelleen.",
         "other": "Tiedostoa {{path}} ei voi kirjoittaa."
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "Päivitä Oleafly, jotta voit jatkaa työtä palvelimella {{server}}. Muutoksesi pysyvät tällä koneella.",
     "serverTooOld": "Palvelin {{server}} tarvitsee päivityksen, ennen kuin se toimii tämän Oleafly-version kanssa. Kysy sen ylläpitäjältä. Muutoksesi pysyvät tällä koneella.",
     "serverChanged": "Palvelimen {{server}} osoite vie nyt toiselle palvelimelle. Poista se Yhteistyö-asetuksista ja lisää se uudelleen. Muutoksesi pysyvät tällä koneella.",
+    "failed": "Tämän projektin synkronointi pysähtyi virheen vuoksi. Jatka käynnistämällä se uudelleen.",
+    "goLiveAgain": "Synkronoi uudelleen",
     "accessEnded": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "accessEndedGuest": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "signIn": "Kirjaudu sisään",
@@ -692,6 +701,7 @@
     "newDevice": "{{name}} kirjautui uudella laitteella",
     "review": "Tarkastele",
     "renamed": "{{name}} nimesi tiedoston {{before}} uudelleen nimelle {{theirs}}, kun olit jo antanut sille nimen {{ours}}",
+    "renamedPortable": "Tiedosto {{before}} nimettiin uudelleen nimelle {{theirs}}, jotta se toimii kaikilla koneilla.",
     "skipped": "Käyttäjän {{name}} muutosta ei voitu lukea, joten se ohitettiin.",
     "skippedUnknown": "Jonkun muutosta ei voitu lukea, joten se ohitettiin.",
     "mentioned": "{{name}} mainitsi sinut kommentissa tiedostossa {{path}}",
@@ -729,6 +739,7 @@
     "noText": "Mikään teksti ei muuttunut, joten vertailtavaa ei ole.",
     "newFile": "Uusi tiedosto",
     "removedFile": "Poistettu",
+    "closedOldest": "Vain {{number}} tiedostoa pysyy auki kerrallaan, joten {{path}} suljettiin.",
     "diffLabel": "Muutokset tiedostossa {{path}}"
   },
   "console": {
@@ -897,7 +908,8 @@
     "malformed": "Oleafly ei voi avata tätä linkkiä. Pyydä lähettäjältä uusi linkki.",
     "opening": "Avataan jaettua projektia…",
     "downloading": "Ladataan tiedostoja: {{done}}/{{total}}",
-    "cancelNamed": "Lopeta projektin {{name}} avaaminen",
+    "cancelNamed": "Peruuta projektin {{name}} avaaminen",
+    "cancelling": "Peruutetaan…",
     "confirm": {
       "title": "Liitytkö tähän jaettuun projektiin?",
       "body": "Kun liityt, sinut lisätään projektiin ja sen tiedostot kopioidaan tälle koneelle. Liity vain, jos tiedät, kuka lähetti sinulle linkin.",
@@ -1038,6 +1050,9 @@
     "failed": "Jakaminen ei onnistunut: {{files}}",
     "tooLarge": "{{file}} on {{size}}, enemmän kuin tämä palvelin sallii ({{limit}}). Tiedosto jää vain tälle tietokoneelle.",
     "tooLargeUnknown": "{{file}} on suurempi kuin tämä palvelin sallii. Tiedosto jää vain tälle tietokoneelle.",
+    "projectTooLarge": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan {{limit}}. Pyydä palvelimen ylläpitäjää nostamaan sitä.",
+    "projectTooLargeUnknown": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan. Pyydä palvelimen ylläpitäjää nostamaan sitä.",
+    "projectFull": "Tämä projekti on saavuttanut palvelimen kokorajan, joten muutoksesi jäävät toistaiseksi tälle koneelle. Pyydä palvelimen ylläpitäjää nostamaan rajaa.",
     "replaced": "{{name}} korvasi tiedoston {{file}} samaan aikaan kuin sinä. Versiosi on tallessa nimellä {{copy}}.",
     "added": "{{file}} on nyt {{copy}}, koska {{name}} lisäsi samannimisen tiedoston.",
     "beside": "Myös käyttäjällä {{name}} on tiedosto nimeltä {{file}}. Se on tallessa nimellä {{copy}}.",

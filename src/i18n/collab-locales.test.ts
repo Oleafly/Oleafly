@@ -27,7 +27,7 @@ describe("collaboration translations", () => {
     const keys = catalog(locale, "collab");
     expect(keys.get("admin.tabs.members")).toBe(keys.get("console.sections.people"));
     expect(keys.get("admin.tabs.settings")).toBe(keys.get("console.sections.settings"));
-    expect(keys.get("activity.suspended")).toBe(keys.get("section.server.pausedHint"));
+    expect(keys.get("activity.suspended")).toBe(keys.get("section.server.suspendedHint"));
   });
 
   it.each(others)("%s has the four new shell keys", (locale) => {

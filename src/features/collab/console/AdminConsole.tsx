@@ -181,6 +181,7 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
             onRetry={members.retry}
             onMembersChange={members.update}
             onAddPeople={serverRoleAllows(actor, "manageMembers") ? () => select("access") : undefined}
+            onGuestsChanged={reload}
           />
         );
       case "access":

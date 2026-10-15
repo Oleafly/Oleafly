@@ -180,6 +180,11 @@ export class TextOperation {
     return this.steps.every(isRetain);
   }
 
+  // How many retain, insert and delete steps the operation has.
+  get size(): number {
+    return this.steps.length;
+  }
+
   equals(other: TextOperation): boolean {
     return (
       this.baseLength === other.baseLength &&

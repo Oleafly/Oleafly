@@ -54,6 +54,7 @@ struct Answers {
     poll_refuses: bool,
     poll_busy: bool,
     refresh: Refresh,
+    manifest_missing: bool,
 }
 
 const SOCKETS: Answers = Answers {
@@ -61,6 +62,7 @@ const SOCKETS: Answers = Answers {
     poll_refuses: false,
     poll_busy: false,
     refresh: Refresh::Missing,
+    manifest_missing: false,
 };
 
 const NO_SOCKETS: Answers = Answers {
@@ -80,6 +82,7 @@ fn stranger(sockets: bool) -> Answers {
         poll_refuses: true,
         poll_busy: false,
         refresh: Refresh::Revoked,
+        manifest_missing: false,
     }
 }
 
@@ -171,7 +174,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         let _ = stream.write_all(reply.as_bytes()).await;
         return;
     }
-    let body = if path.starts_with("/.well-known/oleafly-server") {
+    let body = if path.starts_with("/.well-known/oleafly-server") && !answers.manifest_missing {
         manifest
     } else if path.starts_with("/auth/challenge") {
         serde_json::json!({ "nonce": "nonce", "expires_at": 4_102_444_800_000_i64 }).to_string()
@@ -387,6 +390,55 @@ async fn a_server_that_turns_away_a_renewed_session_signs_out_the_same_way_on_ei
             })),
             "sockets {sockets}: {heard:?}"
         );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_turned_away_session_is_kept_when_the_servers_manifest_does_not_load() {
+    for sockets in [true, false] {
+        let server = ServerId::new_v7();
+        let answers = Answers {
+            refresh: Refresh::Renewed,
+            manifest_missing: true,
+            ..stranger(sockets)
+        };
+        let url = answering_at_the_address(server, ProtocolRange { min: 1, max: 1 }, answers).await;
+        let mut doc = ProjectDoc::create().unwrap();
+        let main = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let mut side = side(LiveProject::new(doc, 3, ProjectRole::Editor), &main);
+        lock(&side.live).local_text(&main, "abc kept").unwrap();
+        let link = signed_in(server, url);
+        let sessions = Arc::clone(&link.sessions);
+        start_with(&mut side, link, quick());
+        let mut heard = Vec::new();
+        tokio::time::timeout(Duration::from_secs(20), async {
+            while let Some(event) = side.events.recv().await {
+                heard.push(event);
+                if offline(&heard) >= 3 {
+                    return;
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("sockets {sockets}: the session heard {heard:?}"));
+        assert!(
+            !heard
+                .iter()
+                .any(|event| matches!(event, LiveEvent::Status(LiveStatus::Ended { .. }))),
+            "sockets {sockets}: {heard:?}"
+        );
+        assert_eq!(
+            sessions
+                .tokens(server)
+                .unwrap()
+                .map(|tokens| tokens.refresh_token),
+            Some("refresh".to_owned()),
+            "sockets {sockets}"
+        );
+        assert!(lock(&side.live).has_unsent());
+        stopped(&mut side).await;
     }
 }
 

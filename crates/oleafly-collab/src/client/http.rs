@@ -64,6 +64,7 @@ pub(crate) fn transfer_timeout(bytes: u64) -> Duration {
 pub const SNAPSHOT_SEQ_HEADER: &str = "x-oleafly-snapshot-seq";
 const USER_AGENT: &str = concat!("oleafly-collab/", env!("CARGO_PKG_VERSION"));
 
+#[derive(Clone)]
 pub struct ServerClient {
     url: ServerUrl,
     http: reqwest::Client,

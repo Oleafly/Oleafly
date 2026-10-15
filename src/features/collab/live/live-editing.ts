@@ -12,7 +12,9 @@ import {
   collabPresenceLeave,
   collabPresenceSet,
 } from "@/lib/tauri";
+import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
+import { useIndexStore } from "@/store/project-index";
 import { isReadOnlyProjectRole } from "../roles";
 import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
@@ -79,6 +81,37 @@ function mirrorText(projectId: string, path: string, text: string): void {
   });
 }
 
+export const BACKGROUND_INDEX_MS = 400;
+
+// A collaborator's edit to a shared file in a background tab reaches the
+// store through the session, but the index keeper forwards only the active
+// file, and Rust doesn't report a file it writes while an editor has it open.
+// Without this a label or a bibliography entry someone adds there stays
+// unknown to completion and reference checks until the file is opened. At
+// most one update per file runs in each interval, with the text it has then.
+function backgroundIndexer(projectId: string) {
+  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const run = (path: string) => {
+    timers.delete(path);
+    const files = useFilesStore.getState();
+    const file = files.files[path];
+    if (files.projectId !== projectId || files.activePath === path || !file) return;
+    useIndexStore.getState().updateFile(path, file.content);
+  };
+  return {
+    schedule(path: string): void {
+      if (timers.has(path) || !isProjectIntelligencePath(path)) return;
+      const files = useFilesStore.getState();
+      if (files.projectId !== projectId || files.activePath === path) return;
+      timers.set(path, setTimeout(() => run(path), BACKGROUND_INDEX_MS));
+    },
+    dispose(): void {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    },
+  };
+}
+
 function inOrder(): (call: () => Promise<void>) => void {
   let last = Promise.resolve();
   return (call) => {
@@ -98,6 +131,7 @@ function currentPresence(projectId: string): Presence {
 export function startLiveEditing(live: LiveSession): () => void {
   const { projectId } = live;
   const isViewer = () => isReadOnlyProjectRole(useCollabLiveStore.getState().role);
+  const indexer = backgroundIndexer(projectId);
   const sessions = new LiveSessions({
     transport: {
       open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
@@ -109,13 +143,18 @@ export function startLiveEditing(live: LiveSession): () => void {
       const files = useFilesStore.getState();
       return files.projectId === projectId ? (files.files[path]?.content ?? null) : null;
     },
-    mirror: (path, text) => mirrorText(projectId, path, text),
-    detached: (path, text, edited) => {
+    mirror: (path, text) => {
+      mirrorText(projectId, path, text);
+      indexer.schedule(path);
+    },
+    detached: (path, text, edited, shared) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;
       // The mirror already put this text in the buffer as saved, so say it
-      // isn't, or the typing would never reach the disk.
-      if (edited) files.setContent(path, text, { unsaved: true });
+      // isn't, or the typing would never reach the disk. Merging from the text
+      // Rust confirmed sends a project that is still live exactly the typing
+      // it never got.
+      if (edited) files.setContent(path, text, { unsaved: true, base: shared });
       if (files.activePath === path) files.bumpDocVersion();
     },
     shown: (path) => {
@@ -180,6 +219,7 @@ export function startLiveEditing(live: LiveSession): () => void {
     stopDeletes();
     uninstallPort();
     sessions.close();
+    indexer.dispose();
     useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
     const files = useFilesStore.getState();
     if (files.projectId === projectId) files.bumpDocVersion();
