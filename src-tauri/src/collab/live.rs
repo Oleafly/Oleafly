@@ -12,6 +12,7 @@ mod lifecycle;
 pub mod local_copy;
 mod local_events;
 mod moves;
+mod owed;
 mod pacing;
 mod payloads;
 mod pump;
@@ -31,7 +32,7 @@ pub use lifecycle::{
 pub use local_events::{app_wrote, folder_changed};
 pub(crate) use local_events::{known_content, shared_files, KnownContent};
 pub(crate) use moves::{deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile};
-pub use session::{active_for, note_fresh_join, Active};
+pub use session::{active_for, announce_renames, note_fresh_join, Active};
 pub(crate) use sync_hold::{outside_change, root_returned};
 pub(crate) use unsent::{
     detach_projects, keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT,
@@ -39,9 +40,7 @@ pub(crate) use unsent::{
 
 use bases::{initial_bases, merged_onto, nearest, WrittenTexts};
 use disk_pass::{checked, writable};
-use import::{
-    apply_local_import, by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport,
-};
+use import::{by_path, ensure_dir, name_of, parent_of, read_local_changes, LocalImport};
 use session::{guard, lock, not_live, WriterSignal, ACTIVE};
 
 pub fn app_host(app: tauri::AppHandle) -> std::sync::Arc<dyn LiveHost> {
@@ -60,6 +59,8 @@ pub use payloads::{
 use crate::collab::disk::sha256_hex;
 #[cfg(test)]
 use disk_pass::{apply_to_disk, DiskPass};
+#[cfg(test)]
+use import::apply_local_import;
 #[cfg(test)]
 use pump::pump;
 #[cfg(test)]

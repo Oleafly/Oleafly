@@ -162,7 +162,10 @@ expect "the installer is stamped once" [ "$(grep -cx 'installer_version=0.1.0' "
 expect "no unstamped line is left" [ "$(grep -c 'installer_version=unreleased' "$ws/dist/release/install.sh")" = 0 ]
 expect "the installer is otherwise the same" sh -c "diff '$ws/deploy/server/install.sh' '$ws/dist/release/install.sh' | grep -c '^[<>]' | grep -qx 2"
 expect "the compose image is the release" [ "$(image_line)" = ghcr.io/oleafly/oleafly-server:0.1.0 ]
-expect "caddy keeps its image" grep -q 'image: caddy:2.11.7' "$ws/dist/release/docker-compose.yml"
+# Dependabot moves Caddy's tag, so read it from the repository's file.
+caddy_pin=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\).*$/\1/p' "$ws/deploy/server/docker-compose.yml" | head -n 1)
+expect "the repository's compose file names a Caddy image" [ -n "$caddy_pin" ]
+expect "caddy keeps its image" grep -qF "image: $caddy_pin" "$ws/dist/release/docker-compose.yml"
 expect "the compose file has no build section" sh -c "! grep -q 'build:' '$ws/dist/release/docker-compose.yml'"
 expect "env.example is .env.example" cmp -s "$ws/deploy/server/.env.example" "$ws/dist/release/env.example"
 expect "the Caddyfile is copied" cmp -s "$ws/deploy/server/Caddyfile" "$ws/dist/release/Caddyfile"

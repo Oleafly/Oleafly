@@ -243,9 +243,30 @@ function lfEdits(edits: Utf16Edit[]): Utf16Edit[] {
   return edits.map((edit) => (edit.insert.includes("\r") ? { ...edit, insert: lfText(edit.insert) } : edit));
 }
 
+// Local inserts into a session-bound editor are written with LF, so a pasted
+// CRLF or a lone carriage return can't make the editor and the session count
+// the text differently. Remote changes and the session's own text stay as the
+// session sent them.
+const lfLocalInserts = EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
+    return transaction;
+  }
+  const fixes: { from: number; to: number; insert: string }[] = [];
+  transaction.changes.iterChanges((_fromA, _toA, fromB, _toB, inserted) => {
+    const text = inserted.toString();
+    for (let index = text.indexOf("\r"); index !== -1; index = text.indexOf("\r", index + 1)) {
+      const at = fromB + index;
+      fixes.push(text[index + 1] === "\n" ? { from: at, to: at + 1, insert: "" } : { from: at, to: at + 1, insert: "\n" });
+    }
+  });
+  return fixes.length === 0 ? transaction : [transaction, { changes: fixes, sequential: true }];
+});
+
+const boundLineBreaks = [sessionLineBreaks, lfLocalInserts];
+
 function matchSessionLineBreaks(view: EditorView, compartment: Compartment, bound: boolean): void {
   if ((view.state.facet(EditorState.lineSeparator) === "\n") === bound) return;
-  view.dispatch({ effects: compartment.reconfigure(bound ? sessionLineBreaks : []) });
+  view.dispatch({ effects: compartment.reconfigure(bound ? boundLineBreaks : []) });
 }
 
 // Takes the session's text into the editor without sending it back.
@@ -294,7 +315,8 @@ class EditorSessions {
       let applied = true;
       try {
         applyRemoteChange(view, change);
-      } catch {
+      } catch (error) {
+        logException(view.state, error, "shared document");
         applied = false;
       }
       this.keepAligned(view, session, !applied);
@@ -384,13 +406,23 @@ class EditorSessions {
   private keepInBackground(path: string, session: DocumentSession): void {
     this.dropBackgroundOf(session);
     let key = path;
+    const followMove = () => {
+      if (session.path !== key) key = this.follow(key, session.path, entry);
+    };
+    const stopChanges = session.subscribe((change) => {
+      followMove();
+      const saved = this.states.get(key);
+      if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
+    });
+    // Follow a rename at once, so the file opens under its new name with its
+    // history instead of waiting for the next remote edit.
+    const stopMoves = session.subscribeMove?.(followMove) ?? (() => {});
     const entry: BackgroundSession = {
       session,
-      stop: session.subscribe((change) => {
-        if (session.path !== key) key = this.follow(key, session.path, entry);
-        const saved = this.states.get(key);
-        if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
-      }),
+      stop: () => {
+        stopChanges();
+        stopMoves();
+      },
     };
     this.background.set(path, entry);
   }
@@ -447,10 +479,15 @@ function dispatchDocumentSync(
 }
 
 const NON_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
+const FOCUS_HOLDERS = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"], dialog';
 
-function typingElsewhere(view: EditorView): boolean {
+// The person is working somewhere else: typing in another field, or in a
+// dialog or menu, which a collaborator's rename or delete must not pull the
+// focus out of when it switches the open file.
+function focusHeldElsewhere(view: EditorView): boolean {
   const active = view.dom.ownerDocument.activeElement;
   if (!(active instanceof HTMLElement) || view.dom.contains(active)) return false;
+  if (active.closest(FOCUS_HOLDERS)) return true;
   if (active instanceof HTMLTextAreaElement || active.isContentEditable) return true;
   return active instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(active.type);
 }
@@ -971,7 +1008,7 @@ export function CodeMirrorEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
-        lineBreakCompartment.of(initialSession ? sessionLineBreaks : []),
+        lineBreakCompartment.of(initialSession ? boundLineBreaks : []),
         EditorView.clipboardInputFilter.of(lfText),
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
@@ -1275,9 +1312,9 @@ export function CodeMirrorEditor({
     // Opening a file moves the focus here, but a resync of the same file must
     // leave it alone: a disk reload or a shared session can bump the version
     // while the person types somewhere else. A switch never takes the focus
-    // out of another text field either, since a collaborator's rename or
-    // delete can switch the file.
-    if (pathChanged && !typingElsewhere(view)) view.focus();
+    // out of another text field, a dialog or a menu either, since a
+    // collaborator's rename or delete can switch the file.
+    if (pathChanged && !focusHeldElsewhere(view)) view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
   useEffect(() => synchronizeRef.current(), [activePath, docVersion]);

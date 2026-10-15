@@ -5,6 +5,7 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useFilesStore } from "@/store/files";
 import { COLLAB_PRESENCE_OPTIONS, type CollabPresence, useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "./AddServerDialog";
 import { collabErrorMessage } from "./errors";
@@ -16,22 +17,35 @@ import { ServerCard } from "./ServerCard";
 import { useCollabStore, watchServers } from "./store";
 
 // After Remove, the shared projects that server held stay as ordinary
-// projects. Name them, so nobody wonders where their sync went.
+// projects, renamed as local copies. Name each and the name it has now, so
+// nobody wonders where their sync went or looks for the old name.
 function DetachedProjects() {
-  const { t } = useTranslation(["collab", "common"]);
+  const { t } = useTranslation(["collab", "common", "native"]);
   const detached = useCollabStore((state) => state.detached);
   const dismiss = useCollabStore((state) => state.dismissDetached);
-  if (!detached) return null;
+  const library = useFilesStore((state) => state.projects);
+  if (detached.length === 0) return null;
+  const nameNow = (project: { project_id: string; name: string }) => {
+    const current = library.find((entry) => entry.id === project.project_id)?.name;
+    return current && current !== project.name ? current : t(($) => $.native.collab.localCopy, { name: project.name });
+  };
   return (
     <div role="status" className="space-y-2 rounded-lg border bg-card px-3 py-2.5 text-xs">
-      <p>{t(($) => $.collab.section.server.detached, { server: detached.server })}</p>
-      <ul className="max-h-28 select-text space-y-0.5 overflow-y-auto font-medium">
-        {detached.projects.map((project) => (
-          <li key={project.project_id} className="truncate">
-            {project.name}
-          </li>
-        ))}
-      </ul>
+      {detached.map((notice) => (
+        <div key={notice.server} className="space-y-1.5">
+          <p>{t(($) => $.collab.section.server.detached, { server: notice.server })}</p>
+          <ul className="max-h-28 select-text space-y-1 overflow-y-auto">
+            {notice.projects.map((project) => (
+              <li key={project.project_id} className="min-w-0">
+                <p className="truncate font-medium">{project.name}</p>
+                <p className="truncate text-muted-foreground">
+                  {t(($) => $.collab.section.server.unsent.staysAs, { name: nameNow(project) })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       <Button type="button" variant="outline" size="sm" onClick={dismiss}>
         {t(($) => $.common.actions.ok)}
       </Button>
@@ -92,6 +106,8 @@ export function CollaborationSection() {
   }, [requestedUrl]);
 
   useEffect(() => watchServers(), []);
+  // What a Remove left behind is news only while Settings stays open.
+  useEffect(() => () => useCollabStore.getState().dismissDetached(), []);
 
   const managed = managing === null ? null : (servers.find((entry) => entry.server_id === managing) ?? null);
   if (managed?.signed_in && canManageServer(toServerRole(managed.account?.server_role))) {

@@ -34,7 +34,16 @@ pub async fn start(
     host: Arc<dyn LiveHost>,
     project_id: &str,
 ) -> Result<LiveInfo, CollabError> {
-    let _lifecycle = LIFECYCLE.lock().await;
+    let lifecycle = LIFECYCLE.lock().await;
+    start_locked(lifecycle, state, host, project_id).await
+}
+
+async fn start_locked(
+    _lifecycle: tokio::sync::MutexGuard<'static, ()>,
+    state: &CollabState,
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+) -> Result<LiveInfo, CollabError> {
     if let Some(active) = active_for(project_id) {
         let role = lock(&active.live).role();
         let status = guard(&active.last_status).clone();
@@ -102,6 +111,11 @@ pub async fn start(
         .map_err(io)??
     };
     let (mut live, disk) = loaded;
+    if live.repaired_on_load() {
+        let _ = crate::project::append_app_log(format!(
+            "Live collaboration repaired the saved shared document of project {project_id} when it opened"
+        ));
+    }
     crate::collab::tree::sign(&mut live, state, binding.server_id, tokens.account_id);
     let hold_dir = paths.project_dir(project_id)?;
     let sync_hold::CaughtUp {
@@ -109,6 +123,7 @@ pub async fn start(
         disk,
         bases,
         to_upload,
+        renamed,
     } = sync_hold::catch_up(root.clone(), hold_dir, live, disk).await?;
     let shared: SharedLive = Arc::new(Mutex::new(live));
     let (events_tx, events_rx) = mpsc::unbounded_channel();
@@ -138,6 +153,11 @@ pub async fn start(
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Arc::clone(&active));
+    active.host.unwritten(super::unwritten::UnwrittenPayload {
+        project_id: project_id.to_owned(),
+        files: Vec::new(),
+    });
+    active.announce_new_names(renamed);
     settings::schedule(&active);
     uploads::attach(&active);
     active.announce_uploads();
@@ -220,31 +240,60 @@ pub async fn stop(project_id: &str) {
     }
 }
 
+// Runs `work`, which stops the project's live session, and starts the
+// session again when `work` fails, unless another session went live in the
+// meantime: starting would stop that one. Says whether it started again.
 pub async fn resumed_if_failed<T, E>(
     state: &CollabState,
     host: Arc<dyn LiveHost>,
     project_id: &str,
     work: impl std::future::Future<Output = Result<T, E>>,
-) -> Result<T, E> {
+) -> (Result<T, E>, bool) {
     let was_live = active_for(project_id).is_some();
     let done = work.await;
-    if done.is_err() && was_live && active_for(project_id).is_none() {
-        if let Err(error) = start(state, host, project_id).await {
+    let restarted = done.is_err() && was_live && start_if_idle(state, host, project_id).await;
+    (done, restarted)
+}
+
+async fn start_if_idle(state: &CollabState, host: Arc<dyn LiveHost>, project_id: &str) -> bool {
+    let lifecycle = LIFECYCLE.lock().await;
+    if guard(&ACTIVE).is_some() {
+        return false;
+    }
+    match start_locked(lifecycle, state, host, project_id).await {
+        Ok(_) => true,
+        Err(error) => {
             let _ = crate::project::append_app_log(format!(
                 "Live collaboration could not start project {project_id} again after it stayed: {error}"
             ));
+            false
         }
     }
-    done
 }
 
-pub async fn flush(project_id: &str) {
+pub fn reconnect_now() -> bool {
+    let running = guard(&ACTIVE).clone();
+    running.is_some_and(|active| {
+        active.handle.reconnect_now();
+        true
+    })
+}
+
+const FIGURE_WAIT: Duration = Duration::from_secs(5);
+
+// Writes what the document has to disk. The compile barrier also waits a
+// little for figures still on their way, so the compile finds them; other
+// flushes, such as reopening a restored file, don't.
+pub async fn flush(project_id: &str, figures: bool) {
     let Some(active) = active_for(project_id) else {
         return;
     };
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
+    if figures {
+        active.wait_for_figures(FIGURE_WAIT).await;
+    }
 }
 
 pub async fn forget(project_id: &str, paths: &oleafly_collab::CollabPaths) {

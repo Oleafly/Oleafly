@@ -25,9 +25,9 @@
       "signedOut": "Oturum kapalı",
       "signedInAs": "{{name}} olarak oturum açıldı",
       "signedOutHint": "Bu bilgisayarda bu sunucu için oturum açık değil.",
-      "paused": "Askıya alındı",
+      "suspended": "Askıya alındı",
       "noAccess": "Erişim yok",
-      "pausedHint": "Bir yönetici {{server}} sunucusundaki hesabınızı askıya aldı. Değişiklikleriniz bu bilgisayarda kalır. Bir yönetici hesabınızı yeniden etkinleştirdiğinde tekrar oturum açabilirsiniz.",
+      "suspendedHint": "Bir yönetici {{server}} sunucusundaki hesabınızı askıya aldı. Değişiklikleriniz bu bilgisayarda kalır. Bir yönetici hesabınızı yeniden etkinleştirdiğinde tekrar oturum açabilirsiniz.",
       "endedHint": "{{server}} sunucusuna artık erişiminiz yok. Kopyalarınız bu bilgisayarda sıradan projeler olarak kalır. Bir yönetici sizi yeniden eklerse tekrar oturum açın.",
       "endedGuestHint": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyalarınız bu bilgisayarda sıradan projeler olarak kalır. Yeniden davet edilirseniz tekrar oturum açın.",
       "role": "Rolünüz: {{role}}",
@@ -35,11 +35,11 @@
       "signOut": "Oturumu kapat",
       "remove": "Kaldır",
       "manage": "Sunucuyu yönet",
-      "manageHint": "Sunucuyu yönet seçeneği kişileri, erişim kurallarını ve sunucu ayarlarını burada gösterir. Yönetici konsolu kendi penceresinde açılır ve ayrıca genel bakış, projeler ve bağlantı denetimleri içerir.",
+      "manageHint": "Sunucuyu yönet seçeneği burada Kişiler, İzinli kişiler, Alan adları, Sunucu ayarları, E-posta ve Güvenlik günlüğü bölümlerini gösterir. Yönetici konsolu kendi penceresinde açılır ve ayrıca genel bakış, projeler ve bağlantı denetimleri içerir.",
       "test": "Bağlantıyı test et",
       "removeConfirm": {
         "title": "{{name}} kaldırılsın mı?",
-        "description": "Oleafly, {{name}} sunucusundaki oturumu kapatır ve sunucuyu unutur. {{name}} sunucusundaki paylaşılan projeler eşitlenmeyi bırakır ve bu bilgisayarda sıradan projeler olarak kalır.",
+        "description": "Oleafly, {{name}} sunucusundaki oturumu kapatır ve sunucuyu unutur. {{name}} sunucusundaki paylaşılan projeler eşitlenmeyi bırakır ve her biri yerel kopya olarak yeniden adlandırılıp bu bilgisayarda sıradan projeler olarak kalır.",
         "confirm": "Sunucuyu kaldır"
       },
       "detached": "{{server}} sunucusundaki bu paylaşılan projeler artık eşitlenmiyor. Bu bilgisayarda sıradan projeler olarak kalır.",
@@ -216,11 +216,12 @@
     "link_sharing_off": "Bu sunucu bağlantıyla paylaşıma izin vermiyor. Sunucunun yöneticisinden bunu açmasını isteyin.",
     "access_log_off": "Bu sunucu erişim günlüklerine izin vermiyor. Sunucunun yöneticisinden bunları açmasını isteyin.",
     "last_admin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
-    "duplicate_entry": "Bu zaten listede.",
+    "duplicate_entry": "Bu kayıt zaten var.",
     "already_member": "Bu kişinin zaten bir hesabı var. Rolünü Kişiler bölümünden değiştirin.",
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
-    "owner_away": "Bu projenin sahibi şu anda bu sunucuda etkin değil, bu yüzden projeye yeni kişiler katılamıyor.",
+    "owner_away": "Projenin sahibi bu sunucuda askıya alınmış veya kaldırılmış, bu yüzden proje şu anda yeni kişi alamıyor. Sunucunun bir yöneticisine sorun.",
+    "wrong_server": "Bu sunucu oturum açma sayfasını farklı bir adresten gönderdi, bu yüzden Oleafly durdu. Sunucu adresini denetleyin veya sunucuyu yöneten kişiye sorun.",
     "not_a_link": "Bu, paylaşılan bir projenin bağlantısı değil. Bağlantının tamamını kopyalayıp yeniden deneyin.",
     "signed_out": "Bu sunucudaki oturumunuz kapalı. Bu projeyi eşitlemek için yeniden oturum açın.",
     "server_removed": "Bu projenin sunucusu artık listenizde değil. Projeyi yerel kopya olarak saklayın veya sunucuyu yeniden ekleyin.",
@@ -268,17 +269,21 @@
       "devicesLoading": "Cihazlar yükleniyor…",
       "devicesLoadFailed": "Oleafly bu cihazları yükleyemedi.",
       "lastAdmin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
-      "ownedOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} yokken onu başka kimse yönetemez.",
-      "ownedMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} yokken onları başka kimse yönetemez.",
+      "owned": {
+        "suspendOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} askıdayken onu başka kimse yönetemez.",
+        "suspendMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} askıdayken onları başka kimse yönetemez.",
+        "removeOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} kaldırıldıktan sonra onu başka kimse yönetemez.",
+        "removeMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} kaldırıldıktan sonra onları başka kimse yönetemez."
+      },
       "removeConfirm": {
         "title": "{{name}} bu sunucudan kaldırılsın mı?",
         "description": "Kişinin cihazlarındaki oturumlar hemen kapatılır. Sahibi olduğu projeler sunucuda kalır ve kişiyi daha sonra yeniden ekleyebilirsiniz.",
-        "confirm": "Üyeyi kaldır"
+        "confirm": "Sunucudan kaldır"
       },
       "suspendConfirm": {
         "title": "{{name}} askıya alınsın mı?",
         "description": "Bir yönetici hesabı yeniden etkinleştirene kadar {{name}} oturum açamaz ve eşitleme yapamaz.",
-        "confirm": "Üyeyi askıya al"
+        "confirm": "Hesabı askıya al"
       },
       "selfRoleConfirm": {
         "title": "Kendi rolünüz {{role}} olarak değiştirilsin mi?",
@@ -292,7 +297,7 @@
       }
     },
     "allowlist": {
-      "description": "Bu listedeki kişiler, seçtiğiniz rolle sunucuda oturum açabilir.",
+      "description": "Buraya eklediğiniz kişiler, seçtiğiniz rolle sunucuda oturum açabilir.",
       "matchLabel": "Eşleştirme ölçütü",
       "match": {
         "email": "E-posta adresi",
@@ -303,14 +308,14 @@
       "providerLabel": "Oturum açma seçeneği",
       "roleLabel": "Rol",
       "add": "Ekle",
-      "loading": "Liste yükleniyor…",
-      "empty": "Listede henüz kimse yok.",
+      "loading": "İzinli kişiler yükleniyor…",
+      "empty": "Henüz kimse eklenmedi.",
       "loginEntry": "{{provider}} üzerinde {{login}}",
       "bound": "Oturum açtı",
       "unbound": "Henüz oturum açmadı",
       "remove": "Kaldır",
       "removeNamed": "{{entry}} kaydını kaldır",
-      "duplicate": "Bu kişi zaten listede."
+      "duplicate": "Bu kişiye zaten izin verilmiş."
     },
     "domains": {
       "description": "Bu alan adlarında doğrulanmış bir e-posta adresi olan herkes, seçtiğiniz rolle oturum açabilir.",
@@ -507,7 +512,7 @@
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
-    "trustAgain": "Artık başkaları da bu projeyi düzenleyebildiği için Oleafly, projenin araçlarını bu bilgisayarda çalıştırmadan önce size yeniden sorar."
+    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",
@@ -516,6 +521,8 @@
     "loadFailed": "Oleafly erişimi olanları yükleyemedi.",
     "people": "Erişimi olan kişiler",
     "you": "Siz",
+    "inactive": "Kaldırıldı veya askıya alındı",
+    "ownerInactive": "Sahip kaldırıldı veya askıya alındı",
     "roleLabel": "{{name}} için rol",
     "remove": "Kaldır",
     "removeNamed": "{{name}} kişisini kaldır",
@@ -529,7 +536,6 @@
       "placeholder": "Ad, kullanıcı adı veya e-posta",
       "roleLabel": "Eklediğiniz kişilerin rolü",
       "searching": "Aranıyor…",
-      "noResults": "{{server}} sunucusunda eşleşen kimse yok.",
       "noResultsTryEmail": "{{server}} sunucusunda eşleşen kimse yok. Kişinin tam e-posta adresini deneyin.",
       "alreadyMember": "{{name}} zaten erişime sahip.",
       "allMembers": "Eşleşen herkes zaten erişime sahip.",
@@ -582,7 +588,8 @@
     "serverRemoved": "Sunucu kaldırıldı",
     "clientTooOld": "Oleafly güncellenmeli",
     "serverTooOld": "Sunucu güncellenmeli",
-    "serverChanged": "Farklı sunucu"
+    "serverChanged": "Bu adreste yeni bir sunucu var",
+    "failed": "Bir hatadan sonra durdu"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",
@@ -638,7 +645,7 @@
         "locked": "{{path}} yazılamıyor: başka bir program dosyayı açık tutuyor.",
         "read_only": "{{path}} yazılamıyor: dosya veya klasörü salt okunur.",
         "no_space": "{{path}} yazılamıyor: disk dolu.",
-        "not_downloaded": "{{path}} yazılamıyor: bir bulut hizmeti dosyayı henüz bu bilgisayara indirmedi.",
+        "not_downloaded": "{{path}} henüz sunucudan indirilemedi. Oleafly denemeye devam ediyor.",
         "other": "{{path}} yazılamıyor."
       }
     },
@@ -680,6 +687,8 @@
     "clientTooOld": "{{server}} sunucusunda çalışmaya devam etmek için Oleafly'yi güncelleyin. Değişiklikleriniz bu bilgisayarda kalır.",
     "serverTooOld": "{{server}} sunucusunun bu Oleafly sürümüyle çalışması için güncellenmesi gerekiyor. Sunucuyu yöneten kişiye danışın. Değişiklikleriniz bu bilgisayarda kalır.",
     "serverChanged": "{{server}} adresi artık farklı bir sunucuyu gösteriyor. Sunucuyu Ayarlar'daki İş Birliği bölümünden kaldırıp yeniden ekleyin. Değişiklikleriniz bu bilgisayarda kalır.",
+    "failed": "Bu projenin eşitlenmesi bir hatadan sonra durdu. Devam etmek için eşitlemeyi yeniden başlatın.",
+    "goLiveAgain": "Yeniden eşitle",
     "accessEnded": "{{server}} sunucusuna artık erişiminiz yok. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "accessEndedGuest": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "signIn": "Oturum aç",
@@ -692,6 +701,7 @@
     "newDevice": "{{name}} yeni bir cihazda oturum açtı",
     "review": "İncele",
     "renamed": "Siz {{ours}} adını verdikten sonra {{name}}, {{before}} dosyasının adını {{theirs}} olarak değiştirdi",
+    "renamedPortable": "{{before}} dosyası her bilgisayarda çalışsın diye {{theirs}} olarak yeniden adlandırıldı.",
     "skipped": "{{name}} tarafından yapılan bir değişiklik okunamadığı için atlandı.",
     "skippedUnknown": "Birinin yaptığı bir değişiklik okunamadığı için atlandı.",
     "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",
@@ -729,6 +739,7 @@
     "noText": "Hiçbir metin değişmedi, karşılaştırılacak bir şey yok.",
     "newFile": "Yeni dosya",
     "removedFile": "Kaldırıldı",
+    "closedOldest": "Aynı anda yalnızca {{number}} dosya açık kalabilir, bu yüzden {{path}} kapatıldı.",
     "diffLabel": "{{path}} içindeki değişiklikler"
   },
   "console": {
@@ -897,7 +908,8 @@
     "malformed": "Oleafly bu bağlantıyı açamıyor. Gönderen kişiden yeni bir bağlantı isteyin.",
     "opening": "Paylaşılan proje açılıyor…",
     "downloading": "Dosyalar indiriliyor: {{done}} / {{total}}",
-    "cancelNamed": "{{name}} projesini açmayı durdur",
+    "cancelNamed": "{{name}} projesini açmayı iptal et",
+    "cancelling": "İptal ediliyor…",
     "confirm": {
       "title": "Bu paylaşılan projeye katılmak istiyor musunuz?",
       "body": "Katıldığınızda projeye eklenirsiniz ve projenin dosyaları bu bilgisayara kopyalanır. Yalnızca bağlantıyı kimin gönderdiğini biliyorsanız katılın.",
@@ -1038,6 +1050,9 @@
     "failed": "Paylaşılamadı: {{files}}",
     "tooLarge": "{{file}} {{size}} boyutunda, bu sunucunun izin verdiğinden ({{limit}}) büyük. Yalnızca bu bilgisayarda kalır.",
     "tooLargeUnknown": "{{file}} bu sunucunun izin verdiğinden büyük. Yalnızca bu bilgisayarda kalır.",
+    "projectTooLarge": "Proje sunucunun {{limit}} boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
+    "projectTooLargeUnknown": "Proje sunucunun boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
+    "projectFull": "Bu proje sunucunun boyut sınırına ulaştı, bu yüzden değişiklikleriniz şimdilik bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
     "replaced": "{{name}}, {{file}} dosyasını sizinle aynı anda değiştirdi. Sizin sürümünüz {{copy}} olarak saklandı.",
     "added": "{{name}} aynı adda bir dosya eklediği için {{file}} artık {{copy}} adını taşıyor.",
     "beside": "Aynı adda bir {{file}} dosyası {{name}} tarafından da eklendi. Bu dosya {{copy}} olarak saklandı.",

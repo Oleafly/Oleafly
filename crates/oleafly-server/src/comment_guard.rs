@@ -1,7 +1,5 @@
 use std::borrow::Cow;
-use std::cmp::Reverse;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -12,17 +10,16 @@ use tokio::sync::Mutex;
 use crate::db::Db;
 use crate::error::ServerError;
 use crate::peers;
-use crate::projects;
-use crate::snapshots::{self, read_cost, Budgeted, Current, Replay, Snapshots};
+use crate::snapshots::{self, Budgeted, Current, Keep, Replay, Snapshots};
 
 pub const COMMENTS: &str = "comments";
 const IDLE: Duration = Duration::from_secs(15 * 60);
-// Kept documents may use this share of the snapshot memory budget, so
-// snapshot builds and other reads keep the rest.
-const BUDGET_SHARE: u64 = 4;
 const MAX_SLOTS: usize = 1_024;
 const BUSY_TRIES: u32 = 20;
 const BUSY_PAUSE: Duration = Duration::from_millis(100);
+// How long a check waits for a snapshot build of its own project, whose
+// reservation may have taken the check's kept document.
+const BUILD_WAIT: Duration = Duration::from_secs(60);
 const WARN_EVERY: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,15 +30,12 @@ pub enum Verdict {
     Unchecked,
 }
 
-struct Kept {
-    replay: Budgeted,
-    seq: u64,
-}
-
+// One check per project runs at a time, so two changes that arrive together
+// don't both read the project. The document itself is kept with the
+// snapshots, inside their memory budget.
 struct Slot {
-    kept: Mutex<Option<Kept>>,
+    turn: Mutex<()>,
     used: std::sync::Mutex<Instant>,
-    bytes: AtomicU64,
 }
 
 impl Slot {
@@ -75,9 +69,8 @@ impl CommentGuard {
         }
         let slot = slots.entry(project).or_insert_with(|| {
             Arc::new(Slot {
-                kept: Mutex::new(None),
+                turn: Mutex::new(()),
                 used: std::sync::Mutex::new(now),
-                bytes: AtomicU64::new(0),
             })
         });
         *slot.used.lock().unwrap_or_else(PoisonError::into_inner) = now;
@@ -92,44 +85,6 @@ impl CommentGuard {
             .len()
     }
 
-    pub fn kept_bytes(&self) -> u64 {
-        self.slots
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .values()
-            .map(|slot| slot.bytes.load(Ordering::Relaxed))
-            .sum()
-    }
-
-    // Drops the least recently used documents other than `project` until
-    // the kept ones fit within `cap`. A document in use is left alone.
-    fn make_room(&self, project: SharedProjectId, cap: u64) -> bool {
-        let now = Instant::now();
-        let mut kept: Vec<(Duration, Arc<Slot>)> = self
-            .slots
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .iter()
-            .filter(|(key, slot)| **key != project && slot.bytes.load(Ordering::Relaxed) > 0)
-            .map(|(_, slot)| (slot.idle(now), Arc::clone(slot)))
-            .collect();
-        kept.sort_by_key(|(idle, _)| Reverse(*idle));
-        let mut total = self.kept_bytes();
-        let mut freed = false;
-        for (_, slot) in kept {
-            if total <= cap {
-                break;
-            }
-            if let Ok(mut held) = slot.kept.try_lock() {
-                if held.take().is_some() {
-                    total = total.saturating_sub(slot.bytes.swap(0, Ordering::Relaxed));
-                    freed = true;
-                }
-            }
-        }
-        freed
-    }
-
     pub async fn check(
         &self,
         db: &Db,
@@ -138,9 +93,9 @@ impl CommentGuard {
         payload: Vec<u8>,
     ) -> Result<Verdict, ServerError> {
         let slot = self.slot(project);
-        let mut kept = slot.kept.lock().await;
-        slot.bytes.store(0, Ordering::Relaxed);
-        let current = match caught_up(db, snapshots, project, kept.take()).await? {
+        let _turn = slot.turn.lock().await;
+        let kept = snapshots.take_kept(Keep::CommentChecks, project);
+        let current = match snapshots.caught_up(db, project, kept).await? {
             Some(current) => Some(current),
             None => self.read(db, snapshots, project).await?,
         };
@@ -159,30 +114,34 @@ impl CommentGuard {
         })
         .await
         .map_err(|error| ServerError::Internal(format!("a comment check failed: {error}")))?;
-        let cap = snapshots.budget().memory_bytes / BUDGET_SHARE;
-        if let Some(replay) = replay.filter(|replay| replay.reserved_bytes() <= cap) {
-            slot.bytes.store(replay.reserved_bytes(), Ordering::Relaxed);
-            *kept = Some(Kept { replay, seq });
-            drop(kept);
-            self.make_room(project, cap);
+        if let Some(replay) = replay {
+            snapshots.keep(Keep::CommentChecks, project, replay, seq);
         }
         Ok(verdict)
     }
 
+    // Kept documents already give their memory to this read when it needs
+    // it, so waiting here only waits for documents in use and builds. A
+    // build of this very project is waited for to its end, once, since its
+    // memory comes back when it finishes.
     async fn read(
         &self,
         db: &Db,
         snapshots: &Snapshots,
         project: SharedProjectId,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        let mut waited_for_build = false;
         for _ in 0..BUSY_TRIES {
             match snapshots.read_current(db, project).await? {
                 Current::Read(replay, head) => return Ok(Some((replay, head))),
-                Current::Busy => {
-                    if !self.make_room(project, self.kept_bytes().saturating_sub(1)) {
-                        tokio::time::sleep(BUSY_PAUSE).await;
+                Current::Busy => match snapshots.build_running(project) {
+                    Some(mut finished) if !waited_for_build => {
+                        waited_for_build = true;
+                        let _ =
+                            tokio::time::timeout(BUILD_WAIT, finished.wait_for(|done| *done)).await;
                     }
-                }
+                    _ => tokio::time::sleep(BUSY_PAUSE).await,
+                },
                 Current::TooLarge { needed, allowed } => {
                     self.warn(project, &format!(
                         "reading it needs about {} MB and OLEAFLY_SNAPSHOT_MEMORY_MB allows {} MB. Raise OLEAFLY_SNAPSHOT_MEMORY_MB to keep comments off for it",
@@ -216,17 +175,10 @@ impl CommentGuard {
         }
     }
 
-    pub async fn forget(&self, project: SharedProjectId) {
-        let slot = self
-            .slots
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(&project)
-            .cloned();
-        if let Some(slot) = slot {
-            *slot.kept.lock().await = None;
-            slot.bytes.store(0, Ordering::Relaxed);
-        }
+    pub async fn forget(&self, snapshots: &Snapshots, project: SharedProjectId) {
+        let slot = self.slot(project);
+        let _turn = slot.turn.lock().await;
+        snapshots.forget_kept(Keep::CommentChecks, project);
     }
 }
 
@@ -238,29 +190,6 @@ fn rewound(project: SharedProjectId, replay: &Replay, before: &Frontiers) -> Opt
         })
         .ok()?;
     Replay::start(project, &bytes)
-}
-
-async fn caught_up(
-    db: &Db,
-    snapshots: &Snapshots,
-    project: SharedProjectId,
-    kept: Option<Kept>,
-) -> Result<Option<(Budgeted, u64)>, ServerError> {
-    let Some(Kept { mut replay, seq }) = kept else {
-        return Ok(None);
-    };
-    let (head, bindings, grown) = db
-        .read(move |conn| {
-            let head = projects::project_row(conn, project)?.map_or(0, |row| row.head_seq);
-            let grown = projects::log_span(conn, project, seq, head.max(seq))?.bytes;
-            Ok((head, peers::bound_devices(conn, project)?, grown))
-        })
-        .await?;
-    if head < seq || !replay.grow(snapshots, read_cost(0, grown)) {
-        return Ok(None);
-    }
-    let advanced = snapshots::advance(db, project, replay, seq, head, &Arc::new(bindings)).await?;
-    Ok(advanced.map(|replay| (replay, head)))
 }
 
 fn judge(doc: &LoroDoc, payload: &[u8]) -> (Verdict, bool) {
@@ -435,6 +364,5 @@ mod tests {
             guard.slot(SharedProjectId::new_v7());
         }
         assert!(guard.slots() <= MAX_SLOTS);
-        assert_eq!(guard.kept_bytes(), 0);
     }
 }

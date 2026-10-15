@@ -39,7 +39,8 @@ const limits = {
   // +50 KB for the live collaboration hooks that load at startup even while
   // collaboration is off: the collaboration command wrappers in
   // src/lib/tauri.ts, the switch sync, link intake, the editor's document
-  // sessions and the collaboration slots. The entry measures 4.81 MB. Moving
+  // sessions and the collaboration slots. The entry measures 4.81 MB, and
+  // 4.82 MB after the collaboration review fixes. Moving
   // the wrappers into a module that only src/features/collab imports would
   // take most of it back out.
   largestJavaScript: 4_850_000,
@@ -104,7 +105,18 @@ const limits = {
   // Windows.
   // +340 KB for live collaboration, most of it in chunks that load only once
   // collaboration is turned on: the combined graph measures 20.25 MB.
-  totalJavaScript: 20_264_000,
+  // +40 KB for the review fixes to collaboration: the Add server dialog, the
+  // join progress and connection test, the admin console and Collaboration
+  // settings, about 5 KB of it in the entry. The combined graph measures
+  // 20.29 MB.
+  // +11 KB for the second round of those fixes in the window: input method
+  // composition and confirmed text in shared files, the project size and
+  // failed sync notices, and marks for people who left a server. The
+  // combined graph measures 20.30 MB on macOS and Linux. A Windows checkout
+  // gives the bundled CSL styles CRLF line endings, which adds 13,040 bytes
+  // there (CI measured 20,242,679 and 20,255,719 bytes for one tree), so the
+  // limit leaves room for the Windows build too.
+  totalJavaScript: 20_330_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

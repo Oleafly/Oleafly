@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
@@ -25,6 +26,7 @@ pub enum UploadState {
     Waiting,
     Failed,
     TooLarge,
+    ProjectTooLarge,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -43,12 +45,25 @@ pub struct UploadsPayload {
     pub files: Vec<UploadFile>,
 }
 
+// What makes the waiting figures go out again.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Retry {
+    // The next try of a figure that failed, after its wait.
+    Timer,
+    // The session came back online. A figure the server refused because the
+    // project was full goes again only if the server's limit has changed.
+    Reconnect,
+    // The person asked with Retry.
+    Asked,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Outcome {
     Sent,
     Retry,
     Refused,
     TooLarge(Option<u64>),
+    ProjectTooLarge(Option<u64>),
 }
 
 struct Pending {
@@ -71,7 +86,13 @@ type Key = (SharedProjectId, DeviceId);
 
 static UPLOADS: LazyLock<Mutex<HashMap<Key, Uploads>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
-static LIMITS: LazyLock<Mutex<HashMap<ServerId, (u64, Instant)>>> =
+#[derive(Clone, Copy)]
+struct Limits {
+    file: u64,
+    project: u64,
+}
+
+static LIMITS: LazyLock<Mutex<HashMap<ServerId, (Limits, Instant)>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn key(link: &LiveLink) -> Key {
@@ -80,6 +101,9 @@ fn key(link: &LiveLink) -> Key {
 
 fn judged(error: &CollabError) -> Outcome {
     match error {
+        CollabError::Api {
+            status: 413, code, ..
+        } if code == "project_too_large" => Outcome::ProjectTooLarge(None),
         CollabError::Api { status: 413, .. } => Outcome::TooLarge(None),
         CollabError::Api { status, .. }
             if (400..500).contains(status) && !matches!(status, 401 | 408 | 425 | 429) =>
@@ -90,61 +114,54 @@ fn judged(error: &CollabError) -> Outcome {
     }
 }
 
-async fn server_limit(link: &LiveLink, fresh: bool) -> Option<u64> {
+async fn server_limits(link: &LiveLink, fresh: bool) -> Option<Limits> {
     let cached = guard(&LIMITS).get(&link.server_id).copied();
-    if let Some((limit, _)) = cached.filter(|(_, at)| !fresh && at.elapsed() < LIMIT_KEPT) {
-        return Some(limit);
+    if let Some((limits, _)) = cached.filter(|(_, at)| !fresh && at.elapsed() < LIMIT_KEPT) {
+        return Some(limits);
     }
     match link.client.capabilities().await {
         Ok(manifest) => {
-            let limit = manifest.limits.max_file_mb.saturating_mul(MEBIBYTE);
-            guard(&LIMITS).insert(link.server_id, (limit, Instant::now()));
-            Some(limit)
+            let limits = Limits {
+                file: manifest.limits.max_file_mb.saturating_mul(MEBIBYTE),
+                project: manifest.limits.max_project_mb.saturating_mul(MEBIBYTE),
+            };
+            guard(&LIMITS).insert(link.server_id, (limits, Instant::now()));
+            Some(limits)
         }
-        Err(_) => cached.map(|(limit, _)| limit),
+        Err(_) => cached.map(|(limits, _)| limits),
     }
+}
+
+async fn server_limit(link: &LiveLink, fresh: bool) -> Option<u64> {
+    server_limits(link, fresh).await.map(|limits| limits.file)
 }
 
 pub(super) async fn send(
     link: &LiveLink,
-    blobs: &[(String, String, Vec<u8>)],
+    root: &Path,
+    blobs: &[(String, String, u64)],
     online: bool,
 ) -> BTreeSet<String> {
     if blobs.is_empty() {
         return BTreeSet::new();
     }
-    let big = blobs
-        .iter()
-        .any(|(_, _, bytes)| bytes.len() as u64 > CHECK_ABOVE);
+    let big = blobs.iter().any(|(_, _, size)| *size > CHECK_ABOVE);
     let mut limit = if big {
         server_limit(link, false).await
     } else {
         None
     };
-    let project = link.project;
     let mut known: BTreeMap<&str, Outcome> = BTreeMap::new();
     let mut results = Vec::new();
-    for (path, hash, bytes) in blobs {
-        let size = bytes.len() as u64;
+    for (path, hash, size) in blobs {
+        let size = *size;
         let outcome = match known.get(hash.as_str()) {
             Some(outcome) => *outcome,
             None => {
                 let mut outcome = if limit.is_some_and(|limit| size > limit) {
                     Outcome::TooLarge(limit)
                 } else {
-                    let sent = with_access(
-                        &link.sessions,
-                        link.server_id,
-                        &link.client,
-                        |client, access| {
-                            let (hash, bytes) = (hash.clone(), bytes.clone());
-                            Box::pin(
-                                async move { client.put_blob(access, project, &hash, bytes).await },
-                            )
-                        },
-                    )
-                    .await;
-                    match sent {
+                    match sent(link, root, path, hash).await {
                         Ok(()) => Outcome::Sent,
                         Err(error) => judged(&error),
                     }
@@ -155,6 +172,10 @@ pub(super) async fn send(
                         outcome = Outcome::TooLarge(Some(limit));
                     }
                 }
+                if outcome == Outcome::ProjectTooLarge(None) {
+                    let project = server_limits(link, true).await.map(|limits| limits.project);
+                    outcome = Outcome::ProjectTooLarge(project);
+                }
                 known.insert(hash, outcome);
                 outcome
             }
@@ -162,6 +183,27 @@ pub(super) async fn send(
         results.push((path.clone(), hash.clone(), size, outcome));
     }
     record(key(link), results, online)
+}
+
+// The figure is read from disk for each try, so a large one is never
+// held in memory between tries or copied once per retry.
+async fn sent(link: &LiveLink, root: &Path, path: &str, hash: &str) -> Result<(), CollabError> {
+    let file = safe_target(root, path)
+        .ok_or_else(|| CollabError::Io(format!("refused to read {path}")))?;
+    let project = link.project;
+    with_access(
+        &link.sessions,
+        link.server_id,
+        &link.client,
+        |client, access| {
+            let (file, hash) = (file.clone(), hash.to_owned());
+            Box::pin(async move {
+                let bytes = crate::collab::share::sendable_blob(&file, &hash).await?;
+                client.put_blob(access, project, &hash, bytes).await
+            })
+        },
+    )
+    .await
 }
 
 fn record(
@@ -208,6 +250,10 @@ fn record(
             }
             Outcome::TooLarge(limit) => {
                 pending.state = UploadState::TooLarge;
+                pending.limit = limit;
+            }
+            Outcome::ProjectTooLarge(limit) => {
+                pending.state = UploadState::ProjectTooLarge;
                 pending.limit = limit;
             }
             Outcome::Sent => {}
@@ -296,13 +342,31 @@ impl Active {
                     .get(&key)
                     .is_some_and(|uploads| uploads.timer == token);
                 if let (true, Some(active)) = (current, active.upgrade()) {
-                    active.retry_uploads(false).await;
+                    active.retry_uploads(Retry::Timer).await;
                 }
             });
         }
     }
 
-    pub(super) async fn retry_uploads(&self, fresh: bool) {
+    fn waits_on_a_full_project(&self) -> bool {
+        guard(&UPLOADS)
+            .get(&self.upload_key())
+            .is_some_and(|uploads| {
+                uploads
+                    .files
+                    .values()
+                    .any(|pending| pending.state == UploadState::ProjectTooLarge)
+            })
+    }
+
+    pub(super) async fn retry_uploads(&self, why: Retry) {
+        let project_limit = if why == Retry::Reconnect && self.waits_on_a_full_project() {
+            server_limits(&self.link, true)
+                .await
+                .map(|limits| limits.project)
+        } else {
+            None
+        };
         let paths: Vec<String> = {
             let hashes = guard(&self.disk).hashes.clone();
             let mut all = guard(&UPLOADS);
@@ -314,7 +378,14 @@ impl Active {
                     && hashes.get(path) != Some(&pending.hash)
             });
             for pending in uploads.files.values_mut() {
-                if fresh && pending.state != UploadState::TooLarge {
+                let again = match (why, pending.state) {
+                    (Retry::Timer, _) | (_, UploadState::TooLarge) => false,
+                    (Retry::Reconnect, UploadState::ProjectTooLarge) => {
+                        project_limit.is_some() && project_limit != pending.limit
+                    }
+                    (Retry::Reconnect | Retry::Asked, _) => true,
+                };
+                if again {
                     pending.attempts = 0;
                     pending.state = UploadState::Waiting;
                 }
@@ -344,7 +415,7 @@ impl Active {
         if waiting {
             let active = Arc::clone(self);
             tauri::async_runtime::spawn(async move {
-                active.retry_uploads(true).await;
+                active.retry_uploads(Retry::Reconnect).await;
             });
         }
     }
@@ -367,7 +438,7 @@ pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, C
 #[tauri::command]
 pub async fn collab_upload_retry(project_id: String) -> Result<(), CollabCommandError> {
     let active = active_for(&project_id).ok_or_else(|| CollabCommandError::from(not_live()))?;
-    active.retry_uploads(true).await;
+    active.retry_uploads(Retry::Asked).await;
     Ok(())
 }
 

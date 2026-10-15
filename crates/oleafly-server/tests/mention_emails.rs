@@ -928,3 +928,43 @@ async fn with_email_notifications_off_comments_are_not_scanned() {
     assert_eq!(state.mentions.documents_built(), 0);
     assert!(mention_emails(&stage.server, &smtp).await.is_empty());
 }
+
+#[tokio::test]
+async fn turning_email_notifications_off_drops_the_documents_kept_for_scans() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    let state = stage.server.state();
+    let mention = |body: &'static str| {
+        let (alice, bob) = (account(&stage.alice), account(&stage.bob));
+        move |doc: &LoroDoc| {
+            start_thread(doc, &new_id(), alice, body, &[bob]);
+        }
+    };
+    alice
+        .send(&stage.alice, project, mention("@Bob Smith first"))
+        .await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert!(
+        state.snapshots.kept_bytes() > 0,
+        "the scan kept its document"
+    );
+    let off = call(
+        &stage.server,
+        Method::PATCH,
+        "/api/v1/admin/settings",
+        stage.bob.token(),
+        Some(json!({ "email_notifications": false })),
+    )
+    .await;
+    assert_eq!(off.status(), StatusCode::OK);
+    alice
+        .send(&stage.alice, project, mention("@Bob Smith second"))
+        .await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(state.snapshots.kept_bytes(), 0);
+}

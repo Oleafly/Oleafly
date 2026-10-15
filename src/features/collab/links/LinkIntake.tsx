@@ -210,6 +210,10 @@ interface FlowUi {
 function createFlow(ui: FlowUi) {
   const queue: AppLink[] = [];
   const seen = new Map<string, number>();
+  // Links the person ended on purpose, by declining the join or stopping the
+  // download. The same link pasted or opened again right after is meant, so
+  // the window that drops a link the system delivers twice doesn't apply.
+  const ended = new Set<string>();
   let serverWait: ((server: CollabServer | null) => void) | null = null;
   let joinWait: ((join: boolean) => void) | null = null;
   // Set when the person stops the download, so whatever answer comes back
@@ -269,14 +273,20 @@ function createFlow(ui: FlowUi) {
         if ("localId" in outcome && !stopped) await openLocal(outcome.localId);
         return outcome;
       });
-      if (stopped || ("code" in reached && reached.code === "cancelled")) return;
+      if (stopped || ("code" in reached && reached.code === "cancelled")) {
+        ended.add(linkKey(link));
+        return;
+      }
       if ("localId" in reached) {
         openComment(link, reached.localId);
         return;
       }
       if ("preview" in reached) {
         agreed = await askToJoin(current, reached.preview);
-        if (!agreed) return;
+        if (!agreed) {
+          ended.add(linkKey(link));
+          return;
+        }
         continue;
       }
       if (!asked && reached.code === "unauthorized") {
@@ -325,7 +335,9 @@ function createFlow(ui: FlowUi) {
       return run(link)
         .catch((error: unknown) => logError("collab open link", error))
         .finally(() => {
-          seen.set(linkKey(link), Date.now());
+          const key = linkKey(link);
+          if (ended.delete(key)) seen.delete(key);
+          else seen.set(key, Date.now());
         });
     },
     stop() {

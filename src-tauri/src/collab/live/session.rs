@@ -17,7 +17,7 @@ use tokio::sync::oneshot;
 use super::bases::WrittenTexts;
 use super::disk_pass::{apply_to_disk, DiskPass};
 use super::host::LiveHost;
-use super::import::{apply_local_import, placed_now, scan_local};
+use super::import::{import_renaming, placed_now, scan_local};
 use super::payloads::StatusPayload;
 use super::unwritten::Settled;
 use super::{kept, local_copy, moves, settings, sync_hold, uploads};
@@ -91,6 +91,8 @@ pub(super) struct Upkeep {
     pub(super) pace: Mutex<super::pacing::Pace>,
     pub(super) failing: Mutex<super::unwritten::Failing>,
     pub(super) figures: Mutex<super::downloads::Figures>,
+    pub(super) figures_closed: AtomicBool,
+    pub(super) owed: Mutex<super::owed::OwedTries>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -189,16 +191,16 @@ impl Active {
         if !lock(&self.live).can_edit() {
             return Ok(());
         }
-        let failed = uploads::send(&self.link, &import.blobs, self.online()).await;
+        let failed = uploads::send(&self.link, &self.root, &import.blobs, self.online()).await;
         import.blobs.retain(|(_, hash, _)| !failed.contains(hash));
         self.announce_uploads();
-        let changed = {
+        let (changed, renamed) = {
             let mut disk = guard(&self.disk);
             let mut live = lock(&self.live);
             let mut bases = guard(&self.bases);
             moves::adopt_folder_moves(&mut live, &mut disk, &mut bases, &mut import)?;
-            let imported =
-                apply_local_import(&mut live, &mut disk, &mut bases, import, &self.root)?;
+            let (imported, renamed) =
+                import_renaming(&mut live, &mut disk, &mut bases, import, &self.root)?;
             let kept = sync_hold::apply_kept_edits(
                 &self.hold_dir(),
                 &self.root,
@@ -207,8 +209,9 @@ impl Active {
                 &mut bases,
                 edits,
             )?;
-            imported || kept
+            (imported || kept, renamed)
         };
+        self.announce_new_names(renamed);
         if changed {
             self.handle.flush();
             self.kick();
@@ -228,9 +231,10 @@ impl Active {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
-        let (mut previous, hashes) = {
+        self.settle_owed_moves();
+        let (mut previous, hashes, owed) = {
             let disk = guard(&self.disk);
-            (disk.layout.clone(), disk.hashes.clone())
+            (disk.layout.clone(), disk.hashes.clone(), disk.owed_paths())
         };
         let Some(Outgoing {
             work,
@@ -257,12 +261,21 @@ impl Active {
         if !urgent {
             self.hold_back_typing(&next, &mut texts);
         }
+        let still_held = self.hold_back_failing(&next, &mut texts, urgent);
+        if !owed.is_empty() {
+            self.hold_back_owed(&next, &mut texts, &owed);
+        }
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
-        let blocked = |path: &str| shaped.blocks(path);
+        let blocked = |path: &str| {
+            shaped.blocks(path)
+                || owed
+                    .iter()
+                    .any(|held| crate::collab::disk::inside(path, held))
+        };
         let DiskPass {
             mut changed,
             mut conflicts,
@@ -271,7 +284,7 @@ impl Active {
             removed,
             written,
             done,
-            failed,
+            mut failed,
         } = {
             let mut disk = guard(&self.disk);
             let mut bases = guard(&self.bases);
@@ -279,6 +292,7 @@ impl Active {
                 &self.root, &mut disk, &mut bases, plan, next, &texts, &crlf, &blocked,
             )?
         };
+        failed.extend(still_held);
         conflicts.extend(shaped.conflicts.iter().cloned());
         sync_hold::settle(&self.hold_dir(), shaped, &conflicts);
         if !kept.is_empty() {
@@ -397,17 +411,75 @@ impl Active {
             .collect()
     }
 
+    pub(super) fn announce_new_names(&self, renamed: Vec<(String, String)>) {
+        if renamed.is_empty() {
+            return;
+        }
+        announce_renames(self.host.as_ref(), &self.project_id, &renamed);
+        if !self.moves_the_main_file(&renamed) {
+            return;
+        }
+        if let Some(applied) =
+            crate::collab::settings::follow_renamed_main(&self.project_id, &renamed)
+        {
+            self.host.settings_changed(applied);
+        }
+    }
+
+    // Whether one of the moves took the shared main file along, so the
+    // project's main document may have to follow it.
+    fn moves_the_main_file(&self, renamed: &[(String, String)]) -> bool {
+        let live = lock(&self.live);
+        let Some(main) = live.doc().settings().main_doc() else {
+            return false;
+        };
+        let Ok(nodes) = live.doc().nodes() else {
+            return false;
+        };
+        materialize::layout(&nodes)
+            .get(&main.to_string())
+            .is_some_and(|placed| {
+                renamed
+                    .iter()
+                    .any(|(_, to)| crate::collab::disk::inside(&placed.path, to))
+            })
+    }
+
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {
-        local_copy::keep_origin(
-            paths,
-            &self.project_id,
-            lock(&self.live).doc(),
-            &self.document_dir,
-        );
+        local_copy::keep_origin(paths, &self.project_id, &lock(&self.live));
         let _ = remove_binding(paths, &self.project_id);
         crate::collab::registry::invalidate(&self.project_id);
         local_copy::name_local_copy(&self.project_id);
     }
+}
+
+// Tells the window about files moved on disk to the names the shared
+// layout gives them: the activity lists each one, and a tab open on the
+// old name follows it.
+pub fn announce_renames(host: &dyn LiveHost, project_id: &str, renamed: &[(String, String)]) {
+    if renamed.is_empty() {
+        return;
+    }
+    for (from, to) in renamed {
+        host.renamed(crate::collab::tree::RenamedPayload {
+            project_id: project_id.to_owned(),
+            account_id: None,
+            before: from.clone(),
+            ours: from.clone(),
+            theirs: to.clone(),
+        });
+    }
+    host.folder_changed(FolderChange {
+        project_id: project_id.to_owned(),
+        paths: renamed
+            .iter()
+            .flat_map(|(from, to)| [from.clone(), to.clone()])
+            .collect(),
+        rescan: false,
+        structural: true,
+        renamed: renamed.to_vec(),
+        deleted: Vec::new(),
+    });
 }
 
 pub(super) async fn writer_loop(

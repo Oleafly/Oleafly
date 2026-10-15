@@ -39,7 +39,10 @@ pub const MAX_HELLO_BYTES: usize = 16 * 1024;
 // An 8 MiB change is about 10.7 MiB once base64 encoded, plus its envelope.
 pub const MAX_FRAME_BYTES: usize = 11 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
-pub const MAX_SOCKETS_PER_ACCOUNT: usize = 8;
+// The app keeps one live socket per running app, but a socket a flapping
+// network left half open still counts until it goes idle, so one person's
+// devices get room for several each.
+pub const MAX_SOCKETS_PER_ACCOUNT: usize = 32;
 pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
@@ -627,6 +630,14 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
     }
 }
 
+// What storing a change came to. With comments off for the project, the
+// change comes back unstored, with what was read from it, for its comment
+// check, so nothing large is copied for the case that doesn't need it.
+enum Appendix {
+    Stored(projects::Appended),
+    Unchecked(Envelope, peers::Reach, Vec<u8>),
+}
+
 struct ReadChange {
     envelope: Envelope,
     reach: peers::Reach,
@@ -657,13 +668,37 @@ const CURSOR_BURST: f64 = 20.0;
 
 pub(crate) struct CursorGate {
     budget: std::sync::Mutex<(f64, Instant)>,
+    // Projects where the room was last shown a cursor from this connection,
+    // so a leave there has a cursor to clear.
+    shown: std::sync::Mutex<std::collections::HashSet<SharedProjectId>>,
 }
 
 impl CursorGate {
     pub(crate) fn new() -> CursorGate {
         CursorGate {
             budget: std::sync::Mutex::new((CURSOR_BURST, Instant::now())),
+            shown: std::sync::Mutex::new(std::collections::HashSet::new()),
         }
+    }
+
+    // Called for every cursor sent on and for every subscribe: after a
+    // reconnect, the room may still show the cursor an older connection
+    // of this device sent, so the first leave after a subscribe goes out.
+    pub(crate) fn showed(&self, project: SharedProjectId) {
+        self.shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(project);
+    }
+
+    // A leave that clears a cursor always goes out, whatever the rate of
+    // cursor updates before it, so no cursor stays behind. A leave with no
+    // cursor to clear has nothing to say.
+    fn hides(&self, project: SharedProjectId) -> bool {
+        self.shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&project)
     }
 
     fn allow(&self) -> bool {
@@ -754,6 +789,7 @@ impl Peer<'_> {
             ));
         }
         crate::access_log::note_open(self.state, project, account, self.device).await;
+        self.cursors.showed(project);
         Opened::Subscribed(
             ServerFrame::Subscribed {
                 project_id: project,
@@ -779,7 +815,7 @@ impl Peer<'_> {
     }
 
     pub(crate) fn leave_presence(&self, project: SharedProjectId) {
-        if self.state.rooms.is_member(project, self.connection) && self.cursors.allow() {
+        if self.state.rooms.is_member(project, self.connection) && self.cursors.hides(project) {
             self.state.rooms.broadcast(
                 project,
                 Some(self.connection),
@@ -870,18 +906,11 @@ impl Peer<'_> {
         };
         let batch = envelope.batch_id;
         let first = self
-            .append(
-                project,
-                envelope.clone(),
-                reach.clone(),
-                stored.clone(),
-                false,
-                mention,
-            )
+            .append(project, envelope, reach, stored, false, mention)
             .await;
         let appended = match first {
-            Ok(Some(appended)) => Ok(appended),
-            Ok(None) => {
+            Ok(Appendix::Stored(appended)) => Ok(appended),
+            Ok(Appendix::Unchecked(envelope, reach, stored)) => {
                 if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
                     return refusal;
                 }
@@ -889,12 +918,16 @@ impl Peer<'_> {
                     .append(project, envelope, reach, stored, true, mention)
                     .await;
                 if checked.is_err() {
-                    self.state.comment_guard.forget(project).await;
+                    self.state
+                        .comment_guard
+                        .forget(&self.state.snapshots, project)
+                        .await;
                 }
-                checked.and_then(|appended| {
-                    appended.ok_or_else(|| {
-                        ServerError::Internal("the comment check did not hold".to_string())
-                    })
+                checked.and_then(|appended| match appended {
+                    Appendix::Stored(appended) => Ok(appended),
+                    Appendix::Unchecked(..) => Err(ServerError::Internal(
+                        "the comment check did not hold".to_string(),
+                    )),
                 })
             }
             Err(error) => Err(error),
@@ -920,9 +953,14 @@ impl Peer<'_> {
             Err(ServerError::BadRequest(_)) => {
                 frame_error(FrameErrorCode::BadFrame, "This update is not valid.")
             }
-            Err(ServerError::Refused { message, .. }) => {
-                frame_error(FrameErrorCode::TooLarge, &message)
-            }
+            Err(ServerError::Refused {
+                code: "project_too_large",
+                message,
+                ..
+            }) => frame_error(
+                self.code_for(FrameErrorCode::ProjectTooLarge, FrameErrorCode::TooLarge),
+                &message,
+            ),
             Err(_) => stored_failed,
         }
     }
@@ -967,7 +1005,7 @@ impl Peer<'_> {
         stored: Vec<u8>,
         checked: bool,
         mention: bool,
-    ) -> Result<Option<projects::Appended>, ServerError> {
+    ) -> Result<Appendix, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
         let limit_mb = self.state.config.limits.max_project_mb;
@@ -987,27 +1025,27 @@ impl Peer<'_> {
                     return Err(ServerError::Forbidden);
                 }
                 if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
-                    return Ok(Some(projects::Appended {
+                    return Ok(Appendix::Stored(projects::Appended {
                         seq,
                         duplicate: true,
                     }));
                 }
                 match peers::claim(&transaction, project, device, &reach)? {
                     Claim::Taken(_) => return Err(ServerError::Unauthorized),
-                    Claim::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Claim::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
                     Claim::Fresh(_) => {}
                 }
                 if !checked && !comments_on(&transaction, &row)? {
-                    return Ok(None);
+                    return Ok(Appendix::Unchecked(envelope, reach, stored));
                 }
-                let after = projects::stored_bytes(&transaction, project)?
-                    .saturating_add(stored.len() as u64);
+                let after =
+                    projects::log_bytes(&transaction, project)?.saturating_add(stored.len() as u64);
                 if after > limit_mb.saturating_mul(1024 * 1024) {
                     return Err(projects::too_large_for(limit_mb));
                 }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
-                    Bound::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Bound::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(
@@ -1040,7 +1078,7 @@ impl Peer<'_> {
                         },
                     );
                 }
-                Ok(Some(appended))
+                Ok(Appendix::Stored(appended))
             })
             .await
     }
@@ -1076,6 +1114,7 @@ impl Peer<'_> {
                 state,
             },
         );
+        self.cursors.showed(project);
         None
     }
 }

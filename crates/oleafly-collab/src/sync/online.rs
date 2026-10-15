@@ -2,10 +2,11 @@ use std::time::Duration;
 
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
+use oleafly_collab_protocol::ids::BatchId;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use super::incoming::{next_frame, ready_updates, take_in};
-use super::reconnect::{ending_for_version, refused_version, Exit, Reached};
+use super::reconnect::{busy, ending_for_version, refused_version, Exit, Reached};
 use super::snapshot_hint::{hint_snapshot, should_snapshot};
 use super::subscribe::subscribe;
 use super::trust::Refreshed;
@@ -25,13 +26,29 @@ pub(super) struct Pace {
     pub(super) quiet_for: Duration,
 }
 
-// The server owes an answer within `quiet_for`. A change still on its way up
-// adds the time a slow but working link needs to carry it, counted from when
-// it went out, so a large change on a slow link is not cut off and sent again.
-fn too_quiet(heard: Duration, in_flight: Option<(usize, Duration)>, quiet_for: Duration) -> bool {
+#[derive(Clone, Copy, Debug)]
+struct InFlight {
+    bytes: usize,
+    sent: Duration,
+    // The server answered a ping sent after the change went out.
+    answered: bool,
+}
+
+// The server owes an answer within `quiet_for`. While a change is on its
+// way up the link may carry nothing back, so the window grows by the time a
+// slow but working link needs to carry the change, counted from when it
+// went out. The server takes frames in order, so its answer to the change
+// comes before its answer to any ping sent after it. Once that ping is
+// answered the change's answer is overdue, however busy the connection is
+// otherwise. Until then it is not, so a long backlog that keeps the server
+// busy after a reconnect doesn't cut the connection. `heard` counts any
+// bytes coming in, not only whole frames.
+fn too_quiet(heard: Duration, in_flight: Option<InFlight>, quiet_for: Duration) -> bool {
     match in_flight {
-        Some((bytes, sent)) => {
-            heard.min(sent) > quiet_for + upload_allowance(bytes.saturating_mul(4) / 3)
+        Some(flight) if flight.answered => true,
+        Some(flight) => {
+            heard.min(flight.sent)
+                > quiet_for + upload_allowance(flight.bytes.saturating_mul(4) / 3)
         }
         None => heard > quiet_for,
     }
@@ -117,6 +134,7 @@ async fn serve_wire(
         Ok(Ok(subscribed)) => subscribed,
         Ok(Err(reason)) => return Exit::End(reason),
         Err(CollabError::Unauthorized) => return Exit::End(EndReason::SignedOut),
+        Err(CollabError::ServerChanged { .. }) => return Exit::End(EndReason::ServerChanged),
         Err(CollabError::SessionEnded(reason)) => {
             return Exit::End(EndReason::of_session(Some(reason)))
         }
@@ -126,6 +144,7 @@ async fn serve_wire(
                 None => Exit::Retry(Reached::Never),
             }
         }
+        Err(error) if busy(&error) => return Exit::Busy,
         Err(_) => return Exit::Retry(Reached::Never),
     };
     if !lock(project).peers_vouched() {
@@ -189,6 +208,10 @@ async fn online(
     let mut burst = 0u32;
     let mut held: Option<ServerFrame> = None;
     let mut missing_since: Option<tokio::time::Instant> = None;
+    // The change in flight, with the first ping sent after it went out, and
+    // the last change the server answered such a ping for.
+    let mut watched: Option<(BatchId, u64)> = None;
+    let mut answered: Option<BatchId> = None;
     loop {
         tokio::select! {
             biased;
@@ -260,8 +283,22 @@ async fn online(
                             return retry;
                         }
                     }
+                    ServerFrame::Pong { id } => {
+                        if let Some((batch, _)) = watched.filter(|(_, first)| id >= *first) {
+                            answered = Some(batch);
+                        }
+                    }
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
                     ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
+                    // The batch stays as it is, neither cut smaller nor given
+                    // up, and goes out again after the next reconnect. Until
+                    // then it waits for no answer, so it can't cut the
+                    // connection as overdue.
+                    ServerFrame::Error { code: FrameErrorCode::ProjectTooLarge, .. } => {
+                        if lock(project).refused_as_full() {
+                            let _ = events.send(LiveEvent::ProjectFull);
+                        }
+                    }
                     ServerFrame::Error { code: FrameErrorCode::TooLarge, .. } => {
                         lock(project).too_large();
                         if flush(link, project, events, wire).await.is_err() {
@@ -276,6 +313,7 @@ async fn online(
                             }
                         }
                     }
+                    ServerFrame::Error { code: FrameErrorCode::RateLimited, .. } => return Exit::Busy,
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
                 }
@@ -312,10 +350,16 @@ async fn online(
             Some(()) = found.recv() => return Exit::Switch,
             _ = ping.tick() => {
                 burst = 0;
-                let in_flight = lock(project)
-                    .in_flight()
-                    .map(|(bytes, sent)| (bytes, sent.elapsed()));
-                if too_quiet(last_heard.elapsed(), in_flight, pace.quiet_for) {
+                let flying = lock(project).in_flight();
+                let in_flight = flying.map(|(batch, bytes, sent)| InFlight {
+                    bytes,
+                    sent: sent.elapsed(),
+                    answered: answered == Some(batch),
+                });
+                let heard = wire
+                    .silent_for()
+                    .map_or(last_heard.elapsed(), |bytes| bytes.min(last_heard.elapsed()));
+                if too_quiet(heard, in_flight, pace.quiet_for) {
                     return retry;
                 }
                 let missing = lock(project).missing_changes();
@@ -323,15 +367,20 @@ async fn online(
                     (false, _) => None,
                     (true, None) => Some(tokio::time::Instant::now()),
                     (true, Some(since)) if catching_up.is_none() && since.elapsed() > pace.quiet_for => {
-                        let reload = lock(project).request_resync();
+                        let reload = lock(project).request_resync(std::time::Instant::now());
                         if reload {
-                            return retry;
+                            return Exit::Resync;
                         }
                         Some(since)
                     }
                     (true, since) => since,
                 };
                 ping_id += 1;
+                if let Some((batch, ..)) = flying {
+                    if watched.is_none_or(|(watching, _)| watching != batch) {
+                        watched = Some((batch, ping_id));
+                    }
+                }
                 if wire.send(&ClientFrame::Ping { id: ping_id }).await.is_err() {
                     return retry;
                 }
@@ -354,17 +403,33 @@ mod tests {
         let carried = Duration::from_secs(30) + upload_allowance(half_a_megabyte * 4 / 3);
         assert!(carried > Duration::from_secs(70));
         let long_ago = Duration::from_secs(600);
-        let sent = |ago: Duration| Some((half_a_megabyte, ago));
+        let sent = |ago: Duration| {
+            Some(InFlight {
+                bytes: half_a_megabyte,
+                sent: ago,
+                answered: false,
+            })
+        };
         assert!(!too_quiet(long_ago, sent(Duration::from_secs(60)), quiet));
         assert!(too_quiet(
             long_ago,
             sent(carried + Duration::from_secs(1)),
             quiet
         ));
-        assert!(!too_quiet(
-            Duration::from_secs(5),
-            sent(Duration::from_secs(600)),
-            quiet
-        ));
+    }
+
+    #[test]
+    fn an_answer_is_overdue_only_once_a_later_ping_is_answered() {
+        let quiet = Duration::from_secs(30);
+        let small = |answered| {
+            Some(InFlight {
+                bytes: 200,
+                sent: Duration::from_secs(600),
+                answered,
+            })
+        };
+        assert!(!too_quiet(Duration::from_secs(5), small(false), quiet));
+        assert!(too_quiet(Duration::from_secs(5), small(true), quiet));
+        assert!(too_quiet(Duration::from_secs(31), small(false), quiet));
     }
 }

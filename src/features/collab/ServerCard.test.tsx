@@ -101,8 +101,8 @@ describe("ServerCard", () => {
   it("says an admin paused the account and still offers Sign in", async () => {
     const user = userEvent.setup();
     const { onSignIn } = renderCard(server({ signed_in: false, ended: "account_suspended" }));
-    expect(screen.getByText(copy.server.paused)).toBeInTheDocument();
-    expect(screen.getByText(fill(copy.server.pausedHint, { server: "Smith Lab" }))).toBeInTheDocument();
+    expect(screen.getByText(copy.server.suspended)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.suspendedHint, { server: "Smith Lab" }))).toBeInTheDocument();
     expect(screen.queryByText(copy.server.signedOutHint)).toBeNull();
     expect(screen.queryByText(copy.server.signedOut)).toBeNull();
     await user.click(screen.getByRole("button", { name: copy.server.signIn }));
@@ -131,7 +131,7 @@ describe("ServerCard", () => {
   it("ignores an old reason once this computer is signed in again", () => {
     renderCard(server({ signed_in: true, ended: "account_suspended" }));
     expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
-    expect(screen.queryByText(copy.server.paused)).toBeNull();
+    expect(screen.queryByText(copy.server.suspended)).toBeNull();
   });
 
   it("says why sign-out failed and stays signed in", async () => {

@@ -43,6 +43,11 @@ pub(crate) fn known_content(project_id: &str) -> KnownContent {
 
 pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<String> {
     let files = |disk: &DiskState| {
+        let owed: Vec<String> = disk
+            .owed
+            .values()
+            .filter_map(|id| disk.layout.get(id).map(|placed| placed.path.clone()))
+            .collect();
         disk.hashes
             .keys()
             .cloned()
@@ -50,6 +55,11 @@ pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<Strin
                 disk.layout
                     .values()
                     .filter(|placed| placed.kind != NodeKind::Dir)
+                    .filter(|placed| {
+                        !owed
+                            .iter()
+                            .any(|to| crate::collab::disk::inside(&placed.path, to))
+                    })
                     .map(|placed| placed.path.clone()),
             )
             .collect()

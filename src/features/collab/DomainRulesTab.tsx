@@ -14,6 +14,7 @@ import {
   type CollabNewDomainRule,
 } from "@/lib/tauri";
 import { looksLikeDomain } from "./address-checks";
+import { useBusyRows } from "./busy-rows";
 import { collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
@@ -34,7 +35,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
   const [role, setRole] = useState<ServerRole>("member");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<string | null>(null);
 
   const load = useMemo(() => ({ serverId, request }), [serverId, request]);
@@ -77,17 +78,16 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
     }
   };
 
-  const removeRule = async (rule: CollabDomainRule) => {
-    setBusyId(rule.id);
+  const removeRule = (rule: CollabDomainRule) => {
     setRowError(null);
-    try {
-      await collabAdminRemoveDomainRule(serverId, rule.id);
-      setRules((current) => current?.filter((item) => item.id !== rule.id) ?? null);
-    } catch (error) {
-      setRowError(collabErrorText(error, "domains"));
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(rule.id, async () => {
+      try {
+        await collabAdminRemoveDomainRule(serverId, rule.id);
+        setRules((current) => current?.filter((item) => item.id !== rule.id) ?? null);
+      } catch (error) {
+        setRowError(collabErrorText(error, "domains"));
+      }
+    });
   };
 
   const renderRules = () => {
@@ -131,7 +131,7 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
                 size="sm"
                 aria-label={t(($) => $.collab.admin.domains.removeNamed, { domain: rule.domain })}
                 className="hover:bg-destructive/10 hover:text-destructive"
-                disabled={busyId === rule.id}
+                disabled={rows.busy.has(rule.id)}
                 onClick={() => void removeRule(rule)}
               >
                 <Trash2 aria-hidden />

@@ -55,6 +55,10 @@ pub enum EndReason {
     ClientTooOld,
     ServerTooOld,
     ServerChanged,
+    // The session failed: the document engine panicked on a change, or the
+    // session itself panicked. The project in memory is not saved; the next
+    // start loads it from disk and skips the change at fault.
+    Failed,
 }
 
 impl EndReason {
@@ -76,7 +80,8 @@ impl EndReason {
             | EndReason::Stopped
             | EndReason::ClientTooOld
             | EndReason::ServerTooOld
-            | EndReason::ServerChanged => None,
+            | EndReason::ServerChanged
+            | EndReason::Failed => None,
         }
     }
 }
@@ -119,6 +124,10 @@ pub enum LiveEvent {
         device_id: Option<DeviceId>,
     },
     Unsendable,
+    // The project reached the server's size limit, so changes stay on this
+    // computer for now. Said once per connection, at the first refusal after
+    // each connect or reconnect.
+    ProjectFull,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
     Comments(CommentSwitches),
 }
@@ -210,8 +219,35 @@ pub fn spawn_live_with(
     options: TransportOptions,
 ) -> LiveHandle {
     let (commands, receiver) = mpsc::unbounded_channel();
-    let task = tokio::spawn(run(link, project, events, receiver, options));
+    let task = tokio::spawn(guarded(link, project, events, receiver, options));
     LiveHandle { commands, task }
 }
 
-pub const UNDERSTOOD_CODES: [FrameErrorCode; 1] = [FrameErrorCode::CommentsOff];
+// A panic anywhere in the session still ends it with a status the desktop
+// can show. A panic while the project was locked leaves its state in
+// doubt, so it is treated like a panic in the document engine.
+async fn guarded(
+    link: LiveLink,
+    project: SharedLive,
+    events: UnboundedSender<LiveEvent>,
+    commands: mpsc::UnboundedReceiver<LiveCommand>,
+    options: TransportOptions,
+) {
+    use futures_util::FutureExt;
+    let watched = Arc::clone(&project);
+    let reporting = events.clone();
+    let finished = std::panic::AssertUnwindSafe(run(link, project, events, commands, options))
+        .catch_unwind()
+        .await;
+    if finished.is_err() {
+        if watched.is_poisoned() {
+            lock(&watched).went_bad(true);
+        }
+        let _ = reporting.send(LiveEvent::Status(LiveStatus::Ended {
+            reason: EndReason::Failed,
+        }));
+    }
+}
+
+pub const UNDERSTOOD_CODES: [FrameErrorCode; 2] =
+    [FrameErrorCode::CommentsOff, FrameErrorCode::ProjectTooLarge];

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stands in for install, cp and mv. Runs the real tool, except when the
+# destination's file name is the one in /stub/state/<tool>-fails: that call
+# fails the way a full disk would, or with the reason in
+# /stub/state/<tool>-fails-reason.
+tool=${0##*/}
+for target in "$@"; do :; done
+if [ -s "/stub/state/$tool-fails" ] && [ "${target##*/}" = "$(cat "/stub/state/$tool-fails")" ]; then
+	reason=$(cat "/stub/state/$tool-fails-reason" 2>/dev/null) || reason=
+	echo "$tool: cannot create regular file '$target': ${reason:-No space left on device}" >&2
+	exit 1
+fi
+exec "/usr/bin/$tool" "$@"

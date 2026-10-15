@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::materialize::Layout;
 use serde::Serialize;
@@ -36,9 +36,15 @@ pub struct UnwrittenPayload {
     pub files: Vec<UnwrittenFile>,
 }
 
+struct Attempt {
+    count: u32,
+    reason: Option<UnwrittenReason>,
+    next: Instant,
+}
+
 #[derive(Default)]
 pub(super) struct Failing {
-    attempts: BTreeMap<String, (u32, Option<UnwrittenReason>)>,
+    attempts: BTreeMap<String, Attempt>,
     told: Vec<UnwrittenFile>,
     timer: Alarm,
 }
@@ -68,6 +74,27 @@ fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
         libc::ENOSPC | libc::EDQUOT => UnwrittenReason::NoSpace,
         _ => UnwrittenReason::Other,
     }
+}
+
+// Another program holds the file for writing or deleting, or it is read-only.
+// One open asks Windows this at once, where a write would retry for seconds.
+#[cfg(windows)]
+pub(super) fn held_elsewhere(target: &Path) -> bool {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    const DELETE: u32 = 0x0001_0000;
+    const FILE_WRITE_DATA: u32 = 0x0002;
+    match std::fs::OpenOptions::new()
+        .access_mode(DELETE | FILE_WRITE_DATA)
+        .open(target)
+    {
+        Ok(_) => false,
+        Err(error) => matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224)),
+    }
+}
+
+#[cfg(not(windows))]
+pub(super) fn held_elsewhere(_target: &Path) -> bool {
+    false
 }
 
 pub(super) fn reason_of(root: &Path, path: &str, error: &str) -> UnwrittenReason {
@@ -110,10 +137,15 @@ impl Active {
             let conflicts = settled.conflicts.into_iter().map(|path| (path, None));
             let mut retry = BTreeSet::new();
             for (path, reason) in failed.chain(conflicts) {
-                let entry = failing.attempts.entry(path.clone()).or_insert((0, None));
-                entry.0 = entry.0.saturating_add(1);
+                let entry = failing.attempts.entry(path.clone()).or_insert(Attempt {
+                    count: 0,
+                    reason: None,
+                    next: Instant::now(),
+                });
+                entry.count = entry.count.saturating_add(1);
+                entry.next = Instant::now() + backoff(entry.count);
                 if reason.is_some() {
-                    entry.1 = reason;
+                    entry.reason = reason;
                 }
                 if reason != Some(UnwrittenReason::NotDownloaded) {
                     retry.insert(path);
@@ -122,9 +154,9 @@ impl Active {
             let told: Vec<UnwrittenFile> = failing
                 .attempts
                 .iter()
-                .filter(|(_, (attempts, _))| *attempts >= TELL_AFTER)
-                .filter_map(|(path, (_, reason))| {
-                    reason.map(|reason| UnwrittenFile {
+                .filter(|(_, attempt)| attempt.count >= TELL_AFTER)
+                .filter_map(|(path, attempt)| {
+                    attempt.reason.map(|reason| UnwrittenFile {
                         path: path.clone(),
                         reason,
                     })
@@ -138,7 +170,7 @@ impl Active {
             let most = retry
                 .iter()
                 .filter_map(|path| failing.attempts.get(path))
-                .map(|(attempts, _)| *attempts)
+                .map(|attempt| attempt.count)
                 .max();
             (retry, payload, most.map(backoff), failing.timer.clone())
         };
@@ -162,6 +194,91 @@ impl Active {
         if let Some(delay) = delay {
             timer.ring_in(&self.writer, delay);
         }
+    }
+
+    // A file that could not be written waits for its next try instead of
+    // being tried on every pass, because on Windows one try can block for
+    // seconds on a file another program holds. A flush tries it once anyway,
+    // unless the file is still held, which one open finds out at once. The
+    // files still held come back as failures of this pass.
+    pub(super) fn hold_back_failing(
+        &self,
+        next: &Layout,
+        texts: &mut Vec<(String, String)>,
+        urgent: bool,
+    ) -> Vec<(String, UnwrittenReason)> {
+        let now = Instant::now();
+        let (waiting, timer): (BTreeMap<String, (Instant, UnwrittenReason)>, Alarm) = {
+            let failing = guard(&self.upkeep.failing);
+            let waiting = failing
+                .attempts
+                .iter()
+                .filter_map(|(path, attempt)| {
+                    attempt
+                        .reason
+                        .filter(|reason| *reason != UnwrittenReason::NotDownloaded)
+                        .map(|reason| (path.clone(), (attempt.next, reason)))
+                })
+                .collect();
+            (waiting, failing.timer.clone())
+        };
+        if waiting.is_empty() {
+            return Vec::new();
+        }
+        let mut held = BTreeSet::new();
+        let mut still = Vec::new();
+        texts.retain(|(path, _)| {
+            let Some((due, reason)) = waiting.get(path) else {
+                return true;
+            };
+            if !urgent && *due > now {
+                held.insert(path.clone());
+                return false;
+            }
+            let known = matches!(reason, UnwrittenReason::Locked | UnwrittenReason::ReadOnly);
+            if known && safe_target(&self.root, path).is_some_and(|target| held_elsewhere(&target))
+            {
+                still.push((path.clone(), *reason));
+                return false;
+            }
+            true
+        });
+        if held.is_empty() {
+            return still;
+        }
+        {
+            let mut live = lock(&self.live);
+            for (id, placed) in next {
+                if held.contains(&placed.path) {
+                    live.mark_dirty(id);
+                }
+            }
+        }
+        let soonest = waiting
+            .iter()
+            .filter(|(path, _)| held.contains(*path))
+            .map(|(_, (due, _))| due.saturating_duration_since(now))
+            .min();
+        if let Some(soonest) = soonest {
+            timer.ring_in(&self.writer, soonest);
+        }
+        still
+    }
+
+    #[cfg(test)]
+    pub(super) fn tries_of(&self, path: &str) -> u32 {
+        guard(&self.upkeep.failing)
+            .attempts
+            .get(path)
+            .map_or(0, |attempt| attempt.count)
+    }
+
+    #[cfg(test)]
+    pub(super) fn next_try_in(&self, path: &str) -> Option<Duration> {
+        guard(&self.upkeep.failing)
+            .attempts
+            .get(path)
+            .map(|attempt| attempt.next.saturating_duration_since(Instant::now()))
     }
 }
 
@@ -223,6 +340,26 @@ mod tests {
             reason("open.tex", "refused to write x"),
             UnwrittenReason::Other
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_file_another_program_holds_is_found_held_by_one_quick_open() {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("main.tex");
+        std::fs::write(&target, "x").unwrap();
+        let holder = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&target)
+            .unwrap();
+        let started = Instant::now();
+        assert!(held_elsewhere(&target));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        drop(holder);
+        assert!(!held_elsewhere(&target));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "x");
     }
 
     #[test]

@@ -112,8 +112,22 @@ async fn the_server_builds_snapshots_within_its_configured_memory_and_project_si
     assert_eq!(
         app.state.snapshots.budget(),
         oleafly_server::snapshots::Budget {
-            memory_bytes: 64 << 20,
+            memory_bytes: 48 << 20,
             max_snapshot_bytes: 7 << 20,
         }
+    );
+    let transfers = &app.state.transfers;
+    let account = oleafly_collab_protocol::ids::AccountId::new_v7();
+    let _all = transfers
+        .hold(account, 16 << 20)
+        .await
+        .expect("a quarter of the memory goes to transfers");
+    transfers.set_wait(std::time::Duration::from_millis(50));
+    assert!(
+        transfers
+            .hold(oleafly_collab_protocol::ids::AccountId::new_v7(), 1 << 20)
+            .await
+            .is_err(),
+        "transfers and documents together stay within the setting"
     );
 }

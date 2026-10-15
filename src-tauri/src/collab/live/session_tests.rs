@@ -260,6 +260,7 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 
 #[test]
 fn opening_a_project_after_its_session_ended_says_why() {
+    let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -796,6 +797,7 @@ fn writing_out_leaves_the_live_document_free_while_the_disk_is_written() {
 struct Watching {
     changes: Mutex<Vec<FolderChange>>,
     unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
+    renamed: Mutex<Vec<crate::collab::tree::RenamedPayload>>,
 }
 
 impl Watching {
@@ -826,6 +828,9 @@ impl LiveHost for Watching {
     fn new_device(&self, _: NewDevicePayload) {}
     fn unwritten(&self, payload: super::unwritten::UnwrittenPayload) {
         guard(&self.unwritten).push(payload);
+    }
+    fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
+        guard(&self.renamed).push(payload);
     }
 }
 
@@ -872,7 +877,7 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
 }
 
 #[test]
-fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_it_can_be() {
+fn a_folder_where_a_shared_file_goes_moves_aside_without_holding_back_the_others() {
     let (_dir, root, _host, rig) = watched_rig("blocked", &[("main.tex", "abc")]);
     rig.remote_new("table.tex", "T");
     std::fs::create_dir_all(root.join("table.tex/inner")).unwrap();
@@ -882,13 +887,62 @@ fn a_file_blocked_by_a_folder_does_not_hold_back_the_others_and_is_written_once_
         std::fs::read_to_string(root.join("main.tex")).unwrap(),
         "abcd"
     );
-    assert!(root.join("table.tex").is_dir());
-    std::fs::remove_dir_all(root.join("table.tex")).unwrap();
     rig.settle();
     assert_eq!(
         std::fs::read_to_string(root.join("table.tex")).unwrap(),
         "T"
     );
+    let aside = rig
+        .paths()
+        .into_iter()
+        .find(|path| path.starts_with("table (") && !path.contains('/'))
+        .expect("the folder has a node of its own");
+    assert!(root.join(&aside).join("inner").is_dir());
+    assert_eq!(
+        rig.paths()
+            .iter()
+            .filter(|path| path.starts_with("table"))
+            .count(),
+        3,
+        "{:?}",
+        rig.paths()
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_new_file_the_app_writes_under_a_name_the_layout_changes_is_written_where_the_layout_puts_it() {
+    let (_dir, root, host, rig) = watched_rig("app-aux", &[("main.tex", "abc")]);
+    let _live = rig.go_live();
+    let save = |path: &str, text: &str| {
+        tauri::async_runtime::block_on(write::write_text("app-aux", path, None, text))
+            .unwrap()
+            .handled
+    };
+    assert!(save("aux.tex", "aux"));
+    let laid = rig
+        .paths()
+        .into_iter()
+        .find(|path| path.starts_with("unnamed-"))
+        .expect("the new file has a node");
+    assert_eq!(std::fs::read_to_string(root.join(&laid)).unwrap(), "aux");
+    assert!(!root.join("aux.tex").exists());
+    let pair = ("aux.tex".to_owned(), laid.clone());
+    let told: Vec<(String, String)> = guard(&host.renamed)
+        .iter()
+        .map(|payload| (payload.ours.clone(), payload.theirs.clone()))
+        .collect();
+    assert_eq!(told, vec![pair.clone()]);
+    assert!(
+        guard(&host.changes)
+            .iter()
+            .any(|change| change.renamed == vec![pair.clone()]),
+        "the window was not told to follow the new name"
+    );
+    let nodes = rig.paths().len();
+    assert!(save(&laid, "aux 2"));
+    assert_eq!(rig.paths().len(), nodes, "the next save added a node");
+    assert_eq!(rig.text(&laid).as_deref(), Some("aux 2"));
 }
 
 fn fail_main(rig: &write::rig::LiveRig, times: usize) {
@@ -909,7 +963,7 @@ fn fail_main(rig: &write::rig::LiveRig, times: usize) {
 }
 
 #[test]
-fn a_file_that_keeps_failing_is_tried_again_on_every_pass() {
+fn a_file_that_keeps_failing_stays_marked_and_waits_longer_after_each_failure() {
     let (_dir, _root, _host, rig) = watched_rig("still-failing", &[("main.tex", "abc")]);
     let active = rig.active();
     let main = guard(&active.disk)
@@ -919,14 +973,51 @@ fn a_file_that_keeps_failing_is_tried_again_on_every_pass() {
         .map(|(id, _)| id.clone())
         .unwrap();
     let _ = lock(&active.live).take_disk_work();
-    for attempt in 1..=10 {
+    for attempt in 1..=8 {
         fail_main(&rig, 1);
         let work = lock(&active.live).take_disk_work();
         assert!(
             work.texts.contains(&main),
-            "attempt {attempt} was not retried"
+            "attempt {attempt} was not kept for another try"
+        );
+        let wait = active
+            .next_try_in("main.tex")
+            .expect("the file waits for its next try");
+        let backoff = super::unwritten::backoff(attempt);
+        assert!(
+            wait <= backoff && wait + Duration::from_secs(1) > backoff,
+            "attempt {attempt} waits {wait:?} instead of about {backoff:?}"
         );
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_file_another_program_holds_costs_a_flush_one_quick_check() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let (_dir, root, _host, rig) = watched_rig("held-open", &[("main.tex", "abc")]);
+    let holder = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(root.join("main.tex"))
+        .unwrap();
+    fail_main(&rig, 1);
+    rig.remote("main.tex", "abcd");
+    let active = rig.active();
+    let started = std::time::Instant::now();
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "the held file cost the flush {:?}",
+        started.elapsed()
+    );
+    assert_eq!(active.tries_of("main.tex"), 2);
+    drop(holder);
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abcd"
+    );
 }
 
 #[test]
@@ -947,6 +1038,36 @@ fn a_new_session_starts_without_the_failures_of_the_last_one() {
     assert_eq!(told(&host), Vec::<usize>::new());
     fail_main(&rig, 1);
     assert_eq!(told(&host), vec![1]);
+}
+
+#[test]
+fn a_file_that_cannot_be_written_waits_for_its_next_try_while_others_are_written() {
+    let (_dir, root, _host, rig) = watched_rig("waiting-try", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.settle();
+    assert!(root.join("figs").is_dir());
+    std::fs::remove_dir(root.join("figs")).unwrap();
+    std::fs::write(root.join("figs"), "a file in the way").unwrap();
+    rig.remote_new_in("figs", "a.tex", "A");
+    let active = rig.active();
+    tauri::async_runtime::block_on(active.write_out_paced(false)).unwrap();
+    assert_eq!(active.tries_of("figs/a.tex"), 1);
+    for round in 0..4 {
+        let text = format!("abc {round}");
+        rig.remote("main.tex", &text);
+        tauri::async_runtime::block_on(active.write_out_paced(false)).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            text
+        );
+    }
+    assert_eq!(
+        active.tries_of("figs/a.tex"),
+        1,
+        "the file that cannot be written was tried on every pass"
+    );
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert_eq!(active.tries_of("figs/a.tex"), 2, "a flush tries it once");
 }
 
 #[cfg(unix)]
@@ -1068,6 +1189,95 @@ fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
     assert!(super::lock(&active.live).is_open(&second.file_id));
     super::editor::doc_close("channels", &second.file_id, second.session);
     assert!(!super::lock(&active.live).is_open(&second.file_id));
+}
+
+#[derive(Default)]
+struct FullHost(Mutex<Vec<super::payloads::ProjectFullPayload>>);
+
+impl LiveHost for FullHost {
+    fn status(&self, _: StatusPayload) {}
+    fn role(&self, _: RolePayload) {}
+    fn merged(&self, _: MergedPayload) {}
+    fn presence(&self, _: PresencePayload) {}
+    fn presence_left(&self, _: PresenceLeftPayload) {}
+    fn folder_changed(&self, _: FolderChange) {}
+    fn new_device(&self, _: NewDevicePayload) {}
+    fn project_full(&self, payload: super::payloads::ProjectFullPayload) {
+        guard(&self.0).push(payload);
+    }
+}
+
+#[test]
+fn a_full_project_reaches_the_window_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let host = Arc::new(FullHost::default());
+    let rig = write::rig::LiveRig::heard_by(
+        "full",
+        &root,
+        &[("main.tex", "abc")],
+        Arc::clone(&host) as Arc<dyn LiveHost>,
+    );
+    super::pump::on_project_full(&rig.active());
+    let heard = guard(&host.0).clone();
+    assert_eq!(
+        heard,
+        vec![super::payloads::ProjectFullPayload {
+            project_id: "full".to_owned(),
+        }]
+    );
+    assert_eq!(
+        serde_json::to_value(&heard[0]).unwrap(),
+        serde_json::json!({ "projectId": "full" })
+    );
+    assert_eq!(
+        super::payloads::PROJECT_FULL_EVENT,
+        "collab-live-project-full"
+    );
+}
+
+#[test]
+fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
+    let (_dir, root, _host, rig) = watched_rig("owed-move", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.settle();
+    assert!(root.join("figs").is_dir());
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.settle();
+    assert!(
+        !root.join("figs").exists(),
+        "a file was written where the owed folder goes"
+    );
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    assert!(!root.join("old-figs").exists());
+    assert_eq!(
+        std::fs::read_to_string(root.join("figs/a.tex")).unwrap(),
+        "A"
+    );
+    assert!(guard(&active.disk).owed.is_empty());
+}
+
+#[test]
+fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
+    let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
+    {
+        let _live = rig.go_live();
+        assert!(super::lifecycle::reconnect_now());
+    }
+    let _turn = write::rig::live_turn();
+    assert!(!super::lifecycle::reconnect_now());
+    assert!(tauri::async_runtime::block_on(super::commands::collab_live_reconnect_now()).is_ok());
 }
 
 #[test]

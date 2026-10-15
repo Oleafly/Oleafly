@@ -73,6 +73,7 @@ pub fn router() -> Router<AppState> {
             put(grant_member).delete(remove_member),
         )
         .route("/api/v1/directory", get(directory))
+        .layer(axum::middleware::map_response(crate::transfers::retry_soon))
 }
 
 fn two_ids<A: std::str::FromStr, B: std::str::FromStr>(
@@ -670,8 +671,11 @@ async fn put_blob(
         .await?;
     let _room = state
         .transfers
-        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
-        .await;
+        .hold(
+            account,
+            declared_length(&headers).unwrap_or(limit).min(limit),
+        )
+        .await?;
     let Some(body) = state.transfers.read_body(body, &headers, limit).await? else {
         return Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
@@ -697,7 +701,8 @@ async fn put_blob(
         })
         .await?;
     let now = state.clock.now_ms();
-    crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, now).await?;
+    crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, limit_mb, now)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -716,15 +721,15 @@ async fn get_blob(
             projects::blob_size(conn, project, &lookup)?.ok_or(ServerError::NotFound)
         })
         .await?;
-    let room = state.transfers.hold(size).await;
+    let room = state.transfers.hold(account, size).await?;
     let bytes = state.blobs.get(&hash).await?.ok_or(ServerError::NotFound)?;
-    let bytes = room.keep_with(bytes);
+    let body = room.keep_with(bytes);
     Ok((
         [(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/octet-stream"),
         )],
-        bytes,
+        body,
     )
         .into_response())
 }
@@ -815,8 +820,11 @@ async fn put_snapshot(
     }
     let _room = state
         .transfers
-        .hold(declared_length(&headers).unwrap_or(limit).min(limit))
-        .await;
+        .hold(
+            account,
+            declared_length(&headers).unwrap_or(limit).min(limit),
+        )
+        .await?;
     let bytes = state
         .transfers
         .read_body(body, &headers, limit)
@@ -910,7 +918,7 @@ async fn get_snapshot(
             Ok(projects::snapshot_size(conn, project, newest.seq)?.unwrap_or(0))
         })
         .await?;
-    let room = state.transfers.hold(size).await;
+    let room = state.transfers.hold(account, size).await?;
     let loaded = match before {
         Some(before) => {
             state

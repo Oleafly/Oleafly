@@ -90,6 +90,28 @@ describe("Pending guests in Manage server, People", () => {
     expect(screen.queryByRole("button", { name: fill(guests.pending.declineNamed, { email: "dana@field.org" }) })).toBeNull();
   });
 
+  it("keeps an invitation busy until its own answer ends, whatever another one does", async () => {
+    const OTHER = invitation({ id: "finn", email: "finn@field.org", status: "awaiting_approval" });
+    const forDana = deferred<CollabGuestInvitation>();
+    const forFinn = deferred<CollabGuestInvitation>();
+    mocks.collabAdminGuestInvitations.mockResolvedValue([DANA, OTHER]);
+    mocks.collabAdminGuestApprove.mockImplementation((_server: string, id: string) =>
+      id === "dana" ? forDana.promise : forFinn.promise,
+    );
+    const user = userEvent.setup();
+    renderTab();
+    const approve = (email: string) =>
+      screen.getByRole("button", { name: fill(guests.pending.approveNamed, { email }) });
+    await screen.findByText("finn@field.org");
+    await user.click(approve("dana@field.org"));
+    await user.click(approve("finn@field.org"));
+    await act(async () => forDana.resolve({ ...DANA, status: "invited" }));
+    expect(approve("finn@field.org")).toBeDisabled();
+    expect(mocks.collabAdminGuestApprove).toHaveBeenCalledTimes(2);
+    await act(async () => forFinn.resolve({ ...OTHER, status: "invited" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: fill(guests.pending.approveNamed, { email: "finn@field.org" }) })).toBeNull());
+  });
+
   it("removes a declined invitation from the list", async () => {
     const user = userEvent.setup();
     renderTab();

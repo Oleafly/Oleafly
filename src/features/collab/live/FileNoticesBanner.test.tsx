@@ -123,6 +123,26 @@ describe("FileNoticesBanner", () => {
     expect(screen.queryByText(/big60\.png/)).toBeNull();
   });
 
+  it("says a figure waits because the project reached the server's limit, and retries or dismisses it", async () => {
+    render(<FileNoticesBanner />);
+    show([upload({ path: "figures/big.png", state: "project_too_large", size: 4096, limit: 50 * 1024 * 1024 })]);
+    const row = screen.getByTestId("collab-upload-project-too-large");
+    expect(row).toHaveTextContent(fill(copy.projectTooLarge, { file: "big.png", limit: "50 MB" }));
+    await userEvent.click(screen.getByRole("button", { name: copy.retry }));
+    expect(mocks.collabUploadRetry).toHaveBeenCalledWith("paper");
+    await userEvent.click(screen.getByRole("button", { name: copy.dismiss }));
+    expect(mocks.collabUploadDismiss).toHaveBeenCalledWith("paper", "figures/big.png");
+    expect(screen.queryByTestId("collab-upload-project-too-large")).toBeNull();
+  });
+
+  it("leaves the limit out when the server didn't say it", () => {
+    render(<FileNoticesBanner />);
+    show([upload({ path: "figures/big.png", state: "project_too_large", limit: null })]);
+    expect(screen.getByTestId("collab-upload-project-too-large")).toHaveTextContent(
+      fill(copy.projectTooLargeUnknown, { file: "big.png" }),
+    );
+  });
+
   it("tells the person whose figure lost a replacement where their version went", async () => {
     render(<FileNoticesBanner />);
     show([], [kept(), kept({ id: "plan-id", kind: "added", path: "plan.tex", copy: "plan (from Alice Chen).tex", by: null })]);

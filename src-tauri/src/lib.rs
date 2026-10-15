@@ -768,6 +768,7 @@ pub fn run() {
             collab::live::commands::collab_live_start,
             collab::live::commands::collab_live_stop,
             collab::live::commands::collab_live_flush,
+            collab::live::commands::collab_live_reconnect_now,
             collab::live::commands::collab_doc_open,
             collab::live::commands::collab_doc_change,
             collab::live::commands::collab_doc_close,

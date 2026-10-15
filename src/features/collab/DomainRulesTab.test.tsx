@@ -123,6 +123,26 @@ describe("DomainRulesTab", () => {
     await waitFor(() => expect(screen.getByText(copy.empty)).toBeInTheDocument());
   });
 
+  it("keeps a rule busy until its own removal ends, whatever another rule does", async () => {
+    const forCs = deferred<undefined>();
+    const forMath = deferred<undefined>();
+    mocks.collabAdminDomainRules.mockResolvedValue([domainRule(), domainRule({ id: "domain-2", domain: "math.uni.edu" })]);
+    mocks.collabAdminRemoveDomainRule.mockImplementation((_server: string, id: string) =>
+      id === "domain-1" ? forCs.promise : forMath.promise,
+    );
+    const user = userEvent.setup();
+    render(<DomainRulesTab serverId={SERVER_ID} actor="admin" />);
+    await user.click(await screen.findByRole("button", { name: fill(copy.removeNamed, { domain: "cs.uni.edu" }) }));
+    const math = screen.getByRole("button", { name: fill(copy.removeNamed, { domain: "math.uni.edu" }) });
+    await user.click(math);
+    await act(async () => forCs.resolve(undefined));
+    await waitFor(() => expect(screen.queryByText("cs.uni.edu")).toBeNull());
+    expect(math).toBeDisabled();
+    expect(mocks.collabAdminRemoveDomainRule).toHaveBeenCalledTimes(2);
+    await act(async () => forMath.resolve(undefined));
+    await waitFor(() => expect(screen.getByText(copy.empty)).toBeInTheDocument());
+  });
+
   it("explains a failed load and tries again", async () => {
     mocks.collabAdminDomainRules.mockRejectedValueOnce(collabError("unreachable")).mockResolvedValueOnce([]);
     const user = userEvent.setup();

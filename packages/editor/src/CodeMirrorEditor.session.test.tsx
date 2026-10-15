@@ -138,6 +138,23 @@ class UncheckedRemoteSession implements DocumentSession {
   }
 }
 
+// A session whose file can be renamed, telling its listeners when it is.
+class MovingSession extends UncheckedRemoteSession {
+  private readonly moves = new Set<(path: string) => void>();
+
+  moveTo(path: string): void {
+    this.path = path;
+    for (const listener of Array.from(this.moves)) listener(path);
+  }
+
+  subscribeMove(listener: (path: string) => void): () => void {
+    this.moves.add(listener);
+    return () => {
+      this.moves.delete(listener);
+    };
+  }
+}
+
 function applied(text: string, edits: readonly Utf16Edit[]): string {
   let result = "";
   let position = 0;
@@ -454,6 +471,55 @@ describe("a local edit the session refuses", () => {
     expect(view().state.doc.toString()).toBe(session.text());
   });
 
+  it("writes carriage returns typed or pasted into a session's file as line feeds", async () => {
+    const session = new LocalDocumentSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+
+    await act(async () =>
+      view().dispatch({
+        changes: { from: 1, insert: "x\r\ny\rz" },
+        selection: { anchor: 7 },
+        annotations: Transaction.userEvent.of("input.paste"),
+      }),
+    );
+
+    expect(view().state.doc.toString()).toBe("ax\ny\nzb");
+    expect(session.text()).toBe("ax\ny\nzb");
+    expect(view().state.selection.main.head).toBe(6);
+    await act(async () => typeAt(6, "!"));
+    expect(session.text()).toBe("ax\ny\nz!b");
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("writes a lone carriage return as a line feed, which keeps the length and so slipped past the length check", async () => {
+    const session = new LocalDocumentSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+
+    await act(async () => view().dispatch({ changes: { from: 1, insert: "x\ry" }, selection: { anchor: 4 } }));
+
+    expect(session.text()).toBe("ax\nyb");
+    expect(view().state.doc.toString()).toBe("ax\nyb");
+    expect(view().state.doc.lines).toBe(2);
+  });
+
+  it("keeps carriage returns the session itself sent", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "a\r\nb");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    await act(async () => session.pushRemote([{ from: 4, to: 4, insert: "\rc" }]));
+    expect(view().state.doc.toString()).toBe("a\r\nb\rc");
+  });
+
+  it("logs a remote change it couldn't apply and takes the session's text", async () => {
+    const session = new UncheckedRemoteSession("main.tex", "abc");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(async () => session.pushRemote([{ from: 10, to: 10, insert: "x" }]));
+
+    expect(logged).toHaveBeenCalledWith("shared document:", expect.any(RangeError));
+    expect(view().state.doc.toString()).toBe(session.text());
+  });
+
   it("drops the rest of a batch that was built on the refused edit", async () => {
     const session = new UncheckedRemoteSession("main.tex", "abc");
     await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
@@ -506,6 +572,34 @@ describe("where the focus goes when the document changes", () => {
 
     expect(view().state.doc.toString()).toBe("b");
     expect(document.activeElement).toBe(search);
+  });
+
+  it("does not take the focus out of a dialog or a menu when the open file switches", async () => {
+    const { store } = await mountEditor(
+      { activePath: "a.tex", docVersion: 0, files: { "a.tex": "a", "b.tex": "b", "c.tex": "c" } },
+      new Map(),
+    );
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const confirm = document.createElement("button");
+    dialog.append(confirm);
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    const item = document.createElement("div");
+    item.setAttribute("role", "menuitem");
+    item.tabIndex = -1;
+    menu.append(item);
+    document.body.append(dialog, menu);
+
+    confirm.focus();
+    await open(store, "b.tex");
+    expect(document.activeElement).toBe(confirm);
+    item.focus();
+    await open(store, "c.tex");
+    expect(document.activeElement).toBe(item);
+    expect(view().state.doc.toString()).toBe("c");
+    dialog.remove();
+    menu.remove();
   });
 
   it("still takes the focus when a file is opened from somewhere that isn't a text field", async () => {
@@ -635,6 +729,23 @@ describe("switching between session files", () => {
     expect(view().state.doc.toString()).toBe("% first line\nsecond line\n");
     expect(undoDepth(view().state)).toBe(1);
     expect(live).toBe(1);
+  });
+
+  it("carries a background file's undo history to its new name as soon as the file is renamed", async () => {
+    const a = new MovingSession("a.tex", "first line\n");
+    const b = new UncheckedRemoteSession("b.tex", "b");
+    const sessions = sessionsOf(a, b);
+    const { store } = await mountEditor({ activePath: "a.tex", docVersion: 0, files: {} }, sessions);
+    await act(async () => typeAt(0, "% "));
+    await open(store, "b.tex");
+
+    sessions.delete("a.tex");
+    sessions.set("renamed.tex", a);
+    a.moveTo("renamed.tex");
+    await open(store, "renamed.tex");
+
+    expect(view().state.doc.toString()).toBe("% first line\n");
+    expect(undoDepth(view().state)).toBe(1);
   });
 
   it("declines background edits to a file a session holds", async () => {

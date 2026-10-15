@@ -1,7 +1,8 @@
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Component, Path, PathBuf};
 
+use oleafly_collab::doc::{FileNode, NodeKind, NodeParent};
 use oleafly_collab::materialize::Layout;
 use oleafly_collab::{write_atomic, CollabError};
 use ring::digest::{digest, SHA256};
@@ -16,9 +17,27 @@ const ROOT_EXCLUDED: [&str; 1] = ["project.json"];
 pub struct DiskState {
     pub layout: Layout,
     pub hashes: BTreeMap<String, String>,
+    // Files or folders found under a name the layout changes, whose move to
+    // the laid name failed (on Windows, a file inside open in another
+    // program), by where they are now, with the node they belong to. They
+    // stay where they are and a scan leaves them alone until the move works.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub owed: BTreeMap<String, String>,
 }
 
 impl DiskState {
+    // Where each owed move's files are now and where their node is laid
+    // out: the paths a scan and the writer leave alone until it moves.
+    pub fn owed_paths(&self) -> Vec<String> {
+        self.owed
+            .iter()
+            .flat_map(|(from, id)| {
+                std::iter::once(from.clone())
+                    .chain(self.layout.get(id).map(|placed| placed.path.clone()))
+            })
+            .collect()
+    }
+
     pub fn load(path: &Path) -> DiskState {
         std::fs::read(path)
             .ok()
@@ -162,7 +181,8 @@ impl ShareRules {
         let segments: Vec<&str> = relative.split('/').collect();
         let name = segments.last().copied().unwrap_or(relative);
         self.skips(name, relative, is_dir)
-            || (1..segments.len()).any(|end| ignored(&self.0, &segments[..end].join("/"), true))
+            || (1..segments.len())
+                .any(|end| self.skips(segments[end - 1], &segments[..end].join("/"), true))
     }
 }
 
@@ -391,6 +411,147 @@ pub fn write_file_over(
     Ok(WriteOutcome::Written)
 }
 
+// Where on disk a node added from a file was found: its own name under its
+// parent. A parent that was already in the layout before (`before`) sits at
+// its laid path, which may differ from its name, and a parent added in the
+// same pass sits where it was found itself. The layout may then place the
+// node elsewhere: a Windows device name like aux.tex or a character Windows
+// refuses gets a safe name, and a second spelling of a taken name gets a
+// suffix. The nodes are indexed once, so asking for every node of a large
+// project stays linear.
+pub(crate) struct FoundPaths<'a> {
+    by_id: HashMap<&'a str, &'a FileNode>,
+    before: &'a Layout,
+    known: HashMap<&'a str, Option<String>>,
+}
+
+impl<'a> FoundPaths<'a> {
+    pub(crate) fn new(nodes: &'a [FileNode], before: &'a Layout) -> FoundPaths<'a> {
+        FoundPaths {
+            by_id: nodes.iter().map(|node| (node.id.as_str(), node)).collect(),
+            before,
+            known: HashMap::new(),
+        }
+    }
+
+    pub(crate) fn path(&mut self, id: &str) -> Option<String> {
+        let mut chain: Vec<&'a FileNode> = Vec::new();
+        let mut current = *self.by_id.get(id)?;
+        let base: Option<String> = loop {
+            if let Some(known) = self.known.get(current.id.as_str()) {
+                break known.clone();
+            }
+            chain.push(current);
+            if chain.len() > self.by_id.len() {
+                break None;
+            }
+            match &current.parent {
+                NodeParent::Root => break Some(String::new()),
+                NodeParent::Trash => break None,
+                NodeParent::Node(parent) => {
+                    if let Some(placed) = self.before.get(parent) {
+                        break (placed.kind == NodeKind::Dir).then(|| placed.path.clone());
+                    }
+                    match self
+                        .by_id
+                        .get(parent.as_str())
+                        .filter(|holder| holder.kind == NodeKind::Dir)
+                    {
+                        Some(holder) => current = holder,
+                        None => break None,
+                    }
+                }
+            }
+        };
+        let mut path = base;
+        for node in chain.into_iter().rev() {
+            path = path.map(|prefix| {
+                if prefix.is_empty() {
+                    node.name.clone()
+                } else {
+                    format!("{prefix}/{}", node.name)
+                }
+            });
+            self.known.insert(node.id.as_str(), path.clone());
+        }
+        path
+    }
+}
+
+pub(crate) fn inside(path: &str, folder: &str) -> bool {
+    path == folder || path.starts_with(&format!("{folder}/"))
+}
+
+pub(crate) struct Followed {
+    pub(crate) moved: Vec<(String, String)>,
+    pub(crate) failed: Vec<(String, String)>,
+}
+
+// Moves each file or folder found at the first path of a pair to the
+// second, the path the layout gives its node, parents first, so the next
+// scan finds it under its node instead of importing it again. A folder
+// moves in one rename. When a move fails, it and everything inside it stay
+// where they are and the move is returned as failed, so the caller can
+// owe it and try again later.
+pub(crate) fn follow_layout(root: &Path, mut wanted: Vec<(String, String)>) -> Followed {
+    wanted.retain(|(found, laid)| found != laid);
+    wanted.sort_by_key(|(found, _)| found.matches('/').count());
+    let mut moved: Vec<(String, String)> = Vec::new();
+    let mut failed: Vec<(String, String)> = Vec::new();
+    for (found, laid) in wanted {
+        let mut current = found;
+        for (from, to) in &moved {
+            if let Some(rest) = current.strip_prefix(from.as_str()) {
+                if rest.starts_with('/') {
+                    current = format!("{to}{rest}");
+                }
+            }
+        }
+        if current == laid || failed.iter().any(|(from, _)| inside(&current, from)) {
+            continue;
+        }
+        if move_path(root, &current, &laid) {
+            moved.push((current, laid));
+        } else if exists_exact(root, &current) {
+            failed.push((current, laid));
+        }
+    }
+    Followed { moved, failed }
+}
+
+// Moves every key at or under `from` to the same place under `to` and
+// returns the old and new keys.
+pub(crate) fn rekey_moved(
+    hashes: &mut BTreeMap<String, String>,
+    from: &str,
+    to: &str,
+) -> Vec<(String, String)> {
+    let inside: Vec<String> = hashes
+        .keys()
+        .filter(|path| moved_key(path, from, to).is_some())
+        .cloned()
+        .collect();
+    let mut moved = Vec::new();
+    for path in inside {
+        let (Some(hash), Some(key)) = (hashes.remove(&path), moved_key(&path, from, to)) else {
+            continue;
+        };
+        hashes.insert(key.clone(), hash);
+        moved.push((path, key));
+    }
+    moved
+}
+
+// Where `path` is after `from` moved to `to`, if the move took it along.
+pub(crate) fn moved_key(path: &str, from: &str, to: &str) -> Option<String> {
+    if path == from {
+        return Some(to.to_owned());
+    }
+    path.strip_prefix(from)
+        .filter(|rest| rest.starts_with('/'))
+        .map(|rest| format!("{to}{rest}"))
+}
+
 pub fn remove_path(root: &Path, relative: &str) {
     let Some(target) = safe_target(root, relative) else {
         return;
@@ -529,6 +690,64 @@ mod tests {
     }
 
     #[test]
+    fn found_paths_follow_laid_parents_and_stay_fast_for_a_large_project() {
+        let node = |id: String, parent: NodeParent, name: String, kind: NodeKind| FileNode {
+            id,
+            parent,
+            name,
+            kind,
+            blob: None,
+            position: String::new(),
+            author_name: None,
+        };
+        let mut nodes = Vec::new();
+        for folder in 0..200 {
+            let folder_id = format!("dir-{folder}");
+            nodes.push(node(
+                folder_id.clone(),
+                NodeParent::Root,
+                format!("chapter{folder}"),
+                NodeKind::Dir,
+            ));
+            for file in 0..100 {
+                nodes.push(node(
+                    format!("file-{folder}-{file}"),
+                    NodeParent::Node(folder_id.clone()),
+                    format!("part{file}.tex"),
+                    NodeKind::Text,
+                ));
+            }
+        }
+        let mut before = Layout::new();
+        before.insert(
+            "dir-7".to_owned(),
+            oleafly_collab::materialize::Placed {
+                path: "unnamed-dir7".to_owned(),
+                kind: NodeKind::Dir,
+                blob: None,
+            },
+        );
+        let started = std::time::Instant::now();
+        let mut found = FoundPaths::new(&nodes, &before);
+        let every = nodes.iter().filter_map(|node| found.path(&node.id)).count();
+        let took = started.elapsed();
+        assert_eq!(every, nodes.len());
+        assert!(
+            took < std::time::Duration::from_secs(2),
+            "{} nodes took {took:?}",
+            nodes.len()
+        );
+        assert_eq!(
+            found.path("file-3-4").as_deref(),
+            Some("chapter3/part4.tex")
+        );
+        assert_eq!(
+            found.path("file-7-1").as_deref(),
+            Some("unnamed-dir7/part1.tex")
+        );
+    }
+
+    #[test]
     fn a_file_replaced_after_the_check_is_never_overwritten() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
@@ -621,8 +840,20 @@ mod tests {
         assert!(rules.leaves_out("main.aux", false));
         assert!(rules.leaves_out("build/out/main.log", false));
         assert!(rules.leaves_out("chapters/.intro.tex.swp", false));
+        assert!(rules.leaves_out("backup~/main.tex", false));
         assert!(!rules.leaves_out("chapters/intro.tex", false));
         assert!(!rules.leaves_out("builder/main.tex", false));
+        write(root, "backup~/main.tex", "an editor's backup folder");
+        let files: Vec<String> = scan_folder(root)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+        assert!(
+            !files.iter().any(|path| path.starts_with("backup~")),
+            "{files:?}"
+        );
     }
 
     #[test]

@@ -14,7 +14,7 @@ use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{
     ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
 };
-use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
     PollBatch, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
 };
@@ -944,6 +944,129 @@ async fn posted_frames_whose_body_stops_arriving_end_after_the_upload_time() {
     assert_eq!(alice.status().await, StatusCode::OK);
 }
 
+async fn start_post(
+    stage: &Stage,
+    project: SharedProjectId,
+    key: &str,
+    length: usize,
+) -> tokio::net::TcpStream {
+    let address = stage.server.url().trim_start_matches("http://").to_owned();
+    let mut stream = tokio::net::TcpStream::connect(&address)
+        .await
+        .expect("connect");
+    let head = format!(
+        "POST /api/v1/projects/{project}/frames HTTP/1.1\r\nHost: {address}\r\n{POLL_KEY_HEADER}: {key}\r\nContent-Type: application/json\r\nContent-Length: {length}\r\n\r\n{{\"frames\":["
+    );
+    stream
+        .write_all(head.as_bytes())
+        .await
+        .expect("send the head");
+    stream
+}
+
+async fn answer_to(posted: &mut tokio::net::TcpStream) -> String {
+    let mut answer = vec![0u8; 1024];
+    let read = tokio::time::timeout(WAIT, posted.read(&mut answer))
+        .await
+        .expect("the post was answered")
+        .expect("read the answer");
+    String::from_utf8_lossy(&answer[..read]).into_owned()
+}
+
+#[tokio::test]
+async fn a_long_poll_reads_one_post_at_a_time() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    let stalled = start_post(&stage, project, &alice.key, 1_000).await;
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let second = alice
+            .post_with(&alice.key, vec![ClientFrame::Ping { id: 1 }])
+            .await;
+        if second.status() == StatusCode::TOO_MANY_REQUESTS {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "a second post was read while the first was still arriving"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    drop(stalled);
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let next = alice
+            .post_with(&alice.key, vec![ClientFrame::Ping { id: 2 }])
+            .await;
+        if next.status() == StatusCode::OK {
+            break;
+        }
+        assert!(Instant::now() < deadline, "posts stayed refused");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test]
+async fn a_large_post_waits_for_room_in_the_transfer_budget_before_it_is_read() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    let transfers = &stage.server.state().transfers;
+    transfers.set_budget(2 * 1024 * 1024);
+    transfers.set_wait(Duration::from_millis(100));
+    let _spent = transfers
+        .hold(AccountId::new_v7(), 2 * 1024 * 1024)
+        .await
+        .expect("room");
+    let mut posted = start_post(&stage, project, &alice.key, 2 * 1024 * 1024).await;
+    let answer = answer_to(&mut posted).await;
+    assert!(answer.starts_with("HTTP/1.1 503"), "{answer}");
+    assert!(
+        answer.to_ascii_lowercase().contains("retry-after: 5"),
+        "{answer}"
+    );
+}
+
+#[tokio::test]
+async fn a_leave_over_a_new_long_poll_clears_a_cursor_a_socket_of_the_device_showed() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    subscribe(&mut bob, project, 0).await;
+    let mut socket = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut socket, project, 0).await;
+    send_frame(
+        &mut socket,
+        &ClientFrame::Presence {
+            project_id: project,
+            state: here(1),
+        },
+    )
+    .await;
+    assert!(matches!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::Presence { .. })
+    ));
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    assert!(alice
+        .post(vec![ClientFrame::PresenceLeave {
+            project_id: project
+        }])
+        .await
+        .is_empty());
+    assert_eq!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::PresenceLeft {
+            project_id: project,
+            device_id: stage.alice.tokens.device_id
+        })
+    );
+}
+
 #[tokio::test]
 async fn a_device_signed_out_while_its_long_poll_opens_is_told_its_session_ended() {
     let stage = stage().await;
@@ -995,9 +1118,15 @@ async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
         })
         .await
         .expect("revoke quietly");
+    let revoked = Instant::now();
     assert_eq!(
         alice.next().await,
         ServerFrame::SessionRevoked { reason: None }
+    );
+    assert!(
+        revoked.elapsed() < Duration::from_secs(2),
+        "noticed only after {:?}",
+        revoked.elapsed()
     );
 }
 

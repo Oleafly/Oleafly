@@ -35,6 +35,10 @@ pub enum ChannelError {
     Stale,
     #[error("the editor sent a change that does not fit: {0}")]
     Invalid(OtError),
+    // The editor made the change before the channel reset. It already has
+    // the reset text and sends its typing again on top of it.
+    #[error("the change was made before the editor was reset")]
+    BeforeReset,
 }
 
 impl From<OtError> for ChannelError {
@@ -47,6 +51,7 @@ pub struct EditorChannel {
     text: Pieces,
     rev: u64,
     first_rev: u64,
+    reset_at: Option<u64>,
     history: VecDeque<TextOperation>,
 }
 
@@ -60,6 +65,7 @@ impl EditorChannel {
             text: Pieces::new(&text),
             rev,
             first_rev: rev,
+            reset_at: None,
             history: VecDeque::new(),
         }
     }
@@ -97,6 +103,9 @@ impl EditorChannel {
         if base_rev > self.rev {
             return Err(ChannelError::Invalid(OtError::Incompatible));
         }
+        if self.reset_at.is_some_and(|reset| base_rev < reset) {
+            return Err(ChannelError::BeforeReset);
+        }
         if base_rev < self.first_rev {
             return Err(ChannelError::Stale);
         }
@@ -124,6 +133,7 @@ impl EditorChannel {
         self.text = Pieces::new(&text);
         self.rev += 1;
         self.first_rev = self.rev;
+        self.reset_at = Some(self.rev);
         self.history.clear();
         self.rev
     }
@@ -214,9 +224,10 @@ mod tests {
         assert_eq!(channel.text(), plain);
     }
 
-    // The median of many keystrokes, with room for a debug build on a busy
-    // machine: walking or copying the whole file takes hundreds of times
-    // longer than this.
+    // The median of many keystrokes, with plenty of room for a debug build
+    // on a busy CI runner: walking or copying the whole file, as the
+    // channel used to, takes about 200 ms per keystroke in a debug build,
+    // and a piece takes well under a millisecond.
     #[test]
     fn a_keystroke_in_a_five_megabyte_file_does_not_walk_the_whole_file() {
         let line = "@book{Müller1999, author = {Jürgen Müller}, year = {1999}},\n";
@@ -238,10 +249,23 @@ mod tests {
             .collect();
         times.sort();
         assert!(
-            times[100] < std::time::Duration::from_millis(1),
+            times[100] < std::time::Duration::from_millis(10),
             "{:?}",
             times[100]
         );
+    }
+
+    #[test]
+    fn a_change_made_before_a_reset_is_dropped_and_one_made_after_it_counts() {
+        let mut channel = EditorChannel::new("abc".to_owned());
+        let rev = channel.reset("reset".to_owned());
+        assert_eq!(
+            channel.receive(0, insert_at(3, "!", 3)),
+            Err(ChannelError::BeforeReset)
+        );
+        assert_eq!(channel.text(), "reset");
+        assert!(channel.receive(rev, insert_at(5, "!", 5)).is_ok());
+        assert_eq!(channel.text(), "reset!");
     }
 
     #[test]

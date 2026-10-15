@@ -16,6 +16,7 @@ import {
   type CollabProvider,
 } from "@/lib/tauri";
 import { looksLikeEmailAddress, looksLikeLogin } from "./address-checks";
+import { useBusyRows } from "./busy-rows";
 import { collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { RolePicker } from "./RolePicker";
@@ -38,7 +39,7 @@ export function AllowlistTab({
   const [role, setRole] = useState<ServerRole>("member");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<string | null>(null);
   const loginProviders = providers.filter((item) => item.kind === "github");
   const provider = providerId ?? loginProviders[0]?.id ?? null;
@@ -101,17 +102,16 @@ export function AllowlistTab({
     }
   };
 
-  const removeEntry = async (entry: CollabAllowlistEntry) => {
-    setBusyId(entry.id);
+  const removeEntry = (entry: CollabAllowlistEntry) => {
     setRowError(null);
-    try {
-      await collabAdminRemoveAllowlist(serverId, entry.id);
-      setEntries((current) => current?.filter((item) => item.id !== entry.id) ?? null);
-    } catch (error) {
-      setRowError(collabErrorText(error, "allowlist"));
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(entry.id, async () => {
+      try {
+        await collabAdminRemoveAllowlist(serverId, entry.id);
+        setEntries((current) => current?.filter((item) => item.id !== entry.id) ?? null);
+      } catch (error) {
+        setRowError(collabErrorText(error, "allowlist"));
+      }
+    });
   };
 
   const renderEntries = () => {
@@ -160,7 +160,7 @@ export function AllowlistTab({
                 size="sm"
                 aria-label={t(($) => $.collab.admin.allowlist.removeNamed, { entry: label })}
                 className="hover:bg-destructive/10 hover:text-destructive"
-                disabled={busyId === entry.id}
+                disabled={rows.busy.has(entry.id)}
                 onClick={() => void removeEntry(entry)}
               >
                 <Trash2 aria-hidden />
