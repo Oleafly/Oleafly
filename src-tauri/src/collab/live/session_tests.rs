@@ -259,6 +259,91 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 }
 
 #[test]
+fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
+    let _turn = write::rig::live_turn();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let dir = tempfile::tempdir().unwrap();
+        let state = CollabState::new(
+            oleafly_collab::CollabPaths::new(dir.path().join("collab")),
+            Arc::new(oleafly_collab::secret_port::MemorySecrets::default()),
+        );
+        let keys = state.keys().await.unwrap();
+        let server = ServerId::new_v7();
+        let paths = state.paths().unwrap().clone();
+        save_binding(&paths, "spent", &binding_on(server)).unwrap();
+        let link = LiveLink {
+            client: Arc::new(
+                ServerClient::new(ServerUrl::parse("http://127.0.0.1:9").unwrap()).unwrap(),
+            ),
+            server_id: server,
+            project: oleafly_collab_protocol::ids::SharedProjectId::new_v7(),
+            device_id: DeviceId::new_v7(),
+            key: Arc::clone(&keys.key),
+            sessions: Arc::clone(&keys.sessions),
+        };
+        let root = dir.path().join("project");
+        std::fs::create_dir_all(&root).unwrap();
+        let (live, disk, _main) = project(&root);
+        let shared: SharedLive = Arc::new(Mutex::new(live));
+        let (unused, _unused) = mpsc::unbounded_channel();
+        let (writer, _writer) = mpsc::unbounded_channel();
+        let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
+        let host = Arc::new(EndingHost::default());
+        let active = Arc::new(Active {
+            project_id: "spent".to_owned(),
+            root,
+            document_dir: dir.path().join("document"),
+            disk_file: dir.path().join("disk.json"),
+            live: shared,
+            handle,
+            link,
+            disk: Mutex::new(disk),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+            writer,
+            account_id: AccountId::new_v7(),
+            quiet_merge: AtomicBool::new(false),
+            waiting: AtomicBool::new(false),
+            last_status: Mutex::new(LiveStatus::Connecting),
+            bases: Mutex::new(WrittenTexts::default()),
+            upkeep: Default::default(),
+        });
+        *guard(&ACTIVE) = Some(Arc::clone(&active));
+        let (events, receiver) = mpsc::unbounded_channel();
+        let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
+        events
+            .send(LiveEvent::Status(LiveStatus::Ended {
+                reason: EndReason::EngineSpent,
+            }))
+            .unwrap();
+        drop(events);
+        pumping.await.unwrap();
+        active.handle.stop();
+        assert_eq!(
+            ended_with(&guard(&host.statuses)),
+            vec![(
+                "spent".to_owned(),
+                LiveStatus::Ended {
+                    reason: EndReason::EngineSpent
+                }
+            )]
+        );
+        assert!(guard(&host.ended).is_empty());
+        assert!(
+            load_binding(&paths, "spent").unwrap().is_some(),
+            "the project was let go"
+        );
+        assert!(
+            guard(&ACTIVE).is_none(),
+            "the spent session stayed or started again"
+        );
+    });
+}
+
+#[test]
 fn a_panic_in_desktop_work_on_the_document_marks_it_damaged_and_leaves_it_unpoisoned() {
     let (_dir, _root, _host, rig) = watched_rig("guarded-work", &[("main.tex", "abc")]);
     let _live = rig.go_live();
