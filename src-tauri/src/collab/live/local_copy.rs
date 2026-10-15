@@ -699,7 +699,11 @@ mod tests {
             std::fs::write(root.join(&placed.path), &bytes).unwrap();
             hashes.insert(placed.path.clone(), sha256_hex(&bytes));
         }
-        DiskState { layout, hashes }
+        DiskState {
+            layout,
+            hashes,
+            owed: Default::default(),
+        }
     }
 
     async fn active_over(
