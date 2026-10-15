@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::failpoint::{slow_on, At};
 
 const BIG_WAIT: Duration = Duration::from_secs(300);
 
@@ -227,6 +228,30 @@ async fn typing_sent_on_reconnect_waits_out_a_long_backlog_without_reconnecting(
     );
     assert_eq!(dropped(&mut bob), 0, "Bob's connection dropped on the way");
     until_text(&alice, &main, "abc mine").await;
+}
+
+// A slow computer can take longer than the quiet window to take in a large
+// change, and reads nothing from the server while it does. That time isn't
+// the server going quiet.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_change_that_takes_long_to_take_in_does_not_count_as_the_server_going_quiet() {
+    let pair = two_people().await;
+    let (project, main, bob_live, mut alice_live) = shared(&pair).await;
+    alice_live.local_text(&main, "abc slow").unwrap();
+    let payload = alice_live.next_outgoing().unwrap().unwrap().payload;
+    let options = impatient();
+    slow_on(&payload, At::Applied, options.quiet_for * 2);
+    let envelope = signed_envelope(&pair.alice, project, payload);
+    store_on_server(&pair, &pair.alice, envelope).await;
+    let mut bob = side(bob_live, &main);
+    start_with(&mut bob, link(&pair, &pair.bob, project), options);
+    until_status(&mut bob, LiveStatus::Online).await;
+    until_text(&bob, &main, "abc slow").await;
+    append(&bob, &main, " mine");
+    flushed(&bob);
+    acknowledged(&bob).await;
+    assert_eq!(dropped(&mut bob), 0, "Bob's connection dropped");
+    stopped(&mut bob).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

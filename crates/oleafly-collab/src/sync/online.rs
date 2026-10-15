@@ -218,7 +218,6 @@ async fn online(
             frame = next_frame(&mut held, wire), if burst < READY_BURST => {
                 burst += 1;
                 let Ok(frame) = frame else { return retry };
-                last_heard = tokio::time::Instant::now();
                 match frame {
                     ServerFrame::Update { seq, account_id, envelope, .. } => {
                         let (backlog, broken) = ready_updates(wire, &mut held, (seq, account_id, envelope));
@@ -317,6 +316,11 @@ async fn online(
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
                 }
+                // Silence counts from when the loop listens again. Taking in
+                // a large change can keep it busy longer than the quiet
+                // window on a slow computer, and what the server sent
+                // meanwhile is still waiting to be read.
+                last_heard = tokio::time::Instant::now();
             }
             command = commands.recv() => {
                 burst = 0;

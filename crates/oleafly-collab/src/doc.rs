@@ -189,7 +189,27 @@ pub(crate) mod failpoint {
         }
     }
 
+    static SLOWED: Mutex<Vec<(Vec<u8>, At, std::time::Duration)>> = Mutex::new(Vec::new());
+
+    // Taking in this change keeps the thread busy this long, the way a large
+    // change does on a slow computer.
+    pub(crate) fn slow_on(payload: &[u8], at: At, busy: std::time::Duration) {
+        SLOWED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push((payload.to_vec(), at, busy));
+    }
+
     pub(crate) fn hit(payload: &[u8], at: At) {
+        let busy = SLOWED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .find(|(marked, place, _)| marked == payload && *place == at)
+            .map(|(.., busy)| *busy);
+        if let Some(busy) = busy {
+            std::thread::sleep(busy);
+        }
         let armed = ARMED
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
