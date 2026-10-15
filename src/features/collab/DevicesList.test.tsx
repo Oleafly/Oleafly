@@ -55,6 +55,26 @@ describe("DevicesList", () => {
     expect(screen.getByTestId("collab-device-d-1")).toBeInTheDocument();
   });
 
+  it("keeps a device busy until its own sign-out ends, whatever another device does", async () => {
+    const tablet = device({ device_id: "d-3", name: "Lab tablet", platform: "linux" });
+    const forDesktop = deferred<undefined>();
+    const forTablet = deferred<undefined>();
+    load.mockResolvedValue([laptop, desktop, tablet]);
+    signOut.mockImplementation((id: string) => (id === "d-2" ? forDesktop.promise : forTablet.promise));
+    const user = userEvent.setup();
+    render(<DevicesList variant="own" load={load} signOut={signOut} />);
+    for (const name of ["Lab desktop", "Lab tablet"]) {
+      await user.click(await screen.findByRole("button", { name: fill(devices.signOutNamed, { name }) }));
+      await user.click(screen.getByRole("button", { name: devices.signOutConfirm.confirm }));
+    }
+    await act(async () => forDesktop.resolve(undefined));
+    await waitFor(() => expect(screen.queryByTestId("collab-device-d-2")).toBeNull());
+    expect(screen.getByRole("button", { name: fill(devices.signOutNamed, { name: "Lab tablet" }) })).toBeDisabled();
+    expect(signOut).toHaveBeenCalledTimes(2);
+    await act(async () => forTablet.resolve(undefined));
+    await waitFor(() => expect(screen.queryByTestId("collab-device-d-3")).toBeNull());
+  });
+
   it("says why a device could not be signed out", async () => {
     load.mockResolvedValue([laptop, desktop]);
     signOut.mockRejectedValue(collabError("forbidden"));

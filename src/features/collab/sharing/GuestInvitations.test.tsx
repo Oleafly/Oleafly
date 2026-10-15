@@ -219,6 +219,32 @@ describe("the owner's invitation list", () => {
     await waitFor(() => expect(screen.queryByRole("list", { name: guests.list.title })).toBeNull());
   });
 
+  it("keeps an invitation busy until its own withdrawal ends, whatever another one does", async () => {
+    const forDana = deferred<undefined>();
+    const forEve = deferred<undefined>();
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [
+          invitation({ id: "a", email: "dana@field.org" }),
+          invitation({ id: "b", email: "eve@field.org" }),
+        ],
+      }),
+    );
+    mocks.collabGuestInvitationRevoke.mockImplementation((_project: string, id: string) =>
+      id === "a" ? forDana.promise : forEve.promise,
+    );
+    const user = userEvent.setup();
+    renderManage();
+    await user.click(await screen.findByRole("button", { name: fill(guests.list.withdrawNamed, { email: "dana@field.org" }) }));
+    const eve = screen.getByRole("button", { name: fill(guests.list.withdrawNamed, { email: "eve@field.org" }) });
+    await user.click(eve);
+    await act(async () => forDana.resolve(undefined));
+    await waitFor(() => expect(screen.queryByText("dana@field.org")).toBeNull());
+    expect(eve).toBeDisabled();
+    expect(mocks.collabGuestInvitationRevoke).toHaveBeenCalledTimes(2);
+    await act(async () => forEve.resolve(undefined));
+  });
+
   it("offers the link again for open invitations when the server does not send email", async () => {
     mocks.collabGuestInvitations.mockResolvedValue(
       projectInvitations({ sends_email: false, invitations: [invitation()] }),

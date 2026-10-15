@@ -12,6 +12,7 @@ import {
   collabAdminGuestRevoke,
   type CollabGuestInvitation,
 } from "@/lib/tauri";
+import { useBusyRows } from "./busy-rows";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { GuestBadge } from "./GuestBadge";
@@ -27,7 +28,7 @@ export function PendingGuests({ serverId, onChanged }: Readonly<{ serverId: stri
   const [pending, setPending] = useState<CollabGuestInvitation[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -50,22 +51,21 @@ export function PendingGuests({ serverId, onChanged }: Readonly<{ serverId: stri
     };
   }, [serverId, request]);
 
-  const run = async (entry: CollabGuestInvitation, action: () => Promise<CollabGuestInvitation | null>) => {
-    setBusyId(entry.id);
-    setRowError(null);
-    try {
-      const next = await action();
-      setPending((current) => {
-        if (!current) return current;
-        if (next && stillPending(next)) return current.map((item) => (item.id === next.id ? next : item));
-        return current.filter((item) => item.id !== entry.id);
-      });
-      onChanged?.();
-    } catch (error) {
-      setRowError({ id: entry.id, message: collabErrorText(error) });
-    } finally {
-      setBusyId(null);
-    }
+  const run = (entry: CollabGuestInvitation, action: () => Promise<CollabGuestInvitation | null>) => {
+    setRowError((current) => (current?.id === entry.id ? null : current));
+    return rows.run(entry.id, async () => {
+      try {
+        const next = await action();
+        setPending((current) => {
+          if (!current) return current;
+          if (next && stillPending(next)) return current.map((item) => (item.id === next.id ? next : item));
+          return current.filter((item) => item.id !== entry.id);
+        });
+        onChanged?.();
+      } catch (error) {
+        setRowError({ id: entry.id, message: collabErrorText(error) });
+      }
+    });
   };
 
   const title = t(($) => $.collab.guests.pending.title);
@@ -89,7 +89,7 @@ export function PendingGuests({ serverId, onChanged }: Readonly<{ serverId: stri
       <p className="text-xs text-muted-foreground">{t(($) => $.collab.guests.pending.description)}</p>
       <ul aria-label={title} className="divide-y rounded-lg border bg-card">
         {pending.map((entry) => {
-          const busy = busyId === entry.id;
+          const busy = rows.busy.has(entry.id);
           const waiting = entry.status === "awaiting_approval";
           return (
             <li key={entry.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">

@@ -15,6 +15,7 @@ import {
   type CollabGuestInviteResult,
   type CollabProjectGuestInvitations,
 } from "@/lib/tauri";
+import { useBusyRows } from "../busy-rows";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";
 import { GuestBadge } from "../GuestBadge";
@@ -215,7 +216,7 @@ export function GuestInvitationList({
   onWithdrawn: (id: string) => void;
 }>) {
   const { t } = useTranslation(["collab"]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const listed = info.invitations.flatMap((entry) => {
     const status = listedStatus(entry.status);
@@ -223,17 +224,16 @@ export function GuestInvitationList({
   });
   if (listed.length === 0) return null;
 
-  const withdraw = async (entry: CollabGuestInvitation) => {
-    setBusyId(entry.id);
-    setRowError(null);
-    try {
-      await collabGuestInvitationRevoke(projectId, entry.id);
-      onWithdrawn(entry.id);
-    } catch (error_) {
-      setRowError({ id: entry.id, message: collabErrorText(error_) });
-    } finally {
-      setBusyId(null);
-    }
+  const withdraw = (entry: CollabGuestInvitation) => {
+    setRowError((current) => (current?.id === entry.id ? null : current));
+    return rows.run(entry.id, async () => {
+      try {
+        await collabGuestInvitationRevoke(projectId, entry.id);
+        onWithdrawn(entry.id);
+      } catch (error_) {
+        setRowError({ id: entry.id, message: collabErrorText(error_) });
+      }
+    });
   };
 
   const title = t(($) => $.collab.guests.list.title);
@@ -268,7 +268,7 @@ export function GuestInvitationList({
                   variant="ghost"
                   size="sm"
                   className="hover:bg-destructive/10 hover:text-destructive"
-                  disabled={busyId === entry.id}
+                  disabled={rows.busy.has(entry.id)}
                   aria-label={t(($) => $.collab.guests.list.withdrawNamed, { email: entry.email })}
                   onClick={() => void withdraw(entry)}
                 >
