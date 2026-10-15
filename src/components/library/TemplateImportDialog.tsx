@@ -71,7 +71,13 @@ export function TemplateImportDialog({
   const [remote, setRemote] = useState<OverleafProject | null>(null);
   const [search, setSearch] = useState("");
 
+  // Start over each time the dialog opens again. A freshly mounted dialog
+  // already starts clean, and resetting it a frame after mount would undo a
+  // choice made in that frame.
+  const wasOpenRef = useRef(open);
   useEffect(() => {
+    if (open === wasOpenRef.current) return;
+    wasOpenRef.current = open;
     sessionRef.current += 1;
     if (!open) return;
     setView("sources");

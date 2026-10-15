@@ -26,7 +26,12 @@ export function SaveAsTemplateDialog() {
   const titleId = useId();
   const nameId = useId();
 
+  // A dialog mounted for a project already shows its name. Only a different
+  // project resets it, so typing in the first frame is never thrown away.
+  const shownRef = useRef(target);
   useEffect(() => {
+    if (shownRef.current === target) return;
+    shownRef.current = target;
     setName(target?.name ?? "");
     setError(null);
   }, [target]);

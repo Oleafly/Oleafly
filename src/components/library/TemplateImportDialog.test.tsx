@@ -345,6 +345,22 @@ describe("TemplateImportDialog", () => {
     expect(screen.getByTestId("template-import-zip")).toBeInTheDocument();
   });
 
+  it("keeps the step picked right after opening and starts over when reopened", async () => {
+    const props = { onClose: vi.fn(), onImported: vi.fn() };
+    const view = render(<TemplateImportDialog open {...props} />);
+    fireEvent.click(screen.getByTestId("template-import-link"));
+    fireEvent.change(screen.getByTestId("template-import-link-input"), { target: { value: LINK } });
+    await waitFor(() =>
+      expect(screen.getByTestId("template-import-link-input")).toHaveValue(LINK),
+    );
+
+    view.rerender(<TemplateImportDialog open={false} {...props} />);
+    view.rerender(<TemplateImportDialog open {...props} />);
+    expect(await screen.findByTestId("template-import-link")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("template-import-link"));
+    expect(screen.getByTestId("template-import-link-input")).toHaveValue("");
+  });
+
   it("does not close while an import is running", async () => {
     let finish: (id: string) => void = () => {};
     vi.mocked(pickOpenPath).mockResolvedValue("/tmp/a.zip");
