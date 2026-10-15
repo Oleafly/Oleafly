@@ -1730,8 +1730,28 @@ fn base_entry(record: &FileRecord) -> BaseEntry {
     }
 }
 
-fn utc_date() -> String {
-    crate::project_ids::rfc3339_from_unix_ms(now_ms())[..10].to_string()
+#[cfg(unix)]
+fn local_day() -> Option<(i32, i32, i32)> {
+    let seconds = libc::time_t::try_from(now_ms() / 1000).ok()?;
+    let mut parts: libc::tm = unsafe { std::mem::zeroed() };
+    if unsafe { libc::localtime_r(&seconds, &mut parts) }.is_null() {
+        return None;
+    }
+    Some((parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday))
+}
+
+#[cfg(windows)]
+fn local_day() -> Option<(i32, i32, i32)> {
+    let mut now = windows_sys::Win32::Foundation::SYSTEMTIME::default();
+    unsafe { windows_sys::Win32::System::SystemInformation::GetLocalTime(&mut now) };
+    Some((now.wYear.into(), now.wMonth.into(), now.wDay.into()))
+}
+
+pub(crate) fn local_date() -> String {
+    match local_day() {
+        Some((year, month, day)) => format!("{year:04}-{month:02}-{day:02}"),
+        None => crate::project_ids::rfc3339_from_unix_ms(now_ms())[..10].to_string(),
+    }
 }
 
 async fn capture_locked(
@@ -2066,7 +2086,7 @@ impl<S: CloudStore> Round<'_, S> {
         view: &RemoteView,
         label: &str,
     ) -> BTreeMap<String, (String, bool)> {
-        let date = utc_date();
+        let date = local_date();
         let mut reserved: BTreeSet<String> = BTreeSet::new();
         let mut names = BTreeMap::new();
         for item in planned {

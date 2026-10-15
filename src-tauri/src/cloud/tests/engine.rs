@@ -1,5 +1,5 @@
 use crate::cloud::engine::{
-    capture_with, download_into, list_remote_projects, now_ms, sync_project, tombstone_remote,
+    capture_with, download_into, list_remote_projects, local_date, sync_project, tombstone_remote,
     version_remote, FileRecord, RoundEnv, RoundError, RoundOptions, RoundResult, SyncContext,
     Tombstone, VersionManifest,
 };
@@ -147,7 +147,26 @@ fn thesis(device: &Device) {
 }
 
 fn today() -> String {
-    crate::project_ids::rfc3339_from_unix_ms(now_ms())[..10].to_string()
+    local_date()
+}
+
+#[cfg(unix)]
+#[test]
+fn conflict_copies_carry_the_date_on_this_computer() {
+    let shell_date = || {
+        let output = std::process::Command::new("date")
+            .arg("+%Y-%m-%d")
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    };
+    let before = shell_date();
+    let ours = local_date();
+    let after = shell_date();
+    assert!(
+        ours == before || ours == after,
+        "{ours} vs {before}/{after}"
+    );
 }
 
 fn file_remote(cloud: ProjectId, path: &str) -> String {
