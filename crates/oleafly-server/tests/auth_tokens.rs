@@ -331,6 +331,43 @@ async fn an_old_refresh_presented_after_a_week_is_caught_as_reuse_even_if_the_ne
 }
 
 #[tokio::test]
+async fn signing_a_device_out_leaves_it_no_live_token_or_kept_reply() {
+    let (server, _github) = server().await;
+    let device = TestDevice::generate();
+    let first = session(&server, &device).await;
+    refresh_session(&server, &device, first.device_id, &first.refresh_token)
+        .await
+        .expect("rotate");
+    server
+        .state()
+        .revoke_device(first.device_id)
+        .await
+        .expect("sign out");
+    let id = first.device_id.to_string();
+    let left: (i64, i64, i64, i64) = server
+        .state()
+        .db
+        .call(move |conn| {
+            let count = |sql: &str| -> Result<i64, oleafly_server::error::ServerError> {
+                Ok(conn.query_row(sql, [&id], |row| row.get(0))?)
+            };
+            Ok((
+                count("SELECT COUNT(*) FROM devices WHERE id = ?1 AND revoked_at IS NULL")?,
+                count("SELECT COUNT(*) FROM access_tokens WHERE device_id = ?1")?,
+                count(
+                    "SELECT COUNT(*) FROM refresh_tokens WHERE device_id = ?1 AND revoked_at IS NULL",
+                )?,
+                count(
+                    "SELECT COUNT(*) FROM refresh_tokens WHERE device_id = ?1 AND grace_reply IS NOT NULL",
+                )?,
+            ))
+        })
+        .await
+        .expect("counts");
+    assert_eq!(left, (0, 0, 0, 0));
+}
+
+#[tokio::test]
 async fn an_old_refresh_used_after_the_new_one_signs_the_device_out() {
     let (server, _github) = server().await;
     let device = TestDevice::generate();
