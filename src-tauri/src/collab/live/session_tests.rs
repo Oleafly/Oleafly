@@ -1168,6 +1168,18 @@ fn quitting_while_a_stop_is_still_writing_waits_for_it() {
 }
 
 #[test]
+fn a_sooner_wake_up_is_not_held_back_by_a_later_one() {
+    let (writer, mut woken) = mpsc::unbounded_channel();
+    let alarm = super::session::Alarm::default();
+    tauri::async_runtime::block_on(async {
+        alarm.ring_in(&writer, Duration::from_secs(60));
+        alarm.ring_in(&writer, Duration::from_millis(50));
+        let first = tokio::time::timeout(Duration::from_secs(5), woken.recv()).await;
+        assert!(matches!(first, Ok(Some(super::WriterSignal::Kick))));
+    });
+}
+
+#[test]
 fn reading_a_folder_for_an_import_leaves_the_shared_document_free() {
     let (_dir, root, _host, rig) = watched_rig("lock-free", &[("main.tex", "abc")]);
     std::fs::create_dir_all(root.join("figs")).unwrap();

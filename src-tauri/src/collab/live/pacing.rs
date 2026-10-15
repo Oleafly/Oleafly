@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use oleafly_collab::materialize::Layout;
 use oleafly_collab::CollabError;
 
-use super::session::{guard, lock, Active, WriterSignal};
+use super::session::{guard, lock, Active, Alarm};
 use super::unwritten::backoff;
 use crate::collab::disk::{sha256_hex, DiskState};
 
@@ -19,7 +17,7 @@ pub(super) struct Pace {
     failures: u32,
     written: HashMap<String, Instant>,
     index: Option<String>,
-    timer: Arc<AtomicBool>,
+    timer: Alarm,
     #[cfg(test)]
     counted: Counted,
 }
@@ -171,16 +169,8 @@ impl Active {
     }
 
     fn come_back_in(&self, delay: Duration) {
-        let timer = self.paced(|pace| Arc::clone(&pace.timer));
-        if timer.swap(true, Ordering::SeqCst) {
-            return;
-        }
-        let writer = self.writer.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(delay).await;
-            timer.store(false, Ordering::SeqCst);
-            let _ = writer.send(WriterSignal::Kick);
-        });
+        self.paced(|pace| pace.timer.clone())
+            .ring_in(&self.writer, delay);
     }
 
     #[cfg(test)]

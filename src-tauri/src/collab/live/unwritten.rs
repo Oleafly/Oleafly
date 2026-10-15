@@ -1,13 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
 use oleafly_collab::materialize::Layout;
 use serde::Serialize;
 
-use super::session::{guard, lock, Active, WriterSignal};
+use super::session::{guard, lock, Active, Alarm};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
@@ -42,7 +40,7 @@ pub struct UnwrittenPayload {
 pub(super) struct Failing {
     attempts: BTreeMap<String, (u32, Option<UnwrittenReason>)>,
     told: Vec<UnwrittenFile>,
-    timer: Arc<AtomicBool>,
+    timer: Alarm,
 }
 
 #[cfg(windows)]
@@ -142,10 +140,7 @@ impl Active {
                 .filter_map(|path| failing.attempts.get(path))
                 .map(|(attempts, _)| *attempts)
                 .max();
-            let delay = most
-                .map(backoff)
-                .filter(|_| !failing.timer.swap(true, Ordering::SeqCst));
-            (retry, payload, delay, Arc::clone(&failing.timer))
+            (retry, payload, most.map(backoff), failing.timer.clone())
         };
         if !retry.is_empty() {
             let mut live = lock(&self.live);
@@ -165,12 +160,7 @@ impl Active {
             self.host.unwritten(payload);
         }
         if let Some(delay) = delay {
-            let writer = self.writer.clone();
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(delay).await;
-                timer.store(false, Ordering::SeqCst);
-                let _ = writer.send(WriterSignal::Kick);
-            });
+            timer.ring_in(&self.writer, delay);
         }
     }
 }

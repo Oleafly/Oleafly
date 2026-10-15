@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::{save_shared, DiskWork, LiveProject};
@@ -57,6 +57,33 @@ pub struct Active {
     pub(super) last_status: Mutex<LiveStatus>,
     pub(super) bases: Mutex<WrittenTexts>,
     pub(super) upkeep: Upkeep,
+}
+
+#[derive(Clone, Default)]
+pub(super) struct Alarm(Arc<Mutex<Option<Instant>>>);
+
+impl Alarm {
+    pub(super) fn ring_in(&self, writer: &UnboundedSender<WriterSignal>, delay: Duration) {
+        let at = Instant::now() + delay;
+        {
+            let mut pending = guard(&self.0);
+            if pending.is_some_and(|due| due <= at) {
+                return;
+            }
+            *pending = Some(at);
+        }
+        let (alarm, writer) = (Arc::clone(&self.0), writer.clone());
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(delay).await;
+            {
+                let mut pending = guard(&alarm);
+                if *pending == Some(at) {
+                    *pending = None;
+                }
+            }
+            let _ = writer.send(WriterSignal::Kick);
+        });
+    }
 }
 
 #[derive(Default)]
