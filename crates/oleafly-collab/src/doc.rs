@@ -94,7 +94,7 @@ pub(crate) fn leave_in_memory<T>(broken: T) {
     LEFT_DOCUMENTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     #[cfg(test)]
     LEFT_DOCUMENTS.with(|left| left.set(left.get() + 1));
-    std::mem::forget(broken);
+    let _ = std::mem::ManuallyDrop::new(broken);
 }
 
 pub(crate) fn engine_budget_spent() -> bool {

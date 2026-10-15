@@ -84,6 +84,9 @@ pub(super) fn held_now(target: &Path) -> Option<UnwrittenReason> {
     use std::os::windows::fs::OpenOptionsExt as _;
     const DELETE: u32 = 0x0001_0000;
     const FILE_WRITE_DATA: u32 = 0x0002;
+    if std::fs::symlink_metadata(target).is_ok_and(|metadata| metadata.is_dir()) {
+        return None;
+    }
     match std::fs::OpenOptions::new()
         .access_mode(DELETE | FILE_WRITE_DATA)
         .open(target)
@@ -348,6 +351,15 @@ mod tests {
             reason("open.tex", "refused to write x"),
             UnwrittenReason::Other
         );
+    }
+
+    #[test]
+    fn a_folder_where_the_file_goes_is_not_held_so_it_can_be_moved_aside() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("table.tex");
+        std::fs::create_dir_all(target.join("inner")).unwrap();
+        assert_eq!(held_now(&target), None);
+        assert!(!held_elsewhere(&target));
     }
 
     #[cfg(windows)]

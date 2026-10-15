@@ -59,7 +59,7 @@ async fn research_task() -> (
 ) {
     let temp = super::tests::fixture_temp();
     let copy = temp.path().join("task-copy");
-    std::fs::create_dir(&copy).unwrap();
+    tokio::fs::create_dir(&copy).await.unwrap();
     let definition = super::tests::fixture_definition(Vec::new(), temp.path());
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
     runtime

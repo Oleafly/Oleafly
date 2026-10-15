@@ -527,9 +527,12 @@ mod tests {
 
     #[test]
     fn the_switch_command_never_runs_on_the_main_thread() {
-        let source = include_str!("switch.rs");
-        let code = &source[..source.find("#[cfg(test)]\nmod tests").unwrap()];
-        assert!(code.contains("pub async fn collab_live_collaboration_set("));
-        assert!(code.contains("spawn_blocking(remember_current)"));
+        let lf = include_str!("switch.rs").replace("\r\n", "\n");
+        for checkout in [lf.clone(), lf.replace('\n', "\r\n")] {
+            let source = checkout.replace("\r\n", "\n");
+            let code = &source[..source.find("#[cfg(test)]\nmod tests").unwrap()];
+            assert!(code.contains("pub async fn collab_live_collaboration_set("));
+            assert!(code.contains("spawn_blocking(remember_current)"));
+        }
     }
 }

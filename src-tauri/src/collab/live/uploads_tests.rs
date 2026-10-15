@@ -1159,15 +1159,17 @@ fn a_figure_waiting_to_be_written_holds_up_neither_closing_nor_a_bounded_wait() 
         alice.pass().await;
         // Holding the index stands in for a write that Windows holds up.
         let writing = guard(&alice.active.disk);
-        let deadline = std::time::Instant::now() + WAIT;
-        while server.gets.load(Ordering::SeqCst) < 1 {
-            assert!(
-                std::time::Instant::now() < deadline,
-                "the download never started"
-            );
-            std::thread::sleep(Duration::from_millis(20));
-        }
-        std::thread::sleep(Duration::from_millis(700));
+        tokio::task::block_in_place(|| {
+            let deadline = std::time::Instant::now() + WAIT;
+            while server.gets.load(Ordering::SeqCst) < 1 {
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "the download never started"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            std::thread::sleep(Duration::from_millis(700));
+        });
         let on_its_own = |work: Box<dyn FnOnce(&Active) + Send>| {
             let active = Arc::clone(&alice.active);
             let (done, finished) = std::sync::mpsc::channel();
