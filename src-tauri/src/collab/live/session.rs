@@ -91,6 +91,7 @@ pub(super) struct Upkeep {
     pub(super) pace: Mutex<super::pacing::Pace>,
     pub(super) failing: Mutex<super::unwritten::Failing>,
     pub(super) figures: Mutex<super::downloads::Figures>,
+    pub(super) figures_closed: AtomicBool,
     pub(super) owed: Mutex<super::owed::OwedTries>,
 }
 

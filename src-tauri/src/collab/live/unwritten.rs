@@ -79,7 +79,7 @@ fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
 // Another program holds the file for writing or deleting, or it is read-only.
 // One open asks Windows this at once, where a write would retry for seconds.
 #[cfg(windows)]
-fn held_elsewhere(target: &Path) -> bool {
+pub(super) fn held_elsewhere(target: &Path) -> bool {
     use std::os::windows::fs::OpenOptionsExt as _;
     const DELETE: u32 = 0x0001_0000;
     const FILE_WRITE_DATA: u32 = 0x0002;
@@ -93,7 +93,7 @@ fn held_elsewhere(target: &Path) -> bool {
 }
 
 #[cfg(not(windows))]
-fn held_elsewhere(_target: &Path) -> bool {
+pub(super) fn held_elsewhere(_target: &Path) -> bool {
     false
 }
 
