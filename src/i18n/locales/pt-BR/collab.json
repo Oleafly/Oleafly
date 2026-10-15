@@ -220,7 +220,7 @@
     "already_member": "Essa pessoa já tem uma conta. Mude a função dela em Pessoas.",
     "project_not_shared": "Este projeto ainda não está compartilhado. Compartilhe primeiro e depois convide pessoas.",
     "project_full": "Este projeto já tem o número máximo de pessoas que o servidor permite. Remova alguém primeiro ou fale com o administrador do servidor.",
-    "owner_away": "A pessoa dona deste projeto não está ativa neste servidor agora, então o projeto não pode receber novas pessoas.",
+    "owner_away": "A pessoa dona do projeto está suspensa ou foi removida deste servidor, então o projeto não pode receber novas pessoas agora. Peça ajuda a um administrador do servidor.",
     "not_a_link": "Isso não é um link para um projeto compartilhado. Copie o link inteiro e tente de novo.",
     "signed_out": "A sua sessão neste servidor foi encerrada. Faça login de novo para sincronizar este projeto.",
     "server_removed": "O servidor deste projeto não está mais na sua lista. Mantenha o projeto como cópia local ou adicione o servidor de novo.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Carregando os dispositivos…",
       "devicesLoadFailed": "O Oleafly não conseguiu carregar estes dispositivos.",
       "lastAdmin": "Este servidor precisa de pelo menos um administrador. Promova outra pessoa a administrador primeiro.",
-      "ownedOne": "{{name}} é dono de um projeto compartilhado. Ninguém mais pode gerenciá-lo enquanto {{name}} estiver fora.",
-      "ownedMany": "{{name}} é dono de projetos compartilhados: {{number}}. Ninguém mais pode gerenciá-los enquanto {{name}} estiver fora.",
+      "owned": {
+        "suspendOne": "Um projeto compartilhado está no nome de {{name}}. Ninguém mais pode gerenciá-lo enquanto a conta de {{name}} estiver suspensa.",
+        "suspendMany": "Projetos compartilhados no nome de {{name}}: {{number}}. Ninguém mais pode gerenciá-los enquanto a conta de {{name}} estiver suspensa.",
+        "removeOne": "Um projeto compartilhado está no nome de {{name}}. Depois que a conta de {{name}} for removida, ninguém mais poderá gerenciá-lo.",
+        "removeMany": "Projetos compartilhados no nome de {{name}}: {{number}}. Depois que a conta de {{name}} for removida, ninguém mais poderá gerenciá-los."
+      },
       "removeConfirm": {
         "title": "Remover {{name}} deste servidor?",
         "description": "A sessão dos dispositivos dessa pessoa é encerrada na hora. Os projetos dela continuam no servidor, e você pode adicioná-la de novo depois.",
@@ -507,7 +511,7 @@
     "uploading": "Enviando figuras e outros arquivos: {{done}} de {{total}}",
     "saving": "Salvando o projeto no servidor…",
     "failed": "O compartilhamento não terminou, então nada foi compartilhado.",
-    "trustAgain": "Agora que outras pessoas podem editar este projeto, o Oleafly pergunta de novo antes de executar as ferramentas dele neste computador."
+    "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele."
   },
   "manage": {
     "sharedOn": "Compartilhado em {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Servidor removido",
     "clientTooOld": "O Oleafly precisa ser atualizado",
     "serverTooOld": "O servidor precisa ser atualizado",
-    "serverChanged": "Outro servidor"
+    "serverChanged": "Novo servidor neste endereço"
   },
   "toolbar": {
     "noFile": "Nenhum arquivo aberto",

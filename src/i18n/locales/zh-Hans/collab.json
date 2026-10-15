@@ -220,7 +220,7 @@
     "already_member": "此人已经有账户。请在人员中更改其角色。",
     "project_not_shared": "此项目尚未共享。请先共享，再邀请其他人。",
     "project_full": "此项目的人数已达到服务器允许的上限。请先移除某人，或联系服务器的管理员。",
-    "owner_away": "这个项目的所有者目前在此服务器上不可用，所以项目无法接纳新成员。",
+    "owner_away": "这个项目的所有者在此服务器上已被停用或移除，所以项目目前无法接纳新成员。请联系服务器的管理员。",
     "not_a_link": "这不是共享项目的链接。请复制完整链接，然后重试。",
     "signed_out": "你已退出此服务器的登录。请重新登录以同步此项目。",
     "server_removed": "此项目的服务器已不在你的列表中。请将项目保留为本地副本，或重新添加该服务器。",
@@ -268,8 +268,12 @@
       "devicesLoading": "正在加载设备…",
       "devicesLoadFailed": "Oleafly 无法加载这些设备。",
       "lastAdmin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
-      "ownedOne": "{{name}} 拥有一个共享项目。{{name}} 不在期间，其他人无法管理它。",
-      "ownedMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 不在期间，其他人无法管理它们。",
+      "owned": {
+        "suspendOne": "{{name}} 拥有一个共享项目。{{name}} 被停用期间，其他人无法管理它。",
+        "suspendMany": "{{name}} 拥有的共享项目：{{number}} 个。{{name}} 被停用期间，其他人无法管理它们。",
+        "removeOne": "{{name}} 拥有一个共享项目。移除 {{name}} 后，其他人将无法管理它。",
+        "removeMany": "{{name}} 拥有的共享项目：{{number}} 个。移除 {{name}} 后，其他人将无法管理它们。"
+      },
       "removeConfirm": {
         "title": "要将 {{name}} 从此服务器中移除吗？",
         "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
@@ -507,7 +511,7 @@
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
     "saving": "正在把项目保存到服务器…",
     "failed": "共享未完成，因此没有共享任何内容。",
-    "trustAgain": "现在其他人也能编辑这个项目了，Oleafly 在这台电脑上运行它的工具前会再次征求你的同意。"
+    "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",
@@ -582,7 +586,7 @@
     "serverRemoved": "服务器已移除",
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "服务器需要更新",
-    "serverChanged": "其他服务器"
+    "serverChanged": "该地址已换成新服务器"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -772,7 +776,7 @@
         "title": "运行状况",
         "okLabel": "一切正常",
         "okDescription": "用户可以登录，服务器也可以保存文件。",
-        "problem": "{{provider}} 登录从 {{time}} 起一直失败",
+        "problem": "使用 {{provider}} 登录从 {{time}} 起一直失败",
         "issues": {
           "noSignInProvider": {
             "label": "无人可以登录",

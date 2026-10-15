@@ -220,7 +220,7 @@
     "already_member": "這個人已經有帳戶。請在「人員」中變更其角色。",
     "project_not_shared": "這個專案尚未分享。請先分享，再邀請其他人。",
     "project_full": "這個專案的人數已達伺服器允許的上限。請先移除某人，或聯絡伺服器的管理員。",
-    "owner_away": "這個專案的擁有者目前在這個伺服器上無法使用，所以專案無法接納新成員。",
+    "owner_away": "這個專案的擁有者在這個伺服器上已被停權或移除，所以專案目前無法接納新成員。請聯絡伺服器的管理員。",
     "not_a_link": "這不是分享的專案連結。請複製完整連結，然後再試一次。",
     "signed_out": "你已登出這個伺服器。請重新登入以同步這個專案。",
     "server_removed": "這個專案的伺服器已不在你的清單中。請將專案保留為本機副本，或重新新增該伺服器。",
@@ -268,8 +268,12 @@
       "devicesLoading": "正在載入裝置…",
       "devicesLoadFailed": "Oleafly 無法載入這些裝置。",
       "lastAdmin": "這個伺服器至少需要一位管理員。請先將其他人設為管理員。",
-      "ownedOne": "{{name}} 擁有一個分享專案。{{name}} 不在期間，其他人無法管理它。",
-      "ownedMany": "{{name}} 擁有的分享專案：{{number}} 個。{{name}} 不在期間，其他人無法管理它們。",
+      "owned": {
+        "suspendOne": "{{name}} 擁有一個分享專案。{{name}} 被停權期間，其他人無法管理它。",
+        "suspendMany": "{{name}} 擁有的分享專案：{{number}} 個。{{name}} 被停權期間，其他人無法管理它們。",
+        "removeOne": "{{name}} 擁有一個分享專案。移除 {{name}} 後，其他人將無法管理它。",
+        "removeMany": "{{name}} 擁有的分享專案：{{number}} 個。移除 {{name}} 後，其他人將無法管理它們。"
+      },
       "removeConfirm": {
         "title": "要將 {{name}} 從這個伺服器移除嗎？",
         "description": "對方的裝置會立即登出。對方擁有的專案會保留在伺服器上，你之後也可以再把對方加回來。",
@@ -507,7 +511,7 @@
     "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
     "saving": "正在把專案儲存到伺服器…",
     "failed": "分享未完成，因此沒有分享任何內容。",
-    "trustAgain": "現在其他人也能編輯這個專案了，Oleafly 在這台電腦上執行它的工具前會再次徵求你的同意。"
+    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",
@@ -582,7 +586,7 @@
     "serverRemoved": "伺服器已移除",
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "伺服器需要更新",
-    "serverChanged": "其他伺服器"
+    "serverChanged": "這個位址已換成新伺服器"
   },
   "toolbar": {
     "noFile": "未開啟檔案",
@@ -772,7 +776,7 @@
         "title": "運作狀態",
         "okLabel": "一切正常",
         "okDescription": "使用者可以登入，伺服器也可以儲存檔案。",
-        "problem": "{{provider}} 登入從 {{time}} 起一直失敗",
+        "problem": "使用 {{provider}} 登入從 {{time}} 起一直失敗",
         "issues": {
           "noSignInProvider": {
             "label": "沒有人能登入",

@@ -220,7 +220,7 @@
     "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
-    "owner_away": "Eieren av dette prosjektet er ikke aktiv på serveren akkurat nå, så prosjektet kan ikke ta inn nye personer.",
+    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer akkurat nå. Spør en administrator av serveren.",
     "not_a_link": "Det er ikke en lenke til et delt prosjekt. Kopier hele lenken, og prøv igjen.",
     "signed_out": "Du er logget ut av denne serveren. Logg inn igjen for å synkronisere prosjektet.",
     "server_removed": "Serveren til dette prosjektet står ikke lenger i listen din. Behold prosjektet som en lokal kopi, eller legg til serveren igjen.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Laster enheter…",
       "devicesLoadFailed": "Oleafly kunne ikke laste disse enhetene.",
       "lastAdmin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
-      "ownedOne": "{{name}} eier et delt prosjekt. Ingen andre kan administrere det mens {{name}} er borte.",
-      "ownedMany": "{{name}} eier delte prosjekter: {{number}}. Ingen andre kan administrere dem mens {{name}} er borte.",
+      "owned": {
+        "suspendOne": "{{name}} eier et delt prosjekt. Ingen andre kan administrere det mens {{name}} er suspendert.",
+        "suspendMany": "Delte prosjekter som {{name}} eier: {{number}}. Ingen andre kan administrere dem mens {{name}} er suspendert.",
+        "removeOne": "{{name}} eier et delt prosjekt. Når {{name}} er fjernet, kan ingen andre administrere det.",
+        "removeMany": "Delte prosjekter som {{name}} eier: {{number}}. Når {{name}} er fjernet, kan ingen andre administrere dem."
+      },
       "removeConfirm": {
         "title": "Fjerne {{name}} fra denne serveren?",
         "description": "Enhetene deres logges ut med en gang. Prosjektene de eier, blir liggende på serveren. Du kan legge personen til igjen senere.",
@@ -507,7 +511,7 @@
     "uploading": "Laster opp figurer og andre filer: {{done}} av {{total}}",
     "saving": "Lagrer prosjektet på serveren…",
     "failed": "Delingen ble ikke fullført, så ingenting ble delt.",
-    "trustAgain": "Nå som andre kan redigere prosjektet, spør Oleafly deg igjen før prosjektets verktøy kjøres på denne maskinen."
+    "trustAgain": "Alle du legger til i prosjektet, kan endre filene, så Oleafly ber deg stole på det igjen på denne maskinen før det kjører agenter, terminalkommandoer eller shell escape for det."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Server fjernet",
     "clientTooOld": "Oleafly må oppdateres",
     "serverTooOld": "Serveren må oppdateres",
-    "serverChanged": "En annen server"
+    "serverChanged": "Ny server på adressen"
   },
   "toolbar": {
     "noFile": "Ingen fil åpen",

@@ -220,7 +220,7 @@
     "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
     "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
     "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
-    "owner_away": "De eigenaar van dit project is op dit moment niet actief op deze server, dus het project kan geen nieuwe mensen opnemen.",
+    "owner_away": "De eigenaar van het project is op deze server geschorst of weggehaald, dus het project kan nu geen nieuwe mensen opnemen. Vraag het een beheerder van de server.",
     "not_a_link": "Dat is geen link naar een gedeeld project. Kopieer de hele link en probeer het opnieuw.",
     "signed_out": "Je bent afgemeld bij deze server. Meld je opnieuw aan om dit project te synchroniseren.",
     "server_removed": "De server van dit project staat niet meer in je lijst. Bewaar het project als lokale kopie of voeg de server opnieuw toe.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Apparaten laden…",
       "devicesLoadFailed": "Oleafly kon deze apparaten niet laden.",
       "lastAdmin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
-      "ownedOne": "{{name}} is eigenaar van een gedeeld project. Niemand anders kan het beheren zolang {{name}} weg is.",
-      "ownedMany": "{{name}} is eigenaar van gedeelde projecten: {{number}}. Niemand anders kan ze beheren zolang {{name}} weg is.",
+      "owned": {
+        "suspendOne": "{{name}} is eigenaar van een gedeeld project. Niemand anders kan het beheren zolang {{name}} geschorst is.",
+        "suspendMany": "Gedeelde projecten van {{name}}: {{number}}. Niemand anders kan ze beheren zolang {{name}} geschorst is.",
+        "removeOne": "{{name}} is eigenaar van een gedeeld project. Zodra {{name}} is weggehaald, kan niemand anders het beheren.",
+        "removeMany": "Gedeelde projecten van {{name}}: {{number}}. Zodra {{name}} is weggehaald, kan niemand anders ze beheren."
+      },
       "removeConfirm": {
         "title": "{{name}} van deze server weghalen?",
         "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
@@ -507,7 +511,7 @@
     "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
     "saving": "Het project wordt op de server opgeslagen…",
     "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
-    "trustAgain": "Nu anderen dit project kunnen bewerken, vraagt Oleafly het je opnieuw voordat het de hulpmiddelen ervan op deze computer uitvoert."
+    "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert."
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Server weggehaald",
     "clientTooOld": "Oleafly moet worden bijgewerkt",
     "serverTooOld": "Server moet worden bijgewerkt",
-    "serverChanged": "Andere server"
+    "serverChanged": "Nieuwe server op dit adres"
   },
   "toolbar": {
     "noFile": "Geen bestand open",

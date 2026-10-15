@@ -220,7 +220,7 @@
     "already_member": "Bu kişinin zaten bir hesabı var. Rolünü Kişiler bölümünden değiştirin.",
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
-    "owner_away": "Bu projenin sahibi şu anda bu sunucuda etkin değil, bu yüzden projeye yeni kişiler katılamıyor.",
+    "owner_away": "Projenin sahibi bu sunucuda askıya alınmış veya kaldırılmış, bu yüzden proje şu anda yeni kişi alamıyor. Sunucunun bir yöneticisine sorun.",
     "not_a_link": "Bu, paylaşılan bir projenin bağlantısı değil. Bağlantının tamamını kopyalayıp yeniden deneyin.",
     "signed_out": "Bu sunucudaki oturumunuz kapalı. Bu projeyi eşitlemek için yeniden oturum açın.",
     "server_removed": "Bu projenin sunucusu artık listenizde değil. Projeyi yerel kopya olarak saklayın veya sunucuyu yeniden ekleyin.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Cihazlar yükleniyor…",
       "devicesLoadFailed": "Oleafly bu cihazları yükleyemedi.",
       "lastAdmin": "Bu sunucunun en az bir yöneticisi olmalı. Önce başka birini yönetici yapın.",
-      "ownedOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} yokken onu başka kimse yönetemez.",
-      "ownedMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} yokken onları başka kimse yönetemez.",
+      "owned": {
+        "suspendOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} askıdayken onu başka kimse yönetemez.",
+        "suspendMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} askıdayken onları başka kimse yönetemez.",
+        "removeOne": "{{name}} paylaşılan bir projenin sahibi. {{name}} kaldırıldıktan sonra onu başka kimse yönetemez.",
+        "removeMany": "{{name}} kişisinin sahibi olduğu paylaşılan projeler: {{number}}. {{name}} kaldırıldıktan sonra onları başka kimse yönetemez."
+      },
       "removeConfirm": {
         "title": "{{name}} bu sunucudan kaldırılsın mı?",
         "description": "Kişinin cihazlarındaki oturumlar hemen kapatılır. Sahibi olduğu projeler sunucuda kalır ve kişiyi daha sonra yeniden ekleyebilirsiniz.",
@@ -507,7 +511,7 @@
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
-    "trustAgain": "Artık başkaları da bu projeyi düzenleyebildiği için Oleafly, projenin araçlarını bu bilgisayarda çalıştırmadan önce size yeniden sorar."
+    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",
@@ -582,7 +586,7 @@
     "serverRemoved": "Sunucu kaldırıldı",
     "clientTooOld": "Oleafly güncellenmeli",
     "serverTooOld": "Sunucu güncellenmeli",
-    "serverChanged": "Farklı sunucu"
+    "serverChanged": "Bu adreste yeni bir sunucu var"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",

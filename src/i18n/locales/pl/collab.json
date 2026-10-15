@@ -220,7 +220,7 @@
     "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
-    "owner_away": "Właściciel tego projektu nie jest teraz aktywny na tym serwerze, więc projekt nie może przyjąć nowych osób.",
+    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może teraz przyjąć nowych osób. Zapytaj administratora serwera.",
     "not_a_link": "To nie jest link do udostępnionego projektu. Skopiuj cały link i spróbuj ponownie.",
     "signed_out": "Wylogowano Cię z tego serwera. Zaloguj się ponownie, aby synchronizować ten projekt.",
     "server_removed": "Serwera tego projektu nie ma już na Twojej liście. Zachowaj projekt jako kopię lokalną albo dodaj serwer ponownie.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Wczytywanie urządzeń…",
       "devicesLoadFailed": "Oleafly nie mógł wczytać tych urządzeń.",
       "lastAdmin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
-      "ownedOne": "{{name}} jest właścicielem udostępnionego projektu. Nikt inny nie może nim zarządzać pod nieobecność {{name}}.",
-      "ownedMany": "{{name}} jest właścicielem udostępnionych projektów: {{number}}. Nikt inny nie może nimi zarządzać pod nieobecność {{name}}.",
+      "owned": {
+        "suspendOne": "Do {{name}} należy udostępniony projekt. Dopóki konto {{name}} jest zawieszone, nikt inny nie może nim zarządzać.",
+        "suspendMany": "Udostępnione projekty należące do {{name}}: {{number}}. Dopóki konto {{name}} jest zawieszone, nikt inny nie może nimi zarządzać.",
+        "removeOne": "Do {{name}} należy udostępniony projekt. Po usunięciu konta {{name}} nikt inny nie będzie mógł nim zarządzać.",
+        "removeMany": "Udostępnione projekty należące do {{name}}: {{number}}. Po usunięciu konta {{name}} nikt inny nie będzie mógł nimi zarządzać."
+      },
       "removeConfirm": {
         "title": "Usunąć użytkownika {{name}} z tego serwera?",
         "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
@@ -507,7 +511,7 @@
     "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
     "saving": "Zapisywanie projektu na serwerze…",
     "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono.",
-    "trustAgain": "Teraz, gdy inni mogą edytować ten projekt, Oleafly zapyta Cię ponownie, zanim uruchomi jego narzędzia na tym komputerze."
+    "trustAgain": "Każdy, kogo dodasz do tego projektu, może zmieniać jego pliki, więc Oleafly poprosi Cię na tym komputerze o ponowne zaufanie, zanim uruchomi dla niego agentów, polecenia terminala lub shell escape."
   },
   "manage": {
     "sharedOn": "Udostępniono na serwerze {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Serwer usunięty",
     "clientTooOld": "Oleafly wymaga aktualizacji",
     "serverTooOld": "Serwer wymaga aktualizacji",
-    "serverChanged": "Inny serwer"
+    "serverChanged": "Nowy serwer pod tym adresem"
   },
   "toolbar": {
     "noFile": "Brak otwartego pliku",

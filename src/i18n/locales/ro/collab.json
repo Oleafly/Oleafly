@@ -220,7 +220,7 @@
     "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
     "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
     "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
-    "owner_away": "Proprietarul acestui proiect nu este activ acum pe acest server, așa că proiectul nu poate primi persoane noi.",
+    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi acum. Întreabă un administrator al serverului.",
     "not_a_link": "Acesta nu este un link către un proiect partajat. Copiază tot linkul, apoi încearcă din nou.",
     "signed_out": "Ești deconectat de la acest server. Autentifică-te din nou ca să sincronizezi acest proiect.",
     "server_removed": "Serverul acestui proiect nu mai este în lista ta. Păstrează proiectul ca o copie locală sau adaugă din nou serverul.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Se încarcă dispozitivele…",
       "devicesLoadFailed": "Oleafly nu a putut încărca aceste dispozitive.",
       "lastAdmin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
-      "ownedOne": "{{name}} deține un proiect partajat. Nimeni altcineva nu îl poate gestiona cât timp {{name}} lipsește.",
-      "ownedMany": "{{name}} deține proiecte partajate: {{number}}. Nimeni altcineva nu le poate gestiona cât timp {{name}} lipsește.",
+      "owned": {
+        "suspendOne": "{{name}} deține un proiect partajat. Nimeni altcineva nu îl poate gestiona cât timp {{name}} are contul suspendat.",
+        "suspendMany": "Proiecte partajate deținute de {{name}}: {{number}}. Nimeni altcineva nu le poate gestiona cât timp {{name}} are contul suspendat.",
+        "removeOne": "{{name}} deține un proiect partajat. După eliminarea utilizatorului {{name}}, nimeni altcineva nu îl va mai putea gestiona.",
+        "removeMany": "Proiecte partajate deținute de {{name}}: {{number}}. După eliminarea utilizatorului {{name}}, nimeni altcineva nu le va mai putea gestiona."
+      },
       "removeConfirm": {
         "title": "Elimini {{name}} de pe acest server?",
         "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
@@ -507,7 +511,7 @@
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
     "saving": "Se salvează proiectul pe server…",
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
-    "trustAgain": "Acum că și alții pot edita acest proiect, Oleafly te întreabă din nou înainte să-i ruleze instrumentele pe acest computer."
+    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape."
   },
   "manage": {
     "sharedOn": "Partajat pe {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Server eliminat",
     "clientTooOld": "Oleafly trebuie actualizat",
     "serverTooOld": "Serverul trebuie actualizat",
-    "serverChanged": "Alt server"
+    "serverChanged": "Server nou la această adresă"
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",

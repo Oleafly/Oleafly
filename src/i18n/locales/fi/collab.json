@@ -220,7 +220,7 @@
     "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
-    "owner_away": "Tämän projektin omistaja ei ole nyt aktiivinen tällä palvelimella, joten projektiin ei voi ottaa uusia henkilöitä.",
+    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi nyt ottaa uusia henkilöitä. Kysy palvelimen ylläpitäjältä.",
     "not_a_link": "Tämä ei ole linkki jaettuun projektiin. Kopioi koko linkki ja yritä sitten uudelleen.",
     "signed_out": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään, niin projekti synkronoituu.",
     "server_removed": "Tämän projektin palvelin ei ole enää listallasi. Säilytä projekti paikallisena kopiona tai lisää palvelin uudelleen.",
@@ -268,8 +268,12 @@
       "devicesLoading": "Ladataan laitteita…",
       "devicesLoadFailed": "Oleafly ei voinut ladata näitä laitteita.",
       "lastAdmin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
-      "ownedOne": "{{name}} omistaa jaetun projektin. Kukaan muu ei voi hallita sitä, kun {{name}} on poissa.",
-      "ownedMany": "{{name}} omistaa jaettuja projekteja: {{number}}. Kukaan muu ei voi hallita niitä, kun {{name}} on poissa.",
+      "owned": {
+        "suspendOne": "{{name}} omistaa jaetun projektin. Kukaan muu ei voi hallita sitä, kun {{name}} on jäädytetty.",
+        "suspendMany": "Jaetut projektit, jotka {{name}} omistaa: {{number}}. Kukaan muu ei voi hallita niitä, kun {{name}} on jäädytetty.",
+        "removeOne": "{{name}} omistaa jaetun projektin. Kun {{name}} on poistettu, kukaan muu ei voi hallita sitä.",
+        "removeMany": "Jaetut projektit, jotka {{name}} omistaa: {{number}}. Kun {{name}} on poistettu, kukaan muu ei voi hallita niitä."
+      },
       "removeConfirm": {
         "title": "Poistetaanko {{name}} tältä palvelimelta?",
         "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
@@ -507,7 +511,7 @@
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
-    "trustAgain": "Koska muutkin voivat nyt muokata tätä projektia, Oleafly kysyy sinulta uudelleen ennen kuin se ajaa projektin työkaluja tällä koneella."
+    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea."
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",
@@ -582,7 +586,7 @@
     "serverRemoved": "Palvelin poistettu",
     "clientTooOld": "Oleafly tarvitsee päivityksen",
     "serverTooOld": "Palvelin tarvitsee päivityksen",
-    "serverChanged": "Eri palvelin"
+    "serverChanged": "Osoitteessa on uusi palvelin"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
