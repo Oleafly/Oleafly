@@ -1102,6 +1102,18 @@ fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
 }
 
 #[test]
+fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
+    let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
+    {
+        let _live = rig.go_live();
+        assert!(super::lifecycle::reconnect_now());
+    }
+    let _turn = write::rig::live_turn();
+    assert!(!super::lifecycle::reconnect_now());
+    assert!(tauri::async_runtime::block_on(super::commands::collab_live_reconnect_now()).is_ok());
+}
+
+#[test]
 fn quitting_right_after_typing_offline_keeps_the_edit_in_the_document_and_on_disk() {
     let (_dir, root, _host, rig) = watched_rig("quitting", &[("main.tex", "abc")]);
     let _live = rig.go_live();

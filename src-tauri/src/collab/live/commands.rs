@@ -7,7 +7,7 @@ use tauri::ipc::Channel;
 
 use super::editor::{doc_change, doc_close, doc_open, presence_leave, presence_set};
 use super::host::{AppLiveHost, LiveHost};
-use super::lifecycle::{flush, start, stop};
+use super::lifecycle::{flush, reconnect_now, start, stop};
 use super::local_events::resume;
 use super::payloads::{DocOpened, LiveInfo};
 use super::sync_hold::{announce, SyncDecision};
@@ -44,6 +44,12 @@ pub async fn collab_live_stop(project_id: String) -> Result<(), CollabCommandErr
 #[tauri::command]
 pub async fn collab_live_flush(project_id: String) -> Result<(), CollabCommandError> {
     flush(&project_id).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn collab_live_reconnect_now() -> Result<(), CollabCommandError> {
+    reconnect_now();
     Ok(())
 }
 

@@ -238,6 +238,14 @@ pub async fn resumed_if_failed<T, E>(
     done
 }
 
+pub fn reconnect_now() -> bool {
+    let running = guard(&ACTIVE).clone();
+    running.is_some_and(|active| {
+        active.handle.reconnect_now();
+        true
+    })
+}
+
 pub async fn flush(project_id: &str) {
     let Some(active) = active_for(project_id) else {
         return;
