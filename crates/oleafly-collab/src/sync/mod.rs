@@ -124,6 +124,9 @@ pub enum LiveEvent {
         device_id: Option<DeviceId>,
     },
     Unsendable,
+    // The project reached the server's size limit, so changes stay on this
+    // computer for now. Said once per session.
+    ProjectFull,
     CommentsNotSent(Vec<crate::comments::UnsentComment>),
     Comments(CommentSwitches),
 }
@@ -245,4 +248,5 @@ async fn guarded(
     }
 }
 
-pub const UNDERSTOOD_CODES: [FrameErrorCode; 1] = [FrameErrorCode::CommentsOff];
+pub const UNDERSTOOD_CODES: [FrameErrorCode; 2] =
+    [FrameErrorCode::CommentsOff, FrameErrorCode::ProjectTooLarge];

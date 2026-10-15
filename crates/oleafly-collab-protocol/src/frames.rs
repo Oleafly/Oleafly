@@ -204,6 +204,7 @@ pub enum FrameErrorCode {
     NotFound,
     TooLarge,
     CommentsOff,
+    ProjectTooLarge,
     #[serde(other)]
     Unknown,
 }

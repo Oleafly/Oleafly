@@ -264,6 +264,13 @@ async fn online(
                     }
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
                     ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
+                    // The batch stays as it is, neither cut smaller nor given
+                    // up, and goes out again after the next reconnect.
+                    ServerFrame::Error { code: FrameErrorCode::ProjectTooLarge, .. } => {
+                        if lock(project).first_full_refusal() {
+                            let _ = events.send(LiveEvent::ProjectFull);
+                        }
+                    }
                     ServerFrame::Error { code: FrameErrorCode::TooLarge, .. } => {
                         lock(project).too_large();
                         if flush(link, project, events, wire).await.is_err() {

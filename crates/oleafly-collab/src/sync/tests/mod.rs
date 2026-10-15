@@ -6,6 +6,7 @@ mod devices;
 mod editing;
 mod ending;
 mod failures;
+mod project_full;
 mod refusals;
 mod restore;
 mod transport;

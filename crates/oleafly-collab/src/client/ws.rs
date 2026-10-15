@@ -449,6 +449,7 @@ pub(crate) fn frame_error(frame: ServerFrame) -> CollabError {
                 FrameErrorCode::CommentsOff => (403, "comments_off"),
                 FrameErrorCode::NotFound => (404, "not_found"),
                 FrameErrorCode::TooLarge => (413, "too_large"),
+                FrameErrorCode::ProjectTooLarge => (413, "project_too_large"),
                 FrameErrorCode::Internal
                 | FrameErrorCode::Unauthorized
                 | FrameErrorCode::Unknown => (500, "internal"),

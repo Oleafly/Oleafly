@@ -244,6 +244,7 @@ pub struct LiveProject {
     damaged: bool,
     skipped: BTreeSet<u64>,
     suspect: BTreeSet<u64>,
+    told_full: bool,
 }
 
 struct ChangeLog {
@@ -474,7 +475,12 @@ impl LiveProject {
             damaged: false,
             skipped: BTreeSet::new(),
             suspect: BTreeSet::new(),
+            told_full: false,
         }
+    }
+
+    pub(crate) fn first_full_refusal(&mut self) -> bool {
+        !std::mem::replace(&mut self.told_full, true)
     }
 
     pub fn load(dir: &Path, role: ProjectRole) -> Result<LiveProject, CollabError> {
