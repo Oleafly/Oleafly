@@ -226,6 +226,17 @@ describe("collaboration IPC helpers", () => {
     ]);
   });
 
+  it("forwards the files a stopped live session wrote, with their hashes", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabLiveWritten((payload) => seen.push(payload));
+    expect(tauri.COLLAB_LIVE_WRITTEN_EVENT).toBe("collab-live-written");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-live-written", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { projectId: "grant", files: [{ path: "main.tex", hash: "c0ffee" }] };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
+  });
+
   it("asks a waiting live session to reconnect now, with no arguments", async () => {
     await tauri.collabLiveReconnectNow();
     expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("collab_live_reconnect_now");

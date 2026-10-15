@@ -1793,6 +1793,12 @@ export interface CollabUploadFile {
 export interface CollabLiveProjectFull {
   projectId: string;
 }
+// Sent when a live session stops: the files it wrote while editors had them
+// open, with the hash of what each holds on disk now.
+export interface CollabLiveWritten {
+  projectId: string;
+  files: { path: string; hash: string }[];
+}
 export interface CollabLiveUploads {
   projectId: string;
   files: CollabUploadFile[];

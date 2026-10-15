@@ -72,7 +72,8 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
-import { useFilesStore } from "./files";
+import { diskHash } from "@/lib/disk-hash";
+import { refreshDiskSnapshots, useFilesStore } from "./files";
 
 beforeAll(async () => {
   await loadNamespace("collab");
@@ -308,6 +309,39 @@ describe("a viewer's change from an in-app writer", () => {
     useCollabEditorGate.setState({ viewer: false });
     expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(true);
     expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\nb\n", dirty: true });
+  });
+});
+
+describe("files a live session wrote while they were open", () => {
+  it("count as what the disk holds once the session stops, so the next save checks against them", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    // The session wrote a collaborator's line to disk and the buffer, and the
+    // window never heard about the write.
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
+    }));
+    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n") }]);
+    useFilesStore.getState().setContent("main.tex", "a\nremote\nmine\n");
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "a\nremote\nmine\n",
+      3,
+      diskHash("a\nremote\n"),
+    );
+  });
+
+  it("keep a buffer that holds what the disk holds as saved", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
+    }));
+    refreshDiskSnapshots("project", [{ path: "main.tex", hash: diskHash("a\nremote\n") }]);
+    useFilesStore.getState().setContent("main.tex", "a\nremote\n", { unsaved: true });
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ dirty: false });
   });
 });
 

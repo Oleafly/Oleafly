@@ -2180,6 +2180,15 @@ export function onCollabLiveRenamed(
 export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
 export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
 export const COLLAB_LIVE_PROJECT_FULL_EVENT = "collab-live-project-full";
+export const COLLAB_LIVE_WRITTEN_EVENT = "collab-live-written";
+
+export function onCollabLiveWritten(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveWritten) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveWritten>(COLLAB_LIVE_WRITTEN_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
 
 export function onCollabLiveProjectFull(
   handler: (payload: import("@oleafly/backend-port").CollabLiveProjectFull) => void,

@@ -14,6 +14,7 @@ import {
   onCollabLiveRole,
   onCollabLiveStatus,
   onCollabLiveProjectFull,
+  onCollabLiveWritten,
   onCollabLiveUnwritten,
   onCollabPresence,
   onCollabPresenceLeft,
@@ -29,6 +30,7 @@ import {
   type CollabLiveSyncState,
   type CollabLiveStatus,
   type CollabLiveUnwritten,
+  type CollabLiveWritten,
   type CollabPerson,
   type CollabPresence,
   type CollabPresenceLeft,
@@ -37,7 +39,7 @@ import {
   type CollabServerChanged,
   type CollabShareInfo,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import { refreshDiskSnapshots, useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { isReadOnlyProjectRole } from "../roles";
 import { heldStatus } from "../sharing/sync-state";
@@ -527,6 +529,10 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState({ projectFull: true });
   };
 
+  // Files a stopped session wrote while editors had them open. The store's
+  // disk snapshots follow them, whichever project is open now.
+  const onWritten = (payload: CollabLiveWritten) => refreshDiskSnapshots(payload.projectId, payload.files);
+
   const onUnwritten = (payload: CollabLiveUnwritten) => {
     if (payload.projectId !== current()) return;
     store.setState({ unwritten: payload.files });
@@ -552,6 +558,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabServerChanged(onServerChanged),
     onCollabLiveUnwritten(onUnwritten),
     onCollabLiveProjectFull(onProjectFull),
+    onCollabLiveWritten(onWritten),
   ].map((pending) =>
     pending.catch((error) => {
       void logError("collab live listen", error);
