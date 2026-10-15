@@ -439,7 +439,9 @@ async fn keep(
     let mut checked = Instant::now();
     loop {
         let idle = state.polls.idle();
-        let check = (idle / 4).clamp(Duration::from_millis(20), Duration::from_secs(5));
+        let check = (idle / 4)
+            .min(state.polls.revocation_check())
+            .clamp(Duration::from_millis(20), Duration::from_secs(5));
         tokio::select! {
             signal = control.recv() => match signal {
                 Some(SocketControl::Revoked(reason)) => end(&state, &session, Some(ServerFrame::SessionRevoked { reason })),

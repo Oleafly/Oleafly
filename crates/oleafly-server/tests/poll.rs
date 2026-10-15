@@ -1081,9 +1081,15 @@ async fn a_long_poll_notices_a_sign_out_it_was_never_told_about() {
         })
         .await
         .expect("revoke quietly");
+    let revoked = Instant::now();
     assert_eq!(
         alice.next().await,
         ServerFrame::SessionRevoked { reason: None }
+    );
+    assert!(
+        revoked.elapsed() < Duration::from_secs(2),
+        "noticed only after {:?}",
+        revoked.elapsed()
     );
 }
 
