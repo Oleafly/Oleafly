@@ -110,12 +110,14 @@ export function startLiveEditing(live: LiveSession): () => void {
       return files.projectId === projectId ? (files.files[path]?.content ?? null) : null;
     },
     mirror: (path, text) => mirrorText(projectId, path, text),
-    detached: (path, text, edited) => {
+    detached: (path, text, edited, shared) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;
       // The mirror already put this text in the buffer as saved, so say it
-      // isn't, or the typing would never reach the disk.
-      if (edited) files.setContent(path, text, { unsaved: true });
+      // isn't, or the typing would never reach the disk. Merging from the text
+      // Rust confirmed sends a project that is still live exactly the typing
+      // it never got.
+      if (edited) files.setContent(path, text, { unsaved: true, base: shared });
       if (files.activePath === path) files.bumpDocVersion();
     },
     shown: (path) => {

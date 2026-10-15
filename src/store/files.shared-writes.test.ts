@@ -286,6 +286,18 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
 });
 
 describe("text a live session hands back to local editing", () => {
+  it("merges into a project that is still live from the text the shared document confirmed", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\ntyped\n", dirty: false } },
+    }));
+    useFilesStore.getState().setContent("main.tex", "a\ntyped\n", { unsaved: true, base: "a\n" });
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.collabWriteText).toHaveBeenCalledExactlyOnceWith("project", "main.tex", "a\n", "a\ntyped\n");
+  });
+
   it("is saved even though the buffer already shows it", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");

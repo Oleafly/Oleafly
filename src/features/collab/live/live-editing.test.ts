@@ -365,8 +365,27 @@ describe("live editing edges", () => {
     const session = collabDocumentSession("excluded.log");
     session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     await settle();
-    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!", { unsaved: true });
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("excluded.log", "log!", {
+      unsaved: true,
+      base: "log",
+    });
     expect(useFilesStore.getState().docVersion).toBe(version);
+  });
+
+  it("keeps typing Rust never confirmed when live editing stops, to merge from the shared text", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    channels.get("id-main.tex")?.({ kind: "remote", rev: 5, op: ["> ", 6], length: 8 });
+    session?.applyLocal([{ from: 8, to: 8, insert: "!" }], session.version());
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "> shared!", dirty: false });
+    release?.();
+    release = null;
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledExactlyOnceWith("main.tex", "> shared!", {
+      unsaved: true,
+      base: "> shared",
+    });
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "> shared!", dirty: true });
   });
 
   it("leaves the files store alone when the server says no after another project opened", async () => {
