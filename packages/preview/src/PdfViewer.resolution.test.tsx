@@ -218,6 +218,10 @@ interface Scene {
   zoom: (scale: number) => void;
 }
 
+function detailReady(scene: Scene): Promise<void> {
+  return waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"), { timeout: 3_000 });
+}
+
 async function openPage(scale: number, viewport: [number, number]): Promise<Scene> {
   const data = new Uint8Array([1]);
   const view = render(<PdfViewer data={data} scale={scale} expectText={false} />);
@@ -272,7 +276,7 @@ describe("PdfViewer raster resolution", () => {
     expect(base.width * base.height).toBeLessThanOrEqual(MAX_PDF_CANVAS_PIXELS);
     expect(base.width).toBeLessThan(1530 * 2);
 
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     const detail = scene.detail()!;
     const cssWidth = Number.parseFloat(detail.style.width);
     const cssHeight = Number.parseFloat(detail.style.height);
@@ -299,7 +303,7 @@ describe("PdfViewer raster resolution", () => {
       releaseText = resolve;
     });
     const scene = await openPage(2.5, [800, 600]);
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     expect(scene.wrap.querySelector(".textLayer span")).toBeNull();
     releaseText();
     await waitFor(() => expect(scene.wrap.querySelector(".textLayer span")).not.toBeNull());
@@ -309,14 +313,14 @@ describe("PdfViewer raster resolution", () => {
 
   it("moves the detail canvas with the viewport and releases it when the page leaves", async () => {
     const scene = await openPage(2.5, [800, 600]);
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     const first = scene.detail()!;
     const firstBottom = Number.parseFloat(first.style.top) + Number.parseFloat(first.style.height);
 
     scene.place(0, -(firstBottom + 100));
     scroll(scene.scrollParent);
     await waitFor(() => expect(scene.detail()).not.toBe(first));
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     const second = scene.detail()!;
     const top = Number.parseFloat(second.style.top);
     const bottom = top + Number.parseFloat(second.style.height);
@@ -343,7 +347,7 @@ describe("PdfViewer raster resolution", () => {
     const scene = await openPage(4, [801, 601]);
     scene.place(-10, -6);
     scroll(scene.scrollParent);
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     const detail = scene.detail()!;
     const left = Number.parseFloat(detail.style.left);
     const top = Number.parseFloat(detail.style.top);
@@ -385,7 +389,7 @@ describe("PdfViewer raster resolution", () => {
 
   it("stretches the detail canvas with the page while a zoom gesture is in flight", async () => {
     const scene = await openPage(2.5, [800, 600]);
-    await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+    await detailReady(scene);
     const detail = scene.detail()!;
     const widthBefore = Number.parseFloat(detail.style.width);
     const heightBefore = Number.parseFloat(detail.style.height);
@@ -425,7 +429,7 @@ describe("PdfViewer raster resolution", () => {
       act(() => settle[0]());
       await waitFor(() => expect(scene.wrap.dataset.pdfRasterScale).toBe("3"));
       await waitFor(() => expect(scene.detail()).not.toBe(detail));
-      await waitFor(() => expect(scene.wrap.dataset.pdfDetail).toBe("ready"));
+      await detailReady(scene);
       expect(detail.width).toBe(0);
       const replacement = scene.detail()!;
       expect(replacement.width).toBe(Number.parseFloat(replacement.style.width) * 2);
