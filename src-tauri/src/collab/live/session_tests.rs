@@ -1161,6 +1161,37 @@ fn a_full_project_reaches_the_window_by_name() {
 }
 
 #[test]
+fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
+    let (_dir, root, _host, rig) = watched_rig("owed-move", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.settle();
+    assert!(root.join("figs").is_dir());
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.settle();
+    assert!(
+        !root.join("figs").exists(),
+        "a file was written where the owed folder goes"
+    );
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    assert!(!root.join("old-figs").exists());
+    assert_eq!(
+        std::fs::read_to_string(root.join("figs/a.tex")).unwrap(),
+        "A"
+    );
+    assert!(guard(&active.disk).owed.is_empty());
+}
+
+#[test]
 fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
     let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
     {

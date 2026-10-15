@@ -22,7 +22,11 @@ pub(super) fn project(root: &Path) -> (LiveProject, DiskState, String) {
     hashes.insert("main.tex".to_owned(), sha256_hex(b"abc"));
     (
         LiveProject::new(doc, 0, ProjectRole::Owner),
-        DiskState { layout, hashes },
+        DiskState {
+            layout,
+            hashes,
+            owed: Default::default(),
+        },
         main,
     )
 }
@@ -87,6 +91,87 @@ fn a_file_and_a_folder_the_layout_renames_move_on_disk_and_are_imported_once() {
         "a second scan found the renamed files again"
     );
     apply_local_import(&mut live, &mut disk, &mut bases, again, root).unwrap();
+    assert_eq!(live.doc().nodes().unwrap().len(), nodes);
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_new_file_inside_a_folder_the_layout_renamed_follows_the_layout_too() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let (mut live, mut disk, _main) = project(root);
+    std::fs::create_dir_all(root.join("aux")).unwrap();
+    std::fs::write(root.join("aux/notes.tex"), "notes").unwrap();
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    let folder = laid_out(&live, NodeKind::Dir, |path| path.starts_with("unnamed-"));
+    assert!(root.join(&folder).join("notes.tex").is_file());
+    std::fs::write(root.join(&folder).join("con.tex"), "con").unwrap();
+    let import = read_local_changes(root, &disk, &live, None).unwrap();
+    let (_, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, root).unwrap();
+    let file = laid_out(&live, NodeKind::Text, |path| {
+        path.starts_with(&format!("{folder}/unnamed-"))
+    });
+    assert_eq!(renamed, vec![(format!("{folder}/con.tex"), file.clone())]);
+    assert_eq!(std::fs::read_to_string(root.join(&file)).unwrap(), "con");
+    let again = read_local_changes(root, &disk, &live, None).unwrap();
+    assert!(
+        again.is_empty(),
+        "the file inside the renamed folder came back"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_folder_whose_move_fails_stays_whole_is_left_alone_and_moves_once_it_can() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let (mut live, mut disk, _main) = project(&root);
+    std::fs::create_dir_all(root.join("aux")).unwrap();
+    std::fs::write(root.join("aux/a.tex"), "a").unwrap();
+    std::fs::write(root.join("aux/b.tex"), "b").unwrap();
+    let mut bases = WrittenTexts::default();
+    let import = read_local_changes(&root, &disk, &live, None).unwrap();
+    std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o555)).unwrap();
+    let refused = std::fs::create_dir(root.join("probe")).is_err();
+    let (_, renamed) =
+        super::import::import_renaming(&mut live, &mut disk, &mut bases, import, &root).unwrap();
+    std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if !refused {
+        return;
+    }
+    assert!(renamed.is_empty());
+    assert!(root.join("aux/a.tex").is_file() && root.join("aux/b.tex").is_file());
+    let folder = laid_out(&live, NodeKind::Dir, |path| path.starts_with("unnamed-"));
+    assert!(!root.join(&folder).exists(), "the folder was split");
+    assert_eq!(disk.owed.len(), 1);
+    let nodes = live.doc().nodes().unwrap().len();
+    let again = read_local_changes(&root, &disk, &live, None).unwrap();
+    assert!(
+        again.is_empty(),
+        "the folder waiting to move was imported again"
+    );
+    let mut tries = super::owed::OwedTries::default();
+    let (moved, _) = super::owed::retry_owed(
+        &root,
+        &mut disk,
+        &mut bases,
+        &mut tries,
+        std::time::Instant::now(),
+    );
+    assert_eq!(moved, vec![("aux".to_owned(), folder.clone())]);
+    assert_eq!(
+        std::fs::read_to_string(root.join(&folder).join("a.tex")).unwrap(),
+        "a"
+    );
+    assert!(disk.owed.is_empty());
+    assert!(disk.hashes.contains_key(&format!("{folder}/b.tex")));
+    let after = read_local_changes(&root, &disk, &live, None).unwrap();
+    assert!(after.is_empty(), "the moved folder came back as new");
     assert_eq!(live.doc().nodes().unwrap().len(), nodes);
 }
 
@@ -374,6 +459,7 @@ fn a_case_rename_that_arrives_as_remove_and_add_keeps_the_file() {
     let mut disk = DiskState {
         layout: previous.clone(),
         hashes: hashes_for(&[("data/sites.tex", "s")]),
+        owed: Default::default(),
     };
     let plan = materialize::plan(&previous, &next);
     let texts = vec![("data/Sites.tex".to_owned(), "s".to_owned())];
@@ -419,6 +505,7 @@ fn files_in_a_folder_renamed_elsewhere_stay_writable() {
     let mut disk = DiskState {
         layout: previous.clone(),
         hashes: hashes_for(&[("data/x.tex", "x")]),
+        owed: Default::default(),
     };
     let plan = materialize::plan(&previous, &next);
     let texts = vec![("results/x.tex".to_owned(), "x".to_owned())];
@@ -464,6 +551,7 @@ fn a_folder_removed_elsewhere_is_reported_once() {
     let mut disk = DiskState {
         layout: previous.clone(),
         hashes: hashes_for(&[("data/x.tex", "x"), ("keep.tex", "k")]),
+        owed: Default::default(),
     };
     let plan = materialize::plan(&previous, &next);
     let pass = apply_to_disk(

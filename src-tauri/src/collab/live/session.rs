@@ -91,6 +91,7 @@ pub(super) struct Upkeep {
     pub(super) pace: Mutex<super::pacing::Pace>,
     pub(super) failing: Mutex<super::unwritten::Failing>,
     pub(super) figures: Mutex<super::downloads::Figures>,
+    pub(super) owed: Mutex<super::owed::OwedTries>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -229,9 +230,10 @@ impl Active {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
-        let (mut previous, hashes) = {
+        self.settle_owed_moves();
+        let (mut previous, hashes, owed) = {
             let disk = guard(&self.disk);
-            (disk.layout.clone(), disk.hashes.clone())
+            (disk.layout.clone(), disk.hashes.clone(), disk.owed_paths())
         };
         let Some(Outgoing {
             work,
@@ -259,12 +261,20 @@ impl Active {
             self.hold_back_typing(&next, &mut texts);
         }
         let still_held = self.hold_back_failing(&next, &mut texts, urgent);
+        if !owed.is_empty() {
+            self.hold_back_owed(&next, &mut texts, &owed);
+        }
         let shaped = sync_hold::shape(&self.hold_dir(), &self.root, &mut plan, &mut texts, &next);
         let structural = !plan.moved.is_empty()
             || !plan.removed.is_empty()
             || !plan.dirs.is_empty()
             || work.tree;
-        let blocked = |path: &str| shaped.blocks(path);
+        let blocked = |path: &str| {
+            shaped.blocks(path)
+                || owed
+                    .iter()
+                    .any(|held| crate::collab::disk::inside(path, held))
+        };
         let DiskPass {
             mut changed,
             mut conflicts,

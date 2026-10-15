@@ -947,6 +947,7 @@ mod tests {
                 hashes: [("main.tex".to_owned(), sha256_hex(b"alpha\nbeta\n"))]
                     .into_iter()
                     .collect(),
+                owed: Default::default(),
             };
             let shared_live: SharedLive = Arc::new(Mutex::new(live));
             let (events, _events) = mpsc::unbounded_channel();

@@ -446,19 +446,34 @@ pub async fn share_project(
     let nodes = built.doc.nodes()?;
     let layout = materialize::layout(&nodes);
     let mut hashes = built.hashes;
+    let nothing_before = materialize::Layout::new();
+    let mut found = super::disk::FoundPaths::new(&nodes, &nothing_before);
+    let node_at: HashMap<&str, &str> = layout
+        .iter()
+        .map(|(id, placed)| (placed.path.as_str(), id.as_str()))
+        .collect();
     let wanted = layout
         .iter()
-        .filter_map(|(id, placed)| {
-            Some((super::disk::found_path(&nodes, id)?, placed.path.clone()))
-        })
+        .filter_map(|(id, placed)| Some((found.path(id)?, placed.path.clone())))
         .collect();
-    for (from, to) in super::disk::follow_layout(&root, wanted) {
-        super::disk::rekey_moved(&mut hashes, &from, &to);
+    let followed = super::disk::follow_layout(&root, wanted);
+    for (from, to) in &followed.moved {
+        super::disk::rekey_moved(&mut hashes, from, to);
     }
+    let owed: BTreeMap<String, String> = followed
+        .failed
+        .into_iter()
+        .filter_map(|(from, to)| Some((from, (*node_at.get(to.as_str())?).to_owned())))
+        .collect();
     let shared_settings = built.doc.settings();
     let mut live = LiveProject::new(built.doc, 0, ProjectRole::Owner);
     live.save(&paths.document_dir(project_id)?)?;
-    DiskState { layout, hashes }.save(&paths.materializer_index_file(project_id)?)?;
+    DiskState {
+        layout,
+        hashes,
+        owed,
+    }
+    .save(&paths.materializer_index_file(project_id)?)?;
     let binding = ShareBinding {
         server_url: entry.url.clone(),
         server_id: server,
@@ -721,7 +736,12 @@ async fn join_into(
         downloads.check()?;
         admit_writers(&mut live, peers);
         live.save(&paths.document_dir(&local_id)?)?;
-        DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
+        DiskState {
+            layout,
+            hashes,
+            owed: Default::default(),
+        }
+        .save(&paths.materializer_index_file(&local_id)?)?;
         super::settings::remember(
             &super::settings::base_file(paths, &local_id)?,
             &settings_base,

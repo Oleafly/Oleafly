@@ -10,8 +10,8 @@ use super::bases::{merged_onto, WrittenTexts};
 use super::kept;
 use super::session::io;
 use crate::collab::disk::{
-    as_text, crlf_only, excluded_name, exists_exact, follow_layout, found_path, rekey_moved,
-    safe_target, scan_folder, scan_folder_within, sha256_hex, DiskState, ShareRules,
+    as_text, crlf_only, excluded_name, exists_exact, follow_layout, inside, rekey_moved,
+    safe_target, scan_folder, scan_folder_within, sha256_hex, DiskState, FoundPaths, ShareRules,
 };
 
 pub(super) fn parent_of(path: &str) -> Option<&str> {
@@ -100,12 +100,13 @@ pub(super) fn scan_local(
         None => every_candidate(root, placed)?,
     };
     let rules = ShareRules::load(root);
+    let owed = disk.owed_paths();
     let mut scanned = Scanned {
         import: LocalImport::default(),
         known_texts: Vec::new(),
     };
     for path in candidates {
-        if path.is_empty() || excluded_name(&path) {
+        if path.is_empty() || excluded_name(&path) || owed.iter().any(|held| inside(&path, held)) {
             continue;
         }
         let Some(target) = safe_target(root, &path) else {
@@ -390,20 +391,30 @@ fn follow_new_names(
     after: &Layout,
     beside: &[(String, String, String)],
 ) -> Renamed {
+    let mut found = FoundPaths::new(nodes, before);
+    let mut node_at: HashMap<String, String> = HashMap::new();
     let wanted = after
         .iter()
         .filter(|(id, _)| {
             !before.contains_key(*id) && !beside.iter().any(|(ours, _, _)| ours == *id)
         })
-        .filter_map(|(id, placed)| Some((found_path(nodes, id)?, placed.path.clone())))
+        .filter_map(|(id, placed)| {
+            node_at.insert(placed.path.clone(), id.clone());
+            Some((found.path(id)?, placed.path.clone()))
+        })
         .collect();
-    let renamed = follow_layout(root, wanted);
-    for (from, to) in &renamed {
+    let followed = follow_layout(root, wanted);
+    for (from, to) in &followed.moved {
         for (old, new) in rekey_moved(&mut disk.hashes, from, to) {
             bases.rename(&old, &new);
         }
     }
-    renamed
+    for (from, to) in followed.failed {
+        if let Some(id) = node_at.remove(&to) {
+            disk.owed.insert(from, id);
+        }
+    }
+    followed.moved
 }
 
 fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {

@@ -195,6 +195,7 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     let disk = DiskState {
         layout: materialize::layout(&live.doc().nodes().unwrap()),
         hashes,
+        owed: Default::default(),
     };
     let sessions = Arc::new(SessionManager::new(
         Arc::new(MemorySecrets::default()),

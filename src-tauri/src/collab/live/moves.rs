@@ -681,7 +681,11 @@ mod tests {
                     hashes.insert(placed.path.clone(), sha256_hex(text.as_bytes()));
                 }
             }
-            let disk = DiskState { layout, hashes };
+            let disk = DiskState {
+                layout,
+                hashes,
+                owed: Default::default(),
+            };
             live.take_disk_work();
             let bases = initial_bases(&root, &disk, &live);
             Peer {

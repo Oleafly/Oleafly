@@ -438,6 +438,7 @@ mod tests {
         DiskState {
             layout: materialize::layout(&doc.nodes().unwrap()),
             hashes,
+            owed: Default::default(),
         }
     }
 
