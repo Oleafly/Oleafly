@@ -602,6 +602,22 @@ async fn an_account_keeps_at_most_its_open_socket_allowance() {
 }
 
 #[tokio::test]
+async fn several_devices_of_one_person_on_a_flapping_network_keep_connecting() {
+    let (server, _github) = server_with_carol().await;
+    let mut sessions = vec![first_session(&server, &TestDevice::generate()).await];
+    for _ in 0..2 {
+        sessions.push(next_session(&server, &TestDevice::generate()).await);
+    }
+    let mut open_sockets = Vec::new();
+    for tokens in &sessions {
+        for _ in 0..8 {
+            open_sockets.push(open(&server, &tokens.access_token).await.0);
+        }
+    }
+    assert_eq!(server.state().sockets.open_sockets(), 24);
+}
+
+#[tokio::test]
 async fn the_server_keeps_at_most_its_open_socket_allowance() {
     let server = TestServer::start(test_config()).await;
     server.state().sockets.set_limits(SocketLimits {

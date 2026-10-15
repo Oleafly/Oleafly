@@ -39,7 +39,10 @@ pub const MAX_HELLO_BYTES: usize = 16 * 1024;
 // An 8 MiB change is about 10.7 MiB once base64 encoded, plus its envelope.
 pub const MAX_FRAME_BYTES: usize = 11 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
-pub const MAX_SOCKETS_PER_ACCOUNT: usize = 8;
+// The app keeps one live socket per running app, but a socket a flapping
+// network left half open still counts until it goes idle, so one person's
+// devices get room for several each.
+pub const MAX_SOCKETS_PER_ACCOUNT: usize = 32;
 pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
