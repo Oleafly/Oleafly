@@ -40,6 +40,7 @@ describe("on/off preferences", () => {
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
+    ["setLiveCollaboration", "liveCollaboration", "oleafly.liveCollaboration"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
@@ -75,6 +76,24 @@ describe("on/off preferences", () => {
     useSettingsStore.getState().toggleSpellcheck();
     expect(localStorage.getItem("oleafly.spellcheck")).toBe(initial ? "1" : "0");
     expect(useSettingsStore.getState().spellcheck).toBe(initial);
+  });
+
+  it("shows this person's cursor to collaborators until they choose less, per device", async () => {
+    const fresh = await reload({});
+    expect(fresh.collabPresence).toBe("cursor");
+    fresh.setCollabPresence("file");
+    expect(localStorage.getItem("oleafly.collab.presence")).toBe("file");
+    expect((await reload({})).collabPresence).toBe("file");
+    const hidden = await reload({ "oleafly.collab.presence": "hidden" });
+    expect(hidden.collabPresence).toBe("hidden");
+    expect((await reload({ "oleafly.collab.presence": "everything" })).collabPresence).toBe("cursor");
+  });
+
+  it("keeps live collaboration off on a new install", async () => {
+    const fresh = await reload({});
+    expect(fresh.liveCollaboration).toBe(false);
+    const on = await reload({ "oleafly.liveCollaboration": "1" });
+    expect(on.liveCollaboration).toBe(true);
   });
 });
 

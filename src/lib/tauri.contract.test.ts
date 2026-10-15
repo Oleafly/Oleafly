@@ -18,6 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: mocks.setFocus }) }));
 
 import * as tauri from "./tauri";
+import * as tauriCollab from "./tauri-collab";
 
 beforeEach(() => {
   mocks.invoke.mockReset().mockResolvedValue(undefined);
@@ -221,6 +222,43 @@ describe("IPC helpers with client-side logic", () => {
     await expect(tauri.copyLinkedIntoLibrary("p", "op", onProgress)).rejects.toThrow("disk full");
     mocks.channels[0].onmessage({ phase: "copying" });
     expect(onProgress).not.toHaveBeenCalled();
+  });
+
+  it("opens a live document over a message channel", async () => {
+    const onMessage = vi.fn();
+    mocks.invoke.mockResolvedValue(null);
+    await expect(tauriCollab.collabDocOpen("p", "main.tex", onMessage)).resolves.toBeNull();
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_open", {
+      projectId: "p",
+      path: "main.tex",
+      channel: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ kind: "text" });
+    expect(onMessage).toHaveBeenCalledWith({ kind: "text" });
+  });
+
+  it("sends a live document change and closes the channel with the token it opened", async () => {
+    await tauriCollab.collabDocChange("p", "file-1", 4, [3, "x"]);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_change", { projectId: "p", fileId: "file-1", rev: 4, op: [3, "x"] });
+    await tauriCollab.collabDocClose("p", "file-1", 7);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_close", { projectId: "p", fileId: "file-1", session: 7 });
+  });
+
+  it.each([
+    ["without a setup code", undefined, null],
+    ["with a setup code", "K7QX-2MPL", "K7QX-2MPL"],
+  ])("signs in to a server with a code %s", async (_label, setupCode, sent) => {
+    const onCode = vi.fn();
+    const server = { server_id: "s" };
+    mocks.invoke.mockResolvedValue(server);
+    await expect(tauriCollab.collabServerCodeSignIn("https://uni.edu", setupCode, onCode)).resolves.toBe(server);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_server_code_sign_in", {
+      url: "https://uni.edu",
+      setupCode: sent,
+      onCode: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ code: "ABCD" });
+    expect(onCode).toHaveBeenCalledWith({ code: "ABCD" });
   });
 });
 

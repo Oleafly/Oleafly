@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "自訂核准模式會讀取這個檔案。它位於 ~/.oleafly/approvals.toml，並套用到這台裝置上的每個專案。",
+        "description": "這個檔案位於 ~/.oleafly/approvals.toml，並套用到這台裝置上的每個專案。拒絕規則在所有核准模式下都會封鎖該工具。允許規則只在自訂模式下生效。",
         "discard": "捨棄變更",
         "emptyFile": "這個檔案目前是空的。",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "第一個表格 <modesTable>[\"$approval_modes\"]</modesTable> 會為每個專案設定核准模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的專案會使用「代我核准」。",
           "openProject": "目前開啟的專案 {{name}} 的 id 是 <projectId>{{id}}</projectId>。",
           "projectIds": "專案 id 就是 ~/.oleafly/projects 底下的資料夾名稱。",
-          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效。允許規則只在自訂模式下生效，而 run_command 在其他模式下也會略過提示。",
+          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效，包括「完整存取權」。允許規則只在自訂模式下生效。",
           "toolNames": "可使用的工具名稱：<names>{{names}}</names>，以及「工具」清單中任一 MCP 工具的完整名稱。"
         },
         "helpToggle": "這個檔案如何運作",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "一律允許",
         "denied": "一律拒絕",
-        "description": "{{name}} 的已儲存規則。核准模式為「自訂」時才會套用。移除規則後，該工具會改用標準風險政策。",
+        "description": "{{name}} 的已儲存規則。被拒絕的工具在所有核准模式下都會維持封鎖。被允許的工具只在「自訂」模式下略過提示。移除規則後，該工具會改用標準風險政策。",
         "empty": "目前沒有已儲存的規則。在核准提示上選擇「在此專案中一律套用」即可新增一條。",
         "removeRule": "移除 {{tool}} 的規則",
         "thisProject": "此專案",

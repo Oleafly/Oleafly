@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyLocale } from "@/i18n";
-import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { applyLocale, loadNamespace } from "@/i18n";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { APP_ERROR_PREFIX, decodeAppError, describeError } from "./app-error";
 

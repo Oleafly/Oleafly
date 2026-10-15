@@ -1,0 +1,12 @@
+*
+!Cargo.toml
+!Cargo.lock
+!crates
+!vendor
+!src-tauri/Cargo.toml
+!src-tauri/src
+**/target
+**/node_modules
+**/.DS_Store
+crates/oleafly-server/Dockerfile
+crates/oleafly-server/Dockerfile.dockerignore

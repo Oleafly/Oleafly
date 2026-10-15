@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Tam erişim",
-        "description": "Araç eylemlerini onay istemeden çalıştırır."
+        "description": "Deny kuralıyla engellenen araçlar dışında araç eylemlerini sormadan çalıştırır."
       },
       "custom": {
         "label": "Özel (approvals.toml)",

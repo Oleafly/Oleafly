@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Özel onay kipi bu dosyayı okur. Dosya ~/.oleafly/approvals.toml konumunda durur ve bu cihazdaki her projeye uygulanır.",
+        "description": "Dosya ~/.oleafly/approvals.toml konumunda durur ve bu cihazdaki her projeye uygulanır. Deny kuralları bir aracı her onay kipinde engeller. Allow kuralları yalnızca Özel kipte etkilidir.",
         "discard": "Değişiklikleri at",
         "emptyFile": "Dosya şu ana kadar boş.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "İlk tablo, <modesTable>[\"$approval_modes\"]</modesTable>, proje başına onay kipini belirler: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> veya <custom>\"custom\"</custom>. Listelenmeyen bir proje Benim için onayla kipini kullanır.",
           "openProject": "Açık proje, {{name}}, şu kimliğe sahip: <projectId>{{id}}</projectId>.",
           "projectIds": "Proje kimlikleri, ~/.oleafly/projects altındaki klasör adlarıdır.",
-          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları her kipte geçerlidir. Allow kuralları Özel kipte etkilidir ve run_command için diğer kiplerde de sormayı atlar.",
+          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları Tam erişim dahil her kipte geçerlidir. Allow kuralları yalnızca Özel kipte etkilidir.",
           "toolNames": "Kullanabileceğiniz araç adları: <names>{{names}}</names> ve Araçlar listesindeki tam adıyla her MCP aracı."
         },
         "helpToggle": "Dosya nasıl çalışır",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Her zaman izinli",
         "denied": "Her zaman reddedilir",
-        "description": "{{name}} için kayıtlı kurallar. Onay kipi Özel olduğunda geçerlidir. O araç için standart risk ilkesini kullanmak istiyorsanız kuralı kaldırın.",
+        "description": "{{name}} için kayıtlı kurallar. Reddedilen araçlar her onay kipinde engelli kalır. İzin verilen araçlar soruyu yalnızca Özel kipte atlar. O araç için standart risk ilkesini kullanmak istiyorsanız kuralı kaldırın.",
         "empty": "Henüz kayıtlı kural yok. Bir tane eklemek için onay isteminde \"Bu projede her zaman\" seçeneğini kullanın.",
         "removeRule": "{{tool}} kuralını kaldır",
         "thisProject": "bu proje",

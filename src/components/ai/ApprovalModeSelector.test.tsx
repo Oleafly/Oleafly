@@ -131,6 +131,26 @@ describe("ApprovalModeSelector", () => {
     expect(onOpenProjectRules).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ["ask-for-approval", "Ask for approval"],
+    ["approve-for-me", "Approve for me"],
+    ["full-access", "Full access"],
+  ] as const)("opens project approval settings from %s mode", (mode, label) => {
+    const onOpenProjectRules = vi.fn();
+    render(
+      <ApprovalModeSelector
+        mode={mode}
+        onChange={vi.fn()}
+        onOpenProjectRules={onOpenProjectRules}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: `Approval mode. ${label}` }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit project rules" }));
+
+    expect(onOpenProjectRules).toHaveBeenCalledOnce();
+  });
+
   it("cannot switch modes while disabled", () => {
     render(
       <ApprovalModeSelector

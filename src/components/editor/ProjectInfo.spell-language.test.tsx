@@ -6,6 +6,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { i18n } from "@/i18n";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
@@ -342,6 +343,21 @@ describe("spell-check language of an opened folder", () => {
     expect(
       screen.queryByText(enEditor.projectInfo.spellLanguageFolderHint),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps a shared project's language read-only for a viewer", async () => {
+    useFilesStore.setState({ projectDictionaryLocale: "fr_FR" });
+    useCollabEditorGate.setState({ projectId: "guide", viewer: true, connecting: false });
+    try {
+      render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
+      const control = await languageControl();
+      expect(control).toBeDisabled();
+      await waitFor(() => expect(control).toHaveTextContent("French (France)"));
+      expect(screen.getByText(enEditor.sharedSettingsViewer)).toBeInTheDocument();
+      expect(mocks.setProjectDictionaryLocaleCmd).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 
   it("keeps the choice open in a read-only folder that has no project.json", async () => {

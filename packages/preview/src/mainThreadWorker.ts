@@ -1,3 +1,5 @@
+import { dropNativeDecompression } from "./worker-decompression";
+
 type PdfWorkerModule = {
   WorkerMessageHandler?: unknown;
 };
@@ -12,6 +14,7 @@ export function installPdfWorkerModule(workerModule: PdfWorkerModule) {
 
 export async function installMainThreadPdfWorker() {
   await import("./polyfills");
+  dropNativeDecompression(globalThis, globalThis.navigator?.userAgent ?? "");
   const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs");
   installPdfWorkerModule(workerModule);
 }

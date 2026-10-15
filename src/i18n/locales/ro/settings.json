@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Modul de aprobare Personalizat citește acest fișier. Se află la ~/.oleafly/approvals.toml și se aplică fiecărui proiect de pe acest dispozitiv.",
+        "description": "Fișierul se află la ~/.oleafly/approvals.toml și se aplică fiecărui proiect de pe acest dispozitiv. Regulile de refuz blochează un instrument în orice mod de aprobare. Regulile de permitere au efect doar în modul Personalizat.",
         "discard": "Renunță la modificări",
         "emptyFile": "Deocamdată fișierul este gol.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Primul tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stabilește modul de aprobare pentru fiecare proiect: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> sau <custom>\"custom\"</custom>. Un proiect care nu apare în listă folosește Aprobă în locul meu.",
           "openProject": "Proiectul deschis, {{name}}, are identificatorul <projectId>{{id}}</projectId>.",
           "projectIds": "Identificatorii proiectelor sunt numele folderelor din ~/.oleafly/projects.",
-          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod. Regulile de permitere au efect în modul Personalizat, iar pentru run_command sar peste confirmare și în celelalte moduri.",
+          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod, inclusiv în Acces complet. Regulile de permitere au efect doar în modul Personalizat.",
           "toolNames": "Nume de instrumente pe care le poți folosi: <names>{{names}}</names> și orice instrument MCP, după numele lui complet din lista Instrumente."
         },
         "helpToggle": "Cum funcționează fișierul",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Întotdeauna permis",
         "denied": "Întotdeauna refuzat",
-        "description": "Reguli salvate pentru {{name}}. Se aplică atunci când modul de aprobare este Personalizat. Elimină o regulă ca să folosești politica standard de risc pentru acel instrument.",
+        "description": "Reguli salvate pentru {{name}}. Instrumentele refuzate rămân blocate în orice mod de aprobare. Instrumentele permise sar peste confirmare doar în modul Personalizat. Elimină o regulă ca să folosești politica standard de risc pentru acel instrument.",
         "empty": "Încă nu există reguli salvate. Folosește „Întotdeauna în acest proiect” pe o cerere de aprobare ca să adaugi una.",
         "removeRule": "Elimină regula pentru {{tool}}",
         "thisProject": "acest proiect",

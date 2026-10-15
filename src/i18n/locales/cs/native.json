@@ -45,6 +45,11 @@
       "message": "Úplný přístup dovolí asistentovi spouštět příkazy shell a upravovat soubory, aniž by pokaždé žádal o schválení. Povolit úplný přístup?",
       "confirm": "Povolit úplný přístup"
     },
+    "sharedShellEscape": {
+      "title": "Povolit externí příkazy v tomto sdíleném projektu?",
+      "message": "Kdokoli, kdo může tento projekt upravovat, pak bude moci při vaší kompilaci spouštět programy v tomto počítači. Povolte to jen tehdy, pokud důvěřujete všem v projektu.",
+      "confirm": "Povolit v tomto počítači"
+    },
     "cookieImport": {
       "title": "Potvrdit import cookies",
       "messageHost": "Importovat cookies pro {{hostname}} z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",
@@ -111,6 +116,14 @@
   "systemIntegration": {
     "openInOleafly": "Otevřít v Oleafly",
     "openWithOleafly": "Otevřít v aplikaci Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (místní kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Odmítnuto pravidlem {{tool}} v approvals.toml",
+    "unknownTool": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá.",
+    "unknownToolSuggestion": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá. Měli jste na mysli {{suggestion}}?"
   },
   "cloud": {
     "connectedPage": "Jste připojeni. Tuto kartu můžete zavřít a vrátit se do Oleafly.",

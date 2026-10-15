@@ -69,7 +69,10 @@
       "localNotFound": "Lokalny pakiet {{spec}} nie jest zainstalowany. Umieść go w folderze pakietów Typst w Oleafly albo w folderze typst-packages projektu.",
       "versionMissing": "Ten pakiet nie ma wersji {{version}}. Najnowsza wersja to {{latest}}.",
       "versionMissingNoLatest": "Ten pakiet nie ma wersji {{version}}. Sprawdź wersję w imporcie."
-    }
+    },
+    "saveFailed": "Nie udało się zapisać pliku {{path}}, więc Oleafly nie skompilowało dokumentu. Sprawdź ten plik i skompiluj ponownie.",
+    "saveFailedSeveral": "Nie udało się zapisać pliku {{path}} i innych plików, więc Oleafly nie skompilowało dokumentu. Sprawdź te pliki i skompiluj ponownie.",
+    "saveFailedOther": "Nie udało się zapisać dokumentu, więc Oleafly go nie skompilowało. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -290,7 +293,9 @@
     "yearRangeInvalid": "Rok początkowy nie może być późniejszy niż rok końcowy."
   },
   "mcp": {
+    "deniedByRules": "Odrzucono przez regułę deny w approvals.toml",
     "openProjectSummary": "Otwórz projekt {{id}}",
+    "rulesUnreadable": "Odrzucono, bo nie udało się odczytać pliku approvals.toml",
     "useToolSummary": "Użyj narzędzia {{tool}} z serwera MCP {{server}}"
   },
   "mcpConfig": {

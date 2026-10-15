@@ -79,12 +79,8 @@ import { registry } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { panelExpandSizesKey, panelLayoutKey } from "@/lib/panel-layout";
-import {
-  FilesPanel,
-  ProjectSearch,
-  reclaimExplorerFillerLayout,
-  Sidebar,
-} from "./Sidebar";
+import { FilesPanel, ProjectSearch, Sidebar } from "./Sidebar";
+import { reclaimExplorerFillerLayout } from "./SidebarSectionStack";
 
 const copy = enShell.projectSearch;
 const resizeLabel = (first: string, second: string) =>

@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "El modo de aprobación Personalizado lee este archivo. Está en ~/.oleafly/approvals.toml y se aplica a todos los proyectos de este dispositivo.",
+        "description": "El archivo está en ~/.oleafly/approvals.toml y se aplica a todos los proyectos de este dispositivo. Las reglas deny bloquean una herramienta en todos los modos de aprobación. Las reglas allow solo surten efecto en el modo Personalizado.",
         "discard": "Descartar los cambios",
         "emptyFile": "El archivo todavía está vacío.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "La primera tabla, <modesTable>[\"$approval_modes\"]</modesTable>, define el modo de aprobación de cada proyecto: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> o <custom>\"custom\"</custom>. Un proyecto que no aparezca usa Aprobar por mí.",
           "openProject": "El proyecto abierto, {{name}}, tiene el id <projectId>{{id}}</projectId>.",
           "projectIds": "Los id de proyecto son los nombres de las carpetas de ~/.oleafly/projects.",
-          "rules": "Después, una tabla por id de proyecto, con una regla por herramienta: <allow>\"allow\"</allow> ejecuta la herramienta sin preguntar y <deny>\"deny\"</deny> la rechaza. Las reglas deny se respetan en todos los modos. Las reglas allow surten efecto en el modo Personalizado y, en el caso de run_command, también evitan la pregunta en los demás modos.",
+          "rules": "Después, una tabla por id de proyecto, con una regla por herramienta: <allow>\"allow\"</allow> ejecuta la herramienta sin preguntar y <deny>\"deny\"</deny> la rechaza. Las reglas deny se aplican en todos los modos, incluido Acceso completo. Las reglas allow solo surten efecto en el modo Personalizado.",
           "toolNames": "Nombres de herramienta que puedes usar: <names>{{names}}</names> y cualquier herramienta MCP por su nombre completo de la lista de Herramientas."
         },
         "helpToggle": "Cómo funciona el archivo",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Siempre permitida",
         "denied": "Siempre denegada",
-        "description": "Reglas guardadas de {{name}}. Se aplican cuando el modo de aprobación es Personalizado. Quita una regla para que esa herramienta vuelva a la política de riesgo estándar.",
+        "description": "Reglas guardadas de {{name}}. Las herramientas denegadas siguen bloqueadas en todos los modos de aprobación. Las herramientas permitidas solo omiten la pregunta en el modo Personalizado. Quita una regla para que esa herramienta vuelva a la política de riesgo estándar.",
         "empty": "Todavía no hay reglas guardadas. Usa \"Siempre en este proyecto\" en una petición de aprobación para añadir una.",
         "removeRule": "Quitar la regla de {{tool}}",
         "thisProject": "este proyecto",

@@ -41,6 +41,7 @@ vi.mock("@/store/settings", () => ({
   ),
 }));
 
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { resetUniverseIndexCache, type UniversePackage } from "@/lib/typst-universe";
 import { showTypstPackagesDialog, TypstPackagesDialog } from "./TypstPackagesDialog";
 
@@ -233,6 +234,19 @@ describe("TypstPackagesDialog", () => {
     expect(await screen.findByText(fill(text.vendor.copied_one, { count: 1 }))).toBeInTheDocument();
     expect(backend.invoke).toHaveBeenCalledWith("vendor_typst_packages", { projectId: "paper", offline: false });
     expect(await screen.findByText(fill(text.vendor.count_one, { count: 1 }))).toBeInTheDocument();
+  });
+
+  it("keeps vendoring read-only for a viewer of a shared project and says why", async () => {
+    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+    try {
+      await openDialog();
+      const toggle = await screen.findByRole("switch", { name: text.vendor.toggle });
+      expect(screen.getByText(en.sharedSettingsViewer)).toBeInTheDocument();
+      expect(toggle).toBeDisabled();
+      expect(screen.getByRole("button", { name: text.vendor.action })).toBeDisabled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 
   it("names the packages that could not be vendored", async () => {

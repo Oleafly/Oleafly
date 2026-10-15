@@ -78,5 +78,9 @@
       "invalidNumber": "{{value}} is geen getal",
       "sortNegated": "{{key}} kan niet worden uitgesloten"
     }
+  },
+  "avatar": {
+    "more_one": "nog {{count}} persoon",
+    "more_other": "nog {{count}} personen"
   }
 }

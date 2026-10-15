@@ -6,6 +6,7 @@ import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
 import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import type { Sym } from "./types";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
   writeProjectFile: vi.fn(),
@@ -881,6 +882,20 @@ describe("renamePreview", () => {
   });
 });
 
+describe("renaming in an open file that changed after the plan, outside a live project", () => {
+  it("skips it rather than writing text built from the older copy", async () => {
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+    });
+    filesState.files = { "chapters/intro.tex": { content: "Reloaded from disk.\nSee \\ref{fig:old}.\n", dirty: false } };
+    await applyRename(view, SYMBOL, "fig:new");
+    expect(mocks.setContent).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalled();
+  });
+});
+
 describe("applyRename edge cases", () => {
   it("skips the rename when no index is loaded", async () => {
     const previous = indexState.index;
@@ -942,5 +957,62 @@ describe("applyRename edge cases", () => {
     await expect(applyRename(view, SYMBOL, "fig:new")).resolves.toBe("renamed");
     expect(mocks.writeProjectFile).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed to "fig:new" (0 edits in 0 files)');
+  });
+});
+
+describe("renaming a symbol in a live shared project", () => {
+  const PLANNED = "See \\ref{fig:old}.\n";
+  const RENAMED = "See \\ref{fig:new}.\n";
+  const plan = () =>
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+    });
+
+  it("merges into an open background file from the text the rename was planned on, not the newer buffer", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      plan();
+      filesState.files = { "chapters/intro.tex": { content: `Bob's new sentence.\n${PLANNED}`, dirty: false } };
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.setContent).toHaveBeenCalledExactlyOnceWith("chapters/intro.tex", RENAMED, { base: PLANNED });
+      expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
+  it("skips an open file with unsaved edits made after the rename was planned", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      plan();
+      filesState.files = { "chapters/intro.tex": { content: `Typed but unsaved.\n${PLANNED}`, dirty: true } };
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.setContent).not.toHaveBeenCalled();
+      expect(mocks.toastError).toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
+  it("merges the edit into a closed file from the text it was planned on", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      mocks.renamePlan.mockReturnValue({
+        collision: false,
+        fileCount: 1,
+        edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+      });
+      await applyRename(view, SYMBOL, "fig:new");
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "chapters/intro.tex",
+        "See \\ref{fig:new}.\n",
+        { base: "See \\ref{fig:old}.\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

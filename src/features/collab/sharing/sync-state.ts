@@ -1,0 +1,58 @@
+import type { CollabLiveEndedReason, CollabLiveSyncState } from "@/lib/tauri";
+
+export const SYNC_STATES = [
+  "upToDate",
+  "syncing",
+  "offline",
+  "reconnecting",
+  "signedOut",
+  "suspended",
+  "accessEnded",
+  "removed",
+  "archived",
+  "paused",
+  "serverRemoved",
+  "clientTooOld",
+  "serverTooOld",
+  "serverChanged",
+  "failed",
+  "engineSpent",
+] as const;
+
+export type SyncState = (typeof SYNC_STATES)[number];
+
+const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
+  removed: "removed",
+  archived: "archived",
+  signed_out: "signedOut",
+  stopped: "paused",
+  account_suspended: "suspended",
+  access_ended: "accessEnded",
+  server_removed: "serverRemoved",
+  client_too_old: "clientTooOld",
+  server_too_old: "serverTooOld",
+  server_changed: "serverChanged",
+  failed: "failed",
+  engine_spent: "engineSpent",
+};
+
+export function syncState(status: CollabLiveSyncState | null, pending: number): SyncState {
+  if (status === null) return "syncing";
+  switch (status.state) {
+    case "connecting":
+      return "syncing";
+    case "online":
+      return pending > 0 ? "syncing" : "upToDate";
+    case "offline":
+      return pending > 0 ? "offline" : "reconnecting";
+    case "ended":
+      return ENDED[status.reason];
+  }
+}
+
+export function heldStatus(
+  previous: CollabLiveSyncState | null,
+  next: CollabLiveSyncState,
+): CollabLiveSyncState {
+  return next.state === "connecting" && previous?.state === "offline" ? previous : next;
+}

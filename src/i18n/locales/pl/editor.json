@@ -411,7 +411,9 @@
     "unifiedView": "Widok jednolity",
     "loading": "Wczytywanie porównania…",
     "previewTooLarge": "Plik jest za duży, aby wyświetlić podgląd porównania.",
-    "diskHeading": "Na dysku ↔ Twoje zmiany"
+    "diskHeading": "Na dysku ↔ Twoje zmiany",
+    "sharedReadOnly": "W udostępnionym projekcie to porównanie jest tylko do odczytu. Edytuj plik w edytorze.",
+    "viewerReadOnly": "Możesz przeglądać ten udostępniony projekt, ale nie możesz go edytować."
   },
   "hotkeys": {
     "title": "Skróty klawiaturowe",
@@ -488,6 +490,7 @@
     "openInAgent": "Kontynuuj w asystencie AI z pełnym zestawem narzędzi projektu",
     "generateFailed": "Nie udało się wygenerować zmiany. {{message}}",
     "dismiss": "Zamknij",
+    "withdrawn": "Ktoś inny edytował ten tekst, więc tej sugestii nie można już zastosować.",
     "setUpProvider": "Skonfiguruj dostawcę AI",
     "setUpProviderHint": "Dodaj klucz API (albo lokalny Ollama), aby korzystać z edycji AI w wierszu.",
     "openAiSettings": "Otwórz Ustawienia → AI"
@@ -675,6 +678,7 @@
     "endOfDocument": "Koniec dokumentu",
     "hidePreamble": "Ukryj preambułę dokumentu",
     "showPreamble": "Pokaż preambułę dokumentu",
+    "sharedReadOnly": "W udostępnionym projekcie tryb wizualny tylko wyświetla plik. Aby go edytować, przełącz na widok źródła.",
     "findingLabel": "{{message}}. Otwórz sugestie korekty.",
     "rawBlockFindings_one": "{{count}} uwaga korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
     "rawBlockFindings_few": "{{count}} uwagi korekty w tym surowym bloku. {{message}}. Otwórz sugestie.",
@@ -1536,5 +1540,6 @@
     "keyInvalid": "Nazwy wartości nie mogą być puste ani zawierać znaku równości.",
     "keyTaken": "Wariant nie może ustawić tej samej nazwy dwa razy.",
     "saveFailed": "Nie udało się zapisać wariantów."
-  }
+  },
+  "sharedSettingsViewer": "Przeglądający nie mogą tego zmieniać we współdzielonym projekcie."
 }

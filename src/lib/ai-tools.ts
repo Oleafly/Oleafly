@@ -50,6 +50,7 @@ import {
   replaceRange as replaceRangeInEditor,
 } from "@/components/editor/cm/controller";
 import { openProjectLocation } from "@/lib/open-location";
+import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
 
 export type { ToolApprovalRequest, ConfirmFn } from "@oleafly/ai-tools";
 
@@ -67,7 +68,34 @@ function assertFolderWritable(projectId: string): void {
   if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessageInEnglish());
 }
 
+// A viewer can't change a shared project, and while it goes live the role
+// isn't known yet. The shared document isn't live then, so a write would fall
+// back to the local file, which the files store refuses for the same reason.
+function assertSharedWritable(projectId: string): void {
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) throw refusal;
+}
+
+const toolReads = new Map<string, string>();
+
+function toolReadKey(projectId: string, path: string): string {
+  return `${projectId}\0${path}`;
+}
+
+function forgetToolReads(projectId: string): void {
+  for (const key of toolReads.keys()) {
+    if (key.startsWith(`${projectId}\0`)) toolReads.delete(key);
+  }
+}
+
+async function readToolFile(projectId: string, path: string): Promise<string> {
+  const text = await readFileContent(projectId, path);
+  toolReads.set(toolReadKey(projectId, path), text);
+  return text;
+}
+
 async function prepareExternalMutation(projectId: string): Promise<number> {
+  forgetToolReads(projectId);
   try {
     return await useFilesStore.getState().prepareExternalMutation(projectId);
   } catch (error) {
@@ -126,6 +154,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
   assertFolderWritable(projectId);
+  assertSharedWritable(projectId);
   if (getEditorView()) {
     insertAtCursor(text);
     return true;
@@ -137,8 +166,10 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
   const at = documentEnd >= 0 ? documentEnd : current.length;
   const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
-  const result = await writeFileContent(projectId, path, next, expectedGeneration);
-  recordMutationResult(projectId, result);
+  if (!(await writeSharedText(projectId, path, next, current))) {
+    const result = await writeFileContent(projectId, path, next, expectedGeneration);
+    recordMutationResult(projectId, result);
+  }
   return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
 };
 
@@ -151,6 +182,7 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
 ) => {
   if (!mutationAllowed(projectId, allowed)) return false;
   assertFolderWritable(projectId);
+  assertSharedWritable(projectId);
   if (getEditorView()) {
     replaceRangeInEditor(from, to, text);
     return true;
@@ -162,8 +194,10 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
   const start = Math.max(0, Math.min(from, current.length));
   const end = Math.max(start, Math.min(to, current.length));
   const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
-  const result = await writeFileContent(projectId, path, next, expectedGeneration);
-  recordMutationResult(projectId, result);
+  if (!(await writeSharedText(projectId, path, next, current))) {
+    const result = await writeFileContent(projectId, path, next, expectedGeneration);
+    recordMutationResult(projectId, result);
+  }
   return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
 };
 
@@ -277,9 +311,13 @@ const revealLocationHost = async (target: {
 
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
-  readFileContent,
+  readFileContent: readToolFile,
   writeFileContent: async (projectId, path, content, expectedGeneration) => {
     assertFolderWritable(projectId);
+    assertSharedWritable(projectId);
+    const base = toolReads.get(toolReadKey(projectId, path));
+    toolReads.delete(toolReadKey(projectId, path));
+    if (await writeSharedText(projectId, path, content, base)) return {};
     const result = await writeFileContent(projectId, path, content, expectedGeneration);
     recordMutationResult(projectId, result);
     return result;

@@ -117,11 +117,9 @@ export function decideToolApproval(input: {
   risk: ToolRisk;
   projectRules?: Readonly<Record<string, ApprovalRuleDecision>>;
 }): ApprovalGateDecision {
-  if (input.mode === "custom") {
-    const rule = input.projectRules?.[input.toolCall.name];
-    if (rule === "deny") return "deny-per-rules";
-    if (rule === "allow") return "auto-approve";
-  }
+  const rule = input.projectRules?.[input.toolCall.name];
+  if (rule === "deny") return "deny-per-rules";
+  if (input.mode === "custom" && rule === "allow") return "auto-approve";
   if (input.mode === "full-access") return "auto-approve";
   if (input.mode === "ask-for-approval") {
     return input.risk === "read" ? "auto-approve" : "prompt";

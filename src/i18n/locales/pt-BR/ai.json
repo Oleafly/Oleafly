@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Acesso total",
-        "description": "Executar as ações das ferramentas sem pedir aprovação."
+        "description": "Executar as ações das ferramentas sem perguntar, exceto as bloqueadas por uma regra deny."
       },
       "custom": {
         "label": "Personalizado (approvals.toml)",

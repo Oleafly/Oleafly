@@ -182,6 +182,21 @@ fn heard_links(app: &tauri::App<MockRuntime>) -> Arc<Mutex<Vec<serde_json::Value
 }
 
 #[test]
+fn shared_project_links_are_handled_elsewhere_and_not_logged_as_ignored() {
+    assert!(!reported(
+        Rejection::Malformed,
+        "oleafly://open?server=https%3A%2F%2Funi.edu&project=x"
+    ));
+    assert!(!reported(
+        Rejection::Malformed,
+        "oleafly://server/add?url=https%3A%2F%2Funi.edu"
+    ));
+    assert!(reported(Rejection::Malformed, "oleafly://template/a"));
+    assert!(reported(Rejection::Malformed, "oleafly://nonsense"));
+    assert!(!reported(Rejection::OtherScheme, "file:///srv/thesis/"));
+}
+
+#[test]
 fn a_cold_start_link_is_buffered_until_the_main_page_is_ready() {
     let app = app_with_inbox();
     let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())

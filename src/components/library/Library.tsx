@@ -29,6 +29,8 @@ import {
   projectEngineLabel,
   type ProjectFacet,
 } from "@/components/library/project-search";
+import { ShareDialogHost, SharedWithYouSlot, useCollabLibraryKit } from "@/components/collab/CollabSlots";
+import { useShareDialog } from "@/components/collab/share-dialog";
 import {
   Dialog,
   DialogContent,
@@ -138,6 +140,10 @@ function keyedExports(exports: ProjectInfo["exports"]) {
     occurrences.set(base, occurrence + 1);
     return { item, key: `${base}:${occurrence}` };
   });
+}
+
+function latestProject(projects: readonly ProjectInfo[], project: ProjectInfo | null): ProjectInfo | null {
+  return (project && projects.find((item) => item.id === project.id)) || project;
 }
 
 function cacheThumbnail(key: string, png: string) {
@@ -276,33 +282,51 @@ export function Library() {
     (project: ProjectInfo) => projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR),
     [projectColors],
   );
+  const collabKit = useCollabLibraryKit();
+  const hasShared = useMemo(() => projects.some((project) => Boolean(project.shared)), [projects]);
   const searchSchema = useMemo(
     () =>
-      buildProjectSearchSchema(t, {
-        favorites: favs,
-        modified: modifiedFolders,
-        colorOf: coverColor,
-        colorLabels,
-      }),
-    [t, favs, modifiedFolders, coverColor, colorLabels],
+      buildProjectSearchSchema(
+        t,
+        {
+          favorites: favs,
+          modified: modifiedFolders,
+          colorOf: coverColor,
+          colorLabels,
+        },
+        collabKit ? [collabKit.extension] : [],
+      ),
+    [t, favs, modifiedFolders, coverColor, colorLabels, collabKit],
   );
   const analyzedQuery = useMemo(
     () => analyze(query, searchSchema, { now: Date.now() }),
     [query, searchSchema],
   );
   const facetValue = (facet: ProjectFacet, fallback = ALL_FILTER) => {
-    const state = readFacet(analyzedQuery, PROJECT_FACETS[facet]);
+    const state =
+      facet === "location" && collabKit
+        ? collabKit.readLocation(analyzedQuery)
+        : readFacet(analyzedQuery, PROJECT_FACETS[facet]);
     if (state.kind === "option") return state.id;
     return state.kind === "custom" ? CUSTOM_FILTER : fallback;
   };
-  const [hadFolders, setHadFolders] = useState(hasFolders);
-  if (hadFolders !== hasFolders) {
-    setHadFolders(hasFolders);
-    if (!hasFolders) setQuery(writeFacet(query, analyzedQuery, PROJECT_FACETS.location, null));
+  const writeLocation = (id: string | null) =>
+    collabKit
+      ? collabKit.writeLocation(query, analyzedQuery, id, (next) => analyze(next, searchSchema, { now: Date.now() }))
+      : writeFacet(query, analyzedQuery, PROJECT_FACETS.location, id);
+  const sharedLocation = collabKit !== null && hasShared;
+  const hasLocations = hasFolders || sharedLocation;
+  const [hadLocations, setHadLocations] = useState(hasLocations);
+  if (hadLocations !== hasLocations) {
+    setHadLocations(hasLocations);
+    if (!hasLocations) setQuery(writeLocation(null));
   }
   const setFacet = (facet: ProjectFacet, id: string, fallback = ALL_FILTER) => {
     if (id === CUSTOM_FILTER) return;
-    setQuery(writeFacet(query, analyzedQuery, PROJECT_FACETS[facet], id === fallback ? null : id));
+    const option = id === fallback ? null : id;
+    setQuery(
+      facet === "location" ? writeLocation(option) : writeFacet(query, analyzedQuery, PROJECT_FACETS[facet], option),
+    );
   };
   const openFromLibrary = (project: ProjectInfo) => {
     const state = asUnavailable(availabilityOf(project));
@@ -312,10 +336,8 @@ export function Library() {
     }
     void openProject(project.id);
   };
-  const currentDetailsProject =
-    detailsProject && projects.find((project) => project.id === detailsProject.id) || detailsProject;
-  const currentHistoryProject =
-    historyProject && projects.find((project) => project.id === historyProject.id) || historyProject;
+  const currentDetailsProject = latestProject(projects, detailsProject);
+  const currentHistoryProject = latestProject(projects, historyProject);
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
   const releasePointerLock = () => {
     const release = (observer?: MutationObserver) => {
@@ -427,6 +449,7 @@ export function Library() {
       history: (project) => cardHandlers.current?.history(project),
       fork: (project) => cardHandlers.current?.fork(project),
       trash: (project) => cardHandlers.current?.trash(project),
+      share: (project) => useShareDialog.getState().openFor(project.id),
     }),
     [],
   );
@@ -558,6 +581,7 @@ export function Library() {
     forkNames,
     hoverPreview,
     actions: cardActions,
+    collab: collabKit,
   };
 
   useEffect(() => {
@@ -1046,7 +1070,7 @@ export function Library() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {hasFolders ? (
+            {hasLocations ? (
               <FilterSelect
                 name="location"
                 className="col-span-2"
@@ -1054,8 +1078,14 @@ export function Library() {
                 value={facetValue("location")}                onChange={(value) => setFacet("location", value)}                customLabel={t(($) => $.library.home.customFilter)}
                 options={[
                   { value: "all", label: t(($) => $.library.home.filters.locationAll) },
-                  { value: "library", label: t(($) => $.library.home.filters.locationLibrary) },
-                  { value: "external", label: t(($) => $.library.home.filters.locationExternal) },
+                  {
+                    value: "library",
+                    label: collabKit?.libraryLocation ?? t(($) => $.library.home.filters.locationLibrary),
+                  },
+                  ...(sharedLocation && collabKit ? [{ value: "shared", label: collabKit.location }] : []),
+                  ...(hasFolders
+                    ? [{ value: "external", label: t(($) => $.library.home.filters.locationExternal) }]
+                    : []),
                 ]}
               />
             ) : null}
@@ -1203,6 +1233,7 @@ export function Library() {
         >
           {renderFirstRunWelcome()}
           {projects.length > 0 ? <OpenFolderNotice className="mb-5" /> : null}
+          <SharedWithYouSlot />
           {renderNoMatchesEmpty()}
           {renderProjectCollection()}
         </div>
@@ -1210,6 +1241,7 @@ export function Library() {
       </div>
 
       {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
+      <ShareDialogHost />
       {renderPreviewDialog()}
 
       {renderDetailsDialog()}

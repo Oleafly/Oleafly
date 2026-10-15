@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} filer blev ændret i dit projekt, efter at denne opgave startede. Deres forskelle er mod de ældre versioner, så de kan ikke anvendes.",
       "applyAria": "Anvend {{path}}",
       "changedSince": "Ændret siden",
+      "mergesOnApply": "Filen blev redigeret, efter at opgaven startede. Hvis du anvender den, beholdes de redigeringer, og opgavens ændringer lægges til.",
       "loading": "Indlæser...",
       "refreshPreview": "Opdater forhåndsvisningen",
       "preview": "Forhåndsvis",

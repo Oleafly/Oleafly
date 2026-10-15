@@ -36,7 +36,8 @@
     "not_removable": "Bare mapper som er åpnet der de ligger, kan fjernes fra Oleafly.",
     "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Stasjonen har kanskje ingen papirkurv.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flytt eller gi den nytt navn først.",
-    "folder_read_only": "Oleafly kan ikke gjøre denne endringen fordi {{name}} eller mappen den ligger i, er skrivebeskyttet. Kopier mappen du åpnet, til biblioteket og rediger den der."
+    "folder_read_only": "Oleafly kan ikke gjøre denne endringen fordi {{name}} eller mappen den ligger i, er skrivebeskyttet. Kopier mappen du åpnet, til biblioteket og rediger den der.",
+    "shared_settings_viewer": "Lesere kan ikke endre innstillingene for et delt prosjekt."
   },
   "settings": {
     "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."
@@ -215,5 +216,8 @@
     "git_token_invalid": "Det ser ikke ut som et Git-token fra Overleaf. Kopier hele tokenet, og prøv igjen.",
     "git_token_rejected": "Overleaf godtok ikke Git-tokenet. Det kan ha utløpt. Opprett et nytt i kontoinnstillingene dine på Overleaf.",
     "git_unavailable": "Git-integrasjonen i Overleaf er ikke tilgjengelig for dette prosjektet. Eieren av prosjektet trenger et betalt abonnement eller et universitetsabonnement."
+  },
+  "collab": {
+    "turned_off": "Samarbeid i sanntid er slått av. Slå det på i Innstillinger under Eksperimentering."
   }
 }

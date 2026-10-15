@@ -445,7 +445,8 @@
       "title": "Variant (det här projektet)",
       "help": "En variant skickar egna värden till sys.inputs, till exempel för ett utkast eller en tryckfärdig version. Den valda varianten stannar på den här datorn. Lägg till eller redigera varianter under Dokumentinställningar.",
       "none": "Ingen variant"
-    }
+    },
+    "sharedViewer": "Läsare kan inte ändra de här inställningarna i ett delat projekt."
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
@@ -839,6 +840,10 @@
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
       },
+      "liveCollaboration": {
+        "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
+        "label": "Samarbete i realtid"
+      },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
@@ -918,6 +923,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Utseende",
+      "collaboration": "Samarbete",
       "data": "Datalagring",
       "dictionary": "Ordlista",
       "downloads": "Nedladdningar",
@@ -933,6 +939,7 @@
       "keywords": {
         "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
         "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
+        "collaboration": "servrar, logga in, enheter, medlemmar, underhållare, delning, team, labb, liveredigering, realtid, säkerhetslogg",
         "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
         "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",
         "downloads": "paket, typsnitt, ordlistor, offlinefiler",
@@ -1399,6 +1406,13 @@
     "hideLog": "Dölj kompileringsloggen",
     "showLog": "Visa kompileringsloggen"
   },
+  "collabSync": {
+    "paused_one": "{{count}} fil har ändrats utanför Oleafly. Vill du skicka ändringen till alla eller behålla den lokalt?",
+    "paused_other": "{{count}} filer har ändrats utanför Oleafly. Vill du skicka ändringarna till alla eller behålla dem lokalt?",
+    "send": "Skicka",
+    "keepLocal": "Behåll lokalt",
+    "unavailable": "Projektmappen är inte tillgänglig, så synkroniseringen är pausad. Den startar igen när mappen är tillbaka."
+  },
   "overleafSync": {
     "button": "Overleaf-synkning",
     "title": "Synka med Overleaf",
@@ -1448,5 +1462,9 @@
       "allTheirs": "Använd alla Overleafs",
       "apply": "Tillämpa och synka"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly läste in det här fönstret igen eftersom det inte svarade på 30 sekunder. Ändringar du gjorde precis innan kanske inte sparades.",
+    "reloadedAgain": "Oleafly läste in det här fönstret igen eftersom det slutade svara en gång till. Ditt projekt öppnades inte igen, ifall något i det orsakade problemet."
   }
 }

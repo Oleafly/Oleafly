@@ -319,6 +319,12 @@
       "title": "Dupliserte oppføringer i litteraturlisten: {{keys}}",
       "detail": "Disse oppføringene deler DOI-en {{doi}}, så de er den samme referansen under ulike nøkler. Behold én og siter den, ellers står den oppført to ganger i litteraturlisten."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Siteringsnøkkelen \"{{key}}\" er definert mer enn én gang",
+      "detail": "Definert i {{places}}. BibTeX bruker bare den første oppføringen med denne nøkkelen, og skiller ikke mellom store og små bokstaver når den sammenligner nøkler. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
+      "detailBiber": "Definert i {{places}}. Når biber lager litteraturlisten, bruker den bare den første oppføringen med denne nøkkelen. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
+      "detailTypst": "Definert i {{places}}. Typst stopper kompileringen når to oppføringer i litteraturlisten har samme nøkkel. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem."
+    },
     "submission-path-case": {
       "title": "Store og små bokstaver i filnavnet stemmer ikke: {{target}}",
       "detailFigure": "Denne figuren finnes bare på et filsystem som ikke skiller mellom store og små bokstaver. Prosjektet inneholder \"{{match}}\", så skriv akkurat den samme bokstavformen før du sender inn til byggesystemer basert på Linux.",

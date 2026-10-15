@@ -170,7 +170,7 @@ beforeEach(async () => {
   vi.mocked(tauri.existingProjectFiles).mockImplementation(mocks.tauri.existingProjectFiles);
   vi.mocked(tauri.listFileTree).mockImplementation(mocks.tauri.listFileTree);
   vi.mocked(tauri.projectMutationGeneration).mockImplementation(mocks.tauri.projectMutationGeneration);
-  const { loadNamespace } = await import("@/i18n/lazy-namespaces");
+  const { loadNamespace } = await import("@/i18n");
   await loadNamespace("cloud");
   store = await import("@/store/cloud");
   const { useFilesStore } = await import("@/store/files");

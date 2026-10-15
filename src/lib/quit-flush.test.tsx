@@ -24,6 +24,10 @@ vi.mock("@tauri-apps/api/event", () => ({
     mocks.handlers.set(name, set);
     return () => set.delete(handler);
   }),
+  // An app event reaches every listener, this window's own too.
+  emit: vi.fn(async (name: string, payload: unknown) => {
+    for (const handler of [...(mocks.handlers.get(name) ?? [])]) handler({ payload });
+  }),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri }));
 vi.mock("@/lib/tauri", () => ({
@@ -52,6 +56,7 @@ import {
   INSTALL_QUIT_BLOCKED,
   installQuitFallback,
   QUIT_FLUSH_REQUESTED,
+  requestRestart,
 } from "./quit-flush";
 
 function Workspace({ crash }: Readonly<{ crash: boolean }>) {
@@ -316,6 +321,22 @@ describe("quit requests while the app is healthy", () => {
     expect(mocks.confirmQuitFlush).toHaveBeenCalledTimes(1);
     expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(false);
     expect(mocks.flushForQuit).toHaveBeenCalledTimes(1);
+  });
+
+  it("restarts from inside the window the way the app menu does, saving first", async () => {
+    uninstall = await installQuitFallback();
+    render(<MainWindow crash={false} />);
+    await settle();
+
+    await act(async () => {
+      await requestRestart();
+    });
+    await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledTimes(1));
+    expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(true);
+    expect(mocks.flushForQuit).toHaveBeenCalledTimes(1);
+    expect(mocks.flushForQuit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.confirmQuitFlush.mock.invocationCallOrder[0],
+    );
   });
 
   it("lets only the quit guard confirm under strict mode remounts", async () => {

@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "自定义审批模式会读取此文件。它位于 ~/.oleafly/approvals.toml，并作用于本设备上的所有项目。",
+        "description": "此文件位于 ~/.oleafly/approvals.toml，作用于本设备上的所有项目。拒绝规则在所有审批模式下都会阻止相应工具。允许规则仅在自定义模式下生效。",
         "discard": "丢弃更改",
         "emptyFile": "文件目前为空。",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "第一个表 <modesTable>\"$approval_modes\"]</modesTable> 为每个项目设置审批模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的项目使用“为我审批”。",
           "openProject": "当前打开的项目是 {{name}}，其 id 为 <projectId>{{id}}</projectId>。",
           "projectIds": "项目 id 即 ~/.oleafly/projects 下的文件夹名称。",
-          "rules": "接下来，每个项目 id 各有一个表，为每个工具定义一条规则：<allow>\"allow\"</allow> 表示不经询问直接运行工具，<deny>\"deny\"</deny> 表示拒绝运行。拒绝规则在所有模式下都生效。允许规则仅在自定义模式下生效，不过对 run_command 而言，它在其他模式下也会跳过提示。",
+          "rules": "接下来，每个项目 id 各有一个表，为每个工具定义一条规则：<allow>\"allow\"</allow> 表示不经询问直接运行工具，<deny>\"deny\"</deny> 表示拒绝运行。拒绝规则在所有模式下都生效，包括“完全访问权限”。允许规则仅在自定义模式下生效。",
           "toolNames": "可使用的工具名称：<names>{{names}}</names>，以及“工具”列表中任意 MCP 工具的完整名称。"
         },
         "helpToggle": "文件的工作原理",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "始终允许",
         "denied": "始终拒绝",
-        "description": "{{name}} 的已保存规则。这些规则在审批模式为“自定义”时生效。移除规则后，该工具将使用标准风险策略。",
+        "description": "{{name}} 的已保存规则。被拒绝的工具在所有审批模式下都会保持阻止状态。被允许的工具仅在“自定义”模式下跳过提示。移除规则后，该工具将使用标准风险策略。",
         "empty": "还没有已保存的规则。在审批提示上使用“在此项目中始终允许”即可添加。",
         "removeRule": "移除 {{tool}} 的规则",
         "thisProject": "此项目",

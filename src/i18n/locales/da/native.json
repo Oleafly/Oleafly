@@ -45,6 +45,11 @@
       "message": "Med fuld adgang kan assistenten køre shell-kommandoer og redigere filer uden at bede om godkendelse hver gang. Vil du aktivere fuld adgang?",
       "confirm": "Aktiver fuld adgang"
     },
+    "sharedShellEscape": {
+      "title": "Vil du tillade eksterne kommandoer i dette delte projekt?",
+      "message": "Så kan alle, der kan redigere projektet, køre programmer på denne computer, når du kompilerer. Tillad det kun, hvis du stoler på alle i projektet.",
+      "confirm": "Tillad på denne computer"
+    },
     "cookieImport": {
       "title": "Bekræft import af cookies",
       "messageHost": "Vil du importere cookies for {{hostname}} fra {{browser}}-profilen \"{{profile}}\" til Oleaflys indbyggede browser? Importerede cookies kan logge dig ind på websteder.",
@@ -111,6 +116,14 @@
   "systemIntegration": {
     "openInOleafly": "Åbn i Oleafly",
     "openWithOleafly": "Åbn med Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (lokal kopi)"
+  },
+  "approvals": {
+    "helperRefused": "Afvist af reglen for {{tool}} i approvals.toml",
+    "unknownTool": "Intet værktøj hedder {{name}}, så reglen gør ingenting.",
+    "unknownToolSuggestion": "Intet værktøj hedder {{name}}, så reglen gør ingenting. Mente du {{suggestion}}?"
   },
   "cloud": {
     "connectedPage": "Du er tilsluttet. Du kan lukke denne fane og gå tilbage til Oleafly.",

@@ -12,6 +12,7 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { InfoHint } from "@/components/ui/info-hint";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
 import { cloudErrorCode, useCloudStore } from "@/store/cloud";
 import { Files, HardDriveUpload, History, Settings2, ShieldCheck, Unplug } from "lucide-react";
@@ -43,8 +44,10 @@ function ProviderIdentity({
           {badge}
         </div>
         {email ? (
-          <p className="truncate text-xs text-muted-foreground" title={email} data-testid="cloud-account-email">
-            {email}
+          <p className="truncate text-xs text-muted-foreground" data-testid="cloud-account-email">
+            <Tooltip label={email} className="inline">
+              {email}
+            </Tooltip>
           </p>
         ) : null}
       </div>

@@ -404,7 +404,9 @@
     "unifiedView": "Vue unifiée",
     "loading": "Chargement de la comparaison…",
     "previewTooLarge": "Fichier trop volumineux pour prévisualiser une comparaison.",
-    "diskHeading": "Sur le disque ↔ Vos modifications"
+    "diskHeading": "Sur le disque ↔ Vos modifications",
+    "sharedReadOnly": "Dans un projet partagé, cette comparaison est en lecture seule. Modifiez le fichier dans l'éditeur.",
+    "viewerReadOnly": "Vous pouvez consulter ce projet partagé, mais pas le modifier."
   },
   "hotkeys": {
     "title": "Raccourcis clavier",
@@ -481,6 +483,7 @@
     "openInAgent": "Continuer dans l'assistant IA avec tous les outils du projet",
     "generateFailed": "Impossible de générer la modification. {{message}}",
     "dismiss": "Fermer",
+    "withdrawn": "Quelqu'un d'autre a modifié ce texte, la suggestion ne peut donc plus être appliquée.",
     "setUpProvider": "Configurer un fournisseur d'IA",
     "setUpProviderHint": "Ajoutez une clé API (ou un Ollama local) pour utiliser les modifications IA en ligne.",
     "openAiSettings": "Ouvrir Paramètres → IA"
@@ -665,6 +668,7 @@
     "endOfDocument": "Fin du document",
     "hidePreamble": "Masquer le préambule du document",
     "showPreamble": "Afficher le préambule du document",
+    "sharedReadOnly": "Dans un projet partagé, le mode visuel affiche seulement le fichier. Basculez en vue source pour le modifier.",
     "findingLabel": "{{message}}. Ouvrir les suggestions de correction.",
     "rawBlockFindings_one": "{{count}} remarque de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
     "rawBlockFindings_many": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
@@ -1515,5 +1519,6 @@
     "keyInvalid": "Les noms de valeur ne peuvent pas être vides ni contenir de signe égal.",
     "keyTaken": "Une variante ne peut pas définir deux fois le même nom.",
     "saveFailed": "Impossible d'enregistrer les variantes."
-  }
+  },
+  "sharedSettingsViewer": "Les lecteurs ne peuvent pas modifier ceci dans un projet partagé."
 }

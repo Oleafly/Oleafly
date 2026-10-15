@@ -78,5 +78,9 @@
       "invalidNumber": "{{value}} ei ole luku",
       "sortNegated": "Suodatinta {{key}} ei voi jättää pois"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} muu henkilö",
+    "more_other": "{{count}} muuta henkilöä"
   }
 }

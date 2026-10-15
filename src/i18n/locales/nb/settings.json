@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Godkjenningsmodusen Egendefinert leser denne filen. Den ligger i ~/.oleafly/approvals.toml og gjelder alle prosjekter på denne enheten.",
+        "description": "Filen ligger i ~/.oleafly/approvals.toml og gjelder alle prosjekter på denne enheten. Deny-regler blokkerer et verktøy i alle godkjenningsmoduser. Allow-regler gjelder bare i Egendefinert modus.",
         "discard": "Forkast endringene",
         "emptyFile": "Filen er tom så langt.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Den første tabellen, <modesTable>[\"$approval_modes\"]</modesTable>, setter godkjenningsmodus per prosjekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Et prosjekt som ikke står i listen, bruker Godkjenn for meg.",
           "openProject": "Det åpne prosjektet, {{name}}, har id-en <projectId>{{id}}</projectId>.",
           "projectIds": "Prosjekt-id-ene er mappenavnene under ~/.oleafly/projects.",
-          "rules": "Deretter én tabell per prosjekt-id, med en regel per verktøy: <allow>\"allow\"</allow> kjører verktøyet uten å spørre, og <deny>\"deny\"</deny> nekter det. Deny-regler gjelder i alle moduser. Allow-regler gjelder i Egendefinert modus, og for run_command hopper de også over spørsmålet i de andre modusene.",
+          "rules": "Deretter én tabell per prosjekt-id, med en regel per verktøy: <allow>\"allow\"</allow> kjører verktøyet uten å spørre, og <deny>\"deny\"</deny> nekter det. Deny-regler gjelder i alle moduser, også Full tilgang. Allow-regler gjelder bare i Egendefinert modus.",
           "toolNames": "Verktøynavn du kan bruke: <names>{{names}}</names> og alle MCP-verktøy med det fulle navnet fra verktøylisten."
         },
         "helpToggle": "Slik virker filen",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Alltid tillatt",
         "denied": "Alltid nektet",
-        "description": "Lagrede regler for {{name}}. De gjelder når godkjenningsmodusen er Egendefinert. Fjern en regel for å bruke den vanlige risikopolitikken for det verktøyet.",
+        "description": "Lagrede regler for {{name}}. Nektede verktøy forblir blokkert i alle godkjenningsmoduser. Tillatte verktøy hopper over spørsmålet bare i Egendefinert modus. Fjern en regel for å bruke den vanlige risikopolitikken for det verktøyet.",
         "empty": "Ingen lagrede regler ennå. Bruk \"Alltid i dette prosjektet\" i en godkjenningsforespørsel for å legge til en.",
         "removeRule": "Fjern regelen for {{tool}}",
         "thisProject": "dette prosjektet",

@@ -1,0 +1,5 @@
+services:
+  oleafly-server:
+    build:
+      context: ../..
+      dockerfile: crates/oleafly-server/Dockerfile

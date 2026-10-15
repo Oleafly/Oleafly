@@ -45,6 +45,11 @@
       "message": "O acesso total permite que o assistente execute comandos shell e edite arquivos sem pedir aprovação a cada vez. Deseja ativar o acesso total?",
       "confirm": "Ativar acesso total"
     },
+    "sharedShellEscape": {
+      "title": "Permitir comandos externos neste projeto compartilhado?",
+      "message": "Qualquer pessoa que possa editar este projeto poderá executar programas neste computador quando você compilar. Só permita isso se você confiar em todas as pessoas do projeto.",
+      "confirm": "Permitir neste computador"
+    },
     "cookieImport": {
       "title": "Confirmar importação de cookies",
       "messageHost": "Importar os cookies de {{hostname}} do perfil \"{{profile}}\" do {{browser}} para o navegador interno do Oleafly? Os cookies importados podem conectar você a sites.",
@@ -111,6 +116,14 @@
   "systemIntegration": {
     "openInOleafly": "Abrir no Oleafly",
     "openWithOleafly": "Abrir com o Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (cópia local)"
+  },
+  "approvals": {
+    "helperRefused": "Recusado pela regra de {{tool}} em approvals.toml",
+    "unknownTool": "Nenhuma ferramenta se chama {{name}}, então essa regra não faz nada.",
+    "unknownToolSuggestion": "Nenhuma ferramenta se chama {{name}}, então essa regra não faz nada. Você quis dizer {{suggestion}}?"
   },
   "cloud": {
     "connectedPage": "Você está conectado. Pode fechar esta aba e voltar ao Oleafly.",

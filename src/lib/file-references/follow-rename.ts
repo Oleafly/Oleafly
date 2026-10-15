@@ -14,6 +14,7 @@ import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { readFileContent } from "@/lib/tauri";
 import { remapPlan, useFileReferencesStore } from "@/store/file-references";
 import { type EntryRenamedEvent, onEntryRenamed, useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly } from "@/store/folder-access";
 import { readProjectSources, useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -162,7 +163,10 @@ async function applyFileEdits(projectId: string, file: FileReferenceFileEdits): 
     if (raw.replace(/\r\n?/g, "\n") !== file.text) return "failed";
     const latest = useFilesStore.getState();
     if (latest.projectId !== projectId || latest.files[file.path] !== undefined) return "failed";
-    await latest.writeProjectFile(projectId, file.path, next, { crlf: raw.includes("\r\n") });
+    await latest.writeProjectFile(projectId, file.path, next, {
+      crlf: raw.includes("\r\n"),
+      ...sharedBaseOption(projectId, raw)[0],
+    });
     return "disk";
   } catch (error) {
     void logError("update file references", error);

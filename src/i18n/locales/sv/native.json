@@ -45,6 +45,11 @@
       "message": "Med fullständig åtkomst kan assistenten köra shell-kommandon och redigera filer utan att fråga om godkännande varje gång. Vill du aktivera fullständig åtkomst?",
       "confirm": "Aktivera fullständig åtkomst"
     },
+    "sharedShellEscape": {
+      "title": "Vill du tillåta externa kommandon i det här delade projektet?",
+      "message": "Då kan alla som kan redigera projektet köra program på den här datorn när du kompilerar. Tillåt det bara om du litar på alla i projektet.",
+      "confirm": "Tillåt på den här datorn"
+    },
     "cookieImport": {
       "title": "Bekräfta import av cookies",
       "messageHost": "Vill du importera cookies för {{hostname}} från {{browser}}-profilen \"{{profile}}\" till Oleaflys inbyggda webbläsare? Importerade cookies kan logga in dig på webbplatser.",
@@ -111,6 +116,14 @@
   "systemIntegration": {
     "openInOleafly": "Öppna i Oleafly",
     "openWithOleafly": "Öppna med Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (lokal kopia)"
+  },
+  "approvals": {
+    "helperRefused": "Nekad av regeln för {{tool}} i approvals.toml",
+    "unknownTool": "Inget verktyg heter {{name}}, så regeln gör ingenting.",
+    "unknownToolSuggestion": "Inget verktyg heter {{name}}, så regeln gör ingenting. Menade du {{suggestion}}?"
   },
   "cloud": {
     "connectedPage": "Du är ansluten. Du kan stänga fliken och gå tillbaka till Oleafly.",

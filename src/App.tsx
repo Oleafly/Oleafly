@@ -35,6 +35,7 @@ import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
 import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
+import { CollabActivitySlot, CollabSyncPauseSlot } from "@/components/collab/CollabSlots";
 import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
 import { ZenSession } from "@/components/layout/ZenSession";
 import { ZenCompileCorner, ZenTitleStrip } from "@/components/layout/ZenChrome";
@@ -42,6 +43,8 @@ import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { CloudSyncHost } from "@/components/cloud/CloudSyncHost";
 import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
+import { CollabLiveKeeper } from "@/components/layout/CollabLiveKeeper";
+import { CollabLinkKeeper } from "@/components/layout/CollabLinkKeeper";
 import { Editor } from "@/components/editor/Editor";
 import {
   editorUndo,
@@ -356,6 +359,10 @@ function loadMcpBridge(): Promise<() => void> {
   return import("@/lib/mcp-bridge").then((m) => m.startMcpBridge());
 }
 
+function loadStuckWindowRestore(): Promise<() => void> {
+  return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
+}
+
 const SIDEBAR_DEFAULT_PX = 340;
 
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
@@ -585,6 +592,10 @@ function AppContent() {
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(
+    native ? loadStuckWindowRestore : null,
+    "reopen the work after a stuck window reload",
+  );
   useTauriSubscription(
     native ? startDefaultLatexEngineSync : null,
     "sync the default compile engine",
@@ -896,6 +907,8 @@ function AppContent() {
         <BackendProtocolBanner />
         <FolderUnavailableBanner />
         <OpenedFolderBanners />
+        <CollabSyncPauseSlot />
+        <CollabActivitySlot />
         <ShellCommandsBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
@@ -1374,6 +1387,8 @@ export default function App() {
       <OpenFolderKeeper />
       <FolderWatchKeeper />
       <CloudSyncHost />
+      <CollabLiveKeeper />
+      <CollabLinkKeeper />
       <AppContent />
       <OpenCompileKeeper />
     </>

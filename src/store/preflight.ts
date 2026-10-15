@@ -16,6 +16,7 @@ import {
 } from "@oleafly/latex";
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { nameTarget } from "@/lib/index/build";
+import { parseFile } from "@/lib/index/parse-file";
 import type { Sym } from "@/lib/index/types";
 import { labelScope } from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
@@ -76,6 +77,23 @@ function unresolvedBibliographiesFor(
   return unresolved;
 }
 
+// The .bib files the document loads, so conflict copies from sync clients,
+// backups and template samples next to them don't count. A project that
+// declares nothing keeps every .bib file.
+function declaredBibTexts(
+  texts: Readonly<Record<string, string>>,
+  declared: readonly DeclaredBibliography[],
+  knownPaths: readonly string[],
+): Readonly<Record<string, string>> {
+  const loaded = new Set(
+    declared
+      .map((declaration) => resolveBibliographyPath(declaration.raw, declaration.file, knownPaths, declaration.engine))
+      .filter((path): path is string => path !== null),
+  );
+  if (loaded.size === 0) return texts;
+  return Object.fromEntries(Object.entries(texts).filter(([path]) => !path.endsWith(".bib") || loaded.has(path)));
+}
+
 function collectBibEntries(texts: Readonly<Record<string, string>>): {
   bibEntries: NonNullable<RefsContext["bibEntries"]>;
   duplicateDois: { doi: string; keys: string[] }[];
@@ -96,6 +114,22 @@ function collectBibEntries(texts: Readonly<Record<string, string>>): {
     .filter(([, keys]) => keys.length > 1)
     .map(([doi, keys]) => ({ doi, keys }));
   return { bibEntries, duplicateDois };
+}
+
+function collectBibKeyDefinitions(
+  texts: Readonly<Record<string, string>>,
+): NonNullable<RefsContext["bibKeyDefinitions"]> {
+  return Object.entries(texts)
+    .filter(([path]) => path.endsWith(".bib"))
+    .flatMap(([path, content]) => parseFile(path, content).defs)
+    .filter((definition) => definition.kind === "bibentry")
+    .map((definition) => ({
+      key: definition.name,
+      file: definition.file,
+      line: definition.line,
+      from: definition.from,
+      to: definition.to,
+    }));
 }
 
 const CITE_COMMAND =
@@ -190,10 +224,12 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
   const bibLoaded = declared.length > 0
     ? unresolvedBibliographies.length === 0
     : bibKeys.length > 0 || knownPaths.some((path) => path.endsWith(".bib"));
-  const { bibEntries, duplicateDois } = collectBibEntries(projectTexts);
+  const bibTexts = declaredBibTexts(projectTexts, declared, knownPaths);
+  const { bibEntries, duplicateDois } = collectBibEntries(bibTexts);
   const allCitedKeys = collectCitedKeys(projectTexts);
   const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
   const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index);
+  const bibKeyDefinitions = collectBibKeyDefinitions(bibTexts);
   return {
     bibKeys: currentBibKeys,
     definedLabels,
@@ -205,6 +241,8 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
     allCitedKeys,
     duplicateLabels,
     unreferencedLabels,
+    bibKeyDefinitions,
+    bibKeyDialect: declared.some((declaration) => declaration.engine === "biblatex") ? "biber" : "bibtex",
   };
 }
 

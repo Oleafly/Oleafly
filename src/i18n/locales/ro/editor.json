@@ -404,7 +404,9 @@
     "unifiedView": "Vizualizare unificată",
     "loading": "Se încarcă comparația…",
     "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație.",
-    "diskHeading": "Pe disc ↔ Modificările tale"
+    "diskHeading": "Pe disc ↔ Modificările tale",
+    "sharedReadOnly": "Într-un proiect partajat, această comparație este doar pentru citire. Editează fișierul în editor.",
+    "viewerReadOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita."
   },
   "hotkeys": {
     "title": "Scurtături de tastatură",
@@ -481,6 +483,7 @@
     "openInAgent": "Continuă în asistentul AI, cu toate instrumentele de proiect",
     "generateFailed": "Modificarea nu a putut fi generată. {{message}}",
     "dismiss": "Închide",
+    "withdrawn": "Altcineva a editat acest text, așa că sugestia nu mai poate fi aplicată.",
     "setUpProvider": "Configurează un furnizor AI",
     "setUpProviderHint": "Adaugă o cheie API (sau Ollama local) ca să folosești modificările AI din text.",
     "openAiSettings": "Deschide Setări → AI"
@@ -665,6 +668,7 @@
     "endOfDocument": "Sfârșitul documentului",
     "hidePreamble": "Ascunde preambulul documentului",
     "showPreamble": "Arată preambulul documentului",
+    "sharedReadOnly": "Într-un proiect partajat, modul vizual doar afișează fișierul. Treci la vizualizarea sursei ca să-l editezi.",
     "findingLabel": "{{message}}. Deschide sugestiile de corectură.",
     "rawBlockFindings_one": "{{count}} observație de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
     "rawBlockFindings_few": "{{count}} observații de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
@@ -1515,5 +1519,6 @@
     "keyInvalid": "Numele valorilor nu pot fi goale și nici nu pot conține semnul egal.",
     "keyTaken": "O variantă nu poate seta același nume de două ori.",
     "saveFailed": "Variantele nu au putut fi salvate."
-  }
+  },
+  "sharedSettingsViewer": "Cititorii nu pot modifica asta într-un proiect partajat."
 }

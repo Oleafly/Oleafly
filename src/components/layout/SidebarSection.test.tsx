@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { FlaskConical } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import { SidebarPanelHeader, SidebarSection } from "./SidebarSection";
@@ -13,6 +13,8 @@ const RESEARCH = "Research workspace";
 const BETA = "Beta";
 const CONFIGURE = "Configure";
 const SEARCH = "Search";
+const REFS = "refs.tex";
+const REFS_PATH = "appendix/refs.tex";
 
 describe("SidebarSection", () => {
   it("reveals actions from hover or focus anywhere in the section", () => {
@@ -39,6 +41,19 @@ describe("SidebarSection", () => {
       "has-[[data-state=open]]:flex",
     );
     expect(screen.getByRole("button", { name: ACTION_LABEL })).toBeInTheDocument();
+  });
+
+  it("shows the full title or its hint in the app tooltip, never in a native title", async () => {
+    const { container } = render(
+      <SidebarSection id="refs" title={REFS} titleHint={REFS_PATH} open onOpenChange={vi.fn()}>
+        <div />
+      </SidebarSection>,
+    );
+    expect(container.querySelector("[title]")).toBeNull();
+    const label = screen.getByText(REFS);
+    expect(label.closest(".truncate")).not.toBeNull();
+    fireEvent.mouseEnter(label);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(REFS_PATH);
   });
 
   it("keeps one clear divider at the end of collapsed and expanded sections", () => {
@@ -71,9 +86,13 @@ describe("SidebarPanelHeader", () => {
     "src/components/layout/ReferencesPanel.tsx",
     "src/components/research/ResearchWorkspacePanel.tsx",
     "src/components/layout/McpActivityPanel.tsx",
+    "src/features/collab/sharing/CollabPane.tsx",
   ];
+  const LAZY_BRIDGES: Readonly<Record<string, string>> = {
+    "src/components/collab/CollabSlots.tsx": "src/features/collab/sharing/CollabPane.tsx",
+  };
 
-  it("keeps the icon at full size and cuts a long title with an ellipsis", () => {
+  it("keeps the icon at full size and cuts a long title with an ellipsis", async () => {
     const { container } = render(
       <SidebarPanelHeader icon={FlaskConical} title={RESEARCH} adornment={<span>{BETA}</span>}>
         <button type="button">{CONFIGURE}</button>
@@ -83,9 +102,11 @@ describe("SidebarPanelHeader", () => {
     expect(container.querySelector("svg")).toHaveClass("size-3.5", "shrink-0");
     const title = screen.getByRole("heading", { name: RESEARCH });
     expect(title).toHaveClass("min-w-0", "truncate", "text-[0.6875rem]", "uppercase");
-    expect(title).toHaveAttribute("title", RESEARCH);
+    expect(title).not.toHaveAttribute("title");
+    fireEvent.mouseEnter(within(title).getByText(RESEARCH));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(RESEARCH);
     const configure = screen.getByRole("button", { name: CONFIGURE });
-    expect(configure.parentElement).toBe(title.parentElement);
+    expect(configure.parentElement).toBe(title.closest("header"));
     expect(configure.previousElementSibling).toHaveClass("flex-1");
   });
 
@@ -119,9 +140,10 @@ describe("SidebarPanelHeader", () => {
     const modules = [...tabs.matchAll(/panel:\s*(\w+)/g)].map(([, name]) => {
       const direct = new RegExp(String.raw`import \{[^}]*\b${name}\b[^}]*\} from "@/([^"]+)"`).exec(tabs);
       const lazy = new RegExp(String.raw`const ${name} = lazy\(\(\) =>\s*import\("@/([^"]+)"\)`).exec(tabs);
-      return `src/${(direct ?? lazy)?.[1]}.tsx`;
+      const module = `src/${(direct ?? lazy)?.[1]}.tsx`;
+      return LAZY_BRIDGES[module] ?? module;
     });
-    expect(modules.length).toBeGreaterThanOrEqual(7);
+    expect(modules.length).toBeGreaterThanOrEqual(8);
     expect(new Set(modules)).toEqual(new Set(RAIL_PANELS));
   });
 

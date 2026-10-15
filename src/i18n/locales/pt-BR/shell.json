@@ -447,7 +447,8 @@
       "title": "Variante (deste projeto)",
       "help": "Uma variante passa os próprios valores para sys.inputs, como uma versão de rascunho ou a final. A variante escolhida fica neste computador. Adicione ou edite variantes em Configurações do documento.",
       "none": "Nenhuma variante"
-    }
+    },
+    "sharedViewer": "Leitores não podem alterar essas configurações em um projeto compartilhado."
   },
   "datePicker": {
     "placeholder": "Escolha uma data"
@@ -854,6 +855,10 @@
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Edite projetos com outras pessoas por um servidor de colaboração que você ou o seu grupo mantém. Adiciona uma seção Colaboração às Configurações. Desligado por padrão enquanto está em beta.",
+        "label": "Colaboração em tempo real"
+      },
       "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
       "webBrowser": {
         "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta. Quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
@@ -935,6 +940,7 @@
     "nav": {
       "ai": "Assistente de IA",
       "appearance": "Aparência",
+      "collaboration": "Colaboração",
       "data": "Armazenamento de dados",
       "dictionary": "Dicionário",
       "downloads": "Downloads",
@@ -950,6 +956,7 @@
       "keywords": {
         "ai": "assistente, chat, conversa, modelos, provedores, chaves de API, agentes, prompts, orçamento, servidores MCP",
         "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout",
+        "collaboration": "servidores, login, entrar, dispositivos, membros, mantenedores, compartilhamento, equipes, laboratórios, edição ao vivo, tempo real, registro de segurança",
         "data": "backup, pasta da biblioteca, pasta de projetos, armazenamento, espaço em disco, lixeira, excluir projetos, pontos de verificação",
         "dictionary": "ortografia, palavras personalizadas, palavras ignoradas, revisão, regras gramaticais",
         "downloads": "pacotes, fontes, dicionários, arquivos offline",
@@ -1432,6 +1439,14 @@
     "hideLog": "Ocultar o log de compilação",
     "showLog": "Mostrar o log de compilação"
   },
+  "collabSync": {
+    "paused_one": "{{count}} arquivo mudou fora do Oleafly. Enviar esta alteração para todos ou mantê-la local?",
+    "paused_many": "{{count}} arquivos mudaram fora do Oleafly. Enviar estas alterações para todos ou mantê-las locais?",
+    "paused_other": "{{count}} arquivos mudaram fora do Oleafly. Enviar estas alterações para todos ou mantê-las locais?",
+    "send": "Enviar",
+    "keepLocal": "Manter local",
+    "unavailable": "A pasta do projeto não está disponível, então a sincronização está pausada. Ela recomeça quando a pasta voltar."
+  },
   "overleafSync": {
     "button": "Sincronização com o Overleaf",
     "title": "Sincronizar com o Overleaf",
@@ -1483,5 +1498,9 @@
       "allTheirs": "Usar todas as do Overleaf",
       "apply": "Aplicar e sincronizar"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "O Oleafly recarregou esta janela porque ela parou de responder por 30 segundos. As alterações feitas logo antes podem não ter sido salvas.",
+    "reloadedAgain": "O Oleafly recarregou esta janela de novo porque ela parou de responder outra vez. Seu projeto não foi reaberto, caso algo nele tenha causado o problema."
   }
 }

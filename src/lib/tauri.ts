@@ -198,12 +198,6 @@ export const focusCurrentWindow = async () => {
   await window.setFocus();
 };
 
-
-
-
-
-
-
 export const getProjectEngine = (projectId: string) =>
   invoke<DocumentEngineDescriptor>("project_engine", { projectId });
 
@@ -212,7 +206,6 @@ export const readCompiledPdf = (projectId: string) =>
 
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
-
 
 /** Null means the persisted record is missing or stale: compile normally. */
 export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
@@ -227,11 +220,6 @@ export const compileTex = (
   source: string
 ) => invoke<CompileResult>("compile_tex", { projectId, mainDoc, source });
 
-
-
-
-
-
 // Capture the local distro + tlmgr package versions into the project pin.
 export const recordProjectTexSpec = (projectId: string) =>
   invoke<TexSpec | null>("record_project_tex_spec", { projectId });
@@ -244,7 +232,6 @@ export const importOverleafProjectCmd = (path: string, name?: string) =>
 // Compare this machine against the project pin (null when not applicable).
 export const projectTexStatus = (projectId: string) =>
   invoke<TexStatus | null>("project_tex_status", { projectId });
-
 
 export const compileProject = (
   projectId: string,
@@ -330,7 +317,6 @@ export const readProjectBytes = (projectId: string, relPath: string) =>
 
 export const projectFileSizes = (projectId: string, paths: readonly string[]) =>
   invoke<Record<string, number>>("project_file_sizes", { projectId, paths });
-
 
 export const projectMutationGeneration = (projectId: string) =>
   invoke<number>("project_mutation_generation", { projectId });
@@ -502,7 +488,6 @@ export async function renameFile(
   return result.path;
 }
 
-
 export const copyFile = (
   projectId: string,
   from: string,
@@ -513,7 +498,6 @@ export const copyFile = (
     projectId,
     invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration }),
   );
-
 
 export const importPathsIntoProject = (
   projectId: string,
@@ -821,7 +805,6 @@ export const createDiagramProject = (name: string, source: string, language?: "t
 export const getOrCreateScratchProject = () =>
   invoke<string>("get_or_create_scratch_project");
 
-
 export const saveFigureToCache = async (
   name: string,
   pngBase64: string,
@@ -833,10 +816,6 @@ export const saveFigureToCache = async (
   );
   return { hash: result.hash, alreadyCached: result.already_cached };
 };
-
-
-
-
 
 export const saveCustomTemplate = (
   slug: string,
@@ -862,9 +841,6 @@ export const setProjectColor = (projectId: string, color: string) =>
   invoke<ProjectMeta>("set_project_color", { projectId, color });
 
 // --- Downloadable assets (font packs) ---
-
-
-
 
 export const listFontComponents = () => invoke<ComponentInfo[]>("list_font_components");
 
@@ -908,7 +884,6 @@ export const templatePrerequisites = (templateId: string) =>
 
 export const ensureTemplateAssets = (templateId: string) =>
   invoke<void>("ensure_template_assets", { templateId });
-
 
 export const listTemplatePacks = () => invoke<PackInfo[]>("list_template_packs");
 
@@ -1059,7 +1034,6 @@ export const skillsShareSync = (enabled: boolean) =>
 export const readDeadlines = () => invoke<string>("read_deadlines");
 
 export const refreshDeadlines = () => invoke<void>("refresh_deadlines");
-
 
 export const gitIsInitialized = (projectId: string) =>
   invoke<boolean>("git_is_initialized", { projectId });
@@ -1227,11 +1201,7 @@ export const downloadPandoc = () => invoke<string>("download_pandoc");
 
 // --- Optional LuaLaTeX engine (tagged / accessible export) ---
 
-
-
 export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
-
-
 
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
@@ -1423,7 +1393,6 @@ export const zoteroUpdateProjectLinks = (
     changes,
   });
 
-
 export const searchDocs = (query: string) =>
   invoke<SearchHit[]>("search_docs", { query });
 
@@ -1432,8 +1401,6 @@ export const searchDocs = (query: string) =>
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
-
-
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
@@ -1441,8 +1408,6 @@ export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
 
 // --- MCP server (token only via mcp_connection_info while running) ---
-
-
 
 export const mcpStatus = () => invoke<McpStatus>("mcp_status");
 export const mcpSetEnabled = (enabled: boolean) =>
@@ -1525,7 +1490,6 @@ export const mcpRegisterTools = (
 export const REDACTED_MARKER = "__stored__";
 export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
 
-
 export const agentListModels = (args: {
   providerId: string;
   key?: string;
@@ -1596,8 +1560,6 @@ export const mcpToolResult = (
 
 // --- GitHub (token stays in the Rust core; these never take/return it) ---
 
-
-
 export const ghCurrentUser = () => invoke<GitHubUser>("gh_current_user");
 export const ghSetToken = (token: string) =>
   invoke<GitHubUser>("gh_set_token", { token });
@@ -1612,6 +1574,18 @@ export const discordCommunityStats = () =>
 export const ghImportRepo = (fullName: string) =>
   invoke<string>("gh_import_repo", { fullName });
 
+export const COLLAB_OPEN_LINK_EVENT = "collab-open-link";
+
+export const collabPendingLinks = () => invoke<string[]>("collab_pending_links");
+
+export function onCollabOpenLink(handler: () => void): Promise<UnlistenFn> {
+  return listen<null>(COLLAB_OPEN_LINK_EVENT, () => handler());
+}
+
+// A live session that stopped, or that the server ended, names the open files
+// it wrote. It can arrive after Live collaboration was switched off, so the
+// window hears it from the start too, outside the collaboration module.
+export const COLLAB_LIVE_WRITTEN_EVENT = "collab-live-written";
 export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
   invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
 export const gitRemoveRemote = (projectId: string) =>
@@ -1625,7 +1599,6 @@ export const gitCleanRemoteCredentials = (projectId: string) =>
 export const gitCurrentBranch = (projectId: string) =>
   invoke<string>("git_current_branch", { projectId });
 
-
 export const gitAheadBehind = (projectId: string) =>
   invoke<AheadBehind>("git_ahead_behind", { projectId });
 
@@ -1633,7 +1606,6 @@ export const gitPush = (projectId: string) =>
   invoke<string>("git_push", { projectId });
 export const gitPull = (projectId: string, expectedGeneration: number) =>
   invoke<GitPullResult>("git_pull", { projectId, expectedGeneration });
-
 
 export const gitStatus = (projectId: string) =>
   invoke<GitFileChange[]>("git_status", { projectId });
@@ -1770,7 +1742,9 @@ export const budgetSet = (projectId: string, budgetUsd: number | null) =>
   invoke<void>("budget_set_cmd", { projectId, budgetUsd });
 
 export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
-export const approvalsWriteRaw = (text: string) => invoke<void>("approvals_write_raw", { text });
+// Saves the approvals file and returns warnings about it, already in the
+// app's language, such as a tool name it doesn't know.
+export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
 export const approvalsList = (projectId: string) =>
   invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
 export const approvalsSet = (
@@ -1813,8 +1787,6 @@ export const projectFolderStatus = (projectId: string) =>
 
 export { base64ToBytes as base64ToUint8Array, bytesToBase64 as uint8ToBase64 } from "@/lib/base64";
 
-
-
 export const synctexForward = (
   projectId: string,
   mainDoc: string,
@@ -1855,3 +1827,23 @@ export const synctexMapLine = (
     line,
     currentToCompiled,
   });
+
+export type CollabSyncDecision = import("@oleafly/backend-port").CollabSyncDecision;
+export type CollabSyncPaused = import("@oleafly/backend-port").CollabSyncPaused;
+export type CollabSyncResumed = import("@oleafly/backend-port").CollabSyncResumed;
+export type {
+  CollabGuestInvitation,
+  CollabGuestInvitationStatus,
+  CollabGuestInviteResult,
+  CollabProjectGuestInvitations,
+} from "@oleafly/backend-port";
+
+export type { CollabSignInCode, CollabSignOut, CollabUnsentProject } from "@oleafly/backend-port";
+
+export type {
+  CollabLiveEndedReason,
+  CollabLiveSyncState,
+  CollabLiveMembers,
+  CollabMemberChangeKind,
+  CollabSessionEnd,
+} from "@oleafly/backend-port";

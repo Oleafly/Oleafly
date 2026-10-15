@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} archivos cambiaron en tu proyecto después de empezar esta tarea. Sus comparaciones son con las versiones anteriores, así que no se pueden aplicar.",
       "applyAria": "Aplicar {{path}}",
       "changedSince": "Cambiado desde entonces",
+      "mergesOnApply": "Este archivo se editó después de empezar la tarea. Al aplicar se conservan esas ediciones y se añaden los cambios de la tarea.",
       "loading": "Cargando...",
       "refreshPreview": "Actualizar la vista previa",
       "preview": "Vista previa",

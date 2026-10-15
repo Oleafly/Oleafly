@@ -192,5 +192,16 @@
   "zen": {
     "compiling": "Small status pill at the bottom right of the screen while a compile is running.",
     "compileFailed": "Small button at the bottom right of the screen after a compile failed. Clicking it shows the compile log."
+  },
+  "collabSync": {
+    "paused_one": "Banner question shown when one file in a shared project changed outside the app (for example by Git or a sync tool). Send shares the change with every collaborator, Keep local keeps it only on this computer.",
+    "paused_other": "Banner question shown when many files in a shared project changed outside the app at once (for example a Git checkout or a sync tool). Send shares the changes with every collaborator, Keep local keeps them only on this computer.",
+    "send": "Button on the banner: share the outside changes with every collaborator of the shared project",
+    "keepLocal": "Button on the banner: keep the outside changes only on this computer and never send them",
+    "unavailable": "Banner shown while the folder of a shared project is missing (unplugged drive, moved folder). It has no buttons and goes away by itself when the folder returns."
+  },
+  "stuckWindow": {
+    "reloaded": "Shown once after Oleafly force-reloaded a window whose page had stopped answering for 30 seconds. The window then reopens the project.",
+    "reloadedAgain": "Shown when the same window stopped answering again soon after, so Oleafly reloaded it to the project library without reopening the project."
   }
 }

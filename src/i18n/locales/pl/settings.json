@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Tryb zatwierdzania Własny czyta ten plik. Znajduje się w ~/.oleafly/approvals.toml i dotyczy każdego projektu na tym urządzeniu.",
+        "description": "Plik znajduje się w ~/.oleafly/approvals.toml i dotyczy każdego projektu na tym urządzeniu. Reguły deny blokują narzędzie w każdym trybie zatwierdzania. Reguły allow działają tylko w trybie Własny.",
         "discard": "Odrzuć zmiany",
         "emptyFile": "Plik jest na razie pusty.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Pierwsza tabela, <modesTable>[\"$approval_modes\"]</modesTable>, ustawia tryb zatwierdzania dla każdego projektu: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> albo <custom>\"custom\"</custom>. Projekt, którego nie ma na liście, używa trybu Zatwierdzaj automatycznie.",
           "openProject": "Otwarty projekt, {{name}}, ma identyfikator <projectId>{{id}}</projectId>.",
           "projectIds": "Identyfikatory projektów to nazwy folderów w ~/.oleafly/projects.",
-          "rules": "Dalej po jednej tabeli na identyfikator projektu, z regułą na narzędzie: <allow>\"allow\"</allow> uruchamia narzędzie bez pytania, a <deny>\"deny\"</deny> je odrzuca. Reguły deny obowiązują w każdym trybie, reguły allow działają w trybie Własnym, a dla run_command pomijają pytanie także w pozostałych trybach.",
+          "rules": "Dalej po jednej tabeli na identyfikator projektu, z regułą na narzędzie: <allow>\"allow\"</allow> uruchamia narzędzie bez pytania, a <deny>\"deny\"</deny> je odrzuca. Reguły deny obowiązują w każdym trybie, także w trybie Pełny dostęp. Reguły allow działają tylko w trybie Własny.",
           "toolNames": "Nazwy narzędzi, których można użyć: <names>{{names}}</names> oraz dowolne narzędzie MCP pod pełną nazwą z listy Narzędzia."
         },
         "helpToggle": "Jak działa ten plik",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Zawsze dozwolone",
         "denied": "Zawsze odrzucane",
-        "description": "Zapisane reguły dla {{name}}. Obowiązują, gdy tryb zatwierdzania to Własny. Usuń regułę, aby dla tego narzędzia obowiązywała standardowa polityka ryzyka.",
+        "description": "Zapisane reguły dla {{name}}. Odrzucone narzędzia pozostają zablokowane w każdym trybie zatwierdzania. Dozwolone narzędzia pomijają pytanie tylko w trybie Własny. Usuń regułę, aby dla tego narzędzia obowiązywała standardowa polityka ryzyka.",
         "empty": "Nie ma jeszcze zapisanych reguł. Użyj opcji \"Zawsze w tym projekcie\" przy pytaniu o zgodę, aby dodać regułę.",
         "removeRule": "Usuń regułę dla {{tool}}",
         "thisProject": "tym projekcie",

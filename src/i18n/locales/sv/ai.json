@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Fullständig åtkomst",
-        "description": "Kör verktygsåtgärder utan att fråga om godkännande."
+        "description": "Kör verktygsåtgärder utan att fråga, utom verktyg som en deny-regel blockerar."
       },
       "custom": {
         "label": "Anpassad (approvals.toml)",

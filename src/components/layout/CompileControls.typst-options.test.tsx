@@ -151,6 +151,14 @@ describe("Typst fonts and builds in the compile menu", () => {
     expect(setTypstOptions).not.toHaveBeenCalled();
   });
 
+  it("ignores a build choice that is already in effect", async () => {
+    renderView(typstEngine(options({ reproducible: true })));
+    const user = await openOptions();
+    expect(screen.getByTestId("typst-reproducible")).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByTestId("typst-reproducible"));
+    expect(setTypstOptions).not.toHaveBeenCalled();
+  });
+
   it("turns a reproducible build on", async () => {
     renderView(typstEngine());
     const user = await openOptions();

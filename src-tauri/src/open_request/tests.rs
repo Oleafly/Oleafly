@@ -139,6 +139,16 @@ fn file_urls_are_decoded_only_where_the_platform_sends_them() {
     );
 }
 
+#[test]
+fn app_links_are_left_for_the_collaboration_intake() {
+    assert!(parse_argv(
+        &argv(&["oleafly://open?server=https%3A%2F%2Funi.edu&project=x"]),
+        None,
+        UNIX
+    )
+    .is_empty());
+}
+
 #[cfg(unix)]
 #[test]
 fn urls_that_are_not_plain_local_folders_are_refused() {

@@ -156,6 +156,7 @@ export interface TaskFilePreview {
   after: TaskPreviewContent;
   projectSha256: string | null;
   baseIsCurrent: boolean;
+  mergesWithShared: boolean;
 }
 
 export interface TaskArtifactPreview {

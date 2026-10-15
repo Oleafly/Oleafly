@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ExternalLink,
   FileDiff,
+  GitMerge,
   Paperclip,
   Trash2,
 } from "lucide-react";
@@ -73,6 +74,14 @@ const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
 function timestamp(value: number): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : formatDateTime(date);
+}
+
+function changedSinceStart(preview: TaskFilePreview | undefined): boolean {
+  return preview?.baseIsCurrent === false;
+}
+
+function blocksApply(preview: TaskFilePreview | undefined): boolean {
+  return changedSinceStart(preview) && preview?.mergesWithShared !== true;
 }
 
 function isErrorMilestone(text: string, error: string | null): boolean {
@@ -235,7 +244,7 @@ export function TaskDetailDialog({
       const preview = await previewResearchTaskFile(task.id, path);
       if (activeTaskRun.current !== requestRunKey) return;
       setFilePreviews((current) => ({ ...current, [previewKey]: preview }));
-      if (preview.baseIsCurrent === false) {
+      if (blocksApply(preview)) {
         setSelectedPaths((current) => current.filter((candidate) => candidate !== path));
       }
     } catch (error_) {
@@ -272,7 +281,7 @@ export function TaskDetailDialog({
   const blocked = dependencies.some((dependency) => dependency.status !== "completed");
   const driftedPaths = changedFiles
     .map((change) => change.path)
-    .filter((path) => filePreviews[`${taskRunKey}:${path}`]?.baseIsCurrent === false);
+    .filter((path) => blocksApply(filePreviews[`${taskRunKey}:${path}`]));
   const usage = {
     inputTokens: timeline.usage.inputTokens ?? task.result?.inputTokens ?? null,
     outputTokens: timeline.usage.outputTokens ?? task.result?.outputTokens ?? null,
@@ -464,7 +473,8 @@ export function TaskDetailDialog({
       <div className="divide-y rounded-md border">
         {changedFiles.map((change) => {
           const preview = filePreviews[`${taskRunKey}:${change.path}`];
-          const drifted = preview?.baseIsCurrent === false;
+          const drifted = blocksApply(preview);
+          const merging = changedSinceStart(preview) && !drifted;
           return (
             <div key={change.path} className="p-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
@@ -504,6 +514,14 @@ export function TaskDetailDialog({
                   {previewButtonLabel(change.path, Boolean(preview))}
                 </Button>
               </div>
+              {merging ? (
+                <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                  <GitMerge aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">
+                    {t(($) => $.researchTools.tasks.detail.mergesOnApply)}
+                  </span>
+                </p>
+              ) : null}
               {preview ? (
                 <div className="mt-3 overflow-hidden rounded-md border">
                   {preview.before.text !== null || preview.after.text !== null ? (

@@ -50,7 +50,7 @@ vi.mock("@/lib/cloud-settings", () => ({
   applyCloudSettings: vi.fn(async () => ({})),
 }));
 
-import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { loadNamespace } from "@/i18n";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
 import { CloudTab } from "./CloudTab";
@@ -346,7 +346,7 @@ describe("CloudTab", () => {
     expect(within(rows[2]).getByRole("switch")).toHaveAttribute("aria-checked", "false");
     expect(rows[3]).toHaveTextContent("Only in Dropbox");
     expect(rows[4]).toHaveTextContent("In your Recycle Bin");
-    expect(screen.getByTitle("Thesis")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Thesis")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download Notes" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore Binned from the Recycle Bin" })).toBeInTheDocument();
     expect(screen.getByText(/2 projects opened from a folder aren't synced/)).toBeInTheDocument();

@@ -4,6 +4,16 @@ import { registerRailTab } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import {
+  CollabPanel,
+  CollabRailIcon,
+  collabRailLabel,
+  CommentsPanel,
+  CommentsRailIcon,
+  commentsRailLabel,
+} from "@/components/collab/CollabSlots";
+import { useCollabRail } from "@/components/collab/collab-rail";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
@@ -28,6 +38,24 @@ export function registerRailTabs() {
     order: 60,
     beta: true,
     panel: ResearchWorkspacePanel,
+  });
+  registerRailTab({
+    id: "collab",
+    label: collabRailLabel,
+    icon: CollabRailIcon,
+    section: "assist",
+    order: 59,
+    when: () => useCollabRail.getState().visible,
+    panel: CollabPanel,
+  });
+  registerRailTab({
+    id: "comments",
+    label: commentsRailLabel,
+    icon: CommentsRailIcon,
+    section: "assist",
+    order: 59.5,
+    when: () => useCommentsRail.getState().visible,
+    panel: CommentsPanel,
   });
   registerRailTab({
     id: "files",

@@ -319,6 +319,12 @@
       "title": "Dubblerade bibliografiposter: {{keys}}",
       "detail": "De här posterna delar DOI {{doi}}, så de är samma referens under olika nycklar. Behåll en och citera den, annars listar din bibliografi den två gånger."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Citeringsnyckeln \"{{key}}\" är definierad mer än en gång",
+      "detail": "Definierad i {{places}}. BibTeX använder bara den första posten med den här nyckeln och skiljer inte på stora och små bokstäver när den jämför nycklar. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
+      "detailBiber": "Definierad i {{places}}. När biber bygger litteraturlistan använder den bara den första posten med den här nyckeln. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
+      "detailTypst": "Definierad i {{places}}. Typst avbryter kompileringen när två poster i bibliografin har samma nyckel. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem."
+    },
     "submission-path-case": {
       "title": "Filnamnets versaler matchar inte: {{target}}",
       "detailFigure": "Den här figuren hittas bara på ett filsystem som inte skiljer på stora och små bokstäver. Projektet innehåller \"{{match}}\", så matcha den stavningen exakt innan du lämnar in till Linux-baserade byggsystem.",

@@ -36,11 +36,18 @@ const limits = {
   // BibTeX completion and linter, the dictionary catalog picker and the figure
   // dialog: the entry measures 3.98 MB. The visual editor package stays out
   // of the entry through the insertion registry the lazy editor fills in.
-  largestJavaScript: 4_760_000,
+  // +50 KB for the live collaboration hooks that load at startup even while
+  // collaboration is off: the collaboration command wrappers in
+  // src/lib/tauri.ts, the switch sync, link intake, the editor's document
+  // sessions and the collaboration slots. The entry measures 4.81 MB, and
+  // 4.82 MB after the collaboration review fixes. Moving
+  // the wrappers into a module that only src/features/collab imports would
+  // take most of it back out.
+  largestJavaScript: 4_850_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_760_000,
+  entryJavaScript: 4_850_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -96,13 +103,26 @@ const limits = {
   // again, and Explorer Git badges and skill search took its room. The
   // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
   // Windows.
+  // +340 KB for live collaboration, most of it in chunks that load only once
+  // collaboration is turned on: the combined graph measures 20.25 MB.
+  // +40 KB for the review fixes to collaboration: the Add server dialog, the
+  // join progress and connection test, the admin console and Collaboration
+  // settings, about 5 KB of it in the entry. The combined graph measures
+  // 20.29 MB.
+  // +11 KB for the second round of those fixes in the window: input method
+  // composition and confirmed text in shared files, the project size and
+  // failed sync notices, and marks for people who left a server. The
+  // combined graph measures 20.30 MB on macOS and Linux. A Windows checkout
+  // gives the bundled CSL styles CRLF line endings, which adds 13,040 bytes
+  // there (CI measured 20,242,679 and 20,255,719 bytes for one tree), so the
+  // limit leaves room for the Windows build too.
   // +70 KB for Dropbox cloud sync: the cloud store, the Cloud sync settings
   // tab, the sync keeper that follows saves and Dropbox changes, transfer
   // progress and conflict notices. All of it loads with Settings or once
-  // cloud sync is on, except about 0.5 KB in the entry. Main measured
-  // 19.90 MB on Linux and 19.92 MB on Windows; with cloud sync the combined
-  // graph measures 19.97 MB on macOS and Linux and 19.99 MB on Windows.
-  totalJavaScript: 20_000_000,
+  // cloud sync is on, except about 0.5 KB in the entry. Together with live
+  // collaboration the combined graph measures 20.37 MB on macOS and Linux
+  // and about 20.39 MB on Windows.
+  totalJavaScript: 20_400_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

@@ -9,7 +9,7 @@ import {
 } from "@/components/cloud/cloud-schedule";
 import { CloudSettingsChoiceDialog } from "@/components/cloud/CloudSettingsChoiceDialog";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
-import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { loadNamespace } from "@/i18n";
 import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
 import { CLOUD_PROGRESS_EVENT, cloudWaitForChanges, type CloudProgress } from "@/lib/cloud";
 import { logError } from "@/lib/log";

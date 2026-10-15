@@ -281,6 +281,66 @@ describe("ReadableStream async iteration polyfill", () => {
     expect(Object.getOwnPropertyDescriptor(prototype, "values")).toEqual(nativeValues);
     expect(prototype[Symbol.asyncIterator]).not.toBe(nativeIterator?.value);
   });
+
+  describe("on WebKit, whose releaseLock can deadlock its garbage collector", () => {
+    const MAC_WKWEBVIEW =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+
+    async function reinstallOnWebKit() {
+      vi.stubGlobal("navigator", { userAgent: MAC_WKWEBVIEW });
+      await reinstall({ keepValues: false });
+      return vi.spyOn(ReadableStreamDefaultReader.prototype, "releaseLock");
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+
+    it("reads every chunk without releasing the lock of the finished stream", async () => {
+      const releaseLock = await reinstallOnWebKit();
+      const { source } = stream(["a", "b", "c"]);
+
+      const chunks: string[] = [];
+      for await (const chunk of source as unknown as AsyncIterable<string>) chunks.push(chunk);
+
+      expect(chunks).toEqual(["a", "b", "c"]);
+      expect(releaseLock).not.toHaveBeenCalled();
+      expect(source.locked).toBe(true);
+    });
+
+    it("cancels an abandoned stream without releasing its lock", async () => {
+      const releaseLock = await reinstallOnWebKit();
+      const { source, cancel } = stream(["a", "b", "c"]);
+
+      for await (const chunk of source as unknown as AsyncIterable<string>) {
+        expect(chunk).toBe("a");
+        break;
+      }
+
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(releaseLock).not.toHaveBeenCalled();
+    });
+
+    it("still releases the lock when asked to prevent cancel, so the stream stays readable", async () => {
+      const releaseLock = await reinstallOnWebKit();
+      const { source, cancel } = stream(["a", "b"]);
+      const values = prototype.values as (
+        this: ReadableStream<string>,
+        options?: { preventCancel?: boolean },
+      ) => AsyncIterableIterator<string> & {
+        return: (value?: unknown) => Promise<IteratorResult<string>>;
+      };
+
+      const iterator = values.call(source, { preventCancel: true });
+      await expect(iterator.next()).resolves.toEqual({ value: "a", done: false });
+      await expect(iterator.return("stop")).resolves.toEqual({ value: "stop", done: true });
+
+      expect(cancel).not.toHaveBeenCalled();
+      expect(releaseLock).toHaveBeenCalledOnce();
+      await expect(source.getReader().read()).resolves.toEqual({ value: "b", done: false });
+    });
+  });
 });
 
 describe("settled font face loading", () => {

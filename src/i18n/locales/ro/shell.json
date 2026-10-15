@@ -447,7 +447,8 @@
       "title": "Variantă (acest proiect)",
       "help": "O variantă transmite propriile valori către sys.inputs, de exemplu pentru o versiune de ciornă sau una finală. Varianta aleasă rămâne pe acest computer. Adaugă sau editează variante în Setările documentului.",
       "none": "Fără variantă"
-    }
+    },
+    "sharedViewer": "Cititorii nu pot modifica aceste setări într-un proiect partajat."
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -854,6 +855,10 @@
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Editează proiecte împreună cu alte persoane printr-un server de colaborare administrat de tine sau de grupul tău. Adaugă secțiunea Colaborare în Setări. Dezactivată implicit, cât timp este în beta.",
+        "label": "Colaborare în timp real"
+      },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
       "webBrowser": {
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
@@ -935,6 +940,7 @@
     "nav": {
       "ai": "Asistentul AI",
       "appearance": "Aspect",
+      "collaboration": "Colaborare",
       "data": "Stocarea datelor",
       "dictionary": "Dicționar",
       "downloads": "Descărcări",
@@ -950,6 +956,7 @@
       "keywords": {
         "ai": "asistent, chat, conversație, modele, furnizori, chei API, agenți, prompturi, buget, servere MCP",
         "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere",
+        "collaboration": "servere, autentificare, dispozitive, membri, coordonatori, partajare, echipe, laboratoare, editare în timp real, timp real, jurnal de securitate",
         "data": "backup, copie de rezervă, folderul bibliotecii, folderul proiectelor, stocare, spațiu pe disc, coș de gunoi, ștergere proiecte, puncte de control",
         "dictionary": "ortografie, cuvinte proprii, cuvinte ignorate, corectură, reguli gramaticale",
         "downloads": "pachete, fonturi, dicționare, fișiere offline",
@@ -1432,6 +1439,14 @@
     "hideLog": "Ascunde jurnalul de compilare",
     "showLog": "Arată jurnalul de compilare"
   },
+  "collabSync": {
+    "paused_one": "{{count}} fișier s-a schimbat în afara Oleafly. Trimiți această modificare tuturor sau o păstrezi local?",
+    "paused_few": "{{count}} fișiere s-au schimbat în afara Oleafly. Trimiți aceste modificări tuturor sau le păstrezi local?",
+    "paused_other": "{{count}} de fișiere s-au schimbat în afara Oleafly. Trimiți aceste modificări tuturor sau le păstrezi local?",
+    "send": "Trimite",
+    "keepLocal": "Păstrează local",
+    "unavailable": "Folderul proiectului nu este disponibil, așa că sincronizarea e în pauză. Pornește din nou când folderul revine."
+  },
   "overleafSync": {
     "button": "Sincronizare cu Overleaf",
     "title": "Sincronizează cu Overleaf",
@@ -1483,5 +1498,9 @@
       "allTheirs": "Folosește toate versiunile din Overleaf",
       "apply": "Aplică și sincronizează"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly a reîncărcat această fereastră pentru că nu a răspuns timp de 30 de secunde. Este posibil ca modificările făcute chiar înainte să nu fi fost salvate.",
+    "reloadedAgain": "Oleafly a reîncărcat din nou această fereastră pentru că a încetat iar să răspundă. Proiectul tău nu a fost redeschis, în caz că ceva din el a cauzat problema."
   }
 }

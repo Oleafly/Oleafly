@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { collabProjectReadOnly, useCollabProjectReadOnly } from "@/lib/collab-live-bridge";
 import { isManagedProjectPath, isReadOnlyLink, isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
 import {
@@ -11,6 +12,7 @@ export function activeFileReadOnly(): boolean {
   const { projectId, activePath, manifestHome, tree } = useFilesStore.getState();
   return (
     projectFolderIsReadOnly(projectId) ||
+    collabProjectReadOnly(projectId) ||
     (!!activePath && isReadOnlyProjectPath(activePath, manifestHome, tree))
   );
 }
@@ -21,7 +23,8 @@ export function useActiveFileReadOnly(): boolean {
     (s) => !!s.activePath && isReadOnlyProjectPath(s.activePath, s.manifestHome, s.tree),
   );
   const readOnlyFolder = useProjectFolderReadOnly(projectId);
-  return readOnlyFolder || readOnlyPath;
+  const collabViewer = useCollabProjectReadOnly(projectId);
+  return readOnlyFolder || collabViewer || readOnlyPath;
 }
 
 export function readOnlyEditMessage(path: string | null): string | null {

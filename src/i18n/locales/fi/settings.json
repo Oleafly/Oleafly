@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Mukautettu hyväksyntätila lukee tämän tiedoston. Se sijaitsee polussa ~/.oleafly/approvals.toml ja koskee jokaista tämän laitteen projektia.",
+        "description": "Tiedosto sijaitsee polussa ~/.oleafly/approvals.toml ja koskee jokaista tämän laitteen projektia. Deny-säännöt estävät työkalun kaikissa hyväksyntätiloissa. Allow-säännöt vaikuttavat vain mukautetussa tilassa.",
         "discard": "Hylkää muutokset",
         "emptyFile": "Tiedosto on toistaiseksi tyhjä.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Ensimmäinen taulu, <modesTable>[\"$approval_modes\"]</modesTable>, asettaa hyväksyntätilan projektikohtaisesti: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> tai <custom>\"custom\"</custom>. Projekti, jota ei ole listattu, käyttää tilaa Hyväksy puolestani.",
           "openProject": "Avoimen projektin {{name}} tunnus on <projectId>{{id}}</projectId>.",
           "projectIds": "Projektien tunnukset ovat kansionimiä polussa ~/.oleafly/projects.",
-          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa. Allow-säännöt vaikuttavat mukautetussa tilassa, ja run_command-työkalun osalta ne ohittavat kysymisen myös muissa tiloissa.",
+          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa, myös tilassa Täysi käyttöoikeus. Allow-säännöt vaikuttavat vain mukautetussa tilassa.",
           "toolNames": "Käytettävissä olevat työkalunimet: <names>{{names}}</names> sekä mikä tahansa MCP-työkalu koko nimellään Työkalut-luettelosta."
         },
         "helpToggle": "Miten tiedosto toimii",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Aina sallittu",
         "denied": "Aina estetty",
-        "description": "Projektin {{name}} tallennetut säännöt. Ne vaikuttavat, kun hyväksyntätila on Mukautettu. Poista sääntö, niin kyseiseen työkaluun sovelletaan tavallista riskikäytäntöä.",
+        "description": "Projektin {{name}} tallennetut säännöt. Estetyt työkalut pysyvät estettyinä kaikissa hyväksyntätiloissa. Sallitut työkalut ohittavat kysymisen vain Mukautettu-tilassa. Poista sääntö, niin kyseiseen työkaluun sovelletaan tavallista riskikäytäntöä.",
         "empty": "Ei vielä tallennettuja sääntöjä. Käytä hyväksyntäkehotteessa valintaa \"Aina tässä projektissa\", niin sääntö syntyy.",
         "removeRule": "Poista työkalun {{tool}} sääntö",
         "thisProject": "tämä projekti",

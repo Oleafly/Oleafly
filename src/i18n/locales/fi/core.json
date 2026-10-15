@@ -69,7 +69,10 @@
       "localNotFound": "Paikallista pakettia {{spec}} ei ole asennettu. Lisää se Oleafly-sovelluksen Typst-pakettikansioon tai projektin typst-packages-kansioon.",
       "versionMissing": "Tästä paketista ei ole versiota {{version}}. Uusin versio on {{latest}}.",
       "versionMissingNoLatest": "Tästä paketista ei ole versiota {{version}}. Tarkista tuonnissa käytetty versio."
-    }
+    },
+    "saveFailed": "Tiedostoa {{path}} ei voitu tallentaa, joten Oleafly ei kääntänyt. Tarkista tiedosto ja käännä sitten uudelleen.",
+    "saveFailedSeveral": "Tiedostoa {{path}} ja muita tiedostoja ei voitu tallentaa, joten Oleafly ei kääntänyt. Tarkista tiedostot ja käännä sitten uudelleen.",
+    "saveFailedOther": "Dokumenttia ei voitu tallentaa, joten Oleafly ei kääntänyt. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -284,7 +287,9 @@
     "yearRangeInvalid": "Alkuvuosi ei voi olla loppuvuotta myöhäisempi."
   },
   "mcp": {
+    "deniedByRules": "Hylätty approvals.toml-tiedoston deny-säännön vuoksi",
     "openProjectSummary": "Avaa projekti {{id}}",
+    "rulesUnreadable": "Hylätty, koska approvals.toml-tiedostoa ei voitu lukea",
     "useToolSummary": "Käytä työkalua {{tool}} MCP-palvelimelta {{server}}"
   },
   "mcpConfig": {

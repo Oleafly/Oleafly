@@ -397,7 +397,9 @@
     "unifiedView": "Yhdistetty näkymä",
     "loading": "Ladataan vertailua…",
     "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun.",
-    "diskHeading": "Levyllä ↔ Omat muutoksesi"
+    "diskHeading": "Levyllä ↔ Omat muutoksesi",
+    "sharedReadOnly": "Jaetussa projektissa tämä vertailu on vain luettavissa. Muokkaa tiedostoa editorissa.",
+    "viewerReadOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä."
   },
   "hotkeys": {
     "title": "Pikanäppäimet",
@@ -474,6 +476,7 @@
     "openInAgent": "Jatka tekoälyavustajassa, jossa on käytössä kaikki projektityökalut",
     "generateFailed": "Muokkausta ei voitu luoda. {{message}}",
     "dismiss": "Sulje",
+    "withdrawn": "Joku muu muokkasi tätä tekstiä, joten ehdotusta ei voi enää käyttää.",
     "setUpProvider": "Ota tekoälypalvelu käyttöön",
     "setUpProviderHint": "Lisää API-avain (tai paikallinen Ollama), niin tekstin sisäiset tekoälymuokkaukset toimivat.",
     "openAiSettings": "Avaa Asetukset → Tekoäly"
@@ -655,6 +658,7 @@
     "endOfDocument": "Dokumentin loppu",
     "hidePreamble": "Piilota dokumentin esittelyosa",
     "showPreamble": "Näytä dokumentin esittelyosa",
+    "sharedReadOnly": "Jaetussa projektissa visuaalinen tila vain näyttää tiedoston. Vaihda lähdekoodinäkymään, jos haluat muokata sitä.",
     "findingLabel": "{{message}}. Avaa oikolukuehdotukset.",
     "rawBlockFindings_one": "{{count}} oikolukuhavainto tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
     "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset."
@@ -1494,5 +1498,6 @@
     "keyInvalid": "Arvon nimi ei voi olla tyhjä eikä sisältää yhtäsuuruusmerkkiä.",
     "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
     "saveFailed": "Muunnelmia ei voitu tallentaa."
-  }
+  },
+  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa."
 }

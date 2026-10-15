@@ -443,7 +443,8 @@
       "title": "變體（本專案）",
       "help": "變體會把自己的值傳給 sys.inputs，例如草稿版或定稿版建置。你選擇的變體只會儲存在這台電腦上。可在文件設定中新增或編輯變體。",
       "none": "無變體"
-    }
+    },
+    "sharedViewer": "在共享專案中，檢視者無法變更這些設定。"
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -824,6 +825,10 @@
         "description": "顯示 Oleafly 工具庫與各項工具（PDF 匯入、方程式、表格、BibTeX、實驗與文獻搜尋、截止日期）以及它們的斜線指令。仍在 beta 階段，預設為關閉。",
         "label": "LaTeX 工具"
       },
+      "liveCollaboration": {
+        "description": "透過你或你的團隊架設的協作伺服器，與其他人共同編輯專案。會在「設定」中新增「協作」分區。仍在 beta 階段，預設為關閉。",
+        "label": "即時協作"
+      },
       "warning": "這些功能屬於實驗性質，仍在 beta 階段。它們尚未完整測試，未來版本中可能會變更、失效或被移除。只有在你想試用開發中的功能時才開啟。",
       "webBrowser": {
         "description": "顯示應用程式內建的網頁瀏覽器（含停駐列切換與快捷鍵），並允許 AI 透過 computer use 操作它。目前在 beta 階段，預設為關閉。關閉時不會有瀏覽器按鈕，AI 也沒有瀏覽器工具。",
@@ -901,6 +906,7 @@
     "nav": {
       "ai": "AI 助理",
       "appearance": "外觀",
+      "collaboration": "協作",
       "data": "資料儲存",
       "dictionary": "字典",
       "downloads": "下載",
@@ -916,6 +922,7 @@
       "keywords": {
         "ai": "助理，聊天，模型，供應商，API 金鑰，代理程式，提示詞，預算，MCP 伺服器",
         "appearance": "主題，深色模式，淺色模式，顏色，色彩，字型，文字大小，縮放，版面配置",
+        "collaboration": "伺服器，登入，裝置，成員，維護者，分享，團隊，實驗室，即時編輯，共同編輯，即時，安全性記錄",
         "data": "備份，專案庫資料夾，專案資料夾，儲存空間，磁碟空間，垃圾桶，資源回收筒，刪除專案，檢查點",
         "dictionary": "拼字，自訂字詞，忽略的字詞，校對，文法規則",
         "downloads": "套件，字型，字典，離線檔案",
@@ -1366,6 +1373,12 @@
     "hideLog": "隱藏編譯記錄檔",
     "showLog": "顯示編譯記錄檔"
   },
+  "collabSync": {
+    "paused_other": "有 {{count}} 個檔案在 Oleafly 之外被變更。要將這些變更傳送給所有人，還是只保留在本機？",
+    "send": "傳送",
+    "keepLocal": "保留在本機",
+    "unavailable": "專案資料夾無法使用，同步已暫停。資料夾恢復後會自動繼續。"
+  },
   "overleafSync": {
     "button": "Overleaf 同步",
     "title": "與 Overleaf 同步",
@@ -1413,5 +1426,9 @@
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "套用並同步"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "此視窗 30 秒沒有回應，Oleafly 已重新載入它。在此之前剛做的變更可能沒有儲存。",
+    "reloadedAgain": "此視窗再次停止回應，Oleafly 又重新載入了它。由於問題可能出在你的專案裡，這次沒有重新開啟專案。"
   }
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   invalidateWysiwygProjectSession: vi.fn(),
   notifyProjectFilesChanged: vi.fn(),
   rebuildFromDisk: vi.fn(),
+  updateFile: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -84,10 +85,11 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 vi.mock("@/store/project-index", () => ({
-  useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk }) },
+  useIndexStore: { getState: () => ({ rebuildFromDisk: mocks.rebuildFromDisk, updateFile: mocks.updateFile }) },
 }));
 
-import { useFilesStore } from "@/store/files";
+import { installCollabEditorPort } from "@/lib/collab-live-bridge";
+import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   applyExternalFileChange,
@@ -307,6 +309,114 @@ describe("applyFolderChange", () => {
     expect(mocks.listFiles).not.toHaveBeenCalled();
   });
 
+  it("moves an open tab along with a file renamed elsewhere", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    const opened = useFilesStore.getState().files["references.bib"];
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["references.bib", "refs.bib"],
+      rescan: false,
+      structural: true,
+      renamed: [["references.bib", "refs.bib"]],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toContain("refs.bib");
+    expect(state.openTabs).not.toContain("references.bib");
+    expect(state.activePath).toBe("refs.bib");
+    expect(state.files["refs.bib"]).toBe(opened);
+    expect(state.files["references.bib"]).toBeUndefined();
+  });
+
+  it("closes the tab of a clean file deleted elsewhere", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).not.toContain("notes.tex");
+    expect(state.files["notes.tex"]).toBeUndefined();
+  });
+
+  it("closes the file someone else deleted without switching the editor to another open file", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    await useFilesStore.getState().openFile("notes.tex");
+    expect(useFilesStore.getState().activePath).toBe("notes.tex");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toEqual(["references.bib"]);
+    expect(state.activePath).toBeNull();
+  });
+
+  it("keeps the file being edited when someone else deletes a different file", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+    await useFilesStore.getState().openFile("references.bib");
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+
+    expect(useFilesStore.getState().activePath).toBe("references.bib");
+  });
+
+  it("tells listeners that a file was deleted elsewhere", async () => {
+    await useFilesStore.getState().openFile("notes.tex");
+    const heard: string[] = [];
+    const stop = onPathsDeleted(({ projectId, path }) => {
+      if (projectId === "project") heard.push(path);
+    });
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["notes.tex"],
+      rescan: false,
+      structural: true,
+      deleted: ["notes.tex"],
+    });
+    stop();
+
+    expect(heard).toEqual(["notes.tex"]);
+  });
+
+  it("tells listeners that an open file moved before the editor follows it", async () => {
+    await useFilesStore.getState().openFile("references.bib");
+    const heard: { from: string; to: string; active: string | null }[] = [];
+    const stop = onPathsMoved(({ projectId, from, to }) => {
+      if (projectId === "project") heard.push({ from, to, active: useFilesStore.getState().activePath });
+    });
+
+    applyFolderChange({
+      projectId: "project",
+      paths: ["references.bib", "refs.bib"],
+      rescan: false,
+      structural: true,
+      renamed: [["references.bib", "refs.bib"]],
+    });
+    stop();
+
+    expect(heard).toEqual([{ from: "references.bib", to: "refs.bib", active: "references.bib" }]);
+    expect(useFilesStore.getState().activePath).toBe("refs.bib");
+  });
+
   it("asks about an unsaved buffer whose file changed on disk", async () => {
     await editOpenFile("main.tex", "original\n", "my edit\n");
     mocks.readFileContent.mockResolvedValue("their edit\n");
@@ -444,6 +554,60 @@ describe("folder changes and the file tree", () => {
 
     expect(mocks.listFiles).not.toHaveBeenCalled();
     expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+});
+
+describe("folder changes for files a live session holds", () => {
+  const change = (paths: string[], rescan = false) => ({ projectId: "project", paths, rescan });
+  let uninstall: () => void = () => {};
+
+  beforeEach(() => {
+    useFilesStore.setState({
+      activePath: "main.tex",
+      files: {
+        "main.tex": { content: "typed by Bob\n", dirty: false },
+        "references.bib": { content: "old\n", dirty: false },
+      },
+    });
+    uninstall = installCollabEditorPort({
+      documentSession: () => null,
+      holds: (path) => path === "main.tex",
+      flush: async () => {},
+    });
+  });
+
+  afterEach(() => uninstall());
+
+  it("does not read back, reload or rebuild the index for a file the session wrote", async () => {
+    const before = useFilesStore.getState().docVersion;
+
+    applyFolderChange(change(["main.tex"]));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().docVersion).toBe(before);
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("typed by Bob\n");
+    expect(mocks.updateFile).toHaveBeenCalledWith("main.tex", "typed by Bob\n");
+  });
+
+  it("still reloads the other files the same change names", async () => {
+    mocks.readFileContent.mockResolvedValue("new on disk\n");
+
+    applyFolderChange(change(["main.tex", "references.bib"]));
+
+    await vi.waitFor(() => expect(useFilesStore.getState().files["references.bib"].content).toBe("new on disk\n"));
+    expect(mocks.readFileContent).toHaveBeenCalledTimes(1);
+    expect(mocks.readFileContent).toHaveBeenCalledWith("project", "references.bib");
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1));
+  });
+
+  it("leaves a held file alone even when the whole folder is scanned again", async () => {
+    applyFolderChange(change([], true));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.readFileContent).not.toHaveBeenCalledWith("project", "main.tex");
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("typed by Bob\n");
   });
 });
 

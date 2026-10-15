@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
+import { ArrowLeftRight, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { MenuRow } from "@/components/ui/menu-row";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
@@ -47,8 +49,32 @@ const ACTIONS: Action[] = [
   },
 ];
 
+const PILL =
+  "flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg";
+
+function CommentPill({ onDone }: Readonly<{ onDone: () => void }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => {
+        requestComment(getEditorView());
+        onDone();
+      }}
+      className={PILL}
+    >
+      <MessageSquarePlus className="size-3.5" />
+      {t(($) => $.collab.comments.add)}
+    </button>
+  );
+}
+
 export function SelectionActionMenu() {
   const { t } = useTranslation(["common", "editor"]);
+  const collabReady = useCollabReady();
+  const canCompose = useCommentsRail((state) => state.canCompose);
+  const canComment = collabReady && canCompose;
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -162,14 +188,20 @@ export function SelectionActionMenu() {
           ))}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg"
-        >
-          <Sparkles className="size-3.5" />
-          {t(($) => $.editor.selectionActions.askAi)}
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setExpanded(true)} className={PILL}>
+            <Sparkles className="size-3.5" />
+            {t(($) => $.editor.selectionActions.askAi)}
+          </button>
+          {canComment ? (
+            <CommentPill
+              onDone={() => {
+                setPos(null);
+                setExpanded(false);
+              }}
+            />
+          ) : null}
+        </div>
       )}
     </div>
   );

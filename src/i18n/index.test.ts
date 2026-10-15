@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCollab from "./locales/en/collab.json" with { type: "json" };
+import zhCollab from "./locales/zh-Hans/collab.json" with { type: "json" };
 
 describe("i18n runtime", () => {
   beforeEach(() => {
@@ -60,5 +62,67 @@ describe("i18n runtime", () => {
     expect(readCachedPreference()).toBe("zh-Hans");
     localStorage.setItem("oleafly.locale", "nope");
     expect(readCachedPreference()).toBe("system");
+  });
+
+  it("loads a lazy English namespace on demand, once, and ignores unknown names", async () => {
+    const { initializeI18n, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(false);
+    await Promise.all([loadNamespace("collab"), loadNamespace("collab")]);
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(true);
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(enCollab.section.servers.title);
+    await expect(loadNamespace("not-a-namespace")).resolves.toBeUndefined();
+    expect(i18n.hasResourceBundle("en", "not-a-namespace")).toBe(false);
+  });
+
+  it("loads a translated lazy catalog only when its namespace is asked for", async () => {
+    const { initializeI18n, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "zh-Hans", systemLocale: async () => null, missingKeyMode: "throw" });
+    expect(i18n.hasResourceBundle("zh-Hans", "native")).toBe(true);
+    expect(i18n.hasResourceBundle("zh-Hans", "collab")).toBe(false);
+    await loadNamespace("collab");
+    expect(i18n.hasResourceBundle("zh-Hans", "collab")).toBe(true);
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(true);
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+  });
+
+  it("brings a loaded lazy namespace along to the next language and leaves unloaded ones lazy", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    await applyLocale("ru");
+    expect(i18n.hasResourceBundle("ru", "native")).toBe(true);
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(false);
+    await loadNamespace("collab");
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(true);
+    await applyLocale("zh-Hans");
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+  });
+
+  it("loads every lazy namespace in English and in each language the app switches to", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    const { LAZY_NAMESPACES } = await import("./resources");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    for (const namespace of LAZY_NAMESPACES) {
+      expect(i18n.hasResourceBundle("en", namespace), namespace).toBe(false);
+      await loadNamespace(namespace);
+      expect(i18n.hasResourceBundle("en", namespace), namespace).toBe(true);
+    }
+    await applyLocale("de");
+    for (const namespace of LAZY_NAMESPACES) {
+      expect(i18n.hasResourceBundle("de", namespace), namespace).toBe(true);
+    }
+    expect(i18n.getResource("de", "settingsFile", "export")).toBeTypeOf("string");
+  });
+
+  it("loads the language being switched to when the namespace is asked for during the switch", async () => {
+    const { initializeI18n, applyLocale, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    const asked = loadNamespace("collab");
+    await applyLocale("zh-Hans");
+    await asked;
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
+    const switching = applyLocale("ru");
+    await Promise.all([loadNamespace("collab"), switching]);
+    expect(i18n.hasResourceBundle("ru", "collab")).toBe(true);
   });
 });

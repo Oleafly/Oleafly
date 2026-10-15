@@ -319,6 +319,12 @@
       "title": "Duplicate bibliography entries: {{keys}}",
       "detail": "These entries share the DOI {{doi}}, so they are the same reference under different keys. Keep one and cite it, or your bibliography will list it twice."
     },
+    "refs-duplicate-bib-key": {
+      "title": "Citation key \"{{key}}\" is defined more than once",
+      "detail": "Defined at {{places}}. BibTeX uses only the first entry with this key, and it ignores capital letters when it compares keys. Keep one entry, or give the others new keys and update the citations that use them.",
+      "detailBiber": "Defined at {{places}}. When biber builds the bibliography, it uses only the first entry with this key. Keep one entry, or give the others new keys and update the citations that use them.",
+      "detailTypst": "Defined at {{places}}. Typst stops the compile when two bibliography entries share a key. Keep one entry, or give the others new keys and update the citations that use them."
+    },
     "submission-path-case": {
       "title": "Filename case does not match: {{target}}",
       "detailFigure": "This figure resolves only on a case-insensitive filesystem. The project contains \"{{match}}\", so match that capitalization exactly before submitting to Linux-based build systems.",

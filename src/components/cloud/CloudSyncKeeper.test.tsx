@@ -38,7 +38,7 @@ vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => undefined) 
 
 import { nextCheckDelay, waitRetryDelay } from "@/components/cloud/cloud-schedule";
 import { CloudSyncHost } from "@/components/cloud/CloudSyncHost";
-import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { loadNamespace } from "@/i18n";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";

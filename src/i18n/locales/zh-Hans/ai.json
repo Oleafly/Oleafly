@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "完全访问权限",
-        "description": "无需批准即可执行工具操作。"
+        "description": "无需询问即可执行工具操作，被拒绝规则阻止的工具除外。"
       },
       "custom": {
         "label": "自定义（approvals.toml）",

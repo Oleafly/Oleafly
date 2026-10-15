@@ -475,8 +475,10 @@ function ProjectRow({
     <li data-testid="cloud-project-row" className="px-3 py-2.5">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground" title={project.name}>
-            {project.name}
+          <p className="truncate text-sm font-medium text-foreground">
+            <Tooltip label={project.name} className="inline">
+              {project.name}
+            </Tooltip>
           </p>
           {transferring ? (
             <TransferLine progress={progress} />

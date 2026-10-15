@@ -397,7 +397,9 @@
     "unifiedView": "Gecombineerde weergave",
     "loading": "Diff laden…",
     "previewTooLarge": "Het bestand is te groot voor een diffvoorbeeld.",
-    "diskHeading": "Op schijf ↔ Jouw wijzigingen"
+    "diskHeading": "Op schijf ↔ Jouw wijzigingen",
+    "sharedReadOnly": "In een gedeeld project is deze diff alleen-lezen. Bewerk het bestand in de editor.",
+    "viewerReadOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken."
   },
   "hotkeys": {
     "title": "Sneltoetsen",
@@ -474,6 +476,7 @@
     "openInAgent": "Verdergaan in de AI-assistent met alle projecttools",
     "generateFailed": "Kon de bewerking niet genereren. {{message}}",
     "dismiss": "Sluiten",
+    "withdrawn": "Iemand anders heeft deze tekst bewerkt, dus deze suggestie kan niet meer worden toegepast.",
     "setUpProvider": "Een AI-provider instellen",
     "setUpProviderHint": "Voeg een API-sleutel toe (of het lokale Ollama) om AI-bewerkingen in de tekst te gebruiken.",
     "openAiSettings": "Instellingen → AI openen"
@@ -655,6 +658,7 @@
     "endOfDocument": "Einde van het document",
     "hidePreamble": "Documentpreambule verbergen",
     "showPreamble": "Documentpreambule tonen",
+    "sharedReadOnly": "In een gedeeld project toont de visuele modus het bestand alleen. Ga naar de broncodeweergave om het te bewerken.",
     "findingLabel": "{{message}}. Correctiesuggesties openen.",
     "rawBlockFindings_one": "{{count}} correctiebevinding in dit ruwe blok. {{message}}. Suggesties openen.",
     "rawBlockFindings_other": "{{count}} correctiebevindingen in dit ruwe blok. {{message}}. Suggesties openen."
@@ -1494,5 +1498,6 @@
     "keyInvalid": "Namen van waarden mogen niet leeg zijn en geen isgelijkteken bevatten.",
     "keyTaken": "Een variant kan dezelfde naam niet twee keer instellen.",
     "saveFailed": "Kon de varianten niet opslaan."
-  }
+  },
+  "sharedSettingsViewer": "Lezers kunnen dit in een gedeeld project niet wijzigen."
 }

@@ -1,0 +1,368 @@
+// @vitest-environment jsdom
+
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import { loadNamespace } from "@/i18n";
+import { formatDate } from "@/lib/intl";
+import type { CollabProjectGuestInvitations } from "@/lib/tauri";
+import { BOB, CAROL, collabError, deferred, fill, projectMember, projectSummary, shareInfo } from "../tests/fixtures";
+import { ADD_LINK, invitation, inviteResult, projectInvitations } from "../tests/guest-fixtures";
+
+const mocks = vi.hoisted(() => ({
+  collabProjectSummary: vi.fn(),
+  collabMembersList: vi.fn(),
+  collabPeopleSearch: vi.fn(),
+  collabGuestInvitations: vi.fn(),
+  collabGuestInvite: vi.fn(),
+  collabGuestInvitationRevoke: vi.fn(),
+  collabCommentsStatus: vi.fn(),
+}));
+
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  collabProjectSummary: mocks.collabProjectSummary,
+  collabMembersList: mocks.collabMembersList,
+  collabPeopleSearch: mocks.collabPeopleSearch,
+  collabGuestInvitations: mocks.collabGuestInvitations,
+  collabGuestInvite: mocks.collabGuestInvite,
+  collabGuestInvitationRevoke: mocks.collabGuestInvitationRevoke,
+  collabCommentsStatus: mocks.collabCommentsStatus,
+}));
+
+import { ManageSharing } from "./ManageSharing";
+
+const guests = enCollab.guests;
+const EMAIL = "dana@field.org";
+
+function renderManage(role: "owner" | "editor" = "owner") {
+  return render(<ManageSharing projectId="grant" name="Grant proposal" share={shareInfo({ role })} />);
+}
+
+async function typeQuery(text: string) {
+  const user = userEvent.setup();
+  renderManage();
+  await user.type(await screen.findByLabelText(enCollab.manage.add.label), text);
+  return user;
+}
+
+beforeAll(async () => {
+  await loadNamespace("collab");
+  await loadNamespace("common");
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.collabProjectSummary.mockResolvedValue(projectSummary());
+  mocks.collabMembersList.mockResolvedValue([projectMember(BOB, "owner")]);
+  mocks.collabPeopleSearch.mockResolvedValue([]);
+  mocks.collabGuestInvitations.mockResolvedValue(projectInvitations());
+  mocks.collabGuestInvite.mockResolvedValue(inviteResult());
+  mocks.collabGuestInvitationRevoke.mockResolvedValue(undefined);
+  mocks.collabCommentsStatus.mockResolvedValue({ serverAllowed: true, projectEnabled: true, canComment: true });
+});
+
+describe("inviting a guest from the share dialog", () => {
+  it("offers an owner to invite an address nobody on the server uses", async () => {
+    const user = await typeQuery(EMAIL);
+    expect(
+      await screen.findByText(fill(guests.invite.noAccount, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(mocks.collabGuestInvite).toHaveBeenCalledWith("grant", EMAIL, "editor");
+    expect(await screen.findByText(fill(guests.sent.emailed, { email: EMAIL }))).toBeInTheDocument();
+  });
+
+  it("says who can let the person in while guests are off on the server, instead of offering it", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(projectInvitations({ guests_enabled: false }));
+    await typeQuery(EMAIL);
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noAccountNoGuests, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) })).toBeNull();
+  });
+
+  it("offers a retry instead of hiding the invitation when the guest settings can't load", async () => {
+    mocks.collabGuestInvitations.mockRejectedValueOnce(new Error("offline"));
+    const user = await typeQuery(EMAIL);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      fill(enCollab.manage.add.guestCheckFailed, { server: "Smith Lab" }),
+    );
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(
+      await screen.findByText(fill(guests.invite.noAccount, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(mocks.collabGuestInvitations).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not offer it for an address the server would turn down", async () => {
+    await typeQuery("dana@field_lab.org");
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noResultsTryEmail, { server: "Smith Lab" })),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: fill(guests.invite.buttonNamed, { email: "dana@field_lab.org" }) }))
+      .toBeNull();
+  });
+
+  it("does not offer it for a name or for an address someone already uses", async () => {
+    await typeQuery("dana");
+    expect(
+      await screen.findByText(fill(enCollab.manage.add.noResultsTryEmail, { server: "Smith Lab" })),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: guests.invite.button })).toBeNull();
+    mocks.collabPeopleSearch.mockResolvedValue([CAROL]);
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(enCollab.manage.add.label);
+    await user.clear(input);
+    await user.type(input, "carol@uni.edu");
+    expect(await screen.findByRole("button", { name: fill(enCollab.manage.add.addNamed, { name: "Carol Diaz" }) }))
+      .toBeInTheDocument();
+    expect(screen.queryByText(guests.invite.button)).toBeNull();
+  });
+
+  it("is never offered to someone who is not the owner", async () => {
+    renderManage("editor");
+    expect(await screen.findByRole("list", { name: enCollab.manage.people })).toBeInTheDocument();
+    expect(screen.queryByLabelText(enCollab.manage.add.label)).toBeNull();
+    expect(mocks.collabGuestInvitations).not.toHaveBeenCalled();
+  });
+
+  it("says an admin must approve first when the server asks for approval", async () => {
+    mocks.collabGuestInvite.mockResolvedValue(
+      inviteResult({ invitation: invitation({ status: "awaiting_approval" }), emailed: true }),
+    );
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(await screen.findByText(fill(guests.sent.emailedAfterApproval, { email: EMAIL }))).toBeInTheDocument();
+  });
+
+  it("gives the owner the link to send when the server does not send email", async () => {
+    mocks.collabGuestInvite.mockResolvedValue(inviteResult({ emailed: false }));
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(
+      await screen.findByText(fill(guests.sent.sendLink, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(fill(guests.sent.linkLabel, { server: "Smith Lab" }))).toHaveValue(ADD_LINK);
+    expect(screen.getAllByRole("button", { name: enCollab.manage.link.copy }).length).toBeGreaterThan(0);
+  });
+
+  it("says when an address already had an account and reloads who has access", async () => {
+    mocks.collabGuestInvite.mockResolvedValue(inviteResult({ invitation: invitation({ status: "accepted" }) }));
+    const user = await typeQuery(EMAIL);
+    expect(mocks.collabMembersList).toHaveBeenCalledTimes(1);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(
+      await screen.findByText(fill(guests.sent.added, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(mocks.collabMembersList).toHaveBeenCalledTimes(2));
+  });
+
+  it("tells the owner to send the link once an admin approves when the server does not send email", async () => {
+    mocks.collabGuestInvite.mockResolvedValue(
+      inviteResult({ invitation: invitation({ status: "awaiting_approval" }), emailed: false }),
+    );
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(
+      await screen.findByText(fill(guests.sent.sendLinkAfterApproval, { server: "Smith Lab", email: EMAIL })),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(fill(guests.sent.linkLabel, { server: "Smith Lab" }))).toHaveValue(ADD_LINK);
+  });
+
+  it("explains any other failed invitation with the server's reason", async () => {
+    mocks.collabGuestInvite.mockRejectedValue(collabError("server"));
+    const user = await typeQuery(EMAIL);
+    await user.click(await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.server);
+  });
+
+  it("explains a duplicate invitation and the hourly limit in plain words", async () => {
+    mocks.collabGuestInvite.mockRejectedValueOnce(collabError("conflict"));
+    mocks.collabGuestInvite.mockRejectedValueOnce(collabError("rate_limited"));
+    const user = await typeQuery(EMAIL);
+    const button = await screen.findByRole("button", { name: fill(guests.invite.buttonNamed, { email: EMAIL }) });
+    await user.click(button);
+    expect(await screen.findByRole("alert")).toHaveTextContent(guests.invite.duplicate);
+    await user.click(button);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(guests.invite.tooMany));
+  });
+});
+
+describe("the owner's invitation list", () => {
+  it("shows each open invitation with its status, role, end date and guest badge", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        approval_required: true,
+        invitations: [
+          invitation({ id: "a", email: "dana@field.org", status: "awaiting_approval" }),
+          invitation({ id: "b", email: "eve@field.org", status: "invited", role: "editor" }),
+          invitation({ id: "c", email: "finn@field.org", status: "declined" }),
+        ],
+      }),
+    );
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]).getByText("dana@field.org")).toBeInTheDocument();
+    expect(within(rows[0]).getByText(guests.list.status.awaiting_approval)).toBeInTheDocument();
+    expect(within(rows[0]).getByText(guests.badge)).toBeInTheDocument();
+    expect(within(rows[1]).getByText(guests.list.status.invited)).toBeInTheDocument();
+    expect(within(rows[1]).getByText(enCollab.projectRoles.editor)).toBeInTheDocument();
+    expect(within(rows[2]).getByText(guests.list.status.declined)).toBeInTheDocument();
+    expect(
+      within(rows[0]).getByText(fill(guests.list.expires, { date: formatDate(1_761_209_600_000) })),
+    ).toBeInTheDocument();
+    expect(within(rows[2]).queryByRole("button", { name: /withdraw/i })).toBeNull();
+  });
+
+  it("withdraws an invitation", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(projectInvitations({ invitations: [invitation()] }));
+    const user = userEvent.setup();
+    renderManage();
+    await user.click(await screen.findByRole("button", { name: fill(guests.list.withdrawNamed, { email: EMAIL }) }));
+    expect(mocks.collabGuestInvitationRevoke).toHaveBeenCalledWith("grant", "invitation-1");
+    await waitFor(() => expect(screen.queryByRole("list", { name: guests.list.title })).toBeNull());
+  });
+
+  it("keeps an invitation busy until its own withdrawal ends, whatever another one does", async () => {
+    const forDana = deferred<undefined>();
+    const forEve = deferred<undefined>();
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [
+          invitation({ id: "a", email: "dana@field.org" }),
+          invitation({ id: "b", email: "eve@field.org" }),
+        ],
+      }),
+    );
+    mocks.collabGuestInvitationRevoke.mockImplementation((_project: string, id: string) =>
+      id === "a" ? forDana.promise : forEve.promise,
+    );
+    const user = userEvent.setup();
+    renderManage();
+    await user.click(await screen.findByRole("button", { name: fill(guests.list.withdrawNamed, { email: "dana@field.org" }) }));
+    const eve = screen.getByRole("button", { name: fill(guests.list.withdrawNamed, { email: "eve@field.org" }) });
+    await user.click(eve);
+    await act(async () => forDana.resolve(undefined));
+    await waitFor(() => expect(screen.queryByText("dana@field.org")).toBeNull());
+    expect(eve).toBeDisabled();
+    expect(mocks.collabGuestInvitationRevoke).toHaveBeenCalledTimes(2);
+    await act(async () => forEve.resolve(undefined));
+  });
+
+  it("offers the link again for open invitations when the server does not send email", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ sends_email: false, invitations: [invitation()] }),
+    );
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    expect(within(list).getByRole("button", { name: enCollab.manage.link.copy })).toBeInTheDocument();
+  });
+
+  it("marks guests among the people with access", async () => {
+    mocks.collabMembersList.mockResolvedValue([
+      projectMember(BOB, "owner"),
+      projectMember({ ...CAROL, guest: true }, "viewer"),
+    ]);
+    renderManage();
+    const people = await screen.findByRole("list", { name: enCollab.manage.people });
+    const rows = within(people).getAllByRole("listitem");
+    expect(within(rows[0]).queryByText(guests.badge)).toBeNull();
+    expect(within(rows[1]).getByText(guests.badge)).toBeInTheDocument();
+  });
+
+  it("leaves out invitations that were accepted, withdrawn or ran out", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [
+          invitation({ id: "a", email: "dana@field.org", status: "accepted" }),
+          invitation({ id: "b", email: "eve@field.org", status: "invited" }),
+          invitation({ id: "c", email: "finn@field.org", status: "revoked" }),
+          invitation({ id: "d", email: "gail@field.org", status: "expired" }),
+        ],
+      }),
+    );
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(list).getByText("eve@field.org")).toBeInTheDocument();
+  });
+
+  it("shows nothing when every invitation is finished", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ invitations: [invitation({ status: "accepted" })] }),
+    );
+    renderManage();
+    await waitFor(() => expect(mocks.collabGuestInvitations).toHaveBeenCalledWith("grant"));
+    expect(await screen.findByRole("list", { name: enCollab.manage.people })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: guests.list.title })).toBeNull();
+  });
+
+  it("keeps the newer project's invitations when the older project's list answers late", async () => {
+    const stale = deferred<CollabProjectGuestInvitations>();
+    mocks.collabGuestInvitations.mockImplementation((projectId: string) =>
+      projectId === "grant"
+        ? stale.promise
+        : Promise.resolve(projectInvitations({ invitations: [invitation({ id: "e", email: "eve@field.org" })] })),
+    );
+    const view = renderManage();
+    await waitFor(() => expect(mocks.collabGuestInvitations).toHaveBeenCalledWith("grant"));
+    view.rerender(<ManageSharing projectId="thesis" name="Thesis" share={shareInfo({ project_id: "thesis" })} />);
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await act(async () => stale.resolve(projectInvitations({ invitations: [invitation()] })));
+    expect(within(list).getByText("eve@field.org")).toBeInTheDocument();
+    expect(within(list).queryByText(EMAIL)).toBeNull();
+  });
+
+  it("confirms when an invitation link was copied", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ sends_email: false, invitations: [invitation()] }),
+    );
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await user.click(within(list).getByRole("button", { name: enCollab.manage.link.copy }));
+    expect(writeText).toHaveBeenCalledWith(ADD_LINK);
+    const copied = await within(list).findByRole("button", { name: enCollab.manage.link.copied });
+    expect(copied.querySelector("svg.lucide-check")).not.toBeNull();
+  });
+
+  it("says when an invitation link could not be copied", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({ sends_email: false, invitations: [invitation()] }),
+    );
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => {
+      throw new Error("denied");
+    });
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderManage();
+    const list = await screen.findByRole("list", { name: guests.list.title });
+    await user.click(within(list).getByRole("button", { name: enCollab.manage.link.copy }));
+    const failed = await within(list).findByRole("button", { name: enCollab.manage.link.copyFailed });
+    expect(failed.querySelector("svg.lucide-copy")).not.toBeNull();
+  });
+
+  it("keeps an invitation and says why on its row when it cannot be withdrawn", async () => {
+    mocks.collabGuestInvitations.mockResolvedValue(
+      projectInvitations({
+        invitations: [invitation(), invitation({ id: "invitation-2", email: "eve@field.org" })],
+      }),
+    );
+    mocks.collabGuestInvitationRevoke.mockRejectedValue(collabError("forbidden"));
+    const user = userEvent.setup();
+    renderManage();
+    await user.click(await screen.findByRole("button", { name: fill(guests.list.withdrawNamed, { email: EMAIL }) }));
+    const rows = within(screen.getByRole("list", { name: guests.list.title })).getAllByRole("listitem");
+    expect(await within(rows[0]).findByRole("alert")).toHaveTextContent(enCollab.errors.forbidden);
+    expect(within(rows[1]).queryByRole("alert")).toBeNull();
+    expect(within(rows[0]).getByRole("button", { name: fill(guests.list.withdrawNamed, { email: EMAIL }) }))
+      .toBeEnabled();
+  });
+});

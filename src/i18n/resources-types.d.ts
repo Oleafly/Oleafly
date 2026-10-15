@@ -2,6 +2,7 @@
 import type ai from "./locales/en/ai.json";
 import type catalog from "./locales/en/catalog.json";
 import type cloud from "./locales/en/cloud.json";
+import type collab from "./locales/en/collab.json";
 import type common from "./locales/en/common.json";
 import type core from "./locales/en/core.json";
 import type diagram from "./locales/en/diagram.json";
@@ -27,6 +28,7 @@ export interface Resources {
   "ai": typeof ai;
   "catalog": typeof catalog;
   "cloud": typeof cloud;
+  "collab": typeof collab;
   "common": typeof common;
   "core": typeof core;
   "diagram": typeof diagram;
@@ -49,4 +51,4 @@ export interface Resources {
   "workspace": typeof workspace;
 }
 
-export const NAMESPACE_NAMES = ["ai","catalog","cloud","common","core","diagram","editor","errors","intelligence","library","native","onboarding","preflight","preview","references","researchTools","settings","settingsFile","shell","symbols","templates","usage","workspace"] as const;
+export const NAMESPACE_NAMES = ["ai","catalog","cloud","collab","common","core","diagram","editor","errors","intelligence","library","native","onboarding","preflight","preview","references","researchTools","settings","settingsFile","shell","symbols","templates","usage","workspace"] as const;

@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export const SIDEBAR_TITLE_CLASS =
@@ -33,8 +34,10 @@ export function SidebarPanelHeader({
       )}
     >
       <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <h2 title={title} className={cn("min-w-0 truncate", SIDEBAR_TITLE_CLASS)}>
-        {title}
+      <h2 className={cn("min-w-0 truncate", SIDEBAR_TITLE_CLASS)}>
+        <Tooltip label={title} className="inline">
+          {title}
+        </Tooltip>
       </h2>
       {adornment}
       {children ? (
@@ -55,6 +58,7 @@ export function SidebarPanelHeader({
 export function SidebarSection({
   id,
   title,
+  titleHint,
   icon,
   ariaLabel,
   ariaBusy,
@@ -72,6 +76,7 @@ export function SidebarSection({
 }: Readonly<{
   id: string;
   title: string;
+  titleHint?: string;
   icon?: ReactNode;
   ariaLabel?: string;
   ariaBusy?: boolean;
@@ -121,7 +126,11 @@ export function SidebarSection({
             <ChevronRight aria-hidden className="size-3 shrink-0" />
           )}
           {icon}
-          <span title={title} className="truncate">{title}</span>
+          <span className="truncate">
+            <Tooltip label={titleHint ?? title} wide className="inline">
+              {title}
+            </Tooltip>
+          </span>
           {typeof count === "number" ? (
             <output
               aria-label={countLabel}

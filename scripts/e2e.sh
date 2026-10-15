@@ -59,6 +59,7 @@ esac
 set -- "${PLAYWRIGHT_ARGS[@]}"
 
 source scripts/e2e-run-lock.sh
+source scripts/e2e-specs.sh
 acquire_e2e_lock
 
 APP_PID=""
@@ -368,7 +369,7 @@ start_app() {
   if [[ -n "$APP_BINARY" ]]; then
     OLEAFLY_DATA_DIR="$DATA_DIR" \
       OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
-      OLEAFLY_E2E_LAUNCH_LOCALSTORAGE='{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1"}' \
+      OLEAFLY_E2E_LAUNCH_LOCALSTORAGE="$(e2e_launch_seed_for "$spec_hint")" \
       "$APP_BINARY" >>"$LOG" 2>&1 &
   else
     OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing --config src-tauri/tauri.e2e.conf.json >>"$LOG" 2>&1 &
@@ -473,6 +474,10 @@ else
     done
     position=0
     for spec in e2e/tests/*.spec.ts; do
+      if e2e_needs_collab_peer "$spec"; then
+        echo "e2e: skipping $(basename "$spec") (needs the headless collaboration peer; the collaboration job runs it)"
+        continue
+      fi
       if [[ "$spec" = "e2e/tests/02-create-compile.spec.ts" ]] || is_heavy "$spec"; then
         continue
       fi
@@ -484,6 +489,10 @@ else
     echo "e2e: shard ${SHARD} runs ${#SUITE_SPECS[@]} spec file(s)"
   else
     for spec in e2e/tests/*.spec.ts; do
+      if e2e_needs_collab_peer "$spec"; then
+        echo "e2e: skipping $(basename "$spec") (needs the headless collaboration peer; the collaboration job runs it)"
+        continue
+      fi
       SUITE_SPECS+=("$spec")
     done
   fi

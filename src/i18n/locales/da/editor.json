@@ -397,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Indlæser forskellen…",
     "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel.",
-    "diskHeading": "På disken ↔ Dine ændringer"
+    "diskHeading": "På disken ↔ Dine ændringer",
+    "sharedReadOnly": "I et delt projekt er forskellen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte projekt, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Tastaturgenveje",
@@ -474,6 +476,7 @@
     "openInAgent": "Fortsæt i AI-assistenten med alle projektets værktøjer",
     "generateFailed": "Kunne ikke generere ændringen. {{message}}",
     "dismiss": "Luk",
+    "withdrawn": "En anden har redigeret teksten, så forslaget kan ikke længere bruges.",
     "setUpProvider": "Sæt en AI-udbyder op",
     "setUpProviderHint": "Tilføj en API-nøgle (eller lokal Ollama) for at bruge AI-rettelser direkte i teksten.",
     "openAiSettings": "Åbn Indstillinger → AI"
@@ -655,6 +658,7 @@
     "endOfDocument": "Dokumentets slutning",
     "hidePreamble": "Skjul dokumentets præambel",
     "showPreamble": "Vis dokumentets præambel",
+    "sharedReadOnly": "I et delt projekt viser den visuelle tilstand kun filen. Skift til kildevisning for at redigere den.",
     "findingLabel": "{{message}}. Åbn korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag."
@@ -1494,5 +1498,6 @@
     "keyInvalid": "Navne på værdier må ikke være tomme eller indeholde et lighedstegn.",
     "keyTaken": "En variant kan ikke angive det samme navn to gange.",
     "saveFailed": "Varianterne kunne ikke gemmes."
-  }
+  },
+  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt."
 }

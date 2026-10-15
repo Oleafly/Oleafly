@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Pełny dostęp",
-        "description": "Wykonuj działania narzędzi bez pytania o zgodę."
+        "description": "Wykonuj działania narzędzi bez pytania, z wyjątkiem narzędzi zablokowanych regułą deny."
       },
       "custom": {
         "label": "Własny (approvals.toml)",

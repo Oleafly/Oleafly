@@ -69,7 +69,10 @@
       "localNotFound": "The local package {{spec}} isn't installed. Put it in Oleafly's Typst packages folder or in the project's typst-packages folder.",
       "versionMissing": "This package has no version {{version}}. The newest version is {{latest}}.",
       "versionMissingNoLatest": "This package has no version {{version}}. Check the version in the import."
-    }
+    },
+    "saveFailed": "{{path}} couldn't be saved, so Oleafly didn't compile. Check that file, then compile again.",
+    "saveFailedSeveral": "{{path}} and other files couldn't be saved, so Oleafly didn't compile. Check those files, then compile again.",
+    "saveFailedOther": "The document couldn't be saved, so Oleafly didn't compile. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -284,7 +287,9 @@
     "yearRangeInvalid": "The start year cannot be later than the end year."
   },
   "mcp": {
+    "deniedByRules": "Refused by a deny rule in approvals.toml",
     "openProjectSummary": "Open project {{id}}",
+    "rulesUnreadable": "Refused because approvals.toml couldn't be read",
     "useToolSummary": "Use {{tool}} from the {{server}} MCP server"
   },
   "mcpConfig": {

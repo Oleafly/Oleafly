@@ -8,8 +8,9 @@ Every tool call is classified read, write, network or shell.
 
 - Read tools (`read_file`, `list_files`, `search_project`, `project_map`, `get_todos`, `list_notes`, `project_library_search`, `load_skill`, `read_skill_file`) run without prompting under the default policy.
 - Network tools (`literature_search`, `verify_citation`, `alphaxiv_search`, `alphaxiv_paper_content`) are auto approved under the default policy and prompt under the stricter one.
-- Write tools (`write_file`, `replace_in_file`, `create_file`, `rename_file`, `delete_file`) show a diff card the user has to approve.
-- `run_command` is shell class. It prompts in the chat, and then the operating system shows its own confirmation dialog, unless the user has granted full access or an allow rule for this project.
+- Write tools (`write_file`, `replace_in_file`, `create_file`, `rename_file`, `delete_file`) show a diff card the user has to approve, except in Full access. A project allow rule skips the card only when the project uses Custom mode.
+- `run_command` is shell class. Each call shows a command card in the chat that the user has to approve, except in Full access. A project allow rule skips the card only when the project uses Custom mode.
+- A project deny rule refuses its tool in every approval mode, Full access included. The call comes back declined or as an error. Treat it like the user saying no.
 
 A declined call comes back as `{"declined": true, "status": "declined"}`. That is the user saying no. Do not retry the same call, and do not route around it with a different tool. Ask what they would prefer instead.
 

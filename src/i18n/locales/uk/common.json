@@ -78,5 +78,11 @@
       "invalidNumber": "{{value}} не є числом",
       "sortNegated": "{{key}} не можна виключити"
     }
+  },
+  "avatar": {
+    "more_one": "ще {{count}} особа",
+    "more_few": "ще {{count}} особи",
+    "more_many": "ще {{count}} осіб",
+    "more_other": "ще {{count}} особи"
   }
 }

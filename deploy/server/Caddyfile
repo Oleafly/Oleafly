@@ -1,0 +1,3 @@
+{$OLEAFLY_DOMAIN} {
+	reverse_proxy oleafly-server:8080
+}

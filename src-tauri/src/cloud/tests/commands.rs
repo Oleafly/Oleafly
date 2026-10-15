@@ -520,9 +520,12 @@ async fn details_show_the_space_and_the_projects_that_live_only_in_dropbox() {
         dropbox.page_size = 1;
     });
     let app = mock_app();
-    crate::project::recycle_project("binned".into(), app.state())
-        .await
-        .unwrap();
+    crate::project::recycle_project_synchronized(
+        app.state::<crate::state::AppState>().inner(),
+        "binned".into(),
+    )
+    .await
+    .unwrap();
 
     let details = view(cloud_details().await.unwrap());
     assert_eq!(details["error"], Value::Null);
@@ -1046,9 +1049,12 @@ async fn downloads_create_find_or_restore_library_projects() {
     assert_eq!(again["localId"], local.as_str());
     assert_eq!(again["restored"], false);
 
-    crate::project::recycle_project(local.clone(), app.state())
-        .await
-        .unwrap();
+    crate::project::recycle_project_synchronized(
+        app.state::<crate::state::AppState>().inner(),
+        local.clone(),
+    )
+    .await
+    .unwrap();
     assert!(!projects.join(&local).exists());
     let back = view(
         cloud_download_project(laptop.to_string(), app.state())

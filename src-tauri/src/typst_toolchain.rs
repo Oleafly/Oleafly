@@ -715,6 +715,7 @@ pub async fn set_project_typst_version(
     project_id: String,
     version: Option<String>,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let owned = project_id.clone();
     let meta = blocking(move || set_project_version_blocking(&owned, version)).await?;
@@ -727,6 +728,7 @@ pub async fn set_project_typst_version(
         false,
         crate::project::project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 

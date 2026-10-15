@@ -58,6 +58,127 @@ impl ApprovalsFile {
 
 static APPROVALS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
+/// Every tool name a rule can match: the assistant's tools, helper agents'
+/// and the MCP server's. Tools from connected MCP servers are named
+/// `mcp_ext_<server>_<tool>_<hash>`. Tests in src/lib/mcp-bridge.test.ts and
+/// packages/ai-tools/src/known-tools.test.ts keep this list in step with the
+/// tools the MCP bridge and the in-app chat register.
+const KNOWN_TOOLS: &[&str] = &[
+    "close_agent",
+    "compile",
+    "computer_use",
+    "create_file",
+    "delete_file",
+    "followup_task",
+    "forget_note",
+    "get_log",
+    "get_pdf_text",
+    "get_status",
+    "get_todos",
+    "import_overleaf_projects",
+    "insert_figure",
+    "interrupt_agent",
+    "list_agents",
+    "list_files",
+    "list_notes",
+    "list_overleaf_projects",
+    "list_projects",
+    "list_research_root_files",
+    "list_research_roots",
+    "list_skills",
+    "literature_search",
+    "load_image",
+    "load_skill",
+    "open_project",
+    "preview_figure",
+    "project_library_search",
+    "project_map",
+    "read_file",
+    "read_research_root_file",
+    "read_skill_file",
+    "remember_note",
+    "rename_file",
+    "replace_in_file",
+    "run_command",
+    "search_project",
+    "send_message",
+    "set_main_doc",
+    "show_location",
+    "spawn_agent",
+    "toggle_theme",
+    "update_todos",
+    "verify_citation",
+    "verify_pdf_pages",
+    "wait_agent",
+    "write_file",
+];
+
+const MCP_TOOL_PREFIX: &str = "mcp_ext_";
+
+/// A rule whose tool name matches no tool, with the closest real name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnknownTool {
+    pub name: String,
+    pub suggestion: Option<&'static str>,
+}
+
+fn edit_distance(left: &str, right: &str) -> usize {
+    let right: Vec<char> = right.chars().collect();
+    let mut previous: Vec<usize> = (0..=right.len()).collect();
+    for (row, left_char) in left.chars().enumerate() {
+        let mut current = vec![row + 1];
+        for (column, right_char) in right.iter().enumerate() {
+            let replace = previous[column] + usize::from(left_char != *right_char);
+            current.push(
+                replace
+                    .min(previous[column + 1] + 1)
+                    .min(current[column] + 1),
+            );
+        }
+        previous = current;
+    }
+    previous[right.len()]
+}
+
+fn closest_tool(name: &str) -> Option<&'static str> {
+    let normalized = name
+        .trim()
+        .to_ascii_lowercase()
+        .replace(['-', ' ', '.'], "_");
+    KNOWN_TOOLS
+        .iter()
+        .map(|known| (edit_distance(&normalized, known), *known))
+        .filter(|(distance, _)| *distance <= 2)
+        .min_by_key(|(distance, _)| *distance)
+        .map(|(_, known)| known)
+}
+
+/// One entry per unknown name, however many projects use it.
+fn unknown_tools(approvals: &ApprovalsFile) -> Vec<UnknownTool> {
+    approvals
+        .decisions
+        .values()
+        .flat_map(|tools| tools.keys())
+        .filter(|tool| !KNOWN_TOOLS.contains(&tool.as_str()) && !tool.starts_with(MCP_TOOL_PREFIX))
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(|tool| UnknownTool {
+            name: tool.clone(),
+            suggestion: closest_tool(tool),
+        })
+        .collect()
+}
+
+fn unknown_tool_warning(unknown: &UnknownTool) -> String {
+    match unknown.suggestion {
+        Some(suggestion) => crate::i18n::t_with(
+            "approvals.unknownToolSuggestion",
+            &[("name", &unknown.name), ("suggestion", suggestion)],
+        ),
+        None => crate::i18n::t_with("approvals.unknownTool", &[("name", &unknown.name)]),
+    }
+}
+
 fn approvals_path(root: &Path) -> PathBuf {
     root.join("approvals.toml")
 }
@@ -119,15 +240,12 @@ pub fn policy_for(
 ) -> Result<(ApprovalMode, Option<ToolDecision>), String> {
     let approvals = read_file(root)?;
     let mode = approvals.mode_for(project_id);
-    let decision = (mode == ApprovalMode::Custom)
-        .then(|| {
-            approvals
-                .decisions
-                .get(project_id)
-                .and_then(|decisions| decisions.get(tool))
-                .copied()
-        })
-        .flatten();
+    let decision = approvals
+        .decisions
+        .get(project_id)
+        .and_then(|decisions| decisions.get(tool))
+        .copied()
+        .filter(|decision| *decision == ToolDecision::Deny || mode == ApprovalMode::Custom);
     Ok((mode, decision))
 }
 
@@ -135,6 +253,75 @@ pub fn effective_decision_for(root: &Path, project_id: &str, tool: &str) -> Opti
     match policy_for(root, project_id, tool) {
         Ok((_, decision)) => decision,
         Err(_) => Some(ToolDecision::Deny),
+    }
+}
+
+/// The Oleafly tools whose rules cover an ACP agent's permission request of
+/// this kind.
+fn tools_for_acp_kind(kind: Option<&str>) -> &'static [&'static str] {
+    match kind {
+        Some("execute") => &["run_command"],
+        Some("edit") => &["write_file", "replace_in_file", "create_file"],
+        Some("delete") => &["delete_file"],
+        Some("move") => &["rename_file"],
+        Some("read") => &["read_file"],
+        Some("search") => &["search_project"],
+        _ => &[],
+    }
+}
+
+/// The tool whose deny rule refuses an ACP agent's permission request of this
+/// kind, if any. A file that can't be read denies, as everywhere else.
+pub fn acp_request_denied_by(
+    root: &Path,
+    project_id: &str,
+    kind: Option<&str>,
+) -> Option<&'static str> {
+    tools_for_acp_kind(kind)
+        .iter()
+        .copied()
+        .find(|tool| effective_decision_for(root, project_id, tool) == Some(ToolDecision::Deny))
+}
+
+/// Whether Full access approves a helper agent's permission request of this
+/// kind without asking. A kind no tool's rules cover, such as fetch, think or
+/// none at all, asks while the project has any deny rule, because the request
+/// may do what a rule forbids. An unreadable file asks.
+pub fn helper_request_auto_approved(root: &Path, project_id: &str, kind: Option<&str>) -> bool {
+    let Ok(approvals) = read_file(root) else {
+        return false;
+    };
+    if approvals.mode_for(project_id) != ApprovalMode::FullAccess {
+        return false;
+    }
+    !tools_for_acp_kind(kind).is_empty() || !has_deny_rule(&approvals, project_id)
+}
+
+fn has_deny_rule(approvals: &ApprovalsFile, project_id: &str) -> bool {
+    approvals
+        .decisions
+        .get(project_id)
+        .is_some_and(|decisions| decisions.values().any(|d| *d == ToolDecision::Deny))
+}
+
+/// Whether the project's rules refuse a research task's permission request.
+/// A task works on a temporary copy that the user reviews before applying,
+/// and nobody answers its requests, so it gets no card: a deny rule refuses
+/// its tool, and while the project has any deny rule, a kind no tool's rules
+/// cover is refused too. Everything else goes ahead, in every mode. No data
+/// folder or a file that can't be read refuses, as everywhere else.
+pub fn task_request_refused(root: Option<&Path>, project_id: &str, kind: Option<&str>) -> bool {
+    let Some(root) = root else {
+        return true;
+    };
+    if acp_request_denied_by(root, project_id, kind).is_some() {
+        return true;
+    }
+    match read_file(root) {
+        Ok(approvals) => {
+            tools_for_acp_kind(kind).is_empty() && has_deny_rule(&approvals, project_id)
+        }
+        Err(_) => true,
     }
 }
 
@@ -205,7 +392,9 @@ pub fn read_raw(root: &Path) -> Result<String, String> {
     }
 }
 
-pub fn write_raw(root: &Path, text: &str) -> Result<(), String> {
+/// Saves the rules file as written. Rules that name no tool still save, since
+/// an MCP server can add tools later, and come back so the editor can say so.
+pub fn write_raw(root: &Path, text: &str) -> Result<Vec<UnknownTool>, String> {
     let _guard = APPROVALS_WRITE_LOCK
         .lock()
         .map_err(|_| "approvals are being written by another task".to_string())?;
@@ -225,7 +414,8 @@ pub fn write_raw(root: &Path, text: &str) -> Result<(), String> {
     let tmp = approvals_path(root).with_extension("toml.tmp");
     std::fs::write(&tmp, text).map_err(|e| format!("failed to write approvals: {e}"))?;
     crate::sandbox::replace_file(&tmp, &approvals_path(root))
-        .map_err(|e| format!("failed to replace approvals: {e}"))
+        .map_err(|e| format!("failed to replace approvals: {e}"))?;
+    Ok(unknown_tools(&parsed))
 }
 
 #[tauri::command]
@@ -233,9 +423,12 @@ pub fn approvals_read_raw() -> Result<String, String> {
     read_raw(&crate::paths::oleafly_root()?)
 }
 
+/// Saves the rules file and returns a warning for each rule that names no
+/// tool, ready to show next to the saved message.
 #[tauri::command]
-pub fn approvals_write_raw(text: String) -> Result<(), String> {
-    write_raw(&crate::paths::oleafly_root()?, &text)
+pub fn approvals_write_raw(text: String) -> Result<Vec<String>, String> {
+    let unknown = write_raw(&crate::paths::oleafly_root()?, &text)?;
+    Ok(unknown.iter().map(unknown_tool_warning).collect())
 }
 
 #[tauri::command]
@@ -344,6 +537,131 @@ mod tests {
             Some(&super::ToolDecision::Deny)
         );
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn research_task_requests_follow_the_projects_deny_rules_in_every_mode() {
+        let root = temp_root("task-kinds");
+        // No deny rule: every kind goes ahead, whatever the mode.
+        for kind in [Some("execute"), Some("fetch"), None] {
+            assert!(!task_request_refused(Some(&root), "proj", kind), "{kind:?}");
+        }
+        set_mode(&root, "proj", ApprovalMode::AskForApproval).unwrap();
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        assert!(task_request_refused(Some(&root), "proj", Some("execute")));
+        assert!(!task_request_refused(Some(&root), "proj", Some("edit")));
+        // A kind no tool's rules cover is refused while a deny rule exists.
+        for kind in [Some("fetch"), Some("think"), None] {
+            assert!(task_request_refused(Some(&root), "proj", kind), "{kind:?}");
+        }
+        assert!(!task_request_refused(Some(&root), "other", Some("fetch")));
+        std::fs::write(approvals_path(&root), "[proj\nrun_command = deny").unwrap();
+        assert!(task_request_refused(Some(&root), "proj", Some("edit")));
+        assert!(task_request_refused(None, "proj", Some("edit")));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn deny_rules_cover_the_acp_request_kinds_of_their_tools() {
+        let root = temp_root("acp-kinds");
+        set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("execute")), None);
+        set_decision(&root, "proj", "delete_file", Some(ToolDecision::Allow)).unwrap();
+        // With no deny rule, Full access approves every kind, even ones no
+        // tool's rules cover. An allow rule doesn't change that.
+        for kind in [Some("execute"), Some("fetch"), Some("think"), None] {
+            assert!(
+                helper_request_auto_approved(&root, "proj", kind),
+                "{kind:?}"
+            );
+        }
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        set_decision(&root, "proj", "replace_in_file", Some(ToolDecision::Deny)).unwrap();
+        // Once a deny rule exists, a kind no rule covers goes to the card.
+        assert!(helper_request_auto_approved(&root, "proj", Some("delete")));
+        for kind in [Some("fetch"), Some("think"), Some("other"), None] {
+            assert!(
+                !helper_request_auto_approved(&root, "proj", kind),
+                "{kind:?}"
+            );
+        }
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("execute")),
+            Some("run_command")
+        );
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("edit")),
+            Some("replace_in_file")
+        );
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("delete")), None);
+        assert_eq!(acp_request_denied_by(&root, "proj", Some("think")), None);
+        assert_eq!(acp_request_denied_by(&root, "proj", None), None);
+        assert_eq!(acp_request_denied_by(&root, "other", Some("execute")), None);
+        set_mode(&root, "proj", ApprovalMode::AskForApproval).unwrap();
+        assert!(!helper_request_auto_approved(&root, "proj", Some("delete")));
+        std::fs::write(approvals_path(&root), "[proj\nrun_command = deny").unwrap();
+        assert_eq!(
+            acp_request_denied_by(&root, "proj", Some("move")),
+            Some("rename_file")
+        );
+        assert!(!helper_request_auto_approved(&root, "proj", Some("delete")));
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn rules_that_name_no_tool_save_and_come_back_with_the_closest_name() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-approvals-raw-unknown-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let text = "[proj]\nrun-command = \"deny\"\nRun_Command = \"deny\"\ndelete_files = \"deny\"\nrun_command = \"deny\"\nmcp_ext_papers_find_0a1b2c3d4e5f = \"deny\"\nfrobnicate = \"deny\"\n";
+        let unknown = super::write_raw(&root, text).unwrap();
+        assert_eq!(super::read_raw(&root).unwrap(), text);
+        let found = |name: &str| unknown.iter().find(|item| item.name == name).cloned();
+        assert_eq!(
+            found("run-command").and_then(|item| item.suggestion),
+            Some("run_command")
+        );
+        assert_eq!(
+            found("Run_Command").and_then(|item| item.suggestion),
+            Some("run_command")
+        );
+        assert_eq!(
+            found("delete_files").and_then(|item| item.suggestion),
+            Some("delete_file")
+        );
+        assert_eq!(found("frobnicate").map(|item| item.suggestion), Some(None));
+        assert_eq!(found("run_command"), None);
+        assert_eq!(found("mcp_ext_papers_find_0a1b2c3d4e5f"), None);
+        assert_eq!(unknown.len(), 4);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_misspelled_tool_used_in_several_projects_warns_once() {
+        let root = temp_root("raw-unknown-repeated");
+        let text = "[one]\nrun-command = \"deny\"\n\n[two]\nrun-command = \"deny\"\nfrobnicate = \"deny\"\n";
+        let unknown = super::write_raw(&root, text).unwrap();
+        let names: Vec<_> = unknown.iter().map(|item| item.name.as_str()).collect();
+        assert_eq!(names, ["frobnicate", "run-command"]);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn unknown_tool_warnings_name_the_rule_and_the_likely_tool() {
+        let warning = super::unknown_tool_warning(&super::UnknownTool {
+            name: "run-command".into(),
+            suggestion: Some("run_command"),
+        });
+        assert!(warning.contains("run-command"), "{warning}");
+        assert!(warning.contains("run_command"), "{warning}");
+        let warning = super::unknown_tool_warning(&super::UnknownTool {
+            name: "frobnicate".into(),
+            suggestion: None,
+        });
+        assert!(warning.contains("frobnicate"), "{warning}");
+        assert!(!warning.contains("approvals."), "{warning}");
     }
 
     #[test]
@@ -461,13 +779,59 @@ write_file = "allow"
             decision_for(&root, "proj", "run_command"),
             Some(ToolDecision::Deny)
         );
-        assert_eq!(effective_decision_for(&root, "proj", "run_command"), None);
+        assert_eq!(
+            effective_decision_for(&root, "proj", "run_command"),
+            Some(ToolDecision::Deny)
+        );
 
         set_mode(&root, "proj", ApprovalMode::Custom).unwrap();
         assert_eq!(
             effective_decision_for(&root, "proj", "run_command"),
             Some(ToolDecision::Deny)
         );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn deny_rules_apply_in_every_mode_and_allow_rules_only_in_custom() {
+        let root = temp_root("deny-every-mode");
+        set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
+        set_decision(&root, "proj", "write_file", Some(ToolDecision::Allow)).unwrap();
+
+        for mode in [
+            ApprovalMode::AskForApproval,
+            ApprovalMode::ApproveForMe,
+            ApprovalMode::FullAccess,
+            ApprovalMode::Custom,
+        ] {
+            set_mode(&root, "proj", mode).unwrap();
+            let allow = (mode == ApprovalMode::Custom).then_some(ToolDecision::Allow);
+            assert_eq!(
+                policy_for(&root, "proj", "run_command").unwrap(),
+                (mode, Some(ToolDecision::Deny)),
+                "{mode:?}"
+            );
+            assert_eq!(
+                effective_decision_for(&root, "proj", "run_command"),
+                Some(ToolDecision::Deny),
+                "{mode:?}"
+            );
+            assert_eq!(
+                policy_for(&root, "proj", "write_file").unwrap(),
+                (mode, allow),
+                "{mode:?}"
+            );
+            assert_eq!(
+                effective_decision_for(&root, "proj", "write_file"),
+                allow,
+                "{mode:?}"
+            );
+            assert_eq!(
+                policy_for(&root, "proj", "compile").unwrap(),
+                (mode, None),
+                "{mode:?}"
+            );
+        }
         std::fs::remove_dir_all(&root).ok();
     }
 

@@ -119,7 +119,7 @@ function preview(path: string): TaskFilePreview {
   const content = (text: string) => ({ exists: true, text, base64: null, mediaType: "text/plain", binary: false, truncated: false, size: text.length, sha256: text });
   return {
     path, change: "modified", before: content("before"), after: content(path),
-    projectSha256: "before", baseIsCurrent: true,
+    projectSha256: "before", baseIsCurrent: true, mergesWithShared: false,
   };
 }
 

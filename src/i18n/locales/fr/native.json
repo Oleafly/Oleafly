@@ -45,6 +45,11 @@
       "message": "L'accès complet permet à l'assistant d'exécuter des commandes shell et de modifier des fichiers sans demander votre autorisation à chaque fois. Activer l'accès complet ?",
       "confirm": "Activer l'accès complet"
     },
+    "sharedShellEscape": {
+      "title": "Autoriser les commandes externes dans ce projet partagé ?",
+      "message": "Toute personne qui peut modifier ce projet pourrait alors lancer des programmes sur cet ordinateur quand vous compilez. Autorisez-le seulement si vous faites confiance à tous les membres du projet.",
+      "confirm": "Autoriser sur cet ordinateur"
+    },
     "cookieImport": {
       "title": "Confirmer l'importation des cookies",
       "messageHost": "Importer les cookies de {{hostname}} depuis le profil {{browser}} « {{profile}} » vers le navigateur intégré d'Oleafly ? Les cookies importés peuvent vous connecter à des sites web.",
@@ -111,6 +116,14 @@
   "systemIntegration": {
     "openInOleafly": "Ouvrir dans Oleafly",
     "openWithOleafly": "Ouvrir avec Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (copie locale)"
+  },
+  "approvals": {
+    "helperRefused": "Refusé par la règle {{tool}} dans approvals.toml",
+    "unknownTool": "Aucun outil ne s'appelle {{name}}, donc la règle n'a aucun effet.",
+    "unknownToolSuggestion": "Aucun outil ne s'appelle {{name}}, donc la règle n'a aucun effet. Vouliez-vous dire {{suggestion}} ?"
   },
   "cloud": {
     "connectedPage": "Vous êtes connecté. Vous pouvez fermer cet onglet et retourner à Oleafly.",

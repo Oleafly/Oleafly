@@ -13,9 +13,14 @@ export function resolveTargetRange(
   return { from: line.from, to: line.to, original: line.text };
 }
 
+function sessionInFlight(): boolean {
+  const session = useInlineEditStore.getState().session;
+  return session !== null && session.phase !== "withdrawn";
+}
+
 export function openInlineEdit(view: EditorView): void {
   if (view.state.readOnly) return;
-  if (useInlineEditStore.getState().session) return; // one session at a time
+  if (sessionInFlight()) return;
   const { from, to, original } = resolveTargetRange(view.state);
   if (!original.trim()) return;
   useInlineEditStore.getState().open({ from, to, original });
@@ -34,7 +39,7 @@ export function openInlineEditWithInstruction(
   const store = useInlineEditStore.getState();
   // A session already in flight owns the widget; replacing it mid-stream would
   // strand the running request.
-  if (store.session) return false;
+  if (sessionInFlight()) return false;
   const { from, to, original } = resolveTargetRange(view.state);
   if (!original.trim()) return false;
   store.open({ from, to, original, instruction, autoRun: true });

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EntryRenamedEvent } from "@/store/files";
 import { useFileReferencesStore } from "@/store/file-references";
 import { useSettingsStore } from "@/store/settings";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
   readProjectSources: vi.fn(),
@@ -263,5 +264,22 @@ describe("applyReferencePlan", () => {
     expect(writes[0]).toBeLessThan(reads[1]);
     expect(writes[1]).toBeLessThan(reads[3]);
     expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("following a rename in a live shared project", () => {
+  afterEach(() => {
+    useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+  });
+
+  it("merges the new path into a closed file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: false, connecting: false });
+    useSettingsStore.getState().setFileMoveReferences("always");
+    disk({ "main.tex": "\\input{chapters/a}\r\nend\r\n", "chapters/a.tex": "" });
+    await followRename(renameEvent("chapters/a.tex", "chapters/b.tex", ["main.tex", "chapters/a.tex"]));
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith("p1", "main.tex", "\\input{chapters/b}\nend\n", {
+      crlf: true,
+      base: "\\input{chapters/a}\r\nend\r\n",
+    });
   });
 });

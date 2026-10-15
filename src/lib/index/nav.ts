@@ -4,6 +4,7 @@ import type { EditorView } from "@codemirror/view";
 import { editBackgroundDocument, type BackgroundDocumentChange } from "@oleafly/editor";
 import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption, sharedDocumentLive } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useReferencesStore } from "@/store/references";
@@ -666,14 +667,24 @@ async function writeRenamedFile(
   edits: readonly Edit[],
 ): Promise<"edited" | "ignored" | "failed"> {
   const text = applyEditsToText(base, edits);
-  if (files.files[file] !== undefined) {
-    if (!files.setContent(file, text)) return "failed";
+  const open = useFilesStore.getState().files[file];
+  if (open !== undefined) {
+    if (open.content === base) {
+      if (!files.setContent(file, text)) return "failed";
+    } else if (!open.dirty && sharedDocumentLive(projectId)) {
+      // A collaborator's edit reached the buffer after the rename was planned.
+      // Merge from the text the rename was computed on, so it isn't undone.
+      if (!files.setContent(file, text, { base })) return "failed";
+    } else {
+      // Writing text built from an older copy would drop the newer one.
+      return "failed";
+    }
     editBackgroundDocument(file, base, ascendingChanges(edits));
     return "edited";
   }
   if (!projectId) return "ignored";
   try {
-    await useFilesStore.getState().writeProjectFile(projectId, file, text);
+    await useFilesStore.getState().writeProjectFile(projectId, file, text, ...sharedBaseOption(projectId, base));
     return "edited";
   } catch {
     return "failed";

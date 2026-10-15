@@ -5,6 +5,7 @@ import { loadedPackageNames, usepackageEdit } from "@/lib/latex-package-index";
 import { readFileContent } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { useIndexStore } from "@/store/project-index";
 
 export type InsertOutcome = "editor" | "file" | "loaded" | "no-preamble";
@@ -46,7 +47,7 @@ export async function insertUsepackage(mainDoc: string, name: string, options: s
   if (files.files[mainDoc] !== undefined && files.setContent(mainDoc, next)) {
     await useFilesStore.getState().saveFile(mainDoc);
   } else {
-    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next);
+    await useFilesStore.getState().writeProjectFile(projectId, mainDoc, next, ...sharedBaseOption(projectId, text));
   }
   return "file";
 }

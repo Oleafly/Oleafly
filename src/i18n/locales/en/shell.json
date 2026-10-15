@@ -445,7 +445,8 @@
       "title": "Variant (this project)",
       "help": "A variant passes its own values to sys.inputs, such as a draft or a camera-ready build. The variant you pick stays on this computer. Add or edit variants in Document settings.",
       "none": "No variant"
-    }
+    },
+    "sharedViewer": "Viewers can't change these settings in a shared project."
   },
   "datePicker": {
     "placeholder": "Pick a date"
@@ -839,6 +840,10 @@
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"
       },
+      "liveCollaboration": {
+        "description": "Edit projects with other people through a collaboration server that you or your group runs. Adds a Collaboration section to Settings. Off by default while in beta.",
+        "label": "Live collaboration"
+      },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
       "webBrowser": {
         "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while in beta. When off, there is no browser button and the AI has no browser tool.",
@@ -918,6 +923,7 @@
     "nav": {
       "ai": "AI Assistant",
       "appearance": "Appearance",
+      "collaboration": "Collaboration",
       "data": "Data Storage",
       "dictionary": "Dictionary",
       "downloads": "Downloads",
@@ -933,6 +939,7 @@
       "keywords": {
         "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
         "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
+        "collaboration": "servers, sign in, devices, members, maintainers, sharing, teams, labs, live editing, real time, security log",
         "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
         "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",
         "downloads": "packages, fonts, dictionaries, offline files",
@@ -1399,6 +1406,13 @@
     "hideLog": "Hide the compile log",
     "showLog": "Show the compile log"
   },
+  "collabSync": {
+    "paused_one": "{{count}} file changed outside Oleafly. Send this change to everyone, or keep it local?",
+    "paused_other": "{{count}} files changed outside Oleafly. Send these changes to everyone, or keep them local?",
+    "send": "Send",
+    "keepLocal": "Keep local",
+    "unavailable": "The project folder is unavailable, so syncing is paused. It starts again when the folder is back."
+  },
   "overleafSync": {
     "button": "Overleaf sync",
     "title": "Sync with Overleaf",
@@ -1448,5 +1462,9 @@
       "allTheirs": "Use all of Overleaf's",
       "apply": "Apply and sync"
     }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly reloaded this window because it stopped responding for 30 seconds. Changes made just before that may not have been saved.",
+    "reloadedAgain": "Oleafly reloaded this window again because it stopped responding. It didn't reopen your project, in case something in it caused this."
   }
 }

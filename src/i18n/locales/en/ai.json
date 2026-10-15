@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Full access",
-        "description": "Run tool actions without asking for approval."
+        "description": "Run tool actions without asking, except tools a deny rule blocks."
       },
       "custom": {
         "label": "Custom (approvals.toml)",

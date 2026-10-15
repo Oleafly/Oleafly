@@ -37,7 +37,7 @@ vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath })
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/i18n/desktop", () => ({ changeLocalePreference: vi.fn(async () => undefined) }));
 
-import { loadNamespace } from "@/i18n/lazy-namespaces";
+import { loadNamespace } from "@/i18n";
 import { base64ToBytes } from "@/lib/base64";
 import { useCloudStore } from "@/store/cloud";
 import { useSettingsStore } from "@/store/settings";

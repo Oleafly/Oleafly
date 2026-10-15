@@ -34,5 +34,12 @@
   "prepExport": {
     "applied": "Button label after the prepared source was written into the document",
     "copied": "Button label after the prepared source was copied to the clipboard"
+  },
+  "rules": {
+    "refs-duplicate-bib-key": {
+      "title": "Preflight finding title. \"Citation key\" is the name a .bib entry is cited by, not a keyboard key. {{key}} is that name, for example smith2020",
+      "detail": "Detail of the finding for LaTeX projects. {{places}} is a list of file:line locations, for example refs.bib:4, extra.bib:1",
+      "detailTypst": "Detail of the finding for Typst projects, where a repeated key makes the compile fail. {{places}} is a list of file:line locations, for example refs.bib:4, extra.bib:1"
+    }
   }
 }

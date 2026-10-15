@@ -28,7 +28,7 @@ if ! changed="$(git diff --name-only "$base" "$head" 2>/dev/null)"; then
   run true
 fi
 
-pattern='^(src-tauri/windows/|src-tauri/src/system_integration|src-tauri/tauri(\.e2e)?\.conf\.json$|scripts/windows-installer-check\.ps1$|scripts/ci/(installer-changes|unpack-windows-e2e-app)\.sh$|\.github/workflows/ci\.yml$|package\.json$)'
+pattern='^(src-tauri/windows/|src-tauri/src/system_integration|src-tauri/tauri(\.e2e|\.windows)?\.conf\.json$|scripts/windows-installer-check\.ps1$|scripts/ci/(installer-changes|unpack-windows-e2e-app)\.sh$|\.github/workflows/ci\.yml$|package\.json$)'
 
 if grep -Eq "$pattern" <<<"$changed"; then
   run true

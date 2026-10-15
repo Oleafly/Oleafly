@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "フルアクセス",
-        "description": "確認なしでツールの操作を実行します。"
+        "description": "確認なしでツールの操作を実行します。deny のルールでブロックしたツールは除きます。"
       },
       "custom": {
         "label": "カスタム（approvals.toml）",

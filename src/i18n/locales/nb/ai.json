@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Full tilgang",
-        "description": "Kjør verktøyhandlinger uten å spørre om godkjenning."
+        "description": "Kjør verktøyhandlinger uten å spørre, unntatt verktøy som en deny-regel blokkerer."
       },
       "custom": {
         "label": "Egendefinert (approvals.toml)",
