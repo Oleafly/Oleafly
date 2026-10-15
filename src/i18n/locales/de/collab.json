@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly braucht ein Update",
     "serverTooOld": "Server braucht ein Update",
     "serverChanged": "Neuer Server unter dieser Adresse",
-    "failed": "Nach einem Fehler beendet"
+    "failed": "Nach einem Fehler beendet",
+    "engineSpent": "Neustart nötig"
   },
   "toolbar": {
     "noFile": "Keine Datei geöffnet",
@@ -689,6 +690,8 @@
     "serverChanged": "Die Adresse von {{server}} zeigt jetzt auf einen anderen Server. Entfernen Sie ihn in den Einstellungen für die Zusammenarbeit und fügen Sie ihn erneut hinzu. Ihre Änderungen bleiben auf diesem Computer.",
     "failed": "Der Abgleich dieses Projekts wurde nach einem Fehler beendet. Starten Sie ihn erneut, um weiterzuarbeiten.",
     "goLiveAgain": "Erneut abgleichen",
+    "engineSpent": "Starten Sie Oleafly neu, um den Abgleich dieses Projekts fortzusetzen.",
+    "restartApp": "Oleafly neu starten",
     "accessEnded": "Sie haben keinen Zugriff mehr auf {{server}}. Ihre Kopie bleibt als normales Projekt auf diesem Computer.",
     "accessEndedGuest": "Sie haben keinen Zugriff mehr auf {{server}}, weil Sie zu keinem seiner geteilten Projekte gehören. Ihre Kopie bleibt als normales Projekt auf diesem Computer.",
     "signIn": "Anmelden",

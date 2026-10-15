@@ -28,7 +28,10 @@ const spies = vi.hoisted(() => ({
   person: vi.fn(),
   review: vi.fn(),
   openProjectLocation: vi.fn(async () => true),
+  requestRestart: vi.fn(async () => undefined),
 }));
+
+vi.mock("@/lib/quit-flush", () => ({ requestRestart: spies.requestRestart }));
 
 vi.mock("@/lib/open-location", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/open-location")>()),
@@ -232,6 +235,12 @@ describe("CollabPane", () => {
     [{ status: { state: "ended", reason: "server_too_old" }, pending: 0 }, enCollab.sync.serverTooOld, "server-cog", "text-destructive"],
     [{ status: { state: "ended", reason: "server_changed" }, pending: 0 }, enCollab.sync.serverChanged, "replace", "text-destructive"],
     [{ status: { state: "ended", reason: "failed" }, pending: 0 }, enCollab.sync.failed, "circle-alert", "text-destructive"],
+    [
+      { status: { state: "ended", reason: "engine_spent" }, pending: 0 },
+      enCollab.sync.engineSpent,
+      "rotate-ccw",
+      "text-destructive",
+    ],
   ])("draws the state %j as its own icon and colour", (live, words, icon, tone) => {
     useCollabLiveStore.setState(live);
     render(<CollabPane />);
@@ -802,6 +811,24 @@ describe("CollabPane", () => {
     expect(details).toHaveTextContent(activity.failed);
     await user.click(within(details).getByRole("button", { name: activity.goLiveAgain }));
     expect(goLiveAgain).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers to restart Oleafly when too many shared documents broke in this run", async () => {
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "engine_spent" }, ended: "engine_spent" });
+    feed([{ kind: "engineSpent", at: NOW, count: 1 }]);
+    const user = userEvent.setup();
+    render(<CollabPane />);
+    const [row] = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(row).toHaveTextContent(activity.engineSpent);
+    expect(row.querySelector("svg.lucide-rotate-ccw")).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: activity.goLiveAgain })).toBeNull();
+    await user.click(within(row).getByRole("button", { name: activity.restartApp }));
+    expect(spies.requestRestart).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: enCollab.sync.engineSpent }));
+    const details = screen.getByRole("dialog", { name: pane.status });
+    expect(details).toHaveTextContent(activity.engineSpent);
+    await user.click(within(details).getByRole("button", { name: activity.restartApp }));
+    expect(spies.requestRestart).toHaveBeenCalledTimes(2);
   });
 
   it("keeps an old note that syncing stopped after an error without the button once it is live again", () => {

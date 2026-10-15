@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "服务器需要更新",
     "serverChanged": "该地址已换成新服务器",
-    "failed": "因出错已停止"
+    "failed": "因出错已停止",
+    "engineSpent": "需要重启"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -689,6 +690,8 @@
     "serverChanged": "{{server}} 的地址现在指向另一台服务器。请在协作设置中移除它，然后重新添加。你的更改会保留在这台电脑上。",
     "failed": "这个项目因出错已停止同步。重新开始同步即可继续。",
     "goLiveAgain": "重新同步",
+    "engineSpent": "重启 Oleafly，才能继续同步这个项目。",
+    "restartApp": "重启 Oleafly",
     "accessEnded": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。",
     "accessEndedGuest": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。",
     "signIn": "登录",

@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly behöver uppdateras",
     "serverTooOld": "Servern behöver uppdateras",
     "serverChanged": "Ny server på adressen",
-    "failed": "Stoppad efter ett fel"
+    "failed": "Stoppad efter ett fel",
+    "engineSpent": "Omstart krävs"
   },
   "toolbar": {
     "noFile": "Ingen fil öppen",
@@ -689,6 +690,8 @@
     "serverChanged": "Adressen till {{server}} leder nu till en annan server. Ta bort den i samarbetsinställningarna och lägg till den igen. Dina ändringar stannar på den här datorn.",
     "failed": "Synkningen av det här projektet stoppades efter ett fel. Starta den igen för att fortsätta.",
     "goLiveAgain": "Synka igen",
+    "engineSpent": "Starta om Oleafly för att fortsätta synka det här projektet.",
+    "restartApp": "Starta om Oleafly",
     "accessEnded": "Du har inte längre åtkomst till {{server}}. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "accessEndedGuest": "Du har inte längre åtkomst till {{server}} eftersom du inte är med i något av dess delade projekt. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "signIn": "Logga in",

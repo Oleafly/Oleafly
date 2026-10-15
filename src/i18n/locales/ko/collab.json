@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly 업데이트 필요",
     "serverTooOld": "서버 업데이트 필요",
     "serverChanged": "이 주소에 새 서버가 있음",
-    "failed": "오류로 중지됨"
+    "failed": "오류로 중지됨",
+    "engineSpent": "다시 시작해야 함"
   },
   "toolbar": {
     "noFile": "열린 파일 없음",
@@ -689,6 +690,8 @@
     "serverChanged": "{{server}} 주소가 이제 다른 서버를 가리킵니다. 공동 작업 설정에서 서버를 제거한 다음 다시 추가하세요. 변경 내용은 이 컴퓨터에 남아 있습니다.",
     "failed": "오류가 발생해 이 프로젝트의 동기화가 중지되었습니다. 계속하려면 동기화를 다시 시작하세요.",
     "goLiveAgain": "동기화 다시 시작",
+    "engineSpent": "이 프로젝트를 계속 동기화하려면 Oleafly를 다시 시작하세요.",
+    "restartApp": "Oleafly 다시 시작",
     "accessEnded": "더 이상 {{server}}에 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "accessEndedGuest": "{{server}}의 어떤 공유 프로젝트에도 속해 있지 않아 더 이상 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "signIn": "로그인",

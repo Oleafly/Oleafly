@@ -105,6 +105,8 @@ function endedEntry(state: CollabLiveStoreState, memory: FeedMemory, at: number)
       return { kind: "serverChanged", at, server: memory.server };
     case "failed":
       return { kind: "failed", at };
+    case "engine_spent":
+      return { kind: "engineSpent", at };
     default:
       return null;
   }

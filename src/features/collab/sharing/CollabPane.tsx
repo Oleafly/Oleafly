@@ -26,6 +26,7 @@ import {
   PencilLine,
   RadioTower,
   Replace,
+  RotateCcw,
   ServerCog,
   Share2,
   SlidersHorizontal,
@@ -51,6 +52,8 @@ import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatDateTime, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { collabLeaveProject, type CollabProjectMember } from "@/lib/tauri";
+import { logError } from "@/lib/log";
+import { requestRestart } from "@/lib/quit-flush";
 import { openUpdateWindow } from "@/lib/updater";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
@@ -92,6 +95,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   serverTooOld: ServerCog,
   serverChanged: Replace,
   failed: CircleAlert,
+  engineSpent: RotateCcw,
   memberAdded: UserRoundPlus,
   memberRemoved: UserRoundMinus,
   newDevice: MonitorSmartphone,
@@ -282,6 +286,8 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return t(($) => $.collab.activity.serverChanged, { server: entry.server });
     case "failed":
       return t(($) => $.collab.activity.failed);
+    case "engineSpent":
+      return t(($) => $.collab.activity.engineSpent);
     case "accessEnded":
       return entry.guest
         ? t(($) => $.collab.activity.accessEndedGuest, { server: entry.server })
@@ -320,29 +326,45 @@ function checkForUpdates() {
   void openUpdateWindow({ manual: true });
 }
 
-// Offered only while syncing is still stopped on that error.
-function GoLiveAgain({ className }: Readonly<{ className: string }>) {
+// The way on from an ending, offered only while syncing is still stopped for
+// that reason: going live again after an error, or restarting the app once
+// too many shared documents broke in this run.
+function EndedAction({ kind, className }: Readonly<{ kind: "failed" | "engineSpent"; className: string }>) {
   const { t } = useTranslation(["collab"]);
-  const stopped = useCollabLiveStore((state) => state.ended === "failed" && state.share !== null);
-  if (!stopped) return null;
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={className}
-      onClick={() => useCollabLiveStore.getState().goLiveAgain()}
-    >
-      {t(($) => $.collab.activity.goLiveAgain)}
-    </Button>
-  );
+  const ended = useCollabLiveStore((state) => state.ended);
+  const shared = useCollabLiveStore((state) => state.share !== null);
+  if (kind === "failed" && ended === "failed" && shared) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={className}
+        onClick={() => useCollabLiveStore.getState().goLiveAgain()}
+      >
+        {t(($) => $.collab.activity.goLiveAgain)}
+      </Button>
+    );
+  }
+  if (kind === "engineSpent" && ended === "engine_spent") {
+    return (
+      <Button type="button" variant="ghost" size="sm" className={className} onClick={restartApp}>
+        {t(($) => $.collab.activity.restartApp)}
+      </Button>
+    );
+  }
+  return null;
+}
+
+function restartApp() {
+  void requestRestart().catch((error: unknown) => logError("restart from collaboration", error));
 }
 
 const ActivityRow = memo(function ActivityRow({
   entry,
   now,
-  newestFailure = false,
-}: Readonly<{ entry: ActivityEntry; now: number; newestFailure?: boolean }>) {
+  newestEnding = false,
+}: Readonly<{ entry: ActivityEntry; now: number; newestEnding?: boolean }>) {
   const { t } = useTranslation(["collab", "shell"]);
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -416,7 +438,9 @@ const ActivityRow = memo(function ActivityRow({
               {t(($) => $.collab.share.openSettings)}
             </Button>
           ) : null}
-          {entry.kind === "failed" && newestFailure ? <GoLiveAgain className="h-6 px-1.5 text-xs" /> : null}
+          {(entry.kind === "failed" || entry.kind === "engineSpent") && newestEnding ? (
+            <EndedAction kind={entry.kind} className="h-6 px-1.5 text-xs" />
+          ) : null}
           {entry.kind === "mentioned" && entry.path ? (
             <Button
               type="button"
@@ -450,11 +474,11 @@ const ActivityList = memo(function ActivityList({
   if (entries.length === 0) {
     return <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.pane.empty)}</p>;
   }
-  const newestFailure = entries.find((entry) => entry.kind === "failed")?.id;
+  const newestEnding = entries.find((entry) => entry.kind === "failed" || entry.kind === "engineSpent")?.id;
   return (
     <ul aria-label={title} className="space-y-0.5">
       {entries.map((entry) => (
-        <ActivityRow key={entry.id} entry={entry} now={now} newestFailure={entry.id === newestFailure} />
+        <ActivityRow key={entry.id} entry={entry} now={now} newestEnding={entry.id === newestEnding} />
       ))}
     </ul>
   );
@@ -528,6 +552,18 @@ function EndedDetails({ state, server }: Readonly<{ state: SyncState; server: st
   }
   if (state === "serverTooOld") {
     return <p className="text-muted-foreground">{t(($) => $.collab.activity.serverTooOld, { server })}</p>;
+  }
+  if (state === "engineSpent") {
+    return (
+      <>
+        <p className="text-muted-foreground">{t(($) => $.collab.activity.engineSpent)}</p>
+        <PopoverClose asChild>
+          <Button type="button" variant="outline" size="sm" className={button} onClick={restartApp}>
+            {t(($) => $.collab.activity.restartApp)}
+          </Button>
+        </PopoverClose>
+      </>
+    );
   }
   if (state === "failed") {
     return (

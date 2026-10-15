@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly potřebuje aktualizaci",
     "serverTooOld": "Server potřebuje aktualizaci",
     "serverChanged": "Na adrese je nový server",
-    "failed": "Zastaveno po chybě"
+    "failed": "Zastaveno po chybě",
+    "engineSpent": "Je potřeba restart"
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
@@ -689,6 +690,8 @@
     "serverChanged": "Adresa serveru {{server}} teď vede na jiný server. Odeberte ho v nastavení spolupráce a přidejte ho znovu. Vaše změny zůstanou v tomto počítači.",
     "failed": "Synchronizace tohoto projektu se po chybě zastavila. Pokud chcete pokračovat, spusťte ji znovu.",
     "goLiveAgain": "Znovu synchronizovat",
+    "engineSpent": "Pokud chcete tento projekt dál synchronizovat, restartujte Oleafly.",
+    "restartApp": "Restartovat Oleafly",
     "accessEnded": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "accessEndedGuest": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "signIn": "Přihlásit se",

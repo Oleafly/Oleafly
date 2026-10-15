@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly needs an update",
     "serverTooOld": "Server needs an update",
     "serverChanged": "New server at this address",
-    "failed": "Stopped after an error"
+    "failed": "Stopped after an error",
+    "engineSpent": "Restart needed"
   },
   "toolbar": {
     "noFile": "No file open",
@@ -689,6 +690,8 @@
     "serverChanged": "The address of {{server}} now points at a different server. Remove it in Collaboration settings and add it again. Your changes stay on this computer.",
     "failed": "Syncing this project stopped after an error. Go live again to continue.",
     "goLiveAgain": "Go live again",
+    "engineSpent": "Restart Oleafly to keep syncing this project.",
+    "restartApp": "Restart Oleafly",
     "accessEnded": "You no longer have access to {{server}}. Your copy stays on this computer as an ordinary project.",
     "accessEndedGuest": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copy stays on this computer as an ordinary project.",
     "signIn": "Sign in",

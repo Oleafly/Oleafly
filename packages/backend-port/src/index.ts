@@ -1242,7 +1242,10 @@ export type CollabLiveEndReason =
     | "server_changed"
     // The document engine hit an error on a change. The next start skips
     // that change, so going live again continues.
-    | "failed";
+    | "failed"
+    // Too many shared documents broke in this run of the app, so a new start
+    // would fail too. Restarting the app clears it.
+    | "engine_spent";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }

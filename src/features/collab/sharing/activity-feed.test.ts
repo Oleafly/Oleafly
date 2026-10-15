@@ -284,6 +284,13 @@ describe("startCollabActivity", () => {
     expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind, server: "Smith Lab" });
   });
 
+  it("notes that syncing needs a restart of the app", () => {
+    joined("owner");
+    stop = startCollabActivity();
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "engine_spent" }, ended: "engine_spent" });
+    expect(useCollabActivity.getState().entries[0]).toMatchObject({ kind: "engineSpent" });
+  });
+
   it("notes that syncing stopped after an error", () => {
     joined("owner");
     stop = startCollabActivity();
