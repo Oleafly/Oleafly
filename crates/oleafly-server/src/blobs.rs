@@ -3,13 +3,17 @@ pub mod s3;
 pub mod sigv4;
 
 use std::fs;
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::Bytes;
+use futures_util::Stream;
 use oleafly_collab_protocol::ids::SharedProjectId;
-use ring::digest::{digest, SHA256};
+use ring::digest::{digest, Context, SHA256};
+use tokio::io::AsyncReadExt;
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::blobs::s3::{S3Blobs, S3Timeouts};
@@ -18,11 +22,150 @@ use crate::config::{BlobStoreConfig, S3Config, ServerConfig};
 use crate::error::ServerError;
 
 pub fn sha256_hex(bytes: &[u8]) -> String {
-    digest(&SHA256, bytes)
-        .as_ref()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    hex(digest(&SHA256, bytes).as_ref())
+}
+
+fn hex(digest: &[u8]) -> String {
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+// Stored files are read in pieces of at most this many bytes.
+const READ_PIECE: usize = 64 * 1024;
+// What `read_all` reserves up front, whatever size a store claims.
+const READ_ALL_RESERVE: usize = 1024 * 1024;
+
+pub type Pieces = Pin<Box<dyn Stream<Item = io::Result<Bytes>> + Send>>;
+
+enum Source {
+    File(tokio::fs::File),
+    S3(reqwest::Response),
+    Read(Option<Bytes>),
+}
+
+// A stored file or snapshot, read in pieces and checked against its hash as
+// it goes. The last piece comes out only once everything has matched, so a
+// damaged file ends in an error and never in a clean end.
+pub struct BlobReader {
+    source: Source,
+    size: u64,
+    read: u64,
+    check: Option<(Context, String)>,
+    // How long reading it whole may take, for a store that can stall.
+    within: Option<Duration>,
+}
+
+impl BlobReader {
+    fn new(source: Source, size: u64, hash: Option<&str>) -> BlobReader {
+        BlobReader {
+            source,
+            size,
+            read: 0,
+            check: hash.map(|hash| (Context::new(&SHA256), hash.to_string())),
+            within: None,
+        }
+    }
+
+    // A file already read whole and checked.
+    pub fn whole(bytes: Bytes) -> BlobReader {
+        let size = bytes.len() as u64;
+        BlobReader::new(Source::Read(Some(bytes)), size, None)
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    async fn next_piece(&mut self) -> io::Result<Option<Bytes>> {
+        if self.read >= self.size {
+            return Ok(None);
+        }
+        let left = usize::try_from(self.size - self.read).unwrap_or(READ_PIECE);
+        let piece = match &mut self.source {
+            Source::File(file) => {
+                let mut buffer = vec![0; left.min(READ_PIECE)];
+                let count = file.read(&mut buffer).await?;
+                buffer.truncate(count);
+                Bytes::from(buffer)
+            }
+            Source::S3(response) => response
+                .chunk()
+                .await
+                .map_err(io::Error::other)?
+                .unwrap_or_default(),
+            Source::Read(bytes) => bytes.take().unwrap_or_default(),
+        };
+        if piece.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "the stored file is shorter than it was stored",
+            ));
+        }
+        self.read += piece.len() as u64;
+        if self.read > self.size {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "the stored file is longer than it was stored",
+            ));
+        }
+        if let Some((context, _)) = &mut self.check {
+            context.update(&piece);
+        }
+        if self.read == self.size {
+            if let Some((context, expected)) = self.check.take() {
+                if hex(context.finish().as_ref()) != expected {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("the stored file {expected} does not match its hash"),
+                    ));
+                }
+            }
+        }
+        Ok(Some(piece))
+    }
+
+    pub async fn read_all(mut self) -> io::Result<Bytes> {
+        let within = self.within;
+        let reading = async move {
+            let reserve = usize::try_from(self.size)
+                .unwrap_or(0)
+                .min(READ_ALL_RESERVE);
+            let mut whole = Vec::with_capacity(reserve);
+            while let Some(piece) = self.next_piece().await? {
+                whole.extend_from_slice(&piece);
+            }
+            Ok(Bytes::from(whole))
+        };
+        match within {
+            Some(within) => tokio::time::timeout(within, reading)
+                .await
+                .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "the store stalled"))?,
+            None => reading.await,
+        }
+    }
+
+    pub fn pieces(self) -> Pieces {
+        Box::pin(futures_util::stream::try_unfold(
+            self,
+            |mut reader| async move { Ok(reader.next_piece().await?.map(|piece| (piece, reader))) },
+        ))
+    }
+}
+
+// Opens a file on disk to be read in pieces, checked against `hash` when
+// there is one.
+pub async fn open_file(
+    path: PathBuf,
+    hash: Option<&str>,
+) -> Result<Option<BlobReader>, ServerError> {
+    let unreadable =
+        |error: io::Error| ServerError::Internal(format!("could not read a stored file: {error}"));
+    let file = match tokio::fs::File::open(&path).await {
+        Ok(file) => file,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(unreadable(error)),
+    };
+    let size = file.metadata().await.map_err(unreadable)?.len();
+    Ok(Some(BlobReader::new(Source::File(file), size, hash)))
 }
 
 pub const SNAPSHOT_FOLDER: &str = "snapshots";
@@ -161,6 +304,33 @@ impl BlobStore {
             BlobStore::S3(store) => store.get(hash).await?,
         };
         verified(hash, "file", found).await
+    }
+
+    // Opens a stored file to be sent in pieces.
+    pub async fn open(&self, hash: &str) -> Result<Option<BlobReader>, ServerError> {
+        if !valid_hash(hash) {
+            return Ok(None);
+        }
+        match self {
+            BlobStore::Filesystem(store) => open_file(store.path_of(hash), Some(hash)).await,
+            BlobStore::S3(store) => store.open(hash).await,
+        }
+    }
+
+    pub async fn open_snapshot(
+        &self,
+        project: SharedProjectId,
+        hash: &str,
+    ) -> Result<Option<BlobReader>, ServerError> {
+        if !valid_hash(hash) {
+            return Ok(None);
+        }
+        match self {
+            BlobStore::Filesystem(store) => {
+                open_file(store.snapshot_path(project, hash), Some(hash)).await
+            }
+            BlobStore::S3(store) => store.open_snapshot(project, hash).await,
+        }
     }
 
     pub async fn remove(&self, hash: &str) -> Result<(), ServerError> {

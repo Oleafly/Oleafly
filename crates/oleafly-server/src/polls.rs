@@ -24,6 +24,10 @@ pub const REVOCATION_CHECK: Duration = Duration::from_secs(5 * 60);
 pub const MAX_POLL_SESSIONS: usize = 10_000;
 pub const MAX_POLL_SESSIONS_PER_ACCOUNT: usize = 64;
 pub const MAX_BATCH_BYTES: usize = 4 * 1024 * 1024;
+// Posts one account may have being read at once, across all its long
+// polls, so slowly arriving bodies can't hold memory however many
+// sessions the account opens.
+pub const MAX_POSTS_PER_ACCOUNT: usize = 8;
 
 pub struct PollHub {
     sessions: Mutex<HashMap<String, Arc<PollSession>>>,
@@ -32,8 +36,30 @@ pub struct PollHub {
     revocation_check_ms: AtomicU64,
     stopping: AtomicBool,
     account_cap: AtomicUsize,
+    posting: Mutex<HashMap<AccountId, usize>>,
     #[cfg(any(test, feature = "test-support"))]
     pause: Mutex<Option<OpenPause>>,
+}
+
+pub(crate) struct PostTurn<'a> {
+    hub: &'a PollHub,
+    account: AccountId,
+}
+
+impl Drop for PostTurn<'_> {
+    fn drop(&mut self) {
+        let mut posting = self
+            .hub
+            .posting
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(count) = posting.get_mut(&self.account) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                posting.remove(&self.account);
+            }
+        }
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -58,9 +84,20 @@ impl PollHub {
             revocation_check_ms: AtomicU64::new(millis(REVOCATION_CHECK)),
             stopping: AtomicBool::new(false),
             account_cap: AtomicUsize::new(MAX_POLL_SESSIONS_PER_ACCOUNT),
+            posting: Mutex::new(HashMap::new()),
             #[cfg(any(test, feature = "test-support"))]
             pause: Mutex::new(None),
         }
+    }
+
+    pub(crate) fn post_turn(&self, account: AccountId) -> Option<PostTurn<'_>> {
+        let mut posting = self.posting.lock().unwrap_or_else(PoisonError::into_inner);
+        let count = posting.entry(account).or_insert(0);
+        if *count >= MAX_POSTS_PER_ACCOUNT {
+            return None;
+        }
+        *count += 1;
+        Some(PostTurn { hub: self, account })
     }
 
     pub fn set_revocation_check(&self, every: Duration) {

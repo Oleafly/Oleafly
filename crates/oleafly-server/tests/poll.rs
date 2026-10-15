@@ -1009,6 +1009,50 @@ async fn a_long_poll_reads_one_post_at_a_time() {
 }
 
 #[tokio::test]
+async fn an_account_has_at_most_eight_posts_read_at_once_across_its_long_polls() {
+    let stage = stage().await;
+    quick(&stage);
+    let device = TestDevice::generate();
+    let tokens = oleafly_server::test_support::sign_in(&stage.server, "github2", &device, None)
+        .await
+        .expect("alice signs in on a second device");
+    let second = people::Person { device, tokens };
+    let mut sessions = Vec::new();
+    for index in 0..=oleafly_server::polls::MAX_POSTS_PER_ACCOUNT {
+        let project = share_project(&stage.server, &stage.alice, &format!("Notes {index}"))
+            .await
+            .project_id;
+        let device = if index % 2 == 0 {
+            &stage.alice
+        } else {
+            &second
+        };
+        sessions.push((project, opened(&stage.server, device, project).await));
+    }
+    let (last, rest) = sessions.split_last().expect("sessions");
+    let mut stalled = Vec::new();
+    for (project, session) in rest {
+        stalled.push(start_post(&stage, *project, &session.key, 1_000).await);
+    }
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let answer = last
+            .1
+            .post_with(&last.1.key, vec![ClientFrame::Ping { id: 1 }])
+            .await;
+        if answer.status() == StatusCode::TOO_MANY_REQUESTS {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "a ninth post was read while eight were still arriving"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    drop(stalled);
+}
+
+#[tokio::test]
 async fn a_large_post_waits_for_room_in_the_transfer_budget_before_it_is_read() {
     let stage = stage().await;
     quick(&stage);

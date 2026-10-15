@@ -1,9 +1,12 @@
 mod people;
 
 use loro::{ExportMode, LoroDoc, LoroMap};
-use oleafly_collab_protocol::admin::RuntimeSettingsPatch;
+use oleafly_collab_protocol::admin::{
+    Page, RuntimeSettingsPatch, SecurityEvent, SecurityEventKind,
+};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
+use oleafly_collab_protocol::console::{AdminOverview, HealthIssue};
 use oleafly_collab_protocol::frames::ClientFrame;
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::SharedProjectId;
@@ -502,4 +505,93 @@ async fn a_document_kept_for_mention_scans_never_lets_a_comment_through_unchecke
     let mut writer = Writer::open(&stage, &stage.alice, project, 43).await;
     let refused = writer.send(&stage.alice, project, add_thread).await;
     assert!(refused_for_comments(&refused), "{refused:?}");
+}
+
+async fn comment_changes_logged(stage: &Stage) -> Vec<SecurityEvent> {
+    let page: Page<SecurityEvent> = call(
+        &stage.server,
+        Method::GET,
+        "/api/v1/admin/security-log",
+        stage.bob.token(),
+        None,
+    )
+    .await
+    .json()
+    .await
+    .expect("the security log");
+    page.items
+        .into_iter()
+        .filter(|event| event.kind == SecurityEventKind::CommentsChangedWhileOff)
+        .collect()
+}
+
+#[tokio::test]
+async fn a_comment_stored_unchecked_is_checked_once_the_budget_allows_and_reported() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_project_comments(&stage, project, false).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    });
+    let mut writer = Writer::open(&stage, &stage.alice, project, 44).await;
+    let thread = writer.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(thread, ServerFrame::Ack { seq: 1, .. }),
+        "{thread:?}"
+    );
+    let typed = writer.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(typed, ServerFrame::Ack { seq: 2, .. }),
+        "{typed:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert!(comment_changes_logged(&stage).await.is_empty());
+
+    state.snapshots.set_budget(Budget::default());
+    let checked = writer.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(checked, ServerFrame::Ack { seq: 3, .. }),
+        "{checked:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    let logged = comment_changes_logged(&stage).await;
+    assert_eq!(logged.len(), 1, "only the new thread changed comments");
+    assert_eq!(logged[0].actor, Some(stage.alice.tokens.account_id));
+    assert_eq!(logged[0].target, Some(project.to_string()));
+    assert_eq!(logged[0].detail["seq"], 1);
+    let overview: AdminOverview = call(
+        &stage.server,
+        Method::GET,
+        "/api/v1/admin/overview",
+        stage.bob.token(),
+        None,
+    )
+    .await
+    .json()
+    .await
+    .expect("the overview");
+    assert!(overview
+        .health
+        .issues
+        .contains(&HealthIssue::CommentsChangedWhileOff));
+    let [noticed] = overview.comments_changed_while_off.as_slice() else {
+        panic!("one change is named: {overview:?}");
+    };
+    assert_eq!(noticed.project_id, project);
+    assert_eq!(noticed.project_title.as_deref(), Some("Thesis"));
+    assert_eq!(noticed.account_id, Some(stage.alice.tokens.account_id));
+    let waiting: i64 = state
+        .db
+        .call(|conn| {
+            Ok(
+                conn.query_row("SELECT COUNT(*) FROM comment_rechecks", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        })
+        .await
+        .expect("the queue");
+    assert_eq!(waiting, 0);
 }

@@ -19,7 +19,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::auth::devices;
-use crate::comment_guard::Verdict;
+use crate::comment_guard::{self, Verdict};
+use crate::db::Written;
 use crate::error::ServerError;
 use crate::members;
 use crate::mentions;
@@ -51,6 +52,7 @@ const BRIEF_SEND: Duration = Duration::from_secs(5);
 // Frames at least this large are parsed and encoded on the blocking pool.
 pub const ASIDE_BYTES: usize = 256 * 1024;
 const TOO_LARGE: &str = "This change is too large to send.";
+const RESTARTING: &str = "The server is restarting.";
 const NOT_A_HELLO: &str = "The first frame must be a hello.";
 
 pub fn router() -> Router<AppState> {
@@ -75,7 +77,7 @@ async fn upgrade(
         Ok(caller) => caller,
         Err(error) => return error.into_response(),
     };
-    let Some(slot) = state.sockets.open_slot(caller.account_id) else {
+    let Some(slot) = state.sockets.open_slot(caller.account_id, caller.device_id) else {
         tracing::info!(
             account = %caller.account_id,
             "refused a connection over the open connection limit"
@@ -197,6 +199,9 @@ async fn run(
     caller: Authenticated,
     _slot: SocketSlot,
 ) {
+    if state.sockets.is_restarting() {
+        return close(&mut socket, close_code::RESTART, RESTARTING).await;
+    }
     let nonce = random_token();
     let challenge = ServerFrame::Challenge {
         nonce: nonce.clone(),
@@ -205,7 +210,15 @@ async fn run(
     if !send(&mut socket, &challenge).await {
         return;
     }
-    let hello = match tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)).await {
+    let waited = tokio::select! {
+        biased;
+        () = state.sockets.restarted() => None,
+        waited = tokio::time::timeout(HELLO_TIMEOUT, next_hello(&mut socket)) => Some(waited),
+    };
+    let Some(waited) = waited else {
+        return close(&mut socket, close_code::RESTART, RESTARTING).await;
+    };
+    let hello = match waited {
         Ok(Incoming::Frame(frame)) => frame,
         Ok(Incoming::Malformed) => {
             return refuse(&mut socket, FrameErrorCode::BadFrame, NOT_A_HELLO).await
@@ -527,14 +540,7 @@ impl<'a> Link<'a> {
                 )
                 .await;
             }
-            Ending::Restarting => {
-                close(
-                    self.socket,
-                    close_code::RESTART,
-                    "The server is restarting.",
-                )
-                .await;
-            }
+            Ending::Restarting => close(self.socket, close_code::RESTART, RESTARTING).await,
             Ending::Stalled => {
                 tracing::info!(device = %device, "closed a connection that stopped reading");
             }
@@ -636,6 +642,16 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
 enum Appendix {
     Stored(projects::Appended),
     Unchecked(Envelope, peers::Reach, Vec<u8>),
+}
+
+// Where a change stands with the comment check as it is stored.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Check {
+    // Not asked yet: with comments off, the change comes back unstored.
+    Pending,
+    Passed,
+    // Stored without the check, which runs once the budget allows.
+    Later,
 }
 
 struct ReadChange {
@@ -906,22 +922,25 @@ impl Peer<'_> {
         };
         let batch = envelope.batch_id;
         let first = self
-            .append(project, envelope, reach, stored, false, mention)
+            .append(project, envelope, reach, stored, Check::Pending, mention)
             .await;
         let appended = match first {
             Ok(Appendix::Stored(appended)) => Ok(appended),
             Ok(Appendix::Unchecked(envelope, reach, stored)) => {
-                if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
-                    return refusal;
-                }
+                let check = match self.comment_check(project, &envelope).await {
+                    Ok(check) => check,
+                    Err(refusal) => return refusal,
+                };
                 let checked = self
-                    .append(project, envelope, reach, stored, true, mention)
+                    .append(project, envelope, reach, stored, check, mention)
                     .await;
                 if checked.is_err() {
                     self.state
                         .comment_guard
                         .forget(&self.state.snapshots, project)
                         .await;
+                } else if check == Check::Later {
+                    self.state.comment_guard.recheck(self.state, project);
                 }
                 checked.and_then(|appended| match appended {
                     Appendix::Stored(appended) => Ok(appended),
@@ -965,14 +984,15 @@ impl Peer<'_> {
         }
     }
 
-    async fn refuse_comment_change(
+    // Checks a change to a project with comments off, and refuses one that
+    // changes comments.
+    async fn comment_check(
         &self,
         project: SharedProjectId,
         envelope: &Envelope,
-    ) -> Option<ServerFrame> {
-        let verdict = self
-            .state
-            .comment_guard
+    ) -> Result<Check, ServerFrame> {
+        let guard = &self.state.comment_guard;
+        let verdict = guard
             .check(
                 &self.state.db,
                 &self.state.snapshots,
@@ -980,17 +1000,24 @@ impl Peer<'_> {
                 envelope.payload.clone(),
             )
             .await;
+        if matches!(
+            verdict,
+            Ok(Verdict::Allowed | Verdict::ChangesComments | Verdict::Unreadable)
+        ) {
+            guard.read_project(self.state, project);
+        }
         match verdict {
-            Ok(Verdict::Allowed | Verdict::Unchecked) => None,
-            Ok(Verdict::ChangesComments) => Some(frame_error(
+            Ok(Verdict::Allowed) => Ok(Check::Passed),
+            Ok(Verdict::Unchecked) => Ok(Check::Later),
+            Ok(Verdict::ChangesComments) => Err(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
             )),
-            Ok(Verdict::Unreadable) => Some(frame_error(
+            Ok(Verdict::Unreadable) => Err(frame_error(
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
             )),
-            Err(_) => Some(frame_error(
+            Err(_) => Err(frame_error(
                 FrameErrorCode::Internal,
                 "The server could not store this change.",
             )),
@@ -1003,7 +1030,7 @@ impl Peer<'_> {
         envelope: Envelope,
         reach: peers::Reach,
         stored: Vec<u8>,
-        checked: bool,
+        check: Check,
         mention: bool,
     ) -> Result<Appendix, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
@@ -1013,39 +1040,40 @@ impl Peer<'_> {
         let connection = self.connection;
         self.state
             .db
-            .call(move |conn| {
-                let transaction = conn.transaction()?;
+            .write_grouped(move |transaction| {
                 let row =
-                    projects::project_row(&transaction, project)?.ok_or(ServerError::NotFound)?;
-                let role = projects::role_of(&transaction, project, account)?
+                    projects::project_row(transaction, project)?.ok_or(ServerError::NotFound)?;
+                let role = projects::role_of(transaction, project, account)?
                     .ok_or(ServerError::NotFound)?;
                 if row.status != ProjectStatus::Active
                     || !project_role_allows(role, ProjectAction::Edit)
                 {
                     return Err(ServerError::Forbidden);
                 }
-                if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
-                    return Ok(Appendix::Stored(projects::Appended {
+                if let Some(seq) = projects::stored_batch(transaction, project, batch)? {
+                    return Ok(Written::now(Appendix::Stored(projects::Appended {
                         seq,
                         duplicate: true,
-                    }));
+                    })));
                 }
-                match peers::claim(&transaction, project, device, &reach)? {
+                let nothing_new =
+                    || Written::now(Appendix::Stored(projects::Appended::nothing_new()));
+                match peers::claim(transaction, project, device, &reach)? {
                     Claim::Taken(_) => return Err(ServerError::Unauthorized),
-                    Claim::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
+                    Claim::Known => return Ok(nothing_new()),
                     Claim::Fresh(_) => {}
                 }
-                if !checked && !comments_on(&transaction, &row)? {
-                    return Ok(Appendix::Unchecked(envelope, reach, stored));
+                if check == Check::Pending && !comments_on(transaction, &row)? {
+                    return Ok(Written::now(Appendix::Unchecked(envelope, reach, stored)));
                 }
                 let after =
-                    projects::log_bytes(&transaction, project)?.saturating_add(stored.len() as u64);
+                    projects::log_bytes(transaction, project)?.saturating_add(stored.len() as u64);
                 if after > limit_mb.saturating_mul(1024 * 1024) {
                     return Err(projects::too_large_for(limit_mb));
                 }
-                match peers::bind(&transaction, project, device, account, &reach, now)? {
+                match peers::bind(transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
-                    Bound::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
+                    Bound::Known => return Ok(nothing_new()),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(
@@ -1054,7 +1082,7 @@ impl Peer<'_> {
                     }
                 }
                 let appended = projects::append_update_in(
-                    &transaction,
+                    transaction,
                     project,
                     batch,
                     device,
@@ -1063,22 +1091,40 @@ impl Peer<'_> {
                     now,
                 )?;
                 if mention && !appended.duplicate {
-                    mentions::queue(&transaction, project, appended.seq, &reach)?;
+                    mentions::queue(transaction, project, appended.seq, &reach)?;
                 }
-                transaction.commit()?;
-                if !appended.duplicate {
-                    rooms.publish(
+                if check == Check::Later && !appended.duplicate {
+                    comment_guard::queue_recheck(
+                        transaction,
                         project,
-                        Some(connection),
-                        ServerFrame::Update {
-                            project_id: project,
-                            seq: appended.seq,
-                            account_id: Some(account),
-                            envelope,
-                        },
-                    );
+                        appended.seq,
+                        &reach,
+                        account,
+                        device,
+                        now,
+                    )?;
                 }
-                Ok(Appendix::Stored(appended))
+                let then: Option<Box<dyn FnOnce() + Send>> = if appended.duplicate {
+                    None
+                } else {
+                    let seq = appended.seq;
+                    Some(Box::new(move || {
+                        rooms.publish(
+                            project,
+                            Some(connection),
+                            ServerFrame::Update {
+                                project_id: project,
+                                seq,
+                                account_id: Some(account),
+                                envelope,
+                            },
+                        );
+                    }))
+                };
+                Ok(Written {
+                    value: Appendix::Stored(appended),
+                    then,
+                })
             })
             .await
     }
@@ -1235,6 +1281,12 @@ impl Session<'_> {
         };
         let mut cursor = since;
         loop {
+            // A long catch-up doesn't hear the control channel until it's
+            // done, so it checks for a restart between pages.
+            if self.state.sockets.is_restarting() {
+                link.ending = Some(Ending::Restarting);
+                return false;
+            }
             let Ok(page) = backlog_page(self.state, project, cursor).await else {
                 return false;
             };

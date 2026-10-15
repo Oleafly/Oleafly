@@ -98,6 +98,66 @@ fn quick_links(server: &TestServer, timing: LinkTiming) {
     server.state().sockets.set_timing(timing);
 }
 
+// Waits for this socket's acknowledgement, passing over changes others
+// made in the meantime, and gives its seq.
+async fn acknowledged_seq(socket: &mut Socket) -> u64 {
+    loop {
+        match next_frame(socket).await {
+            Some(ServerFrame::Ack { seq, .. }) => return seq,
+            Some(ServerFrame::Update { .. } | ServerFrame::PresenceLeft { .. }) => {}
+            other => panic!("expected an acknowledgement, got {other:?}"),
+        }
+    }
+}
+
+#[tokio::test]
+async fn changes_that_arrive_together_share_one_commit_and_both_are_acknowledged() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let db = stage.server.state().db.clone();
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut alice, project, 0).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    subscribe(&mut bob, project, 0).await;
+    let (held, holding) = std::sync::mpsc::channel::<()>();
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    let writer = tokio::spawn({
+        let db = db.clone();
+        async move {
+            db.call(move |_| {
+                let _ = held.send(());
+                let _ = released.recv();
+                Ok(())
+            })
+            .await
+        }
+    });
+    tokio::task::spawn_blocking(move || holding.recv())
+        .await
+        .expect("a wait")
+        .expect("the writer is busy");
+    let commits = db.grouped_commits();
+    send_update(&mut alice, &envelope(&stage.alice, project, b"from alice")).await;
+    send_update(&mut bob, &envelope(&stage.bob, project, b"from bob")).await;
+    assert!(
+        eventually(|| db.waiting_writes() == 2, Duration::from_secs(5)).await,
+        "both changes wait for the writer"
+    );
+    release.send(()).expect("release the writer");
+    writer.await.expect("the busy write").expect("it finishes");
+    let mut seqs = [
+        acknowledged_seq(&mut alice).await,
+        acknowledged_seq(&mut bob).await,
+    ];
+    seqs.sort_unstable();
+    assert_eq!(seqs, [1, 2]);
+    assert_eq!(
+        db.grouped_commits(),
+        commits + 1,
+        "the two changes were committed together"
+    );
+}
+
 #[tokio::test]
 async fn a_subscriber_that_stops_reading_is_dropped_while_the_writer_keeps_going() {
     let stage = stage().await;
