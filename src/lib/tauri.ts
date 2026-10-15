@@ -1845,6 +1845,9 @@ export const collabLiveStop = (projectId: string) =>
   invoke<void>("collab_live_stop", { projectId });
 export const collabLiveFlush = (projectId: string) =>
   invoke<void>("collab_live_flush", { projectId });
+// Asks a live session that waits between reconnect tries to try now. It
+// answers even with nothing running, so callers can fire and forget.
+export const collabLiveReconnectNow = () => invoke<void>("collab_live_reconnect_now");
 export async function collabDocOpen(
   projectId: string,
   path: string,
