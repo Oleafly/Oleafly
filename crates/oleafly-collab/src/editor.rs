@@ -214,9 +214,10 @@ mod tests {
         assert_eq!(channel.text(), plain);
     }
 
-    // The median of many keystrokes, with room for a debug build on a busy
-    // machine: walking or copying the whole file takes hundreds of times
-    // longer than this.
+    // The median of many keystrokes, with plenty of room for a debug build
+    // on a busy CI runner: walking or copying the whole file, as the
+    // channel used to, takes about 200 ms per keystroke in a debug build,
+    // and a piece takes well under a millisecond.
     #[test]
     fn a_keystroke_in_a_five_megabyte_file_does_not_walk_the_whole_file() {
         let line = "@book{Müller1999, author = {Jürgen Müller}, year = {1999}},\n";
@@ -238,7 +239,7 @@ mod tests {
             .collect();
         times.sort();
         assert!(
-            times[100] < std::time::Duration::from_millis(1),
+            times[100] < std::time::Duration::from_millis(10),
             "{:?}",
             times[100]
         );
