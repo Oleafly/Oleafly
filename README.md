@@ -27,7 +27,7 @@ Free forever · Open source · No Oleafly account · No tracking
 </div>
 
 <div align="center">
-  <img src="docs/assets/readme/hero-workspace.png" alt="Oleafly with a LaTeX paper open: the source editor with two coauthors' cursors, the compiled PDF, and an AI agent panel" width="100%" />
+  <img src="docs/assets/readme/hero-collab.png" alt="Oleafly with a LaTeX paper open: the source editor with two coauthors' cursors, the compiled PDF, and an AI agent panel" width="100%" />
 </div>
 
 ## Why Oleafly
@@ -46,7 +46,7 @@ Oleafly is a desktop editor with live collaboration built in. Your files live on
 Share a project to your lab's Oleafly Server and everyone edits the same files at once. You see each person's cursor and selection, who's online, and what changed while you were away. Click someone's avatar to jump to the line they're working on.
 
 <p align="center">
-  <img src="docs/assets/readme/live-collaboration.png" alt="Two coauthors editing the same LaTeX file in Oleafly, with their cursors, avatars and the People and Activity pane" width="100%" />
+  <img src="docs/assets/readme/live-comments.png" alt="Two coauthors editing the same LaTeX file in Oleafly, with their cursors, avatars and the People and Activity pane" width="100%" />
 </p>
 
 - Comment on any selection in LaTeX, Typst or Markdown, then reply, mention someone, resolve or reopen. A mentioned coauthor gets one email, and can turn those off.
@@ -78,7 +78,7 @@ Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, ba
 Turn on cloud sync and your library projects and app settings follow you from your laptop to your desktop. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
 
 <p align="center">
-  <img src="docs/assets/readme/cloud-sync.png" alt="Oleafly Cloud sync settings with the Dropbox card and a list of what syncs" width="100%" />
+  <img src="docs/assets/readme/cloud-sync-dropbox.png" alt="Oleafly Cloud sync settings with the Dropbox card and a list of what syncs" width="100%" />
 </p>
 
 - When two computers edit the same file, both versions are kept, each named after the computer that wrote it.
@@ -93,7 +93,7 @@ Moving from an online LaTeX editor? Sign in to your account once from Oleafly, p
 With a Git token from that account, Oleafly can keep an imported project in sync both ways, so coauthors who stay online keep working the way they do now. Two-way sync uses the service's own Git integration, which needs a paid or university plan on the project owner's account.
 
 <p align="center">
-  <img src="docs/assets/readme/import-online.png" alt="Oleafly Import a project dialog with options for local files, arXiv, GitHub and an online LaTeX account" width="100%" />
+  <img src="docs/assets/readme/import-dialog.png" alt="Oleafly Import a project dialog with options for local files, arXiv, GitHub and an online LaTeX account" width="100%" />
 </p>
 
 You can also start from a project ZIP, a GitHub repository, a Word document, an arXiv source bundle, or a PDF that Oleafly rebuilds as editable LaTeX. Or open a folder where it already is.
