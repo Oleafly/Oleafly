@@ -897,7 +897,8 @@
     "malformed": "Oleafly nie może otworzyć tego linku. Poproś osobę, która go wysłała, o nowy.",
     "opening": "Otwieranie udostępnionego projektu…",
     "downloading": "Pobieranie plików: {{done}} z {{total}}",
-    "cancelNamed": "Przerwij otwieranie {{name}}",
+    "cancelNamed": "Anuluj otwieranie {{name}}",
+    "cancelling": "Anulowanie…",
     "confirm": {
       "title": "Dołączyć do tego udostępnionego projektu?",
       "body": "Dołączenie doda Cię do projektu i skopiuje jego pliki na ten komputer. Dołącz tylko wtedy, gdy wiesz, kto wysłał Ci link.",

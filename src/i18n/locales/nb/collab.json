@@ -897,7 +897,8 @@
     "malformed": "Oleafly kan ikke åpne denne lenken. Be den som sendte den, om en ny.",
     "opening": "Åpner det delte prosjektet…",
     "downloading": "Laster ned filer: {{done}} av {{total}}",
-    "cancelNamed": "Stopp åpningen av {{name}}",
+    "cancelNamed": "Avbryt åpningen av {{name}}",
+    "cancelling": "Avbryter…",
     "confirm": {
       "title": "Vil du bli med i dette delte prosjektet?",
       "body": "Når du blir med, legges du til i prosjektet, og filene kopieres til denne datamaskinen. Bli bare med hvis du vet hvem som sendte deg lenken.",

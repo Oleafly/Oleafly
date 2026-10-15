@@ -897,7 +897,8 @@
     "malformed": "Oleafly can't open this link. Ask the person who sent it for a new one.",
     "opening": "Opening the shared project…",
     "downloading": "Downloading files: {{done}} of {{total}}",
-    "cancelNamed": "Stop opening {{name}}",
+    "cancelNamed": "Cancel opening {{name}}",
+    "cancelling": "Cancelling…",
     "confirm": {
       "title": "Join this shared project?",
       "body": "Joining adds you to the project and copies its files to this computer. Only join if you know who sent you the link.",

@@ -897,7 +897,8 @@
     "malformed": "Oleafly ne peut pas ouvrir ce lien. Demandez-en un nouveau à la personne qui vous l'a envoyé.",
     "opening": "Ouverture du projet partagé…",
     "downloading": "Téléchargement des fichiers : {{done}} sur {{total}}",
-    "cancelNamed": "Arrêter l'ouverture de {{name}}",
+    "cancelNamed": "Annuler l'ouverture de {{name}}",
+    "cancelling": "Annulation…",
     "confirm": {
       "title": "Rejoindre ce projet partagé ?",
       "body": "En le rejoignant, vous êtes ajouté au projet et ses fichiers sont copiés sur cet ordinateur. Ne le rejoignez que si vous savez qui vous a envoyé le lien.",

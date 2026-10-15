@@ -897,7 +897,8 @@
     "malformed": "Oleafly에서 이 링크를 열 수 없습니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
     "opening": "공유 프로젝트를 여는 중…",
     "downloading": "파일 다운로드 중: {{total}}개 중 {{done}}개",
-    "cancelNamed": "{{name}} 열기 중지",
+    "cancelNamed": "{{name}} 열기 취소",
+    "cancelling": "취소하는 중…",
     "confirm": {
       "title": "이 공유 프로젝트에 참여할까요?",
       "body": "참여하면 프로젝트에 추가되고 프로젝트 파일이 이 컴퓨터로 복사됩니다. 링크를 보낸 사람을 아는 경우에만 참여하세요.",

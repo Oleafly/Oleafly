@@ -398,12 +398,15 @@ describe("LinkIntake", () => {
     const report = (sharedProjectId: string, done: number, total: number) =>
       act(() => events.get("collab-join-progress")?.({ payload: { serverId: SERVER_ID, sharedProjectId, done, total } }));
     report(PROJECT, 3, 12);
-    expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
-    expect(within(opening).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    const downloading = fill(copy.downloading, { done: "3", total: "12" });
+    expect(within(opening).getByRole("status")).toHaveTextContent(downloading);
+    expect(within(opening).getByRole("progressbar", { name: downloading })).toHaveAttribute("aria-valuenow", "25");
     report("01920000-0000-7000-8000-0000000000bb", 9, 9);
     expect(within(opening).getByText(fill(copy.downloading, { done: "3", total: "12" }))).toBeInTheDocument();
     await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
     expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, PROJECT);
+    expect(within(opening).getByRole("status")).toHaveTextContent(copy.cancelling);
+    expect(within(opening).getByRole("button", { name: enCommon.actions.cancel })).toBeDisabled();
     await act(async () => join.reject(collabError("cancelled")));
     await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
     expect(screen.queryByTestId("collab-link-notice")).toBeNull();

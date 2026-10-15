@@ -265,8 +265,12 @@ function ShareStep({
       }
       return (
         <div className="space-y-1.5">
-          <Progress value={counting ? (upload.done / upload.total) * 100 : 0} indeterminate={!counting} />
-          <p className="text-xs text-muted-foreground">{phase}</p>
+          <Progress
+            value={counting ? (upload.done / upload.total) * 100 : 0}
+            indeterminate={!counting}
+            label={phase}
+          />
+          <output className="block text-xs text-muted-foreground">{phase}</output>
         </div>
       );
     }
@@ -295,7 +299,7 @@ function ShareStep({
           {t(($) => $.common.actions.cancel)}
         </Button>
         <Button type="button" disabled={blocked || sharing} onClick={() => void start()}>
-          {sharing ? <Spinner /> : <Share2 aria-hidden />}
+          {sharing ? <Spinner aria-hidden /> : <Share2 aria-hidden />}
           {upload.kind === "failed" ? t(($) => $.common.actions.retry) : t(($) => $.collab.share.start)}
         </Button>
       </div>

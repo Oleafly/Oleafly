@@ -897,7 +897,8 @@
     "malformed": "Oleafly kan ikke åbne dette link. Bed den, der sendte det, om et nyt.",
     "opening": "Åbner det delte projekt…",
     "downloading": "Henter filer: {{done}} af {{total}}",
-    "cancelNamed": "Stop med at åbne {{name}}",
+    "cancelNamed": "Annuller åbningen af {{name}}",
+    "cancelling": "Annullerer…",
     "confirm": {
       "title": "Vil du deltage i dette delte projekt?",
       "body": "Når du deltager, bliver du føjet til projektet, og dets filer kopieres til denne computer. Deltag kun, hvis du ved, hvem der har sendt dig linket.",

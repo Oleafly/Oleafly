@@ -898,6 +898,7 @@
     "opening": "Das geteilte Projekt wird geöffnet…",
     "downloading": "Dateien werden heruntergeladen: {{done}} von {{total}}",
     "cancelNamed": "Öffnen von {{name}} abbrechen",
+    "cancelling": "Wird abgebrochen…",
     "confirm": {
       "title": "Diesem geteilten Projekt beitreten?",
       "body": "Wenn Sie beitreten, werden Sie zum Projekt hinzugefügt und seine Dateien werden auf diesen Computer kopiert. Treten Sie nur bei, wenn Sie wissen, wer Ihnen den Link geschickt hat.",

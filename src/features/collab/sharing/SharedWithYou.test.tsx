@@ -158,8 +158,11 @@ describe("SharedWithYou", () => {
       }),
     );
     expect(progress).toHaveTextContent(fill(enCollab.links.downloading, { done: "1", total: "4" }));
-    await user.click(within(progress).getByRole("button", { name: fill(enCollab.links.cancelNamed, { name: "Grant proposal" }) }));
+    const cancel = within(progress).getByRole("button", { name: fill(enCollab.links.cancelNamed, { name: "Grant proposal" }) });
+    expect(cancel.getAttribute("aria-label")).toContain(enCommon.actions.cancel);
+    await user.click(cancel);
     expect(mocks.collabJoinCancel).toHaveBeenCalledWith(SERVER_ID, SHARED_ID);
+    expect(within(progress).getByRole("status")).toHaveTextContent(enCollab.links.cancelling);
     await act(async () => join.reject(collabError("cancelled")));
     await waitFor(() => expect(screen.queryByTestId("collab-join-progress")).toBeNull());
     expect(screen.queryByRole("alert")).toBeNull();

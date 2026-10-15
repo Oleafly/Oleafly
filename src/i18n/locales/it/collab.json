@@ -897,7 +897,8 @@
     "malformed": "Oleafly non riesce ad aprire questo link. Chiedine uno nuovo a chi te l'ha inviato.",
     "opening": "Apertura del progetto condiviso…",
     "downloading": "Download dei file: {{done}} di {{total}}",
-    "cancelNamed": "Interrompi l'apertura di {{name}}",
+    "cancelNamed": "Annulla l'apertura di {{name}}",
+    "cancelling": "Annullamento…",
     "confirm": {
       "title": "Unirti a questo progetto condiviso?",
       "body": "Unendoti, entri nel progetto e i suoi file vengono copiati su questo computer. Unisciti solo se sai chi ti ha inviato il link.",

@@ -897,7 +897,8 @@
     "malformed": "Oleafly 无法打开此链接。请向发送者索取新链接。",
     "opening": "正在打开共享项目…",
     "downloading": "正在下载文件：{{done}}/{{total}}",
-    "cancelNamed": "停止打开 {{name}}",
+    "cancelNamed": "取消打开 {{name}}",
+    "cancelling": "正在取消…",
     "confirm": {
       "title": "要加入这个共享项目吗？",
       "body": "加入后，你会被添加到项目中，项目文件也会复制到这台电脑。只有在你知道是谁发来链接时才加入。",

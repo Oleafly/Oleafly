@@ -897,7 +897,8 @@
     "malformed": "Oleafly tento odkaz nedokáže otevřít. Požádejte odesílatele o nový.",
     "opening": "Otevírá se sdílený projekt…",
     "downloading": "Stahování souborů: {{done}} z {{total}}",
-    "cancelNamed": "Přestat otevírat {{name}}",
+    "cancelNamed": "Zrušit otevírání {{name}}",
+    "cancelling": "Ruší se…",
     "confirm": {
       "title": "Připojit se ke sdílenému projektu?",
       "body": "Připojením se stanete členem projektu a jeho soubory se zkopírují do tohoto počítače. Připojte se, jen pokud víte, kdo vám odkaz poslal.",

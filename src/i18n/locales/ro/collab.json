@@ -897,7 +897,8 @@
     "malformed": "Oleafly nu poate deschide acest link. Cere unul nou persoanei care ți l-a trimis.",
     "opening": "Se deschide proiectul partajat…",
     "downloading": "Se descarcă fișierele: {{done}} din {{total}}",
-    "cancelNamed": "Oprește deschiderea {{name}}",
+    "cancelNamed": "Anulează deschiderea {{name}}",
+    "cancelling": "Se anulează…",
     "confirm": {
       "title": "Te alături acestui proiect partajat?",
       "body": "Alăturarea te adaugă în proiect și copiază fișierele lui pe acest computer. Alătură-te doar dacă știi cine ți-a trimis linkul.",
