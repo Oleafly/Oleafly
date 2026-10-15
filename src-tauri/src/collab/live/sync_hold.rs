@@ -858,6 +858,7 @@ mod tests {
         let disk = DiskState {
             layout: materialize::layout(&doc.nodes().unwrap()),
             hashes,
+            owed: Default::default(),
         };
         let live = LiveProject::new(doc, 0, ProjectRole::Owner);
         let bases = initial_bases(&root, &disk, &live);

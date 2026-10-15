@@ -1169,7 +1169,8 @@ export type CollabErrorCode =
     | "cancelled"
     | "turned_off"
     | "cloud_synced"
-    | "owner_away";
+    | "owner_away"
+    | "wrong_server";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
@@ -1238,7 +1239,10 @@ export type CollabLiveEndReason =
     | "stopped"
     | "client_too_old"
     | "server_too_old"
-    | "server_changed";
+    | "server_changed"
+    // The document engine hit an error on a change. The next start skips
+    // that change, so going live again continues.
+    | "failed";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
@@ -1627,6 +1631,7 @@ export interface BackendPort {
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
   collabLiveStop: (projectId: string) => Promise<void>;
   collabLiveFlush: (projectId: string) => Promise<void>;
+  collabLiveReconnectNow: () => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
   collabDocClose: (projectId: string, fileId: string, session: number) => Promise<void>;
@@ -1771,12 +1776,19 @@ export interface CollabLiveRemoved {
   files: CollabLiveRemovedFile[];
   restored: string[];
 }
-export type CollabUploadState = "waiting" | "failed" | "too_large";
+// "project_too_large": the project as a whole reached the server's size
+// limit, so the file waits until the limit is raised.
+export type CollabUploadState = "waiting" | "failed" | "too_large" | "project_too_large";
 export interface CollabUploadFile {
   path: string;
   state: CollabUploadState;
   size: number;
   limit: number | null;
+}
+// The server refused a change because the project's change log reached its
+// size limit. Sent at the first refusal after each connect.
+export interface CollabLiveProjectFull {
+  projectId: string;
 }
 export interface CollabLiveUploads {
   projectId: string;
@@ -2036,6 +2048,9 @@ export interface BackendPort {
 
 export interface CollabPerson {
     guest?: boolean;
+    // False for someone removed from or suspended on this server. Older
+    // servers never send it, and everyone they list is active.
+    active?: boolean;
 }
 export type CollabGuestInvitationStatus =
     | "awaiting_approval"

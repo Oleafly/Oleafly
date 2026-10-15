@@ -27,6 +27,7 @@ import {
 } from "@/lib/tauri";
 import { useBusyRows } from "../busy-rows";
 import { collabErrorText } from "../errors";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson } from "../people";
 import { serverRoleAllows, type ServerRole } from "../roles";
@@ -249,6 +250,7 @@ export function ProjectsSection({
         <div className="flex min-w-0 items-center gap-2">
           <Avatar person={collabPerson(project.owner)} size="sm" />
           <span className="truncate">{project.owner.display_name}</span>
+          {isInactive(project.owner) ? <InactiveBadge /> : null}
         </div>
       </TableCell>
       <TableCell numeric>{formatNumber(project.member_count)}</TableCell>

@@ -6,8 +6,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { account, capabilities, collabError, server, signedOutServer } from "./tests/fixtures";
+import { account, capabilities, collabError, fill, libraryProject, server, signedOutServer } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabServersList: vi.fn(),
@@ -40,11 +41,13 @@ const copy = enCollab.section;
 
 beforeAll(async () => {
   await loadNamespace("collab");
+  await loadNamespace("native");
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, detached: null });
+  useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {}, detached: [] });
+  useFilesStore.setState({ projects: [] });
   mocks.collabServerDevices.mockResolvedValue([]);
   mocks.serverChanged = null;
   mocks.onCollabServerChanged.mockImplementation(async (handler: () => void) => {
@@ -95,9 +98,38 @@ describe("CollaborationSection", () => {
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent(copy.server.detached.replace("{{server}}", "Smith Lab"));
     expect(within(notice).getByText("Thesis")).toBeInTheDocument();
+    expect(within(notice).getByText(fill(copy.server.unsent.staysAs, { name: "Thesis (local copy)" }))).toBeInTheDocument();
     expect(within(notice).getByText("Grant proposal")).toBeInTheDocument();
     await user.click(within(notice).getByRole("button", { name: enCommon.actions.ok }));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("names the local copy as the library calls it once the library has the new name", async () => {
+    useFilesStore.setState({ projects: [libraryProject({ id: "thesis", name: "Thesis (local copy 2)" })] });
+    useCollabStore.setState({ detached: [{ server: "Smith Lab", projects: [{ project_id: "thesis", name: "Thesis" }] }] });
+    mocks.collabServersList.mockResolvedValue([]);
+    render(<CollaborationSection />);
+    const notice = await screen.findByRole("status");
+    expect(within(notice).getByText(fill(copy.server.unsent.staysAs, { name: "Thesis (local copy 2)" }))).toBeInTheDocument();
+  });
+
+  it("forgets what a Remove left behind once Settings closes", async () => {
+    useCollabStore.setState({ detached: [{ server: "Smith Lab", projects: [{ project_id: "thesis", name: "Thesis" }] }] });
+    mocks.collabServersList.mockResolvedValue([]);
+    const view = render(<CollaborationSection />);
+    expect(await screen.findByRole("status")).toBeInTheDocument();
+    view.unmount();
+    expect(useCollabStore.getState().detached).toEqual([]);
+  });
+
+  it("says in the Remove question that the projects become local copies", async () => {
+    mocks.collabServersList.mockResolvedValue([server()]);
+    const user = userEvent.setup();
+    render(<CollaborationSection />);
+    await user.click(await screen.findByRole("button", { name: copy.server.remove }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      fill(copy.server.removeConfirm.description, { name: "Smith Lab" }),
+    );
   });
 
   it("shows what to do when there are no servers", async () => {

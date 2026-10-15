@@ -78,7 +78,12 @@ import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
-import { sharedDocumentLive, writeSharedText } from "@/lib/shared-document-writes";
+import {
+  SharedReadOnlyError,
+  sharedDocumentLive,
+  sharedViewOnly,
+  writeSharedText,
+} from "@/lib/shared-document-writes";
 
 export { SaveFlushError, type SaveFailure };
 
@@ -247,6 +252,8 @@ interface SaveFailureNotice {
   paths: Set<string>;
   toastId: number | null;
 }
+
+const VIEW_ONLY_TOAST = "collab-view-only";
 
 let saveFailureNotice: SaveFailureNotice | null = null;
 const saveFailureWarned = new Set<string>();
@@ -2007,6 +2014,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     const before = get().files[path];
+    // A viewer can't change a shared project. Refusing here keeps the buffer
+    // as it was instead of leaving a tab that can never be saved.
+    if (sharedViewOnly(projectId)) {
+      if (before?.content !== content) toast.infoUnique(VIEW_ONLY_TOAST, new SharedReadOnlyError().message);
+      return false;
+    }
     const same = before?.content === content;
     if (same && (!opts?.unsaved || before.dirty)) return true;
     const saved = matchesSavedDiskText(projectId, path, content);

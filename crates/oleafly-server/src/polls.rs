@@ -394,6 +394,7 @@ pub(crate) async fn start(
         cursors: CursorGate::new(),
         _signal: signal,
     });
+    session.cursors.showed(project);
     if !state.polls.insert(&session) {
         end(state, &session, None);
         return Err(ServerError::RateLimited);

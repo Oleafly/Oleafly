@@ -681,7 +681,10 @@ impl CursorGate {
         }
     }
 
-    fn showed(&self, project: SharedProjectId) {
+    // Called for every cursor sent on and for every subscribe: after a
+    // reconnect, the room may still show the cursor an older connection
+    // of this device sent, so the first leave after a subscribe goes out.
+    pub(crate) fn showed(&self, project: SharedProjectId) {
         self.shown
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -786,6 +789,7 @@ impl Peer<'_> {
             ));
         }
         crate::access_log::note_open(self.state, project, account, self.device).await;
+        self.cursors.showed(project);
         Opened::Subscribed(
             ServerFrame::Subscribed {
                 project_id: project,

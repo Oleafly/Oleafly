@@ -109,7 +109,14 @@ const limits = {
   // join progress and connection test, the admin console and Collaboration
   // settings, about 5 KB of it in the entry. The combined graph measures
   // 20.29 MB.
-  totalJavaScript: 20_300_000,
+  // +11 KB for the second round of those fixes in the window: input method
+  // composition and confirmed text in shared files, the project size and
+  // failed sync notices, and marks for people who left a server. The
+  // combined graph measures 20.30 MB on macOS and Linux. A Windows checkout
+  // gives the bundled CSL styles CRLF line endings, which adds 13,040 bytes
+  // there (CI measured 20,242,679 and 20,255,719 bytes for one tree), so the
+  // limit leaves room for the Windows build too.
+  totalJavaScript: 20_330_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

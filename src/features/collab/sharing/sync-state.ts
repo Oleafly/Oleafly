@@ -15,6 +15,7 @@ export const SYNC_STATES = [
   "clientTooOld",
   "serverTooOld",
   "serverChanged",
+  "failed",
 ] as const;
 
 export type SyncState = (typeof SYNC_STATES)[number];
@@ -30,6 +31,7 @@ const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
   client_too_old: "clientTooOld",
   server_too_old: "serverTooOld",
   server_changed: "serverChanged",
+  failed: "failed",
 };
 
 export function syncState(status: CollabLiveSyncState | null, pending: number): SyncState {

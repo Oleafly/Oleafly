@@ -43,6 +43,7 @@ const ERROR_CODES = [
   "cancelled",
   "cloud_synced",
   "owner_away",
+  "wrong_server",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];
@@ -133,10 +134,17 @@ describe("collab catalog", () => {
 
   it("calls each collaboration idea by one name on every screen", () => {
     // Admins suspend and reactivate accounts, so members see the same word.
-    expect(collab.section.server.paused).toBe(collab.admin.members.suspended);
+    expect(collab.section.server.suspended).toBe(collab.admin.members.suspended);
     expect(collab.sync.suspended).toMatch(/suspended/u);
-    expect(collab.section.server.pausedHint).toMatch(/suspended/u);
-    expect(collab.activity.suspended).toBe(collab.section.server.pausedHint);
+    expect(collab.section.server.suspendedHint).toMatch(/suspended/u);
+    expect(collab.activity.suspended).toBe(collab.section.server.suspendedHint);
+    // The people list is "People", so its own buttons don't call them members,
+    // and the people let in are "Allowed people", not "the list".
+    expect(collab.admin.members.removeConfirm.confirm).not.toMatch(/member/u);
+    expect(collab.admin.members.suspendConfirm.confirm).not.toMatch(/member/u);
+    expect(collab.section.server.manageHint).toContain(collab.admin.tabs.allowlist);
+    for (const [key, value] of flat) if (key.startsWith("admin.allowlist.")) expect(value, key).not.toMatch(/the list/u);
+    expect(collab.errors.duplicate_entry).not.toMatch(/list/u);
     // One name for the list of people let in, the people list and server settings.
     expect(collab.admin.members.addHint).toContain(collab.admin.tabs.allowlist);
     expect(collab.admin.log.kinds.allowlistAdded).toContain(collab.admin.tabs.allowlist);

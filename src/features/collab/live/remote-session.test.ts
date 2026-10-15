@@ -102,6 +102,60 @@ describe("RemoteDocumentSession", () => {
     expect(session.synchronized).toBe(true);
   });
 
+  it("keeps a composition when a collaborator types while it is held with nothing in flight", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    session.holdLocal();
+    editor.type([{ from: 3, to: 3, insert: "n" }]);
+    channel.remote(insertAt(0, "X", 3));
+    channel.deliverOne(id);
+    expect(session.text()).toBe("Xabcn");
+    expect(editor.doc).toBe("Xabcn");
+    editor.type([{ from: 4, to: 5, insert: "你" }]);
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.text).toBe("Xabc你");
+    expect(session.text()).toBe(channel.text);
+    expect(editor.doc).toBe(channel.text);
+    expect(session.synchronized).toBe(true);
+    expect(channel.opens).toHaveLength(1);
+  });
+
+  it("keeps a composition through an answer to earlier typing and a remote change that follows it", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    editor.type([{ from: 3, to: 3, insert: "!" }]);
+    session.holdLocal();
+    editor.type([{ from: 0, to: 0, insert: "k" }]);
+    channel.receiveOne();
+    channel.deliverOne(id);
+    channel.remote(insertAt(4, "Z", 4));
+    channel.deliverOne(id);
+    expect(session.text()).toBe("kabc!Z");
+    expect(channel.sent).toHaveLength(1);
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.text).toBe("kabc!Z");
+    expect(editor.doc).toBe(channel.text);
+    expect(session.synchronized).toBe(true);
+    expect(channel.opens).toHaveLength(1);
+  });
+
+  it("moves a composition that kept the text's length past a remote change", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    session.holdLocal();
+    editor.type([{ from: 1, to: 2, insert: "ば" }]);
+    channel.remote(insertAt(2, "Y", 3));
+    channel.deliverOne(id);
+    expect(session.text()).toBe("aばYc");
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.text).toBe("aばYc");
+    expect(editor.doc).toBe(channel.text);
+    expect(channel.opens).toHaveLength(1);
+  });
+
   it("keeps a composition waiting through an answer to earlier typing and remote changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);
@@ -152,6 +206,51 @@ describe("RemoteDocumentSession", () => {
     expect(channel.text).toBe(session.text());
   });
 
+  it("copies its text once for a remote edit and not again when typing is confirmed", async () => {
+    let deliver: (message: CollabDocMessage) => void = () => undefined;
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: {
+        open: async (_path, onMessage) => {
+          deliver = onMessage;
+          return { file_id: "file", rev: 0, text: "abc", session: 1 };
+        },
+        change: vi.fn(),
+        close: vi.fn(),
+      },
+    });
+    await session.open();
+    const apply = vi.spyOn(TextOperation.prototype, "apply");
+    deliver({ kind: "remote", rev: 1, op: [">", 3], length: 4 });
+    expect(apply).toHaveBeenCalledTimes(1);
+    session.applyLocal([{ from: 4, to: 4, insert: "!" }], session.version());
+    deliver({ kind: "ack", rev: 2, length: 5 });
+    expect(apply).toHaveBeenCalledTimes(2);
+    session.applyLocal([{ from: 5, to: 5, insert: "?" }], session.version());
+    session.applyLocal([{ from: 6, to: 6, insert: "#" }], session.version());
+    deliver({ kind: "remote", rev: 3, op: ["<", 5], length: 6 });
+    deliver({ kind: "ack", rev: 4, length: 7 });
+    deliver({ kind: "ack", rev: 5, length: 8 });
+    expect(apply).toHaveBeenCalledTimes(5);
+    expect(session.text()).toBe("<>abc!?#");
+    expect(session.confirmed()).toBe("<>abc!?#");
+    expect(session.synchronized).toBe(true);
+    apply.mockRestore();
+  });
+
+  it("tells move listeners its new path when its file is renamed, and only then", async () => {
+    const channel = new FakeChannel("abc");
+    const { session } = await opened(channel);
+    const moved = vi.fn();
+    const stop = session.subscribeMove(moved);
+    session.moveTo("main.tex");
+    session.moveTo("chapters/main.tex");
+    expect(moved).toHaveBeenCalledExactlyOnceWith("chapters/main.tex");
+    stop();
+    session.moveTo("main.tex");
+    expect(moved).toHaveBeenCalledOnce();
+    expect(session.path).toBe("main.tex");
+  });
+
   it("moves a remote change past its own pending changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);
@@ -176,6 +275,93 @@ describe("RemoteDocumentSession", () => {
     expect(session.synchronized).toBe(true);
     editor.type([{ from: 5, to: 5, insert: "!" }]);
     expect(channel.sent.at(-1)).toEqual({ client: id, rev: channel.rev, op: [5, "!"] });
+  });
+
+  it("keeps typing in flight when the shared document resets, and sends it once on the reset text", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }]);
+    channel.reset(">abc");
+    channel.drain();
+    expect(channel.text).toBe(">abcde");
+    expect(session.text()).toBe(">abcde");
+    expect(editor.doc).toBe(">abcde");
+    expect(discarded).not.toHaveBeenCalled();
+    expect(session.synchronized).toBe(true);
+    expect(channel.opens).toHaveLength(1);
+  });
+
+  it("keeps a composition held when the shared document resets", async () => {
+    const channel = new FakeChannel("abc");
+    const { session, editor, id } = await opened(channel);
+    session.holdLocal();
+    editor.type([{ from: 3, to: 3, insert: "か" }]);
+    channel.reset(">abc");
+    channel.deliverOne(id);
+    expect(session.text()).toBe(">abcか");
+    expect(channel.sent).toEqual([]);
+    session.releaseLocal();
+    channel.drain();
+    expect(channel.text).toBe(">abcか");
+    expect(editor.doc).toBe(channel.text);
+  });
+
+  // Only a broken state can leave typing that doesn't fit, so these two set it
+  // up directly. The session must open again and say the typing was lost.
+  it("opens again with the shared text when its unsent typing can't be kept, and says so", async () => {
+    const channel = new FakeChannel("abc");
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    await session.open();
+    const id = channel.opens[0];
+    editor.type([{ from: 3, to: 3, insert: "d" }]);
+    editor.type([{ from: 4, to: 4, insert: "e" }]);
+    (session as unknown as { buffer: TextOperation }).buffer = new TextOperation().retain(9).insert("?");
+    channel.clients.get(id)?.onMessage({ kind: "remote", rev: 1, op: ["?"], length: 1 });
+    await flush();
+    expect(session.phase).toBe("open");
+    expect(channel.opens).toHaveLength(2);
+    expect(session.text()).toBe("abc");
+    expect(editor.doc).toBe("abc");
+    expect(discarded).toHaveBeenCalledWith("refused");
+  });
+
+  it("says so when typing made while opening no longer fits, and takes the shared text", async () => {
+    const channel = new FakeChannel("shared");
+    const transport = channel.transport();
+    let answer: () => void = () => undefined;
+    const ready = new Promise<void>((resolve) => (answer = resolve));
+    const discarded = vi.fn();
+    const session = new RemoteDocumentSession("main.tex", "local", {
+      transport: {
+        ...transport,
+        open: async (path, onMessage) => {
+          await ready;
+          return transport.open(path, onMessage);
+        },
+      },
+      onDiscarded: discarded,
+    });
+    const editor = new Editor(session);
+    const opening = session.open();
+    editor.type([{ from: 5, to: 5, insert: "!" }]);
+    (session as unknown as { base: string }).base = "a text the typing wasn't made on";
+    answer();
+    await opening;
+    expect(session.text()).toBe("shared");
+    expect(editor.doc).toBe("shared");
+    expect(discarded).toHaveBeenCalledWith("refused");
   });
 
   it("keeps typing the shared document refused once and sends it again on top of the reset text", async () => {
@@ -431,6 +617,55 @@ describe("RemoteDocumentSession", () => {
       expect(right.editor.doc).toBe(channel.text);
       expect(left.session.text()).toBe(channel.text);
       expect(right.session.text()).toBe(channel.text);
+    }
+  });
+
+  it("converges for two editors that compose with an input method and see resets, under random interleavings", async () => {
+    let seed = 0x1b873593;
+    const below = (bound: number) => {
+      seed ^= seed << 13;
+      seed >>>= 0;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      seed >>>= 0;
+      return bound <= 0 ? 0 : seed % bound;
+    };
+    const pieces = ["a", "\n", "你", "好", "か", "😀", "ば"];
+    for (let round = 0; round < 200; round += 1) {
+      const channel = new FakeChannel("start😀\n");
+      const left = await opened(channel);
+      const right = await opened(channel);
+      const editors = [left, right];
+      for (let step = 0; step < 60; step += 1) {
+        const pick = below(12);
+        const target = editors[below(2)];
+        if (pick < 4) {
+          const characters = Array.from(target.editor.doc);
+          const start = below(characters.length + 1);
+          const end = Math.min(characters.length, start + below(3));
+          const from = characters.slice(0, start).join("").length;
+          const to = characters.slice(0, end).join("").length;
+          target.editor.type([{ from, to, insert: below(3) === 0 ? "" : pieces[below(pieces.length)] }]);
+        } else if (pick < 6) {
+          channel.receiveOne();
+        } else if (pick < 9) {
+          channel.deliverOne(target.id);
+        } else if (pick === 9) {
+          target.session.holdLocal();
+        } else if (pick === 10) {
+          target.session.releaseLocal();
+        } else if (below(4) === 0) {
+          channel.reset(channel.text);
+        }
+      }
+      for (const { session } of editors) session.releaseLocal();
+      channel.drain();
+      expect(channel.opens).toHaveLength(2);
+      for (const { session, editor } of editors) {
+        expect(editor.doc).toBe(channel.text);
+        expect(session.text()).toBe(channel.text);
+        expect(session.synchronized).toBe(true);
+      }
     }
   });
 });

@@ -7,6 +7,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { formatDate, formatDateTime } from "@/lib/intl";
 import type { CollabDevice } from "@/lib/tauri";
+import { useBusyRows } from "./busy-rows";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 
@@ -37,7 +38,7 @@ export function DevicesList({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<CollabDevice | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = useBusyRows();
   const generation = useRef(0);
   const own = variant === "own";
 
@@ -62,18 +63,17 @@ export function DevicesList({
     };
   }, [fetchDevices]);
 
-  const signOutDevice = async (device: CollabDevice) => {
+  const signOutDevice = (device: CollabDevice) => {
     setConfirming(null);
-    setBusyId(device.device_id);
     setActionError(null);
-    try {
-      await signOut(device.device_id);
-      setDevices((current) => current?.filter((item) => item.device_id !== device.device_id) ?? null);
-    } catch (error) {
-      setActionError(collabErrorText(error));
-    } finally {
-      setBusyId(null);
-    }
+    return rows.run(device.device_id, async () => {
+      try {
+        await signOut(device.device_id);
+        setDevices((current) => current?.filter((item) => item.device_id !== device.device_id) ?? null);
+      } catch (error) {
+        setActionError(collabErrorText(error));
+      }
+    });
   };
 
   const renderDevices = () => {
@@ -138,7 +138,7 @@ export function DevicesList({
                 variant="ghost"
                 size="xs"
                 aria-label={t(($) => $.collab.section.devices.signOutNamed, { name: device.name })}
-                disabled={busyId === device.device_id}
+                disabled={rows.busy.has(device.device_id)}
                 onClick={() => setConfirming(device)}
               >
                 <LogOut aria-hidden />
