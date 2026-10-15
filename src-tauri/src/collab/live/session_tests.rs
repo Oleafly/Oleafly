@@ -798,6 +798,7 @@ struct Watching {
     changes: Mutex<Vec<FolderChange>>,
     unwritten: Mutex<Vec<super::unwritten::UnwrittenPayload>>,
     renamed: Mutex<Vec<crate::collab::tree::RenamedPayload>>,
+    written: Mutex<Vec<super::payloads::WrittenPayload>>,
 }
 
 impl Watching {
@@ -831,6 +832,9 @@ impl LiveHost for Watching {
     }
     fn renamed(&self, payload: crate::collab::tree::RenamedPayload) {
         guard(&self.renamed).push(payload);
+    }
+    fn written(&self, payload: super::payloads::WrittenPayload) {
+        guard(&self.written).push(payload);
     }
 }
 
@@ -874,6 +878,50 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
     let changed = host.changed_paths();
     assert!(!changed.contains(&"main.tex".to_owned()), "{changed:?}");
     assert!(changed.contains(&"refs.bib".to_owned()), "{changed:?}");
+}
+
+#[test]
+fn the_window_hash_matches_the_one_the_window_computes() {
+    use super::payloads::window_hash;
+    assert_eq!(window_hash(b""), "cbf29ce484222325");
+    assert_eq!(window_hash(b"a"), "af63dc4c8601ec8c");
+    assert_eq!(window_hash(b"hello\r\nworld\r\n"), "b72d7e8f5c60720b");
+    assert_eq!(
+        window_hash("caf\u{e9} \u{1F600}\n".as_bytes()),
+        "ae8731198c70f2c8"
+    );
+}
+
+#[test]
+fn stopping_tells_the_window_how_the_files_it_had_open_are_on_disk() {
+    let (_dir, root, host, rig) = watched_rig(
+        "written-open",
+        &[("main.tex", "abc"), ("refs.bib", "@a"), ("notes.tex", "n")],
+    );
+    let (main, rev) = rig.open("main.tex");
+    rig.typed(&main, rev, "d");
+    let (notes, rev) = rig.open("notes.tex");
+    rig.typed(&notes, rev, "!");
+    rig.remote("refs.bib", "@b");
+    rig.settle();
+    std::fs::write(root.join("notes.tex"), "changed outside").unwrap();
+    let _live = rig.go_live();
+    tauri::async_runtime::block_on(super::lifecycle::stop("written-open"));
+    let told = guard(&host.written).clone();
+    let bytes = std::fs::read(root.join("main.tex")).unwrap();
+    assert_eq!(bytes, b"abcd");
+    assert_eq!(
+        told,
+        vec![super::payloads::WrittenPayload {
+            project_id: "written-open".to_owned(),
+            files: vec![super::payloads::WrittenFile {
+                path: "main.tex".to_owned(),
+                hash: super::payloads::window_hash(&bytes),
+                crlf: false,
+                length: 4,
+            }],
+        }]
+    );
 }
 
 #[test]

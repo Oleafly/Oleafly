@@ -93,6 +93,9 @@ pub(super) struct Upkeep {
     pub(super) figures: Mutex<super::downloads::Figures>,
     pub(super) figures_closed: AtomicBool,
     pub(super) owed: Mutex<super::owed::OwedTries>,
+    // Files written while the window had them open, which it isn't told
+    // about then, so it is told how they are on disk when the session stops.
+    pub(super) unannounced: Mutex<BTreeSet<String>>,
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
@@ -332,6 +335,7 @@ impl Active {
         self.want_figures(blobs);
         let typed_here = self.open_texts(&layout, &written, &moved);
         changed.retain(|path| !typed_here.contains(path));
+        self.note_unannounced(&typed_here, &changed, &moved, &removed);
         if !changed.is_empty() || structural {
             self.host.folder_changed(FolderChange {
                 project_id: self.project_id.clone(),
@@ -423,6 +427,81 @@ impl Active {
             })
             .map(|(_, placed)| placed.path.clone())
             .collect()
+    }
+
+    fn note_unannounced(
+        &self,
+        typed_here: &BTreeSet<String>,
+        told: &BTreeSet<String>,
+        moved: &[(String, String)],
+        removed: &[String],
+    ) {
+        let mut unannounced = guard(&self.upkeep.unannounced);
+        if unannounced.is_empty() && typed_here.is_empty() {
+            return;
+        }
+        let kept = std::mem::take(&mut *unannounced);
+        *unannounced = kept
+            .into_iter()
+            .filter(|path| {
+                !told.contains(path)
+                    && !removed
+                        .iter()
+                        .any(|gone| crate::collab::disk::inside(path, gone))
+            })
+            .map(|path| {
+                moved
+                    .iter()
+                    .find_map(|(from, to)| crate::collab::disk::moved_key(&path, from, to))
+                    .unwrap_or(path)
+            })
+            .collect();
+        unannounced.extend(typed_here.iter().cloned());
+    }
+
+    // When a session stops, the window takes the files it has open back as
+    // plain files on disk. It wasn't told when the session wrote them, so it
+    // hears how each one is on disk now, and stopping never looks like a
+    // change made outside. A file changed outside since the session wrote it
+    // is left out, so that change still shows.
+    pub(super) fn announce_written(&self) {
+        let paths = std::mem::take(&mut *guard(&self.upkeep.unannounced));
+        if paths.is_empty() {
+            return;
+        }
+        let known: Vec<(String, String)> = {
+            let disk = guard(&self.disk);
+            paths
+                .into_iter()
+                .filter_map(|path| {
+                    let hash = disk.hashes.get(&path)?.clone();
+                    Some((path, hash))
+                })
+                .collect()
+        };
+        let files: Vec<super::payloads::WrittenFile> = known
+            .into_iter()
+            .filter_map(|(path, hash)| {
+                let target = crate::collab::disk::safe_target(&self.root, &path)?;
+                let bytes = std::fs::read(target).ok()?;
+                if crate::collab::disk::sha256_hex(&bytes) != hash {
+                    return None;
+                }
+                let text = std::str::from_utf8(&bytes).ok()?;
+                Some(super::payloads::WrittenFile {
+                    hash: super::payloads::window_hash(&bytes),
+                    crlf: crate::collab::disk::crlf_only(&bytes) == Some(true),
+                    length: text.encode_utf16().count(),
+                    path,
+                })
+            })
+            .collect();
+        if !files.is_empty() {
+            self.host.written(super::payloads::WrittenPayload {
+                project_id: self.project_id.clone(),
+                files,
+            });
+        }
     }
 
     pub(super) fn announce_new_names(&self, renamed: Vec<(String, String)>) {
