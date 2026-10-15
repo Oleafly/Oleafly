@@ -699,6 +699,7 @@
     "newDevice": "{{name}} ha eseguito l'accesso da un nuovo dispositivo",
     "review": "Rivedi",
     "renamed": "{{name}} ha rinominato {{before}} in {{theirs}} dopo che tu lo avevi chiamato {{ours}}",
+    "renamedPortable": "{{before}} è stato rinominato in {{theirs}} perché funzioni su tutti i computer.",
     "skipped": "Non è stato possibile leggere una modifica di {{name}}, quindi è stata saltata.",
     "skippedUnknown": "Non è stato possibile leggere una modifica di qualcuno, quindi è stata saltata.",
     "mentioned": "{{name}} ti ha menzionato in un commento su {{path}}",

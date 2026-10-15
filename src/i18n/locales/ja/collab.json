@@ -699,6 +699,7 @@
     "newDevice": "{{name}} が新しいデバイスでサインインしました",
     "review": "確認",
     "renamed": "あなたが {{ours}} という名前にした後、{{name}} が {{before}} を {{theirs}} に変更しました",
+    "renamedPortable": "どのコンピュータでも使えるように、{{before}} の名前を {{theirs}} に変更しました。",
     "skipped": "{{name}} からの変更を読み取れなかったため、スキップしました。",
     "skippedUnknown": "他のユーザーからの変更を読み取れなかったため、スキップしました。",
     "mentioned": "{{name}} が {{path}} のコメントであなたをメンションしました",

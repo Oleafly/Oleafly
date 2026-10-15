@@ -699,6 +699,7 @@
     "newDevice": "{{name}} yeni bir cihazda oturum açtı",
     "review": "İncele",
     "renamed": "Siz {{ours}} adını verdikten sonra {{name}}, {{before}} dosyasının adını {{theirs}} olarak değiştirdi",
+    "renamedPortable": "{{before}} dosyası her bilgisayarda çalışsın diye {{theirs}} olarak yeniden adlandırıldı.",
     "skipped": "{{name}} tarafından yapılan bir değişiklik okunamadığı için atlandı.",
     "skippedUnknown": "Birinin yaptığı bir değişiklik okunamadığı için atlandı.",
     "mentioned": "{{name}}, {{path}} dosyasındaki bir yorumda sizden bahsetti",

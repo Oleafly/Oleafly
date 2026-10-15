@@ -699,6 +699,7 @@
     "newDevice": "Użytkownik {{name}} zalogował się na nowym urządzeniu",
     "review": "Przejrzyj",
     "renamed": "Użytkownik {{name}} zmienił nazwę {{before}} na {{theirs}} po tym, jak nazwałeś plik {{ours}}",
+    "renamedPortable": "Nazwę {{before}} zmieniono na {{theirs}}, żeby plik działał na każdym komputerze.",
     "skipped": "Nie udało się odczytać zmiany od użytkownika {{name}}, więc została pominięta.",
     "skippedUnknown": "Nie udało się odczytać czyjejś zmiany, więc została pominięta.",
     "mentioned": "{{name}} oznacza Cię w komentarzu w pliku {{path}}",

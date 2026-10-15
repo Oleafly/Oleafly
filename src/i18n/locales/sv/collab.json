@@ -699,6 +699,7 @@
     "newDevice": "{{name}} loggade in på en ny enhet",
     "review": "Granska",
     "renamed": "{{name}} bytte namn på {{before}} till {{theirs}} efter att du hade döpt den till {{ours}}",
+    "renamedPortable": "{{before}} döptes om till {{theirs}} så att den fungerar på alla datorer.",
     "skipped": "En ändring från {{name}} kunde inte läsas och hoppades över.",
     "skippedUnknown": "En ändring från någon kunde inte läsas och hoppades över.",
     "mentioned": "{{name}} nämnde dig i en kommentar i {{path}}",

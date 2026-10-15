@@ -567,6 +567,25 @@ describe("CollabPane", () => {
     );
   });
 
+  it("says a file was renamed so it works on every computer when nobody renamed it", () => {
+    feed([
+      {
+        kind: "renamed",
+        at: NOW,
+        accountId: null,
+        name: "",
+        before: "notes/aux.tex",
+        ours: "notes/aux.tex",
+        theirs: "notes/aux (2).tex",
+        count: 1,
+      },
+    ]);
+    render(<CollabPane />);
+    const [row] = within(screen.getByRole("list", { name: pane.activity })).getAllByRole("listitem");
+    expect(row).toHaveTextContent(fill(activity.renamedPortable, { before: "notes/aux.tex", theirs: "notes/aux (2).tex" }));
+    expect(row).not.toHaveTextContent(enCollab.toolbar.unknownPerson);
+  });
+
   it("says whose change it couldn't read, or that it was someone's", () => {
     feed([
       { kind: "skipped", at: NOW, deviceId: "bob-laptop", name: "Bob Smith", count: 1 },

@@ -699,6 +699,7 @@
     "newDevice": "{{name}} kirjautui uudella laitteella",
     "review": "Tarkastele",
     "renamed": "{{name}} nimesi tiedoston {{before}} uudelleen nimelle {{theirs}}, kun olit jo antanut sille nimen {{ours}}",
+    "renamedPortable": "Tiedosto {{before}} nimettiin uudelleen nimelle {{theirs}}, jotta se toimii kaikilla koneilla.",
     "skipped": "Käyttäjän {{name}} muutosta ei voitu lukea, joten se ohitettiin.",
     "skippedUnknown": "Jonkun muutosta ei voitu lukea, joten se ohitettiin.",
     "mentioned": "{{name}} mainitsi sinut kommentissa tiedostossa {{path}}",

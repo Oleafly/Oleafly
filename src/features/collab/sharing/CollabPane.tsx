@@ -290,6 +290,11 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
     case "newDevice":
       return t(($) => $.collab.activity.newDevice, { name: entry.name || unknown });
     case "renamed":
+      // Nobody renamed it: the shared layout gave the file a name that every
+      // computer accepts, such as one Windows doesn't reserve.
+      if (entry.accountId === null && entry.before === entry.ours) {
+        return t(($) => $.collab.activity.renamedPortable, { before: entry.before, theirs: entry.theirs });
+      }
       return t(($) => $.collab.activity.renamed, {
         name: entry.name || unknown,
         before: entry.before,

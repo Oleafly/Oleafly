@@ -699,6 +699,7 @@
     "newDevice": "{{name}} 님이 새 기기에서 로그인했습니다",
     "review": "검토",
     "renamed": "내가 {{ours}}(으)로 이름을 바꾼 뒤 {{name}} 님이 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다",
+    "renamedPortable": "모든 컴퓨터에서 쓸 수 있도록 {{before}}의 이름을 {{theirs}}(으)로 바꿨습니다.",
     "skipped": "{{name}} 님의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
     "skippedUnknown": "다른 사람의 변경 내용을 읽을 수 없어 건너뛰었습니다.",
     "mentioned": "{{name}} 님이 {{path}}의 댓글에서 회원님을 멘션했습니다",

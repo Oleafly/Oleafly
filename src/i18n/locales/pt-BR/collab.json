@@ -699,6 +699,7 @@
     "newDevice": "{{name}} entrou em um novo dispositivo",
     "review": "Revisar",
     "renamed": "{{name}} renomeou {{before}} para {{theirs}} depois que você o chamou de {{ours}}",
+    "renamedPortable": "{{before}} foi renomeado para {{theirs}} para funcionar em qualquer computador.",
     "skipped": "Não foi possível ler uma alteração de {{name}}, então ela foi ignorada.",
     "skippedUnknown": "Não foi possível ler uma alteração de alguém, então ela foi ignorada.",
     "mentioned": "{{name}} mencionou você em um comentário em {{path}}",

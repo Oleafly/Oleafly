@@ -699,6 +699,7 @@
     "newDevice": "{{name}} logget inn på en ny enhet",
     "review": "Gå gjennom",
     "renamed": "{{name}} ga {{before}} nytt navn til {{theirs}} etter at du hadde kalt den {{ours}}",
+    "renamedPortable": "{{before}} fikk nytt navn, {{theirs}}, så den virker på alle maskiner.",
     "skipped": "En endring fra {{name}} kunne ikke leses og ble hoppet over.",
     "skippedUnknown": "En endring fra noen kunne ikke leses og ble hoppet over.",
     "mentioned": "{{name}} nevnte deg i en kommentar i {{path}}",

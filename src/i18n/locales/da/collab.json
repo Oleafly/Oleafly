@@ -699,6 +699,7 @@
     "newDevice": "{{name}} loggede ind på en ny enhed",
     "review": "Gennemse",
     "renamed": "{{name}} omdøbte {{before}} til {{theirs}}, efter du havde kaldt den {{ours}}",
+    "renamedPortable": "{{before}} blev omdøbt til {{theirs}}, så den virker på alle computere.",
     "skipped": "En ændring fra {{name}} kunne ikke læses og blev sprunget over.",
     "skippedUnknown": "En ændring fra en anden kunne ikke læses og blev sprunget over.",
     "mentioned": "{{name}} nævnte dig i en kommentar i {{path}}",

@@ -699,6 +699,7 @@
     "newDevice": "{{name}} signed in on a new device",
     "review": "Review",
     "renamed": "{{name}} renamed {{before}} to {{theirs}} after you named it {{ours}}",
+    "renamedPortable": "{{before}} was renamed to {{theirs}} so it works on every computer.",
     "skipped": "A change from {{name}} couldn't be read and was skipped.",
     "skippedUnknown": "A change from someone couldn't be read and was skipped.",
     "mentioned": "{{name}} mentioned you in a comment on {{path}}",
