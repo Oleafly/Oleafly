@@ -26,8 +26,7 @@ export interface UnsentWork {
   projects: readonly CollabUnsentProject[];
 }
 
-// The shared projects a removed server left behind as ordinary projects.
-// The shared projects one removed server left as ordinary projects.
+// The shared projects one removed server left behind as ordinary projects.
 export interface DetachedNotice {
   server: string;
   projects: readonly CollabDetachedProject[];
