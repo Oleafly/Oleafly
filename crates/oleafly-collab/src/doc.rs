@@ -33,6 +33,16 @@ pub(crate) fn engine_failed() -> CollabError {
     CollabError::Corrupt("a change made the document engine fail".to_owned())
 }
 
+// Not the change's fault: the engine failed too often in this run of the
+// app to try more changes in a scratch copy.
+pub(crate) fn engine_spent() -> CollabError {
+    CollabError::Corrupt(
+        "the document engine failed too often since the app started, so it takes no more \
+         changes until the app restarts"
+            .to_owned(),
+    )
+}
+
 pub(crate) enum Meta {
     Read(loro::ImportBlobMetadata),
     Malformed,
@@ -58,9 +68,9 @@ pub(crate) fn blob_meta(bytes: &[u8], check_checksum: bool) -> Meta {
 // A document Loro panicked in is left in memory, never dropped, because
 // dropping it can panic again while the first panic unwinds, which aborts
 // the app. So the number of such documents is capped for the whole app:
-// once it is reached, a large change is no longer tried in a scratch copy
-// but skipped as unreadable, and live projects stop taking in changes until
-// the app restarts.
+// once it is reached, a large change is no longer tried in a scratch copy,
+// and live projects stop taking in changes until the app restarts. The
+// changes turned away for that reason are not blamed for it.
 pub(crate) const MOST_LEFT_DOCUMENTS: usize = 8;
 
 #[cfg(not(test))]
@@ -1127,7 +1137,7 @@ impl ProjectDoc {
             return Ok(None);
         }
         if engine_budget_spent() {
-            return Err(engine_failed());
+            return Err(engine_spent());
         }
         #[cfg(test)]
         failpoint::forked();

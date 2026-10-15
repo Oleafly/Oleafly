@@ -1182,6 +1182,19 @@ impl LiveProject {
                 return Err(crate::doc::engine_failed());
             }
         };
+        // Too many scratch copies were left in memory. Only the changes that
+        // panicked in theirs are blamed; the others come again next start.
+        if crate::doc::engine_budget_spent()
+            || self.doc.scratch_failures() >= SCRATCH_FAILURES_PER_SESSION
+        {
+            for index in &panicked {
+                let (seq, device) = arrived[*index];
+                self.skipped.insert(seq);
+                self.unreadable.push((seq, device));
+            }
+            self.went_bad(false);
+            return Err(crate::doc::engine_failed());
+        }
         let mut readable = Vec::with_capacity(fresh.len());
         for (index, received) in fresh.into_iter().enumerate() {
             if unreadable.contains(&index) {
@@ -1195,10 +1208,6 @@ impl LiveProject {
             } else {
                 readable.push(received);
             }
-        }
-        if self.doc.scratch_failures() >= SCRATCH_FAILURES_PER_SESSION {
-            self.went_bad(false);
-            return Err(crate::doc::engine_failed());
         }
         let count = readable.len();
         let taken = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -2918,6 +2927,34 @@ mod tests {
             assert!(bob.skipped.contains(&seq), "round {round}");
         }
         assert!(bob.doc().text(&main).unwrap().contains(" carol"));
+    }
+
+    #[test]
+    fn when_the_engine_budget_runs_out_in_a_pass_only_the_change_that_panicked_is_blamed() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        let mut carol = LiveProject::new(
+            ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        for _ in 1..crate::doc::MOST_LEFT_DOCUMENTS {
+            crate::doc::leave_in_memory(Vec::<u8>::new());
+        }
+        let bad = sent_change(&mut alice, &main, &noise(100_000, 51), 1);
+        let good = sent_change(&mut carol, &main, &noise(100_000, 52), 2);
+        panic_on(&bad, At::Scratch);
+        assert!(bob
+            .import_arrivals(vec![arrival(1, &bad), arrival(2, &good)])
+            .is_err());
+        assert!(crate::doc::engine_budget_spent());
+        assert!(bob.damaged());
+        assert!(bob.skipped.contains(&1));
+        assert!(!bob.skipped.contains(&2));
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
     }
 
     #[test]
