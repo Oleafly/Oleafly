@@ -220,7 +220,7 @@
     "already_member": "Die persoon heeft al een account. Wijzig de rol onder Mensen.",
     "project_not_shared": "Dit project is nog niet gedeeld. Deel het eerst en nodig daarna mensen uit.",
     "project_full": "Dit project heeft al zoveel mensen als de server toestaat. Verwijder eerst iemand, of vraag het aan de beheerder van de server.",
-    "owner_away": "De eigenaar van het project is op deze server geschorst of weggehaald, dus het project kan nu geen nieuwe mensen opnemen. Vraag het een beheerder van de server.",
+    "owner_away": "De eigenaar van het project is op deze server geschorst of weggehaald, dus het project kan geen nieuwe mensen opnemen totdat het account van de eigenaar weer actief is.",
     "wrong_server": "Deze server stuurde zijn aanmeldpagina vanaf een ander adres, dus Oleafly is gestopt. Controleer het serveradres of vraag het aan wie de server beheert.",
     "not_a_link": "Dat is geen link naar een gedeeld project. Kopieer de hele link en probeer het opnieuw.",
     "signed_out": "Je bent afgemeld bij deze server. Meld je opnieuw aan om dit project te synchroniseren.",
@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly moet worden bijgewerkt",
     "serverTooOld": "Server moet worden bijgewerkt",
     "serverChanged": "Nieuwe server op dit adres",
-    "failed": "Gestopt na een fout"
+    "failed": "Gestopt na een fout",
+    "engineSpent": "Opnieuw starten nodig"
   },
   "toolbar": {
     "noFile": "Geen bestand open",
@@ -689,6 +690,8 @@
     "serverChanged": "Het adres van {{server}} wijst nu naar een andere server. Haal hem weg in de samenwerkingsinstellingen en voeg hem opnieuw toe. Je wijzigingen blijven op deze computer.",
     "failed": "Het synchroniseren van dit project is gestopt na een fout. Start het opnieuw om verder te gaan.",
     "goLiveAgain": "Opnieuw synchroniseren",
+    "engineSpent": "Start Oleafly opnieuw om dit project te blijven synchroniseren.",
+    "restartApp": "Oleafly opnieuw starten",
     "accessEnded": "Je hebt geen toegang meer tot {{server}}. Je kopie blijft op deze computer als gewoon project.",
     "accessEndedGuest": "Je hebt geen toegang meer tot {{server}} omdat je in geen van de gedeelde projecten daar zit. Je kopie blijft op deze computer als gewoon project.",
     "signIn": "Aanmelden",
@@ -709,6 +712,7 @@
     "showComment": "Opmerking tonen",
     "settings": {
       "mainDocument": "{{name}} heeft {{path}} het hoofddocument gemaakt",
+      "mainDocumentNow": "{{path}} is nu het hoofddocument",
       "compiler": "{{name}} heeft de compiler op {{compiler}} gezet",
       "spellingLanguage": "{{name}} heeft de taal voor de spellingcontrole op {{language}} gezet",
       "spellingCleared": "{{name}} heeft de taal voor de spellingcontrole van het project gewist",
@@ -1040,6 +1044,7 @@
     "viewerBy": "{{name}} heeft je lezer gemaakt. Je kunt dit project lezen, maar niet bewerken.",
     "viewer": "Je bent nu lezer. Je kunt dit project lezen, maar niet bewerken.",
     "viewOnly": "Je kunt dit gedeelde project bekijken, maar niet bewerken.",
+    "connecting": "Dit gedeelde project maakt nog verbinding, dus het kan nog niet worden gewijzigd. Probeer het zo opnieuw.",
     "unsentReadOnly": "Je laatste wijzigingen in {{path}} zijn niet verstuurd, omdat je dit project nu alleen kunt bekijken.",
     "unsentRefused": "Oleafly kon je laatste wijzigingen in {{path}} niet versturen, dus ze zijn verworpen.",
     "removedBy": "{{name}} heeft je uit dit project verwijderd. Je kopie blijft op deze computer staan en wordt niet meer gedeeld.",
@@ -1048,6 +1053,7 @@
   "files": {
     "waiting": "Wacht om gedeeld te worden: {{files}}",
     "failed": "Kon niet worden gedeeld: {{files}}",
+    "uploading": "{{file}} uploaden: {{done}} van {{total}}",
     "tooLarge": "{{file}} is {{size}}, groter dan deze server toestaat ({{limit}}). Het bestand blijft alleen op deze computer.",
     "tooLargeUnknown": "{{file}} is groter dan deze server toestaat. Het bestand blijft alleen op deze computer.",
     "projectTooLarge": "{{file}} blijft op deze computer omdat het project de groottelimiet van de server van {{limit}} heeft bereikt. Vraag wie de server beheert om die te verhogen.",

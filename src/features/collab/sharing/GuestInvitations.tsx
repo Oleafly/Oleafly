@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { formatDate } from "@/lib/intl";
+import type {
+  CollabGuestInvitation,
+  CollabGuestInviteResult,
+  CollabProjectGuestInvitations,
+} from "@/lib/tauri";
 import {
   collabGuestInvitationRevoke,
   collabGuestInvitations,
   collabGuestInvite,
-  type CollabGuestInvitation,
-  type CollabGuestInviteResult,
-  type CollabProjectGuestInvitations,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useBusyRows } from "../busy-rows";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert } from "../feedback";

@@ -220,7 +220,7 @@
     "already_member": "Esa persona ya tiene una cuenta. Cambia su rol en Personas.",
     "project_not_shared": "Este proyecto aún no está compartido. Compártelo primero y luego invita a otras personas.",
     "project_full": "Este proyecto ya tiene tantas personas como permite el servidor. Quita a alguien primero o pregunta a su administrador.",
-    "owner_away": "La persona propietaria del proyecto está suspendida o fue quitada de este servidor, así que el proyecto no puede admitir a nadie más por ahora. Pide ayuda a un administrador del servidor.",
+    "owner_away": "La persona propietaria del proyecto está suspendida o fue quitada de este servidor, así que el proyecto no puede admitir a nadie más hasta que su cuenta vuelva a estar activa.",
     "wrong_server": "Este servidor envió su página de inicio de sesión desde otra dirección, así que Oleafly se detuvo. Comprueba la dirección del servidor o pregunta a quien lo gestiona.",
     "not_a_link": "Eso no es un enlace a un proyecto compartido. Copia el enlace completo y vuelve a intentarlo.",
     "signed_out": "No tienes la sesión iniciada en este servidor. Vuelve a iniciar sesión para sincronizar este proyecto.",
@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly necesita actualizarse",
     "serverTooOld": "El servidor necesita actualizarse",
     "serverChanged": "Nuevo servidor en esta dirección",
-    "failed": "Detenido por un error"
+    "failed": "Detenido por un error",
+    "engineSpent": "Hay que reiniciar"
   },
   "toolbar": {
     "noFile": "Ningún archivo abierto",
@@ -689,6 +690,8 @@
     "serverChanged": "La dirección de {{server}} ahora lleva a otro servidor. Quítalo en los ajustes de Colaboración y vuelve a añadirlo. Tus cambios se quedan en este equipo.",
     "failed": "La sincronización de este proyecto se detuvo por un error. Vuelve a sincronizar para continuar.",
     "goLiveAgain": "Volver a sincronizar",
+    "engineSpent": "Reinicia Oleafly para seguir sincronizando este proyecto.",
+    "restartApp": "Reiniciar Oleafly",
     "accessEnded": "Ya no tienes acceso a {{server}}. Tu copia se queda en este equipo como un proyecto normal.",
     "accessEndedGuest": "Ya no tienes acceso a {{server}} porque no estás en ninguno de sus proyectos compartidos. Tu copia se queda en este equipo como un proyecto normal.",
     "signIn": "Iniciar sesión",
@@ -709,6 +712,7 @@
     "showComment": "Ver comentario",
     "settings": {
       "mainDocument": "{{name}} hizo de {{path}} el documento principal",
+      "mainDocumentNow": "{{path}} es ahora el documento principal",
       "compiler": "{{name}} cambió el compilador a {{compiler}}",
       "spellingLanguage": "{{name}} cambió el idioma de la revisión ortográfica a {{language}}",
       "spellingCleared": "{{name}} quitó el idioma de la revisión ortográfica del proyecto",
@@ -1040,6 +1044,7 @@
     "viewerBy": "{{name}} te cambió el rol a lector. Puedes leer este proyecto, pero no editarlo.",
     "viewer": "Ahora eres lector. Puedes leer este proyecto, pero no editarlo.",
     "viewOnly": "Puedes ver este proyecto compartido, pero no editarlo.",
+    "connecting": "Este proyecto compartido aún se está conectando, así que todavía no se puede cambiar. Vuelve a intentarlo en un momento.",
     "unsentReadOnly": "Tus últimos cambios en {{path}} no se enviaron porque ahora solo puedes ver este proyecto.",
     "unsentRefused": "Oleafly no pudo enviar tus últimos cambios en {{path}}, así que se descartaron.",
     "removedBy": "{{name}} te quitó de este proyecto. Tu copia se queda en este equipo y ya no se comparte.",
@@ -1048,6 +1053,7 @@
   "files": {
     "waiting": "Pendiente de compartir: {{files}}",
     "failed": "No se pudo compartir: {{files}}",
+    "uploading": "Subiendo {{file}}: {{done}} de {{total}}",
     "tooLarge": "{{file}} ocupa {{size}}, más de lo que permite este servidor ({{limit}}). Se queda solo en este equipo.",
     "tooLargeUnknown": "{{file}} supera el tamaño que permite este servidor. Se queda solo en este equipo.",
     "projectTooLarge": "{{file}} se queda en este equipo porque el proyecto alcanzó el límite de tamaño del servidor, {{limit}}. Pide a quien gestiona el servidor que lo suba.",

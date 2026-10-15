@@ -12,6 +12,7 @@ import {
   LogOut,
   RefreshCw,
   Replace,
+  RotateCcw,
   ServerCog,
   ServerOff,
   UserLock,
@@ -39,6 +40,7 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   serverTooOld: ServerCog,
   serverChanged: Replace,
   failed: CircleAlert,
+  engineSpent: RotateCcw,
 };
 
 const SYNC_TONES: Readonly<Record<SyncState, string>> = {
@@ -57,6 +59,7 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   serverTooOld: "text-destructive",
   serverChanged: "text-destructive",
   failed: "text-destructive",
+  engineSpent: "text-destructive",
 };
 
 export function SyncStateIcon({ state, className }: Readonly<{ state: SyncState; className?: string }>) {

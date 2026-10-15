@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { LoadingState } from "@/components/ui/empty";
+import type {
+  CollabRuntimeSettings,
+  CollabRuntimeSettingsPatch,
+} from "@/lib/tauri";
 import {
   collabAdminPatchSettings,
   collabAdminSettings,
-  type CollabRuntimeSettings,
-  type CollabRuntimeSettingsPatch,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { serverRoleAllows, type ServerRole } from "./roles";

@@ -18,7 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: vi.fn() 
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
-import * as tauri from "./tauri";
+import * as tauri from "./tauri-collab";
 
 const FILE = "0192f5a4-7b1c-7d2e-8f3a-1b2c3d4e5f70";
 const THREAD = "0192f5a4-7b1c-7d2e-8f3a-1b2c3d4e5f71";
@@ -190,7 +190,7 @@ describe("comment command drift", () => {
 
   it("gives every comment command a wrapper and a contract entry", () => {
     expect(registered).toHaveLength(12);
-    const wrappers = read("./tauri.ts");
+    const wrappers = read("./tauri-collab.ts");
     const contract = read("../../packages/backend-port/src/index.ts");
     for (const name of registered) {
       expect(wrappers).toContain(`"${name}"`);

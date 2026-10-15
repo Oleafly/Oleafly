@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
-import { collabMergeReview, type CollabMergeReviewFile } from "@/lib/tauri";
+import type { CollabMergeReviewFile } from "@/lib/tauri";
+import { collabMergeReview } from "@/lib/tauri-collab";
 import { cn } from "@/lib/utils";
 import { useCollabLiveStore } from "../live/live-store";
 import { InlineAlert } from "../feedback";
@@ -151,13 +152,17 @@ export function MergeReviewDialog({
           {loaded.state === "ready" && loaded.files.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t(($) => $.collab.mergeReview.noText)}</p>
           ) : null}
-          {loaded.state === "ready" && closedOldest ? (
-            <p role="status" className="text-xs text-muted-foreground">
-              {t(($) => $.collab.mergeReview.closedOldest, {
-                number: formatNumber(MAX_OPEN_DIFFS),
-                path: closedOldest,
-              })}
-            </p>
+          {loaded.state === "ready" ? (
+            // Mounted with the list and empty until a file closes, so the
+            // change is announced. Out of the flow while empty.
+            <output className={closedOldest ? "block text-xs text-muted-foreground" : "sr-only"}>
+              {closedOldest
+                ? t(($) => $.collab.mergeReview.closedOldest, {
+                    number: formatNumber(MAX_OPEN_DIFFS),
+                    path: closedOldest,
+                  })
+                : null}
+            </output>
           ) : null}
           {loaded.state === "ready" && loaded.files.length > 0 ? (
             <ul aria-labelledby={filesId} className="space-y-3">

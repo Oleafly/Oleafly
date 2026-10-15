@@ -11,7 +11,7 @@ import {
   collabLiveFlush,
   collabPresenceLeave,
   collabPresenceSet,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -82,6 +82,9 @@ function mirrorText(projectId: string, path: string, text: string): void {
 }
 
 export const BACKGROUND_INDEX_MS = 400;
+// How long a project that is closing waits for the shared document to take
+// typing in flight before it hands that typing back to the files store.
+export const HAND_BACK_WAIT_MS = 1_500;
 
 // A collaborator's edit to a shared file in a background tab reaches the
 // store through the session, but the index keeper forwards only the active
@@ -179,7 +182,13 @@ export function startLiveEditing(live: LiveSession): () => void {
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
     holds: (path) => useFilesStore.getState().projectId === projectId && sessions.holds(path),
-    flush: (id) => (id === projectId ? sessions.flush(() => collabLiveFlush(projectId)) : Promise.resolve()),
+    // A compile reads figures too, so this flush waits for ones still
+    // downloading.
+    flush: (id) =>
+      id === projectId
+        ? sessions.flush(() => collabLiveFlush(projectId, { waitForFigures: true }))
+        : Promise.resolve(),
+    handBack: (id) => (id === projectId ? sessions.handBack(HAND_BACK_WAIT_MS) : Promise.resolve()),
   });
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {

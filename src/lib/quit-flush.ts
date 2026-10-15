@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { confirmQuitDuringInstall, confirmQuitFlush } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { useFilesStore } from "@/store/files";
@@ -13,6 +13,12 @@ type QuitResponder = "flush" | "install";
 
 const claims: Record<QuitResponder, number> = { flush: 0, install: 0 };
 let answering = false;
+
+// Restarts the app the way Restart in the app menu does: the window saves its
+// buffers first, and a save that fails asks before going on.
+export function requestRestart(): Promise<void> {
+  return emit(QUIT_FLUSH_REQUESTED, true);
+}
 
 export function flushForQuitWithDeadline(): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | undefined;

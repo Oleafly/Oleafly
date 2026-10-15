@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { logError } from "@/lib/log";
+import type {
+  CollabServer,
+  CollabSharedWithMe,
+} from "@/lib/tauri";
 import {
   COLLAB_SERVER_CHANGED_EVENT,
   collabJoinProject,
   collabSharedWithMe,
-  type CollabServer,
-  type CollabSharedWithMe,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";

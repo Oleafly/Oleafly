@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   collabLocalCopyDecline: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,
   collabLocalCopyBringIn: mocks.collabLocalCopyBringIn,
@@ -56,7 +56,7 @@ function kept(overrides: Partial<CollabLiveKeptFile> = {}): CollabLiveKeptFile {
 }
 
 function show(uploads: CollabUploadFile[], keptFiles: CollabLiveKeptFile[] = []) {
-  act(() => useFileNotices.setState({ projectId: "paper", uploads, kept: keptFiles, retrying: false }));
+  act(() => useFileNotices.setState({ projectId: "paper", uploads, kept: keptFiles, retrying: false, progress: {} }));
 }
 
 beforeAll(async () => {
@@ -104,6 +104,17 @@ describe("FileNoticesBanner", () => {
     expect(screen.getByText(fill(copy.waiting, { files: "plot.png and map.png" }))).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: copy.retry }));
     expect(mocks.collabUploadRetry).toHaveBeenCalledWith("paper");
+  });
+
+  it("shows how far a waiting figure got while it goes up", () => {
+    render(<FileNoticesBanner />);
+    show([upload(), upload({ path: "figures/map.png" })]);
+    act(() => useFileNotices.setState({ progress: { "figures/plot.png": { done: 1024 * 1024, total: 4 * 1024 * 1024 } } }));
+    const lines = screen.getAllByTestId("collab-upload-progress");
+    expect(lines).toHaveLength(1);
+    const text = fill(copy.uploading, { file: "plot.png", done: "1 MB", total: "4 MB" });
+    expect(lines[0]).toHaveTextContent(text);
+    expect(screen.getByRole("progressbar", { name: text })).toHaveAttribute("aria-valuenow", "25");
   });
 
   it("says which figures could not be shared after the retries ran out", () => {

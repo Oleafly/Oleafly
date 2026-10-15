@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { act, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { create } from "zustand";
-import { undo, undoDepth } from "@codemirror/commands";
+import { redo, undo, undoDepth } from "@codemirror/commands";
 import { Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
@@ -489,6 +489,28 @@ describe("a local edit the session refuses", () => {
     await act(async () => typeAt(6, "!"));
     expect(session.text()).toBe("ax\ny\nz!b");
     expect(view().state.doc.toString()).toBe(session.text());
+  });
+
+  it("undoes and redoes a pasted CRLF as the line feeds the session has", async () => {
+    const session = new LocalDocumentSession("main.tex", "ab");
+    await mountEditor({ activePath: "main.tex", docVersion: 0, files: {} }, sessionsOf(session));
+    await act(async () =>
+      view().dispatch({
+        changes: { from: 1, insert: "x\r\ny\rz" },
+        selection: { anchor: 7 },
+        annotations: Transaction.userEvent.of("input.paste"),
+      }),
+    );
+    await act(async () => {
+      undo(view());
+    });
+    expect(view().state.doc.toString()).toBe("ab");
+    expect(session.text()).toBe("ab");
+    await act(async () => {
+      redo(view());
+    });
+    expect(view().state.doc.toString()).toBe("ax\ny\nzb");
+    expect(session.text()).toBe(view().state.doc.toString());
   });
 
   it("writes a lone carriage return as a line feed, which keeps the length and so slipped past the length check", async () => {

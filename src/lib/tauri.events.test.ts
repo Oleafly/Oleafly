@@ -13,13 +13,15 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
 import {
   ASSET_PROGRESS_EVENT,
-  COLLAB_CHANGE_SKIPPED_EVENT,
   isSkillAssetProgress,
   onAssetProgress,
-  onCollabChangeSkipped,
   withAssetProgress,
   withEventListener,
 } from "./tauri";
+import {
+  COLLAB_CHANGE_SKIPPED_EVENT,
+  onCollabChangeSkipped,
+} from "./tauri-collab";
 
 const component: AssetProgress = {
   component: "lato",

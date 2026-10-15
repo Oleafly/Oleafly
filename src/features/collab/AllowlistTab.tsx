@@ -7,14 +7,16 @@ import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate } from "@/lib/intl";
+import type {
+  CollabAllowlistEntry,
+  CollabNewAllowlistEntry,
+  CollabProvider,
+} from "@/lib/tauri";
 import {
   collabAdminAddAllowlist,
   collabAdminAllowlist,
   collabAdminRemoveAllowlist,
-  type CollabAllowlistEntry,
-  type CollabNewAllowlistEntry,
-  type CollabProvider,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { looksLikeEmailAddress, looksLikeLogin } from "./address-checks";
 import { useBusyRows } from "./busy-rows";
 import { collabErrorMessage, collabErrorText } from "./errors";

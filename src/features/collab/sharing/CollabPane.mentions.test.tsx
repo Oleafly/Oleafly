@@ -11,8 +11,8 @@ import { useCollabLiveStore } from "../live/live-store";
 import { BOB_ID, fill, shareInfo } from "../tests/fixtures";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabTrashList: vi.fn(async () => []),
 }));
 

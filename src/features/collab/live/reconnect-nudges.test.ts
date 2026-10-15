@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ collabLiveReconnectNow: vi.fn(), logError: vi.fn() }));
 
-vi.mock("@/lib/tauri", () => ({ collabLiveReconnectNow: mocks.collabLiveReconnectNow }));
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
+  collabLiveReconnectNow: mocks.collabLiveReconnectNow,
+}));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { HIDDEN_LONG_MS, NUDGE_GAP_MS, startReconnectNudges } from "./reconnect-nudges";

@@ -7,6 +7,9 @@ export interface CollabEditorPort {
   // opening one. Disk writes of such a file only mirror text the window has.
   holds?(path: string): boolean;
   flush(projectId: string): Promise<void>;
+  // Before the project closes: typing the shared document hasn't confirmed
+  // goes back to the buffers as unsaved, so the save that follows keeps it.
+  handBack?(projectId: string): Promise<void>;
 }
 
 interface CollabEditorGate {
@@ -40,6 +43,11 @@ export function collabHoldsDocument(path: string): boolean {
 
 export async function collabCompileBarrier(projectId: string | null): Promise<void> {
   if (projectId && port) await port.flush(projectId);
+}
+
+// Called by the files store before it saves and leaves a project.
+export async function collabHandBack(projectId: string | null): Promise<void> {
+  if (projectId && port?.handBack) await port.handBack(projectId);
 }
 
 const projectReadOnly = (gate: CollabEditorGate, projectId: string | null) =>

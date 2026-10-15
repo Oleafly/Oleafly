@@ -5,7 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
-import { COLLAB_JOIN_PROGRESS_EVENT, collabJoinCancel, type CollabJoinProgress } from "@/lib/tauri";
+import type { CollabJoinProgress } from "@/lib/tauri";
+import { COLLAB_JOIN_PROGRESS_EVENT, collabJoinCancel } from "@/lib/tauri-collab";
 
 export interface JoinTarget {
   serverId: string;

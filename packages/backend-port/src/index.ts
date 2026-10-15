@@ -1242,7 +1242,10 @@ export type CollabLiveEndReason =
     | "server_changed"
     // The document engine hit an error on a change. The next start skips
     // that change, so going live again continues.
-    | "failed";
+    | "failed"
+    // Too many shared documents broke in this run of the app, so a new start
+    // would fail too. Restarting the app clears it.
+    | "engine_spent";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
@@ -1630,7 +1633,7 @@ export interface BackendPort {
   collabPendingLinks: () => Promise<string[]>;
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
   collabLiveStop: (projectId: string) => Promise<void>;
-  collabLiveFlush: (projectId: string) => Promise<void>;
+  collabLiveFlush: (projectId: string, options?: { waitForFigures?: boolean }) => Promise<void>;
   collabLiveReconnectNow: () => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
@@ -1789,6 +1792,23 @@ export interface CollabUploadFile {
 // size limit. Sent at the first refusal after each connect.
 export interface CollabLiveProjectFull {
   projectId: string;
+}
+// Sent when a live session stops or the server ends it: the files it wrote
+// while editors had them open, each with the disk snapshot of what it holds
+// now (the window's own hash, whether it has CRLF line ends, and its length in
+// UTF-16 units). Files changed outside Oleafly since are left out, so their
+// change still shows.
+export interface CollabLiveWritten {
+  projectId: string;
+  files: { path: string; hash: string; crlf: boolean; length: number }[];
+}
+// How far the upload of one figure got, in bytes. Sent a few times a second
+// at most while it goes up.
+export interface CollabUploadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number;
 }
 export interface CollabLiveUploads {
   projectId: string;

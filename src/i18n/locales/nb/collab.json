@@ -220,7 +220,7 @@
     "already_member": "Denne personen har allerede en konto. Endre rollen under Personer.",
     "project_not_shared": "Dette prosjektet er ikke delt ennå. Del det først, og inviter deretter folk.",
     "project_full": "Dette prosjektet har allerede så mange personer som serveren tillater. Fjern noen først, eller spør administratoren for serveren.",
-    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer akkurat nå. Spør en administrator av serveren.",
+    "owner_away": "Eieren av prosjektet er suspendert eller fjernet på denne serveren, så prosjektet kan ikke ta inn nye personer før eierens konto er aktiv igjen.",
     "wrong_server": "Serveren sendte innloggingssiden sin fra en annen adresse, så Oleafly stoppet. Sjekk serveradressen, eller spør den som drifter serveren.",
     "not_a_link": "Det er ikke en lenke til et delt prosjekt. Kopier hele lenken, og prøv igjen.",
     "signed_out": "Du er logget ut av denne serveren. Logg inn igjen for å synkronisere prosjektet.",
@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly må oppdateres",
     "serverTooOld": "Serveren må oppdateres",
     "serverChanged": "Ny server på adressen",
-    "failed": "Stoppet etter en feil"
+    "failed": "Stoppet etter en feil",
+    "engineSpent": "Omstart trengs"
   },
   "toolbar": {
     "noFile": "Ingen fil åpen",
@@ -689,6 +690,8 @@
     "serverChanged": "Adressen til {{server}} peker nå til en annen server. Fjern den i samarbeidsinnstillingene, og legg den til på nytt. Endringene dine blir værende på denne maskinen.",
     "failed": "Synkroniseringen av dette prosjektet stoppet etter en feil. Start den igjen for å fortsette.",
     "goLiveAgain": "Synkroniser igjen",
+    "engineSpent": "Start Oleafly på nytt for å fortsette å synkronisere dette prosjektet.",
+    "restartApp": "Start Oleafly på nytt",
     "accessEnded": "Du har ikke lenger tilgang til {{server}}. Kopien din blir liggende på denne maskinen som et vanlig prosjekt.",
     "accessEndedGuest": "Du har ikke lenger tilgang til {{server}} fordi du ikke er med i noen av de delte prosjektene der. Kopien din blir liggende på denne maskinen som et vanlig prosjekt.",
     "signIn": "Logg inn",
@@ -709,6 +712,7 @@
     "showComment": "Vis kommentar",
     "settings": {
       "mainDocument": "{{name}} gjorde {{path}} til hoveddokument",
+      "mainDocumentNow": "{{path}} er nå hoveddokumentet",
       "compiler": "{{name}} satte kompilatoren til {{compiler}}",
       "spellingLanguage": "{{name}} satte språket for stavekontroll til {{language}}",
       "spellingCleared": "{{name}} fjernet prosjektets språk for stavekontroll",
@@ -1040,6 +1044,7 @@
     "viewerBy": "{{name}} har gjort deg til leser. Du kan lese prosjektet, men ikke redigere det.",
     "viewer": "Du er nå leser. Du kan lese prosjektet, men ikke redigere det.",
     "viewOnly": "Du kan se dette delte prosjektet, men ikke redigere det.",
+    "connecting": "Dette delte prosjektet kobler seg fortsatt til, så det kan ikke endres ennå. Prøv igjen om litt.",
     "unsentReadOnly": "De siste endringene dine i {{path}} ble ikke sendt fordi du nå bare kan se dette prosjektet.",
     "unsentRefused": "Oleafly kunne ikke sende de siste endringene dine i {{path}}, så de ble forkastet.",
     "removedBy": "{{name}} fjernet deg fra dette prosjektet. Kopien din blir på denne datamaskinen og deles ikke lenger.",
@@ -1048,6 +1053,7 @@
   "files": {
     "waiting": "Venter på å bli delt: {{files}}",
     "failed": "Kunne ikke deles: {{files}}",
+    "uploading": "Laster opp {{file}}: {{done}} av {{total}}",
     "tooLarge": "{{file}} er på {{size}}, mer enn denne serveren tillater ({{limit}}). Filen blir bare på denne datamaskinen.",
     "tooLargeUnknown": "{{file}} er større enn denne serveren tillater. Filen blir bare på denne datamaskinen.",
     "projectTooLarge": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense på {{limit}}. Be den som drifter serveren om å øke den.",

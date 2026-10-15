@@ -155,6 +155,12 @@ describe("collab catalog", () => {
     for (const [key, value] of flat) expect(value, key).not.toMatch(/paused your account|allowed list|Account paused/u);
   });
 
+  it("says why a project can't take new people in words that fit the person joining and the admin approving", () => {
+    // An admin approving a guest sees this too, so it doesn't send them to an admin.
+    expect(collab.errors.owner_away).not.toMatch(/admin/iu);
+    expect(collab.errors.owner_away).toMatch(/until their account is active again/u);
+  });
+
   it("says where the setup code comes from, and what to do when the server isn't yours", () => {
     const setup = collab.addServer.setupDescription;
     expect(setup).toMatch(/the installer showed you/u);

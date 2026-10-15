@@ -18,6 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: mocks.setFocus }) }));
 
 import * as tauri from "./tauri";
+import * as tauriCollab from "./tauri-collab";
 
 beforeEach(() => {
   mocks.invoke.mockReset().mockResolvedValue(undefined);
@@ -226,7 +227,7 @@ describe("IPC helpers with client-side logic", () => {
   it("opens a live document over a message channel", async () => {
     const onMessage = vi.fn();
     mocks.invoke.mockResolvedValue(null);
-    await expect(tauri.collabDocOpen("p", "main.tex", onMessage)).resolves.toBeNull();
+    await expect(tauriCollab.collabDocOpen("p", "main.tex", onMessage)).resolves.toBeNull();
     expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_open", {
       projectId: "p",
       path: "main.tex",
@@ -237,9 +238,9 @@ describe("IPC helpers with client-side logic", () => {
   });
 
   it("sends a live document change and closes the channel with the token it opened", async () => {
-    await tauri.collabDocChange("p", "file-1", 4, [3, "x"]);
+    await tauriCollab.collabDocChange("p", "file-1", 4, [3, "x"]);
     expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_change", { projectId: "p", fileId: "file-1", rev: 4, op: [3, "x"] });
-    await tauri.collabDocClose("p", "file-1", 7);
+    await tauriCollab.collabDocClose("p", "file-1", 7);
     expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_close", { projectId: "p", fileId: "file-1", session: 7 });
   });
 
@@ -250,7 +251,7 @@ describe("IPC helpers with client-side logic", () => {
     const onCode = vi.fn();
     const server = { server_id: "s" };
     mocks.invoke.mockResolvedValue(server);
-    await expect(tauri.collabServerCodeSignIn("https://uni.edu", setupCode, onCode)).resolves.toBe(server);
+    await expect(tauriCollab.collabServerCodeSignIn("https://uni.edu", setupCode, onCode)).resolves.toBe(server);
     expect(mocks.invoke).toHaveBeenCalledWith("collab_server_code_sign_in", {
       url: "https://uni.edu",
       setupCode: sent,

@@ -9,6 +9,18 @@ import {
 import { setCommentsEditorExtension } from "@/components/editor/cm/comments-slot";
 import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
+import type {
+  CollabCommentCount,
+  CollabCommentMember,
+  CollabCommentMessage,
+  CollabCommentsChanged,
+  CollabCommentsStatus,
+  CollabCommentThread,
+  CollabErrorCode,
+  CollabLiveState,
+  CollabProjectMember,
+  CollabProjectRole,
+} from "@/lib/tauri";
 import {
   collabCommentCounts,
   collabCommentCreate,
@@ -23,17 +35,7 @@ import {
   isCollabCommentError,
   onCollabCommentsChanged,
   onCollabCommentsStatus,
-  type CollabCommentCount,
-  type CollabCommentMember,
-  type CollabCommentMessage,
-  type CollabCommentsChanged,
-  type CollabCommentsStatus,
-  type CollabCommentThread,
-  type CollabErrorCode,
-  type CollabLiveState,
-  type CollabProjectMember,
-  type CollabProjectRole,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";

@@ -7,15 +7,17 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { formatNumber } from "@/lib/intl";
+import type {
+  CollabMember,
+  CollabMemberPatch,
+  CollabMemberStatus,
+} from "@/lib/tauri";
 import {
   collabAdminMemberDevices,
   collabAdminPatchMember,
   collabAdminRemoveMember,
   collabAdminSignOutDevice,
-  type CollabMember,
-  type CollabMemberPatch,
-  type CollabMemberStatus,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useBusyRows } from "./busy-rows";
 import { DevicesList } from "./DevicesList";
 import { collabErrorText } from "./errors";

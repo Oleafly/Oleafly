@@ -6,7 +6,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
+import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useCollabStore } from "../store";
 import {
@@ -35,8 +35,8 @@ vi.mock("@tauri-apps/api/event", () => ({
     return () => mocks.listeners.delete(event);
   }),
 }));
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabSharedWithMe: mocks.collabSharedWithMe,
   collabJoinProject: mocks.collabJoinProject,
   collabJoinCancel: mocks.collabJoinCancel,

@@ -41,7 +41,7 @@ import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
-import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly } from "@/lib/shared-document-writes";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly, sharedWriteRefusal } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
@@ -333,6 +333,11 @@ async function writeCitationTarget(
   newContent: string,
   base: string,
 ): Promise<string | null> {
+  // A viewer's change, or one while the project goes live, stops here with
+  // one message. The files store would refuse it as well and say so in a
+  // toast of its own.
+  const refusal = sharedWriteRefusal(id);
+  if (refusal) return refusal.message;
   if (files.files[targetPath] !== undefined) {
     const bumpVersion = useFilesStore.getState().activePath === targetPath;
     if (!files.setContent(targetPath, newContent, { bumpVersion })) return linkedBibliographyMessage(targetPath);

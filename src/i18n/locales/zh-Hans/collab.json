@@ -220,7 +220,7 @@
     "already_member": "此人已经有账户。请在人员中更改其角色。",
     "project_not_shared": "此项目尚未共享。请先共享，再邀请其他人。",
     "project_full": "此项目的人数已达到服务器允许的上限。请先移除某人，或联系服务器的管理员。",
-    "owner_away": "这个项目的所有者在此服务器上已被停用或移除，所以项目目前无法接纳新成员。请联系服务器的管理员。",
+    "owner_away": "这个项目的所有者在此服务器上已被停用或移除，所以在其账户恢复启用之前，项目无法接纳新成员。",
     "wrong_server": "此服务器从另一个地址发来了登录页面，所以 Oleafly 已停止。请检查服务器地址，或询问管理服务器的人。",
     "not_a_link": "这不是共享项目的链接。请复制完整链接，然后重试。",
     "signed_out": "你已退出此服务器的登录。请重新登录以同步此项目。",
@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "服务器需要更新",
     "serverChanged": "该地址已换成新服务器",
-    "failed": "因出错已停止"
+    "failed": "因出错已停止",
+    "engineSpent": "需要重启"
   },
   "toolbar": {
     "noFile": "未打开文件",
@@ -689,6 +690,8 @@
     "serverChanged": "{{server}} 的地址现在指向另一台服务器。请在协作设置中移除它，然后重新添加。你的更改会保留在这台电脑上。",
     "failed": "这个项目因出错已停止同步。重新开始同步即可继续。",
     "goLiveAgain": "重新同步",
+    "engineSpent": "重启 Oleafly，才能继续同步这个项目。",
+    "restartApp": "重启 Oleafly",
     "accessEnded": "你已无法访问 {{server}}。你的副本会作为普通项目保留在这台电脑上。",
     "accessEndedGuest": "你已无法访问 {{server}}，因为你不在它的任何共享项目中。你的副本会作为普通项目保留在这台电脑上。",
     "signIn": "登录",
@@ -709,6 +712,7 @@
     "showComment": "查看评论",
     "settings": {
       "mainDocument": "{{name}} 将 {{path}} 设为主文档",
+      "mainDocumentNow": "{{path}} 现在是主文档",
       "compiler": "{{name}} 将编译器设为 {{compiler}}",
       "spellingLanguage": "{{name}} 将拼写检查语言设为 {{language}}",
       "spellingCleared": "{{name}} 清除了项目的拼写检查语言",
@@ -1040,6 +1044,7 @@
     "viewerBy": "{{name}} 已将你设为查看者。你可以阅读此项目，但不能编辑。",
     "viewer": "你现在是查看者。你可以阅读此项目，但不能编辑。",
     "viewOnly": "你可以查看这个共享项目，但不能编辑。",
+    "connecting": "这个共享项目仍在连接，所以暂时无法更改。请稍后再试。",
     "unsentReadOnly": "你现在只能查看此项目，因此你对 {{path}} 的最后更改没有发送。",
     "unsentRefused": "Oleafly 无法发送你对 {{path}} 的最后更改，因此已将其丢弃。",
     "removedBy": "{{name}} 已将你移出此项目。你的副本会保留在这台电脑上，不再共享。",
@@ -1048,6 +1053,7 @@
   "files": {
     "waiting": "等待共享：{{files}}",
     "failed": "无法共享：{{files}}",
+    "uploading": "正在上传 {{file}}：{{done}}/{{total}}",
     "tooLarge": "{{file}} 大小为 {{size}}，超过此服务器允许的上限（{{limit}}）。它只保留在这台电脑上。",
     "tooLargeUnknown": "{{file}} 超过此服务器允许的大小。它只保留在这台电脑上。",
     "projectTooLarge": "这个项目已达到服务器的大小上限 {{limit}}，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",

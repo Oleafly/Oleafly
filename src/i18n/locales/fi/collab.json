@@ -220,7 +220,7 @@
     "already_member": "Tällä henkilöllä on jo tili. Vaihda hänen roolinsa kohdassa Henkilöt.",
     "project_not_shared": "Tätä projektia ei ole vielä jaettu. Jaa se ensin ja kutsu sitten muita.",
     "project_full": "Tässä projektissa on jo niin monta henkilöä kuin palvelin sallii. Poista ensin joku tai kysy palvelimen ylläpitäjältä.",
-    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi nyt ottaa uusia henkilöitä. Kysy palvelimen ylläpitäjältä.",
+    "owner_away": "Projektin omistaja on jäädytetty tai poistettu tältä palvelimelta, joten projektiin ei voi ottaa uusia henkilöitä ennen kuin omistajan tili on taas aktiivinen.",
     "wrong_server": "Tämä palvelin lähetti kirjautumissivunsa eri osoitteesta, joten Oleafly keskeytti. Tarkista palvelimen osoite tai kysy palvelimen ylläpitäjältä.",
     "not_a_link": "Tämä ei ole linkki jaettuun projektiin. Kopioi koko linkki ja yritä sitten uudelleen.",
     "signed_out": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään, niin projekti synkronoituu.",
@@ -589,7 +589,8 @@
     "clientTooOld": "Oleafly tarvitsee päivityksen",
     "serverTooOld": "Palvelin tarvitsee päivityksen",
     "serverChanged": "Osoitteessa on uusi palvelin",
-    "failed": "Pysähtyi virheeseen"
+    "failed": "Pysähtyi virheeseen",
+    "engineSpent": "Uudelleenkäynnistys tarvitaan"
   },
   "toolbar": {
     "noFile": "Ei avointa tiedostoa",
@@ -689,6 +690,8 @@
     "serverChanged": "Palvelimen {{server}} osoite vie nyt toiselle palvelimelle. Poista se Yhteistyö-asetuksista ja lisää se uudelleen. Muutoksesi pysyvät tällä koneella.",
     "failed": "Tämän projektin synkronointi pysähtyi virheen vuoksi. Jatka käynnistämällä se uudelleen.",
     "goLiveAgain": "Synkronoi uudelleen",
+    "engineSpent": "Käynnistä Oleafly uudelleen, jotta tämän projektin synkronointi jatkuu.",
+    "restartApp": "Käynnistä Oleafly uudelleen",
     "accessEnded": "Sinulla ei ole enää pääsyä palvelimelle {{server}}. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "accessEndedGuest": "Sinulla ei ole enää pääsyä palvelimelle {{server}}, koska et ole mukana missään sen jaetussa projektissa. Kopiosi pysyy tällä koneella tavallisena projektina.",
     "signIn": "Kirjaudu sisään",
@@ -709,6 +712,7 @@
     "showComment": "Näytä kommentti",
     "settings": {
       "mainDocument": "{{name}} asetti tiedoston {{path}} päädokumentiksi",
+      "mainDocumentNow": "{{path}} on nyt päädokumentti",
       "compiler": "{{name}} vaihtoi kääntäjäksi {{compiler}}",
       "spellingLanguage": "{{name}} vaihtoi oikoluvun kieleksi {{language}}",
       "spellingCleared": "{{name}} poisti projektin oikoluvun kielen",
@@ -1040,6 +1044,7 @@
     "viewerBy": "{{name}} muutti sinut katselijaksi. Voit lukea projektia mutta et muokata sitä.",
     "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
     "viewOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä.",
+    "connecting": "Tätä jaettua projektia yhdistetään vielä, joten sitä ei voi vielä muuttaa. Yritä hetken päästä uudelleen.",
     "unsentReadOnly": "Viimeisimpiä muutoksiasi tiedostoon {{path}} ei lähetetty, koska voit nyt vain katsella tätä projektia.",
     "unsentRefused": "Oleafly ei voinut lähettää viimeisimpiä muutoksiasi tiedostoon {{path}}, joten ne hylättiin.",
     "removedBy": "{{name}} poisti sinut tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta.",
@@ -1048,6 +1053,7 @@
   "files": {
     "waiting": "Odottaa jakamista: {{files}}",
     "failed": "Jakaminen ei onnistunut: {{files}}",
+    "uploading": "Lähetetään {{file}}: {{done}}/{{total}}",
     "tooLarge": "{{file}} on {{size}}, enemmän kuin tämä palvelin sallii ({{limit}}). Tiedosto jää vain tälle tietokoneelle.",
     "tooLargeUnknown": "{{file}} on suurempi kuin tämä palvelin sallii. Tiedosto jää vain tälle tietokoneelle.",
     "projectTooLarge": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan {{limit}}. Pyydä palvelimen ylläpitäjää nostamaan sitä.",

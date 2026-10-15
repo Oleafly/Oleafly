@@ -17,8 +17,8 @@ const mocks = vi.hoisted(() => ({
   useWindowGeometry: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabServersList: mocks.collabServersList,
   collabServerRefresh: mocks.collabServerRefresh,
 }));
@@ -82,7 +82,8 @@ describe("AdminConsoleWindow", () => {
     expect(screen.getByText(copy.loading)).toBeInTheDocument();
     expect(await screen.findByText("Console for Smith Lab as admin")).toBeInTheDocument();
     expect(mocks.collabServerRefresh).toHaveBeenCalledWith(SERVER_ID);
-    expect(document.title).toBe("Oleafly Server Admin Console");
+    // The title is set in an effect that can run after the text shows.
+    await waitFor(() => expect(document.title).toBe("Oleafly Server Admin Console"));
     expect(mocks.useWindowGeometry).toHaveBeenCalledWith(`oleafly.console.geometry.${SERVER_ID}`);
     expect(mocks.listen).toHaveBeenCalledWith("collab-server-changed", expect.any(Function));
   });

@@ -60,7 +60,6 @@ vi.mock("@/lib/tauri", () => ({
   readIsolatedPdf: vi.fn(),
   writeProjectBytes: vi.fn(),
   writeFileContent: vi.fn(),
-  collabWriteText: vi.fn(async () => ({ handled: true })),
   writeBytesFile: vi.fn(),
   listFiles: vi.fn(),
   createImageProject: vi.fn(),
@@ -70,8 +69,12 @@ vi.mock("@/lib/tauri", () => ({
   getConfig: vi.fn(),
   renderTypstSnippet: tauri.renderTypstSnippet,
 }));
+vi.mock("@/lib/tauri-collab", () => ({
+  collabWriteText: vi.fn(async () => ({ handled: true })),
+}));
 
 import * as tauriApi from "@/lib/tauri";
+import * as tauriCollab from "@/lib/tauri-collab";
 import { completeText } from "@/lib/agent-backend";
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -245,7 +248,7 @@ describe("the diagram host adapters", () => {
     } finally {
       useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
     }
-    expect(tauriApi.collabWriteText).toHaveBeenCalledWith("paper", "figures/flow.tex", null, "\\draw;\n");
+    expect(tauriCollab.collabWriteText).toHaveBeenCalledWith("paper", "figures/flow.tex", null, "\\draw;\n");
     expect(tauriApi.writeFileContent).not.toHaveBeenCalled();
   });
 

@@ -17,15 +17,17 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
+import type {
+  CollabCapabilities,
+  CollabProvider,
+  CollabServer,
+  CollabSignInCode,
+} from "@/lib/tauri";
 import {
   collabServerProbe,
   collabServerSignInCancel,
   isCollabCommandError,
-  type CollabCapabilities,
-  type CollabProvider,
-  type CollabServer,
-  type CollabSignInCode,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { ConnectionChecks } from "./ConnectionChecks";
 import { collabErrorCode, collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";

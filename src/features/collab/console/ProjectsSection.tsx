@@ -15,16 +15,18 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import type {
+  CollabAdminProject,
+  CollabAdminProjectSort,
+  CollabAdminProjectsQuery,
+  CollabProjectStatus,
+  CollabSortOrder,
+} from "@/lib/tauri";
 import {
   collabAdminArchiveProject,
   collabAdminProjects,
   collabAdminUnarchiveProject,
-  type CollabAdminProject,
-  type CollabAdminProjectSort,
-  type CollabAdminProjectsQuery,
-  type CollabProjectStatus,
-  type CollabSortOrder,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useBusyRows } from "../busy-rows";
 import { collabErrorText } from "../errors";
 import { InactiveBadge, isInactive } from "../InactiveBadge";

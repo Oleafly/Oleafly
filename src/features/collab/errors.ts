@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import { decodeAppError } from "@/lib/app-error";
-import { isCollabCommandError, type CollabErrorCode } from "@/lib/tauri";
+import type { CollabErrorCode } from "@/lib/tauri";
+import { isCollabCommandError } from "@/lib/tauri-collab";
 
 // What the backend's switch says when Live collaboration is off and a command
 // is refused before it runs, as one of the app's own errors.

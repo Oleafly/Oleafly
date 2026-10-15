@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { collabServerTest, type CollabConnectionCheck } from "@/lib/tauri";
+import type { CollabConnectionCheck } from "@/lib/tauri";
+import { collabServerTest } from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 
 export type ConnectionTest =
