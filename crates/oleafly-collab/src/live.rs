@@ -2774,6 +2774,73 @@ mod tests {
     }
 
     #[test]
+    fn a_scratch_copy_loro_panics_in_while_it_holds_its_lock_is_left_without_aborting() {
+        use crate::doc::failpoint::poison_next;
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(100_000, 61), 1);
+        let left = crate::doc::left_documents();
+        poison_next();
+        bob.import_arrivals(vec![arrival(1, &large)]).unwrap();
+        assert_eq!(crate::doc::left_documents(), left + 1);
+        assert_eq!(bob.doc().scratch_failures(), 1);
+        assert!(!bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc mine");
+    }
+
+    #[test]
+    fn a_panic_while_a_scratch_copy_is_read_back_is_contained_like_one_in_its_import() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(100_000, 62), 1);
+        panic_on(&large, At::ScratchExport);
+        bob.import_arrivals(vec![arrival(1, &large)]).unwrap();
+        assert_eq!(bob.doc().scratch_failures(), 1);
+        assert!(!bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+    }
+
+    #[test]
+    fn copies_of_the_project_loro_panics_in_are_left_without_aborting() {
+        use crate::doc::failpoint::poison_next;
+        let (mut bob, _alice, main) = pair();
+        let snapshot = bob.doc().snapshot().unwrap();
+        let left = crate::doc::left_documents();
+        poison_next();
+        assert!(ProjectDoc::load_contained(&snapshot).is_err());
+        let base = bob.doc().version();
+        type_at_end(&mut bob, &main, " more");
+        poison_next();
+        assert!(bob.doc().at_version(&base).is_err());
+        bob.comment_doc()
+            .create_comment_thread(&main, 0, 1, AccountId::new_v7(), 1, "Note", &[])
+            .unwrap();
+        poison_next();
+        assert!(bob
+            .comment_doc()
+            .without_comment_changes_after(&base)
+            .is_err());
+        assert_eq!(crate::doc::left_documents(), left + 3);
+        assert_eq!(
+            ProjectDoc::load_contained(&snapshot)
+                .unwrap()
+                .text(&main)
+                .unwrap(),
+            "abc"
+        );
+        assert_eq!(
+            bob.doc().at_version(&base).unwrap().text(&main).unwrap(),
+            "abc"
+        );
+    }
+
+    #[test]
     fn a_project_that_stopped_syncing_after_a_panic_takes_no_comment_edits() {
         use crate::doc::failpoint::{panic_on, At};
         let (mut bob, mut alice, main) = pair();
