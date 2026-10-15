@@ -1319,6 +1319,41 @@ fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() 
 }
 
 #[test]
+fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
+    let (_dir, root, _host, rig) = watched_rig("owed-edit", &[("main.tex", "abc")]);
+    rig.remote_new_dir("figs");
+    rig.remote_new_in("figs", "a.tex", "A");
+    rig.settle();
+    let active = rig.active();
+    let figs = guard(&active.disk)
+        .layout
+        .iter()
+        .find(|(_, placed)| placed.path == "figs")
+        .map(|(id, _)| id.clone())
+        .unwrap();
+    std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
+    {
+        let mut disk = guard(&active.disk);
+        let hash = disk.hashes.remove("figs/a.tex").unwrap();
+        disk.hashes.insert("old-figs/a.tex".to_owned(), hash);
+    }
+    super::owed::owe(&active, "old-figs", &figs, Duration::from_secs(600));
+    std::fs::write(root.join("old-figs/a.tex"), "A edited meanwhile").unwrap();
+    rig.import(&["old-figs/a.tex"]);
+    assert_eq!(rig.text("figs/a.tex").as_deref(), Some("A"));
+    super::owed::owe(&active, "old-figs", &figs, Duration::ZERO);
+    rig.settle();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while rig.text("figs/a.tex").as_deref() != Some("A edited meanwhile") {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the edit made while the move was owed never reached the document"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[test]
 fn reconnecting_now_reaches_the_running_session_and_is_harmless_without_one() {
     let (_dir, _root, _host, rig) = watched_rig("reconnecting", &[("main.tex", "abc")]);
     {

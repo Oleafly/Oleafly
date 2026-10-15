@@ -231,7 +231,7 @@ impl Active {
         if !self.root.is_dir() {
             return Ok(Vec::new());
         }
-        self.settle_owed_moves();
+        let followed = self.settle_owed_moves();
         let (mut previous, hashes, owed) = {
             let disk = guard(&self.disk);
             (disk.layout.clone(), disk.hashes.clone(), disk.owed_paths())
@@ -248,7 +248,7 @@ impl Active {
             if self.save_owed() && self.save_due(urgent) {
                 self.save_document().await;
             }
-            return Ok(Vec::new());
+            return Ok(self.written_at(&followed));
         };
         if copied {
             self.handle.flush();
@@ -347,7 +347,9 @@ impl Active {
                 settings::schedule(&active);
             }
         }
-        Ok(conflicts)
+        let mut reread = conflicts;
+        reread.extend(self.written_at(&followed));
+        Ok(reread)
     }
 
     fn take_outgoing(
@@ -513,9 +515,11 @@ pub(super) async fn writer_loop(
         let Some(active) = active.upgrade() else {
             return;
         };
-        if let Ok(conflicts) = active.write_out_paced(!waiters.is_empty()).await {
-            if !conflicts.is_empty() {
-                let _ = active.import_paths(Some(conflicts)).await;
+        // A pass returns the paths to read again: conflicts, and files that
+        // just finished an owed move.
+        if let Ok(reread) = active.write_out_paced(!waiters.is_empty()).await {
+            if !reread.is_empty() {
+                let _ = active.import_paths(Some(reread)).await;
             }
         }
         for done in waiters {
