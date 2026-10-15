@@ -206,6 +206,37 @@ describe("RemoteDocumentSession", () => {
     expect(channel.text).toBe(session.text());
   });
 
+  it("copies its text once for a remote edit and not again when typing is confirmed", async () => {
+    let deliver: (message: CollabDocMessage) => void = () => undefined;
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: {
+        open: async (_path, onMessage) => {
+          deliver = onMessage;
+          return { file_id: "file", rev: 0, text: "abc", session: 1 };
+        },
+        change: vi.fn(),
+        close: vi.fn(),
+      },
+    });
+    await session.open();
+    const apply = vi.spyOn(TextOperation.prototype, "apply");
+    deliver({ kind: "remote", rev: 1, op: [">", 3], length: 4 });
+    expect(apply).toHaveBeenCalledTimes(1);
+    session.applyLocal([{ from: 4, to: 4, insert: "!" }], session.version());
+    deliver({ kind: "ack", rev: 2, length: 5 });
+    expect(apply).toHaveBeenCalledTimes(2);
+    session.applyLocal([{ from: 5, to: 5, insert: "?" }], session.version());
+    session.applyLocal([{ from: 6, to: 6, insert: "#" }], session.version());
+    deliver({ kind: "remote", rev: 3, op: ["<", 5], length: 6 });
+    deliver({ kind: "ack", rev: 4, length: 7 });
+    deliver({ kind: "ack", rev: 5, length: 8 });
+    expect(apply).toHaveBeenCalledTimes(5);
+    expect(session.text()).toBe("<>abc!?#");
+    expect(session.confirmed()).toBe("<>abc!?#");
+    expect(session.synchronized).toBe(true);
+    apply.mockRestore();
+  });
+
   it("moves a remote change past its own pending changes", async () => {
     const channel = new FakeChannel("abc");
     const { session, editor, id } = await opened(channel);

@@ -1,6 +1,6 @@
 import type { DocumentSession, RemoteChange, Utf16Edit } from "@oleafly/editor/document-session";
 import type { CollabDocMessage, CollabDocOpened, CollabTextOperation } from "@/lib/tauri";
-import { diffOperation, editsFromOperation, operationFromEdits, TextOperation } from "./ot";
+import { diffOperation, editsFromOperation, OtError, operationFromEdits, TextOperation } from "./ot";
 
 export interface RemoteSessionTransport {
   open(path: string, onMessage: (message: CollabDocMessage) => void): Promise<CollabDocOpened | null>;
@@ -15,6 +15,11 @@ export type RemoteSessionPhase = "opening" | "open" | "detached" | "closed";
 // Why typing that never reached the shared document was dropped: the person
 // can only view the project now, or the shared document refused it twice.
 export type DiscardReason = "read_only" | "refused";
+
+// Confirmed changes are composed into one operation instead of being applied
+// to the confirmed text each time. Past this many steps the text is rebuilt,
+// so composing stays cheap.
+const CONFIRMED_STEPS = 64;
 
 export interface RemoteSessionOptions {
   transport: RemoteSessionTransport;
@@ -35,9 +40,12 @@ export class RemoteDocumentSession implements DocumentSession {
   private localVersion = 0;
   private serverRev = 0;
   private channel: Channel | null = null;
-  // The shared text at `serverRev`, as far as Rust has confirmed it. Local
-  // typing that isn't confirmed yet is the difference between it and `content`.
-  private confirmed: string;
+  // The shared text at `serverRev`, as far as Rust has confirmed it, is
+  // `confirmedText` with `confirmedSince` applied. Local typing that isn't
+  // confirmed yet is the difference between it and `content`. Keeping the
+  // confirmed changes as an operation means an edit copies the file once.
+  private confirmedText: string;
+  private confirmedSince: TextOperation | null = null;
   // While opening, `pending` holds the typing relative to `base`.
   private base: string;
   private pending: TextOperation | null = null;
@@ -56,7 +64,7 @@ export class RemoteDocumentSession implements DocumentSession {
   constructor(path: string, text: string, options: RemoteSessionOptions) {
     this.place = path;
     this.content = text;
-    this.confirmed = text;
+    this.confirmedText = text;
     this.base = text;
     this.options = options;
   }
@@ -83,7 +91,16 @@ export class RemoteDocumentSession implements DocumentSession {
 
   // The text holds typing the shared document never confirmed.
   get unconfirmed(): boolean {
-    return this.content !== this.confirmed;
+    return !this.synchronized;
+  }
+
+  // The shared text as Rust last confirmed it.
+  confirmed(): string {
+    if (this.confirmedSince) {
+      this.confirmedText = this.confirmedSince.apply(this.confirmedText);
+      this.confirmedSince = null;
+    }
+    return this.confirmedText;
   }
 
   get revision(): number {
@@ -210,15 +227,18 @@ export class RemoteDocumentSession implements DocumentSession {
   // that no longer fits the text it was recorded on is dropped, and the
   // person is told, instead of leaving the file stuck between channels.
   private keepUnsent(): void {
+    let base = this.content;
     let pending: TextOperation | null = null;
     let lost = false;
     try {
+      base = this.confirmed();
       pending = this.unsent();
     } catch {
-      this.confirmed = this.content;
+      this.setConfirmed(this.content);
+      base = this.content;
       lost = true;
     }
-    this.base = this.confirmed;
+    this.base = base;
     this.pending = pending;
     this.outstanding = null;
     this.buffer = null;
@@ -228,7 +248,7 @@ export class RemoteDocumentSession implements DocumentSession {
   private join(serverText: string): void {
     const pending = this.pending;
     this.pending = null;
-    this.confirmed = serverText;
+    this.setConfirmed(serverText);
     if (pending && this.rebase(pending, serverText)) return;
     this.applyRemote(diffOperation(this.content, serverText));
     if (pending && !pending.isNoop()) this.options.onDiscarded?.("refused");
@@ -272,16 +292,17 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   private acknowledge(rev: number, length: number): void {
-    if (!this.outstanding) {
+    const acked = this.outstanding;
+    if (!acked) {
       this.resync();
       return;
     }
-    const confirmed = this.outstanding.apply(this.confirmed);
+    if (acked.baseLength !== this.confirmedLength()) throw new OtError("length_mismatch");
     this.serverRev = rev;
-    this.confirmed = confirmed;
     this.resent = false;
     this.outstanding = this.holding ? null : this.buffer;
     if (!this.holding) this.buffer = null;
+    this.confirm(acked);
     if (!this.checkLength(length)) return;
     if (this.outstanding) {
       this.send(this.outstanding);
@@ -292,7 +313,7 @@ export class RemoteDocumentSession implements DocumentSession {
 
   private remote(rev: number, wire: CollabTextOperation, length: number): void {
     const server = TextOperation.fromWire(wire);
-    const confirmed = server.apply(this.confirmed);
+    if (server.baseLength !== this.confirmedLength()) throw new OtError("length_mismatch");
     let operation = server;
     let outstanding = this.outstanding;
     let buffer = this.buffer;
@@ -300,11 +321,12 @@ export class RemoteDocumentSession implements DocumentSession {
     // nothing in flight, so each one moves past the remote change on its own.
     if (outstanding) [outstanding, operation] = TextOperation.transform(outstanding, operation);
     if (buffer) [buffer, operation] = TextOperation.transform(buffer, operation);
+    const next = operation.apply(this.content);
     this.outstanding = outstanding;
     this.buffer = buffer;
     this.serverRev = rev;
-    this.confirmed = confirmed;
-    this.applyRemote(operation);
+    this.publish(next, operation);
+    this.confirm(server);
     this.checkLength(length);
   }
 
@@ -319,9 +341,9 @@ export class RemoteDocumentSession implements DocumentSession {
     let discarded: DiscardReason | null = null;
     if (unsent) discarded = this.readOnly ? "read_only" : this.resent ? "refused" : null;
     const moved =
-      unsent && !discarded ? TextOperation.transform(unsent, diffOperation(this.confirmed, text)) : null;
+      unsent && !discarded ? TextOperation.transform(unsent, diffOperation(this.confirmed(), text)) : null;
     this.serverRev = rev;
-    this.confirmed = text;
+    this.setConfirmed(text);
     this.outstanding = null;
     this.buffer = null;
     if (!moved) {
@@ -343,17 +365,48 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   // `length` is the shared text's length after the message, which is what
-  // `confirmed` must hold whatever local typing is still in flight.
+  // the confirmed text must hold whatever local typing is still in flight.
   private checkLength(length: number): boolean {
-    if (this.confirmed.length === length) return true;
+    if (this.confirmedLength() === length) return true;
     this.resync();
     return false;
   }
 
+  private confirmedLength(): number {
+    return this.confirmedSince ? this.confirmedSince.targetLength : this.confirmedText.length;
+  }
+
+  private setConfirmed(text: string): void {
+    this.confirmedText = text;
+    this.confirmedSince = null;
+  }
+
+  // Rust confirmed `operation` on top of the confirmed text. With nothing
+  // unconfirmed left, the session's own text is the confirmed text, so it is
+  // shared rather than copied.
+  private confirm(operation: TextOperation): void {
+    if (this.synchronized) {
+      this.setConfirmed(this.content);
+      return;
+    }
+    const since = this.confirmedSince ? this.confirmedSince.compose(operation) : operation;
+    if (since.size <= CONFIRMED_STEPS) {
+      this.confirmedSince = since;
+      return;
+    }
+    this.confirmedText = since.apply(this.confirmedText);
+    this.confirmedSince = null;
+  }
+
   private applyRemote(operation: TextOperation): void {
     if (operation.isNoop()) return;
+    this.publish(operation.apply(this.content), operation);
+  }
+
+  private publish(next: string, operation: TextOperation): void {
+    if (operation.isNoop()) return;
     const edits = editsFromOperation(operation);
-    this.content = operation.apply(this.content);
+    this.content = next;
     this.localVersion += 1;
     const change: RemoteChange = { edits, version: this.localVersion };
     for (const listener of Array.from(this.listeners)) listener(change);
