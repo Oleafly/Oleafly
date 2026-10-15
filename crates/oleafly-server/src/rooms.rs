@@ -609,6 +609,35 @@ mod tests {
         assert!(frames.try_recv().is_err());
     }
 
+    #[tokio::test]
+    async fn a_cursor_sent_before_a_leave_never_arrives_after_it() {
+        let rooms = Rooms::new();
+        let project = SharedProjectId::new_v7();
+        let (watcher, mut frames, _controls) = member(1, AccountId::new_v7(), 8);
+        rooms.join(project, watcher);
+        let typist = DeviceId::new_v7();
+        let left = ServerFrame::PresenceLeft {
+            project_id: project,
+            device_id: typist,
+        };
+        rooms.broadcast(project, None, &here(project, typist, 1));
+        rooms.broadcast(project, None, &left);
+        assert_eq!(frames.recv().await, Some(left.clone()));
+        assert!(frames.try_recv().is_err());
+        rooms.broadcast(project, None, &here(project, typist, 2));
+        let shown = frames
+            .recv()
+            .await
+            .expect("the cursor sent after the leave");
+        assert!(matches!(
+            shown,
+            ServerFrame::Presence { state, .. } if state.cursor == Some(2)
+        ));
+        rooms.broadcast(project, None, &left);
+        assert_eq!(frames.recv().await, Some(left));
+        assert!(frames.try_recv().is_err());
+    }
+
     #[test]
     fn occupancy_counts_open_rooms_and_distinct_people() {
         let rooms = Rooms::new();

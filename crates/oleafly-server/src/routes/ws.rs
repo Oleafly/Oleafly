@@ -657,13 +657,34 @@ const CURSOR_BURST: f64 = 20.0;
 
 pub(crate) struct CursorGate {
     budget: std::sync::Mutex<(f64, Instant)>,
+    // Projects where the room was last shown a cursor from this connection,
+    // so a leave there has a cursor to clear.
+    shown: std::sync::Mutex<std::collections::HashSet<SharedProjectId>>,
 }
 
 impl CursorGate {
     pub(crate) fn new() -> CursorGate {
         CursorGate {
             budget: std::sync::Mutex::new((CURSOR_BURST, Instant::now())),
+            shown: std::sync::Mutex::new(std::collections::HashSet::new()),
         }
+    }
+
+    fn showed(&self, project: SharedProjectId) {
+        self.shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(project);
+    }
+
+    // A leave that clears a cursor always goes out, whatever the rate of
+    // cursor updates before it, so no cursor stays behind. A leave with no
+    // cursor to clear has nothing to say.
+    fn hides(&self, project: SharedProjectId) -> bool {
+        self.shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&project)
     }
 
     fn allow(&self) -> bool {
@@ -779,7 +800,7 @@ impl Peer<'_> {
     }
 
     pub(crate) fn leave_presence(&self, project: SharedProjectId) {
-        if self.state.rooms.is_member(project, self.connection) && self.cursors.allow() {
+        if self.state.rooms.is_member(project, self.connection) && self.cursors.hides(project) {
             self.state.rooms.broadcast(
                 project,
                 Some(self.connection),
@@ -1079,6 +1100,7 @@ impl Peer<'_> {
                 state,
             },
         );
+        self.cursors.showed(project);
         None
     }
 }

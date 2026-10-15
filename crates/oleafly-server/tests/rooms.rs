@@ -532,3 +532,45 @@ async fn a_change_past_the_project_size_limit_is_refused_and_says_why() {
         other => panic!("expected the size limit, got {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn leaving_after_a_burst_of_cursor_updates_still_clears_the_cursor() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage, ProjectRole::Viewer).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    let mut alice = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut bob, project, 0).await;
+    subscribe(&mut alice, project, 0).await;
+    for cursor in 0..50u32 {
+        send_frame(
+            &mut alice,
+            &ClientFrame::Presence {
+                project_id: project,
+                state: PresenceState {
+                    file_id: Some("main".to_owned()),
+                    cursor: Some(cursor),
+                    anchor: None,
+                },
+            },
+        )
+        .await;
+    }
+    send_frame(
+        &mut alice,
+        &ClientFrame::PresenceLeave {
+            project_id: project,
+        },
+    )
+    .await;
+    loop {
+        match next_frame(&mut bob).await {
+            Some(ServerFrame::PresenceLeft { device_id, .. })
+                if device_id == stage.alice.tokens.device_id =>
+            {
+                break
+            }
+            Some(ServerFrame::Presence { .. }) => {}
+            other => panic!("expected the leave, got {other:?}"),
+        }
+    }
+}
