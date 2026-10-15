@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "En attente de partage : {{files}}",
     "failed": "Partage impossible : {{files}}",
+    "uploading": "Envoi de {{file}} : {{done}} sur {{total}}",
     "tooLarge": "{{file}} pèse {{size}}, plus que ce que ce serveur accepte ({{limit}}). Il reste uniquement sur cet ordinateur.",
     "tooLargeUnknown": "{{file}} dépasse la taille acceptée par ce serveur. Il reste uniquement sur cet ordinateur.",
     "projectTooLarge": "{{file}} reste sur cet ordinateur, car le projet a atteint la limite de taille du serveur, {{limit}}. Demandez à la personne qui gère le serveur de l'augmenter.",

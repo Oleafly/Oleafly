@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Odottaa jakamista: {{files}}",
     "failed": "Jakaminen ei onnistunut: {{files}}",
+    "uploading": "Lähetetään {{file}}: {{done}}/{{total}}",
     "tooLarge": "{{file}} on {{size}}, enemmän kuin tämä palvelin sallii ({{limit}}). Tiedosto jää vain tälle tietokoneelle.",
     "tooLargeUnknown": "{{file}} on suurempi kuin tämä palvelin sallii. Tiedosto jää vain tälle tietokoneelle.",
     "projectTooLarge": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan {{limit}}. Pyydä palvelimen ylläpitäjää nostamaan sitä.",

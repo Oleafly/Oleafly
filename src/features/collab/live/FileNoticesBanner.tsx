@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { CloudAlert, CloudUpload, Files, FileWarning, FolderInput, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
+import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceBanner, WorkspaceBannerButton, type WorkspaceBannerTone } from "@/components/ui/workspace-banner";
 import { formatBytes } from "@/lib/format-bytes";
@@ -23,6 +24,24 @@ function Dismiss({ tone, onDismiss }: Readonly<{ tone: WorkspaceBannerTone; onDi
     <WorkspaceBannerButton tone={tone} aria-label={t(($) => $.collab.files.dismiss)} onClick={onDismiss}>
       <X aria-hidden className="size-3.5" />
     </WorkspaceBannerButton>
+  );
+}
+
+// How far a figure that is going up now got.
+function UploadProgressLine({ path }: Readonly<{ path: string }>) {
+  const { t } = useTranslation(["collab"]);
+  const progress = useFileNotices((state) => state.progress[path]);
+  if (!progress) return null;
+  const text = t(($) => $.collab.files.uploading, {
+    file: basename(path),
+    done: formatBytes(progress.done),
+    total: formatBytes(progress.total),
+  });
+  return (
+    <div className="flex basis-full items-center gap-2 pl-5.5" data-testid="collab-upload-progress">
+      <Progress value={(progress.done / progress.total) * 100} label={text} className="h-1 max-w-48" />
+      <span className="min-w-0 truncate tabular-nums">{text}</span>
+    </div>
   );
 }
 
@@ -51,6 +70,7 @@ function UploadRow({ files, failed }: Readonly<{ files: readonly CollabUploadFil
         {retrying ? <Spinner size="xs" /> : null}
         {t(($) => $.collab.files.retry)}
       </WorkspaceBannerButton>
+      {failed ? null : files.map((file) => <UploadProgressLine key={file.path} path={file.path} />)}
     </WorkspaceBanner>
   );
 }

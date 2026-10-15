@@ -2181,6 +2181,15 @@ export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
 export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
 export const COLLAB_LIVE_PROJECT_FULL_EVENT = "collab-live-project-full";
 export const COLLAB_LIVE_WRITTEN_EVENT = "collab-live-written";
+export const COLLAB_UPLOAD_PROGRESS_EVENT = "collab-upload-progress";
+
+export function onCollabUploadProgress(
+  handler: (payload: import("@oleafly/backend-port").CollabUploadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabUploadProgress>(COLLAB_UPLOAD_PROGRESS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
 
 export function onCollabLiveWritten(
   handler: (payload: import("@oleafly/backend-port").CollabLiveWritten) => void,

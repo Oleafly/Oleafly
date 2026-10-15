@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Czeka na udostępnienie: {{files}}",
     "failed": "Nie udało się udostępnić: {{files}}",
+    "uploading": "Przesyłanie {{file}}: {{done}} z {{total}}",
     "tooLarge": "{{file}} ma {{size}}, więcej, niż pozwala ten serwer ({{limit}}). Plik zostaje tylko na tym komputerze.",
     "tooLargeUnknown": "{{file}} jest większy, niż pozwala ten serwer. Plik zostaje tylko na tym komputerze.",
     "projectTooLarge": "{{file}} zostaje na tym komputerze, bo projekt osiągnął limit rozmiaru serwera ({{limit}}). Poproś osobę, która prowadzi serwer, o jego podniesienie.",

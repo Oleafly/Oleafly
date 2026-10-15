@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "공유 대기 중: {{files}}",
     "failed": "공유하지 못함: {{files}}",
+    "uploading": "{{file}} 업로드 중: {{done}} / {{total}}",
     "tooLarge": "{{file}} 파일은 {{size}}로, 이 서버에서 허용하는 크기({{limit}})보다 큽니다. 이 컴퓨터에만 남습니다.",
     "tooLargeUnknown": "{{file}} 파일은 이 서버에서 허용하는 크기보다 큽니다. 이 컴퓨터에만 남습니다.",
     "projectTooLarge": "이 프로젝트가 서버의 크기 제한({{limit}})에 도달해 {{file}}은(는) 이 컴퓨터에 남습니다. 서버를 운영하는 사람에게 제한을 늘려 달라고 요청하세요.",

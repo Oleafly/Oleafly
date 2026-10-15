@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Väntar på att delas: {{files}}",
     "failed": "Kunde inte delas: {{files}}",
+    "uploading": "Laddar upp {{file}}: {{done}} av {{total}}",
     "tooLarge": "{{file}} är {{size}}, mer än den här servern tillåter ({{limit}}). Filen finns bara kvar på den här datorn.",
     "tooLargeUnknown": "{{file}} är större än den här servern tillåter. Filen finns bara kvar på den här datorn.",
     "projectTooLarge": "{{file}} stannar på den här datorn eftersom projektet har nått serverns storleksgräns på {{limit}}. Be den som driver servern att höja den.",

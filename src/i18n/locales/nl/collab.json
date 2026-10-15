@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Wacht om gedeeld te worden: {{files}}",
     "failed": "Kon niet worden gedeeld: {{files}}",
+    "uploading": "{{file}} uploaden: {{done}} van {{total}}",
     "tooLarge": "{{file}} is {{size}}, groter dan deze server toestaat ({{limit}}). Het bestand blijft alleen op deze computer.",
     "tooLargeUnknown": "{{file}} is groter dan deze server toestaat. Het bestand blijft alleen op deze computer.",
     "projectTooLarge": "{{file}} blijft op deze computer omdat het project de groottelimiet van de server van {{limit}} heeft bereikt. Vraag wie de server beheert om die te verhogen.",

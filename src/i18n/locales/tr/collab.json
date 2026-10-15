@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Paylaşılmayı bekliyor: {{files}}",
     "failed": "Paylaşılamadı: {{files}}",
+    "uploading": "{{file}} yükleniyor: {{done}} / {{total}}",
     "tooLarge": "{{file}} {{size}} boyutunda, bu sunucunun izin verdiğinden ({{limit}}) büyük. Yalnızca bu bilgisayarda kalır.",
     "tooLargeUnknown": "{{file}} bu sunucunun izin verdiğinden büyük. Yalnızca bu bilgisayarda kalır.",
     "projectTooLarge": "Proje sunucunun {{limit}} boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",

@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Venter på å bli delt: {{files}}",
     "failed": "Kunne ikke deles: {{files}}",
+    "uploading": "Laster opp {{file}}: {{done}} av {{total}}",
     "tooLarge": "{{file}} er på {{size}}, mer enn denne serveren tillater ({{limit}}). Filen blir bare på denne datamaskinen.",
     "tooLargeUnknown": "{{file}} er større enn denne serveren tillater. Filen blir bare på denne datamaskinen.",
     "projectTooLarge": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense på {{limit}}. Be den som drifter serveren om å øke den.",

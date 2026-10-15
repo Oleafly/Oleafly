@@ -9,20 +9,29 @@ import {
   collabUploadRetry,
   onCollabLiveKept,
   onCollabLiveUploads,
+  onCollabUploadProgress,
   type CollabErrorCode,
   type CollabLiveKept,
   type CollabLiveKeptFile,
   type CollabLiveUploads,
   type CollabLocalCopyOffer,
   type CollabUploadFile,
+  type CollabUploadProgress,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { useCollabLiveStore } from "./live-store";
 
+export interface UploadProgress {
+  done: number;
+  total: number;
+}
+
 export interface FileNoticesState {
   projectId: string | null;
   uploads: readonly CollabUploadFile[];
+  // How far each figure going up now got, by path.
+  progress: Readonly<Record<string, UploadProgress>>;
   kept: readonly CollabLiveKeptFile[];
   retrying: boolean;
   offer: CollabLocalCopyOffer | null;
@@ -40,11 +49,13 @@ export interface FileNoticesState {
 const NO_OFFER = { offer: null, bringing: false, offerFailure: null, broughtIn: null } as const;
 
 const NO_UPLOADS: readonly CollabUploadFile[] = [];
+const NO_PROGRESS: Readonly<Record<string, UploadProgress>> = {};
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
 
 export const useFileNotices = create<FileNoticesState>((set, get) => ({
   projectId: null,
   uploads: NO_UPLOADS,
+  progress: NO_PROGRESS,
   kept: NO_KEPT,
   retrying: false,
   ...NO_OFFER,
@@ -91,13 +102,44 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
   dismissBroughtIn: () => set({ broughtIn: null }),
 }));
 
+// Progress only for figures still waiting to go up.
+function stillWaiting(
+  progress: Readonly<Record<string, UploadProgress>>,
+  files: readonly CollabUploadFile[],
+): Readonly<Record<string, UploadProgress>> {
+  const kept = Object.entries(progress).filter(([path]) =>
+    files.some((file) => file.path === path && file.state === "waiting"),
+  );
+  return kept.length === Object.keys(progress).length ? progress : Object.fromEntries(kept);
+}
+
 function uploaded(payload: CollabLiveUploads): void {
   if (useFilesStore.getState().projectId !== payload.projectId) return;
-  useFileNotices.setState((state) => ({
-    projectId: payload.projectId,
-    uploads: payload.files,
-    kept: state.projectId === payload.projectId ? state.kept : NO_KEPT,
-  }));
+  useFileNotices.setState((state) => {
+    const same = state.projectId === payload.projectId;
+    return {
+      projectId: payload.projectId,
+      uploads: payload.files,
+      progress: same ? stillWaiting(state.progress, payload.files) : NO_PROGRESS,
+      kept: same ? state.kept : NO_KEPT,
+    };
+  });
+}
+
+function progressed(payload: CollabUploadProgress): void {
+  if (useFilesStore.getState().projectId !== payload.projectId) return;
+  useFileNotices.setState((state) => {
+    const progress = state.projectId === payload.projectId ? state.progress : NO_PROGRESS;
+    if (payload.total > 0 && payload.done < payload.total) {
+      return {
+        projectId: payload.projectId,
+        progress: { ...progress, [payload.path]: { done: payload.done, total: payload.total } },
+      };
+    }
+    // Up: the next list of waiting figures no longer has it.
+    const { [payload.path]: _finished, ...rest } = progress;
+    return { projectId: payload.projectId, progress: rest };
+  });
 }
 
 function keptCopies(payload: CollabLiveKept): void {
@@ -121,7 +163,14 @@ function keptCopies(payload: CollabLiveKept): void {
 }
 
 function load(projectId: string | null): void {
-  useFileNotices.setState({ projectId, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false, ...NO_OFFER });
+  useFileNotices.setState({
+    projectId,
+    uploads: NO_UPLOADS,
+    progress: NO_PROGRESS,
+    kept: NO_KEPT,
+    retrying: false,
+    ...NO_OFFER,
+  });
   if (!projectId) return;
   collabUploadList(projectId).then(
     (files) => {
@@ -146,6 +195,10 @@ export function startFileNotices(): () => void {
     void logError("collab kept listen", error);
     return () => {};
   });
+  const stopProgress = onCollabUploadProgress(progressed).catch((error) => {
+    void logError("collab upload progress listen", error);
+    return () => {};
+  });
   let projectId = useFilesStore.getState().projectId;
   load(projectId);
   const stopFiles = useFilesStore.subscribe((state) => {
@@ -157,6 +210,14 @@ export function startFileNotices(): () => void {
     stopFiles();
     void stopUploads.then((stop) => stop());
     void stopKept.then((stop) => stop());
-    useFileNotices.setState({ projectId: null, uploads: NO_UPLOADS, kept: NO_KEPT, retrying: false, ...NO_OFFER });
+    void stopProgress.then((stop) => stop());
+    useFileNotices.setState({
+      projectId: null,
+      uploads: NO_UPLOADS,
+      progress: NO_PROGRESS,
+      kept: NO_KEPT,
+      retrying: false,
+      ...NO_OFFER,
+    });
   };
 }

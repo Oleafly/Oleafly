@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "等待共享：{{files}}",
     "failed": "无法共享：{{files}}",
+    "uploading": "正在上传 {{file}}：{{done}}/{{total}}",
     "tooLarge": "{{file}} 大小为 {{size}}，超过此服务器允许的上限（{{limit}}）。它只保留在这台电脑上。",
     "tooLargeUnknown": "{{file}} 超过此服务器允许的大小。它只保留在这台电脑上。",
     "projectTooLarge": "这个项目已达到服务器的大小上限 {{limit}}，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",

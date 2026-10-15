@@ -1053,6 +1053,7 @@
   "files": {
     "waiting": "Čeká na sdílení: {{files}}",
     "failed": "Nepodařilo se sdílet: {{files}}",
+    "uploading": "Nahrává se {{file}}: {{done}} z {{total}}",
     "tooLarge": "{{file}} má {{size}}, což je víc, než tento server povoluje ({{limit}}). Zůstane jen v tomto počítači.",
     "tooLargeUnknown": "{{file}} je větší, než tento server povoluje. Zůstane jen v tomto počítači.",
     "projectTooLarge": "{{file}} zůstane v tomto počítači, protože projekt dosáhl limitu velikosti serveru {{limit}}. Požádejte toho, kdo server spravuje, aby limit zvýšil.",

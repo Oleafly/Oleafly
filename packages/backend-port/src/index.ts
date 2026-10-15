@@ -1799,6 +1799,14 @@ export interface CollabLiveWritten {
   projectId: string;
   files: { path: string; hash: string }[];
 }
+// How far the upload of one figure got, in bytes. Sent a few times a second
+// at most while it goes up.
+export interface CollabUploadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number;
+}
 export interface CollabLiveUploads {
   projectId: string;
   files: CollabUploadFile[];
