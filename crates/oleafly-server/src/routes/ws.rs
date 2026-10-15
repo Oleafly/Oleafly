@@ -630,6 +630,14 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
     }
 }
 
+// What storing a change came to. With comments off for the project, the
+// change comes back unstored, with what was read from it, for its comment
+// check, so nothing large is copied for the case that doesn't need it.
+enum Appendix {
+    Stored(projects::Appended),
+    Unchecked(Envelope, peers::Reach, Vec<u8>),
+}
+
 struct ReadChange {
     envelope: Envelope,
     reach: peers::Reach,
@@ -894,18 +902,11 @@ impl Peer<'_> {
         };
         let batch = envelope.batch_id;
         let first = self
-            .append(
-                project,
-                envelope.clone(),
-                reach.clone(),
-                stored.clone(),
-                false,
-                mention,
-            )
+            .append(project, envelope, reach, stored, false, mention)
             .await;
         let appended = match first {
-            Ok(Some(appended)) => Ok(appended),
-            Ok(None) => {
+            Ok(Appendix::Stored(appended)) => Ok(appended),
+            Ok(Appendix::Unchecked(envelope, reach, stored)) => {
                 if let Some(refusal) = self.refuse_comment_change(project, &envelope).await {
                     return refusal;
                 }
@@ -918,10 +919,11 @@ impl Peer<'_> {
                         .forget(&self.state.snapshots, project)
                         .await;
                 }
-                checked.and_then(|appended| {
-                    appended.ok_or_else(|| {
-                        ServerError::Internal("the comment check did not hold".to_string())
-                    })
+                checked.and_then(|appended| match appended {
+                    Appendix::Stored(appended) => Ok(appended),
+                    Appendix::Unchecked(..) => Err(ServerError::Internal(
+                        "the comment check did not hold".to_string(),
+                    )),
                 })
             }
             Err(error) => Err(error),
@@ -999,7 +1001,7 @@ impl Peer<'_> {
         stored: Vec<u8>,
         checked: bool,
         mention: bool,
-    ) -> Result<Option<projects::Appended>, ServerError> {
+    ) -> Result<Appendix, ServerError> {
         let (account, device, batch) = (self.account, self.device, envelope.batch_id);
         let now = self.state.clock.now_ms();
         let limit_mb = self.state.config.limits.max_project_mb;
@@ -1019,18 +1021,18 @@ impl Peer<'_> {
                     return Err(ServerError::Forbidden);
                 }
                 if let Some(seq) = projects::stored_batch(&transaction, project, batch)? {
-                    return Ok(Some(projects::Appended {
+                    return Ok(Appendix::Stored(projects::Appended {
                         seq,
                         duplicate: true,
                     }));
                 }
                 match peers::claim(&transaction, project, device, &reach)? {
                     Claim::Taken(_) => return Err(ServerError::Unauthorized),
-                    Claim::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Claim::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
                     Claim::Fresh(_) => {}
                 }
                 if !checked && !comments_on(&transaction, &row)? {
-                    return Ok(None);
+                    return Ok(Appendix::Unchecked(envelope, reach, stored));
                 }
                 let after =
                     projects::log_bytes(&transaction, project)?.saturating_add(stored.len() as u64);
@@ -1039,7 +1041,7 @@ impl Peer<'_> {
                 }
                 match peers::bind(&transaction, project, device, account, &reach, now)? {
                     Bound::Accepted => {}
-                    Bound::Known => return Ok(Some(projects::Appended::nothing_new())),
+                    Bound::Known => return Ok(Appendix::Stored(projects::Appended::nothing_new())),
                     Bound::Refused(_) => return Err(ServerError::Unauthorized),
                     Bound::Detached => {
                         return Err(ServerError::BadRequest(
@@ -1072,7 +1074,7 @@ impl Peer<'_> {
                         },
                     );
                 }
-                Ok(Some(appended))
+                Ok(Appendix::Stored(appended))
             })
             .await
     }
