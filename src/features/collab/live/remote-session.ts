@@ -144,14 +144,7 @@ export class RemoteDocumentSession implements DocumentSession {
   async open(): Promise<void> {
     if (this.current === "closed") return;
     const generation = ++this.generation;
-    if (this.current !== "opening") {
-      // Keep typing Rust hasn't confirmed: it goes out again once the file is
-      // open, moved past whatever changed in the shared text meanwhile.
-      this.base = this.confirmed;
-      this.pending = this.unsent();
-      this.outstanding = null;
-      this.buffer = null;
-    }
+    if (this.current !== "opening") this.keepUnsent();
     this.channel = null;
     this.setPhase("opening");
     const queued: CollabDocMessage[] = [];
@@ -212,12 +205,33 @@ export class RemoteDocumentSession implements DocumentSession {
     return outstanding ?? buffer;
   }
 
+  // Keeps typing Rust hasn't confirmed: it goes out again once the file is
+  // open, moved past whatever changed in the shared text meanwhile. Typing
+  // that no longer fits the text it was recorded on is dropped, and the
+  // person is told, instead of leaving the file stuck between channels.
+  private keepUnsent(): void {
+    let pending: TextOperation | null = null;
+    let lost = false;
+    try {
+      pending = this.unsent();
+    } catch {
+      this.confirmed = this.content;
+      lost = true;
+    }
+    this.base = this.confirmed;
+    this.pending = pending;
+    this.outstanding = null;
+    this.buffer = null;
+    if (lost) this.options.onDiscarded?.("refused");
+  }
+
   private join(serverText: string): void {
     const pending = this.pending;
     this.pending = null;
     this.confirmed = serverText;
     if (pending && this.rebase(pending, serverText)) return;
     this.applyRemote(diffOperation(this.content, serverText));
+    if (pending && !pending.isNoop()) this.options.onDiscarded?.("refused");
   }
 
   // Moves typing made on `base` onto the shared text and sends it. False when
@@ -282,10 +296,10 @@ export class RemoteDocumentSession implements DocumentSession {
     let operation = server;
     let outstanding = this.outstanding;
     let buffer = this.buffer;
-    if (outstanding) {
-      [outstanding, operation] = TextOperation.transform(outstanding, operation);
-      if (buffer) [buffer, operation] = TextOperation.transform(buffer, operation);
-    }
+    // Typing held while an input method composes waits in `buffer` with
+    // nothing in flight, so each one moves past the remote change on its own.
+    if (outstanding) [outstanding, operation] = TextOperation.transform(outstanding, operation);
+    if (buffer) [buffer, operation] = TextOperation.transform(buffer, operation);
     this.outstanding = outstanding;
     this.buffer = buffer;
     this.serverRev = rev;
@@ -295,8 +309,11 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   // Rust sends a reset when it refused a change or couldn't route one. Typing
-  // it never took is moved onto the reset text and sent once more, unless the
-  // person can only view the project now or it was already refused once.
+  // it never took, in flight or waiting, is moved onto the reset text and sent
+  // once more. Rust drops a change based on a revision before the reset
+  // without answering it, so nothing waits for that answer. The typing is
+  // dropped only when the person can only view the project now or Rust
+  // already refused it once.
   private reset(rev: number, text: string): void {
     const unsent = this.unsent();
     let discarded: DiscardReason | null = null;
