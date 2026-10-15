@@ -199,11 +199,18 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
             .clone()
             .oneshot(request(Method::GET, Body::empty())),
     );
-    let mut upload = tokio::spawn(
-        app.router
-            .clone()
-            .oneshot(request(Method::PUT, Body::from(content.clone()))),
-    );
+    let other = seed_member(&app, ServerRole::Member).await;
+    let elsewhere = create_project(&app, &other.access_token).await;
+    let upload_request = Request::builder()
+        .method(Method::PUT)
+        .uri(format!("/api/v1/projects/{elsewhere}/blobs/{hash}"))
+        .header(
+            header::AUTHORIZATION,
+            format!("Bearer {}", other.access_token),
+        )
+        .body(Body::from(content.clone()))
+        .expect("request");
+    let mut upload = tokio::spawn(app.router.clone().oneshot(upload_request));
     let waiting = std::time::Duration::from_millis(300);
     assert!(tokio::time::timeout(waiting, &mut download).await.is_err());
     assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());

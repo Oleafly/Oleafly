@@ -29,6 +29,10 @@ pub const TRANSFER_WAIT: Duration = Duration::from_secs(30);
 // Large transfers one account may have under way at once, so one person
 // reading many files slowly can't hold the budget everyone shares.
 pub const LARGE_TRANSFERS_PER_ACCOUNT: usize = 4;
+// The share of the budget one account's large transfers may hold together.
+// A transfer the account starts with nothing else under way may take more,
+// up to the whole budget, so a large snapshot still goes through.
+pub const ACCOUNT_SHARE_DIVISOR: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UploadTiming {
@@ -67,7 +71,13 @@ impl Gate {
     }
 }
 
-type Accounts = Arc<Mutex<HashMap<AccountId, usize>>>;
+#[derive(Default)]
+struct UnderWay {
+    transfers: usize,
+    kib: u32,
+}
+
+type Accounts = Arc<Mutex<HashMap<AccountId, UnderWay>>>;
 
 // Files and snapshots are held whole in memory while they are uploaded or
 // downloaded. Each large transfer takes its size from one shared budget and
@@ -92,14 +102,16 @@ pub struct TransferPermit(Option<Held>);
 struct AccountTurn {
     accounts: Accounts,
     account: AccountId,
+    kib: u32,
 }
 
 impl Drop for AccountTurn {
     fn drop(&mut self) {
         let mut accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(count) = accounts.get_mut(&self.account) {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
+        if let Some(under_way) = accounts.get_mut(&self.account) {
+            under_way.transfers = under_way.transfers.saturating_sub(1);
+            under_way.kib = under_way.kib.saturating_sub(self.kib);
+            if under_way.transfers == 0 {
                 accounts.remove(&self.account);
             }
         }
@@ -245,16 +257,21 @@ impl Transfers {
         *self.wait.lock().unwrap_or_else(PoisonError::into_inner) = wait;
     }
 
-    fn turn_for(&self, account: AccountId) -> Option<AccountTurn> {
+    fn turn_for(&self, account: AccountId, kib: u32, total: u32) -> Option<AccountTurn> {
         let mut accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);
-        let count = accounts.entry(account).or_insert(0);
-        if *count >= LARGE_TRANSFERS_PER_ACCOUNT {
+        let under_way = accounts.entry(account).or_default();
+        let share = total / ACCOUNT_SHARE_DIVISOR;
+        if under_way.transfers >= LARGE_TRANSFERS_PER_ACCOUNT
+            || (under_way.transfers > 0 && under_way.kib.saturating_add(kib) > share)
+        {
             return None;
         }
-        *count += 1;
+        under_way.transfers += 1;
+        under_way.kib = under_way.kib.saturating_add(kib);
         Some(AccountTurn {
             accounts: Arc::clone(&self.accounts),
             account,
+            kib,
         })
     }
 
@@ -266,7 +283,6 @@ impl Transfers {
         if bytes < SMALL_TRANSFER {
             return Ok(TransferPermit(None));
         }
-        let turn = self.turn_for(account).ok_or(ServerError::RateLimited)?;
         let (permits, total) = {
             let gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
             (Arc::clone(&gate.permits), gate.total)
@@ -274,6 +290,9 @@ impl Transfers {
         let wanted = u32::try_from(bytes.div_ceil(KIB))
             .unwrap_or(u32::MAX)
             .min(total);
+        let turn = self
+            .turn_for(account, wanted, total)
+            .ok_or(ServerError::RateLimited)?;
         let wait = *self.wait.lock().unwrap_or_else(PoisonError::into_inner);
         let permit = tokio::time::timeout(wait, permits.acquire_many_owned(wanted))
             .await
@@ -335,7 +354,7 @@ mod tests {
             .await
             .expect("room");
         assert!(small.0.is_none());
-        let waiting = transfers.hold(account, 2 * SMALL_TRANSFER);
+        let waiting = transfers.hold(AccountId::new_v7(), 2 * SMALL_TRANSFER);
         tokio::pin!(waiting);
         assert!(
             tokio::time::timeout(Duration::from_millis(50), &mut waiting)
@@ -476,6 +495,36 @@ mod tests {
             .is_ok());
         under_way.pop();
         assert!(transfers.hold(account, SMALL_TRANSFER).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn one_account_holds_at_most_half_the_budget_with_more_than_one_transfer() {
+        let transfers = Transfers::with_budget(8 * SMALL_TRANSFER);
+        let account = AccountId::new_v7();
+        let first = transfers
+            .hold(account, 3 * SMALL_TRANSFER)
+            .await
+            .expect("room");
+        assert!(matches!(
+            transfers.hold(account, 2 * SMALL_TRANSFER).await,
+            Err(ServerError::RateLimited)
+        ));
+        let _small = transfers
+            .hold(account, SMALL_TRANSFER)
+            .await
+            .expect("still within half");
+        let _other = transfers
+            .hold(AccountId::new_v7(), 4 * SMALL_TRANSFER)
+            .await
+            .expect("another account's room");
+        drop(first);
+        assert!(transfers.hold(account, 3 * SMALL_TRANSFER).await.is_ok());
+        let alone = AccountId::new_v7();
+        let whole = Transfers::with_budget(8 * SMALL_TRANSFER);
+        assert!(
+            whole.hold(alone, 6 * SMALL_TRANSFER).await.is_ok(),
+            "a transfer with nothing else under way may take more than half"
+        );
     }
 
     #[test]
