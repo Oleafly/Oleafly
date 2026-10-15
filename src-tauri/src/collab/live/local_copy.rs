@@ -91,6 +91,11 @@ fn load_origin(paths: &CollabPaths, project_id: &str) -> Option<Origin> {
     serde_json::from_slice(&bytes).ok()
 }
 
+#[cfg(test)]
+pub(crate) fn has_origin(paths: &CollabPaths, project_id: &str) -> bool {
+    load_origin(paths, project_id).is_some()
+}
+
 fn forget_origin(paths: &CollabPaths, project_id: &str) -> Result<(), CollabError> {
     match std::fs::remove_file(origin_file(paths, project_id)?) {
         Err(error) if error.kind() != std::io::ErrorKind::NotFound => {

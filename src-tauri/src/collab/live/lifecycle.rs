@@ -57,7 +57,12 @@ pub async fn start(
         let registry = state.registry()?;
         let ended = registry.ended(binding.server_id);
         if ended == Some(SessionEndReason::AccessEnded) {
-            let _ = remove_binding(&paths, project_id);
+            let (kept, id) = (paths.clone(), project_id.to_owned());
+            let _ = tauri::async_runtime::spawn_blocking(move || {
+                local_copy::keep_stored_origin(&kept, &id);
+                let _ = remove_binding(&kept, &id);
+            })
+            .await;
             crate::collab::registry::invalidate(project_id);
             local_copy::name_local_copy(project_id);
         }

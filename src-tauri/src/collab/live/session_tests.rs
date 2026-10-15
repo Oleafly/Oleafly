@@ -285,6 +285,9 @@ fn opening_a_project_after_its_session_ended_says_why() {
         ] {
             save_binding(&paths, project, &binding_on(server)).unwrap();
         }
+        LiveProject::new(ProjectDoc::create().unwrap(), 0, ProjectRole::Editor)
+            .save(&paths.document_dir("gone").unwrap())
+            .unwrap();
         state
             .update_registry(|registry| {
                 for server in [paused, gone, plain] {
@@ -326,6 +329,7 @@ fn opening_a_project_after_its_session_ended_says_why() {
         );
         assert!(load_binding(&paths, "paused").unwrap().is_some());
         assert!(load_binding(&paths, "gone").unwrap().is_none());
+        assert!(super::local_copy::has_origin(&paths, "gone"));
         assert!(load_binding(&paths, "plain").unwrap().is_some());
         assert!(load_binding(&paths, "removed").unwrap().is_some());
     });
