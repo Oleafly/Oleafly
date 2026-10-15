@@ -68,7 +68,11 @@ describe("collaboration stays out of the startup bundle", () => {
     const startup = read("src/lib/tauri.ts");
     // App links are heard from the start, even with collaboration off.
     expect([...startup.matchAll(/"(collab_[a-z_]+)"/g)].map((match) => match[1])).toEqual(["collab_pending_links"]);
-    expect([...startup.matchAll(/"(collab-[a-z-]+)"/g)].map((match) => match[1])).toEqual(["collab-open-link"]);
+    // A stopped session's written files can arrive with collaboration off.
+    expect([...startup.matchAll(/"(collab-[a-z-]+)"/g)].map((match) => match[1])).toEqual([
+      "collab-open-link",
+      "collab-live-written",
+    ]);
   });
 
   it("keeps the English collaboration catalog out of the eager catalogs", () => {

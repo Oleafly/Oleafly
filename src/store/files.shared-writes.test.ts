@@ -338,6 +338,9 @@ describe("files a live session wrote while they were open", () => {
   it("keep the CRLF line ends the disk has for the next direct save", async () => {
     mocks.readFileContent.mockResolvedValue("a\n");
     await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
+    }));
     refreshDiskSnapshots("project", [
       { path: "main.tex", hash: diskHash("a\r\nremote\r\n"), crlf: true, length: 11 },
     ]);
@@ -349,6 +352,43 @@ describe("files a live session wrote while they were open", () => {
       "a\r\nremote\r\nmine\r\n",
       3,
       diskHash("a\r\nremote\r\n"),
+    );
+  });
+
+  it("keep the old snapshot when the disk holds text the buffer doesn't, so the save stops on a conflict", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    // A collaborator's line reached the disk, but the session closed before
+    // the editor had it.
+    const changed = refreshDiskSnapshots("project", [
+      { path: "main.tex", hash: diskHash("a\ncollaborator\n"), crlf: false, length: 15 },
+    ]);
+    expect(changed).toEqual(["main.tex"]);
+    useFilesStore.getState().setContent("main.tex", "a\nmine\n");
+    await useFilesStore.getState().saveFile("main.tex").catch(() => {});
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "a\nmine\n", 3, diskHash("a\n"));
+  });
+
+  it("take what the disk holds when it is the base a handed-back buffer merges from", async () => {
+    goLive();
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.setState((state) => ({
+      files: { ...state.files, "main.tex": { content: "a\nremote\n", dirty: false } },
+    }));
+    useFilesStore.getState().setContent("main.tex", "a\nremote\ntyped\n", { unsaved: true, base: "a\nremote\n" });
+    useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    const changed = refreshDiskSnapshots("project", [
+      { path: "main.tex", hash: diskHash("a\nremote\n"), crlf: false, length: 9 },
+    ]);
+    expect(changed).toEqual([]);
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "main.tex",
+      "a\nremote\ntyped\n",
+      3,
+      diskHash("a\nremote\n"),
     );
   });
 

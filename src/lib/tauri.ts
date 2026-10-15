@@ -1581,6 +1581,11 @@ export const collabPendingLinks = () => invoke<string[]>("collab_pending_links")
 export function onCollabOpenLink(handler: () => void): Promise<UnlistenFn> {
   return listen<null>(COLLAB_OPEN_LINK_EVENT, () => handler());
 }
+
+// A live session that stopped, or that the server ended, names the open files
+// it wrote. It can arrive after Live collaboration was switched off, so the
+// window hears it from the start too, outside the collaboration module.
+export const COLLAB_LIVE_WRITTEN_EVENT = "collab-live-written";
 export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
   invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
 export const gitRemoveRemote = (projectId: string) =>
