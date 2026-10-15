@@ -221,6 +221,7 @@
     "project_not_shared": "Este projeto ainda não está compartilhado. Compartilhe primeiro e depois convide pessoas.",
     "project_full": "Este projeto já tem o número máximo de pessoas que o servidor permite. Remova alguém primeiro ou fale com o administrador do servidor.",
     "owner_away": "A pessoa dona do projeto está suspensa ou foi removida deste servidor, então o projeto não pode receber novas pessoas agora. Peça ajuda a um administrador do servidor.",
+    "wrong_server": "Este servidor enviou a página de login de outro endereço, então o Oleafly parou. Confira o endereço do servidor ou pergunte a quem o administra.",
     "not_a_link": "Isso não é um link para um projeto compartilhado. Copie o link inteiro e tente de novo.",
     "signed_out": "A sua sessão neste servidor foi encerrada. Faça login de novo para sincronizar este projeto.",
     "server_removed": "O servidor deste projeto não está mais na sua lista. Mantenha o projeto como cópia local ou adicione o servidor de novo.",

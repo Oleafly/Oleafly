@@ -43,6 +43,7 @@ const ERROR_CODES = [
   "cancelled",
   "cloud_synced",
   "owner_away",
+  "wrong_server",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];

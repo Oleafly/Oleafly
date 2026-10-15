@@ -221,6 +221,7 @@
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
     "owner_away": "Projenin sahibi bu sunucuda askıya alınmış veya kaldırılmış, bu yüzden proje şu anda yeni kişi alamıyor. Sunucunun bir yöneticisine sorun.",
+    "wrong_server": "Bu sunucu oturum açma sayfasını farklı bir adresten gönderdi, bu yüzden Oleafly durdu. Sunucu adresini denetleyin veya sunucuyu yöneten kişiye sorun.",
     "not_a_link": "Bu, paylaşılan bir projenin bağlantısı değil. Bağlantının tamamını kopyalayıp yeniden deneyin.",
     "signed_out": "Bu sunucudaki oturumunuz kapalı. Bu projeyi eşitlemek için yeniden oturum açın.",
     "server_removed": "Bu projenin sunucusu artık listenizde değil. Projeyi yerel kopya olarak saklayın veya sunucuyu yeniden ekleyin.",

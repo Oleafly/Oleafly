@@ -1169,7 +1169,8 @@ export type CollabErrorCode =
     | "cancelled"
     | "turned_off"
     | "cloud_synced"
-    | "owner_away";
+    | "owner_away"
+    | "wrong_server";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;

@@ -1716,6 +1716,7 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "turned_off",
   "cloud_synced",
   "owner_away",
+  "wrong_server",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {

@@ -389,6 +389,16 @@ describe("AddServerDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.not_admitted);
   });
 
+  it("says when a server sends its code sign-in page from another address", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    mocks.collabServerCodeSignIn.mockRejectedValueOnce(collabError("wrong_server", "approval page on another host"));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.wrong_server);
+    expect(screen.queryByText(enCollab.errors.internal)).toBeNull();
+  });
+
   it("suggests a code when the browser sign-in timed out", async () => {
     mocks.collabServerProbe.mockResolvedValue(capabilities());
     mocks.collabServerSignIn.mockRejectedValue(collabError("sign_in_timed_out"));

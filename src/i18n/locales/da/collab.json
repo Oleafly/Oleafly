@@ -221,6 +221,7 @@
     "project_not_shared": "Dette projekt er ikke delt endnu. Del det først, og inviter så folk.",
     "project_full": "Dette projekt har allerede så mange personer, som serveren tillader. Fjern først en person, eller spørg serverens administrator.",
     "owner_away": "Ejeren af projektet er suspenderet eller fjernet på denne server, så projektet kan ikke tage nye personer ind lige nu. Spørg en administrator af serveren.",
+    "wrong_server": "Serveren sendte sin loginside fra en anden adresse, så Oleafly stoppede. Tjek serverens adresse, eller spørg den, der driver den.",
     "not_a_link": "Det er ikke et link til et delt projekt. Kopiér hele linket, og prøv igen.",
     "signed_out": "Du er logget ud af denne server. Log ind igen for at synkronisere projektet.",
     "server_removed": "Projektets server er ikke længere på din liste. Behold projektet som en lokal kopi, eller tilføj serveren igen.",

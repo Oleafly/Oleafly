@@ -221,6 +221,7 @@
     "project_not_shared": "Dieses Projekt ist noch nicht geteilt. Teilen Sie es zuerst und laden Sie dann Personen ein.",
     "project_full": "Dieses Projekt hat bereits so viele Personen, wie der Server erlaubt. Entfernen Sie zuerst jemanden oder fragen Sie den Admin des Servers.",
     "owner_away": "Die Person, der das Projekt gehört, ist auf diesem Server gesperrt oder entfernt, daher kann das Projekt gerade keine neuen Personen aufnehmen. Fragen Sie einen Admin des Servers.",
+    "wrong_server": "Dieser Server hat seine Anmeldeseite von einer anderen Adresse geschickt, deshalb hat Oleafly abgebrochen. Prüfen Sie die Serveradresse oder fragen Sie die Person, die den Server betreibt.",
     "not_a_link": "Das ist kein Link zu einem geteilten Projekt. Kopieren Sie den ganzen Link und versuchen Sie es dann erneut.",
     "signed_out": "Sie sind von diesem Server abgemeldet. Melden Sie sich erneut an, um dieses Projekt zu synchronisieren.",
     "server_removed": "Der Server dieses Projekts steht nicht mehr in Ihrer Liste. Behalten Sie das Projekt als lokale Kopie oder fügen Sie den Server erneut hinzu.",

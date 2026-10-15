@@ -221,6 +221,7 @@
     "project_not_shared": "Tento projekt ještě není sdílený. Nejdřív ho sdílejte a pak pozvěte lidi.",
     "project_full": "Tento projekt už má tolik lidí, kolik server dovoluje. Nejdřív někoho odeberte, nebo se obraťte na administrátora serveru.",
     "owner_away": "Vlastník projektu je na tomto serveru pozastavený nebo odebraný, takže projekt teď nemůže přijmout nové lidi. Obraťte se na administrátora serveru.",
+    "wrong_server": "Tento server poslal svou přihlašovací stránku z jiné adresy, a proto Oleafly přestal. Zkontrolujte adresu serveru, nebo se zeptejte toho, kdo ho spravuje.",
     "not_a_link": "To není odkaz na sdílený projekt. Zkopírujte celý odkaz a zkuste to znovu.",
     "signed_out": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu, aby se projekt synchronizoval.",
     "server_removed": "Server tohoto projektu už ve vašem seznamu není. Ponechte si projekt jako místní kopii, nebo server přidejte znovu.",
