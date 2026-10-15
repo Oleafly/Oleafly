@@ -1397,6 +1397,10 @@ mod tests {
     }
 
     async fn github_server() -> (MockGithub, TestServer) {
+        github_server_at(None).await
+    }
+
+    async fn github_server_at(public_url: Option<&str>) -> (MockGithub, TestServer) {
         let github = MockGithub::start(vec![MockGithubUser {
             id: 1,
             login: "carol".to_string(),
@@ -1413,7 +1417,16 @@ mod tests {
             web_url: github.web_url(),
             api_url: github.api_url(),
         });
-        let server = TestServer::start(config).await;
+        let server = match public_url {
+            Some(url) => TestServer::start_at(config, url).await,
+            None => TestServer::start(config).await,
+        };
+        (github, server)
+    }
+
+    async fn github_server_behind(relay: &Relay) -> (MockGithub, TestServer) {
+        let (github, server) = github_server_at(Some(&relay.url)).await;
+        relay.point_at(&server);
         (github, server)
     }
 
@@ -1446,12 +1459,18 @@ mod tests {
 
     impl Relay {
         async fn start(first: &TestServer) -> Relay {
+            let relay = Relay::bind().await;
+            relay.point_at(first);
+            relay
+        }
+
+        async fn bind() -> Relay {
             let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
             let url = format!(
                 "http://127.0.0.1:{}",
                 listener.local_addr().expect("address").port()
             );
-            let upstream = Arc::new(Mutex::new(address_of(first)));
+            let upstream = Arc::new(Mutex::new(String::new()));
             let seen = Arc::new(Mutex::new(Vec::new()));
             let (target, log) = (upstream.clone(), seen.clone());
             tokio::spawn(async move {
@@ -1787,8 +1806,9 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_sign_in_whose_account_read_fails_keeps_the_new_session() {
-        let (_github, server) = github_server().await;
-        let relay = crate::collab::testing::Relay::start(address_of(&server)).await;
+        let relay = crate::collab::testing::Relay::bind().await;
+        let (_github, server) = github_server_at(Some(&relay.url)).await;
+        relay.point_at(address_of(&server));
         relay.refuse(Some("GET /api/v1/me HTTP"));
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
@@ -2074,8 +2094,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_replaced_server_at_the_same_address_gets_no_token() {
-        let (_github, first) = github_server().await;
-        let relay = Relay::start(&first).await;
+        let relay = Relay::bind().await;
+        let (_github, first) = github_server_behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let host = TestHost::following();
@@ -2089,7 +2109,7 @@ mod tests {
         )
         .await
         .expect("sign in");
-        let replacement = TestServer::start(test_config()).await;
+        let replacement = TestServer::start_at(test_config(), &relay.url).await;
         relay.point_at(&replacement);
         let (expected, found) = (added.server_id, replacement.state().server_id);
         let changed = |result: &Result<(), CollabError>| {
@@ -2132,8 +2152,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_token_rejected_within_the_cached_check_checks_the_server_before_refreshing() {
-        let (_github, server) = github_server().await;
-        let relay = Relay::start(&server).await;
+        let relay = Relay::bind().await;
+        let (_github, server) = github_server_behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let host = TestHost::following();
@@ -2261,8 +2281,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn admin_calls_in_a_row_share_one_connection_and_one_server_check() {
-        let lab = crate::collab::testing::Lab::start().await;
-        let relay = crate::collab::testing::Relay::start(lab.address()).await;
+        let relay = crate::collab::testing::Relay::bind().await;
+        let lab = crate::collab::testing::Lab::behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let server = lab.sign_in(&state, &relay.url, true).await;

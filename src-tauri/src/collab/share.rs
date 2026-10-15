@@ -1267,8 +1267,8 @@ mod transfer_tests {
     async fn a_share_cut_off_halfway_resumes_without_sending_its_files_again() {
         let library = TempLibrary::new();
         paper(&library, "cut-share");
-        let lab = Lab::start().await;
-        let relay = Relay::start(lab.address()).await;
+        let relay = Relay::bind().await;
+        let lab = Lab::behind(&relay).await;
         let dir = tempfile::tempdir().unwrap();
         let state = state_in(&dir, "collab");
         let server = lab.sign_in(&state, &relay.url, true).await;
@@ -1311,11 +1311,11 @@ mod transfer_tests {
         async fn start() -> Joiner {
             let library = TempLibrary::new();
             paper(&library, "to-join");
-            let lab = Lab::start().await;
-            let relay = Relay::start(lab.address()).await;
+            let relay = Relay::bind().await;
+            let lab = Lab::behind(&relay).await;
             let dir = tempfile::tempdir().unwrap();
             let owner = state_in(&dir, "owner");
-            let server = lab.sign_in(&owner, &lab.server.url(), true).await;
+            let server = lab.sign_in(&owner, &relay.url, true).await;
             let shared = share_project(&owner, &Browser, &|_, _| {}, "to-join", server)
                 .await
                 .unwrap()
