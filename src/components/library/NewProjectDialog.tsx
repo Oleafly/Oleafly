@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   NewProjectDialog as NewProjectDialogCore,
@@ -7,6 +7,7 @@ import {
 } from "@oleafly/templates";
 import { generateTemplateAvailable } from "@/features/template-generate";
 import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModal";
+import { openTemplateInNewProject } from "@/store/template-request";
 import { ResearchProjectSetup } from "@/components/research/workspace/ResearchProjectSetup";
 import { useFilesStore } from "@/store/files";
 import { ensureResearchStarterTask } from "@/lib/research-starter-task";
@@ -81,6 +82,13 @@ const HOST: TemplatesHost = {
 
 const FOCUS_RESTORE_FRAMES = 12;
 
+// Importing a template is rare, so its dialog loads when it is first opened.
+const TemplateImportDialog = lazy(() =>
+  import("@/components/library/TemplateImportDialog").then((module) => ({
+    default: module.TemplateImportDialog,
+  })),
+);
+
 export function NewProjectDialog(props: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
@@ -106,6 +114,7 @@ export function NewProjectDialog(props: Readonly<{
   );
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [importTemplateOpen, setImportTemplateOpen] = useState(false);
   const [kind, setKind] = useState<ProjectKind | null>(null);
   // This dialog is mounted in both app shells, so creating a project unmounts
   // one host and mounts the other while the flow is still open. A host that
@@ -178,6 +187,7 @@ export function NewProjectDialog(props: Readonly<{
         open={flowOpen && activeKind === "template"}
         onClose={props.onClose}
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
+        onImportTemplate={() => setImportTemplateOpen(true)}
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
         kit={kit}
@@ -203,6 +213,20 @@ export function NewProjectDialog(props: Readonly<{
         onClose={() => setGenerateOpen(false)}
         onSaved={() => props.onTemplatesChanged?.()}
       />
+      {importTemplateOpen ? (
+        <Suspense fallback={null}>
+          <TemplateImportDialog
+            open
+            onClose={() => setImportTemplateOpen(false)}
+            onImported={(templateId) => {
+              setImportTemplateOpen(false);
+              // Reloads the gallery and lands on "Name your project" with the
+              // new template picked, so the first project is one step away.
+              openTemplateInNewProject(templateId);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }

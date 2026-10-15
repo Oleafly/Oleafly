@@ -39,6 +39,10 @@
     "folder_read_only": "{{name}} 或其所在的文件夹为只读，因此 Oleafly 无法进行此更改。请将你打开的文件夹复制到库，并在那里编辑。",
     "shared_settings_viewer": "查看者无法更改共享项目的设置。"
   },
+  "template": {
+    "name_required": "请为模板命名。",
+    "folder_holds_templates": "此文件夹存放的是 Oleafly 自带的模板。请改为选择模板本身所在的文件夹。"
+  },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "添加你的 Overleaf Git 令牌即可同步此项目。",
     "git_token_invalid": "这看起来不像 Overleaf Git 令牌。请复制完整的令牌后重试。",
     "git_token_rejected": "Overleaf 未接受此 Git 令牌，它可能已过期。请在 Overleaf 账户设置中创建新的令牌。",
-    "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。"
+    "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。",
+    "template_link_invalid": "该链接不是 Overleaf 模板页面。请复制 overleaf.com/latex/templates 中某个页面的地址，然后重试。",
+    "template_unavailable": "Oleafly 无法打开此模板。它可能已从 Overleaf 的模板库中移除。"
   },
   "collab": {
     "turned_off": "实时协作已关闭。请在设置的“实验功能”中开启。"

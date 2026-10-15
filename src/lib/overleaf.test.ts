@@ -16,10 +16,14 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Fa
 import {
   isOverleafError,
   overleafImportProjects,
+  overleafImportTemplate,
   overleafListProjects,
+  overleafSaveProjectAsTemplate,
   overleafSignIn,
   overleafSignOut,
   overleafStatus,
+  overleafTemplateDetails,
+  overleafTemplatePdf,
 } from "./overleaf";
 
 beforeEach(() => {
@@ -41,6 +45,21 @@ describe("overleaf bridge", () => {
       ["overleaf_sign_in", { server: null, title: "Sign in" }],
       ["overleaf_sign_out", { server: "https://www.overleaf.com" }],
       ["overleaf_list_projects", { server: null }],
+    ]);
+  });
+
+  it("sends the template commands with their arguments", async () => {
+    mocks.invoke.mockResolvedValue({});
+    const link = "https://www.overleaf.com/latex/templates/a/b";
+    await overleafTemplateDetails(" ", link);
+    await overleafTemplatePdf("https://www.overleaf.com", link);
+    await overleafImportTemplate(null, link, "Lab", "QUJD");
+    await overleafSaveProjectAsTemplate(" https://latex.uni.edu ", "p1", "Master");
+    expect(mocks.invoke.mock.calls).toEqual([
+      ["overleaf_template_details", { server: null, link }],
+      ["overleaf_template_pdf", { server: "https://www.overleaf.com", link }],
+      ["overleaf_import_template", { server: null, link, name: "Lab", previewPngBase64: "QUJD" }],
+      ["overleaf_save_project_as_template", { server: "https://latex.uni.edu", projectId: "p1", name: "Master" }],
     ]);
   });
 

@@ -39,6 +39,10 @@
     "folder_read_only": "{{name}} 或其所在的資料夾為唯讀，因此 Oleafly 無法進行這項變更。請將你開啟的資料夾複製到專案庫，並在那裡編輯。",
     "shared_settings_viewer": "檢視者無法變更共享專案的設定。"
   },
+  "template": {
+    "name_required": "請為範本命名。",
+    "folder_holds_templates": "這個資料夾存放的是 Oleafly 內建的範本。請改選範本本身的資料夾。"
+  },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "新增你的 Overleaf Git 權杖即可同步這個專案。",
     "git_token_invalid": "這看起來不像 Overleaf Git 權杖。請複製完整的權杖後再試一次。",
     "git_token_rejected": "Overleaf 不接受這個 Git 權杖，它可能已過期。請在 Overleaf 帳號設定中建立新的權杖。",
-    "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。"
+    "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。",
+    "template_link_invalid": "這個連結不是 Overleaf 範本頁面。請複製 overleaf.com/latex/templates 中某個頁面的網址，再試一次。",
+    "template_unavailable": "Oleafly 無法開啟這個範本。它可能已從 Overleaf 的範本庫移除。"
   },
   "collab": {
     "turned_off": "即時協作已關閉。請在設定的「實驗功能」中開啟。"

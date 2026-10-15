@@ -1009,13 +1009,15 @@
       "download": "Descarcă",
       "downloadAll": "Descarcă tot"
     },
-    "aiTemplates": {
-      "deleteDescription": "Ștergi „{{name}}” din biblioteca ta? Proiectele deja create din el își păstrează propria copie și nu sunt afectate.",
-      "deleteTitle": "Șterge șablonul generat cu AI",
-      "deleted": "„{{name}}” a fost șters din biblioteca ta",
-      "empty": "Încă nu ai șabloane generate cu AI. Creează unul din galeria de șabloane.",
-      "fallbackDescription": "Șablon generat cu AI",
-      "toggle": "Gestionează șabloanele generate cu AI",
+    "yourTemplates": {
+      "toggle": "Gestionează șabloanele tale",
+      "import": "Importă un șablon",
+      "empty": "Încă nu ai șabloane proprii. Importă unul aici, salvează un proiect ca șablon din meniul lui sau generează unul în galeria de șabloane.",
+      "aiDescription": "Șablon generat cu AI",
+      "customDescription": "Șablonul tău",
+      "deleteTitle": "Șterge șablonul",
+      "deleteDescription": "Ștergi „{{name}}” din șabloanele tale? Proiectele pe care le-ai creat deja din el își păstrează propria copie.",
+      "deleted": "„{{name}}” a fost șters din șabloanele tale",
       "deleteFailed": "„{{name}}” nu a putut fi șters."
     },
     "fontPacks": {

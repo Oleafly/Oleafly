@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly nie może wprowadzić tej zmiany, ponieważ {{name}} lub folder, w którym się znajduje, jest tylko do odczytu. Skopiuj otwarty folder do biblioteki i edytuj go tam.",
     "shared_settings_viewer": "Przeglądający nie mogą zmieniać ustawień współdzielonego projektu."
   },
+  "template": {
+    "name_required": "Nadaj szablonowi nazwę.",
+    "folder_holds_templates": "Ten folder zawiera wbudowane szablony Oleafly. Zamiast niego wybierz folder szablonu."
+  },
   "settings": {
     "locale_unsupported": "Język {{locale}} nie jest dostępny."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Dodaj token Git z Overleaf, aby synchronizować ten projekt.",
     "git_token_invalid": "To nie wygląda na token Git z Overleaf. Skopiuj cały token i spróbuj ponownie.",
     "git_token_rejected": "Overleaf nie zaakceptował tokenu Git. Mógł wygasnąć. Utwórz nowy w ustawieniach konta Overleaf.",
-    "git_unavailable": "Integracja z Git w Overleaf nie jest dostępna dla tego projektu. Właściciel projektu potrzebuje płatnego lub uczelnianego planu."
+    "git_unavailable": "Integracja z Git w Overleaf nie jest dostępna dla tego projektu. Właściciel projektu potrzebuje płatnego lub uczelnianego planu.",
+    "template_link_invalid": "Ten link nie prowadzi do strony szablonu w Overleaf. Skopiuj adres strony z overleaf.com/latex/templates i spróbuj ponownie.",
+    "template_unavailable": "Oleafly nie mógł otworzyć tego szablonu. Mógł zostać usunięty z galerii Overleaf."
   },
   "collab": {
     "turned_off": "Współpraca na żywo jest wyłączona. Włącz ją w Ustawieniach, w sekcji Eksperymenty."

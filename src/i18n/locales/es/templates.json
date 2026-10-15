@@ -5,6 +5,7 @@
       "nameProject": "Pon nombre a tu proyecto",
       "import": "Importar",
       "generateWithAi": "Generar una plantilla",
+      "importTemplate": "Importar una plantilla",
       "close": "Cerrar",
       "getMoreTemplates": "Conseguir más plantillas",
       "searchPlaceholder": "Buscar plantillas",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Todas",
       "aiGenerated": "Generados con IA",
+      "custom": "Personalizadas",
       "blank": "En blanco",
       "diagrams": "Diagramas",
       "diagramsFull": "Diagramas y figuras",

@@ -1004,13 +1004,15 @@
       "download": "Herunterladen",
       "downloadAll": "Alle herunterladen"
     },
-    "aiTemplates": {
-      "deleteDescription": "„{{name}}“ aus Ihrer Bibliothek löschen? Projekte, die daraus entstanden sind, behalten ihre eigene Kopie und bleiben unberührt.",
-      "deleteTitle": "Mit KI erzeugte Vorlage löschen",
-      "deleted": "„{{name}}“ aus Ihrer Bibliothek gelöscht",
-      "empty": "Noch keine mit KI erzeugten Vorlagen. Erzeugen Sie eine in der Vorlagengalerie.",
-      "fallbackDescription": "Mit KI erzeugte Vorlage",
-      "toggle": "Mit KI erzeugte Vorlagen verwalten",
+    "yourTemplates": {
+      "toggle": "Ihre Vorlagen verwalten",
+      "import": "Vorlage importieren",
+      "empty": "Noch keine eigenen Vorlagen. Importieren Sie hier eine, speichern Sie ein Projekt über sein Menü als Vorlage oder erzeugen Sie eine in der Vorlagengalerie.",
+      "aiDescription": "Mit KI erzeugte Vorlage",
+      "customDescription": "Ihre Vorlage",
+      "deleteTitle": "Vorlage löschen",
+      "deleteDescription": "„{{name}}“ aus Ihren Vorlagen löschen? Projekte, die Sie bereits daraus erstellt haben, behalten ihre eigene Kopie.",
+      "deleted": "„{{name}}“ aus Ihren Vorlagen gelöscht",
       "deleteFailed": "„{{name}}“ konnte nicht gelöscht werden."
     },
     "fontPacks": {

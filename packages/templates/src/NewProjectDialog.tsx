@@ -16,6 +16,7 @@ import {
   Check,
   Download,
   FileText,
+  FileUp,
   FolderInput,
   Hash,
   Search,
@@ -46,6 +47,7 @@ const CATEGORY_ORDER = [
 const CATEGORY_KEYS: Record<string, { label: TemplatesMessageKey; full?: TemplatesMessageKey }> = {
   All: { label: "category.all" },
   "AI Generated": { label: "category.aiGenerated" },
+  Custom: { label: "category.custom" },
   Blank: { label: "category.blank" },
   "Diagrams & Figures": { label: "category.diagrams", full: "category.diagramsFull" },
   "CVs & Resumes": { label: "category.resume", full: "category.resumeFull" },
@@ -113,30 +115,44 @@ function nameHint(template: TemplateInfo | null, t: TemplatesTranslator): string
   return key ? t(key) : t("nameHint.default");
 }
 
-// "All" first, then AI Generated, then the curated order, then anything new
-// alphabetically so an unrecognised category still lands somewhere sensible.
+// The person's own templates lead: the ones they made, then AI-generated ones.
+const PERSONAL_CATEGORIES = ["Custom", "AI Generated"];
+
+// "All" first, then the person's own categories, then the curated order, then
+// anything new alphabetically so an unrecognised category still lands
+// somewhere sensible.
 export function orderedCategories(
   templates: readonly Pick<TemplateInfo, "category">[],
 ): string[] {
   const present = new Set(templates.map((t) => t.category || "Other"));
   const ordered = CATEGORY_ORDER.filter(
-    (c) => present.has(c) && c !== "AI Generated",
+    (c) => present.has(c) && !PERSONAL_CATEGORIES.includes(c),
   );
   const rest = [...present]
-    .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
+    .filter((c) => !CATEGORY_ORDER.includes(c) && !PERSONAL_CATEGORIES.includes(c))
     .sort((a, b) => a.localeCompare(b));
   return [
     "All",
-    ...(present.has("AI Generated") ? ["AI Generated"] : []),
+    ...PERSONAL_CATEGORIES.filter((c) => present.has(c)),
     ...ordered,
     ...rest,
   ];
 }
 
+const TEX_FLAVOR_LABELS: Record<string, string> = {
+  pdflatex: "pdfLaTeX",
+  xelatex: "XeLaTeX",
+  lualatex: "LuaLaTeX",
+  uplatex: "upLaTeX",
+  platex: "pLaTeX",
+};
+
 export function compilerLabel(template: TemplateInfo, t: TemplatesTranslator): string {
   if (template.document_engine === "unknown") return t("compiler.unknown");
   if (template.document_engine === "typst") return "Typst";
   if (template.document_engine === "markdown") return "Pandoc";
+  const pinned = template.tex_flavor ? TEX_FLAVOR_LABELS[template.tex_flavor] : undefined;
+  if (pinned) return pinned;
   return template.engine === "luatex" ? "LuaLaTeX" : "Tectonic";
 }
 export function wrappedModalFocus(
@@ -457,6 +473,7 @@ export function NewProjectDialog({
   onClose,
   onCreate,
   onGenerateWithAi,
+  onImportTemplate,
   importControl,
   onImportProject,
   onOpenTemplateDownloads,
@@ -475,6 +492,8 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
+  /** Add a template of the person's own (a ZIP, a folder or a link). */
+  onImportTemplate?: () => void;
   /** App-owned import menu, used when multiple import sources are available. */
   importControl?: ReactNode;
   /** Backward-compatible single import action. */
@@ -1004,6 +1023,17 @@ export function NewProjectDialog({
                 onClick={onImportProject}
               >
                 <FolderInput className="size-3.5" /> {t("dialog.import")}
+              </Button>
+            )}
+            {step === 1 && onImportTemplate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="import-template"
+                data-tour-hide
+                onClick={onImportTemplate}
+              >
+                <FileUp className="size-3.5" /> {t("dialog.importTemplate")}
               </Button>
             )}
             {step === 1 && onGenerateWithAi && (

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
-import { ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileText, FileUp, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
 import { PackList } from "@/components/settings/template-packs/PackList";
 import { PackView } from "@/components/settings/template-packs/PackView";
+import { announceSavedTemplate } from "@/features/custom-templates";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -65,6 +66,13 @@ const setBusyId = (fontBusyId: string | null) =>
 const setProgress = (fontProgress: string) =>
   useDownloadActivity.setState({ fontProgress });
 
+// Importing a template is rare, so its dialog loads when it is first opened.
+const TemplateImportDialog = lazy(() =>
+  import("@/components/library/TemplateImportDialog").then((module) => ({
+    default: module.TemplateImportDialog,
+  })),
+);
+
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [components, setComponents] = useState<ComponentInfo[]>([]);
@@ -101,30 +109,32 @@ export function DownloadsSection() {
     setLink(taken);
     setOpenPackId(taken.packId);
   }, [pendingLink]);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
-  const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
-  const [aiConfirm, setAiConfirm] = useState<TemplateInfo | null>(null);
-  const [aiBusy, setAiBusy] = useState(false);
-  const refreshAiTemplates = useCallback(async () => {
+  // Templates the person made: imported, saved from a project, or generated.
+  const [ownOpen, setOwnOpen] = useState(false);
+  const [ownTemplates, setOwnTemplates] = useState<TemplateInfo[]>([]);
+  const [ownPreviews, setOwnPreviews] = useState<Record<string, string>>({});
+  const [ownConfirm, setOwnConfirm] = useState<TemplateInfo | null>(null);
+  const [ownBusy, setOwnBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const refreshOwnTemplates = useCallback(async () => {
     try {
       const all = await listTemplates();
-      const ai = all.filter((t) => (t.category || "") === "AI Generated");
-      setAiTemplates(ai);
-      for (const t of ai) {
+      const own = all.filter((t) => t.source === "custom");
+      setOwnTemplates(own);
+      for (const t of own) {
         void templatePreview(t.id)
           .then((uri) => {
-            if (uri) setAiPreviews((prev) => ({ ...prev, [t.id]: uri }));
+            if (uri) setOwnPreviews((prev) => ({ ...prev, [t.id]: uri }));
           })
           .catch(() => {});
       }
     } catch (e) {
-      void logError("list AI templates", e);
+      void logError("list your templates", e);
     }
   }, []);
   useEffect(() => {
-    if (aiOpen) void refreshAiTemplates();
-  }, [aiOpen, refreshAiTemplates]);
+    if (ownOpen) void refreshOwnTemplates();
+  }, [ownOpen, refreshOwnTemplates]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {
@@ -358,37 +368,47 @@ export function DownloadsSection() {
       />
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        <button
-          type="button"
-          data-testid="manage-ai-templates"
-          onClick={() => setAiOpen((v) => !v)}
-          aria-expanded={aiOpen}
-          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          {t(($) => $.settings.downloads.aiTemplates.toggle)}
-          {aiOpen ? (
-            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-          )}
-        </button>
-        {aiOpen && (
+        <div className="flex items-center gap-2 pr-2">
+          <button
+            type="button"
+            data-testid="manage-your-templates"
+            onClick={() => setOwnOpen((v) => !v)}
+            aria-expanded={ownOpen}
+            className="flex min-w-0 flex-1 items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
+          >
+            <LayoutTemplate className="size-3.5 text-primary" />
+            <span className="truncate">{t(($) => $.settings.downloads.yourTemplates.toggle)}</span>
+            {ownOpen ? (
+              <ChevronDown className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          <button
+            type="button"
+            data-testid="settings-import-template"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <FileUp className="size-3.5" /> {t(($) => $.settings.downloads.yourTemplates.import)}
+          </button>
+        </div>
+        {ownOpen && (
           <div className="border-t">
-            {aiTemplates.length === 0 ? (
+            {ownTemplates.length === 0 ? (
               <p className="px-3 py-4 text-sm text-muted-foreground">
-                {t(($) => $.settings.downloads.aiTemplates.empty)}
+                {t(($) => $.settings.downloads.yourTemplates.empty)}
               </p>
             ) : (
-              aiTemplates.map((template) => (
+              ownTemplates.map((template) => (
                 <div
                   key={template.id}
-                  data-testid={`ai-template-row-${template.id}`}
+                  data-testid={`your-template-row-${template.id}`}
                   className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
                 >
-                  {aiPreviews[template.id] ? (
+                  {ownPreviews[template.id] ? (
                     <img
-                      src={aiPreviews[template.id]}
+                      src={ownPreviews[template.id]}
                       alt={""}
                       className="h-14 w-11 shrink-0 rounded border border-black/10 bg-white object-cover object-top shadow-sm"
                     />
@@ -398,17 +418,19 @@ export function DownloadsSection() {
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium">{template.name}</span>
+                    <span className="block truncate text-sm font-medium">{template.name}</span>
                     <p className="truncate text-[0.6875rem] text-muted-foreground">
                       {template.description ||
-                        t(($) => $.settings.downloads.aiTemplates.fallbackDescription)}
+                        ((template.category || "") === "AI Generated"
+                          ? t(($) => $.settings.downloads.yourTemplates.aiDescription)
+                          : t(($) => $.settings.downloads.yourTemplates.customDescription))}
                     </p>
                   </div>
                   <button
                     type="button"
-                    data-testid={`ai-template-delete-${template.id}`}
-                    onClick={() => setAiConfirm(template)}
-                    disabled={aiBusy}
+                    data-testid={`your-template-delete-${template.id}`}
+                    onClick={() => setOwnConfirm(template)}
+                    disabled={ownBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                   >
                     <Trash2 className="size-3.5" /> {t(($) => $.common.actions.delete)}
@@ -423,36 +445,50 @@ export function DownloadsSection() {
       )}
 
       <ConfirmationDialog
-        open={aiConfirm !== null}
-        title={t(($) => $.settings.downloads.aiTemplates.deleteTitle)}
-        description={t(($) => $.settings.downloads.aiTemplates.deleteDescription, {
-          name: aiConfirm?.name ?? "",
+        open={ownConfirm !== null}
+        title={t(($) => $.settings.downloads.yourTemplates.deleteTitle)}
+        description={t(($) => $.settings.downloads.yourTemplates.deleteDescription, {
+          name: ownConfirm?.name ?? "",
         })}
         confirmLabel={t(($) => $.common.actions.delete)}
         destructive
         onConfirm={() => {
-          const target = aiConfirm;
-          setAiConfirm(null);
+          const target = ownConfirm;
+          setOwnConfirm(null);
           if (!target) return;
-          setAiBusy(true);
+          setOwnBusy(true);
           void deleteCustomTemplate(target.id)
             .then(() => {
               toast.success(
-                t(($) => $.settings.downloads.aiTemplates.deleted, { name: target.name }),
+                t(($) => $.settings.downloads.yourTemplates.deleted, { name: target.name }),
               );
-              return refreshAiTemplates();
+              return refreshOwnTemplates();
             })
             .catch((e) =>
               notifyError(
                 "delete the template",
                 e,
-                t(($) => $.settings.downloads.aiTemplates.deleteFailed, { name: target.name }),
+                t(($) => $.settings.downloads.yourTemplates.deleteFailed, { name: target.name }),
               ),
             )
-            .finally(() => setAiBusy(false));
+            .finally(() => setOwnBusy(false));
         }}
-        onCancel={() => setAiConfirm(null)}
+        onCancel={() => setOwnConfirm(null)}
       />
+      {importOpen ? (
+        <Suspense fallback={null}>
+          <TemplateImportDialog
+            open
+            onClose={() => setImportOpen(false)}
+            onImported={(templateId, name) => {
+              setImportOpen(false);
+              setOwnOpen(true);
+              void refreshOwnTemplates();
+              announceSavedTemplate(templateId, name);
+            }}
+          />
+        </Suspense>
+      ) : null}
       </TabsContent>
     </Tabs>
   );

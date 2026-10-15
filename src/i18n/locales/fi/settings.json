@@ -1004,14 +1004,16 @@
       "download": "Lataa",
       "downloadAll": "Lataa kaikki"
     },
-    "aiTemplates": {
-      "deleteDescription": "Poistetaanko \"{{name}}\" kirjastostasi? Siitä jo luodut projektit säilyttävät oman kopionsa, eikä poisto vaikuta niihin.",
-      "deleteTitle": "Poista tekoälyn luoma mallipohja",
-      "deleted": "\"{{name}}\" poistettiin kirjastostasi",
-      "empty": "Ei vielä tekoälyn luomia mallipohjia. Luo sellainen mallipohjagalleriasta.",
-      "fallbackDescription": "Tekoälyn luoma mallipohja",
-      "toggle": "Hallitse tekoälyn luomia mallipohjia",
-      "deleteFailed": "Kohdetta \"{{name}}\" ei voitu poistaa."
+    "yourTemplates": {
+      "toggle": "Hallitse mallipohjiasi",
+      "import": "Tuo mallipohja",
+      "empty": "Sinulla ei ole vielä omia mallipohjia. Tuo sellainen tästä, tallenna projekti mallipohjaksi sen valikosta tai luo sellainen mallipohjagalleriassa.",
+      "aiDescription": "Tekoälyn luoma mallipohja",
+      "customDescription": "Oma mallipohja",
+      "deleteTitle": "Poista mallipohja",
+      "deleteDescription": "Poistetaanko ”{{name}}” mallipohjistasi? Siitä jo luomasi projektit säilyttävät oman kopionsa.",
+      "deleted": "”{{name}}” poistettiin mallipohjistasi",
+      "deleteFailed": "Kohdetta ”{{name}}” ei voitu poistaa."
     },
     "fontPacks": {
       "lato": {

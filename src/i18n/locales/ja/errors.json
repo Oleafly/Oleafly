@@ -39,6 +39,10 @@
     "folder_read_only": "{{name}} またはそのフォルダが読み取り専用のため、Oleafly はこの変更を行えません。開いたフォルダをライブラリにコピーして、そこで編集してください。",
     "shared_settings_viewer": "閲覧者は共有プロジェクトの設定を変更できません。"
   },
+  "template": {
+    "name_required": "テンプレートに名前を付けてください。",
+    "folder_holds_templates": "このフォルダには Oleafly 自身のテンプレートが入っています。代わりにテンプレートのフォルダを選んでください。"
+  },
   "settings": {
     "locale_unsupported": "言語 {{locale}} は利用できません。"
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "このプロジェクトを同期するには、Overleaf の Git トークンを追加してください。",
     "git_token_invalid": "Overleaf の Git トークンではないようです。トークン全体をコピーして、もう一度お試しください。",
     "git_token_rejected": "Overleaf が Git トークンを受け付けませんでした。有効期限が切れている可能性があります。Overleaf のアカウント設定で新しいトークンを作成してください。",
-    "git_unavailable": "このプロジェクトでは Overleaf の Git 連携を利用できません。プロジェクトのオーナーが有料プランか大学のプランに加入している必要があります。"
+    "git_unavailable": "このプロジェクトでは Overleaf の Git 連携を利用できません。プロジェクトのオーナーが有料プランか大学のプランに加入している必要があります。",
+    "template_link_invalid": "このリンクは Overleaf のテンプレートページではありません。overleaf.com/latex/templates にあるページのアドレスをコピーして、もう一度お試しください。",
+    "template_unavailable": "Oleafly はこのテンプレートを開けませんでした。Overleaf のギャラリーから削除された可能性があります。"
   },
   "collab": {
     "turned_off": "リアルタイム共同編集はオフになっています。設定の「実験的な機能」でオンにしてください。"

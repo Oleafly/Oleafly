@@ -17,6 +17,7 @@ import {
   GitFork,
   History,
   Info,
+  LayoutTemplate,
   Palette,
   Share2,
   Trash2,
@@ -192,6 +193,7 @@ export type ProjectCardActions = Readonly<{
   details: (project: ProjectInfo) => void;
   history: (project: ProjectInfo) => void;
   fork: (project: ProjectInfo) => void;
+  saveAsTemplate: (project: ProjectInfo) => void;
   trash: (project: ProjectInfo) => void;
   share?: (project: ProjectInfo) => void;
 }>;
@@ -277,6 +279,9 @@ function ProjectMenuItems({
         <Item disabled={!reachable} onClick={() => actions.copyIntoLibrary(p)}>
           <CopyPlus className="mr-2 size-4" /> {t(($) => $.library.folder.menu.copyToLibrary)}
         </Item>
+        <Item disabled={!reachable} onClick={() => actions.saveAsTemplate(p)}>
+          <LayoutTemplate className="mr-2 size-4" /> {t(($) => $.library.customTemplates.saveAsTemplate)}
+        </Item>
         {share && collab ? (
           <Item disabled={!reachable} onClick={() => share(p)}>
             <Share2 className="mr-2 size-4" /> {collab.copyAndShare}
@@ -308,6 +313,9 @@ function ProjectMenuItems({
       {colorSub}
       <Item onClick={() => actions.fork(p)}>
         <GitFork className="mr-2 size-4" /> {t(($) => $.library.projects.fork)}
+      </Item>
+      <Item onClick={() => actions.saveAsTemplate(p)}>
+        <LayoutTemplate className="mr-2 size-4" /> {t(($) => $.library.customTemplates.saveAsTemplate)}
       </Item>
       <Item
         className="text-destructive focus:text-destructive"

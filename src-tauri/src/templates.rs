@@ -65,7 +65,7 @@ impl Default for TemplateRequires {
 }
 
 /// The parsed `template.json` manifest.
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct TemplateManifest {
     pub id: String,
     pub name: String,
@@ -77,15 +77,15 @@ pub struct TemplateManifest {
     pub main_doc: String,
     #[serde(default = "default_engine")]
     pub engine: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ats_profile: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pages: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_color: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license: Option<TemplateLicense>,
     #[serde(default)]
     pub requires: TemplateRequires,
@@ -93,9 +93,23 @@ pub struct TemplateManifest {
     pub order: i64,
     /// Project kind: "" / "document" for normal projects, "image" for a
     /// single-figure project that previews the compiled image (standalone).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    /// A sub-folder holding the template's source tree. When set, every file
+    /// in it is copied into new projects as is, and `main_doc` is relative to
+    /// it. Imported templates use it so their own LICENSE or preview.png can
+    /// never be mistaken for gallery metadata.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files_dir: Option<String>,
+    /// A LaTeX compiler the template was made for (pdflatex, xelatex, ...).
+    /// New projects use latexmk with it; without it they use the default
+    /// LaTeX engine.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex_flavor: Option<String>,
 }
+
+/// The gallery category for templates people import or save themselves.
+pub(crate) const CUSTOM_CATEGORY: &str = "Custom";
 
 /// The gallery-facing view, sent to the UI by `list_templates`.
 #[derive(Serialize)]
@@ -117,9 +131,10 @@ pub struct TemplateInfo {
     pub order: i64,
     /// "bundled" | "pack" | "custom"
     pub source: String,
+    pub tex_flavor: Option<String>,
 }
 
-fn is_valid_id(id: &str) -> bool {
+pub(crate) fn is_valid_id(id: &str) -> bool {
     !id.is_empty()
         && id
             .chars()
@@ -198,10 +213,43 @@ pub fn read_manifest(dir: &Path) -> Result<TemplateManifest, String> {
     serde_json::from_str(&s).map_err(|e| format!("invalid template.json in {}: {e}", dir.display()))
 }
 
+/// Where a template's source files live: the template folder itself, or its
+/// `files_dir` sub-folder.
+fn source_root(dir: &Path, manifest: &TemplateManifest) -> Result<PathBuf, String> {
+    match manifest.files_dir.as_deref() {
+        None => Ok(dir.to_path_buf()),
+        Some(name) if is_valid_id(name) => {
+            let root = dir.join(name);
+            let metadata = std::fs::symlink_metadata(&root)
+                .map_err(|_| format!("template files folder is missing: {name}"))?;
+            if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                return Err("template files folder must be a real folder".into());
+            }
+            Ok(root)
+        }
+        Some(_) => Err("template files_dir must be a plain folder name".into()),
+    }
+}
+
 fn validate_manifest_dir(dir: &Path, manifest: &TemplateManifest) -> Result<(), String> {
     if dir.file_name().and_then(std::ffi::OsStr::to_str) != Some(manifest.id.as_str()) {
         return Err("template directory name does not match manifest id".into());
     }
+    validate_manifest_files(dir, manifest)
+}
+
+/// The checks that don't depend on the folder's name, so a template can be
+/// validated while it is still being staged under a temporary name.
+pub(crate) fn validate_manifest_files(
+    dir: &Path,
+    manifest: &TemplateManifest,
+) -> Result<(), String> {
+    if let Some(flavor) = manifest.tex_flavor.as_deref() {
+        if crate::document_engine::LatexmkFlavor::parse(flavor).is_none() {
+            return Err(format!("unknown template compiler: {flavor}"));
+        }
+    }
+    let root = source_root(dir, manifest)?;
     let main = Path::new(&manifest.main_doc);
     if main.is_absolute()
         || main
@@ -210,7 +258,7 @@ fn validate_manifest_dir(dir: &Path, manifest: &TemplateManifest) -> Result<(), 
     {
         return Err("template main_doc must be a safe relative path".into());
     }
-    let main = dir.join(main);
+    let main = root.join(main);
     let metadata = std::fs::symlink_metadata(&main)
         .map_err(|_| format!("template main document is missing: {}", manifest.main_doc))?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
@@ -244,10 +292,14 @@ fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool, source: &str
     let document_engine = match m.engine.to_ascii_lowercase().as_str() {
         "typst" | "typ" => "typst",
         "markdown" | "md" | "pandoc" => "markdown",
-        "xetex" | "latex" | "tectonic" | "luatex" => "latex",
+        "xetex" | "latex" | "tectonic" | "luatex" | "latexmk" => "latex",
         _ => "unknown",
     }
     .to_owned();
+    let tex_flavor = m
+        .tex_flavor
+        .filter(|_| document_engine == "latex")
+        .filter(|flavor| crate::document_engine::LatexmkFlavor::parse(flavor).is_some());
     TemplateInfo {
         id: m.id,
         name: m.name,
@@ -265,6 +317,7 @@ fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool, source: &str
         assets_ready: ready,
         order: m.order,
         source: source.to_string(),
+        tex_flavor,
     }
 }
 
@@ -423,16 +476,24 @@ pub fn save_custom_template(
     manifest_json: String,
     files: Vec<CustomFile>,
 ) -> Result<(), String> {
-    let custom_root = crate::paths::templates_data_root()?.join("custom");
+    let custom_root = custom_templates_root()?;
     std::fs::create_dir_all(&custom_root).map_err(|e| e.to_string())?;
-    // Bundled ids stay reserved so a custom template can never shadow or be
-    // shadowed confusingly by a shipped one.
-    let reserved: Vec<String> = list_templates_in_roots(&template_roots(&app))
+    let reserved = shipped_template_ids(&app);
+    save_custom_template_at(&custom_root, &slug, &manifest_json, &files, &reserved)
+}
+
+pub(crate) fn custom_templates_root() -> Result<PathBuf, String> {
+    Ok(crate::paths::templates_data_root()?.join("custom"))
+}
+
+/// Ids of bundled and downloaded templates. They stay reserved so a custom
+/// template can never shadow, or be shadowed by, a shipped one.
+pub(crate) fn shipped_template_ids(app: &AppHandle) -> Vec<String> {
+    list_templates_in_roots(&template_roots(app))
         .into_iter()
         .filter(|(_, _, source)| *source != "custom")
         .map(|(m, _, _)| m.id)
-        .collect();
-    save_custom_template_at(&custom_root, &slug, &manifest_json, &files, &reserved)
+        .collect()
 }
 
 /// The pre-rendered page-1 preview as a `data:` URI, or `None` if absent. Called
@@ -471,14 +532,27 @@ fn preview_data_uri(dir: &Path) -> Result<Option<String>, String> {
 /// skipping gallery metadata. Returns the manifest so the caller can seed
 /// project.json.
 pub fn instantiate(app: &AppHandle, id: &str, dest: &Path) -> Result<TemplateManifest, String> {
-    let src = template_dir(app, id)?;
-    let manifest = read_manifest(&src)?;
-    validate_manifest_dir(&src, &manifest)?;
-    copy_tree(&src, dest, 0)?;
+    instantiate_from(&template_dir(app, id)?, dest)
+}
+
+/// Copy the template in `src` into `dest`. Split from `instantiate` so tests
+/// can run it without an AppHandle.
+pub(crate) fn instantiate_from(src: &Path, dest: &Path) -> Result<TemplateManifest, String> {
+    let manifest = read_manifest(src)?;
+    validate_manifest_dir(src, &manifest)?;
+    // A template with its own files folder copies every file in it; the
+    // older layout keeps the gallery metadata beside the source and skips it.
+    let root = source_root(src, &manifest)?;
+    copy_tree_with(&root, dest, 0, manifest.files_dir.is_none())?;
     Ok(manifest)
 }
 
+#[cfg(test)]
 fn copy_tree(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
+    copy_tree_with(src, dest, depth, true)
+}
+
+fn copy_tree_with(src: &Path, dest: &Path, depth: usize, skip_meta: bool) -> Result<(), String> {
     if depth >= MAX_COPY_DEPTH {
         return Err(format!(
             "template nesting exceeds maximum depth {MAX_COPY_DEPTH}"
@@ -489,7 +563,7 @@ fn copy_tree(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
         // At the top level, skip gallery-only metadata files.
-        if depth == 0 && META_FILES.contains(&name_str.as_ref()) {
+        if skip_meta && depth == 0 && META_FILES.contains(&name_str.as_ref()) {
             continue;
         }
         let from = entry.path();
@@ -500,7 +574,7 @@ fn copy_tree(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
         }
         if ft.is_dir() {
             std::fs::create_dir_all(&to).map_err(|e| e.to_string())?;
-            copy_tree(&from, &to, depth + 1)?;
+            copy_tree_with(&from, &to, depth + 1, skip_meta)?;
         } else {
             if let Some(parent) = to.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -547,6 +621,43 @@ mod tests {
         missing.id = "blank-markdown".into();
         missing.main_doc = "missing.md".into();
         assert!(validate_manifest_dir(&root.join("blank-markdown"), &missing).is_err());
+    }
+
+    #[test]
+    fn a_files_folder_must_be_a_plain_present_folder_and_compilers_must_be_known() {
+        let base = tempfile::tempdir().unwrap();
+        let dir = base.path().join("mine");
+        std::fs::create_dir_all(dir.join("files")).unwrap();
+        std::fs::write(dir.join("files/main.tex"), "x").unwrap();
+        let manifest = |files_dir: &str, flavor: Option<&str>| -> TemplateManifest {
+            serde_json::from_value(serde_json::json!({
+                "id": "mine",
+                "name": "Mine",
+                "main_doc": "main.tex",
+                "files_dir": files_dir,
+                "tex_flavor": flavor,
+            }))
+            .unwrap()
+        };
+        validate_manifest_dir(&dir, &manifest("files", Some("pdflatex"))).unwrap();
+        for bad in ["../files", "missing", "files/sub", ""] {
+            assert!(
+                validate_manifest_dir(&dir, &manifest(bad, None)).is_err(),
+                "{bad}"
+            );
+        }
+        assert!(validate_manifest_dir(&dir, &manifest("files", Some("bogus"))).is_err());
+        std::fs::write(
+            dir.join("template.json"),
+            serde_json::to_string(&manifest("files", Some("pdflatex"))).unwrap(),
+        )
+        .unwrap();
+        let dest = base.path().join("project");
+        std::fs::create_dir_all(&dest).unwrap();
+        let copied = instantiate_from(&dir, &dest).unwrap();
+        assert_eq!(copied.tex_flavor.as_deref(), Some("pdflatex"));
+        assert!(dest.join("main.tex").is_file());
+        assert!(!dest.join("files").exists());
     }
 
     #[test]

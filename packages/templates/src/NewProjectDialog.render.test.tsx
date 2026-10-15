@@ -276,6 +276,21 @@ describe("NewProjectDialog", () => {
     expect(screen.getByText("dialog.getMoreTemplates")).toBeInTheDocument();
   });
 
+  it("offers to import a template of the person's own in the header", () => {
+    const onImportTemplate = vi.fn();
+    open({ onImportTemplate });
+
+    fireEvent.click(screen.getByTestId("import-template"));
+
+    expect(onImportTemplate).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("import-template")).toHaveTextContent("dialog.importTemplate");
+  });
+
+  it("leaves the template import out when the host has none", () => {
+    open({});
+    expect(screen.queryByTestId("import-template")).not.toBeInTheDocument();
+  });
+
   it("prefers an app-supplied import control over the built-in one", () => {
     open({
       importControl: <span data-testid="app-import" />,

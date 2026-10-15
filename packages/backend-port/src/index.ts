@@ -530,6 +530,8 @@ export interface TemplateInfo {
     assets_ready: boolean;
     order: number;
     source: string;
+    /** The LaTeX compiler a template was made for, when it names one. */
+    tex_flavor?: TexFlavor | null;
 }
 export interface ComponentInfo {
     id: string;
@@ -1435,6 +1437,10 @@ export interface BackendPort {
     content_base64?: string;
 }[]) => Promise<void>;
   deleteCustomTemplate: (slug: string) => Promise<void>;
+  /** Import a ZIP or a folder as a custom template; resolves to its id. */
+  importTemplateFromPath: (path: string, name: string) => Promise<string>;
+  /** Save a project's files as a custom template; resolves to its id. */
+  saveProjectAsTemplate: (projectId: string, name: string, previewPngBase64?: string | null) => Promise<string>;
   listTemplates: () => Promise<TemplateInfo[]>;
   templatePreview: (templateId: string) => Promise<string | null>;
   createProjectFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;

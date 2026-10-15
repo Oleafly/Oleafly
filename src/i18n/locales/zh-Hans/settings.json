@@ -999,13 +999,15 @@
       "download": "下载",
       "downloadAll": "全部下载"
     },
-    "aiTemplates": {
-      "deleteDescription": "从你的库中删除“{{name}}”吗？已基于它创建的项目会保留各自的副本，不受影响。",
-      "deleteTitle": "删除 AI 生成的模板",
-      "deleted": "已从库中删除“{{name}}”。",
-      "empty": "还没有 AI 生成的模板。可从模板画廊创建一个。",
-      "fallbackDescription": "AI 生成的模板。",
-      "toggle": "管理 AI 生成的模板。",
+    "yourTemplates": {
+      "toggle": "管理你的模板",
+      "import": "导入模板",
+      "empty": "你还没有自己的模板。可以在此导入，从项目菜单将项目保存为模板，或在模板库中生成一个。",
+      "aiDescription": "AI 生成的模板",
+      "customDescription": "你的模板",
+      "deleteTitle": "删除模板",
+      "deleteDescription": "要从你的模板中删除“{{name}}”吗？已基于它创建的项目会保留各自的副本。",
+      "deleted": "已从你的模板中删除“{{name}}”",
       "deleteFailed": "无法删除“{{name}}”。"
     },
     "fontPacks": {

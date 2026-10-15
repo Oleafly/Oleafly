@@ -1009,13 +1009,15 @@
       "download": "Descargar",
       "downloadAll": "Descargar todo"
     },
-    "aiTemplates": {
-      "deleteDescription": "¿Eliminar \"{{name}}\" de tu biblioteca? Los proyectos que ya creaste con ella conservan su propia copia y no se ven afectados.",
-      "deleteTitle": "Eliminar la plantilla generada con IA",
-      "deleted": "Se eliminó \"{{name}}\" de tu biblioteca",
-      "empty": "Todavía no hay plantillas generadas con IA. Crea una desde la galería de plantillas.",
-      "fallbackDescription": "Plantilla generada con IA",
-      "toggle": "Gestionar las plantillas generadas con IA",
+    "yourTemplates": {
+      "toggle": "Gestionar tus plantillas",
+      "import": "Importar una plantilla",
+      "empty": "Todavía no tienes plantillas propias. Importa una aquí, guarda un proyecto como plantilla desde su menú o genera una en la galería de plantillas.",
+      "aiDescription": "Plantilla generada con IA",
+      "customDescription": "Tu plantilla",
+      "deleteTitle": "Eliminar la plantilla",
+      "deleteDescription": "¿Eliminar \"{{name}}\" de tus plantillas? Los proyectos que ya creaste con ella conservan su propia copia.",
+      "deleted": "Se eliminó \"{{name}}\" de tus plantillas",
       "deleteFailed": "No se pudo eliminar \"{{name}}\"."
     },
     "fontPacks": {

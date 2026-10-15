@@ -826,6 +826,20 @@ export const saveCustomTemplate = (
 export const deleteCustomTemplate = (slug: string) =>
   invoke<void>("delete_custom_template", { slug });
 
+export const importTemplateFromPath = (path: string, name: string) =>
+  invoke<string>("import_template_from_path", { path, name });
+
+export const saveProjectAsTemplate = (
+  projectId: string,
+  name: string,
+  previewPngBase64?: string | null,
+) =>
+  invoke<string>("save_project_as_template", {
+    projectId,
+    name,
+    previewPngBase64: previewPngBase64 ?? null,
+  });
+
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
 
 export const templatePreview = (templateId: string) =>

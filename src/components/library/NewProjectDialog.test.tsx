@@ -45,16 +45,21 @@ vi.mock("@oleafly/templates", () => ({
   NewProjectDialog: ({
     open,
     onGenerateWithAi,
+    onImportTemplate,
     onOpenTemplateDownloads,
     ...rest
   }: {
     open: boolean;
     onGenerateWithAi?: () => void;
+    onImportTemplate?: () => void;
     onOpenTemplateDownloads?: () => void;
   }) => {
     core.props = rest as never;
     return open ? (
       <div data-testid="templates-core">
+        <button type="button" data-testid="templates-core-import-template" onClick={onImportTemplate}>
+          <span>{"import template"}</span>
+        </button>
         <button
           type="button"
           data-testid="templates-core-generate"
@@ -97,6 +102,33 @@ vi.mock("@/components/research/workspace/ResearchProjectSetup", () => ({
           onClick={() => void onCreated("proj-1")}
         >
           <span>{"created"}</span>
+        </button>
+      </div>
+    ) : null,
+}));
+
+const openTemplateInNewProject = vi.fn();
+vi.mock("@/store/template-request", () => ({
+  openTemplateInNewProject: (id: string) => openTemplateInNewProject(id),
+}));
+
+vi.mock("@/components/library/TemplateImportDialog", () => ({
+  TemplateImportDialog: ({
+    open,
+    onClose,
+    onImported,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    onImported: (id: string, name: string) => void;
+  }) =>
+    open ? (
+      <div data-testid="template-import-modal">
+        <button type="button" onClick={() => onImported("lab-1", "Lab thesis")}>
+          {"imported"}
+        </button>
+        <button type="button" onClick={onClose}>
+          {"close import"}
         </button>
       </div>
     ) : null,
@@ -178,6 +210,21 @@ describe("NewProjectDialog flow", () => {
     expect(
       screen.queryByTestId("project-kind-chooser"),
     ).not.toBeInTheDocument();
+  });
+
+  it("imports a template from the gallery and lands on the new template", async () => {
+    renderDialog();
+    fireEvent.click(await screen.findByTestId("project-kind-template"));
+    fireEvent.click(screen.getByTestId("templates-core-import-template"));
+    fireEvent.click(await screen.findByText("close import"));
+    expect(screen.queryByTestId("template-import-modal")).not.toBeInTheDocument();
+    expect(openTemplateInNewProject).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("templates-core-import-template"));
+    fireEvent.click(await screen.findByText("imported"));
+    expect(openTemplateInNewProject).toHaveBeenCalledWith("lab-1");
+    expect(screen.queryByTestId("template-import-modal")).not.toBeInTheDocument();
+    expect(screen.getByTestId("templates-core")).toBeInTheDocument();
   });
 
   it("hands off to the import dialog", async () => {

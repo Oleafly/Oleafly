@@ -1014,13 +1014,15 @@
       "download": "Stáhnout",
       "downloadAll": "Stáhnout vše"
     },
-    "aiTemplates": {
-      "deleteDescription": "Smazat „{{name}}“ z vaší knihovny? Projekty už z ní vytvořené si nechávají vlastní kopii a nic se jich nedotkne.",
-      "deleteTitle": "Smazání šablony vytvořené pomocí AI",
-      "deleted": "„{{name}}“ bylo smazáno z vaší knihovny",
-      "empty": "Zatím žádné šablony vytvořené pomocí AI. Vytvořte jednu v galerii šablon.",
-      "fallbackDescription": "Šablona vytvořená pomocí AI",
-      "toggle": "Spravovat šablony vytvořené pomocí AI",
+    "yourTemplates": {
+      "toggle": "Spravovat své šablony",
+      "import": "Importovat šablonu",
+      "empty": "Zatím nemáte žádné vlastní šablony. Importujte nějakou tady, uložte projekt jako šablonu z jeho nabídky nebo si šablonu vytvořte v galerii šablon.",
+      "aiDescription": "Šablona vytvořená pomocí AI",
+      "customDescription": "Vaše šablona",
+      "deleteTitle": "Smazat šablonu",
+      "deleteDescription": "Smazat „{{name}}“ z vašich šablon? Projekty, které jste z ní už vytvořili, si ponechají vlastní kopii.",
+      "deleted": "„{{name}}“ bylo smazáno z vašich šablon",
       "deleteFailed": "„{{name}}“ se nepodařilo smazat."
     },
     "fontPacks": {

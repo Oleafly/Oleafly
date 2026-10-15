@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly kan inte göra den här ändringen eftersom {{name}} eller mappen den ligger i är skrivskyddad. Kopiera mappen du öppnade till biblioteket och redigera den där.",
     "shared_settings_viewer": "Läsare kan inte ändra inställningarna för ett delat projekt."
   },
+  "template": {
+    "name_required": "Ge mallen ett namn.",
+    "folder_holds_templates": "I den här mappen lagrar Oleafly sina egna mallar. Välj mallens mapp i stället."
+  },
   "settings": {
     "locale_unsupported": "Språket {{locale}} är inte tillgängligt."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Lägg till din Git-token från Overleaf för att synka det här projektet.",
     "git_token_invalid": "Det ser inte ut som en Git-token från Overleaf. Kopiera hela token och försök igen.",
     "git_token_rejected": "Overleaf godkände inte Git-token. Den kan ha gått ut. Skapa en ny i dina kontoinställningar på Overleaf.",
-    "git_unavailable": "Overleafs Git-integration är inte tillgänglig för det här projektet. Projektets ägare behöver ett betalt abonnemang eller ett universitetsabonnemang."
+    "git_unavailable": "Overleafs Git-integration är inte tillgänglig för det här projektet. Projektets ägare behöver ett betalt abonnemang eller ett universitetsabonnemang.",
+    "template_link_invalid": "Länken leder inte till en mallsida på Overleaf. Kopiera adressen till en sida på overleaf.com/latex/templates och försök igen.",
+    "template_unavailable": "Oleafly kunde inte öppna den här mallen. Den kan ha tagits bort från Overleafs mallgalleri."
   },
   "collab": {
     "turned_off": "Samarbete i realtid är avstängt. Slå på det i Inställningar under Experiment."

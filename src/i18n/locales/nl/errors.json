@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly kan deze wijziging niet uitvoeren, omdat {{name}} of de bovenliggende map alleen-lezen is. Kopieer de map die je hebt geopend naar de bibliotheek en bewerk hem daar.",
     "shared_settings_viewer": "Lezers kunnen de instellingen van een gedeeld project niet wijzigen."
   },
+  "template": {
+    "name_required": "Geef het sjabloon een naam.",
+    "folder_holds_templates": "In deze map bewaart Oleafly zijn eigen sjablonen. Kies in plaats daarvan de map van het sjabloon."
+  },
   "settings": {
     "locale_unsupported": "De taal {{locale}} is niet beschikbaar."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Voeg je Git-token van Overleaf toe om dit project te synchroniseren.",
     "git_token_invalid": "Dat lijkt geen Git-token van Overleaf. Kopieer het hele token en probeer het opnieuw.",
     "git_token_rejected": "Overleaf heeft het Git-token niet geaccepteerd. Het is misschien verlopen. Maak een nieuw token aan in je Overleaf-accountinstellingen.",
-    "git_unavailable": "De Git-integratie van Overleaf is niet beschikbaar voor dit project. De eigenaar van het project heeft daarvoor een betaald abonnement of een universiteitsabonnement nodig."
+    "git_unavailable": "De Git-integratie van Overleaf is niet beschikbaar voor dit project. De eigenaar van het project heeft daarvoor een betaald abonnement of een universiteitsabonnement nodig.",
+    "template_link_invalid": "Die link is geen sjabloonpagina van Overleaf. Kopieer het adres van een pagina op overleaf.com/latex/templates en probeer het opnieuw.",
+    "template_unavailable": "Oleafly kon dit sjabloon niet openen. Misschien is het uit de sjabloongalerij van Overleaf verwijderd."
   },
   "collab": {
     "turned_off": "Live samenwerken staat uit. Zet het aan in Instellingen, onder Experimenten."

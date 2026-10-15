@@ -1004,13 +1004,15 @@
       "download": "İndir",
       "downloadAll": "Tümünü indir"
     },
-    "aiTemplates": {
-      "deleteDescription": "\"{{name}}\" kitaplığınızdan silinsin mi? Ondan oluşturulmuş projeler kendi kopyalarını korur ve etkilenmez.",
-      "deleteTitle": "Yapay zeka ile oluşturulan şablonu sil",
-      "deleted": "\"{{name}}\" kitaplığınızdan silindi",
-      "empty": "Henüz yapay zeka ile oluşturulmuş şablon yok. Şablon galerisinden bir tane oluşturun.",
-      "fallbackDescription": "Yapay zeka ile oluşturulan şablon",
-      "toggle": "Yapay zeka ile oluşturulan şablonları yönet",
+    "yourTemplates": {
+      "toggle": "Şablonlarınızı yönet",
+      "import": "Şablon içe aktar",
+      "empty": "Henüz kendi şablonunuz yok. Buradan bir şablon içe aktarın, bir projeyi menüsünden şablon olarak kaydedin ya da şablon galerisinde yeni bir şablon oluşturun.",
+      "aiDescription": "Yapay zeka ile oluşturulan şablon",
+      "customDescription": "Şablonunuz",
+      "deleteTitle": "Şablonu sil",
+      "deleteDescription": "\"{{name}}\" şablonlarınızdan silinsin mi? Ondan daha önce oluşturduğunuz projeler kendi kopyalarını korur.",
+      "deleted": "\"{{name}}\" şablonlarınızdan silindi",
       "deleteFailed": "\"{{name}}\" silinemedi."
     },
     "fontPacks": {

@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly nu poate face această modificare, deoarece {{name}} sau folderul în care se află este doar în citire. Copiază în bibliotecă folderul pe care l-ai deschis și editează-l acolo.",
     "shared_settings_viewer": "Cititorii nu pot modifica setările unui proiect partajat."
   },
+  "template": {
+    "name_required": "Dă un nume șablonului.",
+    "folder_holds_templates": "Acest folder conține șabloanele incluse în Oleafly. Alege în schimb folderul șablonului."
+  },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Adaugă tokenul tău Git pentru Overleaf ca să sincronizezi acest proiect.",
     "git_token_invalid": "Acesta nu pare un token Git pentru Overleaf. Copiază tot tokenul și încearcă din nou.",
     "git_token_rejected": "Overleaf nu a acceptat tokenul Git. Poate a expirat. Creează unul nou în setările contului tău Overleaf.",
-    "git_unavailable": "Integrarea Git din Overleaf nu este disponibilă pentru acest proiect. Proprietarul proiectului are nevoie de un plan plătit sau universitar."
+    "git_unavailable": "Integrarea Git din Overleaf nu este disponibilă pentru acest proiect. Proprietarul proiectului are nevoie de un plan plătit sau universitar.",
+    "template_link_invalid": "Acest link nu duce la o pagină de șablon Overleaf. Copiază adresa unei pagini de pe overleaf.com/latex/templates și încearcă din nou.",
+    "template_unavailable": "Oleafly nu a putut deschide acest șablon. Poate a fost eliminat din galeria Overleaf."
   },
   "collab": {
     "turned_off": "Colaborarea în timp real este dezactivată. Activeaz-o din Setări, la Experimente."

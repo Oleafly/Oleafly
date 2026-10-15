@@ -55,6 +55,7 @@ import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { Library } from "@/components/library/Library";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
@@ -352,6 +353,21 @@ describe("Library project dialogs", () => {
     expect(
       await screen.findByText(enLibrary.projects.exportsDialog.empty),
     ).toBeInTheDocument();
+  });
+
+  it("opens Save as template for a library project from its menu", async () => {
+    useSaveAsTemplateStore.setState({ target: null });
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.customTemplates.saveAsTemplate }),
+    );
+    await waitFor(() =>
+      expect(useSaveAsTemplateStore.getState().target).toEqual({
+        projectId: PAPER.id,
+        name: PAPER.name,
+      }),
+    );
   });
 
   it("forks a project with the typed name", async () => {

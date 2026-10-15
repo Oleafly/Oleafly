@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly kan ikke foretage denne ændring, fordi {{name}} eller mappen, den ligger i, er skrivebeskyttet. Kopiér den mappe, du åbnede, til biblioteket, og rediger den der.",
     "shared_settings_viewer": "Læsere kan ikke ændre indstillingerne for et delt projekt."
   },
+  "template": {
+    "name_required": "Giv skabelonen et navn.",
+    "folder_holds_templates": "I denne mappe gemmer Oleafly sine egne skabeloner. Vælg skabelonens mappe i stedet."
+  },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Tilføj dit Git-token fra Overleaf for at synkronisere dette projekt.",
     "git_token_invalid": "Det ligner ikke et Git-token fra Overleaf. Kopiér hele tokenet, og prøv igen.",
     "git_token_rejected": "Overleaf accepterede ikke Git-tokenet. Det er måske udløbet. Opret et nyt i dine kontoindstillinger på Overleaf.",
-    "git_unavailable": "Overleafs Git-integration er ikke tilgængelig for dette projekt. Projektets ejer skal have et betalt abonnement eller et universitetsabonnement."
+    "git_unavailable": "Overleafs Git-integration er ikke tilgængelig for dette projekt. Projektets ejer skal have et betalt abonnement eller et universitetsabonnement.",
+    "template_link_invalid": "Det link er ikke en skabelonside på Overleaf. Kopiér adressen på en side fra overleaf.com/latex/templates, og prøv igen.",
+    "template_unavailable": "Oleafly kunne ikke åbne denne skabelon. Den er måske blevet fjernet fra Overleafs skabelongalleri."
   },
   "collab": {
     "turned_off": "Samarbejde i realtid er slået fra. Slå det til i Indstillinger under Eksperimenter."

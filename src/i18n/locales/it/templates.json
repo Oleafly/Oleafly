@@ -5,6 +5,7 @@
       "nameProject": "Dai un nome al progetto",
       "import": "Importa",
       "generateWithAi": "Genera un modello",
+      "importTemplate": "Importa un modello",
       "close": "Chiudi",
       "getMoreTemplates": "Scarica altri modelli",
       "searchPlaceholder": "Cerca modelli",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Tutti",
       "aiGenerated": "Generati con l'AI",
+      "custom": "Personalizzati",
       "blank": "Vuoto",
       "diagrams": "Diagrammi",
       "diagramsFull": "Diagrammi e figure",

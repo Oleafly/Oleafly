@@ -39,6 +39,10 @@
     "folder_read_only": "{{name}} veya bulunduğu klasör salt okunur olduğu için Oleafly bu değişikliği yapamıyor. Açtığınız klasörü kitaplığa kopyalayın ve orada düzenleyin.",
     "shared_settings_viewer": "Görüntüleyenler paylaşılan bir projenin ayarlarını değiştiremez."
   },
+  "template": {
+    "name_required": "Şablona bir ad verin.",
+    "folder_holds_templates": "Bu klasör Oleafly'nin kendi şablonlarını içeriyor. Bunun yerine şablonun klasörünü seçin."
+  },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Bu projeyi eşitlemek için Overleaf Git belirtecinizi ekleyin.",
     "git_token_invalid": "Bu bir Overleaf Git belirtecine benzemiyor. Belirtecin tamamını kopyalayıp yeniden deneyin.",
     "git_token_rejected": "Overleaf Git belirtecini kabul etmedi. Süresi dolmuş olabilir. Overleaf hesap ayarlarınızda yeni bir belirteç oluşturun.",
-    "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir."
+    "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir.",
+    "template_link_invalid": "Bu bağlantı bir Overleaf şablon sayfası değil. overleaf.com/latex/templates altındaki bir sayfanın adresini kopyalayıp yeniden deneyin.",
+    "template_unavailable": "Oleafly bu şablonu açamadı. Overleaf'in galerisinden kaldırılmış olabilir."
   },
   "collab": {
     "turned_off": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın."

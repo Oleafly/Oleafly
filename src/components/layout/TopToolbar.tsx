@@ -15,6 +15,7 @@ import {
   History,
   Presentation,
   LayoutGrid,
+  LayoutTemplate,
   ImageDown,
   SquarePen,
   X,
@@ -51,6 +52,7 @@ import "./top-toolbar.css";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
 import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
@@ -279,7 +281,7 @@ function ViewModeSwitch({
 }
 
 export function TopToolbar() {
-  const { t } = useTranslation(["common", "shell"]);
+  const { t } = useTranslation(["common", "shell", "library"]);
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
   const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
@@ -452,6 +454,17 @@ export function TopToolbar() {
     <DropdownMenuItem onSelect={() => void doDownloadZip()}>
       <FileTypeIcon kind="zip" className="size-4 text-muted-foreground" />
       {t(($) => $.shell.toolbar.exportSourceZip)}
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      data-testid="export-save-as-template"
+      disabled={!projectId}
+      onSelect={() => {
+        setDlOpen(false);
+        if (projectId) useSaveAsTemplateStore.getState().openFor(projectId, projectName || "");
+      }}
+    >
+      <LayoutTemplate className="size-4 text-muted-foreground" />
+      {t(($) => $.library.customTemplates.saveAsTemplate)}
     </DropdownMenuItem>
     {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
       <FileTypeIcon kind="pdf" className="size-4 text-muted-foreground" />

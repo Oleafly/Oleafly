@@ -39,6 +39,10 @@
     "folder_read_only": "{{name}} 또는 해당 폴더가 읽기 전용이라 Oleafly가 이 변경을 적용할 수 없습니다. 열어 둔 폴더를 라이브러리로 복사해 그곳에서 편집하세요.",
     "shared_settings_viewer": "뷰어는 공유 프로젝트의 설정을 변경할 수 없습니다."
   },
+  "template": {
+    "name_required": "템플릿 이름을 입력하세요.",
+    "folder_holds_templates": "이 폴더에는 Oleafly 자체 템플릿이 들어 있습니다. 대신 템플릿 폴더를 선택하세요."
+  },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "이 프로젝트를 동기화하려면 Overleaf Git 토큰을 추가하세요.",
     "git_token_invalid": "Overleaf Git 토큰이 아닌 것 같습니다. 토큰 전체를 복사한 뒤 다시 시도하세요.",
     "git_token_rejected": "Overleaf가 Git 토큰을 받아들이지 않았습니다. 만료되었을 수 있습니다. Overleaf 계정 설정에서 새 토큰을 만드세요.",
-    "git_unavailable": "이 프로젝트에서는 Overleaf의 Git 연동을 사용할 수 없습니다. 프로젝트 소유자에게 유료 요금제나 대학 요금제가 필요합니다."
+    "git_unavailable": "이 프로젝트에서는 Overleaf의 Git 연동을 사용할 수 없습니다. 프로젝트 소유자에게 유료 요금제나 대학 요금제가 필요합니다.",
+    "template_link_invalid": "이 링크는 Overleaf 템플릿 페이지가 아닙니다. overleaf.com/latex/templates에 있는 페이지의 주소를 복사한 뒤 다시 시도하세요.",
+    "template_unavailable": "Oleafly가 이 템플릿을 열지 못했습니다. Overleaf 갤러리에서 삭제되었을 수 있습니다."
   },
   "collab": {
     "turned_off": "실시간 공동 작업이 꺼져 있습니다. 설정의 실험 기능에서 켜세요."

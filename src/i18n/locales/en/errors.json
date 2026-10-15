@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly can't make this change because {{name}} or its folder is read-only. Copy the folder you opened into your library and edit it there.",
     "shared_settings_viewer": "Viewers can't change a shared project's settings."
   },
+  "template": {
+    "name_required": "Give the template a name.",
+    "folder_holds_templates": "This folder holds Oleafly's own templates. Choose the template's folder instead."
+  },
   "settings": {
     "locale_unsupported": "The language {{locale}} is not available."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Add your Overleaf Git token to sync this project.",
     "git_token_invalid": "That doesn't look like an Overleaf Git token. Copy the whole token and try again.",
     "git_token_rejected": "Overleaf didn't accept the Git token. It may have expired. Create a new one in your Overleaf account settings.",
-    "git_unavailable": "Overleaf's Git integration isn't available for this project. It needs a paid or university plan for the project's owner."
+    "git_unavailable": "Overleaf's Git integration isn't available for this project. It needs a paid or university plan for the project's owner.",
+    "template_link_invalid": "That link isn't an Overleaf template page. Copy the address of a page from overleaf.com/latex/templates and try again.",
+    "template_unavailable": "Oleafly couldn't open this template. It may have been removed from Overleaf's gallery."
   },
   "collab": {
     "turned_off": "Live collaboration is turned off. Turn it on in Settings, under Experimentation."

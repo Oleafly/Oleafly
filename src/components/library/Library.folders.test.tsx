@@ -55,6 +55,7 @@ import { Library } from "@/components/library/Library";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { useHomeViewStore } from "@/store/home-view";
 import { useLibraryAvailabilityStore } from "@/store/library-availability";
 import { useSettingsStore } from "@/store/settings";
@@ -441,6 +442,21 @@ describe("folder menu", () => {
       .find((item) => /^Show in /.test(item.textContent?.trim() ?? ""));
     fireEvent.click(reveal as HTMLElement);
     await waitFor(() => expect(revealProject).toHaveBeenCalledWith("linked-thesis", undefined));
+  });
+
+  it("saves an opened folder as a template from its menu", async () => {
+    useSaveAsTemplateStore.setState({ target: null });
+    await renderLibrary();
+    openActions("Thesis");
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: enLibrary.customTemplates.saveAsTemplate }),
+    );
+    await waitFor(() =>
+      expect(useSaveAsTemplateStore.getState().target).toEqual({
+        projectId: "linked-thesis",
+        name: "Thesis",
+      }),
+    );
   });
 
   it("copies the folder into the library", async () => {

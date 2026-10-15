@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly no puede hacer este cambio porque {{name}} o su carpeta es de solo lectura. Copia a la biblioteca la carpeta que abriste y edítala allí.",
     "shared_settings_viewer": "Los lectores no pueden cambiar los ajustes de un proyecto compartido."
   },
+  "template": {
+    "name_required": "Ponle un nombre a la plantilla.",
+    "folder_holds_templates": "Esta carpeta contiene las plantillas propias de Oleafly. Elige en su lugar la carpeta de la plantilla."
+  },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Añade tu token de Git de Overleaf para sincronizar este proyecto.",
     "git_token_invalid": "Eso no parece un token de Git de Overleaf. Copia el token completo y vuelve a intentarlo.",
     "git_token_rejected": "Overleaf no aceptó el token de Git. Puede que haya caducado. Crea uno nuevo en la configuración de tu cuenta de Overleaf.",
-    "git_unavailable": "La integración con Git de Overleaf no está disponible para este proyecto. El propietario del proyecto necesita un plan de pago o universitario."
+    "git_unavailable": "La integración con Git de Overleaf no está disponible para este proyecto. El propietario del proyecto necesita un plan de pago o universitario.",
+    "template_link_invalid": "Ese enlace no es una página de plantilla de Overleaf. Copia la dirección de una página de overleaf.com/latex/templates y vuelve a intentarlo.",
+    "template_unavailable": "Oleafly no pudo abrir esta plantilla. Puede que se haya retirado de la galería de Overleaf."
   },
   "collab": {
     "turned_off": "La colaboración en tiempo real está desactivada. Actívala en Ajustes, en Experimentación."

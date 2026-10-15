@@ -298,8 +298,11 @@
       "fontsDownloadFailed": "Error after Download all in the Fonts tab",
       "packsDownloadFailed": "Error after Download all in the Templates tab"
     },
-    "aiTemplates": {
-      "deleteFailed": "{{name}} is the name of an AI generated template the user tried to delete"
+    "yourTemplates": {
+      "toggle": "Header of a collapsible list of the user's own templates: imported, saved from a project, or AI generated",
+      "aiDescription": "Fallback subtitle for a template the AI generated",
+      "customDescription": "Fallback subtitle for a template the user imported or saved from a project",
+      "deleteFailed": "{{name}} is the name of one of the user's own templates they tried to delete"
     }
   },
   "engine": {
