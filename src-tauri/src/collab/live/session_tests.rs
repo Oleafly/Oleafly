@@ -1401,6 +1401,35 @@ fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn quitting_with_a_file_another_program_holds_waits_no_longer_than_its_budget() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    const FILE_SHARE_READ: u32 = 0x0001;
+    let (_dir, root, _host, rig) = watched_rig("held-at-quit", &[("main.tex", "abc")]);
+    // Open for reading only, as a viewer holds a file: it can still be read,
+    // but not replaced, which is what makes a write retry for seconds.
+    let holder = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ)
+        .open(root.join("main.tex"))
+        .unwrap();
+    let _live = rig.go_live();
+    rig.remote("main.tex", "abcd");
+    let started = std::time::Instant::now();
+    super::lifecycle::finish_for_quit(super::lifecycle::QUIT_WAIT);
+    assert!(
+        started.elapsed() < super::lifecycle::QUIT_WAIT + Duration::from_secs(2),
+        "quitting waited {:?} on a file another program held",
+        started.elapsed()
+    );
+    drop(holder);
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abc"
+    );
+}
+
 #[test]
 fn a_test_session_with_tree_changes_leaves_the_data_folder_alone() {
     let library = crate::collab::testing::TempLibrary::new();

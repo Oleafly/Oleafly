@@ -10,7 +10,7 @@ use tokio::task::{AbortHandle, Id, JoinSet};
 
 use super::disk_pass::{figure_state, FigureState};
 use super::session::{guard, Active};
-use super::unwritten::{backoff, held_elsewhere, reason_of, Settled, UnwrittenReason};
+use super::unwritten::{backoff, held_now, reason_of, Settled, UnwrittenReason};
 use crate::collab::commands::with_access;
 use crate::collab::disk::{safe_target, sha256_hex, write_file_over, WriteOutcome};
 use crate::folder_watch::FolderChange;
@@ -42,7 +42,6 @@ struct Failure {
     hash: String,
     attempts: u32,
     next: Instant,
-    reason: UnwrittenReason,
 }
 
 enum Placed {
@@ -112,7 +111,7 @@ impl Figures {
         }
     }
 
-    fn failed(&mut self, path: &str, hash: &str, reason: UnwrittenReason) {
+    fn failed(&mut self, path: &str, hash: &str) {
         let attempts = self
             .failing
             .get(path)
@@ -125,19 +124,8 @@ impl Figures {
                 hash: hash.to_owned(),
                 attempts,
                 next: Instant::now() + backoff(attempts),
-                reason,
             },
         );
-    }
-
-    // Why the figure's last write failed, when that was another program
-    // holding it or the file being read-only.
-    fn held_reason(&self, path: &str, hash: &str) -> Option<UnwrittenReason> {
-        self.failing
-            .get(path)
-            .filter(|failure| failure.hash == hash)
-            .map(|failure| failure.reason)
-            .filter(|reason| matches!(reason, UnwrittenReason::Locked | UnwrittenReason::ReadOnly))
     }
 
     fn settled(&mut self, path: &str) {
@@ -235,27 +223,27 @@ impl Active {
         let wanted = {
             let mut figures = guard(&self.upkeep.figures);
             figures.in_flight.remove(path);
-            let wanted = !self.figures_closed()
-                && figures.wanted.get(path).map(String::as_str) == Some(hash);
-            wanted.then(|| figures.held_reason(path, hash))
+            !self.figures_closed() && figures.wanted.get(path).map(String::as_str) == Some(hash)
         };
         // The list is let go while the figure is written, so a flush or a
-        // quit never waits on the write. A figure another program held last
-        // time is written only once one open finds it free, as text is.
+        // quit never waits on the write. A figure another program holds is
+        // left for its next try once one open finds it held, as text is.
         let placed = match (wanted, &fetched) {
-            (None, _) => Placed::Dropped,
-            (Some(_), None) => Placed::Failed(UnwrittenReason::NotDownloaded),
-            (Some(Some(reason)), Some(_)) if self.held_elsewhere(path) => Placed::Failed(reason),
-            (Some(_), Some(bytes)) => self.write_figure(path, hash, bytes),
+            (false, _) => Placed::Dropped,
+            (true, None) => Placed::Failed(UnwrittenReason::NotDownloaded),
+            (true, Some(bytes)) => match self.held_now(path) {
+                Some(reason) => Placed::Failed(reason),
+                None => self.write_figure(path, hash, bytes),
+            },
         };
-        if wanted.is_some() {
+        if wanted {
             let mut figures = guard(&self.upkeep.figures);
             if figures.wanted.get(path).map(String::as_str) == Some(hash) {
-                if let Placed::Failed(reason) = &placed {
+                if matches!(placed, Placed::Failed(_)) {
                     if let Some(bytes) = &fetched {
                         figures.keep(hash, bytes, KEPT_BYTES);
                     }
-                    figures.failed(path, hash, *reason);
+                    figures.failed(path, hash);
                 } else {
                     figures.settled(path);
                 }
@@ -296,8 +284,8 @@ impl Active {
         }
     }
 
-    fn held_elsewhere(&self, path: &str) -> bool {
-        safe_target(&self.root, path).is_some_and(|target| held_elsewhere(&target))
+    fn held_now(&self, path: &str) -> Option<UnwrittenReason> {
+        safe_target(&self.root, path).and_then(|target| held_now(&target))
     }
 
     fn write_figure(&self, path: &str, hash: &str, bytes: &[u8]) -> Placed {

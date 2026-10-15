@@ -7,7 +7,7 @@ use oleafly_collab::CollabError;
 
 use super::bases::WrittenTexts;
 use super::moves;
-use super::unwritten::{reason_of, UnwrittenReason};
+use super::unwritten::{held_now, reason_of, UnwrittenReason};
 use crate::collab::disk::{
     crlf_only, exists_exact, inside, move_path, remove_path, safe_target, same_file, sha256_hex,
     stamp_of, with_line_endings, write_file_over, DiskState, Stamp, WriteOutcome,
@@ -189,6 +189,13 @@ pub(super) fn apply_to_disk(
             conflicts.push(path.clone());
             continue;
         };
+        // A file another program holds on Windows waits for its next try at
+        // once: writing it would retry for seconds, holding up the pass and
+        // a quit waiting on it.
+        if let Some(reason) = safe_target(root, path).and_then(|target| held_now(&target)) {
+            failed.push((path.clone(), reason));
+            continue;
+        }
         let bytes = with_line_endings(text, style.unwrap_or_else(|| crlf.contains(path)));
         match write_file_over(root, path, &bytes, stamp.as_ref()) {
             Ok(WriteOutcome::ChangedOutside) => {

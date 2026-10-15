@@ -76,10 +76,11 @@ fn reason_of_code(code: i32, _target: Option<&Path>) -> UnwrittenReason {
     }
 }
 
-// Another program holds the file for writing or deleting, or it is read-only.
-// One open asks Windows this at once, where a write would retry for seconds.
+// Why the file can't be written now, when another program holds it for
+// writing or deleting or has it mapped, or it is read-only. One open asks
+// Windows this at once, where a write would retry for seconds.
 #[cfg(windows)]
-pub(super) fn held_elsewhere(target: &Path) -> bool {
+pub(super) fn held_now(target: &Path) -> Option<UnwrittenReason> {
     use std::os::windows::fs::OpenOptionsExt as _;
     const DELETE: u32 = 0x0001_0000;
     const FILE_WRITE_DATA: u32 = 0x0002;
@@ -87,14 +88,21 @@ pub(super) fn held_elsewhere(target: &Path) -> bool {
         .access_mode(DELETE | FILE_WRITE_DATA)
         .open(target)
     {
-        Ok(_) => false,
-        Err(error) => matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224)),
+        Ok(_) => None,
+        Err(error) => match error.raw_os_error() {
+            Some(code @ (5 | 32 | 33 | 1224)) => Some(reason_of_code(code, Some(target))),
+            _ => None,
+        },
     }
 }
 
 #[cfg(not(windows))]
-pub(super) fn held_elsewhere(_target: &Path) -> bool {
-    false
+pub(super) fn held_now(_target: &Path) -> Option<UnwrittenReason> {
+    None
+}
+
+pub(super) fn held_elsewhere(target: &Path) -> bool {
+    held_now(target).is_some()
 }
 
 pub(super) fn reason_of(root: &Path, path: &str, error: &str) -> UnwrittenReason {
@@ -356,6 +364,7 @@ mod tests {
             .unwrap();
         let started = Instant::now();
         assert!(held_elsewhere(&target));
+        assert_eq!(held_now(&target), Some(UnwrittenReason::Locked));
         assert!(started.elapsed() < Duration::from_secs(1));
         drop(holder);
         assert!(!held_elsewhere(&target));
