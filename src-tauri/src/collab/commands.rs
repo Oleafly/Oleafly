@@ -746,6 +746,51 @@ pub async fn remove_server(
     Ok(detached)
 }
 
+// After a sign-in whose account read failed, the account is read again a
+// few times in the background, so the server card gets its name, avatar
+// and admin rights without the person having to reopen the section.
+pub(crate) const ACCOUNT_READS: [Duration; 5] = [
+    Duration::from_secs(2),
+    Duration::from_secs(5),
+    Duration::from_secs(15),
+    Duration::from_secs(30),
+    Duration::from_secs(60),
+];
+
+pub(crate) async fn read_account_later(
+    state: &CollabState,
+    host: &dyn CollabHost,
+    server: ServerId,
+    waits: &[Duration],
+) -> bool {
+    for wait in waits {
+        tokio::time::sleep(*wait).await;
+        if !state.has_session(server).unwrap_or(false) {
+            return false;
+        }
+        if refresh_account(state, host, server)
+            .await
+            .is_ok_and(|server| server.account.is_some())
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn read_account_soon(app: &tauri::AppHandle, server: &CollabServer) {
+    if server.account.is_some() {
+        return;
+    }
+    let (app, id) = (app.clone(), server.server_id);
+    tauri::async_runtime::spawn(async move {
+        use tauri::Manager;
+        let state = app.state::<CollabState>();
+        let host = AppHost::new(app.clone());
+        read_account_later(state.inner(), &host, id, &ACCOUNT_READS).await;
+    });
+}
+
 pub async fn refresh_account(
     state: &CollabState,
     host: &dyn CollabHost,
@@ -997,8 +1042,8 @@ pub async fn collab_server_sign_in(
     provider_id: String,
     setup_code: Option<String>,
 ) -> Result<CollabServer, CollabCommandError> {
-    let host = AppHost::new(app);
-    sign_in_server(
+    let host = AppHost::new(app.clone());
+    let server = sign_in_server(
         state.inner(),
         &host,
         &url,
@@ -1007,7 +1052,9 @@ pub async fn collab_server_sign_in(
         SIGN_IN_TIMEOUT,
     )
     .await
-    .map_err(CollabCommandError::from)
+    .map_err(CollabCommandError::from)?;
+    read_account_soon(&app, &server);
+    Ok(server)
 }
 
 #[tauri::command]
@@ -1018,15 +1065,17 @@ pub async fn collab_server_code_sign_in(
     setup_code: Option<String>,
     on_code: tauri::ipc::Channel<SignInCode>,
 ) -> Result<CollabServer, CollabCommandError> {
-    let host = AppHost::new(app);
+    let host = AppHost::new(app.clone());
     let show = move |code: &SignInCode| {
         on_code
             .send(code.clone())
             .map_err(|error| CollabError::Io(error.to_string()))
     };
-    code_sign_in_server(state.inner(), &host, &url, setup_code, &show)
+    let server = code_sign_in_server(state.inner(), &host, &url, setup_code, &show)
         .await
-        .map_err(CollabCommandError::from)
+        .map_err(CollabCommandError::from)?;
+    read_account_soon(&app, &server);
+    Ok(server)
 }
 
 #[tauri::command]
@@ -1829,12 +1878,13 @@ mod tests {
         assert!(relay.refusals() > 0);
         assert!(added.signed_in);
         assert!(added.account.is_none());
+        let soon = [Duration::from_millis(20); 2];
+        assert!(!read_account_later(&state, &host, added.server_id, &soon).await);
         relay.refuse(None);
-        let refreshed = refresh_account(&state, &host, added.server_id)
-            .await
-            .expect("account");
-        assert!(refreshed.signed_in);
-        assert!(refreshed.account.is_some());
+        assert!(read_account_later(&state, &host, added.server_id, &soon).await);
+        let listed = list_servers(&state).expect("list");
+        assert!(listed[0].signed_in);
+        assert!(listed[0].account.is_some());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
