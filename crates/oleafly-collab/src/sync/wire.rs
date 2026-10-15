@@ -37,7 +37,7 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
     .await
     {
         Err(CollabError::Unauthorized) => {
-            let access = renewed_after_refusal(link).await?;
+            let access = renewed_after_refusal(link, &access).await?;
             connect_socket(
                 link.client.url(),
                 link.server_id,
@@ -59,7 +59,7 @@ pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
 // first, as for a refused protocol version. Both transports then renew
 // once and try once more, and a 401 after that means the session is gone.
 // A 401 without the server's own answer, from a proxy, renews nothing.
-async fn renewed_after_refusal(link: &LiveLink) -> Result<String, CollabError> {
+async fn renewed_after_refusal(link: &LiveLink, refused: &str) -> Result<String, CollabError> {
     if let Ok(Ok(manifest)) =
         tokio::time::timeout(MANIFEST_WITHIN, link.client.capabilities()).await
     {
@@ -71,7 +71,7 @@ async fn renewed_after_refusal(link: &LiveLink) -> Result<String, CollabError> {
         }
     }
     link.sessions
-        .force_refresh(link.server_id, &link.client)
+        .refresh_rejected(link.server_id, &link.client, refused)
         .await
 }
 
@@ -269,7 +269,7 @@ impl PollWire {
             .await?;
         let opened = match self.open_with(&access, since).await {
             Err(CollabError::Unauthorized) => {
-                let access = renewed_after_refusal(link).await?;
+                let access = renewed_after_refusal(link, &access).await?;
                 self.open_with(&access, since).await?
             }
             other => other?,
