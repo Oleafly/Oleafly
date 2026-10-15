@@ -963,7 +963,7 @@ fn fail_main(rig: &write::rig::LiveRig, times: usize) {
 }
 
 #[test]
-fn a_file_that_keeps_failing_is_tried_again_on_every_pass() {
+fn a_file_that_keeps_failing_stays_marked_and_waits_longer_after_each_failure() {
     let (_dir, _root, _host, rig) = watched_rig("still-failing", &[("main.tex", "abc")]);
     let active = rig.active();
     let main = guard(&active.disk)
@@ -973,14 +973,51 @@ fn a_file_that_keeps_failing_is_tried_again_on_every_pass() {
         .map(|(id, _)| id.clone())
         .unwrap();
     let _ = lock(&active.live).take_disk_work();
-    for attempt in 1..=10 {
+    for attempt in 1..=8 {
         fail_main(&rig, 1);
         let work = lock(&active.live).take_disk_work();
         assert!(
             work.texts.contains(&main),
-            "attempt {attempt} was not retried"
+            "attempt {attempt} was not kept for another try"
+        );
+        let wait = active
+            .next_try_in("main.tex")
+            .expect("the file waits for its next try");
+        let backoff = super::unwritten::backoff(attempt);
+        assert!(
+            wait <= backoff && wait + Duration::from_secs(1) > backoff,
+            "attempt {attempt} waits {wait:?} instead of about {backoff:?}"
         );
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_file_another_program_holds_costs_a_flush_one_quick_check() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let (_dir, root, _host, rig) = watched_rig("held-open", &[("main.tex", "abc")]);
+    let holder = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(root.join("main.tex"))
+        .unwrap();
+    fail_main(&rig, 1);
+    rig.remote("main.tex", "abcd");
+    let active = rig.active();
+    let started = std::time::Instant::now();
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "the held file cost the flush {:?}",
+        started.elapsed()
+    );
+    assert_eq!(active.tries_of("main.tex"), 2);
+    drop(holder);
+    tauri::async_runtime::block_on(active.write_out()).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.join("main.tex")).unwrap(),
+        "abcd"
+    );
 }
 
 #[test]
