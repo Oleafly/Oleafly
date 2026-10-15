@@ -66,6 +66,7 @@ jobs:
           docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" ubuntu:24.04 sh /src/tests/installer-test.sh
           docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" -e INSTALLER_SHELL=bash ubuntu:24.04 sh /src/tests/installer-test.sh
           docker run --rm --platform linux/amd64 -v "$PWD:/repo:ro" ubuntu:24.04 sh /repo/deploy/server/tests/release-workflow-test.sh
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" ubuntu:24.04 sh /src/tests/e2e-cleanup-test.sh
 
       - name: Work out the version and image tags
         id: version

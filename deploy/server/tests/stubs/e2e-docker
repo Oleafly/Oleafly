@@ -1,0 +1,71 @@
+#!/bin/sh
+# Docker as deploy/server/tests/e2e.sh meets it on a Linux runner, where
+# containers run as root and what they write into a bind mount belongs to
+# root. e2e-cleanup-test.sh runs e2e.sh as an ordinary user, and a helper
+# running as root does each container's work on the host folders.
+#
+# E2E_STUB is the folder the two share. E2E_STUB_BOX_STATUS is the exit
+# status of the run inside the privileged box, and E2E_STUB_CLEANUP=fails
+# makes the cleanup container fail to start.
+set -u
+
+printf '%s\n' "$*" >>"$E2E_STUB/docker.log"
+
+# Has the root helper run $1 and waits for its exit status.
+as_root() {
+	request=$E2E_STUB/requests/$(date +%s%N)
+	printf '%s\n' "$1" >"$request.tmp"
+	mv "$request.tmp" "$request.sh"
+	until [ -e "$request.done" ]; do
+		sleep 0.05
+	done
+	return "$(cat "$request.done")"
+}
+
+# Prints the host folder that the arguments after $1 bind-mount at $1.
+mount_for() {
+	target=$1
+	shift
+	while [ "$#" -gt 1 ]; do
+		if [ "$1" = -v ]; then
+			inside=${2#*:}
+			if [ "${inside%%:*}" = "$target" ]; then
+				printf '%s\n' "${2%%:*}"
+				return 0
+			fi
+		fi
+		shift
+	done
+	return 1
+}
+
+case $1 in
+	save)
+		while [ "$#" -gt 1 ]; do
+			if [ "$1" = -o ]; then
+				: >"$2"
+			fi
+			shift
+		done
+		exit 0
+		;;
+	run) ;;
+	*) exit 0 ;;
+esac
+
+case "$*" in
+	*' rm -rf /work/e2e')
+		[ "${E2E_STUB_CLEANUP:-works}" = works ] || exit 125
+		host=$(mount_for /work "$@") || exit 125
+		as_root "rm -rf '$host/e2e'"
+		;;
+	*':/out '*)
+		host=$(mount_for /out "$@") || exit 125
+		as_root "for version in 0.1.0 0.1.1; do mkdir -p '$host'/release-\$version && echo installer >'$host'/release-\$version/install.sh; done"
+		;;
+	*' --name oleafly-e2e-box-'*)
+		host=$(mount_for /e2e "$@") || exit 125
+		as_root "echo passed >'$host/out'" || exit 125
+		exit "${E2E_STUB_BOX_STATUS:-0}"
+		;;
+esac
