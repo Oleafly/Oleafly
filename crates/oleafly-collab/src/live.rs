@@ -1707,11 +1707,11 @@ impl LiveProject {
         self.outgoing = None;
     }
 
-    pub fn in_flight(&self) -> Option<(usize, std::time::Instant)> {
+    pub fn in_flight(&self) -> Option<(BatchId, usize, std::time::Instant)> {
         self.outgoing
             .as_ref()
             .filter(|outgoing| outgoing.sent)
-            .map(|outgoing| (outgoing.payload.len(), outgoing.sent_at))
+            .map(|outgoing| (outgoing.batch, outgoing.payload.len(), outgoing.sent_at))
     }
 
     pub fn comments_refused(
