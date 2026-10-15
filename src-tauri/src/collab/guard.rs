@@ -595,6 +595,7 @@ mod tests {
                     )
                 })
                 .collect(),
+            owed: Default::default(),
         }
         .save(&index)
         .unwrap();

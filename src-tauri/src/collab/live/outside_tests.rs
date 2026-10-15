@@ -22,7 +22,11 @@ fn project_text(root: &Path, text: &str) -> (LiveProject, DiskState, String) {
         .collect();
     (
         LiveProject::new(doc, 0, ProjectRole::Owner),
-        DiskState { layout, hashes },
+        DiskState {
+            layout,
+            hashes,
+            owed: Default::default(),
+        },
         main,
     )
 }

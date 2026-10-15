@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::{Arc, Weak};
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, MutexGuard, TryLockError, Weak};
 use std::time::{Duration, Instant};
 
 use oleafly_collab::doc::NodeKind;
@@ -9,7 +10,7 @@ use tokio::task::{AbortHandle, Id, JoinSet};
 
 use super::disk_pass::{figure_state, FigureState};
 use super::session::{guard, Active};
-use super::unwritten::{backoff, reason_of, Settled, UnwrittenReason};
+use super::unwritten::{backoff, held_elsewhere, reason_of, Settled, UnwrittenReason};
 use crate::collab::commands::with_access;
 use crate::collab::disk::{safe_target, sha256_hex, write_file_over, WriteOutcome};
 use crate::folder_watch::FolderChange;
@@ -17,6 +18,10 @@ use crate::folder_watch::FolderChange;
 // A few figures download at once, so one stalled transfer never holds up
 // the others.
 const AT_ONCE: usize = 3;
+// The most bytes kept for figures that downloaded but could not be
+// written. Past this the oldest are let go and fetched again on their next
+// try.
+const KEPT_BYTES: usize = 64 * 1024 * 1024;
 
 type Bytes = Arc<Vec<u8>>;
 
@@ -24,12 +29,11 @@ type Bytes = Arc<Vec<u8>>;
 pub(super) struct Figures {
     wanted: BTreeMap<String, String>,
     failing: BTreeMap<String, Failure>,
-    // Figures that downloaded fine but could not be written yet, so the
-    // next try writes them without fetching them again.
-    fetched: BTreeMap<String, Bytes>,
+    // Figures that downloaded fine but could not be written yet, oldest
+    // first, so the next try writes them without fetching them again.
+    fetched: Vec<(String, Bytes)>,
     in_flight: BTreeMap<String, String>,
     running: bool,
-    closed: bool,
     wake: Arc<Notify>,
     landed: Arc<Notify>,
 }
@@ -38,6 +42,7 @@ struct Failure {
     hash: String,
     attempts: u32,
     next: Instant,
+    reason: UnwrittenReason,
 }
 
 enum Placed {
@@ -65,13 +70,13 @@ impl Figures {
         self.failing
             .retain(|path, failure| wanted.get(path) == Some(&failure.hash));
         self.fetched
-            .retain(|hash, _| wanted.values().any(|wanted| wanted == hash));
+            .retain(|(hash, _)| wanted.values().any(|wanted| wanted == hash));
         let picked: Picked = self
             .wanted
             .iter()
             .filter(|(path, _)| !self.in_flight.contains_key(*path) && !self.backing_off(path, now))
             .take(room)
-            .map(|(path, hash)| (path.clone(), hash.clone(), self.fetched.get(hash).cloned()))
+            .map(|(path, hash)| (path.clone(), hash.clone(), self.kept(hash)))
             .collect();
         let wait = self
             .failing
@@ -88,7 +93,26 @@ impl Figures {
         !self.in_flight.is_empty() || self.wanted.keys().any(|path| !self.backing_off(path, now))
     }
 
-    fn failed(&mut self, path: &str, hash: &str) {
+    fn kept(&self, hash: &str) -> Option<Bytes> {
+        self.fetched
+            .iter()
+            .find(|(kept, _)| kept == hash)
+            .map(|(_, bytes)| Arc::clone(bytes))
+    }
+
+    // Keeps a figure's bytes for its next try. Once the kept figures hold
+    // more than `cap` between them, the oldest are let go.
+    fn keep(&mut self, hash: &str, bytes: &Bytes, cap: usize) {
+        self.fetched.retain(|(kept, _)| kept != hash);
+        self.fetched.push((hash.to_owned(), Arc::clone(bytes)));
+        let mut held: usize = self.fetched.iter().map(|(_, bytes)| bytes.len()).sum();
+        while held > cap {
+            let (_, dropped) = self.fetched.remove(0);
+            held -= dropped.len();
+        }
+    }
+
+    fn failed(&mut self, path: &str, hash: &str, reason: UnwrittenReason) {
         let attempts = self
             .failing
             .get(path)
@@ -101,8 +125,19 @@ impl Figures {
                 hash: hash.to_owned(),
                 attempts,
                 next: Instant::now() + backoff(attempts),
+                reason,
             },
         );
+    }
+
+    // Why the figure's last write failed, when that was another program
+    // holding it or the file being read-only.
+    fn held_reason(&self, path: &str, hash: &str) -> Option<UnwrittenReason> {
+        self.failing
+            .get(path)
+            .filter(|failure| failure.hash == hash)
+            .map(|failure| failure.reason)
+            .filter(|reason| matches!(reason, UnwrittenReason::Locked | UnwrittenReason::ReadOnly))
     }
 
     fn settled(&mut self, path: &str) {
@@ -115,7 +150,7 @@ impl Active {
     pub(super) fn want_figures(self: &Arc<Self>, wanted: Vec<(String, String)>) {
         let start = {
             let mut figures = guard(&self.upkeep.figures);
-            if figures.closed {
+            if self.figures_closed() {
                 return;
             }
             figures.wanted = wanted.into_iter().collect();
@@ -127,28 +162,67 @@ impl Active {
         }
     }
 
+    fn figures_closed(&self) -> bool {
+        self.upkeep.figures_closed.load(Ordering::SeqCst)
+    }
+
+    // Stops the downloads. A figure being written doesn't hold the figure
+    // list, so quitting never waits on a slow write.
     pub(super) fn close_figures(&self) {
+        self.upkeep.figures_closed.store(true, Ordering::SeqCst);
         let mut figures = guard(&self.upkeep.figures);
-        figures.closed = true;
         figures.wanted.clear();
         figures.fetched.clear();
         figures.wake.notify_one();
     }
 
-    // A flush waits up to `limit` for figures that are downloading or about
-    // to, so a compile right after a figure arrives finds it on disk.
+    // The compile barrier waits up to `limit` for figures that are
+    // downloading or about to, so a compile right after a figure arrives
+    // finds it on disk. The limit covers the whole wait, also any wait for
+    // the figure list.
     pub(super) async fn wait_for_figures(&self, limit: Duration) {
         let deadline = Instant::now() + limit;
+        let Some(landed) = self
+            .figures_by(deadline)
+            .await
+            .map(|figures| Arc::clone(&figures.landed))
+        else {
+            return;
+        };
         loop {
-            let landed = Arc::clone(&guard(&self.upkeep.figures).landed);
             let notified = landed.notified();
             tokio::pin!(notified);
             notified.as_mut().enable();
+            let busy = self
+                .figures_by(deadline)
+                .await
+                .is_some_and(|figures| figures.busy(Instant::now()));
             let now = Instant::now();
-            if !guard(&self.upkeep.figures).busy(now) || now >= deadline {
+            if !busy || now >= deadline {
                 return;
             }
             let _ = tokio::time::timeout(deadline - now, notified).await;
+        }
+    }
+
+    fn figures_now(&self) -> Option<MutexGuard<'_, Figures>> {
+        match self.upkeep.figures.try_lock() {
+            Ok(figures) => Some(figures),
+            Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        }
+    }
+
+    // The figure list, or nothing when it is still taken at `deadline`.
+    async fn figures_by(&self, deadline: Instant) -> Option<MutexGuard<'_, Figures>> {
+        loop {
+            if let Some(figures) = self.figures_now() {
+                return Some(figures);
+            }
+            if Instant::now() >= deadline {
+                return None;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
         }
     }
 
@@ -158,27 +232,35 @@ impl Active {
     }
 
     async fn place_figure(&self, path: &str, hash: &str, fetched: Option<Bytes>, last: bool) {
-        let placed = {
+        let wanted = {
             let mut figures = guard(&self.upkeep.figures);
             figures.in_flight.remove(path);
-            if figures.closed || figures.wanted.get(path).map(String::as_str) != Some(hash) {
-                Placed::Dropped
-            } else {
-                let placed = match &fetched {
-                    None => Placed::Failed(UnwrittenReason::NotDownloaded),
-                    Some(bytes) => self.write_figure(path, hash, bytes),
-                };
-                if matches!(placed, Placed::Failed(_)) {
+            let wanted = !self.figures_closed()
+                && figures.wanted.get(path).map(String::as_str) == Some(hash);
+            wanted.then(|| figures.held_reason(path, hash))
+        };
+        // The list is let go while the figure is written, so a flush or a
+        // quit never waits on the write. A figure another program held last
+        // time is written only once one open finds it free, as text is.
+        let placed = match (wanted, &fetched) {
+            (None, _) => Placed::Dropped,
+            (Some(_), None) => Placed::Failed(UnwrittenReason::NotDownloaded),
+            (Some(Some(reason)), Some(_)) if self.held_elsewhere(path) => Placed::Failed(reason),
+            (Some(_), Some(bytes)) => self.write_figure(path, hash, bytes),
+        };
+        if wanted.is_some() {
+            let mut figures = guard(&self.upkeep.figures);
+            if figures.wanted.get(path).map(String::as_str) == Some(hash) {
+                if let Placed::Failed(reason) = &placed {
                     if let Some(bytes) = &fetched {
-                        figures.fetched.insert(hash.to_owned(), Arc::clone(bytes));
+                        figures.keep(hash, bytes, KEPT_BYTES);
                     }
-                    figures.failed(path, hash);
+                    figures.failed(path, hash, *reason);
                 } else {
                     figures.settled(path);
                 }
-                placed
             }
-        };
+        }
         if last {
             let disk = guard(&self.disk);
             self.save_index_if_changed(&disk);
@@ -214,11 +296,18 @@ impl Active {
         }
     }
 
+    fn held_elsewhere(&self, path: &str) -> bool {
+        safe_target(&self.root, path).is_some_and(|target| held_elsewhere(&target))
+    }
+
     fn write_figure(&self, path: &str, hash: &str, bytes: &[u8]) -> Placed {
         if !self.root.is_dir() || super::sync_hold::keeps_back(&self.hold_dir(), path) {
             return Placed::Dropped;
         }
         let mut disk = guard(&self.disk);
+        if self.figures_closed() {
+            return Placed::Dropped;
+        }
         let still_placed = disk.layout.values().any(|placed| {
             placed.kind == NodeKind::Blob
                 && placed.path == path
@@ -264,9 +353,10 @@ async fn fetch_figures(session: Weak<Active>) {
             let Some(active) = session.upgrade() else {
                 return;
             };
+            let closed = active.figures_closed();
             let mut figures = guard(&active.upkeep.figures);
             running.retain(|path, (hash, abort)| {
-                let keep = !figures.closed && figures.wanted.get(path) == Some(hash);
+                let keep = !closed && figures.wanted.get(path) == Some(hash);
                 if !keep {
                     abort.abort();
                     figures.in_flight.remove(path);
@@ -274,7 +364,7 @@ async fn fetch_figures(session: Weak<Active>) {
                 keep
             });
             let room = AT_ONCE.saturating_sub(running.len());
-            let (picked, wait) = if figures.closed {
+            let (picked, wait) = if closed {
                 (Vec::new(), None)
             } else {
                 figures.due(Instant::now(), room)
@@ -305,29 +395,30 @@ async fn fetch_figures(session: Weak<Active>) {
         }
         tokio::select! {
             Some(done) = downloads.join_next_with_id(), if !downloads.is_empty() => {
-                let finished = match done {
-                    Ok((id, outcome)) => {
-                        paths_of.remove(&id);
-                        Some(outcome)
-                    }
-                    Err(error) => {
-                        if let Some(path) = paths_of.remove(&error.id()) {
-                            running.remove(&path);
-                            if let Some(active) = session.upgrade() {
-                                guard(&active.upkeep.figures).in_flight.remove(&path);
-                            }
-                        }
-                        None
-                    }
+                let (id, finished) = match done {
+                    Ok((id, outcome)) => (id, Some(outcome)),
+                    Err(error) => (error.id(), None),
                 };
-                let Some((path, hash, bytes)) = finished else {
+                // A download that was stopped, or replaced by one for a
+                // newer version, leaves the newer one's entries alone.
+                let Some(path) = paths_of.remove(&id) else {
                     continue;
                 };
+                if running.get(&path).is_none_or(|(_, abort)| abort.id() != id) {
+                    continue;
+                }
                 running.remove(&path);
                 let Some(active) = session.upgrade() else {
                     return;
                 };
-                active.place_figure(&path, &hash, bytes, running.is_empty()).await;
+                match finished {
+                    Some((_, hash, bytes)) => {
+                        active.place_figure(&path, &hash, bytes, running.is_empty()).await;
+                    }
+                    None => {
+                        guard(&active.upkeep.figures).in_flight.remove(&path);
+                    }
+                }
             }
             () = wake.notified() => {}
             () = waited(wait) => {}
@@ -349,4 +440,43 @@ async fn fetch(link: &LiveLink, hash: &str) -> Option<Vec<u8>> {
     .await
     .ok()
     .filter(|bytes| sha256_hex(bytes) == hash)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kept_figures_stay_under_their_cap_by_letting_the_oldest_go() {
+        let mut figures = Figures::default();
+        for (path, hash) in [("a.png", "a"), ("b.png", "b"), ("c.png", "c")] {
+            figures.wanted.insert(path.to_owned(), hash.to_owned());
+        }
+        let bytes = |size: usize| Arc::new(vec![0u8; size]);
+        figures.keep("a", &bytes(40), 100);
+        figures.keep("b", &bytes(40), 100);
+        assert!(figures.kept("a").is_some() && figures.kept("b").is_some());
+        figures.keep("c", &bytes(40), 100);
+        assert!(
+            figures.kept("a").is_none(),
+            "the oldest was kept past the cap"
+        );
+        assert!(figures.kept("b").is_some() && figures.kept("c").is_some());
+        figures.keep("b", &bytes(40), 100);
+        figures.keep("a", &bytes(40), 100);
+        assert!(
+            figures.kept("c").is_none(),
+            "keeping a figure again makes it the newest"
+        );
+        let (picked, _) = figures.due(Instant::now(), 3);
+        let fetched: Vec<bool> = picked.iter().map(|(_, _, kept)| kept.is_some()).collect();
+        assert_eq!(fetched, vec![true, true, false]);
+        figures.keep("c", &bytes(150), 100);
+        assert!(
+            ["a", "b", "c"]
+                .iter()
+                .all(|hash| figures.kept(hash).is_none()),
+            "a figure larger than the cap is not kept, and pushes the others out"
+        );
+    }
 }

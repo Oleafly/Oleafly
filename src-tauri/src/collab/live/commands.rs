@@ -47,9 +47,14 @@ pub async fn collab_live_stop(project_id: String) -> Result<(), CollabCommandErr
     Ok(())
 }
 
+// `wait_for_figures` is for the compile barrier: it also waits up to five
+// seconds for figures that are still downloading.
 #[tauri::command]
-pub async fn collab_live_flush(project_id: String) -> Result<(), CollabCommandError> {
-    flush(&project_id).await;
+pub async fn collab_live_flush(
+    project_id: String,
+    wait_for_figures: Option<bool>,
+) -> Result<(), CollabCommandError> {
+    flush(&project_id, wait_for_figures.unwrap_or(false)).await;
     Ok(())
 }
 
