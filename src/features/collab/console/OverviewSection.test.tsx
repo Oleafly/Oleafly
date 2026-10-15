@@ -8,7 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime } from "@/lib/intl";
-import { fill, runtimeSettings } from "../tests/fixtures";
+import { fill, member, runtimeSettings } from "../tests/fixtures";
 import { OverviewSection } from "./OverviewSection";
 import { STARTED, overview } from "./tests/fixtures";
 
@@ -116,7 +116,14 @@ describe("OverviewSection", () => {
         overview: overview({
           health: {
             status: "warning",
-            issues: ["no_sign_in_provider", "storage_not_writable", "sign_in_failing", "sign_in_emails_paused", "unknown"],
+            issues: [
+              "no_sign_in_provider",
+              "storage_not_writable",
+              "sign_in_failing",
+              "sign_in_emails_paused",
+              "comments_changed_while_off",
+              "unknown",
+            ],
           },
         }),
       },
@@ -154,6 +161,33 @@ describe("OverviewSection", () => {
     );
     expect(problems).toHaveTextContent("unauthorized_client: The client is not allowed.");
     expect(problems).toHaveTextContent(fill(copy.health.problem, { provider: "gone", time: formatDateTime(since) }));
+  });
+
+  it("lists where comments changed while they were off, who made each change and when, at most 20", () => {
+    const at = STARTED + 7_200_000;
+    const changes = [
+      { project_id: "p-thesis", project_title: "Thesis", account_id: "acct-bob", at },
+      { project_id: "p-grant", project_title: null, account_id: null, at },
+      ...Array.from({ length: 21 }, (_, index) => ({ project_id: `p-${index}`, at })),
+    ];
+    renderReady({
+      state: {
+        status: "ready",
+        overview: overview({
+          health: { status: "warning", issues: ["comments_changed_while_off"] },
+          comments_changed_while_off: changes,
+        }),
+      },
+      members: [member({ account_id: "acct-bob", display_name: "Bob Smith" })],
+    });
+    expect(screen.getByText(copy.health.issues.commentsChangedWhileOff.label)).toBeInTheDocument();
+    expect(screen.getByText(copy.health.issues.commentsChangedWhileOff.description)).toBeInTheDocument();
+    const list = screen.getByTestId("console-comment-changes");
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(20);
+    const time = formatDateTime(at);
+    expect(rows[0]).toHaveTextContent(fill(copy.health.commentChange, { project: "Thesis", name: "Bob Smith", time }));
+    expect(rows[1]).toHaveTextContent(fill(copy.health.commentChangeUnknown, { project: "p-grant", time }));
   });
 
   it("reads a problem a newer server reports as a general problem", () => {

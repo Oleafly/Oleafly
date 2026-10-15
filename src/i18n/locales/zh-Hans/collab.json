@@ -412,6 +412,7 @@
         "projectCommentsOn": "开启了项目评论",
         "projectCommentsOff": "关闭了项目评论",
         "projectRejoinRefused": "尝试重新加入已将其移出的项目",
+        "commentsChangedWhileOff": "在评论关闭期间更改了评论",
         "guestInvited": "邀请了一位访客",
         "guestInvitationApproved": "批准了一个访客邀请",
         "guestInvitationDeclined": "拒绝了一个访客邀请",
@@ -788,6 +789,8 @@
         "okLabel": "一切正常",
         "okDescription": "用户可以登录，服务器也可以保存文件。",
         "problem": "使用 {{provider}} 登录从 {{time}} 起一直失败",
+        "commentChange": "{{project}}：{{name}} 于 {{time}} 更改",
+        "commentChangeUnknown": "{{project}}：于 {{time}} 更改",
         "issues": {
           "noSignInProvider": {
             "label": "无人可以登录",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "登录邮件已暂停",
             "description": "服务器本小时发送的登录邮件已达上限。这一小时过去后会恢复发送。"
+          },
+          "commentsChangedWhileOff": {
+            "label": "评论在关闭期间被更改",
+            "description": "服务器发现了评论关闭期间、在检查之前就已保存的评论更改。项目列在下方，每项更改都在安全日志中。"
           },
           "unknown": {
             "label": "服务器报告了一个问题",

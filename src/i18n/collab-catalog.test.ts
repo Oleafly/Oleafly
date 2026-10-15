@@ -80,6 +80,7 @@ const EVENT_KINDS = [
   "projectCommentsOn",
   "projectCommentsOff",
   "projectRejoinRefused",
+  "commentsChangedWhileOff",
   "guestInvited",
   "guestInvitationApproved",
   "guestInvitationDeclined",

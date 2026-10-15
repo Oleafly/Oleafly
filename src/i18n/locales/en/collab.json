@@ -412,6 +412,7 @@
         "projectCommentsOn": "Turned on comments in a project",
         "projectCommentsOff": "Turned off comments in a project",
         "projectRejoinRefused": "Tried to rejoin a project they were removed from",
+        "commentsChangedWhileOff": "Changed comments while they were off",
         "guestInvited": "Invited a guest",
         "guestInvitationApproved": "Approved a guest invitation",
         "guestInvitationDeclined": "Declined a guest invitation",
@@ -788,6 +789,8 @@
         "okLabel": "Everything is working",
         "okDescription": "People can sign in and the server can save files.",
         "problem": "Signing in with {{provider}} has been failing since {{time}}",
+        "commentChange": "{{project}}, changed by {{name}} on {{time}}",
+        "commentChangeUnknown": "{{project}}, changed on {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nobody can sign in",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Sign-in emails are paused",
             "description": "The server has sent as many sign-in emails as it allows this hour. They start again when the hour is over."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comments changed while they were off",
+            "description": "The server found changes to comments that it stored before it could check them, while comments were off. The projects are listed below, and the security log has each change."
           },
           "unknown": {
             "label": "The server reported a problem",

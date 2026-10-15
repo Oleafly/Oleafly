@@ -169,7 +169,7 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
   const renderSection = () => {
     switch (section) {
       case "overview":
-        return <OverviewSection state={overview} onNavigate={select} onRetry={reload} />;
+        return <OverviewSection state={overview} members={members.members} onNavigate={select} onRetry={reload} />;
       case "people":
         return (
           <MembersTab

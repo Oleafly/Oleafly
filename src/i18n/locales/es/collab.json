@@ -412,6 +412,7 @@
         "projectCommentsOn": "Activó los comentarios en un proyecto",
         "projectCommentsOff": "Desactivó los comentarios en un proyecto",
         "projectRejoinRefused": "Intentó volver a un proyecto del que lo habían quitado",
+        "commentsChangedWhileOff": "Cambió comentarios mientras estaban desactivados",
         "guestInvited": "Invitó a una persona como invitado",
         "guestInvitationApproved": "Aprobó una invitación de invitado",
         "guestInvitationDeclined": "Rechazó una invitación de invitado",
@@ -788,6 +789,8 @@
         "okLabel": "Todo funciona",
         "okDescription": "Las personas pueden iniciar sesión y el servidor puede guardar archivos.",
         "problem": "El inicio de sesión con {{provider}} falla desde {{time}}",
+        "commentChange": "{{project}}, cambiado por {{name}} el {{time}}",
+        "commentChangeUnknown": "{{project}}, cambiado el {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nadie puede iniciar sesión",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Los correos de inicio de sesión están en pausa",
             "description": "El servidor ya envió todos los correos de inicio de sesión que permite en esta hora. Vuelven a enviarse cuando termine la hora."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Se cambiaron comentarios mientras estaban desactivados",
+            "description": "El servidor encontró cambios en comentarios que guardó antes de poder revisarlos, mientras los comentarios estaban desactivados. Los proyectos aparecen abajo y el registro de seguridad tiene cada cambio."
           },
           "unknown": {
             "label": "El servidor informó de un problema",

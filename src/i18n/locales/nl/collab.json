@@ -412,6 +412,7 @@
         "projectCommentsOn": "Opmerkingen in een project aangezet",
         "projectCommentsOff": "Opmerkingen in een project uitgezet",
         "projectRejoinRefused": "Geprobeerd terug te keren in een project na verwijdering",
+        "commentsChangedWhileOff": "Opmerkingen gewijzigd terwijl ze uit stonden",
         "guestInvited": "Gast uitgenodigd",
         "guestInvitationApproved": "Gastuitnodiging goedgekeurd",
         "guestInvitationDeclined": "Gastuitnodiging afgewezen",
@@ -788,6 +789,8 @@
         "okLabel": "Alles werkt",
         "okDescription": "Mensen kunnen zich aanmelden en de server kan bestanden opslaan.",
         "problem": "Aanmelden met {{provider}} mislukt sinds {{time}}",
+        "commentChange": "{{project}}, gewijzigd door {{name}} op {{time}}",
+        "commentChangeUnknown": "{{project}}, gewijzigd op {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kan zich aanmelden",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Aanmeldmails zijn gepauzeerd",
             "description": "De server heeft dit uur zoveel aanmeldmails verstuurd als hij toestaat. Ze gaan weer verder als het uur voorbij is."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Opmerkingen gewijzigd terwijl ze uit stonden",
+            "description": "De server vond wijzigingen in opmerkingen die hij opsloeg voordat hij ze kon controleren, terwijl opmerkingen uit stonden. De projecten staan hieronder en het beveiligingslogboek bevat elke wijziging."
           },
           "unknown": {
             "label": "De server meldde een probleem",

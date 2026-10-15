@@ -142,6 +142,7 @@ describe("SecurityLogTab", () => {
       "guest_invitation_revoked",
       "guest_admission_ended",
       "project_rejoin_refused",
+      "comments_changed_while_off",
     ]) {
       expect(eventKindKey(kind), kind).not.toBe("unknown");
       expect(Object.keys(copy.kinds)).toContain(eventKindKey(kind));
@@ -253,6 +254,29 @@ describe("SecurityLogTab", () => {
     expect(items[18]).toHaveTextContent(details.via.link);
     expect(items[19]).toHaveTextContent(copy.kinds.projectUnarchived);
     for (const item of items) expect(item).not.toHaveTextContent(copy.kinds.unknown);
+  });
+
+  it("says who changed comments while they were off and in which project, without the raw ids", async () => {
+    const project = "0192a0b0-0000-7000-8000-0000000000p1";
+    mocks.collabAdminSecurityLog.mockResolvedValueOnce({
+      items: [
+        securityEvent({
+          id: 1,
+          actor: BOB_ID,
+          kind: "comments_changed_while_off",
+          target: project,
+          project_title: "Thesis",
+          detail: { project, seq: 42, device: "0192a0b0-0000-7000-8000-0000000000d1" },
+        }),
+      ],
+      next_cursor: null,
+    });
+    render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    const [item] = await screen.findAllByRole("listitem");
+    expect(item).toHaveTextContent(`Bob Smith · ${copy.kinds.commentsChangedWhileOff}`);
+    expect(item).toHaveTextContent(fill(copy.details.project, { title: "Thesis" }));
+    expect(item).not.toHaveTextContent(project);
+    expect(item).not.toHaveTextContent("0192a0b0-0000-7000-8000-0000000000d1");
   });
 
   it("explains how each person signed in or why the server refused them", async () => {

@@ -412,6 +412,7 @@
         "projectCommentsOn": "Slo på kommentarer i et prosjekt",
         "projectCommentsOff": "Slo av kommentarer i et prosjekt",
         "projectRejoinRefused": "Prøvde å bli med igjen i et prosjekt de var fjernet fra",
+        "commentsChangedWhileOff": "Endret kommentarer mens de var slått av",
         "guestInvited": "Inviterte en gjest",
         "guestInvitationApproved": "Godkjente en gjesteinvitasjon",
         "guestInvitationDeclined": "Avslo en gjesteinvitasjon",
@@ -788,6 +789,8 @@
         "okLabel": "Alt fungerer",
         "okDescription": "Folk kan logge inn, og serveren kan lagre filer.",
         "problem": "Innlogging med {{provider}} har feilet siden {{time}}",
+        "commentChange": "{{project}}, endret av {{name}} {{time}}",
+        "commentChangeUnknown": "{{project}}, endret {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logge inn",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Innloggings-e-poster er satt på pause",
             "description": "Serveren har sendt så mange innloggings-e-poster som den tillater denne timen. De starter igjen når timen er over."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentarer ble endret mens de var slått av",
+            "description": "Serveren fant endringer i kommentarer som den lagret før den kunne sjekke dem, mens kommentarer var slått av. Prosjektene står nedenfor, og sikkerhetsloggen har hver endring."
           },
           "unknown": {
             "label": "Serveren rapporterte et problem",

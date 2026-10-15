@@ -412,6 +412,7 @@
         "projectCommentsOn": "Slog kommentarer til i et projekt",
         "projectCommentsOff": "Slog kommentarer fra i et projekt",
         "projectRejoinRefused": "Prøvede at komme tilbage til et projekt, de var fjernet fra",
+        "commentsChangedWhileOff": "Ændrede kommentarer, mens de var slået fra",
         "guestInvited": "Inviterede en gæst",
         "guestInvitationApproved": "Godkendte en gæsteinvitation",
         "guestInvitationDeclined": "Afviste en gæsteinvitation",
@@ -788,6 +789,8 @@
         "okLabel": "Alt virker",
         "okDescription": "Folk kan logge ind, og serveren kan gemme filer.",
         "problem": "Login med {{provider}} har slået fejl siden {{time}}",
+        "commentChange": "{{project}}, ændret af {{name}} {{time}}",
+        "commentChangeUnknown": "{{project}}, ændret {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logge ind",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Login-mails er sat på pause",
             "description": "Serveren har sendt så mange login-mails, som den tillader i denne time. De begynder igen, når timen er gået."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentarer blev ændret, mens de var slået fra",
+            "description": "Serveren fandt ændringer af kommentarer, som den gemte, før den kunne kontrollere dem, mens kommentarer var slået fra. Projekterne står nedenfor, og sikkerhedsloggen har hver ændring."
           },
           "unknown": {
             "label": "Serveren har meldt om et problem",

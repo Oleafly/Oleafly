@@ -412,6 +412,7 @@
         "projectCommentsOn": "Włączenie komentarzy w projekcie",
         "projectCommentsOff": "Wyłączenie komentarzy w projekcie",
         "projectRejoinRefused": "Próba powrotu do projektu po usunięciu",
+        "commentsChangedWhileOff": "Zmiana komentarzy, gdy były wyłączone",
         "guestInvited": "Zaproszenie gościa",
         "guestInvitationApproved": "Zatwierdzenie zaproszenia gościa",
         "guestInvitationDeclined": "Odrzucenie zaproszenia gościa",
@@ -788,6 +789,8 @@
         "okLabel": "Wszystko działa",
         "okDescription": "Można się logować, a serwer może zapisywać pliki.",
         "problem": "Logowanie przez {{provider}} nie działa od {{time}}",
+        "commentChange": "{{project}}: zmiana od {{name}}, {{time}}",
+        "commentChangeUnknown": "{{project}}: zmiana {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikt nie może się zalogować",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "E-maile do logowania są wstrzymane",
             "description": "Serwer wysłał już tyle e-maili do logowania, ile pozwala w tej godzinie. Wysyłanie wznowi się, gdy godzina minie."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Komentarze zmieniono, gdy były wyłączone",
+            "description": "Serwer znalazł zmiany komentarzy, które zapisał, zanim mógł je sprawdzić, gdy komentarze były wyłączone. Projekty są wymienione poniżej, a każdą zmianę zawiera dziennik bezpieczeństwa."
           },
           "unknown": {
             "label": "Serwer zgłosił problem",

@@ -412,6 +412,7 @@
         "projectCommentsOn": "Bir projede yorumları açtı",
         "projectCommentsOff": "Bir projede yorumları kapattı",
         "projectRejoinRefused": "Kaldırıldığı bir projeye yeniden katılmaya çalıştı",
+        "commentsChangedWhileOff": "Yorumlar kapalıyken yorumları değiştirdi",
         "guestInvited": "Bir konuk davet etti",
         "guestInvitationApproved": "Bir konuk davetini onayladı",
         "guestInvitationDeclined": "Bir konuk davetini reddetti",
@@ -788,6 +789,8 @@
         "okLabel": "Her şey çalışıyor",
         "okDescription": "Kişiler oturum açabiliyor ve sunucu dosyaları kaydedebiliyor.",
         "problem": "{{provider}} ile oturum açma {{time}} tarihinden beri başarısız",
+        "commentChange": "{{project}}: {{name}} tarafından {{time}} tarihinde değiştirildi",
+        "commentChangeUnknown": "{{project}}: {{time}} tarihinde değiştirildi",
         "issues": {
           "noSignInProvider": {
             "label": "Kimse oturum açamıyor",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Oturum açma e-postaları duraklatıldı",
             "description": "Sunucu bu saat için izin verdiği kadar oturum açma e-postası gönderdi. Saat dolunca yeniden gönderilir."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Yorumlar kapalıyken değiştirildi",
+            "description": "Sunucu, yorumlar kapalıyken kontrol edemeden kaydettiği yorum değişiklikleri buldu. Projeler aşağıda listeleniyor ve her değişiklik güvenlik günlüğünde yer alıyor."
           },
           "unknown": {
             "label": "Sunucu bir sorun bildirdi",

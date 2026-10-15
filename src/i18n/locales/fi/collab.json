@@ -412,6 +412,7 @@
         "projectCommentsOn": "Otti kommentit käyttöön projektissa",
         "projectCommentsOff": "Poisti kommentit käytöstä projektissa",
         "projectRejoinRefused": "Yritti palata projektiin, josta hänet oli poistettu",
+        "commentsChangedWhileOff": "Muutti kommentteja, kun ne olivat poissa käytöstä",
         "guestInvited": "Kutsui vieraan",
         "guestInvitationApproved": "Hyväksyi vieraskutsun",
         "guestInvitationDeclined": "Hylkäsi vieraskutsun",
@@ -788,6 +789,8 @@
         "okLabel": "Kaikki toimii",
         "okDescription": "Ihmiset voivat kirjautua sisään, ja palvelin voi tallentaa tiedostoja.",
         "problem": "Kirjautuminen palvelulla {{provider}} on epäonnistunut {{time}} lähtien",
+        "commentChange": "{{project}}, muuttaja {{name}}, {{time}}",
+        "commentChangeUnknown": "{{project}}, muutettu {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Kukaan ei voi kirjautua sisään",
@@ -804,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Kirjautumissähköpostit on keskeytetty",
             "description": "Palvelin on lähettänyt niin monta kirjautumissähköpostia kuin se sallii tällä tunnilla. Lähetys jatkuu, kun tunti on kulunut."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentteja muutettiin, kun ne olivat poissa käytöstä",
+            "description": "Palvelin löysi kommenttien muutoksia, jotka se tallensi ennen kuin ehti tarkistaa ne, kun kommentit olivat poissa käytöstä. Projektit ovat alla, ja tietoturvaloki sisältää jokaisen muutoksen."
           },
           "unknown": {
             "label": "Palvelin ilmoitti ongelmasta",
