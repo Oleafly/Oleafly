@@ -9,6 +9,7 @@ import {
 } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
+  indexUpdateFile: vi.fn(),
   collabDocOpen: vi.fn(),
   collabDocChange: vi.fn(),
   collabDocClose: vi.fn(),
@@ -42,6 +43,10 @@ vi.mock("@/lib/tauri", () => ({
   onCollabLiveNewDevice: vi.fn(),
   onCollabPresence: vi.fn(),
   onCollabPresenceLeft: vi.fn(),
+}));
+
+vi.mock("@/store/project-index", () => ({
+  useIndexStore: { getState: () => ({ updateFile: mocks.indexUpdateFile }) },
 }));
 
 vi.mock("@oleafly/editor", () => ({
@@ -95,7 +100,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { PRESENCE_INTERVAL_MS, PRESENCE_KEEP_ALIVE_MS } from "./presence";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
-import { peerCursors, startLiveEditing } from "./live-editing";
+import { BACKGROUND_INDEX_MS, peerCursors, startLiveEditing } from "./live-editing";
 
 const PROJECT = "project-1";
 let channels: Map<string, (message: CollabDocMessage) => void>;
@@ -386,6 +391,41 @@ describe("live editing edges", () => {
       base: "> shared",
     });
     expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "> shared!", dirty: true });
+  });
+
+  it("updates the index for a shared file in a background tab after a collaborator's edits, once per interval", async () => {
+    useFilesStore.setState((state) => ({
+      openTabs: ["main.tex", "refs.bib"],
+      files: { ...state.files, "refs.bib": { content: "shared", dirty: false } },
+    }));
+    start();
+    collabDocumentSession("refs.bib");
+    await settle();
+    channels.get("id-refs.bib")?.({ kind: "remote", rev: 5, op: [6, "@a"], length: 8 });
+    channels.get("id-refs.bib")?.({ kind: "remote", rev: 6, op: [8, "@b"], length: 10 });
+    expect(mocks.indexUpdateFile).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(BACKGROUND_INDEX_MS);
+    expect(mocks.indexUpdateFile).toHaveBeenCalledExactlyOnceWith("refs.bib", "shared@a@b");
+    channels.get("id-refs.bib")?.({ kind: "remote", rev: 7, op: [10, "@c"], length: 12 });
+    vi.advanceTimersByTime(BACKGROUND_INDEX_MS);
+    expect(mocks.indexUpdateFile).toHaveBeenLastCalledWith("refs.bib", "shared@a@b@c");
+  });
+
+  it("leaves the active file's index to the index keeper, and stops with live editing", async () => {
+    useFilesStore.setState((state) => ({
+      openTabs: ["main.tex", "refs.bib"],
+      files: { ...state.files, "refs.bib": { content: "shared", dirty: false } },
+    }));
+    start();
+    collabDocumentSession("main.tex");
+    collabDocumentSession("refs.bib");
+    await settle();
+    channels.get("id-main.tex")?.({ kind: "remote", rev: 5, op: ["> ", 6], length: 8 });
+    channels.get("id-refs.bib")?.({ kind: "remote", rev: 5, op: [6, "@a"], length: 8 });
+    release?.();
+    release = null;
+    vi.advanceTimersByTime(BACKGROUND_INDEX_MS);
+    expect(mocks.indexUpdateFile).not.toHaveBeenCalled();
   });
 
   it("leaves the files store alone when the server says no after another project opened", async () => {
