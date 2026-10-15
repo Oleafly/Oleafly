@@ -4,6 +4,7 @@ use std::sync::Arc;
 use axum::body::{Body, Bytes};
 use axum::http::{header, Method, Request, StatusCode};
 use futures_util::stream::{self, StreamExt};
+use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::blobs::sha256_hex;
 use oleafly_server::test_support::{seed_member, test_app_with, test_config, TestApp};
@@ -187,7 +188,12 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .expect("response");
     assert_eq!(stored.status(), StatusCode::NO_CONTENT);
     app.state.transfers.set_budget(MIB as u64);
-    let spent = app.state.transfers.hold(MIB as u64).await;
+    let spent = app
+        .state
+        .transfers
+        .hold(AccountId::new_v7(), MIB as u64)
+        .await
+        .expect("room");
     let mut download = tokio::spawn(
         app.router
             .clone()
@@ -216,6 +222,52 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .expect("task")
         .expect("response");
     assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn a_transfer_that_finds_no_room_for_a_while_hears_the_server_is_busy() {
+    let app = small_files_app().await;
+    let owner = seed_member(&app, ServerRole::Member).await;
+    let project = create_project(&app, &owner.access_token).await;
+    let content = vec![4u8; MIB];
+    let (stored, _) = put_file(&app, &owner.access_token, &project, content.clone()).await;
+    assert_eq!(stored, StatusCode::NO_CONTENT);
+    app.state.transfers.set_budget(MIB as u64);
+    app.state
+        .transfers
+        .set_wait(std::time::Duration::from_millis(100));
+    let _spent = app
+        .state
+        .transfers
+        .hold(AccountId::new_v7(), MIB as u64)
+        .await
+        .expect("room");
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri(format!(
+            "/api/v1/projects/{project}/blobs/{}",
+            sha256_hex(&content)
+        ))
+        .header(
+            header::AUTHORIZATION,
+            format!("Bearer {}", owner.access_token),
+        )
+        .body(Body::empty())
+        .expect("request");
+    let busy = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        app.router.clone().oneshot(request),
+    )
+    .await
+    .expect("the download is answered instead of waiting")
+    .expect("response");
+    assert_eq!(busy.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        busy.headers()
+            .get(header::RETRY_AFTER)
+            .and_then(|value| value.to_str().ok()),
+        Some("5")
+    );
 }
 
 async fn put_file(

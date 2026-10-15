@@ -214,9 +214,18 @@ pub struct PollSession {
     ended: AtomicBool,
     closed: AtomicBool,
     active: AtomicUsize,
+    posting: AtomicBool,
     seen: Mutex<Instant>,
     cursors: CursorGate,
     _signal: UnboundedSender<SocketControl>,
+}
+
+pub(crate) struct Posting<'a>(&'a PollSession);
+
+impl Drop for Posting<'_> {
+    fn drop(&mut self) {
+        self.0.posting.store(false, Ordering::SeqCst);
+    }
 }
 
 pub(crate) struct Opening {
@@ -258,6 +267,13 @@ impl PollSession {
 
     pub(crate) fn is_ended(&self) -> bool {
         self.ended.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn posting(&self) -> Option<Posting<'_>> {
+        self.posting
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .ok()
+            .map(|_| Posting(self))
     }
 
     pub(crate) fn enter(&self) -> Active<'_> {
@@ -373,6 +389,7 @@ pub(crate) async fn start(
         ended: AtomicBool::new(false),
         closed: AtomicBool::new(false),
         active: AtomicUsize::new(0),
+        posting: AtomicBool::new(false),
         seen: Mutex::new(Instant::now()),
         cursors: CursorGate::new(),
         _signal: signal,

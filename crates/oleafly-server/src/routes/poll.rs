@@ -27,6 +27,7 @@ use crate::routes::ws::{
 };
 use crate::routes::{path_id, ClientIp};
 use crate::state::AppState;
+use crate::transfers::declared_length;
 
 const TOO_MUCH: &str = "These changes are too large to send.";
 const NOT_FRAMES: &str = "These frames are not valid.";
@@ -35,6 +36,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/v1/projects/{project}/poll", get(poll))
         .route("/api/v1/projects/{project}/frames", post(frames))
+        .layer(axum::middleware::map_response(crate::transfers::retry_soon))
 }
 
 #[derive(Deserialize)]
@@ -258,9 +260,20 @@ async fn frames(
     if session.is_ended() {
         return Err(ServerError::NotFound);
     }
+    // A session reads one post at a time, and a large one takes its room
+    // in the transfer budget before its body is read.
+    let _posting = session.posting().ok_or(ServerError::RateLimited)?;
+    let largest = MAX_FRAME_BYTES as u64;
+    let _room = state
+        .transfers
+        .hold(
+            session.account,
+            declared_length(&headers).unwrap_or(largest).min(largest),
+        )
+        .await?;
     let bytes = state
         .transfers
-        .read_body(body, &headers, MAX_FRAME_BYTES as u64)
+        .read_body(body, &headers, largest)
         .await?
         .ok_or_else(|| ServerError::BadRequest(TOO_MUCH.to_owned()))?;
     let posted = if bytes.len() < ASIDE_BYTES {
