@@ -78,7 +78,7 @@ Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, ba
 Turn on cloud sync and your library projects and app settings follow you from your laptop to your desktop. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
 
 <p align="center">
-  <img src="docs/assets/readme/cloud-sync.png" alt="Oleafly Cloud sync settings with the connected account, storage use and a list of synced projects" width="100%" />
+  <img src="docs/assets/readme/cloud-sync.png" alt="Oleafly Cloud sync settings with the Dropbox card and a list of what syncs" width="100%" />
 </p>
 
 - When two computers edit the same file, both versions are kept, each named after the computer that wrote it.
