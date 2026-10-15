@@ -20,7 +20,9 @@ function stillPending(entry: CollabGuestInvitation): boolean {
   return entry.status === "awaiting_approval" || entry.status === "invited";
 }
 
-export function PendingGuests({ serverId }: Readonly<{ serverId: string }>) {
+// `onChanged` hears about each approval, decline or withdrawal, so a count of
+// invitations shown elsewhere can be read again.
+export function PendingGuests({ serverId, onChanged }: Readonly<{ serverId: string; onChanged?: () => void }>) {
   const { t } = useTranslation(["collab"]);
   const [pending, setPending] = useState<CollabGuestInvitation[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function PendingGuests({ serverId }: Readonly<{ serverId: string }>) {
         if (next && stillPending(next)) return current.map((item) => (item.id === next.id ? next : item));
         return current.filter((item) => item.id !== entry.id);
       });
+      onChanged?.();
     } catch (error) {
       setRowError({ id: entry.id, message: collabErrorText(error) });
     } finally {

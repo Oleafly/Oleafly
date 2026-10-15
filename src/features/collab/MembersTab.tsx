@@ -72,6 +72,7 @@ export function MembersTab({
   onRetry,
   onMembersChange,
   onAddPeople,
+  onGuestsChanged,
 }: Readonly<{
   serverId: string;
   actor: ServerRole;
@@ -81,6 +82,8 @@ export function MembersTab({
   onRetry: () => void;
   onMembersChange: MembersUpdate;
   onAddPeople?: () => void;
+  // A guest invitation was approved, declined or withdrawn.
+  onGuestsChanged?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
   const rows = useBusyRows();
@@ -243,7 +246,9 @@ export function MembersTab({
 
   return (
     <div className="space-y-2">
-      {serverRoleAllows(actor, "approveGuests") && !loadError ? <PendingGuests serverId={serverId} /> : null}
+      {serverRoleAllows(actor, "approveGuests") && !loadError ? (
+        <PendingGuests serverId={serverId} onChanged={onGuestsChanged} />
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <p>{t(($) => $.collab.admin.members.description)}</p>
