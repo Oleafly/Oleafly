@@ -285,6 +285,32 @@ describe("an open buffer changed by an in-app writer in a live shared project", 
   });
 });
 
+describe("a viewer's change from an in-app writer", () => {
+  it("never reaches the buffer, and says why once", async () => {
+    goLive();
+    useCollabEditorGate.setState({ viewer: true });
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(false);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\n", dirty: false });
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith("collab-view-only", enCollab.access.viewOnly);
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(mocks.collabWriteText).not.toHaveBeenCalled();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("is taken again once the person can edit", async () => {
+    goLive();
+    useCollabEditorGate.setState({ viewer: true });
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    useCollabEditorGate.setState({ viewer: false });
+    expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\nb\n", dirty: true });
+  });
+});
+
 describe("text a live session hands back to local editing", () => {
   it("merges into a project that is still live from the text the shared document confirmed", async () => {
     goLive();

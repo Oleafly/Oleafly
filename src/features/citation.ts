@@ -41,7 +41,7 @@ import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
-import { sharedBaseOption } from "@/lib/shared-document-writes";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
@@ -186,6 +186,8 @@ export function selectCitationBibliography(
 }
 
 function linkedBibliographyMessage(path: string): string {
+  const projectId = useFilesStore.getState().projectId;
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError().message;
   return i18n.t(($) => $.core.citation.linkedBibliography, { path });
 }
 

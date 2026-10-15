@@ -50,7 +50,7 @@ import {
   type HandListRequest,
 } from "./zotero-hand-bibliography";
 import { useFilesStore } from "@/store/files";
-import { sharedBaseOption } from "@/lib/shared-document-writes";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -332,6 +332,7 @@ async function writeText(
   if (files.projectId !== projectId) throw new Error(i18n.t(($) => $.core.citation.projectChanged));
   if (files.files[path] !== undefined) {
     if (!files.setContent(path, next, { bumpVersion: files.activePath === path })) {
+      if (sharedViewOnly(projectId)) throw new SharedReadOnlyError();
       throw new Error(i18n.t(($) => $.core.citation.linkedBibliography, { path }));
     }
     await useFilesStore.getState().saveFile(path);
