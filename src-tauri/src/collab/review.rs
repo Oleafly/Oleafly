@@ -26,7 +26,7 @@ pub async fn merge_review(
     let live = super::live::document_snapshot(project_id).transpose()?;
     let document_dir = state.paths()?.document_dir(project_id)?;
     let reviewed = tokio::task::spawn_blocking(move || match live {
-        Some(snapshot) => changed_files(&ProjectDoc::load(&snapshot)?, &before, &after),
+        Some(snapshot) => changed_files(&ProjectDoc::load_contained(&snapshot)?, &before, &after),
         None => changed_files(
             LiveProject::load(&document_dir, ProjectRole::Viewer)?.doc(),
             &before,
