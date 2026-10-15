@@ -135,7 +135,10 @@ impl ProxyRange {
         let address = address.parse::<IpAddr>().ok()?.to_canonical();
         let widest = if address.is_ipv4() { 32 } else { 128 };
         let prefix = match prefix {
-            Some(prefix) => prefix.parse::<u8>().ok().filter(|bits| *bits <= widest)?,
+            Some(prefix) => prefix
+                .parse::<u8>()
+                .ok()
+                .filter(|bits| *bits > 0 && *bits <= widest)?,
             None => widest,
         };
         Some(ProxyRange {
@@ -147,6 +150,21 @@ impl ProxyRange {
     pub fn contains(&self, address: IpAddr) -> bool {
         let address = address.to_canonical();
         address.is_ipv4() == self.network.is_ipv4() && masked(address, self.prefix) == self.network
+    }
+
+    // Wide enough to take in a large part of the public internet: shorter
+    // than /8 for IPv4, or than /24 for IPv6 outside the private fc00::/7
+    // and link-local fe80::/10 ranges.
+    pub fn very_broad(&self) -> bool {
+        match self.network {
+            IpAddr::V4(_) => self.prefix < 8,
+            IpAddr::V6(network) => {
+                let first = network.segments()[0];
+                let private = (self.prefix >= 7 && first & 0xfe00 == 0xfc00)
+                    || (self.prefix >= 10 && first & 0xffc0 == 0xfe80);
+                self.prefix < 24 && !private
+            }
+        }
     }
 }
 
@@ -368,6 +386,11 @@ impl ServerConfig {
                 "Set OLEAFLY_TRUSTED_PROXIES or OLEAFLY_PROXY_HOPS, not both. The trusted list is safer, so remove OLEAFLY_PROXY_HOPS.",
             ));
         }
+        let broad_proxies: Vec<String> = trusted_proxies
+            .iter()
+            .filter(|range| range.very_broad())
+            .map(ToString::to_string)
+            .collect();
         let log_level = match source.get("OLEAFLY_LOG_LEVEL") {
             Some(raw) => {
                 let level = raw.to_ascii_lowercase();
@@ -400,6 +423,12 @@ impl ServerConfig {
                 ),
             },
         ));
+        if !broad_proxies.is_empty() {
+            startup_notes.push(StartupNote::Warning(format!(
+                "OLEAFLY_TRUSTED_PROXIES includes {}, which covers a large part of the internet. The server believes X-Forwarded-For from every address in it, so a client there can choose its own address for the sign-in limits and the security log. List only the ranges your proxies send from.",
+                broad_proxies.join(", ")
+            )));
+        }
         let poll_hold_seconds =
             source.number("OLEAFLY_POLL_HOLD_SECONDS", DEFAULT_POLL_HOLD_SECONDS)?;
         if poll_hold_seconds > MAX_POLL_HOLD_SECONDS {
@@ -938,10 +967,18 @@ fn parse_trusted_proxies(raw: &str) -> Result<Vec<ProxyRange>, ConfigError> {
     raw.split([',', ' ', '\t', '\n'])
         .filter(|item| !item.trim().is_empty())
         .map(|item| {
+            let item = item.trim();
             ProxyRange::parse(item).ok_or_else(|| {
+                let everything = item
+                    .rsplit_once('/')
+                    .is_some_and(|(_, bits)| bits.parse::<u8>() == Ok(0));
                 ConfigError::new(
                     "OLEAFLY_TRUSTED_PROXIES",
-                    format!("OLEAFLY_TRUSTED_PROXIES must list addresses or ranges such as 173.245.48.0/20 or 10.0.0.0/8, separated by commas. {} is not one.", item.trim()),
+                    if everything {
+                        format!("OLEAFLY_TRUSTED_PROXIES can't include {item}, which would trust X-Forwarded-For from every address. List only the ranges your proxies send from.")
+                    } else {
+                        format!("OLEAFLY_TRUSTED_PROXIES must list addresses or ranges such as 173.245.48.0/20 or 10.0.0.0/8, separated by commas. {item} is not one.")
+                    },
                 )
             })
         })
@@ -2179,8 +2216,9 @@ mod tests {
         assert!(v6.contains("2400:cb00:1:2::3".parse().unwrap()));
         assert!(!v6.contains("2400:cb01::1".parse().unwrap()));
         assert_eq!(range("10.1.2.3/8").to_string(), "10.0.0.0/8");
-        assert!(range("0.0.0.0/0").contains("203.0.113.1".parse().unwrap()));
         for bad in [
+            "0.0.0.0/0",
+            "::/0",
             "10.0.0.0/33",
             "2001:db8::/129",
             "10.0.0/8",
@@ -2235,6 +2273,49 @@ mod tests {
             "{}",
             bad.message
         );
+    }
+
+    #[test]
+    fn trusting_every_address_is_refused_and_a_very_wide_range_is_warned_about() {
+        for everything in ["0.0.0.0/0", "::/0", "10.0.0.0/8, 0.0.0.0/0"] {
+            let refused = load_err(&[
+                BASE,
+                ("OLEAFLY_BEHIND_PROXY", "true"),
+                ("OLEAFLY_TRUSTED_PROXIES", everything),
+            ]);
+            assert_eq!(refused.variable, "OLEAFLY_TRUSTED_PROXIES");
+            assert!(
+                refused.message.contains("from every address"),
+                "{}",
+                refused.message
+            );
+        }
+        let warnings = |list: &str| -> Vec<String> {
+            load(&[
+                BASE,
+                ("OLEAFLY_BEHIND_PROXY", "true"),
+                ("OLEAFLY_TRUSTED_PROXIES", list),
+            ])
+            .unwrap()
+            .startup_notes
+            .into_iter()
+            .filter_map(|note| match note {
+                StartupNote::Warning(text) => Some(text),
+                StartupNote::Info(_) => None,
+            })
+            .collect()
+        };
+        let wide = warnings("10.0.0.0/8, 0.0.0.0/1, 2000::/3");
+        assert_eq!(wide.len(), 1, "{wide:?}");
+        assert!(
+            wide[0].starts_with("OLEAFLY_TRUSTED_PROXIES includes 0.0.0.0/1, 2000::/3,"),
+            "{}",
+            wide[0]
+        );
+        let usual = warnings(
+            "173.245.48.0/20, 104.16.0.0/13, 2a06:98c0::/29, 10.0.0.0/8, 172.16.0.0/12, fc00::/7, fe80::/10",
+        );
+        assert!(usual.is_empty(), "{usual:?}");
     }
 
     #[test]

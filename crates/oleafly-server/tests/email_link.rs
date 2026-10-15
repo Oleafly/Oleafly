@@ -709,6 +709,34 @@ async fn a_link_opened_on_a_phone_says_to_use_the_computer_and_stays_usable() {
 }
 
 #[tokio::test]
+async fn using_the_link_from_a_phone_is_refused_and_leaves_it_usable() {
+    let setup = setup().await;
+    admit(&setup, "ada@uni.edu").await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&setup.server, "email-link", &device, None);
+    let computer = Browser::new();
+    ask_for_link(&computer, &attempt, "ada@uni.edu").await;
+    let link = link_in(&latest_email(&setup.smtp, 1).await);
+    let confirm = computer.get(&link).await;
+    assert!(confirm.body.contains("<form"), "{}", confirm.body);
+    let phone = computer.as_user_agent(IPHONE);
+    let used = phone.submit(&form(&confirm), &[]).await;
+    assert_eq!(used.status, 200, "{}", used.body);
+    assert_eq!(used.location, None);
+    let text = text_of(&used);
+    assert!(
+        text.contains("so it can't finish on a phone or tablet"),
+        "{text}"
+    );
+    let finished = open_link(&computer, &link).await;
+    let back = landing(&finished);
+    let code = app_callback(&back, &attempt.state).expect("a sign-in code");
+    assert!(redeem(&setup.server, &device, &code, &attempt.verifier)
+        .await
+        .is_ok());
+}
+
+#[tokio::test]
 async fn the_link_page_on_the_computer_says_it_works_only_there() {
     let setup = setup().await;
     admit(&setup, "ada@uni.edu").await;

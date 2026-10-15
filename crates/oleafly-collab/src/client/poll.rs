@@ -221,27 +221,9 @@ pub(crate) async fn answer_within(
     request: reqwest::RequestBuilder,
     limit: usize,
 ) -> Result<(u16, Vec<u8>), CollabError> {
-    let mut response = check_status(request.send().await.map_err(network_error)?).await?;
+    let response = check_status(request.send().await.map_err(network_error)?).await?;
     let status = response.status().as_u16();
-    let too_large = || {
-        CollabError::Network(format!(
-            "the server's answer is larger than {} MiB",
-            limit / (1024 * 1024)
-        ))
-    };
-    if response
-        .content_length()
-        .is_some_and(|length| length > limit as u64)
-    {
-        return Err(too_large());
-    }
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(network_error)? {
-        if body.len() + chunk.len() > limit {
-            return Err(too_large());
-        }
-        body.extend_from_slice(&chunk);
-    }
+    let body = super::http::body_within(response, limit).await?;
     Ok((status, body))
 }
 

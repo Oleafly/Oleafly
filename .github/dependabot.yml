@@ -58,6 +58,29 @@ updates:
         update-types: ["major"]
     open-pull-requests-limit: 5
 
+  # The server's build and runtime images. Installs pin the Compose file per
+  # release, so a Caddy fix also needs a new server release to reach them.
+  - package-ecosystem: docker
+    directory: /crates/oleafly-server
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker-compose
+    directory: /deploy/server
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    ignore:
+      # The release workflow sets the server's own image tag.
+      - dependency-name: "ghcr.io/oleafly/oleafly-server"
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directories:
       - /

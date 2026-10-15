@@ -311,6 +311,12 @@ pub fn approve(
             "This project isn't shared any more, so the invitation can't be approved.",
         ));
     }
+    if !owner_present(conn, invitation.project)? {
+        return Err(ServerError::refused(
+            "owner_away",
+            "The project's owner is suspended or removed, so the guest can't get in yet. Approve the invitation once the owner is back.",
+        ));
+    }
     set_status(conn, id, GuestInvitationStatus::Invited, Some(by), now)?;
     conn.execute(
         "UPDATE guest_invitations SET expires_at = ?2 WHERE id = ?1",
@@ -625,7 +631,9 @@ async fn prepare_invitation(
             let Some(row) = projects::project_row(conn, invitation.project)? else {
                 return Ok(None);
             };
-            if row.status != ProjectStatus::Active {
+            let owner_active =
+                members::account_status(conn, row.owner)? == Some(MemberStatus::Active);
+            if row.status != ProjectStatus::Active || !owner_active {
                 return Ok(None);
             }
             let inviter = members::account_summary(conn, invitation.invited_by)?
@@ -658,10 +666,55 @@ async fn prepare_invitation(
 
 #[cfg(test)]
 mod tests {
+    use oleafly_collab_protocol::admin::RuntimeSettingsPatch;
+
     use super::*;
     use crate::clock::Clock;
     use crate::db::Db;
     use crate::test_support::{seed_member, test_app};
+
+    #[tokio::test]
+    async fn no_invitation_email_is_prepared_while_the_project_owner_is_away() {
+        let app = test_app().await;
+        let owner = seed_member(&app, ServerRole::Member).await.account_id;
+        let now = app.clock.now_ms();
+        let id = app
+            .state
+            .db
+            .call(move |conn| {
+                settings::patch(
+                    conn,
+                    &RuntimeSettingsPatch {
+                        guests_enabled: Some(true),
+                        ..RuntimeSettingsPatch::default()
+                    },
+                )?;
+                let project = projects::create_pending(conn, owner, "Reef survey", now)?;
+                projects::set_status(conn, project, ProjectStatus::Active, now)?;
+                let invitation = create(
+                    conn,
+                    project,
+                    "dana@field.org",
+                    ProjectRole::Viewer,
+                    owner,
+                    false,
+                    now,
+                )?;
+                Ok(invitation.id)
+            })
+            .await
+            .unwrap();
+        assert!(prepare_invitation(&app.state, id.clone())
+            .await
+            .unwrap()
+            .is_some());
+        app.state
+            .db
+            .call(move |conn| members::set_status(conn, owner, &MemberStatus::Suspended, now))
+            .await
+            .unwrap();
+        assert!(prepare_invitation(&app.state, id).await.unwrap().is_none());
+    }
 
     #[tokio::test]
     async fn a_guest_left_without_projects_has_no_live_device_or_token_once_the_change_is_made() {
