@@ -21,7 +21,7 @@ use oleafly_collab_protocol::projects::{
 use oleafly_collab_protocol::snapshots::{
     snapshot_signing_bytes, ProjectPeer, SNAPSHOT_DEVICE_HEADER, SNAPSHOT_SIGNATURE_HEADER,
 };
-use reqwest::header::LOCATION;
+use reqwest::header::{LOCATION, RETRY_AFTER};
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 
@@ -81,6 +81,11 @@ impl ServerClient {
 
     pub fn url(&self) -> &ServerUrl {
         &self.url
+    }
+
+    // How much longer the server asked the app to stay away, if it did.
+    pub fn asked_wait(&self) -> Option<Duration> {
+        asked_wait_for(&self.url.endpoint(""))
     }
 
     pub(crate) fn http(&self) -> &reqwest::Client {
@@ -799,6 +804,54 @@ pub(crate) fn build_http(
     builder.build()
 }
 
+// The wait a server asks for with Retry-After on a 429 or 503, in seconds
+// or as a date. It never counts for more than ten minutes, so a wrong value
+// can't keep the app away for long. It is kept by the server's address for
+// whatever tries that server next.
+const LONGEST_ASKED_WAIT: Duration = Duration::from_secs(600);
+
+static ASKED_WAITS: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>,
+> = std::sync::LazyLock::new(Default::default);
+
+pub(crate) fn asked_wait(value: &str) -> Option<Duration> {
+    let value = value.trim();
+    let wait = match value.parse::<u64>() {
+        Ok(seconds) => Duration::from_secs(seconds),
+        Err(_) => httpdate::parse_http_date(value)
+            .ok()?
+            .duration_since(std::time::SystemTime::now())
+            .unwrap_or(Duration::ZERO),
+    };
+    Some(wait.min(LONGEST_ASKED_WAIT))
+}
+
+pub(crate) fn note_asked_wait(at: &Url, status: u16, retry_after: Option<&str>) {
+    if !matches!(status, 429 | 503) {
+        return;
+    }
+    let Some(wait) = retry_after.and_then(asked_wait) else {
+        return;
+    };
+    let until = std::time::Instant::now() + wait;
+    let mut waits = ASKED_WAITS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let kept = waits
+        .entry(at.origin().ascii_serialization())
+        .or_insert(until);
+    *kept = (*kept).max(until);
+}
+
+pub(crate) fn asked_wait_for(at: &Url) -> Option<Duration> {
+    let waits = ASKED_WAITS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let until = *waits.get(&at.origin().ascii_serialization())?;
+    let left = until.saturating_duration_since(std::time::Instant::now());
+    (!left.is_zero()).then_some(left)
+}
+
 pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabError> {
     let response = check_status(request.send().await.map_err(network_error)?).await?;
     let status = response.status().as_u16();
@@ -921,6 +974,14 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
         });
     }
     let numeric = status.as_u16();
+    note_asked_wait(
+        response.url(),
+        numeric,
+        response
+            .headers()
+            .get(RETRY_AFTER)
+            .and_then(|value| value.to_str().ok()),
+    );
     let body = error_answer(response).await;
     if status == StatusCode::UNAUTHORIZED {
         return Err(match serde_json::from_slice::<ApiError>(&body) {
@@ -990,6 +1051,44 @@ mod tests {
 
     use super::*;
     use crate::client::test_util::{canned, closed_url, http_response, seed, server_url};
+
+    #[test]
+    fn a_retry_after_is_read_as_seconds_or_a_date_and_kept_to_ten_minutes() {
+        assert_eq!(asked_wait("120"), Some(Duration::from_secs(120)));
+        assert_eq!(asked_wait(" 5 "), Some(Duration::from_secs(5)));
+        assert_eq!(asked_wait("86400"), Some(Duration::from_secs(600)));
+        let soon = httpdate::fmt_http_date(std::time::SystemTime::now() + Duration::from_secs(90));
+        let read = asked_wait(&soon).expect("a date");
+        assert!(read > Duration::from_secs(80) && read <= Duration::from_secs(90));
+        assert_eq!(
+            asked_wait("Wed, 21 Oct 2015 07:28:00 GMT"),
+            Some(Duration::ZERO)
+        );
+        assert_eq!(asked_wait("soon"), None);
+    }
+
+    #[tokio::test]
+    async fn a_busy_answer_with_retry_after_is_kept_for_that_server_and_others_are_not() {
+        let busy = canned(http_response(
+            "503 Service Unavailable",
+            &[("Retry-After", "5"), ("Content-Type", "application/json")],
+            r#"{"code":"server_busy","message":"Busy."}"#,
+        ))
+        .await;
+        let client = ServerClient::new(busy).expect("client");
+        assert!(client.capabilities().await.is_err());
+        let left = client.asked_wait().expect("the wait was kept");
+        assert!(left > Duration::from_secs(4) && left <= Duration::from_secs(5));
+        let failing = canned(http_response(
+            "500 Internal Server Error",
+            &[("Retry-After", "5")],
+            "",
+        ))
+        .await;
+        let other = ServerClient::new(failing).expect("client");
+        assert!(other.capabilities().await.is_err());
+        assert_eq!(other.asked_wait(), None);
+    }
 
     async fn admin_and_member() -> (TestServer, ServerClient, SeededMember, SeededMember) {
         let server = TestServer::start(test_config()).await;

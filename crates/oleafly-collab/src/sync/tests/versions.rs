@@ -41,6 +41,8 @@ enum Upgrade {
     ProxyRefuses,
     // The server's own 401.
     Refuses,
+    // The server's own 503, as when it is restarting or full.
+    Busy,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -88,6 +90,8 @@ struct Answers {
     poll_busy: bool,
     refresh: Refresh,
     manifest: Manifest,
+    // Sent as Retry-After with a busy answer.
+    retry_after: Option<&'static str>,
 }
 
 const SOCKETS: Answers = Answers {
@@ -96,7 +100,20 @@ const SOCKETS: Answers = Answers {
     poll_busy: false,
     refresh: Refresh::Missing,
     manifest: Manifest::Served,
+    retry_after: None,
 };
+
+fn busy_answer(answers: Answers) -> String {
+    let mut headers = vec![("Content-Type", "application/json")];
+    if let Some(wait) = answers.retry_after {
+        headers.push(("Retry-After", wait));
+    }
+    crate::client::test_util::http_response(
+        "503 Service Unavailable",
+        &headers,
+        r#"{"code":"busy","message":"Try again later."}"#,
+    )
+}
 
 const NO_SOCKETS: Answers = Answers {
     upgrade: Upgrade::Forbidden,
@@ -116,6 +133,7 @@ fn stranger(sockets: bool) -> Answers {
         poll_busy: false,
         refresh: Refresh::Revoked,
         manifest: Manifest::Served,
+        retry_after: None,
     }
 }
 
@@ -137,6 +155,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
                 "",
             )),
             Upgrade::Refuses => Some(turned_away("unauthorized")),
+            Upgrade::Busy => Some(busy_answer(answers)),
         };
         if let Some(refusal) = refusal {
             let _ = stream.write_all(refusal.as_bytes()).await;
@@ -176,12 +195,7 @@ async fn answer(mut stream: TcpStream, manifest: String, server_id: ServerId, an
         trace.polled.store(true, Ordering::SeqCst);
     }
     if path.contains("/poll") && answers.poll_busy {
-        let busy = crate::client::test_util::http_response(
-            "503 Service Unavailable",
-            &[("Content-Type", "application/json")],
-            r#"{"code":"busy","message":"Try again later."}"#,
-        );
-        let _ = stream.write_all(busy.as_bytes()).await;
+        let _ = stream.write_all(busy_answer(answers).as_bytes()).await;
         return;
     }
     if path.contains("/poll") && answers.poll_refuses {
@@ -553,4 +567,53 @@ async fn a_busy_server_on_long_poll_gets_the_long_waits_too() {
     assert!(waits[0] <= 500, "{waits:?}");
     assert!((5_000..=10_000).contains(&waits[1]), "{waits:?}");
     stopped(&mut side).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_server_that_asks_for_a_wait_with_retry_after_is_left_alone_that_long() {
+    for sockets in [true, false] {
+        let server = ServerId::new_v7();
+        let (answers, asked) = if sockets {
+            (
+                Answers {
+                    upgrade: Upgrade::Busy,
+                    retry_after: Some("40"),
+                    ..SOCKETS
+                },
+                40_000,
+            )
+        } else {
+            (
+                Answers {
+                    poll_busy: true,
+                    retry_after: Some("30"),
+                    ..NO_SOCKETS
+                },
+                30_000,
+            )
+        };
+        let url = answering_at_the_address(server, ProtocolRange { min: 1, max: 1 }, answers).await;
+        let mut doc = ProjectDoc::create().unwrap();
+        let main = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, "abc")
+            .unwrap();
+        let mut side = side(LiveProject::new(doc, 0, ProjectRole::Editor), &main);
+        start_with(&mut side, signed_in(server, url), quick());
+        let mut waits = Vec::new();
+        tokio::time::timeout(Duration::from_secs(20), async {
+            while let Some(event) = side.events.recv().await {
+                if let LiveEvent::Status(LiveStatus::Offline { retry_in_ms }) = event {
+                    waits.push(retry_in_ms);
+                    if retry_in_ms >= asked - 1_000 {
+                        return;
+                    }
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(|_| panic!("sockets {sockets}: only these waits came: {waits:?}"));
+        let longest = waits.iter().copied().max().unwrap_or(0);
+        assert!(longest <= 600_000, "sockets {sockets}: {waits:?}");
+        stopped(&mut side).await;
+    }
 }

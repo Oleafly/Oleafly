@@ -302,6 +302,11 @@ pub(super) async fn run(
         } else {
             backoff_wait(attempt)
         };
+        // A server that said how long to stay away with Retry-After gets at
+        // least that long.
+        let delay = link.client.asked_wait().map_or(delay, |asked| {
+            delay.max(u64::try_from(asked.as_millis()).unwrap_or(u64::MAX))
+        });
         attempt = attempt.saturating_add(1);
         let _ = events.send(LiveEvent::Status(LiveStatus::Offline {
             retry_in_ms: delay,
