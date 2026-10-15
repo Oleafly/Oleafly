@@ -6,6 +6,19 @@ use oleafly_collab_protocol::roles::ProjectRole;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
+/// What is in the current data folder besides `app.log`. Live sessions in
+/// other tests append to the log in whichever data folder is current, so it
+/// says nothing about the test that looks.
+pub(crate) fn data_folder_entries() -> Vec<std::ffi::OsString> {
+    let data = std::path::PathBuf::from(std::env::var_os("OLEAFLY_DATA_DIR").unwrap());
+    std::fs::read_dir(data)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name())
+        .filter(|name| name != "app.log")
+        .collect()
+}
+
 pub(crate) struct TempLibrary {
     _data: tempfile::TempDir,
     _env: MutexGuard<'static, ()>,

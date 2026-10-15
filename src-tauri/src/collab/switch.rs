@@ -361,8 +361,8 @@ mod tests {
         assert_eq!(stopped, Ok(Value::Null));
         let flushed = call(&window, "collab_live_flush", project);
         assert_eq!(flushed, Ok(Value::Null));
-        let data = std::env::var_os("OLEAFLY_DATA_DIR").unwrap();
-        assert_eq!(std::fs::read_dir(data).unwrap().count(), 0);
+        let made = crate::collab::testing::data_folder_entries();
+        assert!(made.is_empty(), "the data folder holds {made:?}");
         assert!(!dir.path().join("collab").exists());
         assert!(secrets.get(DEVICE_KEY_ACCOUNT).unwrap().is_none());
     }

@@ -1538,18 +1538,13 @@ fn quitting_with_a_file_another_program_holds_waits_no_longer_than_its_budget() 
 #[test]
 fn a_test_session_with_tree_changes_leaves_the_data_folder_alone() {
     let library = crate::collab::testing::TempLibrary::new();
-    let data = std::path::PathBuf::from(std::env::var_os("OLEAFLY_DATA_DIR").unwrap());
     let (_dir, root, _host, rig) = watched_rig("tree-quiet", &[("main.tex", "abc")]);
     let _live = rig.go_live();
     rig.remote_new("added.tex", "new");
     rig.settle();
     std::thread::sleep(Duration::from_millis(300));
     assert!(root.join("added.tex").is_file());
-    let made: Vec<_> = std::fs::read_dir(&data)
-        .unwrap()
-        .filter_map(Result::ok)
-        .map(|entry| entry.file_name())
-        .collect();
+    let made = crate::collab::testing::data_folder_entries();
     assert!(
         made.is_empty(),
         "the session wrote into the data folder: {made:?}"
