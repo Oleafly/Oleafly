@@ -104,17 +104,22 @@ fn all_or_nothing<T>(
     name: &str,
     work: impl FnOnce(&Connection) -> Result<T, ServerError>,
 ) -> Result<T, ServerError> {
+    let outermost = conn.is_autocommit();
     conn.execute_batch(&format!("SAVEPOINT {name}"))?;
-    match work(conn) {
-        Ok(value) => {
-            conn.execute_batch(&format!("RELEASE {name}"))?;
-            Ok(value)
-        }
-        Err(error) => {
-            let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
-            Err(error)
+    let released = work(conn).and_then(|value| {
+        conn.execute_batch(&format!("RELEASE {name}"))?;
+        Ok(value)
+    });
+    if released.is_err() {
+        let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
+        // The outermost release is the commit. When it fails SQLite can
+        // leave the transaction open, and every later write on the one
+        // writer connection would then fail.
+        if outermost && !conn.is_autocommit() {
+            let _ = conn.execute_batch("ROLLBACK");
         }
     }
+    released
 }
 
 pub fn create_pending(
@@ -1424,6 +1429,32 @@ mod tests {
     use super::*;
     use crate::db::Db;
     use oleafly_collab_protocol::roles::ServerRole;
+
+    #[test]
+    fn a_commit_that_fails_never_leaves_the_connection_inside_a_transaction() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+             CREATE TABLE parent (id INTEGER PRIMARY KEY);
+             CREATE TABLE child (parent INTEGER REFERENCES parent (id) DEFERRABLE INITIALLY DEFERRED);",
+        )
+        .unwrap();
+        let committed = all_or_nothing(&conn, "work", |conn| {
+            conn.execute("INSERT INTO child (parent) VALUES (1)", [])?;
+            Ok(())
+        });
+        assert!(committed.is_err(), "the deferred check fails the commit");
+        assert!(
+            conn.is_autocommit(),
+            "the connection stayed in a transaction"
+        );
+        let children: i64 = conn
+            .query_row("SELECT COUNT(*) FROM child", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(children, 0);
+        conn.execute_batch("BEGIN; INSERT INTO parent (id) VALUES (1); COMMIT;")
+            .unwrap();
+    }
 
     #[tokio::test]
     async fn a_role_this_server_does_not_know_is_never_written() {
