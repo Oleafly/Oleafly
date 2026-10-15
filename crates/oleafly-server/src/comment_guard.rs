@@ -17,6 +17,9 @@ const IDLE: Duration = Duration::from_secs(15 * 60);
 const MAX_SLOTS: usize = 1_024;
 const BUSY_TRIES: u32 = 20;
 const BUSY_PAUSE: Duration = Duration::from_millis(100);
+// How long a check waits for a snapshot build of its own project, whose
+// reservation may have taken the check's kept document.
+const BUILD_WAIT: Duration = Duration::from_secs(60);
 const WARN_EVERY: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,17 +121,27 @@ impl CommentGuard {
     }
 
     // Kept documents already give their memory to this read when it needs
-    // it, so waiting here only waits for documents in use and builds.
+    // it, so waiting here only waits for documents in use and builds. A
+    // build of this very project is waited for to its end, once, since its
+    // memory comes back when it finishes.
     async fn read(
         &self,
         db: &Db,
         snapshots: &Snapshots,
         project: SharedProjectId,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        let mut waited_for_build = false;
         for _ in 0..BUSY_TRIES {
             match snapshots.read_current(db, project).await? {
                 Current::Read(replay, head) => return Ok(Some((replay, head))),
-                Current::Busy => tokio::time::sleep(BUSY_PAUSE).await,
+                Current::Busy => match snapshots.build_running(project) {
+                    Some(mut finished) if !waited_for_build => {
+                        waited_for_build = true;
+                        let _ =
+                            tokio::time::timeout(BUILD_WAIT, finished.wait_for(|done| *done)).await;
+                    }
+                    _ => tokio::time::sleep(BUSY_PAUSE).await,
+                },
                 Current::TooLarge { needed, allowed } => {
                     self.warn(project, &format!(
                         "reading it needs about {} MB and OLEAFLY_SNAPSHOT_MEMORY_MB allows {} MB. Raise OLEAFLY_SNAPSHOT_MEMORY_MB to keep comments off for it",

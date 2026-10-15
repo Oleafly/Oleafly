@@ -624,3 +624,53 @@ async fn leaving_after_a_burst_of_cursor_updates_still_clears_the_cursor() {
         }
     }
 }
+
+async fn cursor_seen_by(
+    bob: &mut people::Socket,
+    alice: &mut people::Socket,
+    project: oleafly_collab_protocol::ids::SharedProjectId,
+) {
+    send_frame(
+        alice,
+        &ClientFrame::Presence {
+            project_id: project,
+            state: PresenceState {
+                file_id: Some("main".to_owned()),
+                cursor: Some(1),
+                anchor: None,
+            },
+        },
+    )
+    .await;
+    assert!(matches!(
+        next_frame(bob).await,
+        Some(ServerFrame::Presence { .. })
+    ));
+}
+
+#[tokio::test]
+async fn a_leave_from_a_new_connection_clears_a_cursor_an_older_one_showed() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    subscribe(&mut bob, project, 0).await;
+    let mut before = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut before, project, 0).await;
+    cursor_seen_by(&mut bob, &mut before, project).await;
+    let mut after = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut after, project, 0).await;
+    send_frame(
+        &mut after,
+        &ClientFrame::PresenceLeave {
+            project_id: project,
+        },
+    )
+    .await;
+    assert_eq!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::PresenceLeft {
+            project_id: project,
+            device_id: stage.alice.tokens.device_id
+        })
+    );
+}
