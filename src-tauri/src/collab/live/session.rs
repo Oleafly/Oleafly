@@ -414,26 +414,12 @@ impl Active {
         if renamed.is_empty() {
             return;
         }
-        for (from, to) in &renamed {
-            self.host.renamed(crate::collab::tree::RenamedPayload {
-                project_id: self.project_id.clone(),
-                account_id: None,
-                before: from.clone(),
-                ours: from.clone(),
-                theirs: to.clone(),
-            });
+        announce_renames(self.host.as_ref(), &self.project_id, &renamed);
+        if let Some(applied) =
+            crate::collab::settings::follow_renamed_main(&self.project_id, &renamed)
+        {
+            self.host.settings_changed(applied);
         }
-        self.host.folder_changed(FolderChange {
-            project_id: self.project_id.clone(),
-            paths: renamed
-                .iter()
-                .flat_map(|(from, to)| [from.clone(), to.clone()])
-                .collect(),
-            rescan: false,
-            structural: true,
-            renamed,
-            deleted: Vec::new(),
-        });
     }
 
     pub(super) fn detach(&self, paths: &oleafly_collab::CollabPaths) {
@@ -442,6 +428,35 @@ impl Active {
         crate::collab::registry::invalidate(&self.project_id);
         local_copy::name_local_copy(&self.project_id);
     }
+}
+
+// Tells the window about files moved on disk to the names the shared
+// layout gives them: the activity lists each one, and a tab open on the
+// old name follows it.
+pub fn announce_renames(host: &dyn LiveHost, project_id: &str, renamed: &[(String, String)]) {
+    if renamed.is_empty() {
+        return;
+    }
+    for (from, to) in renamed {
+        host.renamed(crate::collab::tree::RenamedPayload {
+            project_id: project_id.to_owned(),
+            account_id: None,
+            before: from.clone(),
+            ours: from.clone(),
+            theirs: to.clone(),
+        });
+    }
+    host.folder_changed(FolderChange {
+        project_id: project_id.to_owned(),
+        paths: renamed
+            .iter()
+            .flat_map(|(from, to)| [from.clone(), to.clone()])
+            .collect(),
+        rescan: false,
+        structural: true,
+        renamed: renamed.to_vec(),
+        deleted: Vec::new(),
+    });
 }
 
 pub(super) async fn writer_loop(

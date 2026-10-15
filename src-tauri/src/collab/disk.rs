@@ -542,7 +542,8 @@ pub(crate) fn rekey_moved(
     moved
 }
 
-fn moved_key(path: &str, from: &str, to: &str) -> Option<String> {
+// Where `path` is after `from` moved to `to`, if the move took it along.
+pub(crate) fn moved_key(path: &str, from: &str, to: &str) -> Option<String> {
     if path == from {
         return Some(to.to_owned());
     }
