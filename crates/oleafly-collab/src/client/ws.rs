@@ -286,26 +286,42 @@ fn interleaved(addresses: Vec<SocketAddr>) -> Vec<SocketAddr> {
     ordered
 }
 
+// Each address gets 250 ms before the next one starts, as in RFC 8305, and
+// the next one starts at once when an attempt fails, so an address with no
+// route doesn't cost its whole slot.
 async fn race(addresses: Vec<SocketAddr>) -> std::io::Result<TcpStream> {
-    if addresses.is_empty() {
-        return Err(std::io::Error::other(
-            "the server's address did not resolve",
-        ));
+    let mut waiting = interleaved(addresses).into_iter();
+    let mut trying = futures_util::stream::FuturesUnordered::new();
+    let mut failed = None;
+    loop {
+        if trying.is_empty() {
+            match waiting.next() {
+                Some(address) => trying.push(TcpStream::connect(address)),
+                None => {
+                    return Err(failed.unwrap_or_else(|| {
+                        std::io::Error::other("the server's address did not resolve")
+                    }))
+                }
+            }
+        }
+        tokio::select! {
+            finished = trying.next() => match finished {
+                Some(Ok(stream)) => return Ok(stream),
+                Some(Err(error)) => {
+                    failed = Some(error);
+                    if let Some(address) = waiting.next() {
+                        trying.push(TcpStream::connect(address));
+                    }
+                }
+                None => {}
+            },
+            () = tokio::time::sleep(NEXT_ADDRESS_AFTER), if !waiting.as_slice().is_empty() => {
+                if let Some(address) = waiting.next() {
+                    trying.push(TcpStream::connect(address));
+                }
+            }
+        }
     }
-    let attempts = interleaved(addresses)
-        .into_iter()
-        .enumerate()
-        .map(|(index, address)| {
-            Box::pin(async move {
-                let wait =
-                    NEXT_ADDRESS_AFTER.saturating_mul(u32::try_from(index).unwrap_or(u32::MAX));
-                tokio::time::sleep(wait).await;
-                TcpStream::connect(address).await
-            })
-        });
-    futures_util::future::select_ok(attempts)
-        .await
-        .map(|(stream, _)| stream)
 }
 
 async fn connect_host(host: &str, port: u16) -> std::io::Result<TcpStream> {
@@ -750,6 +766,31 @@ mod tests {
             .expect("the working address answered");
         assert_eq!(stream.peer_addr().expect("peer"), working);
         assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[tokio::test]
+    async fn an_address_that_turns_the_connection_away_lets_the_next_one_start_at_once() {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let working = listener.local_addr().expect("address");
+        let closed = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let refusing = closed.local_addr().expect("address");
+        drop(closed);
+        let started = tokio::time::Instant::now();
+        let stream = race(vec![refusing, working])
+            .await
+            .expect("the working address answered");
+        assert_eq!(stream.peer_addr().expect("peer"), working);
+        assert!(
+            started.elapsed() < NEXT_ADDRESS_AFTER,
+            "{:?}",
+            started.elapsed()
+        );
+        assert!(race(vec![refusing]).await.is_err());
+        assert!(race(Vec::new()).await.is_err());
     }
 
     async fn connect_proxy(
