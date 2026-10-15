@@ -34,7 +34,92 @@ fn socket_config() -> WebSocketConfig {
         .max_frame_size(Some(MAX_MESSAGE_BYTES))
 }
 
-pub(crate) type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+pub(crate) type Socket = WebSocketStream<MaybeTlsStream<Counted>>;
+
+fn clock() -> &'static std::time::Instant {
+    static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    STARTED.get_or_init(std::time::Instant::now)
+}
+
+fn now_ticks() -> u64 {
+    u64::try_from(clock().elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
+// The connection under the socket, noting when bytes last came in. A large
+// frame on a slow downlink takes longer than the quiet window to arrive
+// whole, and the bytes on their way show the connection is alive.
+pub(crate) struct Counted {
+    stream: TcpStream,
+    heard: Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl Counted {
+    fn new(stream: TcpStream) -> Counted {
+        Counted {
+            stream,
+            heard: Arc::new(std::sync::atomic::AtomicU64::new(now_ticks())),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct Heard(Arc<std::sync::atomic::AtomicU64>);
+
+impl Heard {
+    pub(crate) fn of(socket: &Socket) -> Option<Heard> {
+        let counted = match socket.get_ref() {
+            MaybeTlsStream::Rustls(tls) => tls.get_ref().0,
+            MaybeTlsStream::Plain(plain) => plain,
+            _ => return None,
+        };
+        Some(Heard(Arc::clone(&counted.heard)))
+    }
+
+    pub(crate) fn silent_for(&self) -> Duration {
+        let last = self.0.load(std::sync::atomic::Ordering::Relaxed);
+        Duration::from_millis(now_ticks().saturating_sub(last))
+    }
+}
+
+impl tokio::io::AsyncRead for Counted {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+        buffer: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        let before = buffer.filled().len();
+        let read = std::pin::Pin::new(&mut self.stream).poll_read(context, buffer);
+        if buffer.filled().len() > before {
+            self.heard
+                .store(now_ticks(), std::sync::atomic::Ordering::Relaxed);
+        }
+        read
+    }
+}
+
+impl tokio::io::AsyncWrite for Counted {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+        bytes: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::pin::Pin::new(&mut self.stream).poll_write(context, bytes)
+    }
+
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.stream).poll_flush(context)
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.stream).poll_shutdown(context)
+    }
+}
 
 pub struct SocketConnection {
     socket: Socket,
@@ -132,7 +217,7 @@ pub(crate) async fn open_socket(
             .map_err(|_| CollabError::Unauthorized)?;
         request.headers_mut().insert(AUTHORIZATION, bearer);
     }
-    let stream = connect_tcp(&target).await?;
+    let stream = Counted::new(connect_tcp(&target).await?);
     let connector = if target.scheme() == "wss" {
         Connector::Rustls(tls_config()?)
     } else {

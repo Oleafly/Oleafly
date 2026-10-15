@@ -26,13 +26,13 @@ pub(super) struct Pace {
 }
 
 // The server owes an answer within `quiet_for`. A change still on its way up
-// adds the time a slow but working link needs to carry it, counted from when
-// it went out, so a large change on a slow link is not cut off and sent again.
+// gets the time a slow but working link needs to carry it, counted from when
+// it went out, so a large change on a slow link is not cut off and sent again,
+// and its acknowledgement is overdue after that however busy the connection
+// is otherwise. `heard` counts any bytes coming in, not only whole frames.
 fn too_quiet(heard: Duration, in_flight: Option<(usize, Duration)>, quiet_for: Duration) -> bool {
     match in_flight {
-        Some((bytes, sent)) => {
-            heard.min(sent) > quiet_for + upload_allowance(bytes.saturating_mul(4) / 3)
-        }
+        Some((bytes, sent)) => sent > quiet_for + upload_allowance(bytes.saturating_mul(4) / 3),
         None => heard > quiet_for,
     }
 }
@@ -316,7 +316,10 @@ async fn online(
                 let in_flight = lock(project)
                     .in_flight()
                     .map(|(bytes, sent)| (bytes, sent.elapsed()));
-                if too_quiet(last_heard.elapsed(), in_flight, pace.quiet_for) {
+                let heard = wire
+                    .silent_for()
+                    .map_or(last_heard.elapsed(), |bytes| bytes.min(last_heard.elapsed()));
+                if too_quiet(heard, in_flight, pace.quiet_for) {
                     return retry;
                 }
                 let missing = lock(project).missing_changes();
@@ -362,7 +365,7 @@ mod tests {
             sent(carried + Duration::from_secs(1)),
             quiet
         ));
-        assert!(!too_quiet(
+        assert!(too_quiet(
             Duration::from_secs(5),
             sent(Duration::from_secs(600)),
             quiet

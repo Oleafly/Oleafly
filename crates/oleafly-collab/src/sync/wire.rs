@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use super::LiveLink;
 use crate::client::{
-    connect_socket, keep_polling, post_outbox, Outbox, PollChannel, PollRequest, PollTiming,
+    connect_socket, keep_polling, post_outbox, Heard, Outbox, PollChannel, PollRequest, PollTiming,
     Polled, Socket,
 };
 use crate::CollabError;
@@ -80,6 +80,7 @@ pub(super) enum Wire {
         stream: SplitStream<Socket>,
         writing: mpsc::Sender<Message>,
         writer: Option<JoinHandle<()>>,
+        heard: Option<Heard>,
     },
     Poll(Box<PollWire>),
 }
@@ -102,12 +103,24 @@ async fn write_out(mut sink: SplitSink<Socket, Message>, mut writing: mpsc::Rece
 
 impl Wire {
     pub(super) fn socket(socket: Socket) -> Wire {
+        let heard = Heard::of(&socket);
         let (sink, stream) = socket.split();
         let (writing, queued) = mpsc::channel(SOCKET_QUEUE);
         Wire::Socket {
             stream,
             writing,
             writer: Some(tokio::spawn(write_out(sink, queued))),
+            heard,
+        }
+    }
+
+    // How long since any byte came in on the socket, even part of a frame.
+    pub(super) fn silent_for(&self) -> Option<Duration> {
+        match self {
+            Wire::Socket {
+                heard: Some(heard), ..
+            } => Some(heard.silent_for()),
+            _ => None,
         }
     }
 

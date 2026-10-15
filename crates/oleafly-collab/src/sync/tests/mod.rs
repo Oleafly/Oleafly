@@ -355,9 +355,13 @@ async fn back_online(side: &mut Side) -> bool {
     reached(side, |status| *status == LiveStatus::Online).await
 }
 
-// Carries what the app sends at `rate` bytes a second and what the server
-// sends at full speed, like a home or hotel uplink.
-async fn throttled_link(upstream: std::net::SocketAddr, rate: usize) -> std::net::SocketAddr {
+// Carries what the app sends at `up` bytes a second and what the server
+// sends at `down`, full speed where none is given, like a home or hotel link.
+async fn throttled_link(
+    upstream: std::net::SocketAddr,
+    up: Option<usize>,
+    down: Option<usize>,
+) -> std::net::SocketAddr {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     async fn pump(
         mut from: tokio::net::tcp::OwnedReadHalf,
@@ -393,9 +397,9 @@ async fn throttled_link(upstream: std::net::SocketAddr, rate: usize) -> std::net
                 };
                 let (client_read, client_write) = client.into_split();
                 let (server_read, server_write) = server.into_split();
-                let up = tokio::spawn(pump(client_read, server_write, Some(rate)));
-                let down = tokio::spawn(pump(server_read, client_write, None));
-                let _ = tokio::join!(up, down);
+                let sending = tokio::spawn(pump(client_read, server_write, up));
+                let receiving = tokio::spawn(pump(server_read, client_write, down));
+                let _ = tokio::join!(sending, receiving);
             });
         }
     });
