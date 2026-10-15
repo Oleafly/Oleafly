@@ -215,6 +215,17 @@ impl ProviderRegistry {
             .remove(provider);
     }
 
+    // Whether a failure the server saw itself is still recent. A browser's
+    // report can sit in the list, but on its own it never says that sign-in
+    // is failing.
+    pub fn failing(&self, now: i64) -> bool {
+        self.problems
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .any(|noted| noted.seen_by_server && now - noted.problem.at < PROBLEM_TTL_MS)
+    }
+
     pub fn problems(&self, now: i64) -> Vec<SignInProblem> {
         let mut problems = self.problems.lock().unwrap_or_else(PoisonError::into_inner);
         problems.retain(|_, noted| now - noted.problem.at < PROBLEM_TTL_MS);
@@ -481,6 +492,7 @@ mod tests {
         registry.note_reported_error("github", 1_000, "invalid_client");
         let reported = registry.problems(1_000);
         assert_eq!(reported.len(), 1);
+        assert!(!registry.failing(1_000));
         assert_eq!(
             reported[0].reason,
             "invalid_client, as reported by the browser. The server could not check it."
@@ -492,6 +504,7 @@ mod tests {
         );
         registry.note_reported_error("github", 3_000, "server_error");
         let seen = registry.problems(3_000);
+        assert!(registry.failing(3_000));
         assert_eq!(seen.len(), 1);
         assert_eq!(seen[0].at, 2_000);
         assert!(
@@ -500,6 +513,7 @@ mod tests {
         );
         registry.note_reported_error("github", 2_000 + PROBLEM_TTL_MS, "server_error");
         let later = registry.problems(2_000 + PROBLEM_TTL_MS);
+        assert!(!registry.failing(2_000 + PROBLEM_TTL_MS));
         assert_eq!(later.len(), 1);
         assert!(
             later[0].reason.starts_with("server_error, as reported"),

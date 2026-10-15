@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use oleafly_collab_protocol::admin::{SecurityEvent, SecurityEventKind};
-use oleafly_collab_protocol::console::{AdminOverview, HealthIssue};
+use oleafly_collab_protocol::console::{AdminOverview, HealthIssue, HealthStatus};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::auth::PROBLEM_TTL_MS;
 use oleafly_server::security_log;
@@ -132,13 +132,36 @@ async fn an_error_from_the_provider_is_logged_with_its_reason_for_the_admin() {
     assert_eq!(logged[0].detail["error"], "unauthorized_client");
     assert_eq!(logged[0].detail["description"], description);
     let shown = overview(server).await;
-    assert!(shown.health.issues.contains(&HealthIssue::SignInFailing));
+    assert!(!shown.health.issues.contains(&HealthIssue::SignInFailing));
     assert_eq!(shown.sign_in_problems.len(), 1);
     assert_eq!(shown.sign_in_problems[0].provider, "uni");
     assert_eq!(
         shown.sign_in_problems[0].reason,
         "unauthorized_client, as reported by the browser. The server could not check it."
     );
+}
+
+#[tokio::test]
+async fn an_error_only_the_browser_reported_lights_no_health_issue() {
+    let servers = servers().await;
+    let server = &servers.server;
+    assert_eq!(
+        provider_answers(server, "uni", &[("error", "invalid_client")]).await,
+        "provider_failed"
+    );
+    let shown = overview(server).await;
+    assert!(shown.health.issues.is_empty(), "{:?}", shown.health);
+    assert_eq!(shown.health.status, HealthStatus::Ok);
+    assert_eq!(shown.sign_in_problems.len(), 1, "{shown:?}");
+    assert!(shown.sign_in_problems[0]
+        .reason
+        .starts_with("invalid_client, as reported by the browser"));
+    provider_answers(server, "uni", &[("code", "not-a-real-code")]).await;
+    assert!(overview(server)
+        .await
+        .health
+        .issues
+        .contains(&HealthIssue::SignInFailing));
 }
 
 #[tokio::test]
