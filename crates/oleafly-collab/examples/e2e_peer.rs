@@ -5,7 +5,6 @@ mod typist;
 
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufRead, Write};
-use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -636,14 +635,21 @@ impl Stack {
     }
 }
 
-async fn start_server(data_dir: &Path) -> (AppState, SocketAddr, MockGithub, watch::Sender<bool>) {
+// The server's public URL is the address the app signs in through, as with a
+// real proxy in front of a server, so the `iss` on its redirect back to the
+// app names the server the app started with.
+async fn start_server(
+    data_dir: &Path,
+    listener: tokio::net::TcpListener,
+    public_url: &ServerUrl,
+) -> (AppState, MockGithub, watch::Sender<bool>) {
     let github = MockGithub::start(vec![person(8, OWNER)]).await;
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("listen on a free port");
     let address = listener.local_addr().expect("the server address");
     let vars: BTreeMap<String, String> = [
-        ("OLEAFLY_PUBLIC_URL", format!("http://{address}")),
+        (
+            "OLEAFLY_PUBLIC_URL",
+            public_url.as_str().trim_end_matches('/').to_owned(),
+        ),
         ("OLEAFLY_BIND", address.to_string()),
         ("OLEAFLY_DATA_DIR", data_dir.display().to_string()),
         ("OLEAFLY_SETUP_CODE", SETUP_CODE.to_owned()),
@@ -674,7 +680,7 @@ async fn start_server(data_dir: &Path) -> (AppState, SocketAddr, MockGithub, wat
     tokio::spawn(serve_until(state.clone(), listener, async move {
         let _ = signal.changed().await;
     }));
-    (state, address, github, stop)
+    (state, github, stop)
 }
 
 async fn seed_peer(state: &AppState) -> Account {
@@ -722,12 +728,18 @@ fn read_requests() -> mpsc::UnboundedReceiver<String> {
 async fn main() {
     init_dev_logging(&["loro", "loro_internal", "loro_common"]);
     let data = tempfile::tempdir().expect("a data folder for the e2e server");
-    let (state, address, github, stop) = start_server(data.path()).await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("listen on a free port");
+    let address = listener.local_addr().expect("the server address");
+    let app_route = Relay::start(address).await;
+    let peer_route = Relay::start(address).await;
+    let (state, github, stop) = start_server(data.path(), listener, &app_route.url).await;
     let account = seed_peer(&state).await;
     let mut stack = Stack {
         server_id: state.server_id,
-        app_route: Relay::start(address).await,
-        peer_route: Relay::start(address).await,
+        app_route,
+        peer_route,
         state,
         account,
         peer: None,
