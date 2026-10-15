@@ -14,7 +14,7 @@
 
 **A live collaborative LaTeX, Typst & Markdown editor for research.**
 
-Write with your coauthors at the same time, with shared cursors and comments, on a server your lab runs. Cloud sync keeps your projects on every computer you use. Claude Code, Codex and other AI agents work inside your project, right next to the source and the PDF. Oleafly is free, open source, and runs on Mac, Windows and Linux.
+Oleafly is a desktop editor for LaTeX, Typst and Markdown that keeps the whole paper in one window: source, PDF, citations, figures, checks and Git history. Write with your coauthors in real time, keep your projects in sync across computers, and bring Claude Code, Codex or any model you like into the project. Free and open source, for Mac, Windows and Linux.
 
 <p>
   <a href="https://github.com/Oleafly/Oleafly/releases/latest"><strong>Download free</strong></a>
@@ -32,7 +32,7 @@ Free forever · Open source · No Oleafly account · No tracking
 
 ## Why Oleafly
 
-Oleafly is a desktop editor for LaTeX, Typst and Markdown that keeps the whole paper in one window: source, PDF, citations, figures, checks and history. Everything is free, including what other editors keep for paid plans: real-time collaboration with as many coauthors as you invite, full version history, Git and GitHub sync, Zotero, grammar checking and AI.
+Everything here is free, including what other editors keep for paid plans: real-time collaboration with as many coauthors as you invite, full version history, Git and GitHub sync, Zotero, grammar checking and AI.
 
 - Write with your coauthors in real time, with shared cursors and comments, on a server your lab sets up with one command.
 - An editor made for long documents: completion for labels, citations and commands, live error checking, an outline of the whole project, Vim and Emacs keys, a visual mode and a searchable palette of 236 LaTeX symbols.
@@ -46,6 +46,7 @@ Oleafly is a desktop editor for LaTeX, Typst and Markdown that keeps the whole p
 - Import from Word, a PDF, an arXiv source, a GitHub repository or an online LaTeX account.
 - Cloud sync keeps your projects on every computer you use, and you can keep writing offline.
 - Claude Code, Codex and 12 more agents work inside your project, or connect any model, local ones included. AI is optional, and each change it makes is a diff you can review and undo.
+- Research tasks run a literature review, an evidence audit or a revision pass in a separate copy of the project while you keep writing, and you pick which changed files to keep.
 
 ## Write together, live
 
