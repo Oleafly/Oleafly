@@ -5,6 +5,7 @@ mod comments_off;
 mod devices;
 mod editing;
 mod ending;
+mod failures;
 mod refusals;
 mod restore;
 mod transport;

@@ -229,7 +229,15 @@ pub(super) async fn run(
                 exit
             }
         };
-        lock(&project).disconnected();
+        let exit = {
+            let mut live = lock(&project);
+            live.disconnected();
+            if live.damaged() {
+                Exit::End(EndReason::Failed)
+            } else {
+                exit
+            }
+        };
         match exit {
             Exit::End(reason) => {
                 if reason.session().is_some() {

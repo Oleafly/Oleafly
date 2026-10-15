@@ -126,6 +126,13 @@ struct StoredState {
     catch_up: Option<StoredCatchUp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     outgoing: Option<StoredOutgoing>,
+    // Changes that made the document engine panic, skipped from now on, and
+    // the changes of a batch that panicked, each taken in alone next time so
+    // the one at fault is found.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    skipped: BTreeSet<u64>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    suspect: BTreeSet<u64>,
 }
 
 pub struct Arrival {
@@ -232,6 +239,10 @@ pub struct LiveProject {
     unreadable: Vec<(u64, Option<DeviceId>)>,
     waiting: VersionVector,
     resynced_for: Option<VersionVector>,
+    dir: Option<PathBuf>,
+    damaged: bool,
+    skipped: BTreeSet<u64>,
+    suspect: BTreeSet<u64>,
 }
 
 struct ChangeLog {
@@ -341,7 +352,7 @@ pub struct PendingSave {
     document: SavedDocument,
     version: VersionVector,
     doc_replacements: u64,
-    state: Vec<u8>,
+    state: Option<Vec<u8>>,
     devices: Option<Vec<u8>>,
     authors: Option<Vec<u8>>,
 }
@@ -362,7 +373,9 @@ impl PendingSave {
                 }
             }
         }
-        write_atomic(&dir.join(STATE_FILE), &self.state)?;
+        if let Some(state) = &self.state {
+            write_atomic(&dir.join(STATE_FILE), state)?;
+        }
         if let Some(json) = &self.devices {
             write_atomic(&dir.join(DEVICES_FILE), json)?;
         }
@@ -371,6 +384,15 @@ impl PendingSave {
         }
         Ok(())
     }
+}
+
+fn saved_document(dir: &Path) -> Option<ProjectDoc> {
+    let bytes = std::fs::read(dir.join(DOC_FILE)).ok()?;
+    let mut doc = ProjectDoc::load(&bytes).ok()?;
+    for record in &read_log(&dir.join(LOG_FILE)).records {
+        let _ = doc.import(record);
+    }
+    Some(doc)
 }
 
 fn hold(live: &Mutex<LiveProject>) -> MutexGuard<'_, LiveProject> {
@@ -421,6 +443,10 @@ impl LiveProject {
             unreadable: Vec::new(),
             waiting: VersionVector::new(),
             resynced_for: None,
+            dir: None,
+            damaged: false,
+            skipped: BTreeSet::new(),
+            suspect: BTreeSet::new(),
         }
     }
 
@@ -443,6 +469,9 @@ impl LiveProject {
             }
         }
         let mut live = LiveProject::new(doc, state.last_seq, role);
+        live.dir = Some(dir.to_path_buf());
+        live.skipped = state.skipped;
+        live.suspect = state.suspect;
         live.confirmed = decode_version(&state.confirmed)?;
         live.anchor = state.anchor;
         live.offline_edits = state.offline_edits;
@@ -475,6 +504,13 @@ impl LiveProject {
     }
 
     pub fn begin_save(&mut self, dir: &Path) -> Result<PendingSave, CollabError> {
+        if self.damaged {
+            return Ok(self.damaged_save(dir));
+        }
+        self.dir = Some(dir.to_path_buf());
+        let last_seq = self.last_seq;
+        self.skipped.retain(|seq| *seq > last_seq);
+        self.suspect.retain(|seq| *seq > last_seq);
         let appendable = self.log_records < LOG_LIMIT && dir.join(DOC_FILE).is_file();
         let document = match self.persisted.as_ref().filter(|_| appendable) {
             Some(persisted) if self.doc.has_changes_since(persisted) => {
@@ -497,6 +533,8 @@ impl LiveProject {
                 batch: outgoing.batch,
                 version: outgoing.version.encode(),
             }),
+            skipped: self.skipped.clone(),
+            suspect: self.suspect.clone(),
         };
         let state = to_json(&state)?;
         let devices = if self.devices_dirty {
@@ -516,10 +554,33 @@ impl LiveProject {
             document,
             version: self.doc.version(),
             doc_replacements: self.doc_replacements,
-            state,
+            state: Some(state),
             devices,
             authors,
         })
+    }
+
+    // The document in memory can't be trusted after the engine panicked, so
+    // nothing of it is written. Only the changes to skip are added to the
+    // saved sync state, which still matches the document saved on disk.
+    fn damaged_save(&self, dir: &Path) -> PendingSave {
+        let state = std::fs::read(dir.join(STATE_FILE))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<StoredState>(&bytes).ok())
+            .and_then(|mut stored| {
+                stored.skipped.extend(self.skipped.iter().copied());
+                stored.suspect = self.suspect.clone();
+                to_json(&stored).ok()
+            });
+        PendingSave {
+            dir: dir.to_path_buf(),
+            document: SavedDocument::Unchanged,
+            version: VersionVector::new(),
+            doc_replacements: self.doc_replacements,
+            state,
+            devices: None,
+            authors: None,
+        }
     }
 
     pub fn end_save(
@@ -527,6 +588,9 @@ impl LiveProject {
         pending: PendingSave,
         written: Result<(), CollabError>,
     ) -> Result<(), CollabError> {
+        if self.damaged {
+            return written;
+        }
         if let Err(error) = written {
             self.devices_dirty |= pending.devices.is_some();
             self.authors_dirty |= pending.authors.is_some();
@@ -724,6 +788,9 @@ impl LiveProject {
         base_rev: u64,
         operation: TextOperation,
     ) -> Result<(), CollabError> {
+        if self.damaged {
+            return Ok(());
+        }
         if !self.can_edit() {
             self.reset_file(id)?;
             return Ok(());
@@ -753,6 +820,9 @@ impl LiveProject {
     }
 
     fn reset_file(&mut self, id: &str) -> Result<(), CollabError> {
+        if self.damaged {
+            return Ok(());
+        }
         let text = self.doc.text(id)?;
         if let Some(open) = self.open.get_mut(id) {
             let rev = open.channel.reset(text.clone());
@@ -905,7 +975,7 @@ impl LiveProject {
             .filter(|meta| meta.mode == EncodedBlobMode::Snapshot)
             .ok_or_else(|| CollabError::Corrupt("the server's snapshot does not load".to_owned()))?
             .partial_end_vv;
-        let imported = self.doc.import(snapshot)?;
+        let imported = self.import_contained(snapshot)?;
         self.confirmed = held;
         self.last_seq = seq;
         self.seen.clear();
@@ -947,10 +1017,20 @@ impl LiveProject {
     }
 
     pub fn import_arrivals(&mut self, arrivals: Vec<Arrival>) -> Result<usize, CollabError> {
+        if self.damaged {
+            return Err(crate::doc::engine_failed());
+        }
         let mut known = self.doc.version();
         let mut fresh: Vec<Received> = Vec::new();
+        let mut passed_over = 0;
         for arrival in arrivals {
             if self.is_repeated(arrival.seq, &fresh) {
+                continue;
+            }
+            if self.skipped.contains(&arrival.seq) {
+                self.mark_seen(arrival.seq);
+                self.received += 1;
+                passed_over += 1;
                 continue;
             }
             fresh.push(receive(arrival, &mut known));
@@ -966,16 +1046,34 @@ impl LiveProject {
             self.received += 1;
         }
         if fresh.is_empty() {
-            return Ok(known_already.len());
+            return Ok(known_already.len() + passed_over);
         }
-        let (imported, unreadable) = {
+        let attempt = {
             let payloads: Vec<&[u8]> = fresh
                 .iter()
                 .map(|received| received.arrival.payload.as_slice())
                 .collect();
-            match self.doc.import_keeping(&payloads) {
-                Ok(imported) => (imported, BTreeSet::new()),
-                Err(failure) => self.import_each(&payloads, failure.kept),
+            if fresh
+                .iter()
+                .any(|received| self.suspect.contains(&received.arrival.seq))
+            {
+                self.import_each(&fresh, &payloads, crate::doc::Imported::default())
+            } else {
+                let together = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    self.doc.import_keeping(&payloads)
+                }));
+                match together {
+                    Ok(Ok(imported)) => Ok((imported, BTreeSet::new())),
+                    Ok(Err(failure)) => self.import_each(&fresh, &payloads, failure.kept),
+                    Err(_) => Err(None),
+                }
+            }
+        };
+        let (imported, unreadable) = match attempt {
+            Ok(done) => done,
+            Err(culprit) => {
+                self.engine_panicked(&fresh, culprit);
+                return Err(crate::doc::engine_failed());
             }
         };
         let mut readable = Vec::with_capacity(fresh.len());
@@ -1012,28 +1110,83 @@ impl LiveProject {
                 self.deliver(imported.changes)?;
             }
         }
-        Ok(fresh.len() + known_already.len())
+        Ok(fresh.len() + known_already.len() + passed_over)
     }
 
     // A batch import stops at the first update it cannot read, after taking
     // in the others. Each one is tried again alone so the unreadable ones
-    // are found, skipped and reported, and the rest still count.
+    // are found, skipped and reported, and the rest still count. One the
+    // batch already took in fully is not imported again. A panic names the
+    // update that caused it.
     fn import_each(
         &mut self,
+        fresh: &[Received],
         payloads: &[&[u8]],
         mut kept: crate::doc::Imported,
-    ) -> (crate::doc::Imported, BTreeSet<usize>) {
+    ) -> Result<(crate::doc::Imported, BTreeSet<usize>), Option<usize>> {
         let mut unreadable = BTreeSet::new();
         for (index, payload) in payloads.iter().enumerate() {
-            match self.doc.import_keeping(&[*payload]) {
-                Ok(alone) => kept.absorb(alone),
-                Err(failure) => {
+            let taken = fresh[index]
+                .meta
+                .as_ref()
+                .is_some_and(|meta| self.doc.version().includes_vv(&meta.partial_end_vv));
+            if taken {
+                continue;
+            }
+            let alone = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                self.doc.import_keeping(&[*payload])
+            }));
+            match alone {
+                Ok(Ok(alone)) => kept.absorb(alone),
+                Ok(Err(failure)) => {
                     kept.absorb(failure.kept);
                     unreadable.insert(index);
                 }
+                Err(_) => return Err(Some(index)),
             }
         }
-        (kept, unreadable)
+        Ok((kept, unreadable))
+    }
+
+    // Loro panicked while it took in a change, so the document in memory
+    // may be broken and is never saved, sent or written to disk again. The
+    // change at fault is skipped from the next start on. When a whole batch
+    // panicked, its changes are taken in one at a time next time to find
+    // it. Until then a copy of the document as last saved stands in, so
+    // nothing that still reads the project trips over the broken one.
+    fn engine_panicked(&mut self, fresh: &[Received], culprit: Option<usize>) {
+        let culprit = culprit.or_else(|| (fresh.len() == 1).then_some(0));
+        match culprit.and_then(|index| fresh.get(index)) {
+            Some(received) => {
+                let seq = received.arrival.seq;
+                self.suspect.remove(&seq);
+                self.skipped.insert(seq);
+                self.unreadable.push((seq, received.arrival.device));
+            }
+            None => self
+                .suspect
+                .extend(fresh.iter().map(|received| received.arrival.seq)),
+        }
+        self.went_bad();
+    }
+
+    pub(crate) fn went_bad(&mut self) {
+        self.damaged = true;
+        self.disk = DiskWork::default();
+        let stand_in = self
+            .dir
+            .as_deref()
+            .and_then(saved_document)
+            .or_else(|| ProjectDoc::create().ok());
+        if let Some(stand_in) = stand_in {
+            // Dropping a document Loro panicked in can panic again, so it is
+            // left in memory.
+            std::mem::forget(std::mem::replace(&mut self.doc, stand_in));
+        }
+    }
+
+    pub fn damaged(&self) -> bool {
+        self.damaged
     }
 
     pub fn take_unreadable(&mut self) -> Vec<(u64, Option<DeviceId>)> {
@@ -1069,11 +1222,25 @@ impl LiveProject {
         self.mark_seen(seq);
     }
 
+    // A snapshot from the server goes into the document like any change,
+    // so a panic there leaves the project damaged the same way.
+    fn import_contained(&mut self, bytes: &[u8]) -> Result<crate::doc::Imported, CollabError> {
+        if self.damaged {
+            return Err(crate::doc::engine_failed());
+        }
+        let taken =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.doc.import(bytes)));
+        taken.unwrap_or_else(|_| {
+            self.went_bad();
+            Err(crate::doc::engine_failed())
+        })
+    }
+
     pub fn import_snapshot(&mut self, seq: u64, snapshot: &[u8]) -> Result<(), CollabError> {
         let held = LoroDoc::decode_import_blob_meta(snapshot, true)
             .ok()
             .map(|meta| meta.partial_end_vv);
-        let imported = self.doc.import(snapshot)?;
+        let imported = self.import_contained(snapshot)?;
         advance(&mut self.confirmed, &imported.arrived);
         // Own changes in the server's snapshot are held there too, even the
         // ones this copy already had, so they are not sent again.
@@ -1277,6 +1444,9 @@ impl LiveProject {
     }
 
     pub fn local_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        if self.damaged {
+            return Ok(false);
+        }
         let before = self.own_counter();
         let changes = self.doc.set_text(id, content)?;
         self.note_offline(id, before);
@@ -1290,7 +1460,7 @@ impl LiveProject {
         id: &str,
         operation: &TextOperation,
     ) -> Result<bool, CollabError> {
-        if operation.is_noop() {
+        if operation.is_noop() || self.damaged {
             return Ok(false);
         }
         let before = self.own_counter();
@@ -1313,6 +1483,9 @@ impl LiveProject {
     }
 
     pub fn next_outgoing(&mut self) -> Result<Option<Outgoing>, CollabError> {
+        if self.damaged {
+            return Ok(None);
+        }
         if let Some(outgoing) = self.outgoing.as_mut() {
             if outgoing.sent {
                 return Ok(None);
@@ -1520,10 +1693,17 @@ impl LiveProject {
     }
 
     pub fn sendable_now(&self) -> bool {
-        self.outgoing.is_none() && !self.unsendable && self.can_edit() && !self.unsent().is_empty()
+        self.outgoing.is_none()
+            && !self.unsendable
+            && !self.damaged
+            && self.can_edit()
+            && !self.unsent().is_empty()
     }
 
     pub fn mark_all_dirty(&mut self) -> Result<(), CollabError> {
+        if self.damaged {
+            return Ok(());
+        }
         self.disk.tree = true;
         for node in self.doc.nodes()? {
             if node.kind == crate::doc::NodeKind::Text {
@@ -1534,11 +1714,19 @@ impl LiveProject {
     }
 
     pub fn mark_dirty(&mut self, id: &str) {
-        self.disk.texts.insert(id.to_owned());
+        if !self.damaged {
+            self.disk.texts.insert(id.to_owned());
+        }
     }
 
+    // A damaged project writes nothing to disk: its stand-in document is
+    // older than the files there.
     pub fn take_disk_work(&mut self) -> DiskWork {
-        std::mem::take(&mut self.disk)
+        let work = std::mem::take(&mut self.disk);
+        if self.damaged {
+            return DiskWork::default();
+        }
+        work
     }
 
     pub fn comment_doc(&mut self) -> &mut ProjectDoc {
@@ -2227,6 +2415,120 @@ mod tests {
         live.local_operation(id, &operation).unwrap();
     }
 
+    fn sent_change(live: &mut LiveProject, id: &str, text: &str, seq: u64) -> Vec<u8> {
+        type_at_end(live, id, text);
+        let outgoing = live.next_outgoing().unwrap().unwrap();
+        live.acknowledged(outgoing.batch, seq);
+        outgoing.payload
+    }
+
+    fn from_device(device: DeviceId) -> impl Fn(u64, &[u8]) -> Arrival {
+        move |seq, payload| Arrival {
+            seq,
+            payload: payload.to_vec(),
+            device: Some(device),
+            author: None,
+        }
+    }
+
+    fn saved_and_loaded(live: &mut LiveProject) -> (tempfile::TempDir, LiveProject) {
+        let dir = tempfile::tempdir().unwrap();
+        live.save(dir.path()).unwrap();
+        let loaded = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        (dir, loaded)
+    }
+
+    #[test]
+    fn a_change_the_engine_panics_on_leaves_the_project_untouched_and_is_skipped_after_a_restart() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let bad = sent_change(&mut alice, &main, " boom", 1);
+        panic_on(&bad, At::Document);
+        assert!(bob.import_arrivals(vec![arrival(1, &bad)]).is_err());
+        assert!(bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+        assert_eq!(bob.doc().text(&main).unwrap(), "abc");
+        type_at_end(&mut bob, &main, " typed after");
+        bob.mark_dirty(&main);
+        assert!(bob.take_disk_work().is_empty());
+        assert!(bob.next_outgoing().unwrap().is_none());
+        assert!(bob.import_arrivals(vec![arrival(2, &bad)]).is_err());
+        let saved = std::fs::read(dir.path().join(DOC_FILE)).unwrap();
+        bob.save(dir.path()).unwrap();
+        assert_eq!(std::fs::read(dir.path().join(DOC_FILE)).unwrap(), saved);
+        let mut restarted = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(
+            restarted.import_arrivals(vec![arrival(1, &bad)]).unwrap(),
+            1
+        );
+        assert!(!restarted.damaged());
+        assert_eq!(restarted.last_seq(), 1);
+        assert_eq!(restarted.doc().text(&main).unwrap(), "abc");
+        restarted.save(dir.path()).unwrap();
+        let again = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(again.skipped.is_empty());
+    }
+
+    #[test]
+    fn when_a_batch_panics_its_changes_are_taken_in_alone_to_find_the_one_at_fault() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        let mut carol = LiveProject::new(
+            ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        let (dir, mut bob) = saved_and_loaded(&mut bob);
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let first = sent_change(&mut alice, &main, " one", 1);
+        let bad = sent_change(&mut carol, &main, " bad", 2);
+        let last = sent_change(&mut alice, &main, " two", 3);
+        panic_on(&bad, At::Document);
+        let batch = || vec![arrival(1, &first), arrival(2, &bad), arrival(3, &last)];
+        assert!(bob.import_arrivals(batch()).is_err());
+        assert!(bob.take_unreadable().is_empty());
+        bob.save(dir.path()).unwrap();
+        let mut second = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert!(second.import_arrivals(batch()).is_err());
+        assert_eq!(second.take_unreadable(), vec![(2, Some(device))]);
+        second.save(dir.path()).unwrap();
+        let mut third = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        assert_eq!(third.import_arrivals(batch()).unwrap(), 3);
+        assert!(!third.damaged());
+        assert_eq!(third.last_seq(), 3);
+        assert_eq!(third.doc().text(&main).unwrap(), "abc one two");
+    }
+
+    #[test]
+    fn a_large_change_the_engine_panics_on_in_its_scratch_copy_is_skipped_and_syncing_goes_on() {
+        use crate::doc::failpoint::{panic_on, At};
+        let (mut bob, mut alice, main) = pair();
+        let mut carol = LiveProject::new(
+            ProjectDoc::load(&bob.doc().snapshot().unwrap()).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        type_at_end(&mut bob, &main, " mine");
+        let device = DeviceId::new_v7();
+        let arrival = from_device(device);
+        let large = sent_change(&mut alice, &main, &noise(120_000, 7), 1);
+        assert!(large.len() >= 64 * 1024, "{}", large.len());
+        let small = sent_change(&mut carol, &main, " carol", 2);
+        panic_on(&large, At::Scratch);
+        let taken = bob
+            .import_arrivals(vec![arrival(1, &large), arrival(2, &small)])
+            .unwrap();
+        assert_eq!(taken, 1);
+        assert!(!bob.damaged());
+        assert_eq!(bob.take_unreadable(), vec![(1, Some(device))]);
+        assert_eq!(bob.last_seq(), 2);
+        assert!(bob.doc().text(&main).unwrap().contains(" carol"));
+    }
+
     #[test]
     fn a_comment_refused_while_a_save_is_being_written_does_not_come_back_from_disk() {
         let (_bob, mut alice, main) = pair();
@@ -2507,6 +2809,8 @@ mod tests {
             offline_edits: HashMap::new(),
             catch_up: None,
             outgoing: None,
+            skipped: BTreeSet::new(),
+            suspect: BTreeSet::new(),
         };
         std::fs::write(dir.path().join(STATE_FILE), to_json(&state).unwrap()).unwrap();
         let mut lost = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
