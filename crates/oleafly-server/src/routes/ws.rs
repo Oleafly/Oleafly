@@ -75,7 +75,7 @@ async fn upgrade(
         Ok(caller) => caller,
         Err(error) => return error.into_response(),
     };
-    let Some(slot) = state.sockets.open_slot(caller.account_id) else {
+    let Some(slot) = state.sockets.open_slot(caller.account_id, caller.device_id) else {
         tracing::info!(
             account = %caller.account_id,
             "refused a connection over the open connection limit"
