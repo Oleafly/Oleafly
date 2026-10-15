@@ -93,7 +93,7 @@ Moving from an online LaTeX editor? Sign in to your account once from Oleafly, p
 With a Git token from that account, Oleafly can keep an imported project in sync both ways, so coauthors who stay online keep working the way they do now. Two-way sync uses the service's own Git integration, which needs a paid or university plan on the project owner's account.
 
 <p align="center">
-  <img src="docs/assets/readme/import-online.png" alt="Oleafly import picker listing projects from an online LaTeX account, with several selected" width="100%" />
+  <img src="docs/assets/readme/import-online.png" alt="Oleafly Import a project dialog with options for local files, arXiv, GitHub and an online LaTeX account" width="100%" />
 </p>
 
 You can also start from a project ZIP, a GitHub repository, a Word document, an arXiv source bundle, or a PDF that Oleafly rebuilds as editable LaTeX. Or open a folder where it already is.
