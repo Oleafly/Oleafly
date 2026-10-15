@@ -15,6 +15,6 @@
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@oleafly/preview": "workspace:*",
-    "pdfjs-dist": "6.3.289"
+    "pdfjs-dist": "6.4.299"
   }
 }
