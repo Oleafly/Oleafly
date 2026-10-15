@@ -41,6 +41,19 @@ fn io(error: impl std::fmt::Display) -> CollabError {
     CollabError::Io(error.to_string())
 }
 
+pub(crate) async fn cancellable<T>(
+    ticket: &JoinTicket<'_>,
+    work: impl std::future::Future<Output = Result<T, CollabError>>,
+) -> Result<T, CollabError> {
+    if ticket.is_cancelled() {
+        return Err(cancelled());
+    }
+    tokio::select! {
+        done = work => done,
+        () = ticket.until_cancelled() => Err(cancelled()),
+    }
+}
+
 pub(crate) fn download_dir(paths: &CollabPaths, shared: SharedProjectId) -> PathBuf {
     paths.root().join(DOWNLOADS).join(shared.to_string())
 }
@@ -78,11 +91,7 @@ impl Downloads<'_> {
         &self,
         work: impl std::future::Future<Output = Result<T, CollabError>>,
     ) -> Result<T, CollabError> {
-        self.check()?;
-        tokio::select! {
-            done = work => done,
-            () = self.ticket.until_cancelled() => Err(cancelled()),
-        }
+        cancellable(self.ticket, work).await
     }
 
     pub(crate) async fn fetch(

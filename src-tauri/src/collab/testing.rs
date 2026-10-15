@@ -179,6 +179,8 @@ pub(crate) struct Relay {
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
     refused: std::sync::Arc<Mutex<Option<String>>>,
     refusals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    stalled: std::sync::Arc<Mutex<Option<String>>>,
+    stalls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     accepted: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
@@ -195,8 +197,11 @@ impl Relay {
         let seen = Arc::new(Mutex::new(Vec::new()));
         let refused: Arc<Mutex<Option<String>>> = Arc::default();
         let refusals = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let stalled: Arc<Mutex<Option<String>>> = Arc::default();
+        let stalls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let (gate, log) = (Arc::clone(&down), Arc::clone(&seen));
         let (refusing, counted) = (Arc::clone(&refused), Arc::clone(&refusals));
+        let (stalling, held) = (Arc::clone(&stalled), Arc::clone(&stalls));
         let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let connected = Arc::clone(&accepted);
         tokio::spawn(async move {
@@ -207,6 +212,7 @@ impl Relay {
                 connected.fetch_add(1, Ordering::SeqCst);
                 let (gate, log, upstream) = (Arc::clone(&gate), Arc::clone(&log), upstream.clone());
                 let (refusing, counted) = (Arc::clone(&refusing), Arc::clone(&counted));
+                let (stalling, held) = (Arc::clone(&stalling), Arc::clone(&held));
                 tokio::spawn(async move {
                     let Ok(server) = tokio::net::TcpStream::connect(upstream).await else {
                         return;
@@ -229,6 +235,15 @@ impl Relay {
                             if refuse {
                                 counted.fetch_add(1, Ordering::SeqCst);
                                 break;
+                            }
+                            let stall = stalling
+                                .lock()
+                                .unwrap_or_else(PoisonError::into_inner)
+                                .as_ref()
+                                .is_some_and(|needle| chunk.contains(needle.as_str()));
+                            if stall {
+                                held.fetch_add(1, Ordering::SeqCst);
+                                std::future::pending::<()>().await;
                             }
                             log.lock()
                                 .unwrap_or_else(PoisonError::into_inner)
@@ -261,6 +276,8 @@ impl Relay {
             seen,
             refused,
             refusals,
+            stalled,
+            stalls,
             accepted,
         }
     }
@@ -275,6 +292,14 @@ impl Relay {
 
     pub(crate) fn refusals(&self) -> usize {
         self.refusals.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    pub(crate) fn stall(&self, needle: Option<&str>) {
+        *self.stalled.lock().unwrap_or_else(PoisonError::into_inner) = needle.map(str::to_owned);
+    }
+
+    pub(crate) fn stalls(&self) -> usize {
+        self.stalls.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     pub(crate) fn set_down(&self, down: bool) {

@@ -613,9 +613,12 @@ async fn join_into(
     refuse_synced_library(crate::folder_status::library_sync_service())?;
     let paths = state.paths()?;
     let entry = known(state, server)?;
-    let summary = authed(state, host, server, |client, access| {
-        Box::pin(async move { client.project(access, shared).await })
-    })
+    let summary = super::joining::cancellable(
+        ticket,
+        authed(state, host, server, |client, access| {
+            Box::pin(async move { client.project(access, shared).await })
+        }),
+    )
     .await?;
     let client = client_for(&entry)?;
     let keys = state.keys().await?;
@@ -687,6 +690,7 @@ async fn join_into(
     downloads.fetch(&blobs, &report).await?;
     staged.meta.name = summary.title.clone();
     let settings_base = super::settings::joined(&doc, &mut staged.meta)?;
+    downloads.check()?;
     let source = download.to_path_buf();
     let local_id = tauri::async_runtime::spawn_blocking(move || {
         crate::project::create_library_project_with(|local_id, staging| {
@@ -702,10 +706,12 @@ async fn join_into(
         if let Some(listed) = verified.listed {
             live.pin_devices(listed);
         }
-        let peers = with_access(sessions, server, &client, |client, access| {
-            Box::pin(async move { client.project_peers(access, shared).await })
-        })
-        .await;
+        let peers = downloads
+            .guarded(with_access(sessions, server, &client, |client, access| {
+                Box::pin(async move { client.project_peers(access, shared).await })
+            }))
+            .await;
+        downloads.check()?;
         admit_writers(&mut live, peers);
         live.save(&paths.document_dir(&local_id)?)?;
         DiskState { layout, hashes }.save(&paths.materializer_index_file(&local_id)?)?;
@@ -713,6 +719,7 @@ async fn join_into(
             &super::settings::base_file(paths, &local_id)?,
             &settings_base,
         )?;
+        downloads.check()?;
         save_binding(
             paths,
             &local_id,
@@ -1412,6 +1419,44 @@ mod transfer_tests {
         assert!(local_bindings(joiner.member.paths().unwrap()).is_empty());
         let local_id = joiner.join(&quiet).await.unwrap();
         assert!(crate::paths::project_dir(&local_id).unwrap().is_dir());
+    }
+
+    async fn cancelled_once_stalled(joiner: &Joiner, needle: &str) -> Result<String, CollabError> {
+        joiner.relay.stall(Some(needle));
+        let cancel = async {
+            while joiner.relay.stalls() == 0 {
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+            super::super::joining::cancel_join(&joiner.member, joiner.server, joiner.shared);
+        };
+        let both = async { tokio::join!(joiner.join(&quiet), cancel) };
+        tokio::time::timeout(std::time::Duration::from_secs(15), both)
+            .await
+            .expect("the join stopped once it was cancelled")
+            .0
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_join_cancelled_while_the_server_is_slow_to_answer_stops_at_once() {
+        let joiner = Joiner::start().await;
+        let before = library_projects();
+        let first = format!("GET /api/v1/projects/{} HTTP", joiner.shared);
+        let joined = cancelled_once_stalled(&joiner, &first).await;
+        assert_eq!(code(&joined), Some("cancelled"));
+        assert_eq!(library_projects(), before);
+        assert!(local_bindings(joiner.member.paths().unwrap()).is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_join_cancelled_after_its_downloads_takes_the_new_project_back() {
+        let joiner = Joiner::start().await;
+        let before = library_projects();
+        let peers = format!("/api/v1/projects/{}/peers HTTP", joiner.shared);
+        let joined = cancelled_once_stalled(&joiner, &peers).await;
+        assert_eq!(code(&joined), Some("cancelled"));
+        assert_eq!(library_projects(), before);
+        assert!(local_bindings(joiner.member.paths().unwrap()).is_empty());
+        assert!(!joiner.download().exists());
     }
 
     #[cfg(unix)]
