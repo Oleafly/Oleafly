@@ -16,6 +16,7 @@ describe("packaged evaluated imports", () => {
       "75-skills.spec.ts",
       "86-ad-hoc-converters.spec.ts",
       "100-workspace-layout.spec.ts",
+      "109-live-collaboration-peer.spec.ts",
     ]) {
       const source = readFileSync(resolve("e2e/tests", name), "utf8");
       expect(source).not.toMatch(/import\(\s*'\/(?:src|packages)\//g);

@@ -110,7 +110,7 @@ function projectIdExpression(): string {
 
 async function bridge<T>(page: Page, call: string): Promise<T> {
   return page.evaluate<T>(
-    `import("/src/lib/tauri.ts").then((tauri) => { const projectId = ${projectIdExpression()}; return ${call}; })`,
+    `import("/src/lib/tauri-collab.ts").then((tauri) => { const projectId = ${projectIdExpression()}; return ${call}; })`,
   );
 }
 
@@ -223,7 +223,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
     await test.step("the owner creates a project and signs in to the server", async () => {
       await createBlankProject(page, project);
       await page.evaluate(
-        `import("/src/lib/tauri.ts").then(async ({ collabServersList, collabServerRemove }) => {
+        `import("/src/lib/tauri-collab.ts").then(async ({ collabServersList, collabServerRemove }) => {
           for (const server of await collabServersList()) {
             if (server.url !== ${scriptValue(ready.server)}) await collabServerRemove(server.server_id);
           }
@@ -242,7 +242,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await clickButton(page, '[role="dialog"]', "Continue with GitHub");
       await waitLong(
         page,
-        `import("/src/lib/tauri.ts").then(({ collabServersList }) => collabServersList()).then((servers) =>
+        `import("/src/lib/tauri-collab.ts").then(({ collabServersList }) => collabServersList()).then((servers) =>
           servers.some((server) => server.signed_in && server.account?.display_name === ${scriptValue(ready.owner)}))`,
         60_000,
       );
@@ -257,7 +257,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await page.click('[data-toolbar-item="share"] button');
       await page.waitForFunction(`!!document.querySelector(${scriptValue(SHARE_DIALOG)})`, 20_000);
       await clickButton(page, SHARE_DIALOG, "Share", 60_000);
-      await waitLong(page, `import("/src/lib/tauri.ts").then((tauri) => tauri.collabShareInfo(${projectIdExpression()})).then((share) => !!share)`, 60_000);
+      await waitLong(page, `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabShareInfo(${projectIdExpression()})).then((share) => !!share)`, 60_000);
       await waitLong(
         page,
         `(() => {
@@ -271,7 +271,7 @@ test("one app and a headless peer share, edit together, merge after time away, a
       await chooseAppSelectOption(page, LINK_ROLE, { attribute: "data-label", value: "Editor" });
       await waitLong(
         page,
-        `import("/src/lib/tauri.ts").then((tauri) => tauri.collabProjectSummary(${projectIdExpression()})).then((summary) => summary.link_sharing && summary.link_role === "editor")`,
+        `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabProjectSummary(${projectIdExpression()})).then((summary) => summary.link_sharing && summary.link_role === "editor")`,
         30_000,
       );
       link = await bridge<string>(page, `tauri.collabShareInfo(projectId).then((share) => share?.link ?? "")`);

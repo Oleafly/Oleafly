@@ -68,6 +68,7 @@ for path in \
   src/components/collab/CollabSlots.tsx \
   src/lib/collab-live-bridge.ts \
   src/lib/tauri.ts \
+  src/lib/tauri-collab.ts \
   packages/editor/src/collaboration.ts \
   packages/editor/src/document-session.ts \
   src/components/editor/cm/collab-slot.ts \
