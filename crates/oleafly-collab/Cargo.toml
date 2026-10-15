@@ -13,7 +13,7 @@ httpdate = "1"
 hyper-util = { version = "0.1.20", default-features = false, features = ["client-proxy", "client-proxy-system"] }
 loro = "=1.16.2"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
 ring = "0.17"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-native-certs = "0.8"

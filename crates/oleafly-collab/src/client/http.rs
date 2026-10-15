@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use ::url::Url;
@@ -468,14 +469,26 @@ impl ServerClient {
         hash: &str,
         bytes: Vec<u8>,
     ) -> Result<(), CollabError> {
-        empty(
-            self.http
-                .put(self.project_url(project, &["blobs", hash]))
-                .bearer_auth(access)
-                .timeout(transfer_timeout(bytes.len() as u64))
-                .body(bytes),
-        )
-        .await
+        self.put_blob_with(access, project, hash, bytes, None).await
+    }
+
+    // `progress` hears the bytes sent so far and the total as the upload
+    // goes.
+    pub async fn put_blob_with(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        hash: &str,
+        bytes: Vec<u8>,
+        progress: Option<TransferProgress>,
+    ) -> Result<(), CollabError> {
+        let request = self
+            .http
+            .put(self.project_url(project, &["blobs", hash]))
+            .bearer_auth(access);
+        upload(request, bytes, progress, STALLED_AFTER)
+            .await
+            .map(|_| ())
     }
 
     pub async fn get_blob(
@@ -484,13 +497,28 @@ impl ServerClient {
         project: SharedProjectId,
         hash: &str,
     ) -> Result<Vec<u8>, CollabError> {
-        download(
-            self.http
-                .get(self.project_url(project, &["blobs", hash]))
-                .bearer_auth(access),
-        )
-        .await
-        .map(|(_, body)| body)
+        self.get_blob_with(access, project, hash, None).await
+    }
+
+    // `progress` hears the bytes received so far and the total the server
+    // gave, 0 when it gave none, as the download goes.
+    pub async fn get_blob_with(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        hash: &str,
+        progress: Option<TransferProgress>,
+    ) -> Result<Vec<u8>, CollabError> {
+        let request = self
+            .http
+            .get(self.project_url(project, &["blobs", hash]))
+            .bearer_auth(access);
+        let sent = tokio::time::timeout(STALLED_AFTER, request.timeout(NO_DEADLINE).send())
+            .await
+            .map_err(|_| CollabError::Network("the server did not start the transfer".to_string()))?
+            .map_err(network_error)?;
+        let response = check_status(sent).await?;
+        read_steadily_with(response, STALLED_AFTER, progress.as_deref()).await
     }
 
     pub async fn put_snapshot(
@@ -908,13 +936,21 @@ async fn download(
 }
 
 pub(crate) async fn read_steadily(
-    mut response: Response,
+    response: Response,
     stalled_after: Duration,
 ) -> Result<Vec<u8>, CollabError> {
-    let expected = response
-        .content_length()
-        .unwrap_or(0)
-        .min(LARGEST_PREALLOCATION);
+    read_steadily_with(response, stalled_after, None).await
+}
+
+pub type TransferProgress = Arc<dyn Fn(u64, u64) + Send + Sync>;
+
+async fn read_steadily_with(
+    mut response: Response,
+    stalled_after: Duration,
+    progress: Option<&(dyn Fn(u64, u64) + Send + Sync)>,
+) -> Result<Vec<u8>, CollabError> {
+    let total = response.content_length().unwrap_or(0);
+    let expected = total.min(LARGEST_PREALLOCATION);
     let mut body = Vec::with_capacity(usize::try_from(expected).unwrap_or(0));
     loop {
         let chunk = tokio::time::timeout(stalled_after, response.chunk())
@@ -925,6 +961,66 @@ pub(crate) async fn read_steadily(
             return Ok(body);
         };
         body.extend_from_slice(&chunk);
+        if let Some(progress) = progress {
+            progress(body.len() as u64, total);
+        }
+    }
+}
+
+const UPLOAD_PIECE: usize = 64 * 1024;
+
+// An upload goes up in pieces. Like a download it has no deadline: it
+// fails when no piece has gone up, and no answer has come, for
+// `stalled_after`, so a large figure on a slow link finishes however long
+// it takes while it keeps moving.
+async fn upload(
+    request: RequestBuilder,
+    bytes: Vec<u8>,
+    progress: Option<TransferProgress>,
+    stalled_after: Duration,
+) -> Result<Response, CollabError> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    let started = std::time::Instant::now();
+    let since_start = move || u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+    let moved = Arc::new(AtomicU64::new(0));
+    let total = bytes.len() as u64;
+    let pieces = {
+        let moved = Arc::clone(&moved);
+        futures_util::stream::unfold((bytes, 0usize), move |(bytes, at)| {
+            let moved = Arc::clone(&moved);
+            let progress = progress.clone();
+            async move {
+                if at >= bytes.len() {
+                    return None;
+                }
+                let end = (at + UPLOAD_PIECE).min(bytes.len());
+                let piece = bytes[at..end].to_vec();
+                moved.store(since_start(), Ordering::Relaxed);
+                if let Some(progress) = &progress {
+                    progress(end as u64, total);
+                }
+                Some((Ok::<_, std::io::Error>(piece), (bytes, end)))
+            }
+        })
+    };
+    let sending = request
+        .timeout(NO_DEADLINE)
+        .header(reqwest::header::CONTENT_LENGTH, total)
+        .body(reqwest::Body::wrap_stream(pieces))
+        .send();
+    let stalled = async {
+        let every = stalled_after.min(Duration::from_secs(1));
+        loop {
+            tokio::time::sleep(every).await;
+            let idle = since_start().saturating_sub(moved.load(Ordering::Relaxed));
+            if Duration::from_millis(idle) >= stalled_after {
+                return;
+            }
+        }
+    };
+    tokio::select! {
+        sent = sending => check_status(sent.map_err(network_error)?).await,
+        () = stalled => Err(CollabError::Network("the upload stopped moving".to_string())),
     }
 }
 
@@ -1088,6 +1184,116 @@ mod tests {
         let other = ServerClient::new(failing).expect("client");
         assert!(other.capabilities().await.is_err());
         assert_eq!(other.asked_wait(), None);
+    }
+
+    #[tokio::test]
+    async fn a_figure_sent_in_pieces_is_stored_by_the_server_and_comes_back_whole() {
+        let (_server, client, admin, _member) = admin_and_member().await;
+        let access = &admin.access_token;
+        let project = client
+            .create_project(access, "Figures")
+            .await
+            .expect("project")
+            .project_id;
+        let figure: Vec<u8> = (0..300 * 1024).map(|at| (at % 253) as u8).collect();
+        let digest = ring::digest::digest(&ring::digest::SHA256, &figure);
+        let hash: String = digest
+            .as_ref()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        client
+            .put_blob(access, project, &hash, figure.clone())
+            .await
+            .expect("stored");
+        assert_eq!(
+            client
+                .get_blob(access, project, &hash)
+                .await
+                .expect("fetched"),
+            figure
+        );
+    }
+
+    #[tokio::test]
+    async fn an_upload_that_stops_moving_fails_instead_of_waiting_forever() {
+        use tokio::io::AsyncReadExt;
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("address").port();
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let mut buffer = [0u8; 4096];
+                let _ = stream.read(&mut buffer).await;
+                held.push(stream);
+            }
+        });
+        let url = crate::ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("url");
+        let client = ServerClient::new(url).expect("client");
+        let request = client.http().put(client.url().endpoint("blobs/stuck"));
+        let started = std::time::Instant::now();
+        let sent = upload(
+            request,
+            vec![7u8; 48 * 1024 * 1024],
+            None,
+            Duration::from_millis(300),
+        )
+        .await;
+        assert!(
+            matches!(sent, Err(CollabError::Network(ref message)) if message.contains("stopped moving")),
+            "{sent:?}"
+        );
+        assert!(started.elapsed() < Duration::from_secs(20));
+    }
+
+    #[tokio::test]
+    async fn figure_transfers_say_how_far_they_got() {
+        use crate::client::test_util::routed;
+        let project = SharedProjectId::new_v7();
+        let figure: Vec<u8> = (0..150 * 1024).map(|at| (at % 251) as u8).collect();
+        let path = format!("/api/v1/projects/{project}/blobs/h1");
+        let answer = http_response(
+            "200 OK",
+            &[("Content-Type", "application/octet-stream")],
+            &String::from_utf8_lossy(&figure),
+        );
+        let stored = http_response("204 No Content", &[], "");
+        let leaked: &'static str = Box::leak(path.into_boxed_str());
+        let (url, heard) = routed(move |_| vec![(leaked, vec![stored, answer])]).await;
+        let client = ServerClient::new(url).expect("client");
+        let seen: Arc<std::sync::Mutex<Vec<(u64, u64)>>> = Arc::default();
+        let hearing = Arc::clone(&seen);
+        let progress: TransferProgress = Arc::new(move |done, total| {
+            hearing.lock().expect("seen").push((done, total));
+        });
+        let upload_bytes = vec![3u8; 200 * 1024];
+        client
+            .put_blob_with(
+                "access",
+                project,
+                "h1",
+                upload_bytes,
+                Some(Arc::clone(&progress)),
+            )
+            .await
+            .expect("stored");
+        let uploaded = std::mem::take(&mut *seen.lock().expect("seen"));
+        assert!(uploaded.len() > 1, "{uploaded:?}");
+        assert!(uploaded.windows(2).all(|pair| pair[0].0 < pair[1].0));
+        assert_eq!(uploaded.last(), Some(&(200 * 1024, 200 * 1024)));
+        assert!(
+            heard.lock().expect("heard")[0].contains(&format!("content-length: {}", 200 * 1024))
+                || heard.lock().expect("heard")[0]
+                    .contains(&format!("Content-Length: {}", 200 * 1024))
+        );
+        let downloaded = client
+            .get_blob_with("access", project, "h1", Some(progress))
+            .await
+            .expect("fetched");
+        let total = downloaded.len() as u64;
+        assert_eq!(seen.lock().expect("seen").last(), Some(&(total, total)));
     }
 
     async fn admin_and_member() -> (TestServer, ServerClient, SeededMember, SeededMember) {
