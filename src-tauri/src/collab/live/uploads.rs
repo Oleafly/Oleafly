@@ -386,6 +386,9 @@ impl Active {
             self.host.uploads(payload);
         }
         if let Some((wait, token, active)) = timer {
+            // A server that asked with Retry-After to be left alone for a
+            // while gets at least that long before the next try.
+            let wait = wait.max(self.link.client.asked_wait().unwrap_or_default());
             let key = self.upload_key();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(wait).await;
