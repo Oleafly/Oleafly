@@ -290,13 +290,24 @@ fn interleaved(addresses: Vec<SocketAddr>) -> Vec<SocketAddr> {
 // the next one starts at once when an attempt fails, so an address with no
 // route doesn't cost its whole slot.
 async fn race(addresses: Vec<SocketAddr>) -> std::io::Result<TcpStream> {
+    race_with(addresses, TcpStream::connect).await
+}
+
+async fn race_with<Connect, Connecting, Stream>(
+    addresses: Vec<SocketAddr>,
+    connect: Connect,
+) -> std::io::Result<Stream>
+where
+    Connect: Fn(SocketAddr) -> Connecting,
+    Connecting: std::future::Future<Output = std::io::Result<Stream>>,
+{
     let mut waiting = interleaved(addresses).into_iter();
     let mut trying = futures_util::stream::FuturesUnordered::new();
     let mut failed = None;
     loop {
         if trying.is_empty() {
             match waiting.next() {
-                Some(address) => trying.push(TcpStream::connect(address)),
+                Some(address) => trying.push(connect(address)),
                 None => {
                     return Err(failed.unwrap_or_else(|| {
                         std::io::Error::other("the server's address did not resolve")
@@ -310,14 +321,14 @@ async fn race(addresses: Vec<SocketAddr>) -> std::io::Result<TcpStream> {
                 Some(Err(error)) => {
                     failed = Some(error);
                     if let Some(address) = waiting.next() {
-                        trying.push(TcpStream::connect(address));
+                        trying.push(connect(address));
                     }
                 }
                 None => {}
             },
             () = tokio::time::sleep(NEXT_ADDRESS_AFTER), if !waiting.as_slice().is_empty() => {
                 if let Some(address) = waiting.next() {
-                    trying.push(TcpStream::connect(address));
+                    trying.push(connect(address));
                 }
             }
         }
@@ -769,7 +780,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn an_address_that_turns_the_connection_away_lets_the_next_one_start_at_once() {
+    async fn an_address_that_turns_the_connection_away_is_passed_over_for_the_next() {
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
             .await
             .expect("bind");
@@ -779,18 +790,53 @@ mod tests {
             .expect("bind");
         let refusing = closed.local_addr().expect("address");
         drop(closed);
-        let started = tokio::time::Instant::now();
         let stream = race(vec![refusing, working])
             .await
             .expect("the working address answered");
         assert_eq!(stream.peer_addr().expect("peer"), working);
-        assert!(
-            started.elapsed() < NEXT_ADDRESS_AFTER,
-            "{:?}",
-            started.elapsed()
-        );
         assert!(race(vec![refusing]).await.is_err());
         assert!(race(Vec::new()).await.is_err());
+    }
+
+    // How fast a refused connect comes back depends on the system: Windows
+    // tries a refused loopback port again for about a second. So the
+    // attempts here fail when the test says, and the clock starts when the
+    // first one fails.
+    #[tokio::test]
+    async fn an_address_that_turns_the_connection_away_lets_the_next_one_start_at_once() {
+        type Moment = Arc<std::sync::Mutex<Option<std::time::Instant>>>;
+        let refusing: SocketAddr = "192.0.2.1:443".parse().expect("address");
+        let working: SocketAddr = "192.0.2.2:443".parse().expect("address");
+        let (failed, started): (Moment, Moment) = (Arc::default(), Arc::default());
+        let (failing, starting) = (Arc::clone(&failed), Arc::clone(&started));
+        let reached = race_with(vec![refusing, working], move |address| {
+            let (failing, starting) = (Arc::clone(&failing), Arc::clone(&starting));
+            async move {
+                let now = Some(std::time::Instant::now());
+                if address == refusing {
+                    *failing.lock().expect("failed") = now;
+                    return Err(std::io::Error::from(std::io::ErrorKind::ConnectionRefused));
+                }
+                *starting.lock().expect("started") = now;
+                Ok(address)
+            }
+        })
+        .await
+        .expect("the next address answered");
+        assert_eq!(reached, working);
+        let failed = failed
+            .lock()
+            .expect("failed")
+            .expect("the first one failed");
+        let started = started
+            .lock()
+            .expect("started")
+            .expect("the next one started");
+        let gap = started.duration_since(failed);
+        assert!(
+            gap < NEXT_ADDRESS_AFTER,
+            "the next one started {gap:?} after"
+        );
     }
 
     async fn connect_proxy(
