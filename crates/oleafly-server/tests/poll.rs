@@ -1031,6 +1031,43 @@ async fn a_large_post_waits_for_room_in_the_transfer_budget_before_it_is_read() 
 }
 
 #[tokio::test]
+async fn a_leave_over_a_new_long_poll_clears_a_cursor_a_socket_of_the_device_showed() {
+    let stage = stage().await;
+    quick(&stage);
+    let project = shared_with_alice(&stage, ProjectRole::Editor).await;
+    let mut bob = connect(&stage.server, &stage.bob).await;
+    subscribe(&mut bob, project, 0).await;
+    let mut socket = connect(&stage.server, &stage.alice).await;
+    subscribe(&mut socket, project, 0).await;
+    send_frame(
+        &mut socket,
+        &ClientFrame::Presence {
+            project_id: project,
+            state: here(1),
+        },
+    )
+    .await;
+    assert!(matches!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::Presence { .. })
+    ));
+    let alice = opened(&stage.server, &stage.alice, project).await;
+    assert!(alice
+        .post(vec![ClientFrame::PresenceLeave {
+            project_id: project
+        }])
+        .await
+        .is_empty());
+    assert_eq!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::PresenceLeft {
+            project_id: project,
+            device_id: stage.alice.tokens.device_id
+        })
+    );
+}
+
+#[tokio::test]
 async fn a_device_signed_out_while_its_long_poll_opens_is_told_its_session_ended() {
     let stage = stage().await;
     quick(&stage);

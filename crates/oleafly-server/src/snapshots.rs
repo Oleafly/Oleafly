@@ -870,6 +870,16 @@ impl Snapshots {
         Ok((hash, size))
     }
 
+    // Tells when the snapshot build of `project` that is running now ends,
+    // if one is running.
+    pub fn build_running(&self, project: SharedProjectId) -> Option<watch::Receiver<bool>> {
+        self.building
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&project)
+            .cloned()
+    }
+
     pub async fn build_soon(
         &self,
         db: &Db,
@@ -1740,6 +1750,48 @@ mod tests {
         assert_eq!(held(), bytes.len() as u64);
         drop(storing);
         assert_eq!(held(), 0);
+    }
+
+    #[tokio::test]
+    async fn a_comment_check_waits_for_a_build_of_its_project_instead_of_skipping_it() {
+        use crate::comment_guard::{CommentGuard, Verdict};
+        let (_dir, snapshots) = snapshots();
+        let db = Db::open_in_memory().unwrap();
+        let project = project_with_snapshot(&snapshots, &db, "Hello").await;
+        let needed = read_cost_of(&db, project).await;
+        snapshots.set_budget(Budget {
+            memory_bytes: needed,
+            max_snapshot_bytes: 1 << 20,
+        });
+        let base = LoroDoc::new();
+        base.set_peer_id(1).unwrap();
+        base.get_text("text").insert(0, "Hello").unwrap();
+        base.commit();
+        let typist = LoroDoc::new();
+        typist
+            .import(&base.export(ExportMode::Snapshot).unwrap())
+            .unwrap();
+        typist.set_peer_id(2).unwrap();
+        let before = typist.oplog_vv();
+        typist.get_text("text").insert(5, " world").unwrap();
+        typist.commit();
+        let typed = typist.export(ExportMode::updates(&before)).unwrap();
+        let Turn::Lead(building) = Building::turn(&snapshots.building, project) else {
+            panic!("no other build runs");
+        };
+        let held = snapshots.reserve(needed).expect("the build's share");
+        let checking = {
+            let (db, snapshots) = (db.clone(), snapshots.clone());
+            tokio::spawn(async move {
+                CommentGuard::default()
+                    .check(&db, &snapshots, project, typed)
+                    .await
+            })
+        };
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        drop(held);
+        drop(building);
+        assert_eq!(checking.await.unwrap().unwrap(), Verdict::Allowed);
     }
 
     #[tokio::test]

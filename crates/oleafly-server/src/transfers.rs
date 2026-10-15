@@ -6,7 +6,7 @@ use axum::body::{Body, Bytes};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use oleafly_collab_protocol::ids::AccountId;
-use tokio::sync::{oneshot, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::error::ServerError;
 use crate::routes::read_body_within;
@@ -101,19 +101,8 @@ impl Drop for AccountTurn {
 }
 
 struct Held {
-    budget: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
-    deadline: Duration,
+    _budget: Option<OwnedSemaphorePermit>,
     _account: AccountTurn,
-    _cancel: Option<oneshot::Sender<()>>,
-}
-
-impl Drop for Held {
-    fn drop(&mut self) {
-        self.budget
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-    }
 }
 
 struct HeldBytes {
@@ -128,26 +117,15 @@ impl AsRef<[u8]> for HeldBytes {
 }
 
 impl TransferPermit {
-    // Ties the permit to the bytes, so it goes back only once the response
-    // that carries them has been sent and dropped. A client that reads
-    // slowly has until the send deadline: then the budget share goes back,
-    // while the download still counts toward the account's large transfers.
+    // Ties the permit to the bytes, so the budget share and the account's
+    // turn go back only once the response that carries them has been sent
+    // and dropped. The bytes stay in memory until then, so they stay
+    // counted until then too, however slowly the client reads: a share
+    // that went back earlier would let other transfers add memory on top.
     pub fn keep_with(self, bytes: Bytes) -> Bytes {
-        let Some(mut held) = self.0 else {
+        let Some(held) = self.0 else {
             return bytes;
         };
-        let (cancel, cancelled) = oneshot::channel::<()>();
-        let budget = Arc::clone(&held.budget);
-        let deadline = held.deadline;
-        tokio::spawn(async move {
-            tokio::select! {
-                () = tokio::time::sleep(deadline) => {
-                    budget.lock().unwrap_or_else(PoisonError::into_inner).take();
-                }
-                _ = cancelled => {}
-            }
-        });
-        held._cancel = Some(cancel);
         Bytes::from_owner(HeldBytes { bytes, _held: held })
     }
 }
@@ -225,10 +203,8 @@ impl Transfers {
             .map_err(|_| busy())?
             .ok();
         Ok(TransferPermit(Some(Held {
-            budget: Arc::new(Mutex::new(permit)),
-            deadline: self.timing().limit_for(bytes),
+            _budget: permit,
             _account: turn,
-            _cancel: None,
         })))
     }
 
@@ -333,12 +309,9 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn a_download_read_slowly_gives_its_share_back_at_its_send_deadline() {
+    async fn a_download_read_slowly_keeps_its_share_while_its_bytes_are_held() {
         let transfers = Transfers::with_budget(2 * SMALL_TRANSFER);
-        transfers.set_timing(UploadTiming {
-            grace: Duration::from_secs(5),
-            min_rate: u64::MAX,
-        });
+        transfers.set_wait(Duration::from_secs(24 * 60 * 60));
         let sending = transfers
             .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
             .await
@@ -347,17 +320,17 @@ mod tests {
         let waiting = transfers.hold(AccountId::new_v7(), 2 * SMALL_TRANSFER);
         tokio::pin!(waiting);
         assert!(
-            tokio::time::timeout(Duration::from_secs(4), &mut waiting)
+            tokio::time::timeout(Duration::from_secs(60 * 60), &mut waiting)
                 .await
                 .is_err(),
-            "the share stays while the download is on time"
+            "the share stays while the download's bytes are held"
         );
-        let next = tokio::time::timeout(Duration::from_secs(2), waiting)
+        drop(sending);
+        let next = tokio::time::timeout(Duration::from_secs(1), waiting)
             .await
-            .expect("the share comes back at the deadline")
+            .expect("the share comes back with the bytes")
             .expect("room");
         assert!(next.0.is_some());
-        drop(sending);
     }
 
     #[tokio::test]
